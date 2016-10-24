@@ -33,6 +33,37 @@ import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
 
 public class CallbackApiTest {
 
+    public static void main(String[] args) throws Exception {
+        testCallbackApi();
+    }
+
+    private static void testCallbackApi() throws Exception {
+        System.out.println("Testing Java callback API with JVppRegistry");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest");
+             final JVpp jvpp = new JVppCoreImpl()) {
+            registry.register(jvpp, new TestCallback());
+
+            System.out.println("Sending ShowVersion request...");
+            final int result = jvpp.send(new ShowVersion());
+            System.out.printf("ShowVersion send result = %d%n", result);
+
+            System.out.println("Sending GetNodeIndex request...");
+            GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
+            getNodeIndexRequest.nodeName = "non-existing-node".getBytes();
+            jvpp.send(getNodeIndexRequest);
+
+            System.out.println("Sending SwInterfaceDump request...");
+            SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
+            swInterfaceDumpRequest.nameFilterValid = 0;
+            swInterfaceDumpRequest.nameFilter = "".getBytes();
+            jvpp.send(swInterfaceDumpRequest);
+
+            Thread.sleep(1000);
+            System.out.println("Disconnecting...");
+        }
+        Thread.sleep(1000);
+    }
+
     static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
 
         @Override
@@ -43,56 +74,23 @@ public class CallbackApiTest {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
-                            + "buildDate=%s, buildDirectory=%s%n",
-                    msg.context, new String(msg.program), new String(msg.version),
-                    new String(msg.buildDate), new String(msg.buildDirectory));
+                    + "buildDate=%s, buildDirectory=%s%n",
+                msg.context, new String(msg.program), new String(msg.version),
+                new String(msg.buildDate), new String(msg.buildDirectory));
         }
 
         @Override
         public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                            + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                    new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
-                    msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
+                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
+                new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
+                msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
         }
 
         @Override
         public void onError(VppCallbackException ex) {
             System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
-                    ex.getCtxId(), ex.getErrorCode());
+                ex.getCtxId(), ex.getErrorCode());
         }
-    }
-
-    public static void main(String[] args) throws Exception {
-        testCallbackApi();
-    }
-
-    private static void testCallbackApi() throws Exception {
-        System.out.println("Testing Java callback API with JVppRegistry");
-        JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest");
-        JVpp jvpp = new JVppCoreImpl();
-
-        registry.register(jvpp, new TestCallback());
-
-        System.out.println("Sending ShowVersion request...");
-        final int result = jvpp.send(new ShowVersion());
-        System.out.printf("ShowVersion send result = %d%n", result);
-
-        System.out.println("Sending GetNodeIndex request...");
-        GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-        getNodeIndexRequest.nodeName = "non-existing-node".getBytes();
-        jvpp.send(getNodeIndexRequest);
-
-        System.out.println("Sending SwInterfaceDump request...");
-        SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
-        swInterfaceDumpRequest.nameFilterValid = 0;
-        swInterfaceDumpRequest.nameFilter = "".getBytes();
-        jvpp.send(swInterfaceDumpRequest);
-
-        Thread.sleep(1000);
-
-        System.out.println("Disconnecting...");
-        registry.close();
-        Thread.sleep(1000);
     }
 }

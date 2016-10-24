@@ -35,12 +35,42 @@ import io.fd.vpp.jvpp.core.dto.WantInterfaceEventsReply;
 
 public class CallbackNotificationApiTest {
 
+    private static void testCallbackApi() throws Exception {
+        System.out.println("Testing Java callback API for notifications");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationTest");
+             final JVpp jvpp = new JVppCoreImpl()) {
+            registry.register(jvpp, new TestCallback());
+            System.out.println("Successfully connected to VPP");
+
+            getEnableInterfaceNotificationsReq().send(jvpp);
+            System.out.println("Interface notifications started");
+            // TODO test ifc dump which also triggers interface flags send
+
+            System.out.println("Changing interface configuration");
+            getChangeInterfaceState().send(jvpp);
+
+            // Notifications are received
+            Thread.sleep(500);
+
+            getDisableInterfaceNotificationsReq().send(jvpp);
+            System.out.println("Interface events stopped");
+
+            Thread.sleep(2000);
+            System.out.println("Disconnecting...");
+        }
+        Thread.sleep(1000);
+    }
+
+    public static void main(String[] args) throws Exception {
+        testCallbackApi();
+    }
+
     private static class TestCallback implements SwInterfaceSetFlagsNotificationCallback,
-            WantInterfaceEventsCallback, SwInterfaceSetFlagsCallback {
+        WantInterfaceEventsCallback, SwInterfaceSetFlagsCallback {
 
         @Override
         public void onSwInterfaceSetFlagsNotification(
-                final SwInterfaceSetFlagsNotification msg) {
+            final SwInterfaceSetFlagsNotification msg) {
             printNotification(msg);
         }
 
@@ -57,40 +87,8 @@ public class CallbackNotificationApiTest {
         @Override
         public void onError(VppCallbackException ex) {
             System.out.printf("Received onError exception in getNodeIndexCallback: call=%s, reply=%d, context=%d%n",
-                    ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
+                ex.getMethodName(), ex.getErrorCode(), ex.getCtxId());
 
         }
-    }
-
-    private static void testCallbackApi() throws Exception {
-        System.out.println("Testing Java callback API for notifications");
-        JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationTest");
-        JVpp jvpp = new JVppCoreImpl();
-
-        registry.register(jvpp, new TestCallback());
-        System.out.println("Successfully connected to VPP");
-
-        getEnableInterfaceNotificationsReq().send(jvpp);
-        System.out.println("Interface notifications started");
-        // TODO test ifc dump which also triggers interface flags send
-
-        System.out.println("Changing interface configuration");
-        getChangeInterfaceState().send(jvpp);
-
-        // Notifications are received
-        Thread.sleep(500);
-
-        getDisableInterfaceNotificationsReq().send(jvpp);
-        System.out.println("Interface events stopped");
-
-        Thread.sleep(2000);
-
-        System.out.println("Disconnecting...");
-        registry.close();
-        Thread.sleep(1000);
-    }
-
-    public static void main(String[] args) throws Exception {
-        testCallbackApi();
     }
 }

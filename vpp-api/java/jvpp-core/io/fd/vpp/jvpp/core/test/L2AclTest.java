@@ -16,8 +16,6 @@
 
 package io.fd.vpp.jvpp.core.test;
 
-import javax.xml.bind.DatatypeConverter;
-import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
@@ -36,6 +34,7 @@ import io.fd.vpp.jvpp.core.dto.ClassifyTableInfoReply;
 import io.fd.vpp.jvpp.core.dto.InputAclSetInterface;
 import io.fd.vpp.jvpp.core.dto.InputAclSetInterfaceReply;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
+import javax.xml.bind.DatatypeConverter;
 
 /**
  * <p>Tests L2 ACL creation and read.<br> Equivalent to the following vppctl commands:<br>
@@ -63,8 +62,8 @@ public class L2AclTest {
         request.skipNVectors = 0;
         request.matchNVectors = 1;
         request.mask =
-                new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
-                        (byte) 0xff, (byte) 0xff, 0x00, 0x00, 0x00, 0x00};
+            new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff,
+                (byte) 0xff, (byte) 0xff, 0x00, 0x00, 0x00, 0x00};
         return request;
     }
 
@@ -83,8 +82,8 @@ public class L2AclTest {
         request.advance = 0; // default
         // match 01:02:03:04:05:06 mac address
         request.match =
-                new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04,
-                        (byte) 0x05, (byte) 0x06, 0x00, 0x00, 0x00, 0x00};
+            new byte[] {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (byte) 0x01, (byte) 0x02, (byte) 0x03, (byte) 0x04,
+                (byte) 0x05, (byte) 0x06, 0x00, 0x00, 0x00, 0x00};
         return request;
     }
 
@@ -147,46 +146,46 @@ public class L2AclTest {
 
     private static void testL2Acl() throws Exception {
         System.out.println("Testing L2 ACLs using Java callback API");
-        final JVppRegistry registry = new JVppRegistryImpl("L2AclTest");
-        final JVpp jvpp = new JVppCoreImpl();
-        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
+        try (final JVppRegistry registry = new JVppRegistryImpl("L2AclTest");
+             final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
 
-        System.out.println("Successfully connected to VPP");
-        Thread.sleep(1000);
+            System.out.println("Successfully connected to VPP");
+            Thread.sleep(1000);
 
-        final ClassifyAddDelTableReply classifyAddDelTableReply =
+            final ClassifyAddDelTableReply classifyAddDelTableReply =
                 jvppFacade.classifyAddDelTable(createClassifyTable()).toCompletableFuture().get();
-        print(classifyAddDelTableReply);
+            print(classifyAddDelTableReply);
 
-        final ClassifyTableIdsReply classifyTableIdsReply =
+            final ClassifyTableIdsReply classifyTableIdsReply =
                 jvppFacade.classifyTableIds(new ClassifyTableIds()).toCompletableFuture().get();
-        print(classifyTableIdsReply);
+            print(classifyTableIdsReply);
 
-        final ClassifyTableInfoReply classifyTableInfoReply =
+            final ClassifyTableInfoReply classifyTableInfoReply =
                 jvppFacade.classifyTableInfo(createClassifyTableInfoRequest(classifyAddDelTableReply.newTableIndex))
-                        .toCompletableFuture().get();
-        print(classifyTableInfoReply);
+                    .toCompletableFuture().get();
+            print(classifyTableInfoReply);
 
-        final ClassifyAddDelSessionReply classifyAddDelSessionReply =
+            final ClassifyAddDelSessionReply classifyAddDelSessionReply =
                 jvppFacade.classifyAddDelSession(createClassifySession(classifyAddDelTableReply.newTableIndex))
-                        .toCompletableFuture().get();
-        print(classifyAddDelSessionReply);
+                    .toCompletableFuture().get();
+            print(classifyAddDelSessionReply);
 
-        final ClassifySessionDetailsReplyDump classifySessionDetailsReplyDump =
+            final ClassifySessionDetailsReplyDump classifySessionDetailsReplyDump =
                 jvppFacade.classifySessionDump(createClassifySessionDumpRequest(classifyAddDelTableReply.newTableIndex))
-                        .toCompletableFuture().get();
-        print(classifySessionDetailsReplyDump);
+                    .toCompletableFuture().get();
+            print(classifySessionDetailsReplyDump);
 
-        final InputAclSetInterfaceReply inputAclSetInterfaceReply =
+            final InputAclSetInterfaceReply inputAclSetInterfaceReply =
                 jvppFacade.inputAclSetInterface(aclSetInterface()).toCompletableFuture().get();
-        print(inputAclSetInterfaceReply);
+            print(inputAclSetInterfaceReply);
 
-        final ClassifyTableByInterfaceReply classifyTableByInterfaceReply =
-                jvppFacade.classifyTableByInterface(createClassifyTableByInterfaceRequest()).toCompletableFuture().get();
-        print(classifyTableByInterfaceReply);
+            final ClassifyTableByInterfaceReply classifyTableByInterfaceReply =
+                jvppFacade.classifyTableByInterface(createClassifyTableByInterfaceRequest()).toCompletableFuture()
+                    .get();
+            print(classifyTableByInterfaceReply);
 
-        System.out.println("Disconnecting...");
-        registry.close();
+            System.out.println("Disconnecting...");
+        }
         Thread.sleep(1000);
     }
 

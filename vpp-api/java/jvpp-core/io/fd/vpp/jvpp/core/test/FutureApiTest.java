@@ -16,12 +16,6 @@
 
 package io.fd.vpp.jvpp.core.test;
 
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
@@ -35,6 +29,11 @@ import io.fd.vpp.jvpp.core.dto.SwInterfaceDetails;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDetailsReplyDump;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class FutureApiTest {
 
@@ -45,10 +44,10 @@ public class FutureApiTest {
         final Future<ShowVersionReply> replyFuture = jvpp.showVersion(new ShowVersion()).toCompletableFuture();
         final ShowVersionReply reply = replyFuture.get();
         LOG.info(
-                String.format(
-                        "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s%n",
-                        reply.context, new String(reply.program), new String(reply.version), new String(reply.buildDate),
-                        new String(reply.buildDirectory)));
+            String.format(
+                "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s%n",
+                reply.context, new String(reply.program), new String(reply.version), new String(reply.buildDate),
+                new String(reply.buildDirectory)));
     }
 
     private static void testEmptyBridgeDomainDump(final FutureJVppCoreFacade jvpp) throws Exception {
@@ -57,16 +56,16 @@ public class FutureApiTest {
         request.bdId = -1; // dump call
 
         final CompletableFuture<BridgeDomainDetailsReplyDump>
-                replyFuture = jvpp.bridgeDomainDump(request).toCompletableFuture();
+            replyFuture = jvpp.bridgeDomainDump(request).toCompletableFuture();
         final BridgeDomainDetailsReplyDump reply = replyFuture.get();
 
         if (reply == null || reply.bridgeDomainDetails == null) {
             LOG.severe("Received null response for empty dump: " + reply);
         } else {
             LOG.info(
-                    String.format(
-                            "Received empty bridge-domain dump reply with list of bridge-domains: %s, %s",
-                            reply.bridgeDomainDetails, reply.bridgeDomainSwIfDetails));
+                String.format(
+                    "Received empty bridge-domain dump reply with list of bridge-domains: %s, %s",
+                    reply.bridgeDomainDetails, reply.bridgeDomainSwIfDetails));
         }
     }
 
@@ -78,8 +77,8 @@ public class FutureApiTest {
         try {
             final GetNodeIndexReply reply = replyFuture.get();
             LOG.info(
-                    String.format(
-                            "Received GetNodeIndexReply: context=%d, nodeIndex=%d%n", reply.context, reply.nodeIndex));
+                String.format(
+                    "Received GetNodeIndexReply: context=%d, nodeIndex=%d%n", reply.context, reply.nodeIndex));
         } catch (Exception e) {
             LOG.log(Level.SEVERE, "GetNodeIndex request failed", e);
         }
@@ -96,28 +95,26 @@ public class FutureApiTest {
         for (SwInterfaceDetails details : reply.swInterfaceDetails) {
             Objects.requireNonNull(details, "reply.swInterfaceDetails contains null element!");
             LOG.info(
-                    String.format("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                            new String(details.interfaceName), details.l2AddressLength, details.adminUpDown,
-                            details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
+                String.format("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
+                        + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
+                    new String(details.interfaceName), details.l2AddressLength, details.adminUpDown,
+                    details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
         }
     }
 
     private static void testFutureApi() throws Exception {
         LOG.info("Testing Java future API");
+        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest");
+             final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
+            LOG.info("Successfully connected to VPP");
 
-        final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest");
-        final JVpp jvpp = new JVppCoreImpl();
-        final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, jvpp);
-        LOG.info("Successfully connected to VPP");
+            testEmptyBridgeDomainDump(jvppFacade);
+            testShowVersion(jvppFacade);
+            testGetNodeIndex(jvppFacade);
+            testSwInterfaceDump(jvppFacade);
 
-        testEmptyBridgeDomainDump(jvppFacade);
-        testShowVersion(jvppFacade);
-        testGetNodeIndex(jvppFacade);
-        testSwInterfaceDump(jvppFacade);
-
-        LOG.info("Disconnecting...");
-        registry.close();
+            LOG.info("Disconnecting...");
+        }
     }
 
     public static void main(String[] args) throws Exception {
