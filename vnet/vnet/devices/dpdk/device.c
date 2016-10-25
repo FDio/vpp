@@ -523,38 +523,6 @@ static_always_inline
 	    *xd->lockp[queue_id] = 0;
 	}
 #endif
-#if RTE_LIBRTE_KNI
-      else if (xd->flags & DPDK_DEVICE_FLAG_KNI)
-	{
-	  if (PREDICT_TRUE (tx_head > tx_tail))
-	    {
-	      /* no wrap, transmit in one burst */
-	      rv = rte_kni_tx_burst (xd->kni,
-				     &tx_vector[tx_tail],
-				     (uint16_t) (tx_head - tx_tail));
-	    }
-	  else
-	    {
-	      /*
-	       * This can only happen if there is a flowcontrol callback.
-	       * We need to split the transmit into two calls: one for
-	       * the packets up to the wrap point, and one to continue
-	       * at the start of the ring.
-	       * Transmit pkts up to the wrap point.
-	       */
-	      rv = rte_kni_tx_burst (xd->kni,
-				     &tx_vector[tx_tail],
-				     (uint16_t) (xd->nb_tx_desc - tx_tail));
-
-	      /*
-	       * If we transmitted everything we wanted, then allow 1 retry
-	       * so we can try to transmit the rest. If we didn't transmit
-	       * everything, stop now.
-	       */
-	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
-	    }
-	}
-#endif
       else
 	{
 	  ASSERT (0);
@@ -1001,59 +969,6 @@ dpdk_clear_hw_interface_counters (u32 instance)
 #endif
 }
 
-#ifdef RTE_LIBRTE_KNI
-static int
-kni_config_network_if (u8 port_id, u8 if_up)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd;
-  uword *p;
-
-  p = hash_get (dm->dpdk_device_by_kni_port_id, port_id);
-  if (p == 0)
-    {
-      clib_warning ("unknown interface");
-      return 0;
-    }
-  else
-    {
-      xd = vec_elt_at_index (dm->devices, p[0]);
-    }
-
-  vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index,
-			       if_up ? VNET_HW_INTERFACE_FLAG_LINK_UP |
-			       ETH_LINK_FULL_DUPLEX : 0);
-  return 0;
-}
-
-static int
-kni_change_mtu (u8 port_id, unsigned new_mtu)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd;
-  uword *p;
-  vnet_hw_interface_t *hif;
-
-  p = hash_get (dm->dpdk_device_by_kni_port_id, port_id);
-  if (p == 0)
-    {
-      clib_warning ("unknown interface");
-      return 0;
-    }
-  else
-    {
-      xd = vec_elt_at_index (dm->devices, p[0]);
-    }
-  hif = vnet_get_hw_interface (vnm, xd->vlib_hw_if_index);
-
-  hif->max_packet_bytes = new_mtu;
-
-  return 0;
-}
-#endif
-
 static clib_error_t *
 dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
@@ -1063,47 +978,6 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hif->dev_instance);
   int rv = 0;
 
-#ifdef RTE_LIBRTE_KNI
-  if (xd->flags & DPDK_DEVICE_FLAG_KNI)
-    {
-      if (is_up)
-	{
-	  struct rte_kni_conf conf;
-	  struct rte_kni_ops ops;
-	  vlib_main_t *vm = vlib_get_main ();
-	  vlib_buffer_main_t *bm = vm->buffer_main;
-	  memset (&conf, 0, sizeof (conf));
-	  snprintf (conf.name, RTE_KNI_NAMESIZE, "vpp%u", xd->kni_port_id);
-	  conf.mbuf_size = VLIB_BUFFER_DATA_SIZE;
-	  memset (&ops, 0, sizeof (ops));
-	  ops.port_id = xd->kni_port_id;
-	  ops.change_mtu = kni_change_mtu;
-	  ops.config_network_if = kni_config_network_if;
-
-	  xd->kni =
-	    rte_kni_alloc (bm->pktmbuf_pools[rte_socket_id ()], &conf, &ops);
-	  if (!xd->kni)
-	    {
-	      clib_warning ("failed to allocate kni interface");
-	    }
-	  else
-	    {
-	      hif->max_packet_bytes = 1500;	/* kni interface default value */
-	      xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
-	    }
-	}
-      else
-	{
-	  xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
-	  int kni_rv;
-
-	  kni_rv = rte_kni_release (xd->kni);
-	  if (kni_rv < 0)
-	    clib_warning ("rte_kni_release returned %d", kni_rv);
-	}
-      return 0;
-    }
-#endif
 #if DPDK_VHOST_USER
   if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {

@@ -44,9 +44,6 @@
 #include <rte_ring.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
-#ifdef RTE_LIBRTE_KNI
-#include <rte_kni.h>
-#endif
 #include <rte_virtio_net.h>
 #include <rte_version.h>
 #include <rte_eth_bond.h>
@@ -238,7 +235,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_ADMIN_UP       (1 << 0)
 #define DPDK_DEVICE_FLAG_PROMISC        (1 << 1)
 #define DPDK_DEVICE_FLAG_PMD            (1 << 2)
-#define DPDK_DEVICE_FLAG_KNI            (1 << 3)
+
 #define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS           (1 << 6)
@@ -262,10 +259,6 @@ typedef struct
   /* HQoS related */
   dpdk_device_hqos_per_worker_thread_t *hqos_wt;
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
-
-  /* KNI related */
-  struct rte_kni *kni;
-  u8 kni_port_id;
 
 #if DPDK_VHOST_USER
   /* vhost-user related */

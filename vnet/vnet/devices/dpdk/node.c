@@ -367,14 +367,6 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 
     }
 #endif
-#ifdef RTE_LIBRTE_KNI
-  else if (xd->flags & DPDK_DEVICE_FLAG_KNI)
-    {
-      n_buffers =
-	rte_kni_rx_burst (xd->kni, xd->rx_vectors[queue_id], VLIB_FRAME_SIZE);
-      rte_kni_handle_request (xd->kni);
-    }
-#endif
   else
     {
       ASSERT (0);
