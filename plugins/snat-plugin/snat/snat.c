@@ -202,6 +202,13 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
 {
   snat_address_t * ap;
 
+  /* Check if address already exists */
+  vec_foreach (ap, sm->addresses)
+    {
+      if (ap->addr.as_u32 == addr->as_u32)
+        return;
+    }
+
   vec_add2 (sm->addresses, ap, 1);
   ap->addr = *addr;
 
