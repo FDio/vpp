@@ -146,6 +146,21 @@ static void *vl_api_sw_interface_set_table_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_mpls_enable_t_print
+  (vl_api_sw_interface_set_mpls_enable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_mpls_enable ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  if (mp->enable == 0)
+    s = format (s, "disable");
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_set_vpath_t_print
   (vl_api_sw_interface_set_vpath_t * mp, void *handle)
 {
