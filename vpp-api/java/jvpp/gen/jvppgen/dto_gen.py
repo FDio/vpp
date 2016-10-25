@@ -150,7 +150,9 @@ def generate_dto_tostring(camel_case_dto_name, func):
     return tostring_template.substitute(cls_name=camel_case_dto_name,
                                         fields_tostring=tostring_fields[:-8])
 
-
+equals_other_template = Template("""
+        final $cls_name other = ($cls_name) o;
+\n""")
 equals_field_template = Template("""        if (!java.util.Objects.equals(this.$field_name, other.$field_name)) {
             return false;
         }\n""")
@@ -165,9 +167,6 @@ equals_template = Template("""    @Override
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
-        final $cls_name other = ($cls_name) o;
-
 $comparisons
         return true;
     }\n\n""")
@@ -187,8 +186,10 @@ def generate_dto_equals(camel_case_dto_name, func):
         else:
             equals_fields += equals_field_template.substitute(field_name=field_name)
 
-    return equals_template.substitute(cls_name=camel_case_dto_name,
-                                      comparisons=equals_fields)
+    if equals_fields != "":
+        equals_fields = equals_other_template.substitute(cls_name=camel_case_dto_name) + equals_fields
+
+    return equals_template.substitute(comparisons=equals_fields)
 
 
 hash_template = Template("""    @Override
