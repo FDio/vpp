@@ -50,18 +50,11 @@
 #include <rte_sched.h>
 
 #include <vnet/unix/pcap.h>
-#include <vnet/devices/virtio/vhost-user.h>
 
 #if CLIB_DEBUG > 0
 #define always_inline static inline
 #else
 #define always_inline static inline __attribute__ ((__always_inline__))
-#endif
-
-#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
-#define DPDK_VHOST_USER 1
-#else
-#define DPDK_VHOST_USER 0
 #endif
 
 #include <vlib/pci/pci.h>
@@ -130,40 +123,6 @@ typedef struct
   u32 discard_cnt;
   u32 total_packet_cnt;
 } dpdk_efd_agent_t;
-
-#if DPDK_VHOST_USER
-typedef struct
-{
-  int callfd;
-  int kickfd;
-  int errfd;
-  int enabled;
-  u32 callfd_idx;
-  u32 n_since_last_int;
-  f64 int_deadline;
-  u64 packets;
-  u64 bytes;
-} dpdk_vu_vring;
-
-typedef struct
-{
-  u32 is_up;
-  u32 unix_fd;
-  u32 unix_file_index;
-  u32 client_fd;
-  char sock_filename[256];
-  int sock_errno;
-  u8 sock_is_server;
-  u8 active;
-
-  u64 feature_mask;
-  u32 num_vrings;
-  dpdk_vu_vring vrings[VHOST_MAX_QUEUE_PAIRS * 2];
-  u64 region_addr[VHOST_MEMORY_MAX_NREGIONS];
-  u32 region_fd[VHOST_MEMORY_MAX_NREGIONS];
-  u64 region_offset[VHOST_MEMORY_MAX_NREGIONS];
-} dpdk_vu_intf_t;
-#endif
 
 typedef void (*dpdk_flowcontrol_callback_t) (vlib_main_t * vm,
 					     u32 hw_if_index, u32 n_packets);
@@ -236,7 +195,6 @@ typedef struct
 #define DPDK_DEVICE_FLAG_PROMISC        (1 << 1)
 #define DPDK_DEVICE_FLAG_PMD            (1 << 2)
 
-#define DPDK_DEVICE_FLAG_VHOST_USER     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS           (1 << 6)
 
@@ -260,14 +218,6 @@ typedef struct
   dpdk_device_hqos_per_worker_thread_t *hqos_wt;
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
 
-#if DPDK_VHOST_USER
-  /* vhost-user related */
-  u32 vu_if_id;
-  struct virtio_net vu_vhost_dev;
-  u32 vu_is_running;
-  dpdk_vu_intf_t *vu_intf;
-#endif
-
   /* af_packet */
   u8 af_packet_port_id;
 
@@ -277,18 +227,12 @@ typedef struct
   struct rte_eth_stats stats;
   struct rte_eth_stats last_stats;
   struct rte_eth_stats last_cleared_stats;
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
   struct rte_eth_xstat *xstats;
   struct rte_eth_xstat *last_cleared_xstats;
-#else
-  struct rte_eth_xstats *xstats;
-  struct rte_eth_xstats *last_cleared_xstats;
-#endif
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
 
   dpdk_efd_agent_t efd_agent;
-  u8 need_txlock;		/* Used by VNET_DPDK_DEV_VHOST_USER */
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -420,13 +364,6 @@ typedef struct
    */
   u8 interface_name_format_decimal;
 
-  /* virtio vhost-user switch */
-  u8 use_virtio_vhost;
-
-  /* vhost-user coalescence frames config */
-  u32 vhost_coalesce_frames;
-  f64 vhost_coalesce_time;
-
   /* per-device config */
   dpdk_device_config_t default_devconf;
   dpdk_device_config_t *dev_confs;
@@ -477,8 +414,6 @@ typedef struct
   uword *vu_sw_if_index_by_listener_fd;
   uword *vu_sw_if_index_by_sock_fd;
   u32 *vu_inactive_interfaces_device_index;
-
-  u32 next_vu_if_id;
 
   /* efd (early-fast-discard) settings */
   dpdk_efd_t efd;
@@ -611,14 +546,6 @@ void dpdk_efd_update_counters (dpdk_device_t * xd, u32 n_buffers,
 u32 is_efd_discardable (vlib_thread_main_t * tm, vlib_buffer_t * b0,
 			struct rte_mbuf *mb);
 
-#if DPDK_VHOST_USER
-/* dpdk vhost-user interrupt management */
-u8 dpdk_vhost_user_want_interrupt (dpdk_device_t * xd, int idx);
-void dpdk_vhost_user_send_interrupt (vlib_main_t * vm, dpdk_device_t * xd,
-				     int idx);
-#endif
-
-
 static inline u64
 vnet_get_aggregate_rx_packets (void)
 {
@@ -645,34 +572,6 @@ void efd_config (u32 enabled,
 
 void post_sw_interface_set_flags (vlib_main_t * vm, u32 sw_if_index,
 				  u32 flags);
-
-#if DPDK_VHOST_USER
-typedef struct vhost_user_memory vhost_user_memory_t;
-
-void dpdk_vhost_user_process_init (void **ctx);
-void dpdk_vhost_user_process_cleanup (void *ctx);
-uword dpdk_vhost_user_process_if (vlib_main_t * vm, dpdk_device_t * xd,
-				  void *ctx);
-
-// vhost-user calls
-int dpdk_vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
-			       const char *sock_filename,
-			       u8 is_server,
-			       u32 * sw_if_index,
-			       u64 feature_mask,
-			       u8 renumber, u32 custom_dev_instance,
-			       u8 * hwaddr);
-int dpdk_vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
-			       const char *sock_filename,
-			       u8 is_server,
-			       u32 sw_if_index,
-			       u64 feature_mask,
-			       u8 renumber, u32 custom_dev_instance);
-int dpdk_vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
-			       u32 sw_if_index);
-int dpdk_vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
-			      vhost_user_intf_details_t ** out_vuids);
-#endif
 
 u32 dpdk_get_admin_up_down_in_progress (void);
 

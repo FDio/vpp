@@ -221,7 +221,6 @@ dpdk_device_lock_init (dpdk_device_t * xd)
 					     CLIB_CACHE_LINE_BYTES);
       memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
     }
-  xd->need_txlock = 1;
 }
 
 void
@@ -233,7 +232,6 @@ dpdk_device_lock_free (dpdk_device_t * xd)
     clib_mem_free ((void *) xd->lockp[q]);
   vec_free (xd->lockp);
   xd->lockp = 0;
-  xd->need_txlock = 0;
 }
 
 static clib_error_t *
@@ -795,9 +793,6 @@ dpdk_lib_init (dpdk_main_t * dm)
     clib_warning ("%d mbufs allocated but total rx/tx ring size is %d\n",
 		  dm->conf->num_mbufs, nb_desc);
 
-  /* init next vhost-user if index */
-  dm->next_vu_if_id = 0;
-
   return 0;
 }
 
@@ -993,9 +988,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
 
-  // MATT-FIXME: inverted virtio-vhost logic to use virtio by default
-  conf->use_virtio_vhost = 1;
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       /* Prime the pump */
@@ -1053,18 +1045,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "socket-mem %s", &socket_mem))
 	;
-      else
-	if (unformat
-	    (input, "vhost-user-coalesce-frames %d",
-	     &conf->vhost_coalesce_frames))
-	;
-      else
-	if (unformat
-	    (input, "vhost-user-coalesce-time %f",
-	     &conf->vhost_coalesce_time))
-	;
-      else if (unformat (input, "enable-vhost-user"))
-	conf->use_virtio_vhost = 0;
       else if (unformat (input, "no-pci"))
 	{
 	  no_pci = 1;
@@ -1527,9 +1507,6 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   ethernet_main_t *em = &ethernet_main;
   dpdk_device_t *xd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-#if DPDK_VHOST_USER
-  void *vu_state;
-#endif
   int i;
 
   error = dpdk_lib_init (dm);
@@ -1553,10 +1530,6 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
   if (error)
     clib_error_report (error);
-
-#if DPDK_VHOST_USER
-  dpdk_vhost_user_process_init (&vu_state);
-#endif
 
   tm->worker_thread_release = 1;
 
@@ -1680,17 +1653,8 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	  dpdk_update_link_state (xd, now);
 
-#if DPDK_VHOST_USER
-	if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
-	  if (dpdk_vhost_user_process_if (vm, xd, vu_state) != 0)
-	    continue;
-#endif
       }
     }
-
-#if DPDK_VHOST_USER
-  dpdk_vhost_user_process_cleanup (vu_state);
-#endif
 
   return 0;
 }
@@ -1767,10 +1731,6 @@ dpdk_init (vlib_main_t * vm)
 			      DPDK_NB_RX_DESC_10GE) / 100);
   dm->efd.consec_full_frames_hi_thresh =
     DPDK_EFD_DEFAULT_CONSEC_FULL_FRAMES_HI_THRESH;
-
-  /* vhost-user coalescence frames defaults */
-  dm->conf->vhost_coalesce_frames = 32;
-  dm->conf->vhost_coalesce_time = 1e-3;
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template =

@@ -169,13 +169,8 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
       rmp = vm->buffer_main->pktmbuf_pools[i];
       if (rmp)
 	{
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
 	  unsigned count = rte_mempool_avail_count (rmp);
 	  unsigned free_count = rte_mempool_in_use_count (rmp);
-#else
-	  unsigned count = rte_mempool_count (rmp);
-	  unsigned free_count = rte_mempool_free_count (rmp);
-#endif
 
 	  vlib_cli_output (vm,
 			   "name=\"%s\"  available = %7d allocated = %7d total = %7d\n",

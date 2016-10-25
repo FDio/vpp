@@ -165,12 +165,6 @@ format_dpdk_device_name (u8 * s, va_list * args)
   else
     devname_format = "%s%x/%x/%x";
 
-#if DPDK_VHOST_USER
-  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
-    {
-      return format (s, "VirtualEthernet0/0/%d", dm->devices[i].vu_if_id);
-    }
-#endif
   switch (dm->devices[i].port_type)
     {
     case VNET_DPDK_PORT_TYPE_ETH_1G:
@@ -218,11 +212,6 @@ format_dpdk_device_type (u8 * s, va_list * args)
   dpdk_main_t *dm = &dpdk_main;
   char *dev_type;
   u32 i = va_arg (*args, u32);
-
-  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
-    {
-      return format (s, "vhost-user interface");
-    }
 
   switch (dm->devices[i].pmd)
     {
@@ -444,13 +433,6 @@ format_dpdk_device (u8 * s, va_list * args)
 		  format_dpdk_rss_hf_name, di.flow_type_rss_offloads);
     }
 
-  if (verbose && xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
-    {
-      s = format (s, "%Uqueue size (max):  rx %d (%d) tx %d (%d)\n",
-		  format_white_space, indent + 2,
-		  xd->rx_q_used, xd->rx_q_used, xd->tx_q_used, xd->tx_q_used);
-    }
-
   s = format (s, "%Urx queues %d, rx desc %d, tx queues %d, tx desc %d\n",
 	      format_white_space, indent + 2,
 	      xd->rx_q_used, xd->nb_rx_desc, xd->tx_q_used, xd->nb_tx_desc);
@@ -475,15 +457,11 @@ format_dpdk_device (u8 * s, va_list * args)
 
   u8 *xs = 0;
   u32 i = 0;
-#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
-  struct rte_eth_xstats *xstat, *last_xstat;
-#else
   struct rte_eth_xstat *xstat, *last_xstat;
   struct rte_eth_xstat_name *xstat_names = 0;
   int len = rte_eth_xstats_get_names (xd->device_index, NULL, 0);
   vec_validate (xstat_names, len - 1);
   rte_eth_xstats_get_names (xd->device_index, xstat_names, len);
-#endif
 
   ASSERT (vec_len (xd->xstats) == vec_len (xd->last_cleared_xstats));
 
@@ -498,11 +476,7 @@ format_dpdk_device (u8 * s, va_list * args)
       if (verbose == 2 || (verbose && delta))
         {
           /* format_c_identifier doesn't like c strings inside vector */
-#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
-          u8 * name = format(0,"%s", xstat->name);
-#else
           u8 * name = format(0,"%s", xstat_names[i].name);
-#endif
           xs = format(xs, "\n%U%-38U%16Ld",
                       format_white_space, indent + 4,
                       format_c_identifier, name, delta);
@@ -511,50 +485,7 @@ format_dpdk_device (u8 * s, va_list * args)
     }
   /* *INDENT-ON* */
 
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
   vec_free (xstat_names);
-#endif
-
-#if DPDK_VHOST_USER
-  if (verbose && xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
-    {
-      int i;
-      for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++)
-	{
-	  u8 *name;
-	  if (verbose == 2 || xd->vu_intf->vrings[i].packets)
-	    {
-	      if (i & 1)
-		{
-		  name = format (NULL, "tx q%d packets", i >> 1);
-		}
-	      else
-		{
-		  name = format (NULL, "rx q%d packets", i >> 1);
-		}
-	      xs = format (xs, "\n%U%-38U%16Ld",
-			   format_white_space, indent + 4,
-			   format_c_identifier, name,
-			   xd->vu_intf->vrings[i].packets);
-	      vec_free (name);
-
-	      if (i & 1)
-		{
-		  name = format (NULL, "tx q%d bytes", i >> 1);
-		}
-	      else
-		{
-		  name = format (NULL, "rx q%d bytes", i >> 1);
-		}
-	      xs = format (xs, "\n%U%-38U%16Ld",
-			   format_white_space, indent + 4,
-			   format_c_identifier, name,
-			   xd->vu_intf->vrings[i].bytes);
-	      vec_free (name);
-	    }
-	}
-    }
-#endif
 
   if (xs)
     {
