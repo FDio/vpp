@@ -165,13 +165,6 @@ format_dpdk_device_name (u8 * s, va_list * args)
   else
     devname_format = "%s%x/%x/%x";
 
-#ifdef RTE_LIBRTE_KNI
-  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_KNI)
-    {
-      return format (s, "kni%d", dm->devices[i].kni_port_id);
-    }
-  else
-#endif
 #if DPDK_VHOST_USER
   if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
@@ -226,11 +219,7 @@ format_dpdk_device_type (u8 * s, va_list * args)
   char *dev_type;
   u32 i = va_arg (*args, u32);
 
-  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_KNI)
-    {
-      return format (s, "Kernel NIC Interface");
-    }
-  else if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
+  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
     {
       return format (s, "vhost-user interface");
     }
