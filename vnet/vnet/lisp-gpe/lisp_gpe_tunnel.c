@@ -114,7 +114,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
   lisp0->ver_res = 0;
   lisp0->res = 0;
   lisp0->next_protocol = payload_proto;
-  lisp0->iid = clib_host_to_net_u32 (ladj->vni);
+  lisp0->iid = clib_host_to_net_u32 (ladj->vni) >> 8;	/* first 24 bits only */
 
   return (rw);
 }
