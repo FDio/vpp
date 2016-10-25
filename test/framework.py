@@ -9,6 +9,7 @@ import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
 import os
+import sys
 import subprocess
 import unittest
 from inspect import getdoc
@@ -21,11 +22,19 @@ from scapy.packet import Raw
 #  These variables (RED, GREEN, YELLOW and LPURPLE) are used to configure
 #  the color of the text to be printed in the terminal. Variable END is used
 #  to revert the text color to the default one.
-RED = '\033[91m'
-GREEN = '\033[92m'
-YELLOW = '\033[93m'
-LPURPLE = '\033[94m'
-END = '\033[0m'
+if hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    LPURPLE = '\033[94m'
+    END = '\033[0m'
+else:
+    RED = ''
+    GREEN = ''
+    YELLOW = ''
+    LPURPLE = ''
+    END = ''
+
 
 ## Private class to create packet info object.
 #
