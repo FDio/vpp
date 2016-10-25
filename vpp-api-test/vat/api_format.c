@@ -3475,6 +3475,7 @@ static void vl_api_flow_classify_details_t_handler_json
 _(sw_interface_set_flags_reply)                         \
 _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_table_reply)                         \
+_(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
 _(sw_interface_set_l2_bridge_reply)                     \
 _(sw_interface_set_dpdk_hqos_pipe_reply)                \
@@ -3621,6 +3622,7 @@ _(CLI_INBAND_REPLY, cli_inband_reply)                                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
+_(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
@@ -4901,6 +4903,50 @@ api_sw_interface_add_del_address (vat_main_t * vam)
   S;
 
   /* Wait for a reply, return good/bad news  */
+  W;
+}
+
+static int
+api_sw_interface_set_mpls_enable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_mpls_enable_t *mp;
+  f64 timeout;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 enable = 1;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else if (unformat (i, "dis"))
+	enable = 0;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable = enable;
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
   W;
 }
 
@@ -16155,6 +16201,8 @@ _(sw_interface_add_del_address,                                         \
   "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
 _(sw_interface_set_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
+_(sw_interface_set_mpls_enable,                                                \
+  "<intfc> | sw_if_index [disable | dis]")                                \
 _(sw_interface_set_vpath,                                               \
   "<intfc> | sw_if_index <id> enable | disable")                        \
 _(sw_interface_set_l2_xconnect,                                         \

@@ -146,6 +146,21 @@ static void *vl_api_sw_interface_set_table_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_mpls_enable_t_print
+  (vl_api_sw_interface_set_mpls_enable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_mpls_enable ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  if (mp->enable == 0)
+    s = format (s, "disable");
+
+  FINISH;
+}
+
 static void *vl_api_sw_interface_set_vpath_t_print
   (vl_api_sw_interface_set_vpath_t * mp, void *handle)
 {
@@ -2810,6 +2825,7 @@ _(CREATE_LOOPBACK, create_loopback)                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
+_(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(TAP_CONNECT, tap_connect)                                             \
 _(TAP_MODIFY, tap_modify)                                               \
