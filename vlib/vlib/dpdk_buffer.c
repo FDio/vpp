@@ -971,9 +971,6 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   struct rte_mempool *rmp;
-#if RTE_VERSION < RTE_VERSION_NUM(16, 7, 0, 0)
-  uword new_start, new_size;
-#endif
   int i;
 
   if (!rte_pktmbuf_pool_create)
@@ -996,7 +993,6 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 
   if (rmp)
     {
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 7, 0, 0)
       {
 	uword this_pool_end;
 	uword this_pool_start;
@@ -1063,39 +1059,6 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 	  return 0;
 	}
     }
-#else
-      new_start = pointer_to_uword (rmp);
-      new_size = rmp->elt_va_end - new_start;
-
-      if (vpm->virtual.size > 0)
-	{
-	  ASSERT (new_start != vpm->virtual.start);
-	  if (new_start < vpm->virtual.start)
-	    {
-	      new_size = vpm->virtual.size + vpm->virtual.start - new_start;
-	    }
-	  else
-	    {
-	      new_size += new_start - vpm->virtual.start;
-	      new_start = vpm->virtual.start;
-	    }
-
-	  /* check if fits into buffer index range */
-	  if ((u64) new_size > ((u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
-	    rmp = 0;
-	}
-    }
-
-  if (rmp)
-    {
-      bm->pktmbuf_pools[socket_id] = rmp;
-      vpm->virtual.start = new_start;
-      vpm->virtual.size = new_size;
-      vpm->virtual.end = new_start + new_size;
-      vec_free (pool_name);
-      return 0;
-    }
-#endif
 
   vec_free (pool_name);
 

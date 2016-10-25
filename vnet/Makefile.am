@@ -660,7 +660,6 @@ libvnet_la_SOURCES +=				\
   vnet/devices/dpdk/init.c			\
   vnet/devices/dpdk/node.c			\
   vnet/devices/dpdk/hqos.c			\
-  vnet/devices/dpdk/vhost_user.c    \
   vnet/devices/dpdk/cli.c
 
 nobase_include_HEADERS +=			\

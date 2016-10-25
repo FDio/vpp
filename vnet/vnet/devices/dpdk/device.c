@@ -323,8 +323,7 @@ static_always_inline
        * This device only supports one TX queue,
        * and we're running multi-threaded...
        */
-      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) == 0 &&
-			 xd->lockp != 0))
+      if (PREDICT_FALSE (xd->lockp != 0))
 	{
 	  queue_id = queue_id % xd->tx_q_used;
 	  while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
@@ -405,132 +404,13 @@ static_always_inline
 	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
 	    }
 	}
-#if DPDK_VHOST_USER
-      else if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
-	{
-	  u32 offset = 0;
-	  if (xd->need_txlock)
-	    {
-	      queue_id = 0;
-	      while (__sync_lock_test_and_set (xd->lockp[queue_id], 1));
-	    }
-	  else
-	    {
-	      dpdk_device_and_queue_t *dq;
-	      vec_foreach (dq, dm->devices_by_cpu[vm->cpu_index])
-	      {
-		if (xd->device_index == dq->device)
-		  break;
-	      }
-	      assert (dq);
-	      offset = dq->queue_id * VIRTIO_QNUM;
-	    }
-	  if (PREDICT_TRUE (tx_head > tx_tail))
-	    {
-	      int i;
-	      u32 bytes = 0;
-	      struct rte_mbuf **pkts = &tx_vector[tx_tail];
-	      for (i = 0; i < (tx_head - tx_tail); i++)
-		{
-		  struct rte_mbuf *buff = pkts[i];
-		  bytes += rte_pktmbuf_data_len (buff);
-		}
-
-	      /* no wrap, transmit in one burst */
-	      rv =
-		rte_vhost_enqueue_burst (&xd->vu_vhost_dev,
-					 offset + VIRTIO_RXQ,
-					 &tx_vector[tx_tail],
-					 (uint16_t) (tx_head - tx_tail));
-	      if (PREDICT_TRUE (rv > 0))
-		{
-		  dpdk_vu_vring *vring =
-		    &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
-		  vring->packets += rv;
-		  vring->bytes += bytes;
-
-		  if (dpdk_vhost_user_want_interrupt
-		      (xd, offset + VIRTIO_RXQ))
-		    {
-		      vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
-		      vring->n_since_last_int += rv;
-
-		      f64 now = vlib_time_now (vm);
-		      if (vring->int_deadline < now ||
-			  vring->n_since_last_int >
-			  dm->conf->vhost_coalesce_frames)
-			dpdk_vhost_user_send_interrupt (vm, xd,
-							offset + VIRTIO_RXQ);
-		    }
-
-		  int c = rv;
-		  while (c--)
-		    rte_pktmbuf_free (tx_vector[tx_tail + c]);
-		}
-	    }
-	  else
-	    {
-	      /*
-	       * If we transmitted everything we wanted, then allow 1 retry
-	       * so we can try to transmit the rest. If we didn't transmit
-	       * everything, stop now.
-	       */
-	      int i;
-	      u32 bytes = 0;
-	      struct rte_mbuf **pkts = &tx_vector[tx_tail];
-	      for (i = 0; i < (xd->nb_tx_desc - tx_tail); i++)
-		{
-		  struct rte_mbuf *buff = pkts[i];
-		  bytes += rte_pktmbuf_data_len (buff);
-		}
-	      rv =
-		rte_vhost_enqueue_burst (&xd->vu_vhost_dev,
-					 offset + VIRTIO_RXQ,
-					 &tx_vector[tx_tail],
-					 (uint16_t) (xd->nb_tx_desc -
-						     tx_tail));
-
-	      if (PREDICT_TRUE (rv > 0))
-		{
-		  dpdk_vu_vring *vring =
-		    &(xd->vu_intf->vrings[offset + VIRTIO_TXQ]);
-		  vring->packets += rv;
-		  vring->bytes += bytes;
-
-		  if (dpdk_vhost_user_want_interrupt
-		      (xd, offset + VIRTIO_RXQ))
-		    {
-		      vring = &(xd->vu_intf->vrings[offset + VIRTIO_RXQ]);
-		      vring->n_since_last_int += rv;
-
-		      f64 now = vlib_time_now (vm);
-		      if (vring->int_deadline < now ||
-			  vring->n_since_last_int >
-			  dm->conf->vhost_coalesce_frames)
-			dpdk_vhost_user_send_interrupt (vm, xd,
-							offset + VIRTIO_RXQ);
-		    }
-
-		  int c = rv;
-		  while (c--)
-		    rte_pktmbuf_free (tx_vector[tx_tail + c]);
-		}
-
-	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
-	    }
-
-	  if (xd->need_txlock)
-	    *xd->lockp[queue_id] = 0;
-	}
-#endif
       else
 	{
 	  ASSERT (0);
 	  rv = 0;
 	}
 
-      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) == 0 &&
-			 xd->lockp != 0))
+      if (PREDICT_FALSE (xd->lockp != 0))
 	*xd->lockp[queue_id] = 0;
 
       if (PREDICT_FALSE (rv < 0))
@@ -919,26 +799,6 @@ dpdk_interface_tx (vlib_main_t * vm,
   return tx_pkts;
 }
 
-static int
-dpdk_device_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
-{
-#if DPDK_VHOST_USER
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
-
-  if (!xd || (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) == 0)
-    {
-      clib_warning
-	("cannot renumber non-vhost-user interface (sw_if_index: %d)",
-	 hi->sw_if_index);
-      return 0;
-    }
-
-  xd->vu_if_id = new_dev_instance;
-#endif
-  return 0;
-}
-
 static void
 dpdk_clear_hw_interface_counters (u32 instance)
 {
@@ -956,17 +816,6 @@ dpdk_clear_hw_interface_counters (u32 instance)
 	       vec_len (xd->last_cleared_xstats) *
 	       sizeof (xd->last_cleared_xstats[0]));
 
-#if DPDK_VHOST_USER
-  if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER))
-    {
-      int i;
-      for (i = 0; i < xd->rx_q_used * VIRTIO_QNUM; i++)
-	{
-	  xd->vu_intf->vrings[i].packets = 0;
-	  xd->vu_intf->vrings[i].bytes = 0;
-	}
-    }
-#endif
 }
 
 static clib_error_t *
@@ -977,28 +826,6 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, hif->dev_instance);
   int rv = 0;
-
-#if DPDK_VHOST_USER
-  if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
-    {
-      if (is_up)
-	{
-	  if (xd->vu_is_running)
-	    vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index,
-					 VNET_HW_INTERFACE_FLAG_LINK_UP |
-					 ETH_LINK_FULL_DUPLEX);
-	  xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
-	}
-      else
-	{
-	  vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, 0);
-	  xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
-	}
-
-      return 0;
-    }
-#endif
-
 
   if (is_up)
     {
@@ -1148,7 +975,6 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .subif_add_del_function = dpdk_subif_add_del_function,
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .no_flatten_output_chains = 1,
-  .name_renumber = dpdk_device_renumber,
   .mac_addr_change_function = dpdk_set_mac_address,
 };
 

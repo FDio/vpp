@@ -2416,7 +2416,6 @@ done:
  * CLI functions
  */
 
-#if DPDK == 0
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
@@ -2436,7 +2435,6 @@ VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .function = show_vhost_user_command_fn,
 };
 /* *INDENT-ON* */
-#endif
 
 static clib_error_t *
 vhost_user_config (vlib_main_t * vm, unformat_input_t * input)
