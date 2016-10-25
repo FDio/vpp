@@ -418,7 +418,6 @@ dpdk_create_vhost_user_if_internal (u32 * hw_if_index, u32 if_id, u8 * hwaddr)
   return 0;
 }
 
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
 static long
 get_huge_page_size (int fd)
 {
@@ -426,7 +425,6 @@ get_huge_page_size (int fd)
   fstatfs (fd, &s);
   return s.f_bsize;
 }
-#endif
 
 static clib_error_t *
 dpdk_vhost_user_set_protocol_features (u32 hw_if_index, u64 prot_features)
@@ -443,7 +441,6 @@ dpdk_vhost_user_get_features (u32 hw_if_index, u64 * features)
 {
   *features = rte_vhost_feature_get ();
 
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
 #define OFFLOAD_FEATURES ((1ULL << VIRTIO_NET_F_HOST_TSO4) | \
 		(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
 		(1ULL << VIRTIO_NET_F_CSUM)    | \
@@ -456,7 +453,6 @@ dpdk_vhost_user_get_features (u32 hw_if_index, u64 * features)
    * not support offloading breaks L4 traffic.
    */
   *features &= (~OFFLOAD_FEATURES);
-#endif
 
   DBG_SOCK ("supported features: 0x%lx", *features);
   return 0;
@@ -604,9 +600,7 @@ dpdk_vhost_user_set_vring_addr (u32 hw_if_index, u8 idx, uword desc,
   vq->desc = (struct vring_desc *) qva_to_vva (&xd->vu_vhost_dev, desc);
   vq->used = (struct vring_used *) qva_to_vva (&xd->vu_vhost_dev, used);
   vq->avail = (struct vring_avail *) qva_to_vva (&xd->vu_vhost_dev, avail);
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
   vq->log_guest_addr = log;
-#endif
 
   if (!(vq->desc && vq->used && vq->avail))
     {
@@ -675,9 +669,7 @@ dpdk_vhost_user_get_vring_base (u32 hw_if_index, u8 idx, u32 * num)
   vq->desc = NULL;
   vq->used = NULL;
   vq->avail = NULL;
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
   vq->log_guest_addr = 0;
-#endif
 
   /* Check if all Qs are disabled */
   int numqs = xd->vu_vhost_dev.virt_qp_nb * VIRTIO_QNUM;
@@ -1031,9 +1023,7 @@ dpdk_vhost_user_if_disconnect (dpdk_device_t * xd)
       vui->vrings[q].enabled = 0;	/* Reset local copy */
       vui->vrings[q].callfd = -1;	/* Reset FD */
       vq->enabled = 0;
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
       vq->log_guest_addr = 0;
-#endif
       vq->desc = NULL;
       vq->used = NULL;
       vq->avail = NULL;
@@ -1287,7 +1277,6 @@ dpdk_vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_LOG_BASE:
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
       DBG_SOCK ("if %d msg VHOST_USER_SET_LOG_BASE", xd->vlib_hw_if_index);
 
       if (msg.size != sizeof (msg.log))
@@ -1329,10 +1318,6 @@ dpdk_vhost_user_socket_read (unix_file_t * uf)
       xd->vu_vhost_dev.log_size = msg.log.size;
       msg.flags |= VHOST_USER_REPLY_MASK;
       msg.size = sizeof (msg.u64);
-#else
-      DBG_SOCK ("if %d msg VHOST_USER_SET_LOG_BASE Not-Implemented",
-		xd->vlib_hw_if_index);
-#endif
       break;
 
     case VHOST_USER_SET_LOG_FD:
