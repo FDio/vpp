@@ -433,7 +433,7 @@ class TestL2bd(VppTestCase):
     ## Method defining VPP L2 bridge domain test case.
     #  Contains execution steps of the test case.
     #  @param self The object pointer.
-    def test_l2bd(self):
+    def _test_l2bd(self):
         """ L2BD MAC learning test
 
         1.config
