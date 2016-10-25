@@ -48,7 +48,6 @@
 #include <rte_kni.h>
 #endif
 #include <rte_virtio_net.h>
-#include <rte_pci_dev_ids.h>
 #include <rte_version.h>
 #include <rte_eth_bond.h>
 #include <rte_sched.h>
@@ -707,76 +706,6 @@ unformat_function_t unformat_socket_mem;
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *unformat_hqos (unformat_input_t * input,
 			     dpdk_device_config_hqos_t * hqos);
-
-
-static inline void
-dpdk_pmd_constructor_init ()
-{
-  /* Add references to DPDK Driver Constructor functions to get the dynamic
-   * loader to pull in the driver library & run the constructors.
-   */
-#define _(d)                                            \
-  do {                                                  \
-    void devinitfn_ ##d(void);                          \
-    __attribute__((unused)) void (* volatile pf)(void); \
-    pf = devinitfn_ ##d;                                \
-  } while(0);
-
-#ifdef RTE_LIBRTE_EM_PMD
-  _(em_pmd_drv)
-#endif
-#ifdef RTE_LIBRTE_IGB_PMD
-    _(pmd_igb_drv)
-#endif
-#ifdef RTE_LIBRTE_IXGBE_PMD
-    _(rte_ixgbe_driver)
-#endif
-#ifdef RTE_LIBRTE_I40E_PMD
-    _(rte_i40e_driver) _(rte_i40evf_driver)
-#endif
-#ifdef RTE_LIBRTE_FM10K_PMD
-    _(rte_fm10k_driver)
-#endif
-#ifdef RTE_LIBRTE_VIRTIO_PMD
-    _(rte_virtio_driver)
-#endif
-#ifdef RTE_LIBRTE_VMXNET3_PMD
-    _(rte_vmxnet3_driver)
-#endif
-#ifdef RTE_LIBRTE_VICE_PMD
-    _(rte_vice_driver)
-#endif
-#ifdef RTE_LIBRTE_ENIC_PMD
-    _(rte_enic_driver)
-#endif
-#ifdef RTE_LIBRTE_PMD_AF_PACKET
-    _(pmd_af_packet_drv)
-#endif
-#ifdef RTE_LIBRTE_CXGBE_PMD
-    _(rte_cxgbe_driver)
-#endif
-#ifdef RTE_LIBRTE_PMD_BOND
-    _(bond_drv)
-#endif
-#ifdef RTE_LIBRTE_DPAA2_PMD
-    _(pmd_dpaa2_drv)
-#endif
-#undef _
-/*
- * At the moment, the ThunderX NIC driver doesn't have
- * an entry point named "devinitfn_rte_xxx_driver"
- */
-#define _(d)                                          \
-  do {                                                  \
-    void d(void);			                      \
-    __attribute__((unused)) void (* volatile pf)(void); \
-    pf = d;		                              \
-  } while(0);
-#ifdef RTE_LIBRTE_THUNDERVNIC_PMD
-    _(rte_nicvf_pmd_init)
-#endif
-#undef _
-}
 
 uword
 admin_up_down_process (vlib_main_t * vm,
