@@ -36,12 +36,8 @@
 #define RTE_VERSION_NUM(a,b,c,d) 1
 #define RTE_VERSION 0
 #endif
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
 #define VHOST_USER_PROTOCOL_FEATURES   ((1ULL << VHOST_USER_PROTOCOL_F_MQ) |	\
 					(1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD))
-#else
-#define VHOST_USER_PROTOCOL_FEATURES   (1ULL << VHOST_USER_PROTOCOL_F_MQ)
-#endif
 
 /* If multiqueue is provided by host, then we suppport it. */
 #define VIRTIO_NET_CTRL_MQ   4

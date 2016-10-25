@@ -610,17 +610,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    }
 	}
 
-#if RTE_VERSION < RTE_VERSION_NUM(16, 4, 0, 0)
-      /*
-       * Older VMXNET3 driver doesn't support jumbo / multi-buffer pkts
-       */
-      if (xd->pmd == VNET_DPDK_PMD_VMXNET3)
-	{
-	  xd->port_conf.rxmode.max_rx_pkt_len = 1518;
-	  xd->port_conf.rxmode.jumbo_frame = 0;
-	}
-#endif
-
       if (xd->pmd == VNET_DPDK_PMD_AF_PACKET)
 	{
 	  f64 now = vlib_time_now (vm);
@@ -795,14 +784,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  else
 	    clib_warning ("VLAN strip cannot be supported by interface\n");
 	}
-
-#if RTE_VERSION < RTE_VERSION_NUM(16, 4, 0, 0)
-      /*
-       * Older VMXNET3 driver doesn't support jumbo / multi-buffer pkts
-       */
-      else if (xd->pmd == VNET_DPDK_PMD_VMXNET3)
-	hi->max_packet_bytes = 1518;
-#endif
 
       hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] =
 	xd->port_conf.rxmode.max_rx_pkt_len - sizeof (ethernet_header_t);
@@ -1485,7 +1466,6 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	  break;
 	}
     }
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 4, 0, 0)
   if (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed))
     {
       hw_flags_chg = 1;
@@ -1513,35 +1493,6 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	  break;
 	}
     }
-#else
-  if (hw_flags_chg || (xd->link.link_speed != prev_link.link_speed))
-    {
-      hw_flags_chg = 1;
-      switch (xd->link.link_speed)
-	{
-	case ETH_LINK_SPEED_10:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10M;
-	  break;
-	case ETH_LINK_SPEED_100:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100M;
-	  break;
-	case ETH_LINK_SPEED_1000:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_1G;
-	  break;
-	case ETH_LINK_SPEED_10000:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_10G;
-	  break;
-	case ETH_LINK_SPEED_40G:
-	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
-	  break;
-	case 0:
-	  break;
-	default:
-	  clib_warning ("unknown link speed %d", xd->link.link_speed);
-	  break;
-	}
-    }
-#endif
   if (hw_flags_chg)
     {
       if (LINK_STATE_ELOGS)
