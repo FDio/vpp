@@ -6124,7 +6124,7 @@ vl_api_lisp_map_resolver_dump_t_handler (vl_api_lisp_map_resolver_dump_t * mp)
 {
   unix_shared_memory_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  map_resolver_t *mr;
+  lisp_msmr_t *mr;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)

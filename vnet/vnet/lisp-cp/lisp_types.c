@@ -270,6 +270,31 @@ unformat_fid_address (unformat_input_t * i, va_list * args)
 }
 
 uword
+unformat_hmac_key_id (unformat_input_t * input, va_list * args)
+{
+  u32 *key_id = va_arg (*args, u32 *);
+  u8 *s = 0;
+
+  if (unformat (input, "%s", &s))
+    {
+      if (!strcmp ((char *) s, "sha1"))
+	key_id[0] = HMAC_SHA_1_96;
+      else if (!strcmp ((char *) s, "sha256"))
+	key_id[0] = HMAC_SHA_256_128;
+      else
+	{
+	  clib_warning ("invalid key_id: '%s'", s);
+	  key_id[0] = HMAC_NO_KEY;
+	}
+    }
+  else
+    return 0;
+
+  vec_free (s);
+  return 1;
+}
+
+uword
 unformat_gid_address (unformat_input_t * input, va_list * args)
 {
   gid_address_t *a = va_arg (*args, gid_address_t *);

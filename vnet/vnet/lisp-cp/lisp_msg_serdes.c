@@ -18,6 +18,53 @@
 #include <vppinfra/time.h>
 
 void *
+lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid);
+
+static void
+lisp_msg_put_locators (vlib_buffer_t * b, locator_t * locators)
+{
+  locator_t *loc;
+
+  vec_foreach (loc, locators)
+    {
+      u8 *p = vlib_buffer_put_uninit (b, sizeof (locator_hdr_t));
+      memset (p, 0, sizeof (locator_hdr_t));
+      LOC_PRIORITY (p) = loc->priority;
+      LOC_MPRIORITY (p) = loc->mpriority;
+      LOC_WEIGHT (p) = loc->weight;
+      LOC_MWEIGHT (p) = loc->mweight;
+      LOC_LOCAL (p) = loc->local;
+      lisp_msg_put_gid (b, &loc->address);
+    }
+}
+
+static void
+lisp_msg_put_mapping_record (vlib_buffer_t * b, mapping_t * record)
+{
+  mapping_record_hdr_t *p =
+    vlib_buffer_put_uninit (b, sizeof (mapping_record_hdr_t));
+  gid_address_t * eid = &record->eid;
+
+  memset (p, 0, sizeof (*p));
+  MAP_REC_EID_PLEN (p) = gid_address_len (eid);
+  MAP_REC_TTL (p) = clib_host_to_net_u32 (record->ttl);
+  MAP_REC_AUTH (p) = record->authoritative ? 1 : 0;
+  MAP_REC_LOC_COUNT (p) = vec_len (record->locators);
+
+  lisp_msg_put_gid (b, eid);
+  lisp_msg_put_locators (b, record->locators);
+}
+
+static void
+lisp_msg_put_mreg_records (vlib_buffer_t * b,
+                         mapping_t * records)
+{
+  u32 i;
+  for (i = 0; i < vec_len (records); i++)
+    lisp_msg_put_mapping_record (b, &records[i]);
+}
+
+void *
 lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid)
 {
   u8 *p = vlib_buffer_put_uninit (b, gid_address_size_to_put (gid));
@@ -75,6 +122,33 @@ nonce_build (u32 seed)
   nonce = nonce_upper;
   nonce = (nonce << 32) | nonce_lower;
   return nonce;
+}
+
+void *
+lisp_msg_put_map_register (vlib_buffer_t * b, mapping_t * records,
+                           u8 want_map_notify, u16 auth_data_len, u64 * nonce,
+                           u32 * msg_len)
+{
+  u8 *auth_data = 0
+
+  /* Basic header init */
+  map_register_hdr_t *h = vlib_buffer_put_uninit (b, sizeof (h[0]));
+
+  memset (h, 0, sizeof (h[0]));
+  MREG_TYPE (h) = LISP_MAP_REGISTER;
+  MREG_NONCE (h) = nonce_build (0);
+  MREG_WANT_MAP_NOTIFY (h) = want_map_notify ? 1 : 0;
+  MREG_REC_COUNT (h) = vec_len (records);
+
+  auth_data = vlib_buffer_put_uninit (b, auth_data_len);
+  memset (auth_data, 0, auth_data_len);
+
+  /* Put map register records */
+  lisp_msg_put_mreg_records (b, records);
+
+  nonce[0] = MREG_NONCE (h);
+  msg_len[0] = vlib_buffer_get_tail (b) - (u8 *) h;
+  return h;
 }
 
 void *

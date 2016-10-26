@@ -23,6 +23,7 @@
 #define NUMBER_OF_RETRIES                   1
 #define PENDING_MREQ_EXPIRATION_TIME        3.0	/* seconds */
 #define PENDING_MREQ_QUEUE_LEN              5
+#define MAP_REGISTER_INTERVAL               7.0
 
 typedef struct
 {
@@ -55,12 +56,14 @@ typedef enum
   IP6_MISS_PACKET
 } miss_packet_type_t;
 
+/* map-server/map-resolver structure */
 typedef struct
 {
   u8 is_down;
   f64 last_update;
   ip_address_t address;
-} map_resolver_t;
+  char *key;
+} lisp_msmr_t;
 
 typedef struct
 {
@@ -87,6 +90,9 @@ typedef struct
 
   /* pool of mappings */
   mapping_t *mapping_pool;
+
+  /* hash map of secret keys by mapping index */
+  u8 *key_by_mapping_index;
 
   /* pool of locators */
   locator_t *locator_pool;
@@ -121,7 +127,10 @@ typedef struct
   volatile u32 *pending_map_request_lock;
 
   /* vector of map-resolvers */
-  map_resolver_t *map_resolvers;
+  lisp_msmr_t *map_resolvers;
+
+  /* vector of map-servers */
+  lisp_msmr_t *map_servers;
 
   /* map resolver address currently being used for sending requests.
    * This has to be an actual address and not an index to map_resolvers vector
@@ -207,6 +216,8 @@ typedef struct
 
   u8 local;
   u8 is_static;
+  u8 *key;
+  u8 key_id;
 } vnet_lisp_add_del_mapping_args_t;
 
 int
@@ -238,6 +249,8 @@ typedef struct
 
 int
 vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a);
+int
+vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add);
 
 clib_error_t *vnet_lisp_enable_disable (u8 is_enabled);
 u8 vnet_lisp_enable_disable_status (void);
@@ -256,6 +269,8 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a);
 int vnet_lisp_clear_all_remote_adjacencies (void);
 
 int vnet_lisp_eid_table_map (u32 vni, u32 vrf, u8 is_l2, u8 is_add);
+int vnet_lisp_add_del_map_table_key (gid_address_t * eid, char * key,
+                                     u8 is_add);
 int vnet_lisp_set_map_request_mode (u8 mode);
 u8 vnet_lisp_get_map_request_mode (void);
 lisp_adjacency_t *vnet_lisp_adjacencies_get_by_vni (u32 vni);
