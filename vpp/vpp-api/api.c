@@ -396,6 +396,7 @@ _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
 _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
+_(LISP_ADD_DEL_MAP_SERVER, lisp_add_del_map_server)                     \
 _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
@@ -5397,7 +5398,7 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
   uword *p = NULL;
   u32 locator_set_index = ~0, map_index = ~0;
   vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
-  u8 *name = NULL;
+  u8 *name = NULL, *key = NULL;
   memset (a, 0, sizeof (a[0]));
   memset (eid, 0, sizeof (eid[0]));
 
@@ -5415,15 +5416,22 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
     }
   locator_set_index = p[0];
 
+  if (*mp->key)
+    key = format (0, "%s", mp->key);
+
   /* XXX treat batch configuration */
   a->is_add = mp->is_add;
   gid_address_copy (&a->eid, eid);
   a->locator_set_index = locator_set_index;
   a->local = 1;
+  a->key = key;
+  a->key_id = clib_net_to_host_u16 (mp->key_id);
+
   rv = vnet_lisp_add_del_local_mapping (a, &map_index);
 
 out:
   vec_free (name);
+  vec_free (key);
   gid_address_free (&a->eid);
 
   REPLY_MACRO (VL_API_LISP_ADD_DEL_LOCAL_EID_REPLY);
@@ -5530,6 +5538,22 @@ static void
   vec_free (pairs);
 send_reply:
   REPLY_MACRO (VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
+}
+
+static void
+vl_api_lisp_add_del_map_server_t_handler (vl_api_lisp_add_del_map_server_t
+					    * mp)
+{
+  vl_api_lisp_add_del_map_server_reply_t *rmp;
+  int rv = 0;
+  ip_address_t addr;
+
+  memset (&addr, 0, sizeof (addr));
+
+  ip_address_set (&addr, mp->ip_address, mp->is_ipv6 ? IP6 : IP4);
+  rv = vnet_lisp_add_del_map_server (&addr, mp->is_add);
+
+  REPLY_MACRO (VL_API_LISP_ADD_DEL_MAP_SERVER_REPLY);
 }
 
 static void
@@ -6139,7 +6163,7 @@ vl_api_lisp_map_resolver_dump_t_handler (vl_api_lisp_map_resolver_dump_t * mp)
 {
   unix_shared_memory_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  map_resolver_t *mr;
+  lisp_msmr_t *mr;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)

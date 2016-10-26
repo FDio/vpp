@@ -35,6 +35,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vnet/lisp-cp/lisp_types.h>
 
 #include <stats/stats.h>
 #include <oam/oam.h>
@@ -2473,6 +2474,12 @@ static void *vl_api_lisp_add_del_local_eid_t_print
   s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid_type, mp->eid,
 	      mp->prefix_len);
   s = format (s, "locator-set %s ", mp->locator_set_name);
+  if (*mp->key)
+    {
+      u32 key_id = mp->key_id;
+      s = format (s, "key-id %U", format_hmac_key_id, key_id);
+      s = format (s, "secret-key %s", mp->key);
+    }
   FINISH;
 }
 

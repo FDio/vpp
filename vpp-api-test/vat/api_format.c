@@ -3551,6 +3551,7 @@ _(lisp_add_del_remote_mapping_reply)                    \
 _(lisp_add_del_adjacency_reply)                         \
 _(lisp_gpe_add_del_fwd_entry_reply)                     \
 _(lisp_add_del_map_resolver_reply)                      \
+_(lisp_add_del_map_server_reply)                        \
 _(lisp_gpe_enable_disable_reply)                        \
 _(lisp_gpe_add_del_iface_reply)                         \
 _(lisp_enable_disable_reply)                            \
@@ -3755,6 +3756,7 @@ _(LISP_ADD_DEL_REMOTE_MAPPING_REPLY, lisp_add_del_remote_mapping_reply) \
 _(LISP_ADD_DEL_ADJACENCY_REPLY, lisp_add_del_adjacency_reply)           \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
 _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
+_(LISP_ADD_DEL_MAP_SERVER_REPLY, lisp_add_del_map_server_reply)         \
 _(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
 _(LISP_ENABLE_DISABLE_REPLY, lisp_enable_disable_reply)                 \
 _(LISP_PITR_SET_LOCATOR_SET_REPLY, lisp_pitr_set_locator_set_reply)     \
@@ -12840,6 +12842,31 @@ api_lisp_add_del_locator (vat_main_t * vam)
   return 0;
 }
 
+uword
+unformat_hmac_key_id (unformat_input_t * input, va_list * args)
+{
+  u32 *key_id = va_arg (*args, u32 *);
+  u8 *s = 0;
+
+  if (unformat (input, "%s", &s))
+    {
+      if (!strcmp ((char *) s, "sha1"))
+	key_id[0] = HMAC_SHA_1_96;
+      else if (!strcmp ((char *) s, "sha256"))
+	key_id[0] = HMAC_SHA_256_128;
+      else
+	{
+	  clib_warning ("invalid key_id: '%s'", s);
+	  key_id[0] = HMAC_NO_KEY;
+	}
+    }
+  else
+    return 0;
+
+  vec_free (s);
+  return 1;
+}
+
 static int
 api_lisp_add_del_local_eid (vat_main_t * vam)
 {
@@ -12852,6 +12879,8 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
   u8 *locator_set_name = 0;
   u8 locator_set_name_set = 0;
   u32 vni = 0;
+  u16 key_id = 0;
+  u8 *key = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -12872,6 +12901,10 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
 	{
 	  locator_set_name_set = 1;
 	}
+      else if (unformat (input, "key-id %U", unformat_hmac_key_id, &key_id))
+        ;
+      else if (unformat (input, "secret-key %_%v%_", &key))
+        ;
       else
 	break;
     }
@@ -12886,6 +12919,19 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
     {
       errmsg ("EID address not set!");
       vec_free (locator_set_name);
+      return -99;
+    }
+
+  if (key && (0 == key_id))
+    {
+      errmsg ("invalid key_id!");
+      return -99;
+    }
+
+  if (vec_len (key) > 64)
+    {
+      errmsg ("key too long");
+      vec_free (key);
       return -99;
     }
 
@@ -12905,10 +12951,13 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
   mp->eid_type = eid->type;
   mp->prefix_len = eid->len;
   mp->vni = clib_host_to_net_u32 (vni);
+  mp->key_id = clib_host_to_net_u16 (key_id);
   clib_memcpy (mp->locator_set_name, locator_set_name,
 	       vec_len (locator_set_name));
+  clib_memcpy (mp->key, key, vec_len (key));
 
   vec_free (locator_set_name);
+  vec_free (key);
 
   /* send it... */
   S;
@@ -13061,6 +13110,73 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_lisp_add_del_map_server (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_lisp_add_del_map_server_t *mp;
+  f64 timeout = ~0;
+  u8 is_add = 1;
+  u8 ipv4_set = 0;
+  u8 ipv6_set = 0;
+  ip4_address_t ipv4;
+  ip6_address_t ipv6;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	{
+	  is_add = 0;
+	}
+      else if (unformat (input, "%U", unformat_ip4_address, &ipv4))
+	{
+	  ipv4_set = 1;
+	}
+      else if (unformat (input, "%U", unformat_ip6_address, &ipv6))
+	{
+	  ipv6_set = 1;
+	}
+      else
+	break;
+    }
+
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both eid v4 and v6 addresses set\n");
+      return -99;
+    }
+
+  if (!ipv4_set && !ipv6_set)
+    {
+      errmsg ("eid addresses not set\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (LISP_ADD_DEL_MAP_SERVER, lisp_add_del_map_server);
+
+  mp->is_add = is_add;
+  if (ipv6_set)
+    {
+      mp->is_ipv6 = 1;
+      clib_memcpy (mp->ip_address, &ipv6, sizeof (ipv6));
+    }
+  else
+    {
+      mp->is_ipv6 = 0;
+      clib_memcpy (mp->ip_address, &ipv4, sizeof (ipv4));
+    }
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
 static int
 api_lisp_add_del_map_resolver (vat_main_t * vam)
 {
@@ -16435,10 +16551,12 @@ _(lisp_add_del_locator, "locator-set <locator_name> "                   \
                         "p <priority> w <weight> [del]")                \
 _(lisp_add_del_local_eid,"vni <vni> eid "                               \
                          "<ipv4|ipv6>/<prefix> | <L2 address> "         \
-                          "locator-set <locator_name> [del]")           \
+                         "locator-set <locator_name> [del]"             \
+                         "[key-id <key_id> secret-key <secret-key>]" )  \
 _(lisp_gpe_add_del_fwd_entry, "rmt_eid <eid> [lcl_eid <eid>] vni <vni>" \
   "dp_table <table> loc-pair <lcl_loc> <rmt_loc> ... [del]")            \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
+_(lisp_add_del_map_server, "<ip4|6-addr> [del]")                        \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
