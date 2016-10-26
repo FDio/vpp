@@ -17,6 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
+#include <vnet/feature/feature.h>
 #include <vlibapi/api.h>
 #include <snat/snat.h>
 
@@ -91,31 +92,25 @@ do {                                                            \
     vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
 } while(0);
 
-
 /* Hook up input features */
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_in2out, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_snat_in2out, static) = {
   .node_name = "snat-in2out",
   .runs_before = (char *[]){"snat-out2in", 0},
-  .feature_index = &snat_main.rx_feature_in2out,
 };
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_out2in, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_snat_out2in, static) = {
   .node_name = "snat-out2in",
   .runs_before = (char *[]){"ip4-lookup", 0},
-  .feature_index = &snat_main.rx_feature_out2in,
 };
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_snat_in2out_fast, static) = {
   .node_name = "snat-in2out-fast",
   .runs_before = (char *[]){"snat-out2in-fast", 0},
-  .feature_index = &snat_main.rx_feature_in2out_fast,
 };
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_snat_out2in_fast, static) = {
   .node_name = "snat-out2in-fast",
   .runs_before = (char *[]){"ip4-lookup", 0},
-  .feature_index = &snat_main.rx_feature_out2in_fast,
 };
 
-
-/* 
+/*
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.
  *
@@ -651,20 +646,22 @@ vl_api_snat_interface_add_del_feature_t_handler
   u8 is_del = mp->is_add == 0;
   u32 sw_if_index = ntohl(mp->sw_if_index);
   u32 ci;
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t * rx_cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
   u32 feature_index;
   int rv = 0;
 
   VALIDATE_SW_IF_INDEX(mp);
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-    feature_index = mp->is_inside ?  sm->rx_feature_in2out_fast
-      : sm->rx_feature_out2in_fast;
+    feature_index = mp->is_inside
+      ? vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-in2out-fast")
+      : vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-out2in-fast");
+
   else
-    feature_index = mp->is_inside ? sm->rx_feature_in2out
-      : sm->rx_feature_out2in;
+    feature_index = mp->is_inside
+      ? vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-in2out")
+      : vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-out2in");
 
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
   ci = (is_del
@@ -1133,9 +1130,8 @@ snat_feature_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t * vnm = vnet_get_main();
   snat_main_t * sm = &snat_main;
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t * rx_cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
   clib_error_t * error = 0;
   u32 sw_if_index, ci;
   u32 feature_index;
@@ -1169,13 +1165,14 @@ snat_feature_command_fn (vlib_main_t * vm,
   if (vec_len (inside_sw_if_indices))
     {
       if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-        feature_index = sm->rx_feature_in2out_fast;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-in2out-fast");
       else
-        feature_index = sm->rx_feature_in2out;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-in2out");
 
       for (i = 0; i < vec_len(inside_sw_if_indices); i++)
         {
           sw_if_index = inside_sw_if_indices[i];
+          vec_validate_init_empty (rx_cm->config_index_by_sw_if_index, sw_if_index, ~0);
           ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
           ci = (is_del
                 ? vnet_config_del_feature
@@ -1192,13 +1189,14 @@ snat_feature_command_fn (vlib_main_t * vm,
   if (vec_len (outside_sw_if_indices))
     {
       if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-        feature_index = sm->rx_feature_out2in_fast;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-out2in-fast");
       else
-        feature_index = sm->rx_feature_out2in;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "snat-out2in");
 
       for (i = 0; i < vec_len(outside_sw_if_indices); i++)
         {
           sw_if_index = outside_sw_if_indices[i];
+          vec_validate_init_empty (rx_cm->config_index_by_sw_if_index, sw_if_index, ~0);
           ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
           ci = (is_del
                 ? vnet_config_del_feature

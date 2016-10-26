@@ -28,23 +28,21 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
     }
   else
     {
-      ip_lookup_main_t * lm;
-      ip_config_main_t * ipcm;
+      vnet_feature_main_t *fm = &feature_main;
+      vnet_feature_config_main_t * ipcm;
       u32 ftype;
       u32 ci;
 
       if (tid == POLICER_CLASSIFY_TABLE_IP4)
         {
-          lm = &ip4_main.lookup_main;
-          ftype = ip4_main.ip4_unicast_rx_feature_policer_classify;
+          ftype = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "ip4-policer-classify");
+          ipcm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
         }
       else
         {
-          lm = &ip6_main.lookup_main;
-          ftype = ip6_main.ip6_unicast_rx_feature_policer_classify;
+          ftype = vnet_feature_index_from_node_name (VNET_FEAT_IP6_UNICAST, "ip6-policer-classify");
+          ipcm = &fm->feature_config_mains[VNET_FEAT_IP6_UNICAST];
         }
-
-      ipcm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
       ci = ipcm->config_index_by_sw_if_index[sw_if_index];
       ci = (feature_enable ? vnet_config_add_feature : vnet_config_del_feature)

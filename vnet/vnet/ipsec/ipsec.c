@@ -40,8 +40,8 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 			 int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
-  ip_lookup_main_t *lm;
-  ip_config_main_t *rx_cm;
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *rx_cm;
   ip4_ipsec_config_t config;
 
   u32 spd_index, ci;
@@ -77,25 +77,30 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
   config.spd_index = spd_index;
 
   /* IPv4 */
-  lm = &ip4_main.lookup_main;
-  rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  rx_cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
 
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
 
   ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
     (vm, &rx_cm->config_main,
-     ci, ip4_main.ip4_unicast_rx_feature_ipsec, &config, sizeof (config));
+     ci,
+     vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST,
+					"ip4-ipsec-input"), &config,
+     sizeof (config));
+
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
   /* IPv6 */
-  lm = &ip6_main.lookup_main;
-  rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  rx_cm = &fm->feature_config_mains[VNET_FEAT_IP6_UNICAST];
 
   ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
 
   ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
     (vm, &rx_cm->config_main,
-     ci, ip6_main.ip6_unicast_rx_feature_ipsec, &config, sizeof (config));
+     ci,
+     vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST,
+					"ip6-ipsec-input"), &config,
+     sizeof (config));
   rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
   return 0;

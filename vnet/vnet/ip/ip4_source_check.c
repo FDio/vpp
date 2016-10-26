@@ -88,9 +88,8 @@ ip4_source_check_inline (vlib_main_t * vm,
 			 vlib_frame_t * frame,
 			 ip4_source_check_type_t source_check_type)
 {
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
   u32 n_left_from, * from, * to_next;
   u32 next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
@@ -334,8 +333,8 @@ set_ip_source_check (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   vnet_main_t * vnm = vnet_get_main();
   ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t * rx_cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
   clib_error_t * error = 0;
   u32 sw_if_index, is_del, ci;
   ip4_source_check_config_t config;
@@ -343,7 +342,7 @@ set_ip_source_check (vlib_main_t * vm,
 
   sw_if_index = ~0;
   is_del = 0;
-  feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
+  feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "ip4-source-check-via-rx");
 
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -355,9 +354,9 @@ set_ip_source_check (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
         is_del = 1;
       else if (unformat (line_input, "strict"))
-	feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
+	feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "ip4-source-check-via-rx");
       else if (unformat (line_input, "loose"))
-        feature_index = im->ip4_unicast_rx_feature_source_reachable_via_any;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "ip4-source-check-via-any");
       else
         {
 	  error = unformat_parse_error (line_input);
