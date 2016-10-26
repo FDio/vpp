@@ -6,7 +6,6 @@ import random
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from logging import *
 
 from framework import VppTestCase, VppTestRunner
 from util import Host
@@ -15,84 +14,112 @@ from util import Host
 class TestL2xc(VppTestCase):
     """ L2XC Test Case """
 
-    # Test variables
-    hosts_nr = 10           # Number of hosts
-    pkts_per_burst = 257    # Number of packets per burst
-
     @classmethod
     def setUpClass(cls):
+        """
+        Perform standard class setup (defined by class method setUpClass in
+        class VppTestCase) before running the test case, set test case related
+        variables and configure VPP.
+
+        :var int hosts_nr: Number of hosts to be created.
+        :var int dl_pkts_per_burst: Number of packets in burst for dual-loop
+            test.
+        :var int sl_pkts_per_burst: Number of packets in burst for single-loop
+            test.
+        """
         super(TestL2xc, cls).setUpClass()
 
+        # Test variables
+        cls.hosts_nr = 10
+        cls.dl_pkts_per_burst = 257
+        cls.sl_pkts_per_burst = 2
+
+        try:
+            # create 4 pg interfaces
+            cls.create_pg_interfaces(range(4))
+
+            # packet flows mapping pg0 -> pg1, pg2 -> pg3, etc.
+            cls.flows = dict()
+            cls.flows[cls.pg0] = [cls.pg1]
+            cls.flows[cls.pg1] = [cls.pg0]
+            cls.flows[cls.pg2] = [cls.pg3]
+            cls.flows[cls.pg3] = [cls.pg2]
+
+            # packet sizes
+            cls.pg_if_packet_sizes = [64, 512, 1518, 9018]
+
+            cls.interfaces = list(cls.pg_interfaces)
+
+            # Create bi-directional cross-connects between pg0 and pg1
+            cls.vapi.sw_interface_set_l2_xconnect(
+                cls.pg0.sw_if_index, cls.pg1.sw_if_index, enable=1)
+            cls.vapi.sw_interface_set_l2_xconnect(
+                cls.pg1.sw_if_index, cls.pg0.sw_if_index, enable=1)
+
+            # Create bi-directional cross-connects between pg2 and pg3
+            cls.vapi.sw_interface_set_l2_xconnect(
+                cls.pg2.sw_if_index, cls.pg3.sw_if_index, enable=1)
+            cls.vapi.sw_interface_set_l2_xconnect(
+                cls.pg3.sw_if_index, cls.pg2.sw_if_index, enable=1)
+
+            # mapping between packet-generator index and lists of test hosts
+            cls.hosts_by_pg_idx = dict()
+
+            # Create host MAC and IPv4 lists
+            cls.create_host_lists(cls.hosts_nr)
+
+            # setup all interfaces
+            for i in cls.interfaces:
+                i.admin_up()
+
+        except Exception:
+            super(TestL2xc, cls).tearDownClass()
+            raise
+
     def setUp(self):
+        """
+        Clear trace and packet infos before running each test.
+        """
         super(TestL2xc, self).setUp()
-
-        # create 4 pg interfaces
-        self.create_pg_interfaces(range(4))
-
-        # packet flows mapping pg0 -> pg1, pg2 -> pg3, etc.
-        self.flows = dict()
-        self.flows[self.pg0] = [self.pg1]
-        self.flows[self.pg1] = [self.pg0]
-        self.flows[self.pg2] = [self.pg3]
-        self.flows[self.pg3] = [self.pg2]
-
-        # packet sizes
-        self.pg_if_packet_sizes = [64, 512, 1518, 9018]
-
-        self.interfaces = list(self.pg_interfaces)
-
-        # Create bi-directional cross-connects between pg0 and pg1
-        self.vapi.sw_interface_set_l2_xconnect(
-            self.pg0.sw_if_index, self.pg1.sw_if_index, enable=1)
-        self.vapi.sw_interface_set_l2_xconnect(
-            self.pg1.sw_if_index, self.pg0.sw_if_index, enable=1)
-
-        # Create bi-directional cross-connects between pg2 and pg3
-        self.vapi.sw_interface_set_l2_xconnect(
-            self.pg2.sw_if_index, self.pg3.sw_if_index, enable=1)
-        self.vapi.sw_interface_set_l2_xconnect(
-            self.pg3.sw_if_index, self.pg2.sw_if_index, enable=1)
-
-        info(self.vapi.cli("show l2patch"))
-
-        # mapping between packet-generator index and lists of test hosts
-        self.hosts_by_pg_idx = dict()
-
-        # Create host MAC and IPv4 lists
-        # self.MY_MACS = dict()
-        # self.MY_IP4S = dict()
-        self.create_host_lists(TestL2xc.hosts_nr)
-
-        # setup all interfaces
-        for i in self.interfaces:
-            i.admin_up()
+        self.packet_infos = {}
 
     def tearDown(self):
+        """
+        Show various debug prints after each test.
+        """
         super(TestL2xc, self).tearDown()
         if not self.vpp_dead:
-            info(self.vapi.cli("show l2patch"))
+            self.logger.info(self.vapi.ppcli("show l2patch"))
 
-    def create_host_lists(self, count):
-        """ Method to create required number of MAC and IPv4 addresses.
+    @classmethod
+    def create_host_lists(cls, count):
+        """
+        Method to create required number of MAC and IPv4 addresses.
         Create required number of host MAC addresses and distribute them among
         interfaces. Create host IPv4 address for every host MAC address too.
 
         :param count: Number of hosts to create MAC and IPv4 addresses for.
         """
-        for pg_if in self.pg_interfaces:
-            # self.MY_MACS[i.sw_if_index] = []
-            # self.MY_IP4S[i.sw_if_index] = []
-            self.hosts_by_pg_idx[pg_if.sw_if_index] = []
-            hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
+        for pg_if in cls.pg_interfaces:
+            cls.hosts_by_pg_idx[pg_if.sw_if_index] = []
+            hosts = cls.hosts_by_pg_idx[pg_if.sw_if_index]
             for j in range(0, count):
                 host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
                     "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
                 hosts.append(host)
 
-    def create_stream(self, src_if, packet_sizes):
+    def create_stream(self, src_if, packet_sizes, packets_per_burst):
+        """
+        Create input packet stream for defined interface.
+
+        :param object src_if: Interface to create packet stream for.
+        :param list packet_sizes: List of required packet sizes.
+        :param int packets_per_burst: Number of packets in burst.
+        :return: Stream of packets.
+        """
         pkts = []
-        for i in range(0, TestL2xc.pkts_per_burst):
+        for i in range(0, packets_per_burst):
             dst_if = self.flows[src_if][0]
             dst_host = random.choice(self.hosts_by_pg_idx[dst_if.sw_if_index])
             src_host = random.choice(self.hosts_by_pg_idx[src_if.sw_if_index])
@@ -104,12 +131,18 @@ class TestL2xc(VppTestCase):
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             pkt_info.data = p.copy()
-            size = packet_sizes[(i / 2) % len(packet_sizes)]
+            size = random.choice(packet_sizes)
             self.extend_packet(p, size)
             pkts.append(p)
         return pkts
 
     def verify_capture(self, pg_if, capture):
+        """
+        Verify captured input packet stream for defined interface.
+
+        :param object pg_if: Interface to verify captured packet stream for.
+        :param list capture: Captured packet stream.
+        """
         last_info = dict()
         for i in self.interfaces:
             last_info[i.sw_if_index] = None
@@ -121,8 +154,8 @@ class TestL2xc(VppTestCase):
                 payload_info = self.payload_to_info(str(packet[Raw]))
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                debug("Got packet on port %s: src=%u (id=%u)" %
-                      (pg_if.name, payload_info.src, packet_index))
+                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
+                                  (pg_if.name, payload_info.src, packet_index))
                 next_info = self.get_next_packet_info_for_interface2(
                     payload_info.src, dst_sw_if_index,
                     last_info[payload_info.src])
@@ -136,8 +169,8 @@ class TestL2xc(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                error("Unexpected or invalid packet:")
-                packet.show()
+                self.logger.error("Unexpected or invalid packet:")
+                self.logger.error(packet.show())
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
@@ -146,20 +179,13 @@ class TestL2xc(VppTestCase):
                             "Port %u: Packet expected from source %u didn't"
                             " arrive" % (dst_sw_if_index, i.sw_if_index))
 
-    def test_l2xc(self):
-        """ L2XC test
-
-        Test scenario:
-            1. config
-               2 pairs of 2 interfaces, l2xconnected
-            2. sending l2 eth packets between 4 interfaces
-               64B, 512B, 1518B, 9018B (ether_size)
-               burst of packets per interface
-        """
+    def run_l2xc_test(self, pkts_per_burst):
+        """ L2XC test """
 
         # Create incoming packet streams for packet-generator interfaces
         for i in self.interfaces:
-            pkts = self.create_stream(i, self.pg_if_packet_sizes)
+            pkts = self.create_stream(i, self.pg_if_packet_sizes,
+                                      pkts_per_burst)
             i.add_stream(pkts)
 
         # Enable packet capturing and start packet sending
@@ -169,8 +195,36 @@ class TestL2xc(VppTestCase):
         # Verify outgoing packet streams per packet-generator interface
         for i in self.pg_interfaces:
             capture = i.get_capture()
-            info("Verifying capture on interface %s" % i.name)
+            self.logger.info("Verifying capture on interface %s" % i.name)
             self.verify_capture(i, capture)
+
+    def test_l2xc_sl(self):
+        """ L2XC single-loop test
+
+        Test scenario:
+            1. config
+                2 pairs of 2 interfaces, l2xconnected
+
+            2. sending l2 eth packets between 4 interfaces
+                64B, 512B, 1518B, 9018B (ether_size)
+                burst of 2 packets per interface
+        """
+
+        self.run_l2xc_test(self.sl_pkts_per_burst)
+
+    def test_l2xc_dl(self):
+        """ L2XC dual-loop test
+
+        Test scenario:
+            1. config
+                2 pairs of 2 interfaces, l2xconnected
+
+            2. sending l2 eth packets between 4 interfaces
+                64B, 512B, 1518B, 9018B (ether_size)
+                burst of 257 packets per interface
+        """
+
+        self.run_l2xc_test(self.dl_pkts_per_burst)
 
 
 if __name__ == '__main__':
