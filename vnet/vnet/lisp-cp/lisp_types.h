@@ -19,6 +19,19 @@
 #include <vnet/ip/ip.h>
 #include <vnet/lisp-cp/lisp_cp_messages.h>
 
+#define SHA1_AUTH_DATA_LEN                  20
+#define SHA256_AUTH_DATA_LEN                32
+
+typedef enum
+{
+  HMAC_NO_KEY = 0,
+  HMAC_SHA_1_96,
+  HMAC_SHA_256_128
+} lisp_key_type_t;
+
+uword unformat_hmac_key_id (unformat_input_t * input, va_list * args);
+u8 *format_hmac_key_id (u8 * s, va_list * args);
+
 typedef enum
 {
   IP4,
@@ -270,6 +283,7 @@ typedef struct
   u8 weight;
   u8 mpriority;
   u8 mweight;
+  u8 probed;
 } locator_t;
 
 u32 locator_parse (void *ptr, locator_t * loc);
@@ -292,7 +306,11 @@ typedef struct
   gid_address_t eid;
 
   /* index of local locator set */
-  u32 locator_set_index;
+  union
+  {
+    u32 locator_set_index;
+    locator_t *locators;	/* used for map register message */
+  };
 
   u32 ttl;
   u8 action;
@@ -301,6 +319,8 @@ typedef struct
   u8 local;
   /* valid only for remote mappings */
   u8 is_static;
+  u8 *key;
+  lisp_key_type_t key_id;
 } mapping_t;
 
 uword
@@ -319,6 +339,8 @@ typedef struct locator_pair
 
 void
 build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst);
+
+void gid_address_from_ip (gid_address_t * g, ip_address_t * ip);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */
 

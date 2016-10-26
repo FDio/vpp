@@ -23,7 +23,7 @@
 
 typedef struct
 {
-  u32 seed;
+  u64 seed;
   u32 nbuckets;
   u32 nitems;
   u32 search_iter;
