@@ -277,7 +277,8 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u8 is_enable)
 {
   vlib_main_t * vm = vlib_get_main();
-  ip_config_main_t * cm = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  ip_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_MPLS_INPUT];
   vnet_config_main_t * vcm = &cm->config_main;
   u32 lookup_feature_index;
   fib_node_index_t lfib_index;
@@ -311,7 +312,7 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-  lookup_feature_index = mm->mpls_rx_feature_lookup;
+  lookup_feature_index = vnet_feature_index_from_node_name (VNET_FEAT_MPLS_INPUT, "mpls-lookup");
 
   if (is_enable)
     ci = vnet_config_add_feature (vm, vcm,

@@ -701,33 +701,6 @@ VLIB_CLI_COMMAND (delete_sub_interface_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-show_ethernet_interface_features_command_fn (vlib_main_t * vm,
-					     unformat_input_t * input,
-					     vlib_cli_command_t * cmd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  ethernet_main_t *em = &ethernet_main;
-  u32 sw_if_index;
-
-  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-    return clib_error_return (0, "Interface not specified...");
-
-  vlib_cli_output (vm, "Ethernet feature paths configured on %U...",
-		   format_vnet_sw_if_index_name, vnm, sw_if_index);
-
-  ip_interface_features_show (vm, "Ethernet",
-			      em->feature_config_mains, sw_if_index);
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_ethernet_interface_features_command, static) =
-{
-.path = "show ethernet interface features",.short_help =
-    "show ethernet interface features <intfc>",.function =
-    show_ethernet_interface_features_command_fn,};
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
