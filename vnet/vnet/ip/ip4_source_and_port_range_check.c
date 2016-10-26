@@ -155,10 +155,11 @@ ip4_source_and_port_range_check_inline (vlib_main_t * vm,
 					vlib_frame_t * frame, int is_tx)
 {
   ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm =
-    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *rx_cm =
+    &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
+  vnet_feature_config_main_t *tx_cm =
+    &fm->feature_config_mains[VNET_FEAT_IP4_OUTPUT];
   u32 n_left_from, *from, *to_next;
   u32 next_index;
   vlib_node_runtime_t *error_node = node;
@@ -638,14 +639,7 @@ set_ip_source_and_port_range_check (vlib_main_t * vm,
 				    u32 * fib_index,
 				    u32 sw_if_index, u32 is_add)
 {
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm =
-    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
-  u32 ci;
   ip_source_and_port_range_check_config_t config;
-  u32 feature_index;
   int rv = 0;
   int i;
 
@@ -658,36 +652,20 @@ set_ip_source_and_port_range_check (vlib_main_t * vm,
   if ((fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_OUT] != ~0) ||
       (fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_OUT] != ~0))
     {
-      feature_index = im->ip4_unicast_rx_feature_source_and_port_range_check;
-
-      vec_validate (rx_cm->config_index_by_sw_if_index, sw_if_index);
-
-      ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-      ci = (is_add
-	    ? vnet_config_add_feature
-	    : vnet_config_del_feature)
-	(vm, &rx_cm->config_main, ci, feature_index, &config,
-	 sizeof (config));
-      rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+      vnet_feature_enable_disable (VNET_FEAT_IP4_UNICAST,
+				   "ip4-source-and-port-range-check-rx",
+				   sw_if_index, is_add, &config,
+				   sizeof (config));
     }
 
   /* For IN we are in the TX path */
   if ((fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_TCP_IN] != ~0) ||
       (fib_index[IP_SOURCE_AND_PORT_RANGE_CHECK_PROTOCOL_UDP_IN] != ~0))
     {
-      feature_index = im->ip4_unicast_tx_feature_source_and_port_range_check;
-
-      vec_validate (tx_cm->config_index_by_sw_if_index, sw_if_index);
-
-      ci = tx_cm->config_index_by_sw_if_index[sw_if_index];
-      ci = (is_add
-	    ? vnet_config_add_feature
-	    : vnet_config_del_feature)
-	(vm, &tx_cm->config_main, ci, feature_index, &config,
-	 sizeof (config));
-      tx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
-
-      vnet_config_update_tx_feature_count (lm, tx_cm, sw_if_index, is_add);
+      vnet_feature_enable_disable (VNET_FEAT_IP4_OUTPUT,
+				   "ip4-source-and-port-range-check-tx",
+				   sw_if_index, is_add, &config,
+				   sizeof (config));
     }
   return rv;
 }
