@@ -10,7 +10,7 @@ test
    run_tests
    scapy_handlers
    template_bd
-   test_ip
+   test_ip4
    test_ip6
    test_l2bd
    test_l2xc

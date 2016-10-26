@@ -69,7 +69,8 @@ class VppPapiProvider(object):
         return reply
 
     def cli(self, cli):
-        """Execute a CLI, calling the before/after hooks appropriately
+        """
+        Execute a CLI, calling the before/after hooks appropriately.
 
         :param cli: CLI to execute
         :returns: CLI output
@@ -79,8 +80,17 @@ class VppPapiProvider(object):
         cli += '\n'
         r = vpp_papi.cli_inband(len(cli), cli)
         self.hook.after_cli(cli)
-        if(hasattr(r, 'reply')):
+        if hasattr(r, 'reply'):
             return r.reply[0].decode().rstrip('\x00')
+
+    def ppcli(self, cli):
+        """
+        Helping method to print CLI command in case of info logging level.
+
+        :param cli: CLI to execute
+        :returns: CLI output
+        """
+        return cli + "\n" + self.cli(cli)
 
     def show_version(self):
         """ """
