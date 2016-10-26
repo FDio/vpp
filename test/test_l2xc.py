@@ -16,8 +16,9 @@ class TestL2xc(VppTestCase):
     """ L2XC Test Case """
 
     # Test variables
-    hosts_nr = 10           # Number of hosts
-    pkts_per_burst = 257    # Number of packets per burst
+    hosts_nr = 10            # Number of hosts
+    dl_pkts_per_burst = 257  # Number of packets per burst for dual-loop test
+    sl_pkts_per_burst = 1    # Number of packets per burst for single-loop test
 
     @classmethod
     def setUpClass(cls):
@@ -25,6 +26,7 @@ class TestL2xc(VppTestCase):
 
     def setUp(self):
         super(TestL2xc, self).setUp()
+        self.packet_infos = {}
 
         # create 4 pg interfaces
         self.create_pg_interfaces(range(4))
@@ -59,8 +61,6 @@ class TestL2xc(VppTestCase):
         self.hosts_by_pg_idx = dict()
 
         # Create host MAC and IPv4 lists
-        # self.MY_MACS = dict()
-        # self.MY_IP4S = dict()
         self.create_host_lists(TestL2xc.hosts_nr)
 
         # setup all interfaces
@@ -81,8 +81,6 @@ class TestL2xc(VppTestCase):
         Type: int
         """
         for pg_if in self.pg_interfaces:
-            # self.MY_MACS[i.sw_if_index] = []
-            # self.MY_IP4S[i.sw_if_index] = []
             self.hosts_by_pg_idx[pg_if.sw_if_index] = []
             hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
             for j in range(0, count):
@@ -91,9 +89,9 @@ class TestL2xc(VppTestCase):
                     "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
                 hosts.append(host)
 
-    def create_stream(self, src_if, packet_sizes):
+    def create_stream(self, src_if, packet_sizes, packets_per_burst):
         pkts = []
-        for i in range(0, TestL2xc.pkts_per_burst):
+        for i in range(0, packets_per_burst):
             dst_if = self.flows[src_if][0]
             dst_host = random.choice(self.hosts_by_pg_idx[dst_if.sw_if_index])
             src_host = random.choice(self.hosts_by_pg_idx[src_if.sw_if_index])
@@ -147,8 +145,36 @@ class TestL2xc(VppTestCase):
                             "Port %u: Packet expected from source %u didn't"
                             " arrive" % (dst_sw_if_index, i.sw_if_index))
 
-    def test_l2xc(self):
-        """ L2XC test
+    def test_l2xc_sl(self):
+        """ L2XC single-loop test
+
+        Test scenario:
+        1.config
+            2 pairs of 2 interfaces, l2xconnected
+
+        2.sending l2 eth packets between 4 interfaces
+            64B, 512B, 1518B, 9018B (ether_size)
+            burst of 2 packets per interface
+        """
+
+        # Create incoming packet streams for packet-generator interfaces
+        for i in self.interfaces:
+            pkts = self.create_stream(i, self.pg_if_packet_sizes,
+                                      TestL2xc.sl_pkts_per_burst)
+            i.add_stream(pkts)
+
+        # Enable packet capturing and start packet sending
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify outgoing packet streams per packet-generator interface
+        for i in self.pg_interfaces:
+            capture = i.get_capture()
+            info("Verifying capture on interface %s" % i.name)
+            self.verify_capture(i, capture)
+
+    def test_l2xc_dl(self):
+        """ L2XC dual-loop test
 
         Test scenario:
         1.config
@@ -161,7 +187,8 @@ class TestL2xc(VppTestCase):
 
         # Create incoming packet streams for packet-generator interfaces
         for i in self.interfaces:
-            pkts = self.create_stream(i, self.pg_if_packet_sizes)
+            pkts = self.create_stream(i, self.pg_if_packet_sizes,
+                                      TestL2xc.dl_pkts_per_burst)
             i.add_stream(pkts)
 
         # Enable packet capturing and start packet sending
