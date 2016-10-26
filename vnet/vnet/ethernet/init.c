@@ -61,39 +61,25 @@ add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
   hash_set_mem (em->type_info_by_name, ti->name, i);
 }
 
-static char *feature_start_nodes[] = {
-  "adj-midchain-tx-no-count",
-};
+VNET_FEATURE_START_NODES (ETHERNET_TX, "adj-midchain-tx-no-count");
 
 /* Built-in ip4 tx feature path definition */
 /* *INDENT-OFF* */
-VNET_ETHERNET_TX_FEATURE_INIT (ethernet_tx_drop, static) =
+VNET_FEATURE_INIT (ETHERNET_TX, ethernet_tx_drop, static) =
 {
   .node_name = "error-drop",
   .runs_before = 0,	/* not before any other features */
-  .feature_index = &ethernet_main.ethernet_tx_feature_drop,
 };
 /* *INDENT-ON* */
-
-static clib_error_t *
-ethernet_feature_init (vlib_main_t * vm)
-{
-  ip_config_main_t *cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
-  vnet_config_main_t *vcm = &cm->config_main;
-
-  return (vnet_feature_arc_init (vm, vcm,
-				 feature_start_nodes,
-				 ARRAY_LEN (feature_start_nodes),
-				 ethernet_main.next_feature[VNET_IP_TX_FEAT],
-				 &ethernet_main.feature_nodes
-				 [VNET_IP_TX_FEAT]));
-}
 
 static clib_error_t *
 ethernet_init (vlib_main_t * vm)
 {
   ethernet_main_t *em = &ethernet_main;
   clib_error_t *error;
+
+  if ((error = vlib_call_init_function (vm, vnet_feature_init)))
+    return error;
 
   /*
    * Set up the L2 path now, or we'll wipe out the L2 ARP
@@ -116,7 +102,7 @@ ethernet_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ethernet_input_init)))
     return error;
 
-  return (ethernet_feature_init (vm));
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (ethernet_init);

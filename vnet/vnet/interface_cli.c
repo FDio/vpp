@@ -225,12 +225,12 @@ show_sw_interfaces (vlib_main_t * vm,
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si, *sorted_sis = 0;
+  u32 sw_if_index = ~(u32) 0;
   u8 show_addresses = 0;
+  u8 show_features = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      u32 sw_if_index;
-
       /* See if user wants to show specific interface */
       if (unformat
 	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
@@ -240,12 +240,23 @@ show_sw_interfaces (vlib_main_t * vm,
 	}
       else if (unformat (input, "address") || unformat (input, "addr"))
 	show_addresses = 1;
+      else if (unformat (input, "features") || unformat (input, "feat"))
+	show_features = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
 				     format_unformat_error, input);
 	  goto done;
 	}
+    }
+
+  if (show_features)
+    {
+      if (sw_if_index == ~(u32) 0)
+	return clib_error_return (0, "Interface not specified...");
+
+      vnet_interface_features_show (vm, sw_if_index);
+      return 0;
     }
 
   if (!show_addresses)
@@ -390,7 +401,7 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
   .path = "show interfaces",
-  .short_help = "show interfaces [address|addr] [<if-name1> <if-name2> ...]",
+  .short_help = "show interfaces [address|addr|features|feat] [<if-name1> <if-name2> ...]",
   .function = show_sw_interfaces,
 };
 /* *INDENT-ON* */
