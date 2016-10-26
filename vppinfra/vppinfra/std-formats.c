@@ -252,6 +252,31 @@ unformat_memory_size (unformat_input_t * input, va_list * va)
   return 1;
 }
 
+u8 *
+format_replace_char (u8 * s, va_list * va)
+{
+  u8 *id = va_arg (*va, u8 *);
+  int from = va_arg (*va, int);
+  int to = va_arg (*va, int);
+  uword i, l;
+
+  l = ~0;
+  if (clib_mem_is_vec (id))
+    l = vec_len (id);
+
+  if (id)
+    for (i = 0; id[i] != 0 && i < l; i++)
+      {
+	u8 c = id[i];
+
+	if (c == from)
+	  c = to;
+	vec_add1 (s, c);
+      }
+
+  return s;
+}
+
 /* Format c identifier: e.g. a_name -> "a name".
    Words for both vector names and null terminated c strings. */
 u8 *

@@ -711,7 +711,7 @@ ip4_sw_interface_enable_disable (u32 sw_if_index,
 {
   vlib_main_t * vm = vlib_get_main();
   ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 ci, cast;
   u32 lookup_feature_index;
 
@@ -732,32 +732,38 @@ ip4_sw_interface_enable_disable (u32 sw_if_index,
         return;
     }
 
-  for (cast = 0; cast <= VNET_IP_RX_MULTICAST_FEAT; cast++)
+  for (cast = VNET_FEAT_IP4_UNICAST; cast < VNET_FEAT_IP4_OUTPUT; cast++)
     {
-      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      vnet_feature_config_main_t * cm = &fm->feature_config_mains[cast];
+
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-      if (cast == VNET_IP_RX_UNICAST_FEAT)
-	lookup_feature_index = im->ip4_unicast_rx_feature_lookup;
+      if (cast == VNET_FEAT_IP4_UNICAST)
+  lookup_feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "ip4-lookup");
+      else if (cast == VNET_FEAT_IP4_MULTICAST)
+  lookup_feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_MULTICAST, "ip4-lookup-multicast");
       else
-	lookup_feature_index = im->ip4_multicast_rx_feature_lookup;
+  lookup_feature_index = ~0;
 
-      if (is_enable)
-	ci = vnet_config_add_feature (vm, vcm,
+      if (lookup_feature_index!=~0)
+      {
+        if (is_enable)
+          ci = vnet_config_add_feature (vm, vcm,
 				      ci,
 				      lookup_feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
-      else
-	ci = vnet_config_del_feature (vm, vcm,
+        else
+          ci = vnet_config_del_feature (vm, vcm,
 				      ci,
 				      lookup_feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
-      cm->config_index_by_sw_if_index[sw_if_index] = ci;
+        cm->config_index_by_sw_if_index[sw_if_index] = ci;
+      }
     }
 }
 
@@ -853,153 +859,90 @@ ip4_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
      is_del);
 }
 
+VNET_FEATURE_START_NODES (IP4_UNICAST, "ip4-input", "ip4-input-no-checksum");
+VNET_FEATURE_START_NODES (IP4_MULTICAST, "ip4-input", "ip4-input-no-checksum");
+VNET_FEATURE_START_NODES (IP4_OUTPUT, "ip4-rewrite-transit", "ip4-midchain");
+
 /* Built-in ip4 unicast rx feature path definition */
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_flow_classify, static) = {
+
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_flow_classify, static) = {
   .node_name = "ip4-flow-classify",
   .runs_before = ORDER_CONSTRAINTS {"ip4-inacl", 0},
-  .feature_index = &ip4_main.ip4_unicast_rx_feature_flow_classify,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_inacl, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_inacl, static) = {
   .node_name = "ip4-inacl",
   .runs_before = ORDER_CONSTRAINTS {"ip4-source-check-via-rx", 0},
-  .feature_index = &ip4_main.ip4_unicast_rx_feature_check_access,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_1, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_source_check_1, static) = {
   .node_name = "ip4-source-check-via-rx",
   .runs_before = ORDER_CONSTRAINTS {"ip4-source-check-via-any", 0},
-  .feature_index =
-  &ip4_main.ip4_unicast_rx_feature_source_reachable_via_rx,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_check_2, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_source_check_2, static) = {
   .node_name = "ip4-source-check-via-any",
   .runs_before = ORDER_CONSTRAINTS {"ip4-policer-classify", 0},
-  .feature_index =
-  &ip4_main.ip4_unicast_rx_feature_source_reachable_via_any,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_source_and_port_range_check_rx, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_source_and_port_range_check_rx, static) = {
   .node_name = "ip4-source-and-port-range-check-rx",
   .runs_before = ORDER_CONSTRAINTS {"ip4-policer-classify", 0},
-  .feature_index =
-  &ip4_main.ip4_unicast_rx_feature_source_and_port_range_check,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_policer_classify, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_policer_classify, static) = {
   .node_name = "ip4-policer-classify",
-  .runs_before = ORDER_CONSTRAINTS {"ipsec-input-ip4", 0},
-  .feature_index =
-  &ip4_main.ip4_unicast_rx_feature_policer_classify,
+  .runs_before = ORDER_CONSTRAINTS {"ip4-ipsec-input", 0},
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_ipsec, static) = {
-  .node_name = "ipsec-input-ip4",
-  .runs_before = ORDER_CONSTRAINTS {"vpath-input-ip4", 0},
-  .feature_index = &ip4_main.ip4_unicast_rx_feature_ipsec,
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_ipsec, static) = {
+  .node_name = "ip4-ipsec-input",
+  .runs_before = ORDER_CONSTRAINTS {"ip4-vpath-input", 0},
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_vpath, static) = {
-  .node_name = "vpath-input-ip4",
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_vpath, static) = {
+  .node_name = "ip4-vpath-input",
   .runs_before = ORDER_CONSTRAINTS {"ip4-lookup", 0},
-  .feature_index = &ip4_main.ip4_unicast_rx_feature_vpath,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_lookup, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_lookup, static) = {
   .node_name = "ip4-lookup",
   .runs_before = ORDER_CONSTRAINTS {"ip4-drop", 0},
-  .feature_index = &ip4_main.ip4_unicast_rx_feature_lookup,
 };
 
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_drop, static) = {
+VNET_FEATURE_INIT (IP4_UNICAST, ip4_drop, static) = {
   .node_name = "ip4-drop",
-  .runs_before = 0, /* not before any other features */
-  .feature_index = &ip4_main.ip4_unicast_rx_feature_drop,
+  .runs_before = 0,
 };
-
 
 /* Built-in ip4 multicast rx feature path definition */
-VNET_IP4_MULTICAST_FEATURE_INIT (ip4_vpath_mc, static) = {
-  .node_name = "vpath-input-ip4",
+VNET_FEATURE_INIT (IP4_MULTICAST, ip4_vpath_mc, static) = {
+  .node_name = "ip4-vpath-input",
   .runs_before = ORDER_CONSTRAINTS {"ip4-lookup-multicast", 0},
-  .feature_index = &ip4_main.ip4_multicast_rx_feature_vpath,
 };
 
-VNET_IP4_MULTICAST_FEATURE_INIT (ip4_lookup_mc, static) = {
+VNET_FEATURE_INIT (IP4_MULTICAST, ip4_lookup_mc, static) = {
   .node_name = "ip4-lookup-multicast",
-  .runs_before = ORDER_CONSTRAINTS {"ip4-drop", 0},
-  .feature_index = &ip4_main.ip4_multicast_rx_feature_lookup,
+  .runs_before = ORDER_CONSTRAINTS {"ip4-drop-multicast", 0},
 };
 
-VNET_IP4_MULTICAST_FEATURE_INIT (ip4_mc_drop, static) = {
-  .node_name = "ip4-drop",
+VNET_FEATURE_INIT (IP4_MULTICAST, ip4_drop_mc, static) = {
+  .node_name = "ip4-drop-multicast",
   .runs_before = 0, /* last feature */
-  .feature_index = &ip4_main.ip4_multicast_rx_feature_drop,
-};
-
-static char * rx_feature_start_nodes[] =
-  { "ip4-input", "ip4-input-no-checksum"};
-
-static char * tx_feature_start_nodes[] =
-{
-  "ip4-rewrite-transit",
-  "ip4-midchain",
 };
 
 /* Source and port-range check ip4 tx feature path definition */
-VNET_IP4_TX_FEATURE_INIT (ip4_source_and_port_range_check_tx, static) = {
+VNET_FEATURE_INIT (IP4_OUTPUT, ip4_source_and_port_range_check_tx, static) = {
   .node_name = "ip4-source-and-port-range-check-tx",
   .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-  .feature_index =
-  &ip4_main.ip4_unicast_tx_feature_source_and_port_range_check,
-
 };
 
 /* Built-in ip4 tx feature path definition */
-VNET_IP4_TX_FEATURE_INIT (interface_output, static) = {
+
+VNET_FEATURE_INIT (IP4_OUTPUT, interface_output, static) = {
   .node_name = "interface-output",
   .runs_before = 0, /* not before any other features */
-  .feature_index = &ip4_main.ip4_tx_feature_interface_output,
 };
-
-static clib_error_t *
-ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  clib_error_t * error;
-  vnet_cast_t cast;
-  ip_config_main_t * cm;
-  vnet_config_main_t * vcm;
-  char **feature_start_nodes;
-  int feature_start_len;
-
-  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
-    {
-      cm = &lm->feature_config_mains[cast];
-      vcm = &cm->config_main;
-
-      if (cast < VNET_IP_TX_FEAT)
-        {
-          feature_start_nodes = rx_feature_start_nodes;
-          feature_start_len = ARRAY_LEN(rx_feature_start_nodes);
-        }
-      else
-        {
-          feature_start_nodes = tx_feature_start_nodes;
-          feature_start_len = ARRAY_LEN(tx_feature_start_nodes);
-        }
-
-      if ((error = vnet_feature_arc_init (vm, vcm,
-                                         feature_start_nodes,
-                                         feature_start_len,
-					 im->next_feature[cast],
-					 &im->feature_nodes[cast])))
-        return error;
-    }
-
-  return 0;
-}
 
 static clib_error_t *
 ip4_sw_interface_add_del (vnet_main_t * vnm,
@@ -1008,27 +951,29 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 {
   vlib_main_t * vm = vnm->vlib_main;
   ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 ci, cast;
   u32 feature_index;
 
   /* Fill in lookup tables with default table (0). */
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
 
-  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
+  ASSERT (VNET_FEAT_IP4_UNICAST + 2 == VNET_FEAT_IP4_OUTPUT);
+
+  for (cast = VNET_FEAT_IP4_UNICAST; cast <= VNET_FEAT_IP4_OUTPUT; cast++)
     {
-      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      vnet_feature_config_main_t * cm = &fm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-      if (cast == VNET_IP_RX_UNICAST_FEAT)
-        feature_index = im->ip4_unicast_rx_feature_drop;
-      else if (cast == VNET_IP_RX_MULTICAST_FEAT)
-        feature_index = im->ip4_multicast_rx_feature_drop;
+      if (cast == VNET_FEAT_IP4_UNICAST)
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_UNICAST, "ip4-drop");
+      else if (cast == VNET_FEAT_IP4_MULTICAST)
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_MULTICAST, "ip4-drop-multicast");
       else
-        feature_index = im->ip4_tx_feature_interface_output;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP4_OUTPUT, "interface-output");
 
       if (is_add)
         ci = vnet_config_add_feature (vm, vcm,
@@ -1114,7 +1059,7 @@ ip4_lookup_init (vlib_main_t * vm)
 			       "ip4 arp");
   }
 
-  error = ip4_feature_init (vm, im);
+  error = vlib_call_init_function (vm, vnet_feature_init);
 
   return error;
 }
@@ -2180,11 +2125,12 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		    int is_midchain)
 {
   ip_lookup_main_t * lm = &ip4_main.lookup_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 * from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, * to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_rx_or_tx_t adj_rx_tx = rewrite_for_locally_received_packets ? VLIB_RX : VLIB_TX;
-  ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_IP4_OUTPUT];
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -2363,12 +2309,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
                   tx_sw_if_index0;
 
               if (PREDICT_FALSE
-                  (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features,
-                                    tx_sw_if_index0)))
+		  (vnet_have_features (VNET_FEAT_IP4_OUTPUT, tx_sw_if_index0)))
                 {
                   p0->current_config_index =
-                    vec_elt (cm->config_index_by_sw_if_index,
-                             tx_sw_if_index0);
+		    vnet_feature_get_config_index(VNET_FEAT_IP4_OUTPUT, tx_sw_if_index0);
                   vnet_get_config_data (&cm->config_main,
                                         &p0->current_config_index,
                                         &next0,
@@ -2385,12 +2329,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
                   tx_sw_if_index1;
 
               if (PREDICT_FALSE
-                  (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features,
-                                    tx_sw_if_index1)))
+		  (vnet_have_features (VNET_FEAT_IP4_OUTPUT, tx_sw_if_index1)))
                 {
                   p1->current_config_index =
-                    vec_elt (cm->config_index_by_sw_if_index,
-                             tx_sw_if_index1);
+		    vnet_feature_get_config_index(VNET_FEAT_IP4_OUTPUT, tx_sw_if_index1);
                   vnet_get_config_data (&cm->config_main,
                                         &p1->current_config_index,
                                         &next1,
@@ -2526,12 +2468,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		}
 
               if (PREDICT_FALSE
-                  (clib_bitmap_get (lm->tx_sw_if_has_ip_output_features,
-                                    tx_sw_if_index0)))
+		  (vnet_have_features (VNET_FEAT_IP4_OUTPUT, tx_sw_if_index0)))
                   {
                     p0->current_config_index =
-                      vec_elt (cm->config_index_by_sw_if_index,
-                               tx_sw_if_index0);
+		      vnet_feature_get_config_index(VNET_FEAT_IP4_OUTPUT, tx_sw_if_index0);
                     vnet_get_config_data (&cm->config_main,
                                           &p0->current_config_index,
                                           &next0,

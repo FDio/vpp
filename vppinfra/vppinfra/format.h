@@ -299,6 +299,9 @@ u8 *format_memory_size (u8 * s, va_list * va);
 /* Format c identifier: e.g. a_name -> "a name". */
 u8 *format_c_identifier (u8 * s, va_list * va);
 
+/* Replace all occurences of specific char */
+u8 *format_replace_char (u8 * s, va_list * va);
+
 /* Format hexdump with both hex and printable chars - compatible with text2pcap */
 u8 *format_hexdump (u8 * s, va_list * va);
 
