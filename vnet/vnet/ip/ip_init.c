@@ -145,12 +145,14 @@ do {						\
 VLIB_INIT_FUNCTION (ip_main_init);
 
 void
-vnet_config_update_tx_feature_count (ip_lookup_main_t * lm, 
-                                     ip_config_main_t * tx_cm, 
-                                     u32 sw_if_index, 
+vnet_config_update_tx_feature_count (ip_lookup_main_t * lm,
+                                     ip_config_main_t * tx_cm,
+                                     u32 sw_if_index,
                                      int is_add)
 {
-  ASSERT (tx_cm == &lm->feature_config_mains[VNET_IP_TX_FEAT]);
+  vnet_feature_main_t *fm = &feature_main;
+
+  ASSERT (tx_cm == &fm->feature_config_mains[VNET_FEAT_IP4_OUTPUT]);
 
   vec_validate (lm->tx_feature_count_by_sw_if_index, sw_if_index);
 

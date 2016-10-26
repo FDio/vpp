@@ -100,64 +100,24 @@ VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_not_enabled_node, mpls_not_enabled)
 
-VNET_MPLS_FEATURE_INIT (mpls_lookup, static) = {
+VNET_FEATURE_START_NODES (MPLS_INPUT, "mpls-input");
+VNET_FEATURE_START_NODES (MPLS_OUTPUT, "mpls-output", "mpls-midchain");
+
+/* *INDENT-OFF* */
+VNET_FEATURE_INIT (MPLS_INPUT, mpls_lookup, static) = {
   .node_name = "mpls-lookup",
   .runs_before = ORDER_CONSTRAINTS {"mpls-not-enabled", 0},
-  .feature_index = &mpls_main.mpls_rx_feature_lookup,
 };
 
-VNET_MPLS_FEATURE_INIT (mpls_not_enabled, static) = {
+VNET_FEATURE_INIT (MPLS_INPUT, mpls_not_enabled, static) = {
   .node_name = "mpls-not-enabled",
-  .runs_before = ORDER_CONSTRAINTS {0}, /* not before any other features */
-  .feature_index = &mpls_main.mpls_rx_feature_not_enabled,
+  .runs_before = ORDER_CONSTRAINTS {0},
 };
 
-/* Built-in ip4 tx feature path definition */
-VNET_MPLS_TX_FEATURE_INIT (interface_output, static) = {
+VNET_FEATURE_INIT (MPLS_OUTPUT, interface_output, static) = {
   .node_name = "interface-output",
   .runs_before = 0, /* not before any other features */
-  .feature_index = &mpls_main.mpls_tx_feature_interface_output,
 };
-
-
-static char * rx_feature_start_nodes[] =
-{
-    "mpls-input",
-};
-static char * tx_feature_start_nodes[] =
-{
-    "mpls-output",
-    "mpls-midchain",
-};
-
-clib_error_t *
-mpls_feature_init (vlib_main_t * vm)
-{
-  ip_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  vnet_config_main_t * vcm = &cm->config_main;
-  clib_error_t *error;
-
-  error = vnet_feature_arc_init
-      (vm, vcm, rx_feature_start_nodes,
-       ARRAY_LEN(rx_feature_start_nodes),
-       mpls_main.next_feature[VNET_IP_RX_UNICAST_FEAT],
-       &mpls_main.feature_nodes[VNET_IP_RX_UNICAST_FEAT]);
-
-  if (error)
-      return error;
-
-  cm  = &mpls_main.feature_config_mains[VNET_IP_TX_FEAT];
-  vcm = &cm->config_main;
-
-  error = vnet_feature_arc_init
-      (vm, vcm,
-       tx_feature_start_nodes,
-       ARRAY_LEN(tx_feature_start_nodes),
-       mpls_main.next_feature[VNET_IP_TX_FEAT],
-       &mpls_main.feature_nodes[VNET_IP_TX_FEAT]);
-
-  return error;
-}
 
 static clib_error_t *
 mpls_sw_interface_add_del (vnet_main_t * vnm,
@@ -166,27 +126,26 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 {
   vlib_main_t * vm = vnm->vlib_main;
   mpls_main_t * mm = &mpls_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 feature_index;
   u32 ci, cast;
 
-  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
-  {
-      ip_config_main_t * cm = &mm->feature_config_mains[cast];
-      vnet_config_main_t * vcm = &cm->config_main;
+  ASSERT (VNET_FEAT_MPLS_INPUT + 1 == VNET_FEAT_MPLS_OUTPUT);
 
-      if (VNET_IP_RX_MULTICAST_FEAT == cast)
-	  continue;
+  for (cast = VNET_FEAT_MPLS_INPUT; cast <= VNET_FEAT_MPLS_OUTPUT; cast++)
+  {
+      ip_config_main_t * cm = &fm->feature_config_mains[cast];
+      vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
       vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-       if (cast == VNET_IP_RX_UNICAST_FEAT)
-	   feature_index = mm->mpls_rx_feature_not_enabled;
+       if (cast == VNET_FEAT_MPLS_INPUT)
+	   feature_index = vnet_feature_index_from_node_name (VNET_FEAT_MPLS_INPUT, "mpls-not-enabled");
        else
-	   feature_index = mm->mpls_tx_feature_interface_output;
-
+	   feature_index = vnet_feature_index_from_node_name (VNET_FEAT_MPLS_OUTPUT, "interface-output");
 
       if (is_add)
 	  ci = vnet_config_add_feature (vm, vcm, ci,
@@ -208,66 +167,4 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (mpls_sw_interface_add_del);
-
-#define foreach_af_cast                         \
-_(VNET_IP_RX_UNICAST_FEAT, "mpls input")        \
-_(VNET_IP_TX_FEAT, "mpls output")               \
-
-static clib_error_t *
-show_mpls_features_command_fn (vlib_main_t * vm,
-                               unformat_input_t * input,
-                               vlib_cli_command_t * cmd)
-{
-  mpls_main_t * mm = &mpls_main;
-  int i;
-  char ** features;
-
-  vlib_cli_output (vm, "Available MPLS feature nodes");
-
-#define _(c,s)                                          \
-  do {                                                  \
-    features = mm->feature_nodes[c];                    \
-    vlib_cli_output (vm, "%s:", s);                     \
-    for (i = 0; i < vec_len(features); i++)             \
-      vlib_cli_output (vm, "  %s\n", features[i]);      \
-  } while(0);
-  foreach_af_cast;
-#undef _
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_ip_features_command, static) = {
-  .path = "show mpls features",
-  .short_help = "show mpls features",
-  .function = show_mpls_features_command_fn,
-};
-
-static clib_error_t *
-show_mpls_interface_features_command_fn (vlib_main_t * vm,
-                                         unformat_input_t * input,
-                                         vlib_cli_command_t * cmd)
-{
-  vnet_main_t * vnm = vnet_get_main();
-  u32 sw_if_index;
-
-  if (! unformat (input, "%U", unformat_vnet_sw_interface,
-                  vnm, &sw_if_index))
-    return clib_error_return (0, "Interface not specified...");
-
-  vlib_cli_output (vm, "MPLS feature paths configured on %U...",
-                   format_vnet_sw_if_index_name, vnm, sw_if_index);
-
-  ip_interface_features_show (vm, "MPLS",
-			      mpls_main.feature_config_mains,
-			      sw_if_index);
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_mpls_interface_features_command, static) = {
-  .path = "show mpls interface features",
-  .short_help = "show mpls interface features <intfc>",
-  .function = show_mpls_interface_features_command_fn,
-};
 

@@ -187,9 +187,8 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
 			 vlib_frame_t * from_frame)
 {
-  ip4_main_t *i4m = &ip4_main;
-  ip_lookup_main_t *lm = &i4m->lookup_main;
-  ip_config_main_t *cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  ip_config_main_t *cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
 
@@ -322,9 +321,8 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 				vlib_node_runtime_t * node,
 				vlib_frame_t * from_frame)
 {
-  ip6_main_t *i6m = &ip6_main;
-  ip_lookup_main_t *lm = &i6m->lookup_main;
-  ip_config_main_t *cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  ip_config_main_t *cm = &fm->feature_config_mains[VNET_FEAT_IP6_UNICAST];
   u32 n_left_from, *from, next_index, *to_next;
   ipsec_main_t *im = &ipsec_main;
 

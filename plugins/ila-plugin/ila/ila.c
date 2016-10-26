@@ -425,9 +425,8 @@ static uword
 ila_sir2ila (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  ip_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_IP6_UNICAST];
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   ila_main_t *ilm = &ila_main;
 
@@ -603,11 +602,9 @@ VLIB_REGISTER_NODE (ila_sir2ila_node, static) =
 /** *INDENT-ON* */
 
 /** *INDENT-OFF* */
-VNET_IP6_UNICAST_FEATURE_INIT (ila_sir2ila, static) =
-{
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_ila_sir2ila, static) = {
   .node_name = "sir-to-ila",
   .runs_before = ORDER_CONSTRAINTS{"ip6-lookup", 0},
-  .feature_index = &ila_main.ila_sir2ila_feature_index,
 };
 /** *INDENT-ON* */
 
@@ -824,16 +821,14 @@ int
 ila_interface (u32 sw_if_index, u8 disable)
 {
   vlib_main_t *vm = vlib_get_main ();
-  ila_main_t *ilm = &ila_main;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_main_t *fm = &feature_main;
+  ip_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_IP6_UNICAST];
   vnet_config_main_t *vcm = &cm->config_main;
   u32 ci, feature_index;
 
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
-  feature_index = ilm->ila_sir2ila_feature_index;
+  feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP6_UNICAST, "sir-to-ila");
 
   ci = ((disable) ? vnet_config_del_feature : vnet_config_add_feature)
     (vm, vcm, ci, feature_index,

@@ -413,7 +413,7 @@ ip6_sw_interface_enable_disable (u32 sw_if_index,
 {
   vlib_main_t * vm = vlib_get_main();
   ip6_main_t * im = &ip6_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 ci, cast;
   u32 lookup_feature_index;
 
@@ -434,33 +434,38 @@ ip6_sw_interface_enable_disable (u32 sw_if_index,
         return;
     }
 
-  for (cast = 0; cast <= VNET_IP_RX_MULTICAST_FEAT; cast++)
+  for (cast = VNET_FEAT_IP6_UNICAST; cast < VNET_FEAT_IP6_OUTPUT; cast++)
     {
-      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      ip_config_main_t * cm = &fm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-      if (cast == VNET_IP_RX_UNICAST_FEAT)
-	lookup_feature_index = im->ip6_unicast_rx_feature_lookup;
+      if (cast == VNET_FEAT_IP6_UNICAST)
+	lookup_feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP6_UNICAST, "ip6-lookup");
+      else if (cast == VNET_FEAT_IP6_MULTICAST)
+	lookup_feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP6_MULTICAST, "ip6-lookup-multicast");
       else
-	lookup_feature_index = im->ip6_multicast_rx_feature_lookup;
+  lookup_feature_index = ~0;
 
-      if (is_enable)
-	ci = vnet_config_add_feature (vm, vcm,
+      if (lookup_feature_index!=~0)
+      {
+        if (is_enable)
+          ci = vnet_config_add_feature (vm, vcm,
 				      ci,
 				      lookup_feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
-      else
-	ci = vnet_config_del_feature (vm, vcm,
+        else
+          ci = vnet_config_del_feature (vm, vcm,
 				      ci,
 				      lookup_feature_index,
 				      /* config data */ 0,
 				      /* # bytes of config data */ 0);
 
-      cm->config_index_by_sw_if_index[sw_if_index] = ci;
+        cm->config_index_by_sw_if_index[sw_if_index] = ci;
+      }
     }
 }
 
@@ -582,126 +587,73 @@ ip6_sw_interface_admin_up_down (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (ip6_sw_interface_admin_up_down);
 
+VNET_FEATURE_START_NODES (IP6_UNICAST, "ip6-input");
+VNET_FEATURE_START_NODES (IP6_MULTICAST, "ip6-input");
+VNET_FEATURE_START_NODES (IP6_OUTPUT, "ip6-rewrite", "ip6-midchain");
+
 /* Built-in ip6 unicast rx feature path definition */
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_flow_classify, static) = {
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_flow_classify, static) = {
   .node_name = "ip6-flow-classify",
   .runs_before = ORDER_CONSTRAINTS {"ip6-inacl", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_flow_classify,
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_inacl, static) = {
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_inacl, static) = {
   .node_name = "ip6-inacl",
   .runs_before = ORDER_CONSTRAINTS {"ip6-policer-classify", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_check_access,
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_policer_classify, static) = {
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_policer_classify, static) = {
   .node_name = "ip6-policer-classify",
-  .runs_before = ORDER_CONSTRAINTS {"ipsec-input-ip6", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_policer_classify,
+  .runs_before = ORDER_CONSTRAINTS {"ip6-ipsec-input", 0},
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_ipsec, static) = {
-  .node_name = "ipsec-input-ip6",
-  .runs_before = ORDER_CONSTRAINTS {"l2tp-decap", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_ipsec,
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_ipsec, static) = {
+  .node_name = "ip6-ipsec-input",
+  .runs_before = ORDER_CONSTRAINTS {"ip6-l2tp-decap", 0},
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_l2tp, static) = {
-  .node_name = "l2tp-decap",
-  .runs_before = ORDER_CONSTRAINTS {"vpath-input-ip6", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_l2tp_decap,
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_l2tp, static) = {
+  .node_name = "ip6-l2tp-decap",
+  .runs_before = ORDER_CONSTRAINTS {"ip6-vpath-input", 0},
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_vpath, static) = {
-  .node_name = "vpath-input-ip6",
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_vpath, static) = {
+  .node_name = "ip6-vpath-input",
   .runs_before = ORDER_CONSTRAINTS {"ip6-lookup", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_vpath,
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_lookup, static) = {
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_lookup, static) = {
   .node_name = "ip6-lookup",
   .runs_before = ORDER_CONSTRAINTS {"ip6-drop", 0},
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_lookup,
 };
 
-VNET_IP6_UNICAST_FEATURE_INIT (ip6_drop, static) = {
+VNET_FEATURE_INIT (IP6_UNICAST, ip6_drop, static) = {
   .node_name = "ip6-drop",
   .runs_before = 0,  /*last feature*/
-  .feature_index = &ip6_main.ip6_unicast_rx_feature_drop,
 };
 
 /* Built-in ip6 multicast rx feature path definition (none now) */
-VNET_IP6_MULTICAST_FEATURE_INIT (ip6_vpath_mc, static) = {
-  .node_name = "vpath-input-ip6",
-  .runs_before = ORDER_CONSTRAINTS {"ip6-lookup", 0},
-  .feature_index = &ip6_main.ip6_multicast_rx_feature_vpath,
+VNET_FEATURE_INIT (IP6_MULTICAST, ip6_vpath_mc, static) = {
+  .node_name = "ip6-vpath-input",
+  .runs_before = ORDER_CONSTRAINTS {"ip6-lookup-multicast", 0},
 };
 
-VNET_IP6_MULTICAST_FEATURE_INIT (ip6_lookup, static) = {
-  .node_name = "ip6-lookup",
-  .runs_before = ORDER_CONSTRAINTS {"ip6-drop", 0},
-  .feature_index = &ip6_main.ip6_multicast_rx_feature_lookup,
+VNET_FEATURE_INIT (IP6_MULTICAST, ip6_lookup_mc, static) = {
+  .node_name = "ip6-lookup-multicast",
+  .runs_before = ORDER_CONSTRAINTS {"ip6-drop-multicast", 0},
 };
 
-VNET_IP6_MULTICAST_FEATURE_INIT (ip6_drop_mc, static) = {
-  .node_name = "ip6-drop",
+VNET_FEATURE_INIT (IP6_MULTICAST, ip6_drop_mc, static) = {
+  .node_name = "ip6-drop-multicast",
   .runs_before = 0, /* last feature */
-  .feature_index = &ip6_main.ip6_multicast_rx_feature_drop,
-};
-
-static char * rx_feature_start_nodes[] =
-  {"ip6-input"};
-
-static char * tx_feature_start_nodes[] =
-{
-  "ip6-rewrite",
-  "ip6-midchain",
 };
 
 /* Built-in ip4 tx feature path definition */
-VNET_IP6_TX_FEATURE_INIT (interface_output, static) = {
+VNET_FEATURE_INIT (IP6_OUTPUT, interface_output, static) = {
   .node_name = "interface-output",
   .runs_before = 0, /* not before any other features */
-  .feature_index = &ip6_main.ip6_tx_feature_interface_output,
 };
 
-static clib_error_t *
-ip6_feature_init (vlib_main_t * vm, ip6_main_t * im)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  clib_error_t * error;
-  vnet_cast_t cast;
-  ip_config_main_t * cm;
-  vnet_config_main_t * vcm;
-  char **feature_start_nodes;
-  int feature_start_len;
-
-  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
-    {
-      cm = &lm->feature_config_mains[cast];
-      vcm = &cm->config_main;
-
-      if (cast < VNET_IP_TX_FEAT)
-        {
-          feature_start_nodes = rx_feature_start_nodes;
-          feature_start_len = ARRAY_LEN(rx_feature_start_nodes);
-        }
-      else
-        {
-          feature_start_nodes = tx_feature_start_nodes;
-          feature_start_len = ARRAY_LEN(tx_feature_start_nodes);
-        }
-
-      if ((error = vnet_feature_arc_init (vm, vcm,
-                                         feature_start_nodes,
-                                         feature_start_len,
-					 im->next_feature[cast],
-					 &im->feature_nodes[cast])))
-        return error;
-    }
-  return 0;
-}
 
 clib_error_t *
 ip6_sw_interface_add_del (vnet_main_t * vnm,
@@ -710,24 +662,26 @@ ip6_sw_interface_add_del (vnet_main_t * vnm,
 {
   vlib_main_t * vm = vnm->vlib_main;
   ip6_main_t * im = &ip6_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 ci, cast;
   u32 feature_index;
 
-  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
+  ASSERT (VNET_FEAT_IP6_UNICAST + 2 == VNET_FEAT_IP6_OUTPUT);
+
+  for (cast = VNET_FEAT_IP6_UNICAST; cast <= VNET_FEAT_IP6_OUTPUT; cast++)
     {
-      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      ip_config_main_t * cm = &fm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
       ci = cm->config_index_by_sw_if_index[sw_if_index];
 
-      if (cast == VNET_IP_RX_UNICAST_FEAT)
-        feature_index = im->ip6_unicast_rx_feature_drop;
-      else if (cast == VNET_IP_RX_MULTICAST_FEAT)
-        feature_index = im->ip6_multicast_rx_feature_drop;
+      if (cast == VNET_FEAT_IP6_UNICAST)
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP6_UNICAST, "ip6-drop");
+      else if (cast == VNET_FEAT_IP6_MULTICAST)
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP6_MULTICAST, "ip6-drop-multicast");
       else
-        feature_index = im->ip6_tx_feature_interface_output;
+        feature_index = vnet_feature_index_from_node_name (VNET_FEAT_IP6_OUTPUT, "interface-output");
 
       if (is_add)
 	ci = vnet_config_add_feature (vm, vcm,
@@ -1824,11 +1778,12 @@ ip6_rewrite_inline (vlib_main_t * vm,
 		    int is_midchain)
 {
   ip_lookup_main_t * lm = &ip6_main.lookup_main;
+  vnet_feature_main_t *fm = &feature_main;
   u32 * from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, * to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip6_input_node.index);
   vlib_rx_or_tx_t adj_rx_tx = rewrite_for_locally_received_packets ? VLIB_RX : VLIB_TX;
-  ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  ip_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_IP6_OUTPUT];
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -2718,7 +2673,7 @@ ip6_lookup_init (vlib_main_t * vm)
 			       "ip6 neighbor discovery");
   }
 
-  error = ip6_feature_init (vm, im);
+  error = vlib_call_init_function (vm, vnet_feature_init);
 
   return error;
 }
