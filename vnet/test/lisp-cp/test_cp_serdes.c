@@ -181,6 +181,7 @@ build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   gid_address_t _seid, * seid = &_seid;
   gid_address_t _deid, * deid = &_deid;
   u8 is_smr_invoked = 1;
+  u8 rloc_probe_set = 0;
   u64 nonce = 0;
   map_request_hdr_t * h = 0;
   memset (deid, 0, sizeof (deid[0]));
@@ -198,7 +199,7 @@ build_map_request (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   gid_address_ippref_len (deid) = 24;
 
   h = lisp_msg_put_mreq (lcm, b, seid, deid, rlocs,
-                     is_smr_invoked, &nonce);
+                     is_smr_invoked, rloc_probe_set, &nonce);
   vec_free(rlocs);
   return h;
 }
@@ -384,6 +385,107 @@ done:
   return error;
 }
 
+/* generate a vector of eid records */
+static mapping_t *
+build_test_map_records ()
+{
+  mapping_t * records = 0;
+
+  mapping_t r = {
+    .ttl = 0x44332211,
+    .eid = {
+      .type = GID_ADDR_MAC,
+      .mac = {1, 2, 3, 4, 5, 6},
+      .vni = 0x0
+    }
+  };
+
+  locator_t loc = {
+    .weight = 1,
+    .priority = 2,
+    .local = 1,
+    .address = {
+      .type = GID_ADDR_IP_PREFIX,
+      .ippref = {
+        .addr = {
+          .ip.v4.as_u32 = 0x99887766,
+          .version = IP4
+        }
+      }
+    }
+  };
+  vec_add1 (r.locators, loc);
+  vec_add1 (records, r);
+
+  return records;
+}
+
+static void
+free_test_map_records (mapping_t * maps)
+{
+  mapping_t * map;
+  vec_foreach (map, maps)
+    {
+      vec_free (map->locators);
+    }
+  vec_free (maps);
+}
+
+static clib_error_t *
+test_lisp_map_register ()
+{
+  vlib_buffer_t *b;
+  clib_error_t * error = 0;
+  u64 nonce;
+  u32 msg_len = 0;
+  mapping_t * records = build_test_map_records ();
+
+  u8 * data = clib_mem_alloc(500);
+  memset(data, 0, 500);
+  b = (vlib_buffer_t *) data;
+
+  lisp_msg_put_map_register (b, records, 1 /* want map notify */,
+                            20 /* length of HMAC_SHA_1_96 */,
+                            &nonce, &msg_len);
+  free_test_map_records (records);
+
+  /* clear Nonce to simplify comparison */
+  memset((u8 *)b->data + 4, 0, 8);
+
+  /* clear authentication data */
+  memset ((u8 *)b->data + 16, 0, 20);
+
+  u8 expected_data[] = {
+    0x30, 0x00, 0x01, 0x01, /* type; rsvd; want notify; REC count */
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, /* nonce */
+    0x00, 0x00, 0x00, 0x00, /* key id, auth data length:
+                              both are zeroes because those are set in another
+                              function (see auth_data_len_by_key_id())*/
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, /* auth data */
+
+    /* first record */
+    0x44, 0x33, 0x22, 0x11, /* ttl */
+    0x01, 0x00, 0x00, 0x00, /* loc count, eid len, ACT, A */
+    0x00, 0x00, 0x40, 0x05, /* rsvd, map ver num, AFI = MAC */
+    0x01, 0x02, 0x03, 0x04,
+    0x05, 0x06,             /* MAC EID */
+
+    /* locator 1 */
+    0x02, 0x01, 0x00, 0x00, /* prio, weight, mprio, mweight */
+    0x00, 0x04, 0x00, 0x01, /* flags, AFI = ipv4 */
+    0x66, 0x77, 0x88, 0x99, /* ipv4 locator address */
+  };
+  _assert (0 == memcmp (expected_data, b->data, sizeof (expected_data)));
+done:
+  clib_mem_free (data);
+  return error;
+}
+
 static clib_error_t *
 test_lisp_parse_lcaf ()
 {
@@ -505,7 +607,8 @@ done:
   _(lisp_msg_push_ecm)                    \
   _(lisp_msg_parse)                       \
   _(lisp_msg_parse_mapping_record)        \
-  _(lisp_parse_lcaf)
+  _(lisp_parse_lcaf)                      \
+  _(lisp_map_register)
 
 int run_tests (void)
 {

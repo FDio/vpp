@@ -254,8 +254,11 @@ _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
 _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
+_(LISP_ADD_DEL_MAP_SERVER, lisp_add_del_map_server)                     \
 _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
+_(LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable)       \
+_(LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable)   \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency)                       \
@@ -267,9 +270,12 @@ _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
+_(LISP_MAP_SERVER_DUMP, lisp_map_server_dump)                           \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
 _(LISP_ADJACENCIES_GET, lisp_adjacencies_get)                           \
+_(SHOW_LISP_RLOC_PROBE_STATE, show_lisp_rloc_probe_state)               \
+_(SHOW_LISP_MAP_REGISTER_STATE, show_lisp_map_register_state)           \
 _(SHOW_LISP_STATUS, show_lisp_status)                                   \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
@@ -4473,7 +4479,7 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
   uword *p = NULL;
   u32 locator_set_index = ~0, map_index = ~0;
   vnet_lisp_add_del_mapping_args_t _a, *a = &_a;
-  u8 *name = NULL;
+  u8 *name = NULL, *key = NULL;
   memset (a, 0, sizeof (a[0]));
   memset (eid, 0, sizeof (eid[0]));
 
@@ -4491,15 +4497,22 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
     }
   locator_set_index = p[0];
 
+  if (*mp->key)
+    key = format (0, "%s", mp->key);
+
   /* XXX treat batch configuration */
   a->is_add = mp->is_add;
   gid_address_copy (&a->eid, eid);
   a->locator_set_index = locator_set_index;
   a->local = 1;
+  a->key = key;
+  a->key_id = clib_net_to_host_u16 (mp->key_id);
+
   rv = vnet_lisp_add_del_local_mapping (a, &map_index);
 
 out:
   vec_free (name);
+  vec_free (key);
   gid_address_free (&a->eid);
 
   REPLY_MACRO (VL_API_LISP_ADD_DEL_LOCAL_EID_REPLY);
@@ -4609,6 +4622,22 @@ send_reply:
 }
 
 static void
+vl_api_lisp_add_del_map_server_t_handler (vl_api_lisp_add_del_map_server_t
+					  * mp)
+{
+  vl_api_lisp_add_del_map_server_reply_t *rmp;
+  int rv = 0;
+  ip_address_t addr;
+
+  memset (&addr, 0, sizeof (addr));
+
+  ip_address_set (&addr, mp->ip_address, mp->is_ipv6 ? IP6 : IP4);
+  rv = vnet_lisp_add_del_map_server (&addr, mp->is_add);
+
+  REPLY_MACRO (VL_API_LISP_ADD_DEL_MAP_SERVER_REPLY);
+}
+
+static void
 vl_api_lisp_add_del_map_resolver_t_handler (vl_api_lisp_add_del_map_resolver_t
 					    * mp)
 {
@@ -4638,6 +4667,28 @@ vl_api_lisp_gpe_enable_disable_t_handler (vl_api_lisp_gpe_enable_disable_t *
   vnet_lisp_gpe_enable_disable (a);
 
   REPLY_MACRO (VL_API_LISP_GPE_ENABLE_DISABLE_REPLY);
+}
+
+static void
+  vl_api_lisp_map_register_enable_disable_t_handler
+  (vl_api_lisp_map_register_enable_disable_t * mp)
+{
+  vl_api_lisp_map_register_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  vnet_lisp_map_register_enable_disable (mp->is_enabled);
+  REPLY_MACRO (VL_API_LISP_ENABLE_DISABLE_REPLY);
+}
+
+static void
+  vl_api_lisp_rloc_probe_enable_disable_t_handler
+  (vl_api_lisp_rloc_probe_enable_disable_t * mp)
+{
+  vl_api_lisp_rloc_probe_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  vnet_lisp_rloc_probe_enable_disable (mp->is_enabled);
+  REPLY_MACRO (VL_API_LISP_ENABLE_DISABLE_REPLY);
 }
 
 static void
@@ -5080,6 +5131,8 @@ send_lisp_eid_table_details (mapping_t * mapit,
     }
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (gid_address_vni (gid));
+  rmp->key_id = clib_host_to_net_u16 (mapit->key_id);
+  memcpy (rmp->key, mapit->key, vec_len (mapit->key));
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
@@ -5179,6 +5232,57 @@ vl_api_lisp_gpe_tunnel_dump_t_handler (vl_api_lisp_gpe_tunnel_dump_t * mp)
 }
 
 static void
+send_lisp_map_server_details (ip_address_t * ip,
+			      unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_lisp_map_server_details_t *rmp = NULL;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_LISP_MAP_SERVER_DETAILS);
+
+  switch (ip_addr_version (ip))
+    {
+    case IP4:
+      rmp->is_ipv6 = 0;
+      clib_memcpy (rmp->ip_address, &ip_addr_v4 (ip),
+		   sizeof (ip_addr_v4 (ip)));
+      break;
+
+    case IP6:
+      rmp->is_ipv6 = 1;
+      clib_memcpy (rmp->ip_address, &ip_addr_v6 (ip),
+		   sizeof (ip_addr_v6 (ip)));
+      break;
+
+    default:
+      ASSERT (0);
+    }
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_lisp_map_server_dump_t_handler (vl_api_lisp_map_server_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q = NULL;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_msmr_t *mr;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  vec_foreach (mr, lcm->map_servers)
+  {
+    send_lisp_map_server_details (&mr->address, q, mp->context);
+  }
+}
+
+static void
 send_lisp_map_resolver_details (ip_address_t * ip,
 				unix_shared_memory_queue_t * q, u32 context)
 {
@@ -5215,7 +5319,7 @@ vl_api_lisp_map_resolver_dump_t_handler (vl_api_lisp_map_resolver_dump_t * mp)
 {
   unix_shared_memory_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  map_resolver_t *mr;
+  lisp_msmr_t *mr;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -5330,6 +5434,36 @@ lisp_adjacency_copy (vl_api_lisp_adjacency_t * dst, lisp_adjacency_t * adjs)
 	}
       dst[i] = a;
     }
+}
+
+static void
+  vl_api_show_lisp_rloc_probe_state_t_handler
+  (vl_api_show_lisp_rloc_probe_state_t * mp)
+{
+  vl_api_show_lisp_rloc_probe_state_reply_t *rmp = 0;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SHOW_LISP_RLOC_PROBE_STATE_REPLY,
+  {
+    rmp->is_enabled = vnet_lisp_rloc_probe_state_get ();
+  });
+  /* *INDENT-ON* */
+}
+
+static void
+  vl_api_show_lisp_map_register_state_t_handler
+  (vl_api_show_lisp_map_register_state_t * mp)
+{
+  vl_api_show_lisp_map_register_state_reply_t *rmp = 0;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SHOW_LISP_MAP_REGISTER_STATE_REPLY,
+  {
+    rmp->is_enabled = vnet_lisp_map_register_state_get ();
+  });
+  /* *INDENT-ON* */
 }
 
 static void

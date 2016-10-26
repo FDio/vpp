@@ -272,6 +272,7 @@ typedef struct
 void map_reply_hdr_init (void *ptr);
 char *map_reply_hdr_to_char (map_reply_hdr_t * h);
 
+#define MREP_TYPE(h_) MREP_HDR_CAST(h_)->type
 #define MREP_HDR_CAST(h_) ((map_reply_hdr_t *)(h_))
 #define MREP_REC_COUNT(h_) MREP_HDR_CAST(h_)->record_count
 #define MREP_RLOC_PROBE(h_) MREP_HDR_CAST(h_)->rloc_probe
@@ -471,6 +472,135 @@ typedef struct _lcaf_src_dst_hdr_t
 
 #define LCAF_SD_SRC_ML(_h) (_h)->src_mask_len
 #define LCAF_SD_DST_ML(_h) (_h)->dst_mask_len
+
+/*
+ * The Map-Register message format is:
+ *
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |Type=3 |P|            Reserved               |M| Record Count  |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Nonce . . .                           |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         . . . Nonce                           |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |            Key ID             |  Authentication Data Length   |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      ~                     Authentication Data                       ~
+ *  +-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   |                          Record TTL                           |
+ *  |   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  R   | Locator Count | EID mask-len  | ACT |A|      Reserved         |
+ *  e   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  c   | Rsvd  |  Map-Version Number   |        EID-Prefix-AFI         |
+ *  o   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  r   |                          EID-Prefix                           |
+ *  d   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  /|    Priority   |    Weight     |  M Priority   |   M Weight    |
+ *  | L +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  | o |        Unused Flags     |L|p|R|           Loc-AFI             |
+ *  | c +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  \|                             Locator                           |
+ *  +-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+typedef struct
+{
+#if CLIB_ARCH_IS_LITTLE_ENDIAN
+  u8 res1:3;
+  u8 proxy_map_reply:1;
+  u8 type:4;
+#else
+  u8 type:4;
+  u8 proxy_map_reply:1;
+  u8 res1:3;
+#endif
+
+  u8 res2;
+
+#if CLIB_ARCH_IS_LITTLE_ENDIAN
+  u8 want_map_notify:1;
+  u8 res3:7;
+#else
+  u8 res3:7;
+  u8 want_map_notify:1;
+#endif
+
+  u8 record_count;
+  u64 nonce;
+  u16 key_id;
+  u16 auth_data_len;
+  u8 data[0];
+} __attribute__ ((__packed__)) map_register_hdr_t;
+
+#define MREG_TYPE(h_) (h_)->type
+#define MREG_HDR_CAST(h_) ((map_register_hdr_t *)(h_))
+#define MREG_PROXY_MR(h_) (MREG_HDR_CAST(h_))->proxy_map_reply
+#define MREG_WANT_MAP_NOTIFY(h_) (MREG_HDR_CAST(h_))->want_map_notify
+#define MREG_REC_COUNT(h_) (MREG_HDR_CAST(h_))->record_count
+#define MREG_NONCE(h_) (MREG_HDR_CAST(h_))->nonce
+#define MREG_KEY_ID(h_) (MREG_HDR_CAST(h_))->key_id
+#define MREG_AUTH_DATA_LEN(h_) (MREG_HDR_CAST(h_))->auth_data_len
+#define MREG_DATA(h_) (MREG_HDR_CAST(h_))->data
+
+/*
+ * The Map-Notify message format is:
+ *
+ *       0                   1                   2                   3
+ *       0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |Type=4 |              Reserved                 | Record Count  |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         Nonce . . .                           |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |                         . . . Nonce                           |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      |            Key ID             |  Authentication Data Length   |
+ *      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      ~                     Authentication Data                       ~
+ *  +-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   |                          Record TTL                           |
+ *  |   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  R   | Locator Count | EID mask-len  | ACT |A|      Reserved         |
+ *  e   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  c   | Rsvd  |  Map-Version Number   |         EID-Prefix-AFI        |
+ *  o   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  r   |                          EID-Prefix                           |
+ *  d   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  /|    Priority   |    Weight     |  M Priority   |   M Weight    |
+ *  | L +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  | o |        Unused Flags     |L|p|R|           Loc-AFI             |
+ *  | c +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  \|                             Locator                           |
+ *  +-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+*/
+
+typedef struct
+{
+#if CLIB_ARCH_IS_LITTLE_ENDIAN
+  u8 res1:4;
+  u8 type:4;
+#else
+  u8 type:4;
+  u8 res1:4;
+#endif
+
+  u16 res2;
+
+  u8 record_count;
+  u64 nonce;
+  u16 key_id;
+  u16 auth_data_len;
+  u8 data[0];
+} __attribute__ ((__packed__)) map_notify_hdr_t;
+
+#define MNOTIFY_TYPE(h_) (h_)->type
+#define MNOTIFY_HDR_CAST(h_) ((map_register_hdr_t *)(h_))
+#define MNOTIFY_REC_COUNT(h_) (MREG_HDR_CAST(h_))->record_count
+#define MNOTIFY_NONCE(h_) (MREG_HDR_CAST(h_))->nonce
+#define MNOTIFY_KEY_ID(h_) (MREG_HDR_CAST(h_))->key_id
+#define MNOTIFY_AUTH_DATA_LEN(h_) (MREG_HDR_CAST(h_))->auth_data_len
+#define MNOTIFY_DATA(h_) (MREG_HDR_CAST(h_))->data
 
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */
 

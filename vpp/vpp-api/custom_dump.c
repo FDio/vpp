@@ -35,6 +35,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
+#include <vnet/lisp-cp/lisp_types.h>
 
 #include <stats/stats.h>
 #include <oam/oam.h>
@@ -2482,6 +2483,12 @@ static void *vl_api_lisp_add_del_local_eid_t_print
   s = format (s, "eid %U ", format_lisp_flat_eid, mp->eid_type, mp->eid,
 	      mp->prefix_len);
   s = format (s, "locator-set %s ", mp->locator_set_name);
+  if (*mp->key)
+    {
+      u32 key_id = mp->key_id;
+      s = format (s, "key-id %U", format_hmac_key_id, key_id);
+      s = format (s, "secret-key %s", mp->key);
+    }
   FINISH;
 }
 
@@ -2655,6 +2662,34 @@ static void *vl_api_lisp_eid_table_dump_t_print
 	  break;
 	}
     }
+
+  FINISH;
+}
+
+static void *vl_api_lisp_rloc_probe_enable_disable_t_print
+  (vl_api_lisp_rloc_probe_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_rloc_probe_enable_disable ");
+  if (mp->is_enabled)
+    s = format (s, "enable");
+  else
+    s = format (s, "disable");
+
+  FINISH;
+}
+
+static void *vl_api_lisp_map_register_enable_disable_t_print
+  (vl_api_lisp_map_register_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lisp_map_register_enable_disable ");
+  if (mp->is_enabled)
+    s = format (s, "enable");
+  else
+    s = format (s, "disable");
 
   FINISH;
 }
@@ -2894,6 +2929,9 @@ static void *vl_api_sw_interface_set_mtu_t_print
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
+_(lisp_map_server_dump)                                                 \
+_(show_lisp_rloc_probe_state)                                           \
+_(show_lisp_map_register_state)                                         \
 _(show_lisp_map_request_mode)                                           \
 _(lisp_gpe_tunnel_dump)
 
@@ -3045,9 +3083,14 @@ _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
 _(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
+_(LISP_MAP_SERVER_DUMP, lisp_map_server_dump)                           \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(LISP_ADJACENCIES_GET, lisp_adjacencies_get)                           \
+_(SHOW_LISP_RLOC_PROBE_STATE, show_lisp_rloc_probe_state)               \
+_(SHOW_LISP_MAP_REGISTER_STATE, show_lisp_map_register_state)           \
+_(LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable)       \
+_(LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable)   \
 _(IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel)                   \
 _(IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump)                         \
 _(DELETE_SUBIF, delete_subif)                                           \
