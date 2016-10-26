@@ -988,7 +988,7 @@ unformat_user (unformat_input_t * input, unformat_function_t * func, ...)
   result = func (input, &va);
   va_end (va);
 
-  if (!result)
+  if (!result && input->index != UNFORMAT_END_OF_INPUT)
     input->index = input->buffer_marks[l];
 
   _vec_len (input->buffer_marks) = l;
