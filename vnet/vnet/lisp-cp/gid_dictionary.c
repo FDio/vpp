@@ -39,7 +39,7 @@ foreach_sfib4_subprefix (BVT (clib_bihash_kv) * kvp, void *arg)
   ip4_address_t *mask;
   u8 plen = ip_prefix_len (&a->src);
 
-  ASSERT (plen >= 0 && plen <= 32);
+  ASSERT (plen <= 32);
   mask = &a->ip4_table->ip4_fib_masks[plen];
 
   u32 src_ip = clib_host_to_net_u32 (ip_prefix_v4 (&a->src).as_u32);
@@ -394,6 +394,7 @@ gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
 			gid_address_sd_dst_type (dst));
 	  break;
 	}
+      break;
     default:
       clib_warning ("address type %d not supported!", gid_address_type (dst));
       break;
