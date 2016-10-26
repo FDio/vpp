@@ -54,7 +54,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/fib/fib_node.h>
 #include <vnet/dpo/dpo.h>
-#include <vnet/ip/feature_registration.h>
+#include <vnet/feature/feature.h>
 
 /** @brief Common (IP4/IP6) next index stored in adjacency. */
 typedef enum {
@@ -357,7 +357,7 @@ typedef struct ip_lookup_main_t {
   u32 * classify_table_index_by_sw_if_index;
 
   /** rx unicast, multicast, tx interface/feature configuration. */
-  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
+  ip_config_main_t feature_config_mains[VNET_N_FEAT_TYPES];
 
   /** Number of bytes in a fib result.  Must be at least
      sizeof (uword).  First word is always adjacency index. */
