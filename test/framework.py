@@ -265,11 +265,11 @@ class VppTestCase(unittest.TestCase):
     def tearDown(self):
         """ Show various debug prints after each test """
         if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show int"))
-            self.logger.info(self.vapi.cli("show trace"))
-            self.logger.info(self.vapi.cli("show hardware"))
-            self.logger.info(self.vapi.cli("show error"))
-            self.logger.info(self.vapi.cli("show run"))
+            self.logger.info(self.vapi.cli("show int", log_level="info"))
+            self.logger.debug(self.vapi.cli("show trace"))
+            self.logger.info(self.vapi.cli("show hardware", log_level="info"))
+            self.logger.info(self.vapi.cli("show error", log_level="info"))
+            self.logger.info(self.vapi.cli("show run", log_level="info"))
 
     def setUp(self):
         """ Clear trace before running each test"""

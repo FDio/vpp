@@ -68,18 +68,19 @@ class VppPapiProvider(object):
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
-    def cli(self, cli):
+    def cli(self, cli, log_level="debug"):
         """Execute a CLI, calling the before/after hooks appropriately
 
         :param cli: CLI to execute
+        :param log_level: Logging level
         :returns: CLI output
 
         """
-        self.hook.before_cli(cli)
+        self.hook.before_cli(cli, log_level)
         cli += '\n'
         r = vpp_papi.cli_inband(len(cli), cli)
         self.hook.after_cli(cli)
-        if(hasattr(r, 'reply')):
+        if hasattr(r, 'reply'):
             return r.reply[0].decode().rstrip('\x00')
 
     def show_version(self):

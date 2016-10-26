@@ -33,14 +33,18 @@ class Hook(object):
         """
         pass
 
-    def before_cli(self, cli):
+    def before_cli(self, cli, log_level="debug"):
         """
         Function called before CLI call
-        Emit a debug message describing the CLI
+        Emit a debug/info message describing the CLI
 
-        @param cli: CLI string
+        :param cli: CLI string
+        :param log_level: Logging level
         """
-        self.logger.debug("CLI: %s" % (cli), extra={'color': RED})
+        if log_level == "info":
+            self.logger.info("CLI: %s" % (cli), extra={'color': RED})
+        else:
+            self.logger.debug("CLI: %s" % (cli), extra={'color': RED})
 
     def after_cli(self, cli):
         """
