@@ -262,42 +262,42 @@ VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {
 
 VNET_IP4_TX_FEATURE_INIT (adj_midchain_tx_ip4, static) = {
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output"},
+    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_IP4],
 };
 VNET_IP4_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip4, static) = {
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output"},
+    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP4],
 };
 VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_ip6, static) = {
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output"},
+    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_IP6],
 };
 VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip6, static) = {
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output"},
+    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP6],
 };
 VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_mpls, static) = {
     .node_name = "adj-midchain-txs",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output"},
+    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_MPLS],
 };
 VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_no_count_mpls, static) = {
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output"},
+    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_MPLS],
 };
 VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_ethernet, static) = {
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"error-drop"},
+    .runs_before = ORDER_CONSTRAINTS {"error-drop", 0},
     .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_ETHERNET],
 };
 VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_no_count_ethernet, static) = {
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"error-drop"},
+    .runs_before = ORDER_CONSTRAINTS {"error-drop", 0},
     .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_ETHERNET],
 };
 
