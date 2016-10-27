@@ -222,6 +222,7 @@ u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);
 
 #define MODE_ERROR_ETH        1
 #define MODE_ERROR_BVI_DEF    2
+#define MODE_ERROR_MAC        3
 
 u32 set_int_l2_mode (vlib_main_t * vm,
 		     vnet_main_t * vnet_main,
