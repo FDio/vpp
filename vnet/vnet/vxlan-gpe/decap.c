@@ -227,7 +227,31 @@ vxlan_gpe_input (vlib_main_t * vm,
 
         key4_0.pad = 0;
         key4_1.pad = 0;
+      }
+      else /* is_ip6 */
+      {
+        next0 = (iuvn6_0->vxlan.protocol < node->n_next_nodes) ?
+                iuvn6_0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
+        next1 = (iuvn6_1->vxlan.protocol < node->n_next_nodes) ?
+                iuvn6_1->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
 
+        key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
+        key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
+        key6_1.local.as_u64[0] = iuvn6_1->ip6.dst_address.as_u64[0];
+        key6_1.local.as_u64[1] = iuvn6_1->ip6.dst_address.as_u64[1];
+
+        key6_0.remote.as_u64[0] = iuvn6_0->ip6.src_address.as_u64[0];
+        key6_0.remote.as_u64[1] = iuvn6_0->ip6.src_address.as_u64[1];
+        key6_1.remote.as_u64[0] = iuvn6_1->ip6.src_address.as_u64[0];
+        key6_1.remote.as_u64[1] = iuvn6_1->ip6.src_address.as_u64[1];
+
+        key6_0.vni = iuvn6_0->vxlan.vni_res;
+        key6_1.vni = iuvn6_1->vxlan.vni_res;
+      }
+
+      /* Processing packet 0*/
+      if (is_ip4)
+      {
         /* Processing for key4_0 */
         if (PREDICT_FALSE((key4_0.as_u64[0] != last_key4.as_u64[0])
                 || (key4_0.as_u64[1] != last_key4.as_u64[1])))
@@ -249,24 +273,6 @@ vxlan_gpe_input (vlib_main_t * vm,
       }
       else /* is_ip6 */
       {
-        next0 = (iuvn6_0->vxlan.protocol < node->n_next_nodes) ?
-                iuvn6_0->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
-        next1 = (iuvn6_1->vxlan.protocol < node->n_next_nodes) ?
-                iuvn6_1->vxlan.protocol : VXLAN_GPE_INPUT_NEXT_DROP;
-
-        key6_0.local.as_u64[0] = iuvn6_0->ip6.dst_address.as_u64[0];
-        key6_0.local.as_u64[1] = iuvn6_0->ip6.dst_address.as_u64[1];
-        key6_1.local.as_u64[0] = iuvn6_1->ip6.dst_address.as_u64[0];
-        key6_1.local.as_u64[1] = iuvn6_1->ip6.dst_address.as_u64[1];
-
-        key6_0.remote.as_u64[0] = iuvn6_0->ip6.src_address.as_u64[0];
-        key6_0.remote.as_u64[1] = iuvn6_0->ip6.src_address.as_u64[1];
-        key6_1.remote.as_u64[0] = iuvn6_1->ip6.src_address.as_u64[0];
-        key6_1.remote.as_u64[1] = iuvn6_1->ip6.src_address.as_u64[1];
-
-        key6_0.vni = iuvn6_0->vxlan.vni_res;
-        key6_1.vni = iuvn6_1->vxlan.vni_res;
-
         /* Processing for key6_0 */
         if (PREDICT_FALSE(memcmp (&key6_0, &last_key6, sizeof(last_key6)) != 0))
         {
