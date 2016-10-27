@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_4341860a",
+        "filename": "vnet/vnet/l2/l2_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 842,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-27T20:00:47Z",
+      "side": 1,
+      "message": "Part of me wonders if we should add a suitable error message here for the new error code. Though the very next CLI command does not distinguish any error codes at all, so perhaps not. Any thoughts?",
+      "revId": "1eaca2b749bc560755a40cb24fd9bc35432102aa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
