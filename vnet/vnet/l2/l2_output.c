@@ -469,46 +469,46 @@ VLIB_REGISTER_NODE (l2output_node,static) = {
   /* edit / add dispositions here */
   .next_nodes = {
         [L2OUTPUT_NEXT_DROP] = "error-drop",
-        [L2OUTPUT_NEXT_DEL_TUNNEL] = "l2-output-del-tunnel",
+        [L2OUTPUT_NEXT_BAD_INTF] = "l2-output-bad-intf",
   },
 };
 /* *INDENT-ON* */
 
 
-#define foreach_l2output_del_tunnel_error	\
-_(DROP,     "L2 output to deleted tunnel")
+#define foreach_l2output_bad_intf_error	\
+_(DROP,     "L2 output to interface not in L2 mode or deleted")
 
-static char *l2output_del_tunnel_error_strings[] = {
+static char *l2output_bad_intf_error_strings[] = {
 #define _(sym,string) string,
-  foreach_l2output_del_tunnel_error
+  foreach_l2output_bad_intf_error
 #undef _
 };
 
 typedef enum
 {
-#define _(sym,str) L2OUTPUT_DEL_TUNNEL_ERROR_##sym,
-  foreach_l2output_del_tunnel_error
+#define _(sym,str) L2OUTPUT_BAD_INTF_ERROR_##sym,
+  foreach_l2output_bad_intf_error
 #undef _
-    L2OUTPUT_DEL_TUNNEL_N_ERROR,
-} l2output_del_tunnel_error_t;
+    L2OUTPUT_BAD_INTF_N_ERROR,
+} l2output_bad_intf_error_t;
 
 
 /**
- * Output node for tunnels which was in L2 BD's but were deleted.
- * On deletion of any tunnel which was on a L2 BD, its entry in
- * l2_output_main table next_nodes.output_node_index_vec[sw_if_index]
- * MUST be set to the value of L2OUTPUT_NEXT_DEL_TUNNEL. Thus, if there
- * are stale entries in the L2FIB for this tunnel sw_if_index, l2-output
- * will send packets for this sw_if_index to the l2-output-tunnel-del
- * node which just setup the proper drop reason before sending packets
- * to the error-drop node to drop the packet. Then, stale L2FIB entries
- * for delted tunnels won't cause possible packet or memory corrpution.
+ * Output node for interfaces/tunnels which was in L2 mode but were changed
+ * to L3 mode or possibly deleted thereafter. On changing forwarding mode
+ * of any tunnel/interface from L2 to L3, its entry in l2_output_main table
+ * next_nodes.output_node_index_vec[sw_if_index] MUST be set to the value of
+ * L2OUTPUT_NEXT_BAD_INTF. Thus, if there are stale entries in the L2FIB for
+ * this sw_if_index, l2-output will send packets for this sw_if_index to the
+ * l2-output-bad-intf node which just setup the proper drop reason before
+ * sending packets to the error-drop node to drop the packet. Then, stale L2FIB
+ * entries for delted tunnels won't cause possible packet or memory corrpution.
  */
-static vlib_node_registration_t l2output_del_tunnel_node;
+static vlib_node_registration_t l2output_bad_intf_node;
 
 static uword
-l2output_del_tunnel_node_fn (vlib_main_t * vm,
-			     vlib_node_runtime_t * node, vlib_frame_t * frame)
+l2output_bad_intf_node_fn (vlib_main_t * vm,
+			   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
   l2output_next_t next_index = 0;
@@ -536,8 +536,8 @@ l2output_del_tunnel_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
-	  b0->error = node->errors[L2OUTPUT_DEL_TUNNEL_ERROR_DROP];
-	  b1->error = node->errors[L2OUTPUT_DEL_TUNNEL_ERROR_DROP];
+	  b0->error = node->errors[L2OUTPUT_BAD_INTF_ERROR_DROP];
+	  b1->error = node->errors[L2OUTPUT_BAD_INTF_ERROR_DROP];
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -552,7 +552,7 @@ l2output_del_tunnel_node_fn (vlib_main_t * vm,
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
 	  b0 = vlib_get_buffer (vm, bi0);
-	  b0->error = node->errors[L2OUTPUT_DEL_TUNNEL_ERROR_DROP];
+	  b0->error = node->errors[L2OUTPUT_BAD_INTF_ERROR_DROP];
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -562,14 +562,14 @@ l2output_del_tunnel_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2output_del_tunnel_node,static) = {
-  .function = l2output_del_tunnel_node_fn,
-  .name = "l2-output-del-tunnel",
+VLIB_REGISTER_NODE (l2output_bad_intf_node,static) = {
+  .function = l2output_bad_intf_node_fn,
+  .name = "l2-output-bad-intf",
   .vector_size = sizeof (u32),
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors =  ARRAY_LEN(l2output_del_tunnel_error_strings),
-  .error_strings = l2output_del_tunnel_error_strings,
+  .n_errors =  ARRAY_LEN(l2output_bad_intf_error_strings),
+  .error_strings = l2output_bad_intf_error_strings,
 
   .n_next_nodes = 1,
 
