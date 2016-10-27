@@ -21,37 +21,40 @@
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/police.h>
 
-typedef struct {
+typedef struct
+{
   /* policer pool, aligned */
-  policer_read_response_type_st  * policers;
+  policer_read_response_type_st *policers;
 
   /* config + template h/w policer instance parallel pools */
-  sse2_qos_pol_cfg_params_st * configs;
-  policer_read_response_type_st * policer_templates;
-  
+  sse2_qos_pol_cfg_params_st *configs;
+  policer_read_response_type_st *policer_templates;
+
   /* Config by name hash */
-  uword * policer_config_by_name;
+  uword *policer_config_by_name;
 
   /* Policer by name hash */
-  uword * policer_index_by_name;
+  uword *policer_index_by_name;
 
   /* Policer by sw_if_index vector */
-  u32 * policer_index_by_sw_if_index;
+  u32 *policer_index_by_sw_if_index;
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } vnet_policer_main_t;
 
 vnet_policer_main_t vnet_policer_main;
 
-typedef enum {
+typedef enum
+{
   VNET_POLICER_INDEX_BY_SW_IF_INDEX,
   VNET_POLICER_INDEX_BY_OPAQUE,
   VNET_POLICER_INDEX_BY_EITHER,
 } vnet_policer_index_t;
 
-typedef enum {
+typedef enum
+{
   VNET_POLICER_NEXT_TRANSMIT,
   VNET_POLICER_NEXT_DROP,
   VNET_POLICER_N_NEXT,
@@ -80,17 +83,25 @@ typedef enum {
   _(48, CS6,  "CS6")  \
   _(50, CS7,  "CS7")
 
-typedef enum {
+typedef enum
+{
 #define _(v,f,str) VNET_DSCP_##f = v,
   foreach_vnet_dscp
 #undef _
 } vnet_dscp_t;
 
-u8 * format_policer_instance (u8 * s, va_list * va);
-clib_error_t * policer_add_del (vlib_main_t *vm,
-                                u8 * name,
-                                sse2_qos_pol_cfg_params_st * cfg,
-                                u32 * policer_index,
-                                u8 is_add);
+u8 *format_policer_instance (u8 * s, va_list * va);
+clib_error_t *policer_add_del (vlib_main_t * vm,
+			       u8 * name,
+			       sse2_qos_pol_cfg_params_st * cfg,
+			       u32 * policer_index, u8 is_add);
 
 #endif /* __included_policer_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
