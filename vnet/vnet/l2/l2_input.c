@@ -571,6 +571,10 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
 
   hi = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
+  /* Checks if mac address is set */
+  if (!hi->hw_address)
+    return MODE_ERROR_MAC;
+
   vec_validate (mp->configs, sw_if_index);
   config = vec_elt_at_index (mp->configs, sw_if_index);
 
