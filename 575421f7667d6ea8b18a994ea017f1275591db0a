@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_2381e24a",
+        "filename": "vnet/vnet/l2/l2_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 576,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-27T19:27:38Z",
+      "side": 1,
+      "message": "vnet/vnet/l2/l2_input.h defines a couple of error codes that this function uses (MODE_ERROR_ETH, MODE_ERROR_BVI_DEF); would it be more consistent if this new condition continued that pattern?",
+      "range": {
+        "startLine": 576,
+        "startChar": 0,
+        "endLine": 576,
+        "endChar": 14
+      },
+      "revId": "575421f7667d6ea8b18a994ea017f1275591db0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
