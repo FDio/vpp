@@ -606,22 +606,29 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
       l2_if_adjust--;
     }
 
+  /*
+   * Directs the l2 output path to work out the interface
+   * output next-arc itself. Needed when recycling a sw_if_index.
+   */
+  vec_validate_init_empty (l2om->next_nodes.output_node_index_vec,
+			   sw_if_index, ~0);
+  l2om->next_nodes.output_node_index_vec[sw_if_index] = ~0;
+
   /* Initialize the l2-input configuration for the interface */
   if (mode == MODE_L3)
     {
+      /* Set L2 config to BD index 0 so that if any packet accidentally
+       * came in on L2 path, it will be dropped in BD 0 */
       config->xconnect = 0;
       config->bridge = 0;
       config->shg = 0;
       config->bd_index = 0;
       config->feature_bitmap = L2INPUT_FEAT_DROP;
-      /*
-       * Directs the l2 output path to work out the interface
-       * output next-arc itself. Needed when recycling a sw_if_index.
-       */
-      vec_validate_init_empty (l2om->next_nodes.output_node_index_vec,
-			       sw_if_index, ~0);
-      l2om->next_nodes.output_node_index_vec[sw_if_index] = ~0;
 
+      /* Make sure any L2-output packet to this interface now in L3 mode is
+       * dropped. This may happen if L2 FIB MAC entry is stale */
+      l2om->next_nodes.output_node_index_vec[sw_if_index] =
+	L2OUTPUT_NEXT_BAD_INTF;
     }
   else if (mode == MODE_L2_CLASSIFY)
     {

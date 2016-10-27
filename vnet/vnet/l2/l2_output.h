@@ -134,7 +134,7 @@ _(MAPPING_DROP, "L2 Output interface mapping in progress")
 typedef enum
 {
   L2OUTPUT_NEXT_DROP,
-  L2OUTPUT_NEXT_DEL_TUNNEL,
+  L2OUTPUT_NEXT_BAD_INTF,
   L2OUTPUT_N_NEXT,
 } l2output_next_t;
 

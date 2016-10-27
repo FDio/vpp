@@ -214,7 +214,6 @@ int vnet_vxlan_add_del_tunnel
   int rv;
   vxlan4_tunnel_key_t key4;
   vxlan6_tunnel_key_t key6;
-  l2output_main_t * l2om = &l2output_main;
 
   if (!a->is_ip6) {
     key4.src = a->dst.ip4.as_u32; /* decap src in key is encap dst in config */
@@ -327,14 +326,6 @@ int vnet_vxlan_add_del_tunnel
 	  l2im->configs[sw_if_index].bd_index = 0;
 	}
       
-      /* 
-       * Directs the l2 output path to work out the interface
-       * output next-arc itself. Needed when recycling a tunnel.
-       */
-      vec_validate_init_empty(l2om->next_nodes.output_node_index_vec, 
-                              sw_if_index, ~0);
-      l2om->next_nodes.output_node_index_vec[t->sw_if_index] 
-        = ~0;
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
       if (!a->is_ip6) {
@@ -361,10 +352,6 @@ int vnet_vxlan_add_del_tunnel
       vec_add1 (vxm->free_vxlan_tunnel_hw_if_indices, t->hw_if_index);
 
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
-
-      /* Directs the l2 path to turf packets sent to this sw_if_index */
-      l2om->next_nodes.output_node_index_vec[t->sw_if_index] 
-        = L2OUTPUT_NEXT_DEL_TUNNEL;
 
       if (!a->is_ip6)
         {
