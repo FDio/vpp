@@ -43,8 +43,17 @@ SUFFIXES = .api.h .api
 	| vppapigen --input - --python -				\
 	| pyvppapigen.py --input - > $@
 
-pyapidir = ${prefix}/vpp_papi_plugins
-pyapi_DATA = snat/snat.py
+setup.py:
+	cp $(srcdir)/setup.py $@
+
+__init__.py:
+	@echo "from snat import *" > $@
+
+pyapidir = ${prefix}/vpp_papi_plugins/snat-plugin/snat
+pyapi_DATA = snat/snat.py __init__.py
+
+pyapisetupdir = ${prefix}/vpp_papi_plugins/snat-plugin
+pyapisetup_DATA = setup.py
 
 noinst_HEADERS =			\
   snat/snat_all_api_h.h			\

@@ -273,7 +273,11 @@ def main():
 from vpp_api_base import *
 from struct import *
 from collections import namedtuple
-import vpp_api
+
+import vpp_papi.vpp_api as vpp_api
+from vpp_papi.vpp_api_base import *
+from vpp_papi.vpp_papi import plugin_register
+
 api_func_table = []
 api_name_to_id = {}
     ''')
