@@ -41,7 +41,7 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 {
   ipsec_main_t *im = &ipsec_main;
   ip_lookup_main_t *lm;
-  ip_config_main_t *rx_cm;
+  vnet_feature_config_main_t *rx_cm;
   ip4_ipsec_config_t config;
 
   u32 spd_index, ci;

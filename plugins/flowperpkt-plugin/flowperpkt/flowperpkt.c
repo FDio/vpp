@@ -252,7 +252,7 @@ static int flowperpkt_tx_interface_add_del_feature
   u32 ci;
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
   u32 feature_index;
   flow_report_main_t *frm = &flow_report_main;
   vnet_flow_report_add_del_args_t _a, *a = &_a;

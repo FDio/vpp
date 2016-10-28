@@ -18,6 +18,7 @@
 #include <vppinfra/xxhash.h>
 #include <vlib/threads.h>
 #include <vnet/handoff.h>
+#include <vnet/feature/feature.h>
 
 typedef struct
 {
@@ -234,8 +235,7 @@ interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
   vnet_sw_interface_t *sw;
   vnet_main_t *vnm = vnet_get_main ();
   per_inteface_handoff_data_t *d;
-  int i, rv;
-  u32 node_index = enable_disable ? worker_handoff_node.index : ~0;
+  int i, rv = 0;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -264,7 +264,8 @@ interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
       /* *INDENT-ON* */
     }
 
-  rv = vnet_hw_interface_rx_redirect_to_node (vnm, sw_if_index, node_index);
+  vnet_feature_enable_disable ("device-input", "worker-handoff",
+			       sw_if_index, enable_disable, 0, 0);
   return rv;
 }
 

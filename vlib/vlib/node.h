@@ -464,12 +464,15 @@ typedef struct vlib_node_runtime_t
   /* CPU this node runs on */
   u16 cpu_index;
 
+  /* Index of feature arc in which the node participates */
+  u16 feature_arc_index;
+
   /* Function dependent node-runtime. */
   uword runtime_data[(128
 		      - 1 * sizeof (vlib_node_function_t *)
 		      - 1 * sizeof (vlib_error_t *)
 		      - 11 * sizeof (u32)
-		      - 5 * sizeof (u16)) / sizeof (uword)];
+		      - 6 * sizeof (u16)) / sizeof (uword)];
 }
 vlib_node_runtime_t;
 

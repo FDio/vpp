@@ -78,7 +78,8 @@ VNET_ETHERNET_TX_FEATURE_INIT (ethernet_tx_drop, static) =
 static clib_error_t *
 ethernet_feature_init (vlib_main_t * vm)
 {
-  ip_config_main_t *cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t *cm =
+    &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
   vnet_config_main_t *vcm = &cm->config_main;
 
   return (vnet_feature_arc_init (vm, vcm,

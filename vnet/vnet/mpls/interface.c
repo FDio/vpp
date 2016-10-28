@@ -277,7 +277,7 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u8 is_enable)
 {
   vlib_main_t * vm = vlib_get_main();
-  ip_config_main_t * cm = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_config_main_t * cm = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   vnet_config_main_t * vcm = &cm->config_main;
   u32 lookup_feature_index;
   fib_node_index_t lfib_index;

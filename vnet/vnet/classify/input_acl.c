@@ -34,7 +34,7 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
   else
     { /* IP[46] */
       ip_lookup_main_t * lm;
-      ip_config_main_t * ipcm;
+      vnet_feature_config_main_t * ipcm;
       u32 ftype;
       u32 ci;
 
