@@ -22,7 +22,15 @@
 
 #include "map.h"
 
-#ifndef __SSE4_2__
+#ifdef __SSE4_2__
+static inline u32
+crc_u32 (u32 data, u32 value)
+{
+  __asm__ volatile ("crc32l %[data], %[value];":[value] "+r" (value):[data]
+		    "rm" (data));
+  return value;
+}
+#else
 #include <vppinfra/xxhash.h>
 
 static inline u32
