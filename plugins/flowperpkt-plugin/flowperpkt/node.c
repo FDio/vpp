@@ -279,7 +279,7 @@ flowperpkt_node_fn (vlib_main_t * vm,
   flowperpkt_next_t next_index;
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
   flowperpkt_main_t *fm = &flowperpkt_main;
   f64 now = vlib_time_now (vm);
 

@@ -22,7 +22,7 @@ vnet_flow_classify_feature_enable (vlib_main_t * vnm,
                                    int feature_enable)
 {
   ip_lookup_main_t * lm;
-  ip_config_main_t * ifcm;
+  vnet_feature_config_main_t * ifcm;
   u32 ftype;
   u32 ci;
 

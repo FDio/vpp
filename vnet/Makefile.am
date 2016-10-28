@@ -266,7 +266,6 @@ nobase_include_HEADERS +=			\
 # Layer 3 protocol: IP v4/v6
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/ip/feature_registration.c			\
  vnet/ip/format.c				\
  vnet/ip/icmp4.c				\
  vnet/ip/icmp6.c				\
@@ -298,7 +297,6 @@ libvnet_la_SOURCES +=				\
  vnet/ip/udp_pg.c
 
 nobase_include_HEADERS +=			\
- vnet/ip/feature_registration.h			\
  vnet/ip/format.h				\
  vnet/ip/icmp46_packet.h			\
  vnet/ip/icmp4.h				\
@@ -717,6 +715,18 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vnet/devices/netmap/netmap.h
 
+
+########################################
+# Driver feature graph arc support
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/devices/feature.c			\
+  vnet/feature/feature.c			\
+  vnet/feature/registration.c
+
+nobase_include_HEADERS +=			\
+  vnet/feature/feature.h
 
 ########################################
 # Unix kernel related

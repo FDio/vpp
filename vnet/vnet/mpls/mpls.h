@@ -95,7 +95,7 @@ typedef struct {
   uword *fib_index_by_table_id;
 
   /* rx/tx interface/feature configuration. */
-  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
+  vnet_feature_config_main_t feature_config_mains[VNET_N_IP_FEAT];
 
   /* Built-in unicast feature path indices, see vnet_feature_arc_init(...)  */
   u32 mpls_rx_feature_lookup;

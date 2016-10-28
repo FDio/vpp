@@ -133,7 +133,7 @@ static char * tx_feature_start_nodes[] =
 clib_error_t *
 mpls_feature_init (vlib_main_t * vm)
 {
-  ip_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   vnet_config_main_t * vcm = &cm->config_main;
   clib_error_t *error;
 
@@ -171,7 +171,7 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 
   for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
   {
-      ip_config_main_t * cm = &mm->feature_config_mains[cast];
+      vnet_feature_config_main_t * cm = &mm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       if (VNET_IP_RX_MULTICAST_FEAT == cast)
@@ -212,62 +212,4 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION (mpls_sw_interface_add_del);
 #define foreach_af_cast                         \
 _(VNET_IP_RX_UNICAST_FEAT, "mpls input")        \
 _(VNET_IP_TX_FEAT, "mpls output")               \
-
-static clib_error_t *
-show_mpls_features_command_fn (vlib_main_t * vm,
-                               unformat_input_t * input,
-                               vlib_cli_command_t * cmd)
-{
-  mpls_main_t * mm = &mpls_main;
-  int i;
-  char ** features;
-
-  vlib_cli_output (vm, "Available MPLS feature nodes");
-
-#define _(c,s)                                          \
-  do {                                                  \
-    features = mm->feature_nodes[c];                    \
-    vlib_cli_output (vm, "%s:", s);                     \
-    for (i = 0; i < vec_len(features); i++)             \
-      vlib_cli_output (vm, "  %s\n", features[i]);      \
-  } while(0);
-  foreach_af_cast;
-#undef _
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_ip_features_command, static) = {
-  .path = "show mpls features",
-  .short_help = "show mpls features",
-  .function = show_mpls_features_command_fn,
-};
-
-static clib_error_t *
-show_mpls_interface_features_command_fn (vlib_main_t * vm,
-                                         unformat_input_t * input,
-                                         vlib_cli_command_t * cmd)
-{
-  vnet_main_t * vnm = vnet_get_main();
-  u32 sw_if_index;
-
-  if (! unformat (input, "%U", unformat_vnet_sw_interface,
-                  vnm, &sw_if_index))
-    return clib_error_return (0, "Interface not specified...");
-
-  vlib_cli_output (vm, "MPLS feature paths configured on %U...",
-                   format_vnet_sw_if_index_name, vnm, sw_if_index);
-
-  ip_interface_features_show (vm, "MPLS",
-			      mpls_main.feature_config_mains,
-			      sw_if_index);
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_mpls_interface_features_command, static) = {
-  .path = "show mpls interface features",
-  .short_help = "show mpls interface features <intfc>",
-  .function = show_mpls_interface_features_command_fn,
-};
 

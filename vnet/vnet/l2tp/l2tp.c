@@ -602,7 +602,7 @@ l2tpv3_interface_enable_disable (vnet_main_t * vnm,
 {
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm =
+  vnet_feature_config_main_t *rx_cm =
     &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   u32 ci;
   ip6_l2tpv3_config_t config;
