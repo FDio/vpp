@@ -43,6 +43,10 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	./scripts/find-plugins-contents $(INSTALL_PREFIX)$(ARCH)	\
 	 deb/debian/vpp-plugins.install ;				\
 									\
+	: python-api package ;						\
+	./scripts/find-python-api-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp-python-api.install ;				\
+									\
 	: dpdk headers ;						\
 	./scripts/find-dpdk-contents $(INSTALL_PREFIX)$(ARCH)		\
 	 deb/debian/vpp-dpdk-dev.install ;				\
