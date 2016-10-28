@@ -46,7 +46,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
-#include <vnet/ip/feature_registration.h>
+#include <vnet/feature/feature.h>
 #include <stdbool.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>

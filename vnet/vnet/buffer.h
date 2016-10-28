@@ -319,6 +319,13 @@ typedef struct
       u16 overlay_afi;
     } lisp;
 
+    /* Driver rx feature */
+    struct
+    {
+      u32 saved_next_index;		/**< saved by drivers for short-cut */
+      u16 buffer_advance;
+    } device_input_feat;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;

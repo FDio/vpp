@@ -43,7 +43,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/pg/pg.h>
-#include <vnet/ip/feature_registration.h>
+#include <vnet/feature/feature.h>
 
 always_inline u64
 ethernet_mac_address_u64 (u8 * a)
