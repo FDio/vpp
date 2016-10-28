@@ -40,7 +40,7 @@ classify_dpo_get_index (classify_dpo_t *cd)
 }
 
 index_t
-classify_dpo_create (fib_protocol_t proto,
+classify_dpo_create (dpo_proto_t proto,
                      u32 classify_table_index)
 {
     classify_dpo_t *cd;
@@ -61,7 +61,8 @@ format_classify_dpo (u8 *s, va_list *args)
 
     cd = classify_dpo_get(index);
 
-    return (format(s, "classify:[%d]:table:%d",
+    return (format(s, "%U-classify:[%d]:table:%d",
+		   format_dpo_proto, cd->cd_proto,
 		   index, cd->cd_table_index));
 }
 
