@@ -2,20 +2,20 @@
 
 from abc import *
 import os
-import sys
 import subprocess
 import unittest
 import tempfile
+import time
 import resource
 from time import sleep
+from Queue import Queue
+from threading import Thread
 from inspect import getdoc
-from hook import PollHook
+from hook import StepHook, PollHook
 from vpp_pg_interface import VppPGInterface
 from vpp_papi_provider import VppPapiProvider
-
 from scapy.packet import Raw
-
-from logging import *
+from log import *
 
 """
   Test framework module.
@@ -23,41 +23,6 @@ from logging import *
   The module provides a set of tools for constructing and running tests and
   representing the results.
 """
-
-handler = StreamHandler(sys.stdout)
-getLogger().addHandler(handler)
-try:
-    verbose = int(os.getenv("V", 0))
-except:
-    verbose = 0
-# 40 = ERROR, 30 = WARNING, 20 = INFO, 10 = DEBUG, 0 = NOTSET (all messages)
-getLogger().setLevel(40 - 10 * verbose)
-getLogger("scapy.runtime").addHandler(handler)
-getLogger("scapy.runtime").setLevel(ERROR)
-
-# Static variables to store color formatting strings.
-#
-# These variables (RED, GREEN, YELLOW and LPURPLE) are used to configure
-# the color of the text to be printed in the terminal. Variable COLOR_RESET
-# is used to revert the text color to the default one.
-if hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    LPURPLE = '\033[94m'
-    COLOR_RESET = '\033[0m'
-else:
-    RED = ''
-    GREEN = ''
-    YELLOW = ''
-    LPURPLE = ''
-    COLOR_RESET = ''
-
-
-""" @var formatting delimiter consisting of '=' characters """
-double_line_delim = '=' * 70
-""" @var formatting delimiter consisting of '-' characters """
-single_line_delim = '-' * 70
 
 
 class _PacketInfo(object):
@@ -84,6 +49,11 @@ class _PacketInfo(object):
     data = None
 
 
+def pump_output(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(line)
+
+
 class VppTestCase(unittest.TestCase):
     """
     Subclass of the python unittest.TestCase class.
@@ -108,23 +78,85 @@ class VppTestCase(unittest.TestCase):
         return cls.test_instance
 
     @classmethod
+    def set_debug_flags(cls, d):
+        cls.debug_core = False
+        cls.debug_gdb = False
+        cls.debug_gdbserver = False
+        if d is None:
+            return
+        dl = d.lower()
+        if dl == "core":
+            if resource.getrlimit(resource.RLIMIT_CORE)[0] <= 0:
+                # give a heads up if this is actually useless
+                cls.logger.critical("WARNING: core size limit is set 0, core "
+                                    "files will NOT be created")
+            cls.debug_core = True
+        elif dl == "gdb":
+            cls.debug_gdb = True
+        elif dl == "gdbserver":
+            cls.debug_gdbserver = True
+        else:
+            raise Exception("Unrecognized DEBUG option: '%s'" % d)
+
+    @classmethod
     def setUpConstants(cls):
         """ Set-up the test case class based on environment variables """
         try:
-            cls.interactive = True if int(os.getenv("I")) > 0 else False
+            s = os.getenv("STEP")
+            cls.step = True if s.lower() in ("y", "yes", "1") else False
         except:
-            cls.interactive = False
-        if cls.interactive and resource.getrlimit(resource.RLIMIT_CORE)[0] <= 0:
-            # give a heads up if this is actually useless
-            critical("WARNING: core size limit is set 0, core files will NOT "
-                     "be created")
+            cls.step = False
+        try:
+            d = os.getenv("DEBUG")
+        except:
+            d = None
+        cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
         cls.vpp_cmdline = [cls.vpp_bin, "unix", "nodaemon",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}"]
         if cls.plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", cls.plugin_path])
-        info("vpp_cmdline: %s" % cls.vpp_cmdline)
+        cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
+
+    @classmethod
+    def wait_for_enter(cls):
+        if cls.debug_gdbserver:
+            print(double_line_delim)
+            print("Spawned GDB server with PID: %d" % cls.vpp.pid)
+        elif cls.debug_gdb:
+            print(double_line_delim)
+            print("Spawned VPP with PID: %d" % cls.vpp.pid)
+        else:
+            cls.logger.debug("Spawned VPP with PID: %d" % cls.vpp.pid)
+            return
+        print(single_line_delim)
+        print("You can debug the VPP using e.g.:")
+        if cls.debug_gdbserver:
+            print("gdb " + cls.vpp_bin + " -ex 'target remote localhost:7777'")
+            print("Now is the time to attach a gdb by running the above "
+                  "command, set up breakpoints etc. and then resume VPP from "
+                  "within gdb by issuing the 'continue' command")
+        elif cls.debug_gdb:
+            print("gdb " + cls.vpp_bin + " -ex 'attach %s'" % cls.vpp.pid)
+            print("Now is the time to attach a gdb by running the above "
+                  "command and set up breakpoints etc.")
+        print(single_line_delim)
+        raw_input("Press ENTER to continue running the testcase...")
+
+    @classmethod
+    def run_vpp(cls):
+        cmdline = cls.vpp_cmdline
+
+        if cls.debug_gdbserver:
+            cmdline = ['gdbserver', 'localhost:7777'] + cls.vpp_cmdline
+            cls.logger.info("Gdbserver cmdline is %s", " ".join(cmdline))
+
+        cls.vpp = subprocess.Popen(cmdline,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE,
+                                   bufsize=1)
+        cls.wait_for_enter()
 
     @classmethod
     def setUpClass(cls):
@@ -132,43 +164,95 @@ class VppTestCase(unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-' + cls.__name__ + '-')
         cls.shm_prefix = cls.tempdir.split("/")[-1]
         os.chdir(cls.tempdir)
-        info("Temporary dir is %s, shm prefix is %s",
-             cls.tempdir, cls.shm_prefix)
+        cls.logger.info("Temporary dir is %s, shm prefix is %s",
+                        cls.tempdir, cls.shm_prefix)
         cls.setUpConstants()
         cls.pg_streams = []
         cls.packet_infos = {}
         cls.verbose = 0
         print(double_line_delim)
-        print(YELLOW + getdoc(cls) + COLOR_RESET)
+        print(colorize(getdoc(cls), YELLOW))
         print(double_line_delim)
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
-            cls.vpp = subprocess.Popen(cls.vpp_cmdline, stderr=subprocess.PIPE)
-            debug("Spawned VPP with PID: %d" % cls.vpp.pid)
+            cls.run_vpp()
             cls.vpp_dead = False
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
-            cls.vapi.register_hook(PollHook(cls))
-            cls.vapi.connect()
+            if cls.step:
+                cls.vapi.register_hook(StepHook(cls))
+            else:
+                cls.vapi.register_hook(PollHook(cls))
+            time.sleep(0.1)
+            try:
+                cls.vapi.connect()
+            except:
+                if cls.debug_gdbserver:
+                    print(colorize("You're running VPP inside gdbserver but "
+                                   "VPP-API connection failed, did you forget "
+                                   "to 'continue' VPP from within gdb?", RED))
+                raise
+            cls.vpp_stdout_queue = Queue()
+            cls.vpp_stdout_reader_thread = Thread(
+                target=pump_output, args=(cls.vpp.stdout, cls.vpp_stdout_queue))
+            cls.vpp_stdout_reader_thread.start()
+            cls.vpp_stderr_queue = Queue()
+            cls.vpp_stderr_reader_thread = Thread(
+                target=pump_output, args=(cls.vpp.stderr, cls.vpp_stderr_queue))
+            cls.vpp_stderr_reader_thread.start()
         except:
             cls.vpp.terminate()
             del cls.vpp
+            raise
 
     @classmethod
     def quit(cls):
         """
         Disconnect vpp-api, kill vpp and cleanup shared memory files
         """
+        if (cls.debug_gdbserver or cls.debug_gdb) and hasattr(cls, 'vpp'):
+            cls.vpp.poll()
+            if cls.vpp.returncode is None:
+                print(double_line_delim)
+                print("VPP or GDB server is still running")
+                print(single_line_delim)
+                raw_input("When done debugging, press ENTER to kill the process"
+                          " and finish running the testcase...")
+
         if hasattr(cls, 'vpp'):
             cls.vapi.disconnect()
             cls.vpp.poll()
             if cls.vpp.returncode is None:
                 cls.vpp.terminate()
             del cls.vpp
+
+        if hasattr(cls, 'vpp_stdout_queue'):
+            cls.logger.info(single_line_delim)
+            cls.logger.info('VPP output to stdout while running %s:',
+                            cls.__name__)
+            cls.logger.info(single_line_delim)
+            f = open(cls.tempdir + '/vpp_stdout.txt', 'w')
+            while not cls.vpp_stdout_queue.empty():
+                line = cls.vpp_stdout_queue.get_nowait()
+                f.write(line)
+                cls.logger.info('VPP stdout: %s' % line.rstrip('\n'))
+
+        if hasattr(cls, 'vpp_stderr_queue'):
+            cls.logger.info(single_line_delim)
+            cls.logger.info('VPP output to stderr while running %s:',
+                            cls.__name__)
+            cls.logger.info(single_line_delim)
+            f = open(cls.tempdir + '/vpp_stderr.txt', 'w')
+            while not cls.vpp_stderr_queue.empty():
+                line = cls.vpp_stderr_queue.get_nowait()
+                f.write(line)
+                cls.logger.info('VPP stderr: %s' % line.rstrip('\n'))
+            cls.logger.info(single_line_delim)
 
     @classmethod
     def tearDownClass(cls):
@@ -178,11 +262,11 @@ class VppTestCase(unittest.TestCase):
     def tearDown(self):
         """ Show various debug prints after each test """
         if not self.vpp_dead:
-            info(self.vapi.cli("show int"))
-            info(self.vapi.cli("show trace"))
-            info(self.vapi.cli("show hardware"))
-            info(self.vapi.cli("show error"))
-            info(self.vapi.cli("show run"))
+            self.logger.info(self.vapi.cli("show int"))
+            self.logger.info(self.vapi.cli("show trace"))
+            self.logger.info(self.vapi.cli("show hardware"))
+            self.logger.info(self.vapi.cli("show error"))
+            self.logger.info(self.vapi.cli("show run"))
 
     def setUp(self):
         """ Clear trace before running each test"""
@@ -392,7 +476,7 @@ class VppTestResult(unittest.TestResult):
 
         """
         unittest.TestResult.addSuccess(self, test)
-        self.result_string = GREEN + "OK" + COLOR_RESET
+        self.result_string = colorize("OK", GREEN)
 
     def addSkip(self, test, reason):
         """
@@ -403,7 +487,7 @@ class VppTestResult(unittest.TestResult):
 
         """
         unittest.TestResult.addSkip(self, test, reason)
-        self.result_string = YELLOW + "SKIP" + COLOR_RESET
+        self.result_string = colorize("SKIP", YELLOW)
 
     def addFailure(self, test, err):
         """
@@ -415,10 +499,10 @@ class VppTestResult(unittest.TestResult):
         """
         unittest.TestResult.addFailure(self, test, err)
         if hasattr(test, 'tempdir'):
-            self.result_string = RED + "FAIL" + COLOR_RESET + \
+            self.result_string = colorize("FAIL", RED) + \
                 ' [ temp dir used by test case: ' + test.tempdir + ' ]'
         else:
-            self.result_string = RED + "FAIL" + COLOR_RESET + ' [no temp dir]'
+            self.result_string = colorize("FAIL", RED) + ' [no temp dir]'
 
     def addError(self, test, err):
         """
@@ -430,10 +514,10 @@ class VppTestResult(unittest.TestResult):
         """
         unittest.TestResult.addError(self, test, err)
         if hasattr(test, 'tempdir'):
-            self.result_string = RED + "ERROR" + COLOR_RESET + \
+            self.result_string = colorize("ERROR", RED) + \
                 ' [ temp dir used by test case: ' + test.tempdir + ' ]'
         else:
-            self.result_string = RED + "ERROR" + COLOR_RESET + ' [no temp dir]'
+            self.result_string = colorize("ERROR", RED) + ' [no temp dir]'
 
     def getDescription(self, test):
         """
