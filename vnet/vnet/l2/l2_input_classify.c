@@ -361,7 +361,8 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	  /* save for next feature graph nodes */
 	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
 
-	  if (PREDICT_TRUE (table_index0 != ~0))
+	  if (((b0->flags & VLIB_NODE_FLAG_IS_CLASSIFY) == 0) &&
+	      (PREDICT_TRUE (table_index0 != ~0)))
 	    {
 	      hash0 = vnet_buffer (b0)->l2_classify.hash;
 	      t0 = pool_elt_at_index (vcm->tables, table_index0);
@@ -375,6 +376,7 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 		  next0 = (e0->next_index < n_next_nodes) ?
 		    e0->next_index : next0;
 		  hits++;
+		  b0->flags |= VLIB_NODE_FLAG_IS_CLASSIFY;
 		}
 	      else
 		{
@@ -403,6 +405,7 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 			    e0->next_index : next0;
 			  hits++;
 			  chain_hits++;
+			  b0->flags |= VLIB_NODE_FLAG_IS_CLASSIFY;
 			  break;
 			}
 		    }
@@ -606,7 +609,7 @@ int_l2_input_classify_command_fn (vlib_main_t * vm,
       && other_table_index == ~0)
     {
       vlib_cli_output (vm, "L2 classification disabled");
-      vnet_l2_input_classify_enable_disable (sw_if_index, 0 /* enable */ );
+      vnet_l2_input_classify_enable_disable (sw_if_index, 0 /* disable */ );
       return 0;
     }
 

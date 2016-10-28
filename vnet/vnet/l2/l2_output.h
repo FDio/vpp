@@ -249,7 +249,8 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 					     vnet_main,
 					     node_index,
 					     sw_if_index,
-					     &next_nodes->output_node_index_vec);
+					     &next_nodes->
+					     output_node_index_vec);
 
 	  if (*next0 == L2OUTPUT_NEXT_DROP)
 	    {
