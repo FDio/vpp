@@ -40,38 +40,20 @@ clib_bihash_is_free_24_8 (const clib_bihash_kv_24_8_t * v)
   return 0;
 }
 
+static inline u64
+clib_bihash_hash_24_8 (const clib_bihash_kv_24_8_t * v)
+{
 #if __SSE4_2__
-static inline u32
-crc_u32 (u32 data, u32 value)
-{
-  __asm__ volatile ("crc32l %[data], %[value];":[value] "+r" (value):[data]
-		    "rm" (data));
-  return value;
-}
-
-static inline u64
-clib_bihash_hash_24_8 (const clib_bihash_kv_24_8_t * v)
-{
-  const u32 *dp = (const u32 *) &v->key[0];
   u32 value = 0;
-
-  value = crc_u32 (dp[0], value);
-  value = crc_u32 (dp[1], value);
-  value = crc_u32 (dp[2], value);
-  value = crc_u32 (dp[3], value);
-  value = crc_u32 (dp[4], value);
-  value = crc_u32 (dp[5], value);
-
+  value = _mm_crc32_u64 (value, v->key[0]);
+  value = _mm_crc32_u64 (value, v->key[1]);
+  value = _mm_crc32_u64 (value, v->key[2]);
   return value;
-}
 #else
-static inline u64
-clib_bihash_hash_24_8 (const clib_bihash_kv_24_8_t * v)
-{
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2];
   return clib_xxhash (tmp);
-}
 #endif
+}
 
 static inline u8 *
 format_bihash_kvp_24_8 (u8 * s, va_list * args)
