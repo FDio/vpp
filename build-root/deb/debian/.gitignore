@@ -11,3 +11,4 @@ vpp-dpdk-dev/
 vpp-dpdk-dkms/
 vpp-dbg/
 vppctl/
+vpp-python-api/

@@ -59,3 +59,10 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: DPDK 2.1 igb_uio_driver
  This package contains Linux kernel modules distributed with DPDK.
+
+Package: vpp-python-api
+Architecture: any
+Depends: ${python:Depends}, ${misc:Depends}, vpp (= ${source:Version})
+Description: VPP Python API bindings
+  This package contains VPP python api bindings
+  .
