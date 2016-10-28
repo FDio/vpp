@@ -108,7 +108,7 @@ ip4_input_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0, * p1;
 	  ip4_header_t * ip0, * ip1;
-	  ip_config_main_t * cm0, * cm1;
+	  vnet_feature_config_main_t * cm0, * cm1;
 	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
 	  u32 sw_if_index1, pi1, ip_len1, cur_len1, next1;
 	  i32 len_diff0, len_diff1;
@@ -245,7 +245,7 @@ ip4_input_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0;
 	  ip4_header_t * ip0;
-	  ip_config_main_t * cm0;
+	  vnet_feature_config_main_t * cm0;
 	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
 	  i32 len_diff0;
 	  u8 error0, cast0;
@@ -343,7 +343,7 @@ ip4_input_inline (vlib_main_t * vm,
     @par Graph mechanics: buffer metadata, next index usage
 
     @em Uses:
-    - ip_config_main_t cm corresponding to each pkt's dst address unicast / 
+    - vnet_feature_config_main_t cm corresponding to each pkt's dst address unicast / 
       multicast status.
     - <code>b->current_config_index</code> corresponding to each pkt's
       rx sw_if_index. 

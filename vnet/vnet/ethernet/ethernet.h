@@ -43,7 +43,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/packet.h>
 #include <vnet/pg/pg.h>
-#include <vnet/ip/feature_registration.h>
+#include <vnet/feature/feature.h>
 
 always_inline u64
 ethernet_mac_address_u64 (u8 * a)
@@ -264,7 +264,7 @@ typedef struct
   u8 next_by_ethertype_register_called;
 
   /** per-interface features */
-  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
+  vnet_feature_config_main_t feature_config_mains[VNET_N_IP_FEAT];
 
   /** Feature path configuration lists */
   vnet_feature_registration_t *next_feature[VNET_N_IP_FEAT];
