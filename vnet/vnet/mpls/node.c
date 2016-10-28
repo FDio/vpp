@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/feature/feature.h>
 
 typedef struct {
   u32 next_index;

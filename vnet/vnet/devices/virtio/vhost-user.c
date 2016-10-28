@@ -36,6 +36,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/feature/feature.h>
 
 #include <vnet/devices/virtio/vhost-user.h>
 
@@ -1290,6 +1291,11 @@ vhost_user_if_input (vlib_main_t * vm,
 	  to_next[0] = bi_head;
 	  to_next++;
 	  n_left_to_next--;
+
+	  /* redirect if feature path enabled */
+	  vnet_feature_device_input_redirect_x1 (node, vui->sw_if_index,
+						 &next0, b_head, 0);
+
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi_head, next0);
