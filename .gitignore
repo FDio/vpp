@@ -13,6 +13,8 @@
 /build-root/*.deb
 /build-root/*.rpm
 /build-root/*.changes
+/build-root/test-doc/
+/build-roit/python/
 /build-config.mk
 /dpdk/*.tar.gz
 /dpdk/*.tar.xz

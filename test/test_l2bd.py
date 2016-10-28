@@ -189,7 +189,7 @@ class TestL2bd(VppTestCase):
             MAC learning enabled
             learn 100 MAC enries
             3 interfaces: untagged, dot1q, dot1ad (dot1q used instead of dot1ad
-             in the first version)
+            in the first version)
 
         2.sending l2 eth pkts between 3 interface
             64B, 512B, 1518B, 9200B (ether_size)
