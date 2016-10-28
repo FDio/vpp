@@ -296,7 +296,7 @@ static uword unformat_dpo (unformat_input_t * input, va_list * args)
 	}
 
       dpo_set(dpo, DPO_CLASSIFY, proto,
-              classify_dpo_create(fp, classify_table_index));
+              classify_dpo_create(proto, classify_table_index));
     }
   else
     return 0;
