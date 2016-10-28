@@ -54,7 +54,7 @@ static inline u64
 clib_bihash_hash_8_8 (clib_bihash_kv_8_8_t * v)
 {
 #if __SSE4_2__
-  return _mm_crc32_u64 (v->key, 0);
+  return _mm_crc32_u64 (0, v->key);
 #else
   return clib_xxhash (v->key);
 #endif
