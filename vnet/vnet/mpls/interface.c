@@ -941,7 +941,7 @@ int vnet_mpls_ethernet_add_del_policy_tunnel (u8 *dst,
           dpo_set(&dpo,
                   DPO_CLASSIFY,
                   DPO_PROTO_IP4,
-                  classify_dpo_create(FIB_PROTOCOL_IP4,
+                  classify_dpo_create(DPO_PROTO_IP4,
                                       classify_table_index));
 
           tp->fei = fib_table_entry_special_dpo_add(tp->inner_fib_index,

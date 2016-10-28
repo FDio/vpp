@@ -654,7 +654,7 @@ ip4_add_interface_routes (u32 sw_if_index,
           dpo_set(&dpo,
                   DPO_CLASSIFY,
                   DPO_PROTO_IP4,
-                  classify_dpo_create(FIB_PROTOCOL_IP4,
+                  classify_dpo_create(DPO_PROTO_IP4,
                                       classify_table_index));
 
 	  fib_table_entry_special_dpo_add(fib_index,
@@ -3301,8 +3301,7 @@ int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
           dpo_set(&dpo,
                   DPO_CLASSIFY,
                   DPO_PROTO_IP4,
-                  classify_dpo_create(FIB_PROTOCOL_IP4,
-                                      table_index));
+                  classify_dpo_create(DPO_PROTO_IP4, table_index));
 
 	  fib_table_entry_special_dpo_add(fib_index,
 					  &pfx,

@@ -1126,7 +1126,7 @@ add_del_route_t_handler (u8 is_multipath,
 		}
 
 	      dpo_set (&dpo, DPO_CLASSIFY, dproto,
-		       classify_dpo_create (prefix->fp_proto,
+		       classify_dpo_create (dproto,
 					    ntohl (classify_table_index)));
 	    }
 	  else

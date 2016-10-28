@@ -528,7 +528,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  rpath.frp_label = MPLS_LABEL_INVALID;
           rpath.frp_proto = FIB_PROTOCOL_IP4;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
-	  pfx.fp_payload_proto = FIB_PROTOCOL_IP4;
+	  pfx.fp_payload_proto = DPO_PROTO_IP4;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input,
@@ -539,7 +539,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
           rpath.frp_proto = FIB_PROTOCOL_IP6;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  vec_add1(rpaths, rpath);
-	  pfx.fp_payload_proto = FIB_PROTOCOL_IP6;
+	  pfx.fp_payload_proto = DPO_PROTO_IP6;
       }
       else if (unformat (line_input,
 			 "mpls-lookup-in-table %d",
@@ -548,7 +548,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  rpath.frp_label = MPLS_LABEL_INVALID;
           rpath.frp_proto = FIB_PROTOCOL_MPLS;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
-	  pfx.fp_payload_proto = FIB_PROTOCOL_MPLS;
+	  pfx.fp_payload_proto = DPO_PROTO_MPLS;
 	  vec_add1(rpaths, rpath);
       }
       else
@@ -597,10 +597,16 @@ vnet_mpls_local_label (vlib_main_t * vm,
       pfx.fp_len = 21;
       pfx.fp_label = local_label;
 
+      if (NULL == rpaths)
+      {
+	  error = clib_error_return(0 , "no paths");
+	  goto done;
+      }
+
       /*
        * the CLI parsing stored table Ids, swap to FIB indicies
        */
-      fi = fib_table_id_find_fib_index(pfx.fp_payload_proto,
+      fi = fib_table_id_find_fib_index(dpo_proto_to_fib(pfx.fp_payload_proto),
 				       rpaths[0].frp_fib_index);
 
       if (~0 == fi)

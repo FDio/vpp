@@ -24,7 +24,7 @@ static dpo_id_t drop_dpos[DPO_PROTO_NUM];
 const dpo_id_t *
 drop_dpo_get (dpo_proto_t proto)
 {
-    dpo_set(&drop_dpos[proto], DPO_DROP, proto, 1);
+    dpo_set(&drop_dpos[proto], DPO_DROP, proto, proto);
 
     return (&drop_dpos[proto]);
 }

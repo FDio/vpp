@@ -25,7 +25,7 @@
  */
 typedef struct classify_dpo_t
 {
-    fib_protocol_t cd_proto;
+    dpo_proto_t cd_proto;
 
     u32 cd_table_index;
 
@@ -35,7 +35,7 @@ typedef struct classify_dpo_t
     u16 cd_locks;
 } classify_dpo_t;
 
-extern index_t classify_dpo_create(fib_protocol_t proto,
+extern index_t classify_dpo_create(dpo_proto_t proto,
                                    u32 classify_table_index);
 
 extern u8* format_classify_dpo(u8 *s, va_list *args);
