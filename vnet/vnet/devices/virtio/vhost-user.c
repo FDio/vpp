@@ -1634,12 +1634,6 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 	  desc_len += bytes_to_copy;
 	}
 
-      if (PREDICT_TRUE (n_left >= 2))
-	{
-	  vlib_prefetch_buffer_with_index (vm, buffers[1], STORE);
-	  CLIB_PREFETCH (&n_left, sizeof (n_left), STORE);
-	}
-
       //Move from available to used ring
       rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id = desc_head;
       rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len = desc_len;
