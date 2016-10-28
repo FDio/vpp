@@ -47,6 +47,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/feature/feature.h>
 
 #if DPDK == 1
 #include <vnet/devices/dpdk/dpdk.h>
@@ -394,6 +395,8 @@ tuntap_rx (vlib_main_t * vm,
         if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
           next_index = TUNTAP_RX_NEXT_DROP;
       }
+
+    vnet_feature_device_input_redirect_x1 (node, tm->hw_if_index, &next_index, b, 0);
 
     vlib_set_next_frame_buffer (vm, node, next_index, bi);
 

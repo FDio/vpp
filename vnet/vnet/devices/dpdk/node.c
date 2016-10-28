@@ -23,6 +23,7 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
 #include <vnet/handoff.h>
+#include <vnet/feature/feature.h>
 
 #include "dpdk_priv.h"
 
@@ -529,6 +530,9 @@ dpdk_device_input (dpdk_main_t * dm,
 	   * which nodes they've visited... See main.c...
 	   */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+
+          /* Do we have any driver RX features configured on the interface? */
+	  vnet_feature_device_input_redirect_x1 (node, xd->vlib_sw_if_index, &next0, b0, l3_offset0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

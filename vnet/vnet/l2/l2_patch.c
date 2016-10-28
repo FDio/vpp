@@ -16,6 +16,7 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/feature/feature.h>
 #include <vppinfra/error.h>
 
 typedef struct
@@ -283,18 +284,16 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_patch_node, l2_patch_node_fn)
       ethernet_set_flags (l2pm->vnet_main, rxhi->hw_if_index,
 			  ETHERNET_INTERFACE_FLAG_ACCEPT_ALL);
 
-      vnet_hw_interface_rx_redirect_to_node (l2pm->vnet_main,
-					     rxhi->hw_if_index,
-					     l2_patch_node.index);
+      vnet_feature_enable_disable ("device-input", "l2-patch",
+				   rxhi->hw_if_index, 1, 0, 0);
     }
   else
     {
       ethernet_set_flags (l2pm->vnet_main, rxhi->hw_if_index,
 			  0 /* disable promiscuous mode */ );
 
-      vnet_hw_interface_rx_redirect_to_node (l2pm->vnet_main,
-					     rxhi->hw_if_index,
-					     ~0 /* disable */ );
+      vnet_feature_enable_disable ("device-input", "l2-patch",
+				   rxhi->hw_if_index, 0, 0, 0);
       if (vec_len (l2pm->tx_next_by_rx_sw_if_index) > rx_sw_if_index)
 	{
 	  l2pm->tx_next_by_rx_sw_if_index[rx_sw_if_index] = ~0;
