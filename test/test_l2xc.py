@@ -78,7 +78,6 @@ class TestL2xc(VppTestCase):
         interfaces. Create host IPv4 address for every host MAC address too.
 
         :param count: Number of hosts to create MAC and IPv4 addresses for.
-        Type: int
         """
         for pg_if in self.pg_interfaces:
             # self.MY_MACS[i.sw_if_index] = []
@@ -151,12 +150,11 @@ class TestL2xc(VppTestCase):
         """ L2XC test
 
         Test scenario:
-        1.config
-            2 pairs of 2 interfaces, l2xconnected
-
-        2.sending l2 eth packets between 4 interfaces
-            64B, 512B, 1518B, 9018B (ether_size)
-            burst of packets per interface
+            1. config
+               2 pairs of 2 interfaces, l2xconnected
+            2. sending l2 eth packets between 4 interfaces
+               64B, 512B, 1518B, 9018B (ether_size)
+               burst of packets per interface
         """
 
         # Create incoming packet streams for packet-generator interfaces
