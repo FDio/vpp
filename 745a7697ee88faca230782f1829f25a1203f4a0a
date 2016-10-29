@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_c9f11597",
+        "filename": "build-data/platforms.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-29T13:42:09Z",
+      "side": 1,
+      "message": "should this not say \"python bindings\" or somesuch? i get it\u0027s just a comment, but...",
+      "range": {
+        "startLine": 46,
+        "startChar": 3,
+        "endLine": 46,
+        "endChar": 20
+      },
+      "revId": "745a7697ee88faca230782f1829f25a1203f4a0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
