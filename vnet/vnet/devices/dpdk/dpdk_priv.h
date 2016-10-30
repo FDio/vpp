@@ -35,6 +35,7 @@
 _(no-shconf)                                    \
 _(no-hpet)                                      \
 _(no-huge)                                      \
+_(virtio-vhost)									\
 _(vmware-tsc-map)
 
 #define foreach_eal_single_hyphen_mandatory_arg \
