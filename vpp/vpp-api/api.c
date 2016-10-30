@@ -4200,7 +4200,12 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
-  rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
+#if DPDK > 0 && DPDK_VHOST_USER
+  rv = dpdk_vhost_user_create_if (
+#else
+  rv = vhost_user_create_if (
+#endif
+				vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, &sw_if_index, (u64) ~ 0,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
 			     (mp->use_custom_mac) ? mp->mac_address : NULL);
@@ -4240,7 +4245,11 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+#if DPDK > 0 && DPDK_VHOST_USER
+  rv = dpdk_vhost_user_delete_if (vnm, vm, sw_if_index);
+#else
   rv = vhost_user_delete_if (vnm, vm, sw_if_index);
+#endif
 
   REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
   if (!rv)
@@ -4304,7 +4313,11 @@ static void
   if (q == 0)
     return;
 
+#if DPDK > 0 && DPDK_VHOST_USER
+  rv = dpdk_vhost_user_dump_ifs (vnm, vm, &ifaces);
+#else
   rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
+#endif
   if (rv)
     return;
 

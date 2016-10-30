@@ -303,6 +303,19 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 	    break;
 	}
     }
+#if DPDK_VHOST_USER
+  else if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER) {
+	  while (n_left) {
+		  n_this_chunk = rte_eth_rx_burst(xd->port_id, queue_id,
+				  xd->rx_vectors[queue_id] + n_buffers, n_left);
+		  n_buffers += n_this_chunk;
+		  n_left -= n_this_chunk;
+
+		  if (n_this_chunk == 0)
+			  break;
+	  }
+  }
+#endif
   else
     {
       ASSERT (0);
