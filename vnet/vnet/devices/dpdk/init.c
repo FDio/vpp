@@ -107,17 +107,17 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 
       rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
 				   xd->cpu_socket, 0,
-				   bm->
-				   pktmbuf_pools[xd->cpu_socket_id_by_queue
-						 [j]]);
+				   bm->pktmbuf_pools[xd->
+						     cpu_socket_id_by_queue
+						     [j]]);
 
       /* retry with any other CPU socket */
       if (rv < 0)
 	rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
 				     SOCKET_ID_ANY, 0,
-				     bm->
-				     pktmbuf_pools[xd->cpu_socket_id_by_queue
-						   [j]]);
+				     bm->pktmbuf_pools[xd->
+						       cpu_socket_id_by_queue
+						       [j]]);
       if (rv < 0)
 	return clib_error_return (0, "rte_eth_rx_queue_setup[%d]: err %d",
 				  xd->device_index, rv);
@@ -221,6 +221,7 @@ dpdk_device_lock_init (dpdk_device_t * xd)
 					     CLIB_CACHE_LINE_BYTES);
       memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
     }
+  xd->need_txlock = 1;
 }
 
 void
@@ -232,6 +233,7 @@ dpdk_device_lock_free (dpdk_device_t * xd)
     clib_mem_free ((void *) xd->lockp[q]);
   vec_free (xd->lockp);
   xd->lockp = 0;
+  xd->need_txlock = 0;
 }
 
 static clib_error_t *
@@ -797,6 +799,9 @@ dpdk_lib_init (dpdk_main_t * dm)
     clib_warning ("%d mbufs allocated but total rx/tx ring size is %d\n",
 		  dm->conf->num_mbufs, nb_desc);
 
+  /* init next vhost-user if index */
+  dm->next_vu_if_id = 0;
+
   return 0;
 }
 
@@ -993,6 +998,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
 
+  /* Uses virtio by default */
+  conf->use_virtio_vhost = 1;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       /* Prime the pump */
@@ -1050,6 +1058,18 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "socket-mem %s", &socket_mem))
 	;
+      else
+	if (unformat
+	    (input, "vhost-user-coalesce-frames %d",
+	     &conf->vhost_coalesce_frames))
+	;
+      else
+	if (unformat
+	    (input, "vhost-user-coalesce-time %f",
+	     &conf->vhost_coalesce_time))
+	;
+      else if (unformat (input, "enable-vhost-user"))
+	conf->use_virtio_vhost = 0;
       else if (unformat (input, "no-pci"))
 	{
 	  no_pci = 1;
@@ -1512,6 +1532,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   ethernet_main_t *em = &ethernet_main;
   dpdk_device_t *xd;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+#if DPDK_VHOST_USER
+  struct rte_eth_link link;
+  uword flags = 0;
+#endif
   int i;
 
   error = dpdk_lib_init (dm);
@@ -1662,6 +1686,22 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	if ((now - xd->time_last_link_update) >= dm->link_state_poll_interval)
 	  dpdk_update_link_state (xd, now);
 
+#if DPDK_VHOST_USER
+	if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
+	  {
+	    flags = vnet_hw_interface_get_flags (vnm, xd->vlib_hw_if_index);
+	    if (!(flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
+	      {
+		rte_eth_link_get_nowait (xd->port_id, &link);
+		if (link.link_status == ETH_LINK_UP)
+		  {
+		    vnet_hw_interface_set_flags
+		      (vnm, xd->vlib_hw_if_index,
+		       VNET_HW_INTERFACE_FLAG_LINK_UP | ETH_LINK_FULL_DUPLEX);
+		  }
+	      }
+	  }
+#endif
       }
     }
 
@@ -1745,6 +1785,10 @@ dpdk_init (vlib_main_t * vm)
 			      DPDK_NB_RX_DESC_10GE) / 100);
   dm->efd.consec_full_frames_hi_thresh =
     DPDK_EFD_DEFAULT_CONSEC_FULL_FRAMES_HI_THRESH;
+
+  /* vhost-user coalescence frames defaults */
+  dm->conf->vhost_coalesce_frames = 32;
+  dm->conf->vhost_coalesce_time = 1e-3;
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template =

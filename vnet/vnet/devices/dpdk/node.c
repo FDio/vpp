@@ -305,6 +305,22 @@ dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 	    break;
 	}
     }
+#if DPDK_VHOST_USER
+  else if (xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
+    {
+      while (n_left)
+	{
+	  n_this_chunk = rte_eth_rx_burst (xd->port_id, queue_id,
+					   xd->rx_vectors[queue_id] +
+					   n_buffers, n_left);
+	  n_buffers += n_this_chunk;
+	  n_left -= n_this_chunk;
+
+	  if (n_this_chunk == 0)
+	    break;
+	}
+    }
+#endif
   else
     {
       ASSERT (0);
@@ -532,8 +548,9 @@ dpdk_device_input (dpdk_main_t * dm,
 	   */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
-          /* Do we have any driver RX features configured on the interface? */
-	  vnet_feature_start_device_input_x1 (xd->vlib_sw_if_index, &next0, b0, l3_offset0);
+	  /* Do we have any driver RX features configured on the interface? */
+	  vnet_feature_start_device_input_x1 (xd->vlib_sw_if_index, &next0,
+					      b0, l3_offset0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
