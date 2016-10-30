@@ -165,6 +165,13 @@ format_dpdk_device_name (u8 * s, va_list * args)
   else
     devname_format = "%s%x/%x/%x";
 
+#if DPDK_VHOST_USER
+  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
+    {
+      return format (s, "VirtualEthernet0/0/%d", dm->devices[i].vu_if_id);
+    }
+#endif
+
   switch (dm->devices[i].port_type)
     {
     case VNET_DPDK_PORT_TYPE_ETH_1G:
@@ -212,6 +219,9 @@ format_dpdk_device_type (u8 * s, va_list * args)
   dpdk_main_t *dm = &dpdk_main;
   char *dev_type;
   u32 i = va_arg (*args, u32);
+
+  if (dm->devices[i].flags & DPDK_DEVICE_FLAG_VHOST_USER)
+    return format (s, "vhost-user interface");
 
   switch (dm->devices[i].pmd)
     {
@@ -431,6 +441,13 @@ format_dpdk_device (u8 * s, va_list * args)
 		  format_dpdk_rss_hf_name, rss_conf.rss_hf,
 		  format_white_space, indent + 2,
 		  format_dpdk_rss_hf_name, di.flow_type_rss_offloads);
+    }
+
+  if (verbose && xd->flags & DPDK_DEVICE_FLAG_VHOST_USER)
+    {
+      s = format (s, "%Uqueue size (max):  rx %d (%d) tx %d (%d)\n",
+		  format_white_space, indent + 2,
+		  xd->rx_q_used, xd->rx_q_used, xd->tx_q_used, xd->tx_q_used);
     }
 
   s = format (s, "%Urx queues %d, rx desc %d, tx queues %d, tx desc %d\n",
