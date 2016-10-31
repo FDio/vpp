@@ -77,7 +77,7 @@ vlib_buffer_is_mpls (vlib_buffer_t * b)
 always_inline void
 dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t * xd,
 					 struct rte_mbuf *mb,
-					 vlib_buffer_t * b0, u8 * next0,
+					 vlib_buffer_t * b0, u32 * next0,
 					 u8 * error0)
 {
   u8 n0;
@@ -147,7 +147,7 @@ dpdk_rx_trace (dpdk_main_t * dm,
 {
   vlib_main_t *vm = vlib_get_main ();
   u32 *b, n_left;
-  u8 next0;
+  u32 next0;
 
   n_left = n_buffers;
   b = buffers;
@@ -398,8 +398,8 @@ dpdk_device_input (dpdk_main_t * dm,
 
   while (n_buffers > 0)
     {
-      u32 bi0;
-      u8 next0, error0;
+      u32 bi0, next0;
+      u8 error0;
       u32 l3_offset0;
       vlib_buffer_t *b0, *b_seg, *b_chain = 0;
       u32 cntr_type;
