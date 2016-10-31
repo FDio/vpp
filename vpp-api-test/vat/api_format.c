@@ -17022,18 +17022,40 @@ vat_api_hookup (vat_main_t * vam)
 }
 
 #undef vl_api_version
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
+#define vl_api_version(n,v) static u32 memory_api_version = v;
+#include <vlibmemory/vl_memory_api_h.h>
+#undef vl_api_version
+
+#undef vl_api_version
+#define vl_api_version(n,v) static u32 vnet_interface_api_version = v;
+#include <vnet/interface.api.h>
+#undef vl_api_version
+
+#undef vl_api_version
+#define vl_api_version(n,v) static u32 vpp_api_version = v;
 #include <vpp-api/vpe.api.h>
 #undef vl_api_version
+
+static u32 *api_versions[] = {
+  &memory_api_version,
+  &vnet_interface_api_version,
+  &vpp_api_version,
+};
 
 void
 vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
 {
+  int i;
+
+  ASSERT (ARRAY_LEN (mp->api_versions) >= ARRAY_LEN (api_versions));
+
   /*
-   * Send the main API signature in slot 0. This bit of code must
+   * Send the API signatures. This bit of code must
    * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
    */
-  mp->api_versions[0] = clib_host_to_net_u32 (vpe_api_version);
+
+  for (i = 0; i < ARRAY_LEN (api_versions); i++)
+    mp->api_versions[i] = clib_host_to_net_u32 (*api_versions[i]);
 }
 
 /*
