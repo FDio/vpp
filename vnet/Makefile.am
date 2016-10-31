@@ -15,6 +15,8 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @IPSEC@ @IPV6SR@
 
+BUILT_SOURCES = vnet/interface.api.h
+
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
 nobase_include_HEADERS =
@@ -33,6 +35,7 @@ libvnet_la_SOURCES +=					\
   vnet/config.c						\
   vnet/handoff.c					\
   vnet/interface.c					\
+  vnet/interface_api.c					\
   vnet/interface_cli.c					\
   vnet/interface_format.c				\
   vnet/interface_output.c				\
@@ -47,12 +50,15 @@ nobase_include_HEADERS +=			\
   vnet/global_funcs.h				\
   vnet/handoff.h				\
   vnet/interface.h				\
+  vnet/interface.api.h				\
   vnet/interface_funcs.h			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
   vnet/replication.h				\
   vnet/rewrite.h				\
-  vnet/vnet.h
+  vnet/vnet.h					\
+  vnet/vnet_all_api_h.h				\
+  vnet/vnet_msg_enum.h
 
 ########################################
 # Policer infra
@@ -842,3 +848,11 @@ pcap2pg_LDFLAGS = -static
 pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
+
+SUFFIXES = .api.h .api
+
+%.api.h: %.api
+	@echo "  APIGEN  " $@ ;					\
+	mkdir -p `dirname $@` ;					\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --output $@ --show-name $@
