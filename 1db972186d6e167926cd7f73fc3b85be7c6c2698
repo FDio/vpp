@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_2411e8ac",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-31T21:57:54Z",
+      "side": 1,
+      "message": "Please put -2 on your change if you don\u0027t want to be merged....",
+      "range": {
+        "startLine": 7,
+        "startChar": 33,
+        "endLine": 7,
+        "endChar": 46
+      },
+      "revId": "1db972186d6e167926cd7f73fc3b85be7c6c2698",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_440cec94",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2419,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-10-31T21:57:54Z",
+      "side": 1,
+      "message": "Please create separate CLI, i.e \"create dpdk-vhost-user\"",
+      "range": {
+        "startLine": 2419,
+        "startChar": 0,
+        "endLine": 2419,
+        "endChar": 13
+      },
+      "revId": "1db972186d6e167926cd7f73fc3b85be7c6c2698",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
