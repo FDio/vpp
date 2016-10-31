@@ -121,14 +121,13 @@ if WITH_IPV6SR
   vpp_LDADD += -lcrypto
 endif
 
+# Set the suffix list
 SUFFIXES = .api.h .api
 
-%.api.h: %.api
-	@echo "  APIGEN  " $@ ;					\
-	mkdir -p `dirname $@` ;					\
-	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --output $@ --show-name $@
+# The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
+# and requires a symbolic link at the top of the vpp source tree
 
+include $(top_srcdir)/suffix-rules.mk
 
 noinst_PROGRAMS += test_client
 

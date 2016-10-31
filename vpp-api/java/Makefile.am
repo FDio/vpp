@@ -104,10 +104,9 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJN
 		jvpp-core/$(packagedir_jvpp_core)/notification/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/future/*.java 	\
 		jvpp-core/$(packagedir_jvpp_core)/callfacade/*.java 	\
-		jvpp-core/$(packagedir_jvpp_core)/test/*.java \
 		|| (echo "jvpp-core compilation failed: $$?"; exit 1)
 	$(JAVAH) -force -classpath jvpp-registry/target:jvpp-core/target -d jvpp-core io.fd.vpp.jvpp.core.JVppCoreImpl
-	
+
 $(jarfile_jvpp_core): libjvpp_core.la
 	cp .libs/libjvpp_core.so.0.0.0 jvpp-core/target
 	$(JAR) cf $(JARFLAGS) $@ -C jvpp-core/target .

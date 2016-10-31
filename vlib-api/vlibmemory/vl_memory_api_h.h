@@ -23,7 +23,6 @@
  */
 #include <vlibmemory/memclnt.api.h>
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

@@ -125,9 +125,6 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 
-#define f64_endian(a)
-#define f64_print(a,b)
-
 #define vl_typedefs		/* define message structures */
 #include <vpp-api/vpe_all_api_h.h>
 #undef vl_typedefs
@@ -142,144 +139,7 @@
 #include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO2(t, body)                                   \
-do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO3(t, n, body)				\
-do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                 \
-    rmp->_vl_msg_id = ntohs((t));                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO4(t, n, body)                                \
-do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
-    u8 is_error = 0;                                            \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc_or_null (sizeof (*rmp) + n);         \
-    if (!rmp)                                                   \
-      {                                                         \
-        /* if there isn't enough memory, try to allocate */     \
-        /* some at least for returning an error */              \
-        rmp = vl_msg_api_alloc (sizeof (*rmp));                 \
-        if (!rmp)                                               \
-          return;                                               \
-                                                                \
-        memset (rmp, 0, sizeof (*rmp));                         \
-        rv = VNET_API_ERROR_TABLE_TOO_BIG;                      \
-        is_error = 1;                                           \
-      }                                                         \
-    rmp->_vl_msg_id = ntohs((t));                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    if (!is_error)                                              \
-      do {body;} while (0);                                     \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#if (1 || CLIB_DEBUG > 0)	/* "trust, but verify" */
-
-#define VALIDATE_SW_IF_INDEX(mp)				\
- do { u32 __sw_if_index = ntohl(mp->sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __sw_if_index)) {                    \
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_sw_if_index;                                   \
-    }                                                           \
-} while(0);
-
-#define BAD_SW_IF_INDEX_LABEL                   \
-do {                                            \
-bad_sw_if_index:                                \
-    ;                                           \
-} while (0);
-
-#define VALIDATE_RX_SW_IF_INDEX(mp)				\
- do { u32 __rx_sw_if_index = ntohl(mp->rx_sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __rx_sw_if_index)) {			\
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_rx_sw_if_index;				\
-    }                                                           \
-} while(0);
-
-#define BAD_RX_SW_IF_INDEX_LABEL		\
-do {                                            \
-bad_rx_sw_if_index:				\
-    ;                                           \
-} while (0);
-
-#define VALIDATE_TX_SW_IF_INDEX(mp)				\
- do { u32 __tx_sw_if_index = ntohl(mp->tx_sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __tx_sw_if_index)) {			\
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_tx_sw_if_index;				\
-    }                                                           \
-} while(0);
-
-#define BAD_TX_SW_IF_INDEX_LABEL		\
-do {                                            \
-bad_tx_sw_if_index:				\
-    ;                                           \
-} while (0);
-
-#else
-
-#define VALIDATE_SW_IF_INDEX(mp)
-#define BAD_SW_IF_INDEX_LABEL
-#define VALIDATE_RX_SW_IF_INDEX(mp)
-#define BAD_RX_SW_IF_INDEX_LABEL
-#define VALIDATE_TX_SW_IF_INDEX(mp)
-#define BAD_TX_SW_IF_INDEX_LABEL
-
-#endif /* CLIB_DEBUG > 0 */
+#include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                                             \
 _(WANT_INTERFACE_EVENTS, want_interface_events)                         \
@@ -287,7 +147,6 @@ _(WANT_OAM_EVENTS, want_oam_events)                                     \
 _(OAM_ADD_DEL, oam_add_del)                                             \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                                 \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
-_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                               \
 _(MPLS_IP_BIND_UNBIND, mpls_ip_bind_unbind)                             \
@@ -2713,30 +2572,6 @@ static void
 vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
 {
   clib_warning ("BUG");
-}
-
-static void
-vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
-{
-  vl_api_sw_interface_set_flags_reply_t *rmp;
-  vnet_main_t *vnm = vnet_get_main ();
-  int rv = 0;
-  clib_error_t *error;
-  u16 flags;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  flags = mp->admin_up_down ? VNET_SW_INTERFACE_FLAG_ADMIN_UP : 0;
-
-  error = vnet_sw_interface_set_flags (vnm, ntohl (mp->sw_if_index), flags);
-  if (error)
-    {
-      rv = -1;
-      clib_error_report (error);
-    }
-
-  BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_SW_INTERFACE_SET_FLAGS_REPLY);
 }
 
 static void
