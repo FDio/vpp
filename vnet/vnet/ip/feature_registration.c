@@ -62,7 +62,7 @@
     <CODE><PRE>
     ip4_main_t *im = \&ip4_main;
     ip_lookup_main_t *lm = &im->lookup_main;
-    ip_config_main_t *rx_cm =
+    vnet_feature_config_main_t *rx_cm =
         &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
     sw_if_index = <interface-handle>
@@ -95,7 +95,7 @@
 
     <CODE><PRE>
     ip_lookup_main_t * lm = sm->ip4_lookup_main;
-    ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+    vnet_feature_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
 
     Call @c vnet_get_config_data to set next0, and to advance
     @c b0->current_config_index:
@@ -414,7 +414,7 @@ VLIB_CLI_COMMAND (show_ip_features_command, static) = {
 void
 ip_interface_features_show (vlib_main_t * vm,
 			    const char *pname,
-			    ip_config_main_t * cm, u32 sw_if_index)
+			    vnet_feature_config_main_t * cm, u32 sw_if_index)
 {
   u32 node_index, current_config_index;
   vnet_cast_t cast;

@@ -29,7 +29,7 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
   else
     {
       ip_lookup_main_t * lm;
-      ip_config_main_t * ipcm;
+      vnet_feature_config_main_t * ipcm;
       u32 ftype;
       u32 ci;
 

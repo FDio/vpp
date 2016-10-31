@@ -357,7 +357,7 @@ typedef struct ip_lookup_main_t {
   u32 * classify_table_index_by_sw_if_index;
 
   /** rx unicast, multicast, tx interface/feature configuration. */
-  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
+  vnet_feature_config_main_t feature_config_mains[VNET_N_IP_FEAT];
 
   /** Number of bytes in a fib result.  Must be at least
      sizeof (uword).  First word is always adjacency index. */

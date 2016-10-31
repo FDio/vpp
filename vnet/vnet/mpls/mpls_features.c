@@ -133,7 +133,7 @@ static char * tx_feature_start_nodes[] =
 clib_error_t *
 mpls_feature_init (vlib_main_t * vm)
 {
-  ip_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   vnet_config_main_t * vcm = &cm->config_main;
   clib_error_t *error;
 
@@ -171,7 +171,7 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 
   for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
   {
-      ip_config_main_t * cm = &mm->feature_config_mains[cast];
+      vnet_feature_config_main_t * cm = &mm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       if (VNET_IP_RX_MULTICAST_FEAT == cast)

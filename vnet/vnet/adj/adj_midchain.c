@@ -320,10 +320,10 @@ adj_get_midchain_node (vnet_link_t link)
     return (0);
 }
 
-static ip_config_main_t *
+static vnet_feature_config_main_t *
 adj_midchain_get_cofing_for_link_type (const ip_adjacency_t *adj)
 {
-    ip_config_main_t *cm = NULL;
+    vnet_feature_config_main_t *cm = NULL;
 
     switch (adj->ia_link)
     {
@@ -374,7 +374,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 				 u8 *rewrite)
 {
     vnet_config_main_t * vcm;
-    ip_config_main_t *cm;
+    vnet_feature_config_main_t *cm;
     ip_adjacency_t *adj;
     u32 ci;
 

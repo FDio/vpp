@@ -734,7 +734,7 @@ ip4_sw_interface_enable_disable (u32 sw_if_index,
 
   for (cast = 0; cast <= VNET_IP_RX_MULTICAST_FEAT; cast++)
     {
-      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      vnet_feature_config_main_t * cm = &lm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
@@ -969,7 +969,7 @@ ip4_feature_init (vlib_main_t * vm, ip4_main_t * im)
   ip_lookup_main_t * lm = &im->lookup_main;
   clib_error_t * error;
   vnet_cast_t cast;
-  ip_config_main_t * cm;
+  vnet_feature_config_main_t * cm;
   vnet_config_main_t * vcm;
   char **feature_start_nodes;
   int feature_start_len;
@@ -1017,7 +1017,7 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 
   for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
     {
-      ip_config_main_t * cm = &lm->feature_config_mains[cast];
+      vnet_feature_config_main_t * cm = &lm->feature_config_mains[cast];
       vnet_config_main_t * vcm = &cm->config_main;
 
       vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
@@ -2184,7 +2184,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, * to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
   vlib_rx_or_tx_t adj_rx_tx = rewrite_for_locally_received_packets ? VLIB_RX : VLIB_TX;
-  ip_config_main_t * cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t * cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;

@@ -96,7 +96,7 @@ mpls_input_inline (vlib_main_t * vm,
 	  mpls_unicast_header_t * h0;
           u32 label0;
 	  u32 next0;
-	  ip_config_main_t * cm0;
+	  vnet_feature_config_main_t * cm0;
           u32 sw_if_index0;
 
 	  bi0 = from[0];
