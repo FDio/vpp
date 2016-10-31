@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_44dd0c42",
+        "filename": "vnet/vnet/interface_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-10-31T17:34:30Z",
+      "side": 1,
+      "message": "worth fixing this comment",
+      "range": {
+        "startLine": 77,
+        "startChar": 7,
+        "endLine": 77,
+        "endChar": 21
+      },
+      "revId": "0383977abdd6e1399f56ed032100eac69026ed46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
