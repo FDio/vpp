@@ -2179,6 +2179,29 @@ static void *vl_api_ipfix_classify_table_dump_t_print
   FINISH;
 }
 
+static void *vl_api_span_add_del_t_print
+  (vl_api_span_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_add_del ");
+  s = format (s, "sw_if_index_from %u ", ntohl (mp->sw_if_index_from));
+  s = format (s, "sw_if_index_to %u ", ntohl (mp->sw_if_index_to));
+  s = format (s, "is_add %u ", mp->is_add);
+
+  FINISH;
+}
+
+static void *
+vl_api_span_dump_t_print (vl_api_span_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: span_dump ");
+
+  FINISH;
+}
+
 static void *vl_api_get_next_index_t_print
   (vl_api_get_next_index_t * mp, void *handle)
 {
@@ -2925,6 +2948,8 @@ _(SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                 \
 _(IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)               \
 _(IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)           \
 _(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                 \
+_(SPAN_ADD_DEL, span_add_del)                                           \
+_(SPAN_DUMP, span_dump)                                                 \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE,pg_create_interface)                              \
 _(PG_CAPTURE, pg_capture)                                               \
