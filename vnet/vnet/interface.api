@@ -1,0 +1,31 @@
+/* Hey Emacs use -*- mode: C -*- */
+
+/** \brief Set flags on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to set flags on
+    @param admin_up_down - set the admin state, 1 = up, 0 = down
+    @param link_up_down - Oper state sent on change event, not used in config.
+    @param deleted - interface was deleted
+*/
+define sw_interface_set_flags
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  /* 1 = up, 0 = down */
+  u8 admin_up_down;
+  u8 link_up_down;
+  u8 deleted;
+};
+
+/** \brief Reply to sw_interface_set_flags 
+    @param context - sender context which was passed in the request
+    @param retval - return code of the set flags request
+*/
+define sw_interface_set_flags_reply
+{
+  u32 context;
+  i32 retval;
+};
+
