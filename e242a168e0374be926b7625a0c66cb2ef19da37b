@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_d81c3c6d",
+        "filename": "vlib/vlib/node.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 471,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-31T23:17:38Z",
+      "side": 1,
+      "message": "I\u0027ll bet dollars to donuts this was supposed to make the node runtime 2 cache-lines in size. You might want to try changing uword -\u003e u8 and see what happens.",
+      "revId": "e242a168e0374be926b7625a0c66cb2ef19da37b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_b819787b",
+        "filename": "vnet/vnet/feature/feature.h",
+        "patchSetId": 22
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-10-31T23:17:38Z",
+      "side": 1,
+      "message": "Excellent idea... (:-)...",
+      "revId": "e242a168e0374be926b7625a0c66cb2ef19da37b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
