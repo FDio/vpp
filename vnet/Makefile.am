@@ -15,6 +15,8 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
+BUILT_SOURCES = vnet/interface.api.h
+
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
 nobase_include_HEADERS =
@@ -34,6 +36,7 @@ libvnet_la_SOURCES +=					\
   vnet/devices/devices.c				\
   vnet/handoff.c					\
   vnet/interface.c					\
+  vnet/interface_api.c					\
   vnet/interface_cli.c					\
   vnet/interface_format.c				\
   vnet/interface_output.c				\
@@ -49,12 +52,15 @@ nobase_include_HEADERS +=			\
   vnet/global_funcs.h				\
   vnet/handoff.h				\
   vnet/interface.h				\
+  vnet/interface.api.h				\
   vnet/interface_funcs.h			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
   vnet/replication.h				\
   vnet/rewrite.h				\
-  vnet/vnet.h
+  vnet/vnet.h					\
+  vnet/vnet_all_api_h.h				\
+  vnet/vnet_msg_enum.h
 
 ########################################
 # Policer infra
@@ -876,3 +882,16 @@ pcap2pg_LDFLAGS = -static
 pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
+
+# Set the suffix list
+SUFFIXES = .api.h .api
+
+# install the API definition, so we can produce java bindings, etc.
+
+apidir = $(prefix)/vpp-api
+api_DATA = vnet/interface.api
+
+# The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
+# and requires a symbolic link at the top of the vnet source tree
+
+include $(top_srcdir)/suffix-rules.mk
