@@ -543,7 +543,7 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   u32 ci;
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
-  ip_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
+  vnet_feature_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   u32 feature_index;
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))

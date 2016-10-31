@@ -264,7 +264,7 @@ typedef struct
   u8 next_by_ethertype_register_called;
 
   /** per-interface features */
-  ip_config_main_t feature_config_mains[VNET_N_IP_FEAT];
+  vnet_feature_config_main_t feature_config_mains[VNET_N_IP_FEAT];
 
   /** Feature path configuration lists */
   vnet_feature_registration_t *next_feature[VNET_N_IP_FEAT];

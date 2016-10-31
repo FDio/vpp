@@ -1581,13 +1581,13 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
   ip6_main_t *ip6m = &ip6_main;
   ip_lookup_main_t *ip4lm = &ip4m->lookup_main;
   ip_lookup_main_t *ip6lm = &ip6m->lookup_main;
-  ip_config_main_t *rx_cm4u =
+  vnet_feature_config_main_t *rx_cm4u =
     &ip4lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *rx_cm4m =
+  vnet_feature_config_main_t *rx_cm4m =
     &ip4lm->feature_config_mains[VNET_IP_RX_MULTICAST_FEAT];
-  ip_config_main_t *rx_cm6u =
+  vnet_feature_config_main_t *rx_cm6u =
     &ip6lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *rx_cm6m =
+  vnet_feature_config_main_t *rx_cm6m =
     &ip6lm->feature_config_mains[VNET_IP_RX_MULTICAST_FEAT];
 
   VALIDATE_SW_IF_INDEX (mp);

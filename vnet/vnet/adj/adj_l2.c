@@ -53,7 +53,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
     u32 * from = vlib_frame_vector_args (frame);
     u32 n_left_from, n_left_to_next, * to_next, next_index;
     u32 cpu_index = os_get_cpu_number();
-    ip_config_main_t * cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
+    vnet_feature_config_main_t * cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
 
     n_left_from = frame->n_vectors;
     next_index = node->cached_next_index;

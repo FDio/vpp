@@ -156,9 +156,10 @@ ip4_source_and_port_range_check_inline (vlib_main_t * vm,
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm =
+  vnet_feature_config_main_t *rx_cm =
     &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t *tx_cm =
+    &lm->feature_config_mains[VNET_IP_TX_FEAT];
   u32 n_left_from, *from, *to_next;
   u32 next_index;
   vlib_node_runtime_t *error_node = node;
@@ -640,9 +641,10 @@ set_ip_source_and_port_range_check (vlib_main_t * vm,
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
-  ip_config_main_t *rx_cm =
+  vnet_feature_config_main_t *rx_cm =
     &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  ip_config_main_t *tx_cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+  vnet_feature_config_main_t *tx_cm =
+    &lm->feature_config_mains[VNET_IP_TX_FEAT];
   u32 ci;
   ip_source_and_port_range_check_config_t config;
   u32 feature_index;

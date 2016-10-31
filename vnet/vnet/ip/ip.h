@@ -219,7 +219,7 @@ extern vlib_node_registration_t ip6_inacl_node;
 
 void
 vnet_config_update_tx_feature_count (ip_lookup_main_t * lm, 
-                                     ip_config_main_t * tx_cm, 
+                                     vnet_feature_config_main_t * tx_cm, 
                                      u32 sw_if_index, 
                                      int is_add);
 

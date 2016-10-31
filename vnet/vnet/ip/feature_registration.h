@@ -31,11 +31,11 @@ typedef struct _vnet_feature_registration
   char **runs_after;
 } vnet_feature_registration_t;
 
-typedef struct ip_config_main_t_
+typedef struct vnet_feature_config_main_t_
 {
   vnet_config_main_t config_main;
   u32 *config_index_by_sw_if_index;
-} ip_config_main_t;
+} vnet_feature_config_main_t;
 
 /** Syntactic sugar, the c-compiler won't initialize registrations without it */
 #define ORDER_CONSTRAINTS (char*[])
@@ -49,7 +49,8 @@ clib_error_t *vnet_feature_arc_init (vlib_main_t * vm,
 
 void ip_interface_features_show (vlib_main_t * vm,
 				 const char *pname,
-				 ip_config_main_t * cm, u32 sw_if_index);
+				 vnet_feature_config_main_t * cm,
+				 u32 sw_if_index);
 
 #endif /* included_feature_registration_h */
 

@@ -146,7 +146,7 @@ VLIB_INIT_FUNCTION (ip_main_init);
 
 void
 vnet_config_update_tx_feature_count (ip_lookup_main_t * lm, 
-                                     ip_config_main_t * tx_cm, 
+                                     vnet_feature_config_main_t * tx_cm, 
                                      u32 sw_if_index, 
                                      int is_add)
 {

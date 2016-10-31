@@ -105,7 +105,7 @@ ip6_input (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0, * p1;
 	  ip6_header_t * ip0, * ip1;
-	  ip_config_main_t * cm0, * cm1;
+	  vnet_feature_config_main_t * cm0, * cm1;
 	  u32 pi0, sw_if_index0, next0;
 	  u32 pi1, sw_if_index1, next1;
 	  u8 error0, error1, cast0, cast1;
@@ -217,7 +217,7 @@ ip6_input (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0;
 	  ip6_header_t * ip0;
-		  ip_config_main_t * cm0;
+		  vnet_feature_config_main_t * cm0;
 	  u32 pi0, sw_if_index0, next0;
 	  u8 error0, cast0;
 
