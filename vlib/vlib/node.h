@@ -261,6 +261,8 @@ typedef struct vlib_node_t
 #define VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE (1 << 6)
 #define VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE (1 << 7)
 
+#define VLIB_NODE_FLAG_IS_CLASSIFY (1 << 10)
+
   /* State for input nodes. */
   u8 state;
 
