@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_44caaca2",
+        "filename": "test/test_l2xc.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 122
+      },
+      "writtenOn": "2016-10-31T12:39:04Z",
+      "side": 1,
+      "message": "it is correct create_stream creates only one packet with size 64B?",
+      "range": {
+        "startLine": 156,
+        "startChar": 12,
+        "endLine": 156,
+        "endChar": 48
+      },
+      "revId": "0bc98cee56ca273633d25a23ba829e6aee628c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_64d5b042",
+        "filename": "test/test_l2xc.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 122
+      },
+      "writtenOn": "2016-10-31T12:39:04Z",
+      "side": 1,
+      "message": "it doesnt match with TestL2xc.sl_pkts_per_burst, it has value 1 not 2",
+      "range": {
+        "startLine": 157,
+        "startChar": 12,
+        "endLine": 157,
+        "endChar": 44
+      },
+      "revId": "0bc98cee56ca273633d25a23ba829e6aee628c9a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
