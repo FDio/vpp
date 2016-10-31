@@ -20,9 +20,6 @@
 
 typedef struct
 {
-  u32 cached_next_index;
-  u32 cached_rx_sw_if_index;
-
   /* vector of dispositions, indexed by rx_sw_if_index */
   u32 *tx_next_by_rx_sw_if_index;
   u32 *tx_sw_if_index_by_rx_sw_if_index;
@@ -139,19 +136,12 @@ l2_patch_node_fn (vlib_main_t * vm,
 	  ASSERT (l2pm->tx_next_by_rx_sw_if_index[sw_if_index1] != ~0);
 	  ASSERT (l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index1] != ~0);
 
-	  if (PREDICT_TRUE (sw_if_index0 == l2pm->cached_rx_sw_if_index))
-	    next0 = l2pm->cached_next_index;
-	  else
-	    {
-	      next0 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index0];
-	      l2pm->cached_rx_sw_if_index = sw_if_index0;
-	      l2pm->cached_next_index = next0;
-	    }
-
-	  if (PREDICT_TRUE (sw_if_index1 == l2pm->cached_rx_sw_if_index))
-	    next1 = l2pm->cached_next_index;
-	  else
-	    next1 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index1];
+	  next0 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index0];
+	  next1 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index1];
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index0];
+	  vnet_buffer (b1)->sw_if_index[VLIB_TX] =
+	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index1];
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -201,14 +191,9 @@ l2_patch_node_fn (vlib_main_t * vm,
 	  ASSERT (l2pm->tx_next_by_rx_sw_if_index[sw_if_index0] != ~0);
 	  ASSERT (l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index0] != ~0);
 
-	  if (PREDICT_TRUE (sw_if_index0 == l2pm->cached_rx_sw_if_index))
-	    next0 = l2pm->cached_next_index;
-	  else
-	    {
-	      next0 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index0];
-	      l2pm->cached_rx_sw_if_index = sw_if_index0;
-	      l2pm->cached_next_index = next0;
-	    }
+	  next0 = l2pm->tx_next_by_rx_sw_if_index[sw_if_index0];
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+	    l2pm->tx_sw_if_index_by_rx_sw_if_index[sw_if_index0];
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -240,7 +225,7 @@ l2_patch_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_patch_node, static) = {
   .function = l2_patch_node_fn,
-  .name = "l2_patch",
+  .name = "l2-patch",
   .vector_size = sizeof (u32),
   .format_trace = format_l2_patch_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
