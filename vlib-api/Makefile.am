@@ -20,10 +20,11 @@ lib_LTLIBRARIES = libvlibapi.la libvlibmemory.la libvlibmemoryclient.la \
 
 libvlibapi_la_SOURCES = 			\
 	vlibapi/api.h				\
+        vlibapi/api_helper_macros.h		\
 	vlibapi/api_shared.c			\
 	vlibapi/node_serialize.c
 
-nobase_include_HEADERS = vlibapi/api.h
+nobase_include_HEADERS = vlibapi/api.h vlibapi/api_helper_macros.h
 
 libvlibmemory_la_SOURCES =			\
 	vlibmemory/api.h			\
@@ -70,11 +71,10 @@ BUILT_SOURCES = vlibsocket/sockclnt.api.h vlibmemory/memclnt.api.h
 
 SUFFIXES = .api.h .api
 
-%.api.h: %.api
-	@echo "  APIGEN  " $@ ; 				\
-	mkdir -p `dirname $@` ;					\
-	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --output $@ --show-name $@
+# The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
+# and requires a symbolic link at the top of the vnet source tree
+
+include $(top_srcdir)/suffix-rules.mk
 
 # install the API definition, so we can produce java bindings, etc.
 apidir = $(prefix)/vlibmemory
