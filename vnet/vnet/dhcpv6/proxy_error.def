@@ -26,3 +26,4 @@ dhcpv6_proxy_error (NO_CIRCUIT_ID_OPTION, "DHCPv6 reply packets without circuit 
 dhcpv6_proxy_error (NO_RELAY_MESSAGE_OPTION, "DHCPv6 reply packets without relay message option")
 dhcpv6_proxy_error (BAD_SVR_FIB_OR_ADDRESS, "DHCPv6 packets not from DHCPv6 server or server FIB.")
 dhcpv6_proxy_error (PKT_TOO_BIG, "DHCPv6 packets which are too big.")
+dhcpv6_proxy_error (WRONG_INTERFACE_ID_OPTION, "DHCPv6 reply to invalid interface.")
