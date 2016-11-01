@@ -184,6 +184,7 @@ typedef struct
   u32 hqos_burst_deq;
   u32 pkts_enq_len;
   u32 swq_pos;
+  u32 flush_count;
 } dpdk_device_hqos_per_hqos_thread_t;
 
 typedef struct
@@ -302,6 +303,10 @@ typedef struct dpdk_efd_t
 
 #ifndef DPDK_HQOS_DBG_BYPASS
 #define DPDK_HQOS_DBG_BYPASS 0
+#endif
+
+#ifndef HQOS_FLUSH_COUNT_THRESHOLD
+#define HQOS_FLUSH_COUNT_THRESHOLD              100000
 #endif
 
 typedef struct dpdk_device_config_hqos_t
