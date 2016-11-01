@@ -82,11 +82,12 @@ format_mpls_label_dpo (u8 *s, va_list *args)
     hdr.label_exp_s_ttl =
         clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
 
-    return (format(s, "mpls-label:[%d]:%U\n%U%U",
-		   index,
-                   format_mpls_header, hdr,
-		   format_white_space, indent,
-		   format_dpo_id, &mld->mld_dpo, indent+2));
+    s = format(s, "mpls-label:[%d]:", index);
+    s = format(s, "%U\n", format_mpls_header, hdr);
+    s = format(s, "%U", format_white_space, indent);
+    s = format(s, "%U", format_dpo_id, &mld->mld_dpo, indent+2);
+
+    return (s);
 }
 
 static void

@@ -4824,7 +4824,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	    FIB_TEST_LB((exp->special.adj == dpo->dpoi_index),
 			"bucket %d stacks on drop %d",
 			bucket,
-			exp->adj.adj);
+			exp->special.adj);
 	    break;
 	}
     }
@@ -5489,7 +5489,7 @@ fib_test_label (void)
     fib_test_lb_bucket_t bucket_drop = {
 	.type = FT_LB_SPECIAL,
 	.special = {
-	    .adj = 1,
+	    .adj = DPO_PROTO_IP4,
 	},
     };
 

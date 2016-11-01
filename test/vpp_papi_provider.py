@@ -106,6 +106,18 @@ class VppPapiProvider(object):
             args = (0, b'')
         return self.api(vpp_papi.sw_interface_dump, args)
 
+    def sw_interface_set_table(self, sw_if_index, is_ipv6, table_id):
+        """
+          Set the IPvX Table-id for the Interface
+
+        :param sw_if_index:
+        :param is_ipv6:
+        :param table_id:
+
+        """
+        return self.api(vpp_papi.sw_interface_set_table,
+                        (sw_if_index, is_ipv6, table_id))
+
     def sw_interface_add_del_address(self, sw_if_index, addr, addr_len,
                                      is_ipv6=0, is_add=1, del_all=0):
         """
@@ -120,6 +132,17 @@ class VppPapiProvider(object):
         """
         return self.api(vpp_papi.sw_interface_add_del_address,
                         (sw_if_index, is_add, is_ipv6, del_all, addr_len, addr))
+
+    def sw_interface_enable_disable_mpls(self, sw_if_index,
+                                         is_enable=1):
+        """
+        Enable/Disable MPLS on the interface
+        :param sw_if_index:
+        :param is_enable:  (Default value = 1)
+
+        """
+        return self.api(vpp_papi.sw_interface_set_mpls_enable,
+                        (sw_if_index, is_enable))
 
     def sw_interface_ra_suppress(self, sw_if_index):
         suppress = 1
