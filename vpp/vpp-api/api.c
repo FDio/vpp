@@ -3259,16 +3259,12 @@ dhcpv6_proxy_config_2 (vl_api_dhcp_proxy_config_2_t * mp)
   vl_api_dhcp_proxy_config_reply_t *rmp;
   int rv = -1;
 
-#if 0				// $$$$ FIXME
   rv = dhcpv6_proxy_set_server_2 ((ip6_address_t *) (&mp->dhcp_server),
 				  (ip6_address_t *) (&mp->dhcp_src_address),
 				  (u32) ntohl (mp->rx_vrf_id),
 				  (u32) ntohl (mp->server_vrf_id),
 				  (int) mp->insert_circuit_id,
 				  (int) (mp->is_add == 0));
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
 
   REPLY_MACRO (VL_API_DHCP_PROXY_CONFIG_2_REPLY);
 }
