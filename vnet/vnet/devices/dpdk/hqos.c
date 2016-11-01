@@ -351,6 +351,7 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
   vec_validate (xd->hqos_ht->pkts_deq, hqos->burst_deq - 1);
   xd->hqos_ht->pkts_enq_len = 0;
   xd->hqos_ht->swq_pos = 0;
+  xd->hqos_ht->flush_count = 0;
 
   /* Set up per-thread device data for each worker thread */
   for (i = 0; i < worker_thread_count; i++)
@@ -416,6 +417,7 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
       u32 pkts_enq_len = hqos->pkts_enq_len;
       u32 swq_pos = hqos->swq_pos;
       u32 n_swq = vec_len (hqos->swq), i;
+      u32 flush_count = hqos->flush_count;
 
       for (i = 0; i < n_swq; i++)
 	{
@@ -446,10 +448,23 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 		rte_pktmbuf_free (pkts_enq[n_pkts]);
 
 	      pkts_enq_len = 0;
+	      flush_count = 0;
 	      break;
 	    }
 	}
+      if (pkts_enq_len)
+	{
+	  flush_count++;
+	  if (PREDICT_FALSE (flush_count == HQOS_FLUSH_COUNT_THRESHOLD))
+	    {
+	      rte_sched_port_enqueue (hqos->hqos, pkts_enq, pkts_enq_len);
+
+	      pkts_enq_len = 0;
+	      flush_count = 0;
+	    }
+	}
       hqos->pkts_enq_len = pkts_enq_len;
+      hqos->flush_count = flush_count;
 
       /* Advance to next device */
       dev_pos++;
@@ -490,6 +505,7 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
       u32 pkts_enq_len = hqos->pkts_enq_len;
       u32 swq_pos = hqos->swq_pos;
       u32 n_swq = vec_len (hqos->swq), i;
+      u32 flush_count = hqos->flush_count;
 
       /*
        * SWQ dequeue and HQoS enqueue for current device
@@ -517,10 +533,23 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 	      rte_sched_port_enqueue (hqos->hqos, pkts_enq, pkts_enq_len);
 
 	      pkts_enq_len = 0;
+	      flush_count = 0;
 	      break;
 	    }
 	}
+      if (pkts_enq_len)
+	{
+	  flush_count++;
+	  if (PREDICT_FALSE (flush_count == HQOS_FLUSH_COUNT_THRESHOLD))
+	    {
+	      rte_sched_port_enqueue (hqos->hqos, pkts_enq, pkts_enq_len);
+
+	      pkts_enq_len = 0;
+	      flush_count = 0;
+	    }
+	}
       hqos->pkts_enq_len = pkts_enq_len;
+      hqos->flush_count = flush_count;
 
       /*
        * HQoS dequeue and HWQ TX enqueue for current device
