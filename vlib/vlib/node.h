@@ -411,6 +411,7 @@ typedef struct
 
 typedef struct vlib_node_runtime_t
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Node function to call. */
   vlib_node_function_t *function;
 
@@ -465,11 +466,7 @@ typedef struct vlib_node_runtime_t
   u16 cpu_index;
 
   /* Function dependent node-runtime. */
-  uword runtime_data[(128
-		      - 1 * sizeof (vlib_node_function_t *)
-		      - 1 * sizeof (vlib_error_t *)
-		      - 11 * sizeof (u32)
-		      - 5 * sizeof (u16)) / sizeof (uword)];
+  u8 runtime_data[0];
 }
 vlib_node_runtime_t;
 

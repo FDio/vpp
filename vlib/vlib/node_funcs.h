@@ -130,7 +130,9 @@ vlib_node_set_runtime_data (vlib_main_t * vm, u32 node_index,
   vec_free (n->runtime_data);
   vec_add (n->runtime_data, runtime_data, n_runtime_data_bytes);
 
-  ASSERT (vec_len (n->runtime_data) <= sizeof (r->runtime_data));
+  ASSERT (vec_len (n->runtime_data) <= sizeof (vlib_node_runtime_t) -
+	  STRUCT_OFFSET_OF (vlib_node_runtime_t, runtime_data));
+
   if (vec_len (n->runtime_data) > 0)
     clib_memcpy (r->runtime_data, n->runtime_data, vec_len (n->runtime_data));
 }
