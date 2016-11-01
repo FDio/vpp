@@ -1707,10 +1707,15 @@ dpdk_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   /* verify that structs are cacheline aligned */
-  ASSERT (offsetof (dpdk_device_t, cacheline0) == 0);
-  ASSERT (offsetof (dpdk_device_t, cacheline1) == CLIB_CACHE_LINE_BYTES);
-  ASSERT (offsetof (dpdk_worker_t, cacheline0) == 0);
-  ASSERT (offsetof (frame_queue_trace_t, cacheline0) == 0);
+  STATIC_ASSERT (offsetof (dpdk_device_t, cacheline0) == 0,
+		 "Cache line marker must be 1st element in dpdk_device_t");
+  STATIC_ASSERT (offsetof (dpdk_device_t, cacheline1) ==
+		 CLIB_CACHE_LINE_BYTES,
+		 "Data in cache line 0 is bigger than cache line size");
+  STATIC_ASSERT (offsetof (dpdk_worker_t, cacheline0) == 0,
+		 "Cache line marker must be 1st element in dpdk_worker_t");
+  STATIC_ASSERT (offsetof (frame_queue_trace_t, cacheline0) == 0,
+		 "Cache line marker must be 1st element in frame_queue_trace_t");
 
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();

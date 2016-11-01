@@ -165,8 +165,10 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
 void ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 {
   /* ensure that adjacency is cacheline aligned and sized */
-  ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0);
-  ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) == CLIB_CACHE_LINE_BYTES);
+  STATIC_ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0,
+		"Cache line marker must be 1st element in struct");
+  STATIC_ASSERT(STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) == CLIB_CACHE_LINE_BYTES,
+		"Data in cache line 0 is bigger than cache line size");
 
   /* Preallocate three "special" adjacencies */
   lm->adjacency_heap = adj_pool;
