@@ -131,6 +131,18 @@ class VppInterface(object):
         self.test.vapi.sw_interface_add_del_address(
             self.sw_if_index, addr, addr_len, is_ipv6=1)
 
+    def set_table_ip4(self, table_id):
+        """Set the interface in a IPv4 Table.
+        Must be called before configuring IP4 addresses"""
+        self.test.vapi.sw_interface_set_table(
+            self.sw_if_index, 0, table_id)
+
+    def set_table_ip6(self, table_id):
+        """Set the interface in a IPv6 Table.
+        Must be called before configuring IP6 addresses"""
+        self.test.vapi.sw_interface_set_table(
+            self.sw_if_index, 1, table_id)
+
     def disable_ipv6_ra(self):
         """Configure IPv6 RA suppress on the VPP interface"""
         self.test.vapi.sw_interface_ra_suppress(self.sw_if_index)
@@ -238,3 +250,8 @@ class VppInterface(object):
                 self.sub_if.append(sub_if)
             else:
                 self.sub_if = sub_if
+
+    def enable_mpls(self):
+        """Enable MPLS on the VPP interface"""
+        self.test.vapi.sw_interface_enable_disable_mpls(
+            self.sw_if_index)

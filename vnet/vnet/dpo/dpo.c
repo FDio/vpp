@@ -65,15 +65,18 @@ static const char* const * const ** dpo_nodes;
 /**
  * @brief Vector of edge indicies from parent DPO nodes to child
  *
- * dpo_edges[child_type][child_proto][parent_type] = edge_index
+ * dpo_edges[child_type][child_proto][parent_type][parent_proto] = edge_index
  *
  * This array is derived at init time from the dpo_nodes above. Note that
  * the third dimension in dpo_nodes is lost, hence, the edge index from each
  * node MUST be the same.
+ * Including both the child and parent protocol is required to support the
+ * case where it changes as the grapth is traversed, most notablly when an
+ * MPLS label is popped.
  *
  * Note that this array is child type specific, not child instance specific.
  */
-static u32 ***dpo_edges;
+static u32 ****dpo_edges;
 
 /**
  * @brief The DPO type value that can be assigend to the next dynamic
@@ -269,13 +272,15 @@ dpo_get_next_node (dpo_type_t child_type,
 
     vec_validate(dpo_edges, child_type);
     vec_validate(dpo_edges[child_type], child_proto);
-    vec_validate_init_empty(dpo_edges[child_type][child_proto],
-                            parent_dpo->dpoi_type, ~0);
+    vec_validate(dpo_edges[child_type][child_proto], parent_type);
+    vec_validate_init_empty(
+        dpo_edges[child_type][child_proto][parent_type],
+        parent_proto, ~0);
 
     /*
      * if the edge index has not yet been created for this node to node transistion
      */
-    if (~0 == dpo_edges[child_type][child_proto][parent_type])
+    if (~0 == dpo_edges[child_type][child_proto][parent_type][parent_proto])
     {
         vlib_node_t *parent_node, *child_node;
         vlib_main_t *vm;
@@ -288,45 +293,45 @@ dpo_get_next_node (dpo_type_t child_type,
         ASSERT(NULL != dpo_nodes[parent_type]);
         ASSERT(NULL != dpo_nodes[parent_type][parent_proto]);
 
-        pp = 0;
+        cc = 0;
 
         /*
          * create a graph arc from each of the parent's registered node types,
          * to each of the childs.
          */
-        while (NULL != dpo_nodes[child_type][child_proto][pp])
+        while (NULL != dpo_nodes[child_type][child_proto][cc])
         {
-            parent_node =
+            child_node =
                 vlib_get_node_by_name(vm,
-                                      (u8*) dpo_nodes[child_type][child_proto][pp]);
+                                      (u8*) dpo_nodes[child_type][child_proto][cc]);
 
-            cc = 0;
+            pp = 0;
 
-            while (NULL != dpo_nodes[parent_type][child_proto][cc])
+            while (NULL != dpo_nodes[parent_type][parent_proto][pp])
             {
-                child_node =
+                parent_node =
                     vlib_get_node_by_name(vm,
-                                          (u8*) dpo_nodes[parent_type][parent_proto][cc]);
+                                          (u8*) dpo_nodes[parent_type][parent_proto][pp]);
 
                 edge = vlib_node_add_next(vm,
-                                          parent_node->index,
-                                          child_node->index);
+                                          child_node->index,
+                                          parent_node->index);
 
-                if (~0 == dpo_edges[child_type][child_proto][parent_type])
+                if (~0 == dpo_edges[child_type][child_proto][parent_type][parent_proto])
                 {
-                    dpo_edges[child_type][child_proto][parent_type] = edge;
+                    dpo_edges[child_type][child_proto][parent_type][parent_proto] = edge;
                 }
                 else
                 {
-                    ASSERT(dpo_edges[child_type][child_proto][parent_type] == edge);
+                    ASSERT(dpo_edges[child_type][child_proto][parent_type][parent_proto] == edge);
                 }
-                cc++;
+                pp++;
             }
-            pp++;
+            cc++;
         }
     }
 
-    return (dpo_edges[child_type][child_proto][parent_type]);
+    return (dpo_edges[child_type][child_proto][parent_type][parent_proto]);
 }
 
 /**

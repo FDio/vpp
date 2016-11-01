@@ -685,10 +685,10 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    if (table_from_interface)
 	    {
 		fib_index0 =
-		    ip4_fib_table_get_index_for_sw_if_index(
+		    ip6_fib_table_get_index_for_sw_if_index(
 			vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 		fib_index1 =
-		    ip4_fib_table_get_index_for_sw_if_index(
+		    ip6_fib_table_get_index_for_sw_if_index(
 			vnet_buffer(b1)->sw_if_index[VLIB_RX]);
 	    }
 	    else
@@ -810,7 +810,7 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    if (table_from_interface)
 	    {
 		fib_index0 =
-		    ip4_fib_table_get_index_for_sw_if_index(
+		    ip6_fib_table_get_index_for_sw_if_index(
 			vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 	    }
 	    else
