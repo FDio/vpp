@@ -433,7 +433,8 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
     for (i = 0; i < vec_len (rt->errors); i++)
       rt->errors[i] = vlib_error_set (n->index, i);
 
-    ASSERT (sizeof (vlib_node_runtime_t) == 2 * CLIB_CACHE_LINE_BYTES);
+    STATIC_ASSERT (sizeof (vlib_node_runtime_t) == 2 * CLIB_CACHE_LINE_BYTES,
+		   "Size of vlib_node_runtime_t must be equal to 2 cachelines");
     ASSERT (vec_len (n->runtime_data) <= sizeof (vlib_node_runtime_t) -
 	    STRUCT_OFFSET_OF (vlib_node_runtime_t, runtime_data));
 

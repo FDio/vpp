@@ -79,6 +79,8 @@ do {							\
     }							\
 } while (0)
 
+#define STATIC_ASSERT(truth,...) _Static_assert(truth, __VA_ARGS__)
+
 /* Assert without allocating memory. */
 #define ASSERT_AND_PANIC(truth)			\
 do {						\
