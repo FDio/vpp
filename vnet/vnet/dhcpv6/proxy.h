@@ -46,21 +46,23 @@ typedef union {
 } dhcpv6_vss_info;
 
 typedef struct {
-  /* server to which we we relay. $$$ vector / pool someday */
-  ip6_address_t dhcpv6_server;
+  ip6_address_t dhcp6_server;
+  ip6_address_t dhcp6_src_address;
+  u32 insert_vss;
+  u32 server_fib6_index;
+  u32 valid;
+} dhcpv6_server_t;
 
- /* FIB index */
-  u32 server_fib_index;
+typedef struct {
+  /* Pool of DHCP servers */
+  dhcpv6_server_t * dhcp6_servers;
 
-  /* source address to paste into relayed pkts */
-  ip6_address_t dhcpv6_src_address;
+  /* Pool of selected DHCP server. Zero is the default server */
+   u32 * dhcp6_server_index_by_rx_fib_index;
 
   /* all DHCP servers address */
   ip6_address_t all_dhcpv6_server_address;
   ip6_address_t all_dhcpv6_server_relay_agent_address;
-
-  /* true if the relay should insert option 82 */
-  int insert_option;
 
   /* to drop pkts in server-to-client direction */
   u32 error_drop_node_index;
@@ -84,5 +86,10 @@ int dhcpv6_proxy_set_vss(u32 tbl_id,
                          u32 oui,
                          u32 fib_id, 
                          int is_del);
+
+int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
+                             u32 rx_fib_id,
+                             u32 server_fib_id,
+                             int insert_vss, int is_del);
 
 #endif /* included_dhcpv6_proxy_h */
