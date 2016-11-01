@@ -2077,6 +2077,42 @@ fib_test_v4 (void)
 	     "1-level 5.5.5.6/32 loop is removed");
 
     /*
+     * A recursive route whose next-hop is covered by the prefix.
+     * This would mean the via-fib, which inherits forwarding from its
+     * cover, thus picks up forwarding from the prfix, which is via the
+     * via-fib, and we have a loop.
+     */
+    fib_prefix_t pfx_23_23_23_0_s_24 = {
+	.fp_len = 24,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    .ip4.as_u32 = clib_host_to_net_u32(0x17171700),
+	},
+    };
+    fib_prefix_t pfx_23_23_23_23_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x17171717),
+        },
+    };
+    fei = fib_table_entry_path_add(fib_index,
+				   &pfx_23_23_23_0_s_24,
+				   FIB_SOURCE_API,
+				   FIB_ENTRY_FLAG_NONE,
+				   FIB_PROTOCOL_IP4,
+				   &pfx_23_23_23_23_s_32.fp_addr,
+				   ~0, // recursive
+				   fib_index,
+				   1,
+				   MPLS_LABEL_INVALID,
+				   FIB_ROUTE_PATH_FLAG_NONE);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(load_balance_is_drop(dpo),
+	     "23.23.23.0/24 via covered is DROP");
+    fib_table_entry_delete_index(fei, FIB_SOURCE_API);
+
+    /*
      * add-remove test. no change.
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
@@ -2800,7 +2836,7 @@ fib_test_v4 (void)
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
-    
+
     /*
      * CLEANUP
      *   remove the interface prefixes
