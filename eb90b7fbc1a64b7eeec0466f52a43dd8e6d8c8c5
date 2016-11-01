@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_d802fcb3",
+        "filename": "vlib/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-01T11:04:31Z",
+      "side": 1,
+      "message": "use _Static_assert since this is a compile time check.",
+      "revId": "eb90b7fbc1a64b7eeec0466f52a43dd8e6d8c8c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
