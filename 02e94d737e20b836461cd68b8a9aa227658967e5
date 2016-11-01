@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_18e76414",
+        "filename": "vnet/vnet/devices/dpdk/hqos.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 535,
+      "author": {
+        "id": 389
+      },
+      "writtenOn": "2016-11-01T11:45:18Z",
+      "side": 1,
+      "message": "Reset the flush count, flush_count \u003d 0;",
+      "range": {
+        "startLine": 535,
+        "startChar": 7,
+        "endLine": 535,
+        "endChar": 24
+      },
+      "revId": "02e94d737e20b836461cd68b8a9aa227658967e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
