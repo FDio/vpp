@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_b85178da",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 5
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-11-01T10:25:07Z",
+      "side": 1,
+      "message": "Should we have export as part of a single vxlan library? A single .so to combine all of ioam vxlan-gpe features?",
+      "range": {
+        "startLine": 152,
+        "startChar": 0,
+        "endLine": 166,
+        "endChar": 14
+      },
+      "revId": "7531468a72619f17c8cb69794d87aedc5e0a9c9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_d8543ccc",
+        "filename": "plugins/ioam-plugin/ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-11-01T10:25:07Z",
+      "side": 1,
+      "message": "fix the indent and create a INDENT-OFF/ON block around this",
+      "range": {
+        "startLine": 228,
+        "startChar": 0,
+        "endLine": 232,
+        "endChar": 60
+      },
+      "revId": "7531468a72619f17c8cb69794d87aedc5e0a9c9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_985eb4e8",
+        "filename": "plugins/ioam-plugin/ioam/export-vxlan-gpe/vxlan_gpe_node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-11-01T10:25:07Z",
+      "side": 1,
+      "message": "This is common code for any of the iOAM export. Can this be made into a function and reused across ip6 ioam and vxlan ioam export?\n\nvxlan_gpe_export_node_fn will simply pass the vxlan export main along with the other parameters received here to a common inline function that does the processing of all the frames and manages the export.\nJust the way ioam_export_process_common is done?",
+      "range": {
+        "startLine": 139,
+        "startChar": 0,
+        "endLine": 328,
+        "endChar": 26
+      },
+      "revId": "7531468a72619f17c8cb69794d87aedc5e0a9c9c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
