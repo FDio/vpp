@@ -27,14 +27,18 @@ u8 *
 format_fib_path_ext (u8 * s, va_list * args)
 {
     fib_path_ext_t *path_ext;
+    u32 ii;
 
     path_ext = va_arg (*args, fib_path_ext_t *);
 
-    s = format(s, "path:%d label:%U",
-	       path_ext->fpe_path_index,
-	       format_mpls_unicast_label,
-	       path_ext->fpe_path.frp_label);
-
+    s = format(s, "path:%d labels:",
+	       path_ext->fpe_path_index);
+    for (ii = 0; ii < vec_len(path_ext->fpe_path.frp_label_stack); ii++)
+    {
+	s = format(s, "%U ",
+		   format_mpls_unicast_label,
+		   path_ext->fpe_path.frp_label_stack[ii]);
+    }
     return (s);
 }
 
@@ -86,6 +90,16 @@ fib_path_ext_init (fib_path_ext_t *path_ext,
     fib_path_ext_resolve(path_ext, path_list_index);
 }
 
+/**
+ * @brief Return true if the label stack is implicit null
+ */
+static int
+fib_path_ext_is_imp_null (fib_path_ext_t *path_ext)
+{
+    return ((1 == vec_len(path_ext->fpe_label_stack)) &&
+	    (MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label_stack[0]));
+}
+
 load_balance_path_t *
 fib_path_ext_stack (fib_path_ext_t *path_ext,
 		    fib_forward_chain_type_t parent_fct,
@@ -110,7 +124,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
 	break;
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-	if (MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label)
+	if (fib_path_ext_is_imp_null(path_ext))
 	{
             /*
              * implicit-null label for the eos or IP chain, need to pick up
@@ -165,12 +179,12 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
 	 * The label is stackable for this chain type
 	 * construct the mpls header that will be imposed in the data-path
 	 */
-	if (MPLS_IETF_IMPLICIT_NULL_LABEL != path_ext->fpe_label)
+	if (!fib_path_ext_is_imp_null(path_ext))
 	{
 	    dpo_set(&nh->path_dpo,
 		    DPO_MPLS_LABEL,
 		    DPO_PROTO_MPLS,
-		    mpls_label_dpo_create(path_ext->fpe_label,
+		    mpls_label_dpo_create(path_ext->fpe_label_stack,
                                           (parent_fct == FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS ?
                                            MPLS_NON_EOS :
                                            MPLS_EOS),

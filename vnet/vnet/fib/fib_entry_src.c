@@ -255,7 +255,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     
     if (NULL != path_ext &&
         path_ext->fpe_path_index == path_index &&
-        fib_entry_src_valid_out_label(path_ext->fpe_label))
+        fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0]))
     {
         /*
          * found a matching extension. stack it to obtain the forwarding
@@ -965,7 +965,7 @@ static void
 fib_entry_src_path_ext_append (fib_entry_src_t *esrc,
 			       const fib_route_path_t *rpath)
 {
-    if (MPLS_LABEL_INVALID != rpath->frp_label)
+    if (NULL != rpath->frp_label_stack)
     {
 	fib_path_ext_t *path_ext;
 
@@ -991,7 +991,7 @@ fib_entry_src_path_ext_insert (fib_entry_src_t *esrc,
     if (0 == vec_len(esrc->fes_path_exts))
 	return (fib_entry_src_path_ext_append(esrc, rpath));
 
-    if (MPLS_LABEL_INVALID != rpath->frp_label)
+    if (NULL != rpath->frp_label_stack)
     {
 	fib_path_ext_t path_ext;
 	int i = 0;
@@ -1097,6 +1097,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
     fib_node_index_t old_path_list, fib_entry_index;
     fib_path_list_flags_t pl_flags;
     const fib_route_path_t *rpath;
+    fib_path_ext_t *path_ext;
     fib_entry_src_t *esrc;
 
     esrc = fib_entry_src_find(fib_entry, source, NULL);
@@ -1138,7 +1139,12 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 					     pl_flags,
 					     rpaths);
 
+    vec_foreach(path_ext, esrc->fes_path_exts)
+    {
+	vec_free(path_ext->fpe_label_stack);
+    }
     vec_free(esrc->fes_path_exts);
+
     vec_foreach(rpath, rpaths)
     {
 	fib_entry_src_path_ext_append(esrc, rpath);
@@ -1192,6 +1198,7 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
 	     * delete the element moving the remaining elements down 1 position.
 	     * this preserves the sorted order.
 	     */
+	    vec_free(path_ext->fpe_label_stack);
 	    vec_delete(esrc->fes_path_exts, 1, (path_ext - esrc->fes_path_exts));
 	    break;
 	}

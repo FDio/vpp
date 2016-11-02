@@ -557,9 +557,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 					 &pfx.fp_addr,
 					 e->sw_if_index,
 					 ~0,
-					 1,
-					 MPLS_LABEL_INVALID,
-					 FIB_ROUTE_PATH_FLAG_NONE);
+					 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
     }
   else
     {

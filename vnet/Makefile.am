@@ -431,12 +431,13 @@ libvnet_la_SOURCES +=				\
  vnet/mpls/mpls_features.c			\
  vnet/mpls/node.c				\
  vnet/mpls/interface.c			        \
- vnet/mpls/policy_encap.c			\
+ vnet/mpls/mpls_tunnel.c		        \
  vnet/mpls/pg.c
  
 nobase_include_HEADERS +=			\
  vnet/mpls/mpls.h				\
  vnet/mpls/mpls_types.h			        \
+ vnet/mpls/mpls_tunnel.h		        \
  vnet/mpls/packet.h				\
  vnet/mpls/error.def
 

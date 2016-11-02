@@ -30,30 +30,6 @@ typedef enum {
   MPLS_N_ERROR,
 } mpls_error_t;
 
-/*
- * No protocol info, MPLS labels don't have a next-header field
- * presumably the label field tells all...
- */
-typedef struct {
-  u8 tunnel_dst[6];
-  ip4_address_t intfc_address;
-  u32 tx_sw_if_index;
-  u32 inner_fib_index;
-  u32 mask_width;
-  u32 encap_index;
-  u32 hw_if_index;
-  u8 * rewrite_data;
-  u8 l2_only;
-  fib_node_index_t fei;
-} mpls_eth_tunnel_t;
-
-typedef struct {
-  mpls_unicast_header_t *labels;
-  /* only for policy tunnels */
-  u8 * rewrite;
-  u32 output_next_index;
-} mpls_encap_t;
-
 #define MPLS_FIB_DEFAULT_TABLE_ID 0
 
 /**
@@ -102,14 +78,6 @@ typedef struct {
   u32 mpls_rx_feature_not_enabled;
   u32 mpls_tx_feature_interface_output;
 
-  /* pool of ethernet tunnel instances */
-  mpls_eth_tunnel_t *eth_tunnels;
-  u32 * free_eth_sw_if_indices;
-
-  /* Encap side: map (fib, dst_address) to mpls label stack */
-  mpls_encap_t * encaps;
-  uword * mpls_encap_by_fib_and_dest;
-
   /* mpls-o-e policy tunnel next index for ip4/ip6-classify */
   u32 ip4_classify_mpls_policy_encap_next_index;
   u32 ip6_classify_mpls_policy_encap_next_index;
@@ -157,7 +125,6 @@ __VA_ARGS__ vnet_feature_registration_t tx_##x
 extern clib_error_t * mpls_feature_init(vlib_main_t * vm);
 
 format_function_t format_mpls_protocol;
-format_function_t format_mpls_eth_header_with_length;
 format_function_t format_mpls_encap_index;
 
 format_function_t format_mpls_eos_bit;
@@ -187,28 +154,7 @@ void mpls_sw_interface_enable_disable (mpls_main_t * mm,
 
 u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
 
-mpls_encap_t *
-mpls_encap_by_fib_and_dest (mpls_main_t * mm, u32 rx_fib, u32 dst_address);
-
-int vnet_mpls_ethernet_add_del_tunnel (u8 *dst,
-                                       ip4_address_t *intfc,
-                                       u32 mask_width,
-                                       u32 inner_fib_id,
-                                       u32 tx_sw_if_index,
-                                       u32 * tunnel_sw_if_index,
-                                       u8 l2_only,
-                                       u8 is_add);
-
 int mpls_fib_reset_labels (u32 fib_id);
-
-int vnet_mpls_add_del_encap (ip4_address_t *dest, u32 fib_id,
-                             u32 *labels_host_byte_order,
-                             u32 policy_tunnel_index,
-                             int no_dst_hash, u32 * indexp, int is_add);
-
-int vnet_mpls_policy_tunnel_add_rewrite (mpls_main_t * mm,
-                                         mpls_encap_t * e,
-                                         u32 policy_tunnel_index);
 
 #define foreach_mpls_input_next			\
 _(DROP, "error-drop")                           \
@@ -243,26 +189,6 @@ typedef enum {
 #undef _
   MPLS_OUTPUT_N_NEXT,
 } mpls_output_next_t;
-
-typedef struct {
-  u32 lookup_miss;
-
-  /* Tunnel-id / index in tunnel vector */
-  u32 tunnel_id;
-
-  /* output interface */
-  u32 tx_sw_if_index;
-
-  /* mpls encap index */
-  u32 mpls_encap_index;
-
-  /* pkt length */
-  u32 length;
-
-  u8 dst[6];
-} mpls_eth_tx_trace_t;
-
-u8 * format_mpls_eth_tx_trace (u8 * s, va_list * args);
 
 typedef struct {
   u32 fib_index;

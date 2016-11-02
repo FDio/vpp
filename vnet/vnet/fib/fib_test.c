@@ -361,7 +361,7 @@ fib_test_v4 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1, // weight
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &local_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached interface route present");
@@ -388,7 +388,7 @@ fib_test_v4 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1, // weight
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &local_pfx);
     FIB_TEST(((FIB_ENTRY_FLAG_LOCAL | FIB_ENTRY_FLAG_CONNECTED) ==
@@ -438,7 +438,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx);
     FIB_TEST((FIB_ENTRY_FLAG_NONE == fib_entry_get_flags(fei)),
@@ -556,7 +556,7 @@ fib_test_v4 (void)
                                           tm->hw[0]->sw_if_index,
                                           ~0, // invalid fib index
                                           1,
-                                          MPLS_LABEL_INVALID,
+                                          NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
 
     dpo = fib_entry_contribute_ip_forwarding(fei);
@@ -622,7 +622,7 @@ fib_test_v4 (void)
                                           tm->hw[0]->sw_if_index,
                                           ~0, // invalid fib index
                                           1,
-                                          MPLS_LABEL_INVALID,
+                                          NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
     FIB_TEST((FIB_ENTRY_FLAG_ATTACHED  == fib_entry_get_flags(fei)),
 	     "Flags set on adj-fib");
@@ -671,7 +671,7 @@ fib_test_v4 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_10_10_10_2_s_32);
@@ -708,7 +708,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_1_s_32);
     ai = fib_entry_get_adj(fei);
@@ -741,7 +741,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_2_0_s_24);
     ai = fib_entry_get_adj(fei);
@@ -768,7 +768,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_2_0_s_24);
     dpo = fib_entry_contribute_ip_forwarding(fei);
@@ -854,7 +854,7 @@ fib_test_v4 (void)
 				   ~0, // no index provided.
 				   fib_index, // nexthop in same fib as route
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST_REC_FORW(&bgp_100_pfx, &pfx_1_1_1_1_s_32, 0);
@@ -890,7 +890,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index, // nexthop in same fib as route
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST_REC_FORW(&bgp_101_pfx, &pfx_1_1_1_1_s_32, 0);
@@ -1012,7 +1012,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index, // nexthop in same fib as route
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST_REC_FORW(&bgp_200_pfx, &pfx_1_1_1_2_s_32, 0);
@@ -1058,7 +1058,7 @@ fib_test_v4 (void)
                              tm->hw[0]->sw_if_index,
                              ~0,
                              1,
-                             MPLS_LABEL_INVALID,
+                             NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_entry_path_add(fib_index,
                                    &pfx_1_2_3_4_s_32,
@@ -1069,7 +1069,7 @@ fib_test_v4 (void)
                                    tm->hw[1]->sw_if_index,
                                    ~0,
                                    3,
-                                   MPLS_LABEL_INVALID,
+                                   NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "1.2.3.4/32 presnet");
@@ -1110,7 +1110,7 @@ fib_test_v4 (void)
                              tm->hw[1]->sw_if_index,
                              ~0,
                              1,
-                             MPLS_LABEL_INVALID,
+                             NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_entry_path_add(fib_index,
                                    &pfx_1_2_3_5_s_32,
@@ -1121,7 +1121,7 @@ fib_test_v4 (void)
                                    tm->hw[0]->sw_if_index,
                                    ~0,
                                    4,
-                                   MPLS_LABEL_INVALID,
+                                   NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "1.2.3.5/32 presnet");
@@ -1173,7 +1173,7 @@ fib_test_v4 (void)
                                    ~0,
                                    fib_index,
                                    1,
-                                   MPLS_LABEL_INVALID,
+                                   NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_entry_path_add(fib_index,
                                    &bgp_44_s_32,
@@ -1184,7 +1184,7 @@ fib_test_v4 (void)
                                    ~0,
                                    fib_index,
                                    1,
-                                   MPLS_LABEL_INVALID,
+                                   NULL,
                                    FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST_REC_FORW(&bgp_44_s_32, &pfx_1_2_3_4_s_32, 0);
@@ -1254,7 +1254,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index, // nexthop in same fib as route
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST_REC_FORW(&bgp_201_pfx, &pfx_1_1_1_200_s_32, 0);
@@ -1297,7 +1297,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_0_s_24);
     dpo1 = fib_entry_contribute_ip_forwarding(fei);
@@ -1355,7 +1355,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_0_s_28);
     dpo2 = fib_entry_contribute_ip_forwarding(fei);
@@ -1458,7 +1458,7 @@ fib_test_v4 (void)
 				   tm->hw[0]->sw_if_index,
 				   ~0, // invalid fib index
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
     dpo1 = fib_entry_contribute_ip_forwarding(fei);
     ai = fib_entry_get_adj(fei);
@@ -1559,7 +1559,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index, // same as route
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fib_table_entry_path_add(fib_index,
 			     &bgp_102,
@@ -1570,7 +1570,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index, // same as route's FIB
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &bgp_102);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "100.100.100.102/32 presnet");
@@ -1659,7 +1659,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index, // Same as route's FIB
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     /*
@@ -1706,7 +1706,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     /*
@@ -1820,7 +1820,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fib_table_entry_path_add(fib_index,
 			     &pfx_5_5_5_6_s_32,
@@ -1831,7 +1831,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fib_table_entry_path_add(fib_index,
 			     &pfx_5_5_5_7_s_32,
@@ -1842,7 +1842,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     /*
      * +3 entries, +3 shared path-list
@@ -1881,7 +1881,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
 
@@ -1940,7 +1940,7 @@ fib_test_v4 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_5_s_32);
@@ -1982,7 +1982,7 @@ fib_test_v4 (void)
 				    ~0, // no index provided.
 				    fib_index,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_7_s_32);
@@ -2057,7 +2057,7 @@ fib_test_v4 (void)
 			     ~0, // no index provided.
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
     FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
@@ -2105,7 +2105,7 @@ fib_test_v4 (void)
 				   ~0, // recursive
 				   fib_index,
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
     dpo = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST(load_balance_is_drop(dpo),
@@ -2135,7 +2135,7 @@ fib_test_v4 (void)
 			     ~0,
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_1_s_32);
@@ -2165,7 +2165,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_0_s_28);
     ai = fib_entry_get_adj(fei);
@@ -2200,7 +2200,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     FIB_TEST(!dpo_cmp(dpo2, load_balance_get_bucket(dpo1->dpoi_index, 0)),
 	     "adj for 200.200.200.200/32 is recursive via adj for 1.1.1.1");
@@ -2224,7 +2224,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     fib_table_entry_path_add(fib_index,
@@ -2236,7 +2236,7 @@ fib_test_v4 (void)
 			     ~0,
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
@@ -2321,7 +2321,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(!dpo_cmp(dpo2, load_balance_get_bucket_i(lb, 0)),
@@ -2348,7 +2348,7 @@ fib_test_v4 (void)
 			     ~0,
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
@@ -2416,7 +2416,7 @@ fib_test_v4 (void)
                              tm->hw[0]->sw_if_index,
                              ~0,
                              1,
-                             MPLS_LABEL_INVALID,
+                             NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
 
     fib_table_entry_path_remove(fib_index,
@@ -2494,7 +2494,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fib_table_entry_path_add(fib_index,
 			     &pfx_4_4_4_4_s_32,
@@ -2505,7 +2505,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fib_table_entry_path_add(fib_index,
 			     &pfx_4_4_4_4_s_32,
@@ -2516,7 +2516,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     FIB_TEST(FIB_NODE_INDEX_INVALID !=
 	     fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32),
@@ -2601,7 +2601,7 @@ fib_test_v4 (void)
 			     ~0,
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32);
@@ -2707,7 +2707,7 @@ fib_test_v4 (void)
 			     tm->hw[0]->sw_if_index,
 			     fib_index,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_4_1_1_1_s_32);
@@ -2761,7 +2761,7 @@ fib_test_v4 (void)
 				   tm->hw[0]->sw_if_index,
 				   fib_index,
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(0, &pfx_2001_s_64);
@@ -3002,7 +3002,7 @@ fib_test_v6 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
 
@@ -3033,7 +3033,7 @@ fib_test_v6 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &local_pfx);
 
@@ -3078,7 +3078,7 @@ fib_test_v6 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_0_0);
 
@@ -3199,7 +3199,7 @@ fib_test_v6 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_2001_1_2_s_128);
@@ -3238,7 +3238,7 @@ fib_test_v6 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_2001_1_3_s_128);
@@ -3292,7 +3292,7 @@ fib_test_v6 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_2001_a_s_64);
     ai = fib_entry_get_adj(fei);
@@ -3306,7 +3306,7 @@ fib_test_v6 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &pfx_2001_b_s_64);
     ai = fib_entry_get_adj(fei);
@@ -3341,7 +3341,7 @@ fib_test_v6 (void)
 				   tm->hw[0]->sw_if_index,
 				   ~0,
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
     FIB_TEST(fei == fib_table_lookup_exact_match(0, &pfx_1_1_1_1_s_32),
 	     "1.1.1.1/32 o v6 route present");
@@ -3379,7 +3379,7 @@ fib_test_v6 (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0,
 			     1,
-			     MPLS_LABEL_INVALID,
+			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_c_s_64);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached route present");
@@ -3481,7 +3481,7 @@ fib_test_v6 (void)
 				    tm->hw[1]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &connected_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached interface route present");
@@ -3500,7 +3500,7 @@ fib_test_v6 (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup(fib_index, &connected_pfx);
 
@@ -3722,429 +3722,6 @@ fib_test_v6 (void)
 }
 
 /*
- * Test the recursive route route handling for GRE tunnels
- */
-static void
-fib_test_gre (void)
-{
-    /* fib_node_index_t fei; */
-    /* u32 fib_index = 0; */
-    /* test_main_t *tm; */
-    /* u32 ii; */
-
-    /* tm = &test_main; */
-
-    /* for (ii = 0; ii < 4; ii++) */
-    /* { */
-    /* 	ip4_main.fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = 0; */
-    /* } */
-
-    /* /\* */
-    /*  * add interface routes. We'll assume this works. It's more rigorously */
-    /*  * tested elsewhere. */
-    /*  *\/ */
-    /* fib_prefix_t local_pfx = { */
-    /* 	.fp_len = 24, */
-    /* 	.fp_proto = FIB_PROTOCOL_IP4, */
-    /* 	.fp_addr = { */
-    /* 	    .ip4 = { */
-    /* 		/\* 10.10.10.10 *\/ */
-    /* 		.as_u32 = clib_host_to_net_u32(0x0a0a0a0a), */
-    /* 	    }, */
-    /* 	}, */
-    /* }; */
-
-    /* fib_table_entry_update_one_path(fib_index, &local_pfx, */
-    /* 				    FIB_SOURCE_INTERFACE, */
-    /* 				    (FIB_ENTRY_FLAG_CONNECTED | */
-    /* 				     FIB_ENTRY_FLAG_ATTACHED), */
-    /* 				    NULL, */
-    /* 				    tm->hw[0]->sw_if_index, */
-    /* 				    ~0, */
-    /* 				    1, */
-    /* 				    FIB_ROUTE_PATH_FLAG_NONE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != fei), */
-    /* 	     "attached interface route present"); */
-
-    /* local_pfx.fp_len = 32; */
-    /* fib_table_entry_update_one_path(fib_index, &local_pfx, */
-    /* 				    FIB_SOURCE_INTERFACE, */
-    /* 				    (FIB_ENTRY_FLAG_CONNECTED | */
-    /* 				     FIB_ENTRY_FLAG_LOCAL), */
-    /* 				    NULL, */
-    /* 				    tm->hw[0]->sw_if_index, */
-    /* 				    ~0, // invalid fib index */
-    /* 				    1, */
-    /* 				    FIB_ROUTE_PATH_FLAG_NONE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local_pfx); */
-
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != fei), */
-    /* 	     "local interface route present"); */
-
-    /* fib_prefix_t local2_pfx = { */
-    /* 	.fp_len = 24, */
-    /* 	.fp_proto = FIB_PROTOCOL_IP4, */
-    /* 	.fp_addr = { */
-    /* 	    .ip4 = { */
-    /* 		/\* 10.10.11.11 *\/ */
-    /* 		.as_u32 = clib_host_to_net_u32(0x0a0a0b0b), */
-    /* 	    }, */
-    /* 	}, */
-    /* }; */
-
-    /* fib_table_entry_update_one_path(fib_index, &local2_pfx, */
-    /* 				    FIB_SOURCE_INTERFACE, */
-    /* 				    (FIB_ENTRY_FLAG_CONNECTED | */
-    /* 				     FIB_ENTRY_FLAG_ATTACHED), */
-    /* 				    NULL, */
-    /* 				    tm->hw[1]->sw_if_index, */
-    /* 				    ~0, */
-    /* 				    1, */
-    /* 				    FIB_ROUTE_PATH_FLAG_NONE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local2_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != fei), */
-    /* 	     "attached interface route present"); */
-
-    /* local2_pfx.fp_len = 32; */
-    /* fib_table_entry_update_one_path(fib_index, &local2_pfx, */
-    /* 				    FIB_SOURCE_INTERFACE, */
-    /* 				    (FIB_ENTRY_FLAG_CONNECTED | */
-    /* 				     FIB_ENTRY_FLAG_LOCAL), */
-    /* 				    NULL, */
-    /* 				    tm->hw[0]->sw_if_index, */
-    /* 				    ~0, // invalid fib index */
-    /* 				    1, */
-    /* 				    FIB_ROUTE_PATH_FLAG_NONE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local2_pfx); */
-
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != fei), */
-    /* 	     "local interface route present"); */
-
-    /* /\* */
-    /*  * Add the route that will be used to resolve the tunnel's destination */
-    /*  *\/ */
-    /* fib_prefix_t route_pfx = { */
-    /* 	.fp_len = 24, */
-    /* 	.fp_proto = FIB_PROTOCOL_IP4, */
-    /* 	.fp_addr = { */
-    /* 	    .ip4 = { */
-    /* 		/\* 1.1.1.0/24 *\/ */
-    /* 		.as_u32 = clib_host_to_net_u32(0x01010100), */
-    /* 	    }, */
-    /* 	}, */
-    /* }; */
-    /* /\* 10.10.10.2 *\/ */
-    /* ip46_address_t nh_10_10_10_2 = { */
-    /* 	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02), */
-    /* }; */
-
-    /* fib_table_entry_path_add(fib_index, &route_pfx, */
-    /* 			     FIB_SOURCE_API, */
-    /* 			     FIB_ENTRY_FLAG_NONE, */
-    /* 			     &nh_10_10_10_2, */
-    /* 			     tm->hw[0]->sw_if_index, */
-    /* 			     ~0, */
-    /* 			     1, */
-    /* 			     FIB_ROUTE_PATH_FLAG_NONE); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != */
-    /* 	      fib_table_lookup_exact_match(fib_index, &local_pfx)), */
-    /* 	     "route present"); */
-
-    /* /\* */
-    /*  * Add a tunnel */
-    /*  *\/ */
-    /* /\* 1.1.1.1 *\/ */
-    /* fib_prefix_t tun_dst_pfx = { */
-    /* 	.fp_len = 32, */
-    /* 	.fp_proto = FIB_PROTOCOL_IP4, */
-    /* 	.fp_addr = { */
-    /* 	    .ip4.as_u32 = clib_host_to_net_u32(0x01010101), */
-    /* 	}, */
-    /* }; */
-    /* /\* 10.10.10.10 *\/ */
-    /* ip4_address_t tun_src = { */
-    /* 	.as_u32 = clib_host_to_net_u32(0x0a0a0a0a), */
-    /* }; */
-    /* /\* 172.16.0.1 *\/ */
-    /* ip4_address_t tun_itf = { */
-    /* 	.as_u32 = clib_host_to_net_u32(0xac100001), */
-    /* }; */
-    /* fib_prefix_t tun_itf_pfx = { */
-    /* 	.fp_len = 30, */
-    /* 	.fp_proto = FIB_PROTOCOL_IP4, */
-    /* 	.fp_addr = { */
-    /* 	    .ip4 = tun_itf, */
-    /* 	}, */
-    /* }; */
-    /* u32 *encap_labels = NULL; */
-    /* u32 label = 0xbaba; */
-    /* u32 encap_index; */
-    /* u32 tunnel_sw_if_index; */
-    
-    /* int rv; */
-
-    /* /\* */
-    /*  * First we need the MPLS Encap present */
-    /*  * */
-    /*  * Pretty sure this is broken. the wiki say the 1st aparamter address */
-    /*  * should be the tunnel's interface address, which makes some sense. But */
-    /*  * the code for tunnel creation checks for the tunnel's destination */
-    /*  * address. curious... */
-    /*  *\/ */
-    /* vec_add1(encap_labels, label);  */
-    /* rv =  vnet_mpls_add_del_encap(&tun_dst_pfx.fp_addr.ip4,  */
-    /* 				  0, // inner VRF */
-    /* 				  encap_labels, */
-    /* 				  ~0, // policy_tunnel_index, */
-    /* 				  0, // no_dst_hash, */
-    /* 				  &encap_index, */
-    /* 				  1); // ADD */
-    /* FIB_TEST((0 == rv), "MPLS encap created"); */
-
-    /* /\* */
-    /*  * now create the tunnel */
-    /*  *\/ */
-    /* rv = vnet_mpls_gre_add_del_tunnel(&tun_src, */
-    /* 				      &tun_dst_pfx.fp_addr.ip4, */
-    /* 				      &tun_itf_pfx.fp_addr.ip4, */
-    /* 				      tun_itf_pfx.fp_len, */
-    /* 				      0, // inner VRF */
-    /* 				      0, // outer VRF */
-    /* 				      &tunnel_sw_if_index, */
-    /*                                   0, // l2 only */
-    /* 				      1);  // ADD */
-    /* FIB_TEST((0 == rv), "Tunnel created"); */
-
-    /* /\* */
-    /*  * add it again. just for giggles. */
-    /*  *\/ */
-    /* rv = vnet_mpls_gre_add_del_tunnel(&tun_src, */
-    /* 				      &tun_dst_pfx.fp_addr.ip4, */
-    /* 				      &tun_itf_pfx.fp_addr.ip4, */
-    /* 				      tun_itf_pfx.fp_len, */
-    /* 				      0, // inner VRF */
-    /* 				      0, // outer VRF */
-    /* 				      &tunnel_sw_if_index, */
-    /*                                   0, // l2 only */
-    /* 				      1);  // ADD */
-    /* FIB_TEST((0 != rv), "Duplicate Tunnel not created"); */
-
-    /* /\* */
-    /*  * Find the route added for the tunnel subnet and check that */
-    /*  * it has a midchin adj that is stacked on the adj used to reach the */
-    /*  * tunnel destination */
-    /*  *\/ */
-    /* ip_adjacency_t *midchain_adj, *route_adj, *adjfib_adj; */
-    /* adj_index_t midchain_ai, route_ai, adjfib_ai1, adjfib_ai2; */
-    /* ip_lookup_main_t *lm; */
-
-    /* lm = &ip4_main.lookup_main; */
-
-    /* fei = fib_table_lookup_exact_match(fib_index, &tun_itf_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "tun itf route present"); */
-    /* midchain_ai  = fib_entry_contribute_forwarding(fei); */
-    /* midchain_adj = adj_get(midchain_ai); */
-
-    /* FIB_TEST((IP_LOOKUP_NEXT_MIDCHAIN == midchain_adj->lookup_next_index), */
-    /* 	     "Tunnel interface links to midchain"); */
-
-    /* fei = fib_table_lookup_exact_match(fib_index, &route_pfx); */
-    /* route_ai = fib_entry_contribute_forwarding(fei); */
-    /* FIB_TEST((midchain_adj->sub_type.midchain.adj_index == route_ai), */
-    /* 	     "tunnel midchain it stacked on route adj"); */
-
-    /* /\* */
-    /*  * update the route to the tunnel's destination to load-balance via */
-    /*  * interface 1. */
-    /*  *\/ */
-    /* /\* 10.10.11.2 *\/ */
-    /* ip46_address_t nh_10_10_11_2 = {        */
-    /* 	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0b02), */
-    /* }; */
-
-    /* fib_table_entry_path_add(fib_index, &route_pfx, */
-    /* 			     FIB_SOURCE_API, */
-    /* 			     FIB_ENTRY_FLAG_NONE, */
-    /* 			     &nh_10_10_11_2, */
-    /* 			     tm->hw[1]->sw_if_index, */
-    /* 			     ~0, */
-    /* 			     1, */
-    /* 			     FIB_ROUTE_PATH_FLAG_NONE); */
-
-    /* /\* */
-    /*  * the tunnels midchain should have re-stacked. This tests that the */
-    /*  * route re-resolution backwalk works to a tunnel interface. */
-    /*  *\/ */
-    /* fei = fib_table_lookup_exact_match(fib_index, &route_pfx); */
-    /* FIB_TEST((route_ai != fib_entry_contribute_forwarding(fei)), "route changed"); */
-    /* route_ai = fib_entry_contribute_forwarding(fei); */
-
-    /* midchain_adj = adj_get(midchain_ai); */
-
-    /* FIB_TEST((midchain_adj->sub_type.midchain.adj_index == route_ai), */
-    /* 	     "tunnel midchain has re-stacked on route adj"); */
-
-    /* route_adj = adj_get(route_ai); */
-
-    /* FIB_TEST((2 == route_adj->n_adj), "Route adj is multipath"); */
-
-    /* /\* */
-    /*  * At this stage both nieghbour adjs are incomplete, so the same should */
-    /*  * be true of the multipath adj */
-    /*  *\/ */
-    /* FIB_TEST((IP_LOOKUP_NEXT_ARP == route_adj->lookup_next_index), */
-    /* 	     "Adj0 is ARP: %d", route_adj->lookup_next_index); */
-    /* FIB_TEST((IP_LOOKUP_NEXT_ARP == (route_adj+1)->lookup_next_index), */
-    /* 	     "Adj1 is ARP"); */
-
-    /* /\* */
-    /*  * do the equivalent of creating an ARP entry for 10.10.10.2. */
-    /*  *  This will complete the adj, and this */
-    /*  * change should be refelct in the multipath too. */
-    /*  *\/ */
-    /* u8* rewrite = NULL, byte = 0xd; */
-    /* vec_add(rewrite, &byte, 6); */
-
-    /* adjfib_ai1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, */
-    /* 				    VNET_LINK_IP4, */
-    /* 				    &nh_10_10_10_2, */
-    /* 				    tm->hw[0]->sw_if_index); */
-    /* adj_nbr_update_rewrite(FIB_PROTOCOL_IP4, */
-    /* 			   adjfib_ai1, */
-    /* 			   rewrite); */
-    /* adjfib_adj = adj_get(adjfib_ai1); */
-    /* FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adjfib_adj->lookup_next_index), */
-    /* 	     "Adj-fib10 adj is rewrite"); */
-
-    /* adjfib_ai2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, */
-    /* 				    VNET_LINK_IP4, */
-    /* 				    &nh_10_10_11_2, */
-    /* 				    tm->hw[1]->sw_if_index); */
-    /* adj_nbr_update_rewrite(FIB_PROTOCOL_IP4, */
-    /* 			   adjfib_ai2, */
-    /* 			   rewrite); */
-
-    /* adjfib_adj = adj_get(adjfib_ai2); */
-
-    /* FIB_TEST((IP_LOOKUP_NEXT_REWRITE == adjfib_adj->lookup_next_index), */
-    /* 	     "Adj-fib11 adj is rewrite"); */
-
-    /* fei = fib_table_lookup_exact_match(fib_index, &route_pfx); */
-    /* FIB_TEST((route_ai != fib_entry_contribute_forwarding(fei)), "route changed"); */
-    /* route_ai = fib_entry_contribute_forwarding(fei); */
-    /* route_adj = adj_get(route_ai); */
-    /* FIB_TEST((IP_LOOKUP_NEXT_REWRITE == route_adj->lookup_next_index), */
-    /* 	     "Adj0 is rewrite"); */
-    /* FIB_TEST((IP_LOOKUP_NEXT_REWRITE == (route_adj+1)->lookup_next_index), */
-    /* 	     "Adj1 is rewrite"); */
-
-    /* /\* */
-    /*  * CLEANUP */
-    /*  *\/ */
-    /* adj_index_t drop_ai = adj_get_special(FIB_PROTOCOL_IP4, */
-    /* 					  ADJ_SPECIAL_TYPE_DROP); */
-
-    /* /\* */
-    /*  * remove the route that the tunnel resovles via. expect */
-    /*  * it to now resolve via the default route, which is drop */
-    /*  *\/ */
-    /* fib_table_entry_path_remove(fib_index, &route_pfx, */
-    /* 				FIB_SOURCE_API, */
-    /* 				&nh_10_10_10_2, */
-    /* 				tm->hw[0]->sw_if_index, */
-    /* 				~0, */
-    /* 				1, */
-    /* 				FIB_ROUTE_PATH_FLAG_NONE); */
-    /* fib_table_entry_path_remove(fib_index, &route_pfx, */
-    /* 				FIB_SOURCE_API, */
-    /* 				&nh_10_10_11_2, */
-    /* 				tm->hw[1]->sw_if_index, */
-    /* 				~0, */
-    /* 				1, */
-    /* 				FIB_ROUTE_PATH_FLAG_NONE); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID != */
-    /* 	      fib_table_lookup_exact_match(fib_index, &local_pfx)), */
-    /* 	     "route present"); */
-    /* midchain_adj = adj_get(midchain_ai); */
-    /* FIB_TEST((midchain_adj->sub_type.midchain.adj_index == drop_ai), */
-    /* 	     "tunnel midchain has re-stacked on drop"); */
-
-    /* /\* */
-    /*  * remove the tunnel and its MPLS encaps */
-    /*  *\/ */
-    /* rv = vnet_mpls_gre_add_del_tunnel(&tun_src, */
-    /* 				      &tun_dst_pfx.fp_addr.ip4, */
-    /* 				      &tun_itf_pfx.fp_addr.ip4, */
-    /* 				      tun_itf_pfx.fp_len, */
-    /* 				      0, // inner VRF */
-    /* 				      0, // outer VRF */
-    /* 				      &tunnel_sw_if_index, */
-    /*                                   0, // l2 only */
-    /* 				      0);  // DEL */
-    /* FIB_TEST((0 == rv), "Tunnel removed"); */
-    /* rv = vnet_mpls_gre_add_del_tunnel(&tun_src, */
-    /* 				      &tun_dst_pfx.fp_addr.ip4, */
-    /* 				      &tun_itf_pfx.fp_addr.ip4, */
-    /* 				      tun_itf_pfx.fp_len, */
-    /* 				      0, // inner VRF */
-    /* 				      0, // outer VRF */
-    /* 				      &tunnel_sw_if_index, */
-    /*                                   0, // l2 only */
-    /* 				      0);  // DEL */
-    /* FIB_TEST((0 != rv), "No existant Tunnel not removed"); */
-
-    /* rv =  vnet_mpls_add_del_encap(&tun_dst_pfx.fp_addr.ip4,  */
-    /* 				  0, // inner VRF */
-    /* 				  encap_labels, */
-    /* 				  ~0, // policy_tunnel_index, */
-    /* 				  0, // no_dst_hash, */
-    /* 				  NULL, */
-    /* 				  0); // ADD */
-    /* FIB_TEST((0 == rv), "MPLS encap deleted"); */
-
-    /* vec_free(encap_labels); */
-
-    /* /\* */
-    /*  * no more FIB entries expected */
-    /*  *\/ */
-    /* fei = fib_table_lookup_exact_match(fib_index, &tun_itf_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "tun itf route removed"); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &tun_dst_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "tun dst route removed"); */
-
-    /* /\* */
-    /*  * CLEANUP the connecteds */
-    /*  *\/ */
-    /* local2_pfx.fp_len = 24; */
-    /* fib_table_entry_delete(fib_index, &local2_pfx, */
-    /* 			   FIB_SOURCE_INTERFACE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local2_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID == fei), */
-    /* 	     "attached interface route remove"); */
-
-    /* local2_pfx.fp_len = 32; */
-    /* fib_table_entry_special_remove(fib_index, &local2_pfx, */
-    /* 				   FIB_SOURCE_INTERFACE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local2_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID == fei), */
-    /* 	     "local interface route removed"); */
-    /* local_pfx.fp_len = 24; */
-    /* fib_table_entry_delete(fib_index, &local_pfx, */
-    /* 				FIB_SOURCE_INTERFACE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID == fei), */
-    /* 	     "attached interface route remove"); */
-
-    /* local_pfx.fp_len = 32; */
-    /* fib_table_entry_special_remove(fib_index, &local_pfx, */
-    /* 				   FIB_SOURCE_INTERFACE); */
-    /* fei = fib_table_lookup_exact_match(fib_index, &local_pfx); */
-    /* FIB_TEST((FIB_NODE_INDEX_INVALID == fei), */
-    /* 	     "local interface route removed"); */
-}
-
-/*
  * Test Attached Exports
  */
 static void
@@ -4191,7 +3768,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei),
@@ -4207,7 +3784,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
 
@@ -4236,7 +3813,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_10_10_10_1_s_32);
@@ -4263,7 +3840,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached export created");
@@ -4305,7 +3882,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_2_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib2 present");
@@ -4336,7 +3913,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(import_fib_index1, &local_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "attached export created");
@@ -4373,7 +3950,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_3_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib3 present");
@@ -4445,7 +4022,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID == fei), "ADJ-fib1 removed from FIB1");
@@ -4468,7 +4045,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(import_fib_index1, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib1 imported in FIB1");
@@ -4500,7 +4077,7 @@ fib_test_ae (void)
                                           tm->hw[0]->sw_if_index,
                                           ~0, // invalid fib index
                                           1,
-                                          MPLS_LABEL_INVALID,
+                                          NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
     dpo = fib_entry_contribute_ip_forwarding(fei);
 
@@ -4556,7 +4133,7 @@ fib_test_ae (void)
                                           tm->hw[0]->sw_if_index,
                                           ~0, // invalid fib index
                                           1,
-                                          MPLS_LABEL_INVALID,
+                                          NULL,
                                           FIB_ROUTE_PATH_FLAG_NONE);
     dpo = fib_entry_contribute_ip_forwarding(fei);
 
@@ -4592,7 +4169,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
@@ -4631,7 +4208,7 @@ fib_test_ae (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
@@ -4692,6 +4269,7 @@ fib_test_ae (void)
 
 typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_LABEL_O_ADJ,
+    FT_LB_LABEL_STACK_O_ADJ,
     FT_LB_LABEL_O_LB,
     FT_LB_O_LB,
     FT_LB_SPECIAL,
@@ -4710,6 +4288,14 @@ typedef struct fib_test_lb_bucket_t_ {
 	    u8 ttl;
 	    adj_index_t adj;
 	} label_o_adj;
+	struct
+	{
+	    mpls_eos_bit_t eos;
+	    mpls_label_t label_stack[8];
+	    u8 label_stack_size;
+	    u8 ttl;
+	    adj_index_t adj;
+	} label_stack_o_adj;
 	struct
 	{
 	    mpls_eos_bit_t eos;
@@ -4758,6 +4344,63 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 
 	switch (exp->type)
 	{
+	case FT_LB_LABEL_STACK_O_ADJ:
+	    {
+		const mpls_label_dpo_t *mld;
+                mpls_label_t hdr;
+		u32 ii;
+
+		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+			   "bucket %d stacks on %U",
+			   bucket,
+			   format_dpo_type, dpo->dpoi_type);
+	    
+		mld = mpls_label_dpo_get(dpo->dpoi_index);
+
+		FIB_TEST_LB(exp->label_stack_o_adj.label_stack_size == mld->mld_n_labels,
+			    "label stack size",
+			    mld->mld_n_labels);
+
+		for (ii = 0; ii < mld->mld_n_labels; ii++)
+		{
+		    hdr = clib_net_to_host_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+		    FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
+				 exp->label_stack_o_adj.label_stack[ii]),
+				"bucket %d stacks on label %d",
+				bucket,
+				exp->label_stack_o_adj.label_stack[ii]);
+
+		    if (ii == mld->mld_n_labels-1)
+		    {
+			FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
+				     exp->label_o_adj.eos),
+				    "bucket %d stacks on label %d %U!=%U",
+				    bucket,
+				    exp->label_stack_o_adj.label_stack[ii],
+				    format_mpls_eos_bit, exp->label_o_adj.eos,
+				    format_mpls_eos_bit, vnet_mpls_uc_get_s(hdr));
+		    }
+		    else
+		    {
+			FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) == MPLS_NON_EOS),
+				    "bucket %d stacks on label %d %U",
+				    bucket,
+				    exp->label_stack_o_adj.label_stack[ii],
+				    format_mpls_eos_bit, vnet_mpls_uc_get_s(hdr));
+		    }
+		}
+
+		FIB_TEST_LB((DPO_ADJACENCY_INCOMPLETE == mld->mld_dpo.dpoi_type),
+			    "bucket %d label stacks on %U",
+			    bucket,
+			    format_dpo_type, mld->mld_dpo.dpoi_type);
+
+		FIB_TEST_LB((exp->label_stack_o_adj.adj == mld->mld_dpo.dpoi_index),
+			    "bucket %d label stacks on adj %d",
+			    bucket,
+			    exp->label_stack_o_adj.adj);
+	    }
+	    break;
 	case FT_LB_LABEL_O_ADJ:
 	    {
 		const mpls_label_dpo_t *mld;
@@ -4768,7 +4411,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			   format_dpo_type, dpo->dpoi_type);
 	    
 		mld = mpls_label_dpo_get(dpo->dpoi_index);
-                hdr = clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
+                hdr = clib_net_to_host_u32(mld->mld_hdr[0].label_exp_s_ttl);
 
 		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
 			     exp->label_o_adj.label),
@@ -4805,8 +4448,10 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			   format_dpo_type, dpo->dpoi_type);
 	    
 		mld = mpls_label_dpo_get(dpo->dpoi_index);
-                hdr = clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
+                hdr = clib_net_to_host_u32(mld->mld_hdr[0].label_exp_s_ttl);
 
+		FIB_TEST_LB(1 == mld->mld_n_labels, "label stack size",
+			    mld->mld_n_labels);
 		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
 			     exp->label_o_lb.label),
 			    "bucket %d stacks on label %d",
@@ -4944,7 +4589,7 @@ fib_test_label (void)
     const u32 fib_index = 0;
     test_main_t *tm;
     ip4_main_t *im;
-    int lb_count;
+    int lb_count, ii;
 
     lb_count = pool_elts(load_balance_pool);
     tm = &test_main;
@@ -4980,7 +4625,7 @@ fib_test_label (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local0_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei),
@@ -4996,7 +4641,7 @@ fib_test_label (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local0_pfx);
 
@@ -5026,7 +4671,7 @@ fib_test_label (void)
 				    tm->hw[1]->sw_if_index,
 				    ~0,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local1_pfx);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei),
@@ -5042,7 +4687,7 @@ fib_test_label (void)
 				    tm->hw[1]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &local1_pfx);
 
@@ -5112,6 +4757,9 @@ fib_test_label (void)
 	    .eos = MPLS_NON_EOS,
 	},
     };
+    mpls_label_t *l99 = NULL;
+    vec_add1(l99, 99);
+
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_1_1_1_1_s_32,
 				    FIB_SOURCE_API,
@@ -5121,7 +4769,7 @@ fib_test_label (void)
 				    tm->hw[0]->sw_if_index,
 				    ~0, // invalid fib index
 				    1,
-				    99,
+				    l99,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_1_s_32);
@@ -5148,6 +4796,8 @@ fib_test_label (void)
 	    .adj = ai_mpls_10_10_11_1,
 	},
     };
+    mpls_label_t *l_imp_null = NULL;
+    vec_add1(l_imp_null, MPLS_IETF_IMPLICIT_NULL_LABEL);
 
     fei = fib_table_entry_path_add(fib_index,
 				   &pfx_1_1_1_1_s_32,
@@ -5158,7 +4808,7 @@ fib_test_label (void)
 				   tm->hw[1]->sw_if_index,
 				   ~0, // invalid fib index
 				   1,
-				   MPLS_IETF_IMPLICIT_NULL_LABEL,
+				   l_imp_null,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(fib_test_validate_entry(fei, 
@@ -5236,7 +4886,7 @@ fib_test_label (void)
 				   tm->hw[1]->sw_if_index,
 				   ~0, // invalid fib index
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(fib_test_validate_entry(fei, 
@@ -5304,6 +4954,8 @@ fib_test_label (void)
 	    .eos = MPLS_EOS,
 	},
     };
+    mpls_label_t *l1600 = NULL;
+    vec_add1(l1600, 1600);
 
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_2_2_2_2_s_32,
@@ -5314,7 +4966,7 @@ fib_test_label (void)
 				    ~0,
 				    fib_index,
 				    1,
-				    1600,
+				    l1600,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_2_2_2_2_s_32);
@@ -5567,6 +5219,9 @@ fib_test_label (void)
     /*
      * add back the path with the valid label
      */
+    l99 = NULL;
+    vec_add1(l99, 99);
+
     fib_table_entry_path_add(fib_index,
 			     &pfx_1_1_1_1_s_32,
 			     FIB_SOURCE_API,
@@ -5576,7 +5231,7 @@ fib_test_label (void)
 			     tm->hw[0]->sw_if_index,
 			     ~0, // invalid fib index
 			     1,
-			     99,
+			     l99,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_1_1_1_1_s_32);
@@ -5695,6 +5350,8 @@ fib_test_label (void)
 	    .eos = MPLS_EOS,
 	},
     };
+    mpls_label_t *l101 = NULL;
+    vec_add1(l101, 101);
 
     fei = fib_table_entry_update_one_path(fib_index,
 					  &pfx_1_1_1_2_s_32,
@@ -5705,7 +5362,7 @@ fib_test_label (void)
 					  tm->hw[0]->sw_if_index,
 					  ~0, // invalid fib index
 					  1,
-					  101,
+					  l101,
 					  FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(fib_test_validate_entry(fei,
@@ -5733,6 +5390,9 @@ fib_test_label (void)
     	    .eos = MPLS_EOS,
     	},
     };
+    mpls_label_t *l1601 = NULL;
+    vec_add1(l1601, 1601);
+
     l1600_eos_o_1_1_1_1.label_o_lb.lb = non_eos_1_1_1_1.dpoi_index;
 
     fei = fib_table_entry_path_add(fib_index,
@@ -5744,7 +5404,7 @@ fib_test_label (void)
 				   ~0,
 				   fib_index,
 				   1,
-				   1601,
+				   l1601,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(fib_test_validate_entry(fei, 
@@ -5760,6 +5420,9 @@ fib_test_label (void)
      * update the via-entry so it no longer has an imp-null path.
      * the LB for the recursive can use an imp-null
      */
+    l_imp_null = NULL;
+    vec_add1(l_imp_null, MPLS_IETF_IMPLICIT_NULL_LABEL);
+
     fei = fib_table_entry_update_one_path(fib_index,
 					  &pfx_1_1_1_2_s_32,
 					  FIB_SOURCE_API,
@@ -5769,7 +5432,7 @@ fib_test_label (void)
 					  tm->hw[1]->sw_if_index,
 					  ~0, // invalid fib index
 					  1,
-					  MPLS_IETF_IMPLICIT_NULL_LABEL,
+					  l_imp_null,
 					  FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(fib_test_validate_entry(fei,
@@ -5802,7 +5465,7 @@ fib_test_label (void)
 					  tm->hw[1]->sw_if_index,
 					  ~0, // invalid fib index
 					  1,
-					  MPLS_LABEL_INVALID,
+					  NULL,
 					  FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST(fib_test_validate_entry(fei,
@@ -5844,7 +5507,7 @@ fib_test_label (void)
 				    ~0,
 				    fib_index,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fib_entry_contribute_forwarding(fib_table_lookup(fib_index,
@@ -5888,7 +5551,7 @@ fib_test_label (void)
 				    ~0,
 				    fib_index,
 				    1,
-				    MPLS_LABEL_INVALID,
+				    NULL,
 				    FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_2_2_2_4_s_32);
@@ -5900,6 +5563,54 @@ fib_test_label (void)
 	     "ip 1.1.1.1");
 
     dpo_reset(&ip_1_1_1_1);
+
+    /*
+     * Create an entry with a deep label stack
+     */
+    fib_prefix_t pfx_2_2_5_5_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    .ip4.as_u32 = clib_host_to_net_u32(0x02020505),
+	},
+    };
+    fib_test_lb_bucket_t ls_eos_o_10_10_10_1 = {
+	.type = FT_LB_LABEL_STACK_O_ADJ,
+	.label_stack_o_adj = {
+	    .adj = ai_mpls_10_10_11_1,
+	    .label_stack_size = 8,
+	    .label_stack = {
+		200, 201, 202, 203, 204, 205, 206, 207
+	    },
+	    .eos = MPLS_EOS,
+	},
+    };
+    mpls_label_t *label_stack = NULL;
+    vec_validate(label_stack, 7);
+    for (ii = 0; ii < 8; ii++)
+    {
+	label_stack[ii] = ii + 200;
+    }
+
+    fei = fib_table_entry_update_one_path(fib_index,
+					  &pfx_2_2_5_5_s_32,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_NONE,
+					  FIB_PROTOCOL_IP4,
+					  &nh_10_10_11_1,
+					  tm->hw[1]->sw_if_index,
+					  ~0, // invalid fib index
+					  1,
+					  label_stack,
+					  FIB_ROUTE_PATH_FLAG_NONE);
+
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &ls_eos_o_10_10_10_1),
+	     "2.2.5.5/32 LB 1 buckets via: "
+	     "adj 10.10.11.1");
+    fib_table_entry_delete_index(fei, FIB_SOURCE_API);
 
     /*
      * cleanup
@@ -6454,6 +6165,7 @@ lfib_test_deagg (void)
     lookup_dpo_t *lkd;
     test_main_t *tm;
     int lb_count;
+    adj_index_t ai_mpls_10_10_10_1;
 
     tm = &test_main;
     lb_count = pool_elts(load_balance_pool);
@@ -6467,6 +6179,14 @@ lfib_test_deagg (void)
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
                                      1);
+
+    ip46_address_t nh_10_10_10_1 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),
+    };
+    ai_mpls_10_10_10_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                             VNET_LINK_MPLS,
+                                             &nh_10_10_10_1,
+                                             tm->hw[0]->sw_if_index);
 
     /*
      * Test the specials stack properly.
@@ -6527,7 +6247,7 @@ lfib_test_deagg (void)
 				   ~0,
 				   fib_index,
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST((lfe == fib_table_lookup(lfib_index, &pfx)),
@@ -6578,7 +6298,7 @@ lfib_test_deagg (void)
 				   ~0,
 				   lfib_index,
 				   1,
-				   MPLS_LABEL_INVALID,
+				   NULL,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
     FIB_TEST((lfe == fib_table_lookup(lfib_index, &pfx)),
@@ -6617,30 +6337,179 @@ lfib_test_deagg (void)
               format_mpls_unicast_label, deag_label,
               format_mpls_eos_bit, MPLS_EOS);
 
+    dpo_reset(&dpo);
 
+    /*
+     * An MPLS x-connect
+     */
+    fib_prefix_t pfx_1200 = {
+	.fp_len = 21,
+	.fp_proto = FIB_PROTOCOL_MPLS,
+	.fp_label = 1200,
+	.fp_eos = MPLS_NON_EOS,
+    };
+    fib_test_lb_bucket_t neos_o_10_10_10_1 = {
+	.type = FT_LB_LABEL_STACK_O_ADJ,
+	.label_stack_o_adj = {
+	    .adj = ai_mpls_10_10_10_1,
+	    .label_stack_size = 4,
+	    .label_stack = {
+		200, 300, 400, 500,
+	    },
+	    .eos = MPLS_NON_EOS,
+	},
+    };
+    dpo_id_t neos_1200 = DPO_INVALID;
+    dpo_id_t eos_1200 = DPO_INVALID;
+    mpls_label_t *l200 = NULL;
+    vec_add1(l200, 200);
+    vec_add1(l200, 300);
+    vec_add1(l200, 400);
+    vec_add1(l200, 500);
+
+    lfe = fib_table_entry_update_one_path(fib_index,
+					  &pfx_1200,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_NONE,
+					  FIB_PROTOCOL_IP4,
+					  &nh_10_10_10_1,
+					  tm->hw[0]->sw_if_index,
+					  ~0, // invalid fib index
+					  1,
+					  l200,
+					  FIB_ROUTE_PATH_FLAG_NONE);
+
+    FIB_TEST(fib_test_validate_entry(lfe,
+				     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     1,
+				     &neos_o_10_10_10_1),
+	     "1200/0 LB 1 buckets via: "
+	     "adj 10.10.11.1");
+
+    /*
+     * A recursive route via the MPLS x-connect
+     */
+    fib_prefix_t pfx_2_2_2_3_s_32 = {
+    	.fp_len = 32,
+    	.fp_proto = FIB_PROTOCOL_IP4,
+    	.fp_addr = {
+    	    .ip4.as_u32 = clib_host_to_net_u32(0x02020203),
+    	},
+    };
+    fib_route_path_t *rpaths = NULL, rpath = {
+    	.frp_proto = FIB_PROTOCOL_MPLS,
+    	.frp_local_label = 1200,
+    	.frp_sw_if_index = ~0, // recurive
+    	.frp_fib_index = 0, // Default MPLS fib
+    	.frp_weight = 1,
+    	.frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+    	.frp_label_stack = NULL,
+    };
+    vec_add1(rpaths, rpath);
+
+    fib_table_entry_path_add2(fib_index,
+    			      &pfx_2_2_2_3_s_32,
+    			      FIB_SOURCE_API,
+    			      FIB_ENTRY_FLAG_NONE,
+    			      rpaths);
+
+    /*
+     * A labelled recursive route via the MPLS x-connect
+     */
+    fib_prefix_t pfx_2_2_2_4_s_32 = {
+    	.fp_len = 32,
+    	.fp_proto = FIB_PROTOCOL_IP4,
+    	.fp_addr = {
+    	    .ip4.as_u32 = clib_host_to_net_u32(0x02020204),
+    	},
+    };
+    mpls_label_t *l999 = NULL;
+    vec_add1(l999, 999);
+    rpaths[0].frp_label_stack = l999,
+
+    fib_table_entry_path_add2(fib_index,
+    			      &pfx_2_2_2_4_s_32,
+    			      FIB_SOURCE_API,
+    			      FIB_ENTRY_FLAG_NONE,
+    			      rpaths);
+
+    fib_entry_contribute_forwarding(fib_table_lookup(fib_index, &pfx_1200),
+    				    FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+    				    &eos_1200);
+    fib_entry_contribute_forwarding(fib_table_lookup(fib_index, &pfx_1200),
+    				    FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+    				    &neos_1200);
+
+    fib_test_lb_bucket_t ip_o_1200 = {
+    	.type = FT_LB_O_LB,
+    	.lb = {
+    	    .lb = eos_1200.dpoi_index,
+    	},
+    };
+    fib_test_lb_bucket_t mpls_o_1200 = {
+	.type = FT_LB_LABEL_O_LB,
+	.label_o_lb = {
+    	    .lb = neos_1200.dpoi_index,
+	    .label = 999,
+	    .eos = MPLS_EOS,
+	},
+    };
+
+    lfe = fib_table_lookup(fib_index, &pfx_2_2_2_3_s_32);
+    FIB_TEST(fib_test_validate_entry(lfe,
+    				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+    				     1,
+    				     &ip_o_1200),
+    	     "2.2.2.2.3/32 LB 1 buckets via: label 1200 EOS");
+    lfe = fib_table_lookup(fib_index, &pfx_2_2_2_4_s_32);
+    FIB_TEST(fib_test_validate_entry(lfe,
+    				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+    				     1,
+    				     &mpls_o_1200),
+    	     "2.2.2.2.4/32 LB 1 buckets via: label 1200 non-EOS");
+
+    fib_table_entry_delete(fib_index, &pfx_1200, FIB_SOURCE_API);
+    fib_table_entry_delete(fib_index, &pfx_2_2_2_3_s_32, FIB_SOURCE_API);
+    fib_table_entry_delete(fib_index, &pfx_2_2_2_4_s_32, FIB_SOURCE_API);
+
+    dpo_reset(&neos_1200);
+    dpo_reset(&eos_1200);
+
+    /*
+     * A recursive via a label that does not exist
+     */
+    fib_test_lb_bucket_t bucket_drop = {
+	.type = FT_LB_SPECIAL,
+	.special = {
+	    .adj = 1,
+	},
+    };
+
+    rpaths[0].frp_label_stack = NULL;
+    lfe = fib_table_entry_path_add2(fib_index,
+				    &pfx_2_2_2_4_s_32,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_NONE,
+				    rpaths);
+
+    FIB_TEST(fib_test_validate_entry(lfe,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &bucket_drop),
+	     "2.2.2.4/32 LB 1 buckets via: DROP");
+
+    fib_table_entry_delete(fib_index, &pfx_2_2_2_4_s_32, FIB_SOURCE_API);
+
+    /*
+     * cleanup
+     */
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
                                      0);
 
-    dpo_reset(&dpo);
-    /*
-     * +1 for the drop LB in the MPLS tables.
-     */
-    FIB_TEST(lb_count+1 == pool_elts(load_balance_pool),
+    FIB_TEST(lb_count == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",
-             lb_count+1, pool_elts(load_balance_pool));
-}
-
-static clib_error_t *
-lfib_test (vlib_main_t * vm, 
-           unformat_input_t * input,
-           vlib_cli_command_t * cmd_arg)
-{
-    fib_test_mk_intf(4);
-
-    lfib_test_deagg();
-
-    return (NULL);
+             lb_count, pool_elts(load_balance_pool));
 }
 
 static clib_error_t *
@@ -6655,10 +6524,6 @@ fib_test (vlib_main_t * vm,
 	fib_test_v4();
 	fib_test_v6();
     }
-    else if (unformat (input, "gre"))
-    {
-	fib_test_gre();
-    }
     else if (unformat (input, "label"))
     {
 	fib_test_label();
@@ -6666,6 +6531,10 @@ fib_test (vlib_main_t * vm,
     else if (unformat (input, "ae"))
     {
 	fib_test_ae();
+    }
+    else if (unformat (input, "lfib"))
+    {
+	lfib_test_deagg();
     }
     else if (unformat (input, "walk"))
     {
@@ -6681,9 +6550,9 @@ fib_test (vlib_main_t * vm,
          */
 	fib_test_v4();
 	fib_test_v6();
-	fib_test_gre();
 	fib_test_ae();
 	fib_test_label();
+	lfib_test_deagg();
     }
 
     return (NULL);
@@ -6693,12 +6562,6 @@ VLIB_CLI_COMMAND (test_fib_command, static) = {
     .path = "test fib",
     .short_help = "fib unit tests - DO NOT RUN ON A LIVE SYSTEM",
     .function = fib_test,
-};
-
-VLIB_CLI_COMMAND (test_lfib_command, static) = {
-    .path = "test lfib",
-    .short_help = "mpls label fib unit tests - DO NOT RUN ON A LIVE SYSTEM",
-    .function = lfib_test,
 };
 
 clib_error_t *

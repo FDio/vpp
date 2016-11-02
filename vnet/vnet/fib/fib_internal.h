@@ -24,7 +24,9 @@
  */
 #undef FIB_DEBUG
 
-extern void fib_prefix_from_ip46_addr (const ip46_address_t *addr,
+extern void fib_prefix_from_ip46_addr(const ip46_address_t *addr,
+				       fib_prefix_t *prf);
+extern void fib_prefix_from_mpls_label(mpls_label_t label,
 				       fib_prefix_t *prf);
 
 extern int fib_route_path_cmp(const fib_route_path_t *rpath1,
