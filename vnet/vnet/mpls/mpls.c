@@ -121,45 +121,6 @@ unformat_mpls_header (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-u8 * format_mpls_eth_tx_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  mpls_eth_tx_trace_t * t = va_arg (*args, mpls_eth_tx_trace_t *);
-  mpls_main_t * mm = &mpls_main;
-    
-  if (t->lookup_miss)
-    s = format (s, "MPLS: lookup miss");
-  else
-    {
-      s = format (s, "MPLS: tunnel %d labels %U len %d tx_sw_index %d dst %U",
-                  t->tunnel_id,
-                  format_mpls_encap_index, mm, t->mpls_encap_index, 
-                  clib_net_to_host_u16 (t->length),
-                  t->tx_sw_if_index, 
-                  format_ethernet_address, t->dst);
-    }
-  return s;
-}
-
-u8 * format_mpls_eth_header_with_length (u8 * s, va_list * args)
-{
-  ethernet_header_t * h = va_arg (*args, ethernet_header_t *);
-  mpls_unicast_header_t * m = (mpls_unicast_header_t *)(h+1);
-  u32 max_header_bytes = va_arg (*args, u32);
-  uword header_bytes;
-
-  header_bytes = sizeof (h[0]);
-  if (max_header_bytes != 0 && header_bytes > max_header_bytes)
-    return format (s, "ethernet header truncated");
-
-  s = format 
-    (s, "ETHERNET-MPLS label %d", 
-     vnet_mpls_uc_get_label (clib_net_to_host_u32 (m->label_exp_s_ttl)));
-
-  return s;
-}
-
 uword
 unformat_mpls_label_net_byte_order (unformat_input_t * input,
                                         va_list * args)
@@ -175,157 +136,6 @@ unformat_mpls_label_net_byte_order (unformat_input_t * input,
   *result = clib_host_to_net_u32 (label);
   return 1;
 }
-
-mpls_encap_t * 
-mpls_encap_by_fib_and_dest (mpls_main_t * mm, u32 rx_fib, u32 dst_address)
-{
-  uword * p;
-  mpls_encap_t * e;
-  u64 key;
-
-  key = ((u64)rx_fib<<32) | ((u64) dst_address);
-  p = hash_get (mm->mpls_encap_by_fib_and_dest, key);
-
-  if (!p)
-    return 0;
-
-  e = pool_elt_at_index (mm->encaps, p[0]);
-  return e;
-}
-
-int vnet_mpls_add_del_encap (ip4_address_t *dest, u32 fib_id, 
-                             u32 *labels_host_byte_order,
-                             u32 policy_tunnel_index,
-                             int no_dst_hash, u32 * indexp, int is_add)
-{
-  mpls_main_t * mm = &mpls_main;
-  ip4_main_t * im = &ip4_main;
-  mpls_encap_t * e;
-  u32 label_net_byte_order, label_host_byte_order;
-  u32 fib_index;
-  u64 key;
-  uword *p;
-  int i;
-  
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (! p)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-  
-  fib_index = p[0];
-  
-  key = ((u64)fib_index<<32) | ((u64) dest->as_u32);
-  
-  if (is_add)
-    {
-      pool_get (mm->encaps, e);
-      memset (e, 0, sizeof (*e));
-      
-      for (i = 0; i < vec_len (labels_host_byte_order); i++)
-        {
-          mpls_unicast_header_t h;
-          label_host_byte_order = labels_host_byte_order[i];
-          
-          /* Reformat label into mpls_unicast_header_t */
-          label_host_byte_order <<= 12;
-	  // FIXME NEOS AND EOS
-          //if (i == vec_len(labels_host_byte_order) - 1)
-          //  label_host_byte_order |= 1<<8;            /* S=1 */
-          label_host_byte_order |= 0xff;            /* TTL=FF */
-          label_net_byte_order = clib_host_to_net_u32 (label_host_byte_order);
-          h.label_exp_s_ttl = label_net_byte_order;
-          vec_add1 (e->labels, h);
-        }
-      if (no_dst_hash == 0)
-        hash_set (mm->mpls_encap_by_fib_and_dest, key, e - mm->encaps);
-      if (indexp)
-        *indexp = e - mm->encaps;
-      if (policy_tunnel_index != ~0)
-        return vnet_mpls_policy_tunnel_add_rewrite (mm, e, policy_tunnel_index);
-    }
-  else
-    {
-      p = hash_get (mm->mpls_encap_by_fib_and_dest, key);
-      if (!p)
-        return VNET_API_ERROR_NO_SUCH_LABEL;
-      
-      e = pool_elt_at_index (mm->encaps, p[0]);
-      
-      vec_free (e->labels);
-      vec_free (e->rewrite);
-      pool_put(mm->encaps, e);
-      
-      if (no_dst_hash == 0)
-        hash_unset (mm->mpls_encap_by_fib_and_dest, key);    
-    }
-  return 0;
-}
-
-static clib_error_t *
-mpls_add_encap_command_fn (vlib_main_t * vm,
-                           unformat_input_t * input,
-                           vlib_cli_command_t * cmd)
-{
-  u32 fib_id;
-  u32 *labels = 0;
-  u32 this_label;
-  ip4_address_t dest;
-  u32 policy_tunnel_index = ~0;
-  int no_dst_hash = 0;
-  int rv;
-  int fib_set = 0;
-  int dest_set = 0;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "fib %d", &fib_id))
-        fib_set = 1;
-      else if (unformat (input, "dest %U", unformat_ip4_address, &dest))
-        dest_set = 1;
-      else if (unformat (input, "no-dst-hash"))
-        no_dst_hash = 1;
-      else if (unformat (input, "label %d", &this_label))
-        vec_add1 (labels, this_label);
-      else if (unformat (input, "policy-tunnel %d", &policy_tunnel_index))
-        ;
-      else
-        break;
-    }
-
-  if (fib_set == 0)
-    return clib_error_return (0, "fib-id missing");
-  if (dest_set == 0)
-    return clib_error_return (0, "destination IP address missing");
-  if (vec_len (labels) == 0)
-    return clib_error_return (0, "label stack missing");
-  
-  rv = vnet_mpls_add_del_encap (&dest, fib_id, labels, 
-                                policy_tunnel_index, 
-                                no_dst_hash, 0 /* indexp */,
-                                1 /* is_add */);
-  vec_free (labels);
-
-  switch (rv)
-    {
-    case 0:
-      break;
-
-    case VNET_API_ERROR_NO_SUCH_FIB:
-      return clib_error_return (0, "fib id %d unknown", fib_id);
-      
-    default:
-      return clib_error_return (0, "vnet_mpls_add_del_encap returned %d", 
-                                rv);
-    }
-
-  return 0;
-}
-
-VLIB_CLI_COMMAND (mpls_add_encap_command, static) = {
-  .path = "mpls encap add",
-  .short_help = 
-  "mpls encap add label <label> ... fib <id> dest <ip4-address>",
-  .function = mpls_add_encap_command_fn,
-};
 
 u8 * format_mpls_unicast_header_host_byte_order (u8 * s, va_list * args)
 {
@@ -350,46 +160,6 @@ u8 * format_mpls_unicast_header_net_byte_order (u8 * s, va_list * args)
   return format (s, "%U", format_mpls_unicast_header_host_byte_order,
                  &h_host);
 }
-
-static clib_error_t *
-mpls_del_encap_command_fn (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
-{
-  u32 fib_id;
-  ip4_address_t dest;
-  int rv;
-  
-  if (unformat (input, "fib %d dest %U", &fib_id, 
-                unformat_ip4_address, &dest)) 
-    {
-      rv = vnet_mpls_add_del_encap (&dest, fib_id, 0 /* labels */, 
-                                    ~0 /* policy_tunnel_index */,
-                                    0 /* no_dst_hash */,
-                                    0 /* indexp */,
-                                    0 /* is_add */);
-      switch (rv)
-        {
-        case VNET_API_ERROR_NO_SUCH_FIB:
-          return clib_error_return (0, "fib id %d unknown", fib_id);
-        case VNET_API_ERROR_NO_SUCH_ENTRY:
-          return clib_error_return (0, "dest %U not in fib %d",
-                                    format_ip4_address, &dest, fib_id);
-        default:
-          break;
-        }
-      return 0;
-    }
-  else
-    return clib_error_return (0, "unknown input `%U'",
-                              format_unformat_error, input);
-}
-
-VLIB_CLI_COMMAND (mpls_del_encap_command, static) = {
-  .path = "mpls encap delete",
-  .short_help = "mpls encap delete fib <id> dest <ip4-address>",
-  .function = mpls_del_encap_command_fn,
-};
 
 int
 mpls_dest_cmp(void * a1, void * a2)
@@ -419,65 +189,22 @@ mpls_label_cmp(void * a1, void * a2)
 }
 
 static clib_error_t *
-show_mpls_fib_command_fn (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
-{
-  u64 key; 
-  u32 value;
-  show_mpls_fib_t *records = 0;
-  show_mpls_fib_t *s;
-  mpls_main_t * mm = &mpls_main;
-  ip4_fib_t * rx_fib;
-
-  hash_foreach (key, value, mm->mpls_encap_by_fib_and_dest, 
-  ({
-    vec_add2 (records, s, 1);
-    s->fib_index = (u32)(key>>32);
-    s->dest = (u32)(key & 0xFFFFFFFF);
-    s->entry_index = (u32) value;
-  }));
-
-  if (!vec_len(records))
-    {
-      vlib_cli_output (vm, "MPLS encap table empty");
-    }
-  /* sort output by dst address within fib */
-  vec_sort_with_function (records, mpls_dest_cmp);
-  vec_sort_with_function (records, mpls_fib_index_cmp);
-  vlib_cli_output (vm, "MPLS encap table");
-  vlib_cli_output (vm, "%=6s%=16s%=16s", "Table", "Dest address", "Labels");
-  vec_foreach (s, records)
-    {
-      rx_fib = ip4_fib_get (s->fib_index);
-      vlib_cli_output (vm, "%=6d%=16U%=16U", rx_fib->table_id, 
-                       format_ip4_address, &s->dest,
-                       format_mpls_encap_index, mm, s->entry_index);
-    }
-
-  vec_free(records);
-  return 0;
-}
-
-VLIB_CLI_COMMAND (show_mpls_fib_command, static) = {
-    .path = "show mpls encap",
-    .short_help = "show mpls encap",
-    .function = show_mpls_fib_command_fn,
-};
-
-static clib_error_t *
 vnet_mpls_local_label (vlib_main_t * vm,
                        unformat_input_t * input,
                        vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
-  clib_error_t * error = 0;
   u32 table_id, is_del, is_ip;
-  fib_prefix_t pfx;
   mpls_label_t local_label;
+  mpls_label_t out_label;
+  clib_error_t * error;
   mpls_eos_bit_t eos;
+  vnet_main_t * vnm;
+  fib_prefix_t pfx;
 
+  vnm = vnet_get_main();
+  error = NULL;
   is_ip = 0;
   table_id = 0;
   eos = MPLS_EOS;
@@ -519,13 +246,99 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
           is_ip = 1;
       }
+      else if (unformat (line_input, "via %U %U weight %u",
+			 unformat_ip4_address,
+			 &rpath.frp_addr.ip4,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index,
+			 &rpath.frp_weight))
+      {
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  vec_add1(rpaths, rpath);
+      }
+
+      else if (unformat (line_input, "via %U %U weight %u",
+			 unformat_ip6_address,
+			 &rpath.frp_addr.ip6,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index,
+			 &rpath.frp_weight))
+      {
+	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  vec_add1(rpaths, rpath);
+      }
+
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip4_address,
+ 			 &rpath.frp_addr.ip4,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+      {
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  vec_add1(rpaths, rpath);
+      }
+			 
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip6_address,
+ 			 &rpath.frp_addr.ip6,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+      {
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  vec_add1(rpaths, rpath);
+      }
+      else if (unformat (line_input, "via %U next-hop-table %d",
+			 unformat_ip4_address,
+  			 &rpath.frp_addr.ip4,
+			 &rpath.frp_fib_index))
+      {
+	  rpath.frp_weight = 1;
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  vec_add1(rpaths, rpath);
+      }
+      else if (unformat (line_input, "via %U next-hop-table %d",
+			 unformat_ip6_address,
+  			 &rpath.frp_addr.ip6,
+			 &rpath.frp_fib_index))
+      {
+	  rpath.frp_weight = 1;
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  vec_add1(rpaths, rpath);
+      }
+      else if (unformat (line_input, "via %U",
+			 unformat_ip4_address,
+  			 &rpath.frp_addr.ip4))
+      {
+	  /*
+	   * the recursive next-hops are by default in the same table
+	   * as the prefix
+	   */
+	  rpath.frp_fib_index = table_id;
+	  rpath.frp_weight = 1;
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  vec_add1(rpaths, rpath);
+      }
+      else if (unformat (line_input, "via %U",
+			 unformat_ip6_address,
+  			 &rpath.frp_addr.ip6))
+      {
+	  rpath.frp_fib_index = table_id;
+	  rpath.frp_weight = 1;
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  vec_add1(rpaths, rpath);
+      }
       else if (unformat (line_input, "%d", &local_label))
 	;
       else if (unformat (line_input,
 			 "ip4-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
           rpath.frp_proto = FIB_PROTOCOL_IP4;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  pfx.fp_payload_proto = DPO_PROTO_IP4;
@@ -535,7 +348,6 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 "ip6-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
           rpath.frp_proto = FIB_PROTOCOL_IP6;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  vec_add1(rpaths, rpath);
@@ -545,16 +357,26 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 "mpls-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
           rpath.frp_proto = FIB_PROTOCOL_MPLS;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  pfx.fp_payload_proto = DPO_PROTO_MPLS;
 	  vec_add1(rpaths, rpath);
       }
+      else if (unformat (line_input, "out-label %U",
+                         unformat_mpls_unicast_label,
+			 &out_label))
+      {
+	  if (vec_len(rpaths) == 0)
+	  {
+	      error = clib_error_return(0 , "Paths then labels");
+	      goto done;
+	  }
+	  vec_add1(rpaths[vec_len(rpaths)-1].frp_label_stack, out_label);
+      }
       else
       {
           error = clib_error_return (0, "unkown input: %U",
-                                     format_unformat_error, input);
+                                     format_unformat_error, line_input);
           goto done;
       }
 
@@ -596,6 +418,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
       pfx.fp_proto = FIB_PROTOCOL_MPLS;
       pfx.fp_len = 21;
       pfx.fp_label = local_label;
+      pfx.fp_payload_proto = DPO_PROTO_MPLS;
 
       if (NULL == rpaths)
       {
@@ -606,17 +429,20 @@ vnet_mpls_local_label (vlib_main_t * vm,
       /*
        * the CLI parsing stored table Ids, swap to FIB indicies
        */
-      fi = fib_table_id_find_fib_index(dpo_proto_to_fib(pfx.fp_payload_proto),
-				       rpaths[0].frp_fib_index);
-
-      if (~0 == fi)
+      if (FIB_NODE_INDEX_INVALID == rpath.frp_sw_if_index)
       {
-	  error = clib_error_return(0 , "%U Via table %d does not exist",
-				    format_fib_protocol, pfx.fp_payload_proto,
-				    rpaths[0].frp_fib_index);
-	  goto done;
+	  fi = fib_table_id_find_fib_index(dpo_proto_to_fib(pfx.fp_payload_proto),
+					   rpaths[0].frp_fib_index);
+
+	  if (~0 == fi)
+	  {
+	      error = clib_error_return(0 , "%U Via table %d does not exist",
+					format_fib_protocol, pfx.fp_payload_proto,
+					rpaths[0].frp_fib_index);
+	      goto done;
+	  }
+	  rpaths[0].frp_fib_index = fi;
       }
-      rpaths[0].frp_fib_index = fi;
 
       fib_index = mpls_fib_index_from_table_id(table_id);
 
@@ -653,44 +479,15 @@ VLIB_CLI_COMMAND (mpls_local_label_command, static) = {
   .short_help = "Create/Delete MPL local labels",
 };
 
-int mpls_fib_reset_labels (u32 fib_id)
+int
+mpls_fib_reset_labels (u32 fib_id)
 {
-  u64 key; 
-  u32 value;
-  show_mpls_fib_t *records = 0;
-  show_mpls_fib_t *s;
-  mpls_main_t * mm = &mpls_main;
-  ip4_main_t * im = &ip4_main;
-  u32 fib_index;
-  uword *p;
-
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (! p)
-    return VNET_API_ERROR_NO_SUCH_FIB;
-
-  fib_index = p[0];
-
-  hash_foreach (key, value, mm->mpls_encap_by_fib_and_dest, 
-  ({
-    if (fib_index == (u32)(key>>32)) {
-        vec_add2 (records, s, 1);
-        s->dest = (u32)(key & 0xFFFFFFFF);
-        s->entry_index = (u32) value;
-    }
-  }));
-
-  vec_foreach (s, records)
-    {
-      key = ((u64)fib_index<<32) | ((u64) s->dest);
-      hash_unset (mm->mpls_encap_by_fib_and_dest, key);
-      pool_put_index (mm->encaps, s->entry_index);
-    }
-                
-  vec_free(records);
+  // FIXME
   return 0;
 }
 
-static clib_error_t * mpls_init (vlib_main_t * vm)
+static clib_error_t *
+mpls_init (vlib_main_t * vm)
 {
   mpls_main_t * mm = &mpls_main;
   clib_error_t * error;
@@ -700,8 +497,6 @@ static clib_error_t * mpls_init (vlib_main_t * vm)
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
-
-  mm->mpls_encap_by_fib_and_dest = hash_create (0, sizeof (uword));
 
   return vlib_call_init_function (vm, mpls_input_init);
 }

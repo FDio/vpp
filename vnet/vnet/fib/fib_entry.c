@@ -585,6 +585,10 @@ fib_entry_alloc (u32 fib_index,
     if (FIB_PROTOCOL_MPLS == fib_entry->fe_prefix.fp_proto)
     {
 	fib_entry->fe_prefix.fp_len = 21;
+	if (MPLS_NON_EOS == fib_entry->fe_prefix.fp_eos)
+	{
+	    fib_entry->fe_prefix.fp_payload_proto = DPO_PROTO_MPLS;
+	}
     	ASSERT(DPO_PROTO_NONE != fib_entry->fe_prefix.fp_payload_proto);
     }
 

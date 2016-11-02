@@ -42,28 +42,49 @@ mpls_label_dpo_get_index (mpls_label_dpo_t *mld)
 }
 
 index_t
-mpls_label_dpo_create (mpls_label_t label,
+mpls_label_dpo_create (mpls_label_t *label_stack,
                        mpls_eos_bit_t eos,
                        u8 ttl,
                        u8 exp,
 		       const dpo_id_t *dpo)
 {
     mpls_label_dpo_t *mld;
+    u32 ii;
 
     mld = mpls_label_dpo_alloc();
-
-    vnet_mpls_uc_set_label(&mld->mld_hdr.label_exp_s_ttl, label);
-    vnet_mpls_uc_set_ttl(&mld->mld_hdr.label_exp_s_ttl, ttl);
-    vnet_mpls_uc_set_exp(&mld->mld_hdr.label_exp_s_ttl, exp);
-    vnet_mpls_uc_set_s(&mld->mld_hdr.label_exp_s_ttl, eos);
+    mld->mld_n_labels = vec_len(label_stack);
 
     /*
+     * construct label rewrite headers for each value value passed.
      * get the header in network byte order since we will paint it
      * on a packet in the data-plane
      */
-    mld->mld_hdr.label_exp_s_ttl =
-        clib_host_to_net_u32(mld->mld_hdr.label_exp_s_ttl);
 
+    for (ii = 0; ii < mld->mld_n_labels-1; ii++)
+    {
+	vnet_mpls_uc_set_label(&mld->mld_hdr[ii].label_exp_s_ttl, label_stack[ii]);
+	vnet_mpls_uc_set_ttl(&mld->mld_hdr[ii].label_exp_s_ttl, 255);
+	vnet_mpls_uc_set_exp(&mld->mld_hdr[ii].label_exp_s_ttl, 0);
+	vnet_mpls_uc_set_s(&mld->mld_hdr[ii].label_exp_s_ttl, MPLS_NON_EOS);
+	mld->mld_hdr[ii].label_exp_s_ttl =
+	    clib_host_to_net_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+    }
+
+    /*
+     * the inner most label
+     */
+    ii = mld->mld_n_labels-1;
+
+    vnet_mpls_uc_set_label(&mld->mld_hdr[ii].label_exp_s_ttl, label_stack[ii]);
+    vnet_mpls_uc_set_ttl(&mld->mld_hdr[ii].label_exp_s_ttl, ttl);
+    vnet_mpls_uc_set_exp(&mld->mld_hdr[ii].label_exp_s_ttl, exp);
+    vnet_mpls_uc_set_s(&mld->mld_hdr[ii].label_exp_s_ttl, eos);
+    mld->mld_hdr[ii].label_exp_s_ttl =
+	clib_host_to_net_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+
+    /*
+     * stack this label objct on its parent.
+     */
     dpo_stack(DPO_MPLS_LABEL, DPO_PROTO_MPLS, &mld->mld_dpo, dpo);
 
     return (mpls_label_dpo_get_index(mld));
@@ -76,15 +97,20 @@ format_mpls_label_dpo (u8 *s, va_list *args)
     u32 indent = va_arg (*args, u32);
     mpls_unicast_header_t hdr;
     mpls_label_dpo_t *mld;
+    u32 ii;
 
     mld = mpls_label_dpo_get(index);
 
-    hdr.label_exp_s_ttl =
-        clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
-
     s = format(s, "mpls-label:[%d]:", index);
-    s = format(s, "%U\n", format_mpls_header, hdr);
-    s = format(s, "%U", format_white_space, indent);
+
+    for (ii = 0; ii < mld->mld_n_labels; ii++)
+    {
+	hdr.label_exp_s_ttl =
+	    clib_net_to_host_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+	s = format(s, "%U", format_mpls_header, hdr);
+    }
+
+    s = format(s, "\n%U", format_white_space, indent);
     s = format(s, "%U", format_dpo_id, &mld->mld_dpo, indent+2);
 
     return (s);
@@ -168,7 +194,7 @@ mpls_label_imposition (vlib_main_t * vm,
             mld0 = mpls_label_dpo_get(mldi0);
 
             /* Paint the MPLS header */
-            vlib_buffer_advance(b0, -sizeof(*hdr0));
+            vlib_buffer_advance(b0, -(sizeof(*hdr0) * mld0->mld_n_labels));
             hdr0 = vlib_buffer_get_current(b0);
 
             // FIXME.
@@ -176,7 +202,7 @@ mpls_label_imposition (vlib_main_t * vm,
             // for IPvX imposition from the IP header
             // so we need a deidcated ipx-to-mpls-label-imp-node
             // for mpls switch and stack another solution is required.
-            *hdr0 = mld0->mld_hdr;
+            clib_memcpy(hdr0, mld0->mld_hdr, sizeof(*hdr0) * mld0->mld_n_labels);
 
             next0 = mld0->mld_dpo.dpoi_next_node;
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;

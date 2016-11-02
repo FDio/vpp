@@ -93,7 +93,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
       rpath->frp_sw_if_index = sw_if_index;
       rpath->frp_fib_index = ~0;
       rpath->frp_weight = 1;
-      rpath->frp_label = MPLS_LABEL_INVALID;
+      rpath->frp_label_stack = NULL;
     }
 
   fib_table_entry_path_add2 (0,	// default FIB table
