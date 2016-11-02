@@ -269,6 +269,9 @@ extern fib_entry_flag_t fib_entry_get_flags_i(const fib_entry_t *fib_entry);
 extern fib_path_list_flags_t fib_entry_src_flags_2_path_list_flags(
     fib_entry_flag_t eflags);
 
+extern fib_forward_chain_type_t fib_entry_chain_type_fixup(const fib_entry_t *entry,
+                                                           fib_forward_chain_type_t fct);
+
 extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 				 const fib_entry_src_t *esrc,
 				 fib_forward_chain_type_t fct,

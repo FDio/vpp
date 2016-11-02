@@ -282,6 +282,8 @@ class VppTestCase(unittest.TestCase):
             self.logger.info(self.vapi.cli("show hardware"))
             self.logger.info(self.vapi.cli("show error"))
             self.logger.info(self.vapi.cli("show run"))
+            self.logger.info(self.vapi.cli("show mpls fib"))
+            self.logger.info(self.vapi.cli("show ip fib"))
 
     def setUp(self):
         """ Clear trace before running each test"""

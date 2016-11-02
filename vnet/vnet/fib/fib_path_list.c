@@ -613,6 +613,20 @@ fib_path_list_get_resolving_interface (fib_node_index_t path_list_index)
     return (sw_if_index);
 }
 
+fib_protocol_t
+fib_path_list_get_proto (fib_node_index_t path_list_index)
+{
+    fib_path_list_t *path_list;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    /*
+     * we don't support a mix of path protocols, so we can return the proto
+     * of the first
+     */
+    return (fib_path_get_proto(path_list->fpl_paths[0]));
+}
+
 int
 fib_path_list_is_looped (fib_node_index_t path_list_index)
 {

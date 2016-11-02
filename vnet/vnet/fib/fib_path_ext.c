@@ -18,23 +18,28 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/drop_dpo.h>
 
-#include "fib_path_ext.h"
-#include "fib_path.h"
-#include "fib_path_list.h"
-#include "fib_internal.h"
+#include <vnet/fib/fib_path_ext.h>
+#include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_path.h>
+#include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_internal.h>
 
 u8 *
 format_fib_path_ext (u8 * s, va_list * args)
 {
     fib_path_ext_t *path_ext;
+    u32 ii;
 
     path_ext = va_arg (*args, fib_path_ext_t *);
 
-    s = format(s, "path:%d label:%U",
-	       path_ext->fpe_path_index,
-	       format_mpls_unicast_label,
-	       path_ext->fpe_path.frp_label);
-
+    s = format(s, "path:%d labels:",
+	       path_ext->fpe_path_index);
+    for (ii = 0; ii < vec_len(path_ext->fpe_path.frp_label_stack); ii++)
+    {
+	s = format(s, "%U ",
+		   format_mpls_unicast_label,
+		   path_ext->fpe_path.frp_label_stack[ii]);
+    }
     return (s);
 }
 
@@ -86,12 +91,23 @@ fib_path_ext_init (fib_path_ext_t *path_ext,
     fib_path_ext_resolve(path_ext, path_list_index);
 }
 
+/**
+ * @brief Return true if the label stack is implicit null
+ */
+static int
+fib_path_ext_is_imp_null (fib_path_ext_t *path_ext)
+{
+    return ((1 == vec_len(path_ext->fpe_label_stack)) &&
+	    (MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label_stack[0]));
+}
+
 load_balance_path_t *
 fib_path_ext_stack (fib_path_ext_t *path_ext,
-		    fib_forward_chain_type_t parent_fct,
+		    const fib_entry_t *entry,
+                    fib_forward_chain_type_t child_fct,
 		    load_balance_path_t *nhs)
 {
-    fib_forward_chain_type_t child_fct;
+    fib_forward_chain_type_t parent_fct;
     load_balance_path_t *nh;
 
     if (!fib_path_is_resolved(path_ext->fpe_path_index))
@@ -102,33 +118,50 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
      * label. From the chain type request by the child, determine what
      * chain type we will request from the parent.
      */
-    switch (parent_fct)
+    switch (child_fct)
     {
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
-	ASSERT(0);
-        return (nhs);
+    {
+	/*
+	 * The EOS chain is a tricky since, when the path has an imp NULL one cannot know
+         * the adjacency to link to without knowing what the packets payload protocol
+	 * will be once the label is popped.
+	 */
+	if (fib_path_ext_is_imp_null(path_ext))
+	{
+            parent_fct = fib_entry_chain_type_fixup(entry, child_fct);
+        }
+        else
+        {
+            /*
+             * we have a label to stack. packets will thus be labelled when
+             * they encounter the child, ergo, non-eos.
+             */
+	    parent_fct = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS;
+        }
 	break;
+    }
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-	if (MPLS_IETF_IMPLICIT_NULL_LABEL == path_ext->fpe_label)
+	if (fib_path_ext_is_imp_null(path_ext))
 	{
             /*
              * implicit-null label for the eos or IP chain, need to pick up
              * the IP adj
              */
-	    child_fct = parent_fct;
+	    parent_fct = child_fct;
 	}
         else
         {
             /*
              * we have a label to stack. packets will thus be labelled when
-             * they encounter th child, ergo, non-eos.
+             * they encounter the child, ergo, non-eos.
              */
-	    child_fct = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS;
+	    parent_fct = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS;
         }
 	break;
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
-        child_fct = parent_fct;
+        parent_fct = child_fct;
 	break;
     default:
         return (nhs);
@@ -143,7 +176,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
      * are to be sent. We stack the MPLS Label DPO on this path DPO
      */
     fib_path_contribute_forwarding(path_ext->fpe_path_index,
-				   child_fct,
+				   parent_fct,
 				   &via_dpo);
 
     if (dpo_is_drop(&via_dpo) ||
@@ -165,17 +198,31 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
 	 * The label is stackable for this chain type
 	 * construct the mpls header that will be imposed in the data-path
 	 */
-	if (MPLS_IETF_IMPLICIT_NULL_LABEL != path_ext->fpe_label)
+	if (!fib_path_ext_is_imp_null(path_ext))
 	{
+            /*
+             * we use the parent protocol for the label so that
+             * we pickup the correct MPLS imposition nodes to do
+             * ip[46] processing.
+             */
+            dpo_proto_t chain_proto;
+            mpls_eos_bit_t eos;
+            index_t mldi;
+
+            eos = (child_fct == FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS ?
+                   MPLS_NON_EOS :
+                   MPLS_EOS);
+            chain_proto = fib_forw_chain_type_to_dpo_proto(child_fct);
+
+            mldi = mpls_label_dpo_create(path_ext->fpe_label_stack,
+                                         eos, 255, 0,
+                                         chain_proto,
+                                         &nh->path_dpo);
+
 	    dpo_set(&nh->path_dpo,
 		    DPO_MPLS_LABEL,
-		    DPO_PROTO_MPLS,
-		    mpls_label_dpo_create(path_ext->fpe_label,
-                                          (parent_fct == FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS ?
-                                           MPLS_NON_EOS :
-                                           MPLS_EOS),
-                                          255, 0,
-                                          &nh->path_dpo));
+                    chain_proto,
+                    mldi);
 	}
     }
     dpo_reset(&via_dpo);

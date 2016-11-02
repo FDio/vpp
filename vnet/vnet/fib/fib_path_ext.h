@@ -24,10 +24,10 @@
  * when packets are sent for that entry over that path.
  *
  * For example:
- *    ip route add 1.1.1.1/32 via 10.10.10.10 mpls-label 100
+ *    ip route add 1.1.1.1/32 via 10.10.10.10 out-label 100
  *
  * The out-going MPLS label value 100 is a path-extension. It is a value sepcific
- * to the entry 1.1.1.1/32 and valid only went packets are sent via 10.10.10.10.
+ * to the entry 1.1.1.1/32 and valid only when packets are sent via 10.10.10.10.
  */
 typedef struct fib_path_ext_t_
 {
@@ -37,7 +37,7 @@ typedef struct fib_path_ext_t_
      * instance of a fib_path_t that is extended
      */
     fib_route_path_t fpe_path;
-#define fpe_label fpe_path.frp_label
+#define fpe_label_stack fpe_path.frp_label_stack
 
     /**
      * The index of the path. This is the global index, not the path's
@@ -46,6 +46,7 @@ typedef struct fib_path_ext_t_
     fib_node_index_t fpe_path_index;
 } fib_path_ext_t;
 
+struct fib_entry_t_;
 
 extern u8 * format_fib_path_ext(u8 * s, va_list * args);
 
@@ -60,6 +61,7 @@ extern void fib_path_ext_resolve(fib_path_ext_t *path_ext,
 				 fib_node_index_t path_list_index);
 
 extern load_balance_path_t *fib_path_ext_stack(fib_path_ext_t *path_ext,
+                                               const struct fib_entry_t_ *entry,
                                                fib_forward_chain_type_t fct,
                                                load_balance_path_t *nhs);
 

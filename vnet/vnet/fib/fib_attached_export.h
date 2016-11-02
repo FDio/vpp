@@ -51,7 +51,7 @@ extern void fib_attached_export_covered_removed(fib_entry_t *cover,
 extern void fib_attached_export_cover_change(fib_entry_t *fib_entry);
 extern void fib_attached_export_cover_update(fib_entry_t *fib_entry);
 
-extern u8* fib_ae_import_format(fib_node_index_t import_index, u8*s);
-extern u8* fib_ae_export_format(fib_node_index_t export_index, u8*s);
+extern u8* fib_ae_import_format(fib_entry_t *fib_entry, u8*s);
+extern u8* fib_ae_export_format(fib_entry_t *fib_entry, u8*s);
 
 #endif

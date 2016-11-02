@@ -26,9 +26,9 @@
 typedef struct mpls_label_dpo_t
 {
     /**
-     * The MPLS label header to impose
+     * The MPLS label header to impose. Outer most label first.
      */
-    mpls_unicast_header_t mld_hdr;
+    mpls_unicast_header_t mld_hdr[8];
 
     /**
      * Next DPO in the graph
@@ -36,15 +36,45 @@ typedef struct mpls_label_dpo_t
     dpo_id_t mld_dpo;
 
     /**
+     * The protocol of the payload/packets that are being encapped
+     */
+    dpo_proto_t mld_payload_proto;
+
+    /**
+     * Size of the label stack
+     */
+    u16 mld_n_labels;
+
+    /**
      * Number of locks/users of the label
      */
     u16 mld_locks;
 } mpls_label_dpo_t;
 
-extern index_t mpls_label_dpo_create(mpls_label_t label,
+/**
+ * @brief Assert that the MPLS label object is less than a cache line in size.
+ * Should this get any bigger then we will need to reconsider how many labels
+ * can be pushed in one object.
+ */
+_Static_assert((sizeof(mpls_label_dpo_t) <= CLIB_CACHE_LINE_BYTES),
+	       "MPLS label DPO is larger than one cache line.");
+
+/**
+ * @brief Create an MPLS label object
+ *
+ * @param label_stack The stack if labels to impose, outer most label first
+ * @param eos The inner most label's EOS bit
+ * @param ttl The inner most label's TTL bit
+ * @param exp The inner most label's EXP bit
+ * @param payload_proto The ptocool of the payload packets that will
+ *                      be imposed with this label header.
+ * @param dpo The parent of the created MPLS label object
+ */
+extern index_t mpls_label_dpo_create(mpls_label_t *label_stack,
                                      mpls_eos_bit_t eos,
                                      u8 ttl,
                                      u8 exp,
+                                     dpo_proto_t payload_proto,
 				     const dpo_id_t *dpo);
 
 extern u8* format_mpls_label_dpo(u8 *s, va_list *args);
