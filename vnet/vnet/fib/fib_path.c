@@ -1804,6 +1804,46 @@ fib_path_is_looped (fib_node_index_t path_index)
     return (path->fp_oper_flags & FIB_PATH_OPER_FLAG_RECURSIVE_LOOP);
 }
 
+int
+fib_path_encode (fib_node_index_t path_list_index, fib_node_index_t path_index,
+                 void *ctx)
+{
+    fib_route_path_t **rpaths = ctx;
+    fib_route_path_t *rpath;
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+    if (!path) {
+        return (0);
+    }
+    vec_add2(*rpaths, rpath, 1);
+    rpath->frp_weight = path->fp_weight;
+    rpath->frp_proto = path->fp_nh_proto;
+    switch (path->fp_type) {
+    case FIB_PATH_TYPE_RECEIVE:
+        rpath->frp_addr = path->receive.fp_addr;
+        rpath->frp_sw_if_index = path->receive.fp_interface;
+        break;
+    case FIB_PATH_TYPE_ATTACHED:
+        rpath->frp_sw_if_index = path->attached.fp_interface;
+        break;
+    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
+        rpath->frp_sw_if_index = path->attached_next_hop.fp_interface;
+        rpath->frp_addr = path->attached_next_hop.fp_nh;
+        break;
+    case FIB_PATH_TYPE_SPECIAL:
+        break;
+    case FIB_PATH_TYPE_DEAG:
+        break;
+    case FIB_PATH_TYPE_RECURSIVE:
+        rpath->frp_addr = path->recursive.fp_nh;
+        break;
+    default:
+        break;
+    }
+    return (1);
+}
+
 void
 fib_path_module_init (void)
 {
