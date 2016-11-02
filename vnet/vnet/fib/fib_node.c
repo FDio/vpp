@@ -136,6 +136,17 @@ fib_node_child_remove (fib_node_type_t parent_type,
     fib_node_unlock(parent);
 }
 
+u32
+fib_node_child_get_num (fib_node_type_t parent_type,
+                        fib_node_index_t parent_index)
+{
+    fib_node_t *parent;
+
+    parent = fn_vfts[parent_type].fnv_get(parent_index);
+
+    return (fib_node_list_get_size(parent->fn_children));
+}
+
 
 fib_node_back_walk_rc_t
 fib_node_back_walk_one (fib_node_ptr_t *ptr,

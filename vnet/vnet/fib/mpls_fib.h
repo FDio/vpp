@@ -96,7 +96,7 @@ mpls_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
 {
     mpls_main_t *mm = &mpls_main;
 
-    ASSERT(vec_len(mm->fib_index_by_sw_if_index) < sw_if_index);
+    ASSERT(vec_len(mm->fib_index_by_sw_if_index) > sw_if_index);
 
     return (mm->fib_index_by_sw_if_index[sw_if_index]);
 }

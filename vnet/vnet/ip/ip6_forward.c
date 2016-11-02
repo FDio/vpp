@@ -340,7 +340,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 					    sw_if_index,
 					    ~0, // invalid FIB index
 					    1,
-					    MPLS_LABEL_INVALID,
+					    NULL, // no label stack
 					    FIB_ROUTE_PATH_FLAG_NONE);
       a->neighbor_probe_adj_index = fib_entry_get_adj(fei);
   }
@@ -378,7 +378,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 				  sw_if_index,
 				  ~0, // invalid FIB index
 				  1,
-				  MPLS_LABEL_INVALID,
+				  NULL,
 				  FIB_ROUTE_PATH_FLAG_NONE);
 }
 
