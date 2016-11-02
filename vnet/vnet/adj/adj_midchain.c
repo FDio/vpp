@@ -39,7 +39,7 @@ typedef struct adj_midchain_tx_trace_t_
 } adj_midchain_tx_trace_t;
 
 always_inline uword
-adj_mdichain_tx_inline (vlib_main_t * vm,
+adj_midchain_tx_inline (vlib_main_t * vm,
 			vlib_node_runtime_t * node,
 			vlib_frame_t * frame,
 			int interface_count)
@@ -223,7 +223,7 @@ adj_midchain_tx (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
 		 vlib_frame_t * frame)
 {
-    return (adj_mdichain_tx_inline(vm, node, frame, 1));
+    return (adj_midchain_tx_inline(vm, node, frame, 1));
 }
 
 VLIB_REGISTER_NODE (adj_midchain_tx_node, static) = {
@@ -244,7 +244,7 @@ adj_midchain_tx_no_count (vlib_main_t * vm,
 			  vlib_node_runtime_t * node,
 			  vlib_frame_t * frame)
 {
-    return (adj_mdichain_tx_inline(vm, node, frame, 0));
+    return (adj_midchain_tx_inline(vm, node, frame, 0));
 }
 
 VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {
@@ -281,7 +281,7 @@ VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip6, static) = {
     .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP6],
 };
 VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_mpls, static) = {
-    .node_name = "adj-midchain-txs",
+    .node_name = "adj-midchain-tx",
     .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
     .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_MPLS],
 };
@@ -321,7 +321,7 @@ adj_get_midchain_node (vnet_link_t link)
 }
 
 static vnet_feature_config_main_t *
-adj_midchain_get_cofing_for_link_type (const ip_adjacency_t *adj)
+adj_midchain_get_config_for_link_type (const ip_adjacency_t *adj)
 {
     vnet_feature_config_main_t *cm = NULL;
 
@@ -394,7 +394,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 
     adj->sub_type.midchain.fixup_func = fixup;
 
-    cm = adj_midchain_get_cofing_for_link_type(adj);
+    cm = adj_midchain_get_config_for_link_type(adj);
     vcm = &(cm->config_main);
     vec_validate_init_empty(cm->config_index_by_sw_if_index,
 			    adj->rewrite_header.sw_if_index, ~0);
