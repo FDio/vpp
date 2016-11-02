@@ -316,4 +316,13 @@ typedef struct fib_route_path_t_ {
     mpls_label_t frp_label;
 } fib_route_path_t;
 
+/**
+ * @brief 
+ * A representation of a fib path for fib_path_encode to convey the information to the caller
+ */
+typedef struct fib_route_path_encode_t_ {
+    fib_route_path_t rpath;
+    dpo_id_t dpo;
+} fib_route_path_encode_t;
+
 #endif
