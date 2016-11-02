@@ -48,6 +48,10 @@ typedef struct
   /** next record offset, per worker thread */
   u16 *next_record_offset_per_worker;
 
+  /** Time reference pair */
+  u64 nanosecond_time_0;
+  f64 vlib_time_0;
+
   /** convenience vlib_main_t pointer */
   vlib_main_t *vlib_main;
   /** convenience vnet_main_t pointer */
