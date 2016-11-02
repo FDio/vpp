@@ -36,6 +36,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
 #include <vnet/devices/virtio/vhost-user.h>
@@ -918,14 +919,6 @@ vhost_user_exit (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_EXIT_FUNCTION (vhost_user_exit);
 
-enum
-{
-  VHOST_USER_RX_NEXT_ETHERNET_INPUT,
-  VHOST_USER_RX_NEXT_DROP,
-  VHOST_USER_RX_N_NEXT,
-};
-
-
 typedef struct
 {
   u16 virtqueue;
@@ -972,7 +965,7 @@ vhost_user_rx_trace (vlib_main_t * vm,
   u32 *b, n_left;
   vhost_user_main_t *vum = &vhost_user_main;
 
-  u32 next_index = VHOST_USER_RX_NEXT_ETHERNET_INPUT;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 
   n_left = vec_len (vui->d_trace_buffers);
   b = vui->d_trace_buffers;
@@ -1277,7 +1270,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  if (PREDICT_FALSE (error))
 	    {
 	      drops++;
-	      next0 = VHOST_USER_RX_NEXT_DROP;
+	      next0 = VNET_DEVICE_INPUT_NEXT_DROP;
 	    }
 	  else
 	    {
@@ -1285,7 +1278,7 @@ vhost_user_if_input (vlib_main_t * vm,
 		b_head->current_length +
 		b_head->total_length_not_including_first_buffer;
 	      n_rx_packets++;
-	      next0 = VHOST_USER_RX_NEXT_ETHERNET_INPUT;
+	      next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 	    }
 
 	  to_next[0] = bi_head;
@@ -1385,11 +1378,8 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .n_errors = VHOST_USER_INPUT_FUNC_N_ERROR,
   .error_strings = vhost_user_input_func_error_strings,
 
-  .n_next_nodes = VHOST_USER_RX_N_NEXT,
-  .next_nodes = {
-    [VHOST_USER_RX_NEXT_DROP] = "error-drop",
-    [VHOST_USER_RX_NEXT_ETHERNET_INPUT] = "ethernet-input",
-  },
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (vhost_user_input_node, vhost_user_input)

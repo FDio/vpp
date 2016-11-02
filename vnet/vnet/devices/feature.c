@@ -19,9 +19,9 @@
 VNET_FEATURE_ARC_INIT (device_input, static) = {
   .arc_name  = "device-input",
 #if DPDK > 0
-  .start_nodes = VNET_FEATURES ("dpdk-input", "vhost-user-input", "af-packet-input", "netmap-input"),
+  .start_nodes = VNET_FEATURES ("dpdk-input", "vhost-user-input", "af-packet-input", "netmap-input", "tuntap-rx"),
 #else
-  .start_nodes = VNET_FEATURES ("vhost-user-input", "af-packet-input", "netmap-input"),
+  .start_nodes = VNET_FEATURES ("vhost-user-input", "af-packet-input", "netmap-input", "tuntap-rx"),
 #endif
 };
 
