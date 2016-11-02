@@ -62,7 +62,7 @@ add_type (ethernet_main_t * em, ethernet_type_t type, char *type_name)
 }
 
 static char *feature_start_nodes[] = {
-  "adj-midchain-tx-no-count",
+  "adj-l2-midchain",
 };
 
 /* Built-in ip4 tx feature path definition */
