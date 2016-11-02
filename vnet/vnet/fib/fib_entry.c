@@ -1479,6 +1479,16 @@ fib_entry_module_init (void)
 }
 
 void
+fib_entry_encode (fib_node_index_t fib_entry_index,
+		  fib_route_path_encode_t **api_rpaths)
+{
+    fib_entry_t *fib_entry;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+    fib_path_list_walk(fib_entry->fe_parent, fib_path_encode, api_rpaths);
+}
+
+void
 fib_entry_get_prefix (fib_node_index_t fib_entry_index,
 		      fib_prefix_t *pfx)
 {
