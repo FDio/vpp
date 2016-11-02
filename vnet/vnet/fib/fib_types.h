@@ -317,4 +317,9 @@ typedef struct fib_route_path_t_ {
     mpls_label_t frp_label;
 } fib_route_path_t;
 
+typedef struct fib_route_path_encode_t_ {
+    fib_route_path_t rpath;
+    dpo_id_t dpo;
+} fib_route_path_encode_t;
+
 #endif

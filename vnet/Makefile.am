@@ -775,6 +775,8 @@ nobase_include_HEADERS +=			\
   vnet/fib/fib_table.h				\
   vnet/fib/fib_node.h				\
   vnet/fib/fib_node_list.h			\
+  vnet/fib/fib_path.h				\
+  vnet/fib/fib_path_list.h			\
   vnet/fib/fib_entry.h				
 
 ########################################
