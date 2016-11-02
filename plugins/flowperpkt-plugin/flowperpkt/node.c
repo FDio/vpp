@@ -31,7 +31,7 @@ typedef struct
   /** ToS bits */
   u8 tos;
   /** packet timestamp */
-  f64 timestamp;
+  u64 timestamp;
   /** size of the buffer */
   u16 buffer_size;
 } flowperpkt_trace_t;
@@ -45,7 +45,7 @@ format_flowperpkt_trace (u8 * s, va_list * args)
   flowperpkt_trace_t *t = va_arg (*args, flowperpkt_trace_t *);
 
   s = format (s,
-	      "FLOWPERPKT: sw_if_index %d, tos %0x2, timestamp %.6f, size %d",
+	      "FLOWPERPKT: sw_if_index %d, tos %0x2, timestamp %lld, size %d",
 	      t->sw_if_index, t->tos, t->timestamp, t->buffer_size);
   return s;
 }
@@ -81,7 +81,7 @@ typedef enum
  * @param fm flowperpkt_main_t * flow-per-packet main structure pointer
  * @param sw_if_index u32 interface handle
  * @param tos u8 ToS bits from the packet
- * @param timestamp f64 timestamp, floating-point seconds since vpp started
+ * @param timestamp u64 timestamp, nanoseconds since 1/1/70
  * @param length u16 ip length of the packet
  * @param do_flush int 1 = flush all cached records, 0 = construct a record
  */
@@ -90,7 +90,7 @@ static inline void
 add_to_flow_record (vlib_main_t * vm,
 		    flowperpkt_main_t * fm,
 		    u32 sw_if_index,
-		    u8 tos, f64 timestamp, u16 length, int do_flush)
+		    u8 tos, u64 timestamp, u16 length, int do_flush)
 {
   u32 my_cpu_number = vm->cpu_index;
   flow_report_main_t *frm = &flow_report_main;
@@ -103,6 +103,7 @@ add_to_flow_record (vlib_main_t * vm,
   vlib_buffer_t *b0;
   u16 offset;
   u32 bi0;
+  vlib_buffer_free_list_t *fl;
 
   /* Find or allocate a buffer */
   b0 = fm->buffers_per_worker[my_cpu_number];
@@ -117,7 +118,13 @@ add_to_flow_record (vlib_main_t * vm,
       /* $$$$ drop counter? */
       if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
 	return;
+
+      /* Initialize the buffer */
       b0 = fm->buffers_per_worker[my_cpu_number] = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       offset = 0;
     }
   else
@@ -265,7 +272,7 @@ flowperpkt_flush_callback (void)
 
   add_to_flow_record (vm, fm, 0 /* sw_if_index */ ,
 		      0 /* ToS */ ,
-		      0.0 /* timestamp */ ,
+		      0ULL /* timestamp */ ,
 		      0 /* length */ ,
 		      1 /* do_flush */ );
 }
@@ -281,7 +288,10 @@ flowperpkt_node_fn (vlib_main_t * vm,
   ip_lookup_main_t *lm = &im->lookup_main;
   vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
   flowperpkt_main_t *fm = &flowperpkt_main;
-  f64 now = vlib_time_now (vm);
+  u64 now;
+
+  now = (u64) ((vlib_time_now (vm) - fm->vlib_time_0) * 1e9);
+  now += fm->nanosecond_time_0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

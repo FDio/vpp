@@ -486,6 +486,10 @@ flowperpkt_init (vlib_main_t * vm)
   vec_validate (fm->frames_per_worker, num_threads - 1);
   vec_validate (fm->next_record_offset_per_worker, num_threads - 1);
 
+  /* Set up time reference pair */
+  fm->vlib_time_0 = vlib_time_now (vm);
+  fm->nanosecond_time_0 = unix_time_now_nsec ();
+
   return error;
 }
 
