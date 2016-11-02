@@ -1472,6 +1472,15 @@ fib_entry_module_init (void)
     fib_node_register_type (FIB_NODE_TYPE_ENTRY, &fib_entry_vft);
 }
 
+fib_node_index_t
+fib_entry_get_fe_parent (fib_node_index_t fib_entry_index)
+{
+    fib_entry_t *fib_entry;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+    return (fib_entry->fe_parent);
+}
+
 void
 fib_entry_get_prefix (fib_node_index_t fib_entry_index,
 		      fib_prefix_t *pfx)
