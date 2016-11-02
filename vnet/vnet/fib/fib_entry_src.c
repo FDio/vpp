@@ -221,6 +221,44 @@ fib_entry_src_valid_out_label (mpls_label_t label)
              MPLS_IETF_IMPLICIT_NULL_LABEL == label));
 }
 
+/**
+ * @brief Turn the chain type requested by the client into the one they
+ * really wanted
+ */
+fib_forward_chain_type_t
+fib_entry_chain_type_fixup (const fib_entry_t *entry,
+			    fib_forward_chain_type_t fct)
+{
+    ASSERT(FIB_FORW_CHAIN_TYPE_MPLS_EOS == fct);
+
+    /*
+     * The EOS chain is a tricky since one cannot know the adjacency
+     * to link to without knowing what the packets payload protocol
+     * will be once the label is popped.
+     */
+    fib_forward_chain_type_t dfct;
+
+    dfct = fib_entry_get_default_chain_type(entry);
+
+    if (FIB_FORW_CHAIN_TYPE_MPLS_EOS == dfct)
+    {
+        /*
+         * If the entry being asked is a eos-MPLS label entry,
+         * then use the payload-protocol field, that we stashed there
+         * for just this purpose
+         */
+        return (fib_forw_chain_type_from_dpo_proto(
+                    entry->fe_prefix.fp_payload_proto));
+    }
+    /*
+     * else give them what this entry would be by default. i.e. if it's a v6
+     * entry, then the label its local labelled should be carrying v6 traffic.
+     * If it's a non-EOS label entry, then there are more labels and we want
+     * a non-eos chain.
+     */
+    return (dfct);
+}
+
 static int
 fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
                                   fib_node_index_t path_index,
@@ -255,13 +293,13 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     
     if (NULL != path_ext &&
         path_ext->fpe_path_index == path_index &&
-        fib_entry_src_valid_out_label(path_ext->fpe_label))
+        fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0]))
     {
         /*
          * found a matching extension. stack it to obtain the forwarding
          * info for this path.
          */
-        ctx->next_hops = fib_path_ext_stack(path_ext, ctx->fct, ctx->next_hops);
+        ctx->next_hops = fib_path_ext_stack(path_ext, ctx->fib_entry, ctx->fct, ctx->next_hops);
     }
     else
     {
@@ -299,6 +337,21 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 	    }
             break;
         case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+        {
+            /*
+             * no label. we need a chain based on the payload. fixup.
+             */
+            vec_add2(ctx->next_hops, nh, 1);
+
+            nh->path_index = path_index;
+            nh->path_weight = fib_path_get_weight(path_index);
+            fib_path_contribute_forwarding(path_index,
+                                           fib_entry_chain_type_fixup(ctx->fib_entry,
+                                                                      ctx->fct),
+                                           &nh->path_dpo);
+
+            break;
+        }
         case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    ASSERT(0);
 	    break;
@@ -420,12 +473,12 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
      * the load-balance object only needs to be added to the forwarding
      * DB once, when it is created.
      */
-    insert = !dpo_id_is_valid(&fib_entry->fe_lb[fct]);
+    insert = !dpo_id_is_valid(&fib_entry->fe_lb);
 
-    fib_entry_src_mk_lb(fib_entry, esrc, fct, &fib_entry->fe_lb[fct]);
+    fib_entry_src_mk_lb(fib_entry, esrc, fct, &fib_entry->fe_lb);
 
-    ASSERT(dpo_id_is_valid(&fib_entry->fe_lb[fct]));
-    FIB_ENTRY_DBG(fib_entry, "install: %d", fib_entry->fe_lb[fct]);
+    ASSERT(dpo_id_is_valid(&fib_entry->fe_lb));
+    FIB_ENTRY_DBG(fib_entry, "install: %d", fib_entry->fe_lb);
 
     /*
      * insert the adj into the data-plane forwarding trie
@@ -434,51 +487,41 @@ fib_entry_src_action_install (fib_entry_t *fib_entry,
     {
        fib_table_fwding_dpo_update(fib_entry->fe_fib_index,
                                    &fib_entry->fe_prefix,
-                                   &fib_entry->fe_lb[fct]);
+                                   &fib_entry->fe_lb);
     }
 
-    if (FIB_FORW_CHAIN_TYPE_UNICAST_IP4 == fct ||
-	FIB_FORW_CHAIN_TYPE_UNICAST_IP6 == fct)
+    /*
+     * if any of the other chain types are already created they will need
+     * updating too
+     */
+    fib_entry_delegate_type_t fdt;
+    fib_entry_delegate_t *fed;
+
+    FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
     {
-	for (fct = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS;
-	     fct <= FIB_FORW_CHAIN_TYPE_MPLS_EOS;
-	     fct++)
-	{
-	    /*
-	     * if any of the other chain types are already created they will need
-	     * updating too
-	     */
-	    if (dpo_id_is_valid(&fib_entry->fe_lb[fct]))
-	    {
-		fib_entry_src_mk_lb(fib_entry,
-				    esrc,
-				    fct,
-				    &fib_entry->fe_lb[fct]);
-	    }
-	}
-    }
+        fib_entry_src_mk_lb(fib_entry, esrc,
+                            fib_entry_delegate_type_to_chain_type(fdt),
+                            &fed->fd_dpo);
+    });
 }
 
 void
 fib_entry_src_action_uninstall (fib_entry_t *fib_entry)
 {
-    fib_forward_chain_type_t fct;
-
-    fct = fib_entry_get_default_chain_type(fib_entry);
     /*
      * uninstall the forwarding chain from the forwarding tables
      */
     FIB_ENTRY_DBG(fib_entry, "uninstall: %d",
 		  fib_entry->fe_adj_index);
 
-    if (dpo_id_is_valid(&fib_entry->fe_lb[fct]))
+    if (dpo_id_is_valid(&fib_entry->fe_lb))
     {
 	fib_table_fwding_dpo_remove(
 	    fib_entry->fe_fib_index,
 	    &fib_entry->fe_prefix,
-	    &fib_entry->fe_lb[fct]);
+	    &fib_entry->fe_lb);
 
-	dpo_reset(&fib_entry->fe_lb[fct]);
+	dpo_reset(&fib_entry->fe_lb);
     }
 }
 
@@ -965,7 +1008,7 @@ static void
 fib_entry_src_path_ext_append (fib_entry_src_t *esrc,
 			       const fib_route_path_t *rpath)
 {
-    if (MPLS_LABEL_INVALID != rpath->frp_label)
+    if (NULL != rpath->frp_label_stack)
     {
 	fib_path_ext_t *path_ext;
 
@@ -991,7 +1034,7 @@ fib_entry_src_path_ext_insert (fib_entry_src_t *esrc,
     if (0 == vec_len(esrc->fes_path_exts))
 	return (fib_entry_src_path_ext_append(esrc, rpath));
 
-    if (MPLS_LABEL_INVALID != rpath->frp_label)
+    if (NULL != rpath->frp_label_stack)
     {
 	fib_path_ext_t path_ext;
 	int i = 0;
@@ -1097,6 +1140,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
     fib_node_index_t old_path_list, fib_entry_index;
     fib_path_list_flags_t pl_flags;
     const fib_route_path_t *rpath;
+    fib_path_ext_t *path_ext;
     fib_entry_src_t *esrc;
 
     esrc = fib_entry_src_find(fib_entry, source, NULL);
@@ -1138,7 +1182,12 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 					     pl_flags,
 					     rpaths);
 
+    vec_foreach(path_ext, esrc->fes_path_exts)
+    {
+	vec_free(path_ext->fpe_label_stack);
+    }
     vec_free(esrc->fes_path_exts);
+
     vec_foreach(rpath, rpaths)
     {
 	fib_entry_src_path_ext_append(esrc, rpath);
@@ -1192,6 +1241,7 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
 	     * delete the element moving the remaining elements down 1 position.
 	     * this preserves the sorted order.
 	     */
+	    vec_free(path_ext->fpe_label_stack);
 	    vec_delete(esrc->fes_path_exts, 1, (path_ext - esrc->fes_path_exts));
 	    break;
 	}

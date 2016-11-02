@@ -170,6 +170,19 @@ mpls_lookup (vlib_main_t * vm,
                vlib_buffer_length_in_chain (vm, b1));
 
           /*
+           * before we pop the label copy th values we need to maintain.
+           * The label header is in network byte order.
+           *  last byte is the TTL.
+           *  bits 2 to 4 inclusive are the EXP bits
+           */
+          vnet_buffer (b0)->mpls.ttl = ((char*)h0)[3];
+          vnet_buffer (b0)->mpls.exp = (((char*)h0)[2] & 0xe) >> 1;
+          vnet_buffer (b0)->mpls.first = 1;
+          vnet_buffer (b1)->mpls.ttl = ((char*)h1)[3];
+          vnet_buffer (b1)->mpls.exp = (((char*)h1)[2] & 0xe) >> 1;
+          vnet_buffer (b1)->mpls.first = 1;
+
+          /*
            * pop the label that was just used in the lookup
            */
           vlib_buffer_advance(b0, sizeof(*h0));
@@ -223,8 +236,8 @@ mpls_lookup (vlib_main_t * vm,
           lfib_index0 = vec_elt(mm->fib_index_by_sw_if_index,
                                 vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 
-          lbi0 = mpls_fib_table_forwarding_lookup (lfib_index0, h0);
-          lb0 = load_balance_get(lbi0);
+          lbi0 = mpls_fib_table_forwarding_lookup(lfib_index0, h0);
+	  lb0 = load_balance_get(lbi0);
 
           hash_c0 = vnet_buffer(b0)->ip.flow_hash = 0;
           if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
@@ -246,6 +259,16 @@ mpls_lookup (vlib_main_t * vm,
           vlib_increment_combined_counter
               (cm, cpu_index, lbi0, 1,
                vlib_buffer_length_in_chain (vm, b0));
+
+          /*
+           * before we pop the label copy th values we need to maintain.
+           * The label header is in network byte order.
+           *  last byte is the TTL.
+           *  bits 2 to 4 inclusive are the EXP bits
+           */
+          vnet_buffer (b0)->mpls.ttl = ((char*)h0)[3];
+          vnet_buffer (b0)->mpls.exp = (((char*)h0)[2] & 0xe) >> 1;
+          vnet_buffer (b0)->mpls.first = 1;
 
           /*
            * pop the label that was just used in the lookup

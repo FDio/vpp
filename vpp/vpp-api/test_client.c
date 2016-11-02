@@ -224,13 +224,6 @@ vl_api_create_vlan_subif_reply_t_handler (vl_api_create_vlan_subif_reply_t *
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
-static void
-vl_api_mpls_add_del_encap_reply_t_handler (vl_api_mpls_add_del_encap_reply_t *
-					   mp)
-{
-  fformat (stdout, "add del mpls label reply %d\n", ntohl (mp->retval));
-}
-
 static void vl_api_proxy_arp_add_del_reply_t_handler
   (vl_api_proxy_arp_add_del_reply_t * mp)
 {
@@ -590,7 +583,6 @@ _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply) \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)           \
 _(TAP_CONNECT_REPLY, tap_connect_reply)                                 \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
-_(MPLS_ADD_DEL_ENCAP_REPLY, mpls_add_del_encap_reply)                   \
 _(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)			\
 _(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY, proxy_arp_intfc_enable_disable_reply) \
 _(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
@@ -737,9 +729,6 @@ add_del_ip4_route (test_main_t * tm, int enable_disable)
   mp->context = 0xdeadbeef;
   mp->table_id = ntohl (0);
   mp->create_vrf_if_needed = 1;
-  /* Arp, please, if needed */
-  mp->resolve_if_needed = 1;
-  mp->resolve_attempts = ntohl (10);
 
   mp->next_hop_sw_if_index = ntohl (5);
   mp->is_add = enable_disable;
