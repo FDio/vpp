@@ -16,9 +16,10 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 
-#include "fib_attached_export.h"
-#include "fib_entry_cover.h"
-#include "fib_entry_src.h"
+#include <vnet/fib/fib_attached_export.h>
+#include <vnet/fib/fib_entry_cover.h>
+#include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_entry_delegate.h>
 
 /**
  * A description of the need to import routes from the export table
@@ -92,22 +93,27 @@ static fib_ae_export_t *fib_ae_export_pool;
 static fib_ae_export_t *
 fib_entry_ae_add_or_lock (fib_node_index_t connected)
 {
+    fib_entry_delegate_t *fed;
     fib_ae_export_t *export;
     fib_entry_t *entry;
 
     entry = fib_entry_get(connected);
+    fed = fib_entry_delegate_get(entry,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 
-    if (FIB_NODE_INDEX_INVALID == entry->fe_export)
+    if (NULL == fed)
     {
+        fed = fib_entry_delegate_find_or_add(entry,
+                                             FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 	pool_get(fib_ae_export_pool, export);
 	memset(export, 0, sizeof(*export));
 
-	entry->fe_export = (export - fib_ae_export_pool);
+	fed->fd_index = (export - fib_ae_export_pool);
 	export->faee_ei = connected;
     }
     else
     {
-	export = pool_elt_at_index(fib_ae_export_pool, entry->fe_export);
+	export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
     }
 
     export->faee_locks++;
@@ -235,6 +241,7 @@ void
 fib_attached_export_import (fib_entry_t *fib_entry,
 			    fib_node_index_t export_fib)
 {
+    fib_entry_delegate_t *fed;
     fib_ae_import_t *import;
 
     pool_get(fib_ae_import_pool, import);
@@ -290,7 +297,9 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 	fib_entry_cover_track(fib_entry_get(import->faei_export_entry),
 			      fib_entry_get_index(fib_entry));
 
-    fib_entry->fe_import = (import - fib_ae_import_pool);
+    fed = fib_entry_delegate_find_or_add(fib_entry,
+                                         FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+    fed->fd_index = (import - fib_ae_import_pool);
 }
 
 /**
@@ -299,15 +308,19 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 void
 fib_attached_export_purge (fib_entry_t *fib_entry)
 {
-    if (FIB_NODE_INDEX_INVALID != fib_entry->fe_import)
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(fib_entry,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+
+    if (NULL != fed)
     {
  	fib_node_index_t *import_index;
 	fib_entry_t *export_entry;
 	fib_ae_import_t *import;
 	fib_ae_export_t *export;
 
-	import = pool_elt_at_index(fib_ae_import_pool,
-				   fib_entry->fe_import);
+	import = pool_elt_at_index(fib_ae_import_pool, fed->fd_index);
 
 	/*
 	 * remove each imported entry
@@ -342,9 +355,15 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 	 */
 	if (FIB_NODE_INDEX_INVALID != import->faei_exporter)
 	{
+            fib_entry_delegate_t *fed;
+
 	    export_entry = fib_entry_get(import->faei_export_entry);
-	    ASSERT(FIB_NODE_INDEX_INVALID != export_entry->fe_export);
-	    export = pool_elt_at_index(fib_ae_export_pool, export_entry->fe_export);
+
+            fed = fib_entry_delegate_get(export_entry,
+                                         FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+            ASSERT(NULL != fed);
+
+	    export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
 
 	    u32 index = vec_search(export->faee_importers,
 				   (import - fib_ae_import_pool));
@@ -358,7 +377,8 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 	    if (0 == --export->faee_locks)
 	    {
 		pool_put(fib_ae_export_pool, export);
-		export_entry->fe_export = FIB_NODE_INDEX_INVALID;
+                fib_entry_delegate_remove(export_entry,
+                                          FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
 	    }
 	}
 
@@ -366,7 +386,8 @@ fib_attached_export_purge (fib_entry_t *fib_entry)
 	 * free the import tracker
 	 */
 	pool_put(fib_ae_import_pool, import);
-	fib_entry->fe_import = FIB_NODE_INDEX_INVALID;
+        fib_entry_delegate_remove(fib_entry,
+                                  FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
     }	
 }
 
@@ -374,7 +395,12 @@ void
 fib_attached_export_covered_added (fib_entry_t *cover,
 				   fib_node_index_t covered)
 {
-    if (FIB_NODE_INDEX_INVALID != cover->fe_export)
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(cover,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+
+    if (NULL != fed)
     {
 	/*
 	 * the covering prefix is exporting to other tables
@@ -383,7 +409,7 @@ fib_attached_export_covered_added (fib_entry_t *cover,
 	fib_ae_import_t *import;
 	fib_ae_export_t *export;
 
-	export = pool_elt_at_index(fib_ae_export_pool, cover->fe_export);
+	export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
 
 	/*
 	 * export the covered entry to each of the importers
@@ -401,7 +427,12 @@ void
 fib_attached_export_covered_removed (fib_entry_t *cover,
 				     fib_node_index_t covered)
 {
-    if (FIB_NODE_INDEX_INVALID != cover->fe_export)
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(cover,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+
+    if (NULL != fed)
     {
 	/*
 	 * the covering prefix is exporting to other tables
@@ -410,7 +441,7 @@ fib_attached_export_covered_removed (fib_entry_t *cover,
 	fib_ae_import_t *import;
 	fib_ae_export_t *export;
 
-	export = pool_elt_at_index(fib_ae_export_pool, cover->fe_export);
+	export = pool_elt_at_index(fib_ae_export_pool, fed->fd_index);
 
 	/*
 	 * remove the covered entry from each of the importers
@@ -427,7 +458,12 @@ fib_attached_export_covered_removed (fib_entry_t *cover,
 static void
 fib_attached_export_cover_modified_i (fib_entry_t *fib_entry)
 {
-    if (FIB_NODE_INDEX_INVALID != fib_entry->fe_import)
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(fib_entry,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+
+    if (NULL != fed)
     {
 	fib_ae_import_t *import;
 	u32 export_fib;
@@ -436,7 +472,7 @@ fib_attached_export_cover_modified_i (fib_entry_t *fib_entry)
 	 * safe the temporaries we need from the existing import
 	 * since it will be toast after the purge.
 	 */
-	import = pool_elt_at_index(fib_ae_import_pool, fib_entry->fe_import);
+	import = pool_elt_at_index(fib_ae_import_pool, fed->fd_index);
 	export_fib = import->faei_export_fib;
 
 	/*
@@ -469,15 +505,20 @@ fib_attached_export_cover_update (fib_entry_t *fib_entry)
 }
 
 u8*
-fib_ae_import_format (fib_node_index_t import_index,
+fib_ae_import_format (fib_entry_t *fib_entry,
 		      u8* s)
 {
-    if (FIB_NODE_INDEX_INVALID != import_index)
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(fib_entry,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+
+    if (NULL != fed)
     {
 	fib_node_index_t *index;
 	fib_ae_import_t *import;
 
-	import = pool_elt_at_index(fib_ae_import_pool, import_index);
+	import = pool_elt_at_index(fib_ae_import_pool, fed->fd_index);
 
 	s = format(s, "\n  Attached-Import:%d:[", (import - fib_ae_import_pool));
 	s = format(s, "export-prefix:%U ", format_fib_prefix, &import->faei_prefix);
@@ -501,14 +542,20 @@ fib_ae_import_format (fib_node_index_t import_index,
 }
 
 u8*
-fib_ae_export_format (fib_node_index_t export_index, u8*s)
+fib_ae_export_format (fib_entry_t *fib_entry,
+		      u8* s)
 {
-    if (FIB_NODE_INDEX_INVALID != export_index)
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(fib_entry,
+                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
+
+    if (NULL != fed)
     {
-	fib_node_index_t *index;
+        fib_node_index_t *index;
 	fib_ae_export_t *export;
 
-	export = pool_elt_at_index(fib_ae_export_pool, export_index);
+	export = pool_elt_at_index(fib_ae_export_pool, fed->fd_list);
     
 	s = format(s, "\n  Attached-Export:%d:[", (export - fib_ae_export_pool));
 	s = format(s, "export-entry:%d ", export->faee_ei);

@@ -452,12 +452,13 @@ libvnet_la_SOURCES +=				\
  vnet/mpls/mpls_features.c			\
  vnet/mpls/node.c				\
  vnet/mpls/interface.c			        \
- vnet/mpls/policy_encap.c			\
+ vnet/mpls/mpls_tunnel.c		        \
  vnet/mpls/pg.c
  
 nobase_include_HEADERS +=			\
  vnet/mpls/mpls.h				\
  vnet/mpls/mpls_types.h			        \
+ vnet/mpls/mpls_tunnel.h		        \
  vnet/mpls/packet.h				\
  vnet/mpls/error.def
 
@@ -801,6 +802,7 @@ libvnet_la_SOURCES +=				\
   vnet/fib/fib_entry_src_mpls.c                 \
   vnet/fib/fib_entry_src_lisp.c                 \
   vnet/fib/fib_entry_cover.c                    \
+  vnet/fib/fib_entry_delegate.c                 \
   vnet/fib/fib_path_list.c                      \
   vnet/fib/fib_path.c				\
   vnet/fib/fib_path_ext.c			\
@@ -815,7 +817,8 @@ nobase_include_HEADERS +=			\
   vnet/fib/fib_table.h				\
   vnet/fib/fib_node.h				\
   vnet/fib/fib_node_list.h			\
-  vnet/fib/fib_entry.h				
+  vnet/fib/fib_entry.h				\
+  vnet/fib/fib_entry_delegate.h
 
 ########################################
 # ADJ

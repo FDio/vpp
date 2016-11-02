@@ -289,8 +289,8 @@ extern void fib_table_entry_special_remove(u32 fib_index,
  * @param next_hop_weight
  *  [un]equal cost path weight
  *
- * @param  next_hop_label
- *  The path's out-going label. INVALID is there is none.
+ * @param  next_hop_label_stack
+ *  The path's out-going label stack. NULL is there is none.
  *
  * @param  pf
  *  Flags for the path
@@ -307,7 +307,7 @@ extern fib_node_index_t fib_table_entry_path_add(u32 fib_index,
 						 u32 next_hop_sw_if_index,
 						 u32 next_hop_fib_index,
 						 u32 next_hop_weight,
-						 mpls_label_t next_hop_label,
+						 mpls_label_t *next_hop_label_stack,
 						 fib_route_path_flags_t pf);
 /**
  * @brief
@@ -329,7 +329,7 @@ extern fib_node_index_t fib_table_entry_path_add(u32 fib_index,
  *  Flags for the entry.
  *
  * @param rpaths
- *  A vector of paths.
+ *  A vector of paths. Not const since they may be modified.
  *
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
@@ -338,7 +338,7 @@ extern fib_node_index_t fib_table_entry_path_add2(u32 fib_index,
 						  const fib_prefix_t *prefix,
 						  fib_source_t source,
 						  fib_entry_flag_t flags,
-						  const fib_route_path_t *rpath);
+						  fib_route_path_t *rpath);
 
 /**
  * @brief
@@ -407,7 +407,7 @@ extern void fib_table_entry_path_remove(u32 fib_index,
 extern void fib_table_entry_path_remove2(u32 fib_index,
 					 const fib_prefix_t *prefix,
 					 fib_source_t source,
-					 const fib_route_path_t *paths);
+					 fib_route_path_t *paths);
 
 /**
  * @brief
@@ -426,7 +426,7 @@ extern void fib_table_entry_path_remove2(u32 fib_index,
  *  The ID of the client/source adding the entry.
  *
  * @param rpaths
- *  A vector of paths.
+ *  A vector of paths. Not const since they may be modified.
  *
  * @return
  *  the index of the fib_entry_t that is created (or existed already).
@@ -435,7 +435,7 @@ extern fib_node_index_t fib_table_entry_update(u32 fib_index,
 					       const fib_prefix_t *prefix,
 					       fib_source_t source,
 					       fib_entry_flag_t flags,
-					       const fib_route_path_t *paths);
+					       fib_route_path_t *paths);
 
 /**
  * @brief
@@ -472,8 +472,8 @@ extern fib_node_index_t fib_table_entry_update(u32 fib_index,
  * @param next_hop_weight
  *  [un]equal cost path weight
  *
- * @param  next_hop_label
- *  The path's out-going label. INVALID is there is none.
+ * @param  next_hop_label_stack
+ *  The path's out-going label stack. NULL is there is none.
  *
  * @param  pf
  *  Flags for the path
@@ -490,7 +490,7 @@ extern fib_node_index_t fib_table_entry_update_one_path(u32 fib_index,
 							u32 next_hop_sw_if_index,
 							u32 next_hop_fib_index,
 							u32 next_hop_weight,
-							mpls_label_t next_hop_label,
+							mpls_label_t *next_hop_label_stack,
 							fib_route_path_flags_t pf);
 
 /**

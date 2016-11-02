@@ -132,6 +132,7 @@ extern int fib_path_is_recursive(fib_node_index_t path_index);
 extern int fib_path_is_exclusive(fib_node_index_t path_index);
 extern int fib_path_is_deag(fib_node_index_t path_index);
 extern int fib_path_is_looped(fib_node_index_t path_index);
+extern fib_protocol_t fib_path_get_proto(fib_node_index_t path_index);
 extern void fib_path_destroy(fib_node_index_t path_index);
 extern uword fib_path_hash(fib_node_index_t path_index);
 extern load_balance_path_t * fib_path_append_nh_for_multipath_hash(

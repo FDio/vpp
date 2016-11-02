@@ -224,7 +224,7 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
 					c->sw_if_index,
 					~0,
 					1,
-					MPLS_LABEL_INVALID,
+					NULL, // no label stack
 					FIB_ROUTE_PATH_FLAG_NONE);
 	    }
 

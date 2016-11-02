@@ -586,7 +586,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 					n->key.sw_if_index,
 					~0,
 					1,
-					MPLS_LABEL_INVALID,
+					NULL, // no label stack
 					FIB_ROUTE_PATH_FLAG_NONE);
   }
   else
