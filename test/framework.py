@@ -113,8 +113,10 @@ class VppTestCase(unittest.TestCase):
         cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
-        cls.vpp_cmdline = [cls.vpp_bin, "unix", "{", "nodaemon",
-                           "cli-listen localhost:5002", "}",
+        debug_cli = ""
+        if cls.step or cls.debug_gdb or cls.debug_gdbserver:
+            debug_cli = "cli-listen localhost:5002"
+        cls.vpp_cmdline = [cls.vpp_bin, "unix", "{", "nodaemon", debug_cli, "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}"]
         if cls.plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", cls.plugin_path])

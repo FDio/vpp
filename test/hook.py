@@ -73,7 +73,7 @@ class PollHook(Hook):
             raise Exception("GDB refused to die...")
 
     def on_crash(self, core_path):
-        if self.testcase.interactive:
+        if self.testcase.debug_core:
             gdb_path = '/usr/bin/gdb'
             if os.path.isfile(gdb_path) and os.access(gdb_path, os.X_OK):
                 # automatically attach gdb
