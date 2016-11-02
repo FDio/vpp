@@ -22,6 +22,7 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
 #include <vnet/devices/netmap/net_netmap.h>
@@ -41,13 +42,6 @@ static char *netmap_input_error_strings[] = {
 #define _(n,s) s,
   foreach_netmap_input_error
 #undef _
-};
-
-enum
-{
-  NETMAP_INPUT_NEXT_DROP,
-  NETMAP_INPUT_NEXT_ETHERNET_INPUT,
-  NETMAP_INPUT_N_NEXT,
 };
 
 typedef struct
@@ -106,7 +100,7 @@ always_inline uword
 netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			vlib_frame_t * frame, netmap_if_t * nif)
 {
-  u32 next_index = NETMAP_INPUT_NEXT_ETHERNET_INPUT;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   uword n_trace = vlib_get_trace_count (vm, node);
   netmap_main_t *nm = &netmap_main;
   u32 n_rx_packets = 0;
@@ -306,11 +300,8 @@ VLIB_REGISTER_NODE (netmap_input_node) = {
   .n_errors = NETMAP_INPUT_N_ERROR,
   .error_strings = netmap_input_error_strings,
 
-  .n_next_nodes = NETMAP_INPUT_N_NEXT,
-  .next_nodes = {
-    [NETMAP_INPUT_NEXT_DROP] = "error-drop",
-    [NETMAP_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",
-  },
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (netmap_input_node, netmap_input_fn)

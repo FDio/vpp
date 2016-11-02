@@ -23,6 +23,7 @@
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
 #include <vnet/handoff.h>
+#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
 #include "dpdk_priv.h"
@@ -91,7 +92,7 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t * xd,
 				  PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD)))
     {
       /* some error was flagged. determine the drop reason */
-      n0 = DPDK_RX_NEXT_DROP;
+      n0 = VNET_DEVICE_INPUT_NEXT_DROP;
       *error0 =
 #ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
 	(mb_flags & PKT_EXT_RX_PKT_ERROR) ? DPDK_ERROR_RX_PACKET_ERROR :
@@ -124,17 +125,17 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t * xd,
       else
 	if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_HAVE_SUBIF) ||
 			   (mb_flags & PKT_RX_VLAN_PKT)))
-	n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
+	n0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
       else
 	{
 	  if (PREDICT_TRUE (dpdk_mbuf_is_ip4 (mb)))
-	    n0 = DPDK_RX_NEXT_IP4_INPUT;
+	    n0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
 	  else if (PREDICT_TRUE (dpdk_mbuf_is_ip6 (mb)))
-	    n0 = DPDK_RX_NEXT_IP6_INPUT;
+	    n0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
 	  else if (PREDICT_TRUE (vlib_buffer_is_mpls (b0)))
-	    n0 = DPDK_RX_NEXT_MPLS_INPUT;
+	    n0 = VNET_DEVICE_INPUT_NEXT_MPLS_INPUT;
 	  else
-	    n0 = DPDK_RX_NEXT_ETHERNET_INPUT;
+	    n0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 	}
     }
   *next0 = n0;
@@ -323,7 +324,7 @@ dpdk_device_input (dpdk_main_t * dm,
 		   u32 cpu_index, u16 queue_id, int use_efd)
 {
   u32 n_buffers;
-  u32 next_index = DPDK_RX_NEXT_ETHERNET_INPUT;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_left_to_next, *to_next;
   u32 mb_index;
   vlib_main_t *vm = vlib_get_main ();
@@ -475,9 +476,9 @@ dpdk_device_input (dpdk_main_t * dm,
 
 	  b0->error = node->errors[error0];
 
-	  l3_offset0 = ((next0 == DPDK_RX_NEXT_IP4_INPUT ||
-			 next0 == DPDK_RX_NEXT_IP6_INPUT ||
-			 next0 == DPDK_RX_NEXT_MPLS_INPUT) ?
+	  l3_offset0 = ((next0 == VNET_DEVICE_INPUT_NEXT_IP4_INPUT ||
+			 next0 == VNET_DEVICE_INPUT_NEXT_IP6_INPUT ||
+			 next0 == VNET_DEVICE_INPUT_NEXT_MPLS_INPUT) ?
 			sizeof (ethernet_header_t) : 0);
 
 	  b0->current_data = l3_offset0;
@@ -717,14 +718,8 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .n_errors = DPDK_N_ERROR,
   .error_strings = dpdk_error_strings,
 
-  .n_next_nodes = DPDK_RX_N_NEXT,
-  .next_nodes = {
-    [DPDK_RX_NEXT_DROP] = "error-drop",
-    [DPDK_RX_NEXT_ETHERNET_INPUT] = "ethernet-input",
-    [DPDK_RX_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
-    [DPDK_RX_NEXT_IP6_INPUT] = "ip6-input",
-    [DPDK_RX_NEXT_MPLS_INPUT] = "mpls-input",
-  },
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 
@@ -737,32 +732,6 @@ VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input_efd)
 CLIB_MULTIARCH_SELECT_FN(dpdk_input);
 CLIB_MULTIARCH_SELECT_FN(dpdk_input_rss);
 CLIB_MULTIARCH_SELECT_FN(dpdk_input_efd);
-
-/*
- * Override the next nodes for the dpdk input nodes.
- * Must be invoked prior to VLIB_INIT_FUNCTION calls.
- */
-void
-dpdk_set_next_node (dpdk_rx_next_t next, char *name)
-{
-  vlib_node_registration_t *r = &dpdk_input_node;
-  vlib_node_registration_t *r_handoff = &handoff_dispatch_node;
-
-  switch (next)
-    {
-    case DPDK_RX_NEXT_IP4_INPUT:
-    case DPDK_RX_NEXT_IP6_INPUT:
-    case DPDK_RX_NEXT_MPLS_INPUT:
-    case DPDK_RX_NEXT_ETHERNET_INPUT:
-      r->next_nodes[next] = name;
-      r_handoff->next_nodes[next] = name;
-      break;
-
-    default:
-      clib_warning ("%s: illegal next %d\n", __FUNCTION__, next);
-      break;
-    }
-}
 
 /*
  * set_efd_bitmap()

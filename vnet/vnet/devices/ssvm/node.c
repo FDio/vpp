@@ -78,7 +78,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
   u32 n_to_alloc = VLIB_FRAME_SIZE * 2;
   u32 n_allocated, n_present_in_cache;
 #if DPDK > 0
-  u32 next_index = DPDK_RX_NEXT_ETHERNET_INPUT;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 #else
   u32 next_index = 0;
 #endif

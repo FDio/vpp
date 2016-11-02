@@ -23,6 +23,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
 #include <vnet/devices/af_packet/af_packet.h>
@@ -41,13 +42,6 @@ static char *af_packet_input_error_strings[] = {
 #define _(n,s) s,
   foreach_af_packet_input_error
 #undef _
-};
-
-enum
-{
-  AF_PACKET_INPUT_NEXT_DROP,
-  AF_PACKET_INPUT_NEXT_ETHERNET_INPUT,
-  AF_PACKET_INPUT_N_NEXT,
 };
 
 typedef struct
@@ -130,7 +124,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, device_idx);
   struct tpacket2_hdr *tph;
-  u32 next_index = AF_PACKET_INPUT_NEXT_ETHERNET_INPUT;
+  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 block = 0;
   u32 rx_frame;
   u32 n_free_bufs;
@@ -295,11 +289,8 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
 
-  .n_next_nodes = AF_PACKET_INPUT_N_NEXT,
-  .next_nodes = {
-    [AF_PACKET_INPUT_NEXT_DROP] = "error-drop",
-    [AF_PACKET_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",
-  },
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (af_packet_input_node, af_packet_input_fn)
