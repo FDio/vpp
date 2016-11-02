@@ -906,6 +906,7 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
   if (!input)
     return 0;
 
+  unformat_skip_white_space (input);
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "num-rx-queues %u", &devconf->num_rx_queues))
