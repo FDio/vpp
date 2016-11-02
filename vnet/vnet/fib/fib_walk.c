@@ -619,8 +619,8 @@ fib_walk_async (fib_node_type_t parent_type,
 	 */
 	return;
     }
-    if (0 == fib_node_child_get_n_children(parent_type,
-                                           parent_index))
+    if (0 == fib_node_get_n_children(parent_type,
+                                     parent_index))
     {
         /*
          * no children to walk - quit now
@@ -674,8 +674,8 @@ fib_walk_sync (fib_node_type_t parent_type,
 	 */
 	return;
     }
-    if (0 == fib_node_child_get_n_children(parent_type,
-                                           parent_index))
+    if (0 == fib_node_get_n_children(parent_type,
+                                     parent_index))
     {
         /*
          * no children to walk - quit now

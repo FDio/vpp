@@ -1,4 +1,5 @@
 import os
+import array
 from logging import error
 from hook import Hook
 
@@ -21,6 +22,7 @@ MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 class L2_VTR_OP:
     L2_POP_1 = 3
 
+need_swap = True if os.sys.byteorder == 'little' else False
 
 class VppPapiProvider(object):
     """VPP-api provider using vpp-papi
@@ -368,12 +370,15 @@ class VppPapiProvider(object):
             next_hop_address,
             next_hop_sw_if_index=0xFFFFFFFF,
             table_id=0,
-            resolve_attempts=0,
-            classify_table_index=0xFFFFFFFF,
-            next_hop_out_label=MPLS_LABEL_INVALID,
             next_hop_table_id=0,
+            next_hop_weight=1,
+            next_hop_n_out_labels = 0,
+            next_hop_out_label_stack = [],
+            next_hop_via_label = MPLS_LABEL_INVALID,
             create_vrf_if_needed=0,
-            resolve_if_needed=0,
+            is_resolve_host=0,
+            is_resolve_attached=0,
+            classify_table_index=0xFFFFFFFF,
             is_add=1,
             is_drop=0,
             is_unreach=0,
@@ -382,10 +387,7 @@ class VppPapiProvider(object):
             is_local=0,
             is_classify=0,
             is_multipath=0,
-            is_resolve_host=0,
-            is_resolve_attached=0,
-            not_last=0,
-            next_hop_weight=1):
+            not_last=0):
         """
 
         :param dst_address_length:
@@ -395,10 +397,8 @@ class VppPapiProvider(object):
         :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
         :param vrf_id:  (Default value = 0)
         :param lookup_in_vrf:  (Default value = 0)
-        :param resolve_attempts:  (Default value = 0)
         :param classify_table_index:  (Default value = 0xFFFFFFFF)
         :param create_vrf_if_needed:  (Default value = 0)
-        :param resolve_if_needed:  (Default value = 0)
         :param is_add:  (Default value = 1)
         :param is_drop:  (Default value = 0)
         :param is_ipv6:  (Default value = 0)
@@ -411,16 +411,18 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
+        stack = array.array('I', next_hop_out_label_stack)
+        if need_swap:
+            stack.byteswap()
+        stack = stack.tostring()
+
         return self.api(
             vpp_papi.ip_add_del_route,
             (next_hop_sw_if_index,
              table_id,
-             resolve_attempts,
              classify_table_index,
-             next_hop_out_label,
              next_hop_table_id,
              create_vrf_if_needed,
-             resolve_if_needed,
              is_add,
              is_drop,
              is_unreach,
@@ -435,7 +437,10 @@ class VppPapiProvider(object):
              next_hop_weight,
              dst_address_length,
              dst_address,
-             next_hop_address))
+             next_hop_address,
+             next_hop_n_out_labels,
+             next_hop_via_label,
+             stack))
 
     def ip_neighbor_add_del(self,
                             sw_if_index,
@@ -505,3 +510,153 @@ class VppPapiProvider(object):
              dst_address,
              outer_fib_id)
         )
+
+    def mpls_route_add_del(
+            self,
+            label,
+            eos,
+            next_hop_proto_is_ip4,
+            next_hop_address,
+            next_hop_sw_if_index=0xFFFFFFFF,
+            table_id=0,
+            next_hop_table_id=0,
+            next_hop_weight=1,
+            next_hop_n_out_labels = 0,
+            next_hop_out_label_stack = [],
+            next_hop_via_label = MPLS_LABEL_INVALID,
+            create_vrf_if_needed=0,
+            is_resolve_host=0,
+            is_resolve_attached=0,
+            is_add=1,
+            is_drop=0,
+            is_multipath=0,
+            classify_table_index=0xFFFFFFFF,
+            is_classify=0,
+            not_last=0):
+        """
+
+        :param dst_address_length:
+        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param dst_address:
+        :param next_hop_address:
+        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param vrf_id:  (Default value = 0)
+        :param lookup_in_vrf:  (Default value = 0)
+        :param classify_table_index:  (Default value = 0xFFFFFFFF)
+        :param create_vrf_if_needed:  (Default value = 0)
+        :param is_add:  (Default value = 1)
+        :param is_drop:  (Default value = 0)
+        :param is_ipv6:  (Default value = 0)
+        :param is_local:  (Default value = 0)
+        :param is_classify:  (Default value = 0)
+        :param is_multipath:  (Default value = 0)
+        :param is_resolve_host:  (Default value = 0)
+        :param is_resolve_attached:  (Default value = 0)
+        :param not_last:  (Default value = 0)
+        :param next_hop_weight:  (Default value = 1)
+
+        """
+        stack = array.array('I', next_hop_out_label_stack)
+        if need_swap:
+            stack.byteswap()
+        stack = stack.tostring()
+
+        return self.api(
+            vpp_papi.mpls_route_add_del,
+            (label,
+             eos,
+             table_id,
+             classify_table_index,
+             create_vrf_if_needed,
+             is_add,
+             is_classify,
+             is_multipath,
+             is_resolve_host,
+             is_resolve_attached,
+             next_hop_proto_is_ip4,
+             next_hop_weight,
+             next_hop_address,
+             next_hop_n_out_labels,
+             next_hop_sw_if_index,
+             next_hop_table_id,
+             next_hop_via_label,
+             stack))
+
+    def mpls_ip_bind_unbind(
+            self,
+            label,
+            dst_address,
+            dst_address_length,
+            table_id=0,
+            ip_table_id=0,
+            is_ip4=1,
+            create_vrf_if_needed=0,
+            is_bind=1):
+        """
+        """
+        return self.api(
+            vpp_papi.mpls_ip_bind_unbind,
+            (table_id,
+             label,
+             ip_table_id,
+             create_vrf_if_needed,
+             is_bind,
+             is_ip4,
+             dst_address_length,
+             dst_address))
+
+    def mpls_tunnel_add_del(
+            self,
+            tun_sw_if_index,
+            next_hop_proto_is_ip4,
+            next_hop_address,
+            next_hop_sw_if_index=0xFFFFFFFF,
+            next_hop_table_id=0,
+            next_hop_weight=1,
+            next_hop_n_out_labels = 0,
+            next_hop_out_label_stack = [],
+            next_hop_via_label = MPLS_LABEL_INVALID,
+            create_vrf_if_needed=0,
+            is_add=1,
+            l2_only=0):
+        """
+
+        :param dst_address_length:
+        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param dst_address:
+        :param next_hop_address:
+        :param next_hop_sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param vrf_id:  (Default value = 0)
+        :param lookup_in_vrf:  (Default value = 0)
+        :param classify_table_index:  (Default value = 0xFFFFFFFF)
+        :param create_vrf_if_needed:  (Default value = 0)
+        :param is_add:  (Default value = 1)
+        :param is_drop:  (Default value = 0)
+        :param is_ipv6:  (Default value = 0)
+        :param is_local:  (Default value = 0)
+        :param is_classify:  (Default value = 0)
+        :param is_multipath:  (Default value = 0)
+        :param is_resolve_host:  (Default value = 0)
+        :param is_resolve_attached:  (Default value = 0)
+        :param not_last:  (Default value = 0)
+        :param next_hop_weight:  (Default value = 1)
+
+        """
+        stack = array.array('I', next_hop_out_label_stack)
+        if need_swap:
+            stack.byteswap()
+        stack = stack.tostring()
+
+        return self.api(
+            vpp_papi.mpls_tunnel_add_del,
+            (tun_sw_if_index,
+             is_add,
+             l2_only,
+             next_hop_proto_is_ip4,
+             next_hop_weight,
+             next_hop_address,
+             next_hop_n_out_labels,
+             next_hop_sw_if_index,
+             next_hop_table_id,
+             stack))
+

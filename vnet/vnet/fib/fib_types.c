@@ -64,6 +64,16 @@ fib_prefix_from_ip46_addr (const ip46_address_t *addr,
     pfx->fp_addr = *addr;
 }
 
+void
+fib_prefix_from_mpls_label (mpls_label_t label,
+			    fib_prefix_t *pfx)
+{
+    pfx->fp_proto = FIB_PROTOCOL_MPLS;
+    pfx->fp_len = 21;
+    pfx->fp_label = label;
+    pfx->fp_eos = MPLS_NON_EOS;
+}
+
 int
 fib_prefix_cmp (const fib_prefix_t *p1,
 		const fib_prefix_t *p2)
@@ -301,11 +311,6 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	return (DPO_PROTO_ETHERNET);
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
-	/*
-	 * insufficient information to to convert
-	 */
-	ASSERT(0);
-	break;
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	return (DPO_PROTO_MPLS);
     }

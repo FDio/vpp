@@ -519,9 +519,6 @@ static void *vl_api_ip_add_del_route_t_print
   if (mp->create_vrf_if_needed)
     s = format (s, "create-vrf ");
 
-  if (mp->resolve_attempts != 0)
-    s = format (s, "resolve-attempts %d ", ntohl (mp->resolve_attempts));
-
   if (mp->next_hop_weight != 1)
     s = format (s, "weight %d ", mp->next_hop_weight);
 
@@ -573,77 +570,25 @@ static void *vl_api_proxy_arp_intfc_enable_disable_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_add_del_encap_t_print
-  (vl_api_mpls_add_del_encap_t * mp, void *handle)
-{
-  u8 *s;
-  int i;
-
-  s = format (0, "SCRIPT: mpls_add_del_encap ");
-
-  s = format (s, "vrf_id %d ", ntohl (mp->vrf_id));
-
-  s = format (s, "dst %U ", format_ip4_address, mp->dst_address);
-
-  for (i = 0; i < mp->nlabels; i++)
-    s = format (s, "label %d ", ntohl (mp->labels[i]));
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_mpls_ethernet_add_del_tunnel_t_print
-  (vl_api_mpls_ethernet_add_del_tunnel_t * mp, void *handle)
+static void *vl_api_mpls_tunnel_add_del_t_print
+  (vl_api_mpls_tunnel_add_del_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: mpls_ethernet_add_del_tunnel ");
+  s = format (0, "SCRIPT: mpls_tunnel_add_del ");
 
-  s = format (s, "tx_sw_if_index %d ", ntohl (mp->tx_sw_if_index));
+  if (mp->mt_next_hop_sw_if_index)
+    s = format (s, "sw_if_index %d ", ntohl (mp->mt_next_hop_sw_if_index));
 
-  s = format (s, "dst %U", format_ethernet_address, mp->dst_mac_address);
+  if (mp->mt_next_hop_proto_is_ip4)
+    s = format (s, "%U ", format_ip4_address, mp->mt_next_hop);
+  else
+    s = format (s, "%U ", format_ip6_address, mp->mt_next_hop);
 
-  s = format (s, "adj %U/%d ", format_ip4_address,
-	      (ip4_address_t *) mp->adj_address, mp->adj_address_length);
-
-  s = format (s, "vrf_id %d ", ntohl (mp->vrf_id));
-
-  if (mp->l2_only)
+  if (mp->mt_l2_only)
     s = format (s, "l2-only ");
 
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  FINISH;
-}
-
-static void *vl_api_mpls_ethernet_add_del_tunnel_2_t_print
-  (vl_api_mpls_ethernet_add_del_tunnel_2_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: mpls_ethernet_add_del_tunnel_2 ");
-
-  s = format (s, "adj %U/%d ", format_ip4_address,
-	      (ip4_address_t *) mp->adj_address, mp->adj_address_length);
-
-  s = format (s, "next-hop %U ", format_ip4_address,
-	      (ip4_address_t *) mp->next_hop_ip4_address_in_outer_vrf);
-
-  s = format (s, "inner_vrf_id %d ", ntohl (mp->inner_vrf_id));
-
-  s = format (s, "outer_vrf_id %d ", ntohl (mp->outer_vrf_id));
-
-  s = format (s, "resolve-if-needed %d ", mp->resolve_if_needed);
-
-  s = format (s, "resolve-attempts %d ", ntohl (mp->resolve_attempts));
-
-  if (mp->l2_only)
-    s = format (s, "l2-only ");
-
-  if (mp->is_add == 0)
+  if (mp->mt_is_add == 0)
     s = format (s, "del ");
 
   FINISH;
@@ -2053,24 +1998,14 @@ static void *vl_api_sw_interface_clear_stats_t_print
   FINISH;
 }
 
-static void *vl_api_mpls_eth_tunnel_dump_t_print
-  (vl_api_mpls_eth_tunnel_dump_t * mp, void *handle)
+static void *vl_api_mpls_tunnel_dump_t_print
+  (vl_api_mpls_tunnel_dump_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: mpls_eth_tunnel_dump ");
+  s = format (0, "SCRIPT: mpls_tunnel_dump ");
 
   s = format (s, "tunnel_index %d ", ntohl (mp->tunnel_index));
-
-  FINISH;
-}
-
-static void *vl_api_mpls_fib_encap_dump_t_print
-  (vl_api_mpls_fib_encap_dump_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: mpls_fib_encap_dump ");
 
   FINISH;
 }
@@ -2975,9 +2910,7 @@ _(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)                         \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
-_(MPLS_ADD_DEL_ENCAP, mpls_add_del_encap)                               \
-_(MPLS_ETHERNET_ADD_DEL_TUNNEL, mpls_ethernet_add_del_tunnel)		\
-_(MPLS_ETHERNET_ADD_DEL_TUNNEL_2, mpls_ethernet_add_del_tunnel_2)	\
+_(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(RESET_VRF, reset_vrf)                                                 \
@@ -3053,9 +2986,8 @@ _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)           \
 _(AF_PACKET_CREATE, af_packet_create)					\
 _(AF_PACKET_DELETE, af_packet_delete)					\
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
-_(MPLS_ETH_TUNNEL_DUMP, mpls_eth_tunnel_dump)                           \
-_(MPLS_FIB_ENCAP_DUMP, mpls_fib_encap_dump)                             \
 _(MPLS_FIB_DUMP, mpls_fib_dump)                                         \
+_(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                                   \
 _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \

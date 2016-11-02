@@ -64,47 +64,6 @@ fib_entry_get_proto (const fib_entry_t * fib_entry)
     return (fib_entry->fe_prefix.fp_proto);
 }
 
-/**
- * @brief Turn the chain type requested by the client into the one they
- * really wanted
- */
-static fib_forward_chain_type_t
-fib_entry_chain_type_fixup (const fib_entry_t *entry,
-			    fib_forward_chain_type_t fct)
-{
-    if (FIB_FORW_CHAIN_TYPE_MPLS_EOS == fct)
-    {
-	/*
-	 * The EOS chain is a tricky since one cannot know the adjacency
-	 * to link to without knowing what the packets payload protocol
-	 * will be once the label is popped.
-	 */
-	fib_forward_chain_type_t dfct;
-
-	dfct = fib_entry_get_default_chain_type(entry);
-
-	if (FIB_FORW_CHAIN_TYPE_MPLS_EOS == dfct)
-	{
-	    /*
-	     * If the entry being asked is a eos-MPLS label entry,
-	     * then use the payload-protocol field, that we stashed there
-	     * for just this purpose
-	     */
-	    return (fib_forw_chain_type_from_dpo_proto(
-			entry->fe_prefix.fp_payload_proto));
-	}
-	/*
-	 * else give them what this entry would be by default. i.e. if it's a v6
-	 * entry, then the label its local labelled should be carrying v6 traffic.
-	 * If it's a non-EOS label entry, then there are more labels and we want
-	 * a non-eos chain.
-	 */
-	return (dfct);
-    }
-
-    return (fct);
-}
-
 fib_forward_chain_type_t
 fib_entry_get_default_chain_type (const fib_entry_t *fib_entry)
 {
@@ -189,8 +148,8 @@ format_fib_entry (u8 * s, va_list * args)
 	    s = format(s, "\n tracking %d covered: ", n_covered);
 	    s = fib_entry_cover_list_format(fib_entry, s);
 	}
-	s = fib_ae_import_format(fib_entry->fe_import, s);
-	s = fib_ae_export_format(fib_entry->fe_export, s);
+	s = fib_ae_import_format(fib_entry, s);
+	s = fib_ae_export_format(fib_entry, s);
 
 	s = format (s, "\n forwarding: ");
     }
@@ -201,34 +160,33 @@ format_fib_entry (u8 * s, va_list * args)
 
     fct = fib_entry_get_default_chain_type(fib_entry);
 
-    if (!dpo_id_is_valid(&fib_entry->fe_lb[fct]))
+    if (!dpo_id_is_valid(&fib_entry->fe_lb))
     {
 	s = format (s, "  UNRESOLVED\n");
 	return (s);
     }
     else
     {
+        s = format(s, "  %U-chain\n  %U",
+                   format_fib_forw_chain_type, fct,
+                   format_dpo_id,
+                   &fib_entry->fe_lb,
+                   2);
+        s = format(s, "\n");
+
         if (level >= FIB_ENTRY_FORMAT_DETAIL2)
         {
+            fib_entry_delegate_type_t fdt;
+            fib_entry_delegate_t *fed;
 
-            FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
+            FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
             {
                 s = format(s, "  %U-chain\n  %U",
-                           format_fib_forw_chain_type, fct,
-                           format_dpo_id,
-                           &fib_entry->fe_lb[fct],
-                           2);
+                           format_fib_forw_chain_type,
+                           fib_entry_delegate_type_to_chain_type(fdt),
+                           format_dpo_id, &fed->fd_dpo, 2);
                 s = format(s, "\n");
-            }
-        }
-        else
-        {
-	    s = format(s, "  %U-chain\n  %U",
-		       format_fib_forw_chain_type, fct,
-                       format_dpo_id,
-                       &fib_entry->fe_lb[fct],
-                       2);
-            s = format(s, "\n");
+            });
         }
     }
 
@@ -237,68 +195,6 @@ format_fib_entry (u8 * s, va_list * args)
         s = format(s, "\nchildren:");
         s = fib_node_children_format(fib_entry->fe_node.fn_children, s);
     }
-
-    /* adj = adj_get(fib_entry->fe_prefix.fp_proto, fib_entry->fe_adj_index); */
-
-    /* ip_multipath_next_hop_t * nhs, tmp_nhs[1]; */
-    /* u32 i, j, n_left, n_nhs; */
-    /* vlib_counter_t c, sum; */
-    /* ip_lookup_main_t *lm = fib_get_lookup_main(fib_entry->fe_prefix.fp_proto); */
-
-    /* if (adj->n_adj == 1) */
-    /* { */
-    /* 	nhs = &tmp_nhs[0]; */
-    /* 	nhs[0].next_hop_adj_index = ~0; /\* not used *\/ */
-    /* 	nhs[0].weight = 1; */
-    /* 	n_nhs = 1; */
-    /* } */
-    /* else */
-    /* { */
-    /* 	ip_multipath_adjacency_t * madj; */
-    /* 	madj = vec_elt_at_index (lm->multipath_adjacencies, adj->heap_handle); */
-    /* 	nhs = heap_elt_at_index (lm->next_hop_heap, madj->normalized_next_hops.heap_offset); */
-    /* 	n_nhs = madj->normalized_next_hops.count; */
-    /* } */
-
-    /* n_left = nhs[0].weight; */
-    /* vlib_counter_zero (&sum); */
-    /* for (i = j = 0; i < adj->n_adj; i++) */
-    /* { */
-    /* 	n_left -= 1; */
-    /* 	vlib_get_combined_counter(&lm->adjacency_counters,  */
-    /* 				  fib_entry->fe_adj_index + i, */
-    /* 				  &c); */
-    /* 	/\* if (clear) *\/ */
-    /* 	/\*     vlib_zero_combined_counter (&lm->adjacency_counters,  *\/ */
-    /* 	/\* 				fib_entry->fe_adj_index + i); *\/ */
-
-    /* 	vlib_counter_add (&sum, &c); */
-    /* 	if (n_left == 0) */
-    /* 	{ */
-    /* 	    s = format (s, "%16Ld%16Ld ", sum.packets, sum.bytes); */
-    /* 	    s = format (s, "weight %d, index %d", */
-    /* 			  nhs[j].weight, fib_entry->fe_adj_index + i); */
-
-    /* 	    if (adj->n_adj > 1) */
-    /* 		s = format (s, ", multipath"); */
-
-    /* 	    s = format (s, "\n%U", */
-    /* 			format_ip_adjacency, */
-    /* 			vnet_get_main(), lm, fib_entry->fe_adj_index + i); */
-
-    /* 	    //   vlib_cli_output (vm, "%v", msg); */
-    /* 	    //vec_free (msg); */
-    /* 	} */
-    /* 	else */
-    /* 	{ */
-    /* 	    j++; */
-    /* 	    if (j < n_nhs) */
-    /* 	    { */
-    /* 		n_left = nhs[j].weight; */
-    /* 		vlib_counter_zero (&sum); */
-    /* 	    } */
-    /* 	} */
-    /* } */
 
     return (s);
 }
@@ -315,20 +211,25 @@ fib_entry_from_fib_node (fib_node_t *node)
 static void
 fib_entry_last_lock_gone (fib_node_t *node)
 {
-    fib_forward_chain_type_t fct;
+    fib_entry_delegate_type_t fdt;
+    fib_entry_delegate_t *fed;
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_from_fib_node(node);
 
-    FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
+    FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
     {
-	dpo_reset(&fib_entry->fe_lb[fct]);
-    }
+	dpo_reset(&fed->fd_dpo);
+        fib_entry_delegate_remove(fib_entry, fdt);
+    });
 
     FIB_ENTRY_DBG(fib_entry, "last-lock");
 
     fib_node_deinit(&fib_entry->fe_node);
     // FIXME -RR Backwalk
+
+    ASSERT(0 == vec_len(fib_entry->fe_delegates));
+    vec_free(fib_entry->fe_delegates);
     pool_put(fib_entry_pool, fib_entry);
 }
 
@@ -487,44 +388,58 @@ fib_entry_contribute_urpf (fib_node_index_t entry_index,
  */
 void
 fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
-				 fib_forward_chain_type_t type,
+				 fib_forward_chain_type_t fct,
 				 dpo_id_t *dpo)
 {
+    fib_entry_delegate_t *fed;
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
 
-    /*
-     * these are not the droids you are looking for...
-     */
-    type = fib_entry_chain_type_fixup(fib_entry, type);
-
-    if (!dpo_id_is_valid(&fib_entry->fe_lb[type]))
+    if (fct == fib_entry_get_default_chain_type(fib_entry))
     {
-	/*
-	 * on-demand create eos/non-eos.
-	 * There is no on-demand delete because:
-	 *   - memory versus complexity & reliability:
-	 *      leaving unrequired [n]eos LB arounds wastes memory, cleaning
-	 *      then up on the right trigger is more code. i favour the latter.
-	 */
-	fib_entry_src_mk_lb(fib_entry,
-			    fib_entry_get_best_src_i(fib_entry),
-			    type,
-			    &fib_entry->fe_lb[type]);
+        dpo_copy(dpo, &fib_entry->fe_lb);
     }
+    else
+    {
+        fed = fib_entry_delegate_get(fib_entry,
+                                     fib_entry_chain_type_to_delegate_type(fct));
 
-    dpo_copy(dpo, &fib_entry->fe_lb[type]);
+        if (NULL == fed)
+        {
+            fed = fib_entry_delegate_find_or_add(
+                      fib_entry,
+                      fib_entry_chain_type_to_delegate_type(fct));
+            /*
+             * on-demand create eos/non-eos.
+             * There is no on-demand delete because:
+             *   - memory versus complexity & reliability:
+             *      leaving unrequired [n]eos LB arounds wastes memory, cleaning
+             *      then up on the right trigger is more code. i favour the latter.
+             */
+            fib_entry_src_mk_lb(fib_entry,
+                                fib_entry_get_best_src_i(fib_entry),
+                                fct,
+                                &fed->fd_dpo);
+        }
+
+        dpo_copy(dpo, &fed->fd_dpo);
+    }
 }
 
 const dpo_id_t *
 fib_entry_contribute_ip_forwarding (fib_node_index_t fib_entry_index)
 {
+    fib_forward_chain_type_t fct;
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
+    fct = fib_entry_get_default_chain_type(fib_entry);
 
-    return (&fib_entry->fe_lb[fib_entry_get_default_chain_type(fib_entry)]);
+    ASSERT((fct == FIB_FORW_CHAIN_TYPE_UNICAST_IP4 ||
+            fct == FIB_FORW_CHAIN_TYPE_UNICAST_IP6));
+
+    return (&fib_entry->fe_lb);
 }
 
 adj_index_t
@@ -570,6 +485,27 @@ fib_entry_child_remove (fib_node_index_t fib_entry_index,
     fib_node_child_remove(FIB_NODE_TYPE_ENTRY,
                           fib_entry_index,
                           sibling_index);
+
+    if (0 == fib_node_get_n_children(FIB_NODE_TYPE_ENTRY,
+                                     fib_entry_index))
+    {
+        /*
+         * if there are no children left then there is no reason to keep
+         * the non-default forwarding chains. those chains are built only
+         * because the children want them.
+         */
+        fib_entry_delegate_type_t fdt;
+        fib_entry_delegate_t *fed;
+        fib_entry_t *fib_entry;
+
+        fib_entry = fib_entry_get(fib_entry_index);
+
+        FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
+        {
+            dpo_reset(&fed->fd_dpo);
+            fib_entry_delegate_remove(fib_entry, fdt);
+        });
+    }
 }
 
 static fib_entry_t *
@@ -577,8 +513,8 @@ fib_entry_alloc (u32 fib_index,
 		 const fib_prefix_t *prefix,
 		 fib_node_index_t *fib_entry_index)
 {
-    fib_forward_chain_type_t fct;
     fib_entry_t *fib_entry;
+    fib_prefix_t *fep;
 
     pool_get(fib_entry_pool, fib_entry);
     memset(fib_entry, 0, sizeof(*fib_entry));
@@ -587,20 +523,25 @@ fib_entry_alloc (u32 fib_index,
 		  FIB_NODE_TYPE_ENTRY);
 
     fib_entry->fe_fib_index = fib_index;
-    fib_entry->fe_prefix = *prefix;
+
+    /*
+     * the one time we need to update the const prefix is when
+     * the entry is first created
+     */
+    fep = (fib_prefix_t*)&(fib_entry->fe_prefix);
+    *fep = *prefix;
+
     if (FIB_PROTOCOL_MPLS == fib_entry->fe_prefix.fp_proto)
     {
-	fib_entry->fe_prefix.fp_len = 21;
+	fep->fp_len = 21;
+	if (MPLS_NON_EOS == fep->fp_eos)
+	{
+	    fep->fp_payload_proto = DPO_PROTO_MPLS;
+	}
     	ASSERT(DPO_PROTO_NONE != fib_entry->fe_prefix.fp_payload_proto);
     }
 
-    fib_entry->fe_export = FIB_NODE_INDEX_INVALID;
-    fib_entry->fe_import = FIB_NODE_INDEX_INVALID;
-    fib_entry->fe_covered = FIB_NODE_INDEX_INVALID;
-    FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
-    {
-	dpo_reset(&fib_entry->fe_lb[fct]);
-    }
+    dpo_reset(&fib_entry->fe_lb);
 
     *fib_entry_index = fib_entry_get_index(fib_entry);
 
@@ -1316,7 +1257,6 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
     if (FIB_NODE_INDEX_INVALID != fib_entry->fe_parent)
     {
 	fib_node_index_t *entries = *entry_indicies;
-	fib_forward_chain_type_t fct;
 
 	vec_add1(entries, entry_index);
 	was_looped = fib_path_list_is_looped(fib_entry->fe_parent);
@@ -1331,16 +1271,16 @@ fib_entry_recursive_loop_detect (fib_node_index_t entry_index,
 	     * re-evaluate all the entry's forwarding
 	     * NOTE: this is an inplace modify
 	     */
-	    FOR_EACH_FIB_FORW_MPLS_CHAIN(fct)
-	    {
-		if (dpo_id_is_valid(&fib_entry->fe_lb[fct]))
-		{
-		    fib_entry_src_mk_lb(fib_entry,
-					fib_entry_get_best_src_i(fib_entry),
-					fct,
-					&fib_entry->fe_lb[fct]);
-		}
-	    }
+            fib_entry_delegate_type_t fdt;
+            fib_entry_delegate_t *fed;
+
+            FOR_EACH_DELEGATE_CHAIN(fib_entry, fdt, fed,
+            {
+                fib_entry_src_mk_lb(fib_entry,
+                                    fib_entry_get_best_src_i(fib_entry),
+                                    fib_entry_delegate_type_to_chain_type(fdt),
+                                    &fed->fd_dpo);
+	    });
 	}
     }
     else
@@ -1379,8 +1319,8 @@ fib_entry_get_best_source (fib_node_index_t entry_index)
 }
 
 static int
-fib_ip4_address_compare (ip4_address_t * a1,
-                         ip4_address_t * a2)
+fib_ip4_address_compare (const ip4_address_t * a1,
+                         const ip4_address_t * a2)
 {
     /*
      * IP addresses are unsiged ints. the return value here needs to be signed
@@ -1393,8 +1333,8 @@ fib_ip4_address_compare (ip4_address_t * a1,
 }
 
 static int
-fib_ip6_address_compare (ip6_address_t * a1,
-                         ip6_address_t * a2)
+fib_ip6_address_compare (const ip6_address_t * a1,
+                         const ip6_address_t * a2)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (a1->as_u16); i++)

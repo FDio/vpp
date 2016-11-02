@@ -1,0 +1,13 @@
+diff --git a/scapy/contrib/mpls.py b/scapy/contrib/mpls.py
+index 640a0c5..6af1d4a 100644
+--- a/scapy/contrib/mpls.py
++++ b/scapy/contrib/mpls.py
+@@ -18,6 +18,8 @@ class MPLS(Packet):
+ 
+    def guess_payload_class(self, payload):
+        if len(payload) >= 1:
++           if not self.s:
++              return MPLS
+            ip_version = (ord(payload[0]) >> 4) & 0xF
+            if ip_version == 4:
+                return IP
