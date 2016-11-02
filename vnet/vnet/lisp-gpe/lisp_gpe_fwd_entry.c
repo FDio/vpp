@@ -243,7 +243,6 @@ lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
 
     rpaths[ii].frp_sw_if_index = ladj->sw_if_index;
     rpaths[ii].frp_weight = (paths[ii].weight ? paths[ii].weight : 1);
-    rpaths[ii].frp_label = MPLS_LABEL_INVALID;
   }
 
   ASSERT (0 != vec_len (rpaths));
