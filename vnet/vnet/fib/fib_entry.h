@@ -17,6 +17,7 @@
 #define __FIB_ENTRY_H__
 
 #include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/adj/adj.h>
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/dpo.h>
@@ -363,9 +364,10 @@ typedef struct fib_entry_t_ {
      */
     fib_node_t fe_node;
     /**
-     * The prefix of the route
+     * The prefix of the route. this is const just to be sure.
+     * It is the entry's key/identity and so should never change.
      */
-    fib_prefix_t fe_prefix;
+    const fib_prefix_t fe_prefix;
     /**
      * The index of the FIB table this entry is in
      */
@@ -382,7 +384,7 @@ typedef struct fib_entry_t_ {
      *     paint the header straight on without the need to check the packet
      *     type to derive the EOS bit value.
      */
-    dpo_id_t fe_lb[FIB_FORW_CHAIN_MPLS_NUM];
+    dpo_id_t fe_lb; // [FIB_FORW_CHAIN_MPLS_NUM];
     /**
      * Vector of source infos.
      * Most entries will only have 1 source. So we optimise for memory usage,
@@ -400,17 +402,11 @@ typedef struct fib_entry_t_ {
      * be changed by the parent as it manages its list.
      */
     u32 fe_sibling;
+
     /**
-     * Dependency list of covered entries.
-     * these are more specific entries that are interested in changes
-     * to their respective cover
+     * A vector of delegates.
      */
-    fib_node_list_t fe_covered;
-    /**
-     * exporter
-     */
-    fib_node_index_t fe_export;
-    fib_node_index_t fe_import;
+    fib_entry_delegate_t *fe_delegates;
 } fib_entry_t;
 
 #define FOR_EACH_FIB_ENTRY_FLAG(_item) \

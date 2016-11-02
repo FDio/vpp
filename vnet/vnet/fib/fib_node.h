@@ -35,6 +35,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_PATH,
     FIB_NODE_TYPE_ADJ,
     FIB_NODE_TYPE_MPLS_ENTRY,
+    FIB_NODE_TYPE_MPLS_TUNNEL,
     FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
     FIB_NODE_TYPE_LISP_ADJ,
     FIB_NODE_TYPE_GRE_TUNNEL,
@@ -54,6 +55,7 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_PATH_LIST] = "path-list",      \
     [FIB_NODE_TYPE_PATH]      = "path",           \
     [FIB_NODE_TYPE_MPLS_ENTRY] = "mpls-entry",    \
+    [FIB_NODE_TYPE_MPLS_TUNNEL] = "mpls-tunnel",  \
     [FIB_NODE_TYPE_ADJ] = "adj",                  \
     [FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY] = "lisp-gpe-fwd-entry", \
     [FIB_NODE_TYPE_LISP_ADJ] = "lisp-adj", \
@@ -341,8 +343,8 @@ extern void fib_node_deinit(fib_node_t *node);
 extern void fib_node_lock(fib_node_t *node);
 extern void fib_node_unlock(fib_node_t *node);
 
-extern u32 fib_node_child_get_n_children(fib_node_type_t parent_type,
-                                         fib_node_index_t parent_index);
+extern u32 fib_node_get_n_children(fib_node_type_t parent_type,
+                                   fib_node_index_t parent_index);
 extern u32 fib_node_child_add(fib_node_type_t parent_type,
 			      fib_node_index_t parent_index,
 			      fib_node_type_t child_type,

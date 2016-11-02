@@ -143,6 +143,18 @@ typedef struct
       };
     } ip;
 
+    /*
+     * MPLS:
+     * data copied from the MPLS header that was popped from the packet
+     * during the look-up.
+     */
+    struct
+    {
+      u8 ttl;
+      u8 exp;
+      u8 first;
+    } mpls;
+
     /* Multicast replication */
     struct
     {
@@ -330,6 +342,14 @@ typedef struct
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;
+
+/*
+ * The opaque field of the vlib_buffer_t is intepreted as a
+ * vnet_buffer_opaque_t. Hence it should be big enough to accommodate one.
+ */
+STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <= STRUCT_SIZE_OF (vlib_buffer_t,
+								opaque),
+	       "VNET buffer meta-data too large for vlib_buffer");
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 

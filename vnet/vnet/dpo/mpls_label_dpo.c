@@ -42,29 +42,55 @@ mpls_label_dpo_get_index (mpls_label_dpo_t *mld)
 }
 
 index_t
-mpls_label_dpo_create (mpls_label_t label,
+mpls_label_dpo_create (mpls_label_t *label_stack,
                        mpls_eos_bit_t eos,
                        u8 ttl,
                        u8 exp,
+                       dpo_proto_t payload_proto,
 		       const dpo_id_t *dpo)
 {
     mpls_label_dpo_t *mld;
+    u32 ii;
 
     mld = mpls_label_dpo_alloc();
-
-    vnet_mpls_uc_set_label(&mld->mld_hdr.label_exp_s_ttl, label);
-    vnet_mpls_uc_set_ttl(&mld->mld_hdr.label_exp_s_ttl, ttl);
-    vnet_mpls_uc_set_exp(&mld->mld_hdr.label_exp_s_ttl, exp);
-    vnet_mpls_uc_set_s(&mld->mld_hdr.label_exp_s_ttl, eos);
+    mld->mld_n_labels = vec_len(label_stack);
+    mld->mld_payload_proto = payload_proto;
 
     /*
+     * construct label rewrite headers for each value value passed.
      * get the header in network byte order since we will paint it
      * on a packet in the data-plane
      */
-    mld->mld_hdr.label_exp_s_ttl =
-        clib_host_to_net_u32(mld->mld_hdr.label_exp_s_ttl);
 
-    dpo_stack(DPO_MPLS_LABEL, DPO_PROTO_MPLS, &mld->mld_dpo, dpo);
+    for (ii = 0; ii < mld->mld_n_labels-1; ii++)
+    {
+	vnet_mpls_uc_set_label(&mld->mld_hdr[ii].label_exp_s_ttl, label_stack[ii]);
+	vnet_mpls_uc_set_ttl(&mld->mld_hdr[ii].label_exp_s_ttl, 255);
+	vnet_mpls_uc_set_exp(&mld->mld_hdr[ii].label_exp_s_ttl, 0);
+	vnet_mpls_uc_set_s(&mld->mld_hdr[ii].label_exp_s_ttl, MPLS_NON_EOS);
+	mld->mld_hdr[ii].label_exp_s_ttl =
+	    clib_host_to_net_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+    }
+
+    /*
+     * the inner most label
+     */
+    ii = mld->mld_n_labels-1;
+
+    vnet_mpls_uc_set_label(&mld->mld_hdr[ii].label_exp_s_ttl, label_stack[ii]);
+    vnet_mpls_uc_set_ttl(&mld->mld_hdr[ii].label_exp_s_ttl, ttl);
+    vnet_mpls_uc_set_exp(&mld->mld_hdr[ii].label_exp_s_ttl, exp);
+    vnet_mpls_uc_set_s(&mld->mld_hdr[ii].label_exp_s_ttl, eos);
+    mld->mld_hdr[ii].label_exp_s_ttl =
+	clib_host_to_net_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+
+    /*
+     * stack this label objct on its parent.
+     */
+    dpo_stack(DPO_MPLS_LABEL,
+              mld->mld_payload_proto,
+              &mld->mld_dpo,
+              dpo);
 
     return (mpls_label_dpo_get_index(mld));
 }
@@ -76,15 +102,20 @@ format_mpls_label_dpo (u8 *s, va_list *args)
     u32 indent = va_arg (*args, u32);
     mpls_unicast_header_t hdr;
     mpls_label_dpo_t *mld;
+    u32 ii;
 
     mld = mpls_label_dpo_get(index);
 
-    hdr.label_exp_s_ttl =
-        clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
-
     s = format(s, "mpls-label:[%d]:", index);
-    s = format(s, "%U\n", format_mpls_header, hdr);
-    s = format(s, "%U", format_white_space, indent);
+
+    for (ii = 0; ii < mld->mld_n_labels; ii++)
+    {
+	hdr.label_exp_s_ttl =
+	    clib_net_to_host_u32(mld->mld_hdr[ii].label_exp_s_ttl);
+	s = format(s, "%U", format_mpls_header, hdr);
+    }
+
+    s = format(s, "\n%U", format_white_space, indent);
     s = format(s, "%U", format_dpo_id, &mld->mld_dpo, indent+2);
 
     return (s);
@@ -129,9 +160,11 @@ typedef struct mpls_label_imposition_trace_t_
 } mpls_label_imposition_trace_t;
 
 always_inline uword
-mpls_label_imposition (vlib_main_t * vm,
-                       vlib_node_runtime_t * node,
-                       vlib_frame_t * from_frame)
+mpls_label_imposition_inline (vlib_main_t * vm,
+                              vlib_node_runtime_t * node,
+                              vlib_frame_t * from_frame,
+                              u8 payload_is_ip4,
+                              u8 payload_is_ip6)
 {
     u32 n_left_from, next_index, * from, * to_next;
 
@@ -153,6 +186,7 @@ mpls_label_imposition (vlib_main_t * vm,
             vlib_buffer_t * b0;
             u32 bi0, mldi0;
             u32 next0;
+            u8 ttl;
 
             bi0 = from[0];
             to_next[0] = bi0;
@@ -167,16 +201,69 @@ mpls_label_imposition (vlib_main_t * vm,
             mldi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             mld0 = mpls_label_dpo_get(mldi0);
 
+            if (payload_is_ip4)
+            {
+                /*
+                 * decrement the TTL on ingress to the LSP
+                 */
+                ip4_header_t * ip0 = vlib_buffer_get_current(b0);
+                u32 checksum0;
+
+                checksum0 = ip0->checksum + clib_host_to_net_u16 (0x0100);
+                checksum0 += checksum0 >= 0xffff;
+
+                ip0->checksum = checksum0;
+                ip0->ttl -= 1;
+                ttl = ip0->ttl;
+            }
+            else if (payload_is_ip6)
+            {
+                /*
+                 * decrement the TTL on ingress to the LSP
+                 */
+                ip6_header_t * ip0 = vlib_buffer_get_current(b0);
+
+                ip0->hop_limit -= 1;
+                ttl = ip0->hop_limit;
+            }
+            else
+            {
+                /*
+                 * else, the packet to be encapped is an MPLS packet
+                 */
+                if (vnet_buffer(b0)->mpls.first)
+                {
+                    /*
+                     * The first label to be imposed on the packet. this is a label swap.
+                     * in which case we stashed the TTL and EXP bits in the
+                     * packet in the lookup node
+                     */
+                    ASSERT(0 != vnet_buffer (b0)->mpls.ttl);
+
+                    ttl = vnet_buffer(b0)->mpls.ttl - 1;
+                }
+                else
+                {
+                    /*
+                     * not the first label. implying we are recusring down a chain of
+                     * output labels.
+                     * Each layer is considered a new LSP - hence the TTL is reset.
+                     */
+                    ttl = 255;
+                }
+            }
+            vnet_buffer(b0)->mpls.first = 0;
+
             /* Paint the MPLS header */
-            vlib_buffer_advance(b0, -sizeof(*hdr0));
+            vlib_buffer_advance(b0, -(sizeof(*hdr0) * mld0->mld_n_labels));
             hdr0 = vlib_buffer_get_current(b0);
 
-            // FIXME.
-            // need to copy the TTL from the correct place.
-            // for IPvX imposition from the IP header
-            // so we need a deidcated ipx-to-mpls-label-imp-node
-            // for mpls switch and stack another solution is required.
-            *hdr0 = mld0->mld_hdr;
+            clib_memcpy(hdr0, mld0->mld_hdr,
+                        sizeof(*hdr0) * mld0->mld_n_labels);
+
+            /* fixup the TTL for the inner most label */
+            hdr0 = hdr0 + (mld0->mld_n_labels - 1);
+            ((char*)hdr0)[3] = ttl;
 
             next0 = mld0->mld_dpo.dpoi_next_node;
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;
@@ -215,6 +302,14 @@ format_mpls_label_imposition_trace (u8 * s, va_list * args)
     return (s);
 }
 
+static uword
+mpls_label_imposition (vlib_main_t * vm,
+                       vlib_node_runtime_t * node,
+                       vlib_frame_t * frame)
+{
+    return (mpls_label_imposition_inline(vm, node, frame, 0, 0));
+}
+
 VLIB_REGISTER_NODE (mpls_label_imposition_node) = {
     .function = mpls_label_imposition,
     .name = "mpls-label-imposition",
@@ -226,7 +321,52 @@ VLIB_REGISTER_NODE (mpls_label_imposition_node) = {
         [0] = "error-drop",
     }
 };
-VLIB_NODE_FUNCTION_MULTIARCH (mpls_label_imposition_node, mpls_label_imposition)
+VLIB_NODE_FUNCTION_MULTIARCH (mpls_label_imposition_node,
+                              mpls_label_imposition)
+
+static uword
+ip4_mpls_label_imposition (vlib_main_t * vm,
+                           vlib_node_runtime_t * node,
+                           vlib_frame_t * frame)
+{
+    return (mpls_label_imposition_inline(vm, node, frame, 1, 0));
+}
+
+VLIB_REGISTER_NODE (ip4_mpls_label_imposition_node) = {
+    .function = ip4_mpls_label_imposition,
+    .name = "ip4-mpls-label-imposition",
+    .vector_size = sizeof (u32),
+
+    .format_trace = format_mpls_label_imposition_trace,
+    .n_next_nodes = 1,
+    .next_nodes = {
+        [0] = "error-drop",
+    }
+};
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_imposition_node,
+                              ip4_mpls_label_imposition)
+
+static uword
+ip6_mpls_label_imposition (vlib_main_t * vm,
+                           vlib_node_runtime_t * node,
+                           vlib_frame_t * frame)
+{
+    return (mpls_label_imposition_inline(vm, node, frame, 0, 1));
+}
+
+VLIB_REGISTER_NODE (ip6_mpls_label_imposition_node) = {
+    .function = ip6_mpls_label_imposition,
+    .name = "ip6-mpls-label-imposition",
+    .vector_size = sizeof (u32),
+
+    .format_trace = format_mpls_label_imposition_trace,
+    .n_next_nodes = 1,
+    .next_nodes = {
+        [0] = "error-drop",
+    }
+};
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_imposition_node,
+                              ip6_mpls_label_imposition)
 
 static void
 mpls_label_dpo_mem_show (void)
@@ -246,12 +386,12 @@ const static dpo_vft_t mld_vft = {
 
 const static char* const mpls_label_imp_ip4_nodes[] =
 {
-    "mpls-label-imposition",
+    "ip4-mpls-label-imposition",
     NULL,
 };
 const static char* const mpls_label_imp_ip6_nodes[] =
 {
-    "mpls-label-imposition",
+    "ip6-mpls-label-imposition",
     NULL,
 };
 const static char* const mpls_label_imp_mpls_nodes[] =
