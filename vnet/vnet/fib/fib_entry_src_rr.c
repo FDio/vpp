@@ -58,6 +58,7 @@ fib_entry_src_rr_resolve_via_connected (fib_entry_src_t *src,
     vec_free(paths);
 }
 
+
 /**
  * Source initialisation Function 
  */
@@ -79,8 +80,18 @@ fib_entry_src_rr_activate (fib_entry_src_t *src,
 
     /*
      * find the covering prefix. become a dependent thereof.
-     * there should always be a cover, though it may be the default route.
+     * for IP there should always be a cover, though it may be the default route.
+     * For MPLS there is never a cover.
      */
+    if (FIB_PROTOCOL_MPLS == fib_entry->fe_prefix.fp_proto)
+    {
+	src->fes_pl = fib_path_list_create_special(FIB_PROTOCOL_MPLS,
+						   FIB_PATH_LIST_FLAG_DROP,
+						   NULL);
+	fib_path_list_lock(src->fes_pl);
+	return (!0);
+    }
+
     src->rr.fesr_cover = fib_table_get_less_specific(fib_entry->fe_fib_index,
 						     &fib_entry->fe_prefix);
 
@@ -157,12 +168,12 @@ fib_entry_src_rr_deactivate (fib_entry_src_t *src,
     /*
      * remove the depednecy on the covering entry
      */
-    ASSERT(FIB_NODE_INDEX_INVALID != src->rr.fesr_cover);
-    cover = fib_entry_get(src->rr.fesr_cover);
-
-    fib_entry_cover_untrack(cover, src->rr.fesr_sibling);
-
-    src->rr.fesr_cover = FIB_NODE_INDEX_INVALID;
+    if (FIB_NODE_INDEX_INVALID != src->rr.fesr_cover)
+    {
+	cover = fib_entry_get(src->rr.fesr_cover);
+	fib_entry_cover_untrack(cover, src->rr.fesr_sibling);
+	src->rr.fesr_cover = FIB_NODE_INDEX_INVALID;
+    }
 
     fib_path_list_unlock(src->fes_pl);
     src->fes_pl = FIB_NODE_INDEX_INVALID;

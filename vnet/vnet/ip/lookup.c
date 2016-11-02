@@ -348,8 +348,8 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   fib_route_path_t *rpaths = NULL, rpath;
   dpo_id_t dpo = DPO_INVALID, *dpos = NULL;
   fib_prefix_t *prefixs = NULL, pfx;
+  mpls_label_t out_label, via_label;
   clib_error_t * error = NULL;
-  mpls_label_t out_label;
   u32 table_id, is_del;
   vnet_main_t * vnm;
   u32 fib_index;
@@ -361,6 +361,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   table_id = 0;
   count = 1;
   memset(&pfx, 0, sizeof(pfx));
+  out_label = via_label = MPLS_LABEL_INVALID;
 
   /* Get a line of input. */
   if (! unformat_user (main_input, unformat_line_input, line_input))
@@ -403,7 +404,16 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	      error = clib_error_return(0 , "Paths then labels");
 	      goto done;
 	  }
-	  rpaths[vec_len(rpaths)-1].frp_label = out_label;
+	  vec_add1(rpaths[vec_len(rpaths)-1].frp_label_stack, out_label);
+      }
+      else if (unformat (line_input, "via-label %U",
+                         unformat_mpls_unicast_label,
+			 &rpath.frp_local_label))
+      {
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_MPLS;
+	  rpath.frp_sw_if_index = ~0;
+	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "count %f", &count))
 	;
@@ -431,7 +441,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index,
 			 &rpath.frp_weight))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1(rpaths, rpath);
       }
@@ -443,7 +452,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index,
 			 &rpath.frp_weight))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1(rpaths, rpath);
       }
@@ -454,7 +462,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 unformat_vnet_sw_interface, vnm,
 			 &rpath.frp_sw_if_index))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_weight = 1;
 	  rpath.frp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1(rpaths, rpath);
@@ -466,7 +473,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 unformat_vnet_sw_interface, vnm,
 			 &rpath.frp_sw_if_index))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_weight = 1;
 	  rpath.frp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1(rpaths, rpath);
@@ -478,7 +484,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
       {
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1(rpaths, rpath);
       }
@@ -489,7 +494,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
       {
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1(rpaths, rpath);
       }
@@ -504,7 +508,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpath.frp_fib_index = table_id;
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1(rpaths, rpath);
       }
@@ -515,7 +518,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpath.frp_fib_index = table_id;
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1(rpaths, rpath);
       }
@@ -523,7 +525,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 "lookup in table %d",
 			 &rpath.frp_fib_index))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  rpath.frp_proto = pfx.fp_proto;
 	  rpath.frp_sw_if_index = ~0;
 	  vec_add1(rpaths, rpath);
@@ -532,7 +533,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	       unformat (line_input, "via %U",
 			 unformat_dpo, &dpo, prefixs[0].fp_proto))
       {
-	  rpath.frp_label = MPLS_LABEL_INVALID;
 	  vec_add1 (dpos, dpo);
       }
       else

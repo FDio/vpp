@@ -21,16 +21,21 @@ u32
 fib_entry_cover_track (fib_entry_t* cover,
 		       fib_node_index_t covered)
 {
+    fib_entry_delegate_t *fed;
+
     FIB_ENTRY_DBG(cover, "cover-track %d", covered);
 
     ASSERT(fib_entry_get_index(cover) != covered);
 
-    if (FIB_NODE_INDEX_INVALID == cover->fe_covered)
+    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+
+    if (NULL == fed)
     {
-        cover->fe_covered = fib_node_list_create();
+        fed = fib_entry_delegate_find_or_add(cover, FIB_ENTRY_DELEGATE_COVERED);
+        fed->fd_list = fib_node_list_create();
     }
 
-    return (fib_node_list_push_front(cover->fe_covered,
+    return (fib_node_list_push_front(fed->fd_list,
                                      0, FIB_NODE_TYPE_ENTRY,
                                      covered));
 }
@@ -39,16 +44,21 @@ void
 fib_entry_cover_untrack (fib_entry_t* cover,
 			 u32 tracked_index)
 {
+    fib_entry_delegate_t *fed;
+
     FIB_ENTRY_DBG(cover, "cover-untrack @ %d", tracked_index);
 
-    if (FIB_NODE_INDEX_INVALID == cover->fe_covered)
+    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+
+    if (NULL == fed)
         return;
 
-    fib_node_list_remove(cover->fe_covered, tracked_index);
+    fib_node_list_remove(fed->fd_list, tracked_index);
 
-    if (0 == fib_node_list_get_size(cover->fe_covered))
+    if (0 == fib_node_list_get_size(fed->fd_list))
     {
-        fib_node_list_destroy(&cover->fe_covered);
+        fib_node_list_destroy(&fed->fd_list);
+        fib_entry_delegate_remove(cover, FIB_ENTRY_DELEGATE_COVERED);        
     }
 }
 
@@ -78,26 +88,35 @@ fib_entry_cover_walk (fib_entry_t *cover,
 		      fib_entry_covered_walk_t walk,
 		      void *args)
 {
-    if (FIB_NODE_INDEX_INVALID != cover->fe_covered)
-    {
-        fib_enty_cover_walk_ctx_t ctx = {
-            .cover = cover,
-            .walk = walk,
-            .ctx = args,
-        };
+    fib_entry_delegate_t *fed;
 
-        fib_node_list_walk(cover->fe_covered,
-                           fib_entry_cover_walk_node_ptr,
-                           &ctx);
-    }
+    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+
+    if (NULL == fed)
+        return;
+
+    fib_enty_cover_walk_ctx_t ctx = {
+        .cover = cover,
+        .walk = walk,
+        .ctx = args,
+    };
+
+    fib_node_list_walk(fed->fd_list,
+                       fib_entry_cover_walk_node_ptr,
+                       &ctx);
 }
 
 u32
 fib_entry_cover_get_size (fib_entry_t *cover)
 {
-    if (FIB_NODE_INDEX_INVALID != cover->fe_covered)
-        return (fib_node_list_get_size(cover->fe_covered));
-    return (0);
+    fib_entry_delegate_t *fed;
+
+    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
+
+    if (NULL == fed)
+        return (0);
+
+    return (fib_node_list_get_size(fed->fd_list));
 }
 
 typedef struct fib_entry_cover_list_format_ctx_t_ {

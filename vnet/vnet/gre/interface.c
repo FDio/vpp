@@ -317,6 +317,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   t->outer_fib_index = outer_fib_index;
   t->sw_if_index = sw_if_index;
   t->teb = a->teb;
+  t->l2_adj_index = ADJ_INDEX_INVALID;
 
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
@@ -402,6 +403,9 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t *a,
   vec_add1 (gm->free_gre_tunnel_hw_if_indices, t->hw_if_index);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
   ip4_sw_interface_enable_disable(sw_if_index, 0);
+
+  if (t->l2_adj_index != ADJ_INDEX_INVALID)
+      adj_unlock(t->l2_adj_index);
 
   fib_entry_child_remove(t->fib_entry_index,
                          t->sibling_index);
