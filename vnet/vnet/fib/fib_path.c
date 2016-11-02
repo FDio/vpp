@@ -207,10 +207,17 @@ typedef struct fib_path_t_ {
 	    u32 fp_interface;
 	} attached;
 	struct {
-	    /**
-	     * The next-hop
-	     */
-	    ip46_address_t fp_nh;
+	    union
+	    {
+		/**
+		 * The next-hop
+		 */
+		ip46_address_t fp_ip;
+		/**
+		 * The local label to resolve through.
+		 */
+		mpls_label_t fp_local_label;
+	    } fp_nh;
 	    /**
 	     * The FIB table index in which to find the next-hop.
 	     * This needs to be fixed. We should lookup the adjacencies in
@@ -237,7 +244,7 @@ typedef struct fib_path_t_ {
 	} recursive;
 	struct {
 	    /**
-	     * The FIN index in which to perfom the next lookup
+	     * The FIB index in which to perfom the next lookup
 	     */
 	    fib_node_index_t fp_tbl_id;
 	} deag;
@@ -428,11 +435,22 @@ format_fib_path (u8 * s, va_list * args)
 	}
 	break;
     case FIB_PATH_TYPE_RECURSIVE:
-	s = format (s, "via %U",
-		    format_ip46_address,
-		    &path->recursive.fp_nh,
-		    IP46_TYPE_ANY);
-	s = format (s, " in fib:%d", path->recursive.fp_tbl_id, path->fp_via_fib); 
+	if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+	{
+	    s = format (s, "via %U",
+			format_mpls_unicast_label,
+			path->recursive.fp_nh.fp_local_label);
+	}
+	else
+	{
+	    s = format (s, "via %U",
+			format_ip46_address,
+			&path->recursive.fp_nh.fp_ip,
+			IP46_TYPE_ANY);
+	}
+	s = format (s, " in fib:%d",
+		    path->recursive.fp_tbl_id,
+		    path->fp_via_fib); 
 	s = format (s, " via-fib:%d", path->fp_via_fib); 
 	s = format (s, " via-dpo:[%U:%d]",
 		    format_dpo_type, path->fp_dpo.dpoi_type, 
@@ -677,7 +695,7 @@ fib_path_unresolve (fib_path_t *path)
 	{
 	    fib_prefix_t pfx;
 
-	    fib_prefix_from_ip46_addr(&path->recursive.fp_nh, &pfx);
+	    fib_entry_get_prefix(path->fp_via_fib, &pfx);
 	    fib_entry_child_remove(path->fp_via_fib,
 				   path->fp_sibling);
 	    fib_table_entry_special_remove(path->recursive.fp_tbl_id,
@@ -1025,7 +1043,14 @@ fib_path_create (fib_node_index_t pl_index,
 	else
 	{
 	    path->fp_type = FIB_PATH_TYPE_RECURSIVE;
-	    path->recursive.fp_nh = rpath->frp_addr;
+	    if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+	    {
+		path->recursive.fp_nh.fp_local_label = rpath->frp_local_label;
+	    }
+	    else
+	    {
+		path->recursive.fp_nh.fp_ip = rpath->frp_addr;
+	    }
 	    path->recursive.fp_tbl_id = rpath->frp_fib_index;
 	}
     }
@@ -1301,13 +1326,20 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 		      rpath->frp_sw_if_index);
 	    break;
 	case FIB_PATH_TYPE_RECURSIVE:
-	    res = ip46_address_cmp(&path->recursive.fp_nh,
-				   &rpath->frp_addr);
- 
-	    if (0 == res)
-	    {
-		res = (path->recursive.fp_tbl_id - rpath->frp_fib_index);
-	    }
+            if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+            {
+                res = path->recursive.fp_nh.fp_local_label - rpath->frp_local_label;
+            }
+            else
+            {
+                res = ip46_address_cmp(&path->recursive.fp_nh.fp_ip,
+                                       &rpath->frp_addr);
+            }
+
+            if (0 == res)
+            {
+                res = (path->recursive.fp_tbl_id - rpath->frp_fib_index);
+            }
 	    break;
 	case FIB_PATH_TYPE_DEAG:
 	    res = (path->deag.fp_tbl_id - rpath->frp_fib_index);
@@ -1506,7 +1538,14 @@ fib_path_resolve (fib_node_index_t path_index)
 
 	ASSERT(FIB_NODE_INDEX_INVALID == path->fp_via_fib);
 
-	fib_prefix_from_ip46_addr(&path->recursive.fp_nh, &pfx);
+	if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+	{
+	    fib_prefix_from_mpls_label(path->recursive.fp_nh.fp_local_label, &pfx);
+	}
+	else
+	{
+	    fib_prefix_from_ip46_addr(&path->recursive.fp_nh.fp_ip, &pfx);
+	}
 
 	fei = fib_table_entry_special_add(path->recursive.fp_tbl_id,
 					  &pfx,
@@ -1720,7 +1759,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 		adj_index_t ai;
 
 		/*
-		 * get a MPLS link type adj.
+		 * get a appropriate link type adj.
 		 */
 		ai = fib_path_attached_next_hop_get_adj(
 		         path,
@@ -1739,12 +1778,6 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-		/*
-		 * Assume that EOS and IP forwarding is the same.
-		 * revisit for ieBGP
-		 */
-		dpo_copy(dpo, &path->fp_dpo);
-		break;
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 		fib_path_recursive_adj_update(path, fct, dpo);
 		break;
@@ -1898,12 +1931,22 @@ fib_path_encode (fib_node_index_t path_list_index,
       case FIB_PATH_TYPE_DEAG:
         break;
       case FIB_PATH_TYPE_RECURSIVE:
-        api_rpath->rpath.frp_addr = path->recursive.fp_nh;
+        api_rpath->rpath.frp_addr = path->recursive.fp_nh.fp_ip;
         break;
       default:
         break;
       }
     return (1);
+}
+
+fib_protocol_t
+fib_path_get_proto (fib_node_index_t path_index)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    return (path->fp_nh_proto);
 }
 
 void

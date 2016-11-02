@@ -7,7 +7,7 @@ from logging import *
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_gre_interface import VppGreInterface
-from vpp_ip_route import IpRoute, IpPath
+from vpp_ip_route import IpRoute, RoutePath
 from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
@@ -317,7 +317,7 @@ class TestGRE(VppTestCase):
         gre_if.config_ip4()
 
         route_via_tun = IpRoute(self, "4.4.4.4", 32,
-                                [IpPath("0.0.0.0", gre_if.sw_if_index)])
+                                [RoutePath("0.0.0.0", gre_if.sw_if_index)])
 
         route_via_tun.add_vpp_config()
 
@@ -346,7 +346,8 @@ class TestGRE(VppTestCase):
         # Add a route that resolves the tunnel's destination
         #
         route_tun_dst = IpRoute(self, "1.1.1.2", 32,
-                                [IpPath(self.pg0.remote_ip4, self.pg0.sw_if_index)])
+                                [RoutePath(self.pg0.remote_ip4,
+                                           self.pg0.sw_if_index)])
         route_tun_dst.add_vpp_config()
 
         #
@@ -487,7 +488,7 @@ class TestGRE(VppTestCase):
         # Add a route via the tunnel - in the overlay
         #
         route_via_tun = IpRoute(self, "9.9.9.9", 32,
-                                [IpPath("0.0.0.0", gre_if.sw_if_index)])
+                                [RoutePath("0.0.0.0", gre_if.sw_if_index)])
         route_via_tun.add_vpp_config()
 
         #
@@ -495,8 +496,8 @@ class TestGRE(VppTestCase):
         # underlay table
         #
         route_tun_dst = IpRoute(self, "2.2.2.2", 32, table_id=1,
-                                paths=[IpPath(self.pg1.remote_ip4,
-                                              self.pg1.sw_if_index)])
+                                paths=[RoutePath(self.pg1.remote_ip4,
+                                                 self.pg1.sw_if_index)])
         route_tun_dst.add_vpp_config()
 
         #
@@ -548,11 +549,11 @@ class TestGRE(VppTestCase):
         # Add routes to resolve the tunnel destinations
         #
         route_tun1_dst = IpRoute(self, "2.2.2.2", 32,
-                                 [IpPath(self.pg0.remote_ip4,
-                                         self.pg0.sw_if_index)])
+                                 [RoutePath(self.pg0.remote_ip4,
+                                            self.pg0.sw_if_index)])
         route_tun2_dst = IpRoute(self, "2.2.2.3", 32,
-                                 [IpPath(self.pg0.remote_ip4,
-                                         self.pg0.sw_if_index)])
+                                 [RoutePath(self.pg0.remote_ip4,
+                                            self.pg0.sw_if_index)])
 
         route_tun1_dst.add_vpp_config()
         route_tun2_dst.add_vpp_config()

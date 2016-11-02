@@ -24,6 +24,9 @@
  */
 #undef FIB_DEBUG
 
+extern void fib_prefix_from_mpls_label(mpls_label_t label,
+				       fib_prefix_t *prf);
+
 extern int fib_route_path_cmp(const fib_route_path_t *rpath1,
 			      const fib_route_path_t *rpath2);
 
