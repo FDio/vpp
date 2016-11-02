@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_8ebaeedf",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-02T14:45:55Z",
+      "side": 1,
+      "message": "I would really prefer not to have this items here, This list is already big, and i don\u0027t see this as something typical developer will use\"",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 60
+      },
+      "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
