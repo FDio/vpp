@@ -2056,6 +2056,26 @@ static void *vl_api_mpls_fib_dump_t_print
   FINISH;
 }
 
+static void *vl_api_ip_fib_dump_t_print
+  (vl_api_ip_fib_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip_fib_dump ");
+
+  FINISH;
+}
+
+static void *vl_api_ip6_fib_dump_t_print
+  (vl_api_ip6_fib_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: ip6_fib_dump ");
+
+  FINISH;
+}
+
 static void *vl_api_classify_table_ids_t_print
   (vl_api_classify_table_ids_t * mp, void *handle)
 {
@@ -2968,7 +2988,10 @@ _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(PUNT, punt)                                                           \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
 _(FLOW_CLASSIFY_DUMP, flow_classify_dump)				\
-_(GET_FIRST_MSG_ID, get_first_msg_id)
+_(GET_FIRST_MSG_ID, get_first_msg_id)                                   \
+_(IP_FIB_DUMP, ip_fib_dump)                                             \
+_(IP6_FIB_DUMP, ip6_fib_dump)
+
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
