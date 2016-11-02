@@ -729,7 +729,7 @@ ip4_add_interface_routes (u32 sw_if_index,
 					    sw_if_index,
 					    ~0, // invalid FIB index
 					    1,
-					    MPLS_LABEL_INVALID,
+					    NULL, // no out-label stack
 					    FIB_ROUTE_PATH_FLAG_NONE);
       a->neighbor_probe_adj_index = fib_entry_get_adj(fei);
   }
@@ -769,7 +769,7 @@ ip4_add_interface_routes (u32 sw_if_index,
 				  sw_if_index,
 				  ~0, // invalid FIB index
 				  1,
-				  MPLS_LABEL_INVALID,
+				  NULL, // no out-label stack
 				  FIB_ROUTE_PATH_FLAG_NONE);
 }
 

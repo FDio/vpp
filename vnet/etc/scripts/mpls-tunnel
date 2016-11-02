@@ -1,0 +1,87 @@
+packet-generator new {
+  name x0
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 2.0.0.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+packet-generator new {
+  name x1
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 2.0.1.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+packet-generator new {
+  name x2
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 2.0.2.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+packet-generator new {
+  name x3
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 2.0.3.2
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+
+
+trace add pg-input 100
+
+loop create
+set int state loop0 up
+
+set int ip address loop0 10.0.0.1/24
+set ip arp loop0 10.0.0.2 00:00:11:aa:bb:cc
+
+mpls tunnel add via 10.0.0.2 loop0 out-label 33 out-label 34 out-label 35 out-label 36
+set int state mpls-tunnel0 up
+set int ip addr  mpls-tunnel0 192.168.0.1/32
+ip route add 2.0.0.2/32 via 192.168.0.2 mpls-tunnel0
+
+
+mpls tunnel add via 10.0.0.2 out-label 33
+set int state mpls-tunnel1 up
+set int ip addr  mpls-tunnel1 192.168.1.1/32
+ip route add 2.0.1.2/32 via 192.168.1.2 mpls-tunnel1 out-label 99
+
+mpls tunnel add via 10.0.0.2 loop0 out-label 3
+set int state mpls-tunnel2 up
+set int ip addr  mpls-tunnel2 192.168.2.1/32
+ip route add 2.0.2.2/32 via 192.168.2.2 mpls-tunnel2
+
+
+mpls tunnel add l2-only via 10.0.0.2 loop0 out-label 234 out-label 0
+set int state mpls-tunnel3 up
+set int l2 bridge mpls-tunnel3 1
+
+loop create
+set int ip addr loop1 6.0.1.44/24
+set int l2 bridge loop1 1 bvi
+set int l2 learn loop1 disable
+set int state loop1 up
+
+ip route add 2.0.3.2/32 via 6.0.1.45 loop1
