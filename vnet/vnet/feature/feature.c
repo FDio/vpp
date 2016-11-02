@@ -50,6 +50,10 @@ vnet_feature_init (vlib_main_t * vm)
 				      s, areg->arc_name);
 
 	  rt = vlib_node_get_runtime (vm, n->index);
+	  if (rt->feature_arc_index != (u16) ~ 0)
+	    return clib_error_return (0,
+				      "Feature arc already registered for node '%s'",
+				      s);
 	  rt->feature_arc_index = arc_index;
 	  i++;
 	}
@@ -83,8 +87,11 @@ vnet_feature_init (vlib_main_t * vm)
       /* set feature arc index in node runtime */
       n = vlib_get_node_by_name (vm, (u8 *) freg->node_name);
       if (n == 0)
-	return clib_error_return (0, "Unknown node '%s', freg->node_name");
+	return clib_error_return (0, "Unknown node '%s'", freg->node_name);
       rt = vlib_node_get_runtime (vm, n->index);
+      if (rt->feature_arc_index != (u16) ~ 0)
+	return clib_error_return (0, "Feature arc already registered for node '%s'",
+				  freg->node_name);
       rt->feature_arc_index = arc_index;
 
       vec_add1 (fm->next_feature_by_arc[arc_index], *freg);
@@ -152,7 +159,7 @@ vnet_config_update_feature_count (vnet_feature_main_t * fm, u16 arc,
 }
 
 u16
-vnet_feature_arc_index_from_node_name (const char *s)
+vnet_feature_arc_index_from_name (const char *s)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_arc_registration_t *reg;
@@ -191,7 +198,7 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   u32 feature_index, ci;
   u16 arc_index;
 
-  arc_index = vnet_feature_arc_index_from_node_name (arc_name);
+  arc_index = vnet_feature_arc_index_from_name (arc_name);
 
   if (arc_index == ~0)
     return;
@@ -297,7 +304,7 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index)
       areg = areg->next;
 
       if (NULL == cm[feature_arc].config_index_by_sw_if_index ||
-	  vec_len (cm[feature_arc].config_index_by_sw_if_index) < sw_if_index)
+	  vec_len (cm[feature_arc].config_index_by_sw_if_index) <= sw_if_index)
 	{
 	  vlib_cli_output (vm, "  none configured");
 	  continue;

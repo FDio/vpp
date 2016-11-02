@@ -632,6 +632,17 @@ nobase_include_HEADERS += 			\
   vnet/lawful-intercept/lawful_intercept.h
 
 ########################################
+# SPAN (port mirroring)
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/span/span.c	\
+  vnet/span/node.c
+
+nobase_include_HEADERS += 			\
+  vnet/span/span.h
+
+########################################
 # Packet generator
 ########################################
 
