@@ -47,6 +47,7 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
 #if DPDK == 1
@@ -212,14 +213,6 @@ VLIB_REGISTER_NODE (tuntap_tx_node,static) = {
   .vector_size = 4,
 };
 
-enum {
-  TUNTAP_RX_NEXT_IP4_INPUT,
-  TUNTAP_RX_NEXT_IP6_INPUT,
-  TUNTAP_RX_NEXT_ETHERNET_INPUT,
-  TUNTAP_RX_NEXT_DROP,
-  TUNTAP_RX_N_NEXT,
-};
-
 /**
  * @brief TUNTAP receive node
  * @node tuntap-rx
@@ -370,19 +363,19 @@ tuntap_rx (vlib_main_t * vm,
 
     if (tm->is_ether)
       {
-	next_index = TUNTAP_RX_NEXT_ETHERNET_INPUT;
+	next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
       }
     else
       switch (b->data[0] & 0xf0)
         {
         case 0x40:
-          next_index = TUNTAP_RX_NEXT_IP4_INPUT;
+          next_index = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
           break;
         case 0x60:
-          next_index = TUNTAP_RX_NEXT_IP6_INPUT;
+          next_index = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
           break;
         default:
-          next_index = TUNTAP_RX_NEXT_DROP;
+          next_index = VNET_DEVICE_INPUT_NEXT_DROP;
           break;
         }
 
@@ -393,7 +386,7 @@ tuntap_rx (vlib_main_t * vm,
         vnet_sw_interface_t * si;
         si = vnet_get_sw_interface (vnm, tm->sw_if_index);
         if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
-          next_index = TUNTAP_RX_NEXT_DROP;
+          next_index = VNET_DEVICE_INPUT_NEXT_DROP;
       }
 
     vnet_feature_device_input_redirect_x1 (node, tm->hw_if_index, &next_index, b, 0);
@@ -427,13 +420,8 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   .n_errors = 1,
   .error_strings = tuntap_rx_error_strings,
 
-  .n_next_nodes = TUNTAP_RX_N_NEXT,
-  .next_nodes = {
-    [TUNTAP_RX_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
-    [TUNTAP_RX_NEXT_IP6_INPUT] = "ip6-input",
-    [TUNTAP_RX_NEXT_DROP] = "error-drop",
-    [TUNTAP_RX_NEXT_ETHERNET_INPUT] = "ethernet-input",
-  },
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 /**

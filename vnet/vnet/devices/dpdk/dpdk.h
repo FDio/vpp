@@ -50,6 +50,7 @@
 #include <rte_sched.h>
 
 #include <vnet/unix/pcap.h>
+#include <vnet/devices/devices.h>
 
 #if CLIB_DEBUG > 0
 #define always_inline static inline
@@ -474,16 +475,6 @@ typedef struct
 
 dpdk_main_t dpdk_main;
 
-typedef enum
-{
-  DPDK_RX_NEXT_IP4_INPUT,
-  DPDK_RX_NEXT_IP6_INPUT,
-  DPDK_RX_NEXT_MPLS_INPUT,
-  DPDK_RX_NEXT_ETHERNET_INPUT,
-  DPDK_RX_NEXT_DROP,
-  DPDK_RX_N_NEXT,
-} dpdk_rx_next_t;
-
 typedef struct
 {
   u32 buffer_index;
@@ -505,8 +496,6 @@ typedef struct
 } dpdk_rx_dma_trace_t;
 
 void vnet_buffer_needs_dpdk_mb (vlib_buffer_t * b);
-
-void dpdk_set_next_node (dpdk_rx_next_t, char *);
 
 clib_error_t *dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address);
 
