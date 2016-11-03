@@ -18,14 +18,16 @@ package io.fd.vpp.jvpp;
 
 import static java.util.Objects.requireNonNull;
 
+import io.fd.vpp.jvpp.callback.ControlPingCallback;
+import io.fd.vpp.jvpp.callback.JVppCallback;
+import io.fd.vpp.jvpp.dto.ControlPingReply;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import io.fd.vpp.jvpp.callback.ControlPingCallback;
-import io.fd.vpp.jvpp.callback.JVppCallback;
-import io.fd.vpp.jvpp.dto.ControlPingReply;
 
 /**
  * Default implementation of JVppRegistry.
@@ -35,13 +37,13 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     private static final Logger LOG = Logger.getLogger(JVppRegistryImpl.class.getName());
 
     private final VppJNIConnection connection;
-    private final ConcurrentMap<String, JVppCallback> pluginRegistry;
+    private final Map<String, JVppCallback> pluginRegistry;
     private final ConcurrentMap<Integer, ControlPingCallback> pingCalls;
 
     public JVppRegistryImpl(final String clientName) throws IOException {
         connection = new VppJNIConnection(clientName);
         connection.connect();
-        pluginRegistry = new ConcurrentHashMap<>();
+        pluginRegistry = new HashMap<>();
         pingCalls = new ConcurrentHashMap<>();
     }
 
@@ -51,26 +53,28 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     }
 
     @Override
-    public void register(final JVpp jvpp, final JVppCallback callback) {
+    public synchronized void register(final JVpp jvpp, final JVppCallback callback) {
         requireNonNull(jvpp, "jvpp should not be null");
         requireNonNull(callback, "Callback should not be null");
         final String name = jvpp.getClass().getName();
-        if (pluginRegistry.putIfAbsent(name, callback) != null) {
-            throw new IllegalArgumentException(String.format("Callback for plugin %s was already registered", name));
+        if (pluginRegistry.containsKey(name)) {
+            throw new IllegalArgumentException(
+                String.format("Callback for plugin %s was already registered", name));
         }
         jvpp.init(this, callback, connection.getConnectionInfo().queueAddress,
             connection.getConnectionInfo().clientIndex);
+        pluginRegistry.put(name, callback);
     }
 
     @Override
-    public void unregister(final String name) {
+    public synchronized void unregister(final String name) {
         requireNonNull(name, "Plugin name should not be null");
         final JVppCallback previous = pluginRegistry.remove(name);
         assertPluginWasRegistered(name, previous);
     }
 
     @Override
-    public JVppCallback get(final String name) {
+    public synchronized JVppCallback get(final String name) {
         requireNonNull(name, "Plugin name should not be null");
         JVppCallback value = pluginRegistry.get(name);
         assertPluginWasRegistered(name, value);
@@ -80,7 +84,7 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     private native int controlPing0() throws VppInvocationException;
 
     @Override
-    public int controlPing(final Class<? extends JVpp> clazz) throws VppInvocationException {
+    public synchronized int controlPing(final Class<? extends JVpp> clazz) throws VppInvocationException {
         connection.checkActive();
         final String name = clazz.getName();
 
@@ -95,7 +99,6 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
         pingCalls.put(context, callback);
         return context;
     }
-
 
     @Override
     public void onControlPingReply(final ControlPingReply reply) {

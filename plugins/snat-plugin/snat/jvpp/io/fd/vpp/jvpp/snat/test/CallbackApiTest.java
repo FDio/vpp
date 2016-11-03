@@ -64,6 +64,5 @@ public class CallbackApiTest {
 
             System.out.println("Disconnecting...");
         }
-        Thread.sleep(1000);
     }
 }
