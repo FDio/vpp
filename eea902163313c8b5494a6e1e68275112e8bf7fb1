@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_cc30feea",
+        "filename": "vnet/vnet/ip/ip6.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-11-03T11:44:18Z",
+      "side": 1,
+      "message": "This constant is used only in ip6_forward.c, and could be defined there. Please make a note to move it the next time you push an ioam patch",
+      "revId": "eea902163313c8b5494a6e1e68275112e8bf7fb1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
