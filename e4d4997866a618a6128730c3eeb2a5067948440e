@@ -22,6 +22,30 @@
       "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_2c7c2a20",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2016-11-03T13:43:22Z",
+      "side": 1,
+      "message": "Damjan, I think you said this earlier and I want to confirm. Are you saying you want me to remove the targets from help or you want me to remove targets from the top level Makefile and add them to lower level build-root stuff? The first is easy of course. The 2nd is quite a bit harder.",
+      "parentUuid": "9a437d4f_8ebaeedf",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 60
+      },
+      "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
