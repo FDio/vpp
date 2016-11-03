@@ -18,7 +18,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/dpdk_replication.h>
 
 typedef struct {
   /* LI collector info */
