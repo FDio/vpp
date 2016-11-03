@@ -164,7 +164,7 @@ $(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h: defs_ioam_trace_papi.
 	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
 	cd $(jvpp_root)/$(jvpp_package_dir);			\
 	mkdir -p dto future callfacade callback notification test; 	\
-	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_ioam_trace_papi.py --plugin_name ioamtrace --control_ping_class IoamTraceControlPing;		\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_ioam_trace_papi.py --plugin_name ioamtrace;		\
 	cd -;							\
 	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_ioamtrace_gen.h $(jvpp_root)/jvpp_ioam_trace_gen.h;							\
 	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
