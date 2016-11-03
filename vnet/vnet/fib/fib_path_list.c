@@ -762,8 +762,9 @@ fib_path_list_copy_and_path_add (fib_node_index_t orig_path_list_index,
 				 fib_path_list_flags_t flags,
 				 const fib_route_path_t *rpaths)
 {
-    fib_node_index_t path_index, path_list_index, *orig_path_index;
+    fib_node_index_t path_index, new_path_index, *orig_path_index;
     fib_path_list_t *path_list, *orig_path_list;
+    fib_node_index_t path_list_index;
     fib_node_index_t pi;
 
     ASSERT(1 == vec_len(rpaths));
@@ -784,16 +785,30 @@ fib_path_list_copy_and_path_add (fib_node_index_t orig_path_list_index,
     vec_validate(path_list->fpl_paths, vec_len(orig_path_list->fpl_paths));
     pi = 0;
 
+    new_path_index = fib_path_create(path_list_index,
+                                     path_list->fpl_nh_proto,
+                                     fib_path_list_flags_2_path_flags(flags),
+                                     rpaths);
+
     vec_foreach (orig_path_index, orig_path_list->fpl_paths)
     {
-	path_index = fib_path_copy(*orig_path_index, path_list_index);
-	path_list->fpl_paths[pi++] = path_index;
+        /*
+         * don't add duplicate paths
+         * In the unlikely event the path is a duplicate, then we'll
+         * find a matching path-list later and this one will be toast.
+         */
+	if (0 != fib_path_cmp(new_path_index, *orig_path_index))
+        {
+            path_index = fib_path_copy(*orig_path_index, path_list_index);
+            path_list->fpl_paths[pi++] = path_index;
+        }
+        else
+        {
+            _vec_len(path_list->fpl_paths) = vec_len(orig_path_list->fpl_paths);
+        }
     }
-    path_index = fib_path_create(path_list_index,
-				 path_list->fpl_nh_proto,
-				 fib_path_list_flags_2_path_flags(flags),
-				 rpaths);
-    path_list->fpl_paths[pi] = path_index;
+
+    path_list->fpl_paths[pi] = new_path_index;
 
     /*
      * we sort the paths since the key for the path-list is
