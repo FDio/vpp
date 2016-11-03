@@ -25,13 +25,12 @@ import io.fd.vpp.jvpp.ioamtrace.callback.TraceProfileAddCallback;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAdd;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAddReply;
 
-public class ioamTraceApiTest {
+public class IoamTraceApiTest {
 
-
-    static class ioamTraceTestCallback implements TraceProfileAddCallback {
+    static class IoamTraceTestCallback implements TraceProfileAddCallback {
 
         @Override
-	public void onTraceProfileAddReply(final TraceProfileAddReply reply) {
+        public void onTraceProfileAddReply(final TraceProfileAddReply reply) {
             System.out.printf("Received TraceProfileAddReply reply: context=%d%n",
                 reply.context);
         }
@@ -48,29 +47,24 @@ public class ioamTraceApiTest {
     }
 
     private static void ioamTraceTestApi() throws Exception {
-
         System.out.println("Testing Java API for ioam trace plugin");
-        final JVppRegistry registry = new JVppRegistryImpl("ioamTraceApiTest");
-        final JVpp jvpp = new JVppIoamtraceImpl();
+        try (final JVppRegistry registry = new JVppRegistryImpl("ioamTraceApiTest");
+             final JVpp jvpp = new JVppIoamtraceImpl()) {
+            registry.register(jvpp, new IoamTraceTestCallback());
 
-        registry.register(jvpp, new ioamTraceTestCallback());
-	try{
-	    System.out.println("Sending ioam trace profile add request...");
-	    TraceProfileAdd request = new TraceProfileAdd();
-	    request.traceType = 0x1f;
-	    request.numElts = 4;
-	    request.nodeId = 1;
-	    request.traceTsp = 2;
-	    request.appData = 1234;
-	    final int result = jvpp.send(request);
-	    System.out.printf("TraceProfileAdd send result = %d%n", result);
+            System.out.println("Sending ioam trace profile add request...");
+            TraceProfileAdd request = new TraceProfileAdd();
+            request.traceType = 0x1f;
+            request.numElts = 4;
+            request.nodeId = 1;
+            request.traceTsp = 2;
+            request.appData = 1234;
+            final int result = jvpp.send(request);
+            System.out.printf("TraceProfileAdd send result = %d%n", result);
 
-	    Thread.sleep(1000);
-	}
-        finally {
-	    System.out.println("Disconnecting...");
-            registry.close();
             Thread.sleep(1000);
-	}
+
+            System.out.println("Disconnecting...");
+        }
     }
 }
