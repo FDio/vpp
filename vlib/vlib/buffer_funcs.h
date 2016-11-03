@@ -422,6 +422,78 @@ u32 vlib_buffer_add_data (vlib_main_t * vm,
 			  u32 free_list_index,
 			  u32 buffer_index, void *data, u32 n_data_bytes);
 
+/* duplicate all buffers in chain */
+always_inline vlib_buffer_t *
+vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  vlib_buffer_t *s, *d, *fd;
+  uword n_alloc, n_buffers = 1;
+  u32 *new_buffers = 0;
+  int i;
+
+  s = b;
+  while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      n_buffers++;
+      s = vlib_get_buffer (vm, s->next_buffer);
+    }
+
+  vec_validate (new_buffers, n_buffers - 1);
+  n_alloc = vlib_buffer_alloc (vm, new_buffers, n_buffers);
+  ASSERT (n_alloc == n_buffers);
+
+  /* 1st segment */
+  s = b;
+  fd = d = vlib_get_buffer (vm, new_buffers[0]);
+  clib_memcpy (vlib_buffer_get_current (d),
+	       vlib_buffer_get_current (s), s->current_length);
+  d->current_data = s->current_data;
+  d->current_length = s->current_length;
+  d->flags = s->flags;
+  d->total_length_not_including_first_buffer =
+    s->total_length_not_including_first_buffer;
+  clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+#if DPDK > 0
+  struct rte_mbuf *ms, *md;
+  ms = rte_mbuf_from_vlib_buffer (s);
+  md = rte_mbuf_from_vlib_buffer (d);
+  rte_pktmbuf_reset (md);
+  md->nb_segs = ms->nb_segs;
+  md->data_len = ms->data_len;
+  md->pkt_len = ms->pkt_len;
+  md->data_off = ms->data_off;
+#endif
+
+  /* next segments */
+  for (i = 1; i < n_buffers; i++)
+    {
+      /* previous */
+      d->next_buffer = new_buffers[i];
+      /* current */
+      s = vlib_get_buffer (vm, s->next_buffer);
+      d = vlib_get_buffer (vm, new_buffers[i]);
+      d->current_data = s->current_data;
+      d->current_length = s->current_length;
+      clib_memcpy (vlib_buffer_get_current (d),
+		   vlib_buffer_get_current (s), s->current_length);
+      d->flags = s->flags;
+#if DPDK > 0
+      /* previous */
+      md->next = rte_mbuf_from_vlib_buffer (d);
+      /* current */
+      md = rte_mbuf_from_vlib_buffer (d);
+      ms = rte_mbuf_from_vlib_buffer (s);
+      rte_pktmbuf_reset (md);
+      md->data_len = ms->data_len;
+      md->pkt_len = ms->pkt_len;
+      md->data_off = ms->data_off;
+      md->next = 0;
+#endif
+    }
+
+  return fd;
+}
+
 /*
  * vlib_buffer_chain_* functions provide a way to create long buffers.
  * When DPDK is enabled, the 'hidden' DPDK header is taken care of transparently.

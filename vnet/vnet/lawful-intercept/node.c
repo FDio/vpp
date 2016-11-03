@@ -17,7 +17,6 @@
 #include <vnet/vnet.h>
 #include <vppinfra/error.h>
 
-#if DPDK==1
 #include <vnet/lawful-intercept/lawful_intercept.h>
 
 #include <vppinfra/error.h>
@@ -199,7 +198,7 @@ li_hit_node_fn (vlib_main_t * vm,
           if (PREDICT_TRUE(to_int_next != 0))
             {
               /* Make an intercept copy */
-              c0 = vlib_dpdk_clone_buffer (vm, b0);
+              c0 = vlib_buffer_copy (vm, b0);
               
               vlib_buffer_advance(c0, -sizeof(*iu0));
 
@@ -274,31 +273,3 @@ VLIB_REGISTER_NODE (li_hit_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (li_hit_node, li_hit_node_fn)
 
-#else
-#include <vlib/vlib.h>
-
-static uword
-li_hit_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame)
-{
-  clib_warning ("LI not implemented (no DPDK)");
-  return 0;
-}
-
-VLIB_REGISTER_NODE (li_hit_node) = {
-  .vector_size = sizeof (u32),
-  .function = li_hit_node_fn,
-  .name = "li-hit",
-};
-
-static clib_error_t *
-li_init (vlib_main_t * vm)
-{
-  return 0;
-}
-
-VLIB_INIT_FUNCTION(li_init);
-
-
-#endif /* DPDK */

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#if DPDK==1
 #include <vnet/lawful-intercept/lawful_intercept.h>
 
 static clib_error_t *
@@ -110,6 +109,4 @@ li_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION(li_init);
-#else
-#endif /* DPDK */
 

@@ -628,7 +628,6 @@ libvnet_la_SOURCES +=				\
   vnet/lawful-intercept/node.c
 
 nobase_include_HEADERS += 			\
-  vnet/dpdk_replication.h			\
   vnet/lawful-intercept/lawful_intercept.h
 
 ########################################

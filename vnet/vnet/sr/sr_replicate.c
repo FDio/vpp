@@ -30,7 +30,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/sr/sr.h>
 #include <vnet/devices/dpdk/dpdk.h>
-#include <vnet/dpdk_replication.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/ip6_fib.h>
 
