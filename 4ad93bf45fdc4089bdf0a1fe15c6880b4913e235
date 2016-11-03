@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_ac5edae7",
+        "filename": "vnet/vnet/dhcpv6/proxy_node.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-11-03T13:00:43Z",
+      "side": 1,
+      "message": "If this is supposed to be dual loop it doesn\u0027t look at all right.",
+      "range": {
+        "startLine": 550,
+        "startChar": 6,
+        "endLine": 550,
+        "endChar": 45
+      },
+      "revId": "4ad93bf45fdc4089bdf0a1fe15c6880b4913e235",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
