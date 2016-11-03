@@ -152,13 +152,24 @@ class VppTestCase(unittest.TestCase):
         cmdline = cls.vpp_cmdline
 
         if cls.debug_gdbserver:
-            cmdline = ['gdbserver', 'localhost:7777'] + cls.vpp_cmdline
+            gdbserver = '/usr/bin/gdbserver'
+            if not os.path.isfile(gdbserver) or \
+                    not os.access(gdbserver, os.X_OK):
+                raise Exception("gdbserver binary '%s' does not exist or is "
+                                "not executable" % gdbserver)
+
+            cmdline = [gdbserver, 'localhost:7777'] + cls.vpp_cmdline
             cls.logger.info("Gdbserver cmdline is %s", " ".join(cmdline))
 
-        cls.vpp = subprocess.Popen(cmdline,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   bufsize=1)
+        try:
+            cls.vpp = subprocess.Popen(cmdline,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       bufsize=1)
+        except Exception as e:
+            cls.logger.critical("Couldn't start vpp: %s" % e)
+            raise
+
         cls.wait_for_enter()
 
     @classmethod
@@ -209,8 +220,9 @@ class VppTestCase(unittest.TestCase):
                 target=pump_output, args=(cls.vpp.stderr, cls.vpp_stderr_queue))
             cls.vpp_stderr_reader_thread.start()
         except:
-            cls.vpp.terminate()
-            del cls.vpp
+            if hasattr(cls, 'vpp'):
+                cls.vpp.terminate()
+                del cls.vpp
             raise
 
     @classmethod
