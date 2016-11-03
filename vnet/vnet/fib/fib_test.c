@@ -2635,6 +2635,49 @@ fib_test_v4 (void)
     	     fib_entry_pool_size());
 
     /*
+     * Duplicate paths:
+     *  add a recursive with duplicate paths. Expect the duplicate to be ignored.
+     */
+    fib_prefix_t pfx_34_1_1_1_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    .ip4.as_u32 = clib_host_to_net_u32(0x22010101),
+	},
+    };
+    fib_prefix_t pfx_34_34_1_1_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    .ip4.as_u32 = clib_host_to_net_u32(0x22220101),
+	},
+    };
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_34_1_1_1_s_32,
+                                   FIB_SOURCE_API,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   FIB_PROTOCOL_IP4,
+                                   &pfx_34_34_1_1_s_32.fp_addr,
+                                   ~0,
+                                   fib_index,
+                                   1,
+                                   MPLS_LABEL_INVALID,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_34_1_1_1_s_32,
+                                   FIB_SOURCE_API,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   FIB_PROTOCOL_IP4,
+                                   &pfx_34_34_1_1_s_32.fp_addr,
+                                   ~0,
+                                   fib_index,
+                                   1,
+                                   MPLS_LABEL_INVALID,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST_REC_FORW(&pfx_34_1_1_1_s_32, &pfx_34_34_1_1_s_32, 0);
+    fib_table_entry_delete_index(fei, FIB_SOURCE_API);
+
+    /*
      * CLEANUP
      *   remove: 1.1.1.2/32, 1.1.2.0/24 and 1.1.1.1/32
      *           all of which are via 10.10.10.1, Itf1
