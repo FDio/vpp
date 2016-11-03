@@ -42,8 +42,12 @@ class Vppctl(Cmd):
                 input_command = input_prefix + line
                 line_remove = '^load_one_plugin:'
                 s = '\n'
+                command = ['vpp_api_test']
 
-                vpp_process = subprocess.Popen(['sudo', 'vpp_api_test'],
+                if os.geteuid() != 0:
+                    command = ['sudo', 'vpp_api_test']
+
+                vpp_process = subprocess.Popen(command,
                         stderr=subprocess.PIPE,
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE)
