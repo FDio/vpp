@@ -45,6 +45,30 @@
       "revId": "1db972186d6e167926cd7f73fc3b85be7c6c2698",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_a7e9551c",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2419,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-11-03T19:04:28Z",
+      "side": 1,
+      "message": "Didn\u0027t we go back and forth on this one a bit.\n\nI thought we agreed we wanted to keep the semantics the same as vhost-user but have a switch in the startup configuration?\n\nCreating a separate CLI like this makes integration into anything else a nightmare.",
+      "parentUuid": "9a437d4f_440cec94",
+      "range": {
+        "startLine": 2419,
+        "startChar": 0,
+        "endLine": 2419,
+        "endChar": 13
+      },
+      "revId": "1db972186d6e167926cd7f73fc3b85be7c6c2698",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
