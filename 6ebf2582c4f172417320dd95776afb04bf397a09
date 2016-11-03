@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_6c58f2fa",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-03T13:09:31Z",
+      "side": 1,
+      "message": "it might be installed elsewhere, like /usr/local/...\n\ni think this check is unnecessary. Now you have the exception handling below, the error will be obvious - although you might write \"could not start vpp in gdbserver: e\"",
+      "revId": "6ebf2582c4f172417320dd95776afb04bf397a09",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
