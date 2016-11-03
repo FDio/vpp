@@ -42,7 +42,6 @@ from jvppgen import util
 parser = argparse.ArgumentParser(description='VPP Java API generator')
 parser.add_argument('-i', action="store", dest="inputfile")
 parser.add_argument('--plugin_name', action="store", dest="plugin_name")
-parser.add_argument('--control_ping_class', action="store", dest="control_ping_class", default="ControlPing")
 args = parser.parse_args()
 
 sys.path.append(".")
@@ -55,8 +54,6 @@ inputfile = inputfile.replace('.py', '')
 print "inputfile %s" % inputfile
 plugin_name = args.plugin_name
 print "plugin_name %s" % plugin_name
-control_ping_class = args.control_ping_class
-print "control_ping_class %s" % control_ping_class
 sys.path.append(importdir)
 cfg = importlib.import_module(inputfile, package=None)
 
@@ -131,7 +128,6 @@ notification_package = 'notification'
 future_package = 'future'
 # TODO find better package name
 callback_facade_package = 'callfacade'
-control_ping_class_fqn = "%s.%s.%s" % (plugin_package, dto_package, control_ping_class)
 
 types_list, types_name = get_definitions(cfg.types)
 
@@ -139,7 +135,7 @@ types_gen.generate_types(types_list, plugin_package, types_package, inputfile)
 
 func_list, func_name = get_definitions(cfg.messages)
 dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfile)
-jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, control_ping_class_fqn, dto_package, args.inputfile)
+jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, args.inputfile)
 callback_gen.generate_callbacks(func_list, base_package, plugin_package, plugin_name.title(), callback_package, dto_package, args.inputfile)
 notification_gen.generate_notification_registry(func_list, base_package, plugin_package, plugin_name.title(), notification_package, callback_package, dto_package, args.inputfile)
 jvpp_c_gen.generate_jvpp(func_list, plugin_name, args.inputfile)

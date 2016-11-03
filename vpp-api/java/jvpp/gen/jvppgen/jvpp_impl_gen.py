@@ -160,7 +160,7 @@ no_arg_method_impl_template = Template("""    public final int $name() throws io
 """)
 
 
-def generate_jvpp(func_list, base_package, plugin_package, plugin_name_underscore, control_ping_class, dto_package, inputfile):
+def generate_jvpp(func_list, base_package, plugin_package, plugin_name_underscore, dto_package, inputfile):
     """ Generates JVpp interface and JNI implementation """
     print "Generating JVpp"
     plugin_name = util.underscore_to_camelcase_upper(plugin_name_underscore)
@@ -214,7 +214,6 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name_underscor
                                                   plugin_package=plugin_package,
                                                   plugin_name=plugin_name,
                                                   plugin_name_underscore=plugin_name_underscore,
-                                                  dto_package=dto_package,
-                                                  control_ping_class=control_ping_class))
+                                                  dto_package=dto_package))
     jvpp_file.flush()
     jvpp_file.close()
