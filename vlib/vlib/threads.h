@@ -72,6 +72,7 @@ typedef enum
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 valid;
   u32 msg_type;
   u32 n_vectors;
@@ -79,20 +80,18 @@ typedef struct
 
   /* 256 * 4 = 1024 bytes, even mult of cache line size */
   u32 buffer_index[VLIB_FRAME_SIZE];
-
-  /* Pad to a cache line boundary */
-  u8 pad[CLIB_CACHE_LINE_BYTES - 4 * sizeof (u32)];
 }
 vlib_frame_queue_elt_t;
 
 typedef struct
 {
   /* First cache line */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 *wait_at_barrier;
   volatile u32 *workers_at_barrier;
-  u8 pad0[CLIB_CACHE_LINE_BYTES - (2 * sizeof (u32 *))];
 
   /* Second Cache Line */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   void *thread_mheap;
   u8 *thread_stack;
   void (*thread_function) (void *);
@@ -114,28 +113,29 @@ vlib_worker_thread_t *vlib_worker_threads;
 typedef struct
 {
   /* enqueue side */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u64 tail;
   u64 enqueues;
   u64 enqueue_ticks;
   u64 enqueue_vectors;
   u32 enqueue_full_events;
   u32 enqueue_efd_discards;
-  u8 pad2[CLIB_CACHE_LINE_BYTES - (2 * sizeof (u32)) - (4 * sizeof (u64))];
 
   /* dequeue side */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   volatile u64 head;
   u64 dequeues;
   u64 dequeue_ticks;
   u64 dequeue_vectors;
   u64 trace;
   u64 vector_threshold;
-  u8 pad4[CLIB_CACHE_LINE_BYTES - (6 * sizeof (u64))];
 
   /* dequeue hint to enqueue side */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
   volatile u64 head_hint;
-  u8 pad5[CLIB_CACHE_LINE_BYTES - sizeof (u64)];
 
   /* read-only, constant, shared */
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline3);
   vlib_frame_queue_elt_t *elts;
   u32 nelts;
 }
