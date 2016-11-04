@@ -89,7 +89,10 @@ _(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured ca
 _(EXCEEDED_NUMBER_OF_PORTS_CAPACITY, -96, "Operation would exceed capacity of number of ports") \
 _(INVALID_ADDRESS_FAMILY, -97, "Invalid address family")                \
 _(INVALID_SUB_SW_IF_INDEX, -98, "Invalid sub-interface sw_if_index")    \
-_(TABLE_TOO_BIG, -99, "Table too big")
+_(TABLE_TOO_BIG, -99, "Table too big")                                  \
+_(NO_SUCH_INTERFACE, -100, "Source interface must be set")         \
+_(SPAN_NO_SUCH_DST_INTERFACE, -101, "Destination interface must be set") \
+_(SPAN_SAME_SRC_AND_DST_INTERFACE, -102, "Source interface must be different to Destination interface") \
 
 typedef enum
 {
