@@ -533,7 +533,7 @@ dpdk_device_input (dpdk_main_t * dm,
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
           /* Do we have any driver RX features configured on the interface? */
-	  vnet_feature_device_input_redirect_x1 (node, xd->vlib_sw_if_index, &next0, b0, l3_offset0);
+	  vnet_feature_start_device_input_x1 (xd->vlib_sw_if_index, &next0, b0, l3_offset0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

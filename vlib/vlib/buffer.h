@@ -125,10 +125,14 @@ typedef struct
                                visit enabled feature nodes
                             */
 
-  u32 dont_waste_me; /**< Available space in the (precious)
-                        first 32 octets of buffer metadata
-                        Before allocating any of it, discussion required!
-                     */
+  u8 feature_arc_index;	/**< Used to identify feature arcs by intermediate
+                           feature node
+                        */
+
+  u8 dont_waste_me[3]; /**< Available space in the (precious)
+                          first 32 octets of buffer metadata
+                          Before allocating any of it, discussion required!
+                       */
 
   u32 opaque[8]; /**< Opaque data used by sub-graphs for their own purposes.
                     See .../vnet/vnet/buffer.h
