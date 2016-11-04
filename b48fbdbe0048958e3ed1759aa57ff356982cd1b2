@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_2c254ac2",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 268,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-04T09:00:50Z",
+      "side": 1,
+      "message": "having the loglevel duplicated in one line is not nice and error prone.\n\ncould we instead introduce a second cli function e.g.\n\ndef ppcli(self, cli):\n  return cli + \"\\n\" + self.cli(cli)\n\nand call it like \n\nself.logger.info(self.vapi.ppcli)\n\nthis way we will see on debug level the CLI which is being executed (via the hook) and on info level the command and the output",
+      "range": {
+        "startLine": 268,
+        "startChar": 12,
+        "endLine": 268,
+        "endChar": 73
+      },
+      "revId": "b48fbdbe0048958e3ed1759aa57ff356982cd1b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_2c778ad6",
+        "filename": "test/test_l2xc.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-04T09:00:50Z",
+      "side": 1,
+      "message": "logging empty messages doesn\u0027t make sense",
+      "range": {
+        "startLine": 198,
+        "startChar": 12,
+        "endLine": 198,
+        "endChar": 33
+      },
+      "revId": "b48fbdbe0048958e3ed1759aa57ff356982cd1b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_ec80628d",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-04T09:00:50Z",
+      "side": 1,
+      "message": "passing the log level as string is wrong\nif it\u0027s *really* needed, then use the appropriate Logger.\u003c\u003e constant",
+      "range": {
+        "startLine": 71,
+        "startChar": 23,
+        "endLine": 71,
+        "endChar": 40
+      },
+      "revId": "b48fbdbe0048958e3ed1759aa57ff356982cd1b2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
