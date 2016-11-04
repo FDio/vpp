@@ -80,6 +80,9 @@ typedef struct
   /* bitmap of pending rx interfaces */
   uword *pending_input_bitmap;
 
+  /* feature arc index */
+  u8 feature_arc_index;
+
   /* rx buffer cache */
   u32 **rx_buffers;
 

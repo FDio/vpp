@@ -112,6 +112,9 @@ typedef struct {
   /** For the "normal" interface, if configured */
   u32 hw_if_index, sw_if_index;
 
+  /** Feature arc index */
+  u8 feature_arc_index;
+
 } tuntap_main_t;
 
 static tuntap_main_t tuntap_main = {
@@ -389,7 +392,7 @@ tuntap_rx (vlib_main_t * vm,
           next_index = VNET_DEVICE_INPUT_NEXT_DROP;
       }
 
-    vnet_feature_device_input_redirect_x1 (node, tm->hw_if_index, &next_index, b, 0);
+    vnet_feature_device_input_redirect_x1 (tm->feature_arc_index, tm->sw_if_index, &next_index, b, 0);
 
     vlib_set_next_frame_buffer (vm, node, next_index, bi);
 
@@ -1011,6 +1014,12 @@ tuntap_init (vlib_main_t * vm)
   error = vlib_call_init_function (vm, ip4_init);
   if (error)
     return error;
+
+  error = vlib_call_init_function (vm, vnet_feature_init);
+  if (error)
+    return error;
+
+  tm->feature_arc_index = vnet_get_feature_arc_index ("device-input");
 
   mhash_init (&tm->subif_mhash, sizeof (u32), sizeof(subif_address_t));
 

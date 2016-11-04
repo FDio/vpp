@@ -233,7 +233,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* redirect if feature path enabled */
-	  vnet_feature_device_input_redirect_x1 (node, apif->sw_if_index,
+	  vnet_feature_device_input_redirect_x1 (apm->feature_arc_index, apif->sw_if_index,
 						 &next0, b0, 0);
 
 	  /* enque and take next packet */

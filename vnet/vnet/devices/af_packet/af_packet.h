@@ -48,6 +48,9 @@ typedef struct
   /* rx buffer cache */
   u32 **rx_buffers;
 
+  /* feature arc index */
+  u8 feature_arc_index;
+
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
 } af_packet_main_t;

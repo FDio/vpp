@@ -424,7 +424,6 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
 
     rt->n_next_nodes = r->n_next_nodes;
     rt->next_frame_index = vec_len (nm->next_frames);
-    rt->feature_arc_index = ~0;
 
     vec_resize (nm->next_frames, rt->n_next_nodes);
     for (i = 0; i < rt->n_next_nodes; i++)

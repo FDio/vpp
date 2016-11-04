@@ -280,9 +280,14 @@ netmap_init (vlib_main_t * vm)
   netmap_main_t *nm = &netmap_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_thread_registration_t *tr;
+  clib_error_t *error;
   uword *p;
 
   memset (nm, 0, sizeof (netmap_main_t));
+
+  if ((error = vlib_call_init_function (vm, vnet_feature_init)))
+    return error;
+  nm->feature_arc_index = vnet_get_feature_arc_index ("device-input");
 
   nm->input_cpu_first_index = 0;
   nm->input_cpu_count = 1;

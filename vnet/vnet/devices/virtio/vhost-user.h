@@ -254,6 +254,9 @@ typedef struct
   f64 coalesce_time;
   int dont_dump_vhost_user_memory;
 
+  /* feature arc index */
+  u8 feature_arc_index;
+
   /* first cpu index */
   u32 input_cpu_first_index;
 

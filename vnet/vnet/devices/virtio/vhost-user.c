@@ -881,6 +881,12 @@ vhost_user_init (vlib_main_t * vm)
   if (error)
     return error;
 
+  error = vlib_call_init_function (vm, vnet_feature_init);
+  if (error)
+    return error;
+
+  vum->feature_arc_index = vnet_get_feature_arc_index ("device-input");
+
   vum->vhost_user_interface_index_by_listener_fd =
     hash_create (0, sizeof (uword));
   vum->vhost_user_interface_index_by_sock_fd =
@@ -1286,8 +1292,9 @@ vhost_user_if_input (vlib_main_t * vm,
 	  n_left_to_next--;
 
 	  /* redirect if feature path enabled */
-	  vnet_feature_device_input_redirect_x1 (node, vui->sw_if_index,
-						 &next0, b_head, 0);
+	  vnet_feature_device_input_redirect_x1 (vum->feature_arc_index,
+						 vui->sw_if_index, &next0,
+						 b_head, 0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

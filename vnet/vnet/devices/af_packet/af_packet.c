@@ -24,6 +24,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/feature/feature.h>
 
 #include <vnet/devices/af_packet/af_packet.h>
 
@@ -344,8 +345,13 @@ af_packet_init (vlib_main_t * vm)
 {
   af_packet_main_t *apm = &af_packet_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  clib_error_t *error;
 
   memset (apm, 0, sizeof (af_packet_main_t));
+
+  if ((error = vlib_call_init_function (vm, vnet_feature_init)))
+    return error;
+  apm->feature_arc_index = vnet_get_feature_arc_index ("device-input");
 
   mhash_init_vec_string (&apm->if_index_by_host_if_name, sizeof (uword));
 

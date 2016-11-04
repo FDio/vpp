@@ -232,7 +232,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 
 	      /* redirect if feature path enabled */
-	      vnet_feature_device_input_redirect_x1 (node, nif->sw_if_index,
+	      vnet_feature_device_input_redirect_x1 (nm->feature_arc_index, nif->sw_if_index,
 						     &next0, b0, 0);
 
 	      /* enque and take next packet */

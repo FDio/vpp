@@ -29,7 +29,7 @@ typedef struct _vnet_feature_arc_registration
   char **start_nodes;
   int n_start_nodes;
   /* Feature arc index, assigned by init function */
-  u16 feature_arc_index;
+  u8 feature_arc_index;
 } vnet_feature_arc_registration_t;
 
 /** feature registration object */
@@ -111,10 +111,11 @@ static void __vnet_add_feature_registration_##x (void)		\
 __VA_ARGS__ vnet_feature_registration_t vnet_feat_##x
 
 void
-vnet_config_update_feature_count (vnet_feature_main_t * fm, u16 arc,
+vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
 				  u32 sw_if_index, int is_add);
 
-u32 vnet_feature_index_from_node_name (u16 type, const char *s);
+u32 vnet_get_feature_index (u8 arc, const char *s);
+u8 vnet_get_feature_arc_index (const char *s);
 
 void
 vnet_feature_enable_disable (const char *arc_name, const char *node_name,
@@ -124,38 +125,66 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 
 
 static_always_inline int
-vnet_have_features (u32 arc, u32 sw_if_index)
+vnet_have_features (u8 arc, u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
   return clib_bitmap_get (fm->sw_if_index_has_features[arc], sw_if_index);
 }
 
 static_always_inline u32
-vnet_feature_get_config_index (u16 arc, u32 sw_if_index)
+vnet_get_feature_config_index (u8 arc, u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
   return vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
 }
 
-static_always_inline void
-vnet_feature_redirect (u16 arc, u32 sw_if_index, u32 * next0,
-		       vlib_buffer_t * b0)
+static_always_inline void *
+vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
+				  vlib_buffer_t * b, u32 n_data_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
+  vnet_feature_config_main_t *cm;
+  cm = &fm->feature_config_mains[arc];
 
   if (PREDICT_FALSE (vnet_have_features (arc, sw_if_index)))
     {
-      b0->current_config_index =
+      b->feature_arc_index = arc;
+      b->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
-      vnet_get_config_data (&cm->config_main, &b0->current_config_index,
-			    next0, /* # bytes of config data */ 0);
+      return vnet_get_config_data (&cm->config_main, &b->current_config_index,
+				   next, n_data_bytes);
     }
 }
 
 static_always_inline void
-vnet_feature_device_input_redirect_x1 (vlib_node_runtime_t * node,
+vnet_feature_arc_start (u8 arc, u32 sw_if_index, u32 * next0,
+			vlib_buffer_t * b0)
+{
+  vnet_feature_arc_start_with_data (arc, sw_if_index, next0, b0, 0);
+}
+
+static_always_inline void *
+vnet_feature_next_with_data (u32 sw_if_index, u32 * next0,
+			     vlib_buffer_t * b0, u32 n_data_bytes)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  u8 arc = b0->feature_arc_index;
+  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
+
+  return vnet_get_config_data (&cm->config_main,
+			       &b0->current_config_index, next0,
+			       n_data_bytes);
+}
+
+static_always_inline void
+vnet_feature_next (u32 sw_if_index, u32 * next0, vlib_buffer_t * b0)
+{
+  vnet_feature_next_with_data (sw_if_index, next0, b0, 0);
+}
+
+static_always_inline void
+vnet_feature_device_input_redirect_x1 (u8 feature_arc_index,
 				       u32 sw_if_index, u32 * next0,
 				       vlib_buffer_t * b0,
 				       u16 buffer_advanced0)
@@ -163,12 +192,12 @@ vnet_feature_device_input_redirect_x1 (vlib_node_runtime_t * node,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
 
-  ASSERT (node->feature_arc_index != ~(u16) 0);
-  cm = &fm->feature_config_mains[node->feature_arc_index];
+  ASSERT (feature_arc_index != ~(u8) 0);
+  cm = &fm->feature_config_mains[feature_arc_index];
 
   if (PREDICT_FALSE
       (clib_bitmap_get
-       (fm->sw_if_index_has_features[node->feature_arc_index], sw_if_index)))
+       (fm->sw_if_index_has_features[feature_arc_index], sw_if_index)))
     {
       /*
        * Save next0 so that the last feature in the chain
@@ -178,6 +207,7 @@ vnet_feature_device_input_redirect_x1 (vlib_node_runtime_t * node,
       vnet_buffer (b0)->device_input_feat.buffer_advance = buffer_advanced0;
       vlib_buffer_advance (b0, -buffer_advanced0);
 
+      b0->feature_arc_index = feature_arc_index;
       b0->current_config_index =
 	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       vnet_get_config_data (&cm->config_main, &b0->current_config_index,
