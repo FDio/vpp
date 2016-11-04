@@ -10,7 +10,7 @@ from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
-from util import TestHost
+from util import Host
 
 
 class TestL2bd(VppTestCase):
@@ -100,7 +100,7 @@ class TestL2bd(VppTestCase):
             hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
             packets = []
             for j in range(start_nr, end_nr):
-                host = TestHost(
+                host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
                     "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
                 packet = (Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac))

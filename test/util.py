@@ -1,8 +1,7 @@
-from logging import *
+import socket
 
-
-class TestHost(object):
-    """ Generic test host "connected" to VPP. """
+class Host(object):
+    """ Generic test host "connected" to VPPs interface. """
 
     @property
     def mac(self):
@@ -13,6 +12,11 @@ class TestHost(object):
     def ip4(self):
         """ IPv4 address """
         return self._ip4
+
+    @property
+    def ip4n(self):
+        """ IPv4 address """
+        return socket.inet_pton(socket.AF_INET, self._ip4)
 
     @property
     def ip6(self):

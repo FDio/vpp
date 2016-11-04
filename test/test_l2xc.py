@@ -9,7 +9,7 @@ from scapy.layers.inet import IP, UDP
 from logging import *
 
 from framework import VppTestCase, VppTestRunner
-from util import TestHost
+from util import Host
 
 
 class TestL2xc(VppTestCase):
@@ -85,7 +85,7 @@ class TestL2xc(VppTestCase):
             self.hosts_by_pg_idx[pg_if.sw_if_index] = []
             hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
             for j in range(0, count):
-                host = TestHost(
+                host = Host(
                     "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
                     "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
                 hosts.append(host)
