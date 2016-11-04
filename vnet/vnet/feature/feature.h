@@ -114,6 +114,7 @@ void
 vnet_config_update_feature_count (vnet_feature_main_t * fm, u16 arc,
 				  u32 sw_if_index, int is_add);
 
+u16 vnet_feature_arc_index_from_name (const char *s);
 u32 vnet_feature_index_from_node_name (u16 type, const char *s);
 
 void
@@ -123,8 +124,15 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     u32 n_feature_config_bytes);
 
 
+static_always_inline vnet_feature_config_main_t *
+vnet_feature_get_config_main (u16 arc)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  return &fm->feature_config_mains[arc];
+}
+
 static_always_inline int
-vnet_have_features (u32 arc, u32 sw_if_index)
+vnet_have_features (u16 arc, u32 sw_if_index)
 {
   vnet_feature_main_t *fm = &feature_main;
   return clib_bitmap_get (fm->sw_if_index_has_features[arc], sw_if_index);
@@ -139,16 +147,18 @@ vnet_feature_get_config_index (u16 arc, u32 sw_if_index)
 }
 
 static_always_inline void
-vnet_feature_redirect (u16 arc, u32 sw_if_index, u32 * next0,
-		       vlib_buffer_t * b0)
+vnet_feature_redirect (vlib_node_runtime_t * node,
+		       u32 sw_if_index, u32 * next0, vlib_buffer_t * b0)
 {
   vnet_feature_main_t *fm = &feature_main;
-  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc];
+  vnet_feature_config_main_t *cm;
 
-  if (PREDICT_FALSE (vnet_have_features (arc, sw_if_index)))
+  ASSERT (node->feature_arc_index != ~(u16) 0);
+  cm = &fm->feature_config_mains[node->feature_arc_index];
+
+  if (PREDICT_FALSE
+      (vnet_have_features (node->feature_arc_index, sw_if_index)))
     {
-      b0->current_config_index =
-	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
       vnet_get_config_data (&cm->config_main, &b0->current_config_index,
 			    next0, /* # bytes of config data */ 0);
     }
