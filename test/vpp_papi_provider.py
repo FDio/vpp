@@ -401,3 +401,13 @@ class VppPapiProvider(object):
              dst_address
              )
         )
+
+    def sw_interface_span_enable_disable(self, sw_if_index_from, sw_if_index_to, enable=1):
+        """
+
+        :param sw_if_index_from:
+        :param sw_if_index_to:
+        :param enable
+
+        """
+        return self.api(vpp_papi.sw_interface_span_enable_disable, (sw_if_index_from, sw_if_index_to, enable ))
