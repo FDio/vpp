@@ -70,6 +70,30 @@
       "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_425f3773",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2016-11-04T18:50:04Z",
+      "side": 1,
+      "message": "Will fix in next series.",
+      "parentUuid": "9a437d4f_2c7c2a20",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 60
+      },
+      "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
