@@ -145,6 +145,13 @@ vnet_get_feature_arc_config_main (u8 arc_index)
   return &fm->feature_config_mains[arc_index];
 }
 
+static_always_inline vnet_feature_config_main_t *
+vnet_feature_get_config_main (u16 arc)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  return &fm->feature_config_mains[arc];
+}
+
 static_always_inline int
 vnet_have_features (u8 arc, u32 sw_if_index)
 {
