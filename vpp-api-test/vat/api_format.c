@@ -48,6 +48,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/xlate.h>
+#include <vnet/span/span.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
 
@@ -3567,6 +3568,7 @@ _(set_ipfix_exporter_reply)                             \
 _(set_ipfix_classify_stream_reply)                      \
 _(ipfix_classify_table_add_del_reply)                   \
 _(flow_classify_set_interface_reply)                    \
+_(sw_interface_span_enable_disable_reply)               \
 _(pg_capture_reply)                                     \
 _(pg_enable_disable_reply)                              \
 _(ip_source_and_port_range_check_add_del_reply)         \
@@ -3799,6 +3801,8 @@ _(IPFIX_CLASSIFY_TABLE_ADD_DEL_REPLY, ipfix_classify_table_add_del_reply) \
 _(IPFIX_CLASSIFY_TABLE_DETAILS, ipfix_classify_table_details)           \
 _(FLOW_CLASSIFY_SET_INTERFACE_REPLY, flow_classify_set_interface_reply) \
 _(FLOW_CLASSIFY_DETAILS, flow_classify_details)                         \
+_(SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY, sw_interface_span_enable_disable_reply) \
+_(SW_INTERFACE_SPAN_DETAILS, sw_interface_span_details)                 \
 _(GET_NEXT_INDEX_REPLY, get_next_index_reply)                           \
 _(PG_CREATE_INTERFACE_REPLY, pg_create_interface_reply)                 \
 _(PG_CAPTURE_REPLY, pg_capture_reply)                                   \
@@ -15417,6 +15421,94 @@ static void
 			    mp->transport_protocol);
 }
 
+static int
+api_sw_interface_span_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_span_enable_disable_t *mp;
+  f64 timeout;
+  u32 src_sw_if_index = ~0;
+  u32 dst_sw_if_index = ~0;
+  u8 enable = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "src %U", unformat_sw_if_index, vam, &src_sw_if_index))
+	;
+      else if (unformat (i, "src_sw_if_index %d", &src_sw_if_index))
+	;
+      else
+	if (unformat
+	    (i, "dst %U", unformat_sw_if_index, vam, &dst_sw_if_index))
+	;
+      else if (unformat (i, "dst_sw_if_index %d", &dst_sw_if_index))
+	;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else
+	break;
+    }
+
+  M (SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable);
+
+  mp->sw_if_index_from = htonl (src_sw_if_index);
+  mp->sw_if_index_to = htonl (dst_sw_if_index);
+  mp->enable = enable;
+
+  S;
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void
+vl_api_sw_interface_span_details_t_handler (vl_api_sw_interface_span_details_t
+					    * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%u => %u\n",
+	   ntohl (mp->sw_if_index_from), ntohl (mp->sw_if_index_to));
+}
+
+static void
+  vl_api_sw_interface_span_details_t_handler_json
+  (vl_api_sw_interface_span_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "src-if-index",
+			    ntohl (mp->sw_if_index_from));
+  vat_json_object_add_uint (node, "dst-if-index", ntohl (mp->sw_if_index_to));
+}
+
+static int
+api_sw_interface_span_dump (vat_main_t * vam)
+{
+  vl_api_sw_interface_span_dump_t *mp;
+  f64 timeout;
+
+  M (SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump);
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
 int
 api_pg_create_interface (vat_main_t * vam)
 {
@@ -16717,6 +16809,8 @@ _(set_ipfix_classify_stream, "[domain <domain-id>] [src_port <src-port>]") \
 _(ipfix_classify_stream_dump, "")                                       \
 _(ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]")\
 _(ipfix_classify_table_dump, "")                                        \
+_(sw_interface_span_enable_disable, "[src <intfc> | src_sw_if_index <id>] [[dst <intfc> | dst_sw_if_index <id>] | disable]") \
+_(sw_interface_span_dump, "")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
