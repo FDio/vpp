@@ -4980,6 +4980,49 @@ define flow_classify_details {
     u32 table_index;
 };
 
+/** \brief Enable/Disable span to mirror traffic from one interface to another
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context which was passed in the request
+    @param sw_if_index_from - interface to be mirorred
+    @param sw_if_index_to - interface where the traffic is mirrored
+    @param enable - 1 enable SPAN, 0 SPAN on given interface
+*/
+define sw_interface_span_enable_disable{
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index_from;
+    u32 sw_if_index_to;
+    u8  enable;
+};
+
+/** \brief Reply to SPAN enable/disable request
+    @param context - sender context which was passed in the request
+*/
+define sw_interface_span_enable_disable_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief SPAN dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define sw_interface_span_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to SPAN dump request
+    @param context - sender context which was passed in the request
+    @param sw_if_index_from - mirorred interface
+    @param sw_if_index_to - interface where the traffic is mirrored
+*/
+define sw_interface_span_details {
+    u32 context;
+    u32 sw_if_index_from;
+    u32 sw_if_index_to;
+};
+
 /** \brief Query relative index via node names
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
