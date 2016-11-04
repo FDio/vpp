@@ -277,6 +277,14 @@ class VppPapiProvider(object):
         """
         return self.api(vpp_papi.create_vlan_subif, (sw_if_index, vlan))
 
+    def create_loopback(self, mac=''):
+        """
+
+        :param mac:
+        :return:
+        """
+        return self.api(vpp_papi.create_loopback, (mac,))
+
     def ip_add_del_route(
             self,
             dst_address,
