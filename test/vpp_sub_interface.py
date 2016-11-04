@@ -1,9 +1,10 @@
 from scapy.layers.l2 import Ether, Dot1Q
 from abc import abstractmethod, ABCMeta
 from vpp_interface import VppInterface
+from vpp_pg_interface import VppPGInterface
 
 
-class VppSubInterface(VppInterface):
+class VppSubInterface(VppPGInterface):
     __metaclass__ = ABCMeta
 
     @property
@@ -55,14 +56,14 @@ class VppDot1QSubint(VppSubInterface):
         self._vlan = vlan
         r = self.test.vapi.create_vlan_subif(parent.sw_if_index, self.vlan)
         self._sw_if_index = r.sw_if_index
-        self.post_init_setup()
+        VppInterface.post_init_setup(self)
 
     def create_arp_req(self):
-        packet = VppInterface.create_arp_req(self)
+        packet = VppPGInterface.create_arp_req(self)
         return self.add_dot1_layer(packet)
 
     def create_ndp_req(self):
-        packet = VppInterface.create_ndp_req(self)
+        packet = VppPGInterface.create_ndp_req(self)
         return self.add_dot1_layer(packet)
 
     def add_dot1_layer(self, packet):
@@ -108,14 +109,14 @@ class VppDot1ADSubint(VppSubInterface):
             two_tags=1,
             exact_match=1)
         self._sw_if_index = r.sw_if_index
-        self.post_init_setup()
+        VppInterface.post_init_setup(self)
 
     def create_arp_req(self):
-        packet = VppInterface.create_arp_req(self)
+        packet = VppPGInterface.create_arp_req(self)
         return self.add_dot1_layer(packet)
 
     def create_ndp_req(self):
-        packet = VppInterface.create_ndp_req(self)
+        packet = VppPGInterface.create_ndp_req(self)
         return self.add_dot1_layer(packet)
 
     def add_dot1_layer(self, packet):
