@@ -458,7 +458,8 @@ _(DELETE_SUBIF, delete_subif)                                           \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(PUNT, punt)                                                           \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
-_(FLOW_CLASSIFY_DUMP, flow_classify_dump)
+_(FLOW_CLASSIFY_DUMP, flow_classify_dump)                               \
+_(IPSEC_SPD_DUMP, ipsec_spd_dump)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8745,6 +8746,82 @@ vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
 				      mp->context);
 	}
     }
+}
+
+static void
+send_ipsec_spd_details (ipsec_policy_t * p, unix_shared_memory_queue_t * q,
+			u32 context)
+{
+  vl_api_ipsec_spd_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPD_DETAILS);
+  mp->context = context;
+
+  mp->spd_id = htonl (p->id);
+  mp->priority = htonl (p->priority);
+  mp->is_outbound = p->is_outbound;
+  mp->is_ipv6 = p->is_ipv6;
+  if (p->is_ipv6)
+    {
+      memcpy (mp->local_start_addr, &p->laddr.start.ip6, 16);
+      memcpy (mp->local_stop_addr, &p->laddr.stop.ip6, 16);
+      memcpy (mp->remote_start_addr, &p->raddr.start.ip6, 16);
+      memcpy (mp->remote_stop_addr, &p->raddr.stop.ip6, 16);
+    }
+  else
+    {
+      memcpy (mp->local_start_addr, &p->laddr.start.ip4, 4);
+      memcpy (mp->local_stop_addr, &p->laddr.stop.ip4, 4);
+      memcpy (mp->remote_start_addr, &p->raddr.start.ip4, 4);
+      memcpy (mp->remote_stop_addr, &p->raddr.stop.ip4, 4);
+    }
+  mp->local_start_port = htons (p->lport.start);
+  mp->local_stop_port = htons (p->lport.stop);
+  mp->remote_start_port = htons (p->rport.start);
+  mp->remote_stop_port = htons (p->rport.stop);
+  mp->protocol = p->protocol;
+  mp->policy = p->policy;
+  mp->sa_id = htonl (p->sa_id);
+  mp->bytes = clib_host_to_net_u64 (p->counter.bytes);
+  mp->packets = clib_host_to_net_u64 (p->counter.packets);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *policy;
+  ipsec_spd_t *spd;
+  uword *p;
+  u32 spd_index;
+#if IPSEC > 0
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  p = hash_get (im->spd_index_by_spd_id, ntohl (mp->spd_id));
+  if (!p)
+    return;
+
+  spd_index = p[0];
+  spd = pool_elt_at_index (im->spds, spd_index);
+
+  pool_foreach (policy, spd->policies, (
+					 {
+					 if (mp->sa_id == ~(0)
+					     || ntohl (mp->sa_id) ==
+					     policy->sa_id)
+					 send_ipsec_spd_details (policy, q,
+								 mp->context);}
+		));
+#else
+  clib_warning ("unimplemented");
+#endif
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
