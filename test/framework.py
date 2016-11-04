@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-from abc import *
-import os
 import subprocess
 import unittest
 import tempfile
@@ -13,6 +11,7 @@ from threading import Thread
 from inspect import getdoc
 from hook import StepHook, PollHook
 from vpp_pg_interface import VppPGInterface
+from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from scapy.packet import Raw
 from log import *
@@ -328,6 +327,22 @@ class VppTestCase(unittest.TestCase):
             setattr(cls, intf.name, intf)
             result.append(intf)
         cls.pg_interfaces = result
+        return result
+
+    @classmethod
+    def create_loopback_interfaces(cls, interfaces):
+        """
+        Create loopback interfaces
+
+        :param interfaces: iterable indexes of the interfaces
+
+        """
+        result = []
+        for i in interfaces:
+            intf = VppLoInterface(cls, i)
+            setattr(cls, intf.name, intf)
+            result.append(intf)
+        cls.lo_interfaces = result
         return result
 
     @staticmethod

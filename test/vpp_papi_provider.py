@@ -277,6 +277,13 @@ class VppPapiProvider(object):
         """
         return self.api(vpp_papi.create_vlan_subif, (sw_if_index, vlan))
 
+    def create_loopback(self, mac=''):
+        """
+
+        :param mac: (Optional)
+        """
+        return self.api(vpp_papi.create_loopback, (mac,))
+
     def ip_add_del_route(
             self,
             dst_address,
@@ -352,3 +359,35 @@ class VppPapiProvider(object):
              dst_address_length,
              dst_address,
              next_hop_address))
+
+    def ip_neighbor_add_del(self,
+                            sw_if_index,
+                            mac_address,
+                            dst_address,
+                            vrf_id=0,
+                            is_add=1,
+                            is_ipv6=0,
+                            is_static=0,
+                            ):
+        """ Add neighbor MAC to IPv4 or IPv6 address.
+
+        :param sw_if_index:
+        :param mac_address:
+        :param dst_address:
+        :param vrf_id:  (Default value = 0)
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+        :param is_static:  (Default value = 0)
+        """
+
+        return self.api(
+            vpp_papi.ip_neighbor_add_del,
+            (vrf_id,
+             sw_if_index,
+             is_add,
+             is_ipv6,
+             is_static,
+             mac_address,
+             dst_address
+             )
+        )
