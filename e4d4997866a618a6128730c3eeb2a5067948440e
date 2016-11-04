@@ -46,6 +46,30 @@
       "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_2789e5ca",
+        "filename": "Makefile",
+        "patchSetId": 5
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-04T09:05:24Z",
+      "side": 1,
+      "message": "Yes, just from help. Will be also nice to move whole thing to separate file, but I more a comment for future work. I\u0027m fine to merge it as it is.\n\nThanks,\n\nDamjan",
+      "parentUuid": "9a437d4f_2c7c2a20",
+      "range": {
+        "startLine": 67,
+        "startChar": 0,
+        "endLine": 68,
+        "endChar": 60
+      },
+      "revId": "e4d4997866a618a6128730c3eeb2a5067948440e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
