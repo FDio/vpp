@@ -187,6 +187,11 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
+  vec_validate (fm->feature_count_by_sw_if_index[arc_index], sw_if_index);
+  if (!enable_disable
+      && fm->feature_count_by_sw_if_index[arc_index][sw_if_index] < 1)
+    return 0;
+
   ci = (enable_disable
 	? vnet_config_add_feature
 	: vnet_config_del_feature)
