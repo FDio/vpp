@@ -52,7 +52,7 @@
     {
       .arch_name = "ip4-unicast",
       .node_name = "my-ip4-unicast-feature",
-      .runs_before = VLIB_FEATURES ("ip4-lookup", 0)
+      .runs_before = VLIB_FEATURES ("ip4-lookup")
     };
     </PRE></CODE>
 
@@ -70,21 +70,13 @@
     processing code, aka in the implementation of @c my-ip4-unicast-feature:
 
     <CODE><PRE>
-    vnet_feature_main_t *fm = &feature_main;
-    vnet_feature_config_main_t * cm = &fm->feature_config_mains[VNET_FEAT_IP4_UNICAST];
+    vnet_feature_next (sw_if_index0, &next0, b0);
 
-    Call @c vnet_get_config_data to set next0, and to advance
-    @c b0->current_config_index:
-
-    config_data0 = vnet_get_config_data (&cm->config_main,
-                                         &b0->current_config_index,
-                                         &next0,
-                                         0 / * sizeof config data * /);
     </PRE></CODE>
 
     Nodes are free to drop or otherwise redirect packets. Packets
     which "pass" should be enqueued via the next0 arc computed by
-    vnet_get_config_data.
+    vnet_feature_next.
 */
 
 static const char *vnet_cast_names[] = VNET_CAST_NAMES;

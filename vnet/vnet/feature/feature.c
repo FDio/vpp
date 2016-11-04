@@ -40,17 +40,6 @@ vnet_feature_init (vlib_main_t * vm)
       /* process start nodes */
       while ((s = areg->start_nodes[i]))
 	{
-	  vlib_node_t *n;
-	  vlib_node_runtime_t *rt;
-	  n = vlib_get_node_by_name (vm, (u8 *) s);
-
-	  if (n == 0)
-	    return clib_error_return (0,
-				      "Unknown start node '%s' on feature arc '%s'",
-				      s, areg->arc_name);
-
-	  rt = vlib_node_get_runtime (vm, n->index);
-	  rt->feature_arc_index = arc_index;
 	  i++;
 	}
       areg->n_start_nodes = i;
@@ -70,8 +59,6 @@ vnet_feature_init (vlib_main_t * vm)
   freg = fm->next_feature;
   while (freg)
     {
-      vlib_node_t *n;
-      vlib_node_runtime_t *rt;
       uword *p = hash_get_mem (fm->arc_index_by_name, freg->arc_name);
       if (p == 0)
 	return clib_error_return (0, "Unknown feature arc '%s'",
@@ -79,13 +66,6 @@ vnet_feature_init (vlib_main_t * vm)
 
       areg = uword_to_pointer (p[0], vnet_feature_arc_registration_t *);
       arc_index = areg->feature_arc_index;
-
-      /* set feature arc index in node runtime */
-      n = vlib_get_node_by_name (vm, (u8 *) freg->node_name);
-      if (n == 0)
-	return clib_error_return (0, "Unknown node '%s', freg->node_name");
-      rt = vlib_node_get_runtime (vm, n->index);
-      rt->feature_arc_index = arc_index;
 
       vec_add1 (fm->next_feature_by_arc[arc_index], *freg);
 
@@ -127,13 +107,15 @@ vnet_feature_init (vlib_main_t * vm)
       arc_index++;
     }
 
+  fm->device_input_feature_arc_index =
+    vnet_get_feature_arc_index ("device-input");
   return 0;
 }
 
 VLIB_INIT_FUNCTION (vnet_feature_init);
 
 void
-vnet_config_update_feature_count (vnet_feature_main_t * fm, u16 arc,
+vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
 				  u32 sw_if_index, int is_add)
 {
   uword bit_value;
@@ -151,8 +133,8 @@ vnet_config_update_feature_count (vnet_feature_main_t * fm, u16 arc,
 		     bit_value);
 }
 
-u16
-vnet_feature_arc_index_from_node_name (const char *s)
+u8
+vnet_get_feature_arc_index (const char *s)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_arc_registration_t *reg;
@@ -167,7 +149,7 @@ vnet_feature_arc_index_from_node_name (const char *s)
 }
 
 u32
-vnet_feature_index_from_node_name (u16 arc, const char *s)
+vnet_get_feature_index (u8 arc, const char *s)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_registration_t *reg;
@@ -189,16 +171,16 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
   u32 feature_index, ci;
-  u16 arc_index;
+  u8 arc_index;
 
-  arc_index = vnet_feature_arc_index_from_node_name (arc_name);
+  arc_index = vnet_get_feature_arc_index (arc_name);
 
   if (arc_index == ~0)
     return;
 
   cm = &fm->feature_config_mains[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-  feature_index = vnet_feature_index_from_node_name (arc_index, node_name);
+  feature_index = vnet_get_feature_index (arc_index, node_name);
   if (feature_index == ~0)
     return;
   ci = cm->config_index_by_sw_if_index[sw_if_index];
@@ -297,7 +279,8 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index)
       areg = areg->next;
 
       if (NULL == cm[feature_arc].config_index_by_sw_if_index ||
-	  vec_len (cm[feature_arc].config_index_by_sw_if_index) < sw_if_index)
+	  vec_len (cm[feature_arc].config_index_by_sw_if_index) <=
+	  sw_if_index)
 	{
 	  vlib_cli_output (vm, "  none configured");
 	  continue;
