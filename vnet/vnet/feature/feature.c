@@ -189,6 +189,11 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
     return VNET_API_ERROR_INVALID_VALUE_2;
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
+  vec_validate (fm->feature_count_by_sw_if_index[arc_index], sw_if_index);
+  if (!enable_disable
+      && fm->feature_count_by_sw_if_index[arc_index][sw_if_index] < 1)
+    return;
+
   ci = (enable_disable
 	? vnet_config_add_feature
 	: vnet_config_del_feature)
