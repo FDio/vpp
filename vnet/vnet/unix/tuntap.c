@@ -753,6 +753,12 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
   snprintf (ifr.ifr_name, sizeof(ifr.ifr_name), 
             "%s:%d", tm->tun_name, (int)(ap - tm->subifs));
 
+  /* the tuntap punt/inject is enabled for IPv4 RX so long as
+   * any vpp interface has an IPv4 address.
+   * this is also ref counted.
+   */
+  ip4_sw_interface_enable_disable (tm->sw_if_index, !is_delete);
+
   if (! is_delete)
     {
       struct sockaddr_in * sin;
@@ -855,6 +861,12 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
   memset (&ifr6, 0, sizeof (ifr6));
   snprintf (ifr.ifr_name, sizeof(ifr.ifr_name), 
             "%s:%d", tm->tun_name, (int)(ap - tm->subifs));
+
+  /* the tuntap punt/inject is enabled for IPv6 RX so long as
+   * any vpp interface has an IPv6 address.
+   * this is also ref counted.
+   */
+  ip6_sw_interface_enable_disable (tm->sw_if_index, !is_delete);
 
   if (! is_delete)
     {
