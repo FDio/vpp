@@ -194,7 +194,7 @@ do_set_fixed (pg_main_t * pg,
 	      u32 n_bits,
 	      u32 byte_offset, u32 is_net_byte_order, u64 v_min, u64 v_max)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   while (n_buffers >= 4)
     {
@@ -247,7 +247,7 @@ do_set_increment (pg_main_t * pg,
 		  u32 is_net_byte_order,
 		  u32 want_sum, u64 * sum_result, u64 v_min, u64 v_max, u64 v)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u64 sum = 0;
 
   ASSERT (v >= v_min && v <= v_max);
@@ -342,7 +342,7 @@ do_set_random (pg_main_t * pg,
 	       u32 is_net_byte_order,
 	       u32 want_sum, u64 * sum_result, u64 v_min, u64 v_max)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u64 v_diff = v_max - v_min + 1;
   u64 r_mask = max_pow2 (v_diff) - 1;
   u64 v0, v1;
@@ -533,7 +533,7 @@ do_setbits_fixed (pg_main_t * pg,
 		  u32 n_bits,
 		  u32 byte_offset, u64 v_min, u64 v_max, u64 mask, u32 shift)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   while (n_buffers >= 4)
     {
@@ -586,7 +586,7 @@ do_setbits_increment (pg_main_t * pg,
 		      u32 byte_offset,
 		      u64 v_min, u64 v_max, u64 v, u64 mask, u32 shift)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   ASSERT (v >= v_min && v <= v_max);
 
@@ -664,7 +664,7 @@ do_setbits_random (pg_main_t * pg,
 		   u32 n_bits,
 		   u32 byte_offset, u64 v_min, u64 v_max, u64 mask, u32 shift)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u64 v_diff = v_max - v_min + 1;
   u64 r_mask = max_pow2 (v_diff) - 1;
   u64 v0, v1;
@@ -938,7 +938,7 @@ pg_generate_fix_multi_buffer_lengths (pg_main_t * pg,
 				      pg_stream_t * s,
 				      u32 * buffers, u32 n_buffers)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   pg_buffer_index_t *pbi;
   uword n_bytes_left;
   static u32 *unused_buffers = 0;
@@ -1046,7 +1046,7 @@ pg_set_next_buffer_pointers (pg_main_t * pg,
 			     pg_stream_t * s,
 			     u32 * buffers, u32 * next_buffers, u32 n_buffers)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
 
   while (n_buffers >= 4)
     {
@@ -1237,7 +1237,7 @@ pg_stream_fill_helper (pg_main_t * pg,
 		       pg_buffer_index_t * bi,
 		       u32 * buffers, u32 * next_buffers, u32 n_alloc)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_free_list_t *f;
   uword is_start_of_packet = bi == s->buffer_indices;
   u32 n_allocated;
@@ -1477,7 +1477,7 @@ pg_input_trace (pg_main_t * pg,
 		vlib_node_runtime_t * node,
 		pg_stream_t * s, u32 * buffers, u32 n_buffers)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u32 *b, n_left, stream_index, next_index;
 
   n_left = n_buffers;
@@ -1548,7 +1548,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 		     pg_main_t * pg,
 		     pg_stream_t * s, uword n_packets_to_generate)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u32 *to_next, n_this_frame, n_left, n_trace, n_packets_in_fifo;
   uword n_packets_generated;
   pg_buffer_index_t *bi, *bi0;
@@ -1632,7 +1632,7 @@ pg_generate_packets (vlib_node_runtime_t * node,
 static uword
 pg_input_stream (vlib_node_runtime_t * node, pg_main_t * pg, pg_stream_t * s)
 {
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   uword n_packets;
   f64 time_now, dt;
 
@@ -1683,10 +1683,15 @@ pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   uword i;
   pg_main_t *pg = &pg_main;
   uword n_packets = 0;
+  u32 num_workers = vlib_num_workers ();
+  u32 cpu_index = os_get_cpu_number ();
 
   /* *INDENT-OFF* */
   clib_bitmap_foreach (i, pg->enabled_streams, ({
-    n_packets += pg_input_stream (node, pg, vec_elt_at_index (pg->streams, i));
+    pg_stream_t *s = vec_elt_at_index (pg->streams, i);
+    if (num_workers == 0 ||
+	vlib_get_worker_cpu_index (s->worker_index) == cpu_index)
+      n_packets += pg_input_stream (node, pg, s);
   }));
   /* *INDENT-ON* */
 

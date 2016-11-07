@@ -173,6 +173,8 @@ format_pg_stream (u8 * s, va_list * va)
 
   v = format (v, "buffer-size %d, ", t->buffer_bytes);
 
+  v = format (v, "worker %d, ", t->worker_index);
+
   if (v)
     {
       s = format (s, "  %v", v);
@@ -330,6 +332,9 @@ new_stream (vlib_main_t * vm,
 			 unformat_vlib_node, vm, &s.node_index))
 	;
 
+      else if (unformat (input, "worker %u", &s.worker_index))
+	;
+
       else if (unformat (input, "interface %U",
 			 unformat_vnet_sw_interface, vnm,
 			 &s.sw_if_index[VLIB_RX]))
@@ -388,6 +393,9 @@ new_stream (vlib_main_t * vm,
       n = pg->nodes + s.node_index;
     else
       n = 0;
+
+    if (s.worker_index >= vlib_num_workers ())
+      s.worker_index = 0;
 
     if (pcap_file_name != 0)
       {

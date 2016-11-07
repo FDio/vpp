@@ -51,7 +51,7 @@ udp_pg_edit_function_inline (pg_main_t * pg,
 			     u32 n_packets,
 			     u32 flags)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t * vm = vlib_get_main();
   u32 ip_offset, udp_offset;
 
   udp_offset = g->start_byte_offset;

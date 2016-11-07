@@ -127,8 +127,7 @@ uword
 unformat_pg_payload (unformat_input_t * input, va_list * args)
 {
   pg_stream_t *s = va_arg (*args, pg_stream_t *);
-  pg_main_t *pg = &pg_main;
-  vlib_main_t *vm = pg->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   pg_edit_t *e;
   u32 i, node_index, len, max_len;
   u8 *v;
