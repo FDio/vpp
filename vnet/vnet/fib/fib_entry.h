@@ -120,8 +120,8 @@ typedef enum fib_source_t_ {
     FIB_SOURCE_LAST = FIB_SOURCE_DEFAULT_ROUTE,
 } __attribute__ ((packed)) fib_source_t;
 
-_Static_assert (sizeof(fib_source_t) == 1,
-		"FIB too many sources");
+STATIC_ASSERT (sizeof(fib_source_t) == 1,
+	       "FIB too many sources");
 
 /**
  * The maximum number of sources
@@ -260,8 +260,8 @@ typedef enum fib_entry_src_flag_t_ {
  * Keep the size of the flags field to 2 bytes, so it
  * can be placed next to the 2 bytes reference count
  */
-_Static_assert (sizeof(fib_entry_src_flag_t) <= 2,
-		"FIB entry flags field size too big");
+STATIC_ASSERT (sizeof(fib_entry_src_flag_t) <= 2,
+	       "FIB entry flags field size too big");
 
 /**
  * Information related to the source of a FIB entry

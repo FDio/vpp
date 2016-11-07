@@ -110,8 +110,8 @@ typedef struct
   u8 ip4_prefix_len;
 } map_domain_t;
 
-_Static_assert ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
-		"MAP domain fits in one cacheline");
+STATIC_ASSERT ((sizeof (map_domain_t) <= CLIB_CACHE_LINE_BYTES),
+	       "MAP domain fits in one cacheline");
 
 #define MAP_REASS_INDEX_NONE ((u16)0xffff)
 

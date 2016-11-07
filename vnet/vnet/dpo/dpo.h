@@ -154,9 +154,9 @@ typedef struct dpo_id_t_ {
     index_t dpoi_index;
 } __attribute__ ((aligned(sizeof(u64)))) dpo_id_t;
 
-_Static_assert(sizeof(dpo_id_t) <= sizeof(u64),
-	       "DPO ID is greater than sizeof u64 "
-	       "atomic updates need to be revisited");
+STATIC_ASSERT(sizeof(dpo_id_t) <= sizeof(u64),
+	      "DPO ID is greater than sizeof u64 "
+	      "atomic updates need to be revisited");
 
 /**
  * @brief An initialiser for DPos declared on the stack.

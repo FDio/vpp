@@ -256,11 +256,11 @@ typedef struct ip_adjacency_t_ {
   fib_node_t ia_node;
 } ip_adjacency_t;
 
-_Static_assert((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0),
-	       "IP adjacency cachline 0 is not offset");
-_Static_assert((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) ==
-		CLIB_CACHE_LINE_BYTES),
-	       "IP adjacency cachline 1 is more than one cachline size offset");
+STATIC_ASSERT((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0),
+	      "IP adjacency cachline 0 is not offset");
+STATIC_ASSERT((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) ==
+	       CLIB_CACHE_LINE_BYTES),
+	      "IP adjacency cachline 1 is more than one cachline size offset");
 
 /* An all zeros address */
 extern const ip46_address_t zero_addr;

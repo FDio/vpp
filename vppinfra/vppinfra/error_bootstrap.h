@@ -79,7 +79,11 @@ do {							\
     }							\
 } while (0)
 
+#if defined(__clang__)
+#define STATIC_ASSERT(truth,...)
+#else
 #define STATIC_ASSERT(truth,...) _Static_assert(truth, __VA_ARGS__)
+#endif
 
 /* Assert without allocating memory. */
 #define ASSERT_AND_PANIC(truth)			\

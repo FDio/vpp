@@ -115,8 +115,8 @@ typedef struct {
 	 - 1 * sizeof (i32)];
 } ip4_fib_mtrie_ply_t;
 
-_Static_assert(0  == sizeof(ip4_fib_mtrie_ply_t) % CLIB_CACHE_LINE_BYTES,
-	       "IP4 Mtrie ply cache line");
+STATIC_ASSERT(0  == sizeof(ip4_fib_mtrie_ply_t) % CLIB_CACHE_LINE_BYTES,
+	      "IP4 Mtrie ply cache line");
 
 typedef struct {
   /* Pool of plies.  Index zero is root ply. */

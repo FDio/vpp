@@ -123,8 +123,8 @@ typedef enum fib_node_bw_reason_flag_t_ {
     FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE = (1 << FIB_NODE_BW_REASON_ADJ_UPDATE),
 } __attribute__ ((packed)) fib_node_bw_reason_flag_t;
 
-_Static_assert(sizeof(fib_node_bw_reason_flag_t) < 2,
-	       "BW Reason enum < 2 byte. Consequences for cover_upd_res_t");
+STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 2,
+	      "BW Reason enum < 2 byte. Consequences for cover_upd_res_t");
 
 /**
  * Forward eclarations
