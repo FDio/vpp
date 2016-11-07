@@ -143,6 +143,9 @@ typedef struct pg_stream_t
   /* Node where stream's buffers get put. */
   u32 node_index;
 
+  /* Worker thread index */
+  u32 worker_index;
+
   /* Output next index to reach output node from stream input node. */
   u32 next_index;
 
@@ -284,6 +287,9 @@ pg_free_edit_group (pg_stream_t * s)
 
 typedef struct
 {
+  /* TX lock */
+  volatile u32 *lockp;
+
   /* VLIB interface indices. */
   u32 hw_if_index, sw_if_index;
 
@@ -303,9 +309,6 @@ typedef struct
 
 typedef struct pg_main_t
 {
-  /* Back pointer to main structure. */
-  vlib_main_t *vlib_main;
-
   /* Pool of streams. */
   pg_stream_t *streams;
 
