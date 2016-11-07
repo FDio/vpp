@@ -103,9 +103,9 @@ vpp_2_jni_type_mapping = {'u8': 'jbyte',
                           'i32': 'jint',
                           'i32[]': 'jintArray',
                           'u64': 'jlong',
-                          'u64[]': 'longArray',
+                          'u64[]': 'jlongArray',
                           'i64': 'jlong',
-                          'u64[]': 'longArray',
+                          'i64[]': 'jlongArray',
                           'f64': 'jdouble',
                           'f64[]': 'jdoubleArray'
                           }
