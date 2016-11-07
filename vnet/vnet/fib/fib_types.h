@@ -184,8 +184,8 @@ typedef struct fib_prefix_t_ {
     };
 } fib_prefix_t;
 
-_Static_assert(STRUCT_OFFSET_OF(fib_prefix_t, fp_addr) == 4,
-	       "FIB Prefix's address is 4 byte aligned.");
+STATIC_ASSERT(STRUCT_OFFSET_OF(fib_prefix_t, fp_addr) == 4,
+	      "FIB Prefix's address is 4 byte aligned.");
 
 /**
  * \brief Compare two prefixes for equality

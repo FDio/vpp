@@ -135,8 +135,8 @@ typedef struct load_balance_t_ {
     dpo_id_t lb_buckets_inline[LB_NUM_INLINE_BUCKETS];
 } load_balance_t;
 
-_Static_assert(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
-	       "A load_balance object size exceeds one cachline");
+STATIC_ASSERT(sizeof(load_balance_t) <= CLIB_CACHE_LINE_BYTES,
+	      "A load_balance object size exceeds one cachline");
 
 /**
  * Flags controlling load-balance formatting/display
