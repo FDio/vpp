@@ -14,3 +14,4 @@
  */
 vxlan_error (DECAPSULATED, "good packets decapsulated")
 vxlan_error (NO_SUCH_TUNNEL, "no such tunnel packets")
+vxlan_error (BAD_FLAGS, "packets with bad flags field in vxlan header")
