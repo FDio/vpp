@@ -37,13 +37,13 @@ static u8 * format_vxlan_rx_trace (u8 * s, va_list * args)
 
   if (t->tunnel_index != ~0)
     {
-      s = format (s, "VXLAN: tunnel %d vni %d next %d error %d", 
+      s = format (s, "VXLAN decap from vxlan_tunnel%d vni %d next %d error %d",
                   t->tunnel_index, t->vni, t->next_index, t->error);
     }
   else
     {
-      s = format (s, "VXLAN: no tunnel for vni %d next %d error %d", 
-                  t->vni, t->next_index, t->error);
+      s = format (s, "VXLAN decap error - tunnel for vni %d does not exist", 
+		  t->vni);
     }
   return s;
 }
@@ -129,11 +129,13 @@ vxlan_input (vlib_main_t * vm,
           vxlan0 = vlib_buffer_get_current (b0);
           vxlan1 = vlib_buffer_get_current (b1);
 
+	  next0 = next1 = VXLAN_INPUT_NEXT_L2_INPUT;
+
           if (is_ip4) {
-          vlib_buffer_advance 
-            (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
-          vlib_buffer_advance 
-            (b1, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
+	    vlib_buffer_advance
+	      (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
+	    vlib_buffer_advance
+	      (b1, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
             ip4_0 = vlib_buffer_get_current (b0);
             ip4_1 = vlib_buffer_get_current (b1);
 	  } else {
@@ -149,10 +151,10 @@ vxlan_input (vlib_main_t * vm,
           if (is_ip4) {
             vlib_buffer_advance
               (b0, sizeof(*ip4_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
-          vlib_buffer_advance 
+	    vlib_buffer_advance
               (b1, sizeof(*ip4_1)+sizeof(udp_header_t)+sizeof(*vxlan1));
           } else {
-          vlib_buffer_advance 
+	    vlib_buffer_advance
               (b0, sizeof(*ip6_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
             vlib_buffer_advance
               (b1, sizeof(*ip6_1)+sizeof(udp_header_t)+sizeof(*vxlan1));
@@ -163,6 +165,13 @@ vxlan_input (vlib_main_t * vm,
 
           tunnel_index1 = ~0;
           error1 = 0;
+
+	  if (PREDICT_FALSE (vxlan0->flags != VXLAN_FLAGS_I))
+	    {
+	      error0 = VXLAN_ERROR_BAD_FLAGS;
+	      next0 = VXLAN_INPUT_NEXT_DROP;
+	      goto trace0;
+	    }
 
           if (is_ip4) {
             key4_0.src = ip4_0->src_address.as_u32;
@@ -209,7 +218,6 @@ vxlan_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -253,6 +261,12 @@ vxlan_input (vlib_main_t * vm,
               tr->vni = vnet_get_vni (vxlan0);
             }
 
+	  if (PREDICT_FALSE (vxlan1->flags != VXLAN_FLAGS_I))
+	    {
+	      error1 = VXLAN_ERROR_BAD_FLAGS;
+	      next1 = VXLAN_INPUT_NEXT_DROP;
+	      goto trace1;
+	    }
 
           if (is_ip4) {
             key4_1.src = ip4_1->src_address.as_u32;
@@ -299,7 +313,6 @@ vxlan_input (vlib_main_t * vm,
 
           t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
 
-          next1 = t1->decap_next_index;
           sw_if_index1 = t1->sw_if_index;
           len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -376,9 +389,11 @@ vxlan_input (vlib_main_t * vm,
           /* udp leaves current_data pointing at the vxlan header */
           vxlan0 = vlib_buffer_get_current (b0);
 
+	  next0 = VXLAN_INPUT_NEXT_L2_INPUT;
+
           if (is_ip4) {
-          vlib_buffer_advance 
-            (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
+	    vlib_buffer_advance
+	      (b0, -(word)(sizeof(udp_header_t)+sizeof(ip4_header_t)));
             ip4_0 = vlib_buffer_get_current (b0);
           } else {
             vlib_buffer_advance
@@ -391,12 +406,19 @@ vxlan_input (vlib_main_t * vm,
             vlib_buffer_advance
               (b0, sizeof(*ip4_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
           } else {
-          vlib_buffer_advance 
+	    vlib_buffer_advance
               (b0, sizeof(*ip6_0)+sizeof(udp_header_t)+sizeof(*vxlan0));
           }
 
           tunnel_index0 = ~0;
           error0 = 0;
+
+	  if (PREDICT_FALSE (vxlan0->flags != VXLAN_FLAGS_I))
+	    {
+	      error0 = VXLAN_ERROR_BAD_FLAGS;
+	      next0 = VXLAN_INPUT_NEXT_DROP;
+	      goto trace00;
+	    }
 
           if (is_ip4) {
             key4_0.src = ip4_0->src_address.as_u32;
@@ -443,7 +465,6 @@ vxlan_input (vlib_main_t * vm,
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
 
-          next0 = t0->decap_next_index;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
