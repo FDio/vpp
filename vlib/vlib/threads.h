@@ -353,6 +353,29 @@ static void __vlib_add_thread_registration_##x (void)   \
 }                                                       \
 __VA_ARGS__ vlib_thread_registration_t x
 
+always_inline u32
+vlib_num_workers ()
+{
+  return vlib_thread_main.n_vlib_mains - 1;
+}
+
+always_inline u32
+vlib_get_worker_cpu_index (u32 worker_index)
+{
+  return worker_index + 1;
+}
+
+always_inline vlib_main_t *
+vlib_get_worker_vlib_main (u32 worker_index)
+{
+  vlib_main_t *vm;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  ASSERT (worker_index < tm->n_vlib_mains - 1);
+  vm = vlib_mains[worker_index + 1];
+  ASSERT (vm);
+  return vm;
+}
+
 #endif /* included_vlib_threads_h */
 
 /*

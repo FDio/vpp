@@ -49,7 +49,6 @@ pg_init (vlib_main_t * vm)
   clib_error_t *error;
   pg_main_t *pg = &pg_main;
 
-  pg->vlib_main = vm;
   pg->if_index_by_if_id = hash_create (0, sizeof (uword));
 
   if ((error = vlib_call_init_function (vm, vnet_main_init)))

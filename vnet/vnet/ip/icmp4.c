@@ -601,7 +601,7 @@ icmp4_pg_edit_function (pg_main_t * pg,
 			u32 * packets,
 			u32 n_packets)
 {
-  vlib_main_t * vm = pg->vlib_main;
+  vlib_main_t * vm = vlib_get_main();
   u32 ip_offset, icmp_offset;
 
   icmp_offset = g->start_byte_offset;
