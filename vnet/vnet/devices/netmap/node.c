@@ -153,7 +153,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  while (r && n_left_to_next)
 	    {
-	      vlib_buffer_t *b0 = 0, *first_b0 = 0;
+	      vlib_buffer_t *first_b0 = 0;
 	      u32 offset = 0;
 	      u32 bi0 = 0, first_bi0 = 0, prev_bi0;
 	      u32 next_slot_index = (cur_slot_index + 1) % ring->num_slots;
@@ -171,6 +171,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      while (data_len && n_free_bufs)
 		{
+		  vlib_buffer_t *b0;
 		  /* grab free buffer */
 		  u32 last_empty_buffer =
 		    vec_len (nm->rx_buffers[cpu_index]) - 1;
@@ -233,7 +234,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* redirect if feature path enabled */
 	      vnet_feature_start_device_input_x1 (nif->sw_if_index, &next0,
-						  b0, 0);
+						  first_b0, 0);
 
 	      /* enque and take next packet */
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
