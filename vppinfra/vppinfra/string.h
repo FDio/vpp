@@ -56,11 +56,19 @@
 /* Exchanges source and destination. */
 void clib_memswap (void *_a, void *_b, uword bytes);
 
+/*
+ * the vector unit memcpy variants confuse coverity
+ * so don't let it anywhere near them.
+ */
+#ifndef __COVERITY__
 #if __AVX__
 #include <vppinfra/memcpy_avx.h>
 #elif __SSSE3__
 #include <vppinfra/memcpy_sse3.h>
 #else
+#define clib_memcpy(a,b,c) memcpy(a,b,c)
+#endif
+#else /* __COVERITY__ */
 #define clib_memcpy(a,b,c) memcpy(a,b,c)
 #endif
 
