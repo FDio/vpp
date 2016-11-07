@@ -42,12 +42,14 @@
  */
 
 typedef struct {
-  u32 flags;
+  u8 flags;
+  u8 res1;
+  u8 res2;
+  u8 res3;
   u32 vni_reserved;
 } vxlan_header_t;
 
-#define VXLAN_FLAGS_VALID_HOST_BYTE_ORDER (1<<27)
-#define VXLAN_FLAGS_VALID_NET_BYTE_ORDER (clib_host_to_net_u32(1<<27))
+#define VXLAN_FLAGS_I 0x08
 
 static inline u32 vnet_get_vni (vxlan_header_t * h)
 {
@@ -60,7 +62,8 @@ static inline u32 vnet_get_vni (vxlan_header_t * h)
 static inline void vnet_set_vni_and_flags (vxlan_header_t * h, u32 vni)
 {
   h->vni_reserved = clib_host_to_net_u32 (vni<<8);
-  h->flags = VXLAN_FLAGS_VALID_NET_BYTE_ORDER;
+  * (u32 *) h = 0;
+  h->flags = VXLAN_FLAGS_I;
 }
 
 #endif /* __included_vxlan_packet_h__ */
