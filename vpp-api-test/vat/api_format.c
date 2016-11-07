@@ -10066,13 +10066,7 @@ static uword unformat_vxlan_decap_next
   u32 *result = va_arg (*args, u32 *);
   u32 tmp;
 
-  if (unformat (input, "drop"))
-    *result = VXLAN_INPUT_NEXT_DROP;
-  else if (unformat (input, "ip4"))
-    *result = VXLAN_INPUT_NEXT_IP4_INPUT;
-  else if (unformat (input, "ip6"))
-    *result = VXLAN_INPUT_NEXT_IP6_INPUT;
-  else if (unformat (input, "l2"))
+  if (unformat (input, "l2"))
     *result = VXLAN_INPUT_NEXT_L2_INPUT;
   else if (unformat (input, "%d", &tmp))
     *result = tmp;

@@ -27,6 +27,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/udp.h>
+#include <vnet/dpo/dpo.h>
 
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;            /* 20 bytes */
@@ -67,40 +68,49 @@ typedef struct {
   /* Rewrite string. $$$$ embed vnet_rewrite header */
   u8 * rewrite;
 
-  /* tunnel src and dst addresses */
-  ip46_address_t src;
-  ip46_address_t dst;
+  /* FIB DPO for IP forwarding of VXLAN encap packet */
+  dpo_id_t next_dpo;  
+
+  /* storage for the hash key */
+  union {
+    vxlan4_tunnel_key_t *key4; /* unused for now */
+    vxlan6_tunnel_key_t *key6;
+  };
 
   /* vxlan VNI in HOST byte order */
   u32 vni;
 
-  /* decap next index */
-  u32 decap_next_index;
+  /* tunnel src and dst addresses */
+  ip46_address_t src;
+  ip46_address_t dst;
 
-  /* L3 FIB index and L2 BD ID */
-  u16 encap_fib_index;          /* tunnel partner IP lookup here */
+  /* The FIB index for src/dst addresses */
+  u32 encap_fib_index;
 
-  /* vnet intfc hw/sw_if_index */
-  u16 hw_if_index;
+  /* vnet intfc index */
   u32 sw_if_index;
+  u32 hw_if_index;
 
-  union { /* storage for the hash key */
-    vxlan4_tunnel_key_t *key4;
-    vxlan6_tunnel_key_t *key6;
-  };
+  /**
+   * Linkage into the FIB object graph
+   */
+  fib_node_t node;
 
-  /* flags */
-  u32 flags;
+  /* The FIB entry sourced by the tunnel for its destination prefix */
+  fib_node_index_t fib_entry_index;
+
+  /**
+   * The tunnel is a child of the FIB entry for its desintion. This is
+   * so it receives updates when the forwarding information for that entry
+   * changes.
+   * The tunnels sibling index on the FIB entry's dependency list.
+   */
+  u32 sibling_index;
 } vxlan_tunnel_t;
-
-/* Flags for vxlan_tunnel_t.flags */
-#define VXLAN_TUNNEL_IS_IPV4	1
 
 #define foreach_vxlan_input_next        \
 _(DROP, "error-drop")                   \
-_(L2_INPUT, "l2-input")                 \
-_(IP4_INPUT, "ip4-input")               \
-_(IP6_INPUT, "ip6-input")
+_(L2_INPUT, "l2-input")
 
 typedef enum {
 #define _(s,n) VXLAN_INPUT_NEXT_##s,
@@ -139,7 +149,8 @@ vxlan_main_t vxlan_main;
 
 extern vlib_node_registration_t vxlan4_input_node;
 extern vlib_node_registration_t vxlan6_input_node;
-extern vlib_node_registration_t vxlan_encap_node;
+extern vlib_node_registration_t vxlan4_encap_node;
+extern vlib_node_registration_t vxlan6_encap_node;
 
 u8 * format_vxlan_encap_trace (u8 * s, va_list * args);
 

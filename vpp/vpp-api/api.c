@@ -4925,7 +4925,7 @@ static void send_vxlan_tunnel_details
   vl_api_vxlan_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
   ip6_main_t *im6 = &ip6_main;
-  u8 is_ipv6 = !(t->flags & VXLAN_TUNNEL_IS_IPV4);
+  u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -4943,7 +4943,8 @@ static void send_vxlan_tunnel_details
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
     }
   rmp->vni = htonl (t->vni);
-  rmp->decap_next_index = htonl (t->decap_next_index);
+  /* decap_next_index is deprecated, hard code to l2-input */
+  rmp->decap_next_index = htonl (VXLAN_INPUT_NEXT_L2_INPUT);
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
