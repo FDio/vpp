@@ -1683,15 +1683,15 @@ pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   uword i;
   pg_main_t *pg = &pg_main;
   uword n_packets = 0;
-  u32 num_workers = vlib_num_workers ();
-  u32 cpu_index = os_get_cpu_number ();
+  u32 worker_index = 0;
+
+  if (vlib_num_workers ())
+    worker_index = vlib_get_current_worker_index ();
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, pg->enabled_streams, ({
+  clib_bitmap_foreach (i, pg->enabled_streams[worker_index], ({
     pg_stream_t *s = vec_elt_at_index (pg->streams, i);
-    if (num_workers == 0 ||
-	vlib_get_worker_cpu_index (s->worker_index) == cpu_index)
-      n_packets += pg_input_stream (node, pg, s);
+    n_packets += pg_input_stream (node, pg, s);
   }));
   /* *INDENT-ON* */
 

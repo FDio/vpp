@@ -313,7 +313,7 @@ typedef struct pg_main_t
   pg_stream_t *streams;
 
   /* Bitmap indicating which streams are currently enabled. */
-  uword *enabled_streams;
+  uword **enabled_streams;
 
   /* Hash mapping name -> stream index. */
   uword *stream_index_by_name;
