@@ -21,7 +21,17 @@
 typedef struct {
   u32 next_index;
   u32 sw_if_index;
+  u8 new_src_mac[6];
+  u8 new_dst_mac[6];
 } sample_trace_t;
+
+static u8 *
+format_mac_address (u8 * s, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
+		 a[0], a[1], a[2], a[3], a[4], a[5]);
+}
 
 /* packet trace format function */
 static u8 * format_sample_trace (u8 * s, va_list * args)
@@ -30,8 +40,12 @@ static u8 * format_sample_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   sample_trace_t * t = va_arg (*args, sample_trace_t *);
   
-  s = format (s, "SAMPLE: sw_if_index %d, next index %d",
+  s = format (s, "SAMPLE: sw_if_index %d, next index %d\n",
               t->sw_if_index, t->next_index);
+  s = format (s, "  new src %U -> new dst %U",
+              format_mac_address, t->new_src_mac, 
+              format_mac_address, t->new_dst_mac);
+
   return s;
 }
 
@@ -167,6 +181,11 @@ sample_node_fn (vlib_main_t * vm,
                       vlib_add_trace (vm, node, b0, sizeof (*t));
                     t->sw_if_index = sw_if_index0;
                     t->next_index = next0;
+                    clib_memcpy (t->new_src_mac, en0->src_address,
+                                 sizeof (t->new_src_mac));
+                    clib_memcpy (t->new_dst_mac, en0->dst_address,
+                                 sizeof (t->new_dst_mac));
+                    
                   }
                 if (b1->flags & VLIB_BUFFER_IS_TRACED) 
                   {
@@ -174,6 +193,10 @@ sample_node_fn (vlib_main_t * vm,
                       vlib_add_trace (vm, node, b1, sizeof (*t));
                     t->sw_if_index = sw_if_index1;
                     t->next_index = next1;
+                    clib_memcpy (t->new_src_mac, en1->src_address,
+                                 sizeof (t->new_src_mac));
+                    clib_memcpy (t->new_dst_mac, en1->dst_address,
+                                 sizeof (t->new_dst_mac));
                   }
               }
             
@@ -231,6 +254,10 @@ sample_node_fn (vlib_main_t * vm,
                vlib_add_trace (vm, node, b0, sizeof (*t));
             t->sw_if_index = sw_if_index0;
             t->next_index = next0;
+            clib_memcpy (t->new_src_mac, en0->src_address,
+                         sizeof (t->new_src_mac));
+            clib_memcpy (t->new_dst_mac, en0->dst_address,
+                         sizeof (t->new_dst_mac));
             }
             
           pkts_swapped += 1;
