@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 import socket
-import unittest
 from logging import *
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.l2 import Ether
@@ -600,4 +599,4 @@ class TestSNAT(VppTestCase):
             self.clear_snat()
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import unittest
 import time
 from random import randint
 from bfd import *
@@ -272,4 +271,4 @@ class BFDTestCase(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

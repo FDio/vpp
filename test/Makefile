@@ -9,8 +9,9 @@ PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
 PYTHON_DEPENDS=scapy==2.3.3 pexpect
 SCAPY_SOURCE=$(WS_ROOT)/build-root/python/virtualenv/lib/python2.7/site-packages/
 BUILD_COV_DIR = $(BR)/test-cov
-ifdef SUDO
+ifdef VPP_DPDK
 	SUDO_E = sudo -E
+	OPTIONS ?= Default MultiThreaded
 endif
 
 
@@ -35,7 +36,7 @@ PHONIES=.install.ok .pip-patch.ok .pip-install.ok
 .PHONY: $(PHONIES)
 
 define retest-func
-	@ $(SUDO_E) bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
+	@OPTIONS="$(OPTIONS)" $(SUDO_E) bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
 endef
 
 test: reset verify-python-path .install.ok
@@ -88,6 +89,15 @@ help:
 	@echo ""
 	@echo "Arguments controlling test runs:"
 	@echo " V=[0|1|2]            - set test verbosity level"
+	@echo " JOBS=<n>             - set number of python worker processes"
+	@echo " VPP_ARGS=<args>      - set additional vpp command line arguments"
+	@echo " OPTIONS=\"<list>\"     - space separated list of options names"
+	@echo "                      - each name represents predefined options for test cases"
+	@echo "                      - when multiple names are specified"
+	@echo "                        each test case will be called multiple times"
+	@echo "    valid names:"
+	@echo "       Default        - default options for VPP process"
+	@echo "       MultiThreaded  - run VPP process with enabled multiple worker threads"
 	@echo " DEBUG=<type>         - set VPP debugging kind"
 	@echo "    DEBUG=core        - detect coredump and load it in gdb on crash"
 	@echo "    DEBUG=gdb         - allow easy debugging by printing VPP PID "

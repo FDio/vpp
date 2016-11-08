@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
-import unittest
-
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 
 
 class TestFIB(VppTestCase):
@@ -27,4 +25,4 @@ class TestFIB(VppTestCase):
         self.assertEqual(error.find("Failed"), -1)
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

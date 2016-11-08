@@ -23,18 +23,17 @@
 
 """
 
-import unittest
 from random import choice
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 
 
 class TestIpIrb(VppTestCase):
-    """IRB Test Case"""
+    """ IRB Test Case """
 
     @classmethod
     def setUpClass(cls):
@@ -263,4 +262,4 @@ class TestIpIrb(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

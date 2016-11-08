@@ -3,6 +3,7 @@ import fnmatch
 import time
 from hook import Hook
 from collections import deque
+from log import *
 
 # Sphinx creates auto-generated documentation by importing the python source
 # files and collecting the docstrings from them. The NO_VPP_PAPI flag allows the

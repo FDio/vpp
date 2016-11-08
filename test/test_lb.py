@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import socket
 
 from scapy.layers.inet import IP, UDP
@@ -5,7 +7,7 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
-from framework import VppTestCase
+from framework import VppTestCase, VppTestProgram
 from util import ppp
 
 """ TestLB is a subclass of  VPPTestCase classes.
@@ -218,3 +220,6 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
             self.vapi.cli("lb vip 2001::/16 encap gre6 del")
+
+if __name__ == '__main__':
+    VppTestProgram()
