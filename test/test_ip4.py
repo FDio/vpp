@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 import random
 import socket
-import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
 from scapy.packet import Raw
@@ -466,4 +465,4 @@ class TestIPv4FibCrud(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

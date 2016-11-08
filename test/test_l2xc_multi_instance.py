@@ -48,14 +48,13 @@
     - no packet received on all of l2-pg interfaces (no cross-connect created)
 """
 
-import unittest
 import random
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from util import Host
 
 
@@ -349,4 +348,4 @@ class TestL2xcMultiInst(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

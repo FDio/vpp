@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-import unittest
 import socket
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from vpp_ip_route import IpRoute, RoutePath, MplsRoute, MplsIpBind
 
 from scapy.packet import Raw
@@ -757,4 +756,4 @@ class TestMPLS(VppTestCase):
         route_34_eos.remove_vpp_config()
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

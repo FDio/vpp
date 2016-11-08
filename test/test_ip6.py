@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
-import unittest
 import socket
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 
 from scapy.packet import Raw
@@ -209,4 +208,4 @@ class TestIPv6(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

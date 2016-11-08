@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-import unittest
-
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from util import Host, ppp
 
 
@@ -190,4 +188,4 @@ class TestSpan(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

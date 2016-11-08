@@ -252,10 +252,10 @@ test-debug: bootstrap
 	$(call test,vpp_lite,vpp_lite_debug,test)
 
 test-dpdk: test-dpdk-check bootstrap
-	$(call test,vpp,vpp,test,SUDO=1)
+	$(call test,vpp,vpp,test,VPP_DPDK=1)
 
 test-dpdk-debug: test-dpdk-check bootstrap
-	$(call test,vpp,vpp_debug,test,SUDO=1)
+	$(call test,vpp,vpp_debug,test,VPP_DPDK=1)
 
 test-help:
 	@make -C test help
@@ -282,10 +282,10 @@ retest-debug:
 	$(call test,vpp_lite,vpp_lite_debug,retest)
 
 retest-dpdk: test-dpdk-check
-	$(call test,vpp,vpp,retest,SUDO=1)
+	$(call test,vpp,vpp,retest,VPP_DPDK=1)
 
 retest-dpdk-debug: test-dpdk-check
-	$(call test,vpp,vpp_debug,retest,SUDO=1)
+	$(call test,vpp,vpp_debug,retest,VPP_DPDK=1)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")

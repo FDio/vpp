@@ -5,7 +5,8 @@ from vpp_interface import VppInterface
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
-    ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
+    ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, IPv6ExtHdrHopByHop, \
+    ICMPv6ND_RA, RouterAlert, Raw
 from util import ppp
 
 
@@ -45,6 +46,11 @@ class VppPGInterface(VppInterface):
         return self._input_cli
 
     @property
+    def worker(self):
+        """VPP worker index"""
+        return self._worker
+
+    @property
     def in_history_counter(self):
         """Self-incrementing counter used when renaming old pcap files"""
         v = self._in_history_counter
@@ -58,7 +64,7 @@ class VppPGInterface(VppInterface):
         self._out_history_counter += 1
         return v
 
-    def __init__(self, test, pg_index):
+    def __init__(self, test, pg_index, worker=None):
         """ Create VPP packet-generator interface """
         r = test.vapi.pg_create_interface(pg_index)
         self._sw_if_index = r.sw_if_index
@@ -77,6 +83,12 @@ class VppPGInterface(VppInterface):
         self._cap_name = "pcap%u" % self.sw_if_index
         self._input_cli = "packet-generator new pcap %s source pg%u name %s" % (
             self.in_path, self.pg_index, self.cap_name)
+        if worker is not None:
+            self._worker = worker
+        else:
+            self._worker = test.pick_worker()
+        if self.worker is not None:
+            self._input_cli += " worker %s" % self.worker
 
     def enable_capture(self):
         """ Enable capture on this packet-generator interface"""
@@ -197,13 +209,14 @@ class VppPGInterface(VppInterface):
         pg_interface.enable_capture()
         self.test.pg_start()
         self.test.logger.info(self.test.vapi.cli("show trace"))
-        arp_reply = pg_interface.get_capture()
-        if arp_reply is None or len(arp_reply) == 0:
+        replies = pg_interface.get_capture()
+        if replies is None or len(replies) == 0:
             self.test.logger.info(
                 "No ARP received on port %s" %
                 pg_interface.name)
             return
-        arp_reply = arp_reply[0]
+        arp_reply = replies[0]
+
         # Make Dot1AD packet content recognizable to scapy
         if arp_reply.type == 0x88a8:
             arp_reply.type = 0x8100

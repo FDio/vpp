@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
-import unittest
 import random
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from util import Host, ppp
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
+from logging import *
 
 
 class TestL2bd(VppTestCase):
@@ -283,4 +283,4 @@ class TestL2bd(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()
