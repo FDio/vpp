@@ -268,7 +268,6 @@ typedef struct
 
 typedef struct
 {
-  u32 *trace_buffers;
   vhost_iface_and_queue_t *rx_queues;
 } vhost_cpu_t;
 

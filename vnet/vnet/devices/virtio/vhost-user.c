@@ -42,11 +42,7 @@
 #include <vnet/devices/virtio/vhost-user.h>
 
 #define VHOST_USER_DEBUG_SOCKET 0
-#define VHOST_USER_DEBUG_VQ 0
-
-/* Set to get virtio_net_hdr in buffer pre-data
-   details will be shown in  packet trace */
-#define VHOST_USER_COPY_TX_HDR 0
+#define VHOST_DEBUG_VQ 0
 
 #if VHOST_USER_DEBUG_SOCKET == 1
 #define DBG_SOCK(args...) clib_warning(args);
@@ -54,11 +50,24 @@
 #define DBG_SOCK(args...)
 #endif
 
-#if VHOST_USER_DEBUG_VQ == 1
+#if VHOST_DEBUG_VQ == 1
 #define DBG_VQ(args...) clib_warning(args);
 #else
 #define DBG_VQ(args...)
 #endif
+
+#define foreach_virtio_trace_flags \
+  _ (SIMPLE_CHAINED, 0, "Simple descriptor chaining") \
+  _ (SINGLE_DESC,  1, "Single descriptor packet") \
+  _ (INDIRECT, 2, "Indirect descriptor") \
+  _ (MAP_ERROR, 4, "Memory mapping error")
+
+typedef enum
+{
+#define _(n,i,s) VIRTIO_TRACE_F_##n,
+  foreach_virtio_trace_flags
+#undef _
+} virtio_trace_flag_t;
 
 vlib_node_registration_t vhost_user_input_node;
 
@@ -1242,74 +1251,93 @@ typedef struct
 {
   u16 qid; /** The interface queue index (Not the virtio vring idx) */
   u16 device_index; /** The device index */
-#if VHOST_USER_COPY_TX_HDR == 1
-  virtio_net_hdr_t hdr;
-#endif
-} vhost_user_input_trace_t;
+  u32 virtio_ring_flags; /** Runtime queue flags  **/
+  u16 first_desc_len; /** Length of the first data descriptor **/
+  virtio_net_hdr_mrg_rxbuf_t hdr; /** Virtio header **/
+} vhost_trace_t;
 
 static u8 *
-format_vhost_user_input_trace (u8 * s, va_list * va)
+format_vhost_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   CLIB_UNUSED (vnet_main_t * vnm) = vnet_get_main ();
   vhost_user_main_t *vum = &vhost_user_main;
-  vhost_user_input_trace_t *t = va_arg (*va, vhost_user_input_trace_t *);
+  vhost_trace_t *t = va_arg (*va, vhost_trace_t *);
   vhost_user_intf_t *vui = vec_elt_at_index (vum->vhost_user_interfaces,
 					     t->device_index);
 
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, vui->sw_if_index);
 
-#if VHOST_USER_COPY_TX_HDR == 1
   uword indent = format_get_indent (s);
-#endif
 
-  s = format (s, "%U queue %d",
+  s = format (s, "%U %U queue %d\n", format_white_space, indent,
 	      format_vnet_sw_interface_name, vnm, sw, t->qid);
 
-#if VHOST_USER_COPY_TX_HDR == 1
-  s = format (s, "\n%Uvirtio_net_hdr flags 0x%02x gso_type %u hdr_len %u",
+  s = format (s, "%U virtio flags:\n", format_white_space, indent);
+#define _(n,i,st) \
+	  if (t->virtio_ring_flags & (1 << VIRTIO_TRACE_F_##n)) \
+	    s = format (s, "%U  %s %s\n", format_white_space, indent, #n, st);
+  foreach_virtio_trace_flags
+#undef _
+    s = format (s, "%U virtio_net_hdr first_desc_len %u\n",
+		format_white_space, indent, t->first_desc_len);
+
+  s = format (s, "%U   flags 0x%02x gso_type %u\n",
 	      format_white_space, indent,
-	      t->hdr.flags, t->hdr.gso_type, t->hdr.hdr_len);
-#endif
+	      t->hdr.hdr.flags, t->hdr.hdr.gso_type);
+
+  if (vui->virtio_net_hdr_sz == 12)
+    s = format (s, "%U   num_buff %u",
+		format_white_space, indent, t->hdr.num_buffers);
 
   return s;
 }
 
 void
-vhost_user_rx_trace (vlib_main_t * vm,
-		     vlib_node_runtime_t * node,
-		     vhost_user_intf_t * vui, u16 qid)
+vhost_user_rx_trace (vhost_trace_t * t,
+		     vhost_user_intf_t * vui, u16 qid,
+		     vlib_buffer_t * b, vhost_user_vring_t * txvq)
 {
-  u32 *b, n_left;
   vhost_user_main_t *vum = &vhost_user_main;
+  u32 qsz_mask = txvq->qsz - 1;
+  u32 last_avail_idx = txvq->last_avail_idx;
+  u32 desc_current = txvq->avail->ring[last_avail_idx & qsz_mask];
+  vring_desc_t *hdr_desc = 0;
+  virtio_net_hdr_mrg_rxbuf_t *hdr;
+  u32 hint = 0;
 
-  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  u32 cpu_index = os_get_cpu_number ();
+  memset (t, 0, sizeof (*t));
+  t->device_index = vui - vum->vhost_user_interfaces;
+  t->qid = qid;
 
-  vhost_cpu_t *vhc = vec_elt_at_index (vum->cpus, cpu_index);
-  n_left = vec_len (vhc->trace_buffers);
-  b = vhc->trace_buffers;
-
-  while (n_left >= 1)
+  hdr_desc = &txvq->desc[desc_current];
+  if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      vhost_user_input_trace_t *t0;
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
+      //Header is the first here
+      hdr_desc = map_guest_mem (vui, txvq->desc[desc_current].addr, &hint);
+    }
+  if (txvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT)
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SIMPLE_CHAINED;
+    }
+  if (!(txvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT) &&
+      !(txvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT))
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SINGLE_DESC;
+    }
 
-      bi0 = b[0];
-      n_left -= 1;
+  t->first_desc_len = hdr_desc ? hdr_desc->len : 0;
 
-      b0 = vlib_get_buffer (vm, bi0);
-      vlib_trace_buffer (vm, node, next_index, b0, /* follow_chain */ 0);
-      t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
-      t0->qid = qid;
-      t0->device_index = vui - vum->vhost_user_interfaces;
-#if VHOST_USER_COPY_TX_HDR == 1
-      clib_memcpy (&t0->hdr, b0->pre_data, sizeof (virtio_net_hdr_t));
-#endif
-
-      b += 1;
+  if (!hdr_desc || !(hdr = map_guest_mem (vui, hdr_desc->addr, &hint)))
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_MAP_ERROR;
+    }
+  else
+    {
+      u32 len = vui->virtio_net_hdr_sz;
+      memcpy (&t->hdr, hdr, len > hdr_desc->len ? hdr_desc->len : len);
     }
 }
 
@@ -1342,7 +1370,6 @@ vhost_user_if_input (vlib_main_t * vm,
   uword n_trace = vlib_get_trace_count (vm, node);
   u16 qsz_mask;
   u32 cpu_index, rx_len, drops, flush;
-  vhost_cpu_t *vhc;
   f64 now = vlib_time_now (vm);
   u32 map_guest_hint_desc = 0;
   u32 map_guest_hint_indirect = 0;
@@ -1391,7 +1418,6 @@ vhost_user_if_input (vlib_main_t * vm,
 
   qsz_mask = txvq->qsz - 1;
   cpu_index = os_get_cpu_number ();
-  vhc = vec_elt_at_index (vum->cpus, cpu_index);
   drops = 0;
   flush = 0;
 
@@ -1481,6 +1507,16 @@ vhost_user_if_input (vlib_main_t * vm,
 	  bi_head = bi_current = vum->rx_buffers[cpu_index][--rx_len];
 	  b_head = b_current = vlib_get_buffer (vm, bi_head);
 	  vlib_buffer_chain_init (b_head);
+	  if (PREDICT_FALSE (n_trace))
+	    {
+	      vlib_trace_buffer (vm, node, next_index, b_head,
+				 /* follow_chain */ 0);
+	      vhost_trace_t *t0 =
+		vlib_add_trace (vm, node, b_head, sizeof (t0[0]));
+	      vhost_user_rx_trace (t0, vui, qid, b_head, txvq);
+	      n_trace--;
+	      vlib_set_trace_count (vm, node, n_trace);
+	    }
 
 	  uword offset;
 	  if (PREDICT_TRUE (vui->is_any_layout) ||
@@ -1530,11 +1566,6 @@ vhost_user_if_input (vlib_main_t * vm,
 		  CLIB_PREFETCH (&desc_table[desc_table[desc_index].next],
 				 sizeof (vring_desc_t), STORE);
 		}
-
-#if VHOST_USER_COPY_TX_HDR == 1
-	      if (PREDICT_TRUE (offset))
-		clib_memcpy (b->pre_data, buffer_addr, sizeof (virtio_net_hdr_t));	/* 12 byte hdr is not used on tx */
-#endif
 
 	      if (desc_table[desc_index].len > offset)
 		{
@@ -1586,9 +1617,6 @@ vhost_user_if_input (vlib_main_t * vm,
 	  vnet_buffer (b_head)->sw_if_index[VLIB_RX] = vui->sw_if_index;
 	  vnet_buffer (b_head)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  b_head->error = node->errors[error];
-
-	  if (PREDICT_FALSE (n_trace > n_rx_packets))
-	    vec_add1 (vhc->trace_buffers, bi_head);
 
 	  if (PREDICT_FALSE (error))
 	    {
@@ -1647,13 +1675,6 @@ vhost_user_if_input (vlib_main_t * vm,
 	vhost_user_send_call (vm, txvq);
     }
 
-  if (PREDICT_FALSE (vec_len (vhc->trace_buffers) > 0))
-    {
-      vhost_user_rx_trace (vm, node, vui, qid);
-      vlib_set_trace_count (vm, node, n_trace - vec_len (vhc->trace_buffers));
-      vec_reset_length (vhc->trace_buffers);
-    }
-
   if (PREDICT_FALSE (drops))
     {
       vlib_increment_simple_counter
@@ -1703,7 +1724,7 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .state = VLIB_NODE_STATE_DISABLED,
 
   .format_buffer = format_ethernet_header_with_length,
-  .format_trace = format_vhost_user_input_trace,
+  .format_trace = format_vhost_trace,
 
   .n_errors = VHOST_USER_INPUT_FUNC_N_ERROR,
   .error_strings = vhost_user_input_func_error_strings,
@@ -1714,6 +1735,43 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (vhost_user_input_node, vhost_user_input)
 /* *INDENT-ON* */
+
+
+void
+vhost_user_tx_trace (vhost_trace_t * t,
+		     vhost_user_intf_t * vui, u16 qid,
+		     vlib_buffer_t * b, vhost_user_vring_t * rxvq)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+  u32 qsz_mask = rxvq->qsz - 1;
+  u32 last_avail_idx = rxvq->last_avail_idx;
+  u32 desc_current = rxvq->avail->ring[last_avail_idx & qsz_mask];
+  vring_desc_t *hdr_desc = 0;
+  u32 hint = 0;
+
+  memset (t, 0, sizeof (*t));
+  t->device_index = vui - vum->vhost_user_interfaces;
+  t->qid = qid;
+
+  hdr_desc = &rxvq->desc[desc_current];
+  if (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT)
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_INDIRECT;
+      //Header is the first here
+      hdr_desc = map_guest_mem (vui, rxvq->desc[desc_current].addr, &hint);
+    }
+  if (rxvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT)
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SIMPLE_CHAINED;
+    }
+  if (!(rxvq->desc[desc_current].flags & VIRTQ_DESC_F_NEXT) &&
+      !(rxvq->desc[desc_current].flags & VIRTQ_DESC_F_INDIRECT))
+    {
+      t->virtio_ring_flags |= 1 << VIRTIO_TRACE_F_SINGLE_DESC;
+    }
+
+  t->first_desc_len = hdr_desc ? hdr_desc->len : 0;
+}
 
 static uword
 vhost_user_intfc_tx (vlib_main_t * vm,
@@ -1735,6 +1793,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   u32 map_guest_hint_desc = 0;
   u32 map_guest_hint_indirect = 0;
   u32 *map_guest_hint_p = &map_guest_hint_desc;
+  vhost_trace_t *current_trace = 0;
 
   if (PREDICT_FALSE (!vui->is_up || !vui->admin_up))
     {
@@ -1766,6 +1825,13 @@ vhost_user_intfc_tx (vlib_main_t * vm,
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       buffers++;
+
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  current_trace = vlib_add_trace (vm, node, b0,
+					  sizeof (*current_trace));
+	  vhost_user_tx_trace (current_trace, vui, qid / 2, b0, rxvq);
+	}
 
       if (PREDICT_FALSE (rxvq->last_avail_idx == rxvq->avail->idx))
 	{
@@ -1959,6 +2025,9 @@ vhost_user_intfc_tx (vlib_main_t * vm,
       rxvq->last_avail_idx++;
       rxvq->last_used_idx++;
 
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	current_trace->hdr = *hdr;
+
       n_left--;			//At the end for error counting when 'goto done' is invoked
     }
 
@@ -2022,6 +2091,7 @@ VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
   .name_renumber = vhost_user_name_renumber,
   .admin_up_down_function = vhost_user_interface_admin_up_down,
   .no_flatten_output_chains = 1,
+  .format_tx_trace = format_vhost_trace,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (vhost_user_dev_class,
