@@ -40,13 +40,15 @@ vlib_put_handoff_queue_elt (vlib_frame_queue_elt_t * hf)
 }
 
 static inline vlib_frame_queue_elt_t *
-vlib_get_handoff_queue_elt (u32 vlib_worker_index)
+vlib_get_handoff_queue_elt (u32 worker_handoff_index, u32 vlib_worker_index)
 {
   vlib_frame_queue_t *fq;
   vlib_frame_queue_elt_t *elt;
+  vlib_thread_main_t *tm = vlib_get_thread_main();
+  vlib_worker_handoff_queue_t *whq = vec_elt_at_index (tm->worker_handoff_queues, worker_handoff_index);
   u64 new_tail;
 
-  fq = vlib_frame_queues[vlib_worker_index];
+  fq = whq->vlib_frame_queues[vlib_worker_index];
   ASSERT (fq);
 
   new_tail = __sync_add_and_fetch (&fq->tail, 1);
@@ -68,18 +70,21 @@ vlib_get_handoff_queue_elt (u32 vlib_worker_index)
 }
 
 static inline vlib_frame_queue_t *
-is_vlib_handoff_queue_congested (u32 vlib_worker_index,
+is_vlib_handoff_queue_congested (u32 worker_handoff_index,
+				 u32 vlib_worker_index,
 				 u32 queue_hi_thresh,
 				 vlib_frame_queue_t **
 				 handoff_queue_by_worker_index)
 {
   vlib_frame_queue_t *fq;
+  vlib_thread_main_t *tm = vlib_get_thread_main();
+  vlib_worker_handoff_queue_t *whq = vec_elt_at_index (tm->worker_handoff_queues, worker_handoff_index);
 
   fq = handoff_queue_by_worker_index[vlib_worker_index];
   if (fq != (vlib_frame_queue_t *) (~0))
     return fq;
 
-  fq = vlib_frame_queues[vlib_worker_index];
+  fq = whq->vlib_frame_queues[vlib_worker_index];
   ASSERT (fq);
 
   if (PREDICT_FALSE (fq->tail >= (fq->head_hint + queue_hi_thresh)))
@@ -96,7 +101,8 @@ is_vlib_handoff_queue_congested (u32 vlib_worker_index,
 }
 
 static inline vlib_frame_queue_elt_t *
-dpdk_get_handoff_queue_elt (u32 vlib_worker_index,
+dpdk_get_handoff_queue_elt (u32 worker_handoff_index,
+			    u32 vlib_worker_index,
 			    vlib_frame_queue_elt_t **
 			    handoff_queue_elt_by_worker_index)
 {
@@ -105,7 +111,7 @@ dpdk_get_handoff_queue_elt (u32 vlib_worker_index,
   if (handoff_queue_elt_by_worker_index[vlib_worker_index])
     return handoff_queue_elt_by_worker_index[vlib_worker_index];
 
-  elt = vlib_get_handoff_queue_elt (vlib_worker_index);
+  elt = vlib_get_handoff_queue_elt (worker_handoff_index, vlib_worker_index);
 
   handoff_queue_elt_by_worker_index[vlib_worker_index] = elt;
 

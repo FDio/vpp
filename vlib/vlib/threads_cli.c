@@ -149,6 +149,7 @@ VLIB_CLI_COMMAND (show_threads_command, static) = {
 };
 /* *INDENT-ON* */
 
+#if 0
 /*
  * Trigger threads to grab frame queue trace data
  */
@@ -465,6 +466,7 @@ VLIB_CLI_COMMAND (cmd_test_frame_queue_threshold,static) = {
 };
 /* *INDENT-ON* */
 
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -256,6 +256,7 @@ VLIB_CLI_COMMAND (cmd_test_dpdk_buffer,static) = {
 };
 /* *INDENT-ON* */
 
+#if 0
 static void
 show_dpdk_device_stats (vlib_main_t * vm, dpdk_device_t * xd)
 {
@@ -668,6 +669,7 @@ VLIB_CLI_COMMAND (cmd_set_efd,static) = {
     .function = set_efd,
 };
 /* *INDENT-ON* */
+#endif
 
 static clib_error_t *
 set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,

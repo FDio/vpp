@@ -34,6 +34,9 @@ typedef struct
 
   per_inteface_handoff_data_t *if_data;
 
+  /* Worker handoff index */
+  u32 worker_handoff_index;
+
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -147,7 +150,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
 	  if (hf)
 	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
 
-	  hf = dpdk_get_handoff_queue_elt (next_worker_index,
+	  hf = dpdk_get_handoff_queue_elt (hm->worker_handoff_index, next_worker_index,
 					   handoff_queue_elt_by_worker_index);
 
 	  n_left_to_next_worker = VLIB_FRAME_SIZE - hf->n_vectors;
@@ -556,8 +559,7 @@ handoff_init (vlib_main_t * vm)
   hm->vlib_main = vm;
   hm->vnet_main = &vnet_main;
 
-  ASSERT (tm->handoff_dispatch_node_index == ~0);
-  tm->handoff_dispatch_node_index = handoff_dispatch_node.index;
+  hm->worker_handoff_index = vlib_worker_handoff_queue_init (handoff_dispatch_node.index, 0);
 
   return 0;
 }

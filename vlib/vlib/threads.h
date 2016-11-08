@@ -141,7 +141,10 @@ typedef struct
 }
 vlib_frame_queue_t;
 
-vlib_frame_queue_t **vlib_frame_queues;
+typedef struct {
+  u32 node_index;
+  vlib_frame_queue_t **vlib_frame_queues;
+} vlib_worker_handoff_queue_t;
 
 /* Called early, in thread 0's context */
 clib_error_t *vlib_thread_init (vlib_main_t * vm);
@@ -170,6 +173,7 @@ void vlib_create_worker_threads (vlib_main_t * vm, int n,
 				 void (*thread_function) (void *));
 
 void vlib_worker_thread_init (vlib_worker_thread_t * w);
+u32 vlib_worker_handoff_queue_init (u32 node_index, u32 frame_queue_nelts);
 
 /* Check for a barrier sync request every 30ms */
 #define BARRIER_SYNC_DELAY (0.030000)
@@ -322,7 +326,7 @@ typedef struct
   vlib_efd_t efd;
 
   /* handoff node index */
-  u32 handoff_dispatch_node_index;
+  vlib_worker_handoff_queue_t *worker_handoff_queues;
 
   /* for frame queue tracing */
   frame_queue_trace_t *frame_queue_traces;
