@@ -46,6 +46,25 @@ extern vlib_node_registration_t ip6_classify_node;
 
 #define U32X4_ALIGNED(p) PREDICT_TRUE((((intptr_t)p) & 0xf) == 0)
 
+/*
+ * Classify table option to process packets
+ *  CLASSIFY_FLAG_USE_CURR_DATA:
+ *   - classify packets starting from VPP node’s current data pointer
+ */
+#define CLASSIFY_FLAG_USE_CURR_DATA              1
+
+/*
+ * Classify session action
+ *  CLASSIFY_ACTION_SET_IP4_FIB_INDEX:
+ *   - Classified IP packets will be looked up
+ *     from the specified ipv4 fib table
+ *  CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
+ *   - Classified IP packets will be looked up
+ *     from the specified ipv6 fib table
+ */
+#define CLASSIFY_ACTION_SET_IP4_FIB_INDEX       1
+#define CLASSIFY_ACTION_SET_IP6_FIB_INDEX       2
+
 struct _vnet_classify_main;
 typedef struct _vnet_classify_main vnet_classify_main_t;
 
@@ -71,8 +90,11 @@ typedef CLIB_PACKED(struct _vnet_classify_entry {
   };
 
   /* Really only need 1 bit */
-  u32 flags;
+  u8 flags;
 #define VNET_CLASSIFY_ENTRY_FREE	(1<<0)
+
+  u8 action;
+  u16 metadata;
 
   /* Hit counter, last heard time */
   union {
@@ -131,6 +153,9 @@ typedef struct {
   u32 log2_nbuckets;
   int entries_per_page;
   u32 active_elements;
+  u32 current_data_flag;
+  int current_data_offset;
+  u32 data_offset;
   /* Index of next table to try */
   u32 next_table_index;
   
@@ -449,6 +474,8 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
                                    u32 hit_next_index,
                                    u32 opaque_index, 
                                    i32 advance,
+                                   u8 action,
+                                   u32 metadata,
                                    int is_add);
 
 int vnet_classify_add_del_table (vnet_classify_main_t * cm,
@@ -460,6 +487,8 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
                                  u32 next_table_index,
                                  u32 miss_next_index,
                                  u32 * table_index,
+                                 u8 current_data_flag,
+                                 i16 current_data_offset,
                                  int is_add);
 
 unformat_function_t unformat_ip4_mask;
