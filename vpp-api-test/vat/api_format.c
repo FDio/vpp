@@ -8753,6 +8753,8 @@ api_classify_add_del_table (vat_main_t * vam)
   u32 memory_size = 32 << 20;
   u8 *mask = 0;
   f64 timeout;
+  u32 current_data_flag = 0;
+  int current_data_offset = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -8781,6 +8783,10 @@ api_classify_add_del_table (vat_main_t * vam)
 	;
       else if (unformat (i, "acl-miss-next %U", unformat_acl_next_index,
 			 &miss_next_index))
+	;
+      else if (unformat (i, "current-data-flag %d", &current_data_flag))
+	;
+      else if (unformat (i, "current-data-offset %d", &current_data_offset))
 	;
       else
 	break;
@@ -8820,6 +8826,8 @@ api_classify_add_del_table (vat_main_t * vam)
   mp->match_n_vectors = ntohl (match);
   mp->next_table_index = ntohl (next_table_index);
   mp->miss_next_index = ntohl (miss_next_index);
+  mp->current_data_flag = ntohl (current_data_flag);
+  mp->current_data_offset = ntohl (current_data_offset);
   clib_memcpy (mp->mask, mask, vec_len (mask));
 
   vec_free (mask);
@@ -9279,6 +9287,8 @@ api_classify_add_del_session (vat_main_t * vam)
   f64 timeout;
   u32 skip_n_vectors = 0;
   u32 match_n_vectors = 0;
+  u32 action = 0;
+  u32 metadata = 0;
 
   /*
    * Warning: you have to supply skip_n and match_n
@@ -9316,6 +9326,10 @@ api_classify_add_del_session (vat_main_t * vam)
 	;
       else if (unformat (i, "table-index %d", &table_index))
 	;
+      else if (unformat (i, "action %d", &action))
+	;
+      else if (unformat (i, "metadata %d", &metadata))
+	;
       else
 	break;
     }
@@ -9339,6 +9353,8 @@ api_classify_add_del_session (vat_main_t * vam)
   mp->hit_next_index = ntohl (hit_next_index);
   mp->opaque_index = ntohl (opaque_index);
   mp->advance = ntohl (advance);
+  mp->action = ntohl (action);
+  mp->metadata = ntohl (metadata);
   clib_memcpy (mp->match, match, vec_len (match));
   vec_free (match);
 
@@ -16324,12 +16340,13 @@ _(sr_multicast_map_add_del,                                             \
   "address [ip6 multicast address] sr-policy [policy name] [del]")	\
 _(classify_add_del_table,                                               \
   "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
-  "[del] mask <mask-value>\n"						\
-  " [l2-miss-next | miss-next | acl-miss-next] <name|nn>") 		\
+  " [del] mask <mask-value>\n"                                          \
+  " [l2-miss-next | miss-next | acl-miss-next] <name|nn>\n" 		\
+  " [current-data-flag <n>] [current-data-offset <nn>] [table <nn>]")   \
 _(classify_add_del_session,                                             \
   "[hit-next|l2-hit-next|acl-hit-next|policer-hit-next] <name|nn>\n"    \
   "  table-index <nn> skip_n <nn> match_n <nn> match [hex] [l2]\n"      \
-  "  [l3 [ip4|ip6]]")                                   		\
+  "  [l3 [ip4|ip6]] [action <n>] [metadata <nn>] [del]")                \
 _(classify_set_interface_ip_table,                                      \
   "<intfc> | sw_if_index <nn> table <nn>")				\
 _(classify_set_interface_l2_tables,                                     \
