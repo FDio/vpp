@@ -346,9 +346,7 @@ show_efd (vlib_main_t * vm,
   else if (unformat (input, "worker"))
     {
       vlib_thread_main_t *tm = vlib_get_thread_main ();
-      vlib_frame_queue_t *fq;
       vlib_thread_registration_t *tr;
-      int thread_id;
       u32 num_workers = 0;
       u32 first_worker_index = 0;
       uword *p;
@@ -364,27 +362,9 @@ show_efd (vlib_main_t * vm,
 
       vlib_cli_output (vm,
 		       "num_workers               %d\n"
-		       "first_worker_index        %d\n"
-		       "vlib_frame_queues[%d]:\n",
-		       num_workers, first_worker_index, tm->n_vlib_mains);
+		       "first_worker_index        %d\n",
+		       num_workers, first_worker_index);
 
-      for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
-	{
-	  fq = vlib_frame_queues[thread_id];
-	  if (fq)
-	    {
-	      vlib_cli_output (vm,
-			       "%2d: frames_queued         %u\n"
-			       "    frames_queued_hint    %u\n"
-			       "    enqueue_full_events   %u\n"
-			       "    enqueue_efd_discards  %u\n",
-			       thread_id,
-			       (fq->tail - fq->head),
-			       (fq->tail - fq->head_hint),
-			       fq->enqueue_full_events,
-			       fq->enqueue_efd_discards);
-	    }
-	}
     }
   else if (unformat (input, "help"))
     {
@@ -413,9 +393,6 @@ clear_efd (vlib_main_t * vm,
 {
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_frame_queue_t *fq;
-  int thread_id;
 
     /* *INDENT-OFF* */
     vec_foreach (xd, dm->devices)
@@ -431,16 +408,6 @@ clear_efd (vlib_main_t * vm,
         xd->efd_agent.total_packet_cnt = 0;
       }
     /* *INDENT-ON* */
-
-  for (thread_id = 0; thread_id < tm->n_vlib_mains; thread_id++)
-    {
-      fq = vlib_frame_queues[thread_id];
-      if (fq)
-	{
-	  fq->enqueue_full_events = 0;
-	  fq->enqueue_efd_discards = 0;
-	}
-    }
 
   return 0;
 }

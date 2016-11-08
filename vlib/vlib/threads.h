@@ -141,7 +141,15 @@ typedef struct
 }
 vlib_frame_queue_t;
 
-vlib_frame_queue_t **vlib_frame_queues;
+typedef struct
+{
+  u32 node_index;
+  vlib_frame_queue_t **vlib_frame_queues;
+
+  /* for frame queue tracing */
+  frame_queue_trace_t *frame_queue_traces;
+  frame_queue_nelt_counter_t *frame_queue_histogram;
+} vlib_frame_queue_main_t;
 
 /* Called early, in thread 0's context */
 clib_error_t *vlib_thread_init (vlib_main_t * vm);
@@ -170,6 +178,7 @@ void vlib_create_worker_threads (vlib_main_t * vm, int n,
 				 void (*thread_function) (void *));
 
 void vlib_worker_thread_init (vlib_worker_thread_t * w);
+u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 
 /* Check for a barrier sync request every 30ms */
 #define BARRIER_SYNC_DELAY (0.030000)
@@ -321,12 +330,8 @@ typedef struct
 
   vlib_efd_t efd;
 
-  /* handoff node index */
-  u32 handoff_dispatch_node_index;
-
-  /* for frame queue tracing */
-  frame_queue_trace_t *frame_queue_traces;
-  frame_queue_nelt_counter_t *frame_queue_histogram;
+  /* Worker handoff queues */
+  vlib_frame_queue_main_t *frame_queue_mains;
 
   /* worker thread initialization barrier */
   volatile u32 worker_thread_release;
@@ -386,6 +391,94 @@ vlib_get_worker_vlib_main (u32 worker_index)
   vm = vlib_mains[worker_index + 1];
   ASSERT (vm);
   return vm;
+}
+
+static inline void
+vlib_put_frame_queue_elt (vlib_frame_queue_elt_t * hf)
+{
+  CLIB_MEMORY_BARRIER ();
+  hf->valid = 1;
+}
+
+static inline vlib_frame_queue_elt_t *
+vlib_get_frame_queue_elt (u32 frame_queue_index, u32 index)
+{
+  vlib_frame_queue_t *fq;
+  vlib_frame_queue_elt_t *elt;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  vlib_frame_queue_main_t *fqm =
+    vec_elt_at_index (tm->frame_queue_mains, frame_queue_index);
+  u64 new_tail;
+
+  fq = fqm->vlib_frame_queues[index];
+  ASSERT (fq);
+
+  new_tail = __sync_add_and_fetch (&fq->tail, 1);
+
+  /* Wait until a ring slot is available */
+  while (new_tail >= fq->head_hint + fq->nelts)
+    vlib_worker_thread_barrier_check ();
+
+  elt = fq->elts + (new_tail & (fq->nelts - 1));
+
+  /* this would be very bad... */
+  while (elt->valid)
+    ;
+
+  elt->msg_type = VLIB_FRAME_QUEUE_ELT_DISPATCH_FRAME;
+  elt->last_n_vectors = elt->n_vectors = 0;
+
+  return elt;
+}
+
+static inline vlib_frame_queue_t *
+is_vlib_frame_queue_congested (u32 frame_queue_index,
+			       u32 index,
+			       u32 queue_hi_thresh,
+			       vlib_frame_queue_t **
+			       handoff_queue_by_worker_index)
+{
+  vlib_frame_queue_t *fq;
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  vlib_frame_queue_main_t *fqm =
+    vec_elt_at_index (tm->frame_queue_mains, frame_queue_index);
+
+  fq = handoff_queue_by_worker_index[index];
+  if (fq != (vlib_frame_queue_t *) (~0))
+    return fq;
+
+  fq = fqm->vlib_frame_queues[index];
+  ASSERT (fq);
+
+  if (PREDICT_FALSE (fq->tail >= (fq->head_hint + queue_hi_thresh)))
+    {
+      /* a valid entry in the array will indicate the queue has reached
+       * the specified threshold and is congested
+       */
+      handoff_queue_by_worker_index[index] = fq;
+      fq->enqueue_full_events++;
+      return fq;
+    }
+
+  return NULL;
+}
+
+static inline vlib_frame_queue_elt_t *
+vlib_get_worker_handoff_queue_elt (u32 frame_queue_index,
+				   u32 vlib_worker_index,
+				   vlib_frame_queue_elt_t **
+				   handoff_queue_elt_by_worker_index)
+{
+  vlib_frame_queue_elt_t *elt;
+
+  if (handoff_queue_elt_by_worker_index[vlib_worker_index])
+    return handoff_queue_elt_by_worker_index[vlib_worker_index];
+
+  elt = vlib_get_frame_queue_elt (frame_queue_index, vlib_worker_index);
+
+  handoff_queue_elt_by_worker_index[vlib_worker_index] = elt;
+
+  return elt;
 }
 
 #endif /* included_vlib_threads_h */
