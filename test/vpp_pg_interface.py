@@ -1,4 +1,5 @@
 import os
+import time
 from logging import error
 from scapy.utils import wrpcap, rdpcap
 from vpp_interface import VppInterface
@@ -39,11 +40,27 @@ class VppPGInterface(VppInterface):
         """CLI string to load the injected packets"""
         return self._input_cli
 
+    @property
+    def in_history_counter(self):
+        """Self-incrementing counter used when renaming old pcap files"""
+        v = self._in_history_counter
+        self._in_history_counter += 1
+        return v
+
+    @property
+    def out_history_counter(self):
+        """Self-incrementing counter used when renaming old pcap files"""
+        v = self._out_history_counter
+        self._out_history_counter += 1
+        return v
+
     def post_init_setup(self):
         """ Perform post-init setup for super class and add our own setup """
         super(VppPGInterface, self).post_init_setup()
-        self._out_path = self.test.tempdir + "/pg%u_out.pcap" % self.sw_if_index
-        self._in_path = self.test.tempdir + "/pg%u_in.pcap" % self.sw_if_index
+        self._out_file = "pg%u_out.pcap" % self.sw_if_index
+        self._out_path = self.test.tempdir + "/" + self._out_file
+        self._in_file = "pg%u_in.pcap" % self.sw_if_index
+        self._in_path = self.test.tempdir + "/" + self._in_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
             self.pg_index, self.out_path)
         self._cap_name = "pcap%u" % self.sw_if_index
@@ -52,6 +69,8 @@ class VppPGInterface(VppInterface):
 
     def __init__(self, test, pg_index):
         """ Create VPP packet-generator interface """
+        self._in_history_counter = 0
+        self._out_history_counter = 0
         self._pg_index = pg_index
         self._test = test
         r = self.test.vapi.pg_create_interface(self.pg_index)
@@ -61,7 +80,14 @@ class VppPGInterface(VppInterface):
     def enable_capture(self):
         """ Enable capture on this packet-generator interface"""
         try:
-            os.unlink(self.out_path)
+            if os.path.isfile(self.out_path):
+                os.rename(self.out_path,
+                          "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %
+                          (self.test.tempdir,
+                           time.time(),
+                           self.name,
+                           self.out_history_counter,
+                           self._out_file))
         except:
             pass
         # FIXME this should be an API, but no such exists atm
@@ -75,7 +101,14 @@ class VppPGInterface(VppInterface):
 
         """
         try:
-            os.remove(self.in_path)
+            if os.path.isfile(self.in_path):
+                os.rename(self.in_path,
+                          "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %
+                          (self.test.tempdir,
+                           time.time(),
+                           self.name,
+                           self.in_history_counter,
+                           self._in_file))
         except:
             pass
         wrpcap(self.in_path, pkts)

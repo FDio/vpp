@@ -6,11 +6,11 @@ ifndef VPP_PYTHON_PREFIX
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
+PYTHON_DEPENDS=scapy pexpect
 
 test: wipe verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install scapy"
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pexpect"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/vpp-api/python && python setup.py install"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
 
@@ -19,13 +19,13 @@ retest: wipe verify-python-path
 
 .PHONY: wipe doc
 
-wipe: verify-python-path
+wipe:
 	@rm -f /dev/shm/vpp-unittest-*
 	@rm -rf /tmp/vpp-unittest-*
 
 doc: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install sphinx"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) sphinx"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
 wipe-doc:
