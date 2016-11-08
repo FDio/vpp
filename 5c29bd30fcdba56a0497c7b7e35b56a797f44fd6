@@ -69,6 +69,30 @@
       "revId": "5c29bd30fcdba56a0497c7b7e35b56a797f44fd6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_840c0a96",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4947,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-08T17:02:57Z",
+      "side": 1,
+      "message": "I don\u0027t know if HC or others use that field offhand. I was suggesting that we target removal in the next release after 17.01 for the same reason you suggest, but to actively plan on removing the cruft.\n\nI guess we could/should open a ticket at least against HC saying it will be removed sometime in the future; then they could verify whether it\u0027s used or not and if not we could bring the removal forward.",
+      "parentUuid": "9a437d4f_c41212b4",
+      "range": {
+        "startLine": 4946,
+        "startChar": 0,
+        "endLine": 4947,
+        "endChar": 60
+      },
+      "revId": "5c29bd30fcdba56a0497c7b7e35b56a797f44fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
