@@ -34,12 +34,16 @@ typedef struct
 
   per_inteface_handoff_data_t *if_data;
 
+  /* Worker handoff index */
+  u32 frame_queue_index;
+
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 } handoff_main_t;
 
 handoff_main_t handoff_main;
+vlib_node_registration_t handoff_dispatch_node;
 
 typedef struct
 {
@@ -147,8 +151,9 @@ worker_handoff_node_fn (vlib_main_t * vm,
 	  if (hf)
 	    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
 
-	  hf = dpdk_get_handoff_queue_elt (next_worker_index,
-					   handoff_queue_elt_by_worker_index);
+	  hf = vlib_get_worker_handoff_queue_elt (hm->frame_queue_index,
+						  next_worker_index,
+						  handoff_queue_elt_by_worker_index);
 
 	  n_left_to_next_worker = VLIB_FRAME_SIZE - hf->n_vectors;
 	  to_next_worker = &hf->buffer_index[hf->n_vectors];
@@ -163,7 +168,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
       if (n_left_to_next_worker == 0)
 	{
 	  hf->n_vectors = VLIB_FRAME_SIZE;
-	  vlib_put_handoff_queue_elt (hf);
+	  vlib_put_frame_queue_elt (hf);
 	  current_worker_index = ~0;
 	  handoff_queue_elt_by_worker_index[next_worker_index] = 0;
 	  hf = 0;
@@ -196,7 +201,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
 	   */
 	  if (1 || hf->n_vectors == hf->last_n_vectors)
 	    {
-	      vlib_put_handoff_queue_elt (hf);
+	      vlib_put_frame_queue_elt (hf);
 	      handoff_queue_elt_by_worker_index[i] = 0;
 	    }
 	  else
@@ -246,6 +251,10 @@ interface_handoff_enable_disable (vlib_main_t * vm, u32 sw_if_index,
 
   if (clib_bitmap_last_set (bitmap) >= hm->num_workers)
     return VNET_API_ERROR_INVALID_WORKER;
+
+  if (hm->frame_queue_index == ~0)
+    hm->frame_queue_index =
+      vlib_frame_queue_main_init (handoff_dispatch_node.index, 0);
 
   vec_validate (hm->if_data, sw_if_index);
   d = vec_elt_at_index (hm->if_data, sw_if_index);
@@ -355,9 +364,6 @@ format_handoff_dispatch_trace (u8 * s, va_list * args)
 	      t->sw_if_index, t->next_index, t->buffer_index);
   return s;
 }
-
-
-vlib_node_registration_t handoff_dispatch_node;
 
 #define foreach_handoff_dispatch_error \
 _(EXAMPLE, "example packets")
@@ -556,8 +562,7 @@ handoff_init (vlib_main_t * vm)
   hm->vlib_main = vm;
   hm->vnet_main = &vnet_main;
 
-  ASSERT (tm->handoff_dispatch_node_index == ~0);
-  tm->handoff_dispatch_node_index = handoff_dispatch_node.index;
+  hm->frame_queue_index = ~0;
 
   return 0;
 }
