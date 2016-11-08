@@ -45,6 +45,30 @@
       "revId": "5c29bd30fcdba56a0497c7b7e35b56a797f44fd6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_c41212b4",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4947,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-08T16:52:32Z",
+      "side": 1,
+      "message": "What\u0027s the implication for honeycomb and other tools that makes use of this binary VPP API? If we remove this now, will the fix be automatically applied to them? I was thinking of keeping this field as inactive to just minimize the pain.",
+      "parentUuid": "9a437d4f_a11700a3",
+      "range": {
+        "startLine": 4946,
+        "startChar": 0,
+        "endLine": 4947,
+        "endChar": 60
+      },
+      "revId": "5c29bd30fcdba56a0497c7b7e35b56a797f44fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
