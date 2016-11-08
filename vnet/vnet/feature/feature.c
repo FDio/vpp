@@ -175,7 +175,7 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 
   arc_index = vnet_get_feature_arc_index (arc_name);
 
-  if (arc_index == ~(u8) 0)
+  if (arc_index == (u8) ~ 0)
     return;
 
   cm = &fm->feature_config_mains[arc_index];
