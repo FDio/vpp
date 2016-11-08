@@ -16,6 +16,24 @@
       "revId": "c363d796dddadb0e2ca11d876906e371dfab038f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_870f6ce1",
+        "filename": "vnet/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-08T22:13:09Z",
+      "side": 1,
+      "message": "Hmm. i\u0027m not getting this comment.... Looks like original author needs to fix this properly....",
+      "parentUuid": "9a437d4f_474bc42b",
+      "revId": "c363d796dddadb0e2ca11d876906e371dfab038f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
