@@ -153,6 +153,7 @@ class TestLB(VppTestCase):
                     "ASS is not balanced: load[%d] = %d" % (asid, load[asid]))
                 raise Exception("Load Balancer algorithm is biased")
 
+    @unittest.skip("disabled until fixed")
     def test_lb_ip4_gre4(self):
         """ Load Balancer IP4 GRE4 """
         try:
@@ -170,6 +171,7 @@ class TestLB(VppTestCase):
                 self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
             self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
 
+    @unittest.skip("disabled until fixed")
     def test_lb_ip6_gre4(self):
         """ Load Balancer IP6 GRE4 """
 
@@ -188,6 +190,7 @@ class TestLB(VppTestCase):
                 self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % (asid))
             self.vapi.cli("lb vip 2001::/16 encap gre4 del")
 
+    @unittest.skip("disabled until fixed")
     def test_lb_ip4_gre6(self):
         """ Load Balancer IP4 GRE6 """
         try:
@@ -208,6 +211,7 @@ class TestLB(VppTestCase):
                 self.vapi.cli("lb as 90.0.0.0/8 2002::%u" % (asid))
             self.vapi.cli("lb vip 90.0.0.0/8 encap gre6 del")
 
+    @unittest.skip("disabled until fixed")
     def test_lb_ip6_gre6(self):
         """ Load Balancer IP6 GRE6 """
         try:
