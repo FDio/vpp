@@ -99,14 +99,13 @@ int vnet_set_input_acl_intfc (vlib_main_t * vm, u32 sw_if_index,
           return VNET_API_ERROR_NO_SUCH_TABLE;
         }
 
-      /* Return ok on ADD operaton if feature is already enabled */
-      if (is_add &&
-          am->classify_table_index_by_sw_if_index[ti][sw_if_index] != ~0)
-          return 0;
+      /* skip if feature is already enabled for update opernation */
+      if (is_add == 0 ||
+          (is_add &&
+           am->classify_table_index_by_sw_if_index[ti][sw_if_index] == ~0))
+        vnet_inacl_ip_feature_enable (vm, am, sw_if_index, ti, is_add);
 
-      vnet_inacl_ip_feature_enable (vm, am, sw_if_index, ti, is_add);
-
-      if (is_add)
+      if (is_add) /* add or update */
         am->classify_table_index_by_sw_if_index[ti][sw_if_index] = acl[ti];
       else
         am->classify_table_index_by_sw_if_index[ti][sw_if_index] = ~0;
