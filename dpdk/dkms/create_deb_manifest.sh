@@ -9,7 +9,6 @@ SRC_DIR=/usr/src/vpp-dpdk-dkms-${VER}/
 cat > ${DEBIAN_DIR}/vpp-dpdk-dkms.install << _EOF_
 ${DPDK_ROOT}/lib/librte_eal/common/include/rte_pci_dev_feature_defs.h ${SRC_DIR}
 ${DPDK_ROOT}/lib/librte_eal/common/include/rte_pci_dev_features.h     ${SRC_DIR}
-${DPDK_ROOT}/lib/librte_eal/common/include/rte_pci_dev_ids.h          ${SRC_DIR}
 ${DPDK_ROOT}/lib/librte_eal/linuxapp/igb_uio/igb_uio.c                ${SRC_DIR}
 ${DPDK_ROOT}/lib/librte_eal/linuxapp/igb_uio/compat.h                 ${SRC_DIR}
 ../../dpdk/dkms/Makefile ${SRC_DIR}
