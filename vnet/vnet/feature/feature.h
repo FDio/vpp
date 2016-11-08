@@ -158,6 +158,7 @@ vnet_feature_arc_start_with_data (u8 arc, u32 sw_if_index, u32 * next,
       return vnet_get_config_data (&cm->config_main, &b->current_config_index,
 				   next, n_data_bytes);
     }
+  return 0;
 }
 
 static_always_inline void
