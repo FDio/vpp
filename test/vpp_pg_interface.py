@@ -1,7 +1,7 @@
 import os
-from logging import error
 from scapy.utils import wrpcap, rdpcap
 from vpp_interface import VppInterface
+from log import *
 
 
 class VppPGInterface(VppInterface):
@@ -52,6 +52,7 @@ class VppPGInterface(VppInterface):
 
     def __init__(self, test, pg_index):
         """ Create VPP packet-generator interface """
+        self.logger = get_process_logger()
         self._pg_index = pg_index
         self._test = test
         r = self.test.vapi.pg_create_interface(self.pg_index)
@@ -93,7 +94,7 @@ class VppPGInterface(VppInterface):
         try:
             output = rdpcap(self.out_path)
         except IOError:  # TODO
-            error("File %s does not exist, probably because no"
-                  " packets arrived" % self.out_path)
+            self.logger.warning("File %s does not exist, probably because no"
+                                " packets arrived" % self.out_path)
             return []
         return output

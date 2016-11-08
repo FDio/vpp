@@ -1,6 +1,7 @@
 from scapy.layers.l2 import Ether, Dot1Q
 from abc import abstractmethod, ABCMeta
 from vpp_interface import VppInterface
+from log import *
 
 
 class VppSubInterface(VppInterface):
@@ -17,6 +18,7 @@ class VppSubInterface(VppInterface):
         return self._sub_id
 
     def __init__(self, test, parent, sub_id):
+        self.logger = get_process_logger()
         self._test = test
         self._parent = parent
         self._parent.add_sub_if(self)

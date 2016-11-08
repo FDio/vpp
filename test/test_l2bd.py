@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import unittest
 from logging import *
 import random
 
@@ -8,9 +7,9 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from vpp_sub_interface import VppDot1QSubint
-from util import TestHost
+from util import TestHost, scapy_show_str
 
 
 class TestL2bd(VppTestCase):
@@ -171,8 +170,8 @@ class TestL2bd(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                error("Unexpected or invalid packet:")
-                error(packet.show())
+                self.logger.error("Unexpected or invalid packet:")
+                self.logger.error(scapy_show_str(packet))
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
@@ -215,4 +214,4 @@ class TestL2bd(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

@@ -6,6 +6,7 @@ from logging import *
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from util import scapy_show_str
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -139,8 +140,8 @@ class TestMPLS(VppTestCase):
         try:
             self.assertEqual(0, len(rx));
         except:
-            error("MPLS TTL=0 packets forwarded")
-            error(packet.show())
+            self.logger.error("MPLS TTL=0 packets forwarded")
+            self.logger.error(scapy_show_str(packet))
             raise
 
         #

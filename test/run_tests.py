@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 
-import os
-import unittest
-from framework import VppTestRunner
+from framework import VppTestProgram
 
 if __name__ == '__main__':
-    try:
-        verbose = int(os.getenv("V", 0))
-    except:
-        verbose = 0
-    unittest.main(testRunner=VppTestRunner, module=None, verbosity=verbose)
+    VppTestProgram(module=None)

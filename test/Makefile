@@ -42,6 +42,8 @@ help:
 	@echo ""
 	@echo "Arguments controlling test runs:"
 	@echo " V=[0|1|2]            - set test verbosity level"
+	@echo " J=<n>                - set number of python worker processes"
+	@echo " VPP_ARGS=<args>      - set additional vpp command line arguments"
 	@echo " DEBUG=<type>         - set VPP debugging kind"
 	@echo "    DEBUG=core        - detect coredump and load it in gdb on crash"
 	@echo "    DEBUG=gdb         - allow easy debugging by printing VPP PID "

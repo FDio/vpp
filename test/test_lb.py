@@ -1,5 +1,6 @@
+#!/usr/bin/env python
+
 import socket
-import unittest
 from logging import *
 
 from scapy.layers.inet import IP, UDP
@@ -7,7 +8,8 @@ from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
-from framework import VppTestCase
+from framework import VppTestCase, VppTestProgram
+from util import scapy_show_str
 
 """ TestLB is a subclass of  VPPTestCase classes.
 
@@ -141,8 +143,8 @@ class TestLB(VppTestCase):
                 self.checkInner(gre, isv4)
                 load[asid] += 1
             except:
-                error("Unexpected or invalid packet:")
-                p.show()
+                self.logger.error("Unexpected or invalid packet:")
+                self.logger.error(scapy_show_str(p))
                 raise
 
         # This is just to roughly check that the balancing algorithm
@@ -224,3 +226,6 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
             self.vapi.cli("lb vip 2001::/16 encap gre6 del")
+
+if __name__ == '__main__':
+    VppTestProgram()

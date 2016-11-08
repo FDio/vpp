@@ -1,6 +1,6 @@
 import os
-from logging import error
 from hook import Hook
+from log import *
 
 do_import = True
 try:
@@ -28,6 +28,7 @@ class VppPapiProvider(object):
     """
 
     def __init__(self, name, shm_prefix):
+        self.logger = get_process_logger()
         self.hook = Hook("vpp-papi-provider")
         self.name = name
         self.shm_prefix = shm_prefix
@@ -63,7 +64,7 @@ class VppPapiProvider(object):
         if hasattr(reply, 'retval') and reply.retval != expected_retval:
             msg = "API call failed, expected retval == %d, got %s" % (
                 expected_retval, repr(reply))
-            error(msg)
+            self.logger.error(msg)
             raise Exception(msg)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply

@@ -1,9 +1,9 @@
 from abc import abstractmethod, ABCMeta
 import socket
-from logging import info, error
 from scapy.layers.l2 import Ether, ARP
-
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
+from log import *
+from util import scapy_show_str
 
 
 class VppInterface(object):
@@ -112,9 +112,10 @@ class VppInterface(object):
 
     @abstractmethod
     def __init__(self, test, index):
+        self.logger = get_process_logger()
         self._test = test
         self.post_init_setup()
-        info("New %s, MAC=%s, remote_ip4=%s, local_ip4=%s" %
+        self.logger.info("New %s, MAC=%s, remote_ip4=%s, local_ip4=%s" %
              (self.__name__, self.remote_mac, self.remote_ip4, self.local_ip4))
 
     def config_ip4(self):
@@ -168,16 +169,16 @@ class VppInterface(object):
         """
         if pg_interface is None:
             pg_interface = self
-        info("Sending ARP request for %s on port %s" %
-             (self.local_ip4, pg_interface.name))
+        self.logger.info("Sending ARP request for %s on port %s" %
+                         (self.local_ip4, pg_interface.name))
         arp_req = self.create_arp_req()
         pg_interface.add_stream(arp_req)
         pg_interface.enable_capture()
         self.test.pg_start()
-        info(self.test.vapi.cli("show trace"))
+        self.logger.info(self.test.vapi.cli("show trace"))
         arp_reply = pg_interface.get_capture()
         if arp_reply is None or len(arp_reply) == 0:
-            info("No ARP received on port %s" % pg_interface.name)
+            self.logger.info("No ARP received on port %s" % pg_interface.name)
             return
         arp_reply = arp_reply[0]
         # Make Dot1AD packet content recognizable to scapy
@@ -186,14 +187,14 @@ class VppInterface(object):
             arp_reply = Ether(str(arp_reply))
         try:
             if arp_reply[ARP].op == ARP.is_at:
-                info("VPP %s MAC address is %s " %
-                     (self.name, arp_reply[ARP].hwsrc))
+                self.logger.info("VPP %s MAC address is %s " %
+                                 (self.name, arp_reply[ARP].hwsrc))
                 self._local_mac = arp_reply[ARP].hwsrc
             else:
-                info("No ARP received on port %s" % pg_interface.name)
+                self.logger.info("No ARP received on port %s" % pg_interface.name)
         except:
-            error("Unexpected response to ARP request:")
-            error(arp_reply.show())
+            self.logger.error("Unexpected response to ARP request:")
+            self.logger.error(scapy_show_str(arp_reply))
             raise
 
     def resolve_ndp(self, pg_interface=None):
@@ -205,16 +206,16 @@ class VppInterface(object):
         """
         if pg_interface is None:
             pg_interface = self
-        info("Sending NDP request for %s on port %s" %
-             (self.local_ip6, pg_interface.name))
+        self.logger.info("Sending NDP request for %s on port %s" %
+                         (self.local_ip6, pg_interface.name))
         ndp_req = self.create_ndp_req()
         pg_interface.add_stream(ndp_req)
         pg_interface.enable_capture()
         self.test.pg_start()
-        info(self.test.vapi.cli("show trace"))
+        self.logger.info(self.test.vapi.cli("show trace"))
         ndp_reply = pg_interface.get_capture()
         if ndp_reply is None or len(ndp_reply) == 0:
-            info("No NDP received on port %s" % pg_interface.name)
+            self.logger.info("No NDP received on port %s" % pg_interface.name)
             return
         ndp_reply = ndp_reply[0]
         # Make Dot1AD packet content recognizable to scapy
@@ -224,12 +225,12 @@ class VppInterface(object):
         try:
             ndp_na = ndp_reply[ICMPv6ND_NA]
             opt = ndp_na[ICMPv6NDOptDstLLAddr]
-            info("VPP %s MAC address is %s " %
-                 (self.name, opt.lladdr))
+            self.logger.info("VPP %s MAC address is %s " %
+                             (self.name, opt.lladdr))
             self._local_mac = opt.lladdr
         except:
-            error("Unexpected response to NDP request:")
-            error(ndp_reply.show())
+            self.logger.error("Unexpected response to NDP request:")
+            self.logger.error(scapy_show_str(ndp_reply))
             raise
 
     def admin_up(self):

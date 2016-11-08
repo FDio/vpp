@@ -25,11 +25,11 @@ class ColorFormatter(logging.Formatter):
             message = colorize(message, record.color)
         return message
 
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(ColorFormatter())
+_handler = logging.StreamHandler(sys.stdout)
+_handler.setFormatter(ColorFormatter())
 
 global_logger = logging.getLogger()
-global_logger.addHandler(handler)
+global_logger.addHandler(_handler)
 try:
     verbose = int(os.getenv("V", 0))
 except:
@@ -47,10 +47,21 @@ scapy_logger = logging.getLogger("scapy.runtime")
 scapy_logger.setLevel(logging.ERROR)
 
 
-def getLogger(name):
+def getLogger(name=None):
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
     return logger
+
+_process_logger = None
+
+
+def get_process_logger():
+    return _process_logger
+
+
+def set_process_logger(logger):
+    global _process_logger
+    _process_logger = logger
 
 # Static variables to store color formatting strings.
 #

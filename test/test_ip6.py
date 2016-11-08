@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import unittest
 import socket
 from logging import *
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from util import scapy_show_str
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -130,8 +130,8 @@ class TestIPv6(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                error("Unexpected or invalid packet:")
-                error(packet.show())
+                self.logger.error("Unexpected or invalid packet:")
+                self.logger.error(scapy_show_str(packet))
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
@@ -163,4 +163,4 @@ class TestIPv6(VppTestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

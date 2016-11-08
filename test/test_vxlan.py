@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
-import unittest
 from logging import *
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestProgram
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
@@ -97,4 +96,4 @@ class TestVxlan(BridgeDomain, VppTestCase):
             info(self.vapi.cli("show bridge-domain 1 detail"))
 
 if __name__ == '__main__':
-    unittest.main(testRunner=VppTestRunner)
+    VppTestProgram()

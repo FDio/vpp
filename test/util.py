@@ -1,4 +1,6 @@
 from logging import *
+import StringIO
+import sys
 
 
 class TestHost(object):
@@ -23,3 +25,12 @@ class TestHost(object):
         self._mac = mac
         self._ip4 = ip4
         self._ip6 = ip6
+
+
+def scapy_show_str(packet):
+    file = StringIO.StringIO()
+    old_file = sys.stdout
+    sys.stdout = file
+    packet.show()
+    sys.stdout = old_file
+    return file.getvalue()
