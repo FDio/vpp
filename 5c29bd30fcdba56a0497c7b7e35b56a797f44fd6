@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_c11204b4",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-08T04:23:21Z",
+      "side": 1,
+      "message": "zap this? no need to leave dead code in comments",
+      "range": {
+        "startLine": 262,
+        "startChar": 0,
+        "endLine": 263,
+        "endChar": 35
+      },
+      "revId": "5c29bd30fcdba56a0497c7b7e35b56a797f44fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_a11700a3",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4947,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-08T04:23:21Z",
+      "side": 1,
+      "message": "if not this release, perhaps we can remove this entirely in the subsequent release?",
+      "range": {
+        "startLine": 4946,
+        "startChar": 0,
+        "endLine": 4947,
+        "endChar": 60
+      },
+      "revId": "5c29bd30fcdba56a0497c7b7e35b56a797f44fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
