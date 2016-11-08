@@ -365,6 +365,18 @@ vlib_get_worker_cpu_index (u32 worker_index)
   return worker_index + 1;
 }
 
+always_inline u32
+vlib_get_worker_index (u32 cpu_index)
+{
+  return cpu_index - 1;
+}
+
+always_inline u32
+vlib_get_current_worker_index ()
+{
+  return os_get_cpu_number () - 1;
+}
+
 always_inline vlib_main_t *
 vlib_get_worker_vlib_main (u32 worker_index)
 {
