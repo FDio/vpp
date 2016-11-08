@@ -34,6 +34,24 @@
       "revId": "c363d796dddadb0e2ca11d876906e371dfab038f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_271d6010",
+        "filename": "vnet/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-08T22:34:01Z",
+      "side": 1,
+      "message": "Agree with Damjan - that\u0027s thematically outside the scope of this patch.",
+      "parentUuid": "9a437d4f_870f6ce1",
+      "revId": "c363d796dddadb0e2ca11d876906e371dfab038f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
