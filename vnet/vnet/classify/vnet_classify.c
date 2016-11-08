@@ -17,6 +17,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>     /* for API error numbers */
 #include <vnet/l2/l2_classify.h> /* for L2_INPUT_CLASSIFY_NEXT_xxx */
+#include <vnet/fib/fib_table.h>
 
 vnet_classify_main_t vnet_classify_main;
 
@@ -571,9 +572,9 @@ static u8 * format_classify_entry (u8 * s, va_list * args)
   vnet_classify_entry_t * e = va_arg (*args, vnet_classify_entry_t *);
 
   s = format
-    (s, "[%u]: next_index %d advance %d opaque %d\n",
+    (s, "[%u]: next_index %d advance %d opaque %d action %d metadata %d\n",
      vnet_classify_get_offset (t, e), e->next_index, e->advance, 
-     e->opaque_index);
+     e->opaque_index, e->action, e->metadata);
 
 
   s = format (s, "        k: %U\n", format_hex_bytes, e->key,
@@ -653,24 +654,37 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
                                  u32 next_table_index,
                                  u32 miss_next_index,
                                  u32 * table_index,
+                                 u8 current_data_flag,
+                                 i16 current_data_offset,
                                  int is_add)
 {
   vnet_classify_table_t * t;
 
   if (is_add)
     {
-      *table_index = ~0;
-      if (memory_size == 0)
-        return VNET_API_ERROR_INVALID_MEMORY_SIZE;
+      if (*table_index == ~0) /* add */
+        {
+          if (memory_size == 0)
+            return VNET_API_ERROR_INVALID_MEMORY_SIZE;
 
-      if (nbuckets == 0)
-        return VNET_API_ERROR_INVALID_VALUE;
+          if (nbuckets == 0)
+            return VNET_API_ERROR_INVALID_VALUE;
 
-      t = vnet_classify_new_table (cm, mask, nbuckets, memory_size, 
-        skip, match);
-      t->next_table_index = next_table_index;
-      t->miss_next_index = miss_next_index;
-      *table_index = t - cm->tables;
+          t = vnet_classify_new_table (cm, mask, nbuckets, memory_size,
+            skip, match);
+          t->next_table_index = next_table_index;
+          t->miss_next_index = miss_next_index;
+          t->current_data_flag = current_data_flag;
+          t->current_data_offset = current_data_offset;
+          *table_index = t - cm->tables;
+        }
+      else /* update */
+        {
+          vnet_classify_main_t *cm = &vnet_classify_main;
+          t = pool_elt_at_index (cm->tables, *table_index);
+
+          t->next_table_index = next_table_index;
+        }
       return 0;
     }
   
@@ -1376,6 +1390,8 @@ classify_table_command_fn (vlib_main_t * vm,
   u32 miss_next_index = ~0;
   u32 memory_size = 2<<20;
   u32 tmp;
+  u32 current_data_flag = 0;
+  int current_data_offset = 0;
 
   u8 * mask = 0;
   vnet_classify_main_t * cm = &vnet_classify_main;
@@ -1413,18 +1429,22 @@ classify_table_command_fn (vlib_main_t * vm,
     else if (unformat (input, "acl-miss-next %U", unformat_acl_next_index,
                        &miss_next_index))
       ;
-                       
+    else if (unformat (input, "current-data-flag %d", &current_data_flag))
+      ;
+    else if (unformat (input, "current-data-offset %d", &current_data_offset))
+      ;
+
     else
       break;
   }
   
-  if (is_add && mask == 0)
+  if (is_add && mask == 0 && table_index == ~0)
     return clib_error_return (0, "Mask required");
 
-  if (is_add && skip == ~0)
+  if (is_add && skip == ~0 && table_index == ~0)
     return clib_error_return (0, "skip count required");
 
-  if (is_add && match == ~0)
+  if (is_add && match == ~0 && table_index == ~0)
     return clib_error_return (0, "match count required");
       
   if (!is_add && table_index == ~0)
@@ -1432,7 +1452,7 @@ classify_table_command_fn (vlib_main_t * vm,
 
   rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
         skip, match, next_table_index, miss_next_index,
-        &table_index, is_add);
+        &table_index, current_data_flag, current_data_offset, is_add);
   switch (rv)
     {
     case 0:
@@ -1449,7 +1469,8 @@ VLIB_CLI_COMMAND (classify_table, static) = {
   .path = "classify table",
   .short_help = 
   "classify table [miss-next|l2-miss_next|acl-miss-next <next_index>]"
-  "\n mask <mask-value> buckets <nn> [skip <n>] [match <n>] [del]",
+  "\n mask <mask-value> buckets <nn> [skip <n>] [match <n>]"
+  "\n [current-data-flag <n>] [current-data-offset <n>] [table <n>] [del]",
   .function = classify_table_command_fn,
 };
 
@@ -1473,8 +1494,9 @@ static u8 * format_vnet_classify_table (u8 * s, va_list * args)
 
   s = format (s, "\n  Heap: %U", format_mheap, t->mheap, 0 /*verbose*/); 
 
-  s = format (s, "\n  nbuckets %d, skip %d match %d", 
-              t->nbuckets, t->skip_n_vectors, t->match_n_vectors);
+  s = format (s, "\n  nbuckets %d, skip %d match %d flag %d offset %d",
+              t->nbuckets, t->skip_n_vectors, t->match_n_vectors,
+              t->current_data_flag, t->current_data_offset);
   s = format (s, "\n  mask %U", format_hex_bytes, t->mask, 
               t->match_n_vectors * sizeof (u32x4));
 
@@ -1974,6 +1996,8 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
                                    u32 hit_next_index,
                                    u32 opaque_index, 
                                    i32 advance,
+                                   u8 action,
+                                   u32 metadata,
                                    int is_add)
 {
   vnet_classify_table_t * t;
@@ -1993,6 +2017,11 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
   e->hits = 0;
   e->last_heard = 0;
   e->flags = 0;
+  e->action = action;
+  if (e->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX)
+    e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, metadata);
+  else if (e->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
+    e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, metadata);
 
   /* Copy key data, honoring skip_n_vectors */
   clib_memcpy (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
@@ -2020,6 +2049,8 @@ classify_session_command_fn (vlib_main_t * vm,
   u64 opaque_index = ~0;
   u8 * match = 0;
   i32 advance = 0;
+  u32 action = 0;
+  u32 metadata = 0;
   int i, rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
@@ -2050,6 +2081,10 @@ classify_session_command_fn (vlib_main_t * vm,
         ;
       else if (unformat (input, "table-index %d", &table_index))
         ;
+      else if (unformat (input, "action set-ip4-fib-id %d", &metadata))
+        action = 1;
+      else if (unformat (input, "action set-ip6-fib-id %d", &metadata))
+        action = 2;
       else
         {
           /* Try registered opaque-index unformat fns */
@@ -2073,7 +2108,8 @@ classify_session_command_fn (vlib_main_t * vm,
 
   rv = vnet_classify_add_del_session (cm, table_index, match, 
                                       hit_next_index,
-                                      opaque_index, advance, is_add);
+                                      opaque_index, advance,
+                                      action, metadata, is_add);
 
   switch(rv)
     {
@@ -2093,7 +2129,8 @@ VLIB_CLI_COMMAND (classify_session_command, static) = {
     .short_help =
     "classify session [hit-next|l2-hit-next|"
     "acl-hit-next <next_index>|policer-hit-next <policer_name>]"
-    "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]",
+    "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]"
+    "\n [action set-ip4-fib-id <n>] [action set-ip6-fib-id <n>] [del]",
     .function = classify_session_command_fn,
 };
 
@@ -2323,7 +2360,7 @@ test_classify_command_fn (vlib_main_t * vm,
           rv = vnet_classify_add_del_session (cm, t - cm->tables, (u8 *) data,
                                               IP_LOOKUP_NEXT_DROP,
                                               i+100 /* opaque_index */, 
-                                              0 /* advance */, 
+                                              0 /* advance */, 0, 0,
                                               1 /* is_add */);
 
           if (rv != 0)
@@ -2362,7 +2399,7 @@ test_classify_command_fn (vlib_main_t * vm,
       rv = vnet_classify_add_del_session (cm, t - cm->tables, key_minus_skip,
                                           IP_LOOKUP_NEXT_DROP,
                                           i+100 /* opaque_index */, 
-                                          0 /* advance */, 
+                                          0 /* advance */, 0, 0,
                                           0 /* is_add */);
       if (rv != 0)
         clib_warning ("del: returned %d", rv);
