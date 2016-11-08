@@ -1222,6 +1222,10 @@ static void *vl_api_classify_add_del_table_t_print
       s = format (s, "match %d ", ntohl (mp->match_n_vectors));
       s = format (s, "next-table %d ", ntohl (mp->next_table_index));
       s = format (s, "miss-next %d ", ntohl (mp->miss_next_index));
+      s = format (s, "current-data-flag %d ", ntohl (mp->current_data_flag));
+      if (mp->current_data_flag)
+	s = format (s, "current-data-offset %d ",
+		    ntohl (mp->current_data_offset));
       s = format (s, "mask hex ");
       for (i = 0; i < ntohl (mp->match_n_vectors) * sizeof (u32x4); i++)
 	s = format (s, "%02x", mp->mask[i]);
@@ -1243,6 +1247,9 @@ static void *vl_api_classify_add_del_session_t_print
   s = format (s, "hit_next_index %d ", ntohl (mp->hit_next_index));
   s = format (s, "opaque_index %d ", ntohl (mp->opaque_index));
   s = format (s, "advance %d ", ntohl (mp->advance));
+  s = format (s, "action %d ", mp->action);
+  if (mp->action)
+    s = format (s, "metadata %d ", ntohl (mp->metadata));
   if (mp->is_add == 0)
     s = format (s, "del ");
 

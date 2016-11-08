@@ -1766,6 +1766,17 @@ define bd_ip_mac_add_del_reply
     @param match_n_vectors - number of match vectors
     @param next_table_index - index of next table
     @param miss_next_index - index of miss table
+    @param current_data_flag - option to use current node's packet payload
+            as the starting point from where packets are classified,
+            This option is only valid for L2/L3 input ACL for now.
+            0: by default, classify data from the buffer's start location
+            1: classify packets from VPP node’s current data pointer
+    @param current_data_offset - a signed value to shift the start location of
+            the packet to be classified
+            For example, if input IP ACL node is used, L2 header’s first byte
+            can be accessible by configuring current_data_offset to -14
+            if there is no vlan tag.
+            This is valid only if current_data_flag is set to 1.
     @param mask[] - match mask
 */
 define classify_add_del_table
@@ -1780,6 +1791,8 @@ define classify_add_del_table
   u32 match_n_vectors;
   u32 next_table_index;
   u32 miss_next_index;
+  u32 current_data_flag;
+  i32 current_data_offset;
   u8 mask[0];
 };
 
@@ -1807,6 +1820,17 @@ define classify_add_del_table_reply
     @param hit_next_index - for add, hit_next_index of new session, required
     @param opaque_index - for add, opaque_index of new session
     @param advance -for add, advance value for session
+    @param action -
+           0: no action (by default)
+              metadata is not used.
+           1: Classified IP packets will be looked up from the
+              specified ipv4 fib table (configured by metadata as VRF id).
+              Only valid for L3 input ACL node
+           2: Classified IP packets will be looked up from the
+              specified ipv6 fib table (configured by metadata as VRF id).
+              Only valid for L3 input ACL node
+    @param metadata - valid only if action != 0
+           VRF id if action is 1 or 2.
     @param match[] - for add, match value for session, required
 */
 define classify_add_del_session
@@ -1818,6 +1842,8 @@ define classify_add_del_session
   u32 hit_next_index;
   u32 opaque_index;
   i32 advance;
+  u8 action;
+  u32 metadata;
   u8 match[0];
 };
 

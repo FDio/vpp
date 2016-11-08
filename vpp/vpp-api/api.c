@@ -3922,7 +3922,9 @@ _(memory_size)                                  \
 _(skip_n_vectors)                               \
 _(match_n_vectors)                              \
 _(next_table_index)                             \
-_(miss_next_index)
+_(miss_next_index)                              \
+_(current_data_flag)                            \
+_(current_data_offset)
 
 static void vl_api_classify_add_del_table_t_handler
   (vl_api_classify_add_del_table_t * mp)
@@ -3941,17 +3943,25 @@ static void vl_api_classify_add_del_table_t_handler
 #undef _
 
   /* The underlying API fails silently, on purpose, so check here */
-  if (mp->is_add == 0)
-    if (pool_is_free_index (cm->tables, table_index))
-      {
-	rv = VNET_API_ERROR_NO_SUCH_TABLE;
-	goto out;
-      }
+  if (mp->is_add == 0)		/* delete */
+    {
+      if (pool_is_free_index (cm->tables, table_index))
+	{
+	  rv = VNET_API_ERROR_NO_SUCH_TABLE;
+	  goto out;
+	}
+    }
+  else				/* add or update */
+    {
+      if (table_index != ~0 && pool_is_free_index (cm->tables, table_index))
+	table_index = ~0;
+    }
 
   rv = vnet_classify_add_del_table
     (cm, mp->mask, nbuckets, memory_size,
      skip_n_vectors, match_n_vectors,
-     next_table_index, miss_next_index, &table_index, mp->is_add);
+     next_table_index, miss_next_index, &table_index,
+     current_data_flag, current_data_offset, mp->is_add);
 
 out:
   /* *INDENT-OFF* */
@@ -3980,17 +3990,20 @@ static void vl_api_classify_add_del_session_t_handler
   vnet_classify_main_t *cm = &vnet_classify_main;
   vl_api_classify_add_del_session_reply_t *rmp;
   int rv;
-  u32 table_index, hit_next_index, opaque_index;
+  u32 table_index, hit_next_index, opaque_index, metadata;
   i32 advance;
+  u8 action;
 
   table_index = ntohl (mp->table_index);
   hit_next_index = ntohl (mp->hit_next_index);
   opaque_index = ntohl (mp->opaque_index);
   advance = ntohl (mp->advance);
+  action = mp->action;
+  metadata = ntohl (mp->metadata);
 
   rv = vnet_classify_add_del_session
     (cm, table_index, mp->match, hit_next_index, opaque_index,
-     advance, mp->is_add);
+     advance, action, metadata, mp->is_add);
 
   REPLY_MACRO (VL_API_CLASSIFY_ADD_DEL_SESSION_REPLY);
 }
