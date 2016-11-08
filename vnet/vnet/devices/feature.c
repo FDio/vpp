@@ -16,14 +16,16 @@
 #include <vnet/feature/feature.h>
 
 /* *INDENT-OFF* */
-VNET_FEATURE_ARC_INIT (device_input, static) = {
+VNET_FEATURE_ARC_INIT (device_input, static) =
+{
   .arc_name  = "device-input",
-  .start_nodes = VNET_FEATURES (
+  .start_nodes =
+  VNET_FEATURES (
 #if DPDK > 0
-				"dpdk-input",
+                 "dpdk-input",
 #endif
-				"vhost-user-input", "af-packet-input", "netmap-input",
-				"tuntap-rx", "pg-input"),
+                 "vhost-user-input", "af-packet-input", "netmap-input",
+                 "tuntap-rx", "tapcli-rx", "pg-input"),
 };
 
 VNET_FEATURE_INIT (l2_patch, static) = {

@@ -43,6 +43,8 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
+#include <vnet/feature/feature.h>
+#include <vnet/devices/devices.h>
 #include <vnet/unix/tapcli.h>
 
 static vnet_device_class_t tapcli_dev_class;
@@ -239,16 +241,6 @@ VLIB_REGISTER_NODE (tapcli_tx_node,static) = {
   .vector_size = 4,
 };
 
-enum {
-  TAPCLI_RX_NEXT_IP4_INPUT,
-  TAPCLI_RX_NEXT_IP6_INPUT,
-  TAPCLI_RX_NEXT_ETHERNET_INPUT,
-  TAPCLI_RX_NEXT_DROP,
-  TAPCLI_RX_N_NEXT,
-};
-
-
-
 /**
  * @brief Dispatch tapcli RX node function for node tap_cli_rx
  *
@@ -360,14 +352,17 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
     vnet_buffer (b_first)->sw_if_index[VLIB_TX] = (u32)~0;
 
     b_first->error = node->errors[TAPCLI_ERROR_NONE];
-    next_index = TAPCLI_RX_NEXT_ETHERNET_INPUT;
+    next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
     next_index = (ti->per_interface_next_index != ~0) ?
         ti->per_interface_next_index : next_index;
-    next_index = admin_down ? TAPCLI_RX_NEXT_DROP : next_index;
+    next_index = admin_down ? VNET_DEVICE_INPUT_NEXT_DROP : next_index;
 
     to_next[0] = bi_first;
     to_next++;
     n_left_to_next--;
+
+    vnet_feature_start_device_input_x1 (ti->sw_if_index, &next_index, 
+                                        b_first, 0);
 
     vlib_validate_buffer_enqueue_x1 (vm, node, next,
                                      to_next, n_left_to_next,
@@ -459,13 +454,8 @@ VLIB_REGISTER_NODE (tapcli_rx_node, static) = {
   .error_strings = tapcli_rx_error_strings,
   .format_trace = format_tapcli_rx_trace,
 
-  .n_next_nodes = TAPCLI_RX_N_NEXT,
-  .next_nodes = {
-    [TAPCLI_RX_NEXT_IP4_INPUT] = "ip4-input-no-checksum",
-    [TAPCLI_RX_NEXT_IP6_INPUT] = "ip6-input",
-    [TAPCLI_RX_NEXT_DROP] = "error-drop",
-    [TAPCLI_RX_NEXT_ETHERNET_INPUT] = "ethernet-input",
-  },
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 
