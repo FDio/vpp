@@ -94,14 +94,6 @@ typedef struct {
   /** A hash table to lookup the mpls_fib by table ID */
   uword *fib_index_by_table_id;
 
-  /* rx/tx interface/feature configuration. */
-  vnet_feature_config_main_t feature_config_mains[VNET_N_IP_FEAT];
-
-  /* Built-in unicast feature path indices, see vnet_feature_arc_init(...)  */
-  u32 mpls_rx_feature_lookup;
-  u32 mpls_rx_feature_not_enabled;
-  u32 mpls_tx_feature_interface_output;
-
   /* pool of ethernet tunnel instances */
   mpls_eth_tunnel_t *eth_tunnels;
   u32 * free_eth_sw_if_indices;
@@ -114,11 +106,9 @@ typedef struct {
   u32 ip4_classify_mpls_policy_encap_next_index;
   u32 ip6_classify_mpls_policy_encap_next_index;
 
-  /* feature path configuration lists */
-  vnet_feature_registration_t * next_feature[VNET_N_IP_FEAT];
-
-  /* Save feature results for show command */
-  char **feature_nodes[VNET_N_IP_FEAT];
+  /* Feature arc indices */
+  u8 input_feature_arc_index;
+  u8 output_feature_arc_index;
 
   /* IP4 enabled count by software interface */
   u8 * mpls_enabled_by_sw_if_index;
@@ -129,30 +119,6 @@ typedef struct {
 } mpls_main_t;
 
 extern mpls_main_t mpls_main;
-
-#define VNET_MPLS_FEATURE_INIT(x,...)                           \
-  __VA_ARGS__ vnet_feature_registration_t uc_##x;            \
-static void __vnet_add_feature_registration_uc_##x (void)       \
-  __attribute__((__constructor__)) ;                            \
-static void __vnet_add_feature_registration_uc_##x (void)       \
-{                                                               \
-  mpls_main_t * mm = &mpls_main;                                \
-  uc_##x.next = mm->next_feature[VNET_IP_RX_UNICAST_FEAT];      \
-  mm->next_feature[VNET_IP_RX_UNICAST_FEAT] = &uc_##x;          \
-}                                                               \
-__VA_ARGS__ vnet_feature_registration_t uc_##x
-
-#define VNET_MPLS_TX_FEATURE_INIT(x,...)                        \
-  __VA_ARGS__ vnet_feature_registration_t tx_##x;            \
-static void __vnet_add_feature_registration_tx_##x (void)       \
-  __attribute__((__constructor__)) ;                            \
-static void __vnet_add_feature_registration_tx_##x (void)       \
-{                                                               \
-  mpls_main_t * mm = &mpls_main;                                \
-  tx_##x.next = mm->next_feature[VNET_IP_TX_FEAT];              \
-  mm->next_feature[VNET_IP_TX_FEAT] = &tx_##x;                  \
-}                                                               \
-__VA_ARGS__ vnet_feature_registration_t tx_##x
 
 extern clib_error_t * mpls_feature_init(vlib_main_t * vm);
 

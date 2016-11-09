@@ -59,10 +59,10 @@ flowperpkt_main_t flowperpkt_main;
 
 /* Define the per-interface configurable feature */
 /* *INDENT-OFF* */
-VNET_IP4_TX_FEATURE_INIT (flow_perpacket, static) = {
+VNET_FEATURE_INIT (flow_perpacket, static) = {
+  .arc_name = "ip4-output",
   .node_name = "flowperpkt",
-  .runs_before = (char *[]){"interface-output", 0},
-  .feature_index = &flowperpkt_main.ip4_tx_feature_index,
+  .runs_before = VNET_FEATURES ("interface-output"),
 };
 /* *INDENT-ON* */
 
@@ -249,11 +249,6 @@ flowperpkt_data_callback (flow_report_main_t * frm,
 static int flowperpkt_tx_interface_add_del_feature
   (flowperpkt_main_t * fm, u32 sw_if_index, int is_add)
 {
-  u32 ci;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
-  u32 feature_index;
   flow_report_main_t *frm = &flow_report_main;
   vnet_flow_report_add_del_args_t _a, *a = &_a;
   int rv;
@@ -276,18 +271,9 @@ static int flowperpkt_tx_interface_add_del_feature
 	}
     }
 
-  feature_index = fm->ip4_tx_feature_index;
+  vnet_feature_enable_disable ("ip4-output", "flowperpkt", sw_if_index,
+			       is_add, 0, 0);
 
-  ci = cm->config_index_by_sw_if_index[sw_if_index];
-  ci = (is_add
-	? vnet_config_add_feature
-	: vnet_config_del_feature)
-    (fm->vlib_main, &cm->config_main,
-     ci, feature_index, 0 /* config struct */ ,
-     0 /* sizeof config struct */ );
-  cm->config_index_by_sw_if_index[sw_if_index] = ci;
-
-  vnet_config_update_tx_feature_count (lm, cm, sw_if_index, is_add);
   return 0;
 }
 

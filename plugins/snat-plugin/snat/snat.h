@@ -166,12 +166,6 @@ typedef struct {
   /* Randomize port allocation order */
   u32 random_seed;
 
-  /* ip4 feature path indices */
-  u32 rx_feature_in2out;
-  u32 rx_feature_out2in;
-  u32 rx_feature_in2out_fast;
-  u32 rx_feature_out2in_fast;
-
   /* Config parameters */
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;

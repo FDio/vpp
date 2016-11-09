@@ -93,25 +93,25 @@ do {                                                            \
 
 
 /* Hook up input features */
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_in2out, static) = {
+VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
+  .arc_name = "ip4-unicast",
   .node_name = "snat-in2out",
-  .runs_before = (char *[]){"snat-out2in", 0},
-  .feature_index = &snat_main.rx_feature_in2out,
+  .runs_before = VNET_FEATURES ("snat-out2in"),
 };
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_out2in, static) = {
+VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
+  .arc_name = "ip4-unicast",
   .node_name = "snat-out2in",
-  .runs_before = (char *[]){"ip4-lookup", 0},
-  .feature_index = &snat_main.rx_feature_out2in,
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
+VNET_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
+  .arc_name = "ip4-unicast",
   .node_name = "snat-in2out-fast",
-  .runs_before = (char *[]){"snat-out2in-fast", 0},
-  .feature_index = &snat_main.rx_feature_in2out_fast,
+  .runs_before = VNET_FEATURES ("snat-out2in-fast"),
 };
-VNET_IP4_UNICAST_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
+VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
+  .arc_name = "ip4-unicast",
   .node_name = "snat-out2in-fast",
-  .runs_before = (char *[]){"ip4-lookup", 0},
-  .feature_index = &snat_main.rx_feature_out2in_fast,
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
 
@@ -540,29 +540,15 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 {
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
-  u32 ci;
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  vnet_feature_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  u32 feature_index;
+  const char * feature_name;
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
-    feature_index = is_inside ?  sm->rx_feature_in2out_fast
-      : sm->rx_feature_out2in_fast;
+    feature_name = is_inside ?  "snat-in2out-fast" : "snat-out2in-fast";
   else
-    feature_index = is_inside ? sm->rx_feature_in2out
-      : sm->rx_feature_out2in;
+    feature_name = is_inside ?  "snat-in2out" : "snat-out2in";
 
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-  ci = (is_del
-        ? vnet_config_del_feature
-        : vnet_config_add_feature)
-    (sm->vlib_main, &rx_cm->config_main,
-     ci,
-     feature_index,
-     0 /* config struct */,
-     0 /* sizeof config struct*/);
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+  vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
+			       !is_del, 0, 0);
 
   pool_foreach (i, sm->interfaces,
   ({

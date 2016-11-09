@@ -284,9 +284,6 @@ flowperpkt_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   flowperpkt_next_t next_index;
-  ip4_main_t *im = &ip4_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
   flowperpkt_main_t *fm = &flowperpkt_main;
   u64 now;
 
@@ -337,14 +334,10 @@ flowperpkt_node_fn (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-
-	  vnet_get_config_data (&cm->config_main,
-				&b0->current_config_index,
-				&next0, 0 /* sizeof config data */ );
-
-	  vnet_get_config_data (&cm->config_main,
-				&b1->current_config_index,
-				&next1, 0 /* sizeof config data */ );
+	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
+			     &next0, b0);
+	  vnet_feature_next (vnet_buffer (b1)->sw_if_index[VLIB_TX],
+			     &next1, b1);
 
 	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				  vnet_buffer (b0)->ip.save_rewrite_length);
@@ -413,9 +406,8 @@ flowperpkt_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vnet_get_config_data (&cm->config_main,
-				&b0->current_config_index,
-				&next0, 0 /* sizeof config data */ );
+	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
+			     &next0, b0);
 
 	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				  vnet_buffer (b0)->ip.save_rewrite_length);
