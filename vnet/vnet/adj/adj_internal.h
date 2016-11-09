@@ -86,7 +86,7 @@ adj_get_index (ip_adjacency_t *adj)
 }
 
 extern void adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
-					     adj_nbr_rewrite_flag_t flags,
+					     ip_lookup_next_t adj_next_index,
 					     u32 complete_next_index,
 					     u32 next_index,
 					     u8 *rewrite);

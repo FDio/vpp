@@ -342,8 +342,6 @@ VLIB_REGISTER_NODE (mpls_adj_incomplete_node) = {
     foreach_mpls_adj_incomplete_next
 #undef _
   },
-
-  .format_trace = format_mpls_output_trace,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_adj_incomplete_node,

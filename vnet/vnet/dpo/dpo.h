@@ -69,8 +69,8 @@ typedef enum dpo_proto_t_
     DPO_PROTO_MPLS,
 } __attribute__((packed)) dpo_proto_t;
 
-#define DPO_PROTO_NUM (DPO_PROTO_MPLS+1)
-#define DPO_PROTO_NONE (DPO_PROTO_NUM+1)
+#define DPO_PROTO_NUM ((dpo_proto_t)(DPO_PROTO_MPLS+1))
+#define DPO_PROTO_NONE ((dpo_proto_t)(DPO_PROTO_NUM+1))
 
 #define DPO_PROTOS {		\
     [DPO_PROTO_IP4]  = "ip4",	\

@@ -962,7 +962,7 @@ fib_test_v4 (void)
     /*
      * update the exclusive to use a different DPO
      */
-    ip_null_dpo_add_and_lock(FIB_PROTOCOL_IP4,
+    ip_null_dpo_add_and_lock(DPO_PROTO_IP4,
 			     IP_NULL_ACTION_SEND_ICMP_UNREACH,
 			     &ex_dpo);
     fib_table_entry_special_dpo_update(fib_index,
@@ -6115,7 +6115,7 @@ fib_test_walk (void)
     /*
      * enqueue a walk across the parents children.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_RESOLVE;
+    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
     fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
@@ -6245,7 +6245,7 @@ fib_test_walk (void)
      * we do this by giving the queue draining process zero
      * time quanta. it's a do..while loop, so it does something.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_RESOLVE;
+    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
     fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);
@@ -6332,7 +6332,7 @@ fib_test_walk (void)
      * park a async walk in the middle of the list, then have an sync walk catch
      * it. same expectations as async catches async.
      */
-    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_RESOLVE;
+    high_ctx.fnbw_reason = FIB_NODE_BW_REASON_FLAG_RESOLVE;
 
     fib_walk_async(FIB_NODE_TYPE_TEST, PARENT_INDEX,
                    FIB_WALK_PRIORITY_HIGH, &high_ctx);

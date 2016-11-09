@@ -456,7 +456,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      * time for walkies fido.
      */
     fib_node_back_walk_ctx_t bw_ctx = {
-	.fnbw_reason = FIB_NODE_BW_REASON_ADJ_UPDATE,
+	.fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
     };
 
     fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_get_index(adj), &bw_ctx);

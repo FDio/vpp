@@ -29,7 +29,7 @@ typedef enum fib_walk_priority_t_
     FIB_WALK_PRIORITY_LOW  = 1,
 } fib_walk_priority_t;
 
-#define FIB_WALK_PRIORITY_NUM (FIB_WALK_PRIORITY_LOW+1)
+#define FIB_WALK_PRIORITY_NUM ((fib_walk_priority_t)(FIB_WALK_PRIORITY_LOW+1))
 
 #define FIB_WALK_PRIORITIES {           \
     [FIB_WALK_PRIORITY_HIGH] = "high",  \

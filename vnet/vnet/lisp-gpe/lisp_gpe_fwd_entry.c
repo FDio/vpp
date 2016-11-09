@@ -267,7 +267,7 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
   dpo_proto_t dproto;
 
   dproto = (ip_prefix_version (&lfe->key->rmt.ippref) == IP4 ?
-	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
+	    DPO_PROTO_IP4 : DPO_PROTO_IP6);
 
   lfe->src_fib_index = ip_dst_fib_add_route (lfe->eid_fib_index,
 					     &lfe->key->rmt.ippref);

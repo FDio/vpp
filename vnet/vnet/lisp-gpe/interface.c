@@ -194,7 +194,6 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args)
 VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
   .name = "LISP_GPE",
   .format_header = format_lisp_gpe_header_with_length,
-  .build_rewrite = default_build_rewrite,
   .build_rewrite = lisp_gpe_build_rewrite,
   .update_adjacency = lisp_gpe_update_adjacency,
 };

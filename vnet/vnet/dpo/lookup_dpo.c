@@ -379,8 +379,9 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    }
 
 	    /* do lookup */
-	    ip4_src_fib_lookup_one (fib_index0, input_addr0, &lbi0);
-	    ip4_src_fib_lookup_one (fib_index1, input_addr1, &lbi1);
+	    ip4_src_fib_lookup_two (fib_index0, fib_index1,
+                                    input_addr0, input_addr1,
+                                    &lbi0, &lbi1);
 	    lb0 = load_balance_get(lbi0);
 	    lb1 = load_balance_get(lbi1);
 
