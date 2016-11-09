@@ -1439,7 +1439,6 @@ void
 vlib_worker_thread_fn (void *arg)
 {
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
 
   ASSERT (vm->cpu_index == os_get_cpu_number ());
@@ -1448,9 +1447,12 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
+#if DPDK > 0
   /* Wait until the dpdk init sequence is complete */
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   while (tm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
+#endif
 
   vlib_worker_thread_internal (vm);
 }
