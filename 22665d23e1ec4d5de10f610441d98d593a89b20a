@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_4a418938",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-09T11:51:09Z",
+      "side": 1,
+      "message": "Can we do this only when we are really updating data structures of running interface instead of stopping everything on each message?",
+      "revId": "22665d23e1ec4d5de10f610441d98d593a89b20a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
