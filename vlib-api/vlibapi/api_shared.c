@@ -847,6 +847,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       if (!cfgp)
 	{
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
+	  munmap (hp, file_size);
 	  return;
 	}
       size = cfgp->size;
@@ -872,6 +873,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       if (!cfgp)
 	{
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
+	  munmap (hp, file_size);
 	  return;
 	}
       size = cfgp->size;

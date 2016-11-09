@@ -1063,7 +1063,8 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
               vlib_buffer_advance(p0, - ethernet_buffer_header_size(p0));
               eth0 = vlib_buffer_get_current(p0);
               clib_memcpy(eth0->dst_address, eth0->src_address, 6);
-              clib_memcpy(eth0->src_address, eth_if0->address, 6);
+              if (eth_if0)
+                clib_memcpy(eth0->src_address, eth_if0->address, 6);
 
               /* Setup input and output sw_if_index for packet */
               ASSERT(vnet_buffer(p0)->sw_if_index[VLIB_RX] == sw_if_index0);

@@ -739,7 +739,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (devconf->hqos_enabled)
 	{
 	  rv = dpdk_port_setup_hqos (xd, &devconf->hqos);
-	  if (rv < 0)
+	  if (rv)
 	    return rv;
 	}
 

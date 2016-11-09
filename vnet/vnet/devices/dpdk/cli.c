@@ -1188,6 +1188,10 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
 
   /* Detect the set of worker threads */
   uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  /* Should never happen, shut up Coverity warning */
+  if (p == 0)
+    return clib_error_return (0, "no worker registrations?");
+
   vlib_thread_registration_t *tr = (vlib_thread_registration_t *) p[0];
   int worker_thread_first = tr->first_index;
   int worker_thread_count = tr->count;
@@ -1224,6 +1228,10 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 
   /* Detect the set of worker threads */
   uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  /* Should never happen, shut up Coverity warning */
+  if (p == 0)
+    return clib_error_return (0, "no worker registrations?");
+
   vlib_thread_registration_t *tr = (vlib_thread_registration_t *) p[0];
   int worker_thread_first = tr->first_index;
   int worker_thread_count = tr->count;
@@ -1426,6 +1434,11 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 
   /* Detect the set of worker threads */
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+
+  /* Should never happen, shut up Coverity warning */
+  if (p == 0)
+    return clib_error_return (0, "no worker registrations?");
+
   tr = (vlib_thread_registration_t *) p[0];
 
   cfg = &devconf->hqos;

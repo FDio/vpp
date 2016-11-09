@@ -6325,9 +6325,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
 
   /* Wait for a reply... */
   W;
-
-  /* Return the good/bad news */
-  return (vam->retval);
 }
 
 static int

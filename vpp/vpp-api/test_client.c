@@ -878,7 +878,7 @@ connect_unix_tap (test_main_t * tm, char *name)
   mp->_vl_msg_id = ntohs (VL_API_TAP_CONNECT);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  clib_memcpy (mp->tap_name, name, strlen (name));
+  strncpy ((char *) mp->tap_name, name, sizeof (mp->tap_name) - 1);
   mp->use_random_mac = 1;
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
 }
