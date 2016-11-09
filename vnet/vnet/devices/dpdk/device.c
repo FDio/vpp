@@ -331,7 +331,7 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
-      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
+      if (PREDICT_TRUE ((xd->flags & DPDK_DEVICE_FLAG_HQOS) && (xd->hqos_wt[vm->cpu_index].swq != NULL)))	/* HQoS ON */
 	{
 	  if (PREDICT_TRUE (tx_head > tx_tail))
 	    {
