@@ -712,8 +712,6 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
 
   rx_fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
                                                    rx_fib_id);
-  server_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
-                                                   server_fib_id);
 
   if (rx_fib_id == 0)
     {
@@ -758,7 +756,9 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
  initialize_it:
 
   server->dhcp_server.as_u32 = addr->as_u32;
-  server->server_fib_index = server_index;
+  server->server_fib_index = 
+      fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+	  				server_fib_id);
   server->dhcp_src_address.as_u32 = src_address->as_u32;
   server->insert_option_82 = insert_option_82;
   server->valid = 1;
