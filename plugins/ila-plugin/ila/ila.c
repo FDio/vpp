@@ -425,9 +425,6 @@ static uword
 ila_sir2ila (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
   ila_main_t *ilm = &ila_main;
 
@@ -519,11 +516,8 @@ ila_sir2ila (vlib_main_t * vm,
 	  ip61->dst_address.as_u64[0] = ila_address1->as_u64[0];
 	  ip61->dst_address.as_u64[1] = ila_address1->as_u64[1];
 
-	  vnet_get_config_data (&cm->config_main,
-				&p0->current_config_index, &next0, 0);
-
-	  vnet_get_config_data (&cm->config_main,
-				&p1->current_config_index, &next1, 0);
+	  vnet_feature_next (vnet_buffer (p0)->sw_if_index[VLIB_RX], &next0, p0);
+	  vnet_feature_next (vnet_buffer (p1)->sw_if_index[VLIB_RX], &next1, p1);
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, pi1, next0,
@@ -574,8 +568,7 @@ ila_sir2ila (vlib_main_t * vm,
 	  ip60->dst_address.as_u64[0] = ila_address0->as_u64[0];
 	  ip60->dst_address.as_u64[1] = ila_address0->as_u64[1];
 
-	  vnet_get_config_data (&cm->config_main,
-				&p0->current_config_index, &next0, 0);
+	  vnet_feature_next (vnet_buffer (p0)->sw_if_index[VLIB_RX], &next0, p0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
@@ -603,11 +596,11 @@ VLIB_REGISTER_NODE (ila_sir2ila_node, static) =
 /** *INDENT-ON* */
 
 /** *INDENT-OFF* */
-VNET_IP6_UNICAST_FEATURE_INIT (ila_sir2ila, static) =
+VNET_FEATURE_INIT (ila_sir2ila, static) =
 {
+  .arc_name = "ip6-unicast",
   .node_name = "sir-to-ila",
-  .runs_before = ORDER_CONSTRAINTS{"ip6-lookup", 0},
-  .feature_index = &ila_main.ila_sir2ila_feature_index,
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
 /** *INDENT-ON* */
 
@@ -823,24 +816,8 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 int
 ila_interface (u32 sw_if_index, u8 disable)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  ila_main_t *ilm = &ila_main;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  vnet_feature_config_main_t *cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  vnet_config_main_t *vcm = &cm->config_main;
-  u32 ci, feature_index;
-
-  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-  ci = cm->config_index_by_sw_if_index[sw_if_index];
-  feature_index = ilm->ila_sir2ila_feature_index;
-
-  ci = ((disable) ? vnet_config_del_feature : vnet_config_add_feature)
-    (vm, vcm, ci, feature_index,
-     /* config data */ 0,
-     /* # bytes of config data */ 0);
-
-  cm->config_index_by_sw_if_index[sw_if_index] = ci;
+  vnet_feature_enable_disable ("ip4-unicast", "sir-to-ila", sw_if_index,
+			       !disable, 0, 0);
   return 0;
 }
 

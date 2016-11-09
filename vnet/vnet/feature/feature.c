@@ -59,6 +59,7 @@ vnet_feature_init (vlib_main_t * vm)
   freg = fm->next_feature;
   while (freg)
     {
+      vnet_feature_registration_t *next;
       uword *p = hash_get_mem (fm->arc_index_by_name, freg->arc_name);
       if (p == 0)
 	return clib_error_return (0, "Unknown feature arc '%s'",
@@ -68,11 +69,15 @@ vnet_feature_init (vlib_main_t * vm)
       arc_index = areg->feature_arc_index;
 
       vec_add1 (fm->next_feature_by_arc[arc_index], *freg);
+      next = freg->next;
+      freg->next = fm->next_feature_by_arc[arc_index];
+      fm->next_feature_by_arc[arc_index] = freg;
 
       /* next */
-      freg = freg->next;
+      freg = next;
     }
 
+  areg = fm->next_arc;
   while (areg)
     {
       clib_error_t *error;
@@ -216,10 +221,12 @@ show_features_command_fn (vlib_main_t * vm,
   while (areg)
     {
       vlib_cli_output (vm, "%s:", areg->arc_name);
-      vec_foreach (freg, fm->next_feature_by_arc[areg->feature_arc_index])
-      {
-	vlib_cli_output (vm, "  %s\n", freg->node_name);
-      }
+      freg = fm->next_feature_by_arc[areg->feature_arc_index];
+      while (freg)
+        {
+	  vlib_cli_output (vm, "  %s\n", freg->node_name);
+	  freg = freg->next;
+        }
 
 
       /* next */

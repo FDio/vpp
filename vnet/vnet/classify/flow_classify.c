@@ -21,6 +21,7 @@ vnet_flow_classify_feature_enable (vlib_main_t * vnm,
                                    flow_classify_table_id_t tid,
                                    int feature_enable)
 {
+#if FEAT_TODO
   ip_lookup_main_t * lm;
   vnet_feature_config_main_t * ifcm;
   u32 ftype;
@@ -45,6 +46,7 @@ vnet_flow_classify_feature_enable (vlib_main_t * vnm,
 
   ifcm->config_index_by_sw_if_index[sw_if_index] = ci;
   fcm->vnet_config_main[tid] = &ifcm->config_main;
+#endif
 }
 
 int vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,

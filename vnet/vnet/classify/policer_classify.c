@@ -28,6 +28,7 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
     }
   else
     {
+#if FEAT_TODO
       ip_lookup_main_t * lm;
       vnet_feature_config_main_t * ipcm;
       u32 ftype;
@@ -52,6 +53,7 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
 
       ipcm->config_index_by_sw_if_index[sw_if_index] = ci;
       pcm->vnet_config_main[tid] = &ipcm->config_main;
+#endif
     }
 }
 
