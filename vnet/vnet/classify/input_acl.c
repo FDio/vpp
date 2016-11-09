@@ -33,34 +33,16 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
     }
   else
     { /* IP[46] */
-      ip_lookup_main_t * lm;
-      vnet_feature_config_main_t * ipcm;
-      u32 ftype;
-      u32 ci;
+      vnet_config_main_t *cm;
 
       if (tid == INPUT_ACL_TABLE_IP4)
-        {
-          lm = &ip4_main.lookup_main;
-          ftype = ip4_main.ip4_unicast_rx_feature_check_access;
-        }
+	  cm = vnet_feature_enable_disable ("ip4-unicast", "ip4-inacl",
+					    sw_if_index, feature_enable, 0, 0);
       else
-        {
-          lm = &ip6_main.lookup_main;
-          ftype = ip6_main.ip6_unicast_rx_feature_check_access;
-        }
+	  cm = vnet_feature_enable_disable ("ip6-unicast", "ip6-inacl",
+					    sw_if_index, feature_enable, 0, 0);
 
-      ipcm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-
-      ci = ipcm->config_index_by_sw_if_index[sw_if_index];
-      ci = ((feature_enable)
-            ? vnet_config_add_feature
-            : vnet_config_del_feature)
-        (vnm, &ipcm->config_main, ci, ftype,
-         /* config data */ 0,
-         /* # bytes of config data */ 0);
-
-      ipcm->config_index_by_sw_if_index[sw_if_index] = ci;
-      am->vnet_config_main[tid] = &ipcm->config_main;
+      am->vnet_config_main[tid] = cm;
     }
 
   return 0;
