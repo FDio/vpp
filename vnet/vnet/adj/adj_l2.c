@@ -53,7 +53,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
     u32 * from = vlib_frame_vector_args (frame);
     u32 n_left_from, n_left_to_next, * to_next, next_index;
     u32 cpu_index = os_get_cpu_number();
-    vnet_feature_config_main_t * cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
+    ethernet_main_t * em = &ethernet_main;
 
     n_left_from = frame->n_vectors;
     next_index = node->cached_next_index;
@@ -67,7 +67,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 	    ip_adjacency_t * adj0;
 	    vlib_buffer_t * p0;
 	    char *h0;
-	    u32 pi0, rw_len0, adj_index0, next0;
+	    u32 pi0, rw_len0, adj_index0, next0 = 0;
 	    u32 tx_sw_if_index0;
 
 	    pi0 = to_next[0] = from[0];
@@ -121,12 +121,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 		 * Follow the feature ARC. this will result eventually in
 		 * the midchain-tx node
 		 */
-		p0->current_config_index = vec_elt(cm->config_index_by_sw_if_index,
-						   tx_sw_if_index0);
-		vnet_get_config_data (&cm->config_main,
-				      &p0->current_config_index,
-				      &next0,
-				      /* # bytes of config data */ 0);
+		vnet_feature_arc_start(em->output_feature_arc_index, tx_sw_if_index0, &next0, p0);
 	    }
 	    else
 	    {

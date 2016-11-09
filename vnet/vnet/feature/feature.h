@@ -127,6 +127,17 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     u32 n_feature_config_bytes);
 
 
+static inline vnet_feature_config_main_t *
+vnet_get_feature_arc_config_main (u8 arc_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+
+  if (arc_index == (u8) ~ 0)
+    return 0;
+
+  return &fm->feature_config_mains[arc_index];
+}
+
 static_always_inline int
 vnet_have_features (u8 arc, u32 sw_if_index)
 {
@@ -258,7 +269,6 @@ vnet_feature_start_device_input_x2 (u32 sw_if_index,
 }
 
 
-#define ORDER_CONSTRAINTS (char*[])
 #define VNET_FEATURES(...)  (char*[]) { __VA_ARGS__, 0}
 
 clib_error_t *vnet_feature_arc_init (vlib_main_t * vm,

@@ -276,12 +276,7 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u32 sw_if_index,
                                   u8 is_enable)
 {
-  vlib_main_t * vm = vlib_get_main();
-  vnet_feature_config_main_t * cm = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  vnet_config_main_t * vcm = &cm->config_main;
-  u32 lookup_feature_index;
   fib_node_index_t lfib_index;
-  u32 ci;
 
   vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
 
@@ -308,24 +303,9 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
 		       FIB_PROTOCOL_MPLS);
     }
 
-  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-  ci = cm->config_index_by_sw_if_index[sw_if_index];
+  vnet_feature_enable_disable ("mpls-input", "mpls-lookup", sw_if_index,
+			       is_enable, 0, 0);
 
-  lookup_feature_index = mm->mpls_rx_feature_lookup;
-
-  if (is_enable)
-    ci = vnet_config_add_feature (vm, vcm,
-                                  ci,
-                                  lookup_feature_index,
-                                  /* config data */ 0,
-                                  /* # bytes of config data */ 0);
-  else
-    ci = vnet_config_del_feature (vm, vcm, ci,
-                                  lookup_feature_index,
-                                  /* config data */ 0,
-                                  /* # bytes of config data */ 0);
-
-  cm->config_index_by_sw_if_index[sw_if_index] = ci;
 }
 
 u8 * format_mpls_encap_index (u8 * s, va_list * args)
