@@ -105,10 +105,9 @@ ip6_input (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0, * p1;
 	  ip6_header_t * ip0, * ip1;
-	  vnet_feature_config_main_t * cm0, * cm1;
-	  u32 pi0, sw_if_index0, next0;
-	  u32 pi1, sw_if_index1, next1;
-	  u8 error0, error1, cast0, cast1;
+	  u32 pi0, sw_if_index0, next0 = 0;
+	  u32 pi1, sw_if_index1, next1 = 0;
+	  u8 error0, error1, arc0, arc1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -143,26 +142,14 @@ ip6_input (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  cast0 = ip6_address_is_multicast (&ip0->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
-	  cast1 = ip6_address_is_multicast (&ip1->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
-
-	  cm0 = lm->feature_config_mains + cast0;
-	  cm1 = lm->feature_config_mains + cast1;
-
-	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
-	  p1->current_config_index = vec_elt (cm1->config_index_by_sw_if_index, sw_if_index1);
+	  arc0 = ip6_address_is_multicast (&ip0->dst_address) ? lm->mcast_feature_arc_index : lm->ucast_feature_arc_index;
+	  arc1 = ip6_address_is_multicast (&ip1->dst_address) ? lm->mcast_feature_arc_index : lm->ucast_feature_arc_index;
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
 
-	  vnet_get_config_data (&cm0->config_main,
-				&p0->current_config_index,
-				&next0,
-				/* # bytes of config data */ 0);
-	  vnet_get_config_data (&cm1->config_main,
-				&p1->current_config_index,
-				&next1,
-				/* # bytes of config data */ 0);
+	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
+	  vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index1, 1);
@@ -217,9 +204,8 @@ ip6_input (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0;
 	  ip6_header_t * ip0;
-		  vnet_feature_config_main_t * cm0;
-	  u32 pi0, sw_if_index0, next0;
-	  u8 error0, cast0;
+	  u32 pi0, sw_if_index0, next0 = 0;
+	  u8 error0, arc0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -232,15 +218,9 @@ ip6_input (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-	  cast0 = ip6_address_is_multicast (&ip0->dst_address) ? VNET_IP_RX_MULTICAST_FEAT : VNET_IP_RX_UNICAST_FEAT;
-	  cm0 = lm->feature_config_mains + cast0;
-	  p0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index, sw_if_index0);
+	  arc0 = ip6_address_is_multicast (&ip0->dst_address) ? lm->mcast_feature_arc_index : lm->ucast_feature_arc_index;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-
-	  vnet_get_config_data (&cm0->config_main,
-				&p0->current_config_index,
-				&next0,
-				/* # bytes of config data */ 0);
+	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 	  error0 = IP6_ERROR_NONE;

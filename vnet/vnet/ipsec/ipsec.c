@@ -40,11 +40,9 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 			 int is_add)
 {
   ipsec_main_t *im = &ipsec_main;
-  ip_lookup_main_t *lm;
-  vnet_feature_config_main_t *rx_cm;
   ip4_ipsec_config_t config;
 
-  u32 spd_index, ci;
+  u32 spd_index;
   uword *p;
 
   p = hash_get (im->spd_index_by_spd_id, spd_id);
@@ -74,29 +72,10 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 				  INTF_OUTPUT_FEAT_IPSEC, is_add);
 
   /* enable IPsec on RX */
-  config.spd_index = spd_index;
-
-  /* IPv4 */
-  lm = &ip4_main.lookup_main;
-  rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-
-  ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
-    (vm, &rx_cm->config_main,
-     ci, ip4_main.ip4_unicast_rx_feature_ipsec, &config, sizeof (config));
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
-
-  /* IPv6 */
-  lm = &ip6_main.lookup_main;
-  rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-
-  ci = (is_add ? vnet_config_add_feature : vnet_config_del_feature)
-    (vm, &rx_cm->config_main,
-     ci, ip6_main.ip6_unicast_rx_feature_ipsec, &config, sizeof (config));
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+  vnet_feature_enable_disable ("ip4-unicast", "ipsec-input-ip4", sw_if_index,
+			       is_add, &config, sizeof (config));
+  vnet_feature_enable_disable ("ip6-unicast", "ipsec-input-ip6", sw_if_index,
+			       is_add, &config, sizeof (config));
 
   return 0;
 }

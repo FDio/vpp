@@ -42,21 +42,6 @@
 
 #include <vppinfra/types.h>
 
-typedef enum
-{
-  VNET_IP_RX_UNICAST_FEAT,
-  VNET_IP_RX_MULTICAST_FEAT,
-  VNET_IP_TX_FEAT,
-  VNET_N_IP_FEAT,
-} vnet_cast_t;
-
-#define VNET_CAST_NAMES {                       \
-  [VNET_IP_RX_UNICAST_FEAT] = "rx-unicast",     \
-  [VNET_IP_RX_MULTICAST_FEAT] = "rx-multicast", \
-  [VNET_IP_TX_FEAT] = "tx",                     \
-}
-
-
 #include <vnet/unix/pcap.h>
 #include <vnet/buffer.h>
 #include <vnet/config.h>
