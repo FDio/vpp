@@ -1448,9 +1448,11 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
+#if DPDK > 0
   /* Wait until the dpdk init sequence is complete */
   while (tm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
+#endif
 
   vlib_worker_thread_internal (vm);
 }
