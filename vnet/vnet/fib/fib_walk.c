@@ -108,7 +108,7 @@ typedef enum fib_walk_queue_stats_t_
     FIB_WALK_SCHEDULED,
     FIB_WALK_COMPLETED,
 } fib_walk_queue_stats_t;
-#define FIB_WALK_QUEUE_STATS_NUM (FIB_WALK_COMPLETED+1)
+#define FIB_WALK_QUEUE_STATS_NUM ((fib_walk_queue_stats_t)(FIB_WALK_COMPLETED+1))
 
 #define FIB_WALK_QUEUE_STATS {           \
     [FIB_WALK_SCHEDULED] = "scheduled",  \

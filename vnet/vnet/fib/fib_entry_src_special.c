@@ -22,7 +22,7 @@
 static void
 fib_entry_src_special_init (fib_entry_src_t *src)
 {
-    src->fes_flags = FIB_ENTRY_FLAG_NONE;
+    src->fes_flags = FIB_ENTRY_SRC_FLAG_NONE;
 }
 
 /**

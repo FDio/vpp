@@ -885,7 +885,7 @@ static const fib_node_vft_t fib_path_vft = {
 static fib_path_cfg_flags_t
 fib_path_route_flags_to_cfg_flags (const fib_route_path_t *rpath)
 {
-    fib_path_cfg_flags_t cfg_flags = FIB_PATH_CFG_ATTRIBUTE_FIRST;
+    fib_path_cfg_flags_t cfg_flags = FIB_PATH_CFG_FLAG_NONE;
 
     if (rpath->frp_flags & FIB_ROUTE_PATH_RESOLVE_VIA_HOST)
 	cfg_flags |= FIB_PATH_CFG_FLAG_RESOLVE_HOST;

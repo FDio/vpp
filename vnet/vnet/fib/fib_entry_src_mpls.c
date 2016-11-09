@@ -29,7 +29,7 @@ fib_entry_src_mpls_init (fib_entry_src_t *src)
 {
     mpls_eos_bit_t eos;
 
-    src->fes_flags = FIB_ENTRY_FLAG_NONE;
+    src->fes_flags = FIB_ENTRY_SRC_FLAG_NONE;
     src->mpls.fesm_label = MPLS_LABEL_INVALID;
 
     FOR_EACH_MPLS_EOS_BIT(eos)

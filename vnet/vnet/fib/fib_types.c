@@ -329,5 +329,5 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	return (DPO_PROTO_MPLS);
     }
-    return (VNET_LINK_IP4);
+    return (DPO_PROTO_IP4);
 }
