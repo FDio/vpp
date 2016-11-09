@@ -447,15 +447,13 @@ static char * tapcli_rx_error_strings[] = {
 VLIB_REGISTER_NODE (tapcli_rx_node, static) = {
   .function = tapcli_rx,
   .name = "tapcli-rx",
+  .sibling_of = "device-input",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .vector_size = 4,
   .n_errors = TAPCLI_N_ERROR,
   .error_strings = tapcli_rx_error_strings,
   .format_trace = format_tapcli_rx_trace,
-
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 

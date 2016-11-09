@@ -13,19 +13,30 @@
  * limitations under the License.
  */
 
+#include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
+static uword
+device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		 vlib_frame_t * frame)
+{
+  return 0;
+}
+
 /* *INDENT-OFF* */
+VLIB_REGISTER_NODE (device_input_node) = {
+  .function = device_input_fn,
+  .name = "device-input",
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_DISABLED,
+  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
+  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
+};
+
 VNET_FEATURE_ARC_INIT (device_input, static) =
 {
   .arc_name  = "device-input",
-  .start_nodes =
-  VNET_FEATURES (
-#if DPDK > 0
-                 "dpdk-input",
-#endif
-                 "vhost-user-input", "af-packet-input", "netmap-input",
-                 "tuntap-rx", "tapcli-rx", "pg-input"),
+  .start_nodes = VNET_FEATURES ("device-input"),
 };
 
 VNET_FEATURE_INIT (l2_patch, static) = {

@@ -414,14 +414,12 @@ static char * tuntap_rx_error_strings[] = {
 VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
   .function = tuntap_rx,
   .name = "tuntap-rx",
+  .sibling_of = "device-input",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .vector_size = 4,
   .n_errors = 1,
   .error_strings = tuntap_rx_error_strings,
-
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 /**

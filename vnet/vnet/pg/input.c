@@ -1702,14 +1702,13 @@ pg_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 VLIB_REGISTER_NODE (pg_input_node) = {
   .function = pg_input,
   .name = "pg-input",
+  .sibling_of = "device-input",
   .type = VLIB_NODE_TYPE_INPUT,
 
   .format_trace = format_pg_input_trace,
 
   /* Input node will be left disabled until a stream is active. */
   .state = VLIB_NODE_STATE_DISABLED,
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 /* *INDENT-ON* */
 
