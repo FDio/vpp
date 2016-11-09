@@ -52,6 +52,24 @@
       "revId": "c363d796dddadb0e2ca11d876906e371dfab038f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_473f4426",
+        "filename": "vnet/vnet/ip/ip_frag.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T08:00:52Z",
+      "side": 1,
+      "message": "I\u0027m fine with having the original author fix it properly, i.e. to determine whether a new value is required and handle it in the appropriately caller.\nBut, these enum conversion errors are legitimate bugs, to cast from one type to the next does not address anything, it merely serves to hide the bug from the detection tools. if we leave this as is, and the original author does not show, then if the value of IP6_ERROR_TOO_SHORT becomes greater than max value in ip_frag_error_t we will have a out of range write to:\n  error_node-\u003eerrors[error0]\nin the caller.\nSo IMHO, the better \u0027let me fix the build warning\u0027 is to do:\n *error \u003d IP_FRAG_ERROR_TOO_SHORT;\n\nwhich preserves the original behaviour (like the cast does) but does not leave us open to a possible nasty surprise in the future.",
+      "parentUuid": "9a437d4f_870f6ce1",
+      "revId": "c363d796dddadb0e2ca11d876906e371dfab038f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
