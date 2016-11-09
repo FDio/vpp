@@ -1719,6 +1719,7 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
   .function = vhost_user_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "vhost-user-input",
+  .sibling_of = "device-input",
 
   /* Will be enabled if/when hardware is detected. */
   .state = VLIB_NODE_STATE_DISABLED,
@@ -1728,9 +1729,6 @@ VLIB_REGISTER_NODE (vhost_user_input_node) = {
 
   .n_errors = VHOST_USER_INPUT_FUNC_N_ERROR,
   .error_strings = vhost_user_input_func_error_strings,
-
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (vhost_user_input_node, vhost_user_input)
