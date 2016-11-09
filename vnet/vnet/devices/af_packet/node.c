@@ -283,14 +283,12 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 VLIB_REGISTER_NODE (af_packet_input_node) = {
   .function = af_packet_input_fn,
   .name = "af-packet-input",
+  .sibling_of = "device-input",
   .format_trace = format_af_packet_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_INTERRUPT,
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
-
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (af_packet_input_node, af_packet_input_fn)

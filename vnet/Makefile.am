@@ -31,6 +31,7 @@ endif
 ########################################
 libvnet_la_SOURCES +=					\
   vnet/config.c						\
+  vnet/devices/devices.c				\
   vnet/handoff.c					\
   vnet/interface.c					\
   vnet/interface_cli.c					\
@@ -721,7 +722,6 @@ nobase_include_HEADERS +=			\
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/devices/feature.c			\
   vnet/feature/feature.c			\
   vnet/feature/registration.c
 

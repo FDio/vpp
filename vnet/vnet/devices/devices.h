@@ -37,6 +37,8 @@ typedef enum
     [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",			\
 }
 
+extern vlib_node_registration_t device_input_node;
+
 #endif /* included_vnet_vnet_device_h */
 
 /*

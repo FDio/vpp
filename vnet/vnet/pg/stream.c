@@ -459,7 +459,8 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
   }
 
   /* Connect the graph. */
-  s->next_index = vlib_node_add_next (vm, pg_input_node.index, s->node_index);
+  s->next_index = vlib_node_add_next (vm, device_input_node.index,
+				      s->node_index);
 }
 
 void

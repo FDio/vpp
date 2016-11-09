@@ -708,6 +708,7 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
   .function = dpdk_input,
   .type = VLIB_NODE_TYPE_INPUT,
   .name = "dpdk-input",
+  .sibling_of = "device-input",
 
   /* Will be enabled if/when hardware is detected. */
   .state = VLIB_NODE_STATE_DISABLED,
@@ -717,9 +718,6 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
 
   .n_errors = DPDK_N_ERROR,
   .error_strings = dpdk_error_strings,
-
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 

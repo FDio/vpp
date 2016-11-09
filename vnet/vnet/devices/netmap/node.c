@@ -294,15 +294,13 @@ netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 VLIB_REGISTER_NODE (netmap_input_node) = {
   .function = netmap_input_fn,
   .name = "netmap-input",
+  .sibling_of = "device-input",
   .format_trace = format_netmap_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
   /* default state is INTERRUPT mode, switch to POLLING if worker threads are enabled */
   .state = VLIB_NODE_STATE_INTERRUPT,
   .n_errors = NETMAP_INPUT_N_ERROR,
   .error_strings = netmap_input_error_strings,
-
-  .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
-  .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (netmap_input_node, netmap_input_fn)
