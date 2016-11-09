@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_4ace2985",
+        "filename": "vnet/vnet/fib/fib_path.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T14:22:23Z",
+      "side": 1,
+      "message": "one argument per-line. ditto in the function definition.",
+      "revId": "c39fb3b4c1e3ed3c311ed0928e5099db60648002",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_aabfd5cf",
+        "filename": "vnet/vnet/fib/fib_types.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T14:22:23Z",
+      "side": 1,
+      "message": "some doxygen comments to explain its purpose would be good.",
+      "revId": "c39fb3b4c1e3ed3c311ed0928e5099db60648002",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_eac4bd60",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 7731,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T14:22:23Z",
+      "side": 1,
+      "message": "you\u0027ve defined a fib_path_encode function to encode a path - this means we don\u0027t break the encapsulation of the fib_path_t. But then we break the encapsulation of the entry and path-list here?\ninstead how about;\n fib_entry_encode(...)\n    fib_path_list_walk()\n     fib_path_encode(...)\n\nthen we don\u0027t need fib_entry_get_fe_parent,",
+      "revId": "c39fb3b4c1e3ed3c311ed0928e5099db60648002",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
