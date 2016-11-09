@@ -35,9 +35,6 @@ typedef struct
   /** API message ID base */
   u16 msg_id_base;
 
-  /** ip4 feature index */
-  u32 ip4_tx_feature_index;
-
   /** Has the report been created? */
   int report_created;
 

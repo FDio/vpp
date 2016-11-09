@@ -260,45 +260,53 @@ VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {
     },
 };
 
-VNET_IP4_TX_FEATURE_INIT (adj_midchain_tx_ip4, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_ip4, static) = {
+    .arc_name = "ip4-output",
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_IP4],
+    .runs_before = VNET_FEATURES ("interface-output"),
+    .feature_index_ptr = &adj_midchain_tx_feature_node[VNET_LINK_IP4],
 };
-VNET_IP4_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip4, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_no_count_ip4, static) = {
+    .arc_name = "ip4-output",
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP4],
+    .runs_before = VNET_FEATURES ("interface-output"),
+    .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP4],
 };
-VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_ip6, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_ip6, static) = {
+    .arc_name = "ip6-output",
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_IP6],
+    .runs_before = VNET_FEATURES ("interface-output"),
+    .feature_index_ptr = &adj_midchain_tx_feature_node[VNET_LINK_IP6],
 };
-VNET_IP6_TX_FEATURE_INIT (adj_midchain_tx_no_count_ip6, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_no_count_ip6, static) = {
+    .arc_name = "ip6-output",
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP6],
+    .runs_before = VNET_FEATURES ("interface-output"),
+    .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_IP6],
 };
-VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_mpls, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_mpls, static) = {
+    .arc_name = "mpls-output",
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_MPLS],
+    .runs_before = VNET_FEATURES ("interface-output"),
+    .feature_index_ptr = &adj_midchain_tx_feature_node[VNET_LINK_MPLS],
 };
-VNET_MPLS_TX_FEATURE_INIT (adj_midchain_tx_no_count_mpls, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_no_count_mpls, static) = {
+    .arc_name = "mpls-output",
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"interface-output", 0},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_MPLS],
+    .runs_before = VNET_FEATURES ("interface-output"),
+    .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_MPLS],
 };
-VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_ethernet, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_ethernet, static) = {
+    .arc_name = "ethernet-output",
     .node_name = "adj-midchain-tx",
-    .runs_before = ORDER_CONSTRAINTS {"error-drop", 0},
-    .feature_index = &adj_midchain_tx_feature_node[VNET_LINK_ETHERNET],
+    .runs_before = VNET_FEATURES ("error-drop"),
+    .feature_index_ptr = &adj_midchain_tx_feature_node[VNET_LINK_ETHERNET],
 };
-VNET_ETHERNET_TX_FEATURE_INIT (adj_midchain_tx_no_count_ethernet, static) = {
+VNET_FEATURE_INIT (adj_midchain_tx_no_count_ethernet, static) = {
+    .arc_name = "ethernet-output",
     .node_name = "adj-midchain-tx-no-count",
-    .runs_before = ORDER_CONSTRAINTS {"error-drop", 0},
-    .feature_index = &adj_midchain_tx_no_count_feature_node[VNET_LINK_ETHERNET],
+    .runs_before = VNET_FEATURES ("error-drop"),
+    .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_ETHERNET],
 };
 
 static inline u32
@@ -320,36 +328,30 @@ adj_get_midchain_node (vnet_link_t link)
     return (0);
 }
 
-static vnet_feature_config_main_t *
-adj_midchain_get_config_for_link_type (const ip_adjacency_t *adj)
+static u8
+adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
 {
-    vnet_feature_config_main_t *cm = NULL;
-
+  u8 arc = (u8) ~0;
     switch (adj->ia_link)
     {
     case VNET_LINK_IP4:
 	{
-	    ip4_main_t * im = &ip4_main;
-	    ip_lookup_main_t * lm = &im->lookup_main;
-	    cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+	    arc = ip4_main.lookup_main.output_feature_arc_index;
 	    break;
 	}
     case VNET_LINK_IP6:
 	{
-	    ip6_main_t * im = &ip6_main;
-	    ip_lookup_main_t * lm = &im->lookup_main;
-	    cm = &lm->feature_config_mains[VNET_IP_TX_FEAT];
+	    arc = ip6_main.lookup_main.output_feature_arc_index;
 	    break;
 	}
     case VNET_LINK_MPLS:
 	{
-	    mpls_main_t * mm = &mpls_main;
-	    cm = &mm->feature_config_mains[VNET_IP_TX_FEAT];
+	    arc = mpls_main.output_feature_arc_index;
 	    break;
 	}
     case VNET_LINK_ETHERNET:
 	{
-	    cm = &ethernet_main.feature_config_mains[VNET_IP_TX_FEAT];
+	    arc = ethernet_main.output_feature_arc_index;
 	    break;
 	}
     case VNET_LINK_ARP:
@@ -357,7 +359,9 @@ adj_midchain_get_config_for_link_type (const ip_adjacency_t *adj)
 	break;
     }
 
-    return (cm);
+    ASSERT (arc != (u8) ~0);
+
+    return (arc);
 }
 
 /**
@@ -373,10 +377,9 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 				 adj_midchain_flag_t flags,
 				 u8 *rewrite)
 {
-    vnet_config_main_t * vcm;
-    vnet_feature_config_main_t *cm;
     ip_adjacency_t *adj;
-    u32 ci;
+    u8 arc_index;
+    u32 feature_index;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
@@ -394,43 +397,18 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 
     adj->sub_type.midchain.fixup_func = fixup;
 
-    cm = adj_midchain_get_config_for_link_type(adj);
-    vcm = &(cm->config_main);
-    vec_validate_init_empty(cm->config_index_by_sw_if_index,
-			    adj->rewrite_header.sw_if_index, ~0);
-    ci = cm->config_index_by_sw_if_index[adj->rewrite_header.sw_if_index];
+    arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
+    feature_index = (flags & ADJ_MIDCHAIN_FLAG_NO_COUNT) ?
+                    adj_midchain_tx_no_count_feature_node[adj->ia_link] :
+                    adj_midchain_tx_feature_node[adj->ia_link];
 
-    /*
-     * Choose the adj tx function based on whether the client wants
-     * to count against the interface or not and insert the appropriate
-     * TX feature.
-     */
-    if (flags & ADJ_MIDCHAIN_FLAG_NO_COUNT)
-    {
-	adj->sub_type.midchain.tx_function_node =
-	    adj_midchain_tx_no_count_node.index;
+    adj->sub_type.midchain.tx_function_node = (flags & ADJ_MIDCHAIN_FLAG_NO_COUNT) ?
+                                               adj_midchain_tx_no_count_node.index :
+                                               adj_midchain_tx_node.index;
 
-	ci = vnet_config_add_feature(
-		 vlib_get_main(),
-		 vcm, ci,
-		 adj_midchain_tx_no_count_feature_node[adj->ia_link],
-		 /* config data */ 0,
-		 /* # bytes of config data */ 0);
-    }
-    else
-    {
-	adj->sub_type.midchain.tx_function_node =
-	    adj_midchain_tx_node.index;
-	ci = vnet_config_add_feature(
-		 vlib_get_main(),
-		 vcm, ci,
-		 adj_midchain_tx_feature_node[adj->ia_link],
-		 /* config data */ 0,
-		 /* # bytes of config data */ 0);
-    }
-
-    cm->config_index_by_sw_if_index[adj->rewrite_header.sw_if_index] = ci;
-
+    vnet_feature_enable_disable_with_index (arc_index, feature_index,
+					    adj->rewrite_header.sw_if_index,
+					    1 /* enable */, 0, 0);
 
     /*
      * stack the midchain on the drop so it's ready to forward in the adj-midchain-tx.

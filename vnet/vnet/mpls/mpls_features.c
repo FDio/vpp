@@ -100,116 +100,57 @@ VLIB_REGISTER_NODE (mpls_not_enabled_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_not_enabled_node, mpls_not_enabled)
 
-VNET_MPLS_FEATURE_INIT (mpls_lookup, static) = {
-  .node_name = "mpls-lookup",
-  .runs_before = ORDER_CONSTRAINTS {"mpls-not-enabled", 0},
-  .feature_index = &mpls_main.mpls_rx_feature_lookup,
+VNET_FEATURE_ARC_INIT (mpls_input, static) =
+{
+  .arc_name  = "mpls-input",
+  .start_nodes = VNET_FEATURES ("mpls-input"),
+  .arc_index_ptr = &mpls_main.input_feature_arc_index,
 };
 
-VNET_MPLS_FEATURE_INIT (mpls_not_enabled, static) = {
+VNET_FEATURE_INIT (mpls_lookup, static) = {
+  .arc_name = "mpls-input",
+  .node_name = "mpls-lookup",
+  .runs_before = VNET_FEATURES ("mpls-not-enabled"),
+};
+
+VNET_FEATURE_INIT (mpls_not_enabled, static) = {
+  .arc_name = "mpls-input",
   .node_name = "mpls-not-enabled",
-  .runs_before = ORDER_CONSTRAINTS {0}, /* not before any other features */
-  .feature_index = &mpls_main.mpls_rx_feature_not_enabled,
+  .runs_before = VNET_FEATURES (0), /* not before any other features */
+};
+
+VNET_FEATURE_ARC_INIT (mpls_output, static) =
+{
+  .arc_name  = "mpls-output",
+  .start_nodes = VNET_FEATURES ("mpls-output", "mpls-midchain"),
+  .arc_index_ptr = &mpls_main.output_feature_arc_index,
 };
 
 /* Built-in ip4 tx feature path definition */
-VNET_MPLS_TX_FEATURE_INIT (interface_output, static) = {
+VNET_FEATURE_INIT (mpls_interface_output, static) = {
+  .arc_name = "mpls-output",
   .node_name = "interface-output",
   .runs_before = 0, /* not before any other features */
-  .feature_index = &mpls_main.mpls_tx_feature_interface_output,
 };
-
-
-static char * rx_feature_start_nodes[] =
-{
-    "mpls-input",
-};
-static char * tx_feature_start_nodes[] =
-{
-    "mpls-output",
-    "mpls-midchain",
-};
-
-clib_error_t *
-mpls_feature_init (vlib_main_t * vm)
-{
-  vnet_feature_config_main_t * cm = &mpls_main.feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  vnet_config_main_t * vcm = &cm->config_main;
-  clib_error_t *error;
-
-  error = vnet_feature_arc_init
-      (vm, vcm, rx_feature_start_nodes,
-       ARRAY_LEN(rx_feature_start_nodes),
-       mpls_main.next_feature[VNET_IP_RX_UNICAST_FEAT],
-       &mpls_main.feature_nodes[VNET_IP_RX_UNICAST_FEAT]);
-
-  if (error)
-      return error;
-
-  cm  = &mpls_main.feature_config_mains[VNET_IP_TX_FEAT];
-  vcm = &cm->config_main;
-
-  error = vnet_feature_arc_init
-      (vm, vcm,
-       tx_feature_start_nodes,
-       ARRAY_LEN(tx_feature_start_nodes),
-       mpls_main.next_feature[VNET_IP_TX_FEAT],
-       &mpls_main.feature_nodes[VNET_IP_TX_FEAT]);
-
-  return error;
-}
 
 static clib_error_t *
 mpls_sw_interface_add_del (vnet_main_t * vnm,
                            u32 sw_if_index,
                            u32 is_add)
 {
-  vlib_main_t * vm = vnm->vlib_main;
   mpls_main_t * mm = &mpls_main;
-  u32 feature_index;
-  u32 ci, cast;
 
-  for (cast = 0; cast < VNET_N_IP_FEAT; cast++)
-  {
-      vnet_feature_config_main_t * cm = &mm->feature_config_mains[cast];
-      vnet_config_main_t * vcm = &cm->config_main;
+  vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
+  vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
 
-      if (VNET_IP_RX_MULTICAST_FEAT == cast)
-	  continue;
-
-      vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
-      vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
-      vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-      ci = cm->config_index_by_sw_if_index[sw_if_index];
-
-       if (cast == VNET_IP_RX_UNICAST_FEAT)
-	   feature_index = mm->mpls_rx_feature_not_enabled;
-       else
-	   feature_index = mm->mpls_tx_feature_interface_output;
-
-
-      if (is_add)
-	  ci = vnet_config_add_feature (vm, vcm, ci,
-					feature_index,
-					/* config data */ 0,
-					/* # bytes of config data */ 0);
-      else
-      {
-	  ci = vnet_config_del_feature (vm, vcm, ci,
-					feature_index,
-					/* config data */ 0,
-					/* # bytes of config data */ 0);
-	  mm->mpls_enabled_by_sw_if_index[sw_if_index] = 0;;
-      }
-      cm->config_index_by_sw_if_index[sw_if_index] = ci;
-  }
+  vnet_feature_enable_disable ("mpls-input", "mpls-not-enabled", sw_if_index,
+			       is_add, 0, 0);
+  vnet_feature_enable_disable ("mpls-output", "interface-output", sw_if_index,
+			       is_add, 0, 0);
 
   return /* no error */ 0;
 }
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (mpls_sw_interface_add_del);
 
-#define foreach_af_cast                         \
-_(VNET_IP_RX_UNICAST_FEAT, "mpls input")        \
-_(VNET_IP_TX_FEAT, "mpls output")               \
 

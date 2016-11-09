@@ -88,9 +88,6 @@ ip4_source_check_inline (vlib_main_t * vm,
 			 vlib_frame_t * frame,
 			 ip4_source_check_type_t source_check_type)
 {
-  ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  vnet_feature_config_main_t * cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   u32 n_left_from, * from, * to_next;
   u32 next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
@@ -149,14 +146,8 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  c0 = vnet_get_config_data (&cm->config_main,
-				     &p0->current_config_index,
-				     &next0,
-				     sizeof (c0[0]));
-	  c1 = vnet_get_config_data (&cm->config_main,
-				     &p1->current_config_index,
-				     &next1,
-				     sizeof (c1[0]));
+	  c0 = vnet_feature_next_with_data(vnet_buffer (p0)->sw_if_index[VLIB_RX] , &next0, p0, sizeof (c0[0]));
+	  c1 = vnet_feature_next_with_data(vnet_buffer (p1)->sw_if_index[VLIB_RX] , &next1, p1, sizeof (c1[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
@@ -228,10 +219,7 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  c0 = vnet_get_config_data (&cm->config_main,
-				     &p0->current_config_index,
-				     &next0,
-				     sizeof (c0[0]));
+	  c0 = vnet_feature_next_with_data(vnet_buffer (p0)->sw_if_index[VLIB_RX] , &next0, p0, sizeof (c0[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
@@ -334,16 +322,13 @@ set_ip_source_check (vlib_main_t * vm,
   unformat_input_t _line_input, * line_input = &_line_input;
   vnet_main_t * vnm = vnet_get_main();
   ip4_main_t * im = &ip4_main;
-  ip_lookup_main_t * lm = &im->lookup_main;
-  vnet_feature_config_main_t * rx_cm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
   clib_error_t * error = 0;
-  u32 sw_if_index, is_del, ci;
+  u32 sw_if_index, is_del;
   ip4_source_check_config_t config;
-  u32 feature_index;
+  char * feature_name = "ip4-source-check-via-rx";
 
   sw_if_index = ~0;
   is_del = 0;
-  feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
 
   if (! unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -354,10 +339,8 @@ set_ip_source_check (vlib_main_t * vm,
 	  ;
       else if (unformat (line_input, "del"))
         is_del = 1;
-      else if (unformat (line_input, "strict"))
-	feature_index = im->ip4_unicast_rx_feature_source_reachable_via_rx;
       else if (unformat (line_input, "loose"))
-        feature_index = im->ip4_unicast_rx_feature_source_reachable_via_any;
+	feature_name = "ip4-source-check-via-any";
       else
         {
 	  error = unformat_parse_error (line_input);
@@ -373,17 +356,8 @@ set_ip_source_check (vlib_main_t * vm,
     }
 
   config.fib_index = im->fib_index_by_sw_if_index[sw_if_index];
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-  ci = (is_del
-	? vnet_config_del_feature
-	: vnet_config_add_feature)
-    (vm, &rx_cm->config_main,
-     ci,
-     feature_index,
-     &config,
-     sizeof (config));
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
-
+  vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
+			       is_del == 0, &config, sizeof (config));
  done:
   return error;
 }

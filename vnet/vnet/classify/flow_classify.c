@@ -21,30 +21,24 @@ vnet_flow_classify_feature_enable (vlib_main_t * vnm,
                                    flow_classify_table_id_t tid,
                                    int feature_enable)
 {
-  ip_lookup_main_t * lm;
-  vnet_feature_config_main_t * ifcm;
-  u32 ftype;
-  u32 ci;
+  vnet_feature_config_main_t *vfcm;
+  u8 arc;
 
   if (tid == FLOW_CLASSIFY_TABLE_IP4)
-  {
-    lm = &ip4_main.lookup_main;
-    ftype = ip4_main.ip4_unicast_rx_feature_flow_classify;
-  }
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "ip4-flow-classify",
+				   sw_if_index, feature_enable, 0, 0);
+      arc = vnet_get_feature_arc_index ("ip4-unicast");
+    }
   else
-  {
-    lm = &ip6_main.lookup_main;
-    ftype = ip6_main.ip6_unicast_rx_feature_flow_classify;
-  }
+    {
+      vnet_feature_enable_disable ("ip6-unicast", "ip6-flow-classify",
+				   sw_if_index, feature_enable, 0, 0);
+      arc = vnet_get_feature_arc_index ("ip6-unicast");
+    }
 
-  ifcm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-
-  ci = ifcm->config_index_by_sw_if_index[sw_if_index];
-  ci = (feature_enable ? vnet_config_add_feature : vnet_config_del_feature)
-  (vnm, &ifcm->config_main, ci, ftype, 0, 0);
-
-  ifcm->config_index_by_sw_if_index[sw_if_index] = ci;
-  fcm->vnet_config_main[tid] = &ifcm->config_main;
+  vfcm = vnet_get_feature_arc_config_main (arc);
+  fcm->vnet_config_main[tid] = &vfcm->config_main;
 }
 
 int vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,

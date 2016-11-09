@@ -31,6 +31,7 @@ typedef struct _vnet_feature_arc_registration
   int n_start_nodes;
   /* Feature arc index, assigned by init function */
   u8 feature_arc_index;
+  u8 *arc_index_ptr;
 } vnet_feature_arc_registration_t;
 
 /** feature registration object */
@@ -43,8 +44,8 @@ typedef struct _vnet_feature_registration
   /** Graph node name */
   char *node_name;
   /** Pointer to this feature index, filled in by vnet_feature_arc_init */
-  u32 *feature_index;
-  u32 feature_index_u32;
+  u32 *feature_index_ptr;
+  u32 feature_index;
   /** Constraints of the form "this feature runs before X" */
   char **runs_before;
   /** Constraints of the form "this feature runs after Y" */
@@ -122,11 +123,27 @@ u32 vnet_get_feature_index (u8 arc, const char *s);
 u8 vnet_get_feature_arc_index (const char *s);
 
 int
+vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
+					u32 sw_if_index, int enable_disable,
+					void *feature_config,
+					u32 n_feature_config_bytes);
+
+int
 vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     u32 sw_if_index, int enable_disable,
 			     void *feature_config,
 			     u32 n_feature_config_bytes);
 
+static inline vnet_feature_config_main_t *
+vnet_get_feature_arc_config_main (u8 arc_index)
+{
+  vnet_feature_main_t *fm = &feature_main;
+
+  if (arc_index == (u8) ~ 0)
+    return 0;
+
+  return &fm->feature_config_mains[arc_index];
+}
 
 static_always_inline int
 vnet_have_features (u8 arc, u32 sw_if_index)
@@ -259,7 +276,6 @@ vnet_feature_start_device_input_x2 (u32 sw_if_index,
 }
 
 
-#define ORDER_CONSTRAINTS (char*[])
 #define VNET_FEATURES(...)  (char*[]) { __VA_ARGS__, 0}
 
 clib_error_t *vnet_feature_arc_init (vlib_main_t * vm,

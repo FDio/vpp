@@ -34,6 +34,8 @@ vnet_feature_init (vlib_main_t * vm)
       char *s;
       int i = 0;
       areg->feature_arc_index = arc_index;
+      if (areg->arc_index_ptr)
+	*areg->arc_index_ptr = arc_index;
       hash_set_mem (fm->arc_index_by_name, areg->arc_name,
 		    pointer_to_uword (areg));
 
@@ -111,8 +113,6 @@ vnet_feature_init (vlib_main_t * vm)
       arc_index++;
     }
 
-  fm->device_input_feature_arc_index =
-    vnet_get_feature_arc_index ("device-input");
   return 0;
 }
 
@@ -164,29 +164,27 @@ vnet_get_feature_index (u8 arc, const char *s)
     return ~0;
 
   reg = uword_to_pointer (p[0], vnet_feature_registration_t *);
-  return reg->feature_index_u32;
+  return reg->feature_index;
 }
 
 int
-vnet_feature_enable_disable (const char *arc_name, const char *node_name,
-			     u32 sw_if_index, int enable_disable,
-			     void *feature_config, u32 n_feature_config_bytes)
+vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
+					u32 sw_if_index, int enable_disable,
+					void *feature_config,
+					u32 n_feature_config_bytes)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
-  u32 feature_index, ci;
-  u8 arc_index;
-
-  arc_index = vnet_get_feature_arc_index (arc_name);
+  u32 ci;
 
   if (arc_index == (u8) ~ 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  cm = &fm->feature_config_mains[arc_index];
-  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
-  feature_index = vnet_get_feature_index (arc_index, node_name);
   if (feature_index == ~0)
     return VNET_API_ERROR_INVALID_VALUE_2;
+
+  cm = &fm->feature_config_mains[arc_index];
+  vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
   ci = (enable_disable
@@ -200,6 +198,27 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 				    enable_disable);
 
   return 0;
+}
+
+int
+vnet_feature_enable_disable (const char *arc_name, const char *node_name,
+			     u32 sw_if_index, int enable_disable,
+			     void *feature_config, u32 n_feature_config_bytes)
+{
+  u32 feature_index;
+  u8 arc_index;
+
+  arc_index = vnet_get_feature_arc_index (arc_name);
+
+  if (arc_index == (u8) ~ 0)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  feature_index = vnet_get_feature_index (arc_index, node_name);
+
+  return vnet_feature_enable_disable_with_index (arc_index, feature_index,
+						 sw_if_index, enable_disable,
+						 feature_config,
+						 n_feature_config_bytes);
 }
 
 
