@@ -218,15 +218,7 @@ done:
       else
 	{
 	  /* Go to next node on the ip6 configuration chain */
-	  ip6_main_t *im = &ip6_main;
-	  ip_lookup_main_t *lm = &im->lookup_main;
-	  vnet_feature_config_main_t *cm =
-	    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-	  ip6_l2tpv3_config_t *c0;
-
-	  vnet_get_config_data (&cm->config_main,
-				&b->current_config_index,
-				&next_index, sizeof (c0[0]));
+	  vnet_feature_next (session->sw_if_index, &next_index, b);
 	}
     }
 

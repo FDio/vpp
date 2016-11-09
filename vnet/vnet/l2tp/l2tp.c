@@ -600,26 +600,12 @@ int
 l2tpv3_interface_enable_disable (vnet_main_t * vnm,
 				 u32 sw_if_index, int enable_disable)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
-  vnet_feature_config_main_t *rx_cm =
-    &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-  u32 ci;
-  ip6_l2tpv3_config_t config;
-  u32 feature_index;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  feature_index = im->ip6_unicast_rx_feature_l2tp_decap;
-
-  ci = rx_cm->config_index_by_sw_if_index[sw_if_index];
-  ci = (enable_disable
-	? vnet_config_add_feature
-	: vnet_config_del_feature)
-    (vlib_get_main (), &rx_cm->config_main,
-     ci, feature_index, &config, sizeof (config));
-  rx_cm->config_index_by_sw_if_index[sw_if_index] = ci;
+  vnet_feature_enable_disable ("ip6-unicast", "l2tp-decap", sw_if_index,
+			       enable_disable, 0, 0);
   return 0;
 }
 

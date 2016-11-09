@@ -37,6 +37,7 @@ VNET_FEATURE_ARC_INIT (device_input, static) =
 {
   .arc_name  = "device-input",
   .start_nodes = VNET_FEATURES ("device-input"),
+  .arc_index_ptr = &feature_main.device_input_feature_arc_index,
 };
 
 VNET_FEATURE_INIT (l2_patch, static) = {
