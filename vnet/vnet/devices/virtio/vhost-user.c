@@ -344,6 +344,9 @@ vhost_user_socket_read (unix_file_t * uf)
 
   n = recvmsg (uf->file_descriptor, &mh, 0);
 
+  /* Stop workers to avoid end of the world */
+  vlib_worker_thread_barrier_sync (vlib_get_main ());
+
   if (n != VHOST_USER_MSG_HDR_SZ)
     goto close_socket;
 
@@ -724,10 +727,12 @@ vhost_user_socket_read (unix_file_t * uf)
 	goto close_socket;
     }
 
+  vlib_worker_thread_barrier_release (vlib_get_main ());
   return 0;
 
 close_socket:
   vhost_user_if_disconnect (vui);
+  vlib_worker_thread_barrier_release (vlib_get_main ());
   return 0;
 }
 
