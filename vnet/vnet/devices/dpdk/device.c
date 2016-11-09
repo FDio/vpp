@@ -331,14 +331,24 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
-      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
+      /*
+       * Is HQoS on?  Are we on an HQoS worker thread?
+       */
+      dpdk_device_hqos_per_worker_thread_t *hqos = NULL;
+      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_HQOS))
+	{
+	  hqos = &xd->hqos_wt[vm->cpu_index];
+	  if (PREDICT_FALSE (hqos->swq == NULL))
+	    {
+	      hqos = NULL;
+	    }
+	}
+
+      if (PREDICT_TRUE (hqos != NULL))	/* HQoS ON */
 	{
 	  if (PREDICT_TRUE (tx_head > tx_tail))
 	    {
 	      /* no wrap, transmit in one burst */
-	      dpdk_device_hqos_per_worker_thread_t *hqos =
-		&xd->hqos_wt[vm->cpu_index];
-
 	      dpdk_hqos_metadata_set (hqos,
 				      &tx_vector[tx_tail], tx_head - tx_tail);
 	      rv = rte_ring_sp_enqueue_burst (hqos->swq,
@@ -354,9 +364,6 @@ static_always_inline
 	       * at the start of the ring.
 	       * Transmit pkts up to the wrap point.
 	       */
-	      dpdk_device_hqos_per_worker_thread_t *hqos =
-		&xd->hqos_wt[vm->cpu_index];
-
 	      dpdk_hqos_metadata_set (hqos,
 				      &tx_vector[tx_tail],
 				      xd->nb_tx_desc - tx_tail);
