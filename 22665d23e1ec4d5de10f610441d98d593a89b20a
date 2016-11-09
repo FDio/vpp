@@ -16,6 +16,24 @@
       "revId": "22665d23e1ec4d5de10f610441d98d593a89b20a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_eab5dd31",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-11-09T12:12:41Z",
+      "side": 1,
+      "message": "I think so indeed. This was more a quick fix based on what is merged in master.\nMaybe we can keep it this way in 1609 and work on a better option for 1701 ?",
+      "parentUuid": "9a437d4f_4a418938",
+      "revId": "22665d23e1ec4d5de10f610441d98d593a89b20a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
