@@ -34,6 +34,8 @@ vnet_feature_init (vlib_main_t * vm)
       char *s;
       int i = 0;
       areg->feature_arc_index = arc_index;
+      if (areg->arc_index_ptr)
+	*areg->arc_index_ptr = arc_index;
       hash_set_mem (fm->arc_index_by_name, areg->arc_name,
 		    pointer_to_uword (areg));
 
@@ -111,8 +113,6 @@ vnet_feature_init (vlib_main_t * vm)
       arc_index++;
     }
 
-  fm->device_input_feature_arc_index =
-    vnet_get_feature_arc_index ("device-input");
   return 0;
 }
 

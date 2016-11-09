@@ -28,30 +28,25 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
     }
   else
     {
-      ip_lookup_main_t * lm;
-      vnet_feature_config_main_t * ipcm;
-      u32 ftype;
-      u32 ci;
+      vnet_feature_config_main_t * fcm;
+      u8 arc;
 
       if (tid == POLICER_CLASSIFY_TABLE_IP4)
-        {
-          lm = &ip4_main.lookup_main;
-          ftype = ip4_main.ip4_unicast_rx_feature_policer_classify;
-        }
+	{
+	  vnet_feature_enable_disable ("ip4-unicast", "ip4-policer-classify",
+				       sw_if_index, feature_enable, 0, 0);
+	  arc = vnet_get_feature_arc_index ("ip4-unicast");
+	}
+      
       else
-        {
-          lm = &ip6_main.lookup_main;
-          ftype = ip6_main.ip6_unicast_rx_feature_policer_classify;
-        }
+	{
+	  vnet_feature_enable_disable ("ip6-unicast", "ip6-policer-classify",
+				       sw_if_index, feature_enable, 0, 0);
+	  arc = vnet_get_feature_arc_index ("ip6-unicast");
+	}
 
-      ipcm = &lm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-
-      ci = ipcm->config_index_by_sw_if_index[sw_if_index];
-      ci = (feature_enable ? vnet_config_add_feature : vnet_config_del_feature)
-        (vnm, &ipcm->config_main, ci, ftype, 0, 0);
-
-      ipcm->config_index_by_sw_if_index[sw_if_index] = ci;
-      pcm->vnet_config_main[tid] = &ipcm->config_main;
+      fcm = vnet_get_feature_arc_config_main (arc);
+      pcm->vnet_config_main[tid] = &fcm->config_main;
     }
 }
 

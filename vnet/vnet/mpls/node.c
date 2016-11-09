@@ -96,8 +96,7 @@ mpls_input_inline (vlib_main_t * vm,
 	  vlib_buffer_t * b0;
 	  mpls_unicast_header_t * h0;
           u32 label0;
-	  u32 next0;
-	  vnet_feature_config_main_t * cm0;
+	  u32 next0 = 0;
           u32 sw_if_index0;
 
 	  bi0 = from[0];
@@ -111,10 +110,6 @@ mpls_input_inline (vlib_main_t * vm,
           h0 = vlib_buffer_get_current (b0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  cm0 = &mm->feature_config_mains[VNET_IP_RX_UNICAST_FEAT];
-	  b0->current_config_index = vec_elt (cm0->config_index_by_sw_if_index,
-					      sw_if_index0);
-
 	  label0 = clib_net_to_host_u32 (h0->label_exp_s_ttl);
 	  /* TTL expired? */
 	  if (PREDICT_FALSE(vnet_mpls_uc_get_ttl (label0) == 0))
@@ -124,10 +119,7 @@ mpls_input_inline (vlib_main_t * vm,
             }
 	  else
             {
-              vnet_get_config_data (&cm0->config_main,
-				    &b0->current_config_index,
-				    &next0,
-				    /* # bytes of config data */ 0);
+	      vnet_feature_arc_start(mm->input_feature_arc_index, sw_if_index0, &next0, b0);
               vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
             }
 
@@ -218,7 +210,7 @@ static clib_error_t * mpls_input_init (vlib_main_t * vm)
 
   mpls_setup_nodes (vm);
 
-  return (mpls_feature_init(vm));
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (mpls_input_init);
