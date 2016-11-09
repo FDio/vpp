@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_ca633919",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T20:47:37Z",
+      "side": 1,
+      "message": "PREDICT_FALSE? let\u0027s assume we get a packet we want to forward.",
+      "revId": "6a717a344aafde7023cceb250209e2c2246a21df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_8a6d3107",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T20:47:37Z",
+      "side": 1,
+      "message": "can you print t-\u003efib_entry_index here too.",
+      "revId": "6a717a344aafde7023cceb250209e2c2246a21df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_6a720de7",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T20:47:37Z",
+      "side": 1,
+      "message": "you need to call;\n  dpo_reset(\u0026dpo); \nto keep the reference counts on the objects correct.",
+      "revId": "6a717a344aafde7023cceb250209e2c2246a21df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_4a7749d5",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 430,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-09T20:47:37Z",
+      "side": 1,
+      "message": "dpo_reset(\u0026dpo);\nhere too.",
+      "revId": "6a717a344aafde7023cceb250209e2c2246a21df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
