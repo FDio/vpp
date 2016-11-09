@@ -277,7 +277,7 @@ ip6_frag_do_fragment(vlib_main_t *vm, u32 pi, u32 **buffer, ip_frag_error_t *err
   if (PREDICT_FALSE(payload >= (u8 *)vlib_buffer_get_current(p) + p->current_length)) {
 	//A malicious packet could set an extension header with a too big size
 	//and make us modify another vlib_buffer
-	*error = IP6_ERROR_TOO_SHORT;
+	*error = IP_FRAG_ERROR_MALFORMED;
 	return;
   }
 
