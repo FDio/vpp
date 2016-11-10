@@ -39,8 +39,8 @@ SUFFIXES = .api.h .api
 
 %.py: %.api
 	$(info Creating Python binding for $@)
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<				\
-	| vppapigen --input - --python -				\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $<                              \
+	| vppapigen --input - --python -                                \
 	| pyvppapigen.py --input - > $@
 
 pyapidir = ${prefix}/vpp_papi_plugins
@@ -59,7 +59,8 @@ install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
 
-
+apidir = $(prefix)/snat
+api_DATA = snat/snat.api
 
 #
 # Java code generation

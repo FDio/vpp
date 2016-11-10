@@ -76,7 +76,7 @@ int main (int argc, char ** argv)
   vl_api_show_version_t message;
   vl_api_show_version_t *mp;
   int async = 1;
-  int rv = pneum_connect("pneum_client", NULL);
+  int rv = pneum_connect("pneum_client", NULL, NULL);
 
   if (rv != 0) {
     printf("Connect failed: %d\n", rv);

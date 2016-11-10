@@ -183,6 +183,8 @@ typedef struct
   u32 *ip4_fib_counters_vrf_id_by_index;
   ip6_fib_counter_t **ip6_fib_counters;
   u32 *ip6_fib_counters_vrf_id_by_index;
+
+  u8 api_signature_is_valid;
 } vat_main_t;
 
 vat_main_t vat_main;
@@ -202,10 +204,19 @@ do {                                                    \
     fflush(vam->ofp);					\
 } while(0);
 
+static inline void
+verify_api_signature (char *name_and_crc)
+{
+  vat_main_t *vm = &vat_main;
+  if (vl_api_get_msg_index ((u8 *) name_and_crc) == ~0)
+    vm->api_signature_is_valid = 0;
+}
+
 void vat_api_hookup (vat_main_t * vam);
 int api_sw_interface_dump (vat_main_t * vam);
 void do_one_file (vat_main_t * vam);
 int exec (vat_main_t * vam);
+int vat_verify_api_signatures (void);
 
 /* Plugin API library functions */
 char *vat_plugin_path;

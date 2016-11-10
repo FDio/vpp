@@ -45,12 +45,6 @@
 #include <ioam/export/ioam_export_all_api_h.h>
 #undef vl_printfun
 
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/export/ioam_export_all_api_h.h>
-#undef vl_api_version
-
-
 typedef struct
 {
   /* API message ID base */
@@ -59,6 +53,21 @@ typedef struct
 } export_test_main_t;
 
 export_test_main_t export_test_main;
+
+#define vl_msg_name_crc_list
+#include <ioam/export/ioam_export_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static int
+verify_api_signatures (void)
+{
+  vat_main_t * vm = &vat_main;
+  vm->api_signature_is_valid = 1;
+#define _(id,n,crc) verify_api_signature (#n "_" #crc);
+  foreach_vl_msg_name_crc_ioam_export;
+#undef _
+  return vm->api_signature_is_valid;
+}
 
 #define foreach_standard_reply_retval_handler   \
 _(ioam_export_ip6_enable_disable_reply)
@@ -194,12 +203,15 @@ vat_plugin_register (vat_main_t * vam)
 
   sm->vat_main = vam;
 
-  name = format (0, "ioam_export_%08x%c", api_version, 0);
+  name = format (0, "ioam_export");
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
-  if (sm->msg_id_base != (u16) ~ 0)
-    vat_api_hookup (vam);
-
+  if (sm->msg_id_base != (u16) ~0)
+    {
+      if (!verify_api_signatures ())
+	return clib_error_return (0, "Invalid Plugin API signature");
+      vat_api_hookup (vam);
+    }
   vec_free (name);
 
   return 0;
