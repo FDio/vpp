@@ -214,26 +214,6 @@ fib_proto_to_dpo (fib_protocol_t fib_proto)
     return (0);
 }
 
-dpo_proto_t
-vnet_link_to_dpo_proto (vnet_link_t linkt)
-{
-    switch (linkt)
-    {
-    case VNET_LINK_IP6:
-        return (DPO_PROTO_IP6);
-    case VNET_LINK_IP4:
-        return (DPO_PROTO_IP4);
-    case VNET_LINK_MPLS:
-        return (DPO_PROTO_MPLS);
-    case VNET_LINK_ETHERNET:
-        return (DPO_PROTO_ETHERNET);
-    case VNET_LINK_ARP:
-	break;
-    }
-    ASSERT(0);
-    return (0);
-}
-
 fib_protocol_t
 dpo_proto_to_fib (dpo_proto_t dpo_proto)
 {

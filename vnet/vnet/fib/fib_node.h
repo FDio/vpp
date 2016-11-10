@@ -98,19 +98,29 @@ typedef enum fib_node_back_walk_reason_t_ {
      */
     FIB_NODE_BW_REASON_ADJ_UPDATE,
     /**
+     * Walk to update children to inform them the adjacency is now down.
+     */
+    FIB_NODE_BW_REASON_ADJ_DOWN,
+    /**
      * Marker. Add new before and update
      */
-    FIB_NODE_BW_REASON_LAST = FIB_NODE_BW_REASON_EVALUATE,
+    FIB_NODE_BW_REASON_LAST = FIB_NODE_BW_REASON_ADJ_DOWN,
 } fib_node_back_walk_reason_t;
 
-#define FIB_NODE_BW_REASONS {			\
-    [FIB_NODE_BW_REASON_RESOLVE] = "resolve"	\
-    [FIB_NODE_BW_REASON_EVALUATE] = "evaluate"	\
-    [FIB_NODE_BW_REASON_INTERFACE_UP] = "if-up"	\
-    [FIB_NODE_BW_REASON_INTERFACE_DOWN] = "if-down"	\
-    [FIB_NODE_BW_REASON_INTERFACE_DELETE] = "if-delete"	\
-    [FIB_NODE_BW_REASON_ADJ_UPDATE] = "adj-update"	\
+#define FIB_NODE_BW_REASONS {			            \
+    [FIB_NODE_BW_REASON_RESOLVE] = "resolve",	            \
+    [FIB_NODE_BW_REASON_EVALUATE] = "evaluate",             \
+    [FIB_NODE_BW_REASON_INTERFACE_UP] = "if-up",            \
+    [FIB_NODE_BW_REASON_INTERFACE_DOWN] = "if-down",        \
+    [FIB_NODE_BW_REASON_INTERFACE_DELETE] = "if-delete",    \
+    [FIB_NODE_BW_REASON_ADJ_UPDATE] = "adj-update",         \
+    [FIB_NODE_BW_REASON_ADJ_DOWN] = "adj-down",             \
 }
+
+#define FOR_EACH_FIB_NODE_BW_REASON(_item) \
+    for (_item = FIB_NODE_BW_REASON_FIRST; \
+	 _item <= FIB_NODE_BW_REASON_LAST; \
+	 _item++)
 
 /**
  * Flags enum constructed from the reaons
@@ -123,10 +133,22 @@ typedef enum fib_node_bw_reason_flag_t_ {
     FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN = (1 << FIB_NODE_BW_REASON_INTERFACE_DOWN),
     FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE = (1 << FIB_NODE_BW_REASON_INTERFACE_DELETE),
     FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE = (1 << FIB_NODE_BW_REASON_ADJ_UPDATE),
+    FIB_NODE_BW_REASON_FLAG_ADJ_DOWN = (1 << FIB_NODE_BW_REASON_ADJ_DOWN),
 } __attribute__ ((packed)) fib_node_bw_reason_flag_t;
 
 STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 2,
 	      "BW Reason enum < 2 byte. Consequences for cover_upd_res_t");
+
+/**
+ * Flags on the walk
+ */
+typedef enum fib_node_bw_flags_t_
+{
+    /**
+     * Force the walk to be synchronous
+     */
+    FIB_NODE_BW_FLAG_FORCE_SYNC = (1 << 0),
+} fib_node_bw_flags_t;
 
 /**
  * Forward eclarations
@@ -164,6 +186,11 @@ typedef struct fib_node_back_walk_ctx_t_ {
      * The reason/trigger for the backwalk
      */
     fib_node_bw_reason_flag_t fnbw_reason;
+
+    /**
+     * additional flags for the walk
+     */
+    fib_node_bw_flags_t fnbw_flags;
 
     /**
      * the number of levels the walk has already traversed.

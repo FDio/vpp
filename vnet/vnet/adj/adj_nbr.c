@@ -252,12 +252,10 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
 			u8 *rewrite)
 {
     ip_adjacency_t *adj;
-    u32 old_next;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
     adj = adj_get(adj_index);
-    old_next = adj->lookup_next_index;
 
     if (flags & ADJ_NBR_REWRITE_FLAG_COMPLETE)
     {
@@ -281,34 +279,6 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
 					    adj->rewrite_header.sw_if_index),
 					rewrite);
     }
-
-    if (old_next != adj->lookup_next_index)
-    {
-	/*
-	 * time for walkies fido.
-	 * The link type MPLS Adj never has children. So if it is this adj
-	 * that is updated, we need to walk from its IP sibling.
-	 */
-	if (VNET_LINK_MPLS == adj->ia_link)
-	{
-	    adj_index = adj_nbr_find(adj->ia_nh_proto,
-				     fib_proto_to_link(adj->ia_nh_proto),
-				     &adj->sub_type.nbr.next_hop,
-				     adj->rewrite_header.sw_if_index);
-
-	    ASSERT(ADJ_INDEX_INVALID != adj_index);
-	}
-
-	fib_node_back_walk_ctx_t bw_ctx = {
-	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
-	    /*
-	     * This walk only needs to go back one level, but there is no control
-	     * here. the first receiving fib_entry_t will quash the walk
-	     */
-	};
-
-	fib_walk_sync(FIB_NODE_TYPE_ADJ, adj_index, &bw_ctx);
-    }
 }
 
 /**
@@ -325,13 +295,32 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 				 u32 next_node,
 				 u8 *rewrite)
 {
-    vlib_main_t * vm = vlib_get_main();
+    adj_index_t walk_ai;
+    vlib_main_t * vm;
+    u32 old_next;
+
+    vm = vlib_get_main();
+    old_next = adj->lookup_next_index;
+
+    walk_ai = adj_get_index(adj);
+    if (VNET_LINK_MPLS == adj->ia_link)
+    {
+        /*
+         * The link type MPLS has no children in the control plane graph, it only
+         * has children in the data-palne graph. The backwalk is up the former.
+         * So we need to walk from its IP cousin.
+         */
+        walk_ai = adj_nbr_find(adj->ia_nh_proto,
+                               fib_proto_to_link(adj->ia_nh_proto),
+                               &adj->sub_type.nbr.next_hop,
+                               adj->rewrite_header.sw_if_index);
+    }
 
     /*
      * Updating a rewrite string is not atomic;
      *  - the rewrite string is too long to write in one instruction
      *  - when swapping from incomplete to complete, we also need to update
-     *    the VLIB graph next-index.
+     *    the VLIB graph next-index of the adj.
      * ideally we would only want to suspend forwarding via this adj whilst we
      * do this, but we do not have that level of granularity - it's suspend all
      * worker threads or nothing.
@@ -340,9 +329,50 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      *    from the set.
      *  - update the next_node index of this adj to point to error-drop
      * both of which will mean for MAC change we will drop for this adj
-     * which is not acceptable.
-     * So the pause all threads is preferable. We don't update MAC addresses often
-     * so it's no big deal.
+     * which is not acceptable. However, when the adj changes type (from
+     * complete to incomplete and vice-versa) the child DPOs, which have the
+     * VLIB graph next node index, will be sending packets to the wrong graph
+     * node. So from the options above, updating the next_node of the adj to
+     * be drop will work, but it relies on each graph node v4/v6/mpls, rewrite/
+     * arp/midchain always be valid w.r.t. a mis-match of adj type and node type
+     * (i.e. a rewrite adj in the arp node). This is not enforcable. Getting it
+     * wrong will lead to hard to find bugs since its a race condition. So we
+     * choose the more reliable method of updating the children to use the drop,
+     * then switching adj's type, then updating the children again. Did I mention
+     * that this doesn't happen often...
+     * So we need to distinguish between the two cases:
+     *  1 - mac change
+     *  2 - adj type change
+     */
+    if (old_next != adj_next_index &&
+        ADJ_INDEX_INVALID != walk_ai)
+    {
+        /*
+         * the adj is changing type. we need to fix all children so that they
+         * stack momentarily on a drop, while the adj changes. If we don't do
+         * this  the children will send packets to a VLIB graph node that does
+         * not correspond to the adj's type - and it goes downhill from there.
+         */
+	fib_node_back_walk_ctx_t bw_ctx = {
+	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_DOWN,
+            /*
+             * force this walk to be synchrous. if we don't and a node in the graph
+             * (a heavily shared path-list) chooses to back-ground the walk (make it
+             * async) then it will pause and we will do the adj update below, before
+             * all the children are updated. not good.
+             */
+            .fnbw_flags = FIB_NODE_BW_FLAG_FORCE_SYNC,
+	};
+
+	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
+    }
+
+    /*
+     * If we are just updating the MAC string of the adj (which we also can't
+     * do atomically), then we need to stop packets switching through the adj.
+     * We can't do that on a per-adj basis, so it's all the packets.
+     * If we are updating the type, and we walked back to the children above,
+     * then this barrier serves to flush the queues/frames.
      */
     vlib_worker_thread_barrier_sync(vm);
 
@@ -358,12 +388,6 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 				       sizeof(adj->rewrite_data),
 				       rewrite,
 				       vec_len(rewrite));
-
-	adj->rewrite_header.node_index = this_node;
-	adj->rewrite_header.next_index = vlib_node_add_next (vlib_get_main(),
-							     this_node,
-							     next_node);
-
 	vec_free(rewrite);
     }
     else
@@ -371,11 +395,29 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 	vnet_rewrite_clear_data_internal(&adj->rewrite_header,
 					 sizeof(adj->rewrite_data));
     }
+    adj->rewrite_header.node_index = this_node;
+    adj->rewrite_header.next_index = vlib_node_add_next(vlib_get_main(),
+                                                        this_node,
+                                                        next_node);
 
     /*
      * done with the rewirte update - let the workers loose.
      */
     vlib_worker_thread_barrier_release(vm);
+
+    if (old_next != adj->lookup_next_index &&
+        ADJ_INDEX_INVALID != walk_ai)
+    {
+        /*
+         * backwalk to the children so they can stack on the now updated
+         * adjacency
+         */
+        fib_node_back_walk_ctx_t bw_ctx = {
+	    .fnbw_reason = FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE,
+	};
+
+	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
+    }
 }
 
 typedef struct adj_db_count_ctx_t_ {
