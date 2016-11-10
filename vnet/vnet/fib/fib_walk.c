@@ -124,6 +124,10 @@ typedef enum fib_walk_queue_stats_t_
  * The names of the walk stats
  */
 static const char * const fib_walk_queue_stats_names[] = FIB_WALK_QUEUE_STATS;
+/**
+ * The names of the walk reasons
+ */
+static const char * const fib_node_bw_reason_names[] = FIB_NODE_BW_REASONS;
 
 /**
  * A represenation of one queue of walk
@@ -178,6 +182,8 @@ typedef struct fib_walk_history_t_ {
     u32 fwh_n_visits;
     f64 fwh_duration;
     fib_node_ptr_t fwh_parent;
+    fib_walk_flags_t fwh_flags;
+    fib_node_bw_reason_flag_t fwh_reason;
 } fib_walk_history_t;
 static fib_walk_history_t fib_walk_history[HISTORY_N_WALKS];
 
@@ -234,6 +240,7 @@ fib_walk_queue_get_front (fib_walk_priority_t prio)
 static void
 fib_walk_destroy (fib_walk_t *fwalk)
 {
+    fib_node_back_walk_ctx_t *ctx;
     u32 bucket;
 
     if (FIB_NODE_INDEX_INVALID != fwalk->fw_prio_sibling)
@@ -263,6 +270,15 @@ fib_walk_destroy (fib_walk_t *fwalk)
 	vlib_time_now(vlib_get_main()) - fwalk->fw_start_time;
     fib_walk_history[history_last_walk_pos].fwh_parent =
 	fwalk->fw_parent;
+    fib_walk_history[history_last_walk_pos].fwh_flags =
+	fwalk->fw_flags;
+
+    fib_walk_history[history_last_walk_pos].fwh_reason = 0;
+    vec_foreach(ctx, fwalk->fw_ctx)
+    {
+        fib_walk_history[history_last_walk_pos].fwh_reason |=
+            ctx->fnbw_reason;
+    }
 
     history_last_walk_pos = (history_last_walk_pos + 1) % HISTORY_N_WALKS;
 
@@ -599,6 +615,15 @@ fib_walk_async (fib_node_type_t parent_type,
 	 */
 	return;
     }
+    if (ctx->fnbw_flags & FIB_NODE_BW_FLAG_FORCE_SYNC)
+    {
+        /*
+         * the originator of the walk wanted it to be synchronous, but the
+         * parent object chose async - denied.
+         */
+        return (fib_walk_sync(parent_type, parent_index, ctx));
+    }
+
 
     fwalk = fib_walk_alloc(parent_type,
 			   parent_index,
@@ -928,22 +953,40 @@ fib_walk_show (vlib_main_t * vm,
 
 
     vlib_cli_output(vm, "Brief History (last %d walks):", HISTORY_N_WALKS);
-    ii = history_last_walk_pos;
-    do
+    ii = history_last_walk_pos - 1;
+    if (ii < 0)
+        ii = HISTORY_N_WALKS - 1;
+
+    while (ii != history_last_walk_pos)
     {
 	if (0 != fib_walk_history[ii].fwh_n_visits)
 	{
-	    vlib_cli_output(
-		vm, " %s:%d visits:%d duration:%.2f ",
-		fib_node_type_get_name(fib_walk_history[ii].fwh_parent.fnp_type),
-		fib_walk_history[ii].fwh_parent.fnp_index,
-		fib_walk_history[ii].fwh_n_visits,
-		fib_walk_history[ii].fwh_duration);
+            fib_node_back_walk_reason_t reason;
+            u8 *s = NULL;
+
+	    s = format(s, " %s:%d visits:%d duration:%.2f ",
+                       fib_node_type_get_name(fib_walk_history[ii].fwh_parent.fnp_type),
+                       fib_walk_history[ii].fwh_parent.fnp_index,
+                       fib_walk_history[ii].fwh_n_visits,
+                       fib_walk_history[ii].fwh_duration);
+            if (FIB_WALK_FLAG_SYNC & fib_walk_history[ii].fwh_flags)
+                s = format(s, "sync, ");
+            if (FIB_WALK_FLAG_ASYNC & fib_walk_history[ii].fwh_flags)
+                s = format(s, "async, ");
+
+            s = format(s, "reason:");
+            FOR_EACH_FIB_NODE_BW_REASON(reason) {
+                if ((1<<reason) & fib_walk_history[ii].fwh_reason) {
+                    s = format (s, "%s,", fib_node_bw_reason_names[reason]);
+                }
+            }
+            vlib_cli_output(vm, "%v", s);
 	}
 
-	ii = (ii + 1) % HISTORY_N_WALKS;
-    } while (ii != history_last_walk_pos);
-
+        ii--;
+        if (ii < 0)
+            ii = HISTORY_N_WALKS - 1;
+    }
 
     return (NULL);
 }

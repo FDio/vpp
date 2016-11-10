@@ -757,7 +757,8 @@ fib_path_back_walk_notify (fib_node_t *node,
 		fib_path_proto_to_chain_type(path->fp_nh_proto),
 		&path->fp_dpo);
 	}
-	if (FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason)
+	if ((FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason) ||
+            (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN   & ctx->fnbw_reason))
 	{
 	    /*
 	     * ADJ updates (complete<->incomplete) do not need to propagate to
@@ -810,6 +811,12 @@ FIXME comment
              */
             adj_index_t ai;
 
+            if (vnet_sw_interface_is_admin_up(vnet_get_main(),
+                                              path->attached_next_hop.fp_interface))
+            {
+                path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
+            }
+
             ai = fib_path_attached_next_hop_get_adj(
                      path,
                      fib_proto_to_link(path->fp_nh_proto));
@@ -818,6 +825,13 @@ FIXME comment
                     fib_proto_to_dpo(path->fp_nh_proto),
                     ai);
             adj_unlock(ai);
+        }
+        if (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason)
+	{
+            /*
+             * the adj has gone down. the path is no longer resolved.
+             */
+	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
         }
 	break;
     case FIB_PATH_TYPE_ATTACHED:
