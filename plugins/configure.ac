@@ -54,14 +54,14 @@ AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
 # endif
 
 PLUGIN_ENABLED(sixrd)
-PLUGIN_ENABLED(ioam)
+PLUGIN_DISABLED(ioam)
 PLUGIN_ENABLED(snat)
-PLUGIN_ENABLED(ila)
-PLUGIN_ENABLED(lb)
+PLUGIN_DISABLED(ila)
+PLUGIN_DISABLED(lb)
 PLUGIN_ENABLED(flowperpkt)
 
 # Disabled plugins, require --enable-XXX-plugin
 PLUGIN_DISABLED(vcgn)
-PLUGIN_DISABLED(sample)
+PLUGIN_ENABLED(sample)
 
 AC_OUTPUT([Makefile])

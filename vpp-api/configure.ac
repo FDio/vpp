@@ -1,4 +1,4 @@
-AC_INIT(vpp-api, 1.0.0)
+AC_INIT(vpp-api, 1.1.0)
 LT_INIT
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SUBDIRS([java])

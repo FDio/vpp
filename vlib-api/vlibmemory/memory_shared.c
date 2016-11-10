@@ -541,28 +541,62 @@ vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t * q, u8 * elem)
 static void
 vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
 {
+  serialize_main_t _sm, *sm = &_sm;
   api_main_t *am = &api_main;
-  int rv;
+  u8 *tblv;
+  u32 nmsgs;
+  int i;
+  u8 *name_and_crc;
+  u32 msg_index;
 
   am->my_client_index = mp->index;
   am->my_registration = (vl_api_registration_t *) (uword) mp->handle;
 
-  rv = ntohl (mp->response);
+  /* Clean out any previous hash table (unlikely) */
+  if (am->msg_index_by_name_and_crc)
+    {
+      int i;
+      u8 **keys = 0;
+      hash_pair_t *hp;
+      /* *INDENT-OFF* */
+      hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+      ({
+        vec_add1 (keys, (u8 *) hp->key);
+      }));
+      /* *INDENT-ON* */
+      for (i = 0; i < vec_len (keys); i++)
+	vec_free (keys[i]);
+      vec_free (keys);
+    }
 
-  if (rv < 0)
-    clib_warning ("WARNING: API mismatch detected");
+  am->msg_index_by_name_and_crc = hash_create_string (0, sizeof (uword));
+
+  /* Recreate the vnet-side API message handler table */
+  tblv = (u8 *) mp->message_table;
+  serialize_open_vector (sm, tblv);
+  unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+  for (i = 0; i < nmsgs; i++)
+    {
+      msg_index = unserialize_likely_small_unsigned_integer (sm);
+      unserialize_cstring (sm, (char **) &name_and_crc);
+      hash_set_mem (am->msg_index_by_name_and_crc, name_and_crc, msg_index);
+    }
 }
 
-void vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
-  __attribute__ ((weak));
-
-void
-vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
+u32
+vl_api_get_msg_index (u8 * name_and_crc)
 {
-  int i;
+  api_main_t *am = &api_main;
+  uword *p;
 
-  for (i = 0; i < ARRAY_LEN (mp->api_versions); i++)
-    mp->api_versions[i] = 0;
+  if (am->msg_index_by_name_and_crc)
+    {
+      p = hash_get_mem (am->msg_index_by_name_and_crc, name_and_crc);
+      if (p)
+	return p[0];
+    }
+  return ~0;
 }
 
 int
@@ -616,8 +650,6 @@ vl_client_connect (char *name, int ctx_quota, int input_queue_size)
   mp->ctx_quota = ctx_quota;
   mp->input_queue = (uword) vl_input_queue;
   strncpy ((char *) mp->name, name, sizeof (mp->name) - 1);
-
-  vl_client_add_api_signatures (mp);
 
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
 
