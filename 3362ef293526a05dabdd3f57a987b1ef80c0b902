@@ -1,0 +1,176 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_95bb12c4",
+        "filename": "test/test_ip4_irb.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "please don\u0027t use magic constants unless really necessary\nin this case len()/2 should do the job better I think",
+      "range": {
+        "startLine": 66,
+        "startChar": 64,
+        "endLine": 66,
+        "endChar": 68
+      },
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_55b5aacb",
+        "filename": "test/test_ip4_irb.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "?\n\nis something missing here?",
+      "range": {
+        "startLine": 73,
+        "startChar": 9,
+        "endLine": 73,
+        "endChar": 49
+      },
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_75b0aedd",
+        "filename": "test/test_ip4_irb.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "remove this frament",
+      "range": {
+        "startLine": 82,
+        "startChar": 8,
+        "endLine": 82,
+        "endChar": 31
+      },
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_35ca2650",
+        "filename": "test/test_ip4_irb.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "line length",
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_95e2f2d3",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "ARP cache is not a property of interface, so it doesn\u0027t belong in the VppInterface class\n\nI think the cache itself with all the extend ipv4/mac addresses should be a separate class with the appropriate lookup dictionaries.\n\nThe API could look like this:\n\nclass Host:\n    @property ip4\n    @property mac\n    @property ip6\n    ...\n\nclass ARPCache:\n    def __init__(host_count):\n    \"\"\"\n    :param host_count: the number of generated mac/ip4 remote host entries for each interface\n    \"\"\"\n        self._host_count \u003d host_count\n\n    def generate_remote_hosts(interface):\n    \"\"\" Generate and add remote hosts for a given interface \"\"\"\n        self.hosts[interface] \u003d [Host(mac \u003d \"02:%02x:00:00:ff:%02x\" % (interface.sw_if_index, x),\n ip4\u003d\"172.16.%u.%u\" % (self.sw_if_index, x)\n) for x in range(self._host_count)]\n        for host in self.hosts[interface]:\n            self.hosts_by_mac[host.mac] \u003d host\n            ...\n            self.test.vapi.ip_neighbor_add_del(...)\n    \n    @property\n    def hosts_by_interface(interface):\n    \"\"\" Return a list of MAC addresses for a given interface\"\"\"\n        return self.hosts[interface]\n\n    def host_by_mac(mac):\n        return self.hosts_by_mac[mac]\n    \n    def host_by_ip4(mac):\n        ...\n\nusing something like this would avoid pushing arbitrary entries from loop interface to pg interface for later matching and increase code readability - especially for the test case",
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_f5ac9e8e",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "fix the docstring please",
+      "range": {
+        "startLine": 11,
+        "startChar": 12,
+        "endLine": 11,
+        "endChar": 49
+      },
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_d5a99a7c",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "add missing docstring",
+      "range": {
+        "startLine": 372,
+        "startChar": 15,
+        "endLine": 372,
+        "endChar": 30
+      },
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_b5b616db",
+        "filename": "test/vpp_pg_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 145,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-10T11:52:52Z",
+      "side": 1,
+      "message": "please add docstring here",
+      "range": {
+        "startLine": 144,
+        "startChar": 8,
+        "endLine": 145,
+        "endChar": 20
+      },
+      "revId": "3362ef293526a05dabdd3f57a987b1ef80c0b902",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
