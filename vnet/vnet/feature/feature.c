@@ -59,6 +59,7 @@ vnet_feature_init (vlib_main_t * vm)
   freg = fm->next_feature;
   while (freg)
     {
+      vnet_feature_registration_t *next;
       uword *p = hash_get_mem (fm->arc_index_by_name, freg->arc_name);
       if (p == 0)
 	return clib_error_return (0, "Unknown feature arc '%s'",
@@ -67,12 +68,15 @@ vnet_feature_init (vlib_main_t * vm)
       areg = uword_to_pointer (p[0], vnet_feature_arc_registration_t *);
       arc_index = areg->feature_arc_index;
 
-      vec_add1 (fm->next_feature_by_arc[arc_index], *freg);
+      next = freg->next;
+      freg->next = fm->next_feature_by_arc[arc_index];
+      fm->next_feature_by_arc[arc_index] = freg;
 
       /* next */
-      freg = freg->next;
+      freg = next;
     }
 
+  areg = fm->next_arc;
   while (areg)
     {
       clib_error_t *error;
@@ -163,7 +167,7 @@ vnet_get_feature_index (u8 arc, const char *s)
   return reg->feature_index_u32;
 }
 
-void
+int
 vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     u32 sw_if_index, int enable_disable,
 			     void *feature_config, u32 n_feature_config_bytes)
@@ -176,13 +180,13 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   arc_index = vnet_get_feature_arc_index (arc_name);
 
   if (arc_index == (u8) ~ 0)
-    return;
+    return VNET_API_ERROR_INVALID_VALUE;
 
   cm = &fm->feature_config_mains[arc_index];
   vec_validate_init_empty (cm->config_index_by_sw_if_index, sw_if_index, ~0);
   feature_index = vnet_get_feature_index (arc_index, node_name);
   if (feature_index == ~0)
-    return;
+    return VNET_API_ERROR_INVALID_VALUE_2;
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
   ci = (enable_disable
@@ -195,6 +199,7 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
   vnet_config_update_feature_count (fm, arc_index, sw_if_index,
 				    enable_disable);
 
+  return 0;
 }
 
 
@@ -216,10 +221,12 @@ show_features_command_fn (vlib_main_t * vm,
   while (areg)
     {
       vlib_cli_output (vm, "%s:", areg->arc_name);
-      vec_foreach (freg, fm->next_feature_by_arc[areg->feature_arc_index])
-      {
-	vlib_cli_output (vm, "  %s\n", freg->node_name);
-      }
+      freg = fm->next_feature_by_arc[areg->feature_arc_index];
+      while (freg)
+	{
+	  vlib_cli_output (vm, "  %s\n", freg->node_name);
+	  freg = freg->next;
+	}
 
 
       /* next */

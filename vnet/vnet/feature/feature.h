@@ -17,6 +17,7 @@
 #define included_features_h
 
 #include <vnet/vnet.h>
+#include <vnet/api_errno.h>
 
 /** feature registration object */
 typedef struct _vnet_feature_arc_registration
@@ -120,7 +121,7 @@ vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
 u32 vnet_get_feature_index (u8 arc, const char *s);
 u8 vnet_get_feature_arc_index (const char *s);
 
-void
+int
 vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 			     u32 sw_if_index, int enable_disable,
 			     void *feature_config,
