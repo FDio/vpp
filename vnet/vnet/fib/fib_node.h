@@ -98,6 +98,10 @@ typedef enum fib_node_back_walk_reason_t_ {
      */
     FIB_NODE_BW_REASON_ADJ_UPDATE,
     /**
+     * Walk to update children to inform them the adjacency is now down.
+     */
+    FIB_NODE_BW_REASON_ADJ_DOWN,
+    /**
      * Marker. Add new before and update
      */
     FIB_NODE_BW_REASON_LAST = FIB_NODE_BW_REASON_EVALUATE,
@@ -110,6 +114,7 @@ typedef enum fib_node_back_walk_reason_t_ {
     [FIB_NODE_BW_REASON_INTERFACE_DOWN] = "if-down"	\
     [FIB_NODE_BW_REASON_INTERFACE_DELETE] = "if-delete"	\
     [FIB_NODE_BW_REASON_ADJ_UPDATE] = "adj-update"	\
+    [FIB_NODE_BW_REASON_ADJ_DOWN] = "adj-down"	\
 }
 
 /**
@@ -123,6 +128,7 @@ typedef enum fib_node_bw_reason_flag_t_ {
     FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN = (1 << FIB_NODE_BW_REASON_INTERFACE_DOWN),
     FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE = (1 << FIB_NODE_BW_REASON_INTERFACE_DELETE),
     FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE = (1 << FIB_NODE_BW_REASON_ADJ_UPDATE),
+    FIB_NODE_BW_REASON_FLAG_ADJ_DOWN = (1 << FIB_NODE_BW_REASON_ADJ_DOWN),
 } __attribute__ ((packed)) fib_node_bw_reason_flag_t;
 
 STATIC_ASSERT(sizeof(fib_node_bw_reason_flag_t) < 2,

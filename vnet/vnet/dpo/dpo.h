@@ -159,9 +159,16 @@ STATIC_ASSERT(sizeof(dpo_id_t) <= sizeof(u64),
 	      "atomic updates need to be revisited");
 
 /**
- * @brief An initialiser for DPos declared on the stack.
+ * @brief An initialiser for DPOs declared on the stack.
+ * Thenext node is set to 0 since VLIB graph nodes should set 0 index to drop.
  */
-#define DPO_INVALID {0}
+#define DPO_INVALID                \
+{                                  \
+    .dpoi_type = DPO_FIRST,        \
+    .dpoi_proto = DPO_PROTO_NONE,  \
+    .dpoi_index = INDEX_INVALID,   \
+    .dpoi_next_node = 0,           \
+}
 
 /**
  * @brief Return true if the DPO object is valid, i.e. has been initialised.
@@ -172,6 +179,8 @@ dpo_id_is_valid (const dpo_id_t *dpoi)
     return (dpoi->dpoi_type != DPO_FIRST &&
 	    dpoi->dpoi_index != INDEX_INVALID);
 }
+
+extern dpo_proto_t vnet_link_to_dpo_proto(vnet_link_t linkt);
 
 /**
  * @brief

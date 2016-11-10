@@ -84,6 +84,26 @@ static u32 ****dpo_edges;
  */
 static dpo_type_t dpo_dynamic = DPO_LAST;
 
+dpo_proto_t
+vnet_link_to_dpo_proto (vnet_link_t linkt)
+{
+    switch (linkt)
+    {
+    case VNET_LINK_IP6:
+        return (DPO_PROTO_IP6);
+    case VNET_LINK_IP4:
+        return (DPO_PROTO_IP4);
+    case VNET_LINK_MPLS:
+        return (DPO_PROTO_MPLS);
+    case VNET_LINK_ETHERNET:
+        return (DPO_PROTO_ETHERNET);
+    case VNET_LINK_ARP:
+	break;
+    }
+    ASSERT(0);
+    return (0);
+}
+
 u8 *
 format_dpo_type (u8 * s, va_list * args)
 {
@@ -170,7 +190,12 @@ dpo_set (dpo_id_t *dpo,
 void
 dpo_reset (dpo_id_t *dpo)
 {
-    dpo_set(dpo, DPO_FIRST, DPO_PROTO_NONE, INDEX_INVALID);
+    dpo_id_t tmp = DPO_INVALID;
+
+    /*
+     * use the atomic copy operation.
+     */
+    dpo_copy(dpo, &tmp);
 }
 
 /**

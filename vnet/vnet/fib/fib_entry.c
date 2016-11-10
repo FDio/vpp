@@ -393,6 +393,7 @@ fib_entry_back_walk_notify (fib_node_t *node,
 
     if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason        ||
         FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason      ||
+        FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason        ||
 	FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason    ||
 	FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason  ||
 	FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)

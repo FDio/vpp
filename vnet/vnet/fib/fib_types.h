@@ -210,7 +210,6 @@ extern u8 * format_fib_prefix(u8 * s, va_list * args);
 extern u8 * format_fib_forw_chain_type(u8 * s, va_list * args);
 
 extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
-extern dpo_proto_t vnet_link_to_dpo_proto(vnet_link_t linkt);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
