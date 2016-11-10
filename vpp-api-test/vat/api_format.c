@@ -71,6 +71,33 @@
 #include <vpp-api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#define vl_msg_name_crc_list
+#include <vpp-api/vpe_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+void
+verify_api_signature (char *name_and_crc)
+{
+  vat_main_t *vm = &vat_main;
+  u32 id = vl_api_get_msg_index ((u8 *) name_and_crc);
+  if (id == ~0)
+    {
+      vm->api_signature_is_valid = 0;
+      clib_warning ("Invalid API signature %s[%d]\n", name_and_crc, id);
+    }
+}
+
+int
+vat_verify_api_signatures (void)
+{
+  vat_main_t *vm = &vat_main;
+  vm->api_signature_is_valid = 1;
+#define _(id,n,crc) verify_api_signature (#n "_" #crc);
+  foreach_vl_msg_name_crc_vpe;
+#undef _
+  return vm->api_signature_is_valid;
+}
+
 uword
 unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
@@ -16319,6 +16346,67 @@ dump_node_table (vat_main_t * vam)
 }
 
 static int
+value_sort_cmp (void *a1, void *a2)
+{
+  name_sort_t *n1 = a1;
+  name_sort_t *n2 = a2;
+
+  if (n1->value < n2->value)
+    return -1;
+  if (n1->value > n2->value)
+    return 1;
+  return 0;
+}
+
+
+static int
+dump_msg_api_table (vat_main_t * vam)
+{
+  api_main_t *am = &api_main;
+  name_sort_t *nses = 0, *ns;
+  hash_pair_t *hp;
+  int i;
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    vec_add2 (nses, ns, 1);
+    ns->name = (u8 *)(hp->key);
+    ns->value = (u32) hp->value[0];
+  }));
+  /* *INDENT-ON* */
+
+  vec_sort_with_function (nses, value_sort_cmp);
+
+  for (i = 0; i < vec_len (nses); i++)
+    fformat (vam->ofp, " [%d]: %s\n", nses[i].value, nses[i].name);
+  vec_free (nses);
+  return 0;
+}
+
+static int
+get_msg_id (vat_main_t * vam)
+{
+  u8 *name_and_crc;
+  u32 message_index;
+
+  if (unformat (vam->input, "%s", &name_and_crc))
+    {
+      message_index = vl_api_get_msg_index (name_and_crc);
+      if (message_index == ~0)
+	{
+	  fformat (vam->ofp, " '%s' not found\n", name_and_crc);
+	  return 0;
+	}
+      fformat (vam->ofp, " '%s' has message index %d\n",
+	       name_and_crc, message_index);
+      return 0;
+    }
+  errmsg ("name_and_crc required...\n");
+  return 0;
+}
+
+static int
 search_node_table (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
@@ -16749,6 +16837,8 @@ _(dump_ipv6_table, "usage: dump_ipv6_table")                    \
 _(dump_stats_table, "usage: dump_stats_table")                  \
 _(dump_macro_table, "usage: dump_macro_table ")                 \
 _(dump_node_table, "usage: dump_node_table")			\
+_(dump_msg_api_table, "usage: dump_msg_api_table")		\
+_(get_msg_id, "usage: get_msg_id name_and_crc")			\
 _(echo, "usage: echo <message>")				\
 _(exec, "usage: exec <vpe-debug-CLI-command>")                  \
 _(exec_inband, "usage: exec_inband <vpe-debug-CLI-command>")    \
@@ -16814,21 +16904,6 @@ vat_api_hookup (vat_main_t * vam)
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_cli_function;
 #undef _
-}
-
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp-api/vpe.api.h>
-#undef vl_api_version
-
-void
-vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
-{
-  /*
-   * Send the main API signature in slot 0. This bit of code must
-   * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
-   */
-  mp->api_versions[0] = clib_host_to_net_u32 (vpe_api_version);
 }
 
 /*

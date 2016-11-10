@@ -348,6 +348,12 @@ main (int argc, char **argv)
       exit (1);
     }
 
+  if (!vat_verify_api_signatures ())
+    {
+      fformat (stderr, "Invalid API signatures detected, exiting...\n");
+      vl_client_disconnect_from_vlib ();
+      exit (1);
+    }
   vam->json_output = json_output;
 
   if (!json_output)

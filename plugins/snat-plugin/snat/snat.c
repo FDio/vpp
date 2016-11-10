@@ -41,11 +41,6 @@ snat_main_t snat_main;
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <snat/snat_all_api_h.h>
-#undef vl_api_version
-
 /* Macro to finish up custom dump fns */
 #define FINISH                                  \
     vec_add1 (s, 0);                            \
@@ -955,6 +950,19 @@ snat_plugin_api_hookup (vlib_main_t *vm)
     return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <snat/snat_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (snat_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_snat;
+#undef _
+}
+
 static void plugin_custom_dump_configure (snat_main_t * sm) 
 {
 #define _(n,f) sm->api_main->msg_print_handlers \
@@ -972,7 +980,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   ip_lookup_main_t * lm = &im->lookup_main;
   u8 * name;
 
-  name = format (0, "snat_%08x%c", api_version, 0);
+  name = format (0, "snat");
 
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base = vl_msg_api_get_msg_ids 
@@ -985,6 +993,10 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->api_main = &api_main;
 
   error = snat_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (sm, &api_main);
+
   plugin_custom_dump_configure (sm);
   vec_free(name);
 

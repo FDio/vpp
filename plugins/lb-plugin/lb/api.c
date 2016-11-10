@@ -42,10 +42,18 @@ typedef enum {
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
+#define vl_msg_name_crc_list
 #include <lb/lb.api.h>
-#undef vl_api_version
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (lb_main_t * lbm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + lbm->msg_id_base);
+  foreach_vl_msg_name_crc_lb;
+#undef _
+}
 
 /* Macro to finish up custom dump fns */
 #define FINISH                                  \
@@ -191,7 +199,7 @@ _(LB_ADD_DEL_AS, lb_add_del_as)
 static clib_error_t * lb_api_init (vlib_main_t * vm)
 {
   lb_main_t *lbm = &lb_main;
-  u8 *name = format (0, "lb_%08x%c", api_version, 0);
+  u8 *name = format (0, "lb");
   lbm->msg_id_base = vl_msg_api_get_msg_ids
       ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
@@ -205,6 +213,9 @@ static clib_error_t * lb_api_init (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1);
   foreach_lb_plugin_api_msg;
 #undef _
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (lbm, &api_main);
 
   return 0;
 }

@@ -44,11 +44,6 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 #include <snat/snat_all_api_h.h> 
 #undef vl_printfun
 
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <snat/snat_all_api_h.h>
-#undef vl_api_version
-
 typedef struct {
     /* API message ID base */
     u16 msg_id_base;
@@ -56,6 +51,21 @@ typedef struct {
 } snat_test_main_t;
 
 snat_test_main_t snat_test_main;
+
+#define vl_msg_name_crc_list
+#include <snat/snat_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static int
+verify_api_signatures (void)
+{
+  vat_main_t *vm = &vat_main;
+  vm->api_signature_is_valid = 1;
+#define _(id,n,crc) verify_api_signature (#n "_" #crc);
+  foreach_vl_msg_name_crc_snat;
+#undef _
+  return vm->api_signature_is_valid;
+}
 
 #define foreach_standard_reply_retval_handler   \
 _(snat_add_address_range_reply)                 \
@@ -522,13 +532,16 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   sm->vat_main = vam;
 
   /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "snat_%08x%c", api_version, 0);
+  name = format (0, "snat");
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
-    vat_api_hookup (vam);
-  
+    {
+      if (!verify_api_signatures ())
+	return clib_error_return (0, "Invalid Plugin API signature");
+      vat_api_hookup (vam);
+    }
   vec_free(name);
-  
+
   return 0;
 }
