@@ -87,11 +87,14 @@ typedef struct
   u8 **traces;
 } vl_api_trace_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     u8 endian; u8 wrapped;
-		     u32 nitems;
-		     }) vl_api_trace_file_header_t;
+/* *INDENT-OFF* */
+typedef CLIB_PACKED
+(struct
+ {
+   u8 endian; u8 wrapped;
+   u32 nitems;
+}) vl_api_trace_file_header_t;
+/* *INDENT-ON* */
 
 typedef enum
 {
@@ -117,6 +120,7 @@ typedef struct
   void (**msg_endian_handlers) (void *);
   void (**msg_print_handlers) (void *, void *);
   char **msg_names;
+  u32 *msg_crcs;
   u8 *message_bounce;
   u8 *is_mp_safe;
   struct ring_alloc_ *arings;
@@ -131,6 +135,8 @@ typedef struct
   svm_region_t **mapped_shmem_regions;
   struct vl_shmem_hdr_ *shmem_hdr;
   vl_api_registration_t **vl_clients;
+
+  u8 *serialized_message_table_in_shmem;
 
   /* For plugin msg allocator */
   u16 first_available_msg_id;
@@ -178,6 +184,9 @@ typedef struct
 
   i32 vlib_signal;
 
+  /* client side message index hash table */
+  uword *msg_index_by_name_and_crc;
+
   char *region_name;
   char *root_path;
 } api_main_t;
@@ -188,6 +197,7 @@ typedef struct
 {
   int id;
   char *name;
+  u32 crc;
   void *handler;
   void *cleanup;
   void *endian;

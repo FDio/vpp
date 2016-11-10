@@ -9069,24 +9069,6 @@ get_unformat_vnet_sw_interface (void)
   return (void *) &unformat_vnet_sw_interface;
 }
 
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp-api/vpe.api.h>
-#undef vl_api_version
-
-int
-vl_msg_api_version_check (vl_api_memclnt_create_t * mp)
-{
-  if (clib_host_to_net_u32 (mp->api_versions[0]) != vpe_api_version)
-    {
-      clib_warning ("vpe API mismatch: 0x%08x instead of 0x%08x",
-		    clib_host_to_net_u32 (mp->api_versions[0]),
-		    vpe_api_version);
-      return -1;
-    }
-  return 0;
-}
-
 static u8 *
 format_arp_event (u8 * s, va_list * args)
 {
