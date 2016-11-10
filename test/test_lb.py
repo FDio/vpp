@@ -69,6 +69,7 @@ class TestLB(VppTestCase):
                 UDP(sport=10000 + id, dport=20000 + id))
 
     def generatePackets(self, src_if, isv4):
+        self.packet_infos = {}
         pkts = []
         for pktid in self.packets:
             info = self.create_packet_info(src_if.sw_if_index, pktid)
@@ -179,10 +180,7 @@ class TestLB(VppTestCase):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            # Scapy fails parsing GRE over IPv6.
-            # This check is therefore disabled for now.
-            # One can easily patch layers/inet6.py to fix the issue.
-            # self.checkCapture(gre4=True, isv4=False)
+            self.checkCapture(gre4=True, isv4=False)
         finally:
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % (asid))
@@ -199,10 +197,7 @@ class TestLB(VppTestCase):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            # Scapy fails parsing GRE over IPv6.
-            # This check is therefore disabled for now.
-            # One can easily patch layers/inet6.py to fix the issue.
-            # self.checkCapture(gre4=False, isv4=True)
+            self.checkCapture(gre4=False, isv4=True)
         finally:
             for asid in self.ass:
                 self.vapi.cli("lb as 90.0.0.0/8 2002::%u" % (asid))
@@ -219,10 +214,7 @@ class TestLB(VppTestCase):
             self.pg_enable_capture(self.pg_interfaces)
             self.pg_start()
 
-            # Scapy fails parsing GRE over IPv6.
-            # This check is therefore disabled for now.
-            # One can easily patch layers/inet6.py to fix the issue.
-            # self.checkCapture(gre4=False, isv4=False)
+            self.checkCapture(gre4=False, isv4=False)
         finally:
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
