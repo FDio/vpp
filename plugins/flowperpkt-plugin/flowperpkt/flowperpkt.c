@@ -52,11 +52,6 @@
 
 flowperpkt_main_t flowperpkt_main;
 
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <flowperpkt/flowperpkt_all_api_h.h>
-#undef vl_api_version
-
 /* Define the per-interface configurable feature */
 /* *INDENT-OFF* */
 VNET_IP4_TX_FEATURE_INIT (flow_perpacket, static) = {
@@ -452,6 +447,19 @@ flowperpkt_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <flowperpkt/flowperpkt_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (flowperpkt_main_t * fm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + fm->msg_id_base);
+  foreach_vl_msg_name_crc_flowperpkt;
+#undef _
+}
+
 /**
  * @brief Set up the API message handling tables
  * @param vm vlib_main_t * vlib main data structure pointer
@@ -467,7 +475,7 @@ flowperpkt_init (vlib_main_t * vm)
   u8 *name;
 
   /* Construct the API name */
-  name = format (0, "flowperpkt_%08x%c", api_version, 0);
+  name = format (0, "flowperpkt");
 
   /* Ask for a correctly-sized block of API message decode slots */
   fm->msg_id_base = vl_msg_api_get_msg_ids
@@ -475,6 +483,9 @@ flowperpkt_init (vlib_main_t * vm)
 
   /* Hook up message handlers */
   error = flowperpkt_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (fm, &api_main);
 
   vec_free (name);
 
