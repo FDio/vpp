@@ -23,7 +23,7 @@ nil
 '(setq PLUGIN-NAME (upcase plugin-name))
 "
 /*
- * " plugin-name ".c - skeleton vpp-api-test plug-in 
+ * " plugin-name ".c - skeleton vpp-api-test plug-in
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -51,26 +51,20 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* define message structures */
 #define vl_typedefs
-#include <" plugin-name "/" plugin-name "_all_api_h.h> 
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <" plugin-name "/" plugin-name "_all_api_h.h> 
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <" plugin-name "/" plugin-name "_all_api_h.h> 
-#undef vl_printfun
-
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
 #include <" plugin-name "/" plugin-name "_all_api_h.h>
-#undef vl_api_version
-
+#undef vl_printfun
 
 typedef struct {
     /* API message ID base */
@@ -79,6 +73,22 @@ typedef struct {
 } " plugin-name "_test_main_t;
 
 " plugin-name "_test_main_t " plugin-name "_test_main;
+
+/* Get the API CRC list. */
+#define vl_msg_name_crc_list
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static int
+verify_api_signatures (void)
+{
+  vat_main_t * vm = &vat_main;
+  vm->api_signature_is_valid = 1;
+#define _(id,n,crc) verify_api_signature (#n "_" #crc, id + fm->msg_id_base);
+  foreach_vl_msg_name_crc_" plugin-name ";
+#undef _
+  return vm->api_signature_is_valid;
+}
 
 #define foreach_standard_reply_retval_handler   \\
 _(" plugin-name "_enable_disable_reply)
@@ -99,7 +109,7 @@ _(" plugin-name "_enable_disable_reply)
 foreach_standard_reply_retval_handler;
 #undef _
 
-/* 
+/*
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
@@ -163,12 +173,12 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
         else
             break;
     }
-    
+
     if (sw_if_index == ~0) {
         errmsg (\"missing interface name / explicit sw_if_index number \\n\");
         return -99;
     }
-    
+
     /* Construct the API message */
     M(" PLUGIN-NAME "_ENABLE_DISABLE, " plugin-name "_enable_disable);
     mp->sw_if_index = ntohl (sw_if_index);
@@ -181,7 +191,7 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
     W;
 }
 
-/* 
+/*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
@@ -199,15 +209,15 @@ void vat_api_hookup (vat_main_t *vam)
                            vl_noop_handler,                     \\
                            vl_api_##n##_t_endian,               \\
                            vl_api_##n##_t_print,                \\
-                           sizeof(vl_api_##n##_t), 1); 
+                           sizeof(vl_api_##n##_t), 1);
     foreach_vpe_api_reply_msg;
 #undef _
 
     /* API messages we can send */
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
     foreach_vpe_api_msg;
-#undef _    
-    
+#undef _
+
     /* Help strings */
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
     foreach_vpe_api_msg;
@@ -226,10 +236,14 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
-    vat_api_hookup (vam);
-  
+    {
+      if (!verify_api_signatures ())
+	return clib_error_return (0, "Invalid Plugin API signature");
+      vat_api_hookup (vam);
+    }
+
   vec_free(name);
-  
+
   return 0;
 }
 ")

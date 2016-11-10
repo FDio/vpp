@@ -44,12 +44,6 @@
 #include <ioam/lib-trace/trace_all_api_h.h>
 #undef vl_printfun
 
-/* Get the API version number. */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-trace/trace_all_api_h.h>
-#undef vl_api_version
-
-
 typedef struct
 {
   /* API message ID base */
@@ -231,7 +225,7 @@ vat_plugin_register (vat_main_t * vam)
 
   sm->vat_main = vam;
 
-  name = format (0, "ioam_trace_%08x%c", api_version, 0);
+  name = format (0, "ioam_trace");
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~ 0)
