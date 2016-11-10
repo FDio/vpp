@@ -28,9 +28,10 @@ define memclnt_create {
 
 define memclnt_create_reply {
     i32 response;               /* Non-negative = success */
-    u64 handle;               /* handle by which vlib knows this client */
+    u64 handle;                 /* handle by which vlib knows this client */
     u32 index;                  /* index, used e.g. by API trace replay */
     u32 context;                /* opaque value from the create request */
+    u64 message_table;          /* serialized message table in shmem */
 };
 
 /*

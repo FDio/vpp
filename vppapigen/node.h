@@ -61,6 +61,7 @@ enum passid {
     ENDIANFUN_PASS,
     PRINTFUN_PASS,
     PYTHON_PASS,
+    JSON_PASS,
 };
 
 extern void *make_node (enum node_subclass type);
@@ -70,13 +71,14 @@ typedef struct node_ {
     struct node_ *peer;
     struct node_ *deeper;
     int flags;
-    void *data[3];
+    void *data[4];
 } node_t;
 
 /* To shut up gcc-4.2.x warnings */
 #define CDATA0 ((char *)(this->data[0]))
 #define IDATA1 ((int)(uword)(this->data[1]))
 #define CDATA2 ((char *)(this->data[2]))
+#define CDATA3 ((char *)(this->data[3]))
 
 #define NODE_FLAG_MANUAL_PRINT (1<<0)
 #define NODE_FLAG_MANUAL_ENDIAN (1<<1)

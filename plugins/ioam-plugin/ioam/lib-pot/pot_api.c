@@ -46,11 +46,6 @@
 #include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_printfun
 
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-pot/pot_all_api_h.h>
-#undef vl_api_version
-
 /* 
  * A handy macro to set up a message reply.
  * Assumes that the following variables are available:
@@ -206,6 +201,19 @@ pot_plugin_api_hookup (vlib_main_t *vm)
     return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <ioam/lib-pot/pot_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (pot_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_pot;
+#undef _
+}
+
 static clib_error_t * pot_init (vlib_main_t * vm)
 {
   pot_main_t * sm = &pot_main;
@@ -214,13 +222,16 @@ static clib_error_t * pot_init (vlib_main_t * vm)
 
   bzero(sm, sizeof(pot_main));
   (void)pot_util_init();
-  name = format (0, "pot_%08x%c", api_version, 0);
+  name = format (0, "pot");
 
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base = vl_msg_api_get_msg_ids 
       ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = pot_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (sm, &api_main);
 
   vec_free(name);
 
