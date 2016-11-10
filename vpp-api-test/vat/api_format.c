@@ -16087,6 +16087,33 @@ dump_node_table (vat_main_t * vam)
 }
 
 static int
+dump_msg_api_table (vat_main_t * vam)
+{
+  api_main_t *am = &api_main;
+  u8 **keys = 0;
+  u32 *values = 0;
+  hash_pair_t *hp;
+  int i;
+
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc, (
+							  {
+							  vec_add1 (keys,
+								    (u8 *)
+								    hp->key);
+							  vec_add1 (values,
+								    (u32)
+								    hp->value
+								    [0]);
+							  }));
+
+  for (i = 0; i < vec_len (keys); i++)
+    fformat (vam->ofp, " [%d]: %s\n", values[i], keys[i]);
+  vec_free (keys);
+  vec_free (values);
+  return 0;
+}
+
+static int
 search_node_table (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
@@ -16515,6 +16542,7 @@ _(dump_ipv6_table, "usage: dump_ipv6_table")                    \
 _(dump_stats_table, "usage: dump_stats_table")                  \
 _(dump_macro_table, "usage: dump_macro_table ")                 \
 _(dump_node_table, "usage: dump_node_table")			\
+_(dump_msg_api_table, "usage: dump_msg_api_table")		\
 _(echo, "usage: echo <message>")				\
 _(exec, "usage: exec <vpe-debug-CLI-command>")                  \
 _(exec_inband, "usage: exec_inband <vpe-debug-CLI-command>")    \
@@ -16580,21 +16608,6 @@ vat_api_hookup (vat_main_t * vam)
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_cli_function;
 #undef _
-}
-
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp-api/vpe.api.h>
-#undef vl_api_version
-
-void
-vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
-{
-  /*
-   * Send the main API signature in slot 0. This bit of code must
-   * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
-   */
-  mp->api_versions[0] = clib_host_to_net_u32 (vpe_api_version);
 }
 
 /*

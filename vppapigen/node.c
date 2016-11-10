@@ -879,6 +879,7 @@ YYSTYPE add_define (YYSTYPE a1, YYSTYPE a2)
 
     np = make_node(NODE_DEFINE);
     np->data[0] = a1;
+    np->data[3] = (void *) message_crc;
     deeper((YYSTYPE)np, a2);
     return ((YYSTYPE) np);
 }
@@ -1073,7 +1074,7 @@ void generate_top_boilerplate(FILE *fp)
     fprintf (fp, "#if defined(vl_msg_id)||defined(vl_union_id)||");
     fprintf (fp, "defined(vl_printfun) \\\n ||defined(vl_endianfun)||");
     fprintf (fp, " defined(vl_api_version)||defined(vl_typedefs) \\\n");
-    fprintf (fp, " ||defined(vl_msg_name)\n");
+    fprintf (fp, " ||defined(vl_msg_name)||defined(vl_msg_name_crc_list)\n");
     fprintf (fp, "/* ok, something was selected */\n");
     fprintf (fp, "#else\n");
     fprintf (fp, "#warning no content included from %s\n", input_filename);
@@ -1139,6 +1140,28 @@ void generate_msg_names(YYSTYPE a1, FILE *fp)
         np = np->peer;
     }
     fprintf (fp, "#endif\n\n");
+}
+
+void generate_msg_name_crc_list (YYSTYPE a1, FILE *fp)
+{
+    node_t *np = (node_t *)a1;
+
+    fprintf (fp, "\n/****** Message name, crc list ******/\n\n");
+
+    fprintf (fp, "#ifdef vl_msg_name_crc_list\n");
+    fprintf (fp, "#define foreach_vl_msg_name_crc ");
+
+    while (np) {
+        if (np->type == NODE_DEFINE) {
+            if (!(np->flags & NODE_FLAG_TYPEONLY)) {
+                fprintf (fp, "\\\n_(VL_API_%s, %s, %08x) ",
+                         uppercase (np->data[0]), (i8 *) np->data[0], 
+                         (u32)(u64)np->data[3]);
+            }
+        }
+        np = np->peer;
+    }
+    fprintf (fp, "\n#endif\n\n");
 }
 
 void generate_typedefs(YYSTYPE a1, FILE *fp)
@@ -1381,6 +1404,7 @@ void generate(YYSTYPE a1)
 
         generate_msg_ids(a1, ofp);
         generate_msg_names(a1, ofp);
+        generate_msg_name_crc_list(a1, ofp);
         generate_typedefs(a1, ofp);
         generate_uniondefs(a1, ofp);
         generate_printfun(a1, ofp);

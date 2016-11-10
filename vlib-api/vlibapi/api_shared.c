@@ -619,6 +619,7 @@ vl_msg_api_socket_handler (void *the_msg)
 
 #define foreach_msg_api_vector                  \
 _(msg_names)                                    \
+_(msg_crcs)					\
 _(msg_handlers)                                 \
 _(msg_cleanup_handlers)                         \
 _(msg_endian_handlers)                          \
@@ -639,6 +640,7 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
 #undef _
 
   am->msg_names[c->id] = c->name;
+  am->msg_crcs[c->id] = c->crc;
   am->msg_handlers[c->id] = c->handler;
   am->msg_cleanup_handlers[c->id] = c->cleanup;
   am->msg_endian_handlers[c->id] = c->endian;
@@ -673,6 +675,7 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->replay = 1;
   c->message_bounce = 0;
   c->is_mp_safe = 0;
+  c->crc = 0;
   vl_msg_api_config (c);
 }
 

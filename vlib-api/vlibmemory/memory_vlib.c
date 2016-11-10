@@ -100,13 +100,36 @@ vl_msg_api_send (vl_api_registration_t * rp, u8 * elem)
     }
 }
 
-int vl_msg_api_version_check (vl_api_memclnt_create_t * mp)
-  __attribute__ ((weak));
-
-int
-vl_msg_api_version_check (vl_api_memclnt_create_t * mp)
+u8 *
+vl_api_serialize_message_table (api_main_t * am, u8 * vector)
 {
-  return 0;
+  serialize_main_t _sm, *sm = &_sm;
+  int i;
+  u32 nmsg = 0;
+
+  serialize_open_vector (sm, vector);
+
+  /* Count msgs */
+  for (i = 0; i < vec_len (am->msg_names); i++)
+    if (am->msg_names[i])
+      nmsg++;
+
+  /* serialize the count */
+  serialize_integer (sm, nmsg, sizeof (u32));
+  for (i = 0; i < vec_len (am->msg_names); i++)
+    {
+      /* If we have a registered msg handler */
+      if (am->msg_names[i])
+	{
+	  /* write out the index */
+	  serialize_likely_small_unsigned_integer (sm, i);
+	  /* and the name */
+	  serialize_cstring (sm, am->msg_names[i]);
+	  /* and the crc */
+	  serialize_integer (sm, am->msg_crcs[i], sizeof (u32));
+	}
+    }
+  return serialize_close_vector (sm);
 }
 
 /*
@@ -120,12 +143,10 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   vl_api_memclnt_create_reply_t *rp;
   svm_region_t *svm;
   unix_shared_memory_queue_t *q;
-  int rv;
+  int rv = 0;
   void *oldheap;
   api_main_t *am = &api_main;
-
-  /* Indicate API version mismatch if appropriate */
-  rv = vl_msg_api_version_check (mp);
+  u8 *serialized_message_table = 0;
 
   /*
    * This is tortured. Maintain a vlib-address-space private
@@ -157,6 +178,9 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   svm = am->vlib_rp;
 
+  if (am->serialized_message_table_in_shmem == 0)
+    serialized_message_table = vl_api_serialize_message_table (am, 0);
+
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
@@ -171,9 +195,14 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
+  if (serialized_message_table)
+    am->serialized_message_table_in_shmem =
+      vec_dup (serialized_message_table);
 
   pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
+
+  vec_free (serialized_message_table);
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_REPLY);
@@ -183,6 +212,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
      am->shmem_hdr->application_restarts);
   rp->context = mp->context;
   rp->response = ntohl (rv);
+  rp->message_table = (u64) am->serialized_message_table_in_shmem;
 
   vl_msg_api_send_shmem (q, (u8 *) & rp);
 }
