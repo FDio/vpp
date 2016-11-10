@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_f5f01ecb",
+        "filename": "vnet/vnet/devices/dpdk/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-10T08:58:41Z",
+      "side": 1,
+      "message": "please avoid additional branch in the main loop. Also check for flag first before touching hqos pointer.",
+      "range": {
+        "startLine": 347,
+        "startChar": 6,
+        "endLine": 347,
+        "endChar": 52
+      },
+      "revId": "c6f6d451e55f210998e026226690bbd73a8f1970",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
