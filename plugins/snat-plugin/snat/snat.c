@@ -955,6 +955,19 @@ snat_plugin_api_hookup (vlib_main_t *vm)
     return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <snat/snat_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (snat_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_snat;
+#undef _
+}
+
 static void plugin_custom_dump_configure (snat_main_t * sm) 
 {
 #define _(n,f) sm->api_main->msg_print_handlers \
@@ -985,6 +998,10 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->api_main = &api_main;
 
   error = snat_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (sm, &api_main);
+
   plugin_custom_dump_configure (sm);
   vec_free(name);
 

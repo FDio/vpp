@@ -28,7 +28,7 @@
 #include "node.h"
 #include "gram.h"
 
-FILE *ifp, *ofp, *pythonfp;
+FILE *ifp, *ofp, *pythonfp, *jsonfp;
 char *vlib_app_name = "vpp";
 int dump_tree;
 time_t starttime;
@@ -36,6 +36,7 @@ char *input_filename;
 char *current_filename;
 int current_filename_allocated;
 unsigned long input_crc;
+unsigned long message_crc;
 int yydebug;
 
 /*
@@ -258,6 +259,7 @@ int main (int argc, char **argv)
     int curarg = 1;
     char *ofile=0;
     char *pythonfile=0;
+    char *jsonfile=0;
     char *show_name=0;
 
     while (curarg < argc) {
@@ -349,6 +351,27 @@ int main (int argc, char **argv)
             }
             continue;
         }
+        if (!strncmp (argv [curarg], "--json", 6)) {
+            curarg++;
+            if (curarg < argc) {
+	        if (!strcmp(argv[curarg], "-")) {
+		    jsonfp = stdout;
+		} else {
+		    jsonfp = fopen(argv[curarg], "w");
+		    jsonfile = argv[curarg];
+		}
+                if (jsonfp == NULL) {
+                    fprintf (stderr, "Couldn't open JSON output file %s\n",
+                         argv[curarg]);
+                    exit (1);
+                }
+                curarg++;
+            } else {
+                fprintf(stderr, "Missing filename after --json\n");
+                exit(1);
+            }
+            continue;
+        }
         if (!strncmp (argv [curarg], "--app", 4)) {
             curarg++;
             if (curarg < argc) {
@@ -369,6 +392,9 @@ int main (int argc, char **argv)
     }
     if (pythonfp == NULL) {
         pythonfile = 0;
+    }
+    if (jsonfp == NULL) {
+        jsonfile = 0;
     }
     if (ifp == NULL) {
         fprintf(stderr, "No input file specified...\n");
@@ -391,6 +417,10 @@ int main (int argc, char **argv)
             printf ("Python bindings written to %s\n", pythonfile);
             fclose (pythonfp);
         }
+        if (jsonfile) {
+            printf ("JSON bindings written to %s\n", jsonfile);
+            fclose (jsonfp);
+        }
     }
     else {
         fclose (ifp);
@@ -404,6 +434,10 @@ int main (int argc, char **argv)
             printf ("Removing %s\n", pythonfile);
             unlink (pythonfile);
         }
+        if (jsonfile) {
+            printf ("Removing %s\n", jsonfile);
+            unlink (jsonfile);
+        }
         exit (1);
     }
     exit (0);
@@ -415,7 +449,8 @@ int main (int argc, char **argv)
 static void usage (char *progname)
 {
     fprintf (stderr, 
-             "usage: %s --input <filename> [--output <filename>] [--python <filename>]\n%s",
+             "usage: %s --input <filename> [--output <filename>] "
+	     "[--json <filename>] [--python <filename>]\n%s",
              progname,
              "          [--yydebug] [--dump-tree]\n");
     exit (1);
@@ -818,18 +853,18 @@ int yylex (void)
      */
     unsigned long crc = input_crc;
     int node_type = yylex_1 ();
+    unsigned long crc2 = message_crc;
+    int use_helper_string = 0;
+    unsigned short code;
 
     switch (node_type) {
     case PRIMTYPE:
     case NAME:
     case NUMBER:
     case STRING:
-    case HELPER_STRING: {
-        /* We know these types accumulated token text into namebuf */
-        /* HELPER_STRING may still contain C comments.  Argh. */
-        crc = crc_eliding_c_comments (namebuf, crc);
+    case HELPER_STRING: 
+        use_helper_string = 1;
         break;
-    }
 
      /* Other node types have no "substate" */
      /* This code is written in this curious fashion because we
@@ -837,30 +872,25 @@ int yylex (void)
       * values a particular version of lex/bison assigned to various states.
       */
 
-    /* case NAME:            crc = CRC16 (crc, 257); break; */
-    case RPAR:               crc = CRC16 (crc, 258); break;
-    case LPAR:               crc = CRC16 (crc, 259); break;
-    case SEMI:               crc = CRC16 (crc, 260); break;
-    case LBRACK:             crc = CRC16 (crc, 261); break;
-    case RBRACK:             crc = CRC16 (crc, 262); break;
-    /* case NUMBER:          crc = CRC16 (crc, 263); break; */
-    /* case PRIMTYPE:        crc = CRC16 (crc, 264); break; */
-    case BARF:               crc = CRC16 (crc, 265); break;
-    case TPACKED:            crc = CRC16 (crc, 266); break;
-    case DEFINE:             crc = CRC16 (crc, 267); break;
-    case LCURLY:             crc = CRC16 (crc, 268); break;
-    case RCURLY:             crc = CRC16 (crc, 269); break;
-    /* case STRING:          crc = CRC16 (crc, 270); break; */
-    case UNION:              crc = CRC16 (crc, 271); break;
-    /* case HELPER_STRING:   crc = CRC16 (crc, 272); break; */
-    case COMMA:              crc = CRC16 (crc, 273); break;
-    case NOVERSION:          crc = CRC16 (crc, 274); break;
-    case MANUAL_PRINT:       crc = CRC16 (crc, 275); break;
-    case MANUAL_ENDIAN:      crc = CRC16 (crc, 276); break;
-    case TYPEONLY:           crc = CRC16 (crc, 278); break;
-    case DONT_TRACE:         crc = CRC16 (crc, 279); break;
+    case RPAR:               code = 258; break;
+    case LPAR:               code = 259; break;
+    case SEMI:               code = 260; break;
+    case LBRACK:             code = 261; break;
+    case RBRACK:             code = 262; break;
+    case BARF:               code = 265; break;
+    case TPACKED:            code = 266; break;
+    case DEFINE:             code = 267; break;
+    case LCURLY:             code = 268; break;
+    case RCURLY:             code = 269; break;
+    case UNION:              code = 271; break;
+    case COMMA:              code = 273; break;
+    case NOVERSION:          code = 274; break;
+    case MANUAL_PRINT:       code = 275; break;
+    case MANUAL_ENDIAN:      code = 276; break;
+    case TYPEONLY:           code = 278; break;
+    case DONT_TRACE:         code = 279; break;
         
-    case EOF: crc = CRC16 (crc, ~0); break; /* hysterical compatibility */
+    case EOF: code = ~0; break; /* hysterical compatibility */
 
     default:
         fprintf(stderr, "yylex: node_type %d missing state CRC cookie\n",
@@ -868,10 +898,22 @@ int yylex (void)
         exit(1);
     }
 
+    if (use_helper_string)
+    {
+        /* We know these types accumulated token text into namebuf */
+        /* HELPER_STRING may still contain C comments.  Argh. */
+        crc = crc_eliding_c_comments (namebuf, crc);
+        crc2 = crc_eliding_c_comments (namebuf, crc2);
+    } else
+    {
+        crc = CRC16 (crc, code);
+        crc2 = CRC16 (crc2, code);
+    }
+
     input_crc = crc;
+    message_crc = crc2;
     return (node_type);
 }
-
 
 /*
  * name_check -- see if the name we just ate
@@ -943,6 +985,7 @@ static int name_check (const char *s, YYSTYPE *token_value)
                 return (TPACKED);
 
             case NODE_DEFINE:
+                message_crc = 0;
                 *token_value = make_node(subclass_id);
                 return(DEFINE);
 

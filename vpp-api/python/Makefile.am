@@ -52,7 +52,8 @@ install-exec-local: $(srcdir)/vpp_papi/vpe.py $(srcdir)/vpp_papi/memclnt.py
 	cd $(srcdir);							\
 	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
 	PYTHONUSERBASE=$(prefix)					\
-	python setup.py build_ext -L $(prefix)/lib64 install --user
+	python setup.py build_ext -L $(prefix)/lib64 \
+	-I $(prefix)/../vppinfra/include/ install --user
 
 #
 # Test client

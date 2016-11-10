@@ -47,6 +47,19 @@ typedef enum {
 #include <lb/lb.api.h>
 #undef vl_api_version
 
+#define vl_msg_name_crc_list
+#include <lb/lb.api.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (lb_main_t * lbm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + lbm->msg_id_base);
+  foreach_vl_msg_name_crc_lb;
+#undef _
+}
+
 /* Macro to finish up custom dump fns */
 #define FINISH                                  \
     vec_add1 (s, 0);                            \
@@ -205,6 +218,9 @@ static clib_error_t * lb_api_init (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1);
   foreach_lb_plugin_api_msg;
 #undef _
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (lbm, &api_main);
 
   return 0;
 }

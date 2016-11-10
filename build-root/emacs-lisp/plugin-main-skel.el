@@ -23,7 +23,7 @@ nil
 '(setq PLUGIN-NAME (upcase plugin-name))
 "
 /*
- * " plugin-name ".c - skeleton vpp engine plug-in 
+ * " plugin-name ".c - skeleton vpp engine plug-in
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the \"License\");
@@ -52,18 +52,18 @@ nil
 
 /* define message structures */
 #define vl_typedefs
-#include <" plugin-name "/" plugin-name "_all_api_h.h> 
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <" plugin-name "/" plugin-name "_all_api_h.h> 
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <" plugin-name "/" plugin-name "_all_api_h.h> 
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
 #undef vl_printfun
 
 /* Get the API version number */
@@ -71,7 +71,7 @@ nil
 #include <" plugin-name "/" plugin-name "_all_api_h.h>
 #undef vl_api_version
 
-/* 
+/*
  * A handy macro to set up a message reply.
  * Assumes that the following variables are available:
  * mp - pointer to request message
@@ -100,14 +100,14 @@ do {                                                            \\
 #define foreach_" plugin-name "_plugin_api_msg                           \\
 _(" PLUGIN-NAME "_ENABLE_DISABLE, " plugin-name "_enable_disable)
 
-/* 
+/*
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.
  *
  * Also collects global variable pointers passed from the vpp engine
  */
 
-clib_error_t * 
+clib_error_t *
 vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
                       int from_early_init)
 {
@@ -130,7 +130,7 @@ int " plugin-name "_enable_disable (" plugin-name "_main_t * sm, u32 sw_if_index
   int rv = 0;
 
   /* Utterly wrong? */
-  if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces, 
+  if (pool_is_free_index (sm->vnet_main->interface_main.sw_interfaces,
                           sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
@@ -138,7 +138,7 @@ int " plugin-name "_enable_disable (" plugin-name "_main_t * sm, u32 sw_if_index
   sw = vnet_get_sw_interface (sm->vnet_main, sw_if_index);
   if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-  
+
   vnet_feature_enable_disable (\"device-input\", \"" plugin-name "\",
                                sw_if_index, enable_disable, 0, 0);
 
@@ -153,7 +153,7 @@ static clib_error_t *
   " plugin-name "_main_t * sm = &" plugin-name "_main;
   u32 sw_if_index = ~0;
   int enable_disable = 1;
-    
+
   int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
@@ -168,7 +168,7 @@ static clib_error_t *
 
   if (sw_if_index == ~0)
     return clib_error_return (0, \"Please specify an interface...\");
-    
+
   rv = " plugin-name "_enable_disable (sm, sw_if_index, enable_disable);
 
   switch(rv) {
@@ -176,7 +176,7 @@ static clib_error_t *
     break;
 
   case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-    return clib_error_return 
+    return clib_error_return
       (0, \"Invalid interface, only works on physical ports\");
     break;
 
@@ -193,7 +193,7 @@ static clib_error_t *
 
 VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) = {
     .path = \"" plugin-name " enable-disable\",
-    .short_help = 
+    .short_help =
     \"" plugin-name " enable-disable <interface-name> [disable]\",
     .function = " plugin-name "_enable_disable_command_fn,
 };
@@ -206,9 +206,9 @@ static void vl_api_" plugin-name "_enable_disable_t_handler
   " plugin-name "_main_t * sm = &" plugin-name "_main;
   int rv;
 
-  rv = " plugin-name "_enable_disable (sm, ntohl(mp->sw_if_index), 
+  rv = " plugin-name "_enable_disable (sm, ntohl(mp->sw_if_index),
                                       (int) (mp->enable_disable));
-  
+
   REPLY_MACRO(VL_API_" PLUGIN-NAME "_ENABLE_DISABLE_REPLY);
 }
 
@@ -224,11 +224,24 @@ static clib_error_t *
                            vl_noop_handler,                     \\
                            vl_api_##n##_t_endian,               \\
                            vl_api_##n##_t_print,                \\
-                           sizeof(vl_api_##n##_t), 1); 
+                           sizeof(vl_api_##n##_t), 1);
     foreach_" plugin-name "_plugin_api_msg;
 #undef _
 
     return 0;
+}
+
+#define vl_msg_name_crc_list
+#include <" plugin-name "/" plugin-name "_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (" plugin-name "_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_" plugin-name" ;
+#undef _
 }
 
 static clib_error_t * " plugin-name "_init (vlib_main_t * vm)
@@ -240,7 +253,7 @@ static clib_error_t * " plugin-name "_init (vlib_main_t * vm)
   name = format (0, \"" plugin-name "_%08x%c\", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
-  sm->msg_id_base = vl_msg_api_get_msg_ids 
+  sm->msg_id_base = vl_msg_api_get_msg_ids
       ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = " plugin-name "_plugin_api_hookup (vm);
@@ -252,7 +265,7 @@ static clib_error_t * " plugin-name "_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (" plugin-name "_init);
 
-VNET_FEATURE_INIT (" plugin-name ", static) = 
+VNET_FEATURE_INIT (" plugin-name ", static) =
 {
   .arc_name = \"device-input\",
   .node_name = \"" plugin-name "\",

@@ -9245,6 +9245,8 @@ static void vl_api_##nn##_t_handler (                                   \
     vl_msg_api_free (mp);                                               \
 }
 
+static void setup_message_id_table (api_main_t * am);
+
 /*
  * vpe_api_hookup
  * Add vpe's API message handlers to the table.
@@ -9252,7 +9254,6 @@ static void vl_api_##nn##_t_handler (                                   \
  * added the client registration handlers.
  * See .../open-repo/vlib/memclnt_vlib.c:memclnt_process()
  */
-
 static clib_error_t *
 vpe_api_hookup (vlib_main_t * vm)
 {
@@ -9305,6 +9306,11 @@ vpe_api_hookup (vlib_main_t * vm)
    */
   am->is_mp_safe[VL_API_IP_ADD_DEL_ROUTE] = 1;
   am->is_mp_safe[VL_API_GET_NODE_GRAPH] = 1;
+
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  setup_message_id_table (am);
 
   return 0;
 }
@@ -9459,24 +9465,6 @@ get_unformat_vnet_sw_interface (void)
   return (void *) &unformat_vnet_sw_interface;
 }
 
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp-api/vpe.api.h>
-#undef vl_api_version
-
-int
-vl_msg_api_version_check (vl_api_memclnt_create_t * mp)
-{
-  if (clib_host_to_net_u32 (mp->api_versions[0]) != vpe_api_version)
-    {
-      clib_warning ("vpe API mismatch: 0x%08x instead of 0x%08x",
-		    clib_host_to_net_u32 (mp->api_versions[0]),
-		    vpe_api_version);
-      return -1;
-    }
-  return 0;
-}
-
 static u8 *
 format_arp_event (u8 * s, va_list * args)
 {
@@ -9539,6 +9527,20 @@ VLIB_CLI_COMMAND (show_ip_arp_nd_events, static) = {
   .short_help = "Show ip4 arp and ip6 nd event registrations",
 };
 /* *INDENT-ON* */
+
+#define vl_msg_name_crc_list
+#include <vpp-api/vpe_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (api_main_t * am)
+{
+#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+  foreach_vl_msg_name_crc_memclnt;
+  foreach_vl_msg_name_crc_vpe;
+#undef _
+}
+
 
 /*
  * fd.io coding-style-patch-verification: ON

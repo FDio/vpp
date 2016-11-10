@@ -438,6 +438,19 @@ flowperpkt_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <flowperpkt/flowperpkt_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (flowperpkt_main_t * fm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + fm->msg_id_base);
+  foreach_vl_msg_name_crc_flowperpkt;
+#undef _
+}
+
 /**
  * @brief Set up the API message handling tables
  * @param vm vlib_main_t * vlib main data structure pointer
@@ -461,6 +474,9 @@ flowperpkt_init (vlib_main_t * vm)
 
   /* Hook up message handlers */
   error = flowperpkt_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (fm, &api_main);
 
   vec_free (name);
 

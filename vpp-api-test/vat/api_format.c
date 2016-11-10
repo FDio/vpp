@@ -16535,6 +16535,67 @@ dump_node_table (vat_main_t * vam)
 }
 
 static int
+value_sort_cmp (void *a1, void *a2)
+{
+  name_sort_t *n1 = a1;
+  name_sort_t *n2 = a2;
+
+  if (n1->value < n2->value)
+    return -1;
+  if (n1->value > n2->value)
+    return 1;
+  return 0;
+}
+
+
+static int
+dump_msg_api_table (vat_main_t * vam)
+{
+  api_main_t *am = &api_main;
+  name_sort_t *nses = 0, *ns;
+  hash_pair_t *hp;
+  int i;
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    vec_add2 (nses, ns, 1);
+    ns->name = (u8 *)(hp->key);
+    ns->value = (u32) hp->value[0];
+  }));
+  /* *INDENT-ON* */
+
+  vec_sort_with_function (nses, value_sort_cmp);
+
+  for (i = 0; i < vec_len (nses); i++)
+    fformat (vam->ofp, " [%d]: %s\n", nses[i].value, nses[i].name);
+  vec_free (nses);
+  return 0;
+}
+
+static int
+get_msg_id (vat_main_t * vam)
+{
+  u8 *name_and_crc;
+  u32 message_index;
+
+  if (unformat (vam->input, "%s", &name_and_crc))
+    {
+      message_index = vl_api_get_msg_index (name_and_crc);
+      if (message_index == ~0)
+	{
+	  fformat (vam->ofp, " '%s' not found\n", name_and_crc);
+	  return 0;
+	}
+      fformat (vam->ofp, " '%s' has message index %d\n",
+	       name_and_crc, message_index);
+      return 0;
+    }
+  errmsg ("name_and_crc required...\n");
+  return 0;
+}
+
+static int
 search_node_table (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
@@ -16971,6 +17032,8 @@ _(dump_ipv6_table, "usage: dump_ipv6_table")                    \
 _(dump_stats_table, "usage: dump_stats_table")                  \
 _(dump_macro_table, "usage: dump_macro_table ")                 \
 _(dump_node_table, "usage: dump_node_table")			\
+_(dump_msg_api_table, "usage: dump_msg_api_table")		\
+_(get_msg_id, "usage: get_msg_id name_and_crc")			\
 _(echo, "usage: echo <message>")				\
 _(exec, "usage: exec <vpe-debug-CLI-command>")                  \
 _(exec_inband, "usage: exec_inband <vpe-debug-CLI-command>")    \

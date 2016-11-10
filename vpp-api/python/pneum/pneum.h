@@ -15,9 +15,15 @@
 #ifndef included_pneum_h
 #define included_pneum_h
 
-int pneum_connect(char * name, char * chroot_prefix);
+#include <vppinfra/types.h>
+
+typedef void (*pneum_callback_t)(unsigned char * data, int len);
+int pneum_connect(char * name, char * chroot_prefix, pneum_callback_t cb);
 int pneum_disconnect(void);
 int pneum_read(char **data, int *l);
 int pneum_write(char *data, int len);
+void pneum_free(void * msg);
+uword * pneum_msg_table_get_hash (void);
+int pneum_msg_table_size(void);
 
 #endif

@@ -52,7 +52,7 @@ typedef struct {
 
 pneum_main_t pneum_main;
 
-extern int wrap_pneum_callback(char *data, int len);
+pneum_callback_t pneum_callback;
 
 /*
  * Satisfy external references when -lvlib is not available.
@@ -62,24 +62,16 @@ void vlib_cli_output (struct vlib_main_t * vm, char * fmt, ...)
   clib_warning ("vlib_cli_output called...");
 }
 
-#define vl_api_version(n,v) static u32 vpe_api_version = v;
-#include <vpp-api/vpe.api.h>
-#undef vl_api_version
 void
-vl_client_add_api_signatures (vl_api_memclnt_create_t *mp)
+pneum_free (void * msg)
 {
-  /*
-   * Send the main API signature in slot 0. This bit of code must
-   * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
-   */
-  mp->api_versions[0] = clib_host_to_net_u32 (vpe_api_version);
+  vl_msg_api_free (msg);
 }
 
 static void
 pneum_api_handler (void *msg)
 {
   u16 id = ntohs(*((u16 *)msg));
-
   if (id == VL_API_RX_THREAD_EXIT) {
     pneum_main_t *pm = &pneum_main;
     vl_msg_api_free(msg);
@@ -91,8 +83,9 @@ pneum_api_handler (void *msg)
     clib_warning("Message ID %d has wrong length: %d\n", id, l);
 
   /* Call Python callback */
-  (void)wrap_pneum_callback(msg, l);
-  vl_msg_api_free(msg);
+  ASSERT(pneum_callback);
+  (pneum_callback)(msg, l);
+  pneum_free(msg);
 }
 
 static void *
@@ -115,8 +108,22 @@ pneum_rx_thread_fn (void *arg)
   pthread_exit(0);
 }
 
+uword *
+pneum_msg_table_get_hash (void)
+{
+  api_main_t *am = &api_main;
+  return (am->msg_index_by_name_and_crc);
+}
+
 int
-pneum_connect (char * name, char * chroot_prefix)
+pneum_msg_table_size(void)
+{
+  api_main_t *am = &api_main;
+  return hash_elts(am->msg_index_by_name_and_crc);
+}
+
+int
+pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb)
 {
   int rv = 0;
   pneum_main_t *pm = &pneum_main;
@@ -134,12 +141,15 @@ pneum_connect (char * name, char * chroot_prefix)
     return (-1);
   }
 
-  /* Start the rx queue thread */
-  rv = pthread_create(&pm->rx_thread_handle, NULL, pneum_rx_thread_fn, 0);
-  if (rv) {
-    clib_warning("pthread_create returned %d", rv);
-    vl_client_api_unmap();
-    return (-1);
+  if (cb) {
+    /* Start the rx queue thread */
+    rv = pthread_create(&pm->rx_thread_handle, NULL, pneum_rx_thread_fn, 0);
+    if (rv) {
+      clib_warning("pthread_create returned %d", rv);
+      vl_client_api_unmap();
+      return (-1);
+    }
+    pneum_callback = cb;
   }
 
   pm->connected_to_vlib = 1;
@@ -164,6 +174,7 @@ pneum_disconnect (void)
   if (pm->connected_to_vlib) {
     vl_client_disconnect();
     vl_client_api_unmap();
+    pneum_callback = 0;
   }
   memset (pm, 0, sizeof (*pm));
 
@@ -175,7 +186,10 @@ pneum_read (char **p, int *l)
 {
   unix_shared_memory_queue_t *q;
   api_main_t *am = &api_main;
+  pneum_main_t *pm = &pneum_main;
   uword msg;
+
+  if (!pm->connected_to_vlib) return -1;
 
   *l = 0;
 
@@ -219,7 +233,9 @@ pneum_write (char *p, int l)
   api_main_t *am = &api_main;
   vl_api_header_t *mp = vl_msg_api_alloc(l);
   unix_shared_memory_queue_t *q;
+  pneum_main_t *pm = &pneum_main;
 
+  if (!pm->connected_to_vlib) return -1;
   if (!mp) return (-1);
   memcpy(mp, p, l);
   mp->client_index = pneum_client_index();
@@ -228,7 +244,7 @@ pneum_write (char *p, int l)
   if (rv != 0) {
     printf("vpe_api_write fails: %d\n", rv);
     /* Clear message */
-    vl_msg_api_free(mp);
+    pneum_free(mp);
   }
   return (rv);
 }

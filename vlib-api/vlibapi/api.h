@@ -87,11 +87,14 @@ typedef struct
   u8 **traces;
 } vl_api_trace_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     u8 endian; u8 wrapped;
-		     u32 nitems;
-		     }) vl_api_trace_file_header_t;
+/* *INDENT-OFF* */
+typedef CLIB_PACKED
+(struct
+ {
+   u8 endian; u8 wrapped;
+   u32 nitems;
+}) vl_api_trace_file_header_t;
+/* *INDENT-ON* */
 
 typedef enum
 {
@@ -131,6 +134,8 @@ typedef struct
   svm_region_t **mapped_shmem_regions;
   struct vl_shmem_hdr_ *shmem_hdr;
   vl_api_registration_t **vl_clients;
+
+  u8 *serialized_message_table_in_shmem;
 
   /* For plugin msg allocator */
   u16 first_available_msg_id;
@@ -178,6 +183,9 @@ typedef struct
 
   i32 vlib_signal;
 
+  /* client side message index hash table */
+  uword *msg_index_by_name_and_crc;
+
   char *region_name;
   char *root_path;
 } api_main_t;
@@ -188,6 +196,7 @@ typedef struct
 {
   int id;
   char *name;
+  u32 crc;
   void *handler;
   void *cleanup;
   void *endian;
@@ -242,6 +251,8 @@ int vl_msg_api_pd_handler (void *mp, int rv);
 
 void vl_msg_api_set_first_available_msg_id (u16 first_avail);
 u16 vl_msg_api_get_msg_ids (char *name, int n);
+void vl_msg_api_add_msg_name_crc (api_main_t * am, char *string, u32 id);
+u32 vl_api_get_msg_index (u8 * name_and_crc);
 
 /* node_serialize.c prototypes */
 u8 *vlib_node_serialize (vlib_node_main_t * nm, u8 * vector,
