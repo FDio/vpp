@@ -18,6 +18,7 @@
  */
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <ctype.h>
 #include <time.h>
 #include <string.h>
@@ -33,6 +34,7 @@
 
 FILE *ofp;
 FILE *pythonfp;
+FILE *jsonfp;
 time_t starttime;
 char *vlib_app_name;
 char *input_filename;
@@ -128,6 +130,12 @@ void primtype_recursive_generate(node_t *this, enum passid which, FILE *ofp,
         fputs("('", pythonfp);
         fputs((char *)type_name, pythonfp);
         fputs("', ", pythonfp);
+        break;
+
+    case JSON_PASS:
+        fputs("[\"", jsonfp);
+        fputs((char *)type_name, jsonfp);
+        fputs("\", ", jsonfp);
         break;
 
     default:
@@ -377,6 +385,24 @@ void node_define_generate (node_t *this, enum passid which, FILE *fp)
         fprintf(fp, "),\n\n");
         break;
 
+    case JSON_PASS:
+        fprintf(fp, "[\"%s\",\n", CDATA0);
+        child = this->deeper;
+        indent += 4;
+        while (child) {
+            node_vft_t *vftp = the_vft[child->type];
+            indent_me(fp);
+            vftp->generate(child, which, fp);
+            child = child->peer;
+	    fprintf(fp, ",\n");
+        }
+	indent_me(fp);
+	fprintf (fp, "{\"crc\" : \"0x%08x\"}\n", (u32)(u64)CDATA3);
+        indent -= 4;
+	indent_me(fp);
+        fprintf(fp, "]");
+        break;
+
     default:
         fprintf(stderr, "node_define_generate: unimp pass %d\n", which);
         break;
@@ -537,6 +563,10 @@ void node_scalar_generate (node_t *this, enum passid which, FILE *fp)
         fprintf(fp, "'%s'),\n", CDATA0);
         break;
 
+    case JSON_PASS:
+        fprintf(fp, "\"%s\"]", CDATA0);
+        break;
+
     default:
         fprintf(stderr, "node_scalar_generate: unimp pass %d\n", which);
     }
@@ -658,6 +688,14 @@ void node_vector_generate (node_t *this, enum passid which, FILE *fp)
         }
         break;
 
+    case JSON_PASS:
+      if (CDATA2 != 0) { /* variable length vector */
+            fprintf(fp, "\"%s\", %d, \"%s\"]", CDATA0, IDATA1, CDATA2);
+        } else {
+            fprintf(fp, "\"%s\", %d]", CDATA0, IDATA1);
+        }
+        break;
+
     default:
         fprintf(stderr, "node_vector_generate: unimp pass %d\n", which);
     }
@@ -739,6 +777,15 @@ void node_complex_generate (node_t *this, enum passid which, FILE *fp)
         break;
     case PYTHON_PASS:
         fprintf(fp, "('%s',", CDATA0);
+        deeper = this->deeper;
+        if (deeper) {
+            vftp = the_vft[deeper->type];
+            vftp->generate(deeper, which, fp);
+        }
+        break;
+
+    case JSON_PASS:
+        fprintf(fp, "[\"%s\", ", CDATA0);
         deeper = this->deeper;
         if (deeper) {
             vftp = the_vft[deeper->type];
@@ -879,6 +926,7 @@ YYSTYPE add_define (YYSTYPE a1, YYSTYPE a2)
 
     np = make_node(NODE_DEFINE);
     np->data[0] = a1;
+    np->data[3] = (void *) message_crc;
     deeper((YYSTYPE)np, a2);
     return ((YYSTYPE) np);
 }
@@ -1065,15 +1113,11 @@ void generate_top_boilerplate(FILE *fp)
     fprintf (fp, " * Input file: %s\n", input_filename);
     fprintf (fp, " * Automatically generated: please edit the input file ");
     fprintf (fp, "NOT this file!\n");
-
-    /* Moron Acme trigger workaround */
-    fprintf (fp, " * %syright (c) %s by Cisco Systems, Inc.\n", "Cop", 
-             &datestring[20]);
     fprintf (fp, " */\n\n");
     fprintf (fp, "#if defined(vl_msg_id)||defined(vl_union_id)||");
     fprintf (fp, "defined(vl_printfun) \\\n ||defined(vl_endianfun)||");
     fprintf (fp, " defined(vl_api_version)||defined(vl_typedefs) \\\n");
-    fprintf (fp, " ||defined(vl_msg_name)\n");
+    fprintf (fp, " ||defined(vl_msg_name)||defined(vl_msg_name_crc_list)\n");
     fprintf (fp, "/* ok, something was selected */\n");
     fprintf (fp, "#else\n");
     fprintf (fp, "#warning no content included from %s\n", input_filename);
@@ -1139,6 +1183,37 @@ void generate_msg_names(YYSTYPE a1, FILE *fp)
         np = np->peer;
     }
     fprintf (fp, "#endif\n\n");
+}
+
+void generate_msg_name_crc_list (YYSTYPE a1, FILE *fp)
+{
+    node_t *np = (node_t *)a1;
+    char *unique_suffix, *cp;
+
+    unique_suffix = sxerox(fixed_name);
+
+    cp = unique_suffix;
+    while (*cp && (*cp != '.'))
+        cp++;
+    if (*cp == '.')
+        *cp = 0;
+
+    fprintf (fp, "\n/****** Message name, crc list ******/\n\n");
+
+    fprintf (fp, "#ifdef vl_msg_name_crc_list\n");
+    fprintf (fp, "#define foreach_vl_msg_name_crc_%s ", unique_suffix);
+
+    while (np) {
+        if (np->type == NODE_DEFINE) {
+            if (!(np->flags & NODE_FLAG_TYPEONLY)) {
+                fprintf (fp, "\\\n_(VL_API_%s, %s, %08x) ",
+                         uppercase (np->data[0]), (i8 *) np->data[0],
+                         (u32)(u64)np->data[3]);
+            }
+        }
+        np = np->peer;
+    }
+    fprintf (fp, "\n#endif\n\n");
 }
 
 void generate_typedefs(YYSTYPE a1, FILE *fp)
@@ -1341,6 +1416,47 @@ void generate_python_msg_definitions(YYSTYPE a1, FILE *fp)
     fprintf (fp, "\n]\n");
 }
 
+static bool
+is_typeonly_check(node_t *np, bool typeonly)
+{
+  bool is_typeonly = (np->flags & NODE_FLAG_TYPEONLY);
+  return (is_typeonly == typeonly);
+}
+
+static void
+generate_json_definitions(YYSTYPE a1, FILE *fp, bool typeonly)
+{
+    node_t *np = (node_t *)a1;
+    node_vft_t *vftp;
+    indent_me(fp);
+    if (typeonly)
+      fprintf (fp, "\"types\" : [\n");
+    else
+      fprintf (fp, "\"messages\" : [\n");
+
+    /* Walk the top-level node-list */
+    bool comma = false;
+    indent += 4;
+    while (np) {
+      if (np->type == NODE_DEFINE && is_typeonly_check(np, typeonly)) {
+        /* Yeah, this is pedantic */
+        vftp = the_vft[np->type];
+	indent_me(fp);
+        vftp->generate(np, JSON_PASS, fp);
+	comma = true;
+      }
+      np = np->peer;
+      if (comma && np &&
+	  np->type == NODE_DEFINE && is_typeonly_check(np, typeonly))
+	fprintf (fp, ",\n");
+
+    }
+    indent -= 4;
+    fprintf (fp, "\n");
+    indent_me(fp);
+    fprintf(fp, "]");
+}
+
 void generate_python_typeonly_definitions(YYSTYPE a1, FILE *fp)
 {
     node_t *np = (node_t *)a1;
@@ -1368,6 +1484,22 @@ void generate_python(YYSTYPE a1, FILE *fp)
     fprintf (fp, "vl_api_version = 0x%08x\n\n", (unsigned int)input_crc);
 }
 
+void generate_json(YYSTYPE a1, FILE *fp)
+{
+    fprintf (fp, "{\n");
+    indent += 4;
+    generate_json_definitions(a1, fp, true);
+    fprintf (fp, ",\n");
+    generate_json_definitions(a1, fp, false);
+
+    /*
+     * API CRC signature
+     */
+    fprintf (fp, ",\n\"vl_api_version\" :\"0x%08x\"\n",
+	     (unsigned int)input_crc);
+    fprintf (fp, "}\n");
+}
+
 void generate(YYSTYPE a1)
 {
     if (dump_tree) {
@@ -1381,6 +1513,7 @@ void generate(YYSTYPE a1)
 
         generate_msg_ids(a1, ofp);
         generate_msg_names(a1, ofp);
+        generate_msg_name_crc_list(a1, ofp);
         generate_typedefs(a1, ofp);
         generate_uniondefs(a1, ofp);
         generate_printfun(a1, ofp);
@@ -1390,5 +1523,8 @@ void generate(YYSTYPE a1)
     }
     if (pythonfp) {
       generate_python(a1, pythonfp);
+    }
+    if (jsonfp) {
+      generate_json(a1, jsonfp);
     }
 }

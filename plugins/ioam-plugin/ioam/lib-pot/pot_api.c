@@ -206,6 +206,19 @@ pot_plugin_api_hookup (vlib_main_t *vm)
     return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <ioam/lib-pot/pot_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (pot_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_pot;
+#undef _
+}
+
 static clib_error_t * pot_init (vlib_main_t * vm)
 {
   pot_main_t * sm = &pot_main;
@@ -221,6 +234,9 @@ static clib_error_t * pot_init (vlib_main_t * vm)
       ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = pot_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (sm, &api_main);
 
   vec_free(name);
 

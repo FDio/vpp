@@ -45,5 +45,6 @@ enum lex_state {
 #define MAXNAME 64000
 
 extern unsigned long input_crc;
+extern unsigned long message_crc;
 
 #endif /* _LEX_H_ */

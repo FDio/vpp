@@ -1312,6 +1312,25 @@ vl_msg_api_get_msg_ids (char *name, int n)
   return rv;
 }
 
+void
+vl_msg_api_add_msg_name_crc (api_main_t * am, char *string, u32 id)
+{
+  uword *p;
+
+  if (am->msg_index_by_name_and_crc == 0)
+    am->msg_index_by_name_and_crc = hash_create_string (0, sizeof (uword));
+
+  p = hash_get_mem (am->msg_index_by_name_and_crc, string);
+  if (p)
+    {
+      clib_warning ("attempt to redefine '%s' ignored...", string);
+      return;
+    }
+
+  hash_set_mem (am->msg_index_by_name_and_crc, string, id);
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

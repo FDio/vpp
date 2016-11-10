@@ -176,6 +176,19 @@ ioam_export_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <ioam/export/ioam_export_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (ioam_export_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_ioam_export;
+#undef _
+}
+
 static clib_error_t *
 set_ioam_export_ipfix_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
@@ -246,6 +259,9 @@ ioam_export_init (vlib_main_t * vm)
   em->vlib_time_0 = vlib_time_now (vm);
 
   error = ioam_export_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (em, &api_main);
 
   /* Hook this export node to ip6-hop-by-hop */
   ip6_hbyh_node = vlib_get_node_by_name (vm, (u8 *) "ip6-hop-by-hop");
