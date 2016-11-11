@@ -896,6 +896,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      || (am->msg_endian_handlers[msg_id] == 0))
 	    {
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
+	      munmap (hp, file_size);
 	      return;
 	    }
 	  endian_fp = am->msg_endian_handlers[msg_id];

@@ -119,17 +119,14 @@ random_default_seed (void)
 #endif
 
 /** \brief 64-bit random number generator
-
-    created via two calls to random_u32(). Quick and dirty.
-*/
+ * Again, constants courtesy of Donald Knuth.
+ *
+ */
 always_inline u64
-random_u64 (u32 * seed)
+random_u64 (u64 * seed)
 {
-  u64 result;
-
-  result = (u64) random_u32 (seed) << 32;
-  result |= random_u32 (seed);
-  return result;
+  *seed = 6364136223846793005ULL * *seed + 1442695040888963407ULL;
+  return *seed;
 }
 
 /** \brief machine word size random number generator */
@@ -138,7 +135,7 @@ always_inline uword
 random_uword (u32 * seed)
 {
   if (sizeof (uword) == sizeof (u64))
-    return random_u64 (seed);
+    return random_u64 ((u64 *) seed);
   else
     return random_u32 (seed);
 }
