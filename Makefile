@@ -330,6 +330,10 @@ wipe-doxygen:
 	$(call make-doxy)
 
 verify: $(BR)/.bootstrap.ok
+ifeq ($(OS_ID),ubuntu)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
+else ifneq ("$(wildcard /etc/redhat-release)","")
+	@sudo yum install $(CONFIRM) clang
+endif
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp wipe-all install-packages
 	@make -C build-root CC=clang PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
