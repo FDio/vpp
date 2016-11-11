@@ -468,7 +468,7 @@ expire_bin (timing_wheel_t * w,
 }
 
 /* Called rarely. 32 bit times should only overflow every 4 seconds or so on a fast machine. */
-static void
+static u32 *
 advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 {
   timing_wheel_level_t *l;
@@ -519,6 +519,7 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
     }));
     /* *INDENT-ON* */
   }
+  return expired_user_data;
 }
 
 static u32 *
@@ -683,7 +684,7 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
   /* Don't advance until necessary. */
   while (PREDICT_FALSE
 	 (advance_time_index >= w->time_index_next_cpu_time_base_update))
-    advance_cpu_time_base (w, expired_user_data);
+    expired_user_data = advance_cpu_time_base (w, expired_user_data);
 
   if (next_expiring_element_cpu_time)
     {
