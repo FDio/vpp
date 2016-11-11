@@ -3,9 +3,7 @@ from vpp_interface import VppInterface
 
 
 class VppLoInterface(VppInterface):
-    """
-    VPP loopback interface
-    """
+    """VPP loopback interface."""
 
     def __init__(self, test, lo_index):
         """ Create VPP loopback interface """
