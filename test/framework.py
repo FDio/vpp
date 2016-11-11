@@ -29,22 +29,15 @@ class _PacketInfo(object):
 
     Help process information about the next packet.
     Set variables to default values.
-    @property index
-      Integer variable to store the index of the packet.
-    @property src
-      Integer variable to store the index of the source packet generator
-      interface of the packet.
-    @property dst
-      Integer variable to store the index of the destination packet generator
-      interface of the packet.
-    @property data
-      Object variable to store the copy of the former packet.
-
-
     """
+    #: Store the index of the packet.
     index = -1
+    #: Store the index of the source packet generator interface of the packet.
     src = -1
+    #: Store the index of the destination packet generator interface
+    #: of the packet.
     dst = -1
+    #: Store the copy of the former packet.
     data = None
 
 
@@ -54,12 +47,8 @@ def pump_output(out, queue):
 
 
 class VppTestCase(unittest.TestCase):
-    """
-    Subclass of the python unittest.TestCase class.
-
-    This subclass is a base class for test cases that are implemented as classes
-    It provides methods to create and run test case.
-
+    """This subclass is a base class for VPP test cases that are implemented as
+    classes. It provides methods to create and run test case.
     """
 
     @property
@@ -189,7 +178,7 @@ class VppTestCase(unittest.TestCase):
         cls.packet_infos = {}
         cls.verbose = 0
         print(double_line_delim)
-        print(colorize(getdoc(cls), YELLOW))
+        print(colorize(getdoc(cls).splitlines()[0], YELLOW))
         print(double_line_delim)
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp

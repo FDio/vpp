@@ -1,39 +1,51 @@
 #!/usr/bin/env python
+"""IRB Test Case HLD:
+
+**config**
+    - L2 MAC learning enabled in l2bd
+    - 2 routed interfaces untagged, bvi (Bridge Virtual Interface)
+    - 2 bridged interfaces in l2bd with bvi
+
+**test**
+    - sending ip4 eth pkts between routed interfaces
+        - 2 routed interfaces
+        - 2 bridged interfaces
+
+    - 64B, 512B, 1518B, 9200B (ether_size)
+
+    - burst of pkts per interface
+        - 257pkts per burst
+        - routed pkts hitting different FIB entries
+        - bridged pkts hitting different MAC entries
+
+**verify**
+    - all packets received correctly
+
+"""
+
 import unittest
-from random import choice, randint
+from random import choice
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from logging import *
 
 from framework import VppTestCase, VppTestRunner
 
-""" IRB Test Case
-
-config
-    L2 MAC learning enabled in l2bd
-    2 routed interfaces untagged, bvi
-    2 bridged interfaces in l2bd with bvi
-test
-    sending ip4 eth pkts between routed interfaces
-        2 routed interfaces
-        2 bridged interfaces
-    64B, 512B, 1518B, 9200B (ether_size)
-    burst of pkts per interface
-        257pkts per burst
-        routed pkts hitting different FIB entries
-        bridged pkts hitting different MAC entries
-verify
-    all packets received correctly
-"""
-
 
 class TestIpIrb(VppTestCase):
-    """ IRB Test Case """
+    """IRB Test Case"""
 
     @classmethod
     def setUpClass(cls):
+        """
+        #. Create BD with MAC learning enabled and put interfaces to this BD.
+        #. Configure IPv4 addresses on loopback interface and routed interface.
+        #. Configure MAC address binding to IPv4 neighbors on loop0.
+        #. Configure MAC address on pg2.
+        #. Loopback BVI interface has remote hosts, one half of hosts are
+           behind pg0 second behind pg1.
+        """
         super(TestIpIrb, cls).setUpClass()
 
         cls.pg_if_packet_sizes = [64, 512, 1518, 9018]  # packet sizes
@@ -58,27 +70,34 @@ class TestIpIrb(VppTestCase):
         cls.vapi.sw_interface_set_l2_bridge(
             cls.pg1.sw_if_index, bd_id=cls.bd_id)
 
+        # Configure IPv4 addresses on loopback interface and routed interface
         cls.loop0.config_ip4()
         cls.pg2.config_ip4()
 
-        # configure MAC address binding to IPv4 neighbors on loop0
+        # Configure MAC address binding to IPv4 neighbors on loop0
         cls.loop0.generate_remote_hosts(cls.remote_hosts_count)
-        cls.loop0.configure_extend_ipv4_mac_binding()
+        cls.loop0.configure_ipv4_neighbors()
         # configure MAC address on pg2
         cls.pg2.resolve_arp()
 
-        # one half of hosts are behind pg0 second behind pg1
+        # Loopback BVI interface has remote hosts, one half of hosts are behind
+        # pg0 second behind pg1
         half = cls.remote_hosts_count // 2
         cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
         cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
 
     def tearDown(self):
+        """Run standard test teardown and log ``show l2patch``,
+        ``show l2fib verbose``,``show bridge-domain <bd_id> detail``,
+        ``show ip arp``.
+        """
         super(TestIpIrb, self).tearDown()
         if not self.vpp_dead:
-            info(self.vapi.cli("show l2patch"))
-            info(self.vapi.cli("show l2fib verbose"))
-            info(self.vapi.cli("show bridge-domain %s detail" % self.bd_id))
-            info(self.vapi.cli("show ip arp"))
+            self.logger.info(self.vapi.cli("show l2patch"))
+            self.logger.info(self.vapi.cli("show l2fib verbose"))
+            self.logger.info(self.vapi.cli("show bridge-domain %s detail" %
+                                           self.bd_id))
+            self.logger.info(self.vapi.cli("show ip arp"))
 
     def create_stream(self, src_ip_if, dst_ip_if, packet_sizes):
         pkts = []
@@ -200,8 +219,8 @@ class TestIpIrb(VppTestCase):
         """ IPv4 IRB test 1
 
         Test scenario:
-            ip traffic from pg2 interface must ends in both pg0 and pg1
-            - arp entry present in loop0 interface for dst IP
+            - ip traffic from pg2 interface must ends in both pg0 and pg1
+            - arp entry present in loop0 interface for destination IP
             - no l2 entree configured, pg0 and pg1 are same
         """
 
@@ -224,7 +243,7 @@ class TestIpIrb(VppTestCase):
         """ IPv4 IRB test 2
 
         Test scenario:
-            ip traffic from pg0 and pg1 ends on pg2
+            - ip traffic from pg0 and pg1 ends on pg2
         """
 
         stream1 = self.create_stream_l2_to_ip(
