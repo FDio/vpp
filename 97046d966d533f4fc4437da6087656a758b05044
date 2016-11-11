@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9a437d4f_5b2b9930",
+        "filename": "test/test_l2bd.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-11T14:02:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a437d4f_b0bce46d",
+      "range": {
+        "startLine": 27,
+        "startChar": 8,
+        "endLine": 27,
+        "endChar": 14
+      },
+      "revId": "97046d966d533f4fc4437da6087656a758b05044",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a437d4f_f0a94c25",
         "filename": "test/test_l2bd.py",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2016-11-11T09:47:21Z",
       "side": 1,
       "message": "fix indentation",
+      "range": {
+        "startLine": 33,
+        "startChar": 8,
+        "endLine": 33,
+        "endChar": 13
+      },
+      "revId": "97046d966d533f4fc4437da6087656a758b05044",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_3b20d548",
+        "filename": "test/test_l2bd.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-11T14:02:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a437d4f_f0a94c25",
       "range": {
         "startLine": 33,
         "startChar": 8,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "9a437d4f_1b1d1110",
+        "filename": "test/test_l2bd.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-11T14:02:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a437d4f_d0a64853",
+      "range": {
+        "startLine": 35,
+        "startChar": 8,
+        "endLine": 35,
+        "endChar": 13
+      },
+      "revId": "97046d966d533f4fc4437da6087656a758b05044",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9a437d4f_505ff872",
         "filename": "test/vpp_papi_provider.py",
         "patchSetId": 4
@@ -82,6 +154,30 @@
       "writtenOn": "2016-11-11T09:47:21Z",
       "side": 1,
       "message": "this shouldn\u0027t be here at all\n\nthere is only one place (I think in framework.py), where the verbosity level is examined and acted upon\n\nso just log it at the appropriate log level unconditionally",
+      "range": {
+        "startLine": 93,
+        "startChar": 1,
+        "endLine": 97,
+        "endChar": 26
+      },
+      "revId": "97046d966d533f4fc4437da6087656a758b05044",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9a437d4f_9b3101a5",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-11T14:02:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "9a437d4f_505ff872",
       "range": {
         "startLine": 93,
         "startChar": 1,
