@@ -69,7 +69,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
 	  .ip6 = d->ip6_prefix,
       },
   };
-  sixrd_dpo_create(FIB_PROTOCOL_IP6,
+  sixrd_dpo_create(DPO_PROTO_IP6,
 		   *sixrd_domain_index,
 		   &dpo_v6);
   fib_table_entry_special_dpo_add(0, &pfx6,
@@ -84,7 +84,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
    * Find the adj (if any) already contributed and modify it
    */
   fib_prefix_t pfx4 = {
-      .fp_proto = FIB_PROTOCOL_IP6,
+      .fp_proto = FIB_PROTOCOL_IP4,
       .fp_len = 32,
       .fp_addr = {
 	  .ip4 = d->ip4_src,
@@ -119,7 +119,7 @@ sixrd_create_domain (ip6_address_t *ip6_prefix,
       }
   }
   /* first time addition of the route */
-  sixrd_dpo_create(FIB_PROTOCOL_IP4,
+  sixrd_dpo_create(DPO_PROTO_IP4,
 		   *sixrd_domain_index,
 		   &dpo_v4);
 
