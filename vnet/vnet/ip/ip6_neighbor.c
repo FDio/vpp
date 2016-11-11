@@ -1881,11 +1881,10 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	 a->min_delay_between_radv = MIN_DELAY_BETWEEN_RAS;
 	 a->max_delay_between_radv = MAX_DELAY_BETWEEN_RAS;
 	 a->max_rtr_default_lifetime = MAX_DEF_RTR_LIFETIME;
-	 a->seed = random_default_seed();
-	 
-	 /* for generating random interface ids */
-	 a->randomizer = 0x1119194911191949ULL;
-	 a->randomizer = random_u64 ((u32 *)&a->randomizer);
+	 a->seed = (u32) clib_cpu_time_now();
+         (void) random_u32 (&a->seed);
+         a->randomizer = clib_cpu_time_now();
+	 (void) random_u64 (&a->randomizer);
 	 
 	 a->initial_adverts_count = MAX_INITIAL_RTR_ADVERTISEMENTS ; 
 	 a->initial_adverts_sent = a->initial_adverts_count-1;
