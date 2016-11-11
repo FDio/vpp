@@ -329,3 +329,7 @@ doxygen:
 wipe-doxygen:
 	$(call make-doxy)
 
+verify: $(BR)/.bootstrap.ok
+	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
+	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp wipe-all install-packages
+	@make -C build-root CC=clang PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
