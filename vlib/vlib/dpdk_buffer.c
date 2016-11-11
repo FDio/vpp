@@ -320,6 +320,9 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
+  int i;
+
+  ASSERT (os_get_cpu_number () == 0);
 
   if (!is_default && pool_elts (bm->buffer_free_list_pool) == 0)
     {
@@ -357,6 +360,19 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
       uword *p = hash_get (bm->free_list_by_size, f->n_data_bytes);
       if (!p)
 	hash_set (bm->free_list_by_size, f->n_data_bytes, f->index);
+    }
+
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    {
+      vlib_buffer_main_t *wbm = vlib_mains[i]->buffer_main;
+      vlib_buffer_free_list_t *wf;
+      pool_get_aligned (wbm->buffer_free_list_pool,
+			wf, CLIB_CACHE_LINE_BYTES);
+      ASSERT (f - bm->buffer_free_list_pool == wf - wbm->buffer_free_list_pool);
+      wf[0] = f[0];
+      wf->aligned_buffers = 0;
+      wf->unaligned_buffers = 0;
+      wf->n_alloc = 0;
     }
 
   return f->index;
@@ -431,27 +447,30 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 
 /* Add buffer free list. */
 void
-vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
+vlib_buffer_delete_free_list (vlib_main_t * unused, u32 free_list_index)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  vlib_buffer_free_list_t *f;
-  u32 merge_index;
-
-  f = vlib_buffer_get_free_list (vm, free_list_index);
-
-  merge_index = vlib_buffer_get_free_list_with_size (vm, f->n_data_bytes);
-  if (merge_index != ~0 && merge_index != free_list_index)
+  foreach_vlib_main ((
     {
-      merge_free_lists (pool_elt_at_index (bm->buffer_free_list_pool,
-					   merge_index), f);
-    }
+      vlib_buffer_main_t *bm = this_vlib_main->buffer_main;
+      vlib_buffer_free_list_t *f;
+      u32 merge_index;
 
-  del_free_list (vm, f);
+      f = vlib_buffer_get_free_list (this_vlib_main, free_list_index);
 
-  /* Poison it. */
-  memset (f, 0xab, sizeof (f[0]));
+      merge_index = vlib_buffer_get_free_list_with_size (this_vlib_main, f->n_data_bytes);
+      if (merge_index != ~0 && merge_index != free_list_index)
+	{
+	  merge_free_lists (pool_elt_at_index (bm->buffer_free_list_pool,
+					       merge_index), f);
+	}
 
-  pool_put (bm->buffer_free_list_pool, f);
+      del_free_list (this_vlib_main, f);
+
+      /* Poison it. */
+      memset (f, 0xab, sizeof (f[0]));
+
+      pool_put (bm->buffer_free_list_pool, f);
+    }));
 }
 
 /* Make sure free list has at least given number of free buffers. */
