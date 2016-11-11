@@ -434,11 +434,8 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
 
     vec_foreach (bi, s->buffer_indices)
     {
-      vlib_main_t *vmt;
-      vmt =
-	vlib_num_workers ()? vlib_get_worker_vlib_main (s->worker_index) : vm;
       bi->free_list_index =
-	vlib_buffer_create_free_list (vmt, s->buffer_bytes,
+	vlib_buffer_create_free_list (vm, s->buffer_bytes,
 				      "pg stream %d buffer #%d",
 				      s - pg->streams,
 				      1 + (bi - s->buffer_indices));
@@ -478,9 +475,7 @@ pg_stream_del (pg_main_t * pg, uword index)
 
   vec_foreach (bi, s->buffer_indices)
   {
-    vlib_buffer_delete_free_list (vlib_num_workers ()?
-				  vlib_get_worker_vlib_main (s->worker_index)
-				  : vm, bi->free_list_index);
+    vlib_buffer_delete_free_list (vm, bi->free_list_index);
     clib_fifo_free (bi->buffer_fifo);
   }
 

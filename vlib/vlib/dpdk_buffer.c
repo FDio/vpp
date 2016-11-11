@@ -320,6 +320,9 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
+  int i;
+
+  ASSERT (os_get_cpu_number () == 0);
 
   if (!is_default && pool_elts (bm->buffer_free_list_pool) == 0)
     {
@@ -357,6 +360,20 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
       uword *p = hash_get (bm->free_list_by_size, f->n_data_bytes);
       if (!p)
 	hash_set (bm->free_list_by_size, f->n_data_bytes, f->index);
+    }
+
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    {
+      vlib_buffer_main_t *wbm = vlib_mains[i]->buffer_main;
+      vlib_buffer_free_list_t *wf;
+      pool_get_aligned (wbm->buffer_free_list_pool,
+			wf, CLIB_CACHE_LINE_BYTES);
+      ASSERT (f - bm->buffer_free_list_pool ==
+	      wf - wbm->buffer_free_list_pool);
+      wf[0] = f[0];
+      wf->aligned_buffers = 0;
+      wf->unaligned_buffers = 0;
+      wf->n_alloc = 0;
     }
 
   return f->index;
@@ -436,6 +453,9 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
   u32 merge_index;
+  int i;
+
+  ASSERT (os_get_cpu_number () == 0);
 
   f = vlib_buffer_get_free_list (vm, free_list_index);
 
@@ -452,6 +472,15 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
   memset (f, 0xab, sizeof (f[0]));
 
   pool_put (bm->buffer_free_list_pool, f);
+
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    {
+      bm = vlib_mains[i]->buffer_main;
+      f = vlib_buffer_get_free_list (vlib_mains[i], free_list_index);;
+      memset (f, 0xab, sizeof (f[0]));
+      pool_put (bm->buffer_free_list_pool, f);
+    }
+
 }
 
 /* Make sure free list has at least given number of free buffers. */
