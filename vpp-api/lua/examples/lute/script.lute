@@ -1,0 +1,7 @@
+shell s1
+expect s1 $
+run s1 echo testing123
+expect s1 $
+run s1 echo done
+quit
+

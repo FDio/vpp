@@ -1,0 +1,329 @@
+shell vppbuild
+run vppbuild stty -echo
+run vppbuild sudo -u ubuntu -i bash -c "(cd vpp && make plugins && echo ALLGOOD)"
+expect vppbuild ALLGOOD
+
+shell s0
+shell s1
+shell s2
+
+
+cd s1
+unshare -n /bin/bash
+/sbin/ifconfig -a
+^D^D^D
+
+cd s2
+unshare -n /bin/bash
+/sbin/ifconfig -a
+^D^D^D
+
+
+cd lua
+
+function session_get_bash_pid(s)
+  if not has_session(s) then
+    return nil
+  end
+  local fname = "/tmp/lute-"..s.."-pid.txt"
+
+  session_exec(s, "echo $$ >" .. fname)
+  -- it's a dirty hack but it's quick
+  sleep(0.5)
+  local pid = io.lines(fname)()
+  print("Got pid for " .. s .. " : " .. tostring(pid))
+  return(tonumber(pid))
+end
+
+function session_connect_with(s0, s1)
+  -- local pid0 = tostring(session_get_bash_pid(s0))
+  local pid1 = tostring(session_get_bash_pid(s1))
+  local eth_options = { "rx", "tx",  "sg", "tso", "ufo", "gso", "gro", "lro", "rxvlan", "txvlan", "rxhash" }
+  local this_end = s0 .. "_" .. s1
+  local other_end = s1 .. "_" .. s0
+  session_exec(s0, "ip link add name " .. this_end .. " type veth peer name " .. other_end)
+  session_exec(s0, "ip link set dev " .. this_end .. " up promisc on")
+  for i, option in ipairs(eth_options) do
+    session_exec(s0, "/sbin/ethtool --offload " .. this_end .. " " .. option .. " off")
+    session_exec(s0, "/sbin/ethtool --offload " .. other_end .. " " .. option .. " off")
+  end
+  session_exec(s0, "ip link set dev " .. other_end .. " up promisc on netns /proc/" .. pid1 .. "/ns/net")
+  sleep(0.5)
+end
+
+^D^D^D
+run lua session_connect_with("s0", "s1")
+run lua session_connect_with("s0", "s2")
+
+cd s1
+ip -6 addr add dev s1_s0 2001:db8:1::1/64
+ip -4 addr add dev s1_s0 192.0.2.1/24
+ip link set dev s1_s0 up promisc on
+^D^D^D
+
+cd s2
+ip -6 addr add dev s2_s0 2001:db8:1::2/64
+ip -6 addr add dev s2_s0 2001:db8:1::3/64
+ip -6 addr add dev s2_s0 2001:db8:1::4/64
+ip -4 addr add dev s2_s0 192.0.2.2/24
+ip -4 addr add dev s2_s0:1 192.0.2.3/24
+ip -4 addr add dev s2_s0:2 192.0.2.4/24
+ip link set dev s2_s0 up promisc on
+^D^D^D
+
+run s1 ip addr
+run s2 ip addr
+shell VPP
+cd VPP
+cd /home/ubuntu/vpp
+make debug 
+r
+^D^D^D
+expect VPP DBGvpp#
+
+cd lua
+-- Initialization of the Lua environment for talking to VPP
+vpp = require("vpp-lapi")
+root_dir = "/home/ubuntu/vpp"
+pneum_path = root_dir .. "/build-root/install-vpp_debug-native/vpp-api/lib64/libpneum.so"
+vpp:init({ pneum_path = pneum_path })
+vpp:consume_api(root_dir .. "/build-root/install-vpp_debug-native/vlib-api/vlibmemory/memclnt.api")
+vpp:consume_api(root_dir .. "/build-root/install-vpp_debug-native/vpp/vpp-api/vpe.api")
+vpp:connect("aytest")
+vpp:consume_api(root_dir .. "/plugins/acl-plugin/acl/acl.api", "acl")
+
+^D^D^D
+
+cd lua
+
+reply = vpp:api_call("af_packet_create", { host_if_name = "s0_s1", hw_addr = "AAAAAA" })
+vpp_if_to_s1 = reply[1].sw_if_index
+
+reply = vpp:api_call("af_packet_create", { host_if_name = "s0_s2", hw_addr = "AAAAAA" })
+vpp_if_to_s2 = reply[1].sw_if_index
+
+ifaces = { vpp_if_to_s1, vpp_if_to_s2 }
+
+reply = vpp:api_call("sw_interface_set_flags", { sw_if_index = vpp_if_to_s1, admin_up_down = 1, link_up_down = 1 })
+print(vpp.dump(reply))
+reply = vpp:api_call("sw_interface_set_flags", { sw_if_index = vpp_if_to_s2, admin_up_down = 1, link_up_down = 1 })
+print(vpp.dump(reply))
+
+bd_id = 42
+
+reply = vpp:api_call("bridge_domain_add_del", { bd_id = bd_id, flood = 1, uu_flood = 1, forward = 1, learn = 1, arp_term = 0, is_add = 1 })
+print(vpp.dump(reply))
+
+for i, v in ipairs(ifaces) do
+  reply = vpp:api_call("sw_interface_set_l2_bridge", { rx_sw_if_index = v, bd_id = bd_id, shg = 0, bvi = 0, enable = 1 } )
+  print(vpp.dump(reply))
+end
+
+^D^D^D
+
+run s1 ping -c 3 192.0.2.2
+expect s1 packet loss
+run s1 ping -c 3 192.0.2.3
+expect s1 packet loss
+run s1 ping -c 3 192.0.2.4
+expect s1 packet loss
+run s1 ping6 -c 3 2001:db8:1::2
+expect s1 packet loss
+run s1 ping6 -c 3 2001:db8:1::3
+expect s1 packet loss
+run s1 ping6 -c 3 2001:db8:1::4
+expect s1 packet loss
+
+
+cd lua
+--- ACL testing
+
+--[[ temporary comment out
+
+reply = vpp:api_call("acl_del", { context = 42, acl_index = 230 })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_del", { context = 42, acl_index = 8 })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_del", { context = 42, acl_index = 15 })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_add", { context = 42, count = 2, r = { { is_permit = 1, is_ipv6 = 1 }, { is_permit = 0, is_ipv6 = 1 } } })
+print(vpp.dump(reply))
+print("---")
+interface_acl_in = reply[1].acl_index
+
+reply = vpp:api_call("acl_add", { context = 42, count = 3, r = { { is_permit = 1, is_ipv6 = 1 }, { is_permit = 0, is_ipv6 = 1 }, { is_permit = 1, is_ipv6 = 0 } } })
+print(vpp.dump(reply))
+print("---")
+interface_acl_out = reply[1].acl_index
+
+
+reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = 0, is_add = 1, is_input = 1, acl_index = interface_acl_in })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = 0, is_add = 1, is_input = 1, acl_index = interface_acl_in })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = 0, is_add = 1, is_input = 0, acl_index = interface_acl_out })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = 0, is_add = 1, is_input = 0, acl_index = interface_acl_out })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_add", { context = 42, count = 0 })
+print(vpp.dump(reply))
+print("---")
+
+acl_index_to_delete = reply[1].acl_index
+print("Deleting " .. tostring(acl_index_to_delete))
+reply = vpp:api_call("acl_del", { context = 42, acl_index = acl_index_to_delete })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_dump", { context = 42, sw_if_index = 0})
+for ri, rv in ipairs(reply) do
+  print("Reply message #" .. tostring(ri))
+  print(vpp.dump(rv))
+  for ai, av in ipairs(rv.r) do
+    print("ACL rule #" .. tostring(ai) .. " : " .. vpp.dump(av))
+  end
+
+end
+print("---")
+
+reply = vpp:api_call("acl_del", { context = 42, acl_index = interface_acl_out })
+print(vpp.dump(reply))
+print("---")
+reply = vpp:api_call("acl_del", { context = 42, acl_index = interface_acl_in })
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_dump", { context = 42, sw_if_index = 0})
+print(vpp.dump(reply))
+print("---")
+
+reply = vpp:api_call("acl_dump", { context = 42, sw_if_index = 4294967295 })
+print(vpp.dump(reply))
+print("---")
+
+
+]] -- end of comment out
+
+---- Should be nothing ^^
+r = {
+  { is_permit = 1, is_ipv6 = 1, dst_ip_addr = ip46("2001:db8:1::2"), dst_ip_prefix_len = 128 },
+  { is_permit = 0, is_ipv6 = 1, dst_ip_addr = ip46("2001:db8:1::3"), dst_ip_prefix_len = 128 },
+  { is_permit = 1, is_ipv6 = 1, dst_ip_addr = ip46("2001:db8::"), dst_ip_prefix_len = 32  },
+  { is_permit = 1, is_ipv6 = 0, dst_ip_addr = ip46("192.0.2.2"), dst_ip_prefix_len = 32},
+  { is_permit = 0, is_ipv6 = 0, dst_ip_addr = ip46("192.0.2.3"), dst_ip_prefix_len = 32 },
+}
+
+reply = vpp:api_call("acl_add", { context = 42, count = 5, r = r })
+print(vpp.dump(reply))
+print("---")
+interface_acl_in = reply[1].acl_index
+
+reply = vpp:api_call("acl_add", { context = 42, count = 3, r = { { is_permit = 1, is_ipv6 = 1 }, { is_permit = 0, is_ipv6 = 1 }, { is_permit = 1, is_ipv6 = 0 } } })
+print(vpp.dump(reply))
+print("---")
+interface_acl_out = reply[1].acl_in
+
+reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = vpp_if_to_s1, is_add = 1, is_input = 1, acl_index = interface_acl_in })
+print(vpp.dump(reply))
+print("---")
+
+--reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = vpp_if_to_s2, is_add = 1, is_input = 0, acl_index = interface_acl_out })
+-- print(vpp.dump(reply))
+--print("---")
+
+^D^D^D
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping6 -c 3 2001:db8:1::2
+expect s1 packet loss
+run VPP show trace
+expect VPP match: inacl 0 rule 0
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping6 -c 3 2001:db8:1::3
+expect s1 packet loss
+run VPP show trace 
+expect VPP match: inacl 0 rule 1
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping6 -c 3 2001:db8:1::4
+expect s1 packet loss
+run VPP show trace
+expect VPP match: inacl 0 rule 2
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping -c 3 192.0.2.2
+expect s1 packet loss
+run VPP show trace
+expect VPP match: inacl 0 rule 3
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping -c 3 192.0.2.3
+expect s1 packet loss
+run VPP show trace
+expect VPP match: inacl 0 rule 4
+
+
+cd lua
+
+--- TEST OUTBOUND ACL
+
+r1 = {
+  { is_permit = 1, is_ipv6 = 1, src_ip_addr = ip46("2001:db8:1::1"), src_ip_prefix_len = 128, dst_ip_addr = ip46("2001:db8:1::2"), dst_ip_prefix_len = 128 },
+  { is_permit = 0, is_ipv6 = 1, src_ip_addr = ip46("2001:db8:1::1"), src_ip_prefix_len = 128, dst_ip_addr = ip46("2001:db8:1::4"), dst_ip_prefix_len = 128 }
+}
+
+reply = vpp:api_call("acl_add", { context = 42, count = 3, r = r1 })
+print(vpp.dump(reply))
+print("---")
+interface_acl_out = reply[1].acl_index
+
+reply = vpp:api_call("acl_interface_add_del", { context = 42, sw_if_index = vpp_if_to_s2, is_add = 1, is_input = 0, acl_index = interface_acl_out })
+print(vpp.dump(reply))
+print("---")
+
+
+^D^D^D
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping6 -c 3 2001:db8:1::2
+expect s1 packet loss
+run VPP show trace
+expect VPP match: outacl 2 rule 0
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping6 -c 3 2001:db8:1::3
+expect s1 packet loss
+run VPP show trace 
+expect VPP match: inacl 0 rule 1
+
+run VPP clear trace
+run VPP trace add af-packet-input 100
+run s1 ping6 -c 3 2001:db8:1::4
+expect s1 packet loss
+run VPP show trace
+expect VPP match: outacl 2 rule 1
+
+run lua print("ALL GOOD!")
+
