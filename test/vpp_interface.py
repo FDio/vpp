@@ -88,20 +88,45 @@ class VppInterface(object):
 
     @remote_hosts.setter
     def remote_hosts(self, value):
+        """
+
+        :param value: List of remote hosts.
+        """
         self._remote_hosts = value
-        #TODO: set hosts_by dicts
+        self._hosts_by_mac = {}
+        self._hosts_by_ip4 = {}
+        self._hosts_by_ip6 = {}
+        for host in self._remote_hosts:
+            self._hosts_by_mac[host.mac] = host
+            self._hosts_by_ip4[host.ip4] = host
+            self._hosts_by_ip6[host.ip6] = host
 
     def host_by_mac(self, mac):
+        """
+        :param ip: MAC address to find host by
+        :return: Host object assigned to interface
+        """
         return self._hosts_by_mac[mac]
 
     def host_by_ip4(self, ip):
+        """
+        :param ip: IPv4 address to find host by
+        :return: Host object assigned to interface
+        """
         return self._hosts_by_ip4[ip]
 
     def host_by_ip6(self, ip):
+        """
+        :param ip: IPv6 address to find host by
+        :return: Host object assigned to interface
+        """
         return self._hosts_by_ip6[ip]
 
     def generate_remote_hosts(self, count=1):
-        """Generate and add remote hosts for the interface."""
+        """Generate and add remote hosts for the interface.
+
+        :param int count: Number of generated remote hosts
+        """
         self._remote_hosts = []
         self._hosts_by_mac = {}
         self._hosts_by_ip4 = {}
