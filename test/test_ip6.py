@@ -5,11 +5,11 @@ import socket
 from logging import *
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet6 import ICMPv6ND_NS, IPv6, UDP
+from scapy.layers.inet6 import IPv6, UDP
 
 
 class TestIPv6(VppTestCase):
@@ -20,6 +20,29 @@ class TestIPv6(VppTestCase):
         super(TestIPv6, cls).setUpClass()
 
     def setUp(self):
+        """
+        Perform test setup before test case.
+
+        **Config:**
+
+            - create 3 pg interfaces
+
+                - untagged pg0 interface
+                - Dot1Q subinterface on pg1
+                - Dot1AD subinterface on pg2
+            - setup interfaces:
+
+                - put it into UP state
+                - set IPv6 addresses
+                - resolve neighbor address using NDP
+            - configure 200 fib entries
+
+        :ivar list interfaces: pg interfaces and subinterfaces.
+        :ivar dict flows: IPv4 packet flows in test.
+        :ivar list pg_if_packet_sizes: packet sizes in test.
+
+        *TODO:* Create AD sub interface
+        """
         super(TestIPv6, self).setUp()
 
         # create 3 pg interfaces
@@ -28,8 +51,9 @@ class TestIPv6(VppTestCase):
         # create 2 subinterfaces for p1 and pg2
         self.sub_interfaces = [
             VppDot1QSubint(self, self.pg1, 100),
-            VppDot1QSubint(self, self.pg2, 200)]
+            VppDot1QSubint(self, self.pg2, 200)
             # TODO: VppDot1ADSubint(self, self.pg2, 200, 300, 400)
+        ]
 
         # packet flows mapping pg0 -> pg1.sub, pg2.sub, etc.
         self.flows = dict()
@@ -50,16 +74,26 @@ class TestIPv6(VppTestCase):
             i.config_ip6()
             i.resolve_ndp()
 
-        # config 2M FIB enries
+        # config 2M FIB entries
         self.config_fib_entries(200)
 
     def tearDown(self):
+        """Run standard test teardown and log ``show ip6 neighbors``."""
         super(TestIPv6, self).tearDown()
         if not self.vpp_dead:
             info(self.vapi.cli("show ip6 neighbors"))
             # info(self.vapi.cli("show ip6 fib"))  # many entries
 
     def config_fib_entries(self, count):
+        """For each interface add to the FIB table *count* routes to
+        "fd02::1/128" destination with interface's local address as next-hop
+        address.
+
+        :param int count: Number of FIB entries.
+
+        - *TODO:* check if the next-hop address shouldn't be remote address
+          instead of local address.
+        """
         n_int = len(self.interfaces)
         percent = 0
         counter = 0.0
@@ -70,13 +104,18 @@ class TestIPv6(VppTestCase):
             for j in range(count / n_int):
                 self.vapi.ip_add_del_route(
                     dest_addr, dest_addr_len, next_hop_address, is_ipv6=1)
-                counter = counter + 1
+                counter += 1
                 if counter / count * 100 > percent:
                     info("Configure %d FIB entries .. %d%% done" %
                          (count, percent))
-                    percent = percent + 1
+                    percent += 1
 
     def create_stream(self, src_if, packet_sizes):
+        """Create input packet stream for defined interface.
+
+        :param VppInterface src_if: Interface to create packet stream for.
+        :param list packet_sizes: Required packet sizes.
+        """
         pkts = []
         for i in range(0, 257):
             dst_if = self.flows[src_if][i % 2]
@@ -96,6 +135,12 @@ class TestIPv6(VppTestCase):
         return pkts
 
     def verify_capture(self, dst_if, capture):
+        """Verify captured input packet stream for defined interface.
+
+        :param VppInterface dst_if: Interface to verify captured packet stream
+                                    for.
+        :param list capture: Captured packet stream.
+        """
         info("Verifying capture on interface %s" % dst_if.name)
         last_info = dict()
         for i in self.interfaces:
@@ -142,7 +187,14 @@ class TestIPv6(VppTestCase):
                 (dst_if.name, i.name))
 
     def test_fib(self):
-        """ IPv6 FIB test """
+        """ IPv6 FIB test
+
+        Test scenario:
+
+            - Create IPv6 stream for pg0 interface
+            - Create IPv6 tagged streams for pg1's and pg2's subinterface.
+            - Send and verify received packets on each interface.
+        """
 
         pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes)
         self.pg0.add_stream(pkts)
