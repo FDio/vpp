@@ -22,7 +22,7 @@ Anatomy of a test case
 ######################
 
 Python's unittest_ is used as the base framework upon which the VPP test
-framework is built. A test suite in the |vtf| constists of multiple classes
+framework is built. A test suite in the |vtf| consists of multiple classes
 derived from `VppTestCase`, which is itself derived from TestCase_.
 The test class defines one or more test functions, which act as test cases.
 
@@ -44,11 +44,11 @@ Function flow when running a test case is:
    The tearDown function is called after each test function with the purpose
    of doing partial cleanup.
 5. `tearDownClass <VppTestCase.tearDownClass>`:
-   Method called once after running all of the test funnctions to perform
+   Method called once after running all of the test functions to perform
    the final cleanup.
 
 Test temporary directory and VPP life cycle
-################################################
+###########################################
 
 Test separation is achieved by separating the test files and vpp instances.
 Each test creates a temporary directory and it's name is used to create
@@ -60,7 +60,7 @@ are stored in this temporary test directory.
 Virtual environment
 ###################
 
-Virtualenv_ is a python module which provides a means to crate an environment
+Virtualenv_ is a python module which provides a means to create an environment
 containing the dependencies required by the |vtf|, allowing a separation
 from any existing system-wide packages. |vtf|'s Makefile automatically
 creates a virtualenv_ inside build-root and installs the required packages
@@ -72,7 +72,7 @@ Naming conventions
 
 Most unit tests do some kind of packet manipulation - sending and receiving
 packets between VPP and virtual hosts connected to the VPP. Referring
-to the sides, addresses, etc.. is always done as if looking from the VPP side,
+to the sides, addresses, etc. is always done as if looking from the VPP side,
 thus:
 
 * *local_* prefix is used for the VPP side.
