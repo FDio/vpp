@@ -22,7 +22,7 @@ Anatomy of a test case
 ######################
 
 Python's unittest_ is used as the base framework upon which the VPP test
-framework is built. A test suite in the |vtf| constists of multiple classes
+framework is built. A test suite in the |vtf| consists of multiple classes
 derived from `VppTestCase`, which is itself derived from TestCase_.
 The test class defines one or more test functions, which act as test cases.
 
@@ -44,11 +44,11 @@ Function flow when running a test case is:
    The tearDown function is called after each test function with the purpose
    of doing partial cleanup.
 5. `tearDownClass <VppTestCase.tearDownClass>`:
-   Method called once after running all of the test funnctions to perform
+   Method called once after running all of the test functions to perform
    the final cleanup.
 
 Test temporary directory and VPP life cycle
-################################################
+###########################################
 
 Test separation is achieved by separating the test files and vpp instances.
 Each test creates a temporary directory and it's name is used to create

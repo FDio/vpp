@@ -8,13 +8,15 @@ SPHINXBUILD = sphinx-build
 PAPER         =
 BUILD_DOC_ROOT = $(BR)/test-doc
 BUILD_DOC_DIR = $(BUILD_DOC_ROOT)/build
+API_DOC_GEN_DIR = $(BUILD_DOC_ROOT)/apidoc
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -d $(BUILD_DOC_DIR)/.sphinx-cache $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SRC_DOC_DIR)
+ALLSPHINXOPTS   = -d $(BUILD_DOC_DIR)/.sphinx-cache $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(API_DOC_GEN_DIR) -c $(SRC_DOC_DIR)
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
+INDEX_REL_PATH:=$(shell realpath --relative-to=$(API_DOC_GEN_DIR) $(SRC_DOC_DIR)/index.rst)
 IN_VENV:=$(shell if pip -V | grep "virtualenv" 2>&1 > /dev/null; then echo 1; else echo 0; fi)
 
 .PHONY: verify-virtualenv
@@ -22,6 +24,13 @@ verify-virtualenv:
 ifeq ($(IN_VENV),0)
 	$(error "Not running inside virtualenv (are you running 'make test-doc' from root?)")
 endif
+
+.PHONY: regen-api-doc
+regen-api-doc: verify-virtualenv
+	@mkdir -p $(API_DOC_GEN_DIR)
+	#@echo ".. include:: $(INDEX_REL_PATH)" > $(API_DOC_GEN_DIR)/index.rst
+	@cp $(SRC_DOC_DIR)/index.rst $(API_DOC_GEN_DIR)
+	sphinx-apidoc -o $(API_DOC_GEN_DIR) ..
 
 .PHONY: help
 help:
@@ -58,44 +67,44 @@ wipe:
 	rm -rf $(BUILD_DOC_ROOT)
 
 .PHONY: html
-html: verify-virtualenv
+html: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILD_DOC_DIR)/html."
 
 .PHONY: dirhtml
-dirhtml: verify-virtualenv
+dirhtml: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILD_DOC_DIR)/dirhtml."
 
 .PHONY: singlehtml
-singlehtml: verify-virtualenv
+singlehtml: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b singlehtml $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/singlehtml
 	@echo
 	@echo "Build finished. The HTML page is in $(BUILD_DOC_DIR)/singlehtml."
 
 .PHONY: pickle
-pickle: verify-virtualenv
+pickle: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/pickle
 	@echo
 	@echo "Build finished; now you can process the pickle files."
 
 .PHONY: json
-json: verify-virtualenv
+json: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b json $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/json
 	@echo
 	@echo "Build finished; now you can process the JSON files."
 
 .PHONY: htmlhelp
-htmlhelp: verify-virtualenv
+htmlhelp: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/htmlhelp
 	@echo
 	@echo "Build finished; now you can run HTML Help Workshop with the" \
 	      ".hhp project file in $(BUILD_DOC_DIR)/htmlhelp."
 
 .PHONY: qthelp
-qthelp: verify-virtualenv
+qthelp: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b qthelp $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/qthelp
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
@@ -105,7 +114,7 @@ qthelp: verify-virtualenv
 	@echo "# assistant -collectionFile $(BUILD_DOC_DIR)/qthelp/VPPtestframework.qhc"
 
 .PHONY: applehelp
-applehelp: verify-virtualenv
+applehelp: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b applehelp $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/applehelp
 	@echo
 	@echo "Build finished. The help book is in $(BUILD_DOC_DIR)/applehelp."
@@ -114,7 +123,7 @@ applehelp: verify-virtualenv
 	      "bundle."
 
 .PHONY: devhelp
-devhelp: verify-virtualenv
+devhelp: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/devhelp
 	@echo
 	@echo "Build finished."
@@ -124,7 +133,7 @@ devhelp: verify-virtualenv
 	@echo "# devhelp"
 
 .PHONY: epub
-epub: verify-virtualenv
+epub: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b epub $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/epub
 	@echo
 	@echo "Build finished. The epub file is in $(BUILD_DOC_DIR)/epub."
@@ -136,7 +145,7 @@ epub3:
 	@echo "Build finished. The epub3 file is in $(BUILD_DOC_DIR)/epub3."
 
 .PHONY: latex
-latex: verify-virtualenv
+latex: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in $(BUILD_DOC_DIR)/latex."
@@ -144,33 +153,33 @@ latex: verify-virtualenv
 	      "(use \`make latexpdf' here to do that automatically)."
 
 .PHONY: latexpdf
-latexpdf: verify-virtualenv
+latexpdf: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/latex
 	@echo "Running LaTeX files through pdflatex..."
 	$(MAKE) -C $(BUILD_DOC_DIR)/latex all-pdf
 	@echo "pdflatex finished; the PDF files are in $(BUILD_DOC_DIR)/latex."
 
 .PHONY: latexpdfja
-latexpdfja: verify-virtualenv
+latexpdfja: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/latex
 	@echo "Running LaTeX files through platex and dvipdfmx..."
 	$(MAKE) -C $(BUILD_DOC_DIR)/latex all-pdf-ja
 	@echo "pdflatex finished; the PDF files are in $(BUILD_DOC_DIR)/latex."
 
 .PHONY: text
-text: verify-virtualenv
+text: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b text $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/text
 	@echo
 	@echo "Build finished. The text files are in $(BUILD_DOC_DIR)/text."
 
 .PHONY: man
-man: verify-virtualenv
+man: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b man $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/man
 	@echo
 	@echo "Build finished. The manual pages are in $(BUILD_DOC_DIR)/man."
 
 .PHONY: texinfo
-texinfo: verify-virtualenv
+texinfo: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b texinfo $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/texinfo
 	@echo
 	@echo "Build finished. The Texinfo files are in $(BUILD_DOC_DIR)/texinfo."
@@ -178,57 +187,57 @@ texinfo: verify-virtualenv
 	      "(use \`make info' here to do that automatically)."
 
 .PHONY: info
-info: verify-virtualenv
+info: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b texinfo $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/texinfo
 	@echo "Running Texinfo files through makeinfo..."
 	make -C $(BUILD_DOC_DIR)/texinfo info
 	@echo "makeinfo finished; the Info files are in $(BUILD_DOC_DIR)/texinfo."
 
 .PHONY: gettext
-gettext: verify-virtualenv
+gettext: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b gettext $(I18NSPHINXOPTS) $(BUILD_DOC_DIR)/locale
 	@echo
 	@echo "Build finished. The message catalogs are in $(BUILD_DOC_DIR)/locale."
 
 .PHONY: changes
-changes: verify-virtualenv
+changes: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/changes
 	@echo
 	@echo "The overview file is in $(BUILD_DOC_DIR)/changes."
 
 .PHONY: linkcheck
-linkcheck: verify-virtualenv
+linkcheck: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/linkcheck
 	@echo
 	@echo "Link check complete; look for any errors in the above output " \
 	      "or in $(BUILD_DOC_DIR)/linkcheck/output.txt."
 
 .PHONY: doctest
-doctest: verify-virtualenv
+doctest: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in $(BUILD_DOC_DIR)/doctest/output.txt."
 
 .PHONY: coverage
-coverage: verify-virtualenv
+coverage: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b coverage $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/coverage
 	@echo "Testing of coverage in the sources finished, look at the " \
 	      "results in $(BUILD_DOC_DIR)/coverage/python.txt."
 
 .PHONY: xml
-xml: verify-virtualenv
+xml: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b xml $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/xml
 	@echo
 	@echo "Build finished. The XML files are in $(BUILD_DOC_DIR)/xml."
 
 .PHONY: pseudoxml
-pseudoxml: verify-virtualenv
+pseudoxml: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b pseudoxml $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/pseudoxml
 	@echo
 	@echo "Build finished. The pseudo-XML files are in $(BUILD_DOC_DIR)/pseudoxml."
 
 .PHONY: dummy
-dummy: verify-virtualenv
+dummy: regen-api-doc verify-virtualenv
 	$(SPHINXBUILD) -b dummy $(ALLSPHINXOPTS) $(BUILD_DOC_DIR)/dummy
 	@echo
 	@echo "Build finished. Dummy builder generates no files."
