@@ -63,7 +63,8 @@ _ (avx,      1, ecx, 28)  \
 _ (avx2,     7, ebx, 5)   \
 _ (avx512f,  7, ebx, 16)  \
 _ (aes,      1, ecx, 25)  \
-_ (sha,      7, ebx, 29)
+_ (sha,      7, ebx, 29)  \
+_ (invariant_tsc, 0x80000007, edx, 8)
 
 static inline int
 clib_get_cpuid (const u32 lev, u32 * eax, u32 * ebx, u32 * ecx, u32 * edx)
