@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_2ee8a77b",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T00:44:50Z",
+      "side": 1,
+      "message": "This is somewhat confusing. Can you change this to \"packet vnet bufefr field sw_if_index[VLIB_TX] will be updated to the new FIB index used for subsequent IP lookup for this packet,\"",
+      "range": {
+        "startLine": 13,
+        "startChar": 22,
+        "endLine": 13,
+        "endChar": 33
+      },
+      "revId": "5761da6f2b02718933a40de26e5412206ac9c205",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_aea93726",
+        "filename": "vnet/vnet/classify/vnet_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2084,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T00:44:50Z",
+      "side": 1,
+      "message": "This may be more user friendly friendly to be like \"action set-ip4-fib-id %d\" or \"action set-ip6-fib-id %d\" to set both action and metadata value.",
+      "range": {
+        "startLine": 2084,
+        "startChar": 33,
+        "endLine": 2084,
+        "endChar": 39
+      },
+      "revId": "5761da6f2b02718933a40de26e5412206ac9c205",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_ae9257f4",
+        "filename": "vnet/vnet/classify/vnet_classify.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T00:44:50Z",
+      "side": 1,
+      "message": "better name may be CLASSIFY_ACTION_SET_IP4_FIB_INDEX. There should be a consistent usage of the term \"ID\" vs \"INDEX\".",
+      "range": {
+        "startLine": 65,
+        "startChar": 8,
+        "endLine": 65,
+        "endChar": 42
+      },
+      "revId": "5761da6f2b02718933a40de26e5412206ac9c205",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_8ea67b52",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 9329,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T00:44:50Z",
+      "side": 1,
+      "message": "Same comments as per CLI, to make this more user friendly.",
+      "range": {
+        "startLine": 9329,
+        "startChar": 29,
+        "endLine": 9329,
+        "endChar": 35
+      },
+      "revId": "5761da6f2b02718933a40de26e5412206ac9c205",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_4e6893f5",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 1699,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T00:44:50Z",
+      "side": 1,
+      "message": "-14 is true only if there is no VLAN tag. Would be -18 with one tag and -22 for two tags",
+      "range": {
+        "startLine": 1699,
+        "startChar": 69,
+        "endLine": 1699,
+        "endChar": 71
+      },
+      "revId": "5761da6f2b02718933a40de26e5412206ac9c205",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
