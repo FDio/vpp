@@ -329,6 +329,24 @@ doxygen:
 wipe-doxygen:
 	$(call make-doxy)
 
+define banner
+	@echo "========================================================================"
+	@echo " $(1)"
+	@echo "========================================================================"
+	@echo " "
+endef
+
 verify: $(BR)/.bootstrap.ok
+ifeq ($(OS_ID),ubuntu)
+ifeq ($(OS_VERSION_ID),16.04)
+	$(call banner,"Installing dependencies")
+	@sudo -E apt-get update
+	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
+	$(call banner,"Building for PLATFORM=vpp using clang")
+	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
+endif
+endif
+	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
+	$(call banner,"Building for PLATFORM=vpp_lite using gcc")
 	@make -C build-root PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
