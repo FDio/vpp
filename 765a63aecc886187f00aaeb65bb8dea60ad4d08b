@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9a437d4f_279320a5",
+        "filename": "vnet/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T00:44:50Z",
+      "side": 1,
+      "message": "There is no need for separate values for IP4 or IP6 FIB action, as packet is either IP4 or IP6, so which FIB is implied. The name is probably better CLASSIFY_ACTION_USE_VRF_ID",
+      "range": {
+        "startLine": 66,
+        "startChar": 8,
+        "endLine": 66,
+        "endChar": 42
+      },
+      "revId": "765a63aecc886187f00aaeb65bb8dea60ad4d08b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
