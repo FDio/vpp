@@ -22,6 +22,30 @@
       "revId": "765a63aecc886187f00aaeb65bb8dea60ad4d08b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_31a5aa04",
+        "filename": "vnet/vnet/classify/vnet_classify.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T14:11:52Z",
+      "side": 1,
+      "message": "I see why you are using separate IP4/IP6 defines, so that you know which IP4 or IP6 function to call to get fib_index from fib_id. This is fine.",
+      "parentUuid": "9a437d4f_279320a5",
+      "range": {
+        "startLine": 66,
+        "startChar": 8,
+        "endLine": 66,
+        "endChar": 42
+      },
+      "revId": "765a63aecc886187f00aaeb65bb8dea60ad4d08b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
