@@ -38,6 +38,7 @@
 #include <vppinfra/os.h>
 #include <vppinfra/time.h>
 #include <vppinfra/format.h>
+#include <vppinfra/cpu.h>
 
 #ifdef CLIB_UNIX
 
@@ -142,6 +143,9 @@ f64
 os_cpu_clock_frequency (void)
 {
   f64 cpu_freq;
+
+  if (clib_cpu_supports_invariant_tsc ())
+    return estimate_clock_frequency (1e-3);
 
   /* First try /sys version. */
   cpu_freq = clock_frequency_from_sys_filesystem ();
