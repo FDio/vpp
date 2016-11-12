@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_2e3b07ed",
+        "filename": "vnet/vnet/dhcpv6/proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 861,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T02:35:52Z",
+      "side": 1,
+      "message": "We should use standard C comment style instead of the C++ style.",
+      "range": {
+        "startLine": 861,
+        "startChar": 15,
+        "endLine": 861,
+        "endChar": 18
+      },
+      "revId": "1b68cdda8243f6f2530371ba8268e27b3ab60d16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_0e404b55",
+        "filename": "vnet/vnet/dhcpv6/proxy_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 873,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-12T02:35:52Z",
+      "side": 1,
+      "message": "Any reason these are not simply removed?",
+      "range": {
+        "startLine": 873,
+        "startChar": 6,
+        "endLine": 873,
+        "endChar": 7
+      },
+      "revId": "1b68cdda8243f6f2530371ba8268e27b3ab60d16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
