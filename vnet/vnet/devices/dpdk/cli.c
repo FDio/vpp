@@ -1150,7 +1150,10 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
   vnet_hw_interface_t *hw;
   dpdk_device_t *xd;
   u32 hw_if_index = (u32) ~ 0;
-  u32 entry, tc, queue, val, i;
+  u32 tc = (u32) ~ 0;
+  u32 queue = (u32) ~ 0;
+  u32 entry = (u32) ~ 0;
+  u32 val, i;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1237,8 +1240,9 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   int worker_thread_count = tr->count;
 
   /* Packet field configuration */
-  u64 mask;
-  u32 id, offset;
+  u64 mask = (u64) ~ 0;
+  u32 id = (u32) ~ 0;
+  u32 offset = (u32) ~ 0;
 
   /* HQoS params */
   u32 n_subports_per_port, n_pipes_per_subport, tctbl_size;
