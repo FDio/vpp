@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_14461c24",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-14T14:40:34Z",
+      "side": 1,
+      "message": "this name is weird since it doesn\u0027t hint at what API is used.\n\na better name would be\n\narp_add_ip_neighbors\n\nand I would move it to util, because this is not a functionality of the interface itself (it should take a list of hosts as a parameter)\n\nso the usage would be e.g.\n\narp_add_ip_neighbors(self.pg0.remote_hosts)",
+      "revId": "a7c7c7013bdfe6608d8e5eced1a666b4e563a831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
