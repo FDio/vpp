@@ -3029,8 +3029,7 @@ _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP6_FIB_DUMP, ip6_fib_dump)
-
-void
+  void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
 #define _(n,f) am->msg_print_handlers[VL_API_##n]       \
