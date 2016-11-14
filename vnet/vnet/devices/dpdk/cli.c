@@ -1571,6 +1571,135 @@ VLIB_CLI_COMMAND (cmd_show_dpdk_if_hqos, static) = {
   .short_help = "show dpdk interface hqos <if-name>",
   .function = show_dpdk_if_hqos,
 };
+
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  dpdk_main_t *dm = &dpdk_main;
+  u32 hw_if_index = (u32) ~ 0;
+  u32 subport = (u32) ~ 0;
+  u32 pipe = (u32) ~ 0;
+  u8 dscp = (u8) ~ 0;
+  vnet_hw_interface_t *hw;
+  dpdk_device_t *xd;
+  uword *p = 0;
+  struct rte_eth_dev_info dev_info;
+  dpdk_device_config_t *devconf = 0;
+  dpdk_device_hqos_per_worker_thread_t *wk;
+  vlib_thread_registration_t *tr;
+  u8 tc;
+  u8 tc_q;
+  u32 qindex;
+  struct rte_sched_queue_stats stats;
+  u16 qlen;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, dm->vnet_main,
+	   &hw_if_index))
+	;
+
+      else if (unformat (line_input, "subport %d", &subport))
+	;
+
+      else if (unformat (line_input, "pipe %d", &pipe))
+	;
+
+      else if (unformat (line_input, "dscp %d", &dscp))
+	;
+
+      else
+	return clib_error_return (0, "parse error: '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "please specify interface name!!");
+
+  hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
+  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
+
+  rte_eth_dev_info_get (xd->device_index, &dev_info);
+  if (dev_info.pci_dev)
+    {				/* bonded interface has no pci info */
+      vlib_pci_addr_t pci_addr;
+
+      pci_addr.domain = dev_info.pci_dev->addr.domain;
+      pci_addr.bus = dev_info.pci_dev->addr.bus;
+      pci_addr.slot = dev_info.pci_dev->addr.devid;
+      pci_addr.function = dev_info.pci_dev->addr.function;
+
+      p =
+	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+    }
+
+  if (p)
+    devconf = pool_elt_at_index (dm->conf->dev_confs, p[0]);
+  else
+    devconf = &dm->conf->default_devconf;
+
+  if (devconf->hqos_enabled == 0)
+    {
+      vlib_cli_output (vm, "HQoS disabled for this interface");
+      return 0;
+    }
+
+  /* Detect the set of worker threads */
+  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+
+  /* Should never happen, shut up Coverity warning */
+  if (p == 0)
+    return clib_error_return (0, "no worker registrations?");
+
+  tr = (vlib_thread_registration_t *) p[0];
+  wk = &xd->hqos_wt[tr->first_index];
+
+  /*
+   * Figure out which queue to query.  cf rte_sched_port_qindex.  (Not sure why
+   * that method isn't made public by DPDK - how _should_ we get the queue ID?)
+   */
+  tc = wk->hqos_tc_table[dscp & 0x3F] >> 2;
+  tc_q = wk->hqos_tc_table[dscp & 0x3F] & 0x3;
+  qindex = subport * devconf->hqos.port.n_pipes_per_subport + pipe;
+  qindex = qindex * RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE + tc;
+  qindex = qindex * RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS + tc_q;
+
+  if (rte_sched_queue_read_stats (xd->hqos_ht->hqos, qindex, &stats, &qlen) !=
+      0)
+    return clib_error_return (0, "failed to read stats");
+
+  vlib_cli_output (vm, "%=24s%=16s", "Counter", "Count");
+  vlib_cli_output (vm, "");
+  vlib_cli_output (vm, "%=24s%=16d", "Packets", stats.n_pkts);
+  vlib_cli_output (vm, "%=24s%=16d", "Packets dropped", stats.n_pkts_dropped);
+#ifdef RTE_SCHED_RED
+  vlib_cli_output (vm, "%=24s%=16d", "Packets dropped (RED)",
+		   stats.n_pkts_red_dropped);
+#endif
+  vlib_cli_output (vm, "%=24s%=16d", "Bytes", stats.n_bytes);
+  vlib_cli_output (vm, "%=24s%=16d", "Bytes dropped", stats.n_bytes_dropped);
+
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_show_dpdk_hqos_queue_stats, static) = {
+  .path = "show dpdk hqos queue",
+  .short_help = "show dpdk hqos queue <if-name> subport <subport> pipe <pipe> dscp <dscp>",
+  .function = show_dpdk_hqos_queue_stats,
+};
 /* *INDENT-ON* */
 
 clib_error_t *
