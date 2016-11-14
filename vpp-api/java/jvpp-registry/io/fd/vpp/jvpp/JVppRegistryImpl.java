@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,14 +36,16 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     private static final Logger LOG = Logger.getLogger(JVppRegistryImpl.class.getName());
 
     private final VppJNIConnection connection;
+    // Unguarded concurrent map, no race conditions expected on top of that
     private final Map<String, JVppCallback> pluginRegistry;
-    private final ConcurrentMap<Integer, ControlPingCallback> pingCalls;
+    // Guarded by self
+    private final Map<Integer, ControlPingCallback> pingCalls;
 
     public JVppRegistryImpl(final String clientName) throws IOException {
         connection = new VppJNIConnection(clientName);
         connection.connect();
-        pluginRegistry = new HashMap<>();
-        pingCalls = new ConcurrentHashMap<>();
+        pluginRegistry = new ConcurrentHashMap<>();
+        pingCalls = new HashMap<>();
     }
 
     @Override
@@ -53,7 +54,7 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     }
 
     @Override
-    public synchronized void register(final JVpp jvpp, final JVppCallback callback) {
+    public void register(final JVpp jvpp, final JVppCallback callback) {
         requireNonNull(jvpp, "jvpp should not be null");
         requireNonNull(callback, "Callback should not be null");
         final String name = jvpp.getClass().getName();
@@ -67,14 +68,14 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     }
 
     @Override
-    public synchronized void unregister(final String name) {
+    public void unregister(final String name) {
         requireNonNull(name, "Plugin name should not be null");
         final JVppCallback previous = pluginRegistry.remove(name);
         assertPluginWasRegistered(name, previous);
     }
 
     @Override
-    public synchronized JVppCallback get(final String name) {
+    public JVppCallback get(final String name) {
         requireNonNull(name, "Plugin name should not be null");
         JVppCallback value = pluginRegistry.get(name);
         assertPluginWasRegistered(name, value);
@@ -84,27 +85,33 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     private native int controlPing0() throws VppInvocationException;
 
     @Override
-    public synchronized int controlPing(final Class<? extends JVpp> clazz) throws VppInvocationException {
+    public int controlPing(final Class<? extends JVpp> clazz) throws VppInvocationException {
         connection.checkActive();
         final String name = clazz.getName();
 
         final ControlPingCallback callback = (ControlPingCallback) pluginRegistry.get(clazz.getName());
         assertPluginWasRegistered(name, callback);
 
-        int context = controlPing0();
-        if (context < 0) {
-            throw new VppInvocationException("controlPing", context);
-        }
+        synchronized (pingCalls) {
+            int context = controlPing0();
+            if (context < 0) {
+                throw new VppInvocationException("controlPing", context);
+            }
 
-        pingCalls.put(context, callback);
-        return context;
+            pingCalls.put(context, callback);
+            return context;
+        }
     }
 
     @Override
     public void onControlPingReply(final ControlPingReply reply) {
-        final ControlPingCallback callback = pingCalls.get(reply.context);
+        final ControlPingCallback callback;
+        synchronized (pingCalls) {
+            callback = pingCalls.remove(reply.context);
+        }
         if (callback == null) {
-            LOG.log(Level.WARNING, "No callback was registered for reply id={0} ", reply.context);
+            LOG.log(Level.WARNING, "No callback was registered for reply context=" + reply.context + " Contexts waiting="
+                    + pingCalls.keySet());
             return;
         }
         // pass the reply to the callback registered by the ping caller
@@ -114,7 +121,11 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     @Override
     public void onError(final VppCallbackException ex) {
         final int ctxId = ex.getCtxId();
-        final ControlPingCallback callback = pingCalls.get(ctxId);
+        final ControlPingCallback callback;
+
+        synchronized (pingCalls) {
+            callback = pingCalls.get(ctxId);
+        }
         if (callback == null) {
             LOG.log(Level.WARNING, "No callback was registered for reply id={0} ", ctxId);
             return;
