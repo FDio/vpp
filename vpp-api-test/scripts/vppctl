@@ -20,6 +20,7 @@ import os
 import subprocess
 import re
 import sys
+from termcolor import colored
 try:
         import readline
 except ImportError:
@@ -88,13 +89,21 @@ class Vppctl(Cmd):
 if __name__ == '__main__':
         command_args = sys.argv
 
+
         if not len(command_args) > 1:
                 prompt = Vppctl()
-                prompt.prompt = 'vpp# '
-                prompt.cmdloop("Starting Vppctl...")
+		if sys.stdout.isatty():
+                        prompt.prompt = 'vpp# '
+                        prompt.cmdloop(colored('    _______    _       ','red') + colored(' _   _____  ___ \n', 'white') +
+                                  colored(' __/ __/ _ \  (_)__   ','red') + colored(' | | / / _ \/ _ \\\n', 'white') +
+                                  colored(' _/ _// // / / / _ \\','red') + colored('   | |/ / ___/ ___/\n','white') +
+                                  colored(' /_/ /____(_)_/\___/   ','red') + colored('|___/_/  /_/   \n','white'))
+	        else:
+			prompt.cmdloop()
         else:
                 del command_args[0]
                 stdout_value = " ".join(command_args)
                 VatAddress = Vppctl()
                 VatAddress.runVat(stdout_value)
+
 

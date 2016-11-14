@@ -25,7 +25,7 @@ Summary: Vector Packet Processing
 License: MIT
 Version: %{_version}
 Release: %{_release}
-Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
+Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python, python-termcolor
 BuildRequires: systemd
 
 Source: %{name}-%{_version}-%{_release}.tar.gz
