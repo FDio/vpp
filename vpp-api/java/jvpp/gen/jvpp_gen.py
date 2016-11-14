@@ -18,6 +18,7 @@ import argparse
 import importlib
 import sys
 import os
+import json
 
 from jvppgen import types_gen
 from jvppgen import callback_gen
@@ -54,8 +55,8 @@ inputfile = inputfile.replace('.py', '')
 print "inputfile %s" % inputfile
 plugin_name = args.plugin_name
 print "plugin_name %s" % plugin_name
-sys.path.append(importdir)
-cfg = importlib.import_module(inputfile, package=None)
+cfg = json.load(open(args.inputfile, 'r'))
+
 
 def is_request_field(field_name):
     return field_name not in {'_vl_msg_id', 'client_index', 'context'}
@@ -68,6 +69,8 @@ def is_response_field(field_name):
 def get_args(t, filter):
     arg_list = []
     for i in t:
+        if is_crc(i):
+            continue
         if not filter(i[1]):
             continue
         arg_list.append(i[1])
@@ -78,6 +81,8 @@ def get_types(t, filter):
     types_list = []
     lengths_list = []
     for i in t:
+        if is_crc(i):
+            continue
         if not filter(i[1]):
             continue
         if len(i) is 3:  # array type
@@ -90,6 +95,11 @@ def get_types(t, filter):
             types_list.append(i[0])
             lengths_list.append((0, False))
     return types_list, lengths_list
+
+
+def is_crc(arg):
+    """ Check whether the argument inside message definition is just crc """
+    return 'crc' in arg
 
 
 def get_definitions(defs):
@@ -129,11 +139,11 @@ future_package = 'future'
 # TODO find better package name
 callback_facade_package = 'callfacade'
 
-types_list, types_name = get_definitions(cfg.types)
+types_list, types_name = get_definitions(cfg['types'])
 
 types_gen.generate_types(types_list, plugin_package, types_package, inputfile)
 
-func_list, func_name = get_definitions(cfg.messages)
+func_list, func_name = get_definitions(cfg['messages'])
 dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfile)
 jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, args.inputfile)
 callback_gen.generate_callbacks(func_list, base_package, plugin_package, plugin_name.title(), callback_package, dto_package, args.inputfile)
