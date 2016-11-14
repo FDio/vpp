@@ -4329,7 +4329,7 @@ send_ip_address_details (vpe_api_main_t * am,
   else
     {
       u32 *tp = (u32 *) mp->ip;
-      *tp = ntohl (*(u32 *) ip);
+      *tp = *(u32 *) ip;
     }
   mp->prefix_length = prefix_length;
   mp->context = context;
