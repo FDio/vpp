@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_94e32c33",
+        "filename": "vpp-api-test/scripts/vppctl",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-14T14:14:00Z",
+      "side": 1,
+      "message": "this should really check whether the controlling terminal is a tty or not; otherwise piping commands in will generate prompts and the banner, which will be noisy",
+      "range": {
+        "startLine": 92,
+        "startChar": 1,
+        "endLine": 92,
+        "endChar": 37
+      },
+      "revId": "e3178b0513ea6d041177215e500584b66e974ca0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
