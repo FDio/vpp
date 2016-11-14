@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#! /usr/bin/python
 '''
 Copyright 2016 Intel Corporation
 
@@ -88,13 +88,24 @@ class Vppctl(Cmd):
 if __name__ == '__main__':
         command_args = sys.argv
 
+
         if not len(command_args) > 1:
                 prompt = Vppctl()
-                prompt.prompt = 'vpp# '
-                prompt.cmdloop("Starting Vppctl...")
+		red_set = '\033[31m'
+		norm_set = '\033[0m'
+		if sys.stdout.isatty():
+                        prompt.prompt = 'vpp# '
+                        prompt.cmdloop(red_set + "    _______    _       " + norm_set + " _   _____  ___ \n" +
+                                  red_set + " __/ __/ _ \  (_)__   " + norm_set + " | | / / _ \/ _ \\\n" +
+                                  red_set + " _/ _// // / / / _ \\" + norm_set + "   | |/ / ___/ ___/\n" +
+                                  red_set + " /_/ /____(_)_/\___/   " + norm_set + "|___/_/  /_/   \n")
+	        else:
+			prompt.cmdloop()
         else:
                 del command_args[0]
                 stdout_value = " ".join(command_args)
                 VatAddress = Vppctl()
                 VatAddress.runVat(stdout_value)
+
+
 
