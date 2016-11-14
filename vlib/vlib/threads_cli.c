@@ -109,6 +109,7 @@ show_threads_fn (vlib_main_t * vm,
 
 	  line = format (line, "%-7u%-7u%-7u%", lcore, core_id, socket_id);
 #if DPDK==1
+	  ASSERT (lcore <= RTE_MAX_LCORE);
 	  switch (lcore_config[lcore].state)
 	    {
 	    case WAIT:
