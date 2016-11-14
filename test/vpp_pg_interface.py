@@ -5,7 +5,8 @@ from scapy.utils import wrpcap, rdpcap
 from vpp_interface import VppInterface
 
 from scapy.layers.l2 import Ether, ARP
-from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
+from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA, \
+    ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
 
 
 class VppPGInterface(VppInterface):
@@ -60,9 +61,9 @@ class VppPGInterface(VppInterface):
     def post_init_setup(self):
         """ Perform post-init setup for super class and add our own setup """
         super(VppPGInterface, self).post_init_setup()
-        self._out_file = "pg%u_out.pcap" % self.sw_if_index
+        self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
-        self._in_file = "pg%u_in.pcap" % self.sw_if_index
+        self._in_file = "pg%u_in.pcap" % self.pg_index
         self._in_path = self.test.tempdir + "/" + self._in_file
         self._capture_cli = "packet-generator capture pg%u pcap %s" % (
             self.pg_index, self.out_path)
@@ -143,9 +144,9 @@ class VppPGInterface(VppInterface):
     def create_ndp_req(self):
         """Create NDP - NS applicable for this interface"""
         return (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.remote_mac) /
-              IPv6(src=self.remote_ip6, dst=self.local_ip6) /
-              ICMPv6ND_NS(tgt=self.local_ip6) /
-              ICMPv6NDOptSrcLLAddr(lladdr=self.remote_mac))
+                IPv6(src=self.remote_ip6, dst=self.local_ip6) /
+                ICMPv6ND_NS(tgt=self.local_ip6) /
+                ICMPv6NDOptSrcLLAddr(lladdr=self.remote_mac))
 
     def resolve_arp(self, pg_interface=None):
         """Resolve ARP using provided packet-generator interface
