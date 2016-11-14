@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_d1c0a67e",
+        "filename": "test/doc/modules.rst",
+        "patchSetId": 4
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-14T08:42:03Z",
+      "side": 1,
+      "message": "this file should be generated too",
+      "revId": "7cd9a6d4703aa99a222ad9971abf6819df01aec9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
