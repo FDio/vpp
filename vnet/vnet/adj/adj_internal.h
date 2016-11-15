@@ -93,7 +93,8 @@ extern void adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 
 extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);
 
-extern void adj_nbr_remove(fib_protocol_t nh_proto,
+extern void adj_nbr_remove(adj_index_t ai,
+                           fib_protocol_t nh_proto,
 			   vnet_link_t link_type,
 			   const ip46_address_t *nh_addr,
 			   u32 sw_if_index);

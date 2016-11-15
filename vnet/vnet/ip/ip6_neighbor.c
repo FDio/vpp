@@ -1849,7 +1849,6 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  pool_put (nm->if_radv_pool,  a);
 	  nm->if_radv_pool_index_by_sw_if_index[sw_if_index] = ~0;
 	  ri = ~0;
-	  ip6_sw_interface_enable_disable(sw_if_index, 0);
 	}
     }
  else
@@ -1858,7 +1857,6 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
        {
 	 vnet_hw_interface_t * hw_if0;
      
-	 ip6_sw_interface_enable_disable(sw_if_index, 1);
 	 hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index);
 	 
 	 pool_get (nm->if_radv_pool, a);

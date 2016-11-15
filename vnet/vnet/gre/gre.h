@@ -50,6 +50,19 @@ typedef struct {
   u32 next_index;
 } gre_protocol_info_t;
 
+typedef enum gre_tunnel_tyoe_t_
+{
+    GRE_TUNNEL_TYPE_L3,
+    GRE_TUNNEL_TYPE_TEB,
+} gre_tunnel_type_t;
+
+#define GRE_TUNNEL_TYPE_NAMES {    \
+    [GRE_TUNNEL_TYPE_L3] = "L3",   \
+    [GRE_TUNNEL_TYPE_TEB] = "TEB", \
+}
+
+#define GRE_TUNNEL_N_TYPES ((gre_tunnel_type_t)GRE_TUNNEL_TYPE_TEB+1)
+
 typedef struct {
   /**
    * Linkage into the FIB object graph
@@ -70,7 +83,7 @@ typedef struct {
   u32 outer_fib_index;
   u32 hw_if_index;
   u32 sw_if_index;
-  u8 teb;
+  gre_tunnel_type_t type;
 
   /**
    * The FIB entry sourced by the tunnel for its destination prefix
@@ -108,7 +121,7 @@ typedef struct {
   uword * tunnel_by_key;
 
   /* Free vlib hw_if_indices */
-  u32 * free_gre_tunnel_hw_if_indices;
+  u32 * free_gre_tunnel_hw_if_indices[GRE_TUNNEL_N_TYPES];
 
   /* Mapping from sw_if_index to tunnel index */
   u32 * tunnel_index_by_sw_if_index;
@@ -148,8 +161,8 @@ extern  clib_error_t * gre_interface_admin_up_down (vnet_main_t * vnm,
 
 extern void gre_tunnel_stack (adj_index_t ai);
 extern void gre_update_adj (vnet_main_t * vnm,
-			    u32 sw_if_index,
-			    adj_index_t ai);
+                            u32 sw_if_index,
+                            adj_index_t ai);
 
 format_function_t format_gre_protocol;
 format_function_t format_gre_header;
@@ -157,7 +170,7 @@ format_function_t format_gre_header_with_length;
 
 extern vlib_node_registration_t gre_input_node;
 extern vnet_device_class_t gre_device_class;
-extern vnet_device_class_t gre_l2_device_class;
+extern vnet_device_class_t gre_device_teb_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.
    In either host or network byte order. */
