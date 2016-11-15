@@ -1650,7 +1650,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
       vlib_process_wait_for_event_or_clock (vm, min_wait);
 
-      if (dpdk_get_admin_up_down_in_progress ())
+      if (dm->admin_up_down_in_progress)
 	/* skip the poll if an admin up down is in progress (on any interface) */
 	continue;
 
@@ -1738,13 +1738,6 @@ dpdk_init (vlib_main_t * vm)
 
   /* $$$ use n_thread_stacks since it's known-good at this point */
   vec_validate (dm->recycle, tm->n_thread_stacks - 1);
-
-  /* initialize EFD (early fast discard) default settings */
-  dm->efd.enabled = DPDK_EFD_DISABLED;
-  dm->efd.queue_hi_thresh = ((DPDK_EFD_DEFAULT_DEVICE_QUEUE_HI_THRESH_PCT *
-			      DPDK_NB_RX_DESC_10GE) / 100);
-  dm->efd.consec_full_frames_hi_thresh =
-    DPDK_EFD_DEFAULT_CONSEC_FULL_FRAMES_HI_THRESH;
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template =

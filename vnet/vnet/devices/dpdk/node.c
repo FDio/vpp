@@ -192,94 +192,6 @@ dpdk_rx_trace (dpdk_main_t * dm,
     }
 }
 
-/*
- * dpdk_efd_update_counters()
- * Update EFD (early-fast-discard) counters
- */
-void
-dpdk_efd_update_counters (dpdk_device_t * xd, u32 n_buffers, u16 enabled)
-{
-  if (enabled & DPDK_EFD_MONITOR_ENABLED)
-    {
-      u64 now = clib_cpu_time_now ();
-      if (xd->efd_agent.last_poll_time > 0)
-	{
-	  u64 elapsed_time = (now - xd->efd_agent.last_poll_time);
-	  if (elapsed_time > xd->efd_agent.max_poll_delay)
-	    xd->efd_agent.max_poll_delay = elapsed_time;
-	}
-      xd->efd_agent.last_poll_time = now;
-    }
-
-  xd->efd_agent.total_packet_cnt += n_buffers;
-  xd->efd_agent.last_burst_sz = n_buffers;
-
-  if (n_buffers > xd->efd_agent.max_burst_sz)
-    xd->efd_agent.max_burst_sz = n_buffers;
-
-  if (PREDICT_FALSE (n_buffers == VLIB_FRAME_SIZE))
-    {
-      xd->efd_agent.full_frames_cnt++;
-      xd->efd_agent.consec_full_frames_cnt++;
-    }
-  else
-    {
-      xd->efd_agent.consec_full_frames_cnt = 0;
-    }
-}
-
-/* is_efd_discardable()
- *   returns non zero DPDK error if packet meets early-fast-discard criteria,
- *           zero otherwise
- */
-u32
-is_efd_discardable (vlib_thread_main_t * tm,
-		    vlib_buffer_t * b0, struct rte_mbuf *mb)
-{
-  ethernet_header_t *eh = (ethernet_header_t *) b0->data;
-
-  if (eh->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP4))
-    {
-      ip4_header_t *ipv4 =
-	(ip4_header_t *) & (b0->data[sizeof (ethernet_header_t)]);
-      u8 pkt_prec = (ipv4->tos >> 5);
-
-      return (tm->efd.ip_prec_bitmap & (1 << pkt_prec) ?
-	      DPDK_ERROR_IPV4_EFD_DROP_PKTS : DPDK_ERROR_NONE);
-    }
-  else if (eh->type == clib_net_to_host_u16 (ETHERNET_TYPE_IP6))
-    {
-      ip6_header_t *ipv6 =
-	(ip6_header_t *) & (b0->data[sizeof (ethernet_header_t)]);
-      u8 pkt_tclass =
-	((ipv6->ip_version_traffic_class_and_flow_label >> 20) & 0xff);
-
-      return (tm->efd.ip_prec_bitmap & (1 << pkt_tclass) ?
-	      DPDK_ERROR_IPV6_EFD_DROP_PKTS : DPDK_ERROR_NONE);
-    }
-  else if (eh->type == clib_net_to_host_u16 (ETHERNET_TYPE_MPLS_UNICAST))
-    {
-      mpls_unicast_header_t *mpls =
-	(mpls_unicast_header_t *) & (b0->data[sizeof (ethernet_header_t)]);
-      u8 pkt_exp = ((mpls->label_exp_s_ttl >> 9) & 0x07);
-
-      return (tm->efd.mpls_exp_bitmap & (1 << pkt_exp) ?
-	      DPDK_ERROR_MPLS_EFD_DROP_PKTS : DPDK_ERROR_NONE);
-    }
-  else if ((eh->type == clib_net_to_host_u16 (ETHERNET_TYPE_VLAN)) ||
-	   (eh->type == clib_net_to_host_u16 (ETHERNET_TYPE_DOT1AD)))
-    {
-      ethernet_vlan_header_t *vlan =
-	(ethernet_vlan_header_t *) & (b0->data[sizeof (ethernet_header_t)]);
-      u8 pkt_cos = ((vlan->priority_cfi_and_id >> 13) & 0x07);
-
-      return (tm->efd.vlan_cos_bitmap & (1 << pkt_cos) ?
-	      DPDK_ERROR_VLAN_EFD_DROP_PKTS : DPDK_ERROR_NONE);
-    }
-
-  return DPDK_ERROR_NONE;
-}
-
 static inline u32
 dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
 {
@@ -321,7 +233,7 @@ static inline u32
 dpdk_device_input (dpdk_main_t * dm,
 		   dpdk_device_t * xd,
 		   vlib_node_runtime_t * node,
-		   u32 cpu_index, u16 queue_id, int use_efd)
+		   u32 cpu_index, u16 queue_id)
 {
   u32 n_buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -331,7 +243,6 @@ dpdk_device_input (dpdk_main_t * dm,
   uword n_rx_bytes = 0;
   u32 n_trace, trace_cnt __attribute__ ((unused));
   vlib_buffer_free_list_t *fl;
-  u8 efd_discard_burst = 0;
   u32 buffer_flags_template;
 
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
@@ -341,13 +252,6 @@ dpdk_device_input (dpdk_main_t * dm,
 
   if (n_buffers == 0)
     {
-      /* check if EFD (dpdk) is enabled */
-      if (PREDICT_FALSE (use_efd && dm->efd.enabled))
-	{
-	  /* reset a few stats */
-	  xd->efd_agent.last_poll_time = 0;
-	  xd->efd_agent.last_burst_sz = 0;
-	}
       return 0;
     }
 
@@ -358,44 +262,6 @@ dpdk_device_input (dpdk_main_t * dm,
 
   fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
-  /* Check for congestion if EFD (Early-Fast-Discard) is enabled
-   * in any mode (e.g. dpdk, monitor, or drop_all)
-   */
-  if (PREDICT_FALSE (use_efd && dm->efd.enabled))
-    {
-      /* update EFD counters */
-      dpdk_efd_update_counters (xd, n_buffers, dm->efd.enabled);
-
-      if (PREDICT_FALSE (dm->efd.enabled & DPDK_EFD_DROPALL_ENABLED))
-	{
-	  /* discard all received packets */
-	  for (mb_index = 0; mb_index < n_buffers; mb_index++)
-	    rte_pktmbuf_free (xd->rx_vectors[queue_id][mb_index]);
-
-	  xd->efd_agent.discard_cnt += n_buffers;
-	  increment_efd_drop_counter (vm,
-				      DPDK_ERROR_VLAN_EFD_DROP_PKTS,
-				      n_buffers);
-
-	  return 0;
-	}
-
-      if (PREDICT_FALSE (xd->efd_agent.consec_full_frames_cnt >=
-			 dm->efd.consec_full_frames_hi_thresh))
-	{
-	  u32 device_queue_sz = rte_eth_rx_queue_count (xd->device_index,
-							queue_id);
-	  if (device_queue_sz >= dm->efd.queue_hi_thresh)
-	    {
-	      /* dpdk device queue has reached the critical threshold */
-	      xd->efd_agent.congestion_cnt++;
-
-	      /* apply EFD to packets from the burst */
-	      efd_discard_burst = 1;
-	    }
-	}
-    }
-
   mb_index = 0;
 
   while (n_buffers > 0)
@@ -404,7 +270,6 @@ dpdk_device_input (dpdk_main_t * dm,
       u8 error0;
       u32 l3_offset0;
       vlib_buffer_t *b0, *b_seg, *b_chain = 0;
-      u32 cntr_type;
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
@@ -425,22 +290,6 @@ dpdk_device_input (dpdk_main_t * dm,
 	  ASSERT (mb);
 
 	  b0 = vlib_buffer_from_rte_mbuf (mb);
-
-	  /* check whether EFD is looking for packets to discard */
-	  if (PREDICT_FALSE (efd_discard_burst))
-	    {
-	      vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-	      if (PREDICT_TRUE (cntr_type = is_efd_discardable (tm, b0, mb)))
-		{
-		  rte_pktmbuf_free (mb);
-		  xd->efd_agent.discard_cnt++;
-		  increment_efd_drop_counter (vm, cntr_type, 1);
-		  n_buffers--;
-		  mb_index++;
-		  continue;
-		}
-	    }
 
 	  /* Prefetch one next segment if it exists. */
 	  if (PREDICT_FALSE (mb->nb_segs > 1))
@@ -642,7 +491,7 @@ dpdk_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
     {
       xd = vec_elt_at_index(dm->devices, dq->device);
       ASSERT(dq->queue_id == 0);
-      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, 0, 0);
+      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, 0);
     }
   /* *INDENT-ON* */
 
@@ -668,33 +517,7 @@ dpdk_input_rss (vlib_main_t * vm,
   vec_foreach (dq, dm->devices_by_cpu[cpu_index])
     {
       xd = vec_elt_at_index(dm->devices, dq->device);
-      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, 0);
-    }
-  /* *INDENT-ON* */
-
-  poll_rate_limit (dm);
-
-  return n_rx_packets;
-}
-
-uword
-dpdk_input_efd (vlib_main_t * vm,
-		vlib_node_runtime_t * node, vlib_frame_t * f)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd;
-  uword n_rx_packets = 0;
-  dpdk_device_and_queue_t *dq;
-  u32 cpu_index = os_get_cpu_number ();
-
-  /*
-   * Poll all devices on this cpu for input/interrupts.
-   */
-  /* *INDENT-OFF* */
-  vec_foreach (dq, dm->devices_by_cpu[cpu_index])
-    {
-      xd = vec_elt_at_index(dm->devices, dq->device);
-      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, 1);
+      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id);
     }
   /* *INDENT-ON* */
 
@@ -724,53 +547,8 @@ VLIB_REGISTER_NODE (dpdk_input_node) = {
 /* handle dpdk_input_rss alternative function */
 VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input)
 VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input_rss)
-VLIB_NODE_FUNCTION_MULTIARCH_CLONE(dpdk_input_efd)
 
 /* this macro defines dpdk_input_rss_multiarch_select() */
 CLIB_MULTIARCH_SELECT_FN(dpdk_input);
 CLIB_MULTIARCH_SELECT_FN(dpdk_input_rss);
-CLIB_MULTIARCH_SELECT_FN(dpdk_input_efd);
 
-/*
- * set_efd_bitmap()
- * Based on the operation type, set lower/upper bits for the given index value
- */
-void
-set_efd_bitmap (u8 * bitmap, u32 value, u32 op)
-{
-  int ix;
-
-  *bitmap = 0;
-  for (ix = 0; ix < 8; ix++)
-    {
-      if (((op == EFD_OPERATION_LESS_THAN) && (ix < value)) ||
-	  ((op == EFD_OPERATION_GREATER_OR_EQUAL) && (ix >= value)))
-	{
-	  (*bitmap) |= (1 << ix);
-	}
-    }
-}
-
-void
-efd_config (u32 enabled,
-	    u32 ip_prec, u32 ip_op,
-	    u32 mpls_exp, u32 mpls_op, u32 vlan_cos, u32 vlan_op)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  dpdk_main_t *dm = &dpdk_main;
-
-  if (enabled)
-    {
-      tm->efd.enabled |= VLIB_EFD_DISCARD_ENABLED;
-      dm->efd.enabled |= DPDK_EFD_DISCARD_ENABLED;
-    }
-  else
-    {
-      tm->efd.enabled &= ~VLIB_EFD_DISCARD_ENABLED;
-      dm->efd.enabled &= ~DPDK_EFD_DISCARD_ENABLED;
-    }
-
-  set_efd_bitmap (&tm->efd.ip_prec_bitmap, ip_prec, ip_op);
-  set_efd_bitmap (&tm->efd.mpls_exp_bitmap, mpls_exp, mpls_op);
-  set_efd_bitmap (&tm->efd.vlan_cos_bitmap, vlan_cos, vlan_op);
-}
