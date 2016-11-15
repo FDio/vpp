@@ -22,6 +22,30 @@
       "revId": "0f8aa83f50b50c037855adb4db7b9b07bfacc5ba",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_824aca81",
+        "filename": "vnet/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 585,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-11-15T13:28:35Z",
+      "side": 1,
+      "message": "Done. \n- moved to vnet_delete_sw_interface\n- set to L3 mode for XConnect (both sides) and BD",
+      "parentUuid": "da3975d1_fa5dbd49",
+      "range": {
+        "startLine": 585,
+        "startChar": 16,
+        "endLine": 585,
+        "endChar": 18
+      },
+      "revId": "0f8aa83f50b50c037855adb4db7b9b07bfacc5ba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
