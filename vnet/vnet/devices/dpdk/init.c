@@ -396,6 +396,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
 	  port_conf_template.rxmode.jumbo_frame = 1;
+	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
       clib_memcpy (&xd->port_conf, &port_conf_template,

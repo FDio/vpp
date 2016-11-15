@@ -38,6 +38,7 @@ typedef enum
 }
 
 extern vlib_node_registration_t device_input_node;
+extern const u32 device_input_next_node_advance[];
 
 #endif /* included_vnet_vnet_device_h */
 
