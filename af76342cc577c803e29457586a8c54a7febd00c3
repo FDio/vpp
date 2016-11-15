@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7a288981_c261f2d4",
+        "filename": "vnet/vnet/feature/feature.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-11-15T09:22:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a288981_227316b3",
+      "range": {
+        "startLine": 407,
+        "startChar": 4,
+        "endLine": 407,
+        "endChar": 14
+      },
+      "revId": "af76342cc577c803e29457586a8c54a7febd00c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a288981_02681ab9",
         "filename": "vpp/vpp-api/vpe.api",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-11-15T09:16:40Z",
       "side": 1,
       "message": "Trailing whitespace",
+      "range": {
+        "startLine": 5434,
+        "startChar": 2,
+        "endLine": 5434,
+        "endChar": 6
+      },
+      "revId": "af76342cc577c803e29457586a8c54a7febd00c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_62a0fef4",
+        "filename": "vpp/vpp-api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 5434,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2016-11-15T09:22:09Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a288981_02681ab9",
       "range": {
         "startLine": 5434,
         "startChar": 2,
