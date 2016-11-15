@@ -95,6 +95,9 @@ class VppPapiProvider(object):
         """
         return cli + "\n" + self.cli(cli)
 
+    def _convert_mac(self, mac):
+        return int(mac.replace(":", ""), 16) << 16
+
     def show_version(self):
         """ """
         return vpp_papi.show_version()
@@ -202,16 +205,57 @@ class VppPapiProvider(object):
                         (is_add, is_ipv6, src_addr, dst_addr, encap_vrf_id,
                          decap_next_index, vni))
 
+    def bridge_domain_add_del(self, bd_id, flood=1, uu_flood=1, forward=1,
+                              learn=1, arp_term=0, is_add=1):
+        """Create/delete bridge domain.
+
+        :param int bd_id: Bridge domain index.
+        :param int flood: Enable/disable bcast/mcast flooding in the BD.
+            (Default value = 1)
+        :param int uu_flood: Enable/disable unknown unicast flood in the BD.
+            (Default value = 1)
+        :param int forward: Enable/disable forwarding on all interfaces in
+            the BD. (Default value = 1)
+        :param int learn: Enable/disable learning on all interfaces in the BD.
+            (Default value = 1)
+        :param int arp_term: Enable/disable arp termination in the BD.
+            (Default value = 1)
+        :param int is_add: Add or delete flag. (Default value = 1)
+        """
+        return self.api(vpp_papi.bridge_domain_add_del,
+                        (bd_id, flood, uu_flood, forward, learn, arp_term,
+                         is_add))
+
+    def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
+                      filter_mac=0, bvi_mac=0):
+        """Create/delete L2 FIB entry.
+
+        :param str mac: MAC address to create FIB entry for.
+        :param int bd_id: Bridge domain index.
+        :param int sw_if_index: Software interface index of the interface.
+        :param int is_add: Add or delete flag. (Default value = 1)
+        :param int static_mac: Set to 1 to create static MAC entry.
+            (Default value = 0)
+        :param int filter_mac: Set to 1 to drop packet that's source or
+            destination MAC address contains defined MAC address.
+            (Default value = 0)
+        :param int bvi_mac: Set to 1 to create entry that points to BVI
+            interface. (Default value = 0)
+        """
+        return self.api(vpp_papi.l2fib_add_del,
+                        (self._convert_mac(mac), bd_id, sw_if_index, is_add,
+                         static_mac, filter_mac, bvi_mac))
+
     def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
                                    shg=0, bvi=0, enable=1):
-        """
+        """Add/remove interface to/from bridge domain.
 
-        :param bd_id:
-        :param sw_if_index:
-        :param shg:  (Default value = 0)
-        :param bvi:  (Default value = 0)
-        :param enable:  (Default value = 1)
-
+        :param int sw_if_index: Software interface index of the interface.
+        :param int bd_id: Bridge domain index.
+        :param int shg: Split-horizon group index. (Default value = 0)
+        :param int bvi: Set interface as a bridge group virtual interface.
+            (Default value = 0)
+        :param int enable: Add or remove interface. (Default value = 1)
         """
         return self.api(vpp_papi.sw_interface_set_l2_bridge,
                         (sw_if_index, bd_id, shg, bvi, enable))
@@ -221,13 +265,10 @@ class VppPapiProvider(object):
         """Create or delete unidirectional cross-connect from Tx interface to
         Rx interface.
 
-        :param rx_sw_if_index: Software interface index of Rx interface.
-        :param tx_sw_if_index: Software interface index of Tx interface.
-        :param enable: Create cross-connect if equal to 1, delete cross-connect
-                       if equal to 0.
-        :type rx_sw_if_index: str or int
-        :type rx_sw_if_index: str or int
-        :type enable: int
+        :param int rx_sw_if_index: Software interface index of Rx interface.
+        :param int tx_sw_if_index: Software interface index of Tx interface.
+        :param int enable: Create cross-connect if equal to 1, delete
+            cross-connect if equal to 0.
 
         """
         return self.api(vpp_papi.sw_interface_set_l2_xconnect,
