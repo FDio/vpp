@@ -50,10 +50,6 @@
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
-#if DPDK == 1
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
-
 static vnet_device_class_t tuntap_dev_class;
 static vnet_hw_interface_class_t tuntap_interface_class;
 
@@ -233,13 +229,6 @@ tuntap_rx (vlib_main_t * vm,
   vlib_buffer_t * b;
   u32 bi;
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
-#if DPDK == 0
-  u32 free_list_index = VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX;
-#else
-  dpdk_main_t * dm = &dpdk_main;
-  u32 free_list_index = dm->vlib_buffer_free_list_index;
-  struct rte_mbuf *first_mb = NULL, *prev_mb = NULL;
-#endif
 
   /** Make sure we have some RX buffers. */
   {
@@ -251,9 +240,7 @@ tuntap_rx (vlib_main_t * vm,
 	if (! tm->rx_buffers)
 	  vec_alloc (tm->rx_buffers, VLIB_FRAME_SIZE);
 
-	n_alloc = vlib_buffer_alloc_from_free_list 
-            (vm, tm->rx_buffers + n_left, VLIB_FRAME_SIZE - n_left, 
-             free_list_index);
+	n_alloc = vlib_buffer_alloc (vm, tm->rx_buffers + n_left, VLIB_FRAME_SIZE - n_left);
 	_vec_len (tm->rx_buffers) = n_left + n_alloc;
       }
   }
@@ -289,46 +276,21 @@ tuntap_rx (vlib_main_t * vm,
 
     while (1)
       {
-#if DPDK == 1
-        struct rte_mbuf * mb;
-#endif
 	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
-#if DPDK == 1
-	mb = rte_mbuf_from_vlib_buffer(b);
-
-        if (first_mb == NULL)
-            first_mb = mb;
-
-        if (prev_mb != NULL)
-          {
-            prev_mb->next = mb;
-            first_mb->nb_segs++;
-          }
-#endif
 	b->flags = 0;
 	b->current_data = 0;
 	b->current_length = n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
 
 	n_bytes_left -= buffer_size;
-#if DPDK == 1
-        rte_pktmbuf_data_len (mb) = b->current_length;
-        mb->data_off = RTE_PKTMBUF_HEADROOM + b->current_data;
-#endif
 
 	if (n_bytes_left <= 0)
           {
-#if DPDK == 1
-            rte_pktmbuf_pkt_len (first_mb) = n_bytes_in_packet;
-#endif
             break;
           }
 
 	i_rx--;
 	b->flags |= VLIB_BUFFER_NEXT_PRESENT;
 	b->next_buffer = tm->rx_buffers[i_rx];
-#if DPDK == 1
-        prev_mb = mb;
-#endif
       }
 
     /** Interface counters for tuntap interface. */

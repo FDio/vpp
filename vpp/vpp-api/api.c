@@ -95,6 +95,10 @@
 #undef __included_bihash_template_h__
 #include <vnet/l2/l2_fib.h>
 
+#if DPDK > 0
+#include <vnet/devices/dpdk/dpdk.h>
+#endif
+
 #if IPSEC > 0
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>

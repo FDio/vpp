@@ -39,10 +39,6 @@
 
 #include <vnet/ethernet/ethernet.h>
 
-#if DPDK == 1
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
-
 #include <vnet/feature/feature.h>
 #include <vnet/devices/devices.h>
 #include <vnet/unix/tapcli.h>
