@@ -1509,7 +1509,7 @@ arp_add_del_interface_address (ip4_main_t * im,
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t *e;
 
-  if (vec_len (am->ethernet_arp_by_sw_if_index) < sw_if_index)
+  if (vec_len (am->ethernet_arp_by_sw_if_index) <= sw_if_index)
     return;
 
   if (is_del)

@@ -84,3 +84,6 @@ GTAGS
 /vpp-api/python/vpp_papi.egg-info
 /vpp-api/python/vpp_papi/memclnt.py
 /vpp-api/python/vpp_papi/vpe.py
+
+# Build files in the test directory
+/test/*.ok

@@ -36,20 +36,48 @@ typedef enum {
   GRE_N_ERROR,
 } gre_error_t;
 
+/**
+ * A GRE payload protocol registration
+ */
 typedef struct {
-  /* Name (a c string). */
+  /** Name (a c string). */
   char * name;
 
-  /* GRE protocol type in host byte order. */
+  /** GRE protocol type in host byte order. */
   gre_protocol_t protocol;
 
-  /* Node which handles this type. */
+  /** Node which handles this type. */
   u32 node_index;
 
-  /* Next index for this type. */
+  /** Next index for this type. */
   u32 next_index;
 } gre_protocol_info_t;
 
+/**
+ * @brief The GRE tunnel type
+ */
+typedef enum gre_tunnel_tyoe_t_
+{
+  /**
+   * L3 GRE (i.e. this tunnel is in L3 mode)
+   */
+  GRE_TUNNEL_TYPE_L3,
+  /**
+   * Transparent Ethernet Bridging - the tunnel is in L2 mode
+   */
+  GRE_TUNNEL_TYPE_TEB,
+} gre_tunnel_type_t;
+
+#define GRE_TUNNEL_TYPE_NAMES {    \
+    [GRE_TUNNEL_TYPE_L3] = "L3",   \
+    [GRE_TUNNEL_TYPE_TEB] = "TEB", \
+}
+
+#define GRE_TUNNEL_N_TYPES ((gre_tunnel_type_t)GRE_TUNNEL_TYPE_TEB+1)
+
+/**
+ * @brief A representation of a GRE tunnel
+ */
 typedef struct {
   /**
    * Linkage into the FIB object graph
@@ -70,7 +98,7 @@ typedef struct {
   u32 outer_fib_index;
   u32 hw_if_index;
   u32 sw_if_index;
-  u8 teb;
+  gre_tunnel_type_t type;
 
   /**
    * The FIB entry sourced by the tunnel for its destination prefix
@@ -96,21 +124,39 @@ typedef struct {
   adj_index_t l2_adj_index;
 } gre_tunnel_t;
 
+/**
+ * @brief GRE related global data
+ */
 typedef struct {
-  /* pool of tunnel instances */
+  /**
+   * pool of tunnel instances
+   */
   gre_tunnel_t *tunnels;
 
+  /**
+   * GRE payload protocol registrations
+   */
   gre_protocol_info_t * protocol_infos;
 
-  /* Hash tables mapping name/protocol to protocol info index. */
+  /**
+   *  Hash tables mapping name/protocol to protocol info index.
+   */
   uword * protocol_info_by_name, * protocol_info_by_protocol;
-  /* Hash mapping src/dst addr pair to tunnel */
+  /**
+   * Hash mapping src/dst addr pair to tunnel
+   */
   uword * tunnel_by_key;
 
-  /* Free vlib hw_if_indices */
-  u32 * free_gre_tunnel_hw_if_indices;
+  /**
+   * Free vlib hw_if_indices.
+   * A free list per-tunnel type since the interfaces ctreated are fo different
+   * types and we cannot change the type.
+   */
+  u32 * free_gre_tunnel_hw_if_indices[GRE_TUNNEL_N_TYPES];
 
-  /* Mapping from sw_if_index to tunnel index */
+  /**
+   * Mapping from sw_if_index to tunnel index
+   */
   u32 * tunnel_index_by_sw_if_index;
 
   /* convenience */
@@ -120,8 +166,7 @@ typedef struct {
 
 /**
  * @brief IPv4 and GRE header.
- *
-*/
+ */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   gre_header_t gre;
@@ -148,8 +193,8 @@ extern  clib_error_t * gre_interface_admin_up_down (vnet_main_t * vnm,
 
 extern void gre_tunnel_stack (adj_index_t ai);
 extern void gre_update_adj (vnet_main_t * vnm,
-			    u32 sw_if_index,
-			    adj_index_t ai);
+                            u32 sw_if_index,
+                            adj_index_t ai);
 
 format_function_t format_gre_protocol;
 format_function_t format_gre_header;
@@ -157,7 +202,7 @@ format_function_t format_gre_header_with_length;
 
 extern vlib_node_registration_t gre_input_node;
 extern vnet_device_class_t gre_device_class;
-extern vnet_device_class_t gre_l2_device_class;
+extern vnet_device_class_t gre_device_teb_class;
 
 /* Parse gre protocol as 0xXXXX or protocol name.
    In either host or network byte order. */
