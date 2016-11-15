@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_02413a39",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-15T09:47:05Z",
+      "side": 1,
+      "message": "copy-paste error?",
+      "range": {
+        "startLine": 20,
+        "startChar": 26,
+        "endLine": 20,
+        "endChar": 27
+      },
+      "revId": "b2f888bc9e27b7112b70f1e00a1843109845237c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_426e22cb",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-15T09:47:05Z",
+      "side": 1,
+      "message": "I guess that it would look OK in generated html doc file, but we should keep correct formatting in the source files too:\n            - create 3 pg interfaces:\n                - untagged pg0 interface\n                - Dot1Q subinterface on pg1\n                - Dot1AD subinterface on pg2\n\n            - setup interfaces:\n                - put it into UP state\n                - set IPv4 addresses\n                - resolve neighbor address using ARP\n\n            - configure 200 fib entries",
+      "range": {
+        "startLine": 29,
+        "startChar": 12,
+        "endLine": 39,
+        "endChar": 39
+      },
+      "revId": "b2f888bc9e27b7112b70f1e00a1843109845237c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_e2c06e7e",
+        "filename": "test/test_ip4.py",
+        "patchSetId": 7
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2016-11-15T09:47:05Z",
+      "side": 1,
+      "message": "I guess we should use self.logger.info here.\n\n- valid for all occurences",
+      "range": {
+        "startLine": 81,
+        "startChar": 12,
+        "endLine": 81,
+        "endChar": 16
+      },
+      "revId": "b2f888bc9e27b7112b70f1e00a1843109845237c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
