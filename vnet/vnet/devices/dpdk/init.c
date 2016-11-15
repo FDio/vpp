@@ -1746,7 +1746,7 @@ dpdk_init (vlib_main_t * vm)
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template =
-    (VLIB_BUFFER_TOTAL_LENGTH_VALID
+    (VLIB_BUFFER_TOTAL_LENGTH_VALID | VNET_BUFFER_RTE_MBUF_VALID
      | IP_BUFFER_L4_CHECKSUM_COMPUTED | IP_BUFFER_L4_CHECKSUM_CORRECT);
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
