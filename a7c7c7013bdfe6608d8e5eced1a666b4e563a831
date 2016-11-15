@@ -16,6 +16,24 @@
       "revId": "a7c7c7013bdfe6608d8e5eced1a666b4e563a831",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_77bc426d",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 122
+      },
+      "writtenOn": "2016-11-15T08:01:15Z",
+      "side": 1,
+      "message": "I renamed it to configure_ipv4_neighbors. I left it in vpp_interface because ip_neighbor_add_del api requires sw_if_index.",
+      "parentUuid": "7a288981_14461c24",
+      "revId": "a7c7c7013bdfe6608d8e5eced1a666b4e563a831",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
