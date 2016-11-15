@@ -247,6 +247,44 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
 	       sizeof (t0->buffer.pre_data));
 }
 
+static_always_inline void
+dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b)
+{
+  struct rte_mbuf *mb, *last_mb;
+
+  /* buffer is coming from non-dpdk source so we need to init
+     rte_mbuf header */
+  if (PREDICT_TRUE ((b->flags & VNET_BUFFER_RTE_MBUF_IS_VALID) == 0))
+    {
+      last_mb = mb = rte_mbuf_from_vlib_buffer (b);
+      rte_pktmbuf_reset (mb);
+      while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	  mb = rte_mbuf_from_vlib_buffer (b);
+	  last_mb->next = mb;
+	  last_mb = mb;
+	  rte_pktmbuf_reset (mb);
+	}
+    }
+
+  mb = rte_mbuf_from_vlib_buffer (b);
+  mb->nb_segs = 1;
+  mb->data_len = b->current_length;
+  mb->pkt_len = vlib_buffer_length_in_chain (vm, b);
+  mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
+
+  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      b = vlib_get_buffer (vm, b->next_buffer);
+      mb = rte_mbuf_from_vlib_buffer (b);
+      mb->nb_segs++;
+      mb->data_len = b->current_length;
+      mb->pkt_len = b->current_length;
+      mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
+    }
+}
+
 /*
  * This function calls the dpdk's tx_burst function to transmit the packets
  * on the tx_vector. It manages a lock per-device if the device does not
@@ -590,6 +628,9 @@ dpdk_interface_tx (vlib_main_t * vm,
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
 
+      dpdk_validate_rte_mbuf (vm, b0);
+      dpdk_validate_rte_mbuf (vm, b1);
+
       mb0 = rte_mbuf_from_vlib_buffer (b0);
       mb1 = rte_mbuf_from_vlib_buffer (b1);
 
@@ -692,6 +733,8 @@ dpdk_interface_tx (vlib_main_t * vm,
       from++;
 
       b0 = vlib_get_buffer (vm, bi0);
+
+      dpdk_validate_rte_mbuf (vm, b0);
 
       mb0 = rte_mbuf_from_vlib_buffer (b0);
       if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_RECYCLE) != 0))
