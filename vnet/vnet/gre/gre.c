@@ -250,9 +250,9 @@ gre_update_adj (vnet_main_t * vnm,
  * @brief TX function. Only called L2. L3 traffic uses the adj-midchains
  */
 static uword
-gre_interface_tx (vlib_main_t * vm,
-		     vlib_node_runtime_t * node,
-		     vlib_frame_t * frame)
+gre_interface_tx_inline (vlib_main_t * vm,
+                         vlib_node_runtime_t * node,
+                         vlib_frame_t * frame)
 {
   gre_main_t * gm = &gre_main;
   u32 next_index;
@@ -318,10 +318,32 @@ gre_interface_tx (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+gre_interface_tx (vlib_main_t * vm,
+                  vlib_node_runtime_t * node,
+                  vlib_frame_t * frame)
+{
+    return (gre_interface_tx_inline (vm, node, frame));
+}
+
+static uword
+gre_teb_interface_tx (vlib_main_t * vm,
+                      vlib_node_runtime_t * node,
+                      vlib_frame_t * frame)
+{
+    return (gre_interface_tx_inline (vm, node, frame));
+}
+
 static u8 * format_gre_tunnel_name (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
   return format (s, "gre%d", dev_instance);
+}
+
+static u8 * format_gre_tunnel_teb_name (u8 * s, va_list * args)
+{
+  u32 dev_instance = va_arg (*args, u32);
+  return format (s, "teb-gre%d", dev_instance);
 }
 
 static u8 * format_gre_device (u8 * s, va_list * args)
@@ -347,6 +369,21 @@ VNET_DEVICE_CLASS (gre_device_class) = {
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (gre_device_class,
 				   gre_interface_tx)
+
+VNET_DEVICE_CLASS (gre_device_teb_class) = {
+  .name = "GRE TEB tunnel device",
+  .format_device_name = format_gre_tunnel_teb_name,
+  .format_device = format_gre_device,
+  .format_tx_trace = format_gre_tx_trace,
+  .tx_function = gre_teb_interface_tx,
+  .admin_up_down_function = gre_interface_admin_up_down,
+#ifdef SOON
+  .clear counter = 0;
+#endif
+};
+
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH (gre_device_teb_class,
+				   gre_teb_interface_tx)
 
 VNET_HW_INTERFACE_CLASS (gre_hw_interface_class) = {
   .name = "GRE",

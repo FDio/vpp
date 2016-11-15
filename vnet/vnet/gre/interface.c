@@ -24,6 +24,8 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/mpls/mpls.h>
 
+static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
+
 static inline u64
 gre_mk_key (const ip4_address_t *src,
             const ip4_address_t *dst,
@@ -34,17 +36,25 @@ gre_mk_key (const ip4_address_t *src,
 }
 
 static u8 *
+format_gre_tunnel_type (u8 * s, va_list * args)
+{
+  gre_tunnel_type_t type = va_arg (*args, gre_tunnel_type_t);
+
+  return (format(s, "%s", gre_tunnel_type_names[type]));
+}
+
+static u8 *
 format_gre_tunnel (u8 * s, va_list * args)
 {
   gre_tunnel_t * t = va_arg (*args, gre_tunnel_t *);
   gre_main_t * gm = &gre_main;
 
   s = format (s,
-              "[%d] %U (src) %U (dst) payload %s outer_fib_index %d",
+              "[%d] %U (src) %U (dst) payload %U outer_fib_index %d",
               t - gm->tunnels,
               format_ip4_address, &t->tunnel_src,
               format_ip4_address, &t->tunnel_dst,
-              (t->teb ? "teb" : "ip"),
+              format_gre_tunnel_type, t->type,
               t->outer_fib_index);
 
   return s;
@@ -248,12 +258,17 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   memset (t, 0, sizeof (*t));
   fib_node_init(&t->node, FIB_NODE_TYPE_GRE_TUNNEL);
 
-  if (vec_len (gm->free_gre_tunnel_hw_if_indices) > 0) {
+  if (a->teb)
+      t->type = GRE_TUNNEL_TYPE_TEB;
+  else
+      t->type = GRE_TUNNEL_TYPE_L3;
+
+  if (vec_len (gm->free_gre_tunnel_hw_if_indices[t->type]) > 0) {
       vnet_interface_main_t * im = &vnm->interface_main;
 
-      hw_if_index = gm->free_gre_tunnel_hw_if_indices
-          [vec_len (gm->free_gre_tunnel_hw_if_indices)-1];
-      _vec_len (gm->free_gre_tunnel_hw_if_indices) -= 1;
+      hw_if_index = gm->free_gre_tunnel_hw_if_indices[t->type]
+          [vec_len (gm->free_gre_tunnel_hw_if_indices[t->type])-1];
+      _vec_len (gm->free_gre_tunnel_hw_if_indices[t->type]) -= 1;
 
       hi = vnet_get_hw_interface (vnm, hw_if_index);
       hi->dev_instance = t - gm->tunnels;
@@ -269,14 +284,14 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
       vlib_zero_simple_counter
           (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
         vnet_interface_counter_unlock(im);
-      if (a->teb)
+      if (GRE_TUNNEL_TYPE_TEB == t->type)
       {
-	t->l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
-						hi->tx_node_index,
-						"adj-l2-midchain");
+          t->l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
+                                                  hi->tx_node_index,
+                                                  "adj-l2-midchain");
       }
     } else {
-      if (a->teb)
+      if (GRE_TUNNEL_TYPE_TEB == t->type)
       {
         /* Default MAC address (d00b:eed0:0000 + sw_if_index) */
         memset (address, 0, sizeof (address));
@@ -287,7 +302,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
         address[4] = t - gm->tunnels;
 
         error = ethernet_register_interface(vnm,
-					    gre_device_class.index,
+					    gre_device_teb_class.index,
 					    t - gm->tunnels, address,
 					    &hw_if_index,
 					    0);
@@ -316,14 +331,11 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   t->hw_if_index = hw_if_index;
   t->outer_fib_index = outer_fib_index;
   t->sw_if_index = sw_if_index;
-  t->teb = a->teb;
 
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
 
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  im->fib_index_by_sw_if_index[sw_if_index] = t->outer_fib_index;
-  ip4_sw_interface_enable_disable(sw_if_index, 1);
 
   hi->min_packet_bytes = 64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
   hi->per_packet_overhead_bytes =
@@ -365,13 +377,12 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
   clib_memcpy (&t->tunnel_src, &a->src, sizeof (t->tunnel_src));
   clib_memcpy (&t->tunnel_dst, &a->dst, sizeof (t->tunnel_dst));
 
-  if (t->teb)
+  if (GRE_TUNNEL_TYPE_TEB == t->type)
   {
       t->l2_adj_index = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
 					    VNET_LINK_ETHERNET,
 					    &zero_addr,
 					    sw_if_index);
-
       gre_update_adj(vnm, t->sw_if_index, t->l2_adj_index);
   }
 
@@ -399,9 +410,11 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t *a,
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
   /* make sure tunnel is removed from l2 bd or xconnect */
   set_int_l2_mode(gm->vlib_main, vnm, MODE_L3, sw_if_index, 0, 0, 0, 0);
-  vec_add1 (gm->free_gre_tunnel_hw_if_indices, t->hw_if_index);
+  vec_add1 (gm->free_gre_tunnel_hw_if_indices[t->type], t->hw_if_index);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
-  ip4_sw_interface_enable_disable(sw_if_index, 0);
+
+  if (GRE_TUNNEL_TYPE_TEB == t->type)
+    adj_unlock(t->l2_adj_index);
 
   fib_entry_child_remove(t->fib_entry_index,
                          t->sibling_index);

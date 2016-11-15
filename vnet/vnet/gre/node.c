@@ -68,12 +68,10 @@ gre_input (vlib_main_t * vm,
 	   vlib_frame_t * from_frame)
 {
   gre_main_t * gm = &gre_main;
-  ip4_main_t * ip4m = &ip4_main;
   gre_input_runtime_t * rt = (void *) node->runtime_data;
   __attribute__((unused)) u32 n_left_from, next_index, * from, * to_next;
   u64 cached_tunnel_key = (u64) ~0;
   u32 cached_tunnel_sw_if_index = 0, tunnel_sw_if_index = 0;
-  u32 cached_tunnel_fib_index = 0, tunnel_fib_index;
 
   u32 cpu_index = os_get_cpu_number();
   u32 len;
@@ -193,16 +191,12 @@ gre_input (vlib_main_t * vm,
                   hi = vnet_get_hw_interface (gm->vnet_main,
                             t->hw_if_index);
                   tunnel_sw_if_index = hi->sw_if_index;
-                  tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
-                                              tunnel_sw_if_index);
 
                   cached_tunnel_sw_if_index = tunnel_sw_if_index;
-                  cached_tunnel_fib_index = tunnel_fib_index;
                 }
               else
                 {
                   tunnel_sw_if_index = cached_tunnel_sw_if_index;
-                  tunnel_fib_index = cached_tunnel_fib_index;
                 }
             }
           else
@@ -218,7 +212,6 @@ gre_input (vlib_main_t * vm,
                                            1 /* packets */,
                                            len /* bytes */);
 
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = tunnel_fib_index;
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
 
 drop0:
@@ -247,16 +240,12 @@ drop0:
                   hi = vnet_get_hw_interface (gm->vnet_main,
                             t->hw_if_index);
                   tunnel_sw_if_index = hi->sw_if_index;
-                  tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
-                                              tunnel_sw_if_index);
 
                   cached_tunnel_sw_if_index = tunnel_sw_if_index;
-                  cached_tunnel_fib_index = tunnel_fib_index;
                 }
               else
                 {
                   tunnel_sw_if_index = cached_tunnel_sw_if_index;
-                  tunnel_fib_index = cached_tunnel_fib_index;
                 }
             }
           else
@@ -272,7 +261,6 @@ drop0:
                                            1 /* packets */,
                                            len /* bytes */);
 
-          vnet_buffer(b1)->sw_if_index[VLIB_TX] = tunnel_fib_index;
           vnet_buffer(b1)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
 
 drop1:
@@ -280,7 +268,7 @@ drop1:
             {
               gre_rx_trace_t *tr = vlib_add_trace (vm, node,
                                                    b0, sizeof (*tr));
-              tr->tunnel_id = ~0;
+              tr->tunnel_id = tunnel_sw_if_index;
               tr->length = ip0->length;
               tr->src.as_u32 = ip0->src_address.as_u32;
               tr->dst.as_u32 = ip0->dst_address.as_u32;
@@ -290,7 +278,7 @@ drop1:
             {
               gre_rx_trace_t *tr = vlib_add_trace (vm, node,
                                                    b1, sizeof (*tr));
-              tr->tunnel_id = ~0;
+              tr->tunnel_id = tunnel_sw_if_index;
               tr->length = ip1->length;
               tr->src.as_u32 = ip1->src_address.as_u32;
               tr->dst.as_u32 = ip1->dst_address.as_u32;
@@ -374,16 +362,12 @@ drop1:
                   hi = vnet_get_hw_interface (gm->vnet_main,
                             t->hw_if_index);
                   tunnel_sw_if_index = hi->sw_if_index;
-                  tunnel_fib_index = vec_elt (ip4m->fib_index_by_sw_if_index,
-                                              tunnel_sw_if_index);
 
                   cached_tunnel_sw_if_index = tunnel_sw_if_index;
-                  cached_tunnel_fib_index = tunnel_fib_index;
                 }
               else
                 {
                   tunnel_sw_if_index = cached_tunnel_sw_if_index;
-                  tunnel_fib_index = cached_tunnel_fib_index;
                 }
             }
           else
@@ -399,7 +383,6 @@ drop1:
                                            1 /* packets */,
                                            len /* bytes */);
 
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = tunnel_fib_index;
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = tunnel_sw_if_index;
 
 drop:

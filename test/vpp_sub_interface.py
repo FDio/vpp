@@ -41,6 +41,12 @@ class VppSubInterface(VppPGInterface):
     def add_dot1_layer(self, pkt):
         pass
 
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.test.vapi.delete_subif(self._sw_if_index)
+
+    def __enter__(self):
+        return self
+
 
 class VppDot1QSubint(VppSubInterface):
 
