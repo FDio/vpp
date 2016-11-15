@@ -89,139 +89,42 @@ dpdk_replicate_packet_mb (vlib_buffer_t * b)
 {
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_main_t *bm = vm->buffer_main;
-  struct rte_mbuf *first_mb = 0, *new_mb, *pkt_mb, **prev_mb_next = 0;
-  u8 nb_segs, nb_segs_left;
-  u32 copy_bytes;
+  struct rte_mbuf **mbufs = 0, *s, *d;
+  u8 nb_segs;
   unsigned socket_id = rte_socket_id ();
+  int i;
 
   ASSERT (bm->pktmbuf_pools[socket_id]);
-  pkt_mb = rte_mbuf_from_vlib_buffer (b);
-  nb_segs = pkt_mb->nb_segs;
-  for (nb_segs_left = nb_segs; nb_segs_left; nb_segs_left--)
+  s = rte_mbuf_from_vlib_buffer (b);
+  nb_segs = s->nb_segs;
+  vec_validate (mbufs, nb_segs - 1);
+
+  if (rte_pktmbuf_alloc_bulk (bm->pktmbuf_pools[socket_id], mbufs, nb_segs))
     {
-      if (PREDICT_FALSE (pkt_mb == 0))
-	{
-	  clib_warning ("Missing %d mbuf chain segment(s):   "
-			"(nb_segs = %d, nb_segs_left = %d)!",
-			nb_segs - nb_segs_left, nb_segs, nb_segs_left);
-	  if (first_mb)
-	    rte_pktmbuf_free (first_mb);
-	  return NULL;
-	}
-      new_mb = rte_pktmbuf_alloc (bm->pktmbuf_pools[socket_id]);
-      if (PREDICT_FALSE (new_mb == 0))
-	{
-	  if (first_mb)
-	    rte_pktmbuf_free (first_mb);
-	  return NULL;
-	}
-
-      /*
-       * Copy packet info into 1st segment.
-       */
-      if (first_mb == 0)
-	{
-	  first_mb = new_mb;
-	  rte_pktmbuf_pkt_len (first_mb) = pkt_mb->pkt_len;
-	  first_mb->nb_segs = pkt_mb->nb_segs;
-	  first_mb->port = pkt_mb->port;
-#ifdef DAW_FIXME		// TX Offload support TBD
-	  first_mb->vlan_macip = pkt_mb->vlan_macip;
-	  first_mb->hash = pkt_mb->hash;
-	  first_mb->ol_flags = pkt_mb->ol_flags
-#endif
-	}
-      else
-	{
-	  ASSERT (prev_mb_next != 0);
-	  *prev_mb_next = new_mb;
-	}
-
-      /*
-       * Copy packet segment data into new mbuf segment.
-       */
-      rte_pktmbuf_data_len (new_mb) = pkt_mb->data_len;
-      copy_bytes = pkt_mb->data_len + RTE_PKTMBUF_HEADROOM;
-      ASSERT (copy_bytes <= pkt_mb->buf_len);
-      clib_memcpy (new_mb->buf_addr, pkt_mb->buf_addr, copy_bytes);
-
-      prev_mb_next = &new_mb->next;
-      pkt_mb = pkt_mb->next;
+      vec_free (mbufs);
+      return 0;
     }
 
-  ASSERT (pkt_mb == 0);
-  __rte_mbuf_sanity_check (first_mb, 1);
+  d = mbufs[0];
+  d->nb_segs = s->nb_segs;
+  d->data_len = s->data_len;
+  d->pkt_len = s->pkt_len;
+  d->data_off = s->data_off;
+  clib_memcpy (d->buf_addr, s->buf_addr, RTE_PKTMBUF_HEADROOM + s->data_len);
 
-  return first_mb;
-}
-
-struct rte_mbuf *
-dpdk_zerocopy_replicate_packet_mb (vlib_buffer_t * b)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  struct rte_mbuf *first_mb = 0, *new_mb, *pkt_mb, **prev_mb_next = 0;
-  u8 nb_segs, nb_segs_left;
-  unsigned socket_id = rte_socket_id ();
-
-  ASSERT (bm->pktmbuf_pools[socket_id]);
-  pkt_mb = rte_mbuf_from_vlib_buffer (b);
-  nb_segs = pkt_mb->nb_segs;
-  for (nb_segs_left = nb_segs; nb_segs_left; nb_segs_left--)
+  for (i = 1; i < nb_segs; i++)
     {
-      if (PREDICT_FALSE (pkt_mb == 0))
-	{
-	  clib_warning ("Missing %d mbuf chain segment(s):   "
-			"(nb_segs = %d, nb_segs_left = %d)!",
-			nb_segs - nb_segs_left, nb_segs, nb_segs_left);
-	  if (first_mb)
-	    rte_pktmbuf_free (first_mb);
-	  return NULL;
-	}
-      new_mb = rte_pktmbuf_clone (pkt_mb, bm->pktmbuf_pools[socket_id]);
-      if (PREDICT_FALSE (new_mb == 0))
-	{
-	  if (first_mb)
-	    rte_pktmbuf_free (first_mb);
-	  return NULL;
-	}
-
-      /*
-       * Copy packet info into 1st segment.
-       */
-      if (first_mb == 0)
-	{
-	  first_mb = new_mb;
-	  rte_pktmbuf_pkt_len (first_mb) = pkt_mb->pkt_len;
-	  first_mb->nb_segs = pkt_mb->nb_segs;
-	  first_mb->port = pkt_mb->port;
-#ifdef DAW_FIXME		// TX Offload support TBD
-	  first_mb->vlan_macip = pkt_mb->vlan_macip;
-	  first_mb->hash = pkt_mb->hash;
-	  first_mb->ol_flags = pkt_mb->ol_flags
-#endif
-	}
-      else
-	{
-	  ASSERT (prev_mb_next != 0);
-	  *prev_mb_next = new_mb;
-	}
-
-      /*
-       * Copy packet segment data into new mbuf segment.
-       */
-      rte_pktmbuf_data_len (new_mb) = pkt_mb->data_len;
-
-      prev_mb_next = &new_mb->next;
-      pkt_mb = pkt_mb->next;
+      d->next = mbufs[i];
+      d = mbufs[i];
+      s = s->next;
+      d->data_len = s->data_len;
+      clib_memcpy (d->buf_addr, s->buf_addr,
+		   RTE_PKTMBUF_HEADROOM + s->data_len);
     }
 
-  ASSERT (pkt_mb == 0);
-  __rte_mbuf_sanity_check (first_mb, 1);
-
-  return first_mb;
-
-
+  d = mbufs[0];
+  vec_free (mbufs);
+  return d;
 }
 
 static void
@@ -245,6 +148,46 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
 	       sizeof (buffer[0]) - sizeof (buffer->pre_data));
   clib_memcpy (t0->buffer.pre_data, buffer->data + buffer->current_data,
 	       sizeof (t0->buffer.pre_data));
+}
+
+static_always_inline void
+dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
+			int maybe_multiseg)
+{
+  struct rte_mbuf *mb, *first_mb, *last_mb;
+
+  /* buffer is coming from non-dpdk source so we need to init
+     rte_mbuf header */
+  if (PREDICT_FALSE ((b->flags & VNET_BUFFER_RTE_MBUF_VALID) == 0))
+    {
+      last_mb = mb = rte_mbuf_from_vlib_buffer (b);
+      rte_pktmbuf_reset (mb);
+      while (maybe_multiseg && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	{
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	  mb = rte_mbuf_from_vlib_buffer (b);
+	  last_mb->next = mb;
+	  last_mb = mb;
+	  rte_pktmbuf_reset (mb);
+	}
+    }
+
+  first_mb = mb = rte_mbuf_from_vlib_buffer (b);
+  first_mb->nb_segs = 1;
+  mb->data_len = b->current_length;
+  mb->pkt_len = maybe_multiseg ? vlib_buffer_length_in_chain (vm, b) :
+    b->current_length;
+  mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
+
+  while (maybe_multiseg && (b->flags & VLIB_BUFFER_NEXT_PRESENT))
+    {
+      b = vlib_get_buffer (vm, b->next_buffer);
+      mb = rte_mbuf_from_vlib_buffer (b);
+      mb->data_len = b->current_length;
+      mb->pkt_len = b->current_length;
+      mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
+      first_mb->nb_segs++;
+    }
 }
 
 /*
@@ -364,6 +307,41 @@ static_always_inline
   return n_packets;
 }
 
+static_always_inline void
+dpdk_prefetch_buffer_by_index (vlib_main_t * vm, u32 bi)
+{
+  vlib_buffer_t *b;
+  struct rte_mbuf *mb;
+  b = vlib_get_buffer (vm, bi);
+  mb = rte_mbuf_from_vlib_buffer (b);
+  CLIB_PREFETCH (mb, CLIB_CACHE_LINE_BYTES, LOAD);
+  CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+static_always_inline void
+dpdk_buffer_recycle (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_buffer_t * b, u32 bi, struct rte_mbuf **mbp)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  u32 my_cpu = my_cpu = vm->cpu_index;
+  struct rte_mbuf *mb_new;
+
+  if (PREDICT_FALSE (b->flags & VLIB_BUFFER_RECYCLE) == 0)
+    return;
+
+  mb_new = dpdk_replicate_packet_mb (b);
+  if (PREDICT_FALSE (mb_new == 0))
+    {
+      vlib_error_count (vm, node->node_index,
+			DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
+      b->flags |= VLIB_BUFFER_REPL_FAIL;
+    }
+  else
+    *mbp = mb_new;
+
+  vec_add1 (dm->recycle[my_cpu], bi);
+}
+
 /*
  * Transmits the packets on the frame to the interface associated with the
  * node. It first copies packets on the frame to a tx_vector containing the
@@ -381,7 +359,8 @@ dpdk_interface_tx (vlib_main_t * vm,
   u32 n_left;
   u32 *from;
   struct rte_mbuf **tx_vector;
-  int i;
+  u16 i;
+  u16 nb_tx_desc = xd->nb_tx_desc;
   int queue_id;
   u32 my_cpu;
   u32 tx_pkts = 0;
@@ -400,7 +379,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
   ASSERT (n_packets <= VLIB_FRAME_SIZE);
 
-  if (PREDICT_FALSE (n_on_ring + n_packets > xd->nb_tx_desc))
+  if (PREDICT_FALSE (n_on_ring + n_packets > nb_tx_desc))
     {
       /*
        * Overflowing the ring should never happen.
@@ -436,97 +415,90 @@ dpdk_interface_tx (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (f);
   n_left = n_packets;
-  i = ring->tx_head % xd->nb_tx_desc;
+  i = ring->tx_head % nb_tx_desc;
 
-  while (n_left >= 4)
+  while (n_left >= 8)
     {
-      u32 bi0, bi1;
-      u32 pi0, pi1;
-      struct rte_mbuf *mb0, *mb1;
-      struct rte_mbuf *prefmb0, *prefmb1;
-      vlib_buffer_t *b0, *b1;
-      vlib_buffer_t *pref0, *pref1;
-      i16 delta0, delta1;
-      u16 new_data_len0, new_data_len1;
-      u16 new_pkt_len0, new_pkt_len1;
-      u32 any_clone;
+      u32 bi0, bi1, bi2, bi3;
+      struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
+      vlib_buffer_t *b0, *b1, *b2, *b3;
+      u32 or_flags;
 
-      pi0 = from[2];
-      pi1 = from[3];
-      pref0 = vlib_get_buffer (vm, pi0);
-      pref1 = vlib_get_buffer (vm, pi1);
-
-      prefmb0 = rte_mbuf_from_vlib_buffer (pref0);
-      prefmb1 = rte_mbuf_from_vlib_buffer (pref1);
-
-      CLIB_PREFETCH (prefmb0, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (pref0, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (prefmb1, CLIB_CACHE_LINE_BYTES, LOAD);
-      CLIB_PREFETCH (pref1, CLIB_CACHE_LINE_BYTES, LOAD);
+      dpdk_prefetch_buffer_by_index (vm, from[4]);
+      dpdk_prefetch_buffer_by_index (vm, from[5]);
+      dpdk_prefetch_buffer_by_index (vm, from[6]);
+      dpdk_prefetch_buffer_by_index (vm, from[7]);
 
       bi0 = from[0];
       bi1 = from[1];
-      from += 2;
+      bi2 = from[2];
+      bi3 = from[3];
+      from += 4;
 
       b0 = vlib_get_buffer (vm, bi0);
       b1 = vlib_get_buffer (vm, bi1);
+      b2 = vlib_get_buffer (vm, bi2);
+      b3 = vlib_get_buffer (vm, bi3);
+
+      or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
+
+      if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  dpdk_validate_rte_mbuf (vm, b0, 1);
+	  dpdk_validate_rte_mbuf (vm, b1, 1);
+	  dpdk_validate_rte_mbuf (vm, b2, 1);
+	  dpdk_validate_rte_mbuf (vm, b3, 1);
+	}
+      else
+	{
+	  dpdk_validate_rte_mbuf (vm, b0, 0);
+	  dpdk_validate_rte_mbuf (vm, b1, 0);
+	  dpdk_validate_rte_mbuf (vm, b2, 0);
+	  dpdk_validate_rte_mbuf (vm, b3, 0);
+	}
 
       mb0 = rte_mbuf_from_vlib_buffer (b0);
       mb1 = rte_mbuf_from_vlib_buffer (b1);
+      mb2 = rte_mbuf_from_vlib_buffer (b2);
+      mb3 = rte_mbuf_from_vlib_buffer (b3);
 
-      any_clone = (b0->flags & VLIB_BUFFER_RECYCLE)
-	| (b1->flags & VLIB_BUFFER_RECYCLE);
-      if (PREDICT_FALSE (any_clone != 0))
+      if (PREDICT_FALSE (or_flags & VLIB_BUFFER_RECYCLE))
 	{
-	  if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_RECYCLE) != 0))
+	  dpdk_buffer_recycle (vm, node, b0, bi0, &mb0);
+	  dpdk_buffer_recycle (vm, node, b1, bi1, &mb1);
+	  dpdk_buffer_recycle (vm, node, b2, bi2, &mb2);
+	  dpdk_buffer_recycle (vm, node, b3, bi3, &mb3);
+
+	  /* dont enqueue packets if replication failed as they must
+	     be sent back to recycle */
+	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
+	    tx_vector[i++ % nb_tx_desc] = mb0;
+	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_REPL_FAIL) == 0))
+	    tx_vector[i++ % nb_tx_desc] = mb1;
+	  if (PREDICT_TRUE ((b2->flags & VLIB_BUFFER_REPL_FAIL) == 0))
+	    tx_vector[i++ % nb_tx_desc] = mb2;
+	  if (PREDICT_TRUE ((b3->flags & VLIB_BUFFER_REPL_FAIL) == 0))
+	    tx_vector[i++ % nb_tx_desc] = mb3;
+	}
+      else
+	{
+	  if (PREDICT_FALSE (i + 3 >= nb_tx_desc))
 	    {
-	      struct rte_mbuf *mb0_new = dpdk_replicate_packet_mb (b0);
-	      if (PREDICT_FALSE (mb0_new == 0))
-		{
-		  vlib_error_count (vm, node->node_index,
-				    DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-		  b0->flags |= VLIB_BUFFER_REPL_FAIL;
-		}
-	      else
-		mb0 = mb0_new;
-	      vec_add1 (dm->recycle[my_cpu], bi0);
+	      tx_vector[i++ % nb_tx_desc] = mb0;
+	      tx_vector[i++ % nb_tx_desc] = mb1;
+	      tx_vector[i++ % nb_tx_desc] = mb2;
+	      tx_vector[i++ % nb_tx_desc] = mb3;
+	      i %= nb_tx_desc;
 	    }
-	  if (PREDICT_FALSE ((b1->flags & VLIB_BUFFER_RECYCLE) != 0))
+	  else
 	    {
-	      struct rte_mbuf *mb1_new = dpdk_replicate_packet_mb (b1);
-	      if (PREDICT_FALSE (mb1_new == 0))
-		{
-		  vlib_error_count (vm, node->node_index,
-				    DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-		  b1->flags |= VLIB_BUFFER_REPL_FAIL;
-		}
-	      else
-		mb1 = mb1_new;
-	      vec_add1 (dm->recycle[my_cpu], bi1);
+	      tx_vector[i++] = mb0;
+	      tx_vector[i++] = mb1;
+	      tx_vector[i++] = mb2;
+	      tx_vector[i++] = mb3;
 	    }
 	}
 
-      delta0 = PREDICT_FALSE (b0->flags & VLIB_BUFFER_REPL_FAIL) ? 0 :
-	vlib_buffer_length_in_chain (vm, b0) - (i16) mb0->pkt_len;
-      delta1 = PREDICT_FALSE (b1->flags & VLIB_BUFFER_REPL_FAIL) ? 0 :
-	vlib_buffer_length_in_chain (vm, b1) - (i16) mb1->pkt_len;
-
-      new_data_len0 = (u16) ((i16) mb0->data_len + delta0);
-      new_data_len1 = (u16) ((i16) mb1->data_len + delta1);
-      new_pkt_len0 = (u16) ((i16) mb0->pkt_len + delta0);
-      new_pkt_len1 = (u16) ((i16) mb1->pkt_len + delta1);
-
-      b0->current_length = new_data_len0;
-      b1->current_length = new_data_len1;
-      mb0->data_len = new_data_len0;
-      mb1->data_len = new_data_len1;
-      mb0->pkt_len = new_pkt_len0;
-      mb1->pkt_len = new_pkt_len1;
-
-      mb0->data_off = (PREDICT_FALSE (b0->flags & VLIB_BUFFER_REPL_FAIL)) ?
-	mb0->data_off : (u16) (RTE_PKTMBUF_HEADROOM + b0->current_data);
-      mb1->data_off = (PREDICT_FALSE (b1->flags & VLIB_BUFFER_REPL_FAIL)) ?
-	mb1->data_off : (u16) (RTE_PKTMBUF_HEADROOM + b1->current_data);
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
@@ -534,72 +506,29 @@ dpdk_interface_tx (vlib_main_t * vm,
 	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
 	  if (b1->flags & VLIB_BUFFER_IS_TRACED)
 	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi1, b1);
+	  if (b2->flags & VLIB_BUFFER_IS_TRACED)
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi2, b2);
+	  if (b3->flags & VLIB_BUFFER_IS_TRACED)
+	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi3, b3);
 	}
 
-      if (PREDICT_TRUE (any_clone == 0))
-	{
-	  tx_vector[i % xd->nb_tx_desc] = mb0;
-	  i++;
-	  tx_vector[i % xd->nb_tx_desc] = mb1;
-	  i++;
-	}
-      else
-	{
-	  /* cloning was done, need to check for failure */
-	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
-	    {
-	      tx_vector[i % xd->nb_tx_desc] = mb0;
-	      i++;
-	    }
-	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_REPL_FAIL) == 0))
-	    {
-	      tx_vector[i % xd->nb_tx_desc] = mb1;
-	      i++;
-	    }
-	}
-
-      n_left -= 2;
+      n_left -= 4;
     }
   while (n_left > 0)
     {
       u32 bi0;
       struct rte_mbuf *mb0;
       vlib_buffer_t *b0;
-      i16 delta0;
-      u16 new_data_len0;
-      u16 new_pkt_len0;
 
       bi0 = from[0];
       from++;
 
       b0 = vlib_get_buffer (vm, bi0);
 
+      dpdk_validate_rte_mbuf (vm, b0, 1);
+
       mb0 = rte_mbuf_from_vlib_buffer (b0);
-      if (PREDICT_FALSE ((b0->flags & VLIB_BUFFER_RECYCLE) != 0))
-	{
-	  struct rte_mbuf *mb0_new = dpdk_replicate_packet_mb (b0);
-	  if (PREDICT_FALSE (mb0_new == 0))
-	    {
-	      vlib_error_count (vm, node->node_index,
-				DPDK_TX_FUNC_ERROR_REPL_FAIL, 1);
-	      b0->flags |= VLIB_BUFFER_REPL_FAIL;
-	    }
-	  else
-	    mb0 = mb0_new;
-	  vec_add1 (dm->recycle[my_cpu], bi0);
-	}
-
-      delta0 = PREDICT_FALSE (b0->flags & VLIB_BUFFER_REPL_FAIL) ? 0 :
-	vlib_buffer_length_in_chain (vm, b0) - (i16) mb0->pkt_len;
-
-      new_data_len0 = (u16) ((i16) mb0->data_len + delta0);
-      new_pkt_len0 = (u16) ((i16) mb0->pkt_len + delta0);
-
-      b0->current_length = new_data_len0;
-      mb0->data_len = new_data_len0;
-      mb0->pkt_len = new_pkt_len0;
-      mb0->data_off = (PREDICT_FALSE (b0->flags & VLIB_BUFFER_REPL_FAIL)) ?
-	mb0->data_off : (u16) (RTE_PKTMBUF_HEADROOM + b0->current_data);
+      dpdk_buffer_recycle (vm, node, b0, bi0, &mb0);
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	if (b0->flags & VLIB_BUFFER_IS_TRACED)
@@ -607,7 +536,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
       if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
 	{
-	  tx_vector[i % xd->nb_tx_desc] = mb0;
+	  tx_vector[i % nb_tx_desc] = mb0;
 	  i++;
 	}
       n_left--;
