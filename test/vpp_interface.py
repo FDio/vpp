@@ -176,6 +176,19 @@ class VppInterface(object):
         addr_len = 24
         self.test.vapi.sw_interface_add_del_address(
             self.sw_if_index, addr, addr_len)
+        self.has_ip4_config = True
+
+    def unconfig_ip4(self):
+        """Remove IPv4 address on the VPP interface"""
+        try:
+            if (self.has_ip4_config):
+                self.test.vapi.sw_interface_add_del_address(
+                    self.sw_if_index,
+                    self.local_ip4n,
+                    24, is_add=0)
+        except AttributeError:
+            self.has_ip4_config = False
+        self.has_ip4_config = False
 
     def configure_ipv4_neighbors(self):
         """For every remote host assign neighbor's MAC to IPv4 addresses."""
@@ -190,6 +203,24 @@ class VppInterface(object):
         addr_len = 64
         self.test.vapi.sw_interface_add_del_address(
             self.sw_if_index, addr, addr_len, is_ipv6=1)
+        self.has_ip6_config = True
+
+    def unconfig_ip6(self):
+        """Remove IPv6 address on the VPP interface"""
+        try:
+            if (self.has_ip6_config):
+                self.test.vapi.sw_interface_add_del_address(
+                    self.sw_if_index,
+                    self.local_ip6n,
+                    64, is_ipv6=1, is_add=0)
+        except AttributeError:
+            self.has_ip6_config = False
+        self.has_ip6_config = False
+
+    def unconfig(self):
+        """Unconfigure IPv6 and IPv4 address on the VPP interface"""
+        self.unconfig_ip4()
+        self.unconfig_ip6()
 
     def set_table_ip4(self, table_id):
         """Set the interface in a IPv4 Table.

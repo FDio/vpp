@@ -61,6 +61,7 @@ adj_alloc (fib_protocol_t proto)
     adj->mcast_group_index = ~0;
     adj->saved_lookup_next_index = 0;
     adj->n_adj = 1;
+    adj->lookup_next_index = 0;
 
     fib_node_init(&adj->ia_node,
                   FIB_NODE_TYPE_ADJ);
@@ -163,7 +164,8 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 	/*
 	 * complete and incomplete nbr adjs
 	 */
-	adj_nbr_remove(adj->ia_nh_proto,
+	adj_nbr_remove(adj_get_index(adj),
+                       adj->ia_nh_proto,
 		       adj->ia_link,
 		       &adj->sub_type.nbr.next_hop,
 		       adj->rewrite_header.sw_if_index);
@@ -376,6 +378,12 @@ adj_show (vlib_main_t * vm,
 
     if (ADJ_INDEX_INVALID != ai)
     {
+        if (pool_is_free_index(adj_pool, ai))
+        {
+	    vlib_cli_output (vm, "adjacency %d invalid", ai);
+            return 0;
+        }
+
 	vlib_cli_output (vm, "[@%d] %U",
                          ai,
                          format_ip_adjacency,  ai,

@@ -498,6 +498,8 @@ ip6_add_del_interface_address (vlib_main_t * vm,
       goto done;
   }
 
+  ip6_sw_interface_enable_disable(sw_if_index, !is_del);
+
   if (is_del)
       ip6_del_interface_routes (im, ip6_af.fib_index, address,
 				address_length);
