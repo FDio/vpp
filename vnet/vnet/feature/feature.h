@@ -34,6 +34,10 @@ typedef struct _vnet_feature_arc_registration
   u8 *arc_index_ptr;
 } vnet_feature_arc_registration_t;
 
+/* Enable feature callback. */
+typedef clib_error_t *(vnet_feature_enable_disable_function_t)
+  (u32 sw_if_index, int enable_disable);
+
 /** feature registration object */
 typedef struct _vnet_feature_registration
 {
@@ -50,6 +54,9 @@ typedef struct _vnet_feature_registration
   char **runs_before;
   /** Constraints of the form "this feature runs after Y" */
   char **runs_after;
+
+  /** Function to enable/disable feature  **/
+  vnet_feature_enable_disable_function_t *enable_disable_cb;
 } vnet_feature_registration_t;
 
 typedef struct vnet_feature_config_main_t_
@@ -121,6 +128,9 @@ vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
 
 u32 vnet_get_feature_index (u8 arc, const char *s);
 u8 vnet_get_feature_arc_index (const char *s);
+vnet_feature_registration_t *vnet_get_feature_reg (const char *arc_name,
+						   const char *node_name);
+
 
 int
 vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
