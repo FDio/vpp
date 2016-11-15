@@ -42,18 +42,6 @@
 
 #include <vppinfra/hash.h>
 
-#if DPDK == 1
-#undef always_inline		// dpdk and clib use conflicting always_inline macros.
-#include <rte_config.h>
-#include <rte_mbuf.h>
-
-#if CLIB_DEBUG > 0
-#define always_inline static inline
-#else
-#define always_inline static inline __attribute__ ((__always_inline__))
-#endif
-#endif
-
 /** \file
     vlib buffer access methods.
 */
@@ -244,14 +232,6 @@ vlib_buffer_set_known_state (vlib_main_t * vm,
 u8 *vlib_validate_buffer (vlib_main_t * vm, u32 buffer_index,
 			  uword follow_chain);
 
-/* Validate an array of buffers.  As above. */
-u8 *vlib_validate_buffers (vlib_main_t * vm,
-			   u32 * buffers,
-			   uword next_buffer_stride,
-			   uword n_buffers,
-			   vlib_buffer_known_state_t known_state,
-			   uword follow_chain);
-
 #endif /* DPDK == 0 */
 
 clib_error_t *vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
@@ -429,6 +409,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   vlib_buffer_t *s, *d, *fd;
   uword n_alloc, n_buffers = 1;
   u32 *new_buffers = 0;
+  u32 flag_mask = VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID;
   int i;
 
   s = b;
@@ -449,20 +430,10 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 	       vlib_buffer_get_current (s), s->current_length);
   d->current_data = s->current_data;
   d->current_length = s->current_length;
-  d->flags = s->flags;
+  d->flags = s->flags & flag_mask;
   d->total_length_not_including_first_buffer =
     s->total_length_not_including_first_buffer;
   clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
-#if DPDK > 0
-  struct rte_mbuf *ms, *md;
-  ms = rte_mbuf_from_vlib_buffer (s);
-  md = rte_mbuf_from_vlib_buffer (d);
-  rte_pktmbuf_reset (md);
-  md->nb_segs = ms->nb_segs;
-  md->data_len = ms->data_len;
-  md->pkt_len = ms->pkt_len;
-  md->data_off = ms->data_off;
-#endif
 
   /* next segments */
   for (i = 1; i < n_buffers; i++)
@@ -476,19 +447,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
       d->current_length = s->current_length;
       clib_memcpy (vlib_buffer_get_current (d),
 		   vlib_buffer_get_current (s), s->current_length);
-      d->flags = s->flags;
-#if DPDK > 0
-      /* previous */
-      md->next = rte_mbuf_from_vlib_buffer (d);
-      /* current */
-      md = rte_mbuf_from_vlib_buffer (d);
-      ms = rte_mbuf_from_vlib_buffer (s);
-      rte_pktmbuf_reset (md);
-      md->data_len = ms->data_len;
-      md->pkt_len = ms->pkt_len;
-      md->data_off = ms->data_off;
-      md->next = 0;
-#endif
+      d->flags = s->flags & flag_mask;
     }
 
   return fd;
@@ -507,11 +466,6 @@ vlib_buffer_chain_init (vlib_buffer_t * first)
   first->current_length = 0;
   first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
   first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-#if DPDK == 1
-  struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (first);
-  rte_pktmbuf_reset (mb);
-  mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + first->current_data;
-#endif
 }
 
 /* The provided next_bi buffer index is appended to the end of the packet. */
@@ -525,19 +479,6 @@ vlib_buffer_chain_buffer (vlib_main_t * vm,
   last->flags |= VLIB_BUFFER_NEXT_PRESENT;
   next_buffer->current_length = 0;
   next_buffer->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
-#if DPDK == 1
-  struct rte_mbuf *mb;
-  mb = rte_mbuf_from_vlib_buffer (first);
-  mb->nb_segs++;
-
-  mb = rte_mbuf_from_vlib_buffer (last);
-  mb->next = rte_mbuf_from_vlib_buffer (next_buffer);
-
-  mb = rte_mbuf_from_vlib_buffer (next_buffer);
-  mb->data_len = 0;
-  mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + next_buffer->current_data;
-  mb->next = 0;
-#endif
   return next_buffer;
 }
 
@@ -552,12 +493,6 @@ vlib_buffer_chain_increase_length (vlib_buffer_t * first,
   last->current_length += len;
   if (first != last)
     first->total_length_not_including_first_buffer += len;
-#if DPDK == 1
-  struct rte_mbuf *mb_first = rte_mbuf_from_vlib_buffer (first);
-  struct rte_mbuf *mb_last = rte_mbuf_from_vlib_buffer (last);
-  mb_first->pkt_len += len;
-  mb_last->data_len += len;
-#endif
 }
 
 /* Copy data to the end of the packet and increases its length.

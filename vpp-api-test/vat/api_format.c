@@ -54,6 +54,7 @@
 
 #include "vat/json_format.h"
 
+#include <inttypes.h>
 #include <sys/stat.h>
 
 #define vl_typedefs		/* define message structures */
