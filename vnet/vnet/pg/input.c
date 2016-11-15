@@ -43,39 +43,6 @@
 #include <vnet/feature/feature.h>
 #include <vnet/devices/devices.h>
 
-#if DPDK==1
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
-
-static inline void
-pg_set_mbuf_metadata (pg_main_t * pg, u32 * buffers, u32 n_alloc)
-{
-#if DPDK == 1
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_t *b;
-  struct rte_mbuf *mb;
-  i16 delta;
-  u16 new_data_len;
-  u16 new_pkt_len;
-
-  int i;
-
-  for (i = 0; i < n_alloc; i++)
-    {
-      b = vlib_get_buffer (vm, buffers[i]);
-      mb = rte_mbuf_from_vlib_buffer (b);
-
-      delta = vlib_buffer_length_in_chain (vm, b) - (i16) mb->pkt_len;
-      new_data_len = (u16) ((i16) mb->data_len + delta);
-      new_pkt_len = (u16) ((i16) mb->pkt_len + delta);
-
-      mb->data_len = new_data_len;
-      mb->pkt_len = new_pkt_len;
-      mb->data_off = (u16) ((RTE_PKTMBUF_HEADROOM) + b->current_data);
-    }
-#endif
-}
-
 static int
 validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
 		       u32 data_offset, u32 n_bytes)
@@ -930,7 +897,6 @@ pg_generate_set_lengths (pg_main_t * pg,
 				     si->sw_if_index, n_buffers, length_sum);
   }
 
-  pg_set_mbuf_metadata (pg, buffers, n_buffers);
 }
 
 static void
@@ -1398,24 +1364,6 @@ pg_stream_fill (pg_main_t * pg, pg_stream_t * s, u32 n_buffers)
       last_start = start;
 
       /* Verify that pkts in the fifo are properly allocated */
-#if DPDK == 1
-      if (CLIB_DEBUG > 0)
-	{
-	  u32 *bi0;
-	  vlib_main_t *vm = vlib_get_main ();
-	  /* *INDENT-OFF* */
-          clib_fifo_foreach (bi0, bi->buffer_fifo,
-          ({
-            vlib_buffer_t * b;
-            struct rte_mbuf *mb;
-
-            b = vlib_get_buffer(vm, bi0[0]);
-            mb = rte_mbuf_from_vlib_buffer(b);
-            ASSERT(rte_mbuf_refcnt_read(mb) == 1);
-          }));
-	  /* *INDENT-ON* */
-	}
-#endif
     }
 
   return n_in_fifo + n_added;

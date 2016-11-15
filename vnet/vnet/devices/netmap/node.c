@@ -83,17 +83,6 @@ buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
 
   /* update current buffer */
   b->next_buffer = 0;
-
-#if DPDK > 0
-  struct rte_mbuf *mbuf = rte_mbuf_from_vlib_buffer (b);
-  struct rte_mbuf *first_mbuf = rte_mbuf_from_vlib_buffer (first_b);
-  struct rte_mbuf *prev_mbuf = rte_mbuf_from_vlib_buffer (prev_b);
-  first_mbuf->nb_segs++;
-  prev_mbuf->next = mbuf;
-  mbuf->data_len = b->current_length;
-  mbuf->data_off = RTE_PKTMBUF_HEADROOM + b->current_data;
-  mbuf->next = 0;
-#endif
 }
 
 always_inline uword
@@ -195,11 +184,6 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		  if (offset == 0)
 		    {
-#if DPDK > 0
-		      struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b0);
-		      rte_pktmbuf_data_len (mb) = b0->current_length;
-		      rte_pktmbuf_pkt_len (mb) = b0->current_length;
-#endif
 		      b0->total_length_not_including_first_buffer = 0;
 		      b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 		      vnet_buffer (b0)->sw_if_index[VLIB_RX] =
