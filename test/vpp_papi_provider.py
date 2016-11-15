@@ -18,6 +18,9 @@ if do_import:
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
+class L2_VTR_OP:
+    L2_POP_1 = 3
+
 
 class VppPapiProvider(object):
     """VPP-api provider using vpp-papi
@@ -230,6 +233,20 @@ class VppPapiProvider(object):
         return self.api(vpp_papi.sw_interface_set_l2_xconnect,
                         (rx_sw_if_index, tx_sw_if_index, enable))
 
+    def sw_interface_set_l2_tag_rewrite(self, sw_if_index, vtr_oper, push=0, tag1=0, tag2=0):
+        """L2 interface vlan tag rewrite configure request
+        :param client_index - opaque cookie to identify the sender
+        :param context - sender context, to match reply w/ request
+        :param sw_if_index - interface the operation is applied to
+        :param vtr_op - Choose from l2_vtr_op_t enum values
+        :param push_dot1q - first pushed flag dot1q id set, else dot1ad
+        :param tag1 - Needed for any push or translate vtr op
+        :param tag2 - Needed for any push 2 or translate x-2 vtr ops
+
+        """
+        return self.api(vpp_papi.l2_interface_vlan_tag_rewrite,
+                        (sw_if_index, vtr_oper, push, tag1, tag2))
+
     def sw_interface_set_flags(self, sw_if_index, admin_up_down,
                                link_up_down=0, deleted=0):
         """
@@ -277,6 +294,13 @@ class VppPapiProvider(object):
              inner_vlan_id_any,
              outer_vlan,
              inner_vlan))
+
+    def delete_subif(self, sw_if_index):
+        """Delete subinterface
+
+        :param sw_if_index:
+        """
+        return self.api(vpp_papi.delete_subif, ([sw_if_index]))
 
     def create_vlan_subif(self, sw_if_index, vlan):
         """
@@ -411,3 +435,30 @@ class VppPapiProvider(object):
 
         """
         return self.api(vpp_papi.sw_interface_span_enable_disable, (sw_if_index_from, sw_if_index_to, enable ))
+
+    def gre_tunnel_add_del(self,
+                           src_address,
+                           dst_address,
+                           outer_fib_id=0,
+                           is_teb=0,
+                           is_add=1,
+                           is_ip6=0):
+        """ Add a GRE tunnel
+
+        :param src_address:
+        :param dst_address:
+        :param outer_fib_id:  (Default value = 0)
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+        :param is_teb:  (Default value = 0)
+        """
+
+        return self.api(
+            vpp_papi.gre_add_del_tunnel,
+            (is_add,
+             is_ip6,
+             is_teb,
+             src_address,
+             dst_address,
+             outer_fib_id)
+        )

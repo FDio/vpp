@@ -76,7 +76,8 @@ adj_nbr_insert (fib_protocol_t nh_proto,
 }
 
 void
-adj_nbr_remove (fib_protocol_t nh_proto,
+adj_nbr_remove (adj_index_t ai,
+                fib_protocol_t nh_proto,
 		vnet_link_t link_type,
 		const ip46_address_t *nh_addr,
 		u32 sw_if_index)
@@ -87,6 +88,7 @@ adj_nbr_remove (fib_protocol_t nh_proto,
 	return;
 
     ADJ_NBR_SET_KEY(kv, link_type, nh_addr);
+    kv.value = ai;
 
     BV(clib_bihash_add_del) (adj_nbr_tables[nh_proto][sw_if_index], &kv, 0);
 }

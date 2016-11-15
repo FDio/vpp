@@ -6,22 +6,44 @@ ifndef VPP_PYTHON_PREFIX
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=scapy pexpect
+PYTHON_DEPENDS=scapy==2.3.3 pexpect
+SCAPY_SOURCE=$(WS_ROOT)/build-root/python/virtualenv/lib/python2.7/site-packages/
 
-test: wipe verify-python-path
+
+.pip-install.ok:
 	@virtualenv $(PYTHON_VENV_PATH)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
+	@touch $@
+
+.pip-patch.ok: .pip-install.ok
+	@echo --- patching ---
+	for f in $(CURDIR)/patches/scapy-2.3.3/*.patch ; do \
+		echo Applying patch: $$(basename $$f) ; \
+		patch -p1 -d $(SCAPY_SOURCE) < $$f ; \
+	done
+	@touch $@
+
+.install.ok: .pip-patch.ok
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/vpp-api/python && python setup.py install"
+	@touch $@
+
+PHONIES=.install.ok .pip-patch.ok .pip-install.ok
+.PHONY: $(PHONIES)
+
+test: reset verify-python-path .install.ok
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
 
-retest: wipe verify-python-path
+retest: reset verify-python-path
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
 
 .PHONY: wipe doc
 
-wipe:
+reset:
 	@rm -f /dev/shm/vpp-unittest-*
 	@rm -rf /tmp/vpp-unittest-*
+
+wipe: reset
+	@rm -f $(PHONIES)
 
 doc: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH)

@@ -58,15 +58,30 @@ format_vnet_interface_output_trace (u8 * s, va_list * va)
 
   if (t->sw_if_index != (u32) ~ 0)
     {
-      si = vnet_get_sw_interface (vnm, t->sw_if_index);
       indent = format_get_indent (s);
 
-      s = format (s, "%U\n%U%U",
-		  format_vnet_sw_interface_name, vnm, si,
-		  format_white_space, indent,
-		  node->format_buffer ? node->
-		  format_buffer : format_hex_bytes, t->data,
-		  sizeof (t->data));
+      if (pool_is_free_index
+	  (vnm->interface_main.sw_interfaces, t->sw_if_index))
+	{
+	  /* the interface may have been deleted by the time the trace is printed */
+	  s = format (s, "sw_if_index: %d\n%U%U",
+		      t->sw_if_index,
+		      format_white_space, indent,
+		      node->format_buffer ? node->
+		      format_buffer : format_hex_bytes, t->data,
+		      sizeof (t->data));
+	}
+      else
+	{
+	  si = vnet_get_sw_interface (vnm, t->sw_if_index);
+
+	  s = format (s, "%U\n%U%U",
+		      format_vnet_sw_interface_name, vnm, si,
+		      format_white_space, indent,
+		      node->format_buffer ? node->
+		      format_buffer : format_hex_bytes, t->data,
+		      sizeof (t->data));
+	}
     }
   return s;
 }
