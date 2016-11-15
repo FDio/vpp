@@ -311,7 +311,6 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 		  oeh0 = (ethernet_header_t *) o_b0->data;
 		  clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
 		  next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
-		  o_b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
 		  vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
 		    vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
 		}
