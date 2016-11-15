@@ -254,13 +254,6 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
  * on the tx_vector. If all packets are transmitted (the normal case), the
  * function returns 0.
  *
- * The tx_burst function may not be able to transmit all packets because the
- * dpdk ring is full. If a flowcontrol callback function has been configured
- * then the function simply returns. If no callback has been configured, the
- * function will retry calling tx_burst with the remaining packets. This will
- * continue until all packets are transmitted or tx_burst indicates no packets
- * could be transmitted. (The caller can drop the remaining packets.)
- *
  * The function assumes there is at least one packet on the tx_vector.
  */
 static_always_inline
@@ -297,21 +290,9 @@ static_always_inline
    * calls due to a ring wrap.
    */
   ASSERT (n_packets < xd->nb_tx_desc);
+  ASSERT (ring->tx_tail == 0);
 
-  /*
-   * If there is no flowcontrol callback, there is only temporary buffering
-   * on the tx_vector and so the tail should always be 0.
-   */
-  ASSERT (dm->flowcontrol_callback || ring->tx_tail == 0);
-
-  /*
-   * If there is a flowcontrol callback, don't retry any incomplete tx_bursts.
-   * Apply backpressure instead. If there is no callback, keep retrying until
-   * a tx_burst sends no packets. n_retry of 255 essentially means no retry
-   * limit.
-   */
-  n_retry = dm->flowcontrol_callback ? 0 : 255;
-
+  n_retry = 16;
   queue_id = vm->cpu_index;
 
   do
@@ -331,78 +312,25 @@ static_always_inline
 	    queue_id = (queue_id + 1) % xd->tx_q_used;
 	}
 
-      if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
+      if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
 	{
-	  if (PREDICT_TRUE (tx_head > tx_tail))
-	    {
-	      /* no wrap, transmit in one burst */
-	      dpdk_device_hqos_per_worker_thread_t *hqos =
-		&xd->hqos_wt[vm->cpu_index];
+	  /* no wrap, transmit in one burst */
+	  dpdk_device_hqos_per_worker_thread_t *hqos =
+	    &xd->hqos_wt[vm->cpu_index];
 
-	      dpdk_hqos_metadata_set (hqos,
-				      &tx_vector[tx_tail], tx_head - tx_tail);
-	      rv = rte_ring_sp_enqueue_burst (hqos->swq,
-					      (void **) &tx_vector[tx_tail],
-					      (uint16_t) (tx_head - tx_tail));
-	    }
-	  else
-	    {
-	      /*
-	       * This can only happen if there is a flowcontrol callback.
-	       * We need to split the transmit into two calls: one for
-	       * the packets up to the wrap point, and one to continue
-	       * at the start of the ring.
-	       * Transmit pkts up to the wrap point.
-	       */
-	      dpdk_device_hqos_per_worker_thread_t *hqos =
-		&xd->hqos_wt[vm->cpu_index];
-
-	      dpdk_hqos_metadata_set (hqos,
-				      &tx_vector[tx_tail],
-				      xd->nb_tx_desc - tx_tail);
-	      rv = rte_ring_sp_enqueue_burst (hqos->swq,
-					      (void **) &tx_vector[tx_tail],
-					      (uint16_t) (xd->nb_tx_desc -
-							  tx_tail));
-	      /*
-	       * If we transmitted everything we wanted, then allow 1 retry
-	       * so we can try to transmit the rest. If we didn't transmit
-	       * everything, stop now.
-	       */
-	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
-	    }
+	  dpdk_hqos_metadata_set (hqos,
+				  &tx_vector[tx_tail], tx_head - tx_tail);
+	  rv = rte_ring_sp_enqueue_burst (hqos->swq,
+					  (void **) &tx_vector[tx_tail],
+					  (uint16_t) (tx_head - tx_tail));
 	}
       else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
-	  if (PREDICT_TRUE (tx_head > tx_tail))
-	    {
-	      /* no wrap, transmit in one burst */
-	      rv = rte_eth_tx_burst (xd->device_index,
-				     (uint16_t) queue_id,
-				     &tx_vector[tx_tail],
-				     (uint16_t) (tx_head - tx_tail));
-	    }
-	  else
-	    {
-	      /*
-	       * This can only happen if there is a flowcontrol callback.
-	       * We need to split the transmit into two calls: one for
-	       * the packets up to the wrap point, and one to continue
-	       * at the start of the ring.
-	       * Transmit pkts up to the wrap point.
-	       */
-	      rv = rte_eth_tx_burst (xd->device_index,
-				     (uint16_t) queue_id,
-				     &tx_vector[tx_tail],
-				     (uint16_t) (xd->nb_tx_desc - tx_tail));
-
-	      /*
-	       * If we transmitted everything we wanted, then allow 1 retry
-	       * so we can try to transmit the rest. If we didn't transmit
-	       * everything, stop now.
-	       */
-	      n_retry = (rv == xd->nb_tx_desc - tx_tail) ? 1 : 0;
-	    }
+	  /* no wrap, transmit in one burst */
+	  rv = rte_eth_tx_burst (xd->device_index,
+				 (uint16_t) queue_id,
+				 &tx_vector[tx_tail],
+				 (uint16_t) (tx_head - tx_tail));
 	}
       else
 	{
@@ -436,58 +364,11 @@ static_always_inline
   return n_packets;
 }
 
-
-/*
- * This function transmits any packets on the interface's tx_vector and returns
- * the number of packets untransmitted on the tx_vector. If the tx_vector is
- * empty the function simply returns 0.
- *
- * It is intended to be called by a traffic manager which has flowed-off an
- * interface to see if the interface can be flowed-on again.
- */
-u32
-dpdk_interface_tx_vector (vlib_main_t * vm, u32 dev_instance)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd;
-  int queue_id;
-  struct rte_mbuf **tx_vector;
-  tx_ring_hdr_t *ring;
-
-  /* param is dev_instance and not hw_if_index to save another lookup */
-  xd = vec_elt_at_index (dm->devices, dev_instance);
-
-  queue_id = vm->cpu_index;
-  tx_vector = xd->tx_vectors[queue_id];
-
-  /* If no packets on the ring, don't bother calling tx function */
-  ring = vec_header (tx_vector, sizeof (*ring));
-  if (ring->tx_head == ring->tx_tail)
-    {
-      return 0;
-    }
-
-  return tx_burst_vector_internal (vm, xd, tx_vector);
-}
-
 /*
  * Transmits the packets on the frame to the interface associated with the
  * node. It first copies packets on the frame to a tx_vector containing the
  * rte_mbuf pointers. It then passes this vector to tx_burst_vector_internal
  * which calls the dpdk tx_burst function.
- *
- * The tx_vector is treated slightly differently depending on whether or
- * not a flowcontrol callback function has been configured. If there is no
- * callback, the tx_vector is a temporary array of rte_mbuf packet pointers.
- * Its entries are written and consumed before the function exits.
- *
- * If there is a callback then the transmit is being invoked in the presence
- * of a traffic manager. Here the tx_vector is treated like a ring of rte_mbuf
- * pointers. If not all packets can be transmitted, the untransmitted packets
- * stay on the tx_vector until the next call. The callback allows the traffic
- * manager to flow-off dequeues to the interface. The companion function
- * dpdk_interface_tx_vector() allows the traffic manager to detect when
- * it should flow-on the interface again.
  */
 static uword
 dpdk_interface_tx (vlib_main_t * vm,
@@ -745,46 +626,30 @@ dpdk_interface_tx (vlib_main_t * vm,
    */
   tx_pkts = n_on_ring - n_packets;
 
-  if (PREDICT_FALSE (dm->flowcontrol_callback != 0))
-    {
-      if (PREDICT_FALSE (n_packets))
-	{
-	  /* Callback may want to enable flowcontrol */
-	  dm->flowcontrol_callback (vm, xd->vlib_hw_if_index,
-				    ring->tx_head - ring->tx_tail);
-	}
-      else
-	{
-	  /* Reset head/tail to avoid unnecessary wrap */
-	  ring->tx_head = 0;
-	  ring->tx_tail = 0;
-	}
-    }
-  else
-    {
-      /* If there is no callback then drop any non-transmitted packets */
-      if (PREDICT_FALSE (n_packets))
-	{
-	  vlib_simple_counter_main_t *cm;
-	  vnet_main_t *vnm = vnet_get_main ();
+  {
+    /* If there is no callback then drop any non-transmitted packets */
+    if (PREDICT_FALSE (n_packets))
+      {
+	vlib_simple_counter_main_t *cm;
+	vnet_main_t *vnm = vnet_get_main ();
 
-	  cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
-				 VNET_INTERFACE_COUNTER_TX_ERROR);
+	cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
+			       VNET_INTERFACE_COUNTER_TX_ERROR);
 
-	  vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
-					 n_packets);
+	vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
+				       n_packets);
 
-	  vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
-			    n_packets);
+	vlib_error_count (vm, node->node_index, DPDK_TX_FUNC_ERROR_PKT_DROP,
+			  n_packets);
 
-	  while (n_packets--)
-	    rte_pktmbuf_free (tx_vector[ring->tx_tail + n_packets]);
-	}
+	while (n_packets--)
+	  rte_pktmbuf_free (tx_vector[ring->tx_tail + n_packets]);
+      }
 
-      /* Reset head/tail to avoid unnecessary wrap */
-      ring->tx_head = 0;
-      ring->tx_tail = 0;
-    }
+    /* Reset head/tail to avoid unnecessary wrap */
+    ring->tx_head = 0;
+    ring->tx_tail = 0;
+  }
 
   /* Recycle replicated buffers */
   if (PREDICT_FALSE (vec_len (dm->recycle[my_cpu])))
@@ -981,21 +846,7 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (dpdk_device_class, dpdk_interface_tx)
 /* *INDENT-ON* */
 
-void
-dpdk_set_flowcontrol_callback (vlib_main_t * vm,
-			       dpdk_flowcontrol_callback_t callback)
-{
-  dpdk_main.flowcontrol_callback = callback;
-}
-
 #define UP_DOWN_FLAG_EVENT 1
-
-
-u32
-dpdk_get_admin_up_down_in_progress (void)
-{
-  return dpdk_main.admin_up_down_in_progress;
-}
 
 uword
 admin_up_down_process (vlib_main_t * vm,
@@ -1048,99 +899,6 @@ VLIB_REGISTER_NODE (admin_up_down_process_node,static) = {
     .process_log2_n_stack_bytes = 17,  // 256KB
 };
 /* *INDENT-ON* */
-
-/*
- * Asynchronously invoke vnet_sw_interface_set_flags via the admin_up_down
- * process. Useful for avoiding long blocking delays (>150ms) in the dpdk
- * drivers.
- * WARNING: when posting this event, no other interface-related calls should
- * be made (e.g. vnet_create_sw_interface()) while the event is being
- * processed (admin_up_down_in_progress). This is required in order to avoid
- * race conditions in manipulating interface data structures.
- */
-void
-post_sw_interface_set_flags (vlib_main_t * vm, u32 sw_if_index, u32 flags)
-{
-  uword *d = vlib_process_signal_event_data
-    (vm, admin_up_down_process_node.index,
-     UP_DOWN_FLAG_EVENT, 2, sizeof (u32));
-  d[0] = sw_if_index;
-  d[1] = flags;
-}
-
-/*
- * Return a copy of the DPDK port stats in dest.
- */
-clib_error_t *
-dpdk_get_hw_interface_stats (u32 hw_if_index, struct rte_eth_stats *dest)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-  dpdk_device_t *xd = vec_elt_at_index (dm->devices, hi->dev_instance);
-
-  if (!dest)
-    {
-      return clib_error_return (0, "Missing or NULL argument");
-    }
-  if (!xd)
-    {
-      return clib_error_return (0,
-				"Unable to get DPDK device from HW interface");
-    }
-
-  dpdk_update_counters (xd, vlib_time_now (dm->vlib_main));
-
-  clib_memcpy (dest, &xd->stats, sizeof (xd->stats));
-  return (0);
-}
-
-/*
- * Return the number of dpdk mbufs
- */
-u32
-dpdk_num_mbufs (void)
-{
-  dpdk_main_t *dm = &dpdk_main;
-
-  return dm->conf->num_mbufs;
-}
-
-/*
- * Return the pmd type for a given hardware interface
- */
-dpdk_pmd_t
-dpdk_get_pmd_type (vnet_hw_interface_t * hi)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd;
-
-  assert (hi);
-
-  xd = vec_elt_at_index (dm->devices, hi->dev_instance);
-
-  assert (xd);
-
-  return xd->pmd;
-}
-
-/*
- * Return the cpu socket for a given hardware interface
- */
-i8
-dpdk_get_cpu_socket (vnet_hw_interface_t * hi)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_t *xd;
-
-  assert (hi);
-
-  xd = vec_elt_at_index (dm->devices, hi->dev_instance);
-
-  assert (xd);
-
-  return xd->cpu_socket;
-}
 
 /*
  * fd.io coding-style-patch-verification: ON

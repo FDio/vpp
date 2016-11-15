@@ -119,7 +119,6 @@ typedef struct
   u64 enqueue_ticks;
   u64 enqueue_vectors;
   u32 enqueue_full_events;
-  u32 enqueue_efd_discards;
 
   /* dequeue side */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -249,25 +248,6 @@ do {                                                                    \
     vec_free (__vlib_mains);                                            \
 } while (0);
 
-
-/* Early-Fast-Discard (EFD) */
-#define VLIB_EFD_DISABLED                   0
-#define VLIB_EFD_DISCARD_ENABLED            (1 << 0)
-#define VLIB_EFD_MONITOR_ENABLED            (1 << 1)
-
-#define VLIB_EFD_DEF_WORKER_HI_THRESH_PCT   90
-
-/* EFD worker thread settings */
-typedef struct vlib_efd_t
-{
-  u16 enabled;
-  u16 queue_hi_thresh;
-  u8 ip_prec_bitmap;
-  u8 mpls_exp_bitmap;
-  u8 vlan_cos_bitmap;
-  u8 pad;
-} vlib_efd_t;
-
 #define foreach_sched_policy \
   _(SCHED_OTHER, OTHER, "other") \
   _(SCHED_BATCH, BATCH, "batch") \
@@ -327,8 +307,6 @@ typedef struct
 
   /* Bitmap of available CPU sockets (NUMA nodes) */
   uword *cpu_socket_bitmap;
-
-  vlib_efd_t efd;
 
   /* Worker handoff queues */
   vlib_frame_queue_main_t *frame_queue_mains;
