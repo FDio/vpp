@@ -89,7 +89,8 @@ _(EXCEEDED_NUMBER_OF_RANGES_CAPACITY, -95, "Operation would exceed configured ca
 _(EXCEEDED_NUMBER_OF_PORTS_CAPACITY, -96, "Operation would exceed capacity of number of ports") \
 _(INVALID_ADDRESS_FAMILY, -97, "Invalid address family")                \
 _(INVALID_SUB_SW_IF_INDEX, -98, "Invalid sub-interface sw_if_index")    \
-_(TABLE_TOO_BIG, -99, "Table too big")
+_(TABLE_TOO_BIG, -99, "Table too big")                                  \
+_(CANNOT_ENABLE_DISABLE_FEATURE, -100, "Cannot enable/disable feature")
 
 typedef enum
 {
