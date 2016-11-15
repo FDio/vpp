@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_b7daaa15",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 9326,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-15T01:20:40Z",
+      "side": 1,
+      "message": "Need to still support \"action %d\" and \"metadata %d\" input method so it can take custom_dump output",
+      "range": {
+        "startLine": 9326,
+        "startChar": 40,
+        "endLine": 9326,
+        "endChar": 43
+      },
+      "revId": "b122d43e3f022f5a1b5e10b9c2dbde9fb19ed10f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_d7cd365f",
+        "filename": "vpp/vpp-api/custom_dump.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1250,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-15T01:20:40Z",
+      "side": 1,
+      "message": "If this generate raw action and metadata field value like this, then the VAT CLI should also accept these as input method. Meaning you need to support both users friendly version as well as the raw data version to accept the output from custom_dump.",
+      "range": {
+        "startLine": 1250,
+        "startChar": 24,
+        "endLine": 1250,
+        "endChar": 25
+      },
+      "revId": "b122d43e3f022f5a1b5e10b9c2dbde9fb19ed10f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
