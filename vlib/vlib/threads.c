@@ -287,10 +287,6 @@ vlib_thread_init (vlib_main_t * vm)
   vec_validate_aligned (vlib_worker_threads, first_index - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-
-  tm->efd.enabled = VLIB_EFD_DISABLED;
-  tm->efd.queue_hi_thresh = ((VLIB_EFD_DEF_WORKER_HI_THRESH_PCT *
-			      FRAME_QUEUE_NELTS) / 100);
   return 0;
 }
 

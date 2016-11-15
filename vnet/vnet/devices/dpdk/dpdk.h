@@ -124,30 +124,6 @@ typedef enum
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
-typedef struct
-{
-  f64 deadline;
-  vlib_frame_t *frame;
-} dpdk_frame_t;
-
-#define DPDK_EFD_MAX_DISCARD_RATE 10
-
-typedef struct
-{
-  u16 last_burst_sz;
-  u16 max_burst_sz;
-  u32 full_frames_cnt;
-  u32 consec_full_frames_cnt;
-  u32 congestion_cnt;
-  u64 last_poll_time;
-  u64 max_poll_delay;
-  u32 discard_cnt;
-  u32 total_packet_cnt;
-} dpdk_efd_agent_t;
-
-typedef void (*dpdk_flowcontrol_callback_t) (vlib_main_t * vm,
-					     u32 hw_if_index, u32 n_packets);
-
 /*
  * The header for the tx_vector in dpdk_device_t.
  * Head and tail are indexes into the tx_vector and are of type
@@ -253,8 +229,6 @@ typedef struct
   struct rte_eth_xstat *last_cleared_xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
-
-  dpdk_efd_agent_t efd_agent;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -284,23 +258,6 @@ typedef struct
   u32 device;
   u16 queue_id;
 } dpdk_device_and_queue_t;
-
-/* Early-Fast-Discard (EFD) */
-#define DPDK_EFD_DISABLED                       0
-#define DPDK_EFD_DISCARD_ENABLED                (1 << 0)
-#define DPDK_EFD_MONITOR_ENABLED                (1 << 1)
-#define DPDK_EFD_DROPALL_ENABLED                (1 << 2)
-
-#define DPDK_EFD_DEFAULT_DEVICE_QUEUE_HI_THRESH_PCT    90
-#define DPDK_EFD_DEFAULT_CONSEC_FULL_FRAMES_HI_THRESH  6
-
-typedef struct dpdk_efd_t
-{
-  u16 enabled;
-  u16 queue_hi_thresh;
-  u16 consec_full_frames_hi_thresh;
-  u16 pad;
-} dpdk_efd_t;
 
 #ifndef DPDK_HQOS_DBG_BYPASS
 #define DPDK_HQOS_DBG_BYPASS 0
@@ -413,9 +370,6 @@ typedef struct
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
 
-  /* flow control callback. If 0 then flow control is disabled */
-  dpdk_flowcontrol_callback_t flowcontrol_callback;
-
   /* vlib buffer free list, must be same size as an rte_mbuf */
   u32 vlib_buffer_free_list_index;
 
@@ -440,9 +394,6 @@ typedef struct
   uword *vu_sw_if_index_by_listener_fd;
   uword *vu_sw_if_index_by_sock_fd;
   u32 *vu_inactive_interfaces_device_index;
-
-  /* efd (early-fast-discard) settings */
-  dpdk_efd_t efd;
 
   /*
    * flag indicating that a posted admin up/down
@@ -506,12 +457,7 @@ void dpdk_thread_input (dpdk_main_t * dm, dpdk_device_t * xd);
 
 clib_error_t *dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd);
 
-void dpdk_set_flowcontrol_callback (vlib_main_t * vm,
-				    dpdk_flowcontrol_callback_t callback);
-
 u32 dpdk_interface_tx_vector (vlib_main_t * vm, u32 dev_instance);
-
-void set_efd_bitmap (u8 * bitmap, u32 value, u32 op);
 
 struct rte_mbuf *dpdk_replicate_packet_mb (vlib_buffer_t * b);
 struct rte_mbuf *dpdk_zerocopy_replicate_packet_mb (vlib_buffer_t * b);
@@ -524,11 +470,7 @@ struct rte_mbuf *dpdk_zerocopy_replicate_packet_mb (vlib_buffer_t * b);
   _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
   _(RX_ALLOC_FAIL, "rx buf alloc from free list failed")		\
   _(RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")		\
-  _(RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")        \
-  _(IPV4_EFD_DROP_PKTS, "IPV4 Early Fast Discard rx drops")             \
-  _(IPV6_EFD_DROP_PKTS, "IPV6 Early Fast Discard rx drops")             \
-  _(MPLS_EFD_DROP_PKTS, "MPLS Early Fast Discard rx drops")             \
-  _(VLAN_EFD_DROP_PKTS, "VLAN Early Fast Discard rx drops")
+  _(RX_ALLOC_DROP_PKTS, "rx packets dropped due to alloc error")
 
 typedef enum
 {
@@ -538,27 +480,11 @@ typedef enum
     DPDK_N_ERROR,
 } dpdk_error_t;
 
-/*
- * Increment EFD drop counter
- */
-static_always_inline void
-increment_efd_drop_counter (vlib_main_t * vm, u32 counter_index, u32 count)
-{
-  vlib_node_t *my_n;
-
-  my_n = vlib_get_node (vm, dpdk_input_node.index);
-  vm->error_main.counters[my_n->error_heap_index + counter_index] += count;
-}
-
 int dpdk_set_stat_poll_interval (f64 interval);
 int dpdk_set_link_state_poll_interval (f64 interval);
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 void dpdk_device_lock_init (dpdk_device_t * xd);
 void dpdk_device_lock_free (dpdk_device_t * xd);
-void dpdk_efd_update_counters (dpdk_device_t * xd, u32 n_buffers,
-			       u16 enabled);
-u32 is_efd_discardable (vlib_thread_main_t * tm, vlib_buffer_t * b0,
-			struct rte_mbuf *mb);
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
@@ -580,27 +506,8 @@ void dpdk_rx_trace (dpdk_main_t * dm,
 #define EFD_OPERATION_LESS_THAN          0
 #define EFD_OPERATION_GREATER_OR_EQUAL   1
 
-void efd_config (u32 enabled,
-		 u32 ip_prec, u32 ip_op,
-		 u32 mpls_exp, u32 mpls_op, u32 vlan_cos, u32 vlan_op);
-
-void post_sw_interface_set_flags (vlib_main_t * vm, u32 sw_if_index,
-				  u32 flags);
-
-u32 dpdk_get_admin_up_down_in_progress (void);
-
-u32 dpdk_num_mbufs (void);
-
-dpdk_pmd_t dpdk_get_pmd_type (vnet_hw_interface_t * hi);
-
-i8 dpdk_get_cpu_socket (vnet_hw_interface_t * hi);
-
 void *dpdk_input_multiarch_select ();
 void *dpdk_input_rss_multiarch_select ();
-void *dpdk_input_efd_multiarch_select ();
-
-clib_error_t *dpdk_get_hw_interface_stats (u32 hw_if_index,
-					   struct rte_eth_stats *dest);
 
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
