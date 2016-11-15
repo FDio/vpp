@@ -526,9 +526,6 @@ fill_free_list (vlib_main_t * vm,
 
       ASSERT (rte_mbuf_refcnt_read (mb) == 0);
       rte_mbuf_refcnt_set (mb, 1);
-      mb->next = NULL;
-      mb->data_off = RTE_PKTMBUF_HEADROOM;
-      mb->nb_segs = 1;
 
       b = vlib_buffer_from_rte_mbuf (mb);
       bi = vlib_get_buffer_index (vm, b);
@@ -866,12 +863,6 @@ vlib_packet_template_get_packet (vlib_main_t * vm,
 	       t->packet_data, vec_len (t->packet_data));
   b->current_length = vec_len (t->packet_data);
 
-  /* Fix up mbuf header length fields */
-  struct rte_mbuf *mb;
-  mb = rte_mbuf_from_vlib_buffer (b);
-  mb->data_len = b->current_length;
-  mb->pkt_len = b->current_length;
-
   return b->data;
 }
 
@@ -966,31 +957,6 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
       copied += len;
     }
   return copied;
-}
-
-/*
- * Fills in the required rte_mbuf fields for chained buffers given a VLIB chain.
- */
-void
-vlib_buffer_chain_validate (vlib_main_t * vm, vlib_buffer_t * b_first)
-{
-  vlib_buffer_t *b = b_first, *prev = b_first;
-  struct rte_mbuf *mb_prev, *mb, *mb_first;
-
-  mb_first = rte_mbuf_from_vlib_buffer (b_first);
-
-  mb_first->pkt_len = mb_first->data_len = b_first->current_length;
-  while (b->flags & VLIB_BUFFER_NEXT_PRESENT)
-    {
-      b = vlib_get_buffer (vm, b->next_buffer);
-      mb = rte_mbuf_from_vlib_buffer (b);
-      mb_prev = rte_mbuf_from_vlib_buffer (prev);
-      mb_first->nb_segs++;
-      mb_first->pkt_len += b->current_length;
-      mb_prev->next = mb;
-      mb->data_len = b->current_length;
-      prev = b;
-    }
 }
 
 clib_error_t *

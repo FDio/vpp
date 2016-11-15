@@ -25,6 +25,7 @@
 #include <vppinfra/elog.h>
 #include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/devices/devices.h>
 #include <vnet/ip/ip.h>
 #include <vnet/pg/pg.h>
 #include <vlibmemory/unix_shared_memory_queue.h>

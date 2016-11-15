@@ -23,10 +23,6 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 
-#if DPDK==1
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
-
 /**
  * @file
  * @brief IPv6 Neighbor Adjacency and Neighbor Discovery.
@@ -317,7 +313,6 @@ typedef struct {
   ip6_address_t addr;
 } ip6_neighbor_set_unset_rpc_args_t;
 
-#if DPDK > 0
 static void ip6_neighbor_set_unset_rpc_callback 
 ( ip6_neighbor_set_unset_rpc_args_t * a);
 
@@ -340,7 +335,6 @@ static void set_unset_ip6_neighbor_rpc
   vl_api_rpc_call_main_thread (ip6_neighbor_set_unset_rpc_callback,
                                (u8 *) &args, sizeof (args));
 }
-#endif
 
 static void
 ip6_nbr_probe (ip_adjacency_t *adj)
@@ -538,14 +532,12 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   u32 next_index;
   pending_resolution_t * pr, * mc;
 
-#if DPDK > 0
   if (os_get_cpu_number())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
                                   1 /* set new neighbor */, is_static);
       return 0;
     }
-#endif
 
   k.sw_if_index = sw_if_index;
   k.ip6_address = a[0];
@@ -687,14 +679,12 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   uword * p;
   int rv = 0;
 
-#if DPDK > 0
   if (os_get_cpu_number())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
                                   0 /* unset */, 0);
       return 0;
     }
-#endif
 
   k.sw_if_index = sw_if_index;
   k.ip6_address = a[0];
@@ -722,7 +712,6 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   return rv;
 }
 
-#if DPDK > 0
 static void ip6_neighbor_set_unset_rpc_callback 
 ( ip6_neighbor_set_unset_rpc_args_t * a)
 {
@@ -734,7 +723,6 @@ static void ip6_neighbor_set_unset_rpc_callback
     vnet_unset_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr, 
                                       a->link_layer_address, 6);
 }
-#endif
 
 static int
 ip6_neighbor_sort (void *a1, void *a2)

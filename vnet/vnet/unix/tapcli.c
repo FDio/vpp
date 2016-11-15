@@ -39,10 +39,6 @@
 
 #include <vnet/ethernet/ethernet.h>
 
-#if DPDK == 1
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
-
 #include <vnet/feature/feature.h>
 #include <vnet/devices/devices.h>
 #include <vnet/unix/tapcli.h>
@@ -342,9 +338,6 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
     b_first->total_length_not_including_first_buffer =
         (n_bytes_in_packet > buffer_size) ? n_bytes_in_packet - buffer_size : 0;
     b_first->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
-
-    /* Ensure mbufs are updated */
-    vlib_buffer_chain_validate(vm, b_first);
 
     VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b_first);
 
