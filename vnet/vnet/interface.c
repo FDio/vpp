@@ -818,14 +818,9 @@ vnet_register_interface (vnet_main_t * vnm,
       }
       hw->output_node_index = vlib_register_node (vm, &r);
 
-#define _(sym,str) vlib_node_add_named_next_with_slot (vm, \
-                     hw->output_node_index, str,           \
-                     VNET_INTERFACE_OUTPUT_NEXT_##sym);
-      foreach_intf_output_feat
-#undef _
-	vlib_node_add_named_next_with_slot (vm, hw->output_node_index,
-					    "error-drop",
-					    VNET_INTERFACE_OUTPUT_NEXT_DROP);
+      vlib_node_add_named_next_with_slot (vm, hw->output_node_index,
+					  "error-drop",
+					  VNET_INTERFACE_OUTPUT_NEXT_DROP);
       vlib_node_add_next_with_slot (vm, hw->output_node_index,
 				    hw->tx_node_index,
 				    VNET_INTERFACE_OUTPUT_NEXT_TX);
@@ -1210,34 +1205,6 @@ vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance)
 
   hash_set_mem (im->hw_interface_by_name, hi->name, hi->hw_if_index);
   return rv;
-}
-
-int
-vnet_interface_add_del_feature (vnet_main_t * vnm,
-				vlib_main_t * vm,
-				u32 sw_if_index,
-				intf_output_feat_t feature, int is_add)
-{
-  vnet_sw_interface_t *sw;
-
-  sw = vnet_get_sw_interface (vnm, sw_if_index);
-
-  if (is_add)
-    {
-
-      sw->output_feature_bitmap |= (1 << feature);
-      sw->output_feature_bitmap |= (1 << INTF_OUTPUT_FEAT_DONE);
-
-    }
-  else
-    {				/* delete */
-
-      sw->output_feature_bitmap &= ~(1 << feature);
-      if (sw->output_feature_bitmap == (1 << INTF_OUTPUT_FEAT_DONE))
-	sw->output_feature_bitmap = 0;
-
-    }
-  return 0;
 }
 
 clib_error_t *

@@ -100,8 +100,7 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	  t0 = pool_elt_at_index (im->tunnel_interfaces, hi0->dev_instance);
-	  vnet_buffer (b0)->output_features.ipsec_sad_index =
-	    t0->output_sa_index;
+	  vnet_buffer (b0)->ipsec.sad_index = t0->output_sa_index;
 	  next0 = IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))

@@ -78,7 +78,7 @@ _(gre)                                          \
 _(l2_classify)                                  \
 _(handoff)                                      \
 _(policer)                                      \
-_(output_features)				\
+_(ipsec)					\
 _(map)						\
 _(map_t)					\
 _(ip_frag)
@@ -203,11 +203,9 @@ typedef struct
     /* interface output features */
     struct
     {
-      u32 ipsec_flags;
-      u32 ipsec_sad_index;
-      u32 unused[3];
-      u32 bitmap;
-    } output_features;
+      u32 flags;
+      u32 sad_index;
+    } ipsec;
 
     /* vcgn udp inside input, only valid there */
     struct

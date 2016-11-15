@@ -111,9 +111,8 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ipsec_tunnel_if_t *t;
 	      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
-	      vnet_buffer (b0)->output_features.ipsec_sad_index =
-		t->input_sa_index;
-	      vnet_buffer (b0)->output_features.ipsec_flags =
+	      vnet_buffer (b0)->ipsec.sad_index = t->input_sa_index;
+	      vnet_buffer (b0)->ipsec.flags =
 		t->hw_if_index == ~0 ? IPSEC_FLAG_IPSEC_GRE_TUNNEL : 0;
 	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 	      next0 = IPSEC_IF_INPUT_NEXT_ESP_DECRYPT;

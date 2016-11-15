@@ -254,9 +254,8 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		{
 		  p0->counter.packets++;
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
-		  vnet_buffer (b0)->output_features.ipsec_sad_index =
-		    p0->sa_index;
-		  vnet_buffer (b0)->output_features.ipsec_flags = 0;
+		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
+		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = IPSEC_INPUT_NEXT_ESP_DECRYPT;
 		  vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 		  goto trace0;
@@ -385,9 +384,8 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 		  p0->counter.bytes +=
 		    clib_net_to_host_u16 (ip0->payload_length);
 		  p0->counter.bytes += header_size;
-		  vnet_buffer (b0)->output_features.ipsec_sad_index =
-		    p0->sa_index;
-		  vnet_buffer (b0)->output_features.ipsec_flags = 0;
+		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
+		  vnet_buffer (b0)->ipsec.flags = 0;
 		  next0 = IPSEC_INPUT_NEXT_ESP_DECRYPT;
 		  vlib_buffer_advance (b0, header_size);
 		  goto trace0;

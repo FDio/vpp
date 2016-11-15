@@ -211,8 +211,8 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 	  vnet_buffer (b1)->sw_if_index[VLIB_RX] =
 	    vnet_buffer (b1)->sw_if_index[VLIB_TX];
 
-	  vnet_buffer (b0)->output_features.ipsec_sad_index = t->local_sa;
-	  vnet_buffer (b1)->output_features.ipsec_sad_index = t->local_sa;
+	  vnet_buffer (b0)->ipsec.sad_index = t->local_sa;
+	  vnet_buffer (b1)->ipsec.sad_index = t->local_sa;
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
@@ -288,7 +288,7 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	    vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  vnet_buffer (b0)->output_features.ipsec_sad_index = t->local_sa;
+	  vnet_buffer (b0)->ipsec.sad_index = t->local_sa;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  next0 = IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT;

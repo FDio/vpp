@@ -191,7 +191,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	  next0 = ESP_ENCRYPT_NEXT_DROP;
 
 	  i_b0 = vlib_get_buffer (vm, i_bi0);
-	  sa_index0 = vnet_buffer (i_b0)->output_features.ipsec_sad_index;
+	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
@@ -314,8 +314,6 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 		  o_b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
 		  vnet_buffer (o_b0)->sw_if_index[VLIB_TX] =
 		    vnet_buffer (i_b0)->sw_if_index[VLIB_TX];
-		  vnet_buffer (o_b0)->output_features.bitmap =
-		    vnet_buffer (i_b0)->output_features.bitmap;
 		}
 	      vlib_buffer_advance (i_b0, ip_hdr_size);
 	    }

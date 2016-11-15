@@ -284,7 +284,7 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 	  i_b0 = vlib_get_buffer (vm, i_bi0);
 	  esp0 = vlib_buffer_get_current (i_b0);
 
-	  sa_index0 = vnet_buffer (i_b0)->output_features.ipsec_sad_index;
+	  sa_index0 = vnet_buffer (i_b0)->ipsec.sad_index;
 	  sa0 = pool_elt_at_index (im->sad, sa_index0);
 
 	  seq = clib_host_to_net_u32 (esp0->seq);
@@ -483,7 +483,7 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 
 	      /* for IPSec-GRE tunnel next node is ipsec-gre-input */
 	      if (PREDICT_FALSE
-		  ((vnet_buffer (i_b0)->output_features.ipsec_flags) &
+		  ((vnet_buffer (i_b0)->ipsec.flags) &
 		   IPSEC_FLAG_IPSEC_GRE_TUNNEL))
 		next0 = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 

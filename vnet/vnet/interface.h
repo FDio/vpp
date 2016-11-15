@@ -511,8 +511,6 @@ typedef struct
 
   u32 link_speed;
 
-  u32 output_feature_bitmap;
-
   union
   {
     /* VNET_SW_INTERFACE_TYPE_HARDWARE. */
@@ -606,30 +604,6 @@ vnet_interface_counter_unlock (vnet_interface_main_t * im)
 void vnet_pcap_drop_trace_filter_add_del (u32 error_index, int is_add);
 
 int vnet_interface_name_renumber (u32 sw_if_index, u32 new_show_dev_instance);
-
-
-/*
- *  Output features
- */
-
-#define foreach_intf_output_feat \
- _(IPSEC, "ipsec-output")
-
-/* Feature bitmap positions */
-typedef enum
-{
-#define _(sym,str) INTF_OUTPUT_FEAT_##sym,
-  foreach_intf_output_feat
-#undef _
-    INTF_OUTPUT_N_FEAT,
-} intf_output_feat_t;
-
-/* flag that we are done with feature path */
-#define INTF_OUTPUT_FEAT_DONE INTF_OUTPUT_N_FEAT
-
-int vnet_interface_add_del_feature (struct vnet_main_t *vnm, vlib_main_t * vm,
-				    u32 sw_if_index,
-				    intf_output_feat_t feature, int is_add);
 
 #endif /* included_vnet_interface_h */
 

@@ -400,11 +400,10 @@ vnet_interface_output_node (vlib_main_t * vm,
 VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node);
 CLIB_MULTIARCH_SELECT_FN (vnet_interface_output_node);
 
-always_inline uword
-vnet_interface_output_node_no_flatten_inline (vlib_main_t * vm,
-					      vlib_node_runtime_t * node,
-					      vlib_frame_t * frame,
-					      int with_features)
+uword
+vnet_interface_output_node_no_flatten (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
@@ -469,7 +468,6 @@ vnet_interface_output_node_no_flatten_inline (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  u32 tx_swif0, tx_swif1;
-	  u32 next0, next1;
 
 	  /* Prefetch next iteration. */
 	  vlib_prefetch_buffer_with_index (vm, from[2], LOAD);
@@ -498,60 +496,25 @@ vnet_interface_output_node_no_flatten_inline (vlib_main_t * vm,
 
 	  n_bytes += n_bytes_b0 + n_bytes_b1;
 	  n_packets += 2;
-	  if (with_features)
-	    {
-	      b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
-	      vnet_buffer (b0)->output_features.bitmap =
-		si->output_feature_bitmap;
-	      count_trailing_zeros (next0,
-				    vnet_buffer (b0)->output_features.bitmap);
-	      vnet_buffer (b0)->output_features.bitmap &= ~(1 << next0);
-	    }
-	  else
-	    {
-	      next0 = VNET_INTERFACE_OUTPUT_NEXT_TX;
-	      vnet_buffer (b0)->output_features.bitmap = 0;
 
-	      if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
-		{
-		  /* update vlan subif tx counts, if required */
-		  vlib_increment_combined_counter (im->combined_sw_if_counters
-						   +
-						   VNET_INTERFACE_COUNTER_TX,
-						   cpu_index, tx_swif0, 1,
-						   n_bytes_b0);
-		}
-	    }
-
-	  if (with_features)
+	  if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
 	    {
-	      b1->flags |= BUFFER_OUTPUT_FEAT_DONE;
-	      vnet_buffer (b1)->output_features.bitmap =
-		si->output_feature_bitmap;
-	      count_trailing_zeros (next1,
-				    vnet_buffer (b1)->output_features.bitmap);
-	      vnet_buffer (b1)->output_features.bitmap &= ~(1 << next1);
-	    }
-	  else
-	    {
-	      next1 = VNET_INTERFACE_OUTPUT_NEXT_TX;
-	      vnet_buffer (b1)->output_features.bitmap = 0;
-
 	      /* update vlan subif tx counts, if required */
-	      if (PREDICT_FALSE (tx_swif1 != rt->sw_if_index))
-		{
-
-		  vlib_increment_combined_counter (im->combined_sw_if_counters
-						   +
-						   VNET_INTERFACE_COUNTER_TX,
-						   cpu_index, tx_swif1, 1,
-						   n_bytes_b1);
-		}
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       VNET_INTERFACE_COUNTER_TX,
+					       cpu_index, tx_swif0, 1,
+					       n_bytes_b0);
 	    }
-	  if (with_features)
-	    vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_tx,
-					     n_left_to_tx, bi0, bi1, next0,
-					     next1);
+
+	  /* update vlan subif tx counts, if required */
+	  if (PREDICT_FALSE (tx_swif1 != rt->sw_if_index))
+	    {
+
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       VNET_INTERFACE_COUNTER_TX,
+					       cpu_index, tx_swif1, 1,
+					       n_bytes_b1);
+	    }
 	}
 
       while (from + 1 <= from_end && n_left_to_tx >= 1)
@@ -577,31 +540,13 @@ vnet_interface_output_node_no_flatten_inline (vlib_main_t * vm,
 	  n_bytes += n_bytes_b0;
 	  n_packets += 1;
 
-	  if (with_features)
+	  if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
 	    {
-	      u32 next0;
-	      b0->flags |= BUFFER_OUTPUT_FEAT_DONE;
-	      vnet_buffer (b0)->output_features.bitmap =
-		si->output_feature_bitmap;
-	      count_trailing_zeros (next0,
-				    vnet_buffer (b0)->output_features.bitmap);
-	      vnet_buffer (b0)->output_features.bitmap &= ~(1 << next0);
-	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_tx,
-					       n_left_to_tx, bi0, next0);
-	    }
-	  else
-	    {
-	      vnet_buffer (b0)->output_features.bitmap = 0;
 
-	      if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
-		{
-
-		  vlib_increment_combined_counter (im->combined_sw_if_counters
-						   +
-						   VNET_INTERFACE_COUNTER_TX,
-						   cpu_index, tx_swif0, 1,
-						   n_bytes_b0);
-		}
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       VNET_INTERFACE_COUNTER_TX,
+					       cpu_index, tx_swif0, 1,
+					       n_bytes_b0);
 	    }
 	}
 
@@ -614,31 +559,6 @@ vnet_interface_output_node_no_flatten_inline (vlib_main_t * vm,
 				   cpu_index,
 				   rt->sw_if_index, n_packets, n_bytes);
   return n_buffers;
-}
-
-uword
-vnet_interface_output_node_no_flatten (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
-  vnet_sw_interface_t *si;
-  si = vnet_get_sw_interface (vnm, rt->sw_if_index);
-
-  if (PREDICT_FALSE (si->output_feature_bitmap))
-    {
-      /* if first pakcet in the frame have BUFFER_OUTPUT_FEAT_DONE flag set
-         then whole frame is arriving from feature node */
-
-      u32 *from = vlib_frame_args (frame);
-      vlib_buffer_t *b = vlib_get_buffer (vm, from[0]);
-
-      if ((b->flags & BUFFER_OUTPUT_FEAT_DONE) == 0)
-	return vnet_interface_output_node_no_flatten_inline (vm, node, frame,
-							     1);
-    }
-  return vnet_interface_output_node_no_flatten_inline (vm, node, frame, 0);
 }
 
 VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node_no_flatten);
