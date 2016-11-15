@@ -219,38 +219,39 @@ clib_error_t *
 vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 		   int is_add)
 {
-  /* For now we only support adding specific UDP port punt */
-  {
-    if (!is_add)
-      return clib_error_return (0, "punt delete is not supported yet");
+  /* For now we only support UDP punt */
+  if (protocol != IP_PROTOCOL_UDP)
+    return clib_error_return (0,
+			      "only UDP protocol (%d) is supported, got %d",
+			      IP_PROTOCOL_UDP, protocol);
 
-    if (protocol != IP_PROTOCOL_UDP)
-      return clib_error_return (0,
-				"only UDP protocol (%d) is supported, got %d",
-				IP_PROTOCOL_UDP, protocol);
+  if (ipv != (u8) ~ 0 && ipv != 4 && ipv != 6)
+    return clib_error_return (0, "IP version must be 4 or 6, got %d", ipv);
 
-    if (port == (u16) ~ 0)
-      return clib_error_return (0, "TCP/UDP port must be specified");
-  }
-
-  if (ipv != (u8) ~ 0)
+  if (port == (u16) ~ 0)
     {
-      if (ipv == 4)
+      if (ipv == 4 || ipv == (u8) ~ 0)
+	udp_punt_unknown (vm, 1, is_add);
+
+      if (ipv == 6 || ipv == (u8) ~ 0)
+	udp_punt_unknown (vm, 0, is_add);
+
+      return 0;
+    }
+
+  else if (is_add)
+    {
+      if (ipv == 4 || ipv == (u8) ~ 0)
 	udp_register_dst_port (vm, port, udp4_punt_node.index, 1);
-      else if (ipv == 6)
+
+      if (ipv == 6 || ipv == (u8) ~ 0)
 	udp_register_dst_port (vm, port, udp6_punt_node.index, 0);
-      else
-	return clib_error_return (0, "IP version must be 4 or 6, got %d",
-				  ipv);
+
+      return 0;
     }
+
   else
-    {
-      udp_register_dst_port (vm, port, udp4_punt_node.index, 1);
-      udp_register_dst_port (vm, port, udp6_punt_node.index, 0);
-    }
-
-  return 0;
-
+    return clib_error_return (0, "punt delete is not supported yet");
 }
 
 static clib_error_t *
@@ -265,6 +266,13 @@ udp_punt_cli (vlib_main_t * vm,
     {
       if (unformat (input, "del"))
 	is_add = 0;
+      if (unformat (input, "all"))
+	{
+	  /* punt both IPv6 and IPv4 when used in CLI */
+	  error = vnet_punt_add_del (vm, ~0, IP_PROTOCOL_UDP, ~0, is_add);
+	  if (error)
+	    clib_error_report (error);
+	}
       else if (unformat (input, "%d", &udp_port))
 	{
 	  /* punt both IPv6 and IPv4 when used in CLI */
@@ -284,7 +292,6 @@ udp_punt_cli (vlib_main_t * vm,
  *
  * @em Note
  * - UDP is the only protocol supported in the current implementation
- * - When requesting UDP punt port number(s) must be specified
  * - All TCP traffic is currently punted to the host by default
  *
  * @cliexpar
@@ -292,12 +299,17 @@ udp_punt_cli (vlib_main_t * vm,
  * Example of how to request NTP traffic to be punted
  * @cliexcmd{set punt udp 125}
  *
+ * Example of how to request all 'unknown' UDP traffic to be punted
+ * @cliexcmd{set punt udp all}
+ *
+ * Example of how to stop all 'unknown' UDP traffic to be punted
+ * @cliexcmd{set punt udp del all}
  * @endparblock
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (punt_udp_command, static) = {
   .path = "set punt udp",
-  .short_help = "set punt udp [del] port-num1 [port-num2 ...]",
+  .short_help = "set punt udp [del] <all | port-num1 [port-num2 ...]>",
   .function = udp_punt_cli,
 };
 /* *INDENT-ON* */

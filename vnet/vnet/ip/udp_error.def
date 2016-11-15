@@ -18,3 +18,4 @@
 udp_error (NONE, "no error")
 udp_error (NO_LISTENER, "no listener for dst port")
 udp_error (LENGTH_ERROR, "UDP packets with length errors")
+udp_error (PUNT, "no listener punt")
