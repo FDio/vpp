@@ -22,7 +22,7 @@ AX_PROG_JAVADOC
 AX_PROG_JAVA
 
 AC_ARG_WITH(dpdk,
-            AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),
+            AC_HELP_STRING([--with-dpdk],[Use DPDK]),
             [with_dpdk=1],
             [with_dpdk=0])
 

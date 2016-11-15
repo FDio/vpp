@@ -648,7 +648,7 @@ nobase_include_HEADERS +=			\
   vnet/pg/edit.h
 
 ########################################
-# Intel DPDK
+# DPDK
 ########################################
 if WITH_DPDK
 libvnet_la_SOURCES +=				\

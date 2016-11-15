@@ -20,7 +20,7 @@ AC_ARG_WITH(q-platform,
 	     esac])
 
 AC_ARG_WITH(dpdk,
-            AC_HELP_STRING([--with-dpdk],[Use the Intel dpdk]),
+            AC_HELP_STRING([--with-dpdk],[Use DPDK]),
             [with_dpdk=1],
             [with_dpdk=0])
 
