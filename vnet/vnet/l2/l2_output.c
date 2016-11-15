@@ -614,7 +614,6 @@ typedef struct
   u32 sw_if_index;
 } output_node_mapping_rpc_args_t;
 
-#if DPDK > 0
 static void output_node_rpc_callback (output_node_mapping_rpc_args_t * a);
 
 static void
@@ -629,7 +628,6 @@ output_node_mapping_send_rpc (u32 node_index, u32 sw_if_index)
   vl_api_rpc_call_main_thread (output_node_rpc_callback,
 			       (u8 *) & args, sizeof (args));
 }
-#endif
 
 
 /** Create a mapping in the next node mapping table for the given sw_if_index. */
@@ -645,7 +643,6 @@ l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet
 
   hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
-#if DPDK > 0
   uword cpu_number;
 
   cpu_number = os_get_cpu_number ();
@@ -663,7 +660,6 @@ l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet
       output_node_mapping_send_rpc (node_index, sw_if_index);
       return L2OUTPUT_NEXT_DROP;
     }
-#endif
 
   /* dynamically create graph node arc  */
   next = vlib_node_add_next (vlib_main, node_index, hw0->output_node_index);
@@ -679,7 +675,6 @@ l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet
   return next;
 }
 
-#if DPDK > 0
 void
 output_node_rpc_callback (output_node_mapping_rpc_args_t * a)
 {
@@ -691,7 +686,6 @@ output_node_rpc_callback (output_node_mapping_rpc_args_t * a)
     (vm, vnm, a->node_index, mp->next_nodes.output_node_index_vec,
      a->sw_if_index);
 }
-#endif
 
 /* Get a pointer to the config for the given interface */
 l2_output_config_t *
