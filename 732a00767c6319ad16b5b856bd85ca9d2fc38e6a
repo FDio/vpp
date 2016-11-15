@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_3d269b69",
+        "filename": "vpp-api-test/scripts/vppctl",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-15T16:04:43Z",
+      "side": 1,
+      "message": "don\u0027t we need the cmdloop to have it read from stdin, even when there\u0027s no tty?",
+      "range": {
+        "startLine": 97,
+        "startChar": 24,
+        "endLine": 97,
+        "endChar": 37
+      },
+      "revId": "732a00767c6319ad16b5b856bd85ca9d2fc38e6a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
