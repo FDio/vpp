@@ -292,6 +292,70 @@ vnet_feature_start_device_input_x2 (u32 sw_if_index,
     }
 }
 
+static_always_inline void
+vnet_feature_start_device_input_x4 (u32 sw_if_index,
+				    u32 * next0,
+				    u32 * next1,
+				    u32 * next2,
+				    u32 * next3,
+				    vlib_buffer_t * b0,
+				    vlib_buffer_t * b1,
+				    vlib_buffer_t * b2,
+				    vlib_buffer_t * b3,
+				    u16 buffer_advanced0,
+				    u16 buffer_advanced1,
+				    u16 buffer_advanced2,
+				    u16 buffer_advanced3)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm;
+  u8 feature_arc_index = fm->device_input_feature_arc_index;
+  cm = &fm->feature_config_mains[feature_arc_index];
+
+  if (PREDICT_FALSE
+      (clib_bitmap_get
+       (fm->sw_if_index_has_features[feature_arc_index], sw_if_index)))
+    {
+      /*
+       * Save next0 so that the last feature in the chain
+       * can skip ethernet-input if indicated...
+       */
+      vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
+      vnet_buffer (b1)->device_input_feat.saved_next_index = *next1;
+      vnet_buffer (b2)->device_input_feat.saved_next_index = *next2;
+      vnet_buffer (b3)->device_input_feat.saved_next_index = *next3;
+
+      vnet_buffer (b0)->device_input_feat.buffer_advance = buffer_advanced0;
+      vnet_buffer (b1)->device_input_feat.buffer_advance = buffer_advanced1;
+      vnet_buffer (b2)->device_input_feat.buffer_advance = buffer_advanced2;
+      vnet_buffer (b3)->device_input_feat.buffer_advance = buffer_advanced3;
+
+      vlib_buffer_advance (b0, -buffer_advanced0);
+      vlib_buffer_advance (b1, -buffer_advanced1);
+      vlib_buffer_advance (b2, -buffer_advanced2);
+      vlib_buffer_advance (b3, -buffer_advanced3);
+
+      b0->feature_arc_index = feature_arc_index;
+      b1->feature_arc_index = feature_arc_index;
+      b2->feature_arc_index = feature_arc_index;
+      b3->feature_arc_index = feature_arc_index;
+
+      b0->current_config_index =
+	vec_elt (cm->config_index_by_sw_if_index, sw_if_index);
+      b1->current_config_index = b0->current_config_index;
+      b2->current_config_index = b0->current_config_index;
+      b3->current_config_index = b0->current_config_index;
+
+      vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+			    next0, /* # bytes of config data */ 0);
+      vnet_get_config_data (&cm->config_main, &b1->current_config_index,
+			    next1, /* # bytes of config data */ 0);
+      vnet_get_config_data (&cm->config_main, &b2->current_config_index,
+			    next2, /* # bytes of config data */ 0);
+      vnet_get_config_data (&cm->config_main, &b3->current_config_index,
+			    next3, /* # bytes of config data */ 0);
+    }
+}
 
 #define VNET_FEATURES(...)  (char*[]) { __VA_ARGS__, 0}
 

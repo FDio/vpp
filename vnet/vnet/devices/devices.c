@@ -13,8 +13,11 @@
  * limitations under the License.
  */
 
+#include <vnet/vnet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
+#include <vnet/ip/ip.h>
+#include <vnet/ethernet/ethernet.h>
 
 static uword
 device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
@@ -31,6 +34,18 @@ VLIB_REGISTER_NODE (device_input_node) = {
   .state = VLIB_NODE_STATE_DISABLED,
   .n_next_nodes = VNET_DEVICE_INPUT_N_NEXT_NODES,
   .next_nodes = VNET_DEVICE_INPUT_NEXT_NODES,
+};
+
+/* Table defines how much we need to advance current data pointer
+   in the buffer if we shortcut to l3 nodes */
+
+const u32 __attribute__((aligned (CLIB_CACHE_LINE_BYTES)))
+device_input_next_node_advance[((VNET_DEVICE_INPUT_N_NEXT_NODES /
+				CLIB_CACHE_LINE_BYTES) +1) * CLIB_CACHE_LINE_BYTES] =
+{
+      [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = sizeof (ethernet_header_t),
+      [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = sizeof (ethernet_header_t),
+      [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = sizeof (ethernet_header_t),
 };
 
 VNET_FEATURE_ARC_INIT (device_input, static) =
