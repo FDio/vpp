@@ -59,6 +59,7 @@ typedef struct {
   /* Sparse vector mapping udp dst_port in network byte order
      to next index. */
   u16 * next_by_dst_port;
+  u8 punt_unknown;
 } udp_input_runtime_t;
 
 vlib_node_registration_t udp4_input_node;
@@ -75,6 +76,7 @@ udp46_input_inline (vlib_main_t * vm,
     : (void *) vlib_node_get_runtime_data (vm, udp6_input_node.index);
   __attribute__((unused)) u32 n_left_from, next_index, * from, * to_next;
   word n_no_listener = 0;
+  u8 punt_unknown = rt->punt_unknown;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -185,19 +187,25 @@ udp46_input_inline (vlib_main_t * vm,
               // ip packet header
               vlib_buffer_advance (b0, - (word)advance0);
 
-              if (is_ip4)
+              if (PREDICT_FALSE(punt_unknown))
+	        {
+                  b0->error = node->errors[UDP_ERROR_PUNT];
+		  next0 = UDP_INPUT_NEXT_PUNT;
+		}
+              else if (is_ip4)
                 {
                   icmp4_error_set_vnet_buffer(b0, ICMP4_destination_unreachable,
                         ICMP4_destination_unreachable_port_unreachable, 0);
                   next0 = UDP_INPUT_NEXT_ICMP4_ERROR;
+                  n_no_listener ++;
                 }
               else
                 {
                   icmp6_error_set_vnet_buffer(b0, ICMP6_destination_unreachable,
                         ICMP6_destination_unreachable_port_unreachable, 0);
                   next0 = UDP_INPUT_NEXT_ICMP6_ERROR;
+                  n_no_listener ++;
                 }
-                n_no_listener ++;
             }
           else
             {
@@ -212,19 +220,25 @@ udp46_input_inline (vlib_main_t * vm,
               // ip packet header
               vlib_buffer_advance (b1, - (word)advance1);
 
-              if (is_ip4)
+              if (PREDICT_FALSE(punt_unknown))
+	        {
+                  b1->error = node->errors[UDP_ERROR_PUNT];
+		  next1 = UDP_INPUT_NEXT_PUNT;
+		}
+              else if (is_ip4)
                 {
                   icmp4_error_set_vnet_buffer(b1, ICMP4_destination_unreachable,
                         ICMP4_destination_unreachable_port_unreachable, 0);
                   next1 = UDP_INPUT_NEXT_ICMP4_ERROR;
+		  n_no_listener ++;
                 }
               else
                 {
                   icmp6_error_set_vnet_buffer(b1, ICMP6_destination_unreachable,
                         ICMP6_destination_unreachable_port_unreachable, 0);
                   next1 = UDP_INPUT_NEXT_ICMP6_ERROR;
+		  n_no_listener ++;
                 }
-                n_no_listener ++;
             }
           else
             {
@@ -309,19 +323,25 @@ udp46_input_inline (vlib_main_t * vm,
                   // ip packet header
                   vlib_buffer_advance (b0, - (word)advance0);
 
-                  if (is_ip4)
+                  if (PREDICT_FALSE(punt_unknown))
+	            {
+                      b0->error = node->errors[UDP_ERROR_PUNT];
+                      next0 = UDP_INPUT_NEXT_PUNT;
+		    }
+                  else if (is_ip4)
                     {
                       icmp4_error_set_vnet_buffer(b0, ICMP4_destination_unreachable,
                             ICMP4_destination_unreachable_port_unreachable, 0);
                       next0 = UDP_INPUT_NEXT_ICMP4_ERROR;
+                      n_no_listener ++;
                     }
                   else
                     {
                       icmp6_error_set_vnet_buffer(b0, ICMP6_destination_unreachable,
                             ICMP6_destination_unreachable_port_unreachable, 0);
                       next0 = UDP_INPUT_NEXT_ICMP6_ERROR;
+                      n_no_listener ++;
                     }
-                    n_no_listener ++;
                 }
               else
                 {
@@ -492,6 +512,23 @@ udp_register_dst_port (vlib_main_t * vm,
   n[0] = pi->next_index;
 }
 
+void
+udp_punt_unknown(vlib_main_t * vm, u8 is_ip4, u8 is_add)
+{
+  udp_input_runtime_t * rt;
+
+  {
+    clib_error_t * error = vlib_call_init_function (vm, udp_local_init);
+    if (error)
+      clib_error_report (error);
+  }
+
+  rt = vlib_node_get_runtime_data 
+    (vm, is_ip4 ? udp4_input_node.index: udp6_input_node.index);
+
+  rt->punt_unknown = is_add;
+}
+
 /* Parse a UDP header. */
 uword unformat_udp_header (unformat_input_t * input, va_list * args)
 {
@@ -560,6 +597,8 @@ clib_error_t * udp_local_init (vlib_main_t * vm)
     (/* elt bytes */ sizeof (rt->next_by_dst_port[0]),
      /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
 
+  rt->punt_unknown = 0;
+
 #define _(n,s) add_dst_port (um, UDP_DST_PORT_##s, #s, 1 /* is_ip4 */);
   foreach_udp4_dst_port
 #undef _
@@ -569,6 +608,8 @@ clib_error_t * udp_local_init (vlib_main_t * vm)
   rt->next_by_dst_port = sparse_vec_new
     (/* elt bytes */ sizeof (rt->next_by_dst_port[0]),
      /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
+
+  rt->punt_unknown = 0;
 
 #define _(n,s) add_dst_port (um, UDP_DST_PORT_##s, #s, 0 /* is_ip4 */);
   foreach_udp6_dst_port
