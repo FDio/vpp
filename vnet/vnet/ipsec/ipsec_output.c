@@ -286,8 +286,7 @@ ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      nc_protect++;
 	      next_node_index = im->esp_encrypt_node_index;
-	      vnet_buffer (b0)->output_features.ipsec_sad_index =
-		p0->sa_index;
+	      vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 	      vlib_buffer_advance (b0, iph_offset);
 	      p0->counter.packets++;
 	      if (is_ipv6)

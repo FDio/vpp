@@ -230,10 +230,7 @@ word vnet_hw_interface_compare (vnet_main_t * vnm, uword hw_if_index0,
 
 typedef enum
 {
-#define _(sym,str) VNET_INTERFACE_OUTPUT_NEXT_##sym,
-  foreach_intf_output_feat
-#undef _
-    VNET_INTERFACE_OUTPUT_NEXT_DROP,
+  VNET_INTERFACE_OUTPUT_NEXT_DROP,
   VNET_INTERFACE_OUTPUT_NEXT_TX,
 } vnet_interface_output_next_t;
 
