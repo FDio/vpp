@@ -3575,7 +3575,8 @@ _(ip_source_and_port_range_check_add_del_reply)         \
 _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
 _(l2_interface_pbb_tag_rewrite_reply)                   \
-_(punt_reply)
+_(punt_reply)                                           \
+_(feature_enable_disable_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3817,7 +3818,8 @@ _(DELETE_SUBIF_REPLY, delete_subif_reply)                               \
 _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(PUNT_REPLY, punt_reply)                                               \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
-_(IP6_FIB_DETAILS, ip6_fib_details)
+_(IP6_FIB_DETAILS, ip6_fib_details)                                     \
+_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -16280,6 +16282,72 @@ api_flow_classify_dump (vat_main_t * vam)
 }
 
 static int
+api_feature_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_feature_enable_disable_t *mp;
+  f64 timeout;
+  u8 *arc_name = 0;
+  u8 *feature_name = 0;
+  u32 sw_if_index = ~0;
+  u8 enable = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "arc_name %s", &arc_name))
+	;
+      else if (unformat (i, "feature_name %s", &feature_name))
+	;
+      else if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "disable"))
+	enable = 0;
+      else
+	break;
+    }
+
+  if (arc_name == 0)
+    {
+      errmsg ("missing arc name\n");
+      return -99;
+    }
+  if (vec_len (arc_name) > 63)
+    {
+      errmsg ("arc name too long\n");
+    }
+
+  if (feature_name == 0)
+    {
+      errmsg ("missing feature name\n");
+      return -99;
+    }
+  if (vec_len (feature_name) > 63)
+    {
+      errmsg ("feature name too long\n");
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (FEATURE_ENABLE_DISABLE, feature_enable_disable);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable = enable;
+  clib_memcpy (mp->arc_name, arc_name, vec_len (arc_name));
+  clib_memcpy (mp->feature_name, feature_name, vec_len (feature_name));
+  vec_free (arc_name);
+  vec_free (feature_name);
+
+  S;
+  W;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
   longjmp (vam->jump_buf, 1);
@@ -16889,7 +16957,9 @@ _(flow_classify_set_interface,                                          \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]") \
 _(flow_classify_dump, "type [ip4|ip6]")                                 \
 _(ip_fib_dump, "")                                                      \
-_(ip6_fib_dump, "")
+_(ip6_fib_dump, "")                                                     \
+_(feature_enable_disable, "arc_name <arc_name> "                        \
+  "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

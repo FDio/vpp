@@ -89,6 +89,7 @@
 #include <vnet/ipsec-gre/ipsec_gre.h>
 #include <vnet/flow/flow_report_classify.h>
 #include <vnet/ip/punt.h>
+#include <vnet/feature/feature.h>
 
 #undef BIHASH_TYPE
 #undef __included_bihash_template_h__
@@ -466,7 +467,8 @@ _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
-_(IP6_FIB_DETAILS, ip6_fib_details)
+_(IP6_FIB_DETAILS, ip6_fib_details)                                     \
+_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -9172,6 +9174,45 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
 #else
   clib_warning ("unimplemented");
 #endif
+}
+
+static void
+vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
+{
+  vl_api_feature_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  u8 *arc_name = format (0, "%s%c", mp->arc_name, 0);
+  u8 *feature_name = format (0, "%s%c", mp->feature_name, 0);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  vnet_feature_registration_t *reg;
+  reg =
+    vnet_get_feature_reg ((const char *) arc_name,
+			  (const char *) feature_name);
+  if (reg == 0)
+    rv = VNET_API_ERROR_INVALID_VALUE;
+  else
+    {
+      clib_error_t *error = 0;
+
+      if (reg->enable_disable_cb)
+	error = reg->enable_disable_cb (sw_if_index, mp->enable);
+      if (!error)
+	vnet_feature_enable_disable ((const char *) arc_name,
+				     (const char *) feature_name,
+				     sw_if_index, mp->enable, 0, 0);
+      else
+	{
+	  clib_error_report (error);
+	  rv = VNET_API_ERROR_CANNOT_ENABLE_DISABLE_FEATURE;
+	}
+    }
+
+  vec_free (feature_name);
+  vec_free (arc_name);
+
+  REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

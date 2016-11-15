@@ -5495,3 +5495,27 @@ define ipsec_spd_details {
     u64 packets;
 };
 
+/** \brief Feature path enable/disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface
+    @param enable - 1 = on, 0 = off
+*/
+define feature_enable_disable {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u8 enable;
+    u8 arc_name[64];
+    u8 feature_name[64];
+};
+
+/** \brief Reply to the eature path enable/disable request
+    @param context - sender context which was passed in the request
+    @param retval - return code for the request
+*/
+define feature_enable_disable_reply
+{
+    u32 context;
+    i32 retval;
+};

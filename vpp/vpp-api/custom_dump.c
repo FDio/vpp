@@ -2892,6 +2892,21 @@ static void *vl_api_ioam_disable_t_print
   FINISH;
 }
 
+static void *vl_api_feature_enable_disable_t_print
+  (vl_api_feature_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: feature_enable_disable ");
+  s = format (s, "arc_name %s ", mp->arc_name);
+  s = format (s, "feature_name %s ", mp->feature_name);
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  if (!mp->enable)
+    s = format (s, "disable");
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3062,7 +3077,8 @@ _(GET_FIRST_MSG_ID, get_first_msg_id)                                   \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
-_(IP6_FIB_DUMP, ip6_fib_dump)
+_(IP6_FIB_DUMP, ip6_fib_dump)                                           \
+_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

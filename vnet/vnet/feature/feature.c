@@ -152,6 +152,27 @@ vnet_get_feature_arc_index (const char *s)
   return reg->feature_arc_index;
 }
 
+vnet_feature_registration_t *
+vnet_get_feature_reg (const char *arc_name, const char *node_name)
+{
+  u8 arc_index;
+
+  arc_index = vnet_get_feature_arc_index (arc_name);
+  if (arc_index == (u8) ~ 0)
+    return 0;
+
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_registration_t *reg;
+  uword *p;
+
+  p = hash_get_mem (fm->next_feature_by_name[arc_index], node_name);
+  if (p == 0)
+    return 0;
+
+  reg = uword_to_pointer (p[0], vnet_feature_registration_t *);
+  return reg;
+}
+
 u32
 vnet_get_feature_index (u8 arc, const char *s)
 {
@@ -341,6 +362,89 @@ vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index)
 	}
     }
 }
+
+static clib_error_t *
+set_interface_features_command_fn (vlib_main_t * vm,
+				   unformat_input_t * input,
+				   vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  u8 *arc_name = 0;
+  u8 *feature_name = 0;
+  u32 sw_if_index = ~0;
+  u8 enable = 1;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    goto done;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U %v", unformat_vnet_sw_interface, vnm, &sw_if_index,
+	   &feature_name))
+	;
+      else if (unformat (line_input, "arc %v", &arc_name))
+	;
+      else if (unformat (line_input, "disable"))
+	enable = 0;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      error = clib_error_return (0, "Interface not specified...");
+      goto done;
+    }
+
+  vec_add1 (arc_name, 0);
+  vec_add1 (feature_name, 0);
+
+  vnet_feature_registration_t *reg;
+  reg =
+    vnet_get_feature_reg ((const char *) arc_name,
+			  (const char *) feature_name);
+  if (reg == 0)
+    {
+      error = clib_error_return (0, "Unknown feature...");
+      goto done;
+    }
+  if (reg->enable_disable_cb)
+    error = reg->enable_disable_cb (sw_if_index, enable);
+  if (!error)
+    vnet_feature_enable_disable ((const char *) arc_name,
+				 (const char *) feature_name, sw_if_index,
+				 enable, 0, 0);
+
+done:
+  vec_free (feature_name);
+  vec_free (arc_name);
+  return error;
+}
+
+/*?
+ * Set feature for given interface
+ *
+ * @cliexpar
+ * Example:
+ * @cliexcmd{set interface feature GigabitEthernet2/0/0 ip4_flow_classify arc ip4_unicast}
+ * @cliexend
+ * @endparblock
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_interface_feature_command, static) = {
+  .path = "set interface feature",
+  .short_help = "set interface feature <intfc> <feature_name> arc <arc_name>",
+  .function = set_interface_features_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
