@@ -68,8 +68,10 @@ ipsec_set_interface_spd (vlib_main_t * vm, u32 sw_if_index, u32 spd_id,
 		sw_if_index, spd_id, spd_index);
 
   /* enable IPsec on TX */
-  vnet_interface_add_del_feature (im->vnet_main, vm, sw_if_index,
-				  INTF_OUTPUT_FEAT_IPSEC, is_add);
+  vnet_feature_enable_disable ("ip4-output", "ipsec-output-ip4", sw_if_index,
+			       is_add, 0, 0);
+  vnet_feature_enable_disable ("ip6-output", "ipsec-output-ip6", sw_if_index,
+			       is_add, 0, 0);
 
   /* enable IPsec on RX */
   vnet_feature_enable_disable ("ip4-unicast", "ipsec-input-ip4", sw_if_index,

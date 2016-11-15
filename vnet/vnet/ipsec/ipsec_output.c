@@ -30,7 +30,7 @@ _(ESP_ENCRYPT, "esp-encrypt")
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum
 {
-  foreach_intf_output_feat foreach_ipsec_output_next
+  foreach_ipsec_output_next
 #undef _
     IPSEC_OUTPUT_N_NEXT,
 } ipsec_output_next_t;
@@ -59,7 +59,8 @@ static char *ipsec_output_error_strings[] = {
 #undef _
 };
 
-static vlib_node_registration_t ipsec_output_node;
+static vlib_node_registration_t ipsec_output_ip4_node;
+static vlib_node_registration_t ipsec_output_ip6_node;
 
 typedef struct
 {
@@ -83,17 +84,6 @@ format_ipsec_output_trace (u8 * s, va_list * args)
       s = format (s, "no spd");
     }
   return s;
-}
-
-always_inline intf_output_feat_t __attribute__ ((unused))
-get_next_intf_output_feature_and_reset_bit (vlib_buffer_t * b)
-{
-  u32 next_feature;
-  count_trailing_zeros (next_feature,
-			vnet_buffer (b)->output_features.bitmap);
-  if (next_feature != INTF_OUTPUT_FEAT_DONE)
-    vnet_buffer (b)->output_features.bitmap &= ~(1 << next_feature);
-  return next_feature;
 }
 
 always_inline ipsec_policy_t *
@@ -198,12 +188,11 @@ ipsec_output_ip6_policy_match (ipsec_spd_t * spd,
   return 0;
 }
 
-static uword
-ipsec_output_node_fn (vlib_main_t * vm,
-		      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+static inline uword
+ipsec_output_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * from_frame, int is_ipv6)
 {
   ipsec_main_t *im = &ipsec_main;
-  vnet_main_t *vnm = im->vnet_main;
 
   u32 *from, *to_next = 0;
   u32 n_left_from, sw_if_index0, last_sw_if_index = (u32) ~ 0;
@@ -224,7 +213,6 @@ ipsec_output_node_fn (vlib_main_t * vm,
       ip4_header_t *ip0;
       ip6_header_t *ip6_0 = 0;
       udp_header_t *udp0;
-      u8 is_ipv6 = 0;
       u32 iph_offset = 0;
 
       bi0 = from[0];
@@ -233,24 +221,6 @@ ipsec_output_node_fn (vlib_main_t * vm,
       iph_offset = vnet_buffer (b0)->ip.save_rewrite_length;
       ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0)
 			      + iph_offset);
-
-      /* just forward non ipv4 packets */
-      if (PREDICT_FALSE ((ip0->ip_version_and_header_length & 0xF0) != 0x40))
-	{
-	  /* ipv6 packets */
-	  if (PREDICT_TRUE
-	      ((ip0->ip_version_and_header_length & 0xF0) == 0x60))
-	    {
-	      is_ipv6 = 1;
-	      ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0)
-					+ iph_offset);
-	    }
-	  else
-	    {
-	      next_node_index = get_next_output_feature_node_index (vnm, b0);
-	      goto dispatch0;
-	    }
-	}
 
       /* lookup for SPD only if sw_if_index is changed */
       if (PREDICT_FALSE (last_sw_if_index != sw_if_index0))
@@ -264,6 +234,9 @@ ipsec_output_node_fn (vlib_main_t * vm,
 
       if (is_ipv6)
 	{
+	  ip6_0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0)
+				    + iph_offset);
+
 	  udp0 = ip6_next_header (ip6_0);
 #if 0
 	  clib_warning
@@ -331,7 +304,7 @@ ipsec_output_node_fn (vlib_main_t * vm,
 	  else if (p0->policy == IPSEC_POLICY_ACTION_BYPASS)
 	    {
 	      nc_bypass++;
-	      next_node_index = get_next_output_feature_node_index (vnm, b0);
+	      next_node_index = get_next_output_feature_node_index (b0, node);
 	      p0->counter.packets++;
 	      if (is_ipv6)
 		{
@@ -367,7 +340,6 @@ ipsec_output_node_fn (vlib_main_t * vm,
 	  next_node_index = im->error_drop_node_index;
 	}
 
-    dispatch0:
       from += 1;
       n_left_from -= 1;
 
@@ -397,22 +369,29 @@ ipsec_output_node_fn (vlib_main_t * vm,
     }
 
   vlib_put_frame_to_node (vm, next_node_index, f);
-  vlib_node_increment_counter (vm, ipsec_output_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_OUTPUT_ERROR_POLICY_PROTECT, nc_protect);
-  vlib_node_increment_counter (vm, ipsec_output_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_OUTPUT_ERROR_POLICY_BYPASS, nc_bypass);
-  vlib_node_increment_counter (vm, ipsec_output_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_OUTPUT_ERROR_POLICY_DISCARD, nc_discard);
-  vlib_node_increment_counter (vm, ipsec_output_node.index,
+  vlib_node_increment_counter (vm, node->node_index,
 			       IPSEC_OUTPUT_ERROR_POLICY_NO_MATCH,
 			       nc_nomatch);
   return from_frame->n_vectors;
 }
 
+static uword
+ipsec_output_ip4_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			  vlib_frame_t * frame)
+{
+  return ipsec_output_inline (vm, node, frame, 0);
+}
+
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ipsec_output_node,static) = {
-  .function = ipsec_output_node_fn,
-  .name = "ipsec-output",
+VLIB_REGISTER_NODE (ipsec_output_ip4_node,static) = {
+  .function = ipsec_output_ip4_node_fn,
+  .name = "ipsec-output-ip4",
   .vector_size = sizeof (u32),
   .format_trace = format_ipsec_output_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -423,14 +402,41 @@ VLIB_REGISTER_NODE (ipsec_output_node,static) = {
   .n_next_nodes = IPSEC_OUTPUT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [IPSEC_OUTPUT_NEXT_##s] = n,
-    foreach_intf_output_feat
     foreach_ipsec_output_next
 #undef _
   },
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_node, ipsec_output_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_ip4_node, ipsec_output_ip4_node_fn)
+     static uword
+       ipsec_output_ip6_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 vlib_frame_t * frame)
+{
+  return ipsec_output_inline (vm, node, frame, 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ipsec_output_ip6_node,static) = {
+  .function = ipsec_output_ip6_node_fn,
+  .name = "ipsec-output-ip6",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ipsec_output_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(ipsec_output_error_strings),
+  .error_strings = ipsec_output_error_strings,
+
+  .n_next_nodes = IPSEC_OUTPUT_N_NEXT,
+  .next_nodes = {
+#define _(s,n) [IPSEC_OUTPUT_NEXT_##s] = n,
+    foreach_ipsec_output_next
+#undef _
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (ipsec_output_ip6_node, ipsec_output_ip6_node_fn)
 #else /* IPSEC > 1 */
 
 /* Dummy ipsec output node, in case when IPSec is disabled */
@@ -447,7 +453,13 @@ ipsec_output_node_fn (vlib_main_t * vm,
 VLIB_REGISTER_NODE (ipsec_output_node) = {
   .vector_size = sizeof (u32),
   .function = ipsec_output_node_fn,
-  .name = "ipsec-output",
+  .name = "ipsec-output-ip4",
+};
+
+VLIB_REGISTER_NODE (ipsec_output_node) = {
+  .vector_size = sizeof (u32),
+  .function = ipsec_output_node_fn,
+  .name = "ipsec-output-ip6",
 };
 /* *INDENT-ON* */
 #endif
