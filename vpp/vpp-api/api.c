@@ -7605,6 +7605,33 @@ vl_api_mpls_fib_details_t_print (vl_api_mpls_fib_details_t * mp)
   clib_warning ("BUG");
 }
 
+
+static void
+copy_fib_next_hop (fib_route_path_encode_t * api_rpath,
+		   vl_api_fib_path_t * fp)
+{
+  int is_ip4;
+
+  if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP4)
+    fp->afi = IP46_TYPE_IP4;
+  else if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP6)
+    fp->afi = IP46_TYPE_IP6;
+  else
+    {
+      is_ip4 = ip46_address_is_ip4 (&api_rpath->rpath.frp_addr);
+      if (is_ip4)
+	fp->afi = IP46_TYPE_IP4;
+      else
+	fp->afi = IP46_TYPE_IP6;
+    }
+  if (fp->afi == IP46_TYPE_IP4)
+    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip4,
+	    sizeof (api_rpath->rpath.frp_addr.ip4));
+  else
+    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip6,
+	    sizeof (api_rpath->rpath.frp_addr.ip6));
+}
+
 static void
 send_mpls_fib_details (vpe_api_main_t * am,
 		       unix_shared_memory_queue_t * q,
@@ -7614,7 +7641,7 @@ send_mpls_fib_details (vpe_api_main_t * am,
   vl_api_mpls_fib_details_t *mp;
   fib_route_path_encode_t *api_rpath;
   vl_api_fib_path_t *fp;
-  int is_ip4, path_count;
+  int path_count;
 
   path_count = vec_len (api_rpaths);
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
@@ -7635,19 +7662,7 @@ send_mpls_fib_details (vpe_api_main_t * am,
     memset (fp, 0, sizeof (*fp));
     fp->weight = htonl (api_rpath->rpath.frp_weight);
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr, sizeof (fp->next_hop));
-    if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP4)
-      fp->afi = IP46_TYPE_IP4;
-    else if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP6)
-      fp->afi = IP46_TYPE_IP6;
-    else
-      {
-	is_ip4 = ip46_address_is_ip4 (&api_rpath->rpath.frp_addr);
-	if (is_ip4)
-	  fp->afi = IP46_TYPE_IP4;
-	else
-	  fp->afi = IP46_TYPE_IP6;
-      }
+    copy_fib_next_hop (api_rpath, fp);
     fp++;
   }
 
@@ -7727,7 +7742,7 @@ send_ip_fib_details (vpe_api_main_t * am,
   vl_api_ip_fib_details_t *mp;
   fib_route_path_encode_t *api_rpath;
   vl_api_fib_path_t *fp;
-  int is_ip4, path_count;
+  int path_count;
 
   path_count = vec_len(api_rpaths);
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
@@ -7775,19 +7790,7 @@ send_ip_fib_details (vpe_api_main_t * am,
       }
     fp->weight = htonl(api_rpath->rpath.frp_weight);
     fp->sw_if_index = htonl(api_rpath->rpath.frp_sw_if_index);
-    memcpy(fp->next_hop, &api_rpath->rpath.frp_addr, sizeof(fp->next_hop));
-    if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP4)
-	fp->afi = IP46_TYPE_IP4;
-    else if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP6)
-	fp->afi = IP46_TYPE_IP6;
-    else
-      {
-	is_ip4 = ip46_address_is_ip4 (&api_rpath->rpath.frp_addr);
-	if (is_ip4)
-	    fp->afi = IP46_TYPE_IP4;
-	else
-	    fp->afi = IP46_TYPE_IP6;
-      }
+    copy_fib_next_hop (api_rpath, fp);
     fp++;
   }
 
@@ -7871,7 +7874,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
   vl_api_ip6_fib_details_t *mp;
   fib_route_path_encode_t *api_rpath;
   vl_api_fib_path_t *fp;
-  int is_ip4, path_count;
+  int path_count;
 
   path_count = vec_len(api_rpaths);
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
@@ -7919,19 +7922,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
       }
     fp->weight = htonl(api_rpath->rpath.frp_weight);
     fp->sw_if_index = htonl(api_rpath->rpath.frp_sw_if_index);
-    memcpy(fp->next_hop, &api_rpath->rpath.frp_addr, sizeof(fp->next_hop));
-    if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP4)
-      fp->afi = IP46_TYPE_IP4;
-    else if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP6)
-      fp->afi = IP46_TYPE_IP6;
-    else
-      {
-	is_ip4 = ip46_address_is_ip4 (&api_rpath->rpath.frp_addr);
-	if (is_ip4)
-	  fp->afi = IP46_TYPE_IP4;
-	else
-	  fp->afi = IP46_TYPE_IP6;
-      }
+    copy_fib_next_hop (api_rpath, fp);
     fp++;
   }
 

@@ -14896,12 +14896,20 @@ vl_api_mpls_fib_details_t_handler (vl_api_mpls_fib_details_t * mp)
   fp = mp->path;
   for (i = 0; i < count; i++)
     {
-      fformat (vam->ofp,
-	       "  weight %d, sw_if_index %d, is_local %d, is_drop %d, is_unreach %d, "
-	       "is_prohitbit %d, afi %d, next_hop %U\n", ntohl (fp->weight),
-	       ntohl (fp->sw_if_index), fp->is_local, fp->is_drop,
-	       fp->is_unreach, fp->is_prohibit, fp->afi, format_ip46_address,
-	       fp->next_hop, fp->afi);
+      if (fp->afi == IP46_TYPE_IP6)
+	fformat (vam->ofp,
+		 "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+		 "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U\n",
+		 ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+		 fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+		 format_ip6_address, fp->next_hop);
+      else if (fp->afi == IP46_TYPE_IP4)
+	fformat (vam->ofp,
+		 "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+		 "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U\n",
+		 ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+		 fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+		 format_ip4_address, fp->next_hop);
       fp++;
     }
 }
@@ -14988,12 +14996,20 @@ vl_api_ip_fib_details_t_handler (vl_api_ip_fib_details_t * mp)
   fp = mp->path;
   for (i = 0; i < count; i++)
     {
-      fformat (vam->ofp,
-	       "  weight %d, sw_if_index %d, is_local %d, is_drop %d, is_unreach %d, "
-	       "is_prohitbit %d, afi %d, next_hop %U\n", ntohl (fp->weight),
-	       ntohl (fp->sw_if_index), fp->is_local, fp->is_drop,
-	       fp->is_unreach, fp->is_prohibit, fp->afi, format_ip46_address,
-	       fp->next_hop, fp->afi);
+      if (fp->afi == IP46_TYPE_IP6)
+	fformat (vam->ofp,
+		 "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+		 "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U\n",
+		 ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+		 fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+		 format_ip6_address, fp->next_hop);
+      else if (fp->afi == IP46_TYPE_IP4)
+	fformat (vam->ofp,
+		 "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+		 "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U\n",
+		 ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+		 fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+		 format_ip4_address, fp->next_hop);
       fp++;
     }
 }
@@ -15081,12 +15097,20 @@ vl_api_ip6_fib_details_t_handler (vl_api_ip6_fib_details_t * mp)
   fp = mp->path;
   for (i = 0; i < count; i++)
     {
-      fformat (vam->ofp,
-	       "  weight %d, sw_if_index %d, is_local %d, is_drop %d, is_unreach %d, "
-	       "is_prohitbit %d, afi %d, next_hop %U\n", ntohl (fp->weight),
-	       ntohl (fp->sw_if_index), fp->is_local, fp->is_drop,
-	       fp->is_unreach, fp->is_prohibit, fp->afi, format_ip46_address,
-	       fp->next_hop, fp->afi);
+      if (fp->afi == IP46_TYPE_IP6)
+	fformat (vam->ofp,
+		 "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+		 "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U\n",
+		 ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+		 fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+		 format_ip6_address, fp->next_hop);
+      else if (fp->afi == IP46_TYPE_IP4)
+	fformat (vam->ofp,
+		 "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+		 "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U\n",
+		 ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+		 fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+		 format_ip4_address, fp->next_hop);
       fp++;
     }
 }
