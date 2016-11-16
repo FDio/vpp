@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_232558ab",
+        "filename": "vnet/vnet/devices/dpdk/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1617,
+      "author": {
+        "id": 389
+      },
+      "writtenOn": "2016-11-16T12:11:44Z",
+      "side": 1,
+      "message": "Prefer specifying traffic class (tc) and queue (tc_q)instead of dscp value.",
+      "range": {
+        "startLine": 1617,
+        "startChar": 5,
+        "endLine": 1617,
+        "endChar": 55
+      },
+      "revId": "f6700d505235ff52e6ad6a5571f98c4c9dabc4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_c33334f5",
+        "filename": "vnet/vnet/devices/dpdk/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1673,
+      "author": {
+        "id": 389
+      },
+      "writtenOn": "2016-11-16T12:11:44Z",
+      "side": 1,
+      "message": "No need as tc and tc_q are part of CLI parameters list.",
+      "range": {
+        "startLine": 1658,
+        "startChar": 2,
+        "endLine": 1673,
+        "endChar": 46
+      },
+      "revId": "f6700d505235ff52e6ad6a5571f98c4c9dabc4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_e33630e7",
+        "filename": "vnet/vnet/devices/dpdk/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1682,
+      "author": {
+        "id": 389
+      },
+      "writtenOn": "2016-11-16T12:11:44Z",
+      "side": 1,
+      "message": "How about \"Stats Parameter\"",
+      "range": {
+        "startLine": 1682,
+        "startChar": 38,
+        "endLine": 1682,
+        "endChar": 45
+      },
+      "revId": "f6700d505235ff52e6ad6a5571f98c4c9dabc4d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
