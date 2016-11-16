@@ -236,6 +236,250 @@ fib_test_build_rewrite (u8 *eth_addr)
     return (rewrite);
 }
 
+typedef enum fib_test_lb_bucket_type_t_ {
+    FT_LB_LABEL_O_ADJ,
+    FT_LB_LABEL_O_LB,
+    FT_LB_O_LB,
+    FT_LB_SPECIAL,
+    FT_LB_ADJ,
+} fib_test_lb_bucket_type_t;
+
+typedef struct fib_test_lb_bucket_t_ {
+    fib_test_lb_bucket_type_t type;
+
+    union
+    {
+	struct
+	{
+	    mpls_eos_bit_t eos;
+	    mpls_label_t label;
+	    u8 ttl;
+	    adj_index_t adj;
+	} label_o_adj;
+	struct
+	{
+	    mpls_eos_bit_t eos;
+	    mpls_label_t label;
+	    u8 ttl;
+	    index_t lb;
+	} label_o_lb;
+	struct
+	{
+	    index_t adj;
+	} adj;
+	struct
+	{
+	    index_t lb;
+	} lb;
+	struct
+	{
+	    index_t adj;
+	} special;
+    };
+} fib_test_lb_bucket_t;
+
+#define FIB_TEST_LB(_cond, _comment, _args...)			\
+{								\
+    if (!FIB_TEST_I(_cond, _comment, ##_args)) {		\
+	return (0);						\
+    }								\
+}
+
+static int
+fib_test_validate_lb_v (const load_balance_t *lb,
+			u16 n_buckets,
+			va_list ap)
+{
+    const dpo_id_t *dpo;
+    int bucket;
+
+    FIB_TEST_LB((n_buckets == lb->lb_n_buckets), "n_buckets = %d", lb->lb_n_buckets);
+
+    for (bucket = 0; bucket < n_buckets; bucket++)
+    {
+	const fib_test_lb_bucket_t *exp;
+
+	exp = va_arg(ap, fib_test_lb_bucket_t*);
+	dpo = load_balance_get_bucket_i(lb, bucket);
+
+	switch (exp->type)
+	{
+	case FT_LB_LABEL_O_ADJ:
+	    {
+		const mpls_label_dpo_t *mld;
+                mpls_label_t hdr;
+		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+			   "bucket %d stacks on %U",
+			   bucket,
+			   format_dpo_type, dpo->dpoi_type);
+	    
+		mld = mpls_label_dpo_get(dpo->dpoi_index);
+                hdr = clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
+
+		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
+			     exp->label_o_adj.label),
+			    "bucket %d stacks on label %d",
+			    bucket,
+			    exp->label_o_adj.label);
+
+		FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
+			     exp->label_o_adj.eos),
+			    "bucket %d stacks on label %d %U",
+			    bucket,
+			    exp->label_o_adj.label,
+			    format_mpls_eos_bit, exp->label_o_adj.eos);
+
+		FIB_TEST_LB((DPO_ADJACENCY_INCOMPLETE == mld->mld_dpo.dpoi_type),
+			    "bucket %d label stacks on %U",
+			    bucket,
+			    format_dpo_type, mld->mld_dpo.dpoi_type);
+
+		FIB_TEST_LB((exp->label_o_adj.adj == mld->mld_dpo.dpoi_index),
+			    "bucket %d label stacks on adj %d",
+			    bucket,
+			    exp->label_o_adj.adj);
+	    }
+	    break;
+	case FT_LB_LABEL_O_LB:
+	    {
+		const mpls_label_dpo_t *mld;
+                mpls_label_t hdr;
+
+		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+			   "bucket %d stacks on %U",
+			   bucket,
+			   format_dpo_type, dpo->dpoi_type);
+
+		mld = mpls_label_dpo_get(dpo->dpoi_index);
+                hdr = clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
+
+		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
+			     exp->label_o_lb.label),
+			    "bucket %d stacks on label %d",
+			    bucket,
+			    exp->label_o_lb.label);
+
+		FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
+			     exp->label_o_lb.eos),
+			    "bucket %d stacks on label %d %U",
+			    bucket,
+			    exp->label_o_lb.label,
+			    format_mpls_eos_bit, exp->label_o_lb.eos);
+
+		FIB_TEST_LB((DPO_LOAD_BALANCE == mld->mld_dpo.dpoi_type),
+			    "bucket %d label stacks on %U",
+			    bucket,
+			    format_dpo_type, mld->mld_dpo.dpoi_type);
+
+		FIB_TEST_LB((exp->label_o_lb.lb == mld->mld_dpo.dpoi_index),
+			    "bucket %d label stacks on LB %d",
+			    bucket,
+			    exp->label_o_lb.lb);
+	    }
+	    break;
+	case FT_LB_ADJ:
+	    FIB_TEST_I(((DPO_ADJACENCY == dpo->dpoi_type) ||
+			(DPO_ADJACENCY_INCOMPLETE == dpo->dpoi_type)),
+		       "bucket %d stacks on %U",
+		       bucket,
+		       format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
+			"bucket %d stacks on adj %d",
+			bucket,
+			exp->adj.adj);
+	    break;
+	case FT_LB_O_LB:
+	    FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
+                       "bucket %d stacks on %U",
+                       bucket,
+                       format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->lb.lb == dpo->dpoi_index),
+			"bucket %d stacks on lb %d",
+			bucket,
+			exp->lb.lb);
+	    break;
+	case FT_LB_SPECIAL:
+	    FIB_TEST_I((DPO_DROP == dpo->dpoi_type),
+		       "bucket %d stacks on %U",
+		       bucket,
+		       format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->special.adj == dpo->dpoi_index),
+			"bucket %d stacks on drop %d",
+			bucket,
+			exp->special.adj);
+	    break;
+	}
+    }
+    return (!0);
+}
+
+static int
+fib_test_validate_entry (fib_node_index_t fei,
+			 fib_forward_chain_type_t fct,
+			 u16 n_buckets,
+			 ...)
+{
+    const load_balance_t *lb;
+    dpo_id_t dpo = DPO_INVALID;
+    fib_prefix_t pfx;
+    index_t fw_lbi;
+    u32 fib_index;
+    va_list ap;
+    int res;
+
+    va_start(ap, n_buckets);
+
+    fib_entry_get_prefix(fei, &pfx);
+    fib_index = fib_entry_get_fib_index(fei);
+    fib_entry_contribute_forwarding(fei, fct, &dpo);
+
+    FIB_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
+		"Entry links to %U",
+		format_dpo_type, dpo.dpoi_type);
+    lb = load_balance_get(dpo.dpoi_index);
+
+    res = fib_test_validate_lb_v(lb, n_buckets, ap);
+
+    /*
+     * ensure that the LB contributed by the entry is the
+     * same as the LB in the forwarding tables
+     */
+    switch (pfx.fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx.fp_addr.ip4);
+	break;
+    case FIB_PROTOCOL_IP6:
+	fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx.fp_addr.ip6);
+	break;
+    case FIB_PROTOCOL_MPLS:
+	{
+	    mpls_unicast_header_t hdr = {
+		.label_exp_s_ttl = 0,
+	    };
+
+	    vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx.fp_label);
+	    vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx.fp_eos);
+	    hdr.label_exp_s_ttl = clib_host_to_net_u32(hdr.label_exp_s_ttl);
+
+	    fw_lbi = mpls_fib_table_forwarding_lookup(fib_index, &hdr);
+	    break;
+	}
+    default:
+	fw_lbi = 0;
+    }
+    FIB_TEST_LB((fw_lbi == dpo.dpoi_index),
+		"Contributed LB = FW LB: %U\n %U",
+		format_load_balance, fw_lbi, 0,
+		format_load_balance, dpo.dpoi_index, 0);
+
+    dpo_reset(&dpo);
+
+    va_end(ap);
+
+    return (res);
+}
+
 static void
 fib_test_v4 (void)
 {
@@ -1152,6 +1396,383 @@ fib_test_v4 (void)
 				    tm->hw[0]->sw_if_index,
 				    tm->hw[1]->sw_if_index),
 	     "RPF list for 1.2.3.4/32 contains both adjs");
+
+    /*
+     * Test UCMP with a large weight skew - this produces load-balance objects with large
+     * numbers of buckets to accommodate the skew. By updating said load-balances we are
+     * laso testing the LB in placce modify code when number of buckets is large.
+     */
+    fib_prefix_t pfx_6_6_6_6_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    /* 1.1.1.1/32 */
+	    .ip4.as_u32 = clib_host_to_net_u32(0x06060606),
+	},
+    };
+    fib_test_lb_bucket_t ip_6_6_6_6_o_10_10_10_1 = {
+	.type = FT_LB_ADJ,
+	.adj = {
+	    .adj = ai_01,
+	},
+    };
+    fib_test_lb_bucket_t ip_6_6_6_6_o_10_10_10_2 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_02,
+        },
+    };
+    fib_test_lb_bucket_t ip_6_6_6_6_o_12_12_12_12 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_12_12_12_12,
+        },
+    };
+    fib_table_entry_update_one_path(fib_index,
+				    &pfx_6_6_6_6_s_32,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_NONE,
+				    FIB_PROTOCOL_IP4,
+				    &nh_10_10_10_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0, // invalid fib index
+				    0,  // zero weigth
+				    MPLS_LABEL_INVALID,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup(fib_index, &pfx_6_6_6_6_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &ip_6_6_6_6_o_10_10_10_1),
+	     "6.6.6.6/32 via 10.10.10.1");
+
+    fib_table_entry_path_add(fib_index,
+                             &pfx_6_6_6_6_s_32,
+                             FIB_SOURCE_API,
+                             FIB_ENTRY_FLAG_NONE,
+                             FIB_PROTOCOL_IP4,
+                             &nh_10_10_10_2,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             100,
+                             MPLS_LABEL_INVALID,
+                             FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup(fib_index, &pfx_6_6_6_6_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     64,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_1),
+	     "6.6.6.6/32 via 10.10.10.1 and 10.10.10.2 in 63:1 ratio");
+
+    fib_table_entry_path_add(fib_index,
+                             &pfx_6_6_6_6_s_32,
+                             FIB_SOURCE_API,
+                             FIB_ENTRY_FLAG_NONE,
+                             FIB_PROTOCOL_IP4,
+                             &nh_12_12_12_12,
+                             tm->hw[1]->sw_if_index,
+                             ~0, // invalid fib index
+                             100,
+                             MPLS_LABEL_INVALID,
+                             FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup(fib_index, &pfx_6_6_6_6_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     128,
+				     &ip_6_6_6_6_o_10_10_10_1,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12,
+				     &ip_6_6_6_6_o_12_12_12_12),
+	     "6.6.6.6/32 via 10.10.10.1 and 10.10.10.2 in 63:1 ratio");
+
+    fib_table_entry_path_remove(fib_index,
+                                &pfx_6_6_6_6_s_32,
+                                FIB_SOURCE_API,
+                                FIB_PROTOCOL_IP4,
+                                &nh_12_12_12_12,
+                                tm->hw[1]->sw_if_index,
+                                ~0, // invalid fib index
+                                100,
+                                FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup(fib_index, &pfx_6_6_6_6_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     64,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_6_6_6_6_o_10_10_10_1),
+	     "6.6.6.6/32 via 10.10.10.1 and 10.10.10.2 in 63:1 ratio");
+
+    fib_table_entry_path_remove(fib_index,
+                                &pfx_6_6_6_6_s_32,
+                                FIB_SOURCE_API,
+                                FIB_PROTOCOL_IP4,
+                                &nh_10_10_10_2,
+                                tm->hw[0]->sw_if_index,
+                                ~0, // invalid fib index
+                                100,
+                                FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup(fib_index, &pfx_6_6_6_6_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &ip_6_6_6_6_o_10_10_10_1),
+	     "6.6.6.6/32 via 10.10.10.1");
+
+    fib_table_entry_delete(fib_index, &pfx_6_6_6_6_s_32, FIB_SOURCE_API);
 
     /*
      * A recursive via the two unequal cost entries
@@ -4731,250 +5352,6 @@ fib_test_ae (void)
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
-}
-
-typedef enum fib_test_lb_bucket_type_t_ {
-    FT_LB_LABEL_O_ADJ,
-    FT_LB_LABEL_O_LB,
-    FT_LB_O_LB,
-    FT_LB_SPECIAL,
-    FT_LB_ADJ,
-} fib_test_lb_bucket_type_t;
-
-typedef struct fib_test_lb_bucket_t_ {
-    fib_test_lb_bucket_type_t type;
-
-    union
-    {
-	struct
-	{
-	    mpls_eos_bit_t eos;
-	    mpls_label_t label;
-	    u8 ttl;
-	    adj_index_t adj;
-	} label_o_adj;
-	struct
-	{
-	    mpls_eos_bit_t eos;
-	    mpls_label_t label;
-	    u8 ttl;
-	    index_t lb;
-	} label_o_lb;
-	struct
-	{
-	    index_t adj;
-	} adj;
-	struct
-	{
-	    index_t lb;
-	} lb;
-	struct
-	{
-	    index_t adj;
-	} special;
-    };
-} fib_test_lb_bucket_t;
-
-#define FIB_TEST_LB(_cond, _comment, _args...)			\
-{								\
-    if (!FIB_TEST_I(_cond, _comment, ##_args)) {		\
-	return (0);						\
-    }								\
-}
-
-static int
-fib_test_validate_lb_v (const load_balance_t *lb,
-			u16 n_buckets,
-			va_list ap)
-{
-    const dpo_id_t *dpo;
-    int bucket;
-
-    FIB_TEST_LB((n_buckets == lb->lb_n_buckets), "n_buckets = %d", lb->lb_n_buckets);
-
-    for (bucket = 0; bucket < n_buckets; bucket++)
-    {
-	const fib_test_lb_bucket_t *exp;
-
-	exp = va_arg(ap, fib_test_lb_bucket_t*);
-	dpo = load_balance_get_bucket_i(lb, bucket);
-
-	switch (exp->type)
-	{
-	case FT_LB_LABEL_O_ADJ:
-	    {
-		const mpls_label_dpo_t *mld;
-                mpls_label_t hdr;
-		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
-			   "bucket %d stacks on %U",
-			   bucket,
-			   format_dpo_type, dpo->dpoi_type);
-	    
-		mld = mpls_label_dpo_get(dpo->dpoi_index);
-                hdr = clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
-
-		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
-			     exp->label_o_adj.label),
-			    "bucket %d stacks on label %d",
-			    bucket,
-			    exp->label_o_adj.label);
-
-		FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
-			     exp->label_o_adj.eos),
-			    "bucket %d stacks on label %d %U",
-			    bucket,
-			    exp->label_o_adj.label,
-			    format_mpls_eos_bit, exp->label_o_adj.eos);
-
-		FIB_TEST_LB((DPO_ADJACENCY_INCOMPLETE == mld->mld_dpo.dpoi_type),
-			    "bucket %d label stacks on %U",
-			    bucket,
-			    format_dpo_type, mld->mld_dpo.dpoi_type);
-
-		FIB_TEST_LB((exp->label_o_adj.adj == mld->mld_dpo.dpoi_index),
-			    "bucket %d label stacks on adj %d",
-			    bucket,
-			    exp->label_o_adj.adj);
-	    }
-	    break;
-	case FT_LB_LABEL_O_LB:
-	    {
-		const mpls_label_dpo_t *mld;
-                mpls_label_t hdr;
-
-		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
-			   "bucket %d stacks on %U",
-			   bucket,
-			   format_dpo_type, dpo->dpoi_type);
-	    
-		mld = mpls_label_dpo_get(dpo->dpoi_index);
-                hdr = clib_net_to_host_u32(mld->mld_hdr.label_exp_s_ttl);
-
-		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
-			     exp->label_o_lb.label),
-			    "bucket %d stacks on label %d",
-			    bucket,
-			    exp->label_o_lb.label);
-
-		FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
-			     exp->label_o_lb.eos),
-			    "bucket %d stacks on label %d %U",
-			    bucket,
-			    exp->label_o_lb.label,
-			    format_mpls_eos_bit, exp->label_o_lb.eos);
-
-		FIB_TEST_LB((DPO_LOAD_BALANCE == mld->mld_dpo.dpoi_type),
-			    "bucket %d label stacks on %U",
-			    bucket,
-			    format_dpo_type, mld->mld_dpo.dpoi_type);
-
-		FIB_TEST_LB((exp->label_o_lb.lb == mld->mld_dpo.dpoi_index),
-			    "bucket %d label stacks on LB %d",
-			    bucket,
-			    exp->label_o_lb.lb);
-	    }
-	    break;
-	case FT_LB_ADJ:
-	    FIB_TEST_I(((DPO_ADJACENCY == dpo->dpoi_type) ||
-			(DPO_ADJACENCY_INCOMPLETE == dpo->dpoi_type)),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
-	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
-			"bucket %d stacks on adj %d",
-			bucket,
-			exp->adj.adj);
-	    break;
-	case FT_LB_O_LB:
-	    FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
-                       "bucket %d stacks on %U",
-                       bucket,
-                       format_dpo_type, dpo->dpoi_type);
-	    FIB_TEST_LB((exp->lb.lb == dpo->dpoi_index),
-			"bucket %d stacks on lb %d",
-			bucket,
-			exp->lb.lb);
-	    break;
-	case FT_LB_SPECIAL:
-	    FIB_TEST_I((DPO_DROP == dpo->dpoi_type),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
-	    FIB_TEST_LB((exp->special.adj == dpo->dpoi_index),
-			"bucket %d stacks on drop %d",
-			bucket,
-			exp->special.adj);
-	    break;
-	}
-    }
-    return (!0);
-}
-
-static int
-fib_test_validate_entry (fib_node_index_t fei,
-			 fib_forward_chain_type_t fct,
-			 u16 n_buckets,
-			 ...)
-{
-    const load_balance_t *lb;
-    dpo_id_t dpo = DPO_INVALID;
-    fib_prefix_t pfx;
-    index_t fw_lbi;
-    u32 fib_index;
-    va_list ap;
-    int res;
-
-    va_start(ap, n_buckets);
-
-    fib_entry_get_prefix(fei, &pfx);
-    fib_index = fib_entry_get_fib_index(fei);
-    fib_entry_contribute_forwarding(fei, fct, &dpo);
-
-    FIB_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
-		"Entry links to %U",
-		format_dpo_type, dpo.dpoi_type);
-    lb = load_balance_get(dpo.dpoi_index);
-
-    res = fib_test_validate_lb_v(lb, n_buckets, ap);
-
-    /*
-     * ensure that the LB contributed by the entry is the
-     * same as the LB in the forwarding tables
-     */
-    switch (pfx.fp_proto)
-    {
-    case FIB_PROTOCOL_IP4:
-	fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx.fp_addr.ip4);
-	break;
-    case FIB_PROTOCOL_IP6:
-	fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx.fp_addr.ip6);
-	break;
-    case FIB_PROTOCOL_MPLS:
-	{
-	    mpls_unicast_header_t hdr = {
-		.label_exp_s_ttl = 0,
-	    };
-
-	    vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx.fp_label);
-	    vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx.fp_eos);
-	    hdr.label_exp_s_ttl = clib_host_to_net_u32(hdr.label_exp_s_ttl);
-
-	    fw_lbi = mpls_fib_table_forwarding_lookup(fib_index, &hdr);
-	    break;
-	}
-    default:
-	fw_lbi = 0;
-    }
-    FIB_TEST_LB((fw_lbi == dpo.dpoi_index),
-		"Contributed LB = FW LB: %U\n %U",
-		format_load_balance, fw_lbi, 0,
-		format_load_balance, dpo.dpoi_index, 0);
-
-    dpo_reset(&dpo);
-
-    va_end(ap);
-
-    return (res);
 }
 
 /*

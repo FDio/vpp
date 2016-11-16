@@ -934,6 +934,14 @@ fib_path_create (fib_node_index_t pl_index,
     path->fp_nh_proto = nh_proto;
     path->fp_via_fib = FIB_NODE_INDEX_INVALID;
     path->fp_weight = rpath->frp_weight;
+    if (0 == path->fp_weight)
+    {
+        /*
+         * a weight of 0 is a meaningless value. We could either reject it, and thus force
+         * clients to always use 1, or we can accept it and fixup approrpiately.
+         */
+        path->fp_weight = 1;
+    }
     path->fp_cfg_flags = flags;
     path->fp_cfg_flags |= fib_path_route_flags_to_cfg_flags(rpath);
 
