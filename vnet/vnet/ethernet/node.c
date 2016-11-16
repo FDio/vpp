@@ -292,6 +292,8 @@ ethernet_input_inline (vlib_main_t * vm,
   u32 n_left_from, next_index, *from, *to_next;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 cpu_index = os_get_cpu_number ();
+  u32 cached_sw_if_index = ~0;
+  u32 cached_is_l2 = 0;		/* shut up gcc */
 
   if (variant != ETHERNET_INPUT_VARIANT_ETHERNET)
     error_node = vlib_node_get_runtime (vm, ethernet_input_node.index);
@@ -333,6 +335,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  vlan_intf_t *vlan_intf0, *vlan_intf1;
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
 	  u32 is_l20, is_l21;
+	  ethernet_header_t *e0, *e1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -361,6 +364,51 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 
 	  error0 = error1 = ETHERNET_ERROR_NONE;
+	  e0 = vlib_buffer_get_current (b0);
+	  type0 = clib_net_to_host_u16 (e0->type);
+	  e1 = vlib_buffer_get_current (b1);
+	  type1 = clib_net_to_host_u16 (e1->type);
+
+	  /* Speed-path for the untagged L2 case */
+	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
+			    && !ethernet_frame_is_tagged (type0)
+			    && !ethernet_frame_is_tagged (type1)))
+	    {
+	      main_intf_t *intf0;
+	      subint_config_t *subint0;
+	      u32 sw_if_index0, sw_if_index1;
+
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	      is_l20 = cached_is_l2;
+
+	      /* This is probably wholly unnecessary */
+	      if (PREDICT_FALSE (sw_if_index0 != sw_if_index1))
+		goto slowpath;
+
+	      if (PREDICT_FALSE (cached_sw_if_index != sw_if_index0))
+		{
+		  cached_sw_if_index = sw_if_index0;
+		  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+		  intf0 = vec_elt_at_index (em->main_intfs, hi0->hw_if_index);
+		  subint0 = &intf0->untagged_subint;
+		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
+		}
+	      if (PREDICT_TRUE (is_l20 != 0))
+		{
+		  next0 = em->l2_next;
+		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
+		  vnet_buffer (b0)->ethernet.start_of_ethernet_header =
+		    b0->current_data;
+		  next1 = em->l2_next;
+		  vnet_buffer (b1)->l2.l2_len = sizeof (ethernet_header_t);
+		  vnet_buffer (b1)->ethernet.start_of_ethernet_header =
+		    b1->current_data;
+		  goto ship_it01;
+		}
+	      /* FALLTHROUGH into the general case */
+	    }
+	slowpath:
 
 	  parse_header (variant,
 			b0,
@@ -484,6 +532,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b0->error = error_node->errors[error0];
 	  b1->error = error_node->errors[error1];
 
+	ship_it01:
 	  // verify speculative enqueue
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, next0,
@@ -503,6 +552,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  main_intf_t *main_intf0;
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
+	  ethernet_header_t *e0;
 	  u32 is_l20;
 
 	  // Prefetch next iteration
@@ -525,6 +575,38 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 
 	  error0 = ETHERNET_ERROR_NONE;
+	  e0 = vlib_buffer_get_current (b0);
+	  type0 = clib_net_to_host_u16 (e0->type);
+
+	  /* Speed-path for the untagged L2 case */
+	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
+			    && !ethernet_frame_is_tagged (type0)))
+	    {
+	      main_intf_t *intf0;
+	      subint_config_t *subint0;
+	      u32 sw_if_index0;
+
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      is_l20 = cached_is_l2;
+
+	      if (PREDICT_FALSE (cached_sw_if_index != sw_if_index0))
+		{
+		  cached_sw_if_index = sw_if_index0;
+		  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+		  intf0 = vec_elt_at_index (em->main_intfs, hi0->hw_if_index);
+		  subint0 = &intf0->untagged_subint;
+		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
+		}
+	      if (PREDICT_TRUE (is_l20 != 0))
+		{
+		  next0 = em->l2_next;
+		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
+		  vnet_buffer (b0)->ethernet.start_of_ethernet_header =
+		    b0->current_data;
+		  goto ship_it0;
+		}
+	      /* FALLTHROUGH into the general case */
+	    }
 
 	  parse_header (variant,
 			b0,
@@ -607,6 +689,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  b0->error = error_node->errors[error0];
 
 	  // verify speculative enqueue
+	ship_it0:
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
