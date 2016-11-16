@@ -44,3 +44,8 @@ vpp_lite_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) 
 	-fstack-protector -fPIC -Werror
 vpp_lite_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
 	-fstack-protector -fPIC -Werror
+
+vpp_lite_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
+	-fPIC -Werror -fprofile-arcs -ftest-coverage
+vpp_lite_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
+	-fPIC -Werror -coverage

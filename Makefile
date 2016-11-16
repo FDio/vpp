@@ -33,7 +33,7 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
-DEB_DEPENDS += python-dev python-virtualenv python-pip
+DEB_DEPENDS += python-dev python-virtualenv python-pip lcov
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else
@@ -43,7 +43,7 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += python-devel python-virtualenv
+RPM_DEPENDS += python-devel python-virtualenv lcov
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
@@ -59,6 +59,7 @@ endif
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
 .PHONY: ctags cscope plugins plugins-release build-vpp-api
 .PHONY: test test-debug retest retest-debug test-doc test-wipe-doc test-help test-wipe
+.PHONY: test-cov test-wipe-cov
 
 help:
 	@echo "Make Targets:"
@@ -97,6 +98,8 @@ help:
 	@echo " wipe-doxygen        - wipe all generated documentation"
 	@echo " test-doc            - generate documentation for test framework"
 	@echo " test-wipe-doc       - wipe documentation for test framework"
+	@echo " test-cov            - generate code coverage report for test framework"
+	@echo " test-wipe-cov       - wipe code coverage report for test framework"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]             - set build verbosity level"
@@ -219,6 +222,8 @@ VPP_PYTHON_PREFIX=$(BR)/python
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-api-install plugins-install vpp-install,)
 	make -C test \
+	  BR=$(BR) \
+	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
 	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(2)-native/vpp-api-test/bin/vpp_api_test \
 	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(2)-native/plugins/lib64/vpp_plugins \
@@ -244,6 +249,12 @@ test-doc:
 
 test-wipe-doc:
 	@make -C test wipe-doc BR=$(BR)
+
+test-cov:
+	$(call test,vpp_lite,vpp_lite_gcov,cov)
+
+test-wipe-cov:
+	@make -C test wipe-cov BR=$(BR)
 
 retest:
 	$(call test,vpp_lite,vpp_lite,retest)
