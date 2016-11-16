@@ -14,6 +14,7 @@
 /build-root/*.rpm
 /build-root/*.changes
 /build-root/test-doc/
+/build-root/test-cov/
 /build-root/python/
 /build-config.mk
 /dpdk/*.tar.gz
