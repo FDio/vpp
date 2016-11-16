@@ -46,6 +46,7 @@ u8_array_dto_field_setter_template = Template("""
     jbyteArray ${field_reference_name} = (*env)->NewByteArray(env, ${field_length});
     (*env)->SetByteArrayRegion(env, ${field_reference_name}, 0, ${field_length}, (const jbyte*)mp->${c_name});
     (*env)->SetObjectField(env, ${object_name}, ${field_reference_name}FieldId, ${field_reference_name});
+    (*env)->DeleteLocalRef(env, ${field_reference_name});
 """)
 
 u16_array_dto_field_setter_template = Template("""
@@ -59,6 +60,7 @@ u16_array_dto_field_setter_template = Template("""
 
         (*env)->ReleaseShortArrayElements(env,  ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
         (*env)->SetObjectField(env, ${object_name}, ${field_reference_name}FieldId, ${field_reference_name});
+        (*env)->DeleteLocalRef(env, ${field_reference_name});
     }
 """)
 
@@ -73,6 +75,7 @@ u32_array_dto_field_setter_template = Template("""
 
         (*env)->ReleaseIntArrayElements(env,  ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
         (*env)->SetObjectField(env, ${object_name}, ${field_reference_name}FieldId, ${field_reference_name});
+        (*env)->DeleteLocalRef(env, ${field_reference_name});
     }
 """)
 
@@ -89,6 +92,7 @@ u64_array_dto_field_setter_template = Template("""
 
         (*env)->ReleaseLongArrayElements(env,  ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
         (*env)->SetObjectField(env, ${object_name}, ${field_reference_name}FieldId, ${field_reference_name});
+        (*env)->DeleteLocalRef(env, ${field_reference_name});
     }
 """)
 

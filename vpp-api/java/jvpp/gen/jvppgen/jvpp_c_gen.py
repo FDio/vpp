@@ -222,6 +222,8 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
     $dto_setters
 
     (*env)->CallVoidMethod(env, plugin_main->callbackObject, callbackMethod, dto);
+    // free DTO as per http://stackoverflow.com/questions/1340938/memory-leak-when-calling-java-code-from-c-using-jni
+    (*env)->DeleteLocalRef(env, dto);
 }""")
 
 

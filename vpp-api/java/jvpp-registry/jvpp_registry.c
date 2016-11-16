@@ -157,6 +157,7 @@ static void vl_api_control_ping_reply_t_handler(
 
             (*env)->CallVoidMethod(env, rm->registryObject, callbackMethod,
                     dto);
+            (*env)->DeleteLocalRef(env, dto);
         }
     }
 
