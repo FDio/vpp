@@ -40,6 +40,8 @@ typedef struct
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+    u64 (*hash_fn) (ethernet_header_t *);
 } handoff_main_t;
 
 handoff_main_t handoff_main;
@@ -123,7 +125,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
        */
 
       /* Compute ingress LB hash */
-      hash_key = eth_get_key ((ethernet_header_t *) b0->data);
+      hash_key = hm->hash_fn ((ethernet_header_t *) b0->data);
       hash = (u32) clib_xxhash (hash_key);
 
       /* if input node did not specify next index, then packet
@@ -336,12 +338,47 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+set_handoff_hash_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  u32 sym = ~0;
+  handoff_main_t *hm = &handoff_main;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	sym = 1;
+      else if (unformat (input, "disable"))
+	sym = 0;
+      else
+	break;
+
+    }
+
+  if (sym == ~0)
+    return clib_error_return (0, "symmetry required");
+
+  if (sym)
+    hm->hash_fn = eth_get_sym_key;
+  else
+    hm->hash_fn = eth_get_key;
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
   .short_help =
   "set interface handoff <interface-name> workers <workers-list>",
   .function = set_interface_handoff_command_fn,
+};
+VLIB_CLI_COMMAND (set_handoff_hash_command, static) = {
+  .path = "set handoff hash symmetry",
+  .short_help = "set handoff hash symmetry enable|disable",
+  .function = set_handoff_hash_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -558,6 +595,8 @@ handoff_init (vlib_main_t * vm)
 	  hm->first_worker_index = tr->first_index;
 	}
     }
+
+  hm->hash_fn = eth_get_key;
 
   hm->vlib_main = vm;
   hm->vnet_main = &vnet_main;
