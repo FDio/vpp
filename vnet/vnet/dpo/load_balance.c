@@ -375,6 +375,19 @@ ip_multipath_normalize_next_hops (load_balance_path_t * raw_next_hops,
             n_adj_left -= n;
             error += fabs (nf - n);
             nhs[i].path_weight = n;
+
+            if (0 == nhs[i].path_weight)
+            {
+                /*
+                 * when the weight skew is high (norm is small) and n == nf.
+                 * without this correction the path with a low weight would have
+                 * no represenation in the load-balanace - don't want that.
+                 * If the weight skew is high so the load-balance has many buckets
+                 * to allow it. pays ya money takes ya choice.
+                 */
+                error = n_adj;
+                break;
+            }
         }
 
         nhs[0].path_weight += n_adj_left;
@@ -565,15 +578,45 @@ load_balance_multipath_update (const dpo_id_t *dpo,
             }
             else
             {
-                /*
-                 * we are not crossing the threshold. we can write the new on the
-                 * old, whether they be inline or not.
-                 */
-                load_balance_fill_buckets(lb, nhs,
-                                          load_balance_get_buckets(lb),
-                                          n_buckets);
-                CLIB_MEMORY_BARRIER();
-                load_balance_set_n_buckets(lb, n_buckets);
+                if (n_buckets <= LB_NUM_INLINE_BUCKETS)
+                {
+                    /*
+                     * we are not crossing the threshold and it's still inline buckets.
+                     * we can write the new on the old..
+                     */
+                    load_balance_fill_buckets(lb, nhs,
+                                              load_balance_get_buckets(lb),
+                                              n_buckets);
+                    CLIB_MEMORY_BARRIER();
+                    load_balance_set_n_buckets(lb, n_buckets);
+                }
+                else
+                {
+                    /*
+                     * we are not crossing the threshold. We need a new bucket array to
+                     * hold the increased number of choices.
+                     */
+                    dpo_id_t *new_buckets, *old_buckets, *tmp_dpo;
+
+                    new_buckets = NULL;
+                    old_buckets = load_balance_get_buckets(lb);
+
+                    vec_validate_aligned(new_buckets,
+                                         n_buckets - 1,
+                                         CLIB_CACHE_LINE_BYTES);
+
+                    load_balance_fill_buckets(lb, nhs, new_buckets, n_buckets);
+                    CLIB_MEMORY_BARRIER();
+                    lb->lb_buckets = new_buckets;
+                    CLIB_MEMORY_BARRIER();
+                    load_balance_set_n_buckets(lb, n_buckets);
+
+                    vec_foreach(tmp_dpo, old_buckets)
+                    {
+                        dpo_reset(tmp_dpo);
+                    }
+                    vec_free(old_buckets);
+                }
             }
 
             /*
