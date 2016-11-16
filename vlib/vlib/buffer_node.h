@@ -146,42 +146,42 @@ do {                                                                    \
       to_next -= 4;                                                     \
       n_left_to_next += 4;                                              \
                                                                         \
-      /* If pi0 belongs to "next", send it there */                     \
+      /* If bi0 belongs to "next", send it there */                     \
       if (next_index == next0)                                          \
         {                                                               \
-          to_next[0] = pi0;                                             \
+          to_next[0] = bi0;                                             \
           to_next++;                                                    \
           n_left_to_next --;                                            \
         }                                                               \
       else              /* send it where it needs to go */              \
-        vlib_set_next_frame_buffer (vm, node, next0, pi0);              \
+        vlib_set_next_frame_buffer (vm, node, next0, bi0);              \
                                                                         \
       if (next_index == next1)                                          \
         {                                                               \
-          to_next[0] = pi1;                                             \
+          to_next[0] = bi1;                                             \
           to_next++;                                                    \
           n_left_to_next --;                                            \
         }                                                               \
       else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next1, pi1);              \
+        vlib_set_next_frame_buffer (vm, node, next1, bi1);              \
                                                                         \
       if (next_index == next2)                                          \
         {                                                               \
-          to_next[0] = pi2;                                             \
+          to_next[0] = bi2;                                             \
           to_next++;                                                    \
           n_left_to_next --;                                            \
         }                                                               \
       else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next2, pi2);              \
+        vlib_set_next_frame_buffer (vm, node, next2, bi2);              \
                                                                         \
       if (next_index == next3)                                          \
         {                                                               \
-          to_next[0] = pi3;                                             \
+          to_next[0] = bi3;                                             \
           to_next++;                                                    \
           n_left_to_next --;                                            \
         }                                                               \
       else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next3, pi3);              \
+        vlib_set_next_frame_buffer (vm, node, next3, bi3);              \
                                                                         \
       /* Change speculation: last 2 packets went to the same node */    \
       if (next2 == next3)                                               \
