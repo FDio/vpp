@@ -2207,6 +2207,7 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   vui->active = 0;
   // disconnect interface sockets
   vhost_user_if_disconnect (vui);
+  vhost_user_update_iface_state (vui);
   // add to inactive interface list
   vec_add1 (vum->vhost_user_inactive_interfaces_index, p[0]);
 
