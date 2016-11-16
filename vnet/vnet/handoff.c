@@ -40,6 +40,8 @@ typedef struct
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+    u64 (*hash_fn) (ethernet_header_t *);
 } handoff_main_t;
 
 handoff_main_t handoff_main;
@@ -123,7 +125,7 @@ worker_handoff_node_fn (vlib_main_t * vm,
        */
 
       /* Compute ingress LB hash */
-      hash_key = eth_get_key ((ethernet_header_t *) b0->data);
+      hash_key = hm->hash_fn ((ethernet_header_t *) b0->data);
       hash = (u32) clib_xxhash (hash_key);
 
       /* if input node did not specify next index, then packet
@@ -283,9 +285,11 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
 				  vlib_cli_command_t * cmd)
 {
+  handoff_main_t *hm = &handoff_main;
   u32 sw_if_index = ~0;
   int enable_disable = 1;
   uword *bitmap = 0;
+  u32 sym = ~0;
 
   int rv = 0;
 
@@ -298,6 +302,10 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 vnet_get_main (), &sw_if_index))
 	;
+      else if (unformat (input, "symmetrical"))
+	sym = 1;
+      else if (unformat (input, "asymmetrical"))
+	sym = 0;
       else
 	break;
     }
@@ -333,6 +341,12 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
     default:
       return clib_error_return (0, "unknown return value %d", rv);
     }
+
+  if (sym == 1)
+    hm->hash_fn = eth_get_sym_key;
+  else if (sym == 0)
+    hm->hash_fn = eth_get_key;
+
   return 0;
 }
 
@@ -340,7 +354,7 @@ set_interface_handoff_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_interface_handoff_command, static) = {
   .path = "set interface handoff",
   .short_help =
-  "set interface handoff <interface-name> workers <workers-list>",
+  "set interface handoff <interface-name> workers <workers-list> [symmetrical|asymmetrical]",
   .function = set_interface_handoff_command_fn,
 };
 /* *INDENT-ON* */
@@ -558,6 +572,8 @@ handoff_init (vlib_main_t * vm)
 	  hm->first_worker_index = tr->first_index;
 	}
     }
+
+  hm->hash_fn = eth_get_key;
 
   hm->vlib_main = vm;
   hm->vnet_main = &vnet_main;

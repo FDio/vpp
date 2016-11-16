@@ -130,6 +130,72 @@ bottom_lbl_found:
 
 }
 
+static inline u64
+eth_get_sym_key (ethernet_header_t * h0)
+{
+  u64 hash_key;
+
+  if (PREDICT_TRUE (h0->type) == clib_host_to_net_u16 (ETHERNET_TYPE_IP4))
+    {
+      ip4_header_t *ip = (ip4_header_t *) (h0 + 1);
+      hash_key =
+	(u64) (ip->src_address.as_u32 ^
+	       ip->dst_address.as_u32 ^ ip->protocol);
+    }
+  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
+    {
+      ip6_header_t *ip = (ip6_header_t *) (h0 + 1);
+      hash_key = (u64) (ip->src_address.as_u64[0] ^
+			ip->src_address.as_u64[1] ^
+			ip->dst_address.as_u64[0] ^
+			ip->dst_address.as_u64[1] ^ ip->protocol);
+    }
+  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST))
+    {
+      hash_key = mpls_get_key ((mpls_unicast_header_t *) (h0 + 1));
+    }
+  else
+    if (PREDICT_FALSE
+	((h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_VLAN))
+	 || (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_DOT1AD))))
+    {
+      ethernet_vlan_header_t *outer = (ethernet_vlan_header_t *) (h0 + 1);
+
+      outer = (outer->type == clib_host_to_net_u16 (ETHERNET_TYPE_VLAN)) ?
+	outer + 1 : outer;
+      if (PREDICT_TRUE (outer->type) ==
+	  clib_host_to_net_u16 (ETHERNET_TYPE_IP4))
+	{
+	  ip4_header_t *ip = (ip4_header_t *) (outer + 1);
+	  hash_key =
+	    (u64) (ip->src_address.as_u32 ^
+		   ip->dst_address.as_u32 ^ ip->protocol);
+	}
+      else if (outer->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6))
+	{
+	  ip6_header_t *ip = (ip6_header_t *) (outer + 1);
+	  hash_key =
+	    (u64) (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1] ^
+		   ip->dst_address.as_u64[0] ^
+		   ip->dst_address.as_u64[1] ^ ip->protocol);
+	}
+      else if (outer->type ==
+	       clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST))
+	{
+	  hash_key = mpls_get_key ((mpls_unicast_header_t *) (outer + 1));
+	}
+      else
+	{
+	  hash_key = outer->type;
+	}
+    }
+  else
+    {
+      hash_key = 0;
+    }
+
+  return hash_key;
+}
 
 static inline u64
 eth_get_key (ethernet_header_t * h0)
