@@ -6492,6 +6492,9 @@ api_mpls_ethernet_add_del_tunnel (vat_main_t * vam)
   u32 tx_sw_if_index;
   int tx_sw_if_index_set = 0;
 
+  /* Shut up coverity */
+  memset (dst_mac_address, 0, sizeof (dst_mac_address));
+
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "vrf %d", &inner_vrf_id))
@@ -10580,6 +10583,9 @@ api_create_vhost_user_if (vat_main_t * vam)
   u32 custom_dev_instance = ~0;
   u8 hwaddr[6];
   u8 use_custom_mac = 0;
+
+  /* Shut up coverity */
+  memset (hwaddr, 0, sizeof (hwaddr));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -16111,6 +16117,10 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
   u16 vlanid = 0;
   u32 sid = ~0;
   u32 tmp;
+
+  /* Shut up coverity */
+  memset (dmac, 0, sizeof (dmac));
+  memset (smac, 0, sizeof (smac));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {

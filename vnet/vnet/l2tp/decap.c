@@ -126,7 +126,7 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, u32 bi)
   vlib_error_main_t *em = &vm->error_main;
   l2tpv3_header_t *l2tp;
   u32 counter_index;
-  l2t_session_t *session;
+  l2t_session_t *session = 0;
   u32 session_index;
   u32 next_index;
   u8 l2tp_decap_local = (l2t_decap_local_node.index == n->index);
@@ -218,6 +218,7 @@ done:
       else
 	{
 	  /* Go to next node on the ip6 configuration chain */
+	  ASSERT (session);
 	  vnet_feature_next (session->sw_if_index, &next_index, b);
 	}
     }
