@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
 import unittest
-import socket
-from logging import *
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, ARP
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import ICMPv6ND_NS, IPv6, UDP
+from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
+
 
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
@@ -83,8 +81,8 @@ class TestMPLS(VppTestCase):
                 rx = capture[i]
 
                 # the rx'd packet has the MPLS label popped
-                eth = rx[Ether];
-                self.assertEqual(eth.type, 0x800);
+                eth = rx[Ether]
+                self.assertEqual(eth.type, 0x800)
 
                 tx_ip = tx[IP]
                 rx_ip = rx[IP]
@@ -92,10 +90,10 @@ class TestMPLS(VppTestCase):
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
                 # IP processing post pop has decremented the TTL
-                self.assertEqual(rx_ip.ttl+1, tx_ip.ttl)
+                self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
         except:
-            raise;
+            raise
 
     def verify_capture_ip6(self, src_if, capture, sent):
         try:
@@ -106,8 +104,8 @@ class TestMPLS(VppTestCase):
                 rx = capture[i]
 
                 # the rx'd packet has the MPLS label popped
-                eth = rx[Ether];
-                self.assertEqual(eth.type, 0x86DD);
+                eth = rx[Ether]
+                self.assertEqual(eth.type, 0x86DD)
 
                 tx_ip = tx[IPv6]
                 rx_ip = rx[IPv6]
@@ -118,8 +116,7 @@ class TestMPLS(VppTestCase):
                 self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
 
         except:
-            raise;
-
+            raise
 
     def test_v4_exp_null(self):
         """ MPLS V4 Explicit NULL test """
@@ -137,10 +134,10 @@ class TestMPLS(VppTestCase):
         rx = self.pg0.get_capture()
 
         try:
-            self.assertEqual(0, len(rx));
+            self.assertEqual(0, len(rx))
         except:
-            error("MPLS TTL=0 packets forwarded")
-            error(packet.show())
+            self.logger.error("MPLS TTL=0 packets forwarded")
+            self.logger.error(rx.command())
             raise
 
         #

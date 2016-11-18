@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import unittest
-from logging import *
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
 
@@ -94,7 +93,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
     def tearDown(self):
         super(TestVxlan, self).tearDown()
         if not self.vpp_dead:
-            info(self.vapi.cli("show bridge-domain 1 detail"))
+            self.logger.info(self.vapi.cli("show bridge-domain 1 detail"))
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

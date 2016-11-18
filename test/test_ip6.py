@@ -103,7 +103,7 @@ class TestIPv6(VppTestCase):
                 counter += 1
                 if counter / count * 100 > percent:
                     self.logger.info("Configure %d FIB entries .. %d%% done" %
-                         (count, percent))
+                                     (count, percent))
                     percent += 1
 
     def create_stream(self, src_if, packet_sizes):
@@ -171,16 +171,15 @@ class TestIPv6(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error("Unexpected or invalid packet: %s" %
+                                  packet.command())
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
                 i.sw_if_index, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(
-                remaining_packet is None,
-                "Interface %s: Packet expected from interface %s didn't arrive" %
-                (dst_if.name, i.name))
+            self.assertTrue(remaining_packet is None,
+                            "Interface %s: Packet expected from interface %s "
+                            "didn't arrive" % (dst_if.name, i.name))
 
     def test_fib(self):
         """ IPv6 FIB test
