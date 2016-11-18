@@ -70,7 +70,7 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
       pcap_write (&pif->pcap_main);
     }
 
-  vlib_buffer_free_no_next (vm, vlib_frame_args (frame), n_buffers);
+  vlib_buffer_free (vm, vlib_frame_args (frame), n_buffers);
   if (PREDICT_FALSE (pif->lockp != 0))
     *pif->lockp = 0;
   return n_buffers;
