@@ -38,6 +38,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vppinfra/cpu.h>
 
 /* Root of all show commands. */
 /* *INDENT-OFF* */
@@ -633,6 +634,39 @@ VLIB_CLI_COMMAND (show_memory_usage_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+show_cpu (vlib_main_t * vm, unformat_input_t * input,
+	  vlib_cli_command_t * cmd)
+{
+#define _(a,b,c) vlib_cli_output (vm, "%-25s " b, a ":", c);
+  _("Model name", "%U", format_cpu_model_name);
+  _("Microarchitecture", "%U", format_cpu_uarch);
+  _("Flags", "%U", format_cpu_flags);
+  _("Base frequency", "%.2f GHz",
+    ((f64) vm->clib_time.clocks_per_second) * 1e-9);
+#undef _
+  return 0;
+}
+
+/*?
+ * Displays various information about the CPU.
+ *
+ * @cliexpar
+ * @cliexstart{show cpu}
+ * Model name:               Intel(R) Xeon(R) CPU E5-2667 v4 @ 3.20GHz
+ * Microarchitecture:        Broadwell (Broadwell-EP/EX)
+ * Flags:                    sse3 ssse3 sse41 sse42 avx avx2 aes
+ * Base Frequency:           3.20 GHz
+ * @cliexend
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_cpu_command, static) = {
+  .path = "show cpu",
+  .short_help = "Show cpu information",
+  .function = show_cpu,
+};
+
+/* *INDENT-ON* */
 static clib_error_t *
 enable_disable_memory_trace (vlib_main_t * vm,
 			     unformat_input_t * input,
