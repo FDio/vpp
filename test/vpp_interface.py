@@ -128,7 +128,8 @@ class VppInterface(object):
         self._hosts_by_mac = {}
         self._hosts_by_ip4 = {}
         self._hosts_by_ip6 = {}
-        for i in range(2, count+2):  # 0: network address, 1: local vpp address
+        for i in range(
+                2, count + 2):  # 0: network address, 1: local vpp address
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
             ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
             ip6 = "fd01:%04x::%04x" % (self.sw_if_index, i)
@@ -137,6 +138,26 @@ class VppInterface(object):
             self._hosts_by_mac[mac] = host
             self._hosts_by_ip4[ip4] = host
             self._hosts_by_ip6[ip6] = host
+
+    def find_self_in_sw_interface_dump(self):
+        """
+        Run sw_interface_dump and return a tuple containing the result
+        and the result entry representing this interface.
+        """
+        dump = self.test.vapi.sw_interface_dump()
+        for intf in dump:
+            if intf.sw_if_index == self.sw_if_index:
+                return dump, intf
+        return dump, None
+
+    def query_vpp_config(self):
+        """
+        Query the vpp configuration to check if this interface is configured.
+
+        :return: True if the object is configured
+        """
+        dump, intf = self.find_self_in_sw_interface_dump()
+        return intf is not None
 
     def post_init_setup(self):
         """Additional setup run after creating an interface object."""
@@ -149,19 +170,15 @@ class VppInterface(object):
         self._local_ip6 = "fd01:%04x::1" % self.sw_if_index
         self._local_ip6n = socket.inet_pton(socket.AF_INET6, self.local_ip6)
 
-        r = self.test.vapi.sw_interface_dump()
-        for intf in r:
-            if intf.sw_if_index == self.sw_if_index:
-                self._name = intf.interface_name.split(b'\0', 1)[0]
-                self._local_mac = ':'.join(intf.l2_address.encode('hex')[i:i + 2]
-                                           for i in range(0, 12, 2))
-                self._dump = intf
-                break
-        else:
-            raise Exception(
-                "Could not find interface with sw_if_index %d "
-                "in interface dump %s" %
-                (self.sw_if_index, repr(r)))
+        dump, intf = self.find_self_in_sw_interface_dump()
+        if intf is None:
+            raise Exception("Could not find interface with sw_if_index %d in "
+                            "dump %s" % (self.sw_if_index, repr(dump)))
+
+        self._name = intf.interface_name.split(b'\0', 1)[0]
+        self._local_mac = ':'.join(intf.l2_address.encode('hex')[i:i + 2]
+                                   for i in range(0, 12, 2))
+        self._dump = intf
 
     @abstractmethod
     def __init__(self, test, index):

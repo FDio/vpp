@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
@@ -8,6 +8,7 @@ from scapy.layers.inet import IP, UDP
 
 class BridgeDomain(object):
     """ Bridge domain abstraction """
+    __metaclass__ = ABCMeta
 
     @property
     def frame_pg0_to_pg1(self):

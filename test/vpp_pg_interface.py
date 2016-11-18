@@ -2,11 +2,13 @@ import os
 import time
 from logging import error, info
 from scapy.utils import wrpcap, rdpcap
-from vpp_interface import VppInterface
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA, \
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
+
+from vpp_interface import VppInterface
+from vpp_object import VppObjectRegistry
 
 
 class VppPGInterface(VppInterface):
@@ -71,15 +73,39 @@ class VppPGInterface(VppInterface):
         self._input_cli = "packet-generator new pcap %s source pg%u name %s" % (
             self.in_path, self.pg_index, self.cap_name)
 
+    def add_vpp_config(self):
+        """
+        Create this interface in VPP.
+
+        :return: Result of the API call.
+        """
+        return self.test.vapi.pg_create_interface(self.pg_index)
+
+    def remove_vpp_config(self):
+        """Remove the configuration for this interface from VPP."""
+        self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=0,
+                                              link_up_down=0, deleted=1)
+
     def __init__(self, test, pg_index):
         """ Create VPP packet-generator interface """
         self._in_history_counter = 0
         self._out_history_counter = 0
         self._pg_index = pg_index
         self._test = test
-        r = self.test.vapi.pg_create_interface(self.pg_index)
+        r = self.add_vpp_config()
         self._sw_if_index = r.sw_if_index
         self.post_init_setup()
+        VppObjectRegistry().register(self)
+
+    def __str__(self):
+        return "pg%d" % self.pg_index
+
+    def unique_id(self):
+        return str(self)
+
+    def __repr__(self):
+        return "%s interface (pg_index=%d, sw_if_index=%d)" % \
+               (self, self.pg_index, self.sw_if_index)
 
     def enable_capture(self):
         """ Enable capture on this packet-generator interface"""
