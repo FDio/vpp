@@ -185,7 +185,7 @@ class VppTestCase(unittest.TestCase):
         try:
             cls.run_vpp()
             cls.vpp_dead = False
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
+            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls)
             if cls.step:
                 cls.vapi.register_hook(StepHook(cls))
             else:

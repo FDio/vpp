@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host
+from util import Host, ppp
 
 
 class TestL2xc(VppTestCase):
@@ -169,8 +169,7 @@ class TestL2xc(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
