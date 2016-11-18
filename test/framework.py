@@ -15,6 +15,7 @@ from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from scapy.packet import Raw
 from log import *
+from vpp_object import VppObjectRegistry
 
 """
   Test framework module.
@@ -46,7 +47,7 @@ def pump_output(out, queue):
         queue.put(line)
 
 
-class VppTestCase(unittest.TestCase):
+class VppTestCase(unittest.TestCase, VppObjectRegistry):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
     """
@@ -259,7 +260,13 @@ class VppTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        """ Perform final cleanup after running all tests in this test-case """
+        """ Perform final cleanup after running all tests in this test-case. """
+        try:
+            if not cls.vpp_dead:
+                cls.remove_vpp_config()
+        except:
+            cls.quit()
+            raise
         cls.quit()
 
     def tearDown(self):
