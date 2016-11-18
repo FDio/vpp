@@ -241,7 +241,7 @@ dpdk_device_input (dpdk_main_t * dm,
 
   buffer_flags_template = dm->buffer_flags_template;
 
-  vec_reset_length (xd->d_trace_buffers);
+  vec_reset_length (xd->d_trace_buffers[cpu_index]);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
 
   fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
@@ -360,19 +360,19 @@ dpdk_device_input (dpdk_main_t * dm,
 					   to_next, n_left_to_next,
 					   bi0, next0);
 	  if (PREDICT_FALSE (n_trace > mb_index))
-	    vec_add1 (xd->d_trace_buffers, bi0);
+	    vec_add1 (xd->d_trace_buffers[cpu_index], bi0);
 	  n_buffers--;
 	  mb_index++;
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  if (PREDICT_FALSE (vec_len (xd->d_trace_buffers) > 0))
+  if (PREDICT_FALSE (vec_len (xd->d_trace_buffers[cpu_index]) > 0))
     {
-      dpdk_rx_trace (dm, node, xd, queue_id, xd->d_trace_buffers,
-		     vec_len (xd->d_trace_buffers));
+      dpdk_rx_trace (dm, node, xd, queue_id, xd->d_trace_buffers[cpu_index],
+		     vec_len (xd->d_trace_buffers[cpu_index]));
       vlib_set_trace_count (vm, node,
-			    n_trace - vec_len (xd->d_trace_buffers));
+			    n_trace - vec_len (xd->d_trace_buffers[cpu_index]));
     }
 
   vlib_increment_combined_counter

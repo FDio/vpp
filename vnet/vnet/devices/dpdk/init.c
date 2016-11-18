@@ -731,6 +731,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  vec_reset_length (xd->rx_vectors[j]);
 	}
 
+      vec_validate_aligned (xd->d_trace_buffers, tm->n_vlib_mains,
+			    CLIB_CACHE_LINE_BYTES);
+
       rv = dpdk_port_setup (dm, xd);
 
       if (rv)
