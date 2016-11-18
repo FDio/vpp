@@ -1,4 +1,18 @@
 import socket
+import sys
+from cStringIO import StringIO
+
+
+def ppp(headline, packet):
+    """ Return string containing the output of scapy packet.show() call. """
+    o = StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = o
+    print(headline)
+    packet.show()
+    sys.stdout = old_stdout
+    return o.getvalue()
+
 
 class Host(object):
     """ Generic test host "connected" to VPPs interface. """

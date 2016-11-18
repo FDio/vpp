@@ -1,8 +1,6 @@
 from abc import abstractmethod, ABCMeta
 import socket
 
-from util import Host
-
 
 class VppInterface(object):
     """Generic VPP interface."""
@@ -127,7 +125,8 @@ class VppInterface(object):
         self._hosts_by_mac = {}
         self._hosts_by_ip4 = {}
         self._hosts_by_ip6 = {}
-        for i in range(2, count+2):  # 0: network address, 1: local vpp address
+        for i in range(
+                2, count + 2):  # 0: network address, 1: local vpp address
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
             ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
             ip6 = "fd01:%04x::%04x" % (self.sw_if_index, i)
@@ -158,10 +157,9 @@ class VppInterface(object):
         for intf in r:
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name.split(b'\0', 1)[0]
-                self._local_mac = ':'.join(
-                    intf.l2_address.encode('hex')[i:i + 2]
-                    for i in range(0, 12, 2)
-                )
+                self._local_mac =\
+                    ':'.join(intf.l2_address.encode('hex')[i:i + 2]
+                             for i in range(0, 12, 2))
                 self._dump = intf
                 break
         else:

@@ -193,7 +193,7 @@ class VppTestCase(unittest.TestCase):
             cls.vpp_stderr_reader_thread = Thread(target=pump_output, args=(
                 cls.vpp.stderr, cls.vpp_stderr_queue))
             cls.vpp_stderr_reader_thread.start()
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
+            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls)
             if cls.step:
                 hook = StepHook(cls)
             else:
