@@ -169,8 +169,8 @@ class TestL2xc(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error("Unexpected or invalid packet: %s" %
+                                  packet.command())
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
