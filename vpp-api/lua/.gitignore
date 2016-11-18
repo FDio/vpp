@@ -1,0 +1,2 @@
+# A .gitignore to avoid ignoring the Makefile
+!Makefile
