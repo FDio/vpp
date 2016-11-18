@@ -136,20 +136,6 @@
   foreach_dpdk_pkt_rx_offload_flag              \
   foreach_dpdk_pkt_tx_offload_flag
 
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-#define foreach_dpdk_pkt_ext_rx_offload_flag                    \
-  _ (PKT_EXT_RX_PKT_ERROR, "RX Packet Error")                   \
-  _ (PKT_EXT_RX_BAD_FCS, "RX Bad FCS checksum")                 \
-  _ (PKT_EXT_RX_UDP, "RX packet with UDP L4 header")            \
-  _ (PKT_EXT_RX_TCP, "RX packet with TCP L4 header")            \
-  _ (PKT_EXT_RX_IPV4_FRAGMENT, "RX packet IPv4 Fragment")
-
-#define foreach_dpdk_pkt_ext_offload_flag \
-  foreach_dpdk_pkt_rx_offload_flag    \
-  foreach_dpdk_pkt_ext_rx_offload_flag
-
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
-
 u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
 {
@@ -543,15 +529,10 @@ format_dpdk_rx_dma_trace (u8 * s, va_list * va)
 	      format_white_space, indent,
 	      t->buffer_index, format_vlib_buffer, &t->buffer);
 
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-  s = format (s, "\n%U%U",
-	      format_white_space, indent,
-	      format_dpdk_rx_rte_mbuf, &t->mb, &t->data);
-#else
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
 	      format_dpdk_rte_mbuf, &t->mb, &t->data);
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
+
   if (vm->trace_main.verbose)
     {
       s = format (s, "\n%UPacket Dump%s", format_white_space, indent + 2,
@@ -670,69 +651,6 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
 
   return s;
 }
-
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-
-static inline u8 *
-format_dpdk_pkt_rx_offload_flags (u8 * s, va_list * va)
-{
-  u16 *ol_flags = va_arg (*va, u16 *);
-  uword indent = format_get_indent (s) + 2;
-
-  if (!*ol_flags)
-    return s;
-
-  s = format (s, "Packet RX Offload Flags");
-
-#define _(F, S)             \
-  if (*ol_flags & F)            \
-    {               \
-      s = format (s, "\n%U%s (0x%04x) %s",      \
-      format_white_space, indent, #F, F, S);  \
-    }
-
-  foreach_dpdk_pkt_ext_offload_flag
-#undef _
-    return s;
-}
-
-u8 *
-format_dpdk_rx_rte_mbuf (u8 * s, va_list * va)
-{
-  struct rte_mbuf *mb = va_arg (*va, struct rte_mbuf *);
-  ethernet_header_t *eth_hdr = va_arg (*args, ethernet_header_t *);
-  uword indent = format_get_indent (s) + 2;
-
-  /*
-   * Note: Assumes mb is head of pkt chain -- port, nb_segs, & pkt_len
-   *       are only valid for the 1st mbuf segment.
-   */
-  s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
-	      "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x"
-	      "\n%Upacket_type 0x%x",
-	      mb->port, mb->nb_segs, mb->pkt_len,
-	      format_white_space, indent,
-	      mb->buf_len, mb->data_len, mb->ol_flags,
-	      format_white_space, indent, mb->packet_type);
-
-  if (mb->ol_flags)
-    s = format (s, "\n%U%U", format_white_space, indent,
-		format_dpdk_pkt_rx_offload_flags, &mb->ol_flags);
-
-  if (mb->ol_flags & PKT_RX_VLAN_PKT)
-    {
-      ethernet_vlan_header_tv_t *vlan_hdr =
-	((ethernet_vlan_header_tv_t *) & (eth_hdr->type));
-      s = format (s, " %U", format_dpdk_rte_mbuf_vlan, vlan_hdr);
-    }
-
-  if (mb->packet_type)
-    s = format (s, "\n%U%U", format_white_space, indent,
-		format_dpdk_pkt_types, &mb->packet_type);
-
-  return s;
-}
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
 
 uword
 unformat_socket_mem (unformat_input_t * input, va_list * va)

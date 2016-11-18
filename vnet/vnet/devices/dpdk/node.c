@@ -85,19 +85,11 @@ dpdk_rx_next_and_error_from_mb_flags_x1 (dpdk_device_t * xd,
   u8 n0;
   uint16_t mb_flags = mb->ol_flags;
 
-  if (PREDICT_FALSE (mb_flags & (
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-				  PKT_EXT_RX_PKT_ERROR | PKT_EXT_RX_BAD_FCS |
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
-				  PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD)))
+  if (PREDICT_FALSE (mb_flags & (PKT_RX_IP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD)))
     {
       /* some error was flagged. determine the drop reason */
       n0 = VNET_DEVICE_INPUT_NEXT_DROP;
       *error0 =
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-	(mb_flags & PKT_EXT_RX_PKT_ERROR) ? DPDK_ERROR_RX_PACKET_ERROR :
-	(mb_flags & PKT_EXT_RX_BAD_FCS) ? DPDK_ERROR_RX_BAD_FCS :
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
 	(mb_flags & PKT_RX_IP_CKSUM_BAD) ? DPDK_ERROR_IP_CHECKSUM_ERROR :
 	(mb_flags & PKT_RX_L4_CKSUM_BAD) ? DPDK_ERROR_L4_CHECKSUM_ERROR :
 	DPDK_ERROR_NONE;
@@ -179,14 +171,6 @@ dpdk_rx_trace (dpdk_main_t * dm,
       clib_memcpy (t0->buffer.pre_data, b0->data,
 		   sizeof (t0->buffer.pre_data));
       clib_memcpy (&t0->data, mb->buf_addr + mb->data_off, sizeof (t0->data));
-
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-      /*
-       * Clear overloaded TX offload flags when a DPDK driver
-       * is using them for RX flags (e.g. Cisco VIC Ethernet driver)
-       */
-      mb->ol_flags &= PKT_EXT_RX_CLR_TX_FLAGS_MASK;
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
 
       b += 1;
     }
@@ -311,18 +295,6 @@ dpdk_device_input (dpdk_main_t * dm,
 
 	  dpdk_rx_next_and_error_from_mb_flags_x1 (xd, mb, b0,
 						   &next0, &error0);
-#ifdef RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS
-	  /*
-	   * Clear overloaded TX offload flags when a DPDK driver
-	   * is using them for RX flags (e.g. Cisco VIC Ethernet driver)
-	   */
-
-	  if (PREDICT_TRUE (trace_cnt == 0))
-	    mb->ol_flags &= PKT_EXT_RX_CLR_TX_FLAGS_MASK;
-	  else
-	    trace_cnt--;
-#endif /* RTE_LIBRTE_MBUF_EXT_RX_OLFLAGS */
-
 	  b0->error = node->errors[error0];
 
 	  l3_offset0 = ((next0 == VNET_DEVICE_INPUT_NEXT_IP4_INPUT ||
