@@ -784,6 +784,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  int vlan_off;
 	  vlan_off = rte_eth_dev_get_vlan_offload (xd->device_index);
 	  vlan_off |= ETH_VLAN_STRIP_OFFLOAD;
+	  xd->port_conf.rxmode.hw_vlan_strip = vlan_off;
 	  if (rte_eth_dev_set_vlan_offload (xd->device_index, vlan_off) == 0)
 	    clib_warning ("VLAN strip enabled for interface\n");
 	  else
