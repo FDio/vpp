@@ -4,12 +4,12 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_interface import VppInterface
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
+from util import ppp
 
 
 class TestIPv4(VppTestCase):
@@ -164,16 +164,14 @@ class TestIPv4(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
                 i.sw_if_index, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(
-                remaining_packet is None,
-                "Interface %s: Packet expected from interface %s didn't arrive" %
-                (dst_if.name, i.name))
+            self.assertTrue(remaining_packet is None,
+                            "Interface %s: Packet expected from interface %s "
+                            "didn't arrive" % (dst_if.name, i.name))
 
     def test_fib(self):
         """ IPv4 FIB test

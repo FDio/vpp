@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host
+from util import Host, ppp
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
 
 
@@ -109,7 +109,7 @@ class TestL2bd(VppTestCase):
         if not self.vpp_dead:
             self.logger.info(self.vapi.ppcli("show l2fib verbose"))
             self.logger.info(self.vapi.ppcli("show bridge-domain %s detail" %
-                                           self.bd_id))
+                                             self.bd_id))
 
     @classmethod
     def create_hosts_and_learn(cls, count):
@@ -217,8 +217,7 @@ class TestL2bd(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(

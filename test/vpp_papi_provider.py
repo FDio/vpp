@@ -1,6 +1,5 @@
 import os
 import array
-from logging import error
 from hook import Hook
 
 do_import = True
@@ -32,10 +31,11 @@ class VppPapiProvider(object):
 
     """
 
-    def __init__(self, name, shm_prefix):
+    def __init__(self, name, shm_prefix, test_class):
         self.hook = Hook("vpp-papi-provider")
         self.name = name
         self.shm_prefix = shm_prefix
+        self.test_class = test_class
 
     def register_hook(self, hook):
         """Replace hook registration with new hook
@@ -68,7 +68,7 @@ class VppPapiProvider(object):
         if hasattr(reply, 'retval') and reply.retval != expected_retval:
             msg = "API call failed, expected retval == %d, got %s" % (
                 expected_retval, repr(reply))
-            error(msg)
+            self.test_class.test_instance.logger.error(msg)
             raise Exception(msg)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
@@ -497,7 +497,8 @@ class VppPapiProvider(object):
              )
         )
 
-    def sw_interface_span_enable_disable(self, sw_if_index_from, sw_if_index_to, enable=1):
+    def sw_interface_span_enable_disable(
+            self, sw_if_index_from, sw_if_index_to, enable=1):
         """
 
         :param sw_if_index_from:
@@ -683,3 +684,5 @@ class VppPapiProvider(object):
              next_hop_table_id,
              stack))
 
+        return self.api(vpp_papi.sw_interface_span_enable_disable,
+                        (sw_if_index_from, sw_if_index_to, enable))
