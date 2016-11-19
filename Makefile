@@ -118,6 +118,9 @@ help:
 	@echo " DPDK_VERSION = $(DPDK_VERSION)"
 
 $(BR)/.bootstrap.ok:
+ifeq ($(findstring y,$(UNATTENDED)),y)
+	make install-dep
+endif
 ifeq ($(OS_ID),ubuntu)
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
@@ -341,6 +344,7 @@ ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),16.04)
 	$(call banner,"Installing dependencies")
 	@sudo -E apt-get update
+	@make install-dep
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
