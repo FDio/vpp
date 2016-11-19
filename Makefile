@@ -118,6 +118,9 @@ help:
 	@echo " DPDK_VERSION = $(DPDK_VERSION)"
 
 $(BR)/.bootstrap.ok:
+ifeq ($(findstring y,$(UNATTENDED)),y)
+	make install-dep
+endif
 ifeq ($(OS_ID),ubuntu)
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
