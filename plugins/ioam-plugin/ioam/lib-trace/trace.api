@@ -16,7 +16,6 @@
 
 
 /** \brief iOAM6 Trace - Set the iOAM6 trace profile
-    @param id - id of the profile
     @param trace_type - Type of trace requested
     @param num_elts - Number of trace elements to be inserted
     @param node_id - Trace Node ID
@@ -47,8 +46,6 @@ define trace_profile_add_reply {
 /** \brief Delete trace Profile
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param list_name_len - length of the name of the profile list
-    @param list_name - name of profile list to delete
 */
 define trace_profile_del {
   u32 client_index;
@@ -62,4 +59,34 @@ define trace_profile_del {
 define trace_profile_del_reply {
     u32 context;
     i32 retval;
+};
+
+
+
+/** \brief Show trace Profile
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define trace_profile_show_config {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show trace config response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param trace_type - Type of trace requested
+    @param num_elts - Number of trace elements to be inserted
+    @param node_id - Trace Node ID
+    @param trace_tsp- Timestamp resolution
+    @param app_data - Application specific opaque
+*/
+define trace_profile_show_config_reply {
+  u32 context;
+  i32 retval;
+  u8 trace_type;
+  u8 num_elts;
+  u8 trace_tsp;
+  u32 node_id;
+  u32 app_data;
 };
