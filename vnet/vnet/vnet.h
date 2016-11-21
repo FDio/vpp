@@ -59,10 +59,14 @@ typedef struct vnet_main_t
   /* set up by constructors */
   vnet_device_class_t *device_class_registrations;
   vnet_hw_interface_class_t *hw_interface_class_registrations;
-  _vnet_interface_function_list_elt_t *hw_interface_add_del_functions;
-  _vnet_interface_function_list_elt_t *hw_interface_link_up_down_functions;
-  _vnet_interface_function_list_elt_t *sw_interface_add_del_functions;
-  _vnet_interface_function_list_elt_t *sw_interface_admin_up_down_functions;
+    _vnet_interface_function_list_elt_t
+    * hw_interface_add_del_functions[VNET_ITF_FUNC_N_PRIO];
+    _vnet_interface_function_list_elt_t
+    * hw_interface_link_up_down_functions[VNET_ITF_FUNC_N_PRIO];
+    _vnet_interface_function_list_elt_t
+    * sw_interface_add_del_functions[VNET_ITF_FUNC_N_PRIO];
+    _vnet_interface_function_list_elt_t
+    * sw_interface_admin_up_down_functions[VNET_ITF_FUNC_N_PRIO];
 
   /*
    * Last "api" error, preserved so we can issue reasonable diagnostics

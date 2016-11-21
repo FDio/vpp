@@ -117,6 +117,22 @@ fib_node_child_add (fib_node_type_t parent_type,
                                      index));
 }
 
+u32
+fib_node_child_get_n_children (fib_node_type_t parent_type,
+                               fib_node_index_t parent_index)
+{
+    fib_node_t *parent;
+
+    parent = fn_vfts[parent_type].fnv_get(parent_index);
+
+    if (FIB_NODE_INDEX_INVALID == parent->fn_children)
+    {
+        return (0);
+    }
+
+    return (fib_node_list_get_size(parent->fn_children));
+}
+
 void
 fib_node_child_remove (fib_node_type_t parent_type,
                        fib_node_index_t parent_index,

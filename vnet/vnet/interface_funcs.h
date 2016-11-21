@@ -92,6 +92,21 @@ vnet_get_device_class (vnet_main_t * vnm, u32 dev_class_index)
 			   dev_class_index);
 }
 
+/**
+ * Call back walk type for walking SW indices on a HW interface
+ */
+typedef void (*vnet_hw_sw_interface_walk_t) (vnet_main_t * vnm,
+					     u32 sw_if_index, void *ctx);
+
+/**
+ * @brief
+ * Walk the SW interfaces on a HW interface - this is the super
+ * interface and any sub-interfaces.
+ */
+void vnet_hw_interface_walk_sw (vnet_main_t * vnm,
+				u32 hw_if_index,
+				vnet_hw_sw_interface_walk_t fn, void *ctx);
+
 /* Register a hardware interface instance. */
 u32 vnet_register_interface (vnet_main_t * vnm,
 			     u32 dev_class_index,

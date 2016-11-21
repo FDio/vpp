@@ -341,6 +341,8 @@ extern void fib_node_deinit(fib_node_t *node);
 extern void fib_node_lock(fib_node_t *node);
 extern void fib_node_unlock(fib_node_t *node);
 
+extern u32 fib_node_child_get_n_children(fib_node_type_t parent_type,
+                                         fib_node_index_t parent_index);
 extern u32 fib_node_child_add(fib_node_type_t parent_type,
 			      fib_node_index_t parent_index,
 			      fib_node_type_t child_type,

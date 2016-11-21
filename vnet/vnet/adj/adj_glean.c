@@ -131,6 +131,45 @@ adj_glean_interface_state_change (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION(adj_glean_interface_state_change);
 
+/**
+ * @brief Invoked on each SW interface of a HW interface when the
+ * HW interface state changes
+ */
+static void
+adj_nbr_hw_sw_interface_state_change (vnet_main_t * vnm,
+                                      u32 sw_if_index,
+                                      void *arg)
+{
+    adj_glean_interface_state_change(vnm, sw_if_index, (uword) arg);
+}
+
+/**
+ * @brief Registered callback for HW interface state changes
+ */
+static clib_error_t *
+adj_glean_hw_interface_state_change (vnet_main_t * vnm,
+                                     u32 hw_if_index,
+                                     u32 flags)
+{
+    /*
+     * walk SW interfaces on the HW
+     */
+    uword sw_flags;
+
+    sw_flags = ((flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ?
+                VNET_SW_INTERFACE_FLAG_ADMIN_UP :
+                0);
+
+    vnet_hw_interface_walk_sw(vnm, hw_if_index,
+                              adj_nbr_hw_sw_interface_state_change,
+                              (void*) sw_flags);
+
+    return (NULL);
+}
+
+VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION(
+    adj_glean_hw_interface_state_change);
+
 static clib_error_t *
 adj_glean_interface_delete (vnet_main_t * vnm,
 			    u32 sw_if_index,

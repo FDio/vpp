@@ -83,10 +83,22 @@ static uword dummy_interface_tx (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static clib_error_t *
+test_interface_admin_up_down (vnet_main_t * vnm,
+                              u32 hw_if_index,
+                              u32 flags)
+{
+  u32 hw_flags = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
+    VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
+  vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
+  return 0;
+}
+
 VNET_DEVICE_CLASS (test_interface_device_class,static) = {
   .name = "Test interface",
   .format_device_name = format_test_interface_name,
   .tx_function = dummy_interface_tx,
+  .admin_up_down_function = test_interface_admin_up_down,
 };
 
 static u8 *hw_address;
@@ -112,7 +124,7 @@ fib_test_mk_intf (u32 ninterfaces)
 	hw_address[5] = i;
 
 	error = ethernet_register_interface(vnet_get_main(),
-					    ethernet_hw_interface_class.index,
+                                            test_interface_device_class.index,
 					    i /* instance */,
 					    hw_address,
 					    &tm->hw_if_indicies[i], 
@@ -120,12 +132,18 @@ fib_test_mk_intf (u32 ninterfaces)
 
 	FIB_TEST((NULL == error), "ADD interface %d", i);
       
-	tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
+        error = vnet_hw_interface_set_flags(vnet_get_main(),
+                                            tm->hw_if_indicies[i],
+                                            VNET_HW_INTERFACE_FLAG_LINK_UP);
+        tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
 					  tm->hw_if_indicies[i]);
-	vec_validate (ip4_main.fib_index_by_sw_if_index, tm->hw[i]->sw_if_index);
-	vec_validate (ip6_main.fib_index_by_sw_if_index, tm->hw[i]->sw_if_index);
+	vec_validate (ip4_main.fib_index_by_sw_if_index,
+                      tm->hw[i]->sw_if_index);
+	vec_validate (ip6_main.fib_index_by_sw_if_index,
+                      tm->hw[i]->sw_if_index);
 	ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
 	ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
+
 	error = vnet_sw_interface_set_flags(vnet_get_main(),
 					    tm->hw[i]->sw_if_index,
 					    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
@@ -4196,6 +4214,64 @@ fib_test_v6 (void)
     error = vnet_sw_interface_set_flags(vnet_get_main(),
 					tm->hw[0]->sw_if_index,
 					VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+    FIB_TEST((NULL == error), "Interface bring-up OK");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
+    ai = fib_entry_get_adj(fei);
+    FIB_TEST((ai_01 == ai), "2001::a/64 resolves via 2001:0:0:1::1");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
+    ai = fib_entry_get_adj(fei);
+    FIB_TEST((ai_01 == ai), "2001::b/64 resolves via 2001:0:0:1::1");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_3_s_128);
+    ai = fib_entry_get_adj(fei);
+    FIB_TEST((ai_02 == ai), "ADJ-FIB resolves via adj");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_2_s_128);
+    ai = fib_entry_get_adj(fei);
+    FIB_TEST((ai_01 == ai), "ADJ-FIB resolves via adj");
+    local_pfx.fp_len = 64;
+    fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
+    ai = fib_entry_get_adj(fei);
+    adj = adj_get(ai);
+    FIB_TEST((IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index),
+	     "attached interface adj is glean");
+
+    /*
+     * Same test as above, but this time the HW interface goes down
+     */
+    error = vnet_hw_interface_set_flags(vnet_get_main(),
+					tm->hw_if_indicies[0],
+					~VNET_HW_INTERFACE_FLAG_LINK_UP);
+    FIB_TEST((NULL == error), "Interface shutdown OK");
+
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_b_s_64);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "2001::b/64 resolves via drop");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "2001::a/64 resolves via drop");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_3_s_128);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "2001:0:0:1::3/128 resolves via drop");
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_1_2_s_128);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "2001:0:0:1::2/128 resolves via drop");
+    local_pfx.fp_len = 128;
+    fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "2001:0:0:1::1/128 not drop");
+    local_pfx.fp_len = 64;
+    fei = fib_table_lookup_exact_match(fib_index, &local_pfx);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_cmp(dpo_drop, load_balance_get_bucket(dpo->dpoi_index, 0)),
+	     "2001:0:0:1/64 resolves via drop");
+
+    error = vnet_hw_interface_set_flags(vnet_get_main(),
+					tm->hw_if_indicies[0],
+					VNET_HW_INTERFACE_FLAG_LINK_UP);
     FIB_TEST((NULL == error), "Interface bring-up OK");
     fei = fib_table_lookup_exact_match(fib_index, &pfx_2001_a_s_64);
     ai = fib_entry_get_adj(fei);

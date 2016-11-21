@@ -240,17 +240,25 @@ unserialize_vnet_interface_state (serialize_main_t * m, va_list * va)
 static clib_error_t *
 call_elf_section_interface_callbacks (vnet_main_t * vnm, u32 if_index,
 				      u32 flags,
-				      _vnet_interface_function_list_elt_t *
-				      elt)
+				      _vnet_interface_function_list_elt_t **
+				      elts)
 {
+  _vnet_interface_function_list_elt_t *elt;
+  vnet_interface_function_priority_t prio;
   clib_error_t *error = 0;
 
-  while (elt)
+  for (prio = VNET_ITF_FUNC_PRIORITY_LOW;
+       prio <= VNET_ITF_FUNC_PRIORITY_HIGH; prio++)
     {
-      error = elt->fp (vnm, if_index, flags);
-      if (error)
-	return error;
-      elt = elt->next_interface_function;
+      elt = elts[prio];
+
+      while (elt)
+	{
+	  error = elt->fp (vnm, if_index, flags);
+	  if (error)
+	    return error;
+	  elt = elt->next_interface_function;
+	}
     }
   return error;
 }
@@ -886,6 +894,27 @@ vnet_delete_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
   vec_free (hw->name);
 
   pool_put (im->hw_interfaces, hw);
+}
+
+void
+vnet_hw_interface_walk_sw (vnet_main_t * vnm,
+			   u32 hw_if_index,
+			   vnet_hw_sw_interface_walk_t fn, void *ctx)
+{
+  vnet_hw_interface_t *hi;
+  u32 id, sw_if_index;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  /* the super first, then the and sub interfaces */
+  fn (vnm, hi->sw_if_index, ctx);
+
+  /* *INDENT-OFF* */
+  hash_foreach (id, sw_if_index,
+                hi->sub_interface_sw_if_index_by_id,
+  ({
+    fn (vnm, sw_if_index, ctx);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void

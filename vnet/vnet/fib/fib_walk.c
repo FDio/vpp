@@ -181,6 +181,7 @@ static u32 history_last_walk_pos;
 typedef struct fib_walk_history_t_ {
     u32 fwh_n_visits;
     f64 fwh_duration;
+    f64 fwh_completed;
     fib_node_ptr_t fwh_parent;
     fib_walk_flags_t fwh_flags;
     fib_node_bw_reason_flag_t fwh_reason;
@@ -266,8 +267,11 @@ fib_walk_destroy (fib_walk_t *fwalk)
 
     fib_walk_history[history_last_walk_pos].fwh_n_visits =
 	fwalk->fw_n_visits;
+    fib_walk_history[history_last_walk_pos].fwh_completed =
+	vlib_time_now(vlib_get_main());
     fib_walk_history[history_last_walk_pos].fwh_duration =
-	vlib_time_now(vlib_get_main()) - fwalk->fw_start_time;
+	fib_walk_history[history_last_walk_pos].fwh_completed -
+        fwalk->fw_start_time;
     fib_walk_history[history_last_walk_pos].fwh_parent =
 	fwalk->fw_parent;
     fib_walk_history[history_last_walk_pos].fwh_flags =
@@ -615,6 +619,14 @@ fib_walk_async (fib_node_type_t parent_type,
 	 */
 	return;
     }
+    if (0 == fib_node_child_get_n_children(parent_type,
+                                           parent_index))
+    {
+        /*
+         * no children to walk - quit now
+         */
+        return;
+    }
     if (ctx->fnbw_flags & FIB_NODE_BW_FLAG_FORCE_SYNC)
     {
         /*
@@ -661,6 +673,14 @@ fib_walk_sync (fib_node_type_t parent_type,
 	 * bail.
 	 */
 	return;
+    }
+    if (0 == fib_node_child_get_n_children(parent_type,
+                                           parent_index))
+    {
+        /*
+         * no children to walk - quit now
+         */
+        return;
     }
 
     fwalk = fib_walk_alloc(parent_type,
@@ -959,16 +979,17 @@ fib_walk_show (vlib_main_t * vm,
 
     while (ii != history_last_walk_pos)
     {
-	if (0 != fib_walk_history[ii].fwh_n_visits)
+	if (0 != fib_walk_history[ii].fwh_reason)
 	{
             fib_node_back_walk_reason_t reason;
             u8 *s = NULL;
 
-	    s = format(s, " %s:%d visits:%d duration:%.2f ",
-                       fib_node_type_get_name(fib_walk_history[ii].fwh_parent.fnp_type),
+	    s = format(s, "[@%d]: %s:%d visits:%d duration:%.2f completed:%.2f ",
+                       ii, fib_node_type_get_name(fib_walk_history[ii].fwh_parent.fnp_type),
                        fib_walk_history[ii].fwh_parent.fnp_index,
                        fib_walk_history[ii].fwh_n_visits,
-                       fib_walk_history[ii].fwh_duration);
+                       fib_walk_history[ii].fwh_duration,
+                       fib_walk_history[ii].fwh_completed);
             if (FIB_WALK_FLAG_SYNC & fib_walk_history[ii].fwh_flags)
                 s = format(s, "sync, ");
             if (FIB_WALK_FLAG_ASYNC & fib_walk_history[ii].fwh_flags)
