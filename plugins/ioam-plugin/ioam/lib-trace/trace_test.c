@@ -23,6 +23,7 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 /* Declare message IDs */
 #include <ioam/lib-trace/trace_msg_enum.h>
@@ -63,6 +64,18 @@ trace_test_main_t trace_test_main;
 _(trace_profile_add_reply)                          \
 _(trace_profile_del_reply)
 
+#define foreach_custom_reply_handler     \
+_(trace_profile_show_config_reply,										\
+  if(mp->trace_type)												\
+  {														\
+     errmsg("                        Trace Type : 0x%x (%d)\n",mp->trace_type, mp->trace_type);			\
+     errmsg("         Trace timestamp precision : %d (%s)\n",mp->trace_tsp,					\
+       (mp->trace_tsp == TSP_SECONDS) ? "Seconds" : ((mp->trace_tsp ==TSP_MILLISECONDS) ?			\
+         "Milliseconds": (((mp->trace_tsp == TSP_MICROSECONDS) ? "Microseconds" : "Nanoseconds"))));		\
+     errmsg("                           Node Id : 0x%x (%d)\n",htonl(mp->node_id), htonl(mp->node_id));		\
+     errmsg("                          App Data : 0x%x (%d)\n",htonl(mp->app_data), htonl(mp->app_data));	\
+  }														\
+    else errmsg("No valid trace profile configuration found\n");)
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
     (vl_api_##n##_t * mp)                               \
@@ -79,6 +92,23 @@ _(trace_profile_del_reply)
 foreach_standard_reply_retval_handler;
 #undef _
 
+#define _(n,body)                                       \
+    static void vl_api_##n##_t_handler                  \
+    (vl_api_##n##_t * mp)                               \
+    {                                                   \
+        vat_main_t * vam = trace_test_main.vat_main;    \
+        i32 retval = ntohl(mp->retval);                 \
+        if (vam->async_mode) {                          \
+            vam->async_errors += (retval < 0);          \
+        } else {                                        \
+            vam->retval = retval;                       \
+            vam->result_ready = 1;                      \
+        }                                               \
+	if(retval>=0)do{body;} while(0);                 \
+	else errmsg("Error, retval: %d",retval);        \
+    }
+foreach_custom_reply_handler;
+#undef _
 /*
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
@@ -86,6 +116,7 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                                       \
 _(TRACE_PROFILE_ADD_REPLY, trace_profile_add_reply)                         \
 _(TRACE_PROFILE_DEL_REPLY, trace_profile_del_reply)                         \
+_(TRACE_PROFILE_SHOW_CONFIG_REPLY, trace_profile_show_config_reply)
 
 
 /* M: construct, but don't yet send a message */
@@ -186,6 +217,18 @@ api_trace_profile_del (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_trace_profile_show_config (vat_main_t * vam)
+{
+  trace_test_main_t *sm = &trace_test_main;
+  vl_api_trace_profile_show_config_t *mp;
+  f64 timeout;
+  M (TRACE_PROFILE_SHOW_CONFIG, trace_profile_show_config);
+  S;
+  W;
+  return 0;
+}
+
 /*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -194,6 +237,7 @@ api_trace_profile_del (vat_main_t * vam)
 _(trace_profile_add, ""\
   "trace-type <0x1f|0x3|0x9|0x11|0x19> trace-elts <nn> trace-tsp <0|1|2|3> node-id <node id in hex> app-data <app_data in hex>")  \
 _(trace_profile_del, "[id <nn>]")                    \
+_(trace_profile_show_config, "[id <nn>]")
 
 
 void

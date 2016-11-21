@@ -20,10 +20,13 @@ import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
+import io.fd.vpp.jvpp.ioamtrace.future.FutureJVppIoamtraceFacade;
 import io.fd.vpp.jvpp.ioamtrace.JVppIoamtraceImpl;
 import io.fd.vpp.jvpp.ioamtrace.callback.TraceProfileAddCallback;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAdd;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAddReply;
+import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfig;
+import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfigReply;
 
 public class IoamTraceApiTest {
 
@@ -50,7 +53,7 @@ public class IoamTraceApiTest {
         System.out.println("Testing Java API for ioam trace plugin");
         try (final JVppRegistry registry = new JVppRegistryImpl("ioamTraceApiTest");
              final JVpp jvpp = new JVppIoamtraceImpl()) {
-            registry.register(jvpp, new IoamTraceTestCallback());
+	    FutureJVppIoamtraceFacade ioamtraceJvpp = new FutureJVppIoamtraceFacade(registry,jvpp);
 
             System.out.println("Sending ioam trace profile add request...");
             TraceProfileAdd request = new TraceProfileAdd();
@@ -63,6 +66,10 @@ public class IoamTraceApiTest {
             System.out.printf("TraceProfileAdd send result = %d%n", result);
 
             Thread.sleep(1000);
+
+	    TraceProfileShowConfig showRequest = new TraceProfileShowConfig();
+	    TraceProfileShowConfigReply reply = ioamtraceJvpp.traceProfileShowConfig(showRequest).toCompletableFuture().get();
+            System.out.printf("TraceProfileShowConfig result = "+ reply.toString());
 
             System.out.println("Disconnecting...");
         }
