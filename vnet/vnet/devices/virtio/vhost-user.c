@@ -2565,6 +2565,7 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
+  vnet_main_t *vnm = vnet_get_main ();
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2574,16 +2575,22 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
     {
       if (unformat (line_input, "sw_if_index %d", &sw_if_index))
 	;
+      else if (unformat
+	       (line_input, "%U", unformat_vnet_sw_interface, vnm,
+		&sw_if_index))
+	{
+	  vnet_hw_interface_t *hwif =
+	    vnet_get_sup_hw_interface (vnm, sw_if_index);
+	  if (hwif == NULL ||
+	      vhost_user_dev_class.index != hwif->dev_class_index)
+	    return clib_error_return (0, "Not a vhost interface");
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
   unformat_free (line_input);
-
-  vnet_main_t *vnm = vnet_get_main ();
-
   vhost_user_delete_if (vnm, vm, sw_if_index);
-
   return 0;
 }
 
