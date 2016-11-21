@@ -227,7 +227,7 @@ static clib_error_t * pot_init (vlib_main_t * vm)
 
   bzero(sm, sizeof(pot_main));
   (void)pot_util_init();
-  name = format (0, "pot_%08x%c", api_version, 0);
+  name = format (0, "ioam_pot_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base = vl_msg_api_get_msg_ids 
