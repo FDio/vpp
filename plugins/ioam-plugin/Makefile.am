@@ -147,11 +147,11 @@ install-data-hook:
 jvpp_registry_root = ../../vpp-api/java
 jvpp_registry_version = 17.01
 jioam_trace_jarfile = jvpp-ioam-trace-$(PACKAGE_VERSION).jar
-jvpp_package_dir = io/fd/vpp/jvpp/ioamtrace
+jvpp_trace_package_dir = io/fd/vpp/jvpp/ioamtrace
 jvpp_root = ioam/jvpp
 jvpp_target_dir = target
 jvpp_target = $(jvpp_root)/$(jvpp_target_dir)
-api_file=$(srcdir)/ioam/lib-trace/trace.api
+trace_api_file=$(srcdir)/ioam/lib-trace/trace.api
 
 
 lib_LTLIBRARIES = libjvpp_ioamtrace.la
@@ -166,31 +166,81 @@ BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h
 $(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h: ioam_trace.api.json
 	dir=`pwd`;						\
 	mkdir -p $(jvpp_target); \
-	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
-	cd $(jvpp_root)/$(jvpp_package_dir);			\
+	mkdir -p $(jvpp_root)/$(jvpp_trace_package_dir); 		\
+	cd $(jvpp_root)/$(jvpp_trace_package_dir);			\
 	mkdir -p dto future callfacade callback notification test; 	\
 	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/ioam_trace.api.json --plugin_name ioamtrace;		\
 	cd -;							\
-	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_ioamtrace_gen.h $(jvpp_root)/jvpp_ioam_trace_gen.h;							\
-	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
+	mv -f $(jvpp_root)/$(jvpp_trace_package_dir)/jvpp_ioamtrace_gen.h $(jvpp_root)/jvpp_ioam_trace_gen.h;							\
+	cp $(srcdir)/$(jvpp_root)/$(jvpp_trace_package_dir)/test/*.java $(jvpp_root)/$(jvpp_trace_package_dir)/test/;				\
 	cd $(jvpp_root);				\
-	$(JAVAC) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d $(jvpp_target_dir) $(jvpp_package_dir)/*.java \
-		$(jvpp_package_dir)/dto/*.java \
-		$(jvpp_package_dir)/callback/*.java \
-		$(jvpp_package_dir)/notification/*.java \
-		$(jvpp_package_dir)/future/*.java 	\
-		$(jvpp_package_dir)/callfacade/*.java 	\
-		$(jvpp_package_dir)/test/*.java \
+	$(JAVAC) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d $(jvpp_target_dir) $(jvpp_trace_package_dir)/*.java \
+		$(jvpp_trace_package_dir)/dto/*.java \
+		$(jvpp_trace_package_dir)/callback/*.java \
+		$(jvpp_trace_package_dir)/notification/*.java \
+		$(jvpp_trace_package_dir)/future/*.java 	\
+		$(jvpp_trace_package_dir)/callfacade/*.java 	\
+		$(jvpp_trace_package_dir)/test/*.java \
 		|| (echo "ioam trace jvpp compilation failed: $$?"; exit 1);	\
 	$(JAVAH) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d . io.fd.vpp.jvpp.ioamtrace.JVppIoamtraceImpl ;
 
 $(jioam_trace_jarfile): libjvpp_ioamtrace.la
 	cp .libs/libjvpp_ioamtrace.so.0.0.0 $(jvpp_target);				\
 	cd $(jvpp_target);				\
-	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_ioamtrace.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
+	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_ioamtrace.so.0.0.0 $(jvpp_trace_package_dir)/* ; cd ..;
 
 ioam_trace.api.json:
 	@echo "  jIoam_trace API"; \
-        vppapigen --input $(api_file) --json ioam_trace.api.json;
+        vppapigen --input $(trace_api_file) --json ioam_trace.api.json;
 
 all-local: $(jioam_trace_jarfile)
+
+
+jioam_pot_jarfile = jvpp-ioam-pot-$(PACKAGE_VERSION).jar
+jvpp_pot_package_dir = io/fd/vpp/jvpp/ioampot
+jvpp_root = ioam/jvpp
+jvpp_target_dir = target
+jvpp_target = $(jvpp_root)/$(jvpp_target_dir)
+pot_api_file=$(srcdir)/ioam/lib-pot/pot.api
+
+
+lib_LTLIBRARIES += libjvpp_ioampot.la
+libjvpp_ioampot_la_SOURCES = ioam/lib-pot/pot.api.h ioam/lib-pot/jvpp_ioam_pot.c ioam/jvpp/io_fd_vpp_jvpp_ioam_pot_JVppIoamPotImpl.h
+libjvpp_ioampot_la_LIBADD = -lvlibmemoryclient -lvlibapi -lvppinfra \
+	              -lpthread -lm -lrt -L$(jvpp_registry_root)/.libs -ljvpp_common
+libjvpp_ioampot_la_LDFLAGS = -module
+libjvpp_ioampot_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../ -I$(srcdir)/../
+
+BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_ioampot_JVppIoampotImpl.h
+
+$(jvpp_root)/io_fd_vpp_jvpp_ioampot_JVppIoampotImpl.h: ioam_pot.api.json
+	dir=`pwd`;						\
+	mkdir -p $(jvpp_target); \
+	mkdir -p $(jvpp_root)/$(jvpp_pot_package_dir); 		\
+	cd $(jvpp_root)/$(jvpp_pot_package_dir);			\
+	mkdir -p dto future callfacade callback notification test; 	\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/ioam_pot.api.json --plugin_name ioampot;		\
+	cd -;							\
+	mv -f $(jvpp_root)/$(jvpp_pot_package_dir)/jvpp_ioampot_gen.h $(jvpp_root)/jvpp_ioam_pot_gen.h;							\
+	cp $(srcdir)/$(jvpp_root)/$(jvpp_pot_package_dir)/test/*.java $(jvpp_root)/$(jvpp_pot_package_dir)/test/;				\
+	cd $(jvpp_root);				\
+	$(JAVAC) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d $(jvpp_target_dir) $(jvpp_pot_package_dir)/*.java \
+		$(jvpp_pot_package_dir)/dto/*.java \
+		$(jvpp_pot_package_dir)/callback/*.java \
+		$(jvpp_pot_package_dir)/notification/*.java \
+		$(jvpp_pot_package_dir)/future/*.java 	\
+		$(jvpp_pot_package_dir)/callfacade/*.java 	\
+		$(jvpp_pot_package_dir)/test/*.java \
+		|| (echo "ioam pot jvpp compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d . io.fd.vpp.jvpp.ioampot.JVppIoampotImpl ;
+
+$(jioam_pot_jarfile): libjvpp_ioampot.la
+	cp .libs/libjvpp_ioampot.so.0.0.0 $(jvpp_target);				\
+	cd $(jvpp_target);				\
+	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_ioampot.so.0.0.0 $(jvpp_pot_package_dir)/* ; cd ..;
+
+ioam_pot.api.json:
+	@echo "  jIoam_pot API"; \
+        vppapigen --input $(pot_api_file) --json ioam_pot.api.json;
+
+all-local: $(jioam_pot_jarfile)
