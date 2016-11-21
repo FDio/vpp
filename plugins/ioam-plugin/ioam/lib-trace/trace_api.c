@@ -84,7 +84,7 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
+    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
     do {body;} while (0);                                       \
@@ -97,6 +97,7 @@ do {                                                            \
 #define foreach_trace_plugin_api_msg                                      \
 _(TRACE_PROFILE_ADD, trace_profile_add)                                     \
 _(TRACE_PROFILE_DEL, trace_profile_del)                                     \
+_(TRACE_PROFILE_SHOW_CONFIG, trace_profile_show_config)
 
 static void vl_api_trace_profile_add_t_handler
   (vl_api_trace_profile_add_t * mp)
@@ -137,6 +138,32 @@ static void vl_api_trace_profile_del_t_handler
   TRACE_REPLY_MACRO (VL_API_TRACE_PROFILE_DEL_REPLY);
 }
 
+static void vl_api_trace_profile_show_config_t_handler
+  (vl_api_trace_profile_show_config_t * mp)
+{
+  trace_main_t *sm = &trace_main;
+  vl_api_trace_profile_show_config_reply_t *rmp;
+  int rv = 0;
+  trace_profile *profile = trace_profile_find ();
+  if (profile->valid)
+    {
+      TRACE_REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
+			  rmp->trace_type = profile->trace_type;
+			  rmp->num_elts = profile->num_elts;
+			  rmp->trace_tsp = profile->trace_tsp;
+			  rmp->node_id = htonl (profile->node_id);
+			  rmp->app_data = htonl (profile->app_data);
+	);
+    }
+  else
+    {
+      TRACE_REPLY_MACRO2 (VL_API_TRACE_PROFILE_SHOW_CONFIG_REPLY,
+			  rmp->trace_type = 0;
+			  rmp->num_elts = 0; rmp->trace_tsp = 0;
+			  rmp->node_id = 0; rmp->app_data = 0;
+	);
+    }
+}
 
 /*
  * This routine exists to convince the vlib plugin framework that
