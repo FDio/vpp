@@ -130,7 +130,7 @@ JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_${plugin_name}_JVpp${java_plugin_name
     // create message:
     mp = vl_msg_api_alloc(sizeof(*mp));
     memset (mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_${c_name_uppercase} + plugin_main->msg_id_base);
+    mp->_vl_msg_id = ntohs (vl_api_get_msg_index((u8 *)"${c_name}_${crc}"));
     mp->client_index = plugin_main->my_client_index;
     mp->context = clib_host_to_net_u32 (my_context_id);
 
@@ -179,8 +179,8 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                 api_data=util.api_message_to_javadoc(f),
                 field_reference_name=camel_case_function_name,
                 field_name=camel_case_function_name,
-                c_name_uppercase=f_name_uppercase,
                 c_name=f_name,
+                crc=f['crc'],
                 plugin_name=plugin_name,
                 java_plugin_name=plugin_name.title(),
                 request_class=request_class,
@@ -282,7 +282,7 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
     return "\n".join(handlers)
 
 
-handler_registration_template = Template("""_(${upercase_name}, ${name}) \\
+handler_registration_template = Template("""_(${name}_${crc}, ${name}) \\
 """)
 
 
@@ -297,8 +297,7 @@ def generate_handler_registration(func_list):
             continue
 
         handler_registration.append(handler_registration_template.substitute(
-            name=name,
-            upercase_name=name.upper()))
+            name=name, crc=f['crc']))
 
     return "".join(handler_registration)
 
