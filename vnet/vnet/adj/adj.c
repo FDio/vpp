@@ -387,8 +387,11 @@ adj_show (vlib_main_t * vm,
 	pool_foreach_index(ai, adj_pool,
 	({
 	    if (~0 != sw_if_index &&
-		sw_if_index == adj_get_sw_if_index(ai))
+		sw_if_index != adj_get_sw_if_index(ai))
 	    {
+            }
+            else
+            {
 		vlib_cli_output (vm, "[@%d] %U",
 				 ai,
 				 format_ip_adjacency, ai,

@@ -787,10 +787,24 @@ FIXME comment
 	 */
 	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_UP & ctx->fnbw_reason)
 	{
+            if (path->fp_oper_flags & FIB_PATH_OPER_FLAG_RESOLVED)
+            {
+                /*
+                 * alreday resolved. no need to walk back again
+                 */
+                return (FIB_NODE_BACK_WALK_CONTINUE);
+            }
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
 	}
 	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_DOWN & ctx->fnbw_reason)
 	{
+            if (!(path->fp_oper_flags & FIB_PATH_OPER_FLAG_RESOLVED))
+            {
+                /*
+                 * alreday unresolved. no need to walk back again
+                 */
+                return (FIB_NODE_BACK_WALK_CONTINUE);
+            }
 	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
 	}
 	if (FIB_NODE_BW_REASON_FLAG_INTERFACE_DELETE & ctx->fnbw_reason)
@@ -809,10 +823,14 @@ FIXME comment
             /*
              * restack the DPO to pick up the correct DPO sub-type
              */
+            uword if_is_up;
             adj_index_t ai;
 
-            if (vnet_sw_interface_is_admin_up(vnet_get_main(),
-                                              path->attached_next_hop.fp_interface))
+            if_is_up = vnet_sw_interface_is_admin_up(
+                           vnet_get_main(),
+                           path->attached_next_hop.fp_interface);
+
+            if (if_is_up)
             {
                 path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
             }
@@ -825,9 +843,28 @@ FIXME comment
                     fib_proto_to_dpo(path->fp_nh_proto),
                     ai);
             adj_unlock(ai);
+
+            if (!if_is_up)
+            {
+                /*
+                 * If the interface is not up there is no reason to walk
+                 * back to children. if we did they would only evalute
+                 * that this path is unresolved and hence it would
+                 * not contribute the adjacency - so it would be wasted
+                 * CPU time.
+                 */
+                return (FIB_NODE_BACK_WALK_CONTINUE);
+            }
         }
         if (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN & ctx->fnbw_reason)
 	{
+            if (!(path->fp_oper_flags & FIB_PATH_OPER_FLAG_RESOLVED))
+            {
+                /*
+                 * alreday unresolved. no need to walk back again
+                 */
+                return (FIB_NODE_BACK_WALK_CONTINUE);
+            }
             /*
              * the adj has gone down. the path is no longer resolved.
              */
