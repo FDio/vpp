@@ -88,8 +88,10 @@ def get_args(t, filter):
 def get_types(t, filter):
     types_list = []
     lengths_list = []
+    crc = None
     for i in t:
         if is_crc(i):
+            crc = ('crc', i['crc'][2:])
             continue
         if not filter(i[1]):
             continue
@@ -102,8 +104,12 @@ def get_types(t, filter):
         else:  # primitive type
             types_list.append(i[0])
             lengths_list.append((0, False))
-    return types_list, lengths_list
+    return types_list, lengths_list, crc
 
+
+def is_crc(arg):
+    """ Check whether the argument inside message definition is just crc """
+    return 'crc' in arg
 
 def is_crc(arg):
     """ Check whether the argument inside message definition is just crc """
@@ -119,18 +125,18 @@ def get_definitions(defs):
 
         # For replies include all the arguments except message_id
         if util.is_reply(java_name):
-            types, lengths = get_types(a[1:], is_response_field)
+            types, lengths, crc = get_types(a[1:], is_response_field)
             func_name[a[0]] = dict(
                 [('name', a[0]), ('java_name', java_name),
                  ('args', get_args(a[1:], is_response_field)), ('full_args', get_args(a[1:], lambda x: True)),
-                 ('types', types), ('lengths', lengths)])
+                 ('types', types), ('lengths', lengths), crc])
         # For requests skip message_id, client_id and context
         else:
-            types, lengths = get_types(a[1:], is_request_field)
+            types, lengths, crc = get_types(a[1:], is_request_field)
             func_name[a[0]] = dict(
                 [('name', a[0]), ('java_name', java_name),
                  ('args', get_args(a[1:], is_request_field)), ('full_args', get_args(a[1:], lambda x: True)),
-                 ('types', types), ('lengths', lengths)])
+                 ('types', types), ('lengths', lengths), crc])
 
         # Indexed by name
         func_list.append(func_name[a[0]])
@@ -147,12 +153,12 @@ future_package = 'future'
 # TODO find better package name
 callback_facade_package = 'callfacade'
 
-print "defs =", cfg['types']
 types_list, types_name = get_definitions(cfg['types'])
 
 types_gen.generate_types(types_list, plugin_package, types_package, args.inputfiles)
 
 func_list, func_name = get_definitions(cfg['messages'])
+
 dto_gen.generate_dtos(func_list, base_package, plugin_package, plugin_name.title(), dto_package, args.inputfiles)
 jvpp_impl_gen.generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_package, args.inputfiles)
 callback_gen.generate_callbacks(func_list, base_package, plugin_package, plugin_name.title(), callback_package, dto_package, args.inputfiles)
