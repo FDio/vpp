@@ -39,57 +39,6 @@ vnet_ip6_fib_init (u32 fib_index)
 				ADJ_INDEX_INVALID);
 
     /*
-     * Add ff02::1:ff00:0/104 via local route for all tables.
-     *  This is required for neighbor discovery to work.
-     */
-    ip6_set_solicited_node_multicast_address(&pfx.fp_addr.ip6, 0);
-    pfx.fp_len = 104;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
-     * Add all-routers multicast address via local route for all tables
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_all_routers);
-    pfx.fp_len = 128;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
-     * Add all-nodes multicast address via local route for all tables
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_all_hosts);
-    pfx.fp_len = 128;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
-     *  Add all-mldv2  multicast address via local route for all tables
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_mldv2_routers);
-    pfx.fp_len = 128;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
      * all link local for us
      */
     pfx.fp_addr.ip6.as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);

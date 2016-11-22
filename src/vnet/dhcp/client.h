@@ -73,6 +73,7 @@ typedef struct {
   /* DHCP client pool */
   dhcp_client_t * clients;
   uword * client_by_sw_if_index;
+  u32 * ref_count_by_fib_index;
   u32 seed;
 
   /* convenience */
