@@ -29,16 +29,24 @@ format_fib_urpf_list (u8 *s, va_list args)
     u32 *swi;
 
     ui = va_arg(args, index_t);
-    urpf = fib_urpf_list_get(ui);
 
-    s = format(s, "uPRF-list:%d len:%d itfs:[",
-	       ui, vec_len(urpf->furpf_itfs));
-
-    vec_foreach(swi, urpf->furpf_itfs)
+    if (INDEX_INVALID != ui)
     {
-	s = format(s, "%d, ", *swi);
+        urpf = fib_urpf_list_get(ui);
+
+        s = format(s, "uPRF-list:%d len:%d itfs:[",
+                   ui, vec_len(urpf->furpf_itfs));
+
+        vec_foreach(swi, urpf->furpf_itfs)
+        {
+            s = format(s, "%d, ", *swi);
+        }
+        s = format(s, "]");
     }
-    s = format(s, "]");
+    else
+    {
+        s = format(s, "uRPF-list: None");
+    }
 
     return (s);
 }

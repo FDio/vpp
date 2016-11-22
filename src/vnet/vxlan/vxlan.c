@@ -16,7 +16,8 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/dpo/receive_dpo.h>
+#include <vnet/mfib/mfib_table.h>
+#include <vnet/adj/adj_mcast.h>
 #include <vlib/vlib.h>
 
 /**
@@ -337,7 +338,7 @@ vtep_addr_unref(ip46_address_t *ip)
 
 typedef CLIB_PACKED(union {
   struct {
-    fib_node_index_t fib_entry_index;
+    fib_node_index_t mfib_entry_index;
     adj_index_t mcast_adj_index;
   };
   u64 as_u64;
@@ -353,11 +354,28 @@ mcast_shared_get(ip46_address_t * ip)
 }
 
 static inline void
-ip46_multicast_ethernet_address(u8 * ethernet_address, ip46_address_t * ip) {
-          if (ip46_address_is_ip4(ip))
-              ip4_multicast_ethernet_address(ethernet_address, &ip->ip4);
-          else
-              ip6_multicast_ethernet_address(ethernet_address, ip->ip6.as_u32[0]);
+mcast_shared_add(ip46_address_t *dst,
+                 fib_node_index_t mfei,
+                 adj_index_t ai)
+{
+    mcast_shared_t new_ep = {
+        .mcast_adj_index = ai,
+        .mfib_entry_index = mfei,
+    };
+
+    hash_set_key_copy (&vxlan_main.mcast_shared, dst, new_ep.as_u64);
+}
+
+static inline void
+mcast_shared_remove(ip46_address_t *dst)
+{
+    mcast_shared_t ep = mcast_shared_get(dst);
+
+    adj_unlock(ep.mcast_adj_index);
+    mfib_table_entry_delete_index(ep.mfib_entry_index,
+                                  MFIB_SOURCE_VXLAN);
+
+    hash_unset_key_free (&vxlan_main.mcast_shared, dst);
 }
 
 int vnet_vxlan_add_del_tunnel 
@@ -503,28 +521,65 @@ int vnet_vxlan_add_del_tunnel
 	   */
           fib_protocol_t fp = (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
           dpo_id_t dpo = DPO_INVALID;
-	  dpo_proto_t dproto = fib_proto_to_dpo(fp);
+          mcast_shared_t ep;
 
 	  if (vtep_addr_ref(&t->dst) == 1)
-	    {
-               u8 mcast_mac[6];
+          {
+              fib_node_index_t mfei;
+              adj_index_t ai;
+              fib_route_path_t path = {
+                  .frp_proto = fp,
+                  .frp_addr = zero_addr,
+                  .frp_sw_if_index = 0xffffffff,
+                  .frp_fib_index = ~0,
+                  .frp_weight = 0,
+                  .frp_flags = FIB_ROUTE_PATH_LOCAL,
+              };
+              const mfib_prefix_t mpfx = {
+                  .fp_proto = fp,
+                  .fp_len = (is_ip6 ? 128 : 32),
+                  .fp_grp_addr = tun_dst_pfx.fp_addr,
+              };
 
-               ip46_multicast_ethernet_address(mcast_mac, &t->dst);
-               receive_dpo_add_or_lock(dproto, ~0, NULL, &dpo);
-	       mcast_shared_t new_ep = {
-		 .mcast_adj_index = adj_rewrite_add_and_lock
-                   (fp, fib_proto_to_link(fp), a->mcast_sw_if_index, mcast_mac),
-                 /* Add VRF local mcast adj. */
-                 .fib_entry_index = fib_table_entry_special_dpo_add
-                   (t->encap_fib_index, &tun_dst_pfx,
-                    FIB_SOURCE_SPECIAL, FIB_ENTRY_FLAG_NONE, &dpo)
-		   };
-	       hash_set_key_copy (&vxm->mcast_shared, &t->dst, new_ep.as_u64);
-	       dpo_reset(&dpo);
-	    }
+              /*
+               * Setup the (*,G) to receive traffic on the mcast group
+               *  - the forwarding interface is for-us
+               *  - the accepting interface is that from the API
+               */
+              mfib_table_entry_path_update(t->encap_fib_index,
+                                           &mpfx,
+                                           MFIB_SOURCE_VXLAN,
+                                           &path,
+                                           MFIB_ITF_FLAG_FORWARD);
+
+              path.frp_sw_if_index = a->mcast_sw_if_index;
+              path.frp_flags = FIB_ROUTE_PATH_FLAG_NONE;
+              mfei = mfib_table_entry_path_update(t->encap_fib_index,
+                                                  &mpfx,
+                                                  MFIB_SOURCE_VXLAN,
+                                                  &path,
+                                                  MFIB_ITF_FLAG_ACCEPT);
+
+              /*
+               * Create the mcast adjacency to send traffic to the group
+               */
+              ai = adj_mcast_add_or_lock(fp,
+                                         fib_proto_to_link(fp),
+                                         a->mcast_sw_if_index);
+
+              /*
+               * create a new end-point
+               */
+              mcast_shared_add(&t->dst, mfei, ai);
+          }
+
+          ep = mcast_shared_get(&t->dst);
+
           /* Stack shared mcast dst mac addr rewrite on encap */
-	  mcast_shared_t ep = mcast_shared_get(&t->dst);
-          dpo_set (&dpo, DPO_ADJACENCY, dproto, ep.mcast_adj_index);
+          dpo_set (&dpo, DPO_ADJACENCY,
+                   fib_proto_to_dpo(fp),
+                   ep.mcast_adj_index);
+
           dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
           dpo_reset (&dpo);
 	  flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
@@ -563,10 +618,7 @@ int vnet_vxlan_add_del_tunnel
         }
       else if (vtep_addr_unref(&t->dst) == 0)
         {
-	  mcast_shared_t ep = mcast_shared_get(&t->dst);
-	  adj_unlock(ep.mcast_adj_index);
-	  fib_table_entry_delete_index(ep.fib_entry_index, FIB_SOURCE_SPECIAL);
-          hash_unset_key_free (&vxm->mcast_shared, &t->dst);
+	  mcast_shared_remove(&t->dst);
         }
 
       fib_node_deinit(&t->node);

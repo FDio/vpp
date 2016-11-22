@@ -33,6 +33,9 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/ethernet/arp_packet.h>
+//#include <vnet/mfib/ip6_mfib.h>
+#include <vnet/mfib/ip4_mfib.h>
+#include <vnet/mfib/mfib_signal.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -58,6 +61,8 @@ _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
 _(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
+_(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
+_(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                    \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
@@ -845,6 +850,144 @@ vl_api_ip_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   REPLY_MACRO (VL_API_IP_ADD_DEL_ROUTE_REPLY);
 }
 
+static int
+add_del_mroute_check (fib_protocol_t table_proto,
+		      u32 table_id,
+		      u32 next_hop_sw_if_index,
+		      u8 is_local, u8 create_missing_tables, u32 * fib_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+
+  *fib_index = mfib_table_find (table_proto, ntohl (table_id));
+  if (~0 == *fib_index)
+    {
+      if (create_missing_tables)
+	{
+	  *fib_index = mfib_table_find_or_create_and_lock (table_proto,
+							   ntohl (table_id));
+	}
+      else
+	{
+	  /* No such VRF, and we weren't asked to create one */
+	  return VNET_API_ERROR_NO_SUCH_FIB;
+	}
+    }
+
+  if (~0 != ntohl (next_hop_sw_if_index))
+    {
+      if (pool_is_free_index (vnm->interface_main.sw_interfaces,
+			      ntohl (next_hop_sw_if_index)))
+	{
+	  return VNET_API_ERROR_NO_MATCHING_INTERFACE;
+	}
+    }
+
+  return (0);
+}
+
+static int
+mroute_add_del_handler (u8 is_add,
+			u8 is_local,
+			u32 fib_index,
+			const mfib_prefix_t * prefix,
+			u32 entry_flags,
+			u32 next_hop_sw_if_index, u32 itf_flags)
+{
+  stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
+
+  fib_route_path_t path = {
+    .frp_sw_if_index = next_hop_sw_if_index,
+    .frp_proto = prefix->fp_proto,
+  };
+
+  if (is_local)
+    path.frp_flags |= FIB_ROUTE_PATH_LOCAL;
+
+
+  if (!is_local && ~0 == next_hop_sw_if_index)
+    {
+      mfib_table_entry_update (fib_index, prefix,
+			       MFIB_SOURCE_API, entry_flags);
+    }
+  else
+    {
+      if (is_add)
+	{
+	  mfib_table_entry_path_update (fib_index, prefix,
+					MFIB_SOURCE_API, &path, itf_flags);
+	}
+      else
+	{
+	  mfib_table_entry_path_remove (fib_index, prefix,
+					MFIB_SOURCE_API, &path);
+	}
+    }
+
+  stats_dsunlock ();
+  return (0);
+}
+
+static int
+api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
+{
+  fib_protocol_t fproto;
+  u32 fib_index;
+  int rv;
+
+  fproto = (mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  rv = add_del_mroute_check (fproto,
+			     mp->table_id,
+			     mp->next_hop_sw_if_index,
+			     mp->is_local,
+			     mp->create_vrf_if_needed, &fib_index);
+
+  if (0 != rv)
+    return (rv);
+
+  mfib_prefix_t pfx = {
+    .fp_len = ntohs (mp->grp_address_length),
+    .fp_proto = fproto,
+  };
+
+  if (FIB_PROTOCOL_IP4 == fproto)
+    {
+      clib_memcpy (&pfx.fp_grp_addr.ip4, mp->grp_address,
+		   sizeof (pfx.fp_grp_addr.ip4));
+      clib_memcpy (&pfx.fp_src_addr.ip4, mp->src_address,
+		   sizeof (pfx.fp_src_addr.ip4));
+    }
+  else
+    {
+      clib_memcpy (&pfx.fp_grp_addr.ip6, mp->grp_address,
+		   sizeof (pfx.fp_grp_addr.ip6));
+      clib_memcpy (&pfx.fp_src_addr.ip6, mp->src_address,
+		   sizeof (pfx.fp_src_addr.ip6));
+    }
+
+  return (mroute_add_del_handler (mp->is_add,
+				  mp->is_local,
+				  fib_index, &pfx,
+				  ntohl (mp->entry_flags),
+				  ntohl (mp->next_hop_sw_if_index),
+				  ntohl (mp->itf_flags)));
+}
+
+void
+vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
+{
+  vl_api_ip_mroute_add_del_reply_t *rmp;
+  int rv;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  vnm->api_errno = 0;
+
+  rv = api_mroute_add_del_t_handler (mp);
+
+  rv = (rv == 0) ? vnm->api_errno : rv;
+
+  REPLY_MACRO (VL_API_IP_MROUTE_ADD_DEL_REPLY);
+}
+
 static void
 send_ip_details (vpe_api_main_t * am,
 		 unix_shared_memory_queue_t * q, u32 sw_if_index, u32 context)
@@ -1148,6 +1291,73 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY);
 }
 
+void
+vl_mfib_signal_send_one (unix_shared_memory_queue_t * q,
+			 u32 context, const mfib_signal_t * mfs)
+{
+  vl_api_mfib_signal_details_t *mp;
+  mfib_prefix_t prefix;
+  mfib_table_t *mfib;
+  mfib_itf_t *mfi;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_MFIB_SIGNAL_DETAILS);
+  mp->context = context;
+
+  mfi = mfib_itf_get (mfs->mfs_itf);
+  mfib_entry_get_prefix (mfs->mfs_entry, &prefix);
+  mfib = mfib_table_get (mfib_entry_get_fib_index (mfs->mfs_entry),
+			 prefix.fp_proto);
+  mp->table_id = ntohl (mfib->mft_table_id);
+  mp->sw_if_index = ntohl (mfi->mfi_sw_if_index);
+
+  if (FIB_PROTOCOL_IP4 == prefix.fp_proto)
+    {
+      mp->grp_address_len = ntohs (prefix.fp_len);
+
+      memcpy (mp->grp_address, &prefix.fp_grp_addr.ip4, 4);
+      if (prefix.fp_len > 32)
+	{
+	  memcpy (mp->src_address, &prefix.fp_src_addr.ip4, 4);
+	}
+    }
+  else
+    {
+      mp->grp_address_len = ntohs (prefix.fp_len);
+
+      ASSERT (0);
+    }
+
+  if (0 != mfs->mfs_buffer_len)
+    {
+      mp->ip_packet_len = ntohs (mfs->mfs_buffer_len);
+
+      memcpy (mp->ip_packet_data, mfs->mfs_buffer, mfs->mfs_buffer_len);
+    }
+  else
+    {
+      mp->ip_packet_len = 0;
+    }
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_mfib_signal_dump_t_handler (vl_api_mfib_signal_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  while (q->cursize < q->maxsize && mfib_signal_send_one (q, mp->context))
+    ;
+}
 
 #define vl_msg_name_crc_list
 #include <vnet/ip/ip.api.h>
