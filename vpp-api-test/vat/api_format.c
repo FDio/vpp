@@ -5768,7 +5768,7 @@ api_ip_add_del_route (vat_main_t * vam)
   u8 is_unreach = 0, is_prohibit = 0;
   u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
-  u8 next_hop_weight = 1;
+  u32 next_hop_weight = 1;
   u8 not_last = 0;
   u8 is_multipath = 0;
   u8 address_set = 0;
@@ -6054,7 +6054,7 @@ api_mpls_route_add_del (vat_main_t * vam)
   u32 sw_if_index = ~0, table_id = 0;
   u8 create_table_if_needed = 0;
   u8 is_add = 1;
-  u8 next_hop_weight = 1;
+  u32 next_hop_weight = 1;
   u8 is_multipath = 0;
   u32 next_hop_table_id = 0;
   u8 next_hop_set = 0;
