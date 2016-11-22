@@ -339,12 +339,11 @@ define banner
 	@echo " "
 endef
 
-verify: $(BR)/.bootstrap.ok
+verify: install-dep $(BR)/.bootstrap.ok test
 ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),16.04)
 	$(call banner,"Installing dependencies")
 	@sudo -E apt-get update
-	@make install-dep
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
