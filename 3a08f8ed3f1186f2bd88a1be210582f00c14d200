@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a288981_a4826b50",
+        "filename": "test/vpp_object.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-22T14:09:31Z",
+      "side": 1,
+      "message": "the constructo calls VppObjectRegistry.register()",
+      "revId": "3a08f8ed3f1186f2bd88a1be210582f00c14d200",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_44818749",
+        "filename": "test/vpp_object.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-22T14:09:31Z",
+      "side": 1,
+      "message": "why abstract?",
+      "revId": "3a08f8ed3f1186f2bd88a1be210582f00c14d200",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
