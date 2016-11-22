@@ -15,6 +15,7 @@
 #include <vlib/vlib.h>
 #include <vnet/dhcp/proxy.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 
 dhcp_client_main_t dhcp_client_main;
 static u8 * format_dhcp_client_state (u8 * s, va_list * va);
@@ -738,10 +739,10 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   vlib_main_t * vm = dcm->vlib_main;
   dhcp_client_t * c;
   uword * p;
-  fib_prefix_t all_1s =
+  mfib_prefix_t all_1s =
   {
       .fp_len = 32,
-      .fp_addr.ip4.as_u32 = 0xffffffff,
+      .fp_grp_addr.ip4.as_u32 = 0xffffffff,
       .fp_proto = FIB_PROTOCOL_IP4,
   };
   fib_prefix_t all_0s =
@@ -750,6 +751,15 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       .fp_addr.ip4.as_u32 = 0x0,
       .fp_proto = FIB_PROTOCOL_IP4,
   };
+  const fib_route_path_t dhcp_mpath_for_us = {
+      .frp_proto = FIB_PROTOCOL_IP4,
+      .frp_addr = zero_addr,
+      .frp_sw_if_index = 0xffffffff,
+      .frp_fib_index = ~0,
+      .frp_weight = 0,
+      .frp_flags = FIB_ROUTE_PATH_LOCAL,
+  };
+  u32 mfib_index;
 
   p = hash_get (dcm->client_by_sw_if_index, a->sw_if_index);
 
@@ -774,16 +784,41 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
       set_l2_rewrite (dcm, c);
       hash_set (dcm->client_by_sw_if_index, a->sw_if_index, c - dcm->clients);
 
-      /* this add is ref counted by FIB so we can add for each itf */
-      fib_table_entry_special_add(fib_table_get_index_for_sw_if_index(
-				      FIB_PROTOCOL_IP4,
-				      c->sw_if_index),
-				  &all_1s,
-				  FIB_SOURCE_DHCP,
-				  FIB_ENTRY_FLAG_LOCAL,
-				  ADJ_INDEX_INVALID);
+      mfib_index = mfib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+                                                        c->sw_if_index);
 
-     /*
+      vec_validate(dcm->ref_count_by_fib_index, mfib_index);
+
+      if (0 == dcm->ref_count_by_fib_index[mfib_index])
+      {
+          /*
+           * The first time we enable DHCP for an interface in this table
+           * we add the mroute's forwarding interface to be local. We can't
+           * add duplicate forwarding legs, and they are not ref counted by mfib.
+           */
+          mfib_table_entry_path_update(mfib_index,
+                                       &all_1s,
+                                       MFIB_SOURCE_DHCP,
+                                       &dhcp_mpath_for_us,
+                                       MFIB_ITF_FLAG_FORWARD);
+      }
+      dcm->ref_count_by_fib_index[mfib_index]++;
+
+      /* Add the DCHP interface as accepting */
+      const fib_route_path_t a_path = {
+          .frp_proto = FIB_PROTOCOL_IP4,
+          .frp_addr = zero_addr,
+          .frp_sw_if_index = c->sw_if_index,
+          .frp_fib_index = ~0,
+          .frp_weight = 0,
+      };
+      mfib_table_entry_path_update(mfib_index,
+                                   &all_1s,
+                                   MFIB_SOURCE_DHCP,
+                                   &a_path,
+                                   MFIB_ITF_FLAG_ACCEPT);
+
+      /*
        * enable the interface to RX IPv4 packets
        * this is also ref counted
        */
@@ -795,12 +830,36 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
   else
     {
       c = pool_elt_at_index (dcm->clients, p[0]);
+      
+      mfib_index = mfib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+                                                        c->sw_if_index);
 
-      fib_table_entry_special_remove(fib_table_get_index_for_sw_if_index(
-					 FIB_PROTOCOL_IP4,
-					 c->sw_if_index),
-				     &all_1s,
-				     FIB_SOURCE_DHCP);
+      vec_validate(dcm->ref_count_by_fib_index, mfib_index);
+
+      dcm->ref_count_by_fib_index[mfib_index]--;
+      if (0 == dcm->ref_count_by_fib_index[mfib_index])
+      {
+          /*
+           * The last time we disable DHCP for an interface in this table
+           * we remove the for-us replication */
+          mfib_table_entry_path_remove(mfib_index,
+                                       &all_1s,
+                                       MFIB_SOURCE_DHCP,
+                                       &dhcp_mpath_for_us);
+      }
+
+      /* remove the DCHP interface */
+      const fib_route_path_t a_path = {
+          .frp_proto = FIB_PROTOCOL_IP4,
+          .frp_addr = zero_addr,
+          .frp_sw_if_index = c->sw_if_index,
+          .frp_fib_index = ~0,
+          .frp_weight = 0,
+      };
+     mfib_table_entry_path_remove(mfib_index,
+                                   &all_1s,
+                                   MFIB_SOURCE_DHCP,
+                                   &a_path);
 
       if (c->router_address.as_u32)
       {
