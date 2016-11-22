@@ -64,6 +64,11 @@
 #define DBG_VQ(args...)
 #endif
 
+#define UNIX_GET_FD(unixfd_idx) \
+    (unixfd_idx != ~0) ? \
+	pool_elt_at_index (unix_main.file_pool, \
+			   unixfd_idx)->file_descriptor : -1;
+
 #define foreach_virtio_trace_flags \
   _ (SIMPLE_CHAINED, 0, "Simple descriptor chaining") \
   _ (SINGLE_DESC,  1, "Single descriptor packet") \
@@ -153,8 +158,8 @@ format_vhost_user_interface_name (u8 * s, va_list * args)
 static int
 vhost_user_name_renumber (vnet_hw_interface_t * hi, u32 new_dev_instance)
 {
+  // FIXME: check if the new dev instance is already used
   vhost_user_main_t *vum = &vhost_user_main;
-
   vec_validate_init_empty (vum->show_dev_instance_by_real_dev_instance,
 			   hi->dev_instance, ~0);
 
@@ -356,34 +361,32 @@ vhost_user_rx_thread_placement ()
   }
 
   i = 0;
-  vec_foreach (vui, vum->vhost_user_interfaces)
-  {
-    if (!vui->active)
-      continue;
+  vhost_iface_and_queue_t iaq;
+  /* *INDENT-OFF* */
+  pool_foreach (vui, vum->vhost_user_interfaces, {
+      u32 *vui_workers = vec_len (vui->workers) ? vui->workers : workers;
+      u32 qid;
+      for (qid = 0; qid < VHOST_VRING_MAX_N / 2; qid++)
+	{
+	  vhost_user_vring_t *txvq =
+	      &vui->vrings[VHOST_VRING_IDX_TX (qid)];
+	  if (!txvq->started)
+	    continue;
 
-    u32 *vui_workers = vec_len (vui->workers) ? vui->workers : workers;
-    u32 qid;
-    for (qid = 0; qid < VHOST_VRING_MAX_N / 2; qid++)
-      {
-	vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-	if (!txvq->started)
-	  continue;
+	  i %= vec_len (vui_workers);
+	  u32 cpu_index = vui_workers[i];
+	  i++;
+	  vhc = &vum->cpus[cpu_index];
 
-	i %= vec_len (vui_workers);
-	u32 cpu_index = vui_workers[i];
-	i++;
-	vhc = &vum->cpus[cpu_index];
-
-	vhost_iface_and_queue_t iaq = {
-	  .qid = qid,
-	  .vhost_iface_index = vui - vum->vhost_user_interfaces,
-	};
-	vec_add1 (vhc->rx_queues, iaq);
-	vlib_node_set_state (vlib_mains ? vlib_mains[cpu_index] :
-			     &vlib_global_main, vhost_user_input_node.index,
-			     VLIB_NODE_STATE_POLLING);
-      }
-  }
+	  iaq.qid = qid;
+	  iaq.vhost_iface_index = vui - vum->vhost_user_interfaces;
+	  vec_add1 (vhc->rx_queues, iaq);
+	  vlib_node_set_state (vlib_mains ? vlib_mains[cpu_index] :
+	      &vlib_global_main, vhost_user_input_node.index,
+	      VLIB_NODE_STATE_POLLING);
+	}
+  });
+  /* *INDENT-ON* */
 }
 
 static int
@@ -401,7 +404,7 @@ vhost_user_thread_placement (u32 sw_if_index, u32 worker_thread_index, u8 del)
   if (!(hw = vnet_get_sup_hw_interface (vnet_get_main (), sw_if_index)))
     return -2;
 
-  vui = vec_elt_at_index (vum->vhost_user_interfaces, hw->dev_instance);
+  vui = pool_elt_at_index (vum->vhost_user_interfaces, hw->dev_instance);
   u32 found = ~0, *w;
   vec_foreach (w, vui->workers)
   {
@@ -473,8 +476,8 @@ vhost_user_kickfd_read_ready (unix_file_t * uf)
   __attribute__ ((unused)) int n;
   u8 buff[8];
   vhost_user_intf_t *vui =
-    vec_elt_at_index (vhost_user_main.vhost_user_interfaces,
-		      uf->private_data >> 8);
+    pool_elt_at_index (vhost_user_main.vhost_user_interfaces,
+		       uf->private_data >> 8);
   u32 qid = uf->private_data & 0xff;
   n = read (uf->file_descriptor, ((char *) &buff), 8);
   DBG_SOCK ("if %d KICK queue %d", uf->private_data >> 8, qid);
@@ -520,8 +523,8 @@ vhost_user_vring_init (vhost_user_intf_t * vui, u32 qid)
 {
   vhost_user_vring_t *vring = &vui->vrings[qid];
   memset (vring, 0, sizeof (*vring));
-  vring->kickfd = -1;
-  vring->callfd = -1;
+  vring->kickfd_idx = ~0;
+  vring->callfd_idx = ~0;
   vring->errfd = -1;
 
   /*
@@ -541,17 +544,19 @@ static inline void
 vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
 {
   vhost_user_vring_t *vring = &vui->vrings[qid];
-  if (vring->kickfd != -1)
+  if (vring->kickfd_idx != ~0)
     {
       unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
 					   vring->kickfd_idx);
       unix_file_del (&unix_main, uf);
+      vring->kickfd_idx = ~0;
     }
-  if (vring->callfd != -1)
+  if (vring->callfd_idx != ~0)
     {
       unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
 					   vring->callfd_idx);
       unix_file_del (&unix_main, uf);
+      vring->callfd_idx = ~0;
     }
   if (vring->errfd != -1)
     close (vring->errfd);
@@ -561,7 +566,6 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
 static inline void
 vhost_user_if_disconnect (vhost_user_intf_t * vui)
 {
-  vhost_user_main_t *vum = &vhost_user_main;
   vnet_main_t *vnm = vnet_get_main ();
   int q;
 
@@ -572,12 +576,7 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
       unix_file_del (&unix_main, unix_main.file_pool + vui->unix_file_index);
       vui->unix_file_index = ~0;
     }
-  else
-    close (vui->unix_fd);
 
-  hash_unset (vum->vhost_user_interface_index_by_sock_fd, vui->unix_fd);
-  hash_unset (vum->vhost_user_interface_index_by_listener_fd, vui->unix_fd);
-  vui->unix_fd = -1;
   vui->is_up = 0;
 
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
@@ -629,20 +628,11 @@ vhost_user_socket_read (unix_file_t * uf)
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui;
   struct cmsghdr *cmsg;
-  uword *p;
   u8 q;
   unix_file_t template = { 0 };
   vnet_main_t *vnm = vnet_get_main ();
 
-  p = hash_get (vum->vhost_user_interface_index_by_sock_fd,
-		uf->file_descriptor);
-  if (p == 0)
-    {
-      DBG_SOCK ("FD %d doesn't belong to any interface", uf->file_descriptor);
-      return 0;
-    }
-  else
-    vui = vec_elt_at_index (vum->vhost_user_interfaces, p[0]);
+  vui = pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   char control[CMSG_SPACE (VHOST_MEMORY_MAX_NREGIONS * sizeof (int))];
 
@@ -898,11 +888,12 @@ vhost_user_socket_read (unix_file_t * uf)
       q = (u8) (msg.u64 & 0xFF);
 
       /* if there is old fd, delete and close it */
-      if (vui->vrings[q].callfd != -1)
+      if (vui->vrings[q].callfd_idx != ~0)
 	{
 	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
 					       vui->vrings[q].callfd_idx);
 	  unix_file_del (&unix_main, uf);
+	  vui->vrings[q].callfd_idx = ~0;
 	}
 
       if (!(msg.u64 & 0x100))
@@ -913,13 +904,14 @@ vhost_user_socket_read (unix_file_t * uf)
 	      goto close_socket;
 	    }
 
-	  vui->vrings[q].callfd = fds[0];
 	  template.read_function = vhost_user_callfd_read_ready;
 	  template.file_descriptor = fds[0];
+	  template.private_data =
+	    ((vui - vhost_user_main.vhost_user_interfaces) << 8) + q;
 	  vui->vrings[q].callfd_idx = unix_file_add (&unix_main, &template);
 	}
       else
-	vui->vrings[q].callfd = -1;
+	vui->vrings[q].callfd_idx = ~0;
       break;
 
     case VHOST_USER_SET_VRING_KICK:
@@ -928,11 +920,12 @@ vhost_user_socket_read (unix_file_t * uf)
 
       q = (u8) (msg.u64 & 0xFF);
 
-      if (vui->vrings[q].kickfd != -1)
+      if (vui->vrings[q].kickfd_idx != ~0)
 	{
 	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
-					       vui->vrings[q].kickfd);
+					       vui->vrings[q].kickfd_idx);
 	  unix_file_del (&unix_main, uf);
+	  vui->vrings[q].kickfd_idx = ~0;
 	}
 
       if (!(msg.u64 & 0x100))
@@ -943,24 +936,20 @@ vhost_user_socket_read (unix_file_t * uf)
 	      goto close_socket;
 	    }
 
-	  if (vui->vrings[q].kickfd > -1)
-	    close (vui->vrings[q].kickfd);
-
-	  vui->vrings[q].kickfd = fds[0];
 	  template.read_function = vhost_user_kickfd_read_ready;
 	  template.file_descriptor = fds[0];
 	  template.private_data =
-	    ((vui - vhost_user_main.vhost_user_interfaces) << 8) + q;
+	    (((uword) (vui - vhost_user_main.vhost_user_interfaces)) << 8) +
+	    q;
 	  vui->vrings[q].kickfd_idx = unix_file_add (&unix_main, &template);
 	}
       else
 	{
-	  vui->vrings[q].kickfd = -1;
+	  //When no kickfd is set, the queue is initialized as started
+	  vui->vrings[q].kickfd_idx = ~0;
 	  vui->vrings[q].started = 1;
 	}
 
-      //TODO: When kickfd is specified, 'started' is set when the first kick
-      //is received.
       break;
 
     case VHOST_USER_SET_VRING_ERR:
@@ -1141,18 +1130,8 @@ vhost_user_socket_error (unix_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   vhost_user_main_t *vum = &vhost_user_main;
-  vhost_user_intf_t *vui;
-  uword *p;
-
-  p = hash_get (vum->vhost_user_interface_index_by_sock_fd,
-		uf->file_descriptor);
-  if (p == 0)
-    {
-      DBG_SOCK ("fd %d doesn't belong to any interface", uf->file_descriptor);
-      return 0;
-    }
-  else
-    vui = vec_elt_at_index (vum->vhost_user_interfaces, p[0]);
+  vhost_user_intf_t *vui =
+    pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   DBG_SOCK ("socket error on if %d", vui->sw_if_index);
   vlib_worker_thread_barrier_sync (vm);
@@ -1170,17 +1149,8 @@ vhost_user_socksvr_accept_ready (unix_file_t * uf)
   unix_file_t template = { 0 };
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui;
-  uword *p;
 
-  p = hash_get (vum->vhost_user_interface_index_by_listener_fd,
-		uf->file_descriptor);
-  if (p == 0)
-    {
-      DBG_SOCK ("fd %d doesn't belong to any interface", uf->file_descriptor);
-      return 0;
-    }
-  else
-    vui = vec_elt_at_index (vum->vhost_user_interfaces, p[0]);
+  vui = pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
 
   client_len = sizeof (client);
   client_fd = accept (uf->file_descriptor,
@@ -1194,12 +1164,8 @@ vhost_user_socksvr_accept_ready (unix_file_t * uf)
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
   template.file_descriptor = client_fd;
+  template.private_data = vui - vhost_user_main.vhost_user_interfaces;
   vui->unix_file_index = unix_file_add (&unix_main, &template);
-
-  vui->client_fd = client_fd;
-  hash_set (vum->vhost_user_interface_index_by_sock_fd, vui->client_fd,
-	    vui - vum->vhost_user_interfaces);
-
   return 0;
 }
 
@@ -1216,12 +1182,6 @@ vhost_user_init (vlib_main_t * vm)
   if (error)
     return error;
 
-  vum->vhost_user_interface_index_by_listener_fd =
-    hash_create (0, sizeof (uword));
-  vum->vhost_user_interface_index_by_sock_fd =
-    hash_create (0, sizeof (uword));
-  vum->vhost_user_interface_index_by_sw_if_index =
-    hash_create (0, sizeof (uword));
   vum->coalesce_frames = 32;
   vum->coalesce_time = 1e-3;
 
@@ -1240,6 +1200,8 @@ vhost_user_init (vlib_main_t * vm)
       vum->input_cpu_first_index = tr->first_index;
       vum->input_cpu_count = tr->count;
     }
+
+  vum->random = random_default_seed ();
 
   return 0;
 }
@@ -1272,8 +1234,8 @@ format_vhost_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vnet_main_t * vnm) = vnet_get_main ();
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_trace_t *t = va_arg (*va, vhost_trace_t *);
-  vhost_user_intf_t *vui = vec_elt_at_index (vum->vhost_user_interfaces,
-					     t->device_index);
+  vhost_user_intf_t *vui = pool_elt_at_index (vum->vhost_user_interfaces,
+					      t->device_index);
 
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, vui->sw_if_index);
 
@@ -1354,9 +1316,10 @@ vhost_user_send_call (vlib_main_t * vm, vhost_user_vring_t * vq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   u64 x = 1;
+  int fd = UNIX_GET_FD (vq->callfd_idx);
   int rv __attribute__ ((unused));
-  /* $$$$ pay attention to rv */
-  rv = write (vq->callfd, &x, sizeof (x));
+  /* TODO: pay attention to rv */
+  rv = write (fd, &x, sizeof (x));
   vq->n_since_last_int = 0;
   vq->int_deadline = vlib_time_now (vm) + vum->coalesce_time;
 }
@@ -1675,7 +1638,7 @@ vhost_user_if_input (vlib_main_t * vm,
   vhost_user_log_dirty_ring (vui, txvq, idx);
 
   /* interrupt (call) handling */
-  if ((txvq->callfd > -1) && !(txvq->avail->flags & 1))
+  if ((txvq->callfd_idx != ~0) && !(txvq->avail->flags & 1))
     {
       txvq->n_since_last_int += n_rx_packets;
 
@@ -1780,8 +1743,8 @@ vhost_user_tx_trace (vhost_trace_t * t,
 }
 
 static uword
-vhost_user_intfc_tx (vlib_main_t * vm,
-		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+vhost_user_tx (vlib_main_t * vm,
+	       vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = 0;
@@ -1789,7 +1752,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   uword n_packets = 0;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   vhost_user_intf_t *vui =
-    vec_elt_at_index (vum->vhost_user_interfaces, rd->dev_instance);
+    pool_elt_at_index (vum->vhost_user_interfaces, rd->dev_instance);
   u32 qid = ~0;
   vhost_user_vring_t *rxvq;
   u16 qsz_mask;
@@ -2054,7 +2017,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
     }
 
   /* interrupt (call) handling */
-  if ((rxvq->callfd > -1) && !(rxvq->avail->flags & 1))
+  if ((rxvq->callfd_idx != ~0) && !(rxvq->avail->flags & 1))
     {
       rxvq->n_since_last_int += n_packets - n_left;
 
@@ -2087,7 +2050,7 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   uword is_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui =
-    vec_elt_at_index (vum->vhost_user_interfaces, hif->dev_instance);
+    pool_elt_at_index (vum->vhost_user_interfaces, hif->dev_instance);
 
   vui->admin_up = is_up;
 
@@ -2101,7 +2064,7 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
   .name = "vhost-user",
-  .tx_function = vhost_user_intfc_tx,
+  .tx_function = vhost_user_tx,
   .tx_function_n_errors = VHOST_USER_TX_FUNC_N_ERROR,
   .tx_function_error_strings = vhost_user_tx_func_error_strings,
   .format_device_name = format_vhost_user_interface_name,
@@ -2111,7 +2074,7 @@ VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (vhost_user_dev_class,
-				   vhost_user_intfc_tx)
+				   vhost_user_tx)
 /* *INDENT-ON* */
 
 static uword
@@ -2131,7 +2094,6 @@ vhost_user_process (vlib_main_t * vm,
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
 
-
   if (sockfd < 0)
     return 0;
 
@@ -2143,54 +2105,54 @@ vhost_user_process (vlib_main_t * vm,
 
       timeout = 3.0;
 
-      vec_foreach (vui, vum->vhost_user_interfaces)
-      {
+      /* *INDENT-OFF* */
+      pool_foreach (vui, vum->vhost_user_interfaces, {
 
-	if (vui->sock_is_server || !vui->active)
-	  continue;
+	  if (vui->unix_server_index == ~0) { //Nothing to do for server sockets
+	      if (vui->unix_file_index == ~0)
+		{
+		  /* try to connect */
+		  strncpy (sun.sun_path, (char *) vui->sock_filename,
+			   sizeof (sun.sun_path) - 1);
 
-	if (vui->unix_fd == -1)
-	  {
-	    /* try to connect */
+		  if (connect (sockfd, (struct sockaddr *) &sun,
+			       sizeof (struct sockaddr_un)) == 0)
+		    {
+		      vui->sock_errno = 0;
+		      template.file_descriptor = sockfd;
+		      template.private_data =
+			  vui - vhost_user_main.vhost_user_interfaces;
+		      vui->unix_file_index = unix_file_add (&unix_main, &template);
 
-	    strncpy (sun.sun_path, (char *) vui->sock_filename,
-		     sizeof (sun.sun_path) - 1);
+		      //Re-open for next connect
+		      if ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
+			  clib_warning("Critical: Could not open unix socket");
+			  return 0;
+		      }
+		    }
+		  else
+		    {
+		      vui->sock_errno = errno;
+		    }
+		}
+	      else
+		{
+		  /* check if socket is alive */
+		  int error = 0;
+		  socklen_t len = sizeof (error);
+		  int fd = UNIX_GET_FD(vui->unix_file_index);
+		  int retval =
+		      getsockopt (fd, SOL_SOCKET, SO_ERROR, &error, &len);
 
-	    if (connect
-		(sockfd, (struct sockaddr *) &sun,
-		 sizeof (struct sockaddr_un)) == 0)
-	      {
-		vui->sock_errno = 0;
-		vui->unix_fd = sockfd;
-		template.file_descriptor = sockfd;
-		vui->unix_file_index = unix_file_add (&unix_main, &template);
-		hash_set (vum->vhost_user_interface_index_by_sock_fd, sockfd,
-			  vui - vum->vhost_user_interfaces);
-
-		sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
-		if (sockfd < 0)
-		  return 0;
-	      }
-	    else
-	      {
-		vui->sock_errno = errno;
-	      }
+		  if (retval)
+		    {
+		      DBG_SOCK ("getsockopt returned %d", retval);
+		      vhost_user_if_disconnect (vui);
+		    }
+		}
 	  }
-	else
-	  {
-	    /* check if socket is alive */
-	    int error = 0;
-	    socklen_t len = sizeof (error);
-	    int retval =
-	      getsockopt (vui->unix_fd, SOL_SOCKET, SO_ERROR, &error, &len);
-
-	    if (retval)
-	      {
-		DBG_SOCK ("getsockopt returned %d", retval);
-		vhost_user_if_disconnect (vui);
-	      }
-	  }
-      }
+      });
+      /* *INDENT-ON* */
     }
   return 0;
 }
@@ -2203,58 +2165,74 @@ VLIB_REGISTER_NODE (vhost_user_process_node,static) = {
 };
 /* *INDENT-ON* */
 
-int
-vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
+/**
+ * Disables and reset interface structure.
+ * It can then be either init again, or removed from used interfaces.
+ */
+static void
+vhost_user_term_if (vhost_user_intf_t * vui)
 {
-  vhost_user_main_t *vum = &vhost_user_main;
-  vhost_user_intf_t *vui;
-  uword *p = NULL;
-  int rv = 0;
-
-  p = hash_get (vum->vhost_user_interface_index_by_sw_if_index, sw_if_index);
-  if (p == 0)
-    {
-      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-    }
-  else
-    {
-      vui = vec_elt_at_index (vum->vhost_user_interfaces, p[0]);
-    }
-
-  // interface is inactive
-  vui->active = 0;
   // Delete configured thread pinning
   vec_reset_length (vui->workers);
   // disconnect interface sockets
   vhost_user_if_disconnect (vui);
   vhost_user_update_iface_state (vui);
-  // add to inactive interface list
-  vec_add1 (vum->vhost_user_inactive_interfaces_index, p[0]);
 
-  // reset renumbered iface
-  if (p[0] < vec_len (vum->show_dev_instance_by_real_dev_instance))
-    vum->show_dev_instance_by_real_dev_instance[p[0]] = ~0;
+  if (vui->unix_server_index != ~0)
+    {
+      //Close server socket
+      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+					   vui->unix_server_index);
+      unix_file_del (&unix_main, uf);
+      vui->unix_server_index = ~0;
+    }
+}
 
+int
+vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+  vhost_user_intf_t *vui;
+  int rv = 0;
+  vnet_hw_interface_t *hwif;
+
+  if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
+      hwif->dev_class_index != vhost_user_dev_class.index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  DBG_SOCK ("Deleting vhost-user interface %s (instance %d)",
+	    hwif->name, hwif->dev_instance);
+
+  vui = pool_elt_at_index (vum->vhost_user_interfaces, hwif->dev_instance);
+
+  // Disable and reset interface
+  vhost_user_term_if (vui);
+
+  // Back to pool
+  pool_put (vum->vhost_user_interfaces, vui);
+
+  // Reset renumbered iface
+  if (hwif->dev_instance <
+      vec_len (vum->show_dev_instance_by_real_dev_instance))
+    vum->show_dev_instance_by_real_dev_instance[hwif->dev_instance] = ~0;
+
+  // Delete ethernet interface
   ethernet_delete_interface (vnm, vui->hw_if_index);
-  DBG_SOCK ("deleted (deactivated) vhost-user interface instance %d", p[0]);
-
   return rv;
 }
 
-// init server socket on specified sock_filename
+/**
+ * Open server unix socket on specified sock_filename.
+ */
 static int
-vhost_user_init_server_sock (const char *sock_filename, int *sockfd)
+vhost_user_init_server_sock (const char *sock_filename, int *sock_fd)
 {
   int rv = 0;
   struct sockaddr_un un = { };
   int fd;
   /* create listening socket */
-  fd = socket (AF_UNIX, SOCK_STREAM, 0);
-
-  if (fd < 0)
-    {
-      return VNET_API_ERROR_SYSCALL_ERROR_1;
-    }
+  if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0)
+    return VNET_API_ERROR_SYSCALL_ERROR_1;
 
   un.sun_family = AF_UNIX;
   strncpy ((char *) un.sun_path, (char *) sock_filename,
@@ -2275,49 +2253,17 @@ vhost_user_init_server_sock (const char *sock_filename, int *sockfd)
       goto error;
     }
 
-  unix_file_t template = { 0 };
-  template.read_function = vhost_user_socksvr_accept_ready;
-  template.file_descriptor = fd;
-  unix_file_add (&unix_main, &template);
-  *sockfd = fd;
-  return rv;
+  *sock_fd = fd;
+  return 0;
 
 error:
   close (fd);
   return rv;
 }
 
-// get new vhost_user_intf_t from inactive interfaces or create new one
-static vhost_user_intf_t *
-vhost_user_vui_new ()
-{
-  vhost_user_main_t *vum = &vhost_user_main;
-  vhost_user_intf_t *vui = NULL;
-  int inactive_cnt = vec_len (vum->vhost_user_inactive_interfaces_index);
-  // if there are any inactive ifaces
-  if (inactive_cnt > 0)
-    {
-      // take last
-      u32 vui_idx =
-	vum->vhost_user_inactive_interfaces_index[inactive_cnt - 1];
-      if (vec_len (vum->vhost_user_interfaces) > vui_idx)
-	{
-	  vui = vec_elt_at_index (vum->vhost_user_interfaces, vui_idx);
-	  DBG_SOCK ("reusing inactive vhost-user interface index %d",
-		    vui_idx);
-	}
-      // "remove" from inactive list
-      _vec_len (vum->vhost_user_inactive_interfaces_index) -= 1;
-    }
-
-  // vui was not retrieved from inactive ifaces - create new
-  if (!vui)
-    vec_add2 (vum->vhost_user_interfaces, vui, 1);
-
-  return vui;
-}
-
-// create ethernet interface for vhost user intf
+/**
+ * Create ethernet interface for vhost user interface.
+ */
 static void
 vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
 			    vhost_user_intf_t * vui, u8 * hwaddress)
@@ -2333,12 +2279,8 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
     }
   else
     {
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
-
-      clib_memcpy (hwaddr + 2, &rnd, sizeof (rnd));
+      random_u32 (&vum->random);
+      clib_memcpy (hwaddr + 2, &vum->random, sizeof (vum->random));
       hwaddr[0] = 2;
       hwaddr[1] = 0xfe;
     }
@@ -2349,6 +2291,7 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
      vui - vum->vhost_user_interfaces /* device instance */ ,
      hwaddr /* ethernet address */ ,
      &vui->hw_if_index, 0 /* flag change */ );
+
   if (error)
     clib_error_report (error);
 
@@ -2356,26 +2299,39 @@ vhost_user_create_ethernet (vnet_main_t * vnm, vlib_main_t * vm,
   hi->max_l3_packet_bytes[VLIB_RX] = hi->max_l3_packet_bytes[VLIB_TX] = 9000;
 }
 
-// initialize vui with specified attributes
+/*
+ *  Initialize vui with specified attributes
+ */
 static void
 vhost_user_vui_init (vnet_main_t * vnm,
-		     vhost_user_intf_t * vui, int sockfd,
+		     vhost_user_intf_t * vui,
+		     int server_sock_fd,
 		     const char *sock_filename,
-		     u8 is_server, u64 feature_mask, u32 * sw_if_index)
+		     u64 feature_mask, u32 * sw_if_index)
 {
   vnet_sw_interface_t *sw;
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   int q;
 
-  vui->unix_fd = sockfd;
+  if (server_sock_fd != -1)
+    {
+      unix_file_t template = { 0 };
+      template.read_function = vhost_user_socksvr_accept_ready;
+      template.file_descriptor = server_sock_fd;
+      template.private_data = vui - vhost_user_main.vhost_user_interfaces;	//hw index
+      vui->unix_server_index = unix_file_add (&unix_main, &template);
+    }
+  else
+    {
+      vui->unix_server_index = ~0;
+    }
+
   vui->sw_if_index = sw->sw_if_index;
-  vui->sock_is_server = is_server;
   strncpy (vui->sock_filename, sock_filename,
 	   ARRAY_LEN (vui->sock_filename) - 1);
   vui->sock_errno = 0;
   vui->is_up = 0;
   vui->feature_mask = feature_mask;
-  vui->active = 1;
   vui->unix_file_index = ~0;
   vui->log_base_addr = 0;
 
@@ -2399,34 +2355,6 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vhost_user_tx_thread_placement (vui);
 }
 
-// register vui and start polling on it
-static void
-vhost_user_vui_register (vlib_main_t * vm, vhost_user_intf_t * vui)
-{
-  vhost_user_main_t *vum = &vhost_user_main;
-  int cpu_index;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-
-  hash_set (vum->vhost_user_interface_index_by_listener_fd, vui->unix_fd,
-	    vui - vum->vhost_user_interfaces);
-  hash_set (vum->vhost_user_interface_index_by_sw_if_index, vui->sw_if_index,
-	    vui - vum->vhost_user_interfaces);
-
-  /* start polling */
-  cpu_index = vum->input_cpu_first_index +
-    (vui - vum->vhost_user_interfaces) % vum->input_cpu_count;
-
-  if (tm->n_vlib_mains == 1)
-    vlib_node_set_state (vm, vhost_user_input_node.index,
-			 VLIB_NODE_STATE_POLLING);
-  else
-    vlib_node_set_state (vlib_mains[cpu_index], vhost_user_input_node.index,
-			 VLIB_NODE_STATE_POLLING);
-
-  /* tell process to start polling for sockets */
-  vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
-}
-
 int
 vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
@@ -2437,34 +2365,32 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 {
   vhost_user_intf_t *vui = NULL;
   u32 sw_if_idx = ~0;
-  int sockfd = -1;
   int rv = 0;
+  int server_sock_fd = -1;
 
   if (is_server)
     {
-      if ((rv = vhost_user_init_server_sock (sock_filename, &sockfd)) != 0)
+      if ((rv =
+	   vhost_user_init_server_sock (sock_filename, &server_sock_fd)) != 0)
 	{
 	  return rv;
 	}
     }
 
-  vui = vhost_user_vui_new ();
-  ASSERT (vui != NULL);
+  pool_get (vhost_user_main.vhost_user_interfaces, vui);
 
   vhost_user_create_ethernet (vnm, vm, vui, hwaddr);
-  vhost_user_vui_init (vnm, vui, sockfd, sock_filename, is_server,
+  vhost_user_vui_init (vnm, vui, server_sock_fd, sock_filename,
 		       feature_mask, &sw_if_idx);
 
   if (renumber)
-    {
-      vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
-    }
-
-  vhost_user_vui_register (vm, vui);
+    vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
 
   if (sw_if_index)
     *sw_if_index = sw_if_idx;
 
+  // Process node must connect
+  vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
   return rv;
 }
 
@@ -2478,43 +2404,31 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui = NULL;
   u32 sw_if_idx = ~0;
-  int sockfd = -1;
+  int server_sock_fd = -1;
   int rv = 0;
-  uword *p = NULL;
+  vnet_hw_interface_t *hwif;
 
-  p = hash_get (vum->vhost_user_interface_index_by_sw_if_index, sw_if_index);
-  if (p == 0)
-    {
-      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
-    }
-  else
-    {
-      vui = vec_elt_at_index (vum->vhost_user_interfaces, p[0]);
-    }
+  if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
+      hwif->dev_class_index != vhost_user_dev_class.index)
+    return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
-  // interface is inactive
-  vui->active = 0;
-  // disconnect interface sockets
-  vhost_user_if_disconnect (vui);
+  vui = vec_elt_at_index (vum->vhost_user_interfaces, hwif->dev_instance);
 
+  // First try to open server socket
   if (is_server)
-    {
-      if ((rv = vhost_user_init_server_sock (sock_filename, &sockfd)) != 0)
-	{
-	  return rv;
-	}
-    }
+    if ((rv = vhost_user_init_server_sock (sock_filename,
+					   &server_sock_fd)) != 0)
+      return rv;
 
-  vhost_user_vui_init (vnm, vui, sockfd, sock_filename, is_server,
-		       feature_mask, &sw_if_idx);
+  vhost_user_term_if (vui);
+  vhost_user_vui_init (vnm, vui, server_sock_fd,
+		       sock_filename, feature_mask, &sw_if_idx);
 
   if (renumber)
-    {
-      vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
-    }
+    vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
 
-  vhost_user_vui_register (vm, vui);
-
+  // Process node must connect
+  vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
   return rv;
 }
 
@@ -2629,22 +2543,19 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
   if (!out_vuids)
     return -1;
 
-  vec_foreach (vui, vum->vhost_user_interfaces)
-  {
-    if (vui->active)
-      vec_add1 (hw_if_indices, vui->hw_if_index);
-  }
+  pool_foreach (vui, vum->vhost_user_interfaces,
+		vec_add1 (hw_if_indices, vui->hw_if_index);
+    );
 
   for (i = 0; i < vec_len (hw_if_indices); i++)
     {
       hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
-      vui = vec_elt_at_index (vum->vhost_user_interfaces, hi->dev_instance);
+      vui = pool_elt_at_index (vum->vhost_user_interfaces, hi->dev_instance);
 
       vec_add2 (r_vuids, vuid, 1);
       vuid->sw_if_index = vui->sw_if_index;
       vuid->virtio_net_hdr_sz = vui->virtio_net_hdr_sz;
       vuid->features = vui->features;
-      vuid->is_server = vui->sock_is_server;
       vuid->num_regions = vui->nregions;
       vuid->sock_errno = vui->sock_errno;
       strncpy ((char *) vuid->sock_filename, (char *) vui->sock_filename,
@@ -2725,11 +2636,9 @@ show_vhost_user_command_fn (vlib_main_t * vm,
     }
   if (vec_len (hw_if_indices) == 0)
     {
-      vec_foreach (vui, vum->vhost_user_interfaces)
-      {
-	if (vui->active)
-	  vec_add1 (hw_if_indices, vui->hw_if_index);
-      }
+      pool_foreach (vui, vum->vhost_user_interfaces,
+		    vec_add1 (hw_if_indices, vui->hw_if_index);
+	);
     }
   vlib_cli_output (vm, "Virtio vhost-user interfaces");
   vlib_cli_output (vm, "Global:\n  coalesce frames %d time %e",
@@ -2738,7 +2647,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
   for (i = 0; i < vec_len (hw_if_indices); i++)
     {
       hi = vnet_get_hw_interface (vnm, hw_if_indices[i]);
-      vui = vec_elt_at_index (vum->vhost_user_interfaces, hi->dev_instance);
+      vui = pool_elt_at_index (vum->vhost_user_interfaces, hi->dev_instance);
       vlib_cli_output (vm, "Interface: %s (ifindex %d)",
 		       hi->name, hw_if_indices[i]);
 
@@ -2772,7 +2681,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 
       vlib_cli_output (vm, " socket filename %s type %s errno \"%s\"\n\n",
 		       vui->sock_filename,
-		       vui->sock_is_server ? "server" : "client",
+		       (vui->unix_server_index != ~0) ? "server" : "client",
 		       strerror (vui->sock_errno));
 
       vlib_cli_output (vm, " rx placement: ");
@@ -2839,9 +2748,10 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 			     vui->vrings[q].used->flags,
 			     vui->vrings[q].used->idx);
 
+	  int kickfd = UNIX_GET_FD (vui->vrings[q].kickfd_idx);
+	  int callfd = UNIX_GET_FD (vui->vrings[q].callfd_idx);
 	  vlib_cli_output (vm, "  kickfd %d callfd %d errfd %d\n",
-			   vui->vrings[q].kickfd,
-			   vui->vrings[q].callfd, vui->vrings[q].errfd);
+			   kickfd, callfd, vui->vrings[q].errfd);
 
 	  if (show_descr)
 	    {
@@ -3124,10 +3034,9 @@ vhost_user_unmap_all (void)
 
   if (vum->dont_dump_vhost_user_memory)
     {
-      vec_foreach (vui, vum->vhost_user_interfaces)
-      {
-	unmap_all_mem_regions (vui);
-      }
+      pool_foreach (vui, vum->vhost_user_interfaces,
+		    unmap_all_mem_regions (vui);
+	);
     }
 }
 
