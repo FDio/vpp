@@ -239,6 +239,17 @@ load_balance_is_drop (const dpo_id_t *dpo)
 }
 
 void
+load_balance_set_fib_entry_flags (index_t lbi,
+                                  fib_entry_flag_t flags)
+{
+    load_balance_t *lb;
+
+    lb = load_balance_get(lbi);
+    lb->lb_fib_entry_flags = flags;
+}
+
+
+void
 load_balance_set_urpf (index_t lbi,
 		       index_t urpf)
 {
@@ -683,7 +694,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                                           buckets,
                                           n_buckets);
 
-                for (ii = old_n_buckets-n_buckets; ii < old_n_buckets; ii++)
+                for (ii = n_buckets; ii < old_n_buckets; ii++)
                 {
                     dpo_reset(&buckets[ii]);
                 }

@@ -681,8 +681,8 @@ error:
   return 0;
 }
 
-static char *
-match_input_with_format (unformat_input_t * input, char *f)
+static const char *
+match_input_with_format (unformat_input_t * input, const char *f)
 {
   uword cf, ci;
 
@@ -703,8 +703,8 @@ match_input_with_format (unformat_input_t * input, char *f)
   return f;
 }
 
-static char *
-do_percent (unformat_input_t * input, va_list * va, char *f)
+static const char *
+do_percent (unformat_input_t * input, va_list * va, const char *f)
 {
   uword cf, n, data_bytes = ~0;
 
@@ -824,9 +824,9 @@ unformat_skip_white_space (unformat_input_t * input)
 }
 
 uword
-va_unformat (unformat_input_t * input, char *fmt, va_list * va)
+va_unformat (unformat_input_t * input, const char *fmt, va_list * va)
 {
-  char *f;
+  const char *f;
   uword input_matches_format;
   uword default_skip_input_white_space;
   uword n_input_white_space_skipped;
@@ -937,7 +937,7 @@ va_unformat (unformat_input_t * input, char *fmt, va_list * va)
 
       else
 	{
-	  char *g = match_input_with_format (input, f);
+	  const char *g = match_input_with_format (input, f);
 	  if (!g)
 	    goto parse_fail;
 	  last_non_white_space_match_format = g > f;
@@ -963,7 +963,7 @@ parse_fail:
 }
 
 uword
-unformat (unformat_input_t * input, char *fmt, ...)
+unformat (unformat_input_t * input, const char *fmt, ...)
 {
   va_list va;
   uword result;
