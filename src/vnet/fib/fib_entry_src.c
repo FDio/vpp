@@ -313,6 +313,8 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
         {
         case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
         case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+        case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+        case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
             /*
              * EOS traffic with no label to stack, we need the IP Adj
              */
@@ -458,6 +460,8 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     {
 	load_balance_set_urpf(dpo_lb->dpoi_index, ui);
     }
+    load_balance_set_fib_entry_flags(dpo_lb->dpoi_index,
+                                     fib_entry_get_flags_i(fib_entry));
 }
 
 void

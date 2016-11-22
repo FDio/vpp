@@ -38,7 +38,7 @@ TESTS  +=  test_bihash_template \
 	   test_time \
 	   test_timing_wheel \
 	   test_vec \
-	   test_zvec 
+	   test_zvec
 endif
 
 noinst_PROGRAMS = $(TESTS)

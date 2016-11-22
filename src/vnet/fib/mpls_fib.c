@@ -44,10 +44,11 @@
  * Switching between schemes based on observed/measured action similarity is not
  * considered on the grounds of complexity and flip-flopping.
  *
- * VPP mantra - favour performance over memory. We choose a 21 bit key.  
+ * VPP mantra - favour performance over memory. We choose a 21 bit key.
  */
 
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/mpls_fib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/punt_dpo.h>
@@ -340,6 +341,20 @@ mpls_fib_table_get_flow_hash_config (u32 fib_index)
 {
     // FIXME.
     return (0);
+}
+
+void
+mpls_fib_table_walk (mpls_fib_t *mpls_fib,
+                     fib_table_walk_fn_t fn,
+                     void *ctx)
+{
+    fib_node_index_t lfei;
+    mpls_label_t key;
+
+    hash_foreach(key, lfei, mpls_fib->mf_entries,
+    ({
+	fn(lfei, ctx);
+    }));
 }
 
 static void

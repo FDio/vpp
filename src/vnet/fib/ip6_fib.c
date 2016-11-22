@@ -39,57 +39,6 @@ vnet_ip6_fib_init (u32 fib_index)
 				ADJ_INDEX_INVALID);
 
     /*
-     * Add ff02::1:ff00:0/104 via local route for all tables.
-     *  This is required for neighbor discovery to work.
-     */
-    ip6_set_solicited_node_multicast_address(&pfx.fp_addr.ip6, 0);
-    pfx.fp_len = 104;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
-     * Add all-routers multicast address via local route for all tables
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_all_routers);
-    pfx.fp_len = 128;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
-     * Add all-nodes multicast address via local route for all tables
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_all_hosts);
-    pfx.fp_len = 128;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
-     *  Add all-mldv2  multicast address via local route for all tables
-     */
-    ip6_set_reserved_multicast_address (&pfx.fp_addr.ip6,
-					IP6_MULTICAST_SCOPE_link_local,
-					IP6_MULTICAST_GROUP_ID_mldv2_routers);
-    pfx.fp_len = 128;
-    fib_table_entry_special_add(fib_index,
-				&pfx,
-				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
-
-    /*
      * all link local for us
      */
     pfx.fp_addr.ip6.as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
@@ -512,27 +461,68 @@ ip6_fib_table_fwding_dpo_remove (u32 fib_index,
     if (--table->dst_address_length_refcounts[len] == 0)
     {
 	table->non_empty_dst_address_length_bitmap =
-            clib_bitmap_set (table->non_empty_dst_address_length_bitmap, 
+            clib_bitmap_set (table->non_empty_dst_address_length_bitmap,
                              128 - len, 0);
 	compute_prefix_lengths_in_search_order (table);
     }
 }
 
+/**
+ * @brief Context when walking the IPv6 table. Since all VRFs are in the
+ * same hash table, we need to filter only those we need as we walk
+ */
+typedef struct ip6_fib_walk_ctx_t_
+{
+    u32 i6w_fib_index;
+    fib_table_walk_fn_t i6w_fn;
+    void *i6w_ctx;
+} ip6_fib_walk_ctx_t;
+
+static int
+ip6_fib_walk_cb (clib_bihash_kv_24_8_t * kvp,
+                 void *arg)
+{
+    ip6_fib_walk_ctx_t *ctx = arg;
+
+    if ((kvp->key[2] >> 32) == ctx->i6w_fib_index)
+    {
+        ctx->i6w_fn(kvp->value, ctx->i6w_ctx);
+    }
+
+    return (1);
+}
+
+void
+ip6_fib_table_walk (u32 fib_index,
+                    fib_table_walk_fn_t fn,
+                    void *arg)
+{
+    ip6_fib_walk_ctx_t ctx = {
+        .i6w_fib_index = fib_index,
+        .i6w_fn = fn,
+        .i6w_ctx = arg,
+    };
+    ip6_main_t *im = &ip6_main;
+
+    BV(clib_bihash_foreach_key_value_pair)(&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+					   ip6_fib_walk_cb,
+					   &ctx);
+
+}
+
 typedef struct ip6_fib_show_ctx_t_ {
-    u32 fib_index;
     fib_node_index_t *entries;
 } ip6_fib_show_ctx_t;
 
-static void
-ip6_fib_table_collect_entries (clib_bihash_kv_24_8_t * kvp,
-			       void *arg)
+static int
+ip6_fib_table_show_walk (fib_node_index_t fib_entry_index,
+                         void *arg)
 {
     ip6_fib_show_ctx_t *ctx = arg;
 
-    if ((kvp->key[2] >> 32) == ctx->fib_index)
-    {
-	vec_add1(ctx->entries, kvp->value);
-    }
+    vec_add1(ctx->entries, fib_entry_index);
+
+    return (1);
 }
 
 static void
@@ -541,15 +531,10 @@ ip6_fib_table_show_all (ip6_fib_t *fib,
 {
     fib_node_index_t *fib_entry_index;
     ip6_fib_show_ctx_t ctx = {
-	.fib_index = fib->index,
 	.entries = NULL,
     };
-    ip6_main_t *im = &ip6_main;
 
-    BV(clib_bihash_foreach_key_value_pair)(&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
-					   ip6_fib_table_collect_entries,
-					   &ctx);
-
+    ip6_fib_table_walk(fib->index, ip6_fib_table_show_walk, &ctx);
     vec_sort_with_function(ctx.entries, fib_entry_cmp_for_sort);
 
     vec_foreach(fib_entry_index, ctx.entries)

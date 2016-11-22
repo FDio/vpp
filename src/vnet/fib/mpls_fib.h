@@ -71,6 +71,15 @@ extern void mpls_fib_forwarding_table_reset(mpls_fib_t *mf,
 					    mpls_eos_bit_t eos);
 
 /**
+ * @brief Walk all entries in a FIB table
+ * N.B: This is NOT safe to deletes. If you need to delete walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void mpls_fib_table_walk(mpls_fib_t *fib,
+                                fib_table_walk_fn_t fn,
+                                void *ctx);
+
+/**
  * @brief
  *  Lookup a label and EOS bit in the MPLS_FIB table to retrieve the
  *  load-balance index to be used for packet forwarding.

@@ -1,0 +1,612 @@
+#!/usr/bin/env python
+
+import unittest
+
+from framework import VppTestCase, VppTestRunner
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_ip_route import IpMRoute, MRoutePath, MFibSignal
+
+from scapy.packet import Raw
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import IP, UDP, getmacbyip
+from scapy.layers.inet6 import IPv6, getmacbyip6
+from util import ppp
+
+
+class MRouteItfFlags:
+    MFIB_ITF_FLAG_NONE = 0
+    MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
+    MFIB_ITF_FLAG_ACCEPT = 2
+    MFIB_ITF_FLAG_FORWARD = 4
+    MFIB_ITF_FLAG_SIGNAL_PRESENT = 8
+    MFIB_ITF_FLAG_INTERNAL_COPY = 16
+
+
+class MRouteEntryFlags:
+    MFIB_ENTRY_FLAG_NONE = 0
+    MFIB_ENTRY_FLAG_SIGNAL = 1
+    MFIB_ENTRY_FLAG_DROP = 2
+    MFIB_ENTRY_FLAG_CONNECTED = 4
+    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
+
+
+class TestIPMcast(VppTestCase):
+    """ IP Multicast Test Case """
+
+    def setUp(self):
+        super(TestIPMcast, self).setUp()
+
+        # create 4 pg interfaces
+        self.create_pg_interfaces(range(4))
+
+        # setup interfaces
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.config_ip6()
+            i.resolve_arp()
+            i.resolve_ndp()
+
+    def create_stream_ip4(self, src_if, src_ip, dst_ip):
+        pkts = []
+        for i in range(0, 65):
+            info = self.create_packet_info(src_if, src_if)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IP(src=src_ip, dst=dst_ip) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            pkts.append(p)
+        return pkts
+
+    def create_stream_ip6(self, src_if, src_ip, dst_ip):
+        pkts = []
+        for i in range(0, 65):
+            info = self.create_packet_info(src_if, src_if)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IPv6(src=src_ip, dst=dst_ip) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            pkts.append(p)
+        return pkts
+
+    def verify_filter(self, capture, sent):
+        if not len(capture) == len(sent):
+            # filter out any IPv6 RAs from the captur
+            for p in capture:
+                if (p.haslayer(IPv6)):
+                    capture.remove(p)
+        return capture
+
+    def verify_capture_ip4(self, src_if, sent):
+        rxd = self.pg1.get_capture(65)
+
+        try:
+            capture = self.verify_filter(rxd, sent)
+
+            self.assertEqual(len(capture), len(sent))
+
+            for i in range(len(capture)):
+                tx = sent[i]
+                rx = capture[i]
+
+                # the rx'd packet has the MPLS label popped
+                eth = rx[Ether]
+                self.assertEqual(eth.type, 0x800)
+
+                tx_ip = tx[IP]
+                rx_ip = rx[IP]
+
+                # check the MAC address on the RX'd packet is correctly formed
+                self.assertEqual(eth.dst, getmacbyip(rx_ip.dst))
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+                # IP processing post pop has decremented the TTL
+                self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
+
+        except:
+            raise
+
+    def verify_capture_ip6(self, src_if, sent):
+        capture = self.pg1.get_capture(65)
+
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            tx = sent[i]
+            rx = capture[i]
+
+            # the rx'd packet has the MPLS label popped
+            eth = rx[Ether]
+            self.assertEqual(eth.type, 0x86DD)
+
+            tx_ip = tx[IPv6]
+            rx_ip = rx[IPv6]
+
+            # check the MAC address on the RX'd packet is correctly formed
+            self.assertEqual(eth.dst, getmacbyip6(rx_ip.dst))
+
+            self.assertEqual(rx_ip.src, tx_ip.src)
+            self.assertEqual(rx_ip.dst, tx_ip.dst)
+            # IP processing post pop has decremented the TTL
+            self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
+
+    def test_ip_mcast(self):
+        """ IP Multicast Replication """
+
+        #
+        # a stream that matches the default route. gets dropped.
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on default route")
+
+        #
+        # A (*,G).
+        # one accepting interface, pg0, 3 forwarding interfaces
+        #
+        route_232_1_1_1 = IpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             MRoutePath(self.pg2.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             MRoutePath(self.pg3.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232_1_1_1.add_vpp_config()
+
+        #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        #
+        route_1_1_1_1_232_1_1_1 = IpMRoute(
+            self,
+            "1.1.1.1",
+            "232.1.1.1", 64,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             MRoutePath(self.pg2.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_1_1_1_1_232_1_1_1.add_vpp_config()
+
+        #
+        # An (*,G/m).
+        # one accepting interface, pg0, 1 forwarding interfaces
+        #
+        route_232 = IpMRoute(
+            self,
+            "0.0.0.0",
+            "232.0.0.0", 8,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232.add_vpp_config()
+
+        #
+        # a stream that matches the route for (1.1.1.1,232.1.1.1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2,
+        self.verify_capture_ip4(self.pg1, tx)
+        self.verify_capture_ip4(self.pg2, tx)
+
+        # no replications on Pg0
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+        self.pg3.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG3")
+
+        #
+        # a stream that matches the route for (*,232.0.0.0/8)
+        # Send packets with the 9th bit set so we test the correct clearing
+        # of that bit in the mac rewrite
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.255.255.255")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1 only
+        self.verify_capture_ip4(self.pg1, tx)
+
+        # no replications on Pg0, Pg2 not Pg3
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+        self.pg2.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG2")
+        self.pg3.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG3")
+
+        #
+        # a stream that matches the route for (*,232.1.1.1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.2", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2, 3.
+        self.verify_capture_ip4(self.pg1, tx)
+        self.verify_capture_ip4(self.pg2, tx)
+        self.verify_capture_ip4(self.pg3, tx)
+
+        # no replications on Pg0
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+
+        route_232_1_1_1.remove_vpp_config()
+        route_1_1_1_1_232_1_1_1.remove_vpp_config()
+        route_232.remove_vpp_config()
+
+    def test_ip6_mcast(self):
+        """ IPv6 Multicast Replication """
+
+        #
+        # a stream that matches the default route. gets dropped.
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip6(self.pg0, "2001::1", "ff01::1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.assert_nothing_captured(
+            remark="IPv6 multicast packets forwarded on default route")
+
+        #
+        # A (*,G).
+        # one accepting interface, pg0, 3 forwarding interfaces
+        #
+        route_ff01_1 = IpMRoute(
+            self,
+            "::",
+            "ff01::1", 128,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             MRoutePath(self.pg2.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             MRoutePath(self.pg3.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            is_ip6=1)
+        route_ff01_1.add_vpp_config()
+
+        #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        #
+        route_2001_ff01_1 = IpMRoute(
+            self,
+            "2001::1",
+            "ff01::1", 256,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             MRoutePath(self.pg2.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            is_ip6=1)
+        route_2001_ff01_1.add_vpp_config()
+
+        #
+        # An (*,G/m).
+        # one accepting interface, pg0, 1 forwarding interface
+        #
+        route_ff01 = IpMRoute(
+            self,
+            "::",
+            "ff01::", 16,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            is_ip6=1)
+        route_ff01.add_vpp_config()
+
+        #
+        # a stream that matches the route for (*, ff01::/16)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip6(self.pg0, "2002::1", "ff01:2::255")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1
+        self.verify_capture_ip6(self.pg1, tx)
+
+        # no replications on Pg0, Pg3
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+        self.pg2.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG2")
+        self.pg3.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG3")
+
+        #
+        # a stream that matches the route for (*,ff01::1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip6(self.pg0, "2002::2", "ff01::1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2, 3.
+        self.verify_capture_ip6(self.pg1, tx)
+        self.verify_capture_ip6(self.pg2, tx)
+        self.verify_capture_ip6(self.pg3, tx)
+
+        # no replications on Pg0
+        self.pg0.assert_nothing_captured(
+            remark="IPv6 multicast packets forwarded on PG0")
+
+        #
+        # a stream that matches the route for (2001::1, ff00::1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip6(self.pg0, "2001::1", "ff01::1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2,
+        self.verify_capture_ip6(self.pg1, tx)
+        self.verify_capture_ip6(self.pg2, tx)
+
+        # no replications on Pg0, Pg3
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+        self.pg3.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG3")
+
+        route_ff01.remove_vpp_config()
+        route_ff01_1.remove_vpp_config()
+        route_2001_ff01_1.remove_vpp_config()
+
+    def _mcast_connected_send_stream(self, dst_ip):
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0,
+                                    self.pg0.remote_ip4,
+                                    dst_ip)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1.
+        self.verify_capture_ip4(self.pg1, tx)
+
+        return tx
+
+    def test_ip_mcast_connected(self):
+        """ IP Multicast Connected Source check """
+
+        #
+        # A (*,G).
+        # one accepting interface, pg0, 1 forwarding interfaces
+        #
+        route_232_1_1_1 = IpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+
+        route_232_1_1_1.add_vpp_config()
+        route_232_1_1_1.update_entry_flags(
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_CONNECTED)
+
+        #
+        # Now the (*,G) is present, send from connected source
+        #
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+
+        #
+        # Constrct a representation of the signal we expect on pg0
+        #
+        signal_232_1_1_1_itf_0 = MFibSignal(self,
+                                            route_232_1_1_1,
+                                            self.pg0.sw_if_index,
+                                            tx[0])
+
+        #
+        # read the only expected signal
+        #
+        signals = self.vapi.mfib_signal_dump()
+
+        self.assertEqual(1, len(signals))
+
+        signal_232_1_1_1_itf_0.compare(signals[0])
+
+        #
+        # reading the signal allows for the generation of another
+        # so send more packets and expect the next signal
+        #
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+
+        signals = self.vapi.mfib_signal_dump()
+        self.assertEqual(1, len(signals))
+        signal_232_1_1_1_itf_0.compare(signals[0])
+
+        #
+        # A Second entry with connected check
+        # one accepting interface, pg0, 1 forwarding interfaces
+        #
+        route_232_1_1_2 = IpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.2", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+
+        route_232_1_1_2.add_vpp_config()
+        route_232_1_1_2.update_entry_flags(
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_CONNECTED)
+
+        #
+        # Send traffic to both entries. One read should net us two signals
+        #
+        signal_232_1_1_2_itf_0 = MFibSignal(self,
+                                            route_232_1_1_2,
+                                            self.pg0.sw_if_index,
+                                            tx[0])
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+        tx2 = self._mcast_connected_send_stream("232.1.1.2")
+
+        #
+        # read the only expected signal
+        #
+        signals = self.vapi.mfib_signal_dump()
+
+        self.assertEqual(2, len(signals))
+
+        signal_232_1_1_1_itf_0.compare(signals[1])
+        signal_232_1_1_2_itf_0.compare(signals[0])
+
+        route_232_1_1_1.remove_vpp_config()
+        route_232_1_1_2.remove_vpp_config()
+
+    def test_ip_mcast_signal(self):
+        """ IP Multicast Signal """
+
+        #
+        # A (*,G).
+        # one accepting interface, pg0, 1 forwarding interfaces
+        #
+        route_232_1_1_1 = IpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [MRoutePath(self.pg0.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             MRoutePath(self.pg1.sw_if_index,
+                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+
+        route_232_1_1_1.add_vpp_config()
+        route_232_1_1_1.update_entry_flags(
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_SIGNAL)
+
+        #
+        # Now the (*,G) is present, send from connected source
+        #
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+
+        #
+        # Constrct a representation of the signal we expect on pg0
+        #
+        signal_232_1_1_1_itf_0 = MFibSignal(self,
+                                            route_232_1_1_1,
+                                            self.pg0.sw_if_index,
+                                            tx[0])
+
+        #
+        # read the only expected signal
+        #
+        signals = self.vapi.mfib_signal_dump()
+
+        self.assertEqual(1, len(signals))
+
+        signal_232_1_1_1_itf_0.compare(signals[0])
+
+        #
+        # reading the signal allows for the generation of another
+        # so send more packets and expect the next signal
+        #
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+
+        signals = self.vapi.mfib_signal_dump()
+        self.assertEqual(1, len(signals))
+        signal_232_1_1_1_itf_0.compare(signals[0])
+
+        #
+        # Set the negate-signal on the accepting interval - the signals
+        # should stop
+        #
+        route_232_1_1_1.update_path_flags(
+            self.pg0.sw_if_index,
+            (MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
+             MRouteItfFlags.MFIB_ITF_FLAG_NEGATE_SIGNAL))
+
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+
+        signals = self.vapi.mfib_signal_dump()
+        self.assertEqual(0, len(signals))
+
+        #
+        # Clear the SIGNAL flag on the entry and the signals should
+        # come back since the interface is still NEGATE-SIGNAL
+        #
+        route_232_1_1_1.update_entry_flags(
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE)
+
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+
+        signals = self.vapi.mfib_signal_dump()
+        self.assertEqual(1, len(signals))
+        signal_232_1_1_1_itf_0.compare(signals[0])
+
+        #
+        # Lastly remove the NEGATE-SIGNAL from the interface and the
+        # signals should stop
+        #
+        route_232_1_1_1.update_path_flags(self.pg0.sw_if_index,
+                                          MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT)
+
+        tx = self._mcast_connected_send_stream("232.1.1.1")
+        signals = self.vapi.mfib_signal_dump()
+        self.assertEqual(0, len(signals))
+
+        #
+        # Cleanup
+        #
+        route_232_1_1_1.remove_vpp_config()
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)
