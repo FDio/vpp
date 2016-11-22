@@ -43,6 +43,7 @@
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/classify_dpo.h>
@@ -2137,6 +2138,17 @@ ip6_rewrite_local (vlib_main_t * vm,
 }
 
 static uword
+ip6_rewrite_mcast (vlib_main_t * vm,
+		   vlib_node_runtime_t * node,
+		   vlib_frame_t * frame)
+{
+  ASSERT(0);
+  return ip6_rewrite_inline (vm, node, frame,
+			     /* rewrite_for_locally_received_packets */ 0,
+			     /* midchain */ 0);
+}
+
+static uword
 ip6_midchain (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * frame)
@@ -2171,6 +2183,21 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
     [IP6_REWRITE_NEXT_ICMP_ERROR] = "ip6-icmp-error",
   },
 };
+
+VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) = {
+  .function = ip6_rewrite_mcast,
+  .name = "ip6-rewrite-mcast",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip6_rewrite_trace,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [IP6_REWRITE_NEXT_DROP] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast)
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite_transit);
 
@@ -2744,6 +2771,12 @@ add_del_ip6_interface_table (vlib_main_t * vm,
 
     vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
     ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+    fib_index = mfib_table_find_or_create_and_lock(FIB_PROTOCOL_IP6,
+                                                   table_id);
+
+    vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
+    ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
   }
 
 

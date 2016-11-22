@@ -681,7 +681,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
                                           buckets,
                                           n_buckets);
 
-                for (ii = old_n_buckets-n_buckets; ii < old_n_buckets; ii++)
+                for (ii = n_buckets; ii < old_n_buckets; ii++)
                 {
                     dpo_reset(&buckets[ii]);
                 }

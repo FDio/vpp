@@ -832,6 +832,7 @@ libvnet_la_SOURCES +=				\
   vnet/adj/adj_rewrite.c			\
   vnet/adj/adj_glean.c   			\
   vnet/adj/adj_midchain.c   			\
+  vnet/adj/adj_mcast.c   			\
   vnet/adj/adj_l2.c      			\
   vnet/adj/adj.c                            
 
@@ -856,6 +857,7 @@ libvnet_la_SOURCES +=				\
   vnet/dpo/load_balance_map.c			\
   vnet/dpo/lookup_dpo.c   			\
   vnet/dpo/classify_dpo.c   			\
+  vnet/dpo/replicate_dpo.c   			\
   vnet/dpo/mpls_label_dpo.c
 
 nobase_include_HEADERS +=			\
@@ -867,6 +869,24 @@ nobase_include_HEADERS +=			\
   vnet/dpo/receive_dpo.h                        \
   vnet/dpo/ip_null_dpo.h                        \
   vnet/dpo/dpo.h
+
+########################################
+# Multicast FIB
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/mfib/mfib_test.c                         \
+  vnet/mfib/mfib_forward.c                      \
+  vnet/mfib/ip4_mfib.c                          \
+  vnet/mfib/mfib_types.c                        \
+  vnet/mfib/mfib_itf.c                          \
+  vnet/mfib/mfib_entry.c                        \
+  vnet/mfib/mfib_table.c
+
+nobase_include_HEADERS +=			\
+  vnet/mfib/ip4_mfib.h                          \
+  vnet/mfib/mfib_types.h                        \
+  vnet/mfib/mfib_table.h
 
 ########################################
 # Plugin client library

@@ -120,6 +120,8 @@
 
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
+//#include <vnet/mfib/ip6_mfib.h>
+#include <vnet/mfib/ip4_mfib.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/lookup_dpo.h>
@@ -149,6 +151,7 @@ _(OAM_ADD_DEL, oam_add_del)                                             \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                                 \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
+_(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
 _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                               \
 _(MPLS_IP_BIND_UNBIND, mpls_ip_bind_unbind)                             \
 _(IS_ADDRESS_REACHABLE, is_address_reachable)                           \
@@ -1232,6 +1235,132 @@ vl_api_mpls_ip_bind_unbind_t_handler (vl_api_mpls_ip_bind_unbind_t * mp)
   REPLY_MACRO (VL_API_MPLS_ROUTE_ADD_DEL_REPLY);
 }
 
+static int
+add_del_mroute_check (fib_protocol_t table_proto,
+		      u32 table_id,
+		      u32 next_hop_sw_if_index,
+		      u8 is_local, u8 create_missing_tables, u32 * fib_index)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+
+  *fib_index = mfib_table_find (table_proto, ntohl (table_id));
+  if (~0 == *fib_index)
+    {
+      if (create_missing_tables)
+	{
+	  *fib_index = mfib_table_find_or_create_and_lock (table_proto,
+							   ntohl (table_id));
+	}
+      else
+	{
+	  /* No such VRF, and we weren't asked to create one */
+	  return VNET_API_ERROR_NO_SUCH_FIB;
+	}
+    }
+
+  if (~0 != ntohl (next_hop_sw_if_index))
+    {
+      if (pool_is_free_index (vnm->interface_main.sw_interfaces,
+			      ntohl (next_hop_sw_if_index)))
+	{
+	  return VNET_API_ERROR_NO_MATCHING_INTERFACE;
+	}
+    }
+  else if (!is_local)
+    {
+      return VNET_API_ERROR_NO_MATCHING_INTERFACE;
+    }
+
+  return (0);
+}
+
+static int
+mroute_add_del_handler (u8 is_add,
+			u8 is_local,
+			u32 fib_index,
+			const mfib_prefix_t * prefix,
+			u32 entry_flags,
+			u32 next_hop_sw_if_index, u32 itf_flags)
+{
+  stats_main_t *sm = &stats_main;
+
+  dslock (sm, 1 /* release hint */ , 2 /* tag */ );
+
+  if (is_add)
+    {
+      fib_route_path_t path = {
+	.frp_sw_if_index = next_hop_sw_if_index,
+	.frp_proto = prefix->fp_proto,
+      };
+
+      if (is_local)
+	path.frp_flags |= FIB_ROUTE_PATH_LOCAL;
+
+
+      mfib_table_entry_path_update (fib_index, prefix, FIB_SOURCE_API,
+				    //ntry_flags,
+				    &path,
+                                    itf_flags);
+    }
+  else
+    {
+      mfib_table_entry_delete (fib_index, prefix, FIB_SOURCE_API);
+    }
+
+  dsunlock (sm);
+  return (0);
+}
+
+static int
+ip4_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
+{
+  u32 fib_index;
+  int rv;
+
+  rv = add_del_mroute_check (FIB_PROTOCOL_IP4,
+			     mp->table_id,
+			     mp->next_hop_sw_if_index,
+			     mp->is_local,
+			     mp->create_vrf_if_needed, &fib_index);
+
+  if (0 != rv)
+    return (rv);
+
+  mfib_prefix_t pfx = {
+    .fp_len = mp->grp_address_length,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  clib_memcpy (&pfx.fp_grp_addr.ip4, mp->grp_address,
+	       sizeof (pfx.fp_grp_addr.ip4));
+  clib_memcpy (&pfx.fp_src_addr.ip4, mp->src_address,
+	       sizeof (pfx.fp_src_addr.ip4));
+
+  return (mroute_add_del_handler (mp->is_add,
+				  mp->is_local,
+				  fib_index, &pfx, 1,
+				  ntohl (mp->next_hop_sw_if_index),
+				  ntohl (mp->itf_flags)));
+}
+
+void
+vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
+{
+  vl_api_ip_mroute_add_del_reply_t *rmp;
+  int rv;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  vnm->api_errno = 0;
+
+  //  if (mp->is_ipv6)
+  //    rv = ip6_add_del_route_t_handler (mp);
+  //  else
+  rv = ip4_mroute_add_del_t_handler (mp);
+
+  rv = (rv == 0) ? vnm->api_errno : rv;
+
+  REPLY_MACRO (VL_API_IP_MROUTE_ADD_DEL_REPLY);
+}
+
 static void
   vl_api_sw_interface_add_del_address_t_handler
   (vl_api_sw_interface_add_del_address_t * mp)
@@ -1282,6 +1411,12 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
       vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
       ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+      fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+						      table_id);
+
+      vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
+      ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
     }
   else
     {
@@ -1291,6 +1426,12 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
       vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
       ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+      fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+						      table_id);
+
+      vec_validate (ip4_main.mfib_index_by_sw_if_index, sw_if_index);
+      ip4_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
     }
   dsunlock (sm);
 

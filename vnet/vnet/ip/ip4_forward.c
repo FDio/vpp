@@ -50,6 +50,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/classify_dpo.h>
+#include <vnet/mfib/mfib_table.h> /* for mFIB table and entry creation */
 
 /**
  * @file
@@ -823,7 +824,7 @@ ip4_sw_interface_enable_disable (u32 sw_if_index,
   vnet_feature_enable_disable ("ip4-unicast", "ip4-lookup", sw_if_index,
 			       is_enable, 0, 0);
 
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-lookup-multicast", sw_if_index,
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-mfib-forward-lookup", sw_if_index,
 			       is_enable, 0, 0);
 
 }
@@ -1006,12 +1007,12 @@ VNET_FEATURE_ARC_INIT (ip4_multicast, static) =
 VNET_FEATURE_INIT (ip4_vpath_mc, static) = {
   .arc_name = "ip4-multicast",
   .node_name = "vpath-input-ip4",
-  .runs_before = VNET_FEATURES ("ip4-lookup-multicast"),
+  .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
 };
 
 VNET_FEATURE_INIT (ip4_lookup_mc, static) = {
   .arc_name = "ip4-multicast",
-  .node_name = "ip4-lookup-multicast",
+  .node_name = "ip4-mfib-forward-lookup",
   .runs_before = VNET_FEATURES ("ip4-drop"),
 };
 
@@ -1058,6 +1059,7 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
 
   /* Fill in lookup tables with default table (0). */
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
 
   vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
 			       is_add, 0, 0);
@@ -1101,6 +1103,7 @@ ip4_lookup_init (vlib_main_t * vm)
 
   /* Create FIB with index 0 and table id of 0. */
   fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 0);
+  mfib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 0);
 
   {
     pg_node_t * pn;
@@ -1787,7 +1790,7 @@ ip4_local (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (ip4_local_node,static) = {
+VLIB_REGISTER_NODE (ip4_local_node) = {
   .function = ip4_local,
   .name = "ip4-local",
   .vector_size = sizeof (u32),
@@ -2195,7 +2198,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
 		    int rewrite_for_locally_received_packets,
-		    int is_midchain)
+		    int is_midchain,
+                    int is_mcast)
 {
   ip_lookup_main_t * lm = &ip4_main.lookup_main;
   u32 * from = vlib_frame_vector_args (frame);
@@ -2405,6 +2409,14 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
 	      adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
 	  }
+          if (is_mcast)
+          {
+              /*
+               * copy bytes from the IP address into the MAC rewrite
+               */
+              vnet_fixup_one_header(adj0[0], &ip0->dst_address, ip0, 3);
+              vnet_fixup_one_header(adj1[0], &ip1->dst_address, ip1, 3);
+          }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -2486,6 +2498,13 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  /* Guess we are only writing on simple Ethernet header. */
           vnet_rewrite_one_header (adj0[0], ip0,
                                    sizeof (ethernet_header_t));
+          if (is_mcast)
+          {
+              /*
+               * copy bytes from the IP address into the MAC rewrite
+               */
+              vnet_fixup_one_header(adj0[0], ((u8*)&ip0->dst_address)+1, ip0, 3);
+          }
 
           /* Update packet buffer attributes/set output interface. */
           rw_len0 = adj0[0].rewrite_header.data_bytes;
@@ -2588,7 +2607,7 @@ ip4_rewrite_transit (vlib_main_t * vm,
 		     vlib_frame_t * frame)
 {
   return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0, 0);
+			     /* rewrite_for_locally_received_packets */ 0, 0, 0);
 }
 
 /** @brief IPv4 local rewrite node.
@@ -2630,7 +2649,7 @@ ip4_rewrite_local (vlib_main_t * vm,
 		   vlib_frame_t * frame)
 {
   return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 1, 0);
+			     /* rewrite_for_locally_received_packets */ 1, 0, 0);
 }
 
 static uword
@@ -2639,7 +2658,16 @@ ip4_midchain (vlib_main_t * vm,
 	      vlib_frame_t * frame)
 {
   return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0, 1);
+			     /* rewrite_for_locally_received_packets */ 0, 1, 0);
+}
+
+static uword
+ip4_rewrite_mcast (vlib_main_t * vm,
+                   vlib_node_runtime_t * node,
+                   vlib_frame_t * frame)
+{
+  return ip4_rewrite_inline (vm, node, frame,
+			     /* rewrite_for_locally_received_packets */ 0, 0, 1);
 }
 
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
@@ -2658,6 +2686,17 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_node, ip4_rewrite_transit)
+
+VLIB_REGISTER_NODE (ip4_rewrite_mcast_node) = {
+  .function = ip4_rewrite_mcast,
+  .name = "ip4-rewrite-mcast",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_rewrite_trace,
+  .sibling_of = "ip4-rewrite-transit",
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_mcast_node, ip4_rewrite_mcast)
 
 VLIB_REGISTER_NODE (ip4_midchain_node) = {
   .function = ip4_midchain,
@@ -2726,6 +2765,11 @@ add_del_interface_table (vlib_main_t * vm,
     //
     vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
     im->fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+    fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+                                                   table_id);
+    vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
+    im->mfib_index_by_sw_if_index[sw_if_index] = fib_index;
   }
 
  done:

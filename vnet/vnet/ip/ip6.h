@@ -73,6 +73,17 @@ typedef struct {
   flow_hash_config_t flow_hash_config;
 } ip6_fib_t;
 
+typedef struct ip6_mfib_t {
+  /* Hash table for each prefix length mapping. */
+  uword * fib_entry_by_dst_address[257];
+
+  /* Table ID (hash key) for this FIB. */
+  u32 table_id;
+
+  /* Index into FIB vector. */
+  u32 index;
+} ip6_mfib_t;
+
 struct ip6_main_t;
 
 typedef void (ip6_add_del_interface_address_function_t)
@@ -133,11 +144,17 @@ typedef struct ip6_main_t {
   /* Pool of FIBs. */
   struct fib_table_t_ * fibs;
 
+  /** Vector of MFIBs. */
+  struct mfib_table_t_ * mfibs;
+
   /* Network byte orders subnet mask for each prefix length */
   ip6_address_t fib_masks[129];
 
   /* Table index indexed by software interface. */
   u32 * fib_index_by_sw_if_index;
+
+  /** Table index indexed by software interface. */
+  u32 * mfib_index_by_sw_if_index;
 
   /* IP6 enabled count by software interface */
   u8 * ip_enabled_by_sw_if_index;
@@ -145,6 +162,10 @@ typedef struct ip6_main_t {
   /* Hash table mapping table id to fib index.
      ID space is not necessarily dense; index space is dense. */
   uword * fib_index_by_table_id;
+
+  /** Hash table mapping table id to multicast fib index.
+     ID space is not necessarily dense; index space is dense. */
+  uword * mfib_index_by_table_id;
 
   /* Hash table mapping interface rewrite adjacency index by sw if index. */
   uword * interface_route_adj_index_by_sw_if_index;
