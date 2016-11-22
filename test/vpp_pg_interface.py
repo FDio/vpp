@@ -216,6 +216,8 @@ class VppPGInterface(VppInterface):
                         return
                     self.test.logger.error(
                         ppc("Unexpected packets captured:", capture))
+                else:
+                    return
             except:
                 pass
             if remark:
