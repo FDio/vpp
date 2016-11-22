@@ -1043,6 +1043,26 @@ fib_table_destroy (fib_table_t *fib_table)
 	break;
     }
 }
+void
+fib_table_walk (u32 fib_index,
+                fib_protocol_t proto,
+                fib_table_walk_fn_t fn,
+                void *ctx)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	ip4_fib_table_walk(ip4_fib_get(fib_index), fn, ctx);
+	break;
+    case FIB_PROTOCOL_IP6:
+	ip6_fib_table_walk(fib_index, fn, ctx);
+	break;
+    case FIB_PROTOCOL_MPLS:
+	mpls_fib_table_walk(mpls_fib_get(fib_index), fn, ctx);
+	break;
+    }
+}
+
 
 void
 fib_table_unlock (u32 fib_index,
@@ -1094,11 +1114,56 @@ format_fib_table_name (u8* s, va_list ap)
     return (s);
 }
 
+/**
+ * @brief Table flush context. Store the indicies of matching FIB entries
+ * that need to be removed.
+ */
+typedef struct fib_table_flush_ctx_t_
+{
+    /**
+     * The list of entries to flush
+     */
+    fib_node_index_t *ftf_entries;
+
+    /**
+     * The source we are flushing
+     */
+    fib_source_t ftf_source;
+} fib_table_flush_ctx_t;
+
+static int
+fib_table_flush_cb (fib_node_index_t fib_entry_index,
+                    void *arg)
+{
+    fib_table_flush_ctx_t *ctx = arg;
+
+    if (fib_entry_is_sourced(fib_entry_index, ctx->ftf_source))
+    {
+        vec_add1(ctx->ftf_entries, fib_entry_index);
+    }
+    return (1);
+}
+
+
 void
 fib_table_flush (u32 fib_index,
 		 fib_protocol_t proto,
 		 fib_source_t source)
 {
-    // FIXME
-    ASSERT(0);
+    fib_node_index_t *fib_entry_index;
+    fib_table_flush_ctx_t ctx = {
+        .ftf_entries = NULL,
+        .ftf_source = source,
+    };
+
+    fib_table_walk(fib_index, proto,
+                   fib_table_flush_cb,
+                   &ctx);
+
+    vec_foreach(fib_entry_index, ctx.ftf_entries)
+    {
+        fib_entry_delete(*fib_entry_index, source);
+    }
+
+    vec_free(ctx.ftf_entries);
 }

@@ -17,6 +17,7 @@
 #include <vnet/adj/adj_internal.h>
 #include <vnet/adj/adj_glean.h>
 #include <vnet/adj/adj_midchain.h>
+#include <vnet/adj/adj_mcast.h>
 #include <vnet/fib/fib_node_list.h>
 
 /*
@@ -58,8 +59,6 @@ adj_alloc (fib_protocol_t proto)
                                    adj_get_index(adj));
 
     adj->rewrite_header.sw_if_index = ~0;
-    adj->mcast_group_index = ~0;
-    adj->saved_lookup_next_index = 0;
     adj->n_adj = 1;
     adj->lookup_next_index = 0;
 
@@ -115,6 +114,9 @@ format_ip_adjacency (u8 * s, va_list * args)
 	break;
     case IP_LOOKUP_NEXT_MIDCHAIN:
 	s = format (s, "%U", format_adj_midchain, adj_index, 2);
+	break;
+    case IP_LOOKUP_NEXT_MCAST:
+	s = format (s, "%U", format_adj_mcast, adj_index, 0);
 	break;
     default:
 	break;
@@ -177,6 +179,10 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 	break;
     case IP_LOOKUP_NEXT_GLEAN:
 	adj_glean_remove(adj->ia_nh_proto,
+			 adj->rewrite_header.sw_if_index);
+	break;
+    case IP_LOOKUP_NEXT_MCAST:
+	adj_mcast_remove(adj->ia_nh_proto,
 			 adj->rewrite_header.sw_if_index);
 	break;
     default:
@@ -350,6 +356,7 @@ adj_module_init (vlib_main_t * vm)
     adj_nbr_module_init();
     adj_glean_module_init();
     adj_midchain_module_init();
+    adj_mcast_module_init();
 
     /*
      * one special adj to reserve index 0

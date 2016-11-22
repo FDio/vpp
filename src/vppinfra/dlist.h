@@ -121,7 +121,7 @@ clib_dlist_remove_head (dlist_elt_t * pool, u32 head_index)
 
   ASSERT (head->value == ~0);
 
-  if (head->next == ~0)
+  if (head->next == ~0 || (head->next == head_index))
     return ~0;
 
   rv = head->next;

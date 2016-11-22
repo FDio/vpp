@@ -48,6 +48,7 @@
 #include <vnet/span/span.h>
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
+#include <vnet/mfib/mfib_types.h>
 
 #include "vat/json_format.h"
 
@@ -503,6 +504,53 @@ unformat_flow_classify_table_type (unformat_input_t * input, va_list * va)
 
   *r = tid;
   return 1;
+}
+
+static const char *mfib_flag_names[] = MFIB_ENTRY_NAMES_SHORT;
+static const char *mfib_flag_long_names[] = MFIB_ENTRY_NAMES_LONG;
+static const char *mfib_itf_flag_long_names[] = MFIB_ITF_NAMES_LONG;
+static const char *mfib_itf_flag_names[] = MFIB_ITF_NAMES_SHORT;
+
+uword
+unformat_mfib_itf_flags (unformat_input_t * input, va_list * args)
+{
+  mfib_itf_flags_t old, *iflags = va_arg (*args, mfib_itf_flags_t *);
+  mfib_itf_attribute_t attr;
+
+  old = *iflags;
+  FOR_EACH_MFIB_ITF_ATTRIBUTE (attr)
+  {
+    if (unformat (input, mfib_itf_flag_long_names[attr]))
+      *iflags |= (1 << attr);
+  }
+  FOR_EACH_MFIB_ITF_ATTRIBUTE (attr)
+  {
+    if (unformat (input, mfib_itf_flag_names[attr]))
+      *iflags |= (1 << attr);
+  }
+
+  return (old == *iflags ? 0 : 1);
+}
+
+uword
+unformat_mfib_entry_flags (unformat_input_t * input, va_list * args)
+{
+  mfib_entry_flags_t old, *eflags = va_arg (*args, mfib_entry_flags_t *);
+  mfib_entry_attribute_t attr;
+
+  old = *eflags;
+  FOR_EACH_MFIB_ATTRIBUTE (attr)
+  {
+    if (unformat (input, mfib_flag_long_names[attr]))
+      *eflags |= (1 << attr);
+  }
+  FOR_EACH_MFIB_ATTRIBUTE (attr)
+  {
+    if (unformat (input, mfib_flag_names[attr]))
+      *eflags |= (1 << attr);
+  }
+
+  return (old == *eflags ? 0 : 1);
 }
 
 #if (VPP_API_TEST_BUILTIN==0)
@@ -3592,6 +3640,7 @@ _(bridge_domain_add_del_reply)                          \
 _(sw_interface_set_l2_xconnect_reply)                   \
 _(l2fib_add_del_reply)                                  \
 _(ip_add_del_route_reply)                               \
+_(ip_mroute_add_del_reply)                              \
 _(mpls_route_add_del_reply)                             \
 _(mpls_ip_bind_unbind_reply)                            \
 _(proxy_arp_add_del_reply)                              \
@@ -3792,6 +3841,7 @@ _(TAP_MODIFY_REPLY, tap_modify_reply)					\
 _(TAP_DELETE_REPLY, tap_delete_reply)					\
 _(SW_INTERFACE_TAP_DETAILS, sw_interface_tap_details)                   \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)			\
+_(IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)			\
 _(MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)			\
 _(MPLS_IP_BIND_UNBIND_REPLY, mpls_ip_bind_unbind_reply)			\
 _(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)                     \
@@ -6378,6 +6428,126 @@ api_ip_add_del_route (vat_main_t * vam)
       /* Wait for a reply... */
       W;
     }
+
+  /* Return the good/bad news */
+  return (vam->retval);
+}
+
+static int
+api_ip_mroute_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_mroute_add_del_t *mp;
+  f64 timeout;
+  u32 sw_if_index = ~0, vrf_id = 0;
+  u8 is_ipv6 = 0;
+  u8 is_local = 0;
+  u8 create_vrf_if_needed = 0;
+  u8 is_add = 1;
+  u8 address_set = 0;
+  u32 grp_address_length = 0;
+  ip4_address_t v4_grp_address, v4_src_address;
+  ip6_address_t v6_grp_address, v6_src_address;
+  mfib_itf_flags_t iflags = 0;
+  mfib_entry_flags_t eflags = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "%U %U",
+			 unformat_ip4_address, &v4_src_address,
+			 unformat_ip4_address, &v4_grp_address))
+	{
+	  grp_address_length = 64;
+	  address_set = 1;
+	  is_ipv6 = 0;
+	}
+      else if (unformat (i, "%U %U",
+			 unformat_ip6_address, &v6_src_address,
+			 unformat_ip6_address, &v6_grp_address))
+	{
+	  grp_address_length = 256;
+	  address_set = 1;
+	  is_ipv6 = 1;
+	}
+      else if (unformat (i, "%U", unformat_ip4_address, &v4_grp_address))
+	{
+	  memset (&v4_src_address, 0, sizeof (v4_src_address));
+	  grp_address_length = 32;
+	  address_set = 1;
+	  is_ipv6 = 0;
+	}
+      else if (unformat (i, "%U", unformat_ip6_address, &v6_grp_address))
+	{
+	  memset (&v6_src_address, 0, sizeof (v6_src_address));
+	  grp_address_length = 128;
+	  address_set = 1;
+	  is_ipv6 = 1;
+	}
+      else if (unformat (i, "/%d", &grp_address_length))
+	;
+      else if (unformat (i, "local"))
+	{
+	  is_local = 1;
+	}
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "vrf %d", &vrf_id))
+	;
+      else if (unformat (i, "create-vrf"))
+	create_vrf_if_needed = 1;
+      else if (unformat (i, "%U", unformat_mfib_itf_flags, &iflags))
+	;
+      else if (unformat (i, "%U", unformat_mfib_entry_flags, &eflags))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (address_set == 0)
+    {
+      errmsg ("missing addresses\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_MROUTE_ADD_DEL, ip_mroute_add_del);
+
+  mp->next_hop_sw_if_index = ntohl (sw_if_index);
+  mp->table_id = ntohl (vrf_id);
+  mp->create_vrf_if_needed = create_vrf_if_needed;
+
+  mp->is_add = is_add;
+  mp->is_ipv6 = is_ipv6;
+  mp->is_local = is_local;
+  mp->itf_flags = ntohl (iflags);
+  mp->entry_flags = ntohl (eflags);
+  mp->grp_address_length = grp_address_length;
+  mp->grp_address_length = ntohs (mp->grp_address_length);
+
+  if (is_ipv6)
+    {
+      clib_memcpy (mp->grp_address, &v6_grp_address, sizeof (v6_grp_address));
+      clib_memcpy (mp->src_address, &v6_src_address, sizeof (v6_src_address));
+    }
+  else
+    {
+      clib_memcpy (mp->grp_address, &v4_grp_address, sizeof (v4_grp_address));
+      clib_memcpy (mp->src_address, &v4_src_address, sizeof (v4_src_address));
+
+    }
+
+  /* send it... */
+  S;
+  /* Wait for a reply... */
+  W;
 
   /* Return the good/bad news */
   return (vam->retval);
@@ -17512,6 +17682,9 @@ _(ip_add_del_route,                                                     \
   "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \
   "[weight <n>] [drop] [local] [classify <n>] [del]\n"                  \
   "[multipath] [count <n>]")                                            \
+_(ip_mroute_add_del,                                                    \
+  "<src> <grp>/<mask> [table-id <n>]\n"                                 \
+  "[<intfc> | sw_if_index <id>] [local] [del]")                         \
 _(mpls_route_add_del,                                                   \
   "<label> <eos> via <addr> [table-id <n>]\n"                           \
   "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \

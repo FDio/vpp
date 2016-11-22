@@ -91,6 +91,9 @@ typedef enum
   /** This packets needs to go to ICMP error */
   IP_LOOKUP_NEXT_ICMP_ERROR,
 
+  /** Multicast Adjacency. */
+  IP_LOOKUP_NEXT_MCAST,
+
   IP_LOOKUP_N_NEXT,
 } ip_lookup_next_t;
 
@@ -115,6 +118,7 @@ typedef enum
     [IP_LOOKUP_NEXT_ARP] = "ip4-arp",				\
     [IP_LOOKUP_NEXT_GLEAN] = "ip4-glean",			\
     [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite",    		\
+    [IP_LOOKUP_NEXT_MCAST] = "ip4-rewrite-mcast",	        \
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
     [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip4-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
@@ -127,6 +131,7 @@ typedef enum
     [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",		\
     [IP_LOOKUP_NEXT_GLEAN] = "ip6-glean",			\
     [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",			\
+    [IP_LOOKUP_NEXT_MCAST] = "ip6-rewrite-mcast",		\
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip6-midchain",			\
     [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip6-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
@@ -203,12 +208,6 @@ typedef struct ip_adjacency_t_
   /** Interface address index for this local/arp adjacency. */
   u32 if_address_index;
 
-  /** Force re-lookup in a different FIB. ~0 => normal behavior */
-  u16 mcast_group_index;
-
-  /** Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
-  u16 saved_lookup_next_index;
-
   /*
    * link/ether-type
    */
@@ -236,28 +235,28 @@ typedef struct ip_adjacency_t_
        */
     struct
     {
-	  /**
-	   * The recursive next-hop
-	   */
+      /**
+       * The recursive next-hop
+       */
       ip46_address_t next_hop;
-	  /**
-	   * The node index of the tunnel's post rewrite/TX function.
-	   */
+      /**
+       * The node index of the tunnel's post rewrite/TX function.
+       */
       u32 tx_function_node;
-	  /**
-	   * The next DPO to use
-	   */
+      /**
+       * The next DPO to use
+       */
       dpo_id_t next_dpo;
-	  /**
-	   * A function to perform the post-rewrite fixup
-	   */
+      /**
+       * A function to perform the post-rewrite fixup
+       */
       adj_midchain_fixup_t fixup_func;
     } midchain;
-      /**
-       * IP_LOOKUP_NEXT_GLEAN
-       *
-       * Glean the address to ARP for from the packet's destination
-       */
+    /**
+     * IP_LOOKUP_NEXT_GLEAN
+     *
+     * Glean the address to ARP for from the packet's destination
+     */
     struct
     {
       ip46_address_t receive_addr;
@@ -291,43 +290,6 @@ STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
 /* An all zeros address */
 extern const ip46_address_t zero_addr;
 
-/* IP multicast adjacency. */
-typedef struct
-{
-  /* Handle for this adjacency in adjacency heap. */
-  u32 heap_handle;
-
-  /* Number of adjecencies in block. */
-  u32 n_adj;
-
-  /* Rewrite string. */
-    vnet_declare_rewrite (64 - 2 * sizeof (u32));
-}
-ip_multicast_rewrite_t;
-
-typedef struct
-{
-  /* ip4-multicast-rewrite next index. */
-  u32 next_index;
-
-  u8 n_rewrite_bytes;
-
-  u8 rewrite_string[64 - 1 * sizeof (u32) - 1 * sizeof (u8)];
-}
-ip_multicast_rewrite_string_t;
-
-typedef struct
-{
-  ip_multicast_rewrite_t *rewrite_heap;
-
-  ip_multicast_rewrite_string_t *rewrite_strings;
-
-  /* Negative rewrite string index; >= 0 sw_if_index.
-     Sorted.  Used to hash. */
-  i32 **adjacency_id_vector;
-
-  uword *adjacency_by_id_vector;
-} ip_multicast_lookup_main_t;
 
 typedef struct
 {
