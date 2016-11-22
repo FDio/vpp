@@ -58,6 +58,15 @@ u32 ip6_fib_table_fwding_lookup(ip6_main_t * im,
 				const ip6_address_t * dst);
 
 /**
+ * @brief Walk all entries in a FIB table
+ * N.B: This is NOT safe to deletes. If you need to delete walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void ip6_fib_table_walk(u32 fib_index,
+                               fib_table_walk_fn_t fn,
+                               void *ctx);
+
+/**
  * @biref return the DPO that the LB stacks on.
  */
 always_inline u32

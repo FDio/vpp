@@ -2161,7 +2161,7 @@ sr_fix_dst_addr (vlib_main_t * vm,
 
 	  adj0 =
 	    ip_get_adjacency (lm, vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-	  next0 = adj0->mcast_group_index;
+	  next0 = adj0->if_address_index;
 
 	  /* We should be pointing at an Ethernet header... */
 	  eh0 = vlib_buffer_get_current (b0);
@@ -3088,7 +3088,7 @@ set_ip6_sr_rewrite_fn (vlib_main_t * vm,
   adj->rewrite_header.node_index = sr_fix_dst_addr_node.index;
 
   /* $$$$$ hack... steal the mcast group index */
-  adj->mcast_group_index =
+  adj->if_address_index =
     vlib_node_add_next (vm, sr_fix_dst_addr_node.index,
 			hi->output_node_index);
 

@@ -303,8 +303,8 @@ fib_attached_export_import (fib_entry_t *fib_entry,
      * may have realloc'd.
      */
     fib_entry = fib_entry_get(fei);
-        import->faei_export_sibling =
-	  fib_entry_cover_track(fib_entry_get(import->faei_export_entry), fei);
+    import->faei_export_sibling =
+	fib_entry_cover_track(fib_entry_get(import->faei_export_entry), fei);
 
     fed = fib_entry_delegate_find_or_add(fib_entry,
                                          FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);

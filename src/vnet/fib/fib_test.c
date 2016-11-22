@@ -663,14 +663,15 @@ fib_test_v4 (void)
     /*
      * at this stage there are 5 entries in the test FIB (plus 5 in the default),
      * all of which are special sourced and so none of which share path-lists.
-     * There are also 6 entries, and 6 non-shared path-lists, in the v6 default
-     * table
+     * There are also 2 entries, and 2 non-shared path-lists, in the v6 default
+     * table, and 4 path-lists in the v6 MFIB table
      */
-#define NBR (5+5+6)
+#define ENBR (5+5+2)
+#define PNBR (5+5+6)
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -754,9 +755,9 @@ fib_test_v4 (void)
      * +2 interface routes +2 non-shared path-lists
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR+2 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNBR+2 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -808,9 +809,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+3 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNBR+3 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -838,9 +839,9 @@ fib_test_v4 (void)
      * -1 shared-path-list
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR+2 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNBR+2 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1018,9 +1019,9 @@ fib_test_v4 (void)
      * +2 adj-fibs, and their non-shared path-lists
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR+4 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+4 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+4 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+4 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1054,9 +1055,9 @@ fib_test_v4 (void)
      * +1 entry and a shared path-list
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+5 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+5 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /* 1.1.2.0/24 */
@@ -1087,9 +1088,9 @@ fib_test_v4 (void)
      * +1 entry only
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+6 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+6 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1127,9 +1128,9 @@ fib_test_v4 (void)
      * +1 shared-pathlist
      */
     FIB_TEST((2 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+6 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+6 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1158,9 +1159,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB is %d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+6 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+6 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1203,9 +1204,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((2  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     fib_prefix_t bgp_101_pfx = {
@@ -1239,9 +1240,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((2  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+8 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+8 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1368,9 +1369,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((3  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+7 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+7 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+10 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+10 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -1983,9 +1984,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((4  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+12 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+12 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2030,9 +2031,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((4  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+13 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+13 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2080,9 +2081,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((5  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+9 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+9 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+14 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+14 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2118,9 +2119,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((4  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+13 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+13 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2154,9 +2155,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((4  == fib_path_list_db_size()),   "path list DB population:%d",
 	fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
 	fib_path_list_pool_size());
-    FIB_TEST((NBR+12 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+12 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2185,9 +2186,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((4  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+12 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+12 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2215,9 +2216,9 @@ fib_test_v4 (void)
 
     FIB_TEST((3  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+7 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+7 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+10 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+10 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2245,9 +2246,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((2  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+9 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+9 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2355,9 +2356,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -2380,9 +2381,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((2  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+6 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+8 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+8 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
@@ -2428,9 +2429,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((3  == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NBR+10 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+10 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     ai_03 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
@@ -2492,9 +2493,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
 
@@ -2562,9 +2563,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((4  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+8 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+10 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+10 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -2753,9 +2754,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -2830,9 +2831,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3180,9 +3181,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3247,9 +3248,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3297,9 +3298,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3342,9 +3343,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+7 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+7 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3438,9 +3439,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((0  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+4 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+4 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+4 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+4 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3482,9 +3483,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((1  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+5 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+5 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     fib_table_entry_delete(fib_index,
@@ -3493,9 +3494,9 @@ fib_test_v4 (void)
 
     FIB_TEST((0  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+4 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+4 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+4 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+4 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3577,9 +3578,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((0  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR+2 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR+2 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR+2 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3619,9 +3620,9 @@ fib_test_v4 (void)
      */
     FIB_TEST((0  == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
 
     /*
@@ -3644,11 +3645,11 @@ fib_test_v4 (void)
 
     FIB_TEST((0  == fib_path_list_db_size()), "path list DB population:%d",
     	     fib_path_list_db_size());
-    FIB_TEST((NBR-5 == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNBR-5 == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
-    FIB_TEST((NBR-5 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENBR-5 == fib_entry_pool_size()), "entry pool size is %d",
     	     fib_entry_pool_size());
-    FIB_TEST((NBR-5 == pool_elts(fib_urpf_list_pool)), "uRPF pool size is %d",
+    FIB_TEST((ENBR-5 == pool_elts(fib_urpf_list_pool)), "uRPF pool size is %d",
     	     pool_elts(fib_urpf_list_pool));
 
     return 0;
@@ -3720,13 +3721,15 @@ fib_test_v6 (void)
 
     /*
      * At this stage there is one v4 FIB with 5 routes and two v6 FIBs
-     * each with 6 entries. All entries are special so no path-list sharing.
+     * each with 2 entries and a v6 mfib with 4 path-lists.
+     * All entries are special so no path-list sharing.
      */
-#define NPS (5+6+6)
+#define ENPS (5+4)
+#define PNPS (5+4+4)
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NPS == fib_path_list_pool_size()), "path list pool size is %d",
+    FIB_TEST((PNPS == fib_path_list_pool_size()), "path list pool size is %d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -3816,9 +3819,9 @@ fib_test_v6 (void)
      * +2 entries. +2 unshared path-lists
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB is empty");
-    FIB_TEST((NPS+2 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+2 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -3862,9 +3865,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+3 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+3 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -3890,9 +3893,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+2 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+2 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+2 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -4006,9 +4009,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+4 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+4 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+4 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+4 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -4073,9 +4076,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+5 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+5 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+6 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+6 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -4201,9 +4204,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+5 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+5 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+6 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+6 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -4275,9 +4278,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+7 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+7 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+8 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+8 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
 
@@ -4401,9 +4404,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((1 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS+7 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS+7 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS+8 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS+8 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -4501,9 +4504,9 @@ fib_test_v6 (void)
      */
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     /*
@@ -4513,9 +4516,9 @@ fib_test_v6 (void)
 
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
-    FIB_TEST((NPS-6 == fib_path_list_pool_size()), "path list pool size is%d",
+    FIB_TEST((PNPS-2 == fib_path_list_pool_size()), "path list pool size is%d",
 	     fib_path_list_pool_size());
-    FIB_TEST((NPS-6 == fib_entry_pool_size()), "entry pool size is %d",
+    FIB_TEST((ENPS-2 == fib_entry_pool_size()), "entry pool size is %d",
 	     fib_entry_pool_size());
 
     adj_unlock(ai_02);
