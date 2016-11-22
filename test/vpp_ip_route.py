@@ -11,7 +11,7 @@ MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
-class RoutePath:
+class RoutePath(object):
 
     def __init__(
             self,
@@ -29,6 +29,14 @@ class RoutePath:
             self.nh_addr = socket.inet_pton(socket.AF_INET6, nh_addr)
         else:
             self.nh_addr = socket.inet_pton(socket.AF_INET, nh_addr)
+
+
+class MRoutePath(RoutePath):
+
+    def __init__(self, nh_sw_if_index, flags):
+        super(MRoutePath, self).__init__("0.0.0.0",
+                                         nh_sw_if_index)
+        self.nh_i_flags = flags
 
 
 class IpRoute:
@@ -92,6 +100,97 @@ class IpRoute:
                                                  path.nh_itf,
                                                  table_id=self.table_id,
                                                  is_add=0)
+
+
+class IpMRoute:
+    """
+    IP Multicast Route
+    """
+
+    def __init__(self, test, src_addr, grp_addr,
+                 grp_addr_len, e_flags, paths, table_id=0, is_ip6=0):
+        self._test = test
+        self.paths = paths
+        self.grp_addr_len = grp_addr_len
+        self.table_id = table_id
+        self.e_flags = e_flags
+        self.is_ip6 = is_ip6
+
+        if is_ip6:
+            self.grp_addr = socket.inet_pton(socket.AF_INET6, grp_addr)
+            self.src_addr = socket.inet_pton(socket.AF_INET6, src_addr)
+        else:
+            self.grp_addr = socket.inet_pton(socket.AF_INET, grp_addr)
+            self.src_addr = socket.inet_pton(socket.AF_INET, src_addr)
+
+    def add_vpp_config(self):
+        for path in self.paths:
+            self._test.vapi.ip_mroute_add_del(self.src_addr,
+                                              self.grp_addr,
+                                              self.grp_addr_len,
+                                              self.e_flags,
+                                              path.nh_itf,
+                                              path.nh_i_flags,
+                                              table_id=self.table_id,
+                                              is_ipv6=self.is_ip6)
+
+    def remove_vpp_config(self):
+        for path in self.paths:
+            self._test.vapi.ip_mroute_add_del(self.src_addr,
+                                              self.grp_addr,
+                                              self.grp_addr_len,
+                                              self.e_flags,
+                                              path.nh_itf,
+                                              path.nh_i_flags,
+                                              table_id=self.table_id,
+                                              is_add=0,
+                                              is_ipv6=self.is_ip6)
+
+    def update_entry_flags(self, flags):
+        self.e_flags = flags
+        self._test.vapi.ip_mroute_add_del(self.src_addr,
+                                          self.grp_addr,
+                                          self.grp_addr_len,
+                                          self.e_flags,
+                                          0xffffffff,
+                                          0,
+                                          table_id=self.table_id,
+                                          is_ipv6=self.is_ip6)
+
+    def update_path_flags(self, itf, flags):
+        for path in self.paths:
+            if path.nh_itf == itf:
+                path.nh_i_flags = flags
+                break
+        self._test.vapi.ip_mroute_add_del(self.src_addr,
+                                          self.grp_addr,
+                                          self.grp_addr_len,
+                                          self.e_flags,
+                                          path.nh_itf,
+                                          path.nh_i_flags,
+                                          table_id=self.table_id,
+                                          is_ipv6=self.is_ip6)
+
+
+class MFibSignal:
+    def __init__(self, test, route, interface, packet):
+        self.route = route
+        self.interface = interface
+        self.packet = packet
+        self.test = test
+
+    def compare(self, signal):
+        self.test.assertEqual(self.interface, signal.sw_if_index)
+        self.test.assertEqual(self.route.table_id, signal.table_id)
+        self.test.assertEqual(self.route.grp_addr_len,
+                              signal.grp_address_len)
+        for i in range(self.route.grp_addr_len / 8):
+            self.test.assertEqual(self.route.grp_addr[i],
+                                  signal.grp_address[i])
+        if (self.route.grp_addr_len > 32):
+            for i in range(4):
+                self.test.assertEqual(self.route.src_addr[i],
+                                      signal.src_address[i])
 
 
 class MplsIpBind:

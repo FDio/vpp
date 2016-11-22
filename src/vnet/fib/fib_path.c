@@ -23,6 +23,7 @@
 #include <vnet/dpo/lookup_dpo.h>
 
 #include <vnet/adj/adj.h>
+#include <vnet/adj/adj_mcast.h>
 
 #include <vnet/fib/fib_path.h>
 #include <vnet/fib/fib_node.h>
@@ -960,6 +961,8 @@ fib_path_route_flags_to_cfg_flags (const fib_route_path_t *rpath)
 	cfg_flags |= FIB_PATH_CFG_FLAG_RESOLVE_HOST;
     if (rpath->frp_flags & FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED)
 	cfg_flags |= FIB_PATH_CFG_FLAG_RESOLVE_ATTACHED;
+    if (rpath->frp_flags & FIB_ROUTE_PATH_LOCAL)
+	cfg_flags |= FIB_PATH_CFG_FLAG_LOCAL;
 
     return (cfg_flags);
 }
@@ -1003,28 +1006,25 @@ fib_path_create (fib_node_index_t pl_index,
     /*
      * deduce the path's tpye from the parementers and save what is needed.
      */
-    if (~0 != rpath->frp_sw_if_index)
+    if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_LOCAL)
     {
-	if (flags & FIB_PATH_CFG_FLAG_LOCAL)
-	{
-	    path->fp_type = FIB_PATH_TYPE_RECEIVE;
-	    path->receive.fp_interface = rpath->frp_sw_if_index;
-            path->receive.fp_addr = rpath->frp_addr;
-	}
-	else
-	{
-	    if (ip46_address_is_zero(&rpath->frp_addr))
-	    {
-		path->fp_type = FIB_PATH_TYPE_ATTACHED;
-		path->attached.fp_interface = rpath->frp_sw_if_index;
-	    }
-	    else
-	    {
-		path->fp_type = FIB_PATH_TYPE_ATTACHED_NEXT_HOP;
-		path->attached_next_hop.fp_interface = rpath->frp_sw_if_index;
-		path->attached_next_hop.fp_nh = rpath->frp_addr;
-	    }
-	}
+        path->fp_type = FIB_PATH_TYPE_RECEIVE;
+        path->receive.fp_interface = rpath->frp_sw_if_index;
+        path->receive.fp_addr = rpath->frp_addr;
+    }
+    else if (~0 != rpath->frp_sw_if_index)
+    {
+        if (ip46_address_is_zero(&rpath->frp_addr))
+        {
+            path->fp_type = FIB_PATH_TYPE_ATTACHED;
+            path->attached.fp_interface = rpath->frp_sw_if_index;
+        }
+        else
+        {
+            path->fp_type = FIB_PATH_TYPE_ATTACHED_NEXT_HOP;
+            path->attached_next_hop.fp_interface = rpath->frp_sw_if_index;
+            path->attached_next_hop.fp_nh = rpath->frp_addr;
+        }
     }
     else
     {
@@ -1199,7 +1199,7 @@ fib_path_cmp_i (const fib_path_t *path1,
     {
 	res = (path1->fp_type - path2->fp_type);
     }
-    if (path1->fp_nh_proto != path2->fp_nh_proto)
+    else if (path1->fp_nh_proto != path2->fp_nh_proto)
     {
 	res = (path1->fp_nh_proto - path2->fp_nh_proto);
     }
@@ -1770,8 +1770,11 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 
 		break;
 	    }
-	    }
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    break;
+            }
+            break;
 	case FIB_PATH_TYPE_RECURSIVE:
 	    switch (fct)
 	    {
@@ -1781,13 +1784,15 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 		fib_path_recursive_adj_update(path, fct, dpo);
 		break;
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 		ASSERT(0);
 		break;
 	    }
 	    break;
 	case FIB_PATH_TYPE_DEAG:
-	    switch (fct)
+            switch (fct)
 	    {
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
                 lookup_dpo_add_or_lock_w_table_id(MPLS_FIB_DEFAULT_TABLE_ID,
@@ -1800,7 +1805,9 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 		dpo_copy(dpo, &path->fp_dpo);
-		break;		
+		break;
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 		ASSERT(0);
 		break;
@@ -1810,12 +1817,38 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    dpo_copy(dpo, &path->exclusive.fp_ex_dpo);
 	    break;
         case FIB_PATH_TYPE_ATTACHED:
-	case FIB_PATH_TYPE_RECEIVE:
-	case FIB_PATH_TYPE_SPECIAL:
-	    ASSERT(0);
+	    switch (fct)
+	    {
+	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
+	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+                break;
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+                {
+                    adj_index_t ai;
+
+                    /*
+                     * Create the adj needed for sending IP multicast traffic
+                     */
+                    ai = adj_mcast_add_or_lock(path->fp_nh_proto,
+                                               fib_forw_chain_type_to_link_type(fct),
+                                               path->attached.fp_interface);
+                    dpo_set(dpo, DPO_ADJACENCY_MCAST,
+                            fib_forw_chain_type_to_dpo_proto(fct),
+                            ai);
+                    adj_unlock(ai);
+                }
+                break;
+            }
+            break;
+        case FIB_PATH_TYPE_RECEIVE:
+        case FIB_PATH_TYPE_SPECIAL:
+            dpo_copy(dpo, &path->fp_dpo);
             break;
 	}
-
     }
 }
 
