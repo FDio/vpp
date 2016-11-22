@@ -19,6 +19,8 @@
 #include <vnet/pg/pg.h>
 #include <vnet/dhcpv6/proxy.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/mfib/mfib_table.h>
+#include <vnet/mfib/ip6_mfib.h>
 
 static char * dhcpv6_proxy_error_strings[] = {
 #define dhcpv6_proxy_error(n,s) s,
@@ -819,7 +821,7 @@ int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
   u32 server_fib_index = 0;
   u32 rx_fib_index = 0;
 
-  rx_fib_index = ip6_fib_table_find_or_create_and_lock(rx_fib_id);
+  rx_fib_index = ip6_mfib_table_find_or_create_and_lock(rx_fib_id);
   server_fib_index = ip6_fib_table_find_or_create_and_lock(server_fib_id);
 
   if (is_del)
@@ -848,8 +850,10 @@ int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
   if (rx_fib_id == 0)
     {
       server = pool_elt_at_index (dm->dhcp6_servers, 0);
-
-      goto initialize_it;
+      if (server->valid)
+          goto reconfigure_it;
+      else
+          goto initialize_it;
     }
 
   if (rx_fib_index < vec_len(dm->dhcp6_server_index_by_rx_fib_index))
@@ -866,6 +870,42 @@ int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
   pool_get (dm->dhcp6_servers, server);
 
   initialize_it:
+  {
+      const mfib_prefix_t all_dhcp_servers = {
+          .fp_len = 128,
+          .fp_proto = FIB_PROTOCOL_IP6,
+          .fp_grp_addr = {
+              .ip6 = dm->all_dhcpv6_server_relay_agent_address,
+          }
+      };
+      const fib_route_path_t path_for_us = {
+          .frp_proto = FIB_PROTOCOL_IP6,
+          .frp_addr = zero_addr,
+          .frp_sw_if_index = 0xffffffff,
+          .frp_fib_index = ~0,
+          .frp_weight = 0,
+          .frp_flags = FIB_ROUTE_PATH_LOCAL,
+      };
+      mfib_table_entry_path_update(rx_fib_index,
+                                   &all_dhcp_servers,
+                                   MFIB_SOURCE_DHCP,
+                                   &path_for_us,
+                                   MFIB_ITF_FLAG_FORWARD);
+      /*
+       * Each interface that is enabled in this table, needs to be added
+       * as an accepting interface, but this is not easily doable in VPP.
+       * So we cheat. Add a flag to the entry that indicates accept form
+       * any interface.
+       * We will still only accept on v6 enabled interfaces, since the input
+       * feature ensures this.
+       */
+      mfib_table_entry_update(rx_fib_index,
+                              &all_dhcp_servers,
+                              MFIB_SOURCE_DHCP,
+                              MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
+  }
+
+reconfigure_it:
 
   copy_ip6_address(&server->dhcp6_server, addr);
   copy_ip6_address(&server->dhcp6_src_address, src_address);

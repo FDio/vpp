@@ -83,6 +83,9 @@ vnet_main_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, fib_module_init)))
     return error;
 
+  if ((error = vlib_call_init_function (vm, mfib_module_init)))
+    return error;
+
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
 

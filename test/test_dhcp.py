@@ -4,8 +4,6 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import IpRoute, RoutePath
-from vpp_lo_interface import VppLoInterface
 
 from scapy.layers.l2 import Ether, getmacbyip
 from scapy.layers.inet import IP, UDP, ICMP
@@ -482,17 +480,6 @@ class TestDHCP(VppTestCase):
         server_addr_vrf1 = self.pg1.remote_ip6n
         src_addr_vrf1 = self.pg1.local_ip6n
 
-        #
-        # Add the Route to receive the DHCP packets
-        #
-        route_dhcp_vrf0 = IpRoute(self, dhcp_solicit_dst, 128,
-                                  [], is_local=1, is_ip6=1)
-        route_dhcp_vrf0.add_vpp_config()
-        route_dhcp_vrf1 = IpRoute(self, dhcp_solicit_dst, 128,
-                                  [], is_local=1, is_ip6=1,
-                                  table_id=1)
-        route_dhcp_vrf1.add_vpp_config()
-
         dmac = in6_getnsmac(inet_pton(socket.AF_INET6, dhcp_solicit_dst))
         p_solicit_vrf0 = (Ether(dst=dmac, src=self.pg2.remote_mac) /
                           IPv6(src=dhcp_solicit_src_vrf0,
@@ -731,9 +718,6 @@ class TestDHCP(VppTestCase):
                                     insert_circuit_id=1,
                                     is_ipv6=1,
                                     is_add=0)
-
-        route_dhcp_vrf0.remove_vpp_config()
-        route_dhcp_vrf1.remove_vpp_config()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

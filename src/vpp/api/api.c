@@ -964,7 +964,6 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
 
     for (i = 0; i < vec_len (sw_if_indices_to_shut); i++) {
       sw_if_index = sw_if_indices_to_shut[i];
-      // vec_foreach (sw_if_index, sw_if_indices_to_shut) {
 
       u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
       flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
@@ -972,7 +971,6 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
     }
 
     fib_table_flush(fib->index, FIB_PROTOCOL_IP4, FIB_SOURCE_API);
-    fib_table_flush(fib->index, FIB_PROTOCOL_IP4, FIB_SOURCE_INTERFACE);
 
     rv = 0;
     break;
@@ -1013,15 +1011,14 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
 
     /* Shut down interfaces in this FIB / clean out intfc routes */
     pool_foreach (si, im->sw_interfaces,
-                  ({
-                    if (im6->fib_index_by_sw_if_index[si->sw_if_index] ==
-                        fib->index)
-                      vec_add1 (sw_if_indices_to_shut, si->sw_if_index);
-                  }));
+    ({
+      if (im6->fib_index_by_sw_if_index[si->sw_if_index] ==
+          fib->index)
+        vec_add1 (sw_if_indices_to_shut, si->sw_if_index);
+    }));
 
     for (i = 0; i < vec_len (sw_if_indices_to_shut); i++) {
       sw_if_index = sw_if_indices_to_shut[i];
-      // vec_foreach (sw_if_index, sw_if_indices_to_shut) {
 
       u32 flags = vnet_sw_interface_get_flags (vnm, sw_if_index);
       flags &= ~(VNET_SW_INTERFACE_FLAG_ADMIN_UP);
@@ -1029,7 +1026,6 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
     }
 
     fib_table_flush(fib->index, FIB_PROTOCOL_IP6, FIB_SOURCE_API);
-    fib_table_flush(fib->index, FIB_PROTOCOL_IP6, FIB_SOURCE_INTERFACE);
 
     rv = 0;
     break;

@@ -260,9 +260,10 @@ class VppInterface(object):
         """Configure IPv6 RA suppress on the VPP interface."""
         self.test.vapi.sw_interface_ra_suppress(self.sw_if_index)
 
-    def ip6_ra_config(self, suppress=0, send_unicast=0):
+    def ip6_ra_config(self, no=0, suppress=0, send_unicast=0):
         """Configure IPv6 RA suppress on the VPP interface."""
         self.test.vapi.ip6_sw_interface_ra_config(self.sw_if_index,
+                                                  no,
                                                   suppress,
                                                   send_unicast)
 

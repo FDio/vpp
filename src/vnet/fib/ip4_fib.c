@@ -378,15 +378,12 @@ ip4_fib_table_fwding_dpo_remove (ip4_fib_t *fib,
     ip4_fib_mtrie_add_del_route(fib, *addr, len, dpo->dpoi_index, 1); // DELETE
 }
 
-static void
-ip4_fib_table_show_all (ip4_fib_t *fib,
-			vlib_main_t * vm)
+void
+ip4_fib_table_walk (ip4_fib_t *fib,
+                    fib_table_walk_fn_t fn,
+                    void *ctx)
 {
-    fib_node_index_t *fib_entry_indicies;
-    fib_node_index_t *fib_entry_index;
     int i;
-
-    fib_entry_indicies = NULL;
 
     for (i = 0; i < ARRAY_LEN (fib->fib_entry_by_dst_address); i++)
     {
@@ -398,14 +395,45 @@ ip4_fib_table_show_all (ip4_fib_t *fib,
 
 	    hash_foreach_pair (p, hash,
 	    ({
-		vec_add1(fib_entry_indicies, p->value[0]);
+		fn(p->value[0], ctx);
 	    }));
 	}
     }
+}
 
-    vec_sort_with_function(fib_entry_indicies, fib_entry_cmp_for_sort);
+/**
+ * Walk show context
+ */
+typedef struct ip4_fib_show_walk_ctx_t_
+{
+    fib_node_index_t *ifsw_indicies;
+} ip4_fib_show_walk_ctx_t;
 
-    vec_foreach(fib_entry_index, fib_entry_indicies)
+static int
+ip4_fib_show_walk_cb (fib_node_index_t fib_entry_index,
+                      void *arg)
+{
+    ip4_fib_show_walk_ctx_t *ctx = arg;
+
+    vec_add1(ctx->ifsw_indicies, fib_entry_index);
+
+    return (1);
+}
+
+static void
+ip4_fib_table_show_all (ip4_fib_t *fib,
+			vlib_main_t * vm)
+{
+    ip4_fib_show_walk_ctx_t ctx = {
+        .ifsw_indicies = NULL,
+    };
+    fib_node_index_t *fib_entry_index;
+
+    ip4_fib_table_walk(fib, ip4_fib_show_walk_cb, &ctx);
+    vec_sort_with_function(ctx.ifsw_indicies,
+                           fib_entry_cmp_for_sort);
+
+    vec_foreach(fib_entry_index, ctx.ifsw_indicies)
     {
 	vlib_cli_output(vm, "%U",
                         format_fib_entry,
@@ -413,7 +441,7 @@ ip4_fib_table_show_all (ip4_fib_t *fib,
                         FIB_ENTRY_FORMAT_BRIEF);
     }
 
-    vec_free(fib_entry_indicies);
+    vec_free(ctx.ifsw_indicies);
 }
 
 static void

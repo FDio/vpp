@@ -252,10 +252,12 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index})
 
     def ip6_sw_interface_ra_config(self, sw_if_index,
+                                   no,
                                    suppress,
-                                   send_unicast,):
+                                   send_unicast):
         return self.api(self.papi.sw_interface_ip6nd_ra_config,
                         {'sw_if_index': sw_if_index,
+                         'is_no': no,
                          'suppress': suppress,
                          'send_unicast': send_unicast})
 
@@ -1178,3 +1180,33 @@ class VppPapiProvider(object):
                 'is_add': is_add,
                 'oui': oui,
             })
+
+    def ip_mroute_add_del(self,
+                          src_address,
+                          grp_address,
+                          grp_address_length,
+                          e_flags,
+                          next_hop_sw_if_index,
+                          i_flags,
+                          table_id=0,
+                          create_vrf_if_needed=0,
+                          is_add=1,
+                          is_ipv6=0,
+                          is_local=0):
+        """
+        """
+        return self.api(
+            self.papi.ip_mroute_add_del,
+            {'next_hop_sw_if_index': next_hop_sw_if_index,
+             'entry_flags': e_flags,
+             'itf_flags': i_flags,
+             'create_vrf_if_needed': create_vrf_if_needed,
+             'is_add': is_add,
+             'is_ipv6': is_ipv6,
+             'is_local': is_local,
+             'grp_address_length': grp_address_length,
+             'grp_address': grp_address,
+             'src_address': src_address})
+
+    def mfib_signal_dump(self):
+        return self.api(self.papi.mfib_signal_dump, {})
