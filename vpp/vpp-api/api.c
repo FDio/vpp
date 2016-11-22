@@ -8628,6 +8628,9 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
   u32 src_sw_if_index = 0, *dst_sw_if_index;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
+
   vec_foreach (dst_sw_if_index, sm->dst_by_src_sw_if_index)
   {
     if (*dst_sw_if_index > 0)
@@ -9184,7 +9187,6 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 
   u8 *arc_name = format (0, "%s%c", mp->arc_name, 0);
   u8 *feature_name = format (0, "%s%c", mp->feature_name, 0);
-  u32 sw_if_index = ntohl (mp->sw_if_index);
 
   vnet_feature_registration_t *reg;
   reg =
@@ -9194,8 +9196,10 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
     rv = VNET_API_ERROR_INVALID_VALUE;
   else
     {
+      u32 sw_if_index;
       clib_error_t *error = 0;
 
+      sw_if_index = ntohl (mp->sw_if_index);
       if (reg->enable_disable_cb)
 	error = reg->enable_disable_cb (sw_if_index, mp->enable);
       if (!error)
