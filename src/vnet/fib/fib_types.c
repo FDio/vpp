@@ -290,8 +290,10 @@ fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
     switch (fct)
     {
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	return (VNET_LINK_IP4);
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	return (VNET_LINK_IP6);
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	return (VNET_LINK_ETHERNET);
@@ -313,8 +315,10 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
     switch (fct)
     {
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	return (DPO_PROTO_IP4);
     case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	return (DPO_PROTO_IP6);
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	return (DPO_PROTO_ETHERNET);
