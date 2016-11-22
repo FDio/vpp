@@ -203,8 +203,6 @@ typedef struct
   u8 log_used;
   //Put non-runtime in a different cache line
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
-  int callfd;
-  int kickfd;
   int errfd;
   u32 callfd_idx;
   u32 kickfd_idx;
@@ -216,14 +214,11 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   u32 is_up;
   u32 admin_up;
-  u32 unix_fd;
+  u32 unix_server_index;
   u32 unix_file_index;
-  u32 client_fd;
   char sock_filename[256];
   int sock_errno;
-  u8 sock_is_server;
   u32 hw_if_index, sw_if_index;
-  u8 active;
 
   //Feature negotiation
   u64 features;
@@ -272,23 +267,22 @@ typedef struct
   u32 **rx_buffers;
   u32 mtu_bytes;
   vhost_user_intf_t *vhost_user_interfaces;
-  u32 *vhost_user_inactive_interfaces_index;
-  uword *vhost_user_interface_index_by_listener_fd;
-  uword *vhost_user_interface_index_by_sock_fd;
-  uword *vhost_user_interface_index_by_sw_if_index;
   u32 *show_dev_instance_by_real_dev_instance;
   u32 coalesce_frames;
   f64 coalesce_time;
   int dont_dump_vhost_user_memory;
 
-  /* first cpu index */
+  /** first cpu index */
   u32 input_cpu_first_index;
 
-  /* total cpu count */
+  /** total cpu count */
   u32 input_cpu_count;
 
   /** Per-CPU data for vhost-user */
   vhost_cpu_t *cpus;
+
+  /** Pseudo random iterator */
+  u32 random;
 } vhost_user_main_t;
 
 typedef struct
