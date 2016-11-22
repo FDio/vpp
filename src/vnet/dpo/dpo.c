@@ -36,6 +36,7 @@
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 /**
  * Array of char* names for the DPO types and protos
@@ -449,6 +450,7 @@ dpo_module_init (vlib_main_t * vm)
     classify_dpo_module_init();
     lookup_dpo_module_init();
     ip_null_dpo_module_init();
+    replicate_module_init();
 
     return (NULL);
 }

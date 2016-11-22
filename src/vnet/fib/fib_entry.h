@@ -220,7 +220,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_EXCLUSIVE = (1 << FIB_ENTRY_ATTRIBUTE_EXCLUSIVE),
     FIB_ENTRY_FLAG_LOCAL     = (1 << FIB_ENTRY_ATTRIBUTE_LOCAL),
     FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
-} fib_entry_flag_t;
+} __attribute__((packed)) fib_entry_flag_t;
 
 /**
  * Flags for the source data

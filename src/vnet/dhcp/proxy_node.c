@@ -703,6 +703,12 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
   dhcp_server_t * server = 0;
   u32 server_index = 0;
   u32 rx_fib_index = 0;
+  const fib_prefix_t all_1s =
+  {
+      .fp_len = 32,
+      .fp_addr.ip4.as_u32 = 0xffffffff,
+      .fp_proto = FIB_PROTOCOL_IP4,
+  };
 
   if (addr->as_u32 == 0)
     return VNET_API_ERROR_INVALID_DST_ADDRESS;
@@ -720,8 +726,18 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
       if (is_del)
         {
           memset (server, 0, sizeof (*server));
-          return 0;
+          fib_table_entry_special_remove(rx_fib_index,
+                                         &all_1s,
+                                         FIB_SOURCE_DHCP);
+         return 0;
         }
+      if (!server->valid)
+          fib_table_entry_special_add(rx_fib_index,
+                                      &all_1s,
+                                      FIB_SOURCE_DHCP,
+                                      FIB_ENTRY_FLAG_LOCAL,
+                                      ADJ_INDEX_INVALID);
+
       goto initialize_it;
     }
 
@@ -738,6 +754,11 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
       server = pool_elt_at_index (dpm->dhcp_servers, server_index);
       memset (server, 0, sizeof (*server));
       pool_put (dpm->dhcp_servers, server);
+
+      fib_table_entry_special_remove(rx_fib_index,
+                                     &all_1s,
+                                     FIB_SOURCE_DHCP);
+
       return 0;
     }
 
@@ -752,8 +773,15 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
     }
 
   pool_get (dpm->dhcp_servers, server);
+
+  fib_table_entry_special_add(rx_fib_index,
+                              &all_1s,
+                              FIB_SOURCE_DHCP,
+                              FIB_ENTRY_FLAG_LOCAL,
+                              ADJ_INDEX_INVALID);
   
  initialize_it:
+
 
   server->dhcp_server.as_u32 = addr->as_u32;
   server->server_fib_index = 

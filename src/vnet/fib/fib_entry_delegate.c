@@ -119,6 +119,9 @@ fib_entry_chain_type_to_delegate_type (fib_forward_chain_type_t fct)
         return (FIB_ENTRY_DELEGATE_CHAIN_MPLS_NON_EOS);
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
         return (FIB_ENTRY_DELEGATE_CHAIN_ETHERNET);
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+        break;
     }
     ASSERT(0);
     return (FIB_ENTRY_DELEGATE_CHAIN_UNICAST_IP4);

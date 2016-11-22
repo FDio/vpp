@@ -43,6 +43,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/punt_dpo.h>
@@ -257,6 +258,9 @@ format_ip_lookup_next (u8 * s, va_list * args)
       break;
     case IP_LOOKUP_NEXT_GLEAN:
       t = "glean";
+      break;
+    case IP_LOOKUP_NEXT_MCAST:
+      t = "mcast";
       break;
     case IP_LOOKUP_NEXT_REWRITE:
       break;
@@ -764,6 +768,170 @@ VLIB_CLI_COMMAND (ip_route_command, static) = {
   .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] [via <next-hop-ip-addr> [<interface>] [weight <weight>]] | [via arp <interface> <adj-hop-ip-addr>] | [via drop|punt|local<id>|arp|classify <classify-idx>] [lookup in table <out-table-id>]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+clib_error_t *
+vnet_ip_mroute_cmd (vlib_main_t * vm,
+		    unformat_input_t * main_input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  fib_route_path_t rpath;
+  u32 table_id, is_del;
+  vnet_main_t *vnm;
+  mfib_prefix_t pfx;
+  u32 fib_index;
+  mfib_itf_flags_t iflags = 0;
+
+  vnm = vnet_get_main ();
+  is_del = 0;
+  table_id = 0;
+  memset (&pfx, 0, sizeof (pfx));
+  memset (&rpath, 0, sizeof (rpath));
+  rpath.frp_sw_if_index = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (main_input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "table %d", &table_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_del = 1;
+      else if (unformat (line_input, "add"))
+	is_del = 0;
+      else if (unformat (line_input, "%U %U",
+			 unformat_ip4_address,
+			 &pfx.fp_src_addr.ip4,
+			 unformat_ip4_address, &pfx.fp_grp_addr.ip4))
+	{
+	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  pfx.fp_len = 64;
+	}
+      else if (unformat (line_input, "%U %U",
+			 unformat_ip6_address,
+			 &pfx.fp_src_addr.ip6,
+			 unformat_ip6_address, &pfx.fp_grp_addr.ip6))
+	{
+	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  pfx.fp_len = 256;
+	}
+      else if (unformat (line_input, "%U/%d",
+			 unformat_ip4_address,
+			 &pfx.fp_grp_addr.ip4, &pfx.fp_len))
+	{
+	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	}
+      else if (unformat (line_input, "%U/%d",
+			 unformat_ip6_address,
+			 &pfx.fp_grp_addr.ip6, &pfx.fp_len))
+	{
+	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	}
+      else if (unformat (line_input, "%U",
+			 unformat_ip4_address, &pfx.fp_grp_addr.ip4))
+	{
+	  memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
+	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  pfx.fp_len = 32;
+	}
+      else if (unformat (line_input, "%U",
+			 unformat_ip6_address, &pfx.fp_grp_addr.ip6))
+	{
+	  memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
+	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  pfx.fp_len = 128;
+	}
+      else if (unformat (line_input, "via %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+	{
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	}
+      else if (unformat (line_input, "%U", unformat_mfib_itf_flags, &iflags))
+	;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (~0 == table_id)
+    {
+      /*
+       * if no table_id is passed we will manipulate the default
+       */
+      fib_index = 0;
+    }
+  else
+    {
+      fib_index = mfib_table_find (pfx.fp_proto, table_id);
+
+      if (~0 == fib_index)
+	{
+	  error = clib_error_return (0, "Nonexistent table id %d", table_id);
+	  goto done;
+	}
+    }
+
+  if (is_del && 0 == rpath.frp_weight)
+    {
+      mfib_table_entry_delete (fib_index, &pfx, MFIB_SOURCE_CLI);
+    }
+  else
+    {
+      if (is_del)
+	mfib_table_entry_path_remove (fib_index,
+				      &pfx, MFIB_SOURCE_CLI, &rpath);
+      else
+	mfib_table_entry_path_update (fib_index,
+				      &pfx, MFIB_SOURCE_CLI, &rpath, iflags);
+    }
+
+done:
+  return error;
+}
+
+/*?
+ * This command is used to add or delete IPv4 or IPv6  multicastroutes. All
+ * IP Addresses ('<em><dst-ip-addr>/<width></em>',
+ * '<em><next-hop-ip-addr></em>' and '<em><adj-hop-ip-addr></em>')
+ * can be IPv4 or IPv6, but all must be of the same form in a single
+ * command. To display the current set of routes, use the commands
+ * '<em>show ip mfib</em>' and '<em>show ip6 mfib</em>'.
+ *
+ * @cliexpar
+ * Example of how to add a straight forward static route:
+ * @cliexcmd{ip route add 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0}
+ * Example of how to delete a straight forward static route:
+ * @cliexcmd{ip route del 6.0.1.2/32 via 6.0.0.1 GigabitEthernet2/0/0}
+ * Mainly for route add/del performance testing, one can add or delete
+ * multiple routes by adding 'count N' to the previous item:
+ * @cliexcmd{ip route add count 10 7.0.0.0/24 via 6.0.0.1 GigabitEthernet2/0/0}
+ * Add multiple routes for the same destination to create equal-cost multipath:
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0}
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0}
+ * For unequal-cost multipath, specify the desired weights. This
+ * combination of weights results in 3/4 of the traffic following the
+ * second path, 1/4 following the first path:
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.1 GigabitEthernet2/0/0 weight 1}
+ * @cliexcmd{ip route add 7.0.0.1/32 via 6.0.0.2 GigabitEthernet2/0/0 weight 3}
+ * To add a route to a particular FIB table (VRF), use:
+ * @cliexcmd{ip route add 172.16.24.0/24 table 7 via GigabitEthernet2/0/0}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ip_mroute_command, static) =
+{
+  .path = "ip mroute",
+  .short_help = "ip mroute [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] [via <next-hop-ip-addr> [<interface>],",
+  .function = vnet_ip_mroute_cmd,.is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
