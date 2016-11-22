@@ -61,6 +61,10 @@ typedef enum fib_path_list_attribute_t_ {
      */
     FIB_PATH_LIST_ATTRIBUTE_LOOPED,
     /**
+     * no uRPF - do not generate unicast RPF list for this path-list
+     */
+    FIB_PATH_LIST_ATTRIBUTE_NO_URPF,
+    /**
      * Marher. Add new flags before this one, and then update it.
      */
     FIB_PATH_LIST_ATTRIBUTE_LAST = FIB_PATH_LIST_ATTRIBUTE_LOOPED,
@@ -74,6 +78,7 @@ typedef enum fib_path_list_flags_t_ {
     FIB_PATH_LIST_FLAG_EXCLUSIVE = (1 << FIB_PATH_LIST_ATTRIBUTE_EXCLUSIVE),
     FIB_PATH_LIST_FLAG_RESOLVED  = (1 << FIB_PATH_LIST_ATTRIBUTE_RESOLVED),
     FIB_PATH_LIST_FLAG_LOOPED    = (1 << FIB_PATH_LIST_ATTRIBUTE_LOOPED),
+    FIB_PATH_LIST_FLAG_NO_URPF   = (1 << FIB_PATH_LIST_ATTRIBUTE_NO_URPF),
 } fib_path_list_flags_t;
 
 #define FIB_PATH_LIST_ATTRIBUTES {       		 \
@@ -83,6 +88,7 @@ typedef enum fib_path_list_flags_t_ {
     [FIB_PATH_LIST_ATTRIBUTE_EXCLUSIVE] = "exclusive",   \
     [FIB_PATH_LIST_ATTRIBUTE_LOCAL]     = "local",	 \
     [FIB_PATH_LIST_ATTRIBUTE_LOOPED]     = "looped",	 \
+    [FIB_PATH_LIST_ATTRIBUTE_NO_URPF]     = "no-uRPF",	 \
 }
 
 #define FOR_EACH_PATH_LIST_ATTRIBUTE(_item)		\

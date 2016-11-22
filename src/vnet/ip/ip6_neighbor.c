@@ -21,6 +21,7 @@
 #include <vppinfra/mhash.h>
 #include <vppinfra/md5.h>
 #include <vnet/adj/adj.h>
+#include <vnet/adj/adj_mcast.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 
@@ -116,9 +117,7 @@ typedef struct
   u32 seed;
   u64 randomizer;
   int ref_count;
-  adj_index_t all_nodes_adj_index;
-  adj_index_t all_routers_adj_index;
-  adj_index_t all_mldv2_routers_adj_index;
+  adj_index_t mcast_adj_index;
 
   /* timing information */
 #define DEF_MAX_RADV_INTERVAL 200
@@ -474,33 +473,72 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
   nbr = ip6_nd_find (sw_if_index, &adj->sub_type.nbr.next_hop.ip6);
 
-  if (NULL != nbr)
+  switch (adj->lookup_next_index)
     {
-      adj_nbr_walk_nh6 (sw_if_index, &nbr->key.ip6_address,
-			ip6_nd_mk_complete_walk, nbr);
-    }
-  else
-    {
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_GLEAN:
+      if (NULL != nbr)
+	{
+	  adj_nbr_walk_nh6 (sw_if_index, &nbr->key.ip6_address,
+			    ip6_nd_mk_complete_walk, nbr);
+	}
+      else
+	{
+	  /*
+	   * no matching ND entry.
+	   * construct the rewrite required to for an ND packet, and stick
+	   * that in the adj's pipe to smoke.
+	   */
+	  adj_nbr_update_rewrite (ai,
+				  ADJ_NBR_REWRITE_FLAG_INCOMPLETE,
+				  ethernet_build_rewrite (vnm,
+							  sw_if_index,
+							  VNET_LINK_IP6,
+							  VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
+
+	  /*
+	   * since the FIB has added this adj for a route, it makes sense it may
+	   * want to forward traffic sometime soon. Let's send a speculative ND.
+	   * just one. If we were to do periodically that wouldn't be bad either,
+	   * but that's more code than i'm prepared to write at this time for
+	   * relatively little reward.
+	   */
+	  ip6_nbr_probe (adj);
+	}
+      break;
+    case IP_LOOKUP_NEXT_MCAST:
       /*
-       * no matching ND entry.
-       * construct the rewrite required to for an ND packet, and stick
-       * that in the adj's pipe to smoke.
+       * Construct a partial rewrite from the known ethernet mcast dest MAC
        */
-      adj_nbr_update_rewrite (ai,
-			      ADJ_NBR_REWRITE_FLAG_INCOMPLETE,
-			      ethernet_build_rewrite (vnm,
-						      sw_if_index,
-						      VNET_LINK_IP6,
-						      VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
+      adj_mcast_update_rewrite
+	(ai,
+	 ethernet_build_rewrite (vnm,
+				 sw_if_index,
+				 adj->ia_link,
+				 ethernet_ip6_mcast_dst_addr ()));
 
       /*
-       * since the FIB has added this adj for a route, it makes sense it may
-       * want to forward traffic sometime soon. Let's send a speculative ND.
-       * just one. If we were to do periodically that wouldn't be bad either,
-       * but that's more code than i'm prepared to write at this time for
-       * relatively little reward.
+       * Complete the remaining fields of the adj's rewrite to direct the
+       * complete of the rewrite at switch time by copying in the IP
+       * dst address's bytes.
+       * Ofset is 12 bytes from the end of the MAC header - which is 2
+       * bytes into the desintation address. And we write 4 bytes.
        */
-      ip6_nbr_probe (adj);
+      adj->rewrite_header.dst_mcast_offset = 12;
+      adj->rewrite_header.dst_mcast_n_bytes = 4;
+
+      break;
+
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_LOAD_BALANCE:
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+      ASSERT (0);
+      break;
     }
 }
 
@@ -1517,7 +1555,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			}
 		      else
 			{
-			  adj_index0 = radv_info->all_nodes_adj_index;
+			  adj_index0 = radv_info->mcast_adj_index;
 			  if (adj_index0 == 0)
 			    error0 = ICMP6_ERROR_DST_LOOKUP_MISS;
 			  else
@@ -1918,10 +1956,8 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  ip6_radv_prefix_t *p;
 	  ip6_mldp_group_t *m;
 
-	  /* remove adjacencies */
-	  adj_unlock (a->all_nodes_adj_index);
-	  adj_unlock (a->all_routers_adj_index);
-	  adj_unlock (a->all_mldv2_routers_adj_index);
+	  /* release the lock on the interface's mcast adj */
+	  adj_unlock (a->mcast_adj_index);
 
 	  /* clean up prefix_pool */
 	  /* *INDENT-OFF* */
@@ -2017,36 +2053,9 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  mhash_init (&a->address_to_mldp_index, sizeof (uword),
 		      sizeof (ip6_address_t));
 
-	  {
-	    u8 link_layer_address[6] = { 0x33, 0x33, 0x00, 0x00, 0x00,
-	      IP6_MULTICAST_GROUP_ID_all_hosts
-	    };
-
-	    a->all_nodes_adj_index =
-	      adj_rewrite_add_and_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6,
-					sw_if_index, link_layer_address);
-	  }
-
-	  {
-	    u8 link_layer_address[6] = { 0x33, 0x33, 0x00, 0x00, 0x00,
-	      IP6_MULTICAST_GROUP_ID_all_routers
-	    };
-
-	    a->all_routers_adj_index =
-	      adj_rewrite_add_and_lock (FIB_PROTOCOL_IP6, VNET_LINK_IP6,
-					sw_if_index, link_layer_address);
-	  }
-
-	  {
-	    u8 link_layer_address[6] = { 0x33, 0x33, 0x00, 0x00, 0x00,
-	      IP6_MULTICAST_GROUP_ID_mldv2_routers
-	    };
-
-	    a->all_mldv2_routers_adj_index =
-	      adj_rewrite_add_and_lock (FIB_PROTOCOL_IP6,
-					VNET_LINK_IP6,
-					sw_if_index, link_layer_address);
-	  }
+	  a->mcast_adj_index = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
+						      VNET_LINK_IP6,
+						      sw_if_index);
 
 	  /* add multicast groups we will always be reporting  */
 	  ip6_address_t addr;
@@ -2273,11 +2282,10 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
   vnet_buffer (b0)->sw_if_index[VLIB_RX] =
     vnet_main.local_interface_sw_if_index;
 
-  vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
-    radv_info->all_mldv2_routers_adj_index;
+  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = radv_info->mcast_adj_index;
   b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 
-  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite-mcast");
 
   f = vlib_get_frame_to_node (vm, node->index);
   to_next = vlib_frame_vector_args (f);
@@ -2301,7 +2309,7 @@ VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) =
   .n_next_nodes = ICMP6_ROUTER_SOLICITATION_N_NEXT,
   .next_nodes = {
     [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "error-drop",
-    [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] = "ip6-rewrite",
+    [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] = "ip6-rewrite-mcast",
     [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] = "interface-output",
   },
 };
