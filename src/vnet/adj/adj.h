@@ -45,7 +45,6 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/adj/adj_nbr.h>
-#include <vnet/adj/adj_rewrite.h>
 #include <vnet/adj/adj_glean.h>
 
 /**
