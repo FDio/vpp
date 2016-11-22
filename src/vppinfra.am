@@ -21,7 +21,6 @@ lib_LIBRARIES =
 
 TESTS =
 
-if ENABLE_TESTS
 TESTS  +=  test_bihash_template \
 	   test_dlist \
 	   test_elog \
@@ -44,8 +43,8 @@ TESTS  +=  test_bihash_template \
 	   test_time \
 	   test_timing_wheel \
 	   test_vec \
-	   test_zvec 
-endif
+	   test_zvec \
+	   test_cpt
 
 noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
@@ -73,6 +72,7 @@ test_time_SOURCES = vppinfra/test_time.c
 test_timing_wheel_SOURCES = vppinfra/test_timing_wheel.c
 test_vec_SOURCES = vppinfra/test_vec.c
 test_zvec_SOURCES = vppinfra/test_zvec.c
+test_cpt_SOURCES = vppinfra/test_cpt.c
 
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
@@ -99,6 +99,7 @@ test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_cpt_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_bihash_template_LDADD =	libvppinfra.la
 test_dlist_LDADD =	libvppinfra.la
@@ -123,6 +124,7 @@ test_time_LDADD =	libvppinfra.la -lm
 test_timing_wheel_LDADD =	libvppinfra.la -lm
 test_vec_LDADD =	libvppinfra.la
 test_zvec_LDADD =	libvppinfra.la
+test_cpt_LDADD =	libvppinfra.la
 
 test_bihash_template_LDFLAGS = -static
 test_dlist_LDFLAGS = -static
@@ -147,6 +149,7 @@ test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
 test_vec_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
+test_cpt_LDFLAGS = -static
 
 # noinst_PROGRAMS += test_vhash
 # test_vhash_SOURCES = vppinfra/test_vhash.c vppinfra/vhash.c
@@ -159,6 +162,7 @@ nobase_include_HEADERS = \
   vppinfra/asm_x86.h \
   vppinfra/bihash_8_8.h \
   vppinfra/bihash_24_8.h \
+  vppinfra/bihash_40_8.h \
   vppinfra/bihash_template.h \
   vppinfra/bihash_template.c \
   vppinfra/bitmap.h \
@@ -226,6 +230,7 @@ CLIB_CORE = \
   vppinfra/backtrace.c \
   vppinfra/bihash_8_8.h \
   vppinfra/bihash_24_8.h \
+  vppinfra/bihash_40_8.h \
   vppinfra/bihash_template.h \
   vppinfra/cpu.c \
   vppinfra/elf.c \
@@ -256,7 +261,8 @@ CLIB_CORE = \
   vppinfra/unformat.c \
   vppinfra/vec.c \
   vppinfra/vector.c \
-  vppinfra/zvec.c
+  vppinfra/zvec.c \
+  vppinfra/cpt.c
 
 # Core plus Unix additions
 libvppinfra_la_SOURCES =			\
