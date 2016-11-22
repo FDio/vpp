@@ -32,11 +32,11 @@ span_add_delete_entry (vlib_main_t * vm,
   vnet_sw_interface_t *sw =
     vnet_get_sw_interface (sm->vnet_main, src_sw_if_index);
 
-  vec_validate_aligned (sm->dst_by_src_sw_if_index, sw->hw_if_index,
+  vec_validate_aligned (sm->dst_by_src_sw_if_index, sw->sw_if_index,
 			CLIB_CACHE_LINE_BYTES);
-  sm->dst_by_src_sw_if_index[sw->hw_if_index] = is_add ? dst_sw_if_index : 0;
+  sm->dst_by_src_sw_if_index[sw->sw_if_index] = is_add ? dst_sw_if_index : 0;
   vnet_feature_enable_disable ("device-input", "span-input",
-			       sw->hw_if_index, is_add, 0, 0);
+			       sw->sw_if_index, is_add, 0, 0);
   return 0;
 }
 
