@@ -1,0 +1,249 @@
+#!/usr/bin/env python
+
+import unittest
+
+from framework import VppTestCase, VppTestRunner
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_ip_route import IpMRoute, MRoutePath
+
+from scapy.packet import Raw
+from scapy.layers.l2 import Ether
+from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6
+from util import ppp
+
+
+class MRouteItfFlags:
+    MFIB_ITF_FLAG_NONE = 0
+    MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
+    MFIB_ITF_FLAG_ACCEPT = 2
+    MFIB_ITF_FLAG_FORWARD = 4
+    MFIB_ITF_FLAG_SIGNAL_PRESENT = 8
+    MFIB_ITF_FLAG_INTERNAL_COPY = 16
+    
+class MRouteEntryFlags:
+    MFIB_ENTRY_FLAG_NONE = 0
+    MFIB_ENTRY_FLAG_SIGNAL = 1
+    MFIB_ENTRY_FLAG_DROP = 2
+    MFIB_ENTRY_FLAG_CONNECTED = 4
+    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
+
+class TestIPMcast(VppTestCase):
+    """ IP Multicast Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPMcast, cls).setUpClass()
+
+    def setUp(self):
+        super(TestIPMcast, self).setUp()
+
+        # create 4 pg interfaces
+        self.create_pg_interfaces(range(4))
+
+        # setup interfaces
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPMcast, self).tearDown()
+
+
+    def create_stream_ip4(self, src_if, src_ip, dst_ip):
+        pkts = []
+        for i in range(0, 65):
+            info = self.create_packet_info(src_if.sw_if_index,
+                                           src_if.sw_if_index)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IP(src=src_ip, dst=dst_ip) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            pkts.append(p)
+        return pkts
+
+
+    def verify_filter(self, capture, sent):
+        if not len(capture) == len(sent):
+            # filter out any IPv6 RAs from the captur
+            for p in capture:
+                if (p.haslayer(IPv6)):
+                    capture.remove(p)
+        return capture
+
+    def verify_capture_ip4(self, src_if, capture, sent):
+        try:
+            capture = self.verify_filter(capture, sent)
+
+            self.assertEqual(len(capture), len(sent))
+
+            for i in range(len(capture)):
+                tx = sent[i]
+                rx = capture[i]
+
+                # the rx'd packet has the MPLS label popped
+                eth = rx[Ether]
+                self.assertEqual(eth.type, 0x800)
+
+                tx_ip = tx[IP]
+                rx_ip = rx[IP]
+
+                self.assertEqual(rx_ip.src, tx_ip.src)
+                self.assertEqual(rx_ip.dst, tx_ip.dst)
+                # IP processing post pop has decremented the TTL
+                self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
+
+        except:
+            raise
+
+    def test_ip_mcast(self):
+        """ IP Multicast Replication """
+
+        #
+        # a stream that matches the default route. gets dropped.
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        try:
+            self.assertEqual(0, len(rx))
+        except:
+            self.logger.error("Replications")
+            self.logger.error(packet.show())
+            raise
+
+        #
+        # A (*,G).
+        # one accepting interface, pg0, 3 forwarding interfaces
+        #
+        route_232_1_1_1 = IpMRoute(self,
+                                   "0.0.0.0",
+                                   "232.1.1.1", 32,
+                                   MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+                                   [MRoutePath(self.pg0.sw_if_index,
+                                               MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                    MRoutePath(self.pg1.sw_if_index,
+                                               MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                                    MRoutePath(self.pg2.sw_if_index,
+                                               MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                                    MRoutePath(self.pg3.sw_if_index,
+                                               MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232_1_1_1.add_vpp_config()
+
+        #
+        # a stream that matches the route for (*,232.1.1.1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.2", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2, 3.
+        rx = self.pg1.get_capture()
+        self.verify_capture_ip4(self.pg1, rx, tx)
+        rx = self.pg2.get_capture()
+        self.verify_capture_ip4(self.pg2, rx, tx)
+        rx = self.pg3.get_capture()
+        self.verify_capture_ip4(self.pg3, rx, tx)
+
+        # no replications on Pg0
+        rx = self.pg0.get_capture()
+        try:
+            self.assertEqual(0, len(rx))
+        except:
+            self.logger.error("Replications on accpeting interface")
+            self.logger.error(packet.show())
+            raise
+
+        #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        #
+        route_1_1_1_1_232_1_1_1 = IpMRoute(self,
+                                         "1.1.1.1",
+                                         "232.1.1.1", 64,
+                                         MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+                                         [MRoutePath(self.pg0.sw_if_index,
+                                                     MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                                          MRoutePath(self.pg1.sw_if_index,
+                                                     MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+                                          MRoutePath(self.pg2.sw_if_index,
+                                                     MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_1_1_1_1_232_1_1_1.add_vpp_config()
+
+        #
+        # a stream that matches the route for (1.1.1.1,232.1.1.1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2,
+        rx = self.pg1.get_capture()
+        self.verify_capture_ip4(self.pg1, rx, tx)
+        rx = self.pg2.get_capture()
+        self.verify_capture_ip4(self.pg2, rx, tx)
+
+        # no replications on Pg0
+        rx = self.pg0.get_capture()
+        try:
+            self.assertEqual(0, len(rx))
+        except:
+            self.logger.error("Replications on accpeting interface")
+            self.logger.error(packet.show())
+            raise
+        # no replications on Pg3
+        rx = self.pg3.get_capture()
+        try:
+            self.assertEqual(0, len(rx))
+        except:
+            self.logger.error("Replications on non-forwarding interface")
+            self.logger.error(rx[0].show())
+            raise
+
+        #
+        # Now the (S,G) is present, resend traffic that will match the (*,G)
+        # a stream that matches the route for (*,232.1.1.1)
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.2", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2, 3.
+        rx = self.pg1.get_capture()
+        self.verify_capture_ip4(self.pg1, rx, tx)
+        rx = self.pg2.get_capture()
+        self.verify_capture_ip4(self.pg2, rx, tx)
+        rx = self.pg3.get_capture()
+        self.verify_capture_ip4(self.pg3, rx, tx)
+
+        # no replications on Pg0
+        rx = self.pg0.get_capture()
+        try:
+            self.assertEqual(0, len(rx))
+        except:
+            self.logger.error("Replications on accpeting interface")
+            self.logger.error(packet.show())
+            raise
+
+        route_232_1_1_1.remove_vpp_config()
+        route_1_1_1_1_232_1_1_1.remove_vpp_config()
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)

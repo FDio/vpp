@@ -379,7 +379,7 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
     [IP4_INPUT_NEXT_DROP] = "error-drop",
     [IP4_INPUT_NEXT_PUNT] = "error-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
-    [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-lookup-multicast",
+    [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 
@@ -399,7 +399,7 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
     [IP4_INPUT_NEXT_DROP] = "error-drop",
     [IP4_INPUT_NEXT_PUNT] = "error-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
-    [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-lookup-multicast",
+    [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 

@@ -313,6 +313,8 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
         {
         case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
         case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+        case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+        case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
             /*
              * EOS traffic with no label to stack, we need the IP Adj
              */
