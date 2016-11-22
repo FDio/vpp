@@ -43,7 +43,7 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += python-devel
+RPM_DEPENDS += python-devel python-virtualenv
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
@@ -339,12 +339,11 @@ define banner
 	@echo " "
 endef
 
-verify: $(BR)/.bootstrap.ok
+verify: install-dep $(BR)/.bootstrap.ok
 ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),16.04)
 	$(call banner,"Installing dependencies")
 	@sudo -E apt-get update
-	@make install-dep
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
@@ -354,3 +353,4 @@ endif
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building for PLATFORM=vpp_lite using gcc")
 	@make -C build-root PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
+	@make test
