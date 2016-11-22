@@ -1141,18 +1141,42 @@ dispatch_pending_node (vlib_main_t * vm,
   /* Frame is ready to be used again, so restore it. */
   if (restore_frame_index != ~0)
     {
+      /* we musn't restore a frame that is flagged to be freed. This shouldn't
+         happen since frames to be freed post dispatch are those used
+         when the to-node frame becomes full i.e. they form a sort of queue of
+         frames to a single node. If we get here then the to-node frame and the
+         pending frame *were* the same, and so we removed the to-node frame.
+         Therefore this frame is no longer part of the queue for that node
+         and hence it cannot be it's overspill.
+       */
+      ASSERT (!(f->flags & VLIB_FRAME_FREE_AFTER_DISPATCH));
+
       /* p->next_frame_index can change during node dispatch if node
          function decides to change graph hook up. */
       nf = vec_elt_at_index (nm->next_frames, p->next_frame_index);
-      nf->frame_index = restore_frame_index;
       nf->flags |= VLIB_FRAME_IS_ALLOCATED;
-      f->n_vectors = 0;
-    }
 
-  if (f->flags & VLIB_FRAME_FREE_AFTER_DISPATCH)
+      if (~0 == nf->frame_index)
+	{
+	  /* no new frame has been assigned to this node, use the saved one */
+	  nf->frame_index = restore_frame_index;
+	  f->n_vectors = 0;
+	}
+      else
+	{
+	  /* The node has gained a frame, implying packets from the current frame
+	     were re-queued to this same node. we don't need the saved one
+	     anymore */
+	  vlib_frame_free (vm, n, f);
+	}
+    }
+  else
     {
-      ASSERT (!(n->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH));
-      vlib_frame_free (vm, n, f);
+      if (f->flags & VLIB_FRAME_FREE_AFTER_DISPATCH)
+	{
+	  ASSERT (!(n->flags & VLIB_NODE_FLAG_FRAME_NO_FREE_AFTER_DISPATCH));
+	  vlib_frame_free (vm, n, f);
+	}
     }
 
   return last_time_stamp;
