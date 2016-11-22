@@ -243,16 +243,15 @@ ip6_fib_table_destroy (u32 fib_index)
 }
 
 fib_node_index_t
-ip6_fib_table_lookup (u32 fib_index,
-		      const ip6_address_t *addr,
-		      u32 len)
+ip6_fib_table_lookup_i (const ip6_fib_table_instance_t *table,
+                        u32 fib_index,
+                        const ip6_address_t *addr,
+                        u32 len)
 {
-    const ip6_fib_table_instance_t *table;
     BVT(clib_bihash_kv) kv, value;
     int i, n_p, rv;
     u64 fib;
 
-    table = &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING];
     n_p = vec_len (table->prefix_lengths_in_search_order);
 
     kv.key[0] = addr->as_u64[0];
@@ -289,17 +288,27 @@ ip6_fib_table_lookup (u32 fib_index,
 }
 
 fib_node_index_t
-ip6_fib_table_lookup_exact_match (u32 fib_index,
-				  const ip6_address_t *addr,
-				  u32 len)
+ip6_fib_table_lookup (u32 fib_index,
+                      const ip6_address_t *addr,
+                      u32 len)
 {
-    const ip6_fib_table_instance_t *table;
+    return (ip6_fib_table_lookup_i(&ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING],
+                                   fib_index,
+                                   addr,
+                                   len));
+}
+
+fib_node_index_t
+ip6_fib_table_lookup_exact_match_i (const ip6_fib_table_instance_t *table,
+                                    u32 fib_index,
+                                    const ip6_address_t *addr,
+                                    u32 len)
+{
     BVT(clib_bihash_kv) kv, value;
     ip6_address_t *mask;
     u64 fib;
     int rv;
 
-    table = &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING];
     mask = &ip6_main.fib_masks[len];
     fib = ((u64)((fib_index))<<32);
 
@@ -312,6 +321,18 @@ ip6_fib_table_lookup_exact_match (u32 fib_index,
 	return value.value;
 
     return (FIB_NODE_INDEX_INVALID);
+}
+
+fib_node_index_t
+ip6_fib_table_lookup_exact_match (u32 fib_index,
+				  const ip6_address_t *addr,
+				  u32 len)
+{
+    return (ip6_fib_table_lookup_exact_match_i(
+                &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING],
+                fib_index,
+                addr,
+                len));
 }
 
 static void
@@ -328,16 +349,15 @@ compute_prefix_lengths_in_search_order (ip6_fib_table_instance_t *table)
 }
 
 void
-ip6_fib_table_entry_remove (u32 fib_index,
-			    const ip6_address_t *addr,
-			    u32 len)
+ip6_fib_table_remove_i (ip6_fib_table_instance_t *table,
+                        u32 fib_index,
+                        const ip6_address_t *addr,
+                        u32 len)
 {
-    ip6_fib_table_instance_t *table;
     BVT(clib_bihash_kv) kv;
     ip6_address_t *mask;
     u64 fib;
 
-    table = &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING];
     mask = &ip6_main.fib_masks[len];
     fib = ((u64)((fib_index))<<32);
 
@@ -359,17 +379,25 @@ ip6_fib_table_entry_remove (u32 fib_index,
 }
 
 void
-ip6_fib_table_entry_insert (u32 fib_index,
+ip6_fib_table_entry_remove (u32 fib_index,
 			    const ip6_address_t *addr,
-			    u32 len,
-			    fib_node_index_t fib_entry_index)
+			    u32 len)
 {
-    ip6_fib_table_instance_t *table;
+    ip6_fib_table_remove_i(&ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING],
+                           fib_index, addr, len);
+}
+
+void
+ip6_fib_table_insert_i (ip6_fib_table_instance_t *table,
+                        u32 fib_index,
+                        const ip6_address_t *addr,
+                        u32 len,
+                        fib_node_index_t fib_entry_index)
+{
     BVT(clib_bihash_kv) kv;
     ip6_address_t *mask;
     u64 fib;
 
-    table = &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING];
     mask = &ip6_main.fib_masks[len];
     fib = ((u64)((fib_index))<<32);
 
@@ -386,6 +414,19 @@ ip6_fib_table_entry_insert (u32 fib_index,
         clib_bitmap_set (table->non_empty_dst_address_length_bitmap, 
 			 128 - len, 1);
     compute_prefix_lengths_in_search_order (table);
+}
+
+void
+ip6_fib_table_entry_insert (u32 fib_index,
+			    const ip6_address_t *addr,
+			    u32 len,
+			    fib_node_index_t fib_entry_index)
+{
+    return (ip6_fib_table_insert_i (&ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING],
+                                    fib_index,
+                                    addr,
+                                    len,
+                                    fib_entry_index));
 }
 
 u32 

@@ -43,6 +43,7 @@
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/classify_dpo.h>
@@ -1970,7 +1971,7 @@ typedef enum
 always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_midchain)
+		    vlib_frame_t * frame, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -2285,16 +2286,22 @@ static uword
 ip6_rewrite (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_rewrite_inline (vm, node, frame,
-			     /* midchain */ 0);
+  return ip6_rewrite_inline (vm, node, frame, 0, 0);
+}
+
+static uword
+ip6_rewrite_mcast (vlib_main_t * vm,
+		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  ASSERT (0);
+  return ip6_rewrite_inline (vm, node, frame, 0, 1);
 }
 
 static uword
 ip6_midchain (vlib_main_t * vm,
 	      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_rewrite_inline (vm, node, frame,
-			     /* midchain */ 1);
+  return ip6_rewrite_inline (vm, node, frame, 1, 0);
 }
 
 /* *INDENT-OFF* */
@@ -2328,43 +2335,52 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite);
 
+VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
+{
+  .function = ip6_rewrite_mcast,.name = "ip6-rewrite-mcast",.vector_size =
+    sizeof (u32),.format_trace = format_ip6_rewrite_trace,.n_next_nodes =
+    1,.next_nodes =
+  {
+  [IP6_REWRITE_NEXT_DROP] = "error-drop",}
+,};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast)
 /*
  * Hop-by-Hop handling
  */
-
-ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
+     ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
 
 #define foreach_ip6_hop_by_hop_error \
 _(PROCESSED, "pkts with ip6 hop-by-hop options") \
 _(FORMAT, "incorrectly formatted hop-by-hop options") \
 _(UNKNOWN_OPTION, "unknown ip6 hop-by-hop options")
 
-typedef enum
-{
+     typedef enum
+     {
 #define _(sym,str) IP6_HOP_BY_HOP_ERROR_##sym,
-  foreach_ip6_hop_by_hop_error
+       foreach_ip6_hop_by_hop_error
 #undef _
-    IP6_HOP_BY_HOP_N_ERROR,
-} ip6_hop_by_hop_error_t;
+	 IP6_HOP_BY_HOP_N_ERROR,
+     } ip6_hop_by_hop_error_t;
 
 /*
  * Primary h-b-h handler trace support
  * We work pretty hard on the problem for obvious reasons
  */
-typedef struct
-{
-  u32 next_index;
-  u32 trace_len;
-  u8 option_data[256];
-} ip6_hop_by_hop_trace_t;
+     typedef struct
+     {
+       u32 next_index;
+       u32 trace_len;
+       u8 option_data[256];
+     } ip6_hop_by_hop_trace_t;
 
-vlib_node_registration_t ip6_hop_by_hop_node;
+     vlib_node_registration_t ip6_hop_by_hop_node;
 
-static char *ip6_hop_by_hop_error_strings[] = {
+     static char *ip6_hop_by_hop_error_strings[] = {
 #define _(sym,string) string,
-  foreach_ip6_hop_by_hop_error
+       foreach_ip6_hop_by_hop_error
 #undef _
-};
+     };
 
 static u8 *
 format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
@@ -2948,6 +2964,12 @@ add_del_ip6_interface_table (vlib_main_t * vm,
 
     vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
     ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+    fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+						    table_id);
+
+    vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
+    ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
   }
 
 

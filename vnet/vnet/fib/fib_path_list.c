@@ -1015,14 +1015,14 @@ fib_path_list_copy_and_path_remove (fib_node_index_t orig_path_list_index,
  */
 void
 fib_path_list_contribute_forwarding (fib_node_index_t path_list_index,
-				     fib_forward_chain_type_t type,
+				     fib_forward_chain_type_t fct,
 				     dpo_id_t *dpo)
 {
     fib_path_list_t *path_list;
 
     path_list = fib_path_list_get(path_list_index);
 
-    fib_path_list_mk_lb(path_list, type, dpo);
+    fib_path_list_mk_lb(path_list, fct, dpo);
 }
 
 /*

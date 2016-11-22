@@ -162,7 +162,7 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
 }
 
 /*
- * adj_add_for_nbr
+ * adj_nbr_add_or_lock
  *
  * Add an adjacency for the neighbour requested.
  *

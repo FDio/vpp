@@ -68,6 +68,18 @@ typedef struct ip4_fib_t
 
 } ip4_fib_t;
 
+typedef struct ip4_mfib_t
+{
+  /* Hash table for each prefix length mapping. */
+  uword *fib_entry_by_dst_address[65];
+
+  /* Table ID (hash key) for this FIB. */
+  u32 table_id;
+
+  /* Index into FIB vector. */
+  u32 index;
+} ip4_mfib_t;
+
 struct ip4_main_t;
 
 typedef void (ip4_add_del_interface_address_function_t)
@@ -99,10 +111,16 @@ typedef struct ip4_main_t
   /** Vector of FIBs. */
   struct fib_table_t_ *fibs;
 
+  /** Vector of MFIBs. */
+  struct mfib_table_t_ *mfibs;
+
   u32 fib_masks[33];
 
   /** Table index indexed by software interface. */
   u32 *fib_index_by_sw_if_index;
+
+  /** Table index indexed by software interface. */
+  u32 *mfib_index_by_sw_if_index;
 
   /* IP4 enabled count by software interface */
   u8 *ip_enabled_by_sw_if_index;
@@ -110,6 +128,10 @@ typedef struct ip4_main_t
   /** Hash table mapping table id to fib index.
      ID space is not necessarily dense; index space is dense. */
   uword *fib_index_by_table_id;
+
+  /** Hash table mapping table id to multicast fib index.
+     ID space is not necessarily dense; index space is dense. */
+  uword *mfib_index_by_table_id;
 
   /** Functions to call when interface address changes. */
     ip4_add_del_interface_address_callback_t
@@ -140,7 +162,9 @@ extern ip4_main_t ip4_main;
 /** Global ip4 input node.  Errors get attached to ip4 input node. */
 extern vlib_node_registration_t ip4_input_node;
 extern vlib_node_registration_t ip4_lookup_node;
+extern vlib_node_registration_t ip4_local_node;
 extern vlib_node_registration_t ip4_rewrite_node;
+extern vlib_node_registration_t ip4_rewrite_mcast_node;
 extern vlib_node_registration_t ip4_rewrite_local_node;
 extern vlib_node_registration_t ip4_arp_node;
 extern vlib_node_registration_t ip4_glean_node;

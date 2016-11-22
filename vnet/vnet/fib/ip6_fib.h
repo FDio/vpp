@@ -29,7 +29,6 @@ extern fib_node_index_t ip6_fib_table_lookup(u32 fib_index,
 extern fib_node_index_t ip6_fib_table_lookup_exact_match(u32 fib_index,
 							 const ip6_address_t *addr,
 							 u32 len);
-
 extern void ip6_fib_table_entry_remove(u32 fib_index,
 				       const ip6_address_t *addr,
 				       u32 len);
@@ -38,6 +37,28 @@ extern void ip6_fib_table_entry_insert(u32 fib_index,
 				       const ip6_address_t *addr,
 				       u32 len,
 				       fib_node_index_t fib_entry_index);
+
+
+extern fib_node_index_t ip6_fib_table_lookup_i(const ip6_fib_table_instance_t *table,
+                                               u32 fib_index,
+                                               const ip6_address_t *addr,
+                                               u32 len);
+extern fib_node_index_t ip6_fib_table_lookup_exact_match_i(const ip6_fib_table_instance_t *table,
+                                                           u32 fib_index,
+                                                           const ip6_address_t *addr,
+                                                           u32 len);
+extern void ip6_fib_table_remove_i(ip6_fib_table_instance_t *table,
+                                   u32 fib_index,
+                                   const ip6_address_t *addr,
+                                   u32 len);
+
+extern void ip6_fib_table_insert_i(ip6_fib_table_instance_t *table,
+                                   u32 fib_index,
+                                   const ip6_address_t *addr,
+                                   u32 len,
+                                   fib_node_index_t fib_entry_index);
+
+
 extern void ip6_fib_table_destroy(u32 fib_index);
 
 extern void ip6_fib_table_fwding_dpo_update(u32 fib_index,

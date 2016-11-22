@@ -547,6 +547,7 @@ void ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 u8 *ethernet_build_rewrite (vnet_main_t * vnm,
 			    u32 sw_if_index,
 			    vnet_link_t link_type, const void *dst_address);
+const u8 *ethernet_ip_mcast_dst_addr (void);
 
 extern vlib_node_registration_t ethernet_input_node;
 
