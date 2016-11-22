@@ -218,8 +218,8 @@ done:
       else
 	{
 	  /* Go to next node on the ip6 configuration chain */
-	  ASSERT (session);
-	  vnet_feature_next (session->sw_if_index, &next_index, b);
+	  if (PREDICT_TRUE (session != 0))
+	    vnet_feature_next (session->sw_if_index, &next_index, b);
 	}
     }
 

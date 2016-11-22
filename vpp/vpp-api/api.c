@@ -9166,14 +9166,14 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   spd_index = p[0];
   spd = pool_elt_at_index (im->spds, spd_index);
 
-  pool_foreach (policy, spd->policies, (
-					 {
-					 if (mp->sa_id == ~(0)
-					     || ntohl (mp->sa_id) ==
-					     policy->sa_id)
-					 send_ipsec_spd_details (policy, q,
-								 mp->context);}
-		));
+  /* *INDENT-OFF* */
+  pool_foreach (policy, spd->policies,
+  ({
+    if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
+      send_ipsec_spd_details (policy, q,
+                              mp->context);}
+    ));
+  /* *INDENT-ON* */
 #else
   clib_warning ("unimplemented");
 #endif
@@ -9184,9 +9184,12 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 {
   vl_api_feature_enable_disable_reply_t *rmp;
   int rv = 0;
+  u8 *arc_name, *feature_name;
 
-  u8 *arc_name = format (0, "%s%c", mp->arc_name, 0);
-  u8 *feature_name = format (0, "%s%c", mp->feature_name, 0);
+  VALIDATE_SW_IF_INDEX (mp);
+
+  arc_name = format (0, "%s%c", mp->arc_name, 0);
+  feature_name = format (0, "%s%c", mp->feature_name, 0);
 
   vnet_feature_registration_t *reg;
   reg =
@@ -9215,6 +9218,8 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 
   vec_free (feature_name);
   vec_free (arc_name);
+
+  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
 }
