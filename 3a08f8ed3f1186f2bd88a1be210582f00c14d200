@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "7a288981_a4370bb0",
+        "filename": "test/vpp_object.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 4,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-22T14:29:56Z",
+      "side": 1,
+      "message": "when a VPPObject is created it is automatically added to the registry. there is only one registry.",
+      "parentUuid": "7a288981_44cf47b1",
+      "revId": "3a08f8ed3f1186f2bd88a1be210582f00c14d200",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a288981_44818749",
         "filename": "test/vpp_object.py",
         "patchSetId": 3
@@ -66,6 +84,24 @@
       "side": 1,
       "message": "the class relies on having a logger (which the VppTestCase provides), but there is no \"class constructor\" concept in python, so there is no safe way to have it\n\nso for now this is meant to be a parent class for VppTestCase\n\nif anybody needs more functionality, it\u0027s very easy to do a subclass",
       "parentUuid": "7a288981_44818749",
+      "revId": "3a08f8ed3f1186f2bd88a1be210582f00c14d200",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_244b1b2d",
+        "filename": "test/vpp_object.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-22T14:29:56Z",
+      "side": 1,
+      "message": "a test-case \u0027is a\u0027 object registry or a test-case \u0027has a\u0027 object registry? the latter IMO.",
+      "parentUuid": "7a288981_64ca43a3",
       "revId": "3a08f8ed3f1186f2bd88a1be210582f00c14d200",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
