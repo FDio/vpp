@@ -22,6 +22,30 @@
       "revId": "c0e939b34cef55fe8a99e1d26eb9010b735559c8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a288981_9f37bcb0",
+        "filename": "vlib/vlib/threads_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 447,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-22T21:10:05Z",
+      "side": 0,
+      "message": "blame on me :(",
+      "parentUuid": "7a288981_9fe9fc1c",
+      "range": {
+        "startLine": 447,
+        "startChar": 6,
+        "endLine": 447,
+        "endChar": 52
+      },
+      "revId": "c0e939b34cef55fe8a99e1d26eb9010b735559c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
