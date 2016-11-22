@@ -96,6 +96,14 @@ typedef enum fib_forward_chain_type_t_ {
      */
     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
     /**
+     * Contribute an object that is to be used to forward IP4 packets
+     */
+    FIB_FORW_CHAIN_TYPE_MCAST_IP4,
+    /**
+     * Contribute an object that is to be used to forward IP6 packets
+     */
+    FIB_FORW_CHAIN_TYPE_MCAST_IP6,
+    /**
      * Contribute an object that is to be used to forward Ethernet packets.
      * This is last in the list since it is not valid for many FIB objects,
      * and thus their array of per-chain-type DPOs can be sized smaller.
@@ -107,6 +115,8 @@ typedef enum fib_forward_chain_type_t_ {
     [FIB_FORW_CHAIN_TYPE_ETHERNET]      = "ethernet",     	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP4]   = "unicast-ip4",	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP6]   = "unicast-ip6",	\
+    [FIB_FORW_CHAIN_TYPE_MCAST_IP4]     = "multicast-ip4",	\
+    [FIB_FORW_CHAIN_TYPE_MCAST_IP6]     = "multicast-ip6",	\
     [FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS]  = "mpls-neos",	        \
     [FIB_FORW_CHAIN_TYPE_MPLS_EOS]      = "mpls-eos",	        \
 }
@@ -263,6 +273,10 @@ typedef enum fib_route_path_flags_t_
      * Recursion constraint of via an attahced prefix
      */
     FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED = (1 << 1),
+    /**
+     * A for-us/local path
+     */
+    FIB_ROUTE_PATH_LOCAL = (1 << 2),
 } fib_route_path_flags_t;
 
 /**

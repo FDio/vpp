@@ -51,6 +51,16 @@
  * This file contains code to manage loopback interfaces.
  */
 
+const u8 *
+ethernet_ip_mcast_dst_addr (void)
+{
+  const static u8 ethernet_mcast_dst_mac[] = {
+    0x1, 0x0, 0x05, 0x0, 0x0, 0x0,
+  };
+
+  return (ethernet_mcast_dst_mac);
+}
+
 /**
  * @brief build a rewrite string to use for sending packets of type 'link_type'
  * to 'dst_address'

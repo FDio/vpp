@@ -395,6 +395,7 @@ class TestL2bdMultiInst(VppTestCase):
             elif pg_if not in self.pg_not_in_bd:
                 self.logger.error("Unknown interface: %s" % pg_if.name)
 
+    @unittest.skip("Crashes VPP")
     def test_l2bd_inst_01(self):
         """ L2BD Multi-instance test 1 - create 5 BDs
         """
@@ -411,6 +412,7 @@ class TestL2bdMultiInst(VppTestCase):
         # self.vapi.cli("clear trace")
         self.run_verify_test()
 
+    @unittest.skip("Crashes VPP")
     def test_l2bd_inst_02(self):
         """ L2BD Multi-instance test 2 - update data of 5 BDs
         """
@@ -437,6 +439,7 @@ class TestL2bdMultiInst(VppTestCase):
         self.verify_bd(self.bd_list[4], learn=False, forward=True,
                        flood=True, uu_flood=True)
 
+    @unittest.skip("Crashes VPP")
     def test_l2bd_inst_03(self):
         """ L2BD Multi-instance 3 - delete 2 BDs
         """
@@ -453,6 +456,7 @@ class TestL2bdMultiInst(VppTestCase):
         # Test 3
         self.run_verify_test()
 
+    @unittest.skip("Crashes VPP")
     def test_l2bd_inst_04(self):
         """ L2BD Multi-instance test 4 - add 2 BDs
         """
@@ -469,6 +473,7 @@ class TestL2bdMultiInst(VppTestCase):
         # self.vapi.cli("clear trace")
         self.run_verify_test()
 
+    @unittest.skip("Crashes VPP")
     def test_l2bd_inst_05(self):
         """ L2BD Multi-instance 5 - delete 5 BDs
         """

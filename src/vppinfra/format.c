@@ -150,13 +150,13 @@ justify (u8 * s, format_info_t * fi, uword s_len_orig)
   return s;
 }
 
-static u8 *
-do_percent (u8 ** _s, u8 * fmt, va_list * va)
+static const u8 *
+do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 {
   u8 *s = *_s;
   uword c;
 
-  u8 *f = fmt;
+  const u8 *f = fmt;
 
   format_info_t fi = {
     .justify = '+',
@@ -385,7 +385,7 @@ done:
 u8 *
 va_format (u8 * s, const char *fmt, va_list * va)
 {
-  u8 *f = (u8 *) fmt, *g;
+  const u8 *f = (u8 *) fmt, *g;
   u8 c;
 
   g = f;
