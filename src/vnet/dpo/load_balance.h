@@ -36,6 +36,7 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/fib/fib_types.h>
+#include <vnet/fib/fib_entry.h>
 
 /**
  * Load-balance main
@@ -97,6 +98,11 @@ typedef struct load_balance_t_ {
      * u8.
      */
     dpo_proto_t lb_proto;
+
+    /**
+     * Flags from the load-balance's associated fib_entry_t
+     */
+    fib_entry_flag_t lb_fib_entry_flags;
 
     /**
      * The number of locks, which is approximately the number of users,
@@ -167,6 +173,8 @@ extern void load_balance_set_bucket(index_t lbi,
 				    const dpo_id_t *next);
 extern void load_balance_set_urpf(index_t lbi,
 				  index_t urpf);
+extern void load_balance_set_fib_entry_flags(index_t lbi,
+                                             fib_entry_flag_t flags);
 extern index_t load_balance_get_urpf(index_t lbi);
 
 extern u8* format_load_balance(u8 * s, va_list * args);

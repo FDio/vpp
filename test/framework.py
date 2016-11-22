@@ -293,6 +293,7 @@ class VppTestCase(unittest.TestCase):
             self.logger.info(self.vapi.ppcli("show hardware"))
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show run"))
+            self.logger.info(self.vapi.ppcli("show mfib en"))
             self.registry.remove_vpp_config(self.logger)
 
     def setUp(self):

@@ -5,6 +5,7 @@ import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
+from vpp_pg_interface import is_ipv6_misc
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -12,9 +13,8 @@ from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation
 from util import ppp
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
-    in6_mactoifaceid
+    in6_mactoifaceid, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
-
 
 def mk_ll_addr(mac):
     euid = in6_mactoifaceid(mac)
@@ -287,27 +287,38 @@ class TestIPv6(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, pkts,
                                         "No response to NS for unknown target")
 
-    def send_and_expect_ra(self, intf, pkts, remark, src_ip=None):
-        if not src_ip:
-            src_ip = intf.remote_ip6
-        intf.add_stream(pkts)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = intf.get_capture(1)
+    def validate_ra(self, intf, rx, dst_ip=None):
+        if not dst_ip:
+            dst_ip = intf.remote_ip6
 
-        self.assertEqual(len(rx), 1)
-        rx = rx[0]
+        # unicasted packets must come to the unicast mac 
+        self.assertEqual(rx[Ether].dst, intf.remote_mac)
+
+        # and from the router's MAC
+        self.assertEqual(rx[Ether].src, intf.local_mac)
 
         # the rx'd RA should be addressed to the sender's source
         self.assertTrue(rx.haslayer(ICMPv6ND_RA))
         self.assertEqual(in6_ptop(rx[IPv6].dst),
-                         in6_ptop(src_ip))
+                         in6_ptop(dst_ip))
 
         # and come from the router's link local
         self.assertTrue(in6_islladdr(rx[IPv6].src))
         self.assertEqual(in6_ptop(rx[IPv6].src),
                          in6_ptop(mk_ll_addr(intf.local_mac)))
+
+
+    def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
+                           filter_out_fn=is_ipv6_misc):
+        intf.add_stream(pkts)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = intf.get_capture(1, filter_out_fn=filter_out_fn)
+
+        self.assertEqual(len(rx), 1)
+        rx = rx[0]
+        self.validate_ra(intf, rx, dst_ip)
 
     def test_rs(self):
         """ IPv6 Router Solicitation Exceptions
@@ -319,6 +330,9 @@ class TestIPv6(VppTestCase):
         # Before we begin change the IPv6 RA responses to use the unicast
         # address - that way we will not confuse them with the periodic
         # RAs which go to the mcast address
+        # Sit and wait for the first periodic RA.
+        #
+        # TODO
         #
         self.pg0.ip6_ra_config(send_unicast=1)
 
@@ -365,8 +379,23 @@ class TestIPv6(VppTestCase):
              IPv6(dst=self.pg0.local_ip6, src=ll) /
              ICMPv6ND_RS())
         pkts = [p]
-        self.send_and_expect_ra(
-            self.pg0, pkts, "RS sourced from link-local", src_ip=ll)
+        self.send_and_expect_ra(self.pg0, pkts,
+                                "RS sourced from link-local",
+                                dst_ip=ll)
+
+        #
+        # Send the RS multicast
+        #
+        self.pg0.ip6_ra_config(send_unicast=1)
+        dmac = in6_getnsmac(inet_pton(socket.AF_INET6, "ff02::2"))
+        ll = mk_ll_addr(self.pg0.remote_mac)
+        p = (Ether(dst=dmac, src=self.pg0.remote_mac) /
+             IPv6(dst="ff02::2", src=ll) /
+             ICMPv6ND_RS())
+        pkts = [p]
+        self.send_and_expect_ra(self.pg0, pkts,
+                                "RS sourced from link-local",
+                                dst_ip=ll)
 
         #
         # Source from the unspecified address ::. This happens when the RS
@@ -376,74 +405,20 @@ class TestIPv6(VppTestCase):
         # If we happen to pick up the periodic RA at this point then so be it,
         # it's not an error.
         #
-        self.pg0.ip6_ra_config(send_unicast=1)
-        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(dst=self.pg0.local_ip6, src="::") /
+        self.pg0.ip6_ra_config(send_unicast=1, suppress=1)
+        p = (Ether(dst=dmac, src=self.pg0.remote_mac) /
+             IPv6(dst="ff02::2", src="::") /
              ICMPv6ND_RS())
         pkts = [p]
-
-        self.pg0.add_stream(pkts)
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg0.get_capture(1, filter_out_fn=None)
-        found = 0
-        for rx in capture:
-            if (rx.haslayer(ICMPv6ND_RA)):
-                # and come from the router's link local
-                self.assertTrue(in6_islladdr(rx[IPv6].src))
-                self.assertEqual(in6_ptop(rx[IPv6].src),
-                                 in6_ptop(mk_ll_addr(self.pg0.local_mac)))
-                # sent to the all hosts mcast
-                self.assertEqual(in6_ptop(rx[IPv6].dst), "ff02::1")
-
-                found = 1
-        self.assertTrue(found)
-
-    @unittest.skip("Unsupported")
-    def test_mrs(self):
-        """ IPv6 Multicast Router Solicitation Exceptions
-
-        Test scenario:
-        """
+        self.send_and_expect_ra(self.pg0, pkts,
+                                "RS sourced from unspecified",
+                                dst_ip="ff02::1",
+                                filter_out_fn=None)
 
         #
-        # An RS from a link source address
-        #  - expect an RA in return
+        # Reset the periodic advertisements back to default values 
         #
-        nsma = in6_getnsma(inet_pton(socket.AF_INET6, self.pg0.local_ip6))
-        d = inet_ntop(socket.AF_INET6, nsma)
-
-        p = (Ether(dst=getmacbyip6("ff02::2")) /
-             IPv6(dst=d, src=self.pg0.remote_ip6) /
-             ICMPv6MRD_Solicitation())
-        pkts = [p]
-
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.assert_nothing_captured(
-            remark="No response to NS source by address not on sub-net")
-
-        #
-        # An RS from a non link source address
-        #
-        nsma = in6_getnsma(inet_pton(socket.AF_INET6, self.pg0.local_ip6))
-        d = inet_ntop(socket.AF_INET6, nsma)
-
-        p = (Ether(dst=getmacbyip6("ff02::2")) /
-             IPv6(dst=d, src="2002::2") /
-             ICMPv6MRD_Solicitation())
-        pkts = [p]
-
-        self.send_and_assert_no_replies(self.pg0, pkts,
-                                        "RA rate limited")
-        self.pg0.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        self.pg0.assert_nothing_captured(
-            remark="No response to NS source by address not on sub-net")
-
+        self.pg0.ip6_ra_config(no=1, suppress=1, send_unicast=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -1,0 +1,22 @@
+packet-generator new {
+  name x
+  limit 1
+  node ip4-input
+  size 64-64
+  no-recycle
+  data {
+    ICMP: 1.0.0.2 -> 232.1.1.1
+    ICMP echo_request
+    incrementing 100
+  }
+}
+
+trace add pg-input 100
+loop create
+loop create
+set int state loop0 up
+set int state loop1 up
+
+ip mroute add 232.1.1.1 via pg0 Accept
+ip mroute add 232.1.1.1 via loop0 Forward
+ip mroute add 232.1.1.1 via loop1 Forward
