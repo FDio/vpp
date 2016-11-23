@@ -323,7 +323,7 @@ dpdk_buffer_recycle (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_buffer_t * b, u32 bi, struct rte_mbuf **mbp)
 {
   dpdk_main_t *dm = &dpdk_main;
-  u32 my_cpu = my_cpu = vm->cpu_index;
+  u32 my_cpu = vm->cpu_index;
   struct rte_mbuf *mb_new;
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_RECYCLE) == 0)
