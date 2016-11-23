@@ -118,8 +118,9 @@ pcap_trace_command_fn (vlib_main_t * vm,
 
 	  if (dm->pcap_filename)
 	    vec_free (dm->pcap_filename);
-	  vec_add1 (filename, 0);
+          vec_add1 (chroot_filename, 0);
 	  dm->pcap_filename = chroot_filename;
+          dm->pcap_main.file_name = (char *) dm->pcap_filename;
 	  matched = 1;
 	}
       else if (unformat (input, "status"))
