@@ -7,8 +7,7 @@ class VppLoInterface(VppInterface):
 
     def __init__(self, test, lo_index):
         """ Create VPP loopback interface """
-        self._lo_index = lo_index
-        self._test = test
-        r = self.test.vapi.create_loopback()
+        r = test.vapi.create_loopback()
         self._sw_if_index = r.sw_if_index
-        self.post_init_setup()
+        super(VppLoInterface, self).__init__(test)
+        self._lo_index = lo_index

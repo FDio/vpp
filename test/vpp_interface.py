@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABCMeta
 import socket
-from logging import info
 
 from util import Host
 
@@ -100,7 +99,7 @@ class VppInterface(object):
 
     def host_by_mac(self, mac):
         """
-        :param ip: MAC address to find host by.
+        :param mac: MAC address to find host by.
         :return: Host object assigned to interface.
         """
         return self._hosts_by_mac[mac]
@@ -138,8 +137,14 @@ class VppInterface(object):
             self._hosts_by_ip4[ip4] = host
             self._hosts_by_ip6[ip6] = host
 
-    def post_init_setup(self):
-        """Additional setup run after creating an interface object."""
+    @abstractmethod
+    def __init__(self, test):
+        self._test = test
+
+        self._remote_hosts = []
+        self._hosts_by_mac = {}
+        self._hosts_by_ip4 = {}
+        self._hosts_by_ip6 = {}
 
         self.generate_remote_hosts()
 
@@ -153,8 +158,10 @@ class VppInterface(object):
         for intf in r:
             if intf.sw_if_index == self.sw_if_index:
                 self._name = intf.interface_name.split(b'\0', 1)[0]
-                self._local_mac = ':'.join(intf.l2_address.encode('hex')[i:i + 2]
-                                           for i in range(0, 12, 2))
+                self._local_mac = ':'.join(
+                    intf.l2_address.encode('hex')[i:i + 2]
+                    for i in range(0, 12, 2)
+                )
                 self._dump = intf
                 break
         else:
@@ -162,13 +169,6 @@ class VppInterface(object):
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
                 (self.sw_if_index, repr(r)))
-
-    @abstractmethod
-    def __init__(self, test, index):
-        self._test = test
-        self.post_init_setup()
-        info("New %s, MAC=%s, remote_ip4=%s, local_ip4=%s" %
-             (self.__name__, self.remote_mac, self.remote_ip4, self.local_ip4))
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""
