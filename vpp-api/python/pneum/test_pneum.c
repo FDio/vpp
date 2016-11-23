@@ -106,8 +106,11 @@ int main (int argc, char ** argv)
     /* Construct the API message */
     M_NOALLOC(SHOW_VERSION, show_version);
     pneum_write((char *)mp, sizeof(*mp));
+#ifndef __COVERITY__
+    /* As given, async is always 1. Shut up Coverity about it */
     if (!async)
       while (result_ready == 0);
+#endif
   }
   if (async) {
     vl_api_control_ping_t control;

@@ -1214,6 +1214,7 @@ void generate_msg_name_crc_list (YYSTYPE a1, FILE *fp)
         np = np->peer;
     }
     fprintf (fp, "\n#endif\n\n");
+    free (unique_suffix);
 }
 
 void generate_typedefs(YYSTYPE a1, FILE *fp)
