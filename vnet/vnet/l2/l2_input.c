@@ -159,45 +159,8 @@ classify_and_dispatch (vlib_main_t * vm,
   h0 = vlib_buffer_get_current (b0);
   l3h0 = (u8 *) h0 + vnet_buffer (b0)->l2.l2_len;
 
-  /*
-   * Determine L3 packet type. Only need to check the common types.
-   * Used to filter out features that don't apply to common packets.
-   */
   ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
-  if (ethertype == ETHERNET_TYPE_IP4)
-    {
-      protocol = ((ip4_header_t *) l3h0)->protocol;
-      if ((protocol == IP_PROTOCOL_UDP) || (protocol == IP_PROTOCOL_TCP))
-	{
-	  feat_mask = IP_UDP_TCP_FEAT_MASK;
-	}
-      else
-	{
-	  feat_mask = IP4_FEAT_MASK;
-	}
-    }
-  else if (ethertype == ETHERNET_TYPE_IP6)
-    {
-      protocol = ((ip6_header_t *) l3h0)->protocol;
-      /* Don't bother checking for extension headers for now */
-      if ((protocol == IP_PROTOCOL_UDP) || (protocol == IP_PROTOCOL_TCP))
-	{
-	  feat_mask = IP_UDP_TCP_FEAT_MASK;
-	}
-      else
-	{
-	  feat_mask = IP6_FEAT_MASK;
-	}
-    }
-  else if (ethertype == ETHERNET_TYPE_MPLS_UNICAST)
-    {
-      feat_mask = IP6_FEAT_MASK;
-    }
-  else
-    {
-      /* allow all features */
-      feat_mask = ~0;
-    }
+  feat_mask = ~0;
 
   /* determine layer2 kind for stat and mask */
   mcast_dmac = ethernet_address_cast (h0->dst_address);

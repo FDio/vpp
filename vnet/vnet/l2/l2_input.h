@@ -95,7 +95,6 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
 #define foreach_l2input_feat                    \
  _(DROP,          "feature-bitmap-drop")        \
  _(XCONNECT,      "l2-output")                  \
- _(IPIW,          "feature-bitmap-drop")        \
  _(FLOOD,         "l2-flood")                   \
  _(ARP_TERM,      "arp-term-l2bd")              \
  _(UU_FLOOD,      "l2-flood")                   \
@@ -104,17 +103,7 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
  _(LEARN,         "l2-learn")                   \
  _(VTR,           "l2-input-vtr")               \
  _(VPATH,         "vpath-input-l2")             \
- _(CTRL_PKT,      "feature-bitmap-drop")        \
- _(L2PT,          "feature-bitmap-drop")        \
- _(IGMP_SNOOP,    "feature-bitmap-drop")        \
- _(MLD_SNOOP,     "feature-bitmap-drop")        \
- _(DHCP_SNOOP,    "feature-bitmap-drop")        \
- _(DAI,           "feature-bitmap-drop")        \
- _(IPSG,          "feature-bitmap-drop")        \
  _(ACL,           "l2-input-acl")               \
- _(QOS,           "feature-bitmap-drop")        \
- _(CFM,           "feature-bitmap-drop")        \
- _(SPAN,          "feature-bitmap-drop")        \
  _(POLICER_CLAS,  "l2-policer-classify")	\
  _(INPUT_CLASSIFY, "l2-input-classify")
 
@@ -174,35 +163,6 @@ bd_feature_arp_term (l2_bridge_domain_t * bd_config)
 }
 
 /** Masks for eliminating features that do not apply to a packet */
-
-#define IP4_FEAT_MASK  ~(L2INPUT_FEAT_CTRL_PKT    | \
-                         L2INPUT_FEAT_MLD_SNOOP   | \
-                         L2INPUT_FEAT_L2PT        | \
-                         L2INPUT_FEAT_CFM         | \
-			 L2INPUT_FEAT_DAI)
-
-#define IP6_FEAT_MASK  ~(L2INPUT_FEAT_CTRL_PKT    | \
-                         L2INPUT_FEAT_IGMP_SNOOP  | \
-                         L2INPUT_FEAT_L2PT        | \
-                         L2INPUT_FEAT_CFM         | \
-                         L2INPUT_FEAT_DAI)
-
-#define IP_UDP_TCP_FEAT_MASK  ~(L2INPUT_FEAT_CTRL_PKT   | \
-                                L2INPUT_FEAT_L2PT       | \
-                                L2INPUT_FEAT_IGMP_SNOOP | \
-                                L2INPUT_FEAT_MLD_SNOOP  | \
-                                L2INPUT_FEAT_DHCP_SNOOP | \
-                                L2INPUT_FEAT_CFM        | \
-                                L2INPUT_FEAT_DAI)
-
-#define MPLS_FEAT_MASK  ~(L2INPUT_FEAT_CTRL_PKT   | \
-                          L2INPUT_FEAT_L2PT       | \
-                          L2INPUT_FEAT_IGMP_SNOOP | \
-                          L2INPUT_FEAT_MLD_SNOOP  | \
-                          L2INPUT_FEAT_DHCP_SNOOP | \
-                          L2INPUT_FEAT_CFM        | \
-                          L2INPUT_FEAT_DAI)
-
 
 /** Get a pointer to the config for the given interface */
 l2_input_config_t *l2input_intf_config (u32 sw_if_index);
