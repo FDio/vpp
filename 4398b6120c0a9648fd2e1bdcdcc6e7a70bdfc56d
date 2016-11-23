@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_0d5df1e9",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-23T10:05:21Z",
+      "side": 1,
+      "message": "is this import actually used?",
+      "revId": "4398b6120c0a9648fd2e1bdcdcc6e7a70bdfc56d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2d58adf9",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-23T10:05:21Z",
+      "side": 1,
+      "message": "is this import actually used?",
+      "revId": "4398b6120c0a9648fd2e1bdcdcc6e7a70bdfc56d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4d63f9b1",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-23T10:05:21Z",
+      "side": 1,
+      "message": "why do we need to keep this code in the comments?",
+      "range": {
+        "startLine": 100,
+        "startChar": 8,
+        "endLine": 104,
+        "endChar": 22
+      },
+      "revId": "4398b6120c0a9648fd2e1bdcdcc6e7a70bdfc56d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
