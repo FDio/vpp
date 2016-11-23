@@ -58,9 +58,16 @@ class VppPGInterface(VppInterface):
         self._out_history_counter += 1
         return v
 
-    def post_init_setup(self):
-        """ Perform post-init setup for super class and add our own setup """
-        super(VppPGInterface, self).post_init_setup()
+    def __init__(self, test, pg_index):
+        """ Create VPP packet-generator interface """
+        r = test.vapi.pg_create_interface(pg_index)
+        self._sw_if_index = r.sw_if_index
+
+        super(VppPGInterface, self).__init__(test)
+
+        self._in_history_counter = 0
+        self._out_history_counter = 0
+        self._pg_index = pg_index
         self._out_file = "pg%u_out.pcap" % self.pg_index
         self._out_path = self.test.tempdir + "/" + self._out_file
         self._in_file = "pg%u_in.pcap" % self.pg_index
@@ -70,16 +77,6 @@ class VppPGInterface(VppInterface):
         self._cap_name = "pcap%u" % self.sw_if_index
         self._input_cli = "packet-generator new pcap %s source pg%u name %s" % (
             self.in_path, self.pg_index, self.cap_name)
-
-    def __init__(self, test, pg_index):
-        """ Create VPP packet-generator interface """
-        self._in_history_counter = 0
-        self._out_history_counter = 0
-        self._pg_index = pg_index
-        self._test = test
-        r = self.test.vapi.pg_create_interface(self.pg_index)
-        self._sw_if_index = r.sw_if_index
-        self.post_init_setup()
 
     def enable_capture(self):
         """ Enable capture on this packet-generator interface"""
