@@ -233,6 +233,83 @@ l2fib_lookup_2 (BVT (clib_bihash) * mac_table,
     }
 }
 
+static_always_inline void
+l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
+		l2fib_entry_key_t * cached_key,
+		l2fib_entry_result_t * cached_result,
+		u8 * mac0,
+		u8 * mac1,
+		u8 * mac2,
+		u8 * mac3,
+		u16 bd_index0,
+		u16 bd_index1,
+		u16 bd_index2,
+		u16 bd_index3,
+		l2fib_entry_key_t * key0,
+		l2fib_entry_key_t * key1,
+		l2fib_entry_key_t * key2,
+		l2fib_entry_key_t * key3,
+		u32 * bucket0,
+		u32 * bucket1,
+		u32 * bucket2,
+		u32 * bucket3,
+		l2fib_entry_result_t * result0,
+		l2fib_entry_result_t * result1,
+		l2fib_entry_result_t * result2,
+		l2fib_entry_result_t * result3)
+{
+  /* set up key */
+  key0->raw = l2fib_make_key (mac0, bd_index0);
+  key1->raw = l2fib_make_key (mac1, bd_index1);
+  key2->raw = l2fib_make_key (mac2, bd_index2);
+  key3->raw = l2fib_make_key (mac3, bd_index3);
+
+  if ((key0->raw == cached_key->raw) && (key1->raw == cached_key->raw) &&
+      (key2->raw == cached_key->raw) && (key3->raw == cached_key->raw))
+    {
+      /* Both hit in the one-entry cache */
+      result0->raw = cached_result->raw;
+      result1->raw = cached_result->raw;
+      result2->raw = cached_result->raw;
+      result3->raw = cached_result->raw;
+      *bucket0 = ~0;
+      *bucket1 = ~0;
+      *bucket2 = ~0;
+      *bucket3 = ~0;
+
+    }
+  else
+    {
+      BVT (clib_bihash_kv) kv0, kv1, kv2, kv3;
+
+      /*
+       * Do a regular mac table lookup
+       * Interleave lookups for packet 0 and packet 1
+       */
+      kv0.key = key0->raw;
+      kv1.key = key1->raw;
+      kv2.key = key2->raw;
+      kv3.key = key3->raw;
+      kv0.value = ~0ULL;
+      kv1.value = ~0ULL;
+      kv2.value = ~0ULL;
+      kv3.value = ~0ULL;
+
+      BV (clib_bihash_search_inline) (mac_table, &kv0);
+      BV (clib_bihash_search_inline) (mac_table, &kv1);
+      BV (clib_bihash_search_inline) (mac_table, &kv2);
+      BV (clib_bihash_search_inline) (mac_table, &kv3);
+
+      result0->raw = kv0.value;
+      result1->raw = kv1.value;
+      result2->raw = kv2.value;
+      result3->raw = kv3.value;
+
+      /* Update one-entry cache */
+      cached_key->raw = key1->raw;
+      cached_result->raw = result1->raw;
+    }
+}
 
 BVT (clib_bihash) * get_mac_table (void);
      void
