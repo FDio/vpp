@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_8d544122",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-23T15:08:35Z",
+      "side": 1,
+      "message": "this should be\n:param str:\nno?",
+      "revId": "a32e5289cc475956d712efb908bcaf59dc438fd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ad2edda3",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-11-23T15:08:35Z",
+      "side": 1,
+      "message": "no __new__ please, please follow this approach:\n\nhttps://gerrit.fd.io/r/#/c/3875/4\n\nwe want to have a way of tackling the vpp config separately from the python object\n\nthe idea is to be able to easily do tests like this:\n\ni \u003d VppInterface()\ni.add_vpp_config()\nsucceeded \u003d False\ntry:\n    i.add_vpp_config()\n    succeeded \u003d True\nexcept:\n    pass # expected to fail\n\nif succeeded:\n    raise(\"Duplicate config add succeeded!\")",
+      "revId": "a32e5289cc475956d712efb908bcaf59dc438fd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
