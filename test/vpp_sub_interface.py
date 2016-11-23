@@ -17,8 +17,11 @@ class VppSubInterface(VppPGInterface):
         """Sub-interface ID"""
         return self._sub_id
 
+    def __new__(cls, test, parent, sub_id):
+        return VppInterface.__new__(cls)
+
     def __init__(self, test, parent, sub_id):
-        self._test = test
+        VppInterface.__init__(self, test)
         self._parent = parent
         self._parent.add_sub_if(self)
         self._sub_id = sub_id
@@ -49,14 +52,17 @@ class VppDot1QSubint(VppSubInterface):
         """VLAN tag"""
         return self._vlan
 
-    def __init__(self, test, parent, sub_id, vlan=None):
+    def __new__(cls, test, parent, sub_id, vlan=None):
+        instance = VppSubInterface.__new__(cls, test, parent, sub_id)
         if vlan is None:
             vlan = sub_id
+        instance._vlan = vlan
+        r = test.vapi.create_vlan_subif(parent.sw_if_index, vlan)
+        instance._sw_if_index = r.sw_if_index
+        return instance
+
+    def __init__(self, test, parent, sub_id, vlan=None):
         super(VppDot1QSubint, self).__init__(test, parent, sub_id)
-        self._vlan = vlan
-        r = self.test.vapi.create_vlan_subif(parent.sw_if_index, self.vlan)
-        self._sw_if_index = r.sw_if_index
-        VppInterface.post_init_setup(self)
 
     def create_arp_req(self):
         packet = VppPGInterface.create_arp_req(self)
@@ -94,22 +100,20 @@ class VppDot1ADSubint(VppSubInterface):
         """Inner VLAN tag"""
         return self._inner_vlan
 
+    def __new__(cls, test, parent, sub_id, outer_vlan, inner_vlan):
+        instance = VppSubInterface.__new__(cls, test, parent, sub_id)
+        r = test.vapi.create_subif(parent.sw_if_index, sub_id, outer_vlan,
+                                   inner_vlan, dot1ad=1, two_tags=1,
+                                   exact_match=1)
+        instance._sw_if_index = r.sw_if_index
+        return instance
+
     def __init__(self, test, parent, sub_id, outer_vlan, inner_vlan):
         super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
         self.DOT1AD_TYPE = 0x88A8
         self.DOT1Q_TYPE = 0x8100
         self._outer_vlan = outer_vlan
         self._inner_vlan = inner_vlan
-        r = self.test.vapi.create_subif(
-            parent.sw_if_index,
-            self.sub_id,
-            self.outer_vlan,
-            self.inner_vlan,
-            dot1ad=1,
-            two_tags=1,
-            exact_match=1)
-        self._sw_if_index = r.sw_if_index
-        VppInterface.post_init_setup(self)
 
     def create_arp_req(self):
         packet = VppPGInterface.create_arp_req(self)
