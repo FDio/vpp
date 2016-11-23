@@ -507,9 +507,6 @@ void dpdk_rx_trace (dpdk_main_t * dm,
 #define EFD_OPERATION_LESS_THAN          0
 #define EFD_OPERATION_GREATER_OR_EQUAL   1
 
-void *dpdk_input_multiarch_select ();
-void *dpdk_input_rss_multiarch_select ();
-
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
 format_function_t format_dpdk_tx_dma_trace;
