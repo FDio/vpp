@@ -16,6 +16,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/dpo/receive_dpo.h>
 
 /**
  * @file
@@ -97,6 +98,19 @@ VNET_HW_INTERFACE_CLASS (vxlan_hw_class) = {
   .build_rewrite = default_build_rewrite,
 };
 
+static void
+vxlan_tunnel_restack_dpo(vxlan_tunnel_t * t)
+{
+    dpo_id_t dpo = DPO_INVALID;
+    u32 encap_index = ip46_address_is_ip4(&t->dst) ?
+        vxlan4_encap_node.index : vxlan6_encap_node.index;
+    fib_forward_chain_type_t forw_type = ip46_address_is_ip4(&t->dst) ?
+        FIB_FORW_CHAIN_TYPE_UNICAST_IP4 : FIB_FORW_CHAIN_TYPE_UNICAST_IP6;
+
+    fib_entry_contribute_forwarding (t->fib_entry_index, forw_type, &dpo);
+    dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
+    dpo_reset(&dpo);
+}
 
 static vxlan_tunnel_t *
 vxlan_tunnel_from_fib_node (fib_node_t *node)
@@ -116,22 +130,7 @@ static fib_node_back_walk_rc_t
 vxlan_tunnel_back_walk (fib_node_t *node,
 			fib_node_back_walk_ctx_t *ctx)
 {
-    vxlan_tunnel_t *t = vxlan_tunnel_from_fib_node(node);
-    dpo_id_t dpo = DPO_INVALID;
-
-    if (ip46_address_is_ip4(&t->dst)) {
-	fib_entry_contribute_forwarding
-	    (t->fib_entry_index, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo);
-	dpo_stack_from_node
-	    (vxlan4_encap_node.index, &t->next_dpo, &dpo);
-    } else {
-	fib_entry_contribute_forwarding
-	    (t->fib_entry_index, FIB_FORW_CHAIN_TYPE_UNICAST_IP6, &dpo);
-	dpo_stack_from_node
-	    (vxlan6_encap_node.index, &t->next_dpo, &dpo);
-    }
-    dpo_reset(&dpo);
-
+    vxlan_tunnel_restack_dpo(vxlan_tunnel_from_fib_node(node));
     return (FIB_NODE_BACK_WALK_CONTINUE);
 }
 
@@ -175,6 +174,7 @@ const static fib_node_vft_t vxlan_vft = {
 
 #define foreach_copy_field                      \
 _(vni)                                          \
+_(mcast_sw_if_index)                            \
 _(encap_fib_index)
 
 #define foreach_copy_ipv4 {                     \
@@ -372,66 +372,59 @@ int vnet_vxlan_add_del_tunnel
       
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
-      /*
-       * source the FIB entry for the tunnel's destination
-       * and become a child thereof. The tunnel will then get poked
-       * when the forwarding for the entry updates, and the tunnel can
-       * re-stack accordingly
-       */
       fib_node_init(&t->node, FIB_NODE_TYPE_VXLAN_TUNNEL);
-      if (!is_ip6)
-        {
-	  dpo_id_t dpo = DPO_INVALID;
-	  const fib_prefix_t tun_dst_pfx = 
-	    {
-	      .fp_len = 32,
-	      .fp_proto = FIB_PROTOCOL_IP4,
-	      .fp_addr = 
-	        {
-		  .ip4 = t->dst.ip4,
-	        }
-	    };
+      fib_prefix_t tun_dst_pfx;
+      u32 encap_index = !is_ip6 ?
+          vxlan4_encap_node.index : vxlan6_encap_node.index;
+      vnet_flood_class_t flood_class = VNET_FLOOD_CLASS_TUNNEL_NORMAL;
 
-	  t->fib_entry_index = fib_table_entry_special_add
-	    (t->encap_fib_index, &tun_dst_pfx,
-	     FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE, ADJ_INDEX_INVALID);
-	  t->sibling_index = fib_entry_child_add
-	    (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_TUNNEL, t - vxm->tunnels);
-	  fib_entry_contribute_forwarding
-	    (t->fib_entry_index, FIB_FORW_CHAIN_TYPE_UNICAST_IP4, &dpo);
-	  dpo_stack_from_node (vxlan4_encap_node.index, &t->next_dpo, &dpo);
-	  dpo_reset(&dpo);
+      fib_prefix_from_ip46_addr(&t->dst, &tun_dst_pfx);
+      if (ip46_address_is_multicast(&t->dst))
+      {
+          fib_protocol_t fp;
+          u8 mcast_mac[6];
+          if (!is_ip6) {
+              ip4_multicast_ethernet_address(mcast_mac, &t->dst.ip4);
+              fp = FIB_PROTOCOL_IP4;
+          } else {
+              ip6_multicast_ethernet_address(mcast_mac, t->dst.ip6.as_u32[0]);
+              fp = FIB_PROTOCOL_IP6;
+          }
+          t->mcast_adj_index = adj_rewrite_add_and_lock
+              (fp, fib_proto_to_link(fp), t->mcast_sw_if_index, mcast_mac);
 
-	  /* Set vxlan tunnel output node to ip4 version */
-	  hi->output_node_index = vxlan4_encap_node.index;
-        }
-      else
-        {
-	  dpo_id_t dpo = DPO_INVALID;
-	  const fib_prefix_t tun_dst_pfx = 
-	    {
-	      .fp_len = 128,
-	      .fp_proto = FIB_PROTOCOL_IP6,
-	      .fp_addr = 
-	        {
-		  .ip6 = t->dst.ip6,
-	        }
-	    };
- 
-	  t->fib_entry_index = fib_table_entry_special_add
-	    (t->encap_fib_index, &tun_dst_pfx,
-	     FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE, ADJ_INDEX_INVALID);
-	  t->sibling_index = fib_entry_child_add
-	    (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_TUNNEL, t - vxm->tunnels);
-	  fib_entry_contribute_forwarding
-	    (t->fib_entry_index, FIB_FORW_CHAIN_TYPE_UNICAST_IP6, &dpo);
-	  dpo_stack_from_node
-	    (vxlan6_encap_node.index, &t->next_dpo, &dpo);
-	  dpo_reset(&dpo);
+	  flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
 
-	  /* Set vxlan tunnel output node to ip6 version */
-	  hi->output_node_index = vxlan6_encap_node.index;
-        }
+          /* Stack mcast dst mac addr rewrite on encap */
+          dpo_proto_t dproto = fib_proto_to_dpo(fp);
+          dpo_id_t dpo = DPO_INVALID;
+
+          dpo_set (&dpo, DPO_ADJACENCY, dproto, t->mcast_adj_index);
+          dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
+          dpo_reset(&dpo);
+
+          /* Add local mcast adj. */
+          receive_dpo_add_or_lock(dproto, ~0, NULL, &dpo);
+          t->fib_entry_index = fib_table_entry_special_dpo_add
+              (t->encap_fib_index, &tun_dst_pfx, FIB_SOURCE_SPECIAL, FIB_ENTRY_FLAG_NONE, &dpo);
+          dpo_reset(&dpo);
+      } else {
+          /*
+           * source the FIB entry for the tunnel's destination
+           * and become a child thereof. The tunnel will then get poked
+           * when the forwarding for the entry updates, and the tunnel can
+           * re-stack accordingly
+           */
+          t->fib_entry_index = fib_table_entry_special_add
+              (t->encap_fib_index, &tun_dst_pfx, FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE, ADJ_INDEX_INVALID);
+          t->sibling_index = fib_entry_child_add
+              (t->fib_entry_index, FIB_NODE_TYPE_VXLAN_TUNNEL, t - vxm->tunnels);
+          vxlan_tunnel_restack_dpo(t);
+      }
+      /* Set vxlan tunnel output node */
+      hi->output_node_index = encap_index;
+
+      vnet_get_sw_interface (vnet_get_main(), sw_if_index)->flood_class = flood_class;
     }
   else
     {
@@ -448,8 +441,16 @@ int vnet_vxlan_add_del_tunnel
 
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
-      fib_entry_child_remove(t->fib_entry_index, t->sibling_index);
-      fib_table_entry_delete_index(t->fib_entry_index, FIB_SOURCE_RR);
+      if (ip46_address_is_multicast(&t->dst))
+      {
+        adj_unlock(t->mcast_adj_index);
+        fib_table_entry_delete_index(t->fib_entry_index, FIB_SOURCE_SPECIAL);
+      }
+      else
+      {
+        fib_entry_child_remove(t->fib_entry_index, t->sibling_index);
+        fib_table_entry_delete_index(t->fib_entry_index, FIB_SOURCE_RR);
+      }
       fib_node_deinit(&t->node);
 
       if (!is_ip6)
@@ -515,19 +516,21 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
                                    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
-  ip46_address_t src, dst;
+  ip46_address_t src = {0} , dst = {0};
   u8 is_add = 1;
   u8 src_set = 0;
   u8 dst_set = 0;
+  u8 grp_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
   u32 encap_fib_index = 0;
+  u32 mcast_sw_if_index = ~0;
   u32 decap_next_index = ~0;
   u32 vni = 0;
   u32 tmp;
   int rv;
   vnet_vxlan_add_del_tunnel_args_t _a, * a = &_a;
-  u32 sw_if_index;
+  u32 tunnel_sw_if_index;
   
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -562,6 +565,22 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
         dst_set = 1;
         ipv6_set = 1;
       }
+    else if (unformat (line_input, "group %U %U",
+                       unformat_ip4_address, &dst.ip4,
+		       unformat_vnet_sw_interface,
+		       vnet_get_main(), &mcast_sw_if_index))
+      {
+        grp_set = dst_set = 1;
+        ipv4_set = 1;
+      }
+    else if (unformat (line_input, "group %U %U",
+                       unformat_ip6_address, &dst.ip6,
+		       unformat_vnet_sw_interface,
+		       vnet_get_main(), &mcast_sw_if_index))
+      {
+        grp_set = dst_set = 1;
+        ipv6_set = 1;
+      }
     else if (unformat (line_input, "encap-vrf-id %d", &tmp))
       {
         if (ipv6_set)
@@ -592,6 +611,12 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   if (dst_set == 0)
     return clib_error_return (0, "tunnel dst address not specified");
 
+  if (grp_set && !ip46_address_is_multicast(&dst))
+    return clib_error_return (0, "tunnel group address not multicast");
+
+  if (grp_set && mcast_sw_if_index == ~0)
+    return clib_error_return (0, "tunnel nonexistent multicast device");
+
   if (ipv4_set && ipv6_set)
     return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
 
@@ -613,14 +638,14 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   else          foreach_copy_ipv6
 #undef _
   
-  rv = vnet_vxlan_add_del_tunnel (a, &sw_if_index);
+  rv = vnet_vxlan_add_del_tunnel (a, &tunnel_sw_if_index);
 
   switch(rv)
     {
     case 0:
       if (is_add)
         vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, 
-			vnet_get_main(), sw_if_index);
+			vnet_get_main(), tunnel_sw_if_index);
       break;
 
     case VNET_API_ERROR_TUNNEL_EXIST:
@@ -661,7 +686,8 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
   .short_help = 
-  "create vxlan tunnel src <local-vtep-addr> dst <remote-vtep-addr> vni <nn>" 
+  "create vxlan tunnel src <local-vtep-addr>"
+  " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
   " [encap-vrf-id <nn>]",
   .function = vxlan_add_del_tunnel_command_fn,
 };

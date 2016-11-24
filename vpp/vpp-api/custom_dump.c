@@ -1410,23 +1410,22 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   (vl_api_vxlan_add_del_tunnel_t * mp, void *handle)
 {
   u8 *s;
-
   s = format (0, "SCRIPT: vxlan_add_del_tunnel ");
 
-  if (mp->is_ipv6)
-    {
-      s = format (s, "src %U ", format_ip6_address,
-		  (ip6_address_t *) mp->src_address);
-      s = format (s, "dst %U ", format_ip6_address,
-		  (ip6_address_t *) mp->dst_address);
-    }
-  else
-    {
-      s = format (s, "src %U ", format_ip4_address,
-		  (ip4_address_t *) mp->src_address);
-      s = format (s, "dst %U ", format_ip4_address,
-		  (ip4_address_t *) mp->dst_address);
-    }
+  ip46_address_t src, dst;
+
+  ip46_from_addr_buf (mp->is_ipv6, mp->dst_address, &dst);
+  ip46_from_addr_buf (mp->is_ipv6, mp->src_address, &src);
+
+  u8 is_grp = ip46_address_is_multicast (&dst);
+  char *dst_name = is_grp ? "group" : "dst";
+
+  s = format (s, "src %U ", format_ip46_address, &src, IP46_TYPE_ANY);
+  s = format (s, "%s %U ", dst_name, format_ip46_address,
+	      &dst, IP46_TYPE_ANY);
+
+  if (is_grp)
+    s = format (s, "mcast_sw_if_index %d ", ntohl (mp->mcast_sw_if_index));
 
   if (mp->encap_vrf_id)
     s = format (s, "encap-vrf-id %d ", ntohl (mp->encap_vrf_id));

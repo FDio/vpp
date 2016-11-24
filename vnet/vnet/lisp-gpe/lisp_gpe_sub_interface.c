@@ -133,6 +133,7 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
 
       vnet_sw_interface_t sub_itf_template = {
 	.type = VNET_SW_INTERFACE_TYPE_SUB,
+	.flood_class = VNET_FLOOD_CLASS_NORMAL,
 	.sup_sw_if_index = main_sw_if_index,
 	.sub.id = lisp_gpe_sub_interface_id++,
       };
