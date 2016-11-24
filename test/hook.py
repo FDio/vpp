@@ -57,7 +57,6 @@ class PollHook(Hook):
     """ Hook which checks if the vpp subprocess is alive """
 
     def __init__(self, testcase):
-        self.vpp_dead = False
         self.testcase = testcase
         self.logger = testcase.logger
 
@@ -92,7 +91,7 @@ class PollHook(Hook):
         Poll the vpp status and throw an exception if it's not running
         :raises VppDiedError: exception if VPP is not running anymore
         """
-        if self.vpp_dead:
+        if self.testcase.vpp_dead:
             # already dead, nothing to do
             return
 

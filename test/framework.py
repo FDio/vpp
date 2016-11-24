@@ -187,10 +187,12 @@ class VppTestCase(unittest.TestCase):
             cls.vpp_dead = False
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
             if cls.step:
-                cls.vapi.register_hook(StepHook(cls))
+                hook = StepHook(cls)
             else:
-                cls.vapi.register_hook(PollHook(cls))
+                hook = PollHook(cls)
+            cls.vapi.register_hook(hook)
             time.sleep(0.1)
+            hook.poll_vpp()
             try:
                 cls.vapi.connect()
             except:
@@ -209,7 +211,8 @@ class VppTestCase(unittest.TestCase):
             cls.vpp_stderr_reader_thread.start()
         except:
             if hasattr(cls, 'vpp'):
-                cls.vpp.terminate()
+                if not cls.vpp_dead:
+                    cls.vpp.terminate()
                 del cls.vpp
             raise
 
