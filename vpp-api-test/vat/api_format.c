@@ -10092,14 +10092,41 @@ api_sw_interface_tap_dump (vat_main_t * vam)
   W;
 }
 
+static uword get_decap_next_for_node(u8 * name, u32 ipv4_set)
+{
+  vxlan_main_t * vxm = &vxlan_main;
+  vlib_main_t * vm = vxm->vlib_main;
+  vlib_node_t * next_node = 0;
+  uword next_index = ~0;
+
+  next_node = vlib_get_node_by_name (vm, name);
+  if(next_node == 0)
+    return ~0;
+
+  if (ipv4_set)
+    {
+      next_index = vlib_node_add_next (vm, vxlan4_input_node.index, next_node->index);
+    }
+  else
+    {
+      next_index = vlib_node_add_next (vm, vxlan6_input_node.index, next_node->index);
+    }
+
+  return next_index;
+}
+
 static uword unformat_vxlan_decap_next
   (unformat_input_t * input, va_list * args)
 {
   u32 *result = va_arg (*args, u32 *);
+  u32 ipv4_set = va_arg (*args, int);
+  u8 * node_name = 0;
   u32 tmp;
 
   if (unformat (input, "l2"))
     *result = VXLAN_INPUT_NEXT_L2_INPUT;
+  else if (unformat (input, "node %U", node_name))
+    *result = get_decap_next_for_node(node_name, ipv4_set);
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -10150,7 +10177,7 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
       else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
 	;
       else if (unformat (line_input, "decap-next %U",
-			 unformat_vxlan_decap_next, &decap_next_index))
+			 unformat_vxlan_decap_next, &decap_next_index, ipv4_set))
 	;
       else if (unformat (line_input, "vni %d", &vni))
 	;
