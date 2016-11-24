@@ -407,7 +407,7 @@ VLIB_REGISTER_NODE (vxlan_gpe_encap_node) = {
 
   .next_nodes = {
     [VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
-		[VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP] = "ip6-lookup",
     [VXLAN_GPE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
