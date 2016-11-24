@@ -185,6 +185,7 @@ class VppPapiProvider(object):
             self,
             src_addr,
             dst_addr,
+            mcast_sw_if_index=0xFFFFFFFF,
             is_add=1,
             is_ipv6=0,
             encap_vrf_id=0,
@@ -198,12 +199,13 @@ class VppPapiProvider(object):
         :param is_ipv6:  (Default value = 0)
         :param encap_vrf_id:  (Default value = 0)
         :param decap_next_index:  (Default value = 0xFFFFFFFF)
+        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
         :param vni:  (Default value = 0)
 
         """
         return self.api(vpp_papi.vxlan_add_del_tunnel,
-                        (is_add, is_ipv6, src_addr, dst_addr, encap_vrf_id,
-                         decap_next_index, vni))
+                        (is_add, is_ipv6, src_addr, dst_addr, mcast_sw_if_index,
+			 encap_vrf_id, decap_next_index, vni))
 
     def bridge_domain_add_del(self, bd_id, flood=1, uu_flood=1, forward=1,
                               learn=1, arp_term=0, is_add=1):

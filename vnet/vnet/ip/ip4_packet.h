@@ -271,6 +271,19 @@ ip4_multicast_address_set_for_group (ip4_address_t * a, ip_multicast_group_t g)
 }
 
 always_inline void
+ip4_multicast_ethernet_address (u8 * ethernet_address, ip4_address_t * a)
+{
+  u8 *d = a->as_u8;
+
+  ethernet_address[0] = 0x01;
+  ethernet_address[1] = 0x00;
+  ethernet_address[2] = 0x5e;
+  ethernet_address[3] = d[1] & 0x7f;
+  ethernet_address[4] = d[2];
+  ethernet_address[5] = d[3];
+}
+
+always_inline void
 ip4_tcp_reply_x1 (ip4_header_t * ip0, tcp_header_t * tcp0)
 {
   u32 src0, dst0;
