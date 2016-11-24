@@ -86,6 +86,8 @@ typedef struct {
   ip46_address_t dst;
 
   u32 mcast_sw_if_index;
+  /* decap next index */
+  u32 decap_next_index;
 
   /* The FIB index for src/dst addresses */
   u32 encap_fib_index;
