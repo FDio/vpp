@@ -84,7 +84,8 @@ _(policer)                                      \
 _(ipsec)					\
 _(map)						\
 _(map_t)					\
-_(ip_frag)
+_(ip_frag)                                      \
+_(vxlan)
 
 /*
  * vnet stack buffer opaque array overlay structure.
@@ -326,6 +327,13 @@ typedef struct
       u32 saved_next_index;		/**< saved by drivers for short-cut */
       u16 buffer_advance;
     } device_input_feat;
+
+    /* vxlan, only valid there */
+    struct
+    {
+      u32 pad[5];      /* do not overlay w/ ip.adj_index[0,1] */
+      u32 node_index;
+    } vxlan;
 
     u32 unused[6];
   };
