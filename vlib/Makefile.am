@@ -25,6 +25,7 @@ vlib/config.h:
 	echo "#define __PRE_DATA_SIZE" $(PRE_DATA_SIZE) > $@
 
 libvlib_la_SOURCES =				\
+  vlib/buffer.c					\
   vlib/cli.c					\
   vlib/cli.h					\
   vlib/config.h					\
@@ -43,12 +44,6 @@ libvlib_la_SOURCES =				\
   vlib/threads.c				\
   vlib/threads_cli.c				\
   vlib/trace.c
-
-if WITH_DPDK
-  libvlib_la_SOURCES += vlib/dpdk_buffer.c
-else
-  libvlib_la_SOURCES += vlib/buffer.c
-endif
 
 nobase_include_HEADERS =			\
   vlib/buffer_funcs.h				\
