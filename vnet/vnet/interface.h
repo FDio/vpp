@@ -503,6 +503,15 @@ typedef struct
   } eth;
 } vnet_sub_interface_t;
 
+typedef enum
+{
+  /* Always flood */
+  VNET_FLOOD_CLASS_NORMAL,
+  VNET_FLOOD_CLASS_TUNNEL_MASTER,
+  /* Does not flood when tunnel master is in the same L2 BD */
+  VNET_FLOOD_CLASS_TUNNEL_NORMAL
+} vnet_flood_class_t;
+
 /* Software-interface.  This corresponds to a Ethernet VLAN, ATM vc, a
    tunnel, etc.  Configuration (e.g. IP address) gets attached to
    software interface. */
@@ -545,6 +554,8 @@ typedef struct
     /* VNET_SW_INTERFACE_TYPE_SUB. */
     vnet_sub_interface_t sub;
   };
+
+  vnet_flood_class_t flood_class;
 } vnet_sw_interface_t;
 
 typedef enum
