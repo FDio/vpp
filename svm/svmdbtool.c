@@ -121,6 +121,32 @@ dump_strings (char *chroot_path)
 }
 
 static void
+serialize_strings (char *chroot_path, char *filename)
+{
+  svmdb_client_t *c;
+  svmdb_map_args_t *ma;
+
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
+  (void) svmdb_local_serialize_strings (c, filename);
+  svmdb_unmap (c);
+}
+
+static void
+unserialize_strings (char *chroot_path, char *filename)
+{
+  svmdb_client_t *c;
+  svmdb_map_args_t *ma;
+
+  ma = map_arg_setup (chroot_path);
+
+  c = svmdb_map (ma);
+  (void) svmdb_local_unserialize_strings (c, filename);
+  svmdb_unmap (c);
+}
+
+static void
 test_vlib_vec_rate (char *chroot_path, f64 vr)
 {
   svmdb_client_t *c;
@@ -344,6 +370,7 @@ main (int argc, char **argv)
   u8 *vbl = 0, *value = 0;
   char *chroot_path = 0;
   u8 *chroot_path_u8;
+  u8 *filename;
   uword size;
   f64 vr;
   int uid, gid, rv;
@@ -466,6 +493,18 @@ main (int argc, char **argv)
 	    }
 	  vec_free (s);
 	  svmdbtool_main.gid = grp->gr_gid;
+	}
+      else if (unformat (&input, "serialize-strings %s", &filename))
+	{
+	  vec_add1 (filename, 0);
+	  serialize_strings (chroot_path, (char *) filename);
+	  parsed++;
+	}
+      else if (unformat (&input, "unserialize-strings %s", &filename))
+	{
+	  vec_add1 (filename, 0);
+	  unserialize_strings (chroot_path, (char *) filename);
+	  parsed++;
 	}
       else
 	{

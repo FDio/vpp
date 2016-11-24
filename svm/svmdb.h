@@ -120,6 +120,10 @@ int svmdb_local_add_del_notification (svmdb_client_t * client,
 void *svmdb_local_find_or_add_vec_variable (svmdb_client_t * client,
 					    char *var, u32 nbytes);
 
+int svmdb_local_serialize_strings (svmdb_client_t * client, char *filename);
+int svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename);
+
+
 #endif /* __included_svmdb_h__ */
 
 /*

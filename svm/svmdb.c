@@ -39,6 +39,7 @@
 #include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
+#include <vppinfra/serialize.h>
 
 #include "svmdb.h"
 
@@ -419,6 +420,124 @@ svmdb_local_dump_strings (svmdb_client_t * client)
   }));
   /* *INDENT-ON* */
   region_unlock (client->db_rp);
+}
+
+int
+svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
+{
+  uword *h;
+  u8 *key;
+  u32 value;
+  svmdb_shm_hdr_t *shm = client->shm;
+  serialize_main_t _sm, *sm = &_sm;
+  clib_error_t *error = 0;
+  u8 *sanitized_name = 0;
+  int fd = 0;
+
+  if (strstr (filename, "..") || index (filename, '/'))
+    {
+      error = clib_error_return (0, "Illegal characters in filename '%s'",
+				 filename);
+      goto out;
+    }
+
+  sanitized_name = format (0, "/tmp/%s%c", filename, 0);
+
+  fd = creat ((char *) sanitized_name, 0644);
+
+  if (fd < 0)
+    {
+      error = clib_error_return_unix (0, "Create '%s'", sanitized_name);
+      goto out;
+    }
+
+  serialize_open_unix_file_descriptor (sm, fd);
+
+  region_lock (client->db_rp, 20);
+
+  h = client->shm->namespaces[SVMDB_NAMESPACE_STRING];
+
+  serialize_likely_small_unsigned_integer (sm, hash_elts (h));
+
+  /* *INDENT-OFF* */
+  hash_foreach_mem(key, value, h,
+  ({
+    svmdb_value_t *v = pool_elt_at_index (shm->values, value);
+
+    /* Omit names with nil values */
+    if (vec_len(v->value))
+      {
+        serialize_cstring (sm, (char *)key);
+        serialize_cstring (sm, (char *)v->value);
+      }
+  }));
+  /* *INDENT-ON* */
+  region_unlock (client->db_rp);
+
+  serialize_close (sm);
+
+out:
+  if (fd > 0 && close (fd) < 0)
+    error = clib_error_return_unix (0, "close fd %d", fd);
+
+  if (error)
+    {
+      clib_error_report (error);
+      return -1;
+    }
+  return 0;
+}
+
+int
+svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename)
+{
+  serialize_main_t _sm, *sm = &_sm;
+  void *oldheap;
+  clib_error_t *error = 0;
+  u8 *key, *value;
+  int fd = 0;
+  u32 nelts;
+  int i;
+
+  fd = open (filename, O_RDONLY);
+
+  if (fd < 0)
+    {
+      error = clib_error_return_unix (0, "Failed to open '%s'", filename);
+      goto out;
+    }
+
+  unserialize_open_unix_file_descriptor (sm, fd);
+
+  region_lock (client->db_rp, 21);
+  oldheap = svm_push_data_heap (client->db_rp);
+
+  nelts = unserialize_likely_small_unsigned_integer (sm);
+
+  for (i = 0; i < nelts; i++)
+    {
+      unserialize_cstring (sm, (char **) &key);
+      unserialize_cstring (sm, (char **) &value);
+      local_set_variable_nolock (client, SVMDB_NAMESPACE_STRING,
+				 key, value, 1 /* elsize */ );
+      vec_free (key);
+      vec_free (value);
+    }
+  svm_pop_heap (oldheap);
+  region_unlock (client->db_rp);
+
+  serialize_close (sm);
+
+out:
+  if (fd > 0 && close (fd) < 0)
+    error = clib_error_return_unix (0, "close fd %d", fd);
+
+  if (error)
+    {
+      clib_error_report (error);
+      return -1;
+    }
+  return 0;
 }
 
 void
