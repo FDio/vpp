@@ -20,7 +20,7 @@
 #include <vnet/fib/fib_types.h>
 
 /**
- * A path extension is a per-entry addition to the forwarigind information
+ * A path extension is a per-entry addition to the forwarding information
  * when packets are sent for that entry over that path.
  *
  * For example:

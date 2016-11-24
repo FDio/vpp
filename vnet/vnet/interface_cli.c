@@ -697,6 +697,7 @@ create_sub_interfaces (vlib_main_t * vm,
       *kp = sup_and_sub_key;
 
       template.type = VNET_SW_INTERFACE_TYPE_SUB;
+      template.flood_class = VNET_FLOOD_CLASS_NORMAL;
       template.sup_sw_if_index = hi->sw_if_index;
       template.sub.id = id;
       if (id_min < id_max)
