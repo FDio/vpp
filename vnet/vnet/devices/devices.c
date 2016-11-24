@@ -67,6 +67,12 @@ VNET_FEATURE_INIT (worker_handoff, static) = {
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
 
+VNET_FEATURE_INIT (subif_input, static) = {
+  .arc_name = "device-input",
+  .node_name = "subif-input",
+  .runs_before = VNET_FEATURES ("span-input"),
+};
+
 VNET_FEATURE_INIT (span_input, static) = {
   .arc_name = "device-input",
   .node_name = "span-input",

@@ -637,10 +637,12 @@ nobase_include_HEADERS += 			\
 
 libvnet_la_SOURCES +=				\
   vnet/span/span.c	\
-  vnet/span/node.c
+  vnet/span/node.c      \
+  vnet/span/node_subif.c
 
 nobase_include_HEADERS += 			\
-  vnet/span/span.h
+  vnet/span/span.h      \
+  vnet/span/subif.h
 
 ########################################
 # Packet generator

@@ -175,51 +175,6 @@ parse_header (ethernet_input_variant_t variant,
   ethernet_buffer_set_vlan_count (b0, vlan_count);
 }
 
-// Determine the subinterface for this packet, given the result of the
-// vlan table lookups and vlan header parsing. Check the most specific
-// matches first.
-static_always_inline void
-identify_subint (vnet_hw_interface_t * hi,
-		 vlib_buffer_t * b0,
-		 u32 match_flags,
-		 main_intf_t * main_intf,
-		 vlan_intf_t * vlan_intf,
-		 qinq_intf_t * qinq_intf,
-		 u32 * new_sw_if_index, u8 * error0, u32 * is_l2)
-{
-  u32 matched;
-
-  matched = eth_identify_subint (hi, b0, match_flags,
-				 main_intf, vlan_intf, qinq_intf,
-				 new_sw_if_index, error0, is_l2);
-
-  if (matched)
-    {
-
-      // Perform L3 my-mac filter
-      // A unicast packet arriving on an L3 interface must have a dmac matching the interface mac.
-      // This is required for promiscuous mode, else we will forward packets we aren't supposed to.
-      if (!(*is_l2))
-	{
-	  ethernet_header_t *e0;
-	  e0 =
-	    (void *) (b0->data +
-		      vnet_buffer (b0)->ethernet.start_of_ethernet_header);
-
-	  if (!(ethernet_address_cast (e0->dst_address)))
-	    {
-	      if (!eth_mac_equal ((u8 *) e0, hi->hw_address))
-		{
-		  *error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
-		}
-	    }
-	}
-
-      // Check for down subinterface
-      *error0 = (*new_sw_if_index) != ~0 ? (*error0) : ETHERNET_ERROR_DOWN;
-    }
-}
-
 static_always_inline void
 determine_next_node (ethernet_main_t * em,
 		     ethernet_input_variant_t variant,
