@@ -1792,6 +1792,7 @@ vhost_user_intfc_tx (vlib_main_t * vm,
   u32 map_guest_hint_indirect = 0;
   u32 *map_guest_hint_p = &map_guest_hint_desc;
   vhost_trace_t *current_trace = 0;
+  int n_retry;
 
   if (PREDICT_FALSE (!vui->is_up || !vui->admin_up))
     {
@@ -1812,227 +1813,237 @@ vhost_user_intfc_tx (vlib_main_t * vm,
     }
 
   qsz_mask = rxvq->qsz - 1;	/* qsz is always power of 2 */
+  n_retry = 8;
 
-  while (n_left > 0)
+  while (n_left > 0 && n_retry--)
     {
-      vlib_buffer_t *b0, *current_b0;
-      u16 desc_head, desc_index, desc_len;
-      vring_desc_t *desc_table;
-      void *buffer_addr;
-      u32 buffer_len;
 
-      b0 = vlib_get_buffer (vm, buffers[0]);
-      buffers++;
-
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+      while (n_left > 0)
 	{
-	  current_trace = vlib_add_trace (vm, node, b0,
-					  sizeof (*current_trace));
-	  vhost_user_tx_trace (current_trace, vui, qid / 2, b0, rxvq);
-	}
+	  vlib_buffer_t *b0, *current_b0;
+	  u16 desc_head, desc_index, desc_len;
+	  vring_desc_t *desc_table;
+	  void *buffer_addr;
+	  u32 buffer_len;
 
-      if (PREDICT_FALSE (rxvq->last_avail_idx == rxvq->avail->idx))
-	{
-	  error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOBUF;
-	  goto done;
-	}
+	  b0 = vlib_get_buffer (vm, buffers[0]);
 
-      desc_table = rxvq->desc;
-      map_guest_hint_p = &map_guest_hint_desc;
-      desc_head = desc_index =
-	rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
-      if (rxvq->desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT)
-	{
-	  if (PREDICT_FALSE
-	      (rxvq->desc[desc_head].len < sizeof (vring_desc_t)))
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+	      current_trace = vlib_add_trace (vm, node, b0,
+					      sizeof (*current_trace));
+	      vhost_user_tx_trace (current_trace, vui, qid / 2, b0, rxvq);
+	    }
+
+	  if (PREDICT_FALSE (rxvq->last_avail_idx == rxvq->avail->idx))
+	    {
+	      error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOBUF;
 	      goto done;
 	    }
+
+	  desc_table = rxvq->desc;
+	  map_guest_hint_p = &map_guest_hint_desc;
+	  desc_head = desc_index =
+	    rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
+	  if (rxvq->desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT)
+	    {
+	      if (PREDICT_FALSE
+		  (rxvq->desc[desc_head].len < sizeof (vring_desc_t)))
+		{
+		  error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+		  goto done;
+		}
+	      if (PREDICT_FALSE
+		  (!(desc_table =
+		     map_guest_mem (vui, rxvq->desc[desc_index].addr,
+				    &map_guest_hint_desc))))
+		{
+		  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+		  goto done;
+		}
+	      desc_index = 0;
+	      map_guest_hint_p = &map_guest_hint_indirect;
+	    }
+
+	  desc_len = vui->virtio_net_hdr_sz;
+
 	  if (PREDICT_FALSE
-	      (!(desc_table =
-		 map_guest_mem (vui, rxvq->desc[desc_index].addr,
-				&map_guest_hint_desc))))
+	      (!(buffer_addr =
+		 map_guest_mem (vui, desc_table[desc_index].addr,
+				map_guest_hint_p))))
 	    {
 	      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 	      goto done;
 	    }
-	  desc_index = 0;
-	  map_guest_hint_p = &map_guest_hint_indirect;
-	}
+	  buffer_len = desc_table[desc_index].len;
 
-      desc_len = vui->virtio_net_hdr_sz;
+	  CLIB_PREFETCH (buffer_addr, CLIB_CACHE_LINE_BYTES, STORE);
 
-      if (PREDICT_FALSE
-	  (!(buffer_addr =
-	     map_guest_mem (vui, desc_table[desc_index].addr,
-			    map_guest_hint_p))))
-	{
-	  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
-	  goto done;
-	}
-      buffer_len = desc_table[desc_index].len;
+	  virtio_net_hdr_mrg_rxbuf_t *hdr =
+	    (virtio_net_hdr_mrg_rxbuf_t *) buffer_addr;
+	  hdr->hdr.flags = 0;
+	  hdr->hdr.gso_type = 0;
+	  if (vui->virtio_net_hdr_sz == 12)
+	    hdr->num_buffers = 1;
 
-      CLIB_PREFETCH (buffer_addr, CLIB_CACHE_LINE_BYTES, STORE);
+	  vhost_user_log_dirty_pages (vui, desc_table[desc_index].addr,
+				      vui->virtio_net_hdr_sz);
 
-      virtio_net_hdr_mrg_rxbuf_t *hdr =
-	(virtio_net_hdr_mrg_rxbuf_t *) buffer_addr;
-      hdr->hdr.flags = 0;
-      hdr->hdr.gso_type = 0;
-      if (vui->virtio_net_hdr_sz == 12)
-	hdr->num_buffers = 1;
-
-      vhost_user_log_dirty_pages (vui, desc_table[desc_index].addr,
-				  vui->virtio_net_hdr_sz);
-
-      u16 bytes_left = b0->current_length;
-      buffer_addr += vui->virtio_net_hdr_sz;
-      buffer_len -= vui->virtio_net_hdr_sz;
-      current_b0 = b0;
-      while (1)
-	{
-	  if (!bytes_left)
-	    {			//Get new input
-	      if (current_b0->flags & VLIB_BUFFER_NEXT_PRESENT)
-		{
-		  current_b0 = vlib_get_buffer (vm, current_b0->next_buffer);
-		  bytes_left = current_b0->current_length;
-		}
-	      else
-		{
-		  //End of packet
-		  break;
-		}
-	    }
-
-	  if (buffer_len == 0)
-	    {			//Get new output
-	      if (desc_table[desc_index].flags & VIRTQ_DESC_F_NEXT)
-		{
-		  //Next one is chained
-		  desc_index = desc_table[desc_index].next;
-		  if (PREDICT_FALSE
-		      (!(buffer_addr =
-			 map_guest_mem (vui, desc_table[desc_index].addr,
-					map_guest_hint_p))))
+	  u16 bytes_left = b0->current_length;
+	  buffer_addr += vui->virtio_net_hdr_sz;
+	  buffer_len -= vui->virtio_net_hdr_sz;
+	  current_b0 = b0;
+	  while (1)
+	    {
+	      if (!bytes_left)
+		{		//Get new input
+		  if (current_b0->flags & VLIB_BUFFER_NEXT_PRESENT)
 		    {
-		      rxvq->last_used_idx -= hdr->num_buffers - 1;
-		      rxvq->last_avail_idx -= hdr->num_buffers - 1;
-		      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
-		      goto done;
+		      current_b0 =
+			vlib_get_buffer (vm, current_b0->next_buffer);
+		      bytes_left = current_b0->current_length;
 		    }
-		  buffer_len = desc_table[desc_index].len;
-		}
-	      else if (vui->virtio_net_hdr_sz == 12)	//MRG is available
-		{
-		  //Move from available to used buffer
-		  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id =
-		    desc_head;
-		  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len =
-		    desc_len;
-		  vhost_user_log_dirty_ring (vui, rxvq,
-					     ring[rxvq->last_used_idx &
-						  qsz_mask]);
-		  rxvq->last_avail_idx++;
-		  rxvq->last_used_idx++;
-		  hdr->num_buffers++;
-
-		  if (PREDICT_FALSE
-		      (rxvq->last_avail_idx == rxvq->avail->idx))
+		  else
 		    {
-		      //Dequeue queued descriptors for this packet
-		      rxvq->last_used_idx -= hdr->num_buffers - 1;
-		      rxvq->last_avail_idx -= hdr->num_buffers - 1;
-		      error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOBUF;
-		      goto done;
+		      //End of packet
+		      break;
 		    }
+		}
 
-		  desc_table = rxvq->desc;
-		  map_guest_hint_p = &map_guest_hint_desc;
-		  desc_head = desc_index =
-		    rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
-		  if (PREDICT_FALSE
-		      (rxvq->desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT))
+	      if (buffer_len == 0)
+		{		//Get new output
+		  if (desc_table[desc_index].flags & VIRTQ_DESC_F_NEXT)
 		    {
-		      //It is seriously unlikely that a driver will put indirect descriptor
-		      //after non-indirect descriptor.
+		      //Next one is chained
+		      desc_index = desc_table[desc_index].next;
 		      if (PREDICT_FALSE
-			  (rxvq->desc[desc_head].len < sizeof (vring_desc_t)))
+			  (!(buffer_addr =
+			     map_guest_mem (vui, desc_table[desc_index].addr,
+					    map_guest_hint_p))))
 			{
-			  error = VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+			  rxvq->last_used_idx -= hdr->num_buffers - 1;
+			  rxvq->last_avail_idx -= hdr->num_buffers - 1;
+			  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 			  goto done;
 			}
+		      buffer_len = desc_table[desc_index].len;
+		    }
+		  else if (vui->virtio_net_hdr_sz == 12)	//MRG is available
+		    {
+		      //Move from available to used buffer
+		      rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id =
+			desc_head;
+		      rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len =
+			desc_len;
+		      vhost_user_log_dirty_ring (vui, rxvq,
+						 ring[rxvq->last_used_idx &
+						      qsz_mask]);
+		      rxvq->last_avail_idx++;
+		      rxvq->last_used_idx++;
+		      hdr->num_buffers++;
+
 		      if (PREDICT_FALSE
-			  (!(desc_table =
-			     map_guest_mem (vui,
-					    rxvq->desc[desc_index].addr,
-					    &map_guest_hint_desc))))
+			  (rxvq->last_avail_idx == rxvq->avail->idx))
+			{
+			  //Dequeue queued descriptors for this packet
+			  rxvq->last_used_idx -= hdr->num_buffers - 1;
+			  rxvq->last_avail_idx -= hdr->num_buffers - 1;
+			  error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOBUF;
+			  goto done;
+			}
+
+		      desc_table = rxvq->desc;
+		      map_guest_hint_p = &map_guest_hint_desc;
+		      desc_head = desc_index =
+			rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
+		      if (PREDICT_FALSE
+			  (rxvq->
+			   desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT))
+			{
+			  //It is seriously unlikely that a driver will put indirect descriptor
+			  //after non-indirect descriptor.
+			  if (PREDICT_FALSE
+			      (rxvq->desc[desc_head].len <
+			       sizeof (vring_desc_t)))
+			    {
+			      error =
+				VHOST_USER_TX_FUNC_ERROR_INDIRECT_OVERFLOW;
+			      goto done;
+			    }
+			  if (PREDICT_FALSE
+			      (!(desc_table =
+				 map_guest_mem (vui,
+						rxvq->desc[desc_index].addr,
+						&map_guest_hint_desc))))
+			    {
+			      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+			      goto done;
+			    }
+			  desc_index = 0;
+			  map_guest_hint_p = &map_guest_hint_indirect;
+			}
+
+		      if (PREDICT_FALSE
+			  (!(buffer_addr =
+			     map_guest_mem (vui, desc_table[desc_index].addr,
+					    map_guest_hint_p))))
 			{
 			  error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
 			  goto done;
 			}
-		      desc_index = 0;
-		      map_guest_hint_p = &map_guest_hint_indirect;
+		      buffer_len = desc_table[desc_index].len;
+		      CLIB_PREFETCH (buffer_addr, CLIB_CACHE_LINE_BYTES,
+				     STORE);
 		    }
-
-		  if (PREDICT_FALSE
-		      (!(buffer_addr =
-			 map_guest_mem (vui, desc_table[desc_index].addr,
-					map_guest_hint_p))))
+		  else
 		    {
-		      error = VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL;
+		      error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOMRG;
 		      goto done;
 		    }
-		  buffer_len = desc_table[desc_index].len;
-		  CLIB_PREFETCH (buffer_addr, CLIB_CACHE_LINE_BYTES, STORE);
 		}
-	      else
-		{
-		  error = VHOST_USER_TX_FUNC_ERROR_PKT_DROP_NOMRG;
-		  goto done;
-		}
+
+	      u16 bytes_to_copy = bytes_left;
+	      bytes_to_copy =
+		(bytes_to_copy > buffer_len) ? buffer_len : bytes_to_copy;
+	      clib_memcpy (buffer_addr,
+			   vlib_buffer_get_current (current_b0) +
+			   current_b0->current_length - bytes_left,
+			   bytes_to_copy);
+
+	      vhost_user_log_dirty_pages (vui,
+					  desc_table[desc_index].addr +
+					  desc_table[desc_index].len -
+					  bytes_left - bytes_to_copy,
+					  bytes_to_copy);
+
+	      CLIB_PREFETCH (rxvq, sizeof (*rxvq), STORE);
+	      bytes_left -= bytes_to_copy;
+	      buffer_len -= bytes_to_copy;
+	      buffer_addr += bytes_to_copy;
+	      desc_len += bytes_to_copy;
 	    }
 
-	  u16 bytes_to_copy = bytes_left;
-	  bytes_to_copy =
-	    (bytes_to_copy > buffer_len) ? buffer_len : bytes_to_copy;
-	  clib_memcpy (buffer_addr,
-		       vlib_buffer_get_current (current_b0) +
-		       current_b0->current_length - bytes_left,
-		       bytes_to_copy);
+	  //Move from available to used ring
+	  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id = desc_head;
+	  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len = desc_len;
+	  vhost_user_log_dirty_ring (vui, rxvq,
+				     ring[rxvq->last_used_idx & qsz_mask]);
 
-	  vhost_user_log_dirty_pages (vui,
-				      desc_table[desc_index].addr +
-				      desc_table[desc_index].len -
-				      bytes_left - bytes_to_copy,
-				      bytes_to_copy);
+	  rxvq->last_avail_idx++;
+	  rxvq->last_used_idx++;
 
-	  CLIB_PREFETCH (rxvq, sizeof (*rxvq), STORE);
-	  bytes_left -= bytes_to_copy;
-	  buffer_len -= bytes_to_copy;
-	  buffer_addr += bytes_to_copy;
-	  desc_len += bytes_to_copy;
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    current_trace->hdr = *hdr;
+
+	  buffers++;
+	  n_left--;		//At the end for error counting when 'goto done' is invoked
 	}
 
-      //Move from available to used ring
-      rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id = desc_head;
-      rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len = desc_len;
-      vhost_user_log_dirty_ring (vui, rxvq,
-				 ring[rxvq->last_used_idx & qsz_mask]);
-
-      rxvq->last_avail_idx++;
-      rxvq->last_used_idx++;
-
-      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	current_trace->hdr = *hdr;
-
-      n_left--;			//At the end for error counting when 'goto done' is invoked
+    done:
+      CLIB_MEMORY_BARRIER ();
+      rxvq->used->idx = rxvq->last_used_idx;
+      vhost_user_log_dirty_ring (vui, rxvq, idx);
     }
-
-done:
-  CLIB_MEMORY_BARRIER ();
-  rxvq->used->idx = rxvq->last_used_idx;
-  vhost_user_log_dirty_ring (vui, rxvq, idx);
 
   /* interrupt (call) handling */
   if ((rxvq->callfd > -1) && !(rxvq->avail->flags & 1))
