@@ -359,69 +359,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 	 is_free ? VLIB_BUFFER_KNOWN_FREE : VLIB_BUFFER_KNOWN_ALLOCATED);
     }
 }
-
 #endif
-/* Aligned copy routine. */
-void
-vlib_aligned_memcpy (void *_dst, void *_src, int n_bytes)
-{
-  vlib_copy_unit_t *dst = _dst;
-  vlib_copy_unit_t *src = _src;
-
-  /* Arguments must be naturally aligned. */
-  ASSERT (pointer_to_uword (dst) % sizeof (dst[0]) == 0);
-  ASSERT (pointer_to_uword (src) % sizeof (src[0]) == 0);
-  ASSERT (n_bytes % sizeof (dst[0]) == 0);
-
-  if (4 * sizeof (dst[0]) == CLIB_CACHE_LINE_BYTES)
-    {
-      CLIB_PREFETCH (dst + 0, 4 * sizeof (dst[0]), WRITE);
-      CLIB_PREFETCH (src + 0, 4 * sizeof (src[0]), READ);
-
-      while (n_bytes >= 4 * sizeof (dst[0]))
-	{
-	  dst += 4;
-	  src += 4;
-	  n_bytes -= 4 * sizeof (dst[0]);
-	  CLIB_PREFETCH (dst, 4 * sizeof (dst[0]), WRITE);
-	  CLIB_PREFETCH (src, 4 * sizeof (src[0]), READ);
-	  dst[-4] = src[-4];
-	  dst[-3] = src[-3];
-	  dst[-2] = src[-2];
-	  dst[-1] = src[-1];
-	}
-    }
-  else if (8 * sizeof (dst[0]) == CLIB_CACHE_LINE_BYTES)
-    {
-      CLIB_PREFETCH (dst + 0, 8 * sizeof (dst[0]), WRITE);
-      CLIB_PREFETCH (src + 0, 8 * sizeof (src[0]), READ);
-
-      while (n_bytes >= 8 * sizeof (dst[0]))
-	{
-	  dst += 8;
-	  src += 8;
-	  n_bytes -= 8 * sizeof (dst[0]);
-	  CLIB_PREFETCH (dst, 8 * sizeof (dst[0]), WRITE);
-	  CLIB_PREFETCH (src, 8 * sizeof (src[0]), READ);
-	  dst[-8] = src[-8];
-	  dst[-7] = src[-7];
-	  dst[-6] = src[-6];
-	  dst[-5] = src[-5];
-	  dst[-4] = src[-4];
-	  dst[-3] = src[-3];
-	  dst[-2] = src[-2];
-	  dst[-1] = src[-1];
-	}
-    }
-  else
-    /* Cache line size unknown: fall back to slow version. */ ;
-
-  while (n_bytes > 0)
-    {
-      *dst++ = *src++;
-      n_bytes -= 1 * sizeof (dst[0]);
-    }
-}
 
 #define BUFFERS_PER_COPY (sizeof (vlib_copy_unit_t) / sizeof (u32))
 
@@ -495,7 +433,7 @@ merge_free_lists (vlib_buffer_free_list_t * dst,
     {
       vec_add2_aligned (dst->aligned_buffers, d, l,
 			/* align */ sizeof (vlib_copy_unit_t));
-      vlib_aligned_memcpy (d, src->aligned_buffers, l * sizeof (d[0]));
+      clib_memcpy (d, src->aligned_buffers, l * sizeof (d[0]));
       vec_free (src->aligned_buffers);
     }
 
