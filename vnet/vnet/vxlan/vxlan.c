@@ -17,6 +17,7 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/dpo/receive_dpo.h>
+#include <vlib/vlib.h>
 
 /**
  * @file
@@ -37,6 +38,22 @@
 
 vxlan_main_t vxlan_main;
 
+static u8 * format_decap_next (u8 * s, va_list * args)
+{
+  u32 next_index = va_arg (*args, u32);
+
+  switch (next_index)
+    {
+    case VXLAN_INPUT_NEXT_DROP:
+      return format (s, "drop");
+    case VXLAN_INPUT_NEXT_L2_INPUT:
+      return format (s, "l2");
+    default:
+      return format (s, "next-index %d", next_index);
+    }
+  return s;
+}
+
 u8 * format_vxlan_tunnel (u8 * s, va_list * args)
 {
   vxlan_tunnel_t * t = va_arg (*args, vxlan_tunnel_t *);
@@ -44,11 +61,12 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
 
   s = format (s, 
 	      "[%d] src %U dst %U vni %d encap_fib_index %d sw_if_index %d "
-	      "fib_entry_index %d\n",
+	      "fib_entry_index %d",
               t - ngm->tunnels,
               format_ip46_address, &t->src, IP46_TYPE_ANY,
               format_ip46_address, &t->dst, IP46_TYPE_ANY,
               t->vni,  t->encap_fib_index, t->sw_if_index, t->fib_entry_index);
+  s = format (s, " decap_next %U\n", format_decap_next, t->decap_next_index);
   return s;
 }
 
@@ -176,6 +194,7 @@ const static fib_node_vft_t vxlan_vft = {
 _(vni)                                          \
 _(mcast_sw_if_index)                            \
 _(encap_fib_index)                              \
+_(decap_next_index)                             \
 _(src)                                          \
 _(dst)
 
@@ -245,6 +264,27 @@ static int vxlan6_rewrite (vxlan_tunnel_t * t)
   return (0);
 }
 
+static int vxlan_check_decap_next(vxlan_main_t * vxm, u32 is_ip6, u32 decap_next_index)
+{
+  vlib_main_t * vm = vxm->vlib_main;
+  vlib_node_runtime_t *r;
+
+  if(!is_ip6)
+    {
+      r = vlib_node_get_runtime (vm, vxlan4_input_node.index);
+      if(decap_next_index >= r->n_next_nodes)
+	return 1;
+    }
+  else
+    {
+      r = vlib_node_get_runtime (vm, vxlan6_input_node.index);
+      if(decap_next_index >= r->n_next_nodes)
+	return 1;
+    }
+
+  return 0;
+}
+
 int vnet_vxlan_add_del_tunnel 
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {
@@ -282,6 +322,12 @@ int vnet_vxlan_add_del_tunnel
       /* adding a tunnel: tunnel must not already exist */
       if (p)
         return VNET_API_ERROR_TUNNEL_EXIST;
+
+      /*if not set explicitly, default to l2 */
+      if(a->decap_next_index == ~0)
+	a->decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
+      if (vxlan_check_decap_next(vxm, is_ip6, a->decap_next_index))
+	  return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
       memset (t, 0, sizeof (*t));
@@ -496,13 +542,37 @@ static u32 fib6_index_from_fib_id (u32 fib_id)
   return p[0];
 }
 
+static uword get_decap_next_for_node(u32 node_index, u32 ipv4_set)
+{
+  vxlan_main_t * vxm = &vxlan_main;
+  vlib_main_t * vm = vxm->vlib_main;
+  uword next_index = ~0;
+
+  if (ipv4_set)
+    {
+      next_index = vlib_node_add_next (vm, vxlan4_input_node.index, node_index);
+    }
+  else
+    {
+      next_index = vlib_node_add_next (vm, vxlan6_input_node.index, node_index);
+    }
+
+  return next_index;
+}
+
 static uword unformat_decap_next (unformat_input_t * input, va_list * args)
 {
   u32 * result = va_arg (*args, u32 *);
+  u32 ipv4_set = va_arg (*args, int);
+  vxlan_main_t * vxm = &vxlan_main;
+  vlib_main_t * vm = vxm->vlib_main;
+  u32 node_index;
   u32 tmp;
-  
+
   if (unformat (input, "l2"))
     *result = VXLAN_INPUT_NEXT_L2_INPUT;
+  else if (unformat (input, "node %U", unformat_vlib_node, vm, &node_index))
+    *result = get_decap_next_for_node(node_index, ipv4_set);
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -525,7 +595,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   u8 ipv6_set = 0;
   u32 encap_fib_index = 0;
   u32 mcast_sw_if_index = ~0;
-  u32 decap_next_index = ~0;
+  u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
   u32 vni = 0;
   u32 tmp;
   int rv;
@@ -595,7 +665,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
           return clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
       }
     else if (unformat (line_input, "decap-next %U", unformat_decap_next, 
-                       &decap_next_index))
+                       &decap_next_index, ipv4_set))
       ;
     else if (unformat (line_input, "vni %d", &vni))
       {
@@ -626,6 +696,9 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
 
   if (ip46_address_cmp(&src, &dst) == 0)
     return clib_error_return (0, "src and dst addresses are identical");
+
+  if (decap_next_index == ~0)
+    return clib_error_return (0, "next node not found");
 
   if (vni == 0)
     return clib_error_return (0, "vni not specified");
@@ -689,7 +762,7 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .short_help = 
   "create vxlan tunnel src <local-vtep-addr>"
   " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} vni <nn>"
-  " [encap-vrf-id <nn>]",
+  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
   .function = vxlan_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */
@@ -719,7 +792,7 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display the VXLAN Tunnel entries:
  * @cliexstart{show vxlan tunnel}
- * [0] src 10.0.3.1 dst 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 
+ * [0] src 10.0.3.1 dst 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
 /* *INDENT-OFF* */

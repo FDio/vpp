@@ -4545,8 +4545,7 @@ static void send_vxlan_tunnel_details
     }
   rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
-  /* decap_next_index is deprecated, hard code to l2-input */
-  rmp->decap_next_index = htonl (VXLAN_INPUT_NEXT_L2_INPUT);
+  rmp->decap_next_index = htonl (t->decap_next_index);
   rmp->sw_if_index = htonl (t->sw_if_index);
   rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
