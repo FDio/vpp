@@ -2126,6 +2126,7 @@ define vxlan_add_del_tunnel
   u8 is_ipv6;
   u8 src_address[16];
   u8 dst_address[16];
+  u32 mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;
@@ -2151,6 +2152,7 @@ define vxlan_tunnel_details
   u32 sw_if_index;
   u8 src_address[16];
   u8 dst_address[16];
+  u32 mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_next_index;
   u32 vni;

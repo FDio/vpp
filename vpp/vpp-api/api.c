@@ -4679,31 +4679,22 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
       goto out;
     }
   encap_fib_index = p[0];
-
-  /* Check src & dst are different */
-  if ((mp->is_ipv6 && memcmp (mp->src_address, mp->dst_address, 16) == 0) ||
-      (!mp->is_ipv6 && memcmp (mp->src_address, mp->dst_address, 4) == 0))
-    {
-      rv = VNET_API_ERROR_SAME_SRC_DST;
-      goto out;
-    }
   memset (a, 0, sizeof (*a));
 
   a->is_add = mp->is_add;
   a->is_ip6 = mp->is_ipv6;
 
   /* ip addresses sent in network byte order */
-  if (a->is_ip6)
-    {
-      memcpy (&(a->src.ip6), mp->src_address, 16);
-      memcpy (&(a->dst.ip6), mp->dst_address, 16);
-    }
-  else
-    {
-      memcpy (&(a->src.ip4), mp->src_address, 4);
-      memcpy (&(a->dst.ip4), mp->dst_address, 4);
-    }
+  ip46_from_addr_buf (mp->is_ipv6, mp->dst_address, &a->dst);
+  ip46_from_addr_buf (mp->is_ipv6, mp->src_address, &a->src);
 
+  /* Check src & dst are different */
+  if (ip46_address_cmp (&a->dst, &a->src) == 0)
+    {
+      rv = VNET_API_ERROR_SAME_SRC_DST;
+      goto out;
+    }
+  a->mcast_sw_if_index = ntohl (mp->mcast_sw_if_index);
   a->encap_fib_index = encap_fib_index;
   a->decap_next_index = ntohl (mp->decap_next_index);
   a->vni = ntohl (mp->vni);
@@ -4731,16 +4722,17 @@ static void send_vxlan_tunnel_details
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_TUNNEL_DETAILS);
   if (is_ipv6)
     {
-      memcpy (rmp->src_address, &(t->src.ip6), 16);
-      memcpy (rmp->dst_address, &(t->dst.ip6), 16);
+      memcpy (rmp->src_address, t->src.ip6.as_u8, 16);
+      memcpy (rmp->dst_address, t->dst.ip6.as_u8, 16);
       rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
     }
   else
     {
-      memcpy (rmp->src_address, &(t->src.ip4), 4);
-      memcpy (rmp->dst_address, &(t->dst.ip4), 4);
+      memcpy (rmp->src_address, t->src.ip4.as_u8, 4);
+      memcpy (rmp->dst_address, t->dst.ip4.as_u8, 4);
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
     }
+  rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
   /* decap_next_index is deprecated, hard code to l2-input */
   rmp->decap_next_index = htonl (VXLAN_INPUT_NEXT_L2_INPUT);

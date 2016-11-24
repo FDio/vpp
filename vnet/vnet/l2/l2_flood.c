@@ -160,7 +160,7 @@ l2flood_process (vlib_main_t * vm,
       members = bd_config->members;
 
       /* Find first member that passes the reflection and SHG checks */
-      current_member = vec_len (members) - 1;
+      current_member = bd_config->flood_count - 1;
       while ((current_member >= 0) &&
 	     ((members[current_member].sw_if_index == *sw_if_index0) ||
 	      (in_shg && members[current_member].shg == in_shg)))
@@ -247,16 +247,7 @@ l2flood_process (vlib_main_t * vm,
     }
 
   /* Forward packet to the current member */
-
-  if (PREDICT_TRUE (members[current_member].flags == L2_FLOOD_MEMBER_NORMAL))
-    {
-      /* Do normal L2 forwarding */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] =
-	members[current_member].sw_if_index;
-      *next0 = L2FLOOD_NEXT_L2_OUTPUT;
-
-    }
-  else
+  if (PREDICT_FALSE (members[current_member].flags & L2_FLOOD_MEMBER_BVI))
     {
       /* Do BVI processing */
       u32 rc;
@@ -279,6 +270,14 @@ l2flood_process (vlib_main_t * vm,
 	      *next0 = L2FLOOD_NEXT_DROP;
 	    }
 	}
+    }
+  else
+    {
+      /* Do normal L2 forwarding */
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+	members[current_member].sw_if_index;
+      *next0 = L2FLOOD_NEXT_L2_OUTPUT;
+
     }
 
 }

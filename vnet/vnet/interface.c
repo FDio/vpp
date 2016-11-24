@@ -712,11 +712,11 @@ vnet_register_interface (vnet_main_t * vnm,
 
   /* Make hardware interface point to software interface. */
   {
-    vnet_sw_interface_t sw;
-
-    memset (&sw, 0, sizeof (sw));
-    sw.type = VNET_SW_INTERFACE_TYPE_HARDWARE;
-    sw.hw_if_index = hw_index;
+    vnet_sw_interface_t sw = {
+      .type = VNET_SW_INTERFACE_TYPE_HARDWARE,
+      .flood_class = VNET_FLOOD_CLASS_NORMAL,
+      .hw_if_index = hw_index
+    };
     hw->sw_if_index = vnet_create_sw_interface_no_callbacks (vnm, &sw);
   }
 

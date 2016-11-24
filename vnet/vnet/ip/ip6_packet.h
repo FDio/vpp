@@ -64,6 +64,7 @@ typedef CLIB_PACKED (union {
     ip4_address_t ip4;
   };
   ip6_address_t ip6;
+  u8 as_u8[16];
   u64 as_u64[2];
 }) ip46_address_t;
 #define ip46_address_is_ip4(ip46)	(((ip46)->pad[0] | (ip46)->pad[1] | (ip46)->pad[2]) == 0)
@@ -72,6 +73,15 @@ typedef CLIB_PACKED (union {
 #define ip46_address_reset(ip46)	((ip46)->as_u64[0] = (ip46)->as_u64[1] = 0)
 #define ip46_address_cmp(ip46_1, ip46_2) (memcmp(ip46_1, ip46_2, sizeof(*ip46_1)))
 #define ip46_address_is_zero(ip46)	(((ip46)->as_u64[0] == 0) && ((ip46)->as_u64[1] == 0))
+
+always_inline void
+ip46_from_addr_buf(u32 is_ipv6, u8 *buf, ip46_address_t *ip)
+{
+  if (is_ipv6)
+    ip->ip6 = *((ip6_address_t *) buf);
+  else
+    ip46_address_set_ip4(ip, (ip4_address_t *) buf);
+}
 
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,
@@ -122,6 +132,13 @@ typedef enum {
 always_inline uword
 ip6_address_is_multicast (ip6_address_t * a)
 { return a->as_u8[0] == 0xff; }
+
+always_inline uword
+ip46_address_is_multicast (ip46_address_t * a)
+{
+  return ip46_address_is_ip4(a) ? ip4_address_is_multicast(&a->ip4) :
+	ip6_address_is_multicast(&a->ip6);
+}
 
 always_inline void
 ip6_set_reserved_multicast_address (ip6_address_t * a,
