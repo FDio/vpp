@@ -217,7 +217,7 @@ vxlan_input (vlib_main_t * vm,
           }
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
-
+          next0 = t0->decap_next_index;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -227,6 +227,10 @@ vxlan_input (vlib_main_t * vm,
 
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+
+          /* Save node index to metadata[0] to pass to plugin */
+          vnet_buffer(b0)->vxlan.node_index = (is_ip4?
+	       vxlan4_input_node.index:vxlan6_input_node.index);
 
           pkts_decapsulated ++;
           stats_n_packets += 1;
@@ -312,7 +316,7 @@ vxlan_input (vlib_main_t * vm,
           }
 
           t1 = pool_elt_at_index (vxm->tunnels, tunnel_index1);
-
+          next1 = t1->decap_next_index;
           sw_if_index1 = t1->sw_if_index;
           len1 = vlib_buffer_length_in_chain (vm, b1);
 
@@ -322,6 +326,9 @@ vxlan_input (vlib_main_t * vm,
 
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b1)->sw_if_index[VLIB_RX] = sw_if_index1;
+          /* Save node index to metadata[0] to pass to plugin */
+          vnet_buffer(b1)->vxlan.node_index = (is_ip4?
+	       vxlan4_input_node.index:vxlan6_input_node.index);
 
           pkts_decapsulated ++;
           stats_n_packets += 1;
@@ -464,7 +471,7 @@ vxlan_input (vlib_main_t * vm,
           }
 
           t0 = pool_elt_at_index (vxm->tunnels, tunnel_index0);
-
+          next0 = t0->decap_next_index;
           sw_if_index0 = t0->sw_if_index;
           len0 = vlib_buffer_length_in_chain (vm, b0);
 
@@ -474,6 +481,9 @@ vxlan_input (vlib_main_t * vm,
 
           /* Set input sw_if_index to VXLAN tunnel for learning */
           vnet_buffer(b0)->sw_if_index[VLIB_RX] = sw_if_index0;
+          /* Save node index to metadata[0] to pass to plugin */
+          vnet_buffer(b0)->vxlan.node_index = (is_ip4?
+	       vxlan4_input_node.index:vxlan6_input_node.index);
 
           pkts_decapsulated ++;
           stats_n_packets += 1;
