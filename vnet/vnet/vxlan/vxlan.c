@@ -16,6 +16,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vlib/vlib.h>
 
 /**
  * @file
@@ -495,6 +496,22 @@ static u32 fib6_index_from_fib_id (u32 fib_id)
   return p[0];
 }
 
+static uword get_decap_next_for_node(u8 * name)
+{
+  vxlan_main_t * vxm = &vxlan_main;
+  vlib_main_t * vm = vxm->vlib_main;
+  vlib_node_t * plugin_input_node = 0;
+  uword slot = ~0;
+
+  plugin_input_node = vlib_get_node_by_name (vm, name);
+  ASSERT(plugin_input_node);
+
+  slot = vlib_node_get_slot_with_next (vm,
+            vxlan4_input_node.index, plugin_input_node->index);
+
+  return slot;
+}
+
 static uword unformat_decap_next (unformat_input_t * input, va_list * args)
 {
   u32 * result = va_arg (*args, u32 *);
@@ -502,6 +519,8 @@ static uword unformat_decap_next (unformat_input_t * input, va_list * args)
   
   if (unformat (input, "l2"))
     *result = VXLAN_INPUT_NEXT_L2_INPUT;
+  else if (unformat (input, "nsh"))
+    *result = get_decap_next_for_node((u8 *)"nsh-input");
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
@@ -662,7 +681,7 @@ VLIB_CLI_COMMAND (create_vxlan_tunnel_command, static) = {
   .path = "create vxlan tunnel",
   .short_help = 
   "create vxlan tunnel src <local-vtep-addr> dst <remote-vtep-addr> vni <nn>" 
-  " [encap-vrf-id <nn>]",
+  " [encap-vrf-id <nn>] [decap-next [l2|nsh]] [del]",
   .function = vxlan_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */
@@ -692,7 +711,7 @@ show_vxlan_tunnel_command_fn (vlib_main_t * vm,
  * @cliexpar
  * Example of how to display the VXLAN Tunnel entries:
  * @cliexstart{show vxlan tunnel}
- * [0] src 10.0.3.1 dst 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 
+ * [0] src 10.0.3.1 dst 10.0.3.3 vni 13 encap_fib_index 0 sw_if_index 5 decap_next l2
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
