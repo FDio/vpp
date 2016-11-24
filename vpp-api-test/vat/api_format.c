@@ -10090,7 +10090,7 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
   u8 grp_set = 0;
   u32 mcast_sw_if_index = ~0;
   u32 encap_vrf_id = 0;
-  u32 decap_next_index = ~0;
+  u32 decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
   u32 vni = 0;
 
   /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
@@ -16864,7 +16864,7 @@ _(sw_if_l2tpv3_tunnel_dump, "")                                         \
 _(vxlan_add_del_tunnel,                                                 \
   "src <ip-addr> { dst <ip-addr> | group <mcast-ip-addr>\n"             \
   "{ <intfc> | mcast_sw_if_index <nn> } }\n"                            \
-  "vni <vni> [encap-vrf-id <nn>] [decap-next l2|ip4|ip6] [del]")        \
+  "vni <vni> [encap-vrf-id <nn>] [decap-next <l2|nn>] [del]")           \
 _(vxlan_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                    \
 _(gre_add_del_tunnel,                                                   \
   "src <ip4-addr> dst <ip4-addr> [outer-fib-id <nn>] [teb] [del]\n")    \
