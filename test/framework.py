@@ -177,6 +177,7 @@ class VppTestCase(unittest.TestCase):
         cls.pg_streams = []
         cls.packet_infos = {}
         cls.verbose = 0
+        cls.vpp_dead = False
         print(double_line_delim)
         print(colorize(getdoc(cls).splitlines()[0], YELLOW))
         print(double_line_delim)
@@ -184,21 +185,6 @@ class VppTestCase(unittest.TestCase):
         # doesn't get called and we might end with a zombie vpp
         try:
             cls.run_vpp()
-            cls.vpp_dead = False
-            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
-            if cls.step:
-                cls.vapi.register_hook(StepHook(cls))
-            else:
-                cls.vapi.register_hook(PollHook(cls))
-            time.sleep(0.1)
-            try:
-                cls.vapi.connect()
-            except:
-                if cls.debug_gdbserver:
-                    print(colorize("You're running VPP inside gdbserver but "
-                                   "VPP-API connection failed, did you forget "
-                                   "to 'continue' VPP from within gdb?", RED))
-                raise
             cls.vpp_stdout_queue = Queue()
             cls.vpp_stdout_reader_thread = Thread(
                 target=pump_output, args=(cls.vpp.stdout, cls.vpp_stdout_queue))
@@ -207,10 +193,27 @@ class VppTestCase(unittest.TestCase):
             cls.vpp_stderr_reader_thread = Thread(
                 target=pump_output, args=(cls.vpp.stderr, cls.vpp_stderr_queue))
             cls.vpp_stderr_reader_thread.start()
+            cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
+            if cls.step:
+                hook = StepHook(cls)
+            else:
+                hook = PollHook(cls)
+            cls.vapi.register_hook(hook)
+            time.sleep(0.1)
+            hook.poll_vpp()
+            try:
+                cls.vapi.connect()
+            except:
+                if cls.debug_gdbserver:
+                    print(colorize("You're running VPP inside gdbserver but "
+                                   "VPP-API connection failed, did you forget "
+                                   "to 'continue' VPP from within gdb?", RED))
+                raise
         except:
-            if hasattr(cls, 'vpp'):
-                cls.vpp.terminate()
-                del cls.vpp
+            try:
+                cls.quit()
+            except:
+                pass
             raise
 
     @classmethod
