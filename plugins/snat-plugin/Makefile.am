@@ -83,13 +83,13 @@ libjvpp_snat_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -
 
 BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h
 
-$(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h: defs_snat_papi.py
+$(jvpp_root)/io_fd_vpp_jvpp_snat_JVppSnatImpl.h: snat.api.json
 	dir=`pwd`;						\
 	mkdir -p $(jvpp_target); \
 	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
 	cd $(jvpp_root)/$(jvpp_package_dir);			\
 	mkdir -p dto future callfacade callback notification test; 	\
-	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_snat_papi.py --plugin_name snat;		\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/snat.api.json --plugin_name snat;		\
 	cd -;							\
 	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_snat_gen.h $(jvpp_root)/jvpp_snat_gen.h;							\
 	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
@@ -109,8 +109,8 @@ $(jsnat_jarfile): libjvpp_snat.la
 	cd $(jvpp_target);				\
 	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_snat.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
 
-defs_snat_papi.py:
+snat.api.json:
 	@echo "  jSnat_sfc API"; \
-        vppapigen --input $(api_file) --python defs_snat_papi.py;
+        vppapigen --input $(api_file) --json snat.api.json;
 
 all-local: $(jsnat_jarfile)
