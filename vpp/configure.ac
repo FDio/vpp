@@ -9,6 +9,11 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+AC_ARG_WITH(dpdk_crypto,
+            AC_HELP_STRING([--with-dpdk-crypto],[Use DPDK cryptodev]),
+            [with_dpdk_crypto=1],
+            [with_dpdk_crypto=0])
+
 AC_ARG_ENABLE(dpdk-shared,
               AC_HELP_STRING([--enable-dpdk-shared],[Link with DPDK shared lib]),
               [enable_dpdk_shared=1],
@@ -32,6 +37,9 @@ AC_ARG_WITH(ipv6sr,
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AM_CONDITIONAL(ENABLE_DPDK_SHARED, test "$enable_dpdk_shared" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk} -DDPDK_SHARED_LIB=${enable_dpdk_shared}"])
+AM_CONDITIONAL(WITH_DPDK_CRYPTO, test "$with_dpdk_crypto" = "1")
+AC_SUBST(DPDK_CRYPTO,[-DDPDK_CRYPTO=${with_dpdk_crypto}])
+
 
 AM_COND_IF(
 	[ENABLE_DPDK_SHARED],

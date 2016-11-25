@@ -45,4 +45,7 @@ vpp_configure_depend += dpdk-install
 vpp_CPPFLAGS += $(call installed_includes_fn, dpdk)
 vpp_LDFLAGS += $(call installed_libs_fn, dpdk)
 endif
+ifeq ($($(PLATFORM)_uses_dpdk_cryptodev),yes)
+vpp_configure_args += --with-dpdk-crypto
+endif
 endif

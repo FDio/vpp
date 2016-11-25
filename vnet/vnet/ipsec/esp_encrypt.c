@@ -22,7 +22,6 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
-#define ESP_SEQ_MAX (4294967295UL)
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \
@@ -109,30 +108,6 @@ esp_encrypt_aes_cbc (ipsec_crypto_alg_t alg,
 
   EVP_EncryptUpdate (ctx, out, &out_len, in, in_len);
   EVP_EncryptFinal_ex (ctx, out + out_len, &out_len);
-}
-
-always_inline int
-esp_seq_advance (ipsec_sa_t * sa)
-{
-  if (PREDICT_TRUE (sa->use_esn))
-    {
-      if (PREDICT_FALSE (sa->seq == ESP_SEQ_MAX))
-	{
-	  if (PREDICT_FALSE
-	      (sa->use_anti_replay && sa->seq_hi == ESP_SEQ_MAX))
-	    return 1;
-	  sa->seq_hi++;
-	}
-      sa->seq++;
-    }
-  else
-    {
-      if (PREDICT_FALSE (sa->use_anti_replay && sa->seq == ESP_SEQ_MAX))
-	return 1;
-      sa->seq++;
-    }
-
-  return 0;
 }
 
 static uword

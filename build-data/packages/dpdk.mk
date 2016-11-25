@@ -22,6 +22,10 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	DPDK_TUNE=$(DPDK_TUNE) \
 	DPDK_DEBUG=$(DPDK_DEBUG)
 
+DPDK_CRYPTO_PMD=$(strip $($(PLATFORM)_uses_dpdk_cryptodev))
+ifneq ($(DPDK_CRYPTO_PMD),)
+DPDK_MAKE_ARGS += DPDK_CRYPTO_PMD=y
+endif
 
 DPDK_PLATFORM_TARGET=$(strip $($(PLATFORM)_dpdk_target))
 ifneq ($(DPDK_PLATFORM_TARGET),)

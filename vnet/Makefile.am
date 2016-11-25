@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -Werror @DPDK@ @IPSEC@ @IPV6SR@
+AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -345,7 +345,15 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ikev2_cli.c				\
  vnet/ipsec/ikev2_payload.c			\
  vnet/ipsec/ikev2_format.c
-endif 
+if WITH_DPDK_CRYPTO
+libvnet_la_SOURCES +=       			\
+ vnet/devices/dpdk/ipsec/esp_encrypt.c		\
+ vnet/devices/dpdk/ipsec/esp_decrypt.c		\
+ vnet/devices/dpdk/ipsec/crypto_node.c		\
+ vnet/devices/dpdk/ipsec/cli.c			\
+ vnet/devices/dpdk/ipsec/ipsec.c
+endif
+endif
 
 libvnet_la_SOURCES +=       			\
  vnet/ipsec/ipsec_output.c
@@ -355,6 +363,11 @@ nobase_include_HEADERS +=     		        \
  vnet/ipsec/esp.h				\
  vnet/ipsec/ikev2.h                             \
  vnet/ipsec/ikev2_priv.h
+if WITH_DPDK_CRYPTO
+nobase_include_HEADERS +=     		        \
+ vnet/devices/dpdk/ipsec/ipsec.h		\
+ vnet/devices/dpdk/ipsec/esp.h
+endif
 
 ########################################
 # Layer 3 protocol: osi

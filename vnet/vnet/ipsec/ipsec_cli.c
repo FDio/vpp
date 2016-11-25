@@ -768,7 +768,6 @@ VLIB_CLI_COMMAND (set_interface_key_command, static) = {
 };
 /* *INDENT-ON* */
 
-
 clib_error_t *
 ipsec_cli_init (vlib_main_t * vm)
 {

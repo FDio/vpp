@@ -20,6 +20,20 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ipsec/ipsec.h>
+#if DPDK_CRYPTO==1
+#include <vnet/devices/dpdk/ipsec/esp.h>
+#else
+#include <vnet/ipsec/esp.h>
+#endif
+
+#if DPDK_CRYPTO==0
+/* dummy function */
+static int
+add_del_sa_sess (u32 sa_index, u8 is_add)
+{
+  return 0;
+}
+#endif
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
@@ -124,6 +138,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 		       args->remote_crypto_key_len);
 	}
 
+      add_del_sa_sess (t->input_sa_index, args->is_add);
+
       pool_get (im->sad, sa);
       memset (sa, 0, sizeof (*sa));
       t->output_sa_index = sa - im->sad;
@@ -148,6 +164,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 	  clib_memcpy (sa->crypto_key, args->local_crypto_key,
 		       args->local_crypto_key_len);
 	}
+
+      add_del_sa_sess (t->output_sa_index, args->is_add);
 
       hash_set (im->ipsec_if_pool_index_by_key, key,
 		t - im->tunnel_interfaces);
@@ -192,8 +210,17 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 
       /* delete input and output SA */
       sa = pool_elt_at_index (im->sad, t->input_sa_index);
+
+      if (add_del_sa_sess (t->input_sa_index, args->is_add) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
+
       pool_put (im->sad, sa);
+
       sa = pool_elt_at_index (im->sad, t->output_sa_index);
+
+      if (add_del_sa_sess (t->output_sa_index, args->is_add) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
+
       pool_put (im->sad, sa);
 
       hash_unset (im->ipsec_if_pool_index_by_key, key);
@@ -282,6 +309,9 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
       sa->crypto_alg = alg;
       sa->crypto_key_len = vec_len (key);
       clib_memcpy (sa->crypto_key, key, vec_len (key));
+
+      if (add_del_sa_sess (t->input_sa_index, 0) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG)
     {
@@ -289,6 +319,9 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
       sa->integ_alg = alg;
       sa->integ_key_len = vec_len (key);
       clib_memcpy (sa->integ_key, key, vec_len (key));
+
+      if (add_del_sa_sess (t->output_sa_index, 0) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO)
     {
@@ -296,6 +329,9 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
       sa->crypto_alg = alg;
       sa->crypto_key_len = vec_len (key);
       clib_memcpy (sa->crypto_key, key, vec_len (key));
+
+      if (add_del_sa_sess (t->input_sa_index, 0) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   else if (type == IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG)
     {
@@ -303,6 +339,9 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
       sa->integ_alg = alg;
       sa->integ_key_len = vec_len (key);
       clib_memcpy (sa->integ_key, key, vec_len (key));
+
+      if (add_del_sa_sess (t->output_sa_index, 0) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   else
     return VNET_API_ERROR_INVALID_VALUE;
