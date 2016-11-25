@@ -74,13 +74,12 @@ always_inline void
 pool_validate (void *v)
 {
   pool_header_t *p = pool_header (v);
-  uword i, n_free_bitmap;
+  uword i;
 
   if (!v)
     return;
 
-  n_free_bitmap = clib_bitmap_count_set_bits (p->free_bitmap);
-  ASSERT (n_free_bitmap == vec_len (p->free_indices));
+  ASSERT (clib_bitmap_count_set_bits (p->free_bitmap) == vec_len (p->free_indices));
   for (i = 0; i < vec_len (p->free_indices); i++)
     ASSERT (clib_bitmap_get (p->free_bitmap, p->free_indices[i]) == 1);
 }

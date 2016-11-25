@@ -476,7 +476,7 @@ vlib_process_get_event_data (vlib_main_t * vm,
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p;
   vlib_process_event_type_t *et;
-  uword t, l;
+  uword t;
   void *event_data_vector;
 
   p = vec_elt (nm->processes, nm->current_process_index);
@@ -490,8 +490,7 @@ vlib_process_get_event_data (vlib_main_t * vm,
   p->non_empty_event_type_bitmap =
     clib_bitmap_andnoti (p->non_empty_event_type_bitmap, t);
 
-  l = _vec_len (p->pending_event_data_by_type_index[t]);
-  ASSERT (l > 0);
+  ASSERT (_vec_len (p->pending_event_data_by_type_index[t]) > 0);
   event_data_vector = p->pending_event_data_by_type_index[t];
   p->pending_event_data_by_type_index[t] = 0;
 
