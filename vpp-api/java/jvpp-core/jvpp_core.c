@@ -38,7 +38,7 @@
 
 // TODO: generate jvpp_plugin_name.c files (or at least reuse plugin's main structure)
 typedef struct {
-    /* Base message index for the nsh plugin */
+    /* Base message index for the jvpp-core plugin */
     u16 msg_id_base;
 
     /* Pointer to shared memory queue */
