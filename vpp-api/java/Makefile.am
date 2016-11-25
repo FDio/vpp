@@ -13,13 +13,13 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
-AM_CFLAGS = -Wall 
+AM_CFLAGS = -Wall
 
-noinst_PROGRAMS = 
+noinst_PROGRAMS =
 BUILT_SOURCES =
-bin_PROGRAMS = 
-CLEANFILES = 
-lib_LTLIBRARIES = 
+bin_PROGRAMS =
+CLEANFILES =
+lib_LTLIBRARIES =
 
 #
 # jvpp-common
@@ -80,20 +80,17 @@ libjvpp_core_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 
 jarfile_jvpp_core = jvpp-core-$(PACKAGE_VERSION).jar
 packagedir_jvpp_core = io/fd/vpp/jvpp/core
-api_file = $(prefix)/../vpp/vpp-api/vpe.api
 
 BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 
-jvpp-core/defs_vpp_papi.py: $(api_file)
-	@echo "jVpp API"
-	vppapigen --input $(api_file) --python jvpp-core/defs_vpp_papi.py
-
-jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h jvpp-core/defs_vpp_papi.py
+jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h $(abs_builddir)/../vpp-api/vpe.api.json
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/
 	mkdir -p jvpp-core/target
 	cd jvpp-core \
 		&& mkdir -p types dto future callfacade callback notification \
-		&& @srcdir@/jvpp/gen/jvpp_gen.py -i defs_vpp_papi.py --plugin_name core \
+		&& @srcdir@/jvpp/gen/jvpp_gen.py  --plugin_name core \
+		    -i $(abs_builddir)/../vpp-api/vpe.api.json \
+		    $(abs_builddir)/../vpp-api/interface.api.json \
 		&& cp -rf types dto future callfacade callback notification *.java -t $(packagedir_jvpp_core) \
 		&& rm -rf types dto future callfacade callback notification *.java
 
@@ -104,6 +101,7 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJN
 		jvpp-core/$(packagedir_jvpp_core)/notification/*.java \
 		jvpp-core/$(packagedir_jvpp_core)/future/*.java 	\
 		jvpp-core/$(packagedir_jvpp_core)/callfacade/*.java 	\
+		jvpp-core/$(packagedir_jvpp_core)/test/*.java 	\
 		|| (echo "jvpp-core compilation failed: $$?"; exit 1)
 	$(JAVAH) -force -classpath jvpp-registry/target:jvpp-core/target -d jvpp-core io.fd.vpp.jvpp.core.JVppCoreImpl
 
