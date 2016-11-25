@@ -256,9 +256,6 @@ l2input_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2input_next_t next_index;
   l2input_main_t *msm = &l2input_main;
-  vlib_node_t *n = vlib_get_node (vm, l2input_node.index);
-  u32 node_counter_base_index = n->error_heap_index;
-  vlib_error_main_t *em = &vm->error_main;
   u32 cpu_index = os_get_cpu_number ();
 
   from = vlib_frame_vector_args (frame);
@@ -272,40 +269,32 @@ l2input_node_fn (vlib_main_t * vm,
       /* get space to enqueue frame to graph node "next_index" */
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 6 && n_left_to_next >= 2)
+      while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1;
-	  u32 sw_if_index0, sw_if_index1;
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  u32 next0, next1, next2, next3;
+	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3, *p4, *p5;
-	    u32 sw_if_index2, sw_if_index3;
+	    vlib_buffer_t *p4, *p5, *p6, *p7;
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
 	    p4 = vlib_get_buffer (vm, from[4]);
 	    p5 = vlib_get_buffer (vm, from[5]);
+	    p6 = vlib_get_buffer (vm, from[6]);
+	    p7 = vlib_get_buffer (vm, from[7]);
 
 	    /* Prefetch the buffer header and packet for the N+2 loop iteration */
 	    vlib_prefetch_buffer_header (p4, LOAD);
 	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_header (p6, LOAD);
+	    vlib_prefetch_buffer_header (p7, LOAD);
 
 	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
 	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
-
-	    /*
-	     * Prefetch the input config for the N+1 loop iteration
-	     * This depends on the buffer header above
-	     */
-	    sw_if_index2 = vnet_buffer (p2)->sw_if_index[VLIB_RX];
-	    sw_if_index3 = vnet_buffer (p3)->sw_if_index[VLIB_RX];
-	    CLIB_PREFETCH (&msm->configs[sw_if_index2], CLIB_CACHE_LINE_BYTES,
-			   LOAD);
-	    CLIB_PREFETCH (&msm->configs[sw_if_index3], CLIB_CACHE_LINE_BYTES,
-			   LOAD);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
 
 	    /*
 	     * Don't bother prefetching the bridge-domain config (which
@@ -319,19 +308,25 @@ l2input_node_fn (vlib_main_t * vm,
 	  /* bi is "buffer index", b is pointer to the buffer */
 	  to_next[0] = bi0 = from[0];
 	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+	  to_next[2] = bi2 = from[2];
+	  to_next[3] = bi3 = from[3];
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      /* RX interface handles */
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	      sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
+	      sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
 
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -351,19 +346,40 @@ l2input_node_fn (vlib_main_t * vm,
 		  clib_memcpy (t->src, h1->src_address, 6);
 		  clib_memcpy (t->dst, h1->dst_address, 6);
 		}
+	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  ethernet_header_t *h2 = vlib_buffer_get_current (b2);
+		  l2input_trace_t *t =
+		    vlib_add_trace (vm, node, b2, sizeof (*t));
+		  t->sw_if_index = sw_if_index2;
+		  clib_memcpy (t->src, h2->src_address, 6);
+		  clib_memcpy (t->dst, h2->dst_address, 6);
+		}
+	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  ethernet_header_t *h3 = vlib_buffer_get_current (b3);
+		  l2input_trace_t *t =
+		    vlib_add_trace (vm, node, b3, sizeof (*t));
+		  t->sw_if_index = sw_if_index3;
+		  clib_memcpy (t->src, h3->src_address, 6);
+		  clib_memcpy (t->dst, h3->dst_address, 6);
+		}
 	    }
 
-	  em->counters[node_counter_base_index + L2INPUT_ERROR_L2INPUT] += 2;
+	  vlib_node_increment_counter (vm, l2input_node.index,
+				       L2INPUT_ERROR_L2INPUT, 4);
 
 	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
-
 	  classify_and_dispatch (vm, node, cpu_index, msm, b1, &next1);
+	  classify_and_dispatch (vm, node, cpu_index, msm, b2, &next2);
+	  classify_and_dispatch (vm, node, cpu_index, msm, b3, &next3);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+					   bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -394,7 +410,8 @@ l2input_node_fn (vlib_main_t * vm,
 	      clib_memcpy (t->dst, h0->dst_address, 6);
 	    }
 
-	  em->counters[node_counter_base_index + L2INPUT_ERROR_L2INPUT] += 1;
+	  vlib_node_increment_counter (vm, l2input_node.index,
+				       L2INPUT_ERROR_L2INPUT, 1);
 
 	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
 

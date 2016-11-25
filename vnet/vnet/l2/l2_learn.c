@@ -258,51 +258,65 @@ l2learn_node_fn (vlib_main_t * vm,
       /* get space to enqueue frame to graph node "next_index" */
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from >= 4 && n_left_to_next >= 2)
+      while (n_left_from >= 8 && n_left_to_next >= 4)
 	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 next0, next1;
-	  u32 sw_if_index0, sw_if_index1;
-	  ethernet_header_t *h0, *h1;
-	  l2fib_entry_key_t key0, key1;
-	  l2fib_entry_result_t result0, result1;
-	  u32 bucket0, bucket1;
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  u32 next0, next1, next2, next3;
+	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
+	  ethernet_header_t *h0, *h1, *h2, *h3;
+	  l2fib_entry_key_t key0, key1, key2, key3;
+	  l2fib_entry_result_t result0, result1, result2, result3;
+	  u32 bucket0, bucket1, bucket2, bucket3;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t *p2, *p3;
+	    vlib_buffer_t *p4, *p5, *p6, *p7;;
 
-	    p2 = vlib_get_buffer (vm, from[2]);
-	    p3 = vlib_get_buffer (vm, from[3]);
+	    p4 = vlib_get_buffer (vm, from[4]);
+	    p5 = vlib_get_buffer (vm, from[5]);
+	    p6 = vlib_get_buffer (vm, from[6]);
+	    p7 = vlib_get_buffer (vm, from[7]);
 
-	    vlib_prefetch_buffer_header (p2, LOAD);
-	    vlib_prefetch_buffer_header (p3, LOAD);
+	    vlib_prefetch_buffer_header (p4, LOAD);
+	    vlib_prefetch_buffer_header (p5, LOAD);
+	    vlib_prefetch_buffer_header (p6, LOAD);
+	    vlib_prefetch_buffer_header (p7, LOAD);
 
-	    CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-	    CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p4->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p5->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p6->data, CLIB_CACHE_LINE_BYTES, STORE);
+	    CLIB_PREFETCH (p7->data, CLIB_CACHE_LINE_BYTES, STORE);
 	  }
 
 	  /* speculatively enqueue b0 and b1 to the current next frame */
 	  /* bi is "buffer index", b is pointer to the buffer */
 	  to_next[0] = bi0 = from[0];
 	  to_next[1] = bi1 = from[1];
-	  from += 2;
-	  to_next += 2;
-	  n_left_from -= 2;
-	  n_left_to_next -= 2;
+	  to_next[2] = bi2 = from[2];
+	  to_next[3] = bi3 = from[3];
+	  from += 4;
+	  to_next += 4;
+	  n_left_from -= 4;
+	  n_left_to_next -= 4;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
 
 	  /* RX interface handles */
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
+	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
 
-	  /* Process 2 x pkts */
+	  /* Process 4 x pkts */
 
 	  h0 = vlib_buffer_get_current (b0);
 	  h1 = vlib_buffer_get_current (b1);
+	  h2 = vlib_buffer_get_current (b2);
+	  h3 = vlib_buffer_get_current (b3);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -324,18 +338,42 @@ l2learn_node_fn (vlib_main_t * vm,
 		  clib_memcpy (t->src, h1->src_address, 6);
 		  clib_memcpy (t->dst, h1->dst_address, 6);
 		}
+	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2learn_trace_t *t =
+		    vlib_add_trace (vm, node, b2, sizeof (*t));
+		  t->sw_if_index = sw_if_index2;
+		  t->bd_index = vnet_buffer (b2)->l2.bd_index;
+		  clib_memcpy (t->src, h2->src_address, 6);
+		  clib_memcpy (t->dst, h2->dst_address, 6);
+		}
+	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2learn_trace_t *t =
+		    vlib_add_trace (vm, node, b3, sizeof (*t));
+		  t->sw_if_index = sw_if_index3;
+		  t->bd_index = vnet_buffer (b3)->l2.bd_index;
+		  clib_memcpy (t->src, h3->src_address, 6);
+		  clib_memcpy (t->dst, h3->dst_address, 6);
+		}
 	    }
 
-	  /* process 2 pkts */
-	  em->counters[node_counter_base_index + L2LEARN_ERROR_L2LEARN] += 2;
+	  /* process 4 pkts */
+	  vlib_node_increment_counter (vm, l2learn_node.index,
+				       L2LEARN_ERROR_L2LEARN, 4);
 
-	  l2fib_lookup_2 (msm->mac_table, &cached_key, &cached_result,
+	  l2fib_lookup_4 (msm->mac_table, &cached_key, &cached_result,
 			  h0->src_address,
 			  h1->src_address,
+			  h2->src_address,
+			  h3->src_address,
 			  vnet_buffer (b0)->l2.bd_index,
 			  vnet_buffer (b1)->l2.bd_index,
-			  &key0,
-			  &key1, &bucket0, &bucket1, &result0, &result1);
+			  vnet_buffer (b2)->l2.bd_index,
+			  vnet_buffer (b3)->l2.bd_index,
+			  &key0, &key1, &key2, &key3,
+			  &bucket0, &bucket1, &bucket2, &bucket3,
+			  &result0, &result1, &result2, &result3);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b0, sw_if_index0, &key0, &cached_key,
@@ -345,11 +383,20 @@ l2learn_node_fn (vlib_main_t * vm,
 			   b1, sw_if_index1, &key1, &cached_key,
 			   &bucket1, &result1, &next1);
 
+	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
+			   b2, sw_if_index2, &key2, &cached_key,
+			   &bucket2, &result2, &next2);
+
+	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
+			   b3, sw_if_index3, &key3, &cached_key,
+			   &bucket3, &result3, &next3);
+
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
-	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					   to_next, n_left_to_next,
-					   bi0, bi1, next0, next1);
+					   bi0, bi1, bi2, bi3,
+					   next0, next1, next2, next3);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -388,7 +435,9 @@ l2learn_node_fn (vlib_main_t * vm,
 	    }
 
 	  /* process 1 pkt */
-	  em->counters[node_counter_base_index + L2LEARN_ERROR_L2LEARN] += 1;
+	  vlib_node_increment_counter (vm, l2learn_node.index,
+				       L2LEARN_ERROR_L2LEARN, 1);
+
 
 	  l2fib_lookup_1 (msm->mac_table, &cached_key, &cached_result,
 			  h0->src_address, vnet_buffer (b0)->l2.bd_index,
