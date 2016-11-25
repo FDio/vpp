@@ -3,7 +3,8 @@ plugins_configure_depend = 			\
     vlib-api-install 				\
     vpp-api-test-install 			\
     vnet-install                                \
-    vlib-install 
+    vlib-install 				\
+    vpp-api-install
 
 plugins_CPPFLAGS = $(call installed_includes_fn, 	\
     vppinfra 					\
