@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @IPSEC@ @VCGN@ @IPV6SR@
+AM_CFLAGS = -Wall @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @VCGN@ @IPV6SR@
 
 noinst_PROGRAMS = 
 BUILT_SOURCES =
@@ -110,6 +110,9 @@ else
 vpp_LDFLAGS += -l:libdpdk.a
 endif
 vpp_LDFLAGS += -Wl,--no-whole-archive
+if WITH_DPDK_CRYPTO
+vpp_LDADD += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
+endif
 endif
 
 vpp_LDADD += -lvppinfra -lm -lpthread -ldl

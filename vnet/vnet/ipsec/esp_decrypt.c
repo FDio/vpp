@@ -22,8 +22,6 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
-#define ESP_WINDOW_SIZE 64
-
 #define foreach_esp_decrypt_next                \
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
@@ -107,125 +105,6 @@ esp_decrypt_aes_cbc (ipsec_crypto_alg_t alg,
 
   EVP_DecryptUpdate (ctx, out, &out_len, in, in_len);
   EVP_DecryptFinal_ex (ctx, out + out_len, &out_len);
-}
-
-always_inline int
-esp_replay_check (ipsec_sa_t * sa, u32 seq)
-{
-  u32 diff;
-
-  if (PREDICT_TRUE (seq > sa->last_seq))
-    return 0;
-
-  diff = sa->last_seq - seq;
-
-  if (ESP_WINDOW_SIZE > diff)
-    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-  else
-    return 1;
-
-  return 0;
-}
-
-always_inline int
-esp_replay_check_esn (ipsec_sa_t * sa, u32 seq)
-{
-  u32 tl = sa->last_seq;
-  u32 th = sa->last_seq_hi;
-  u32 diff = tl - seq;
-
-  if (PREDICT_TRUE (tl >= (ESP_WINDOW_SIZE - 1)))
-    {
-      if (seq >= (tl - ESP_WINDOW_SIZE + 1))
-	{
-	  sa->seq_hi = th;
-	  if (seq <= tl)
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	  else
-	    return 0;
-	}
-      else
-	{
-	  sa->seq_hi = th + 1;
-	  return 0;
-	}
-    }
-  else
-    {
-      if (seq >= (tl - ESP_WINDOW_SIZE + 1))
-	{
-	  sa->seq_hi = th - 1;
-	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	}
-      else
-	{
-	  sa->seq_hi = th;
-	  if (seq <= tl)
-	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
-	  else
-	    return 0;
-	}
-    }
-
-  return 0;
-}
-
-always_inline void
-esp_replay_advance (ipsec_sa_t * sa, u32 seq)
-{
-  u32 pos;
-
-  if (seq > sa->last_seq)
-    {
-      pos = seq - sa->last_seq;
-      if (pos < ESP_WINDOW_SIZE)
-	sa->replay_window = ((sa->replay_window) << pos) | 1;
-      else
-	sa->replay_window = 1;
-      sa->last_seq = seq;
-    }
-  else
-    {
-      pos = sa->last_seq - seq;
-      sa->replay_window |= (1ULL << pos);
-    }
-}
-
-always_inline void
-esp_replay_advance_esn (ipsec_sa_t * sa, u32 seq)
-{
-  int wrap = sa->seq_hi - sa->last_seq_hi;
-  u32 pos;
-
-  if (wrap == 0 && seq > sa->last_seq)
-    {
-      pos = seq - sa->last_seq;
-      if (pos < ESP_WINDOW_SIZE)
-	sa->replay_window = ((sa->replay_window) << pos) | 1;
-      else
-	sa->replay_window = 1;
-      sa->last_seq = seq;
-    }
-  else if (wrap > 0)
-    {
-      pos = ~seq + sa->last_seq + 1;
-      if (pos < ESP_WINDOW_SIZE)
-	sa->replay_window = ((sa->replay_window) << pos) | 1;
-      else
-	sa->replay_window = 1;
-      sa->last_seq = seq;
-      sa->last_seq_hi = sa->seq_hi;
-    }
-  else if (wrap < 0)
-    {
-      pos = ~seq + sa->last_seq + 1;
-      sa->replay_window |= (1ULL << pos);
-    }
-  else
-    {
-      pos = sa->last_seq - seq;
-      sa->replay_window |= (1ULL << pos);
-    }
 }
 
 static uword

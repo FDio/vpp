@@ -41,6 +41,7 @@ vlib_configure_args_vpp = --with-pre-data=128
 plugins_configure_args_vpp = --with-dpdk
 
 # DPDK configuration parameters
+# vpp_uses_dpdk_cryptodev = yes
 # vpp_uses_external_dpdk = yes
 # vpp_dpdk_inc_dir = /usr/include/dpdk
 # vpp_dpdk_lib_dir = /usr/lib

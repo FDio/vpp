@@ -21,6 +21,11 @@
 
 #include <vnet/ipsec/ipsec.h>
 
+#if DPDK_CRYPTO==1
+#define ESP_NODE "dpdk-esp-encrypt"
+#else
+#define ESP_NODE "esp-encrypt"
+#endif
 
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_output_error    \
@@ -140,7 +145,7 @@ VLIB_REGISTER_NODE (ipsec_if_output_node) = {
   .n_next_nodes = IPSEC_IF_OUTPUT_N_NEXT,
 
   .next_nodes = {
-        [IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT] = "esp-encrypt",
+        [IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT] = ESP_NODE,
         [IPSEC_IF_OUTPUT_NEXT_DROP] = "error-drop",
   },
 };

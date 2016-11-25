@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef __ESP_H__
+#define __ESP_H__
 
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
@@ -76,6 +78,154 @@ typedef struct
 } esp_main_t;
 
 esp_main_t esp_main;
+
+#define ESP_WINDOW_SIZE		(64)
+#define ESP_SEQ_MAX 		(4294967295UL)
+
+
+always_inline int
+esp_replay_check (ipsec_sa_t * sa, u32 seq)
+{
+  u32 diff;
+
+  if (PREDICT_TRUE (seq > sa->last_seq))
+    return 0;
+
+  diff = sa->last_seq - seq;
+
+  if (ESP_WINDOW_SIZE > diff)
+    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+  else
+    return 1;
+
+  return 0;
+}
+
+always_inline int
+esp_replay_check_esn (ipsec_sa_t * sa, u32 seq)
+{
+  u32 tl = sa->last_seq;
+  u32 th = sa->last_seq_hi;
+  u32 diff = tl - seq;
+
+  if (PREDICT_TRUE (tl >= (ESP_WINDOW_SIZE - 1)))
+    {
+      if (seq >= (tl - ESP_WINDOW_SIZE + 1))
+	{
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    return 0;
+	}
+      else
+	{
+	  sa->seq_hi = th + 1;
+	  return 0;
+	}
+    }
+  else
+    {
+      if (seq >= (tl - ESP_WINDOW_SIZE + 1))
+	{
+	  sa->seq_hi = th - 1;
+	  return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	}
+      else
+	{
+	  sa->seq_hi = th;
+	  if (seq <= tl)
+	    return (sa->replay_window & (1ULL << diff)) ? 1 : 0;
+	  else
+	    return 0;
+	}
+    }
+
+  return 0;
+}
+
+/* TODO seq increment should be atomic to be accessed by multiple workers */
+always_inline void
+esp_replay_advance (ipsec_sa_t * sa, u32 seq)
+{
+  u32 pos;
+
+  if (seq > sa->last_seq)
+    {
+      pos = seq - sa->last_seq;
+      if (pos < ESP_WINDOW_SIZE)
+	sa->replay_window = ((sa->replay_window) << pos) | 1;
+      else
+	sa->replay_window = 1;
+      sa->last_seq = seq;
+    }
+  else
+    {
+      pos = sa->last_seq - seq;
+      sa->replay_window |= (1ULL << pos);
+    }
+}
+
+always_inline void
+esp_replay_advance_esn (ipsec_sa_t * sa, u32 seq)
+{
+  int wrap = sa->seq_hi - sa->last_seq_hi;
+  u32 pos;
+
+  if (wrap == 0 && seq > sa->last_seq)
+    {
+      pos = seq - sa->last_seq;
+      if (pos < ESP_WINDOW_SIZE)
+	sa->replay_window = ((sa->replay_window) << pos) | 1;
+      else
+	sa->replay_window = 1;
+      sa->last_seq = seq;
+    }
+  else if (wrap > 0)
+    {
+      pos = ~seq + sa->last_seq + 1;
+      if (pos < ESP_WINDOW_SIZE)
+	sa->replay_window = ((sa->replay_window) << pos) | 1;
+      else
+	sa->replay_window = 1;
+      sa->last_seq = seq;
+      sa->last_seq_hi = sa->seq_hi;
+    }
+  else if (wrap < 0)
+    {
+      pos = ~seq + sa->last_seq + 1;
+      sa->replay_window |= (1ULL << pos);
+    }
+  else
+    {
+      pos = sa->last_seq - seq;
+      sa->replay_window |= (1ULL << pos);
+    }
+}
+
+always_inline int
+esp_seq_advance (ipsec_sa_t * sa)
+{
+  if (PREDICT_TRUE (sa->use_esn))
+    {
+      if (PREDICT_FALSE (sa->seq == ESP_SEQ_MAX))
+	{
+	  if (PREDICT_FALSE
+	      (sa->use_anti_replay && sa->seq_hi == ESP_SEQ_MAX))
+	    return 1;
+	  sa->seq_hi++;
+	}
+      sa->seq++;
+    }
+  else
+    {
+      if (PREDICT_FALSE (sa->use_anti_replay && sa->seq == ESP_SEQ_MAX))
+	return 1;
+      sa->seq++;
+    }
+
+  return 0;
+}
 
 always_inline void
 esp_init ()
@@ -159,6 +309,7 @@ hmac_calc (ipsec_integ_alg_t alg,
   return em->esp_integ_algs[alg].trunc_size;
 }
 
+#endif /* __ESP_H__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

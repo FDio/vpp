@@ -38,4 +38,7 @@ vnet_configure_depend += dpdk-install
 vnet_CPPFLAGS += $(call installed_includes_fn, dpdk)
 vnet_LDFLAGS += $(call installed_libs_fn, dpdk)
 endif
+ifeq ($($(PLATFORM)_uses_dpdk_cryptodev),yes)
+vnet_configure_args += --with-dpdk-crypto
+endif
 endif

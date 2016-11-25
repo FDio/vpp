@@ -22,6 +22,12 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
+#if DPDK_CRYPTO==1
+#define ESP_NODE "dpdk-esp-decrypt"
+#else
+#define ESP_NODE "esp-decrypt"
+#endif
+
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_input_error    \
 _(RX, "good packets received")
@@ -153,8 +159,8 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
   .n_next_nodes = IPSEC_IF_INPUT_N_NEXT,
 
   .next_nodes = {
-        [IPSEC_IF_INPUT_NEXT_ESP_DECRYPT] = "esp-decrypt",
-        [IPSEC_IF_INPUT_NEXT_DROP] = "error-drop",
+	[IPSEC_IF_INPUT_NEXT_ESP_DECRYPT] = ESP_NODE,
+	[IPSEC_IF_INPUT_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */

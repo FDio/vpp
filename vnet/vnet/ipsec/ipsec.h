@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef __IPSEC_H__
+#define __IPSEC_H__
+
 #define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
 
 #define foreach_ipsec_policy_action \
@@ -306,6 +309,8 @@ get_next_output_feature_node_index (vlib_buffer_t * b,
   vnet_feature_next (sw_if_index, &next, b);
   return node->next_nodes[next];
 }
+
+#endif /* __IPSEC_H__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
