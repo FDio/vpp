@@ -407,7 +407,7 @@ always_inline vlib_buffer_t *
 vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 {
   vlib_buffer_t *s, *d, *fd;
-  uword n_alloc, n_buffers = 1;
+  uword n_buffers = 1;
   u32 *new_buffers = 0;
   u32 flag_mask = VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID;
   int i;
@@ -420,8 +420,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
     }
 
   vec_validate (new_buffers, n_buffers - 1);
-  n_alloc = vlib_buffer_alloc (vm, new_buffers, n_buffers);
-  ASSERT (n_alloc == n_buffers);
+  ASSERT (vlib_buffer_alloc (vm, new_buffers, n_buffers) == n_buffers);
 
   /* 1st segment */
   s = b;
