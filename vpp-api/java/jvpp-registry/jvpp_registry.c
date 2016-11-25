@@ -176,7 +176,9 @@ static int send_initial_control_ping() {
     rm->control_ping_result_ready = 0;
     mp = vl_msg_api_alloc(sizeof(*mp));
     memset(mp, 0, sizeof(*mp));
-    mp->_vl_msg_id = ntohs(VL_API_CONTROL_PING);
+
+    // FIXME how to obtain control_ping msg id from static context?
+    mp->_vl_msg_id = ntohs (vl_api_get_msg_index((u8 *)"control_ping_ea1bf4f7"));
     mp->client_index = jm->my_client_index;
 
     // send message:
@@ -210,7 +212,10 @@ static int connect_to_vpe(char *name) {
 
     jm->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
-    vl_msg_api_set_handlers(VL_API_CONTROL_PING_REPLY, "control_ping_reply",
+    vl_msg_api_set_handlers(
+            // FIXME how to obtain control_ping_reply msg id from static context?
+            vl_api_get_msg_index((u8 *)"control_ping_reply_aa016e7b"),
+            "control_ping_reply",
             vl_api_control_ping_reply_t_handler, vl_noop_handler,
             vl_api_control_ping_reply_t_endian,
             vl_api_control_ping_reply_t_print,

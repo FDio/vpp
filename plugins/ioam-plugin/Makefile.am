@@ -158,13 +158,13 @@ libjvpp_ioamtrace_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/li
 
 BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h
 
-$(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h: defs_ioam_trace_papi.py
+$(jvpp_root)/io_fd_vpp_jvpp_ioamtrace_JVppIoamtraceImpl.h: ioam_trace.api.json
 	dir=`pwd`;						\
 	mkdir -p $(jvpp_target); \
 	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
 	cd $(jvpp_root)/$(jvpp_package_dir);			\
 	mkdir -p dto future callfacade callback notification test; 	\
-	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/defs_ioam_trace_papi.py --plugin_name ioamtrace;		\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/ioam_trace.api.json --plugin_name ioamtrace;		\
 	cd -;							\
 	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_ioamtrace_gen.h $(jvpp_root)/jvpp_ioam_trace_gen.h;							\
 	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
@@ -184,8 +184,8 @@ $(jioam_trace_jarfile): libjvpp_ioamtrace.la
 	cd $(jvpp_target);				\
 	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_ioamtrace.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
 
-defs_ioam_trace_papi.py:
+ioam_trace.api.json:
 	@echo "  jIoam_trace API"; \
-        vppapigen --input $(api_file) --python defs_ioam_trace_papi.py;
+        vppapigen --input $(api_file) --json ioam_trace.api.json;
 
 all-local: $(jioam_trace_jarfile)

@@ -75,7 +75,7 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_snat_JVppSnatImpl_init0
     plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
 
     #define _(N,n)                                  \
-        vl_msg_api_set_handlers(VL_API_##N + plugin_main->msg_id_base, #n,     \
+        vl_msg_api_set_handlers(vl_api_get_msg_index((u8 *) #N), #n,     \
                 vl_api_##n##_t_handler,             \
                 vl_noop_handler,                    \
                 vl_api_##n##_t_endian,              \
