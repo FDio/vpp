@@ -273,33 +273,17 @@ end
 function vpp.init(vpp, args)
   local pneum_api = args.pneum_api or [[
  int cough_pneum_attach(char *pneum_path, char *cough_path);
- int pneum_connect(char *name, char *chroot_prefix);
- int pneum_connect_sync(char *name, char *chroot_prefix);
+ int pneum_connect(char *name, char *chroot_prefix, void *cb);
  int pneum_disconnect(void);
  int pneum_read(char **data, int *l);
  int pneum_write(char *data, int len);
-
-void pneum_data_free(char *data);
+ void pneum_free(char *data);
 ]]
 
   vpp.pneum_path = args.pneum_path
   ffi.cdef(pneum_api)
   local init_res = 0
-  if pcall(function()
-		     vpp.cough_path = args.cough_path or "./libcough.so"
-                     vpp.cough = ffi.load(vpp.cough_path)
-           end) then
-    pcall(function()
-      if(vpp.cough.cough_pneum_attach) then
-        vpp.pneum_is_cough = true
-        print("libcough detected\n")
-        init_res = vpp.cough.cough_pneum_attach(vpp.c_str(vpp.pneum_path), vpp.c_str(vpp.cough_path))
-        vpp.pneum = vpp.cough
-      end
-    end)
-  else
-    vpp.pneum = ffi.load(vpp.pneum_path)
-  end
+  vpp.pneum = ffi.load(vpp.pneum_path)
   if (init_res < 0) then
     return nil
   end
@@ -463,9 +447,9 @@ void pneum_data_free(char *data);
       local len = 0
       local val = nil
       if field.array and (type(v) == "table") then
-        print("NTFY: field " .. tostring(k) .. " in message " .. tostring(c_type) .. " is an array")
+        -- print("NTFY: field " .. tostring(k) .. " in message " .. tostring(c_type) .. " is an array")
         for field_i, field_v in ipairs(v) do
-          print("NTFY: setting member#" .. tostring(field_i) .. " to value " .. vpp.dump(field_v))
+          -- print("NTFY: setting member#" .. tostring(field_i) .. " to value " .. vpp.dump(field_v))
           local field_len, field_val = lua2c(field.c_type, field_v, dst[k][field_i-1])
           len = len + field_len
         end
@@ -544,7 +528,7 @@ function vpp.connect(vpp, client_name)
     if client_name then
       name = client_name
     end
-    local ret = vpp.pneum.pneum_connect_sync(vpp.c_str(client_name), nil)
+    local ret = vpp.pneum.pneum_connect(vpp.c_str(client_name), nil, nil)
     if tonumber(ret) == 0 then
       vpp.is_connected = true
     end
@@ -712,7 +696,7 @@ function vpp.api_read(vpp)
       out["luaapi_message_name"] = reply_msg_name
     end
 
-    vpp.pneum.pneum_data_free(ffi.cast('void *',rep[0]))
+    vpp.pneum.pneum_free(ffi.cast('void *',rep[0]))
 
     return reply_msg_name, out
   end
