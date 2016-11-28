@@ -830,6 +830,8 @@ snat_out2in_worker_handoff_fn (vlib_main_t * vm,
   u32 current_worker_index = ~0;
   u32 cpu_index = os_get_cpu_number ();
 
+  ASSERT (vec_len (sm->workers));
+
   if (PREDICT_FALSE (handoff_queue_elt_by_worker_index == 0))
     {
       vec_validate (handoff_queue_elt_by_worker_index, tm->n_vlib_mains - 1);
@@ -888,6 +890,8 @@ snat_out2in_worker_handoff_fn (vlib_main_t * vm,
 
       if (PREDICT_FALSE (next_worker_index != cpu_index))
         {
+          do_handoff = 1;
+
           if (next_worker_index != current_worker_index)
             {
               if (hf)

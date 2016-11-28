@@ -494,8 +494,10 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
             {
               user_index = value.value;
-              clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value);
-              tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+              if (!clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
+                tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+              else
+                tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
               u = pool_elt_at_index (tsm->users, user_index);
               if (u->nstaticsessions)
                 {
