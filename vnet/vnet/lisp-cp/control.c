@@ -1054,6 +1054,7 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 	  m_args->action = action;
 	  m_args->locator_set_index = ls_index;
 	  m_args->is_static = is_static;
+	  m_args->ttl = ttl;
 	  vnet_lisp_map_cache_add_del (m_args, &dst_map_index);
 
 	  if (res_map_index)
@@ -3854,6 +3855,44 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
   vec_free (to_be_removed);
 }
 
+static void
+update_mapping_ttls (lisp_cp_main_t * lcm, f64 period)
+{
+  mapping_t *m;
+  gid_address_t *to_be_deleted = 0, eid, *d;
+
+  /* *INDENT-OFF* */
+  pool_foreach (m, lcm->mapping_pool,
+  {
+    if (m->local)
+      continue;
+
+    if ((u32)~0 == m->ttl)
+      continue;
+
+    u32 rounded = (u32) (period + 0.5f);
+    if (m->ttl > rounded)
+      m->ttl -= rounded;
+    else
+      {
+        memset (&eid, 0, sizeof (eid));
+        gid_address_copy (&eid, &m->eid);
+        vec_add1 (to_be_deleted, eid);
+      }
+  });
+
+  vec_foreach (d, to_be_deleted)
+    {
+      lisp_add_del_adjacency (lcm, 0, d, 0 /* is_add */);
+      vnet_lisp_add_del_mapping (d, 0, 0, 0, ~0, 0 /* is_add */ ,
+                                 0 /* is_static */, 0);
+      gid_address_free (d);
+    }
+  vec_free (to_be_deleted);
+
+  /* *INDENT-ON* */
+}
+
 static uword
 send_map_resolver_service (vlib_main_t * vm,
 			   vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -3882,6 +3921,7 @@ send_map_resolver_service (vlib_main_t * vm,
       remove_dead_pending_map_requests (lcm);
 
       lisp_pending_map_request_unlock (lcm);
+      update_mapping_ttls (lcm, period);
     }
 
   /* unreachable */
