@@ -93,7 +93,7 @@ class VppPapiProvider(object):
         :param cli: CLI to execute
         :returns: CLI output
         """
-        return cli + "\n" + self.cli(cli)
+        return cli + "\n" + str(self.cli(cli))
 
     def _convert_mac(self, mac):
         return int(mac.replace(":", ""), 16) << 16
