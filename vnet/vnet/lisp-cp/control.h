@@ -154,6 +154,9 @@ typedef struct
   /* map request mode */
   u8 map_request_mode;
 
+  /* timing wheel for mappping timeouts */
+  timing_wheel_t wheel;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
