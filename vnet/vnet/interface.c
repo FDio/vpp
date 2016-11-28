@@ -1202,6 +1202,7 @@ vnet_interface_init (vlib_main_t * vm)
 
     return error;
   }
+  vnm->interface_tag_by_sw_if_index = hash_create (0, sizeof (uword));
 }
 
 VLIB_INIT_FUNCTION (vnet_interface_init);

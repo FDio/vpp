@@ -117,6 +117,7 @@ define sw_interface_details
   u32 vtr_push_dot1q;		// ethertype of first pushed tag is dot1q/dot1ad
   u32 vtr_tag1;			// first pushed tag
   u32 vtr_tag2;			// second pushed tag
+  u8 tag[64];
 };
 
 /* works */
@@ -226,6 +227,7 @@ define tap_connect
   u8 mac_address[6];
   u8 renumber;
   u32 custom_dev_instance;
+  u8 tag[64];
 };
 
 /** \brief Reply for tap connect request
@@ -2269,6 +2271,7 @@ define create_vhost_user_if
   u32 custom_dev_instance;
   u8 use_custom_mac;
   u8 mac_address[6];
+  u8 tag[64];
 };
 
 /** \brief vhost-user interface create response
@@ -5514,6 +5517,31 @@ define feature_enable_disable {
     @param retval - return code for the request
 */
 define feature_enable_disable_reply
+{
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Set / clear software interface tag
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface
+    @param add_del - 1 = add, 0 = delete
+    @param tag - an ascii tag
+*/
+define sw_interface_tag_add_del {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u32 sw_if_index;
+    u8 tag[64];
+};
+
+/** \brief Reply to set / clear software interface tag
+    @param context - sender context which was passed in the request
+    @param retval - return code for the request
+*/
+define sw_interface_tag_add_del_reply
 {
     u32 context;
     i32 retval;

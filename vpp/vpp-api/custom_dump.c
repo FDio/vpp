@@ -431,7 +431,8 @@ static void *vl_api_tap_connect_t_print
   s = format (s, "tapname %s ", mp->tap_name);
   if (mp->use_random_mac)
     s = format (s, "random-mac ");
-
+  if (mp->tag[0])
+    s = format (s, "tag %s ", mp->tag);
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
 
@@ -1568,6 +1569,8 @@ static void *vl_api_create_vhost_user_if_t_print
     s = format (s, "server ");
   if (mp->renumber)
     s = format (s, "renumber %d ", ntohl (mp->custom_dev_instance));
+  if (mp->tag[0])
+    s = format (s, "tag %s", mp->tag);
 
   FINISH;
 }
@@ -2926,6 +2929,21 @@ static void *vl_api_feature_enable_disable_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_tag_add_del_t_print
+  (vl_api_sw_interface_tag_add_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_tag_add_del ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  if (mp->is_add)
+    s = format (s, "tag %s ", mp->tag);
+  else
+    s = format (s, "del ");
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3098,7 +3116,8 @@ _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
+_(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
+_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

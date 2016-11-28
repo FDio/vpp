@@ -3547,7 +3547,8 @@ _(ip_source_and_port_range_check_interface_add_del_reply)\
 _(delete_subif_reply)                                   \
 _(l2_interface_pbb_tag_rewrite_reply)                   \
 _(punt_reply)                                           \
-_(feature_enable_disable_reply)
+_(feature_enable_disable_reply)				\
+_(sw_interface_tag_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3791,7 +3792,8 @@ _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(PUNT_REPLY, punt_reply)                                               \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
-_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)
+_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)		\
+_(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -5629,6 +5631,7 @@ api_tap_connect (vat_main_t * vam)
   u8 random_mac = 1;
   u8 name_set = 0;
   u8 *tap_name;
+  u8 *tag = 0;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -5643,6 +5646,7 @@ api_tap_connect (vat_main_t * vam)
 	random_mac = 1;
       else if (unformat (i, "tapname %s", &tap_name))
 	name_set = 1;
+      else if (unformat (i, "tag %s", &tag));
       else
 	break;
     }
@@ -5655,8 +5659,16 @@ api_tap_connect (vat_main_t * vam)
   if (vec_len (tap_name) > 63)
     {
       errmsg ("tap name too long\n");
+      return -99;
     }
   vec_add1 (tap_name, 0);
+
+  if (vec_len (tag) > 63)
+    {
+      errmsg ("tag too long\n");
+      return -99;
+    }
+  vec_add1 (tag, 0);
 
   /* Construct the API message */
   M (TAP_CONNECT, tap_connect);
@@ -5664,7 +5676,11 @@ api_tap_connect (vat_main_t * vam)
   mp->use_random_mac = random_mac;
   clib_memcpy (mp->mac_address, mac_address, 6);
   clib_memcpy (mp->tap_name, tap_name, vec_len (tap_name));
+  if (tag)
+    clib_memcpy (mp->tag, tag, vec_len (tag));
+
   vec_free (tap_name);
+  vec_free (tag);
 
   /* send it... */
   S;
@@ -10666,6 +10682,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   u32 custom_dev_instance = ~0;
   u8 hwaddr[6];
   u8 use_custom_mac = 0;
+  u8 *tag = 0;
 
   /* Shut up coverity */
   memset (hwaddr, 0, sizeof (hwaddr));
@@ -10682,6 +10699,8 @@ api_create_vhost_user_if (vat_main_t * vam)
 	use_custom_mac = 1;
       else if (unformat (i, "server"))
 	is_server = 1;
+      else if (unformat (i, "tag %s", &tag))
+	;
       else
 	break;
     }
@@ -10711,6 +10730,9 @@ api_create_vhost_user_if (vat_main_t * vam)
     }
   mp->use_custom_mac = use_custom_mac;
   clib_memcpy (mp->mac_address, hwaddr, 6);
+  if (tag)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
+  vec_free (tag);
 
   S;
   W;
@@ -16410,6 +16432,54 @@ api_feature_enable_disable (vat_main_t * vam)
 }
 
 static int
+api_sw_interface_tag_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_tag_add_del_t *mp;
+  f64 timeout;
+  u32 sw_if_index = ~0;
+  u8 *tag = 0;
+  u8 enable = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "tag %s", &tag))
+	;
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "del"))
+	enable = 0;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  if (enable && (tag == 0))
+    {
+      errmsg ("no tag specified\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_add = enable;
+  if (enable)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
+  vec_free (tag);
+
+  S;
+  W;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
   longjmp (vam->jump_buf, 1);
@@ -16807,7 +16877,7 @@ _(l2_flags,                                                             \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_connect,                                                          \
-  "tapname <name> mac <mac-addr> | random-mac")                         \
+  "tapname <name> mac <mac-addr> | random-mac [tag <string>]")          \
 _(tap_modify,                                                           \
   "<vpp-if-name> | sw_if_index <id> tapname <name> mac <mac-addr> | random-mac") \
 _(tap_delete,                                                           \
@@ -17085,7 +17155,9 @@ _(flow_classify_dump, "type [ip4|ip6]")                                 \
 _(ip_fib_dump, "")                                                      \
 _(ip6_fib_dump, "")                                                     \
 _(feature_enable_disable, "arc_name <arc_name> "                        \
-  "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")
+  "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")	\
+_(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
+"[disable]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
