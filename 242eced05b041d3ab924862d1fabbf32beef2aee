@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_a7eef6b2",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2016-11-28T17:12:08Z",
+      "side": 1,
+      "message": "If doing node by name you don\u0027t need this explicitly in here.",
+      "range": {
+        "startLine": 548,
+        "startChar": 0,
+        "endLine": 551,
+        "endChar": 67
+      },
+      "revId": "242eced05b041d3ab924862d1fabbf32beef2aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
