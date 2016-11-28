@@ -68,6 +68,8 @@ typedef struct vnet_main_t
     _vnet_interface_function_list_elt_t
     * sw_interface_admin_up_down_functions[VNET_ITF_FUNC_N_PRIO];
 
+  uword *interface_tag_by_sw_if_index;
+
   /*
    * Last "api" error, preserved so we can issue reasonable diagnostics
    * at or near the top of the food chain
