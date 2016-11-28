@@ -105,8 +105,8 @@ ip6_input (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0, * p1;
 	  ip6_header_t * ip0, * ip1;
-	  u32 pi0, sw_if_index0, next0 = 0;
-	  u32 pi1, sw_if_index1, next1 = 0;
+	  u32 pi0, sw_if_index0, next0;
+	  u32 pi1, sw_if_index1, next1;
 	  u8 error0, error1, arc0, arc1;
 
 	  /* Prefetch next iteration. */
@@ -122,6 +122,8 @@ ip6_input (vlib_main_t * vm,
 	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
 	    CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD);
 	  }
+
+	  next0 = next1 = IP6_INPUT_NEXT_LOOKUP;
 
 	  pi0 = from[0];
 	  pi1 = from[1];
@@ -204,7 +206,7 @@ ip6_input (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0;
 	  ip6_header_t * ip0;
-	  u32 pi0, sw_if_index0, next0 = 0;
+	  u32 pi0, sw_if_index0, next0;
 	  u8 error0, arc0;
 
 	  pi0 = from[0];
@@ -213,6 +215,8 @@ ip6_input (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
+
+	  next0 = IP6_INPUT_NEXT_LOOKUP;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);

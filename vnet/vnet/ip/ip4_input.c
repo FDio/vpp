@@ -108,8 +108,8 @@ ip4_input_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0, * p1;
 	  ip4_header_t * ip0, * ip1;
-	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0 = 0;
-	  u32 sw_if_index1, pi1, ip_len1, cur_len1, next1 = 0;
+	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
+	  u32 sw_if_index1, pi1, ip_len1, cur_len1, next1;
 	  i32 len_diff0, len_diff1;
 	  u8 error0, error1, arc0, arc1;
 
@@ -126,6 +126,8 @@ ip4_input_inline (vlib_main_t * vm,
 	    CLIB_PREFETCH (p2->data, sizeof (ip0[0]), LOAD);
 	    CLIB_PREFETCH (p3->data, sizeof (ip1[0]), LOAD);
 	  }
+
+	  next0 = next1 = IP4_INPUT_NEXT_LOOKUP;
 
 	  to_next[0] = pi0 = from[0];
 	  to_next[1] = pi1 = from[1];
@@ -232,7 +234,7 @@ ip4_input_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t * p0;
 	  ip4_header_t * ip0;
-	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0 = 0;
+	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
 	  i32 len_diff0;
 	  u8 error0, arc0;
 
@@ -242,6 +244,8 @@ ip4_input_inline (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
+
+	  next0 = IP4_INPUT_NEXT_LOOKUP;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
