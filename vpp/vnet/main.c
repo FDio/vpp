@@ -24,6 +24,7 @@
 #if DPDK
 #include <vnet/devices/dpdk/dpdk.h>
 
+#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
 /*
  * Called by the dpdk driver's rte_delay_us() function.
  * Return 0 to have the dpdk do a regular delay loop.
@@ -67,6 +68,46 @@ rte_delay_us_override (unsigned us)
     }
   return 0;			// no override
 }
+#else
+/*
+ * Callback called by the dpdk driver's rte_delay_us() function.
+ */
+void
+rte_delay_vpp (unsigned int us)
+{
+  vlib_main_t *vm;
+
+  /* Don't bother intercepting for short delays */
+  if (us < 10)
+    return;
+
+  /*
+   * Only intercept if we are in a vlib process.
+   * If we are called from a vlib worker thread or the vlib main
+   * thread then do not intercept. (Must not be called from an
+   * independent pthread).
+   */
+  if (os_get_cpu_number () == 0)
+    {
+      /*
+       * We're in the vlib main thread or a vlib process. Make sure
+       * the process is running and we're not still initializing.
+       */
+      vm = vlib_get_main ();
+      if (vlib_in_process_context (vm))
+	{
+	  /* Only suspend for the admin_down_process */
+	  vlib_process_t *proc = vlib_get_current_process (vm);
+	  if (!(proc->flags & VLIB_PROCESS_IS_RUNNING) ||
+	      (proc->node_runtime.function != admin_up_down_process))
+	    return;
+
+	  f64 delay = 1e-6 * us;
+	  vlib_process_suspend (vm, delay);
+	}
+    }
+}
+#endif
 #endif
 
 static void
@@ -79,6 +120,11 @@ vpe_main_init (vlib_main_t * vm)
 
   /* Turn off network stack components which we don't want */
   vlib_mark_init_function_complete (vm, srp_init);
+
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
+  /* register custom delay function */
+  rte_delay_us_callback_register (rte_delay_vpp);
+#endif
 }
 
 /*
