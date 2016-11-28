@@ -321,6 +321,7 @@ typedef struct
   u8 is_static;
   u8 *key;
   lisp_key_type_t key_id;
+  u8 timer_set;
 } mapping_t;
 
 uword

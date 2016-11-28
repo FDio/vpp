@@ -184,6 +184,9 @@ typedef struct
   /* enable/disable rloc-probing */
   u8 rloc_probing;
 
+  /* timing wheel for mappping timeouts */
+  timing_wheel_t wheel;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
