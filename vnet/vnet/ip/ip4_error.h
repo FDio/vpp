@@ -53,6 +53,9 @@
   _ (FRAGMENT_OFFSET_ONE, "ip4 fragment offset == 1")			\
   _ (TIME_EXPIRED, "ip4 ttl <= 1")					\
 									\
+  /* Errors signalled by ip4-not-enabled */				\
+  _ (NOT_ENABLED, "ip4 not enabled")					\
+									\
   /* Errors signalled by ip4-rewrite. */				\
   _ (MTU_EXCEEDED, "ip4 MTU exceeded and DF set")			\
   _ (DST_LOOKUP_MISS, "ip4 destination lookup miss")			\

@@ -820,11 +820,11 @@ ip4_sw_interface_enable_disable (u32 sw_if_index,
       if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
         return;
     }
-  vnet_feature_enable_disable ("ip4-unicast", "ip4-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
+			       !is_enable, 0, 0);
 
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-lookup-multicast", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled", sw_if_index,
+			       !is_enable, 0, 0);
 
 }
 
@@ -925,6 +925,7 @@ VNET_FEATURE_ARC_INIT (ip4_unicast, static) =
 {
   .arc_name  = "ip4-unicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .end_node = "ip4-lookup",
   .arc_index_ptr = &ip4_main.lookup_main.ucast_feature_arc_index,
 };
 
@@ -979,13 +980,13 @@ VNET_FEATURE_INIT (ip4_vpath, static) = {
 VNET_FEATURE_INIT (ip4_lookup, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-lookup",
-  .runs_before = VNET_FEATURES ("ip4-drop"),
+  .runs_before = 0, /* not before any other features */
 };
 
-VNET_FEATURE_INIT (ip4_drop, static) = {
+VNET_FEATURE_INIT (ip4_not_enabled, static) = {
   .arc_name = "ip4-unicast",
-  .node_name = "ip4-drop",
-  .runs_before = 0, /* not before any other features */
+  .node_name = "ip4-not-enbled",
+  .runs_after = 0, /* not after any other features */
 };
 
 
@@ -994,7 +995,14 @@ VNET_FEATURE_ARC_INIT (ip4_multicast, static) =
 {
   .arc_name  = "ip4-multicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .end_node = "ip4-lookup-multicast",
   .arc_index_ptr = &ip4_main.lookup_main.mcast_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (ip4_mc_not_enabled, static) = {
+  .arc_name = "ip4-multicast",
+  .node_name = "ip4-not-enabled",
+  .runs_after= 0, /* first feature */
 };
 
 VNET_FEATURE_INIT (ip4_vpath_mc, static) = {
@@ -1006,13 +1014,7 @@ VNET_FEATURE_INIT (ip4_vpath_mc, static) = {
 VNET_FEATURE_INIT (ip4_lookup_mc, static) = {
   .arc_name = "ip4-multicast",
   .node_name = "ip4-lookup-multicast",
-  .runs_before = VNET_FEATURES ("ip4-drop"),
-};
-
-VNET_FEATURE_INIT (ip4_mc_drop, static) = {
-  .arc_name = "ip4-multicast",
-  .node_name = "ip4-drop",
-  .runs_before = 0, /* last feature */
+  .runs_before = 0, /* not before any other features */
 };
 
 /* Source and port-range check ip4 tx feature path definition */
@@ -1020,6 +1022,7 @@ VNET_FEATURE_ARC_INIT (ip4_output, static) =
 {
   .arc_name  = "ip4-output",
   .start_nodes = VNET_FEATURES ("ip4-rewrite-transit", "ip4-midchain"),
+  .end_node = "interface-output",
   .arc_index_ptr = &ip4_main.lookup_main.output_feature_arc_index,
 };
 
@@ -1053,13 +1056,10 @@ ip4_sw_interface_add_del (vnet_main_t * vnm,
   /* Fill in lookup tables with default table (0). */
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
 
-  vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-not-enabled", sw_if_index,
 			       is_add, 0, 0);
 
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-drop", sw_if_index,
-			       is_add, 0, 0);
-
-  vnet_feature_enable_disable ("ip4-output", "interface-output", sw_if_index,
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-not-enabled", sw_if_index,
 			       is_add, 0, 0);
 
   return /* no error */ 0;
@@ -1308,6 +1308,12 @@ ip4_drop (vlib_main_t * vm,
 { return ip4_drop_or_punt (vm, node, frame, IP4_ERROR_ADJACENCY_DROP); }
 
 static uword
+ip4_not_enabled (vlib_main_t * vm,
+	  vlib_node_runtime_t * node,
+	  vlib_frame_t * frame)
+{ return ip4_drop_or_punt (vm, node, frame, IP4_ERROR_NOT_ENABLED); }
+
+static uword
 ip4_punt (vlib_main_t * vm,
 	  vlib_node_runtime_t * node,
 	  vlib_frame_t * frame)
@@ -1327,6 +1333,21 @@ VLIB_REGISTER_NODE (ip4_drop_node,static) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop)
+
+VLIB_REGISTER_NODE (ip4_not_enabled_node,static) = {
+  .function = ip4_not_enabled,
+  .name = "ip4-not-enabled",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_not_enabled_node, ip4_not_enabled)
 
 VLIB_REGISTER_NODE (ip4_punt_node,static) = {
   .function = ip4_punt,

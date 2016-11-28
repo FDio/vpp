@@ -431,11 +431,11 @@ ip6_sw_interface_enable_disable (u32 sw_if_index,
         return;
     }
 
-  vnet_feature_enable_disable ("ip6-unicast", "ip6-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "ip6-not-enabled", sw_if_index,
+			       !is_enable, 0, 0);
 
-  vnet_feature_enable_disable ("ip6-multicast", "ip6-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-multicast", "ip6-not-enabled", sw_if_index,
+			       !is_enable, 0, 0);
 
 }
 
@@ -564,7 +564,14 @@ VNET_FEATURE_ARC_INIT (ip6_unicast, static) =
 {
   .arc_name  = "ip6-unicast",
   .start_nodes = VNET_FEATURES ("ip6-input"),
+  .end_node = "ip6-lookup",
   .arc_index_ptr = &ip6_main.lookup_main.ucast_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (ip6_not_enabled, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-not-enabled",
+  .runs_after = 0,  /*first feature*/
 };
 
 VNET_FEATURE_INIT (ip6_flow_classify, static) = {
@@ -606,12 +613,6 @@ VNET_FEATURE_INIT (ip6_vpath, static) = {
 VNET_FEATURE_INIT (ip6_lookup, static) = {
   .arc_name = "ip6-unicast",
   .node_name = "ip6-lookup",
-  .runs_before = VNET_FEATURES ("ip6-drop"),
-};
-
-VNET_FEATURE_INIT (ip6_drop, static) = {
-  .arc_name = "ip6-unicast",
-  .node_name = "ip6-drop",
   .runs_before = 0,  /*last feature*/
 };
 
@@ -620,7 +621,14 @@ VNET_FEATURE_ARC_INIT (ip6_multicast, static) =
 {
   .arc_name  = "ip6-multicast",
   .start_nodes = VNET_FEATURES ("ip6-input"),
+  .end_node = "ip6-lookup",
   .arc_index_ptr = &ip6_main.lookup_main.mcast_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (ip6_not_enabled_mc, static) = {
+  .arc_name = "ip6-multicast",
+  .node_name = "ip6-not-enabled",
+  .runs_after = 0, /* first feature */
 };
 
 VNET_FEATURE_INIT (ip6_vpath_mc, static) = {
@@ -632,12 +640,6 @@ VNET_FEATURE_INIT (ip6_vpath_mc, static) = {
 VNET_FEATURE_INIT (ip6_mc_lookup, static) = {
   .arc_name = "ip6-multicast",
   .node_name = "ip6-lookup",
-  .runs_before = VNET_FEATURES ("ip6-drop"),
-};
-
-VNET_FEATURE_INIT (ip6_drop_mc, static) = {
-  .arc_name = "ip6-multicast",
-  .node_name = "ip6-drop",
   .runs_before = 0, /* last feature */
 };
 
@@ -666,13 +668,10 @@ ip6_sw_interface_add_del (vnet_main_t * vnm,
 			  u32 sw_if_index,
 			  u32 is_add)
 {
-  vnet_feature_enable_disable ("ip6-unicast", "ip6-drop", sw_if_index,
+  vnet_feature_enable_disable ("ip6-unicast", "ip6-not-enabled", sw_if_index,
 			       is_add, 0, 0);
 
-  vnet_feature_enable_disable ("ip6-multicast", "ip6-drop", sw_if_index,
-			       is_add, 0, 0);
-
-  vnet_feature_enable_disable ("ip6-output", "interface-output", sw_if_index,
+  vnet_feature_enable_disable ("ip6-multicast", "ip6-not-enabled", sw_if_index,
 			       is_add, 0, 0);
 
   return /* no error */ 0;
@@ -1087,6 +1086,12 @@ ip6_drop (vlib_main_t * vm,
 { return ip6_drop_or_punt (vm, node, frame, IP6_ERROR_ADJACENCY_DROP); }
 
 static uword
+ip6_not_enabled (vlib_main_t * vm,
+		 vlib_node_runtime_t * node,
+		 vlib_frame_t * frame)
+{ return ip6_drop_or_punt (vm, node, frame, IP6_ERROR_NOT_ENABLED); }
+
+static uword
 ip6_punt (vlib_main_t * vm,
 	  vlib_node_runtime_t * node,
 	  vlib_frame_t * frame)
@@ -1106,6 +1111,21 @@ VLIB_REGISTER_NODE (ip6_drop_node,static) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_drop_node, ip6_drop)
+
+VLIB_REGISTER_NODE (ip6_not_enabled_node,static) = {
+  .function = ip6_not_enabled,
+  .name = "ip6-not-enabled",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip6_forward_next_trace,
+
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_not_enabled_node, ip6_not_enabled)
 
 VLIB_REGISTER_NODE (ip6_punt_node,static) = {
   .function = ip6_punt,

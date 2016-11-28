@@ -104,6 +104,7 @@ VNET_FEATURE_ARC_INIT (mpls_input, static) =
 {
   .arc_name  = "mpls-input",
   .start_nodes = VNET_FEATURES ("mpls-input"),
+  .end_node = "mpls-lookup",
   .arc_index_ptr = &mpls_main.input_feature_arc_index,
 };
 
@@ -144,8 +145,6 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
   vec_validate_init_empty (mm->fib_index_by_sw_if_index, sw_if_index, 0);
 
   vnet_feature_enable_disable ("mpls-input", "mpls-not-enabled", sw_if_index,
-			       is_add, 0, 0);
-  vnet_feature_enable_disable ("mpls-output", "interface-output", sw_if_index,
 			       is_add, 0, 0);
 
   return /* no error */ 0;

@@ -67,7 +67,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 	    ip_adjacency_t * adj0;
 	    vlib_buffer_t * p0;
 	    char *h0;
-	    u32 pi0, rw_len0, adj_index0, next0 = 0;
+	    u32 pi0, rw_len0, adj_index0, next0 = ADJ_L2_REWRITE_NEXT_DROP;
 	    u32 tx_sw_if_index0;
 
 	    pi0 = to_next[0] = from[0];

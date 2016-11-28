@@ -50,6 +50,9 @@
   _ (VERSION, "ip6 version != 6")                                       \
   _ (TIME_EXPIRED, "ip6 ttl <= 1")                                      \
                                                                         \
+  /* Errors signalled by ip6-not-enabled */                             \
+  _ (NOT_ENABLED, "ip6 not enabled")                                    \
+                                                                        \
   /* Errors signalled by ip6-rewrite. */                                \
   _ (MTU_EXCEEDED, "ip6 MTU exceeded")                                  \
   _ (DST_LOOKUP_MISS, "ip6 destination lookup miss")                    \
