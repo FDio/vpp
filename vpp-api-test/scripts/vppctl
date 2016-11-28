@@ -72,11 +72,15 @@ class Vppctl(Cmd):
 
         def do_exit(self, line):
                 self.historyWrite()
-
                 raise SystemExit
 
         def emptyline(self):
                 pass
+
+        def do_EOF(self,line):
+                self.historyWrite()
+                sys.stdout.write('\n')
+                raise SystemExit
 
         def preloop(self):
                 if readline and os.path.exists(persishist):
@@ -91,16 +95,22 @@ if __name__ == '__main__':
 
         if not len(command_args) > 1:
                 prompt = Vppctl()
-		red_set = '\033[31m'
-		norm_set = '\033[0m'
-		if sys.stdout.isatty():
+                red_set = '\033[31m'
+                norm_set = '\033[0m'
+                if sys.stdout.isatty():
                         prompt.prompt = 'vpp# '
-                        prompt.cmdloop(red_set + "    _______    _       " + norm_set + " _   _____  ___ \n" +
-                                  red_set + " __/ __/ _ \  (_)__   " + norm_set + " | | / / _ \/ _ \\\n" +
-                                  red_set + " _/ _// // / / / _ \\" + norm_set + "   | |/ / ___/ ___/\n" +
-                                  red_set + " /_/ /____(_)_/\___/   " + norm_set + "|___/_/  /_/   \n")
-	        else:
-			prompt.cmdloop()
+                        try:
+                                prompt.cmdloop(red_set + "    _______    _       " + norm_set + " _   _____  ___ \n" +
+                                        red_set + " __/ __/ _ \  (_)__   " + norm_set + " | | / / _ \/ _ \\\n" +
+                                        red_set + " _/ _// // / / / _ \\" + norm_set + "   | |/ / ___/ ___/\n" +
+                                        red_set + " /_/ /____(_)_/\___/   " + norm_set + "|___/_/  /_/   \n")
+                        except KeyboardInterrupt:
+                                sys.stdout.write('\n')
+                else:
+                        try:
+                        prompt.cmdloop()
+                        except KeyboardInterrupt:
+                                sys.stdout.write('\n')
         else:
                 del command_args[0]
                 stdout_value = " ".join(command_args)
