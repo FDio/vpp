@@ -1549,6 +1549,8 @@ static void *vl_api_create_vhost_user_if_t_print
     s = format (s, "server ");
   if (mp->renumber)
     s = format (s, "renumber %d ", ntohl (mp->custom_dev_instance));
+  if (mp->tag[0])
+    s = format (s, "tag %s", mp->tag);
 
   FINISH;
 }

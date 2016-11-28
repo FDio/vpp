@@ -117,6 +117,7 @@ define sw_interface_details
   u32 vtr_push_dot1q;		// ethertype of first pushed tag is dot1q/dot1ad
   u32 vtr_tag1;			// first pushed tag
   u32 vtr_tag2;			// second pushed tag
+  u8 tag[64];
 };
 
 /** \brief Set flags on the interface
@@ -2270,6 +2271,7 @@ define create_vhost_user_if
   u32 custom_dev_instance;
   u8 use_custom_mac;
   u8 mac_address[6];
+  u8 tag[64];
 };
 
 /** \brief vhost-user interface create response

@@ -10555,6 +10555,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   u32 custom_dev_instance = ~0;
   u8 hwaddr[6];
   u8 use_custom_mac = 0;
+  u8 *tag = 0;
 
   /* Shut up coverity */
   memset (hwaddr, 0, sizeof (hwaddr));
@@ -10571,6 +10572,8 @@ api_create_vhost_user_if (vat_main_t * vam)
 	use_custom_mac = 1;
       else if (unformat (i, "server"))
 	is_server = 1;
+      else if (unformat (i, "tag %s", &tag))
+	;
       else
 	break;
     }
@@ -10600,6 +10603,9 @@ api_create_vhost_user_if (vat_main_t * vam)
     }
   mp->use_custom_mac = use_custom_mac;
   clib_memcpy (mp->mac_address, hwaddr, 6);
+  if (tag)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
+  vec_free (tag);
 
   S;
   W;

@@ -2825,7 +2825,9 @@ send_sw_interface_details (vpe_api_main_t * am,
 			   u8 * interface_name, u32 context)
 {
   vl_api_sw_interface_details_t *mp;
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
+  u8 *tag;
 
   hi = vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
 
@@ -2892,6 +2894,10 @@ send_sw_interface_details (vpe_api_main_t * am,
 	  mp->vtr_tag2 = ntohl (vtr_tag2);
 	}
     }
+
+  tag = vnet_get_sw_interface_tag (vnm, swif->sw_if_index);
+  if (tag)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
@@ -4161,7 +4167,6 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   int rv = 0;
   vl_api_create_vhost_user_if_reply_t *rmp;
   u32 sw_if_index = (u32) ~ 0;
-
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
@@ -4169,6 +4174,19 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 			     mp->is_server, &sw_if_index, (u64) ~ 0,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
 			     (mp->use_custom_mac) ? mp->mac_address : NULL);
+
+  /* Remember an interface tag for the new interface */
+  if (rv == 0)
+    {
+      /* If a tag was supplied... */
+      if (mp->tag[0])
+	{
+	  /* Make sure it's a proper C-string */
+	  mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+	  u8 *tag = format (0, "%s%c", mp->tag, 0);
+	  vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
+	}
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
@@ -4215,7 +4233,9 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
       if (!q)
 	return;
 
+      vnet_clear_sw_interface_tag (vnm, sw_if_index);
       send_sw_interface_flags_deleted (vam, q, sw_if_index);
+
     }
 }
 
