@@ -228,6 +228,7 @@ show_sw_interfaces (vlib_main_t * vm,
   u32 sw_if_index = ~(u32) 0;
   u8 show_addresses = 0;
   u8 show_features = 0;
+  u8 show_tag = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -242,6 +243,8 @@ show_sw_interfaces (vlib_main_t * vm,
 	show_addresses = 1;
       else if (unformat (input, "features") || unformat (input, "feat"))
 	show_features = 1;
+      else if (unformat (input, "tag"))
+	show_tag = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -250,12 +253,24 @@ show_sw_interfaces (vlib_main_t * vm,
 	}
     }
 
-  if (show_features)
+  if (show_features || show_tag)
     {
       if (sw_if_index == ~(u32) 0)
 	return clib_error_return (0, "Interface not specified...");
+    }
 
+  if (show_features)
+    {
       vnet_interface_features_show (vm, sw_if_index);
+      return 0;
+    }
+  if (show_tag)
+    {
+      u8 *tag;
+      tag = vnet_get_sw_interface_tag (vnm, sw_if_index);
+      vlib_cli_output (vm, "%U: %s",
+		       format_vnet_sw_if_index_name, vnm, sw_if_index,
+		       tag ? (char *) tag : "(none)");
       return 0;
     }
 
@@ -1090,6 +1105,56 @@ VLIB_CLI_COMMAND (set_interface_mac_address_cmd, static) = {
   .function = set_interface_mac_address,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+set_tag (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+  u8 *tag = 0;
+
+  if (!unformat (input, "%U %s", unformat_vnet_sw_interface,
+		 vnm, &sw_if_index, &tag))
+    return clib_error_return (0, "unknown input `%U'",
+			      format_unformat_error, input);
+
+  vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_tag_command, static) = {
+  .path = "set interface tag",
+  .short_help = "set interface tag <intfc> <tag>",
+  .function = set_tag,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+clear_tag (vlib_main_t * vm, unformat_input_t * input,
+	   vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    return clib_error_return (0, "unknown input `%U'",
+			      format_unformat_error, input);
+
+  vnet_clear_sw_interface_tag (vnm, sw_if_index);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_tag_command, static) = {
+  .path = "clear interface tag",
+  .short_help = "clear interface tag <intfc>",
+  .function = clear_tag,
+};
+/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON

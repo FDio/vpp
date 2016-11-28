@@ -255,8 +255,8 @@ _(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
 _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)                   \
-_(IOAM_ENABLE, ioam_enable)                                 \
-_(IOAM_DISABLE, ioam_disable)                                 \
+_(IOAM_ENABLE, ioam_enable)                                             \
+_(IOAM_DISABLE, ioam_disable)                                           \
 _(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
 _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
@@ -332,7 +332,8 @@ _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)
+_(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
+_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -1997,8 +1998,10 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp, vlib_main_t * vm)
 {
   int rv;
   vl_api_tap_connect_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
   unix_shared_memory_queue_t *q;
   u32 sw_if_index = (u32) ~ 0;
+  u8 *tag;
 
   rv = vnet_tap_connect_renumber (vm, mp->tap_name,
 				  mp->use_random_mac ? 0 : mp->mac_address,
@@ -2008,6 +2011,14 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp, vlib_main_t * vm)
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
     return;
+
+  /* Add tag if supplied */
+  if (rv == 0 && mp->tag[0])
+    {
+      mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+      tag = format (0, "%s%c", mp->tag, 0);
+      vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
+    }
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_CONNECT_REPLY);
@@ -2054,6 +2065,11 @@ vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp, vlib_main_t * vm)
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   rv = vnet_tap_delete (vm, sw_if_index);
+  if (!rv)
+    {
+      vnet_main_t *vnm = vnet_get_main ();
+      vnet_clear_sw_interface_tag (vnm, sw_if_index);
+    }
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
@@ -2684,7 +2700,9 @@ send_sw_interface_details (vpe_api_main_t * am,
 			   u8 * interface_name, u32 context)
 {
   vl_api_sw_interface_details_t *mp;
+  vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hi;
+  u8 *tag;
 
   hi = vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
 
@@ -2751,6 +2769,10 @@ send_sw_interface_details (vpe_api_main_t * am,
 	  mp->vtr_tag2 = ntohl (vtr_tag2);
 	}
     }
+
+  tag = vnet_get_sw_interface_tag (vnm, swif->sw_if_index);
+  if (tag)
+    strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
@@ -4020,7 +4042,6 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   int rv = 0;
   vl_api_create_vhost_user_if_reply_t *rmp;
   u32 sw_if_index = (u32) ~ 0;
-
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
 
@@ -4028,6 +4049,19 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
 			     mp->is_server, &sw_if_index, (u64) ~ 0,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
 			     (mp->use_custom_mac) ? mp->mac_address : NULL);
+
+  /* Remember an interface tag for the new interface */
+  if (rv == 0)
+    {
+      /* If a tag was supplied... */
+      if (mp->tag[0])
+	{
+	  /* Make sure it's a proper C-string */
+	  mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+	  u8 *tag = format (0, "%s%c", mp->tag, 0);
+	  vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
+	}
+    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
@@ -4074,6 +4108,7 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
       if (!q)
 	return;
 
+      vnet_clear_sw_interface_tag (vnm, sw_if_index);
       send_sw_interface_flags_deleted (vam, q, sw_if_index);
     }
 }
@@ -9111,6 +9146,37 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
+}
+
+static void vl_api_sw_interface_tag_add_del_t_handler
+  (vl_api_sw_interface_tag_add_del_t * mp)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vl_api_sw_interface_tag_add_del_reply_t *rmp;
+  int rv = 0;
+  u8 *tag;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->is_add)
+    {
+      if (mp->tag[0] == 0)
+	{
+	  rv = VNET_API_ERROR_INVALID_VALUE;
+	  goto out;
+	}
+
+      mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
+      tag = format (0, "%s%c", mp->tag, 0);
+      vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
+    }
+  else
+    vnet_clear_sw_interface_tag (vnm, sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_TAG_ADD_DEL_REPLY);
 }
 
 #define BOUNCE_HANDLER(nn)                                              \
