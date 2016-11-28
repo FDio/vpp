@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_5cc169e3",
+        "filename": "vlib/vlib/buffer_funcs.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 423,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-28T11:28:33Z",
+      "side": 1,
+      "message": "this is bug, vlib_buffer_alloc() will not be called in release build.",
+      "range": {
+        "startLine": 423,
+        "startChar": 10,
+        "endLine": 423,
+        "endChar": 56
+      },
+      "revId": "43768a7c71974253a232dcd9d8f1db1c9c37751e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
