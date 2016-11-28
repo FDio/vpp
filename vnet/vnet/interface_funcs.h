@@ -92,6 +92,44 @@ vnet_get_device_class (vnet_main_t * vnm, u32 dev_class_index)
 			   dev_class_index);
 }
 
+static inline u8 *
+vnet_get_sw_interface_tag (vnet_main_t * vnm, u32 sw_if_index)
+{
+  uword *p;
+  p = hash_get (vnm->interface_tag_by_sw_if_index, sw_if_index);
+  if (p)
+    return ((u8 *) p[0]);
+  return 0;
+}
+
+static inline void
+vnet_set_sw_interface_tag (vnet_main_t * vnm, u8 * tag, u32 sw_if_index)
+{
+  uword *p;
+  p = hash_get (vnm->interface_tag_by_sw_if_index, sw_if_index);
+  if (p)
+    {
+      u8 *oldtag = (u8 *) p[0];
+      hash_unset (vnm->interface_tag_by_sw_if_index, sw_if_index);
+      vec_free (oldtag);
+    }
+
+  hash_set (vnm->interface_tag_by_sw_if_index, sw_if_index, tag);
+}
+
+static inline void
+vnet_clear_sw_interface_tag (vnet_main_t * vnm, u32 sw_if_index)
+{
+  uword *p;
+  p = hash_get (vnm->interface_tag_by_sw_if_index, sw_if_index);
+  if (p)
+    {
+      u8 *oldtag = (u8 *) p[0];
+      hash_unset (vnm->interface_tag_by_sw_if_index, sw_if_index);
+      vec_free (oldtag);
+    }
+}
+
 /**
  * Call back walk type for walking SW indices on a HW interface
  */
