@@ -29,6 +29,8 @@ typedef struct _vnet_feature_arc_registration
   /** Start nodes */
   char **start_nodes;
   int n_start_nodes;
+  /** End node */
+  char *end_node;
   /* Feature arc index, assigned by init function */
   u8 feature_arc_index;
   u8 *arc_index_ptr;
@@ -63,6 +65,7 @@ typedef struct vnet_feature_config_main_t_
 {
   vnet_config_main_t config_main;
   u32 *config_index_by_sw_if_index;
+  u32 end_feature_index;
 } vnet_feature_config_main_t;
 
 typedef struct

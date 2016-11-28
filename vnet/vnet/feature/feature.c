@@ -108,6 +108,9 @@ vnet_feature_init (vlib_main_t * vm)
 	  freg = freg->next;
 	}
 
+      cm->end_feature_index =
+	vnet_get_feature_index (arc_index, areg->end_node);
+
       /* next */
       areg = areg->next;
       arc_index++;
@@ -117,25 +120,6 @@ vnet_feature_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (vnet_feature_init);
-
-void
-vnet_config_update_feature_count (vnet_feature_main_t * fm, u8 arc,
-				  u32 sw_if_index, int is_add)
-{
-  uword bit_value;
-
-  vec_validate (fm->feature_count_by_sw_if_index[arc], sw_if_index);
-
-  fm->feature_count_by_sw_if_index[arc][sw_if_index] += is_add ? 1 : -1;
-
-  ASSERT (fm->feature_count_by_sw_if_index[arc][sw_if_index] >= 0);
-
-  bit_value = fm->feature_count_by_sw_if_index[arc][sw_if_index] > 0;
-
-  fm->sw_if_index_has_features[arc] =
-    clib_bitmap_set (fm->sw_if_index_has_features[arc], sw_if_index,
-		     bit_value);
-}
 
 u8
 vnet_get_feature_arc_index (const char *s)
@@ -180,6 +164,9 @@ vnet_get_feature_index (u8 arc, const char *s)
   vnet_feature_registration_t *reg;
   uword *p;
 
+  if (s == 0)
+    return ~0;
+
   p = hash_get_mem (fm->next_feature_by_name[arc], s);
   if (p == 0)
     return ~0;
@@ -196,6 +183,8 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
+  i16 feature_count;
+  int is_first_or_last;
   u32 ci;
 
   if (arc_index == (u8) ~ 0)
@@ -209,8 +198,9 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   ci = cm->config_index_by_sw_if_index[sw_if_index];
 
   vec_validate (fm->feature_count_by_sw_if_index[arc_index], sw_if_index);
-  if (!enable_disable
-      && fm->feature_count_by_sw_if_index[arc_index][sw_if_index] < 1)
+  feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
+
+  if (!enable_disable && feature_count < 1)
     return 0;
 
   ci = (enable_disable
@@ -220,9 +210,27 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
      n_feature_config_bytes);
   cm->config_index_by_sw_if_index[sw_if_index] = ci;
 
-  vnet_config_update_feature_count (fm, arc_index, sw_if_index,
-				    enable_disable);
+  /* update feature count */
+  enable_disable = (enable_disable > 0);
+  feature_count += enable_disable ? 1 : -1;
+  is_first_or_last = (feature_count == enable_disable);
+  ASSERT (feature_count >= 0);
 
+  if (is_first_or_last && cm->end_feature_index != ~0)
+    {
+      /*register end node */
+      ci = (enable_disable
+	    ? vnet_config_add_feature
+	    : vnet_config_del_feature)
+	(vlib_get_main (), &cm->config_main, ci, cm->end_feature_index, 0, 0);
+      cm->config_index_by_sw_if_index[sw_if_index] = ci;
+    }
+
+  fm->sw_if_index_has_features[arc_index] =
+    clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
+		     (feature_count > 0));
+
+  fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
   return 0;
 }
 

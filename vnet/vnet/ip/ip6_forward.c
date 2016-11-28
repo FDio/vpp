@@ -431,11 +431,11 @@ ip6_sw_interface_enable_disable (u32 sw_if_index,
         return;
     }
 
-  vnet_feature_enable_disable ("ip6-unicast", "ip6-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "ip6-drop", sw_if_index,
+			       !is_enable, 0, 0);
 
-  vnet_feature_enable_disable ("ip6-multicast", "ip6-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-multicast", "ip6-drop", sw_if_index,
+			       !is_enable, 0, 0);
 
 }
 
@@ -564,6 +564,7 @@ VNET_FEATURE_ARC_INIT (ip6_unicast, static) =
 {
   .arc_name  = "ip6-unicast",
   .start_nodes = VNET_FEATURES ("ip6-input"),
+  .end_node = "ip6-lookup",
   .arc_index_ptr = &ip6_main.lookup_main.ucast_feature_arc_index,
 };
 
@@ -620,6 +621,7 @@ VNET_FEATURE_ARC_INIT (ip6_multicast, static) =
 {
   .arc_name  = "ip6-multicast",
   .start_nodes = VNET_FEATURES ("ip6-input"),
+  .end_node = "ip6-lookup",
   .arc_index_ptr = &ip6_main.lookup_main.mcast_feature_arc_index,
 };
 
