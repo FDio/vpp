@@ -10,6 +10,8 @@ class VppGreInterface(VppInterface):
 
     def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, is_teb=0):
         """ Create VPP loopback interface """
+        self._sw_if_index = 0
+        super(VppGreInterface, self).__init__(test)
         self._test = test
         self.t_src = src_ip
         self.t_dst = dst_ip
@@ -23,7 +25,7 @@ class VppGreInterface(VppInterface):
                                               outer_fib_id=self.t_outer_fib,
                                               is_teb=self.t_is_teb)
         self._sw_if_index = r.sw_if_index
-        self.post_init_setup()
+        self.generate_remote_hosts()
 
     def remove_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET, self.t_src)
