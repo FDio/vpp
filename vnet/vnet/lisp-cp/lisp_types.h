@@ -301,6 +301,7 @@ typedef struct
   u8 local;
   /* valid only for remote mappings */
   u8 is_static;
+  u8 timer_set;
 } mapping_t;
 
 uword

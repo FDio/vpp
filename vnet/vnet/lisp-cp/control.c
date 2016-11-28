@@ -962,6 +962,12 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
   vec_free (a.eids_to_be_deleted);
 }
 
+static void
+mapping_delete_timer (lisp_cp_main_t * lcm, u32 mi)
+{
+  timing_wheel_delete (&lcm->wheel, mi);
+}
+
 /**
  * Adds/removes/updates mapping. Does not program forwarding.
  *
@@ -1054,6 +1060,7 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 	  m_args->action = action;
 	  m_args->locator_set_index = ls_index;
 	  m_args->is_static = is_static;
+	  m_args->ttl = ttl;
 	  vnet_lisp_map_cache_add_del (m_args, &dst_map_index);
 
 	  if (res_map_index)
@@ -1080,6 +1087,10 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
       ls_args->index = old_map->locator_set_index;
       /* delete locator set */
       vnet_lisp_add_del_locator_set (ls_args, 0);
+
+      /* delete timer associated to the mapping if any */
+      if (old_map->timer_set)
+	mapping_delete_timer (lcm, mi);
 
       /* return old mapping index */
       if (res_map_index)
@@ -3472,6 +3483,33 @@ format_lisp_cp_input_trace (u8 * s, va_list * args)
   return s;
 }
 
+static void
+remove_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
+{
+  mapping_t *m;
+
+  m = pool_elt_at_index (lcm->mapping_pool, mi);
+  lisp_add_del_adjacency (lcm, 0, &m->eid, 0 /* is_add */ );
+  vnet_lisp_add_del_mapping (&m->eid, 0, 0, 0, ~0, 0 /* is_add */ ,
+			     0 /* is_static */ , 0);
+  mapping_delete_timer (lcm, mi);
+}
+
+static void
+mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
+				f64 expiration_time)
+{
+  mapping_t *m;
+  u64 now = clib_cpu_time_now ();
+  u64 cpu_cps = lcm->vlib_main->clib_time.clocks_per_second;
+  u64 exp_clock_time = now + expiration_time * cpu_cps;
+
+  m = pool_elt_at_index (lcm->mapping_pool, mi);
+
+  m->timer_set = 1;
+  timing_wheel_insert (&lcm->wheel, exp_clock_time, mi);
+}
+
 void *
 process_map_reply (void *arg)
 {
@@ -3529,7 +3567,11 @@ process_map_reply (void *arg)
 
       /* try to program forwarding only if mapping saved or updated */
       if ((u32) ~ 0 != dst_map_index)
-	lisp_add_del_adjacency (lcm, &pmr->src, &deid, 1);
+	{
+	  lisp_add_del_adjacency (lcm, &pmr->src, &deid, 1);
+	  if ((u32) ~ 0 != ttl)
+	    mapping_start_expiration_timer (lcm, dst_map_index, ttl * 60);
+	}
 
       vec_free (locators);
     }
@@ -3731,6 +3773,8 @@ lisp_cp_init (vlib_main_t * vm)
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp6,
 			 lisp_cp_input_node.index, 0 /* is_ip4 */ );
 
+  u64 now = clib_cpu_time_now ();
+  timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
   return 0;
 }
 
@@ -3858,6 +3902,7 @@ static uword
 send_map_resolver_service (vlib_main_t * vm,
 			   vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
+  u32 *expired = 0;
   f64 period = 2.0;
   pending_map_request_t *pmr;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -3880,8 +3925,20 @@ send_map_resolver_service (vlib_main_t * vm,
       /* *INDENT-ON* */
 
       remove_dead_pending_map_requests (lcm);
-
       lisp_pending_map_request_unlock (lcm);
+
+      u64 now = clib_cpu_time_now ();
+
+      expired = timing_wheel_advance (&lcm->wheel, now, expired, 0);
+      if (vec_len (expired) > 0)
+	{
+	  u32 *mi = 0;
+	  vec_foreach (mi, expired)
+	  {
+	    remove_expired_mapping (lcm, mi[0]);
+	  }
+	  _vec_len (expired) = 0;
+	}
     }
 
   /* unreachable */
