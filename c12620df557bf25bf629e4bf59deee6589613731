@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_5c0a89d3",
+        "filename": "vnet/vnet/devices/dpdk/ipsec/esp_decrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 550,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2016-11-28T08:25:21Z",
+      "side": 1,
+      "message": "/*\n * fd.io coding-style-patch-verification: ON\n *\n * Local Variables:\n * eval: (c-set-style \"gnu\")\n * End:\n */",
+      "revId": "c12620df557bf25bf629e4bf59deee6589613731",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
