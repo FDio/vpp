@@ -13,7 +13,7 @@ from vpp_papi_provider import L2_VTR_OP
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, ARP, GRE
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import ICMPv6ND_NS, IPv6, UDP
+from scapy.layers.inet6 import ICMPv6ND_NS, ICMPv6ND_RA, IPv6, UDP
 from scapy.contrib.mpls import MPLS
 from scapy.volatile import RandMAC, RandIP
 
