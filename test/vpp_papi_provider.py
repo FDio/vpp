@@ -264,6 +264,29 @@ class VppPapiProvider(object):
         return self.api(vpp_papi.sw_interface_set_l2_bridge,
                         (sw_if_index, bd_id, shg, bvi, enable))
 
+    def bridge_flags(self, bd_id, is_set, feature_bitmap):
+        """Enable/disable required feature of the bridge domain with defined ID.
+
+        :param int bd_id: Bridge domain ID.
+        :param int is_set: Set to 1 to enable, set to 0 to disable the feature.
+        :param int feature_bitmap: Bitmap value of the feature to be set:
+            - learn (1 << 0),
+            - forward (1 << 1),
+            - flood (1 << 2),
+            - uu-flood (1 << 3) or
+            - arp-term (1 << 4).
+        """
+        return self.api(vpp_papi.bridge_flags, (bd_id, is_set, feature_bitmap))
+
+    def bridge_domain_dump(self, bd_id=0):
+        """
+
+        :param int bd_id: Bridge domain ID. (Default value = 0 => dump of all
+            existing bridge domains returned)
+        :return: Dictionary of bridge domain(s) data.
+        """
+        return self.api(vpp_papi.bridge_domain_dump, (bd_id, ))
+
     def sw_interface_set_l2_xconnect(self, rx_sw_if_index, tx_sw_if_index,
                                      enable):
         """Create or delete unidirectional cross-connect from Tx interface to
