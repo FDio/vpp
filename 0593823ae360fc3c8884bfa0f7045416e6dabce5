@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_628d9c31",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2887,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2016-11-29T12:58:48Z",
+      "side": 1,
+      "message": "I agree, but I was using a small script and \u0027vppctl exec\u0027 to create and a then a separate to delete. On the first run /tmp/vhost1.sock was associated with VirtualEthernet0/0/0, and on the second run it was associated with VirtualEthernet0/0/3. But vhost1.sock is hard coded in my libvirt XML. Anyway, makes it hard to automate so I was trying to document the behavior. The \u0027renumber\u0027 behavior was a little unstable, but the right answer may be to fix it.\n\nWould you be opposed to leaving in place for now and I fix the \u0027renumber\u0027 later and remove the text at that point?",
+      "parentUuid": "5a2585a7_a2b5c432",
+      "range": {
+        "startLine": 2885,
+        "startChar": 3,
+        "endLine": 2887,
+        "endChar": 21
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_8282c850",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_4282a001",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2942,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2016-11-29T12:58:48Z",
+      "side": 1,
+      "message": "I will add and resubmit a patch.",
+      "parentUuid": "5a2585a7_8282c850",
+      "range": {
+        "startLine": 2940,
+        "startChar": 3,
+        "endLine": 2942,
+        "endChar": 53
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_6287dc62",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2016-11-29T07:16:43Z",
       "side": 1,
       "message": "Wow ! Did you really saw that many memory regions ? What driver was running ?\nNot a problem for this commit. Just wondering.",
+      "range": {
+        "startLine": 3057,
+        "startChar": 5,
+        "endLine": 3078,
+        "endChar": 67
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_22879411",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3078,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2016-11-29T12:58:48Z",
+      "side": 1,
+      "message": "I am running VPP on a CentOS 7 host, 4 vHost interfaces connected to two CentOS 7 VMs, each with 2 vHost interfaces.",
+      "parentUuid": "5a2585a7_6287dc62",
       "range": {
         "startLine": 3057,
         "startChar": 5,
