@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_a2b5c432",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2887,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-11-29T07:16:43Z",
+      "side": 1,
+      "message": "I am not sure I want people to rely on this. But the CLI function prints out the name of the created interface. That\u0027s what people should rely on.",
+      "range": {
+        "startLine": 2885,
+        "startChar": 3,
+        "endLine": 2887,
+        "endChar": 21
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_8282c850",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2942,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-11-29T07:16:43Z",
+      "side": 1,
+      "message": "Shame on me. I added the possibility the delete an interface by name too \"https://gerrit.fd.io/r/#/c/3900/\" and I didn\u0027t modify the helper.\nCan you update the doc as well as the helper ?",
+      "range": {
+        "startLine": 2940,
+        "startChar": 3,
+        "endLine": 2942,
+        "endChar": 53
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6287dc62",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3078,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-11-29T07:16:43Z",
+      "side": 1,
+      "message": "Wow ! Did you really saw that many memory regions ? What driver was running ?\nNot a problem for this commit. Just wondering.",
+      "range": {
+        "startLine": 3057,
+        "startChar": 5,
+        "endLine": 3078,
+        "endChar": 67
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
