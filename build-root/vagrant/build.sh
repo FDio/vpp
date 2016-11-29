@@ -63,6 +63,11 @@ if [ $DISTRIB_ID == "CentOS" ]; then
     if [ $? != 0 ]; then sudo yum reinstall -y libconfuse-devel;fi
 fi
 
+# Generates dictionary for vppctl bash completion
+# This will not generate any other siphon docs, 
+# only the CLI command list
+(cd doxygen/; make doxygen-siphon-list)
+
 # Build and install packaging
 $SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then

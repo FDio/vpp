@@ -672,6 +672,7 @@ PACKAGE_MAKE =					\
     $(MAKE_PARALLEL_FLAGS)
 
 build_package =							\
+  (cd ../doxygen/; make doxygen-siphon-list) ;			\
   $(call build_msg_fn,Building $* in $(PACKAGE_BUILD_DIR)) ;	\
   mkdir -p $(PACKAGE_BUILD_DIR) ;				\
   cd $(PACKAGE_BUILD_DIR) ;					\
