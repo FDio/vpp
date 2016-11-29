@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_d61c156d",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-29T15:03:49Z",
+      "side": 1,
+      "message": "Instead of \"unknown\", it would be better to use \"next-slot\" or \"next-index\".",
+      "range": {
+        "startLine": 51,
+        "startChar": 25,
+        "endLine": 51,
+        "endChar": 32
+      },
+      "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
