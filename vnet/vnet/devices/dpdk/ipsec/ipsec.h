@@ -32,8 +32,19 @@
 
 typedef struct
 {
-  u32 iv[4];
-  u8 icv[64];
+  u32 salt;
+  u32 iv[2];
+  u32 cnt;
+} dpdk_gcm_cnt_blk;
+
+typedef struct
+{
+  dpdk_gcm_cnt_blk cb;
+  union
+  {
+    u8 aad[12];
+    u8 icv[64];
+  };
 } dpdk_cop_priv_t;
 
 typedef struct

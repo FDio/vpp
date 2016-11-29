@@ -64,6 +64,11 @@ dpdk_esp_init ()
   c->key_len = 32;
   c->iv_len = 16;
 
+  c = &em->esp_crypto_algs[IPSEC_CRYPTO_ALG_AES_GCM_128];
+  c->algo = RTE_CRYPTO_CIPHER_AES_GCM;
+  c->key_len = 16;
+  c->iv_len = 8;
+
   vec_validate (em->esp_integ_algs, IPSEC_INTEG_N_ALG - 1);
 
   i = &em->esp_integ_algs[IPSEC_INTEG_ALG_SHA1_96];
@@ -85,6 +90,10 @@ dpdk_esp_init ()
   i = &em->esp_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
   i->algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
   i->trunc_size = 32;
+
+  i = &em->esp_integ_algs[IPSEC_INTEG_ALG_AES_GCM_128];
+  i->algo = RTE_CRYPTO_AUTH_AES_GCM;
+  i->trunc_size = 16;
 }
 
 static_always_inline int
@@ -150,6 +159,9 @@ translate_crypto_algo(ipsec_crypto_alg_t crypto_algo,
     case IPSEC_CRYPTO_ALG_AES_CBC_256:
       cipher_xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
       break;
+    case IPSEC_CRYPTO_ALG_AES_GCM_128:
+      cipher_xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
+      break;
     default:
       return -1;
   }
@@ -161,7 +173,7 @@ translate_crypto_algo(ipsec_crypto_alg_t crypto_algo,
 
 static_always_inline int
 translate_integ_algo(ipsec_integ_alg_t integ_alg,
-		     struct rte_crypto_sym_xform *auth_xform)
+		     struct rte_crypto_sym_xform *auth_xform, int use_esn)
 {
   switch (integ_alg) {
     case IPSEC_INTEG_ALG_NONE:
@@ -188,6 +200,11 @@ translate_integ_algo(ipsec_integ_alg_t integ_alg,
       auth_xform->auth.algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
       auth_xform->auth.digest_length = 32;
       break;
+    case IPSEC_INTEG_ALG_AES_GCM_128:
+      auth_xform->auth.algo = RTE_CRYPTO_AUTH_AES_GCM;
+      auth_xform->auth.digest_length = 16;
+      auth_xform->auth.add_auth_data_length = use_esn? 12 : 8;
+      break;
     default:
       return -1;
   }
@@ -209,6 +226,16 @@ create_sym_sess(ipsec_sa_t *sa, crypto_sa_session_t *sa_sess, u8 is_outbound)
   uword key = 0, *data;
   crypto_worker_qp_key_t *p_key = (crypto_worker_qp_key_t *)&key;
 
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    {
+      sa->crypto_key_len -= 4;
+      clib_memcpy(&sa->salt, &sa->crypto_key[sa->crypto_key_len], 4);
+    }
+  else
+    {
+      sa->salt = (u32) rand();
+    }
+
   cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
   cipher_xform.cipher.key.data = sa->crypto_key;
   cipher_xform.cipher.key.length = sa->crypto_key_len;
@@ -221,7 +248,7 @@ create_sym_sess(ipsec_sa_t *sa, crypto_sa_session_t *sa_sess, u8 is_outbound)
     return -1;
   p_key->cipher_algo = cipher_xform.cipher.algo;
 
-  if (translate_integ_algo(sa->integ_alg, &auth_xform) < 0)
+  if (translate_integ_algo(sa->integ_alg, &auth_xform, sa->use_esn) < 0)
     return -1;
   p_key->auth_algo = auth_xform.auth.algo;
 

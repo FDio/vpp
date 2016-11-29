@@ -24,9 +24,17 @@ AC_ARG_WITH(dpdk,
             [with_dpdk=1],
             [with_dpdk=0])
 
+AC_ARG_WITH(dpdk_crypto,
+            AC_HELP_STRING([--with-dpdk-crypto],[Use DPDK cryptodev]),
+            [with_dpdk_crypto=1],
+            [with_dpdk_crypto=0])
+
 AC_SUBST(Q_PLATFORM_DEFINE,[-DQ_PLATFORM_${with_q_platform}])
 AC_SUBST(Q_PLATFORM_PLUGPATH,[-DQ_PLUGIN_PREFIX=${with_q_plugin_prefix}])
 AC_SUBST(DPDK,[-DDPDK=${with_dpdk}])
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
+AC_SUBST(DPDK_CRYPTO,[-DDPDK_CRYPTO=${with_dpdk_crypto}])
+AM_CONDITIONAL(WITH_DPDK_CRYPTO, test "$with_dpdk_crypto" = "1")
+
 
 AC_OUTPUT([Makefile])

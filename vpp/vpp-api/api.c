@@ -6566,7 +6566,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   sa.protocol = mp->protocol;
   /* check for unsupported crypto-alg */
   if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
-      mp->crypto_algorithm > IPSEC_CRYPTO_ALG_AES_CBC_256)
+      mp->crypto_algorithm >= IPSEC_CRYPTO_N_ALG)
     {
       clib_warning ("unsupported crypto-alg: '%U'", format_ipsec_crypto_alg,
 		    mp->crypto_algorithm);
@@ -6577,14 +6577,48 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   sa.crypto_key_len = mp->crypto_key_length;
   clib_memcpy (&sa.crypto_key, mp->crypto_key, sizeof (sa.crypto_key));
   /* check for unsupported integ-alg */
+#if DPDK_CRYPTO==1
+  if (mp->integrity_algorithm < IPSEC_INTEG_ALG_NONE ||
+#else
   if (mp->integrity_algorithm < IPSEC_INTEG_ALG_SHA1_96 ||
-      mp->integrity_algorithm > IPSEC_INTEG_ALG_SHA_512_256)
+#endif
+      mp->integrity_algorithm >= IPSEC_INTEG_N_ALG)
     {
       clib_warning ("unsupported integ-alg: '%U'", format_ipsec_integ_alg,
 		    mp->integrity_algorithm);
       rv = VNET_API_ERROR_UNIMPLEMENTED;
       goto out;
     }
+
+#if DPDK_CRYPTO==1
+  /*Special cases, aes-gcm-128 encryption */
+  if (mp->crypto_algorithm == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    {
+      if (mp->integrity_algorithm != IPSEC_INTEG_ALG_NONE
+	  && mp->integrity_algorithm != IPSEC_INTEG_ALG_AES_GCM_128)
+	{
+	  clib_warning
+	    ("unsupported: aes-gcm-128 crypto-alg needs none as integ-alg");
+	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  goto out;
+	}
+      else			/*set integ-alg internally to aes-gcm-128 */
+	mp->integrity_algorithm = IPSEC_INTEG_ALG_AES_GCM_128;
+    }
+  else if (mp->integrity_algorithm == IPSEC_INTEG_ALG_AES_GCM_128)
+    {
+      clib_warning ("unsupported integ-alg: aes-gcm-128");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+  else if (mp->integrity_algorithm == IPSEC_INTEG_ALG_NONE)
+    {
+      clib_warning ("unsupported integ-alg: none");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+#endif
+
   sa.integ_alg = mp->integrity_algorithm;
   sa.integ_key_len = mp->integrity_key_length;
   clib_memcpy (&sa.integ_key, mp->integrity_key, sizeof (sa.integ_key));
