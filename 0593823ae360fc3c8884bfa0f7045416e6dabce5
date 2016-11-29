@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_76944137",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2887,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-29T16:17:52Z",
+      "side": 1,
+      "message": "Reiterating Pierres comment that relying on this behavior is problematic; if there were another agent also altering the config you have no control over the order of operations, for example.",
+      "parentUuid": "5a2585a7_e2786c2d",
+      "range": {
+        "startLine": 2885,
+        "startChar": 3,
+        "endLine": 2887,
+        "endChar": 21
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_8282c850",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
