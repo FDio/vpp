@@ -29,14 +29,21 @@ ifeq ($(shell uname),Darwin)
 OS_ID = darwin
 endif
 
+# Assume that the answer to any question which would be asked is yes
+CONFIRM=-y
+
 # Work out the OS if we haven't already
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 # Package dependencies
-DOC_DEB_DEPENDS = doxygen graphviz python-pyparsing python-jinja2
+DOC_DEB_DEPENDS = doxygen python-pyparsing python-jinja2
 DOC_RPM_DEPENDS = doxygen graphviz pyparsing python-jinja2
 DOC_MAC_BIN_DEPENDS = doxygen dot git
 DOC_MAC_PY_DEPENDS = pyparsing jinja2
+
+# Force installation of graphviz as dpkg-query
+# thinks it is installed when it is not
+DOC_DEB_DEPENDS_FORCE = graphviz
 
 # Doxygen configuration and our utility scripts
 DOXY_DIR ?= $(WS_ROOT)/doxygen
@@ -132,7 +139,7 @@ ifeq ($(OS_ID),ubuntu)
 		done; \
 		if [ "$$inst" ]; then \
 			sudo apt-get update; \
-			sudo apt-get $(CONFIRM) $(FORCE) install $$inst; \
+			sudo apt-get $(CONFIRM) $(FORCE) install $$inst $(DOC_DEB_DEPENDS_FORCE); \
 		fi
 	@if [ ! -s /usr/lib/graphviz/config6a ]; then \
 		echo "Rebuidlding system Graphviz configuration."; \
@@ -231,7 +238,12 @@ $(eval $(call siphon-process,itemlist,itemlist))
 
 # This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_ITEMLIST)
+doxygen-siphon: $(SIPHON_DOCS)
+
+# This target is used generate list of cli commands for use with
+# the bash completion element for vppctl
+.PHONY: doxygen-siphon-list
+doxygen-siphon-list: $(SIPHON_ITEMLIST)
 
 # Generate the doxygen docs
 .PHONY: doxygen
