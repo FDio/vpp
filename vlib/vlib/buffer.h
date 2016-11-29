@@ -100,6 +100,7 @@ typedef struct
 #define VLIB_BUFFER_REPL_FAIL (1 << 4)
 #define VLIB_BUFFER_RECYCLE (1 << 5)
 #define VLIB_BUFFER_FLOW_REPORT (1 << 6)
+#define VLIB_BUFFER_LOCALLY_GENERATED (1 << 7)
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
