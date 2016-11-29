@@ -1195,7 +1195,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
   .next_nodes = {
     [IP6_MAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
 #ifdef MAP_SKIP_IP6_LOOKUP
-    [IP6_MAP_NEXT_IP4_REWRITE] = "ip4-rewrite-transit",
+    [IP6_MAP_NEXT_IP4_REWRITE] = "ip4-rewrite",
 #endif
     [IP6_MAP_NEXT_IP6_REASS] = "ip6-map-ip6-reass",
     [IP6_MAP_NEXT_IP4_REASS] = "ip6-map-ip4-reass",

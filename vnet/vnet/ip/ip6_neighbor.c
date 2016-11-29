@@ -1469,9 +1469,10 @@ icmp6_router_solicitation(vlib_main_t * vm,
                                    : error0);
                               next0 = is_dropped ? 
                                   next0 : ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW;
-                              vnet_buffer (p0)->ip.adj_index[VLIB_RX] = adj_index0;
+                              vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
                            }
                         }
+                      p0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 		      
 		      radv_info->n_solicitations_dropped  += is_dropped;
 		      radv_info->n_solicitations_rcvd  += is_solicitation;
@@ -2130,15 +2131,16 @@ ip6_neighbor_send_mldpv2_report(u32 sw_if_index)
 
   /* 
    * OK to override w/ no regard for actual FIB, because
-   * ip6-rewrite-local only looks at the adjacency.
+   * ip6-rewrite only looks at the adjacency.
    */
   vnet_buffer (b0)->sw_if_index[VLIB_RX] = 
     vnet_main.local_interface_sw_if_index;
   
-  vnet_buffer (b0)->ip.adj_index[VLIB_RX]  = 
+  vnet_buffer (b0)->ip.adj_index[VLIB_TX]  = 
     radv_info->all_mldv2_routers_adj_index;
+  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 
-  vlib_node_t * node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite-local");
+  vlib_node_t * node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
   
   f = vlib_get_frame_to_node (vm, node->index);
   to_next = vlib_frame_vector_args (f);
@@ -2160,7 +2162,7 @@ VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) = {
   .n_next_nodes = ICMP6_ROUTER_SOLICITATION_N_NEXT,
   .next_nodes = {
     [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "error-drop",
-    [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] = "ip6-rewrite-local",
+    [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] = "ip6-rewrite",
     [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] = "interface-output",
   },
 };

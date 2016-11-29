@@ -1831,14 +1831,12 @@ always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
-		    int rewrite_for_locally_received_packets,
 		    int is_midchain)
 {
   ip_lookup_main_t * lm = &ip6_main.lookup_main;
   u32 * from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, * to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip6_input_node.index);
-  vlib_rx_or_tx_t adj_rx_tx = rewrite_for_locally_received_packets ? VLIB_RX : VLIB_TX;
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -1885,8 +1883,8 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[adj_rx_tx];
-	  adj_index1 = vnet_buffer (p1)->ip.adj_index[adj_rx_tx];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
           /* We should never rewrite a pkt using the MISS adjacency */
           ASSERT(adj_index0 && adj_index1);
@@ -1897,19 +1895,16 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  error0 = error1 = IP6_ERROR_NONE;
           next0 = next1 = IP6_REWRITE_NEXT_DROP;
 
-	  if (! rewrite_for_locally_received_packets)
+	  if (PREDICT_TRUE(!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
 	    {
-	      i32 hop_limit0 = ip0->hop_limit, hop_limit1 = ip1->hop_limit;
+                i32 hop_limit0 = ip0->hop_limit;
 
 	      /* Input node should have reject packets with hop limit 0. */
 	      ASSERT (ip0->hop_limit > 0);
-	      ASSERT (ip1->hop_limit > 0);
 
 	      hop_limit0 -= 1;
-	      hop_limit1 -= 1;
 
 	      ip0->hop_limit = hop_limit0;
-	      ip1->hop_limit = hop_limit1;
 
               /*
                * If the hop count drops below 1 when forwarding, generate
@@ -1923,6 +1918,26 @@ ip6_rewrite_inline (vlib_main_t * vm,
                   icmp6_error_set_vnet_buffer(p0, ICMP6_time_exceeded,
                         ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
                 }
+	    }
+          else
+            {
+              p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+            }
+	  if (PREDICT_TRUE(!(p1->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+          {
+	      i32 hop_limit1 = ip1->hop_limit;
+
+	      /* Input node should have reject packets with hop limit 0. */
+	      ASSERT (ip1->hop_limit > 0);
+
+	      hop_limit1 -= 1;
+
+	      ip1->hop_limit = hop_limit1;
+
+              /*
+               * If the hop count drops below 1 when forwarding, generate
+               * an ICMP response.
+               */
               if (PREDICT_FALSE(hop_limit1 <= 0))
                 {
                   error1 = IP6_ERROR_TIME_EXPIRED;
@@ -1931,8 +1946,11 @@ ip6_rewrite_inline (vlib_main_t * vm,
                   icmp6_error_set_vnet_buffer(p1, ICMP6_time_exceeded,
                         ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
                 }
-	    }
-
+          }
+          else
+            {
+              p1->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+            }
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 	  adj1 = ip_get_adjacency (lm, adj_index1);
 
@@ -2018,7 +2036,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[adj_rx_tx];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
           /* We should never rewrite a pkt using the MISS adjacency */
           ASSERT(adj_index0);
@@ -2031,7 +2049,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
           next0 = IP6_REWRITE_NEXT_DROP;
 
 	  /* Check hop limit */
-	  if (! rewrite_for_locally_received_packets)
+	  if (PREDICT_TRUE(!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
 	    {
 	      i32 hop_limit0 = ip0->hop_limit;
 
@@ -2054,6 +2072,10 @@ ip6_rewrite_inline (vlib_main_t * vm,
                         ICMP6_time_exceeded_ttl_exceeded_in_transit, 0);
                 }
 	    }
+          else
+            {
+              p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+            }
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
@@ -2111,28 +2133,17 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
   /* Need to do trace after rewrites to pick up new packet data. */
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, adj_rx_tx);
+    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
 
   return frame->n_vectors;
 }
 
 static uword
-ip6_rewrite_transit (vlib_main_t * vm,
-		     vlib_node_runtime_t * node,
-		     vlib_frame_t * frame)
+ip6_rewrite (vlib_main_t * vm,
+             vlib_node_runtime_t * node,
+             vlib_frame_t * frame)
 {
   return ip6_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0,
-			     /* midchain */ 0);
-}
-
-static uword
-ip6_rewrite_local (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame)
-{
-  return ip6_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 1,
 			     /* midchain */ 0);
 }
 
@@ -2142,7 +2153,6 @@ ip6_midchain (vlib_main_t * vm,
 	      vlib_frame_t * frame)
 {
   return ip6_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0,
 			     /* midchain */ 1);
 }
 
@@ -2159,7 +2169,7 @@ VLIB_REGISTER_NODE (ip6_midchain_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_midchain_node, ip6_midchain)
 
 VLIB_REGISTER_NODE (ip6_rewrite_node) = {
-  .function = ip6_rewrite_transit,
+  .function = ip6_rewrite,
   .name = "ip6-rewrite",
   .vector_size = sizeof (u32),
 
@@ -2172,21 +2182,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite_transit);
-
-VLIB_REGISTER_NODE (ip6_rewrite_local_node) = {
-  .function = ip6_rewrite_local,
-  .name = "ip6-rewrite-local",
-  .vector_size = sizeof (u32),
-
-  .sibling_of = "ip6-rewrite",
-
-  .format_trace = format_ip6_rewrite_trace,
-
-  .n_next_nodes = 0,
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_local_node, ip6_rewrite_local);
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_node, ip6_rewrite);
 
 /*
  * Hop-by-Hop handling

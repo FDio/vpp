@@ -29,6 +29,7 @@ typedef enum {
   SEND_PING_OK = 0,
   SEND_PING_ALLOC_FAIL,
   SEND_PING_NO_INTERFACE,
+  SEND_PING_NO_TABLE,
 } send_ip46_ping_result_t;
 
 /*

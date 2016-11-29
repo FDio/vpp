@@ -111,7 +111,7 @@ typedef enum {
     [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",			\
     [IP_LOOKUP_NEXT_ARP] = "ip4-arp",				\
     [IP_LOOKUP_NEXT_GLEAN] = "ip4-glean",			\
-    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite-transit",		\
+    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite",    		\
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
     [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip4-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
