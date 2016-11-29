@@ -32,8 +32,8 @@ endif
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
-DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += python-dev python-virtualenv python-pip lcov chrpath autoconf
+DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config doxygen graphviz
+DEB_DEPENDS += python-dev python-virtualenv python-pip python-pyparsing python-jinja2 lcov chrpath autoconf
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else
@@ -41,9 +41,9 @@ else
 endif
 
 RPM_DEPENDS_GROUPS = 'Development Tools'
-RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
+RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils doxygen graphviz
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += python-devel python-virtualenv lcov chrpath
+RPM_DEPENDS += python-devel python-virtualenv pyparsing python-jinja2 lcov chrpath
 EPEL_DEPENDS = libconfuse-devel ganglia-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
@@ -183,6 +183,35 @@ distversion:	$(BR)/scripts/.version
 	$(BR)/scripts/verdist ${BR} ${prefix}-$(shell $(BR)/scripts/version rpm-version) ${verstring}
 	mv $(verstring).tar.gz $(BR)/rpm
 
+deb-depends-check:
+ifeq ($(OS_ID),ubuntu)
+	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
+	if [ -n "$$MISSING" ] ; then \
+	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
+	  echo "by executing \"make install-dep\"\n" ; \
+	exit 1 ; \
+	fi; \
+	exit 0
+endif
+
+rpm-depends-check:
+ifeq ($(OS_ID),centos)
+	@RPM_DEPENDS_ARRAY=($(RPM_DEPENDS)) ; \
+	for i in "$${!RPM_DEPENDS_ARRAY[@]}"; do \
+	  if ! yum list installed "$${RPM_DEPENDS_ARRAY[$$i]}" >/dev/null 2>&1; then \
+	    if ! [[ "$${RPM_DEPENDS_ARRAY[$$i]}" == *"://"* ]] ; then \
+	      MISSING="$$MISSING $${RPM_DEPENDS_ARRAY[$$i]}" ; \
+	    fi; \
+	  fi; \
+	done; \
+	if [ -n "$$MISSING" ] ; then \
+	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
+	  echo "by executing \"make install-dep\"\n" ; \
+	  exit 1 ; \
+	fi; \
+	exit 0
+endif
+
 build: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-install)
 
@@ -286,10 +315,10 @@ build-vat:
 run-vat:
 	@sudo $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test
 
-pkg-deb:
+pkg-deb: deb-depends-check doxygen-siphon-list
 	$(call make,$(PLATFORM),install-deb)
 
-pkg-rpm: dist
+pkg-rpm: dist rpm-depends-check doxygen-siphon-list
 	$(call make,$(PLATFORM),install-rpm)
 
 ctags: ctags.files
@@ -321,13 +350,16 @@ endef
 
 .PHONY: bootstrap-doxygen doxygen wipe-doxygen
 
-bootstrap-doxygen:
+bootstrap-doxygen: deb-depends-check rpm-depends-check
 	$(call make-doxy)
 
 doxygen:
 	$(call make-doxy)
 
 wipe-doxygen:
+	$(call make-doxy)
+
+doxygen-siphon-list:
 	$(call make-doxy)
 
 define banner
