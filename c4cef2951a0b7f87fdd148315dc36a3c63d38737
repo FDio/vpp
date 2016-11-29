@@ -22,6 +22,29 @@
       "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_b95e1a11",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 10128,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-29T19:30:24Z",
+      "side": 1,
+      "message": "Please also update the help string toward the end of the file for this command to reflect the new param.",
+      "range": {
+        "startLine": 10128,
+        "startChar": 29,
+        "endLine": 10128,
+        "endChar": 33
+      },
+      "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
