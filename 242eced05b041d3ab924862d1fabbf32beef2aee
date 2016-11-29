@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_824d2875",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-29T03:44:53Z",
+      "side": 1,
+      "message": "If there are 3 types of input, I expect we should have created 3 instances of NSH input nodes to handle it, instead of expecting previous node pass you some kind of embedded data to distinguish. Just like how vxlan-input has a IP4 version and IP6 version both sharing the same inlined function, for example. Then we can specify which of the NSH input node is the decap next node, instead of adding this requirement on vxlan-input node. The resulting 3 instances of nsh input node would also be more efficient as it does not really need to check for which type of input (as these will be optimized out by the compiler when inlining your core input function. In conclusion, I expect this line be removed.",
+      "parentUuid": "5a2585a7_222554ab",
+      "range": {
+        "startLine": 233,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 10
+      },
+      "revId": "242eced05b041d3ab924862d1fabbf32beef2aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_a7eef6b2",
         "filename": "vnet/vnet/vxlan/vxlan.c",
         "patchSetId": 5
@@ -154,6 +178,30 @@
       "side": 1,
       "message": "Will change API part when this patch is accepted.",
       "parentUuid": "5a2585a7_874ada81",
+      "range": {
+        "startLine": 621,
+        "startChar": 23,
+        "endLine": 621,
+        "endChar": 33
+      },
+      "revId": "242eced05b041d3ab924862d1fabbf32beef2aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_42574003",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 621,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-29T03:44:53Z",
+      "side": 1,
+      "message": "Why not include vat change to this patch as well? The CLI change for VPP should also be reflected on the CLI for VAT. Note that for the VAT CLI, I would expect you allow the user to specify either decap-next node index by number or by proper node name, not like the VPP CLI where \"l2\" and \"nsh-input\" keyword is used.",
+      "parentUuid": "5a2585a7_023a58cd",
       "range": {
         "startLine": 621,
         "startChar": 23,
