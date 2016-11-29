@@ -31,11 +31,20 @@ typedef enum
     IPSEC_POLICY_N_ACTION,
 } ipsec_policy_action_t;
 
+#if DPDK_CRYPTO==1
+#define foreach_ipsec_crypto_alg \
+  _(0, NONE,  "none")               \
+  _(1, AES_CBC_128, "aes-cbc-128")  \
+  _(2, AES_CBC_192, "aes-cbc-192")  \
+  _(3, AES_CBC_256, "aes-cbc-256")  \
+  _(4, AES_GCM_128, "aes-gcm-128")
+#else
 #define foreach_ipsec_crypto_alg \
   _(0, NONE,  "none")               \
   _(1, AES_CBC_128, "aes-cbc-128")  \
   _(2, AES_CBC_192, "aes-cbc-192")  \
   _(3, AES_CBC_256, "aes-cbc-256")
+#endif
 
 typedef enum
 {
@@ -45,6 +54,17 @@ typedef enum
     IPSEC_CRYPTO_N_ALG,
 } ipsec_crypto_alg_t;
 
+#if DPDK_CRYPTO==1
+#define foreach_ipsec_integ_alg \
+  _(0, NONE,  "none")                                                     \
+  _(1, MD5_96, "md5-96")           /* RFC2403 */                          \
+  _(2, SHA1_96, "sha1-96")         /* RFC2404 */                          \
+  _(3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */ \
+  _(4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
+  _(5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
+  _(6, SHA_512_256, "sha-512-256") /* RFC4868 */                          \
+  _(7, AES_GCM_128, "aes-gcm-128")
+#else
 #define foreach_ipsec_integ_alg \
   _(0, NONE,  "none")                                                     \
   _(1, MD5_96, "md5-96")           /* RFC2403 */                          \
@@ -53,6 +73,7 @@ typedef enum
   _(4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
   _(5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
   _(6, SHA_512_256, "sha-512-256")	/* RFC4868 */
+#endif
 
 typedef enum
 {
@@ -89,6 +110,8 @@ typedef struct
   u8 is_tunnel_ip6;
   ip46_address_t tunnel_src_addr;
   ip46_address_t tunnel_dst_addr;
+
+  u32 salt;
 
   /* runtime */
   u32 seq;

@@ -127,13 +127,12 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, sa_index0 = ~0, seq, icv_size;
+	  u32 bi0, sa_index0 = ~0, seq, icv_size, iv_size;
 	  vlib_buffer_t * b0;
 	  esp_header_t * esp0;
 	  ipsec_sa_t * sa0;
 	  struct rte_mbuf * mb0 = 0;
 	  const int BLOCK_SIZE = 16;
-	  const int IV_SIZE = 16;
 	  crypto_sa_session_t * sa_sess;
 	  void * sess;
 	  u16 qp_index;
@@ -209,6 +208,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	  rte_crypto_op_attach_sym_session(cop, sess);
 
 	  icv_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	  iv_size = em->esp_crypto_algs[sa0->crypto_alg].iv_len;
 
 	  /* Convert vlib buffer to mbuf */
 	  mb0 = rte_mbuf_from_vlib_buffer(b0);
@@ -218,7 +218,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
 	  /* Outer IP header has already been stripped */
 	  u16 payload_len = rte_pktmbuf_pkt_len(mb0) - sizeof (esp_header_t) -
-	      IV_SIZE - icv_size;
+	      iv_size - icv_size;
 
 	  if ((payload_len & (BLOCK_SIZE - 1)) || (payload_len <= 0))
 	    {
@@ -239,46 +239,82 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	  struct rte_crypto_sym_op *sym_cop = (struct rte_crypto_sym_op *)(cop + 1);
 
 	  sym_cop->m_src = mb0;
-	  sym_cop->cipher.data.offset = sizeof (esp_header_t) + IV_SIZE;
+	  sym_cop->cipher.data.offset = sizeof (esp_header_t) + iv_size;
 	  sym_cop->cipher.data.length = payload_len;
 
-	  sym_cop->cipher.iv.data =
-	    rte_pktmbuf_mtod_offset(mb0, void*, sizeof (esp_header_t));
-	  sym_cop->cipher.iv.phys_addr =
-	    rte_pktmbuf_mtophys_offset(mb0, sizeof (esp_header_t));
-	  sym_cop->cipher.iv.length = IV_SIZE;
+          u8 *iv = rte_pktmbuf_mtod_offset(mb0, void*, sizeof (esp_header_t));
+          dpdk_cop_priv_t * priv = (dpdk_cop_priv_t *)(sym_cop + 1);
 
-	  if (sa0->use_esn)
-	    {
-	      dpdk_cop_priv_t* priv = (dpdk_cop_priv_t*) (sym_cop + 1);
-	      u8* payload_end =
-		rte_pktmbuf_mtod_offset(mb0, u8*, sizeof(esp_header_t) + IV_SIZE +
-					payload_len);
+          if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+            {
+              dpdk_gcm_cnt_blk *icb = &priv->cb;
+              icb->salt = sa0->salt;
+              clib_memcpy(icb->iv, iv, 8);
+              icb->cnt = clib_host_to_net_u32(1);
+              sym_cop->cipher.iv.data = (u8 *)icb;
+              sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
+                         (u8 *)icb - rte_pktmbuf_mtod(mb0, u8 *));
+              sym_cop->cipher.iv.length = 16;
 
-	      memcpy (priv->icv, payload_end, icv_size);
-	      *((u32*) payload_end) = sa0->seq_hi;
-	      sym_cop->auth.data.offset = 0;
-	      sym_cop->auth.data.length =
-		sizeof(esp_header_t) + IV_SIZE + payload_len + sizeof(sa0->seq_hi);
-	      sym_cop->auth.digest.data = priv->icv;
-	      sym_cop->auth.digest.phys_addr =
-		cop->phys_addr + (uintptr_t) priv->icv - (uintptr_t) cop;
-	      sym_cop->auth.digest.length = icv_size;
-	    }
-	  else
-	    {
-	      sym_cop->auth.data.offset = 0;
-	      sym_cop->auth.data.length = sizeof(esp_header_t) +
-		IV_SIZE + payload_len;
+              u8 *aad = priv->aad;
+              clib_memcpy(aad, iv - sizeof(esp_header_t), 8);
+              sym_cop->auth.aad.data = aad;
+              sym_cop->auth.aad.phys_addr = cop->phys_addr +
+                  (uintptr_t)aad - (uintptr_t)cop;
+              if (sa0->use_esn)
+                {
+                  *((u32*)&aad[8]) = sa0->seq_hi;
+                  sym_cop->auth.aad.length = 12;
+                }
+              else
+                {
+                  sym_cop->auth.aad.length = 8;
+                }
 
-	      sym_cop->auth.digest.data =
-		rte_pktmbuf_mtod_offset(mb0, void*,
-					rte_pktmbuf_pkt_len(mb0) - icv_size);
-	      sym_cop->auth.digest.phys_addr =
-		rte_pktmbuf_mtophys_offset(mb0,
-					   rte_pktmbuf_pkt_len(mb0) - icv_size);
-	      sym_cop->auth.digest.length = icv_size;
-	    }
+              sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(mb0, void*,
+                       rte_pktmbuf_pkt_len(mb0) - icv_size);
+              sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
+                       rte_pktmbuf_pkt_len(mb0) - icv_size);
+              sym_cop->auth.digest.length = icv_size;
+
+            }
+          else
+            {
+              sym_cop->cipher.iv.data = rte_pktmbuf_mtod_offset(mb0, void*,
+                       sizeof (esp_header_t));
+              sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
+                       sizeof (esp_header_t));
+              sym_cop->cipher.iv.length = iv_size;
+
+              if (sa0->use_esn)
+                {
+                  dpdk_cop_priv_t* priv = (dpdk_cop_priv_t*) (sym_cop + 1);
+                  u8* payload_end = rte_pktmbuf_mtod_offset(
+                      mb0, u8*, sizeof(esp_header_t) + iv_size + payload_len);
+
+                  clib_memcpy (priv->icv, payload_end, icv_size);
+                  *((u32*) payload_end) = sa0->seq_hi;
+                  sym_cop->auth.data.offset = 0;
+                  sym_cop->auth.data.length = sizeof(esp_header_t) + iv_size
+                      + payload_len + sizeof(sa0->seq_hi);
+                  sym_cop->auth.digest.data = priv->icv;
+                  sym_cop->auth.digest.phys_addr = cop->phys_addr
+                      + (uintptr_t) priv->icv - (uintptr_t) cop;
+                  sym_cop->auth.digest.length = icv_size;
+                }
+              else
+                {
+                  sym_cop->auth.data.offset = 0;
+                  sym_cop->auth.data.length = sizeof(esp_header_t) +
+                           iv_size + payload_len;
+
+                  sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(mb0, void*,
+                           rte_pktmbuf_pkt_len(mb0) - icv_size);
+                  sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
+                           rte_pktmbuf_pkt_len(mb0) - icv_size);
+                  sym_cop->auth.digest.length = icv_size;
+                }
+            }
 
 trace:
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -391,8 +427,7 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  esp_footer_t * f0;
-	  const u32 IV_SIZE = 16;
-	  u32 bi0, next0, icv_size;
+	  u32 bi0, next0, icv_size, iv_size;
 	  vlib_buffer_t * b0 = 0;
 	  ip4_header_t *ih4 = 0, *oh4 = 0;
 	  ip6_header_t *ih6 = 0, *oh6 = 0;
@@ -415,6 +450,7 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 	  to_next += 1;
 
 	  icv_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	  iv_size = em->esp_crypto_algs[sa0->crypto_alg].iv_len;
 
 	  if (sa0->use_anti_replay)
 	    {
@@ -428,7 +464,7 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 	    }
 
 	  ih4 = (ip4_header_t *) (b0->data + sizeof(ethernet_header_t));
-	  vlib_buffer_advance (b0, sizeof (esp_header_t) + IV_SIZE);
+	  vlib_buffer_advance (b0, sizeof (esp_header_t) + iv_size);
 
 	  b0->current_length -= (icv_size + 2);
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -475,33 +511,31 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 	    {
 	      if (PREDICT_FALSE(transport_ip6))
 		{
-		  next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
 		  ih6 = (ip6_header_t *) (b0->data + sizeof(ethernet_header_t));
 		  vlib_buffer_advance (b0, -sizeof(ip6_header_t));
 		  oh6 = vlib_buffer_get_current (b0);
 		  memmove(oh6, ih6, sizeof(ip6_header_t));
 
+		  next0 = ESP_DECRYPT_NEXT_IP6_INPUT;
 		  oh6->protocol = f0->next_header;
 		  oh6->payload_length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b0) -
-					  sizeof (ip6_header_t));
+		      clib_host_to_net_u16 (
+			  vlib_buffer_length_in_chain(vm, b0) -
+			  sizeof (ip6_header_t));
 		}
 	      else
 		{
-		  next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
 		  vlib_buffer_advance (b0, -sizeof(ip4_header_t));
 		  oh4 = vlib_buffer_get_current (b0);
+		  memmove(oh4, ih4, sizeof(ip4_header_t));
 
+		  next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
 		  oh4->ip_version_and_header_length = 0x45;
-		  oh4->tos = ih4->tos;
 		  oh4->fragment_id = 0;
 		  oh4->flags_and_fragment_offset = 0;
-		  oh4->ttl = ih4->ttl;
 		  oh4->protocol = f0->next_header;
-		  oh4->src_address.as_u32 = ih4->src_address.as_u32;
-		  oh4->dst_address.as_u32 = ih4->dst_address.as_u32;
-		  oh4->length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+		  oh4->length = clib_host_to_net_u16 (
+		      vlib_buffer_length_in_chain (vm, b0));
 		  oh4->checksum = ip4_header_checksum (oh4);
 		}
 	    }

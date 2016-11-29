@@ -99,7 +99,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	     &sa.crypto_alg))
 	{
 	  if (sa.crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
-	      sa.crypto_alg > IPSEC_CRYPTO_ALG_AES_CBC_256)
+	      sa.crypto_alg >= IPSEC_CRYPTO_N_ALG)
 	    return clib_error_return (0, "unsupported crypto-alg: '%U'",
 				      format_ipsec_crypto_alg, sa.crypto_alg);
 	}
@@ -109,8 +109,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "integ-alg %U", unformat_ipsec_integ_alg,
 			 &sa.integ_alg))
 	{
+#if DPDK_CRYPTO==1
+	  if (sa.integ_alg < IPSEC_INTEG_ALG_NONE ||
+#else
 	  if (sa.integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
-	      sa.integ_alg > IPSEC_INTEG_ALG_SHA_512_256)
+#endif
+	      sa.integ_alg >= IPSEC_INTEG_N_ALG)
 	    return clib_error_return (0, "unsupported integ-alg: '%U'",
 				      format_ipsec_integ_alg, sa.integ_alg);
 	}
@@ -136,6 +140,23 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	return clib_error_return (0, "parse error: '%U'",
 				  format_unformat_error, line_input);
     }
+
+#if DPDK_CRYPTO==1
+  /*Special cases, aes-gcm-128 encryption */
+  if (sa.crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    {
+      if (sa.integ_alg != IPSEC_INTEG_ALG_NONE
+	  && sa.integ_alg != IPSEC_INTEG_ALG_AES_GCM_128)
+	return clib_error_return (0,
+				  "unsupported: aes-gcm-128 crypto-alg needs none as integ-alg");
+      else			/*set integ-alg internally to aes-gcm-128 */
+	sa.integ_alg = IPSEC_INTEG_ALG_AES_GCM_128;
+    }
+  else if (sa.integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
+    return clib_error_return (0, "unsupported integ-alg: aes-gcm-128");
+  else if (sa.integ_alg == IPSEC_INTEG_ALG_NONE)
+    return clib_error_return (0, "unsupported integ-alg: none");
+#endif
 
   unformat_free (line_input);
 

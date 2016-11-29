@@ -33,3 +33,7 @@ vpp-api-test_CPPFLAGS += $(call installed_includes_fn, dpdk)
 vpp-api-test_LDFLAGS += $(call installed_libs_fn, dpdk)
 endif
 endif
+ifeq ($($(PLATFORM)_uses_dpdk_cryptodev),yes)
+vpp-api-test_configure_args += --with-dpdk-crypto
+endif
+

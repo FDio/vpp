@@ -147,7 +147,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u8 next_hdr_type;
 	  u8 transport_mode = 0;
 	  const int BLOCK_SIZE = 16;
-	  const int IV_SIZE = 16;
+	  u32 iv_size;
 	  u16 orig_sz;
 	  crypto_sa_session_t *sa_sess;
 	  void *sess;
@@ -196,6 +196,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  bi_to_enq[qp_index] += 1;
 
 	  ssize_t adv;
+	  iv_size = em->esp_crypto_algs[sa0->crypto_alg].iv_len;
 	  ih0 = vlib_buffer_get_current (b0);
 	  orig_sz = b0->current_length;
 	  is_ipv6 = (ih0->ip4.ip_version_and_header_length & 0xF0) == 0x60;
@@ -223,11 +224,11 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		((u8 *) vlib_buffer_get_current (b0) -
 		 sizeof (ethernet_header_t));
 	      ethernet_header_t *oeh0 =
-		(ethernet_header_t *) ((u8 *) ieh0 + (adv - IV_SIZE));
+		(ethernet_header_t *) ((u8 *) ieh0 + (adv - iv_size));
 	      clib_memcpy (oeh0, ieh0, sizeof (ethernet_header_t));
 	    }
 
-	  vlib_buffer_advance (b0, adv - IV_SIZE);
+	  vlib_buffer_advance (b0, adv - iv_size);
 
 	  /* XXX IP6/ip4 and IP4/IP6 not supported, only IP4/IP4 and IP6/IP6 */
 
@@ -258,11 +259,20 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  else
 	    {
 	      ip_hdr_size = sizeof (ip4_header_t);
-	      next_hdr_type = IP_PROTOCOL_IP_IN_IP;
 	      oh0 = vlib_buffer_get_current (b0);
 
+	      if (PREDICT_TRUE (sa0->is_tunnel))
+		{
+		  next_hdr_type = IP_PROTOCOL_IP_IN_IP;
+		  oh0->ip4.tos = ih0->ip4.tos;
+		}
+	      else
+		{
+		  next_hdr_type = ih0->ip4.protocol;
+		  memmove (oh0, ih0, sizeof (ip4_header_t));
+		}
+
 	      oh0->ip4.ip_version_and_header_length = 0x45;
-	      oh0->ip4.tos = ih0->ip4.tos;
 	      oh0->ip4.fragment_id = 0;
 	      oh0->ip4.flags_and_fragment_offset = 0;
 	      oh0->ip4.ttl = 254;
@@ -299,13 +309,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	    {
 	      next0 = ESP_ENCRYPT_NEXT_INTERFACE_OUTPUT;
 	      transport_mode = 1;
-	      /*ipv6 already handled */
-	      if (PREDICT_TRUE (!is_ipv6))
-		{
-		  next_hdr_type = ih0->ip4.protocol;
-		  oh0->ip4.src_address.as_u32 = ih0->ip4.src_address.as_u32;
-		  oh0->ip4.dst_address.as_u32 = ih0->ip4.dst_address.as_u32;
-		}
 	    }
 
 	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
@@ -337,8 +340,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  dpdk_cop_priv_t *priv = (dpdk_cop_priv_t *) (sym_cop + 1);
 
 	  vnet_buffer (b0)->unused[0] = next0;
-	  priv->iv[0] = sa0->seq;
-	  priv->iv[1] = sa0->seq_hi;
 
 	  mb0 = rte_mbuf_from_vlib_buffer (b0);
 	  mb0->data_len = b0->current_length;
@@ -348,21 +349,71 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  rte_crypto_op_attach_sym_session (cop, sess);
 
 	  sym_cop->m_src = mb0;
-	  sym_cop->cipher.data.offset = ip_hdr_size + sizeof (esp_header_t);
-	  sym_cop->cipher.data.length = BLOCK_SIZE * blocks + IV_SIZE;
 
-	  sym_cop->cipher.iv.data = (u8 *) priv->iv;
-	  sym_cop->cipher.iv.phys_addr = cop->phys_addr +
-	    (uintptr_t) priv->iv - (uintptr_t) cop;
-	  sym_cop->cipher.iv.length = IV_SIZE;
+	  dpdk_gcm_cnt_blk *icb = &priv->cb;
+	  icb->salt = sa0->salt;
+	  icb->iv[0] = sa0->seq;
+	  icb->iv[1] = sa0->seq_hi;
+
+	  if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+	    {
+	      icb->cnt = clib_host_to_net_u32 (1);
+	      clib_memcpy (vlib_buffer_get_current (b0) + ip_hdr_size +
+			   sizeof (esp_header_t), icb->iv, 8);
+	      sym_cop->cipher.data.offset =
+		ip_hdr_size + sizeof (esp_header_t) + iv_size;
+	      sym_cop->cipher.data.length = BLOCK_SIZE * blocks;
+	      sym_cop->cipher.iv.length = 16;
+	    }
+	  else
+	    {
+	      sym_cop->cipher.data.offset =
+		ip_hdr_size + sizeof (esp_header_t);
+	      sym_cop->cipher.data.length = BLOCK_SIZE * blocks + iv_size;
+	      sym_cop->cipher.iv.length = iv_size;
+	    }
+
+	  sym_cop->cipher.iv.data = (u8 *) icb;
+	  sym_cop->cipher.iv.phys_addr = cop->phys_addr + (uintptr_t) icb
+	    - (uintptr_t) cop;
+
 
 	  ASSERT (sa0->integ_alg < IPSEC_INTEG_N_ALG);
 	  ASSERT (sa0->integ_alg != IPSEC_INTEG_ALG_NONE);
 
-	  sym_cop->auth.data.offset = ip_hdr_size;
-	  sym_cop->auth.data.length = b0->current_length - ip_hdr_size -
-	    em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	  if (PREDICT_FALSE (sa0->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128))
+	    {
+	      u8 *aad = priv->aad;
+	      clib_memcpy (aad, vlib_buffer_get_current (b0) + ip_hdr_size,
+			   8);
+	      sym_cop->auth.aad.data = aad;
+	      sym_cop->auth.aad.phys_addr = cop->phys_addr +
+		(uintptr_t) aad - (uintptr_t) cop;
 
+	      if (PREDICT_FALSE (sa0->use_esn))
+		{
+		  *((u32 *) & aad[8]) = sa0->seq_hi;
+		  sym_cop->auth.aad.length = 12;
+		}
+	      else
+		{
+		  sym_cop->auth.aad.length = 8;
+		}
+	    }
+	  else
+	    {
+	      sym_cop->auth.data.offset = ip_hdr_size;
+	      sym_cop->auth.data.length = b0->current_length - ip_hdr_size
+		- em->esp_integ_algs[sa0->integ_alg].trunc_size;
+
+	      if (PREDICT_FALSE (sa0->use_esn))
+		{
+		  u8 *payload_end =
+		    vlib_buffer_get_current (b0) + b0->current_length;
+		  *((u32 *) payload_end) = sa0->seq_hi;
+		  sym_cop->auth.data.length += sizeof (sa0->seq_hi);
+		}
+	    }
 	  sym_cop->auth.digest.data = vlib_buffer_get_current (b0) +
 	    b0->current_length -
 	    em->esp_integ_algs[sa0->integ_alg].trunc_size;
@@ -374,13 +425,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  sym_cop->auth.digest.length =
 	    em->esp_integ_algs[sa0->integ_alg].trunc_size;
 
-	  if (PREDICT_FALSE (sa0->use_esn))
-	    {
-	      u8 *payload_end =
-		vlib_buffer_get_current (b0) + b0->current_length;
-	      *((u32 *) payload_end) = sa0->seq_hi;
-	      sym_cop->auth.data.length += sizeof (sa0->seq_hi);
-	    }
 
 	  if (PREDICT_FALSE (is_ipv6))
 	    {
