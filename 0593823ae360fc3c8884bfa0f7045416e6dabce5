@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_e2786c2d",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2887,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-11-29T13:02:22Z",
+      "side": 1,
+      "message": "I was in the exact same situation. That\u0027s why I added the ability to delete the interface based on the name, and not the index.\nifname\u003d$(vppctl exec create vhost ...)\nvppctl exec delete vhost $ifname\n\nWould this approach work for you ?",
+      "parentUuid": "5a2585a7_628d9c31",
+      "range": {
+        "startLine": 2885,
+        "startChar": 3,
+        "endLine": 2887,
+        "endChar": 21
+      },
+      "revId": "0593823ae360fc3c8884bfa0f7045416e6dabce5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_8282c850",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
