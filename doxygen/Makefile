@@ -113,6 +113,9 @@ SIPHON_INPUT ?= $(DOXY_OUTPUT)/siphon_fragments
 # Siphoned fragements are processed into here
 SIPHON_OUTPUT ?= $(DOXY_OUTPUT)/siphon_docs
 
+# Siphoned fragments for command list are processed into here
+LIST_OUTPUT ?= /usr/share/vpp
+
 # Extra document inputs that are processed in addition to DOXY_INPUT
 EXTRA_DOXY_INPUT += $(SIPHON_OUTPUT)
 
@@ -121,7 +124,7 @@ SIPHONS ?= clicmd syscfg
 
 SIPHON_FILES = $(addprefix $(SIPHON_INPUT)/,$(addsuffix .siphon,$(SIPHONS)))
 SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
-SIPHON_ITEMLIST = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .itemlist,$(filter clicmd,$(SIPHONS))))
+SIPHON_ITEMLIST = $(addprefix $(LIST_OUTPUT)/,$(addsuffix .itemlist,$(filter clicmd,$(SIPHONS))))
 
 $(BR)/.doxygen-bootstrap.ok: Makefile
 	@echo "Checking whether dependencies for Doxygen are installed..."
@@ -219,6 +222,25 @@ $(SIPHON_OUTPUT)/%.$(1): $(SIPHON_INPUT)/%.siphon \
 		"$$<"
 endef
 
+# Evaluate this to build a siphon doc for list of commands
+# $(eval $(call siphon-process-list,file_extension,output_type_name))
+define siphon-process-list
+$(LIST_OUTPUT)/%.$(1): $(SIPHON_INPUT)/%.siphon \
+		$(DOXY_DIR)/siphon-process \
+		$(wildcard $(DOXY_DIR)/siphon/*.py) \
+		$(wildcard $(DOXY_DIR)/siphon_templates/$(2)/*/*.$(1))
+	@sudo mkdir -p "$(LIST_OUTPUT)"
+	@echo "Processing siphon for $(2) from $$(notdir $$<)..."
+	@set -e; \
+	cd "$(WS_ROOT)"; \
+	sudo $(DOXY_DIR)/siphon-process \
+		--type=$$(basename $$(notdir $$<)) \
+		--format=$(2) \
+		--output="$$@" \
+		"$$<"
+endef
+
+
 # Process the .siphon source fragments and render them into doxygen flavored
 # markdown documentation
 .DELETE_ON_ERROR: $(SIPHON_DOCS)
@@ -227,11 +249,16 @@ $(eval $(call siphon-process,md,markdown))
 # Process the .siphon source fragments and render them into a list of cli
 # commands.
 .DELETE_ON_ERROR: $(SIPHON_ITEMLIST)
-$(eval $(call siphon-process,itemlist,itemlist))
+$(eval $(call siphon-process-list,itemlist,itemlist))
 
 # This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_ITEMLIST)
+doxygen-siphon: $(SIPHON_DOCS)
+
+# This target is used generate list of cli commands for use with
+# the bash completion element for vppctl
+.PHONY: doxygen-siphon-list
+doxygen-siphon-list: $(SIPHON_ITEMLIST)
 
 # Generate the doxygen docs
 .PHONY: doxygen

@@ -124,6 +124,10 @@ do
           ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
 done
 
+mkdir -p -m755 %{buildroot}/etc/bash_completion.d
+install -p -m 644 %{_mu_build_dir}/../vpp-api-test/scripts/vppctl_completion %{buildroot}/etc/bash_completion.d
+
+
 # Python bindings
 mkdir -p -m755 %{buildroot}%{python2_sitelib}/vpp_papi
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
@@ -220,6 +224,7 @@ fi
 %exclude %{_libdir}/vpp_plugins
 %exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
+/etc/bash_completion.d/vppctl_completion
 
 %files python-api
 %defattr(644,root,root)
