@@ -29,6 +29,9 @@ ifeq ($(shell uname),Darwin)
 OS_ID = darwin
 endif
 
+# Assume that the answer to any question which would be asked is yes
+CONFIRM=-y
+
 # Work out the OS if we haven't already
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
@@ -187,8 +190,7 @@ $(BR)/.doxygen-siphon.dep: Makefile \
 # Generate .siphon files that contain fragments of source file that
 # relate to the siphons we support.
 .NOTPARALLEL: $(SIPHON_FILES)
-$(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
-		$(DOXY_DIR)/siphon-generate \
+$(SIPHON_FILES):$(DOXY_DIR)/siphon-generate \
 		$(addprefix,$(WSROOT),$(DOXY_INPUT)) \
 		$(wildcard $(DOXY_DIR)/siphon/*.py)
 	@echo "Validating source tree..."
@@ -246,7 +248,12 @@ $(eval $(call siphon-process,itemlist,itemlist))
 
 # This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_ITEMLIST)
+doxygen-siphon: $(SIPHON_DOCS)
+
+# This target is used generate list of cli commands for use with
+# the bash completion element for vppctl
+.PHONY: doxygen-siphon-list
+doxygen-siphon-list: $(SIPHON_ITEMLIST)
 
 # Generate the doxygen docs
 .PHONY: doxygen
