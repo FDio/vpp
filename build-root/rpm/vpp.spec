@@ -129,6 +129,8 @@ install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/80-vpp.conf %{buildroot}/etc/
 # libraries
 #
 mkdir -p -m755 %{buildroot}%{_libdir}
+mkdir -p -m755 %{buildroot}/usr/share/vpp
+mkdir -p -m755 %{buildroot}/etc/bash_completion.d
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*.*' -print )
 do
 	install -p -m 755 $file %{buildroot}%{_libdir}
@@ -145,6 +147,8 @@ for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/vpp/api  -type
 do
 	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
 done
+install -p -m 644 %{_mu_build_dir}/../src/scripts/vppctl_completion %{buildroot}/etc/bash_completion.d
+install -p -m 644 %{_mu_build_dir}/docs/siphon_docs/clicmd.itemlist %{buildroot}/usr/share/vpp
 
 # Lua bindings
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/lua/examples/cli
@@ -273,6 +277,8 @@ fi
 %exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
 /usr/share/vpp/api/*
+/etc/bash_completion.d/vppctl_completion
+/usr/share/vpp/clicmd.itemlist
 
 %files api-lua
 %defattr(644,root,root)

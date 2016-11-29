@@ -33,8 +33,6 @@ endif
 OS_ID ?= $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 
 # Package dependencies
-DOC_DEB_DEPENDS = doxygen graphviz python-pyparsing python-jinja2
-DOC_RPM_DEPENDS = doxygen graphviz pyparsing python-jinja2
 DOC_MAC_BIN_DEPENDS = doxygen dot git
 DOC_MAC_PY_DEPENDS = pyparsing jinja2
 
@@ -129,22 +127,11 @@ SIPHON_DOCS = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .md,$(SIPHONS)))
 SIPHON_ITEMLIST = $(addprefix $(SIPHON_OUTPUT)/,$(addsuffix .itemlist,$(filter clicmd,$(SIPHONS))))
 
 $(BR)/.doxygen-bootstrap.ok: Makefile
-	@echo "Checking whether dependencies for Doxygen are installed..."
 ifeq ($(OS_ID),ubuntu)
-	@set -e; inst=; \
-		for i in $(DOC_DEB_DEPENDS); do \
-			dpkg-query --show $$i >/dev/null 2>&1 || inst="$$inst $$i"; \
-		done; \
-		if [ "$$inst" ]; then \
-			sudo apt-get update; \
-			sudo apt-get $(CONFIRM) $(FORCE) install $$inst; \
-		fi
 	@if [ ! -s /usr/lib/graphviz/config6a ]; then \
-		echo "Rebuidlding system Graphviz configuration."; \
+		echo "Rebuilding system Graphviz configuration."; \
 		sudo dot -c; \
 	fi
-else ifneq ("$(wildcard /etc/redhat-release)","")
-	@sudo yum install $(CONFIRM) $(DOC_RPM_DEPENDS)
 else ifeq ($(OS_ID),darwin)
 	@set -e; \
 	for bin in $(DOC_MAC_BIN_DEPENDS); do \
@@ -187,8 +174,7 @@ $(BR)/.doxygen-siphon.dep: Makefile \
 # Generate .siphon files that contain fragments of source file that
 # relate to the siphons we support.
 .NOTPARALLEL: $(SIPHON_FILES)
-$(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
-		$(DOXY_DIR)/siphon-generate \
+$(SIPHON_FILES):$(DOXY_DIR)/siphon-generate \
 		$(addprefix,$(WSROOT),$(DOXY_INPUT)) \
 		$(wildcard $(DOXY_DIR)/siphon/*.py)
 	@echo "Validating source tree..."
@@ -246,7 +232,12 @@ $(eval $(call siphon-process,itemlist,itemlist))
 
 # This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_ITEMLIST)
+doxygen-siphon: $(SIPHON_DOCS)
+
+# This target is used generate list of cli commands for use with
+# the bash completion element for vppctl
+.PHONY: doxygen-siphon-list
+doxygen-siphon-list: $(SIPHON_ITEMLIST)
 
 # Generate the doxygen docs
 .PHONY: doxygen
