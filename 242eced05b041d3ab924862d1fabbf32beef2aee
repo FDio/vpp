@@ -168,6 +168,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_e264ece6",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-11-29T05:11:20Z",
+      "side": 1,
+      "message": "Got it. Thanks.",
+      "parentUuid": "5a2585a7_227314b3",
+      "range": {
+        "startLine": 233,
+        "startChar": 0,
+        "endLine": 233,
+        "endChar": 10
+      },
+      "revId": "242eced05b041d3ab924862d1fabbf32beef2aee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_a7eef6b2",
         "filename": "vnet/vnet/vxlan/vxlan.c",
         "patchSetId": 5
