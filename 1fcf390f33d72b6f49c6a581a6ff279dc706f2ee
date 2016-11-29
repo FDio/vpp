@@ -34,6 +34,24 @@
       "revId": "1fcf390f33d72b6f49c6a581a6ff279dc706f2ee",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_62947c37",
+        "filename": "vnet/vnet/ip/ip4_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-29T13:13:38Z",
+      "side": 1,
+      "message": "vnet_feature_arc_start is inlined. const folding optimiasiotn will mean its arguments are compiled to integer literals. \n\nnext0 is always a constant value (LOOKUP) at the point where vnet_feature_arc_start is called. It has to be that way, since if there are features then next0 is over-written, and if next0 wasn\u0027t the default value then that non-default value was just discarded.\n\ni\u0027m trying to get from this;\n\n next0 \u003d LOOKUP;\n stuff_that_doesnt_change_next0\n if (0 !\u003d bitmap)\n   next0 \u003d SOMETHING\n\nto this;\n\n stuff_that_doesnt_change_next0\n if (0 !\u003d bitmap)\n  next0 \u003d SOMETHING\nelse\n  next0 \u003d LOOKUP\n\nalways an assignment from a literal.\nthe fast path has bitmap\u003d0, is it any worse in that case?\nwith bitmap!\u003d0 it\u0027s one less write.",
+      "parentUuid": "5a2585a7_e2918c53",
+      "revId": "1fcf390f33d72b6f49c6a581a6ff279dc706f2ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
