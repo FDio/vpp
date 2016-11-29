@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_82a1a8ab",
+        "filename": "vnet/vnet/ip/ip4_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-29T11:57:44Z",
+      "side": 1,
+      "message": "can we pass this default value to vnet_feature_arc_start and only set next0 when the bitmap is 0. save us a write instuction.",
+      "revId": "1fcf390f33d72b6f49c6a581a6ff279dc706f2ee",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
