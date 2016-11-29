@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_d6ac158f",
+        "filename": "vpp-api-test/scripts/vppctl",
+        "patchSetId": 1
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-29T16:19:28Z",
+      "side": 1,
+      "message": "This could experience a ^C too I believe",
+      "range": {
+        "startLine": 110,
+        "startChar": 3,
+        "endLine": 110,
+        "endChar": 19
+      },
+      "revId": "d114df2401d30241edba9f75247a1752c5d52384",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
