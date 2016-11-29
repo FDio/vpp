@@ -1141,7 +1141,9 @@ package_wipe_script =											\
   @message=$(if $(is_build_tool),"Wiping build $(PACKAGE)","Wiping build/install $(PACKAGE)") ;		\
   $(call build_msg_fn,$$message) ;									\
   $(BUILD_ENV) ;											\
-  rm -rf $(if $(is_build_tool),$(PACKAGE_BUILD_DIR),$(PACKAGE_INSTALL_DIR) $(PACKAGE_BUILD_DIR))
+  rm -rf $(if $(is_build_tool),$(PACKAGE_BUILD_DIR),$(PACKAGE_INSTALL_DIR) $(PACKAGE_BUILD_DIR));	\
+  rm -f $(MU_BUILD_ROOT_DIR)/docs/siphon_docs/clicmd.itemlist
+
 
 .PHONY: %-wipe
 %-wipe:
@@ -1152,8 +1154,8 @@ package_wipe_script =											\
 wipe-all:
 	@$(call build_msg_fn, Wiping $(BUILD_DIR) $(INSTALL_DIR)) ;	\
 	$(BUILD_ENV) ;							\
-	rm -rf $(BUILD_DIR) $(INSTALL_DIR)
-
+	rm -rf $(BUILD_DIR) $(INSTALL_DIR)				\
+	
 # Clean everything
 distclean:
 	rm -rf $(MU_BUILD_ROOT_DIR)/$(BUILD_PREFIX_package)*/
@@ -1169,3 +1171,4 @@ distclean:
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.install
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/*.dkms
 	rm -f $(MU_BUILD_ROOT_DIR)/deb/debian/changelog
+	rm -f $(MU_BUILD_ROOT_DIR)/docs/siphon_docs/clicmd.itemlist  

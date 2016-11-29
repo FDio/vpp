@@ -187,7 +187,7 @@ distversion:	$(BR)/scripts/.version
 	$(BR)/scripts/verdist ${BR} ${prefix}-$(shell $(BR)/scripts/version rpm-version) ${verstring}
 	mv $(verstring).tar.gz $(BR)/rpm
 
-build: $(BR)/.bootstrap.ok
+build: $(BR)/.bootstrap.ok 
 	$(call make,$(PLATFORM)_debug,vpp-install)
 
 wipedist:
@@ -198,7 +198,7 @@ wipe: wipedist $(BR)/.bootstrap.ok
 
 rebuild: wipe build
 
-build-release: $(BR)/.bootstrap.ok
+build-release: $(BR)/.bootstrap.ok 
 	$(call make,$(PLATFORM),vpp-install)
 
 wipe-release: $(BR)/.bootstrap.ok
@@ -300,10 +300,10 @@ build-vat:
 run-vat:
 	@sudo $(BR)/install-$(PLATFORM)_debug-native/vpp-api-test/bin/vpp_api_test
 
-pkg-deb:
+pkg-deb: doxygen-siphon-list
 	$(call make,$(PLATFORM),install-deb)
 
-pkg-rpm: dist
+pkg-rpm: dist doxygen-siphon-list
 	$(call make,$(PLATFORM),install-rpm)
 
 ctags: ctags.files
@@ -342,6 +342,9 @@ doxygen:
 	$(call make-doxy)
 
 wipe-doxygen:
+	$(call make-doxy)
+
+doxygen-siphon-list:
 	$(call make-doxy)
 
 define banner
