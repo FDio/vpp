@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_62791c93",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-11-29T04:04:51Z",
+      "side": 1,
+      "message": "ok. will fix it.",
+      "parentUuid": "5a2585a7_62523c15",
+      "range": {
+        "startLine": 528,
+        "startChar": 9,
+        "endLine": 528,
+        "endChar": 18
+      },
+      "revId": "83f09130425ea81458d5613f250dac7dc0236d1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_02413839",
         "filename": "vnet/vnet/vxlan/vxlan.c",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2016-11-29T03:59:08Z",
       "side": 1,
       "message": "I think we should change this to accept real node name instead of \"nsh-input\" keyword, so it can be the name of any node. Thus, as I suggested earlier, there should be 3 different nsh-input nodes for 3 different input types, we can then specify which one by its name. It is a good idea to preserve the \"l2\" keyword for backward compatibility with any existing scripts, etc. Same comment goes for VAT CLI.",
+      "range": {
+        "startLine": 551,
+        "startChar": 0,
+        "endLine": 551,
+        "endChar": 4
+      },
+      "revId": "83f09130425ea81458d5613f250dac7dc0236d1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a247044b",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-11-29T04:04:51Z",
+      "side": 1,
+      "message": "ok. will fix it.",
+      "parentUuid": "5a2585a7_02413839",
       "range": {
         "startLine": 551,
         "startChar": 0,
