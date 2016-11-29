@@ -194,9 +194,17 @@ fib_route_path_cmp (const fib_route_path_t *rpath1,
 
     if (0 != res) return (res);
 
-    res = vnet_sw_interface_compare(vnet_get_main(),
-				    rpath1->frp_sw_if_index,
-				    rpath2->frp_sw_if_index);
+    if (~0 != rpath1->frp_sw_if_index &&
+        ~0 != rpath2->frp_sw_if_index)
+    {
+        res = vnet_sw_interface_compare(vnet_get_main(),
+                                        rpath1->frp_sw_if_index,
+                                        rpath2->frp_sw_if_index);
+    }
+    else
+    {
+        res = rpath1->frp_sw_if_index - rpath2->frp_sw_if_index;
+    }
 
     if (0 != res) return (res);
 

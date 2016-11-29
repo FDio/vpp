@@ -784,8 +784,8 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
  * Example of graph node after range checking is enabled:
  * @cliexstart{show vlib graph ip4-source-and-port-range-check-tx}
  *            Name                      Next                    Previous
- * ip4-source-and-port-range-      error-drop [0]           ip4-rewrite-local
- *                              interface-output [1]       ip4-rewrite-transit
+ * ip4-source-and-port-range-      error-drop [0]              ip4-rewrite
+ *                              interface-output [1]
  * @cliexend
  *
  * Example of how to display the features enabed on an interface:
