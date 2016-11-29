@@ -111,6 +111,8 @@ install -p -m 644 %{_mu_build_dir}/../vpp/conf/80-vpp.conf %{buildroot}/etc/sysc
 # libraries
 #
 mkdir -p -m755 %{buildroot}%{_libdir}
+mkdir -p -m755 %{buildroot}/usr/share/vpp
+mkdir -p -m755 %{buildroot}/etc/bash_completion.d
 for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib* -type f -name '*.so.*.*.*' -print )
 do
 	install -p -m 755 $file %{buildroot}%{_libdir}
@@ -123,6 +125,9 @@ do
 	( cd %{buildroot}%{_libdir} && 
           ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
 done
+
+install -p -m 644 %{_mu_build_dir}/../vpp-api-test/scripts/vppctl_completion %{buildroot}/etc/bash_completion.d
+install -p -m 644 %{_mu_build_dir}/docs/siphon_docs/clicmd.itemlist %{buildroot}/usr/share/vpp
 
 # Python bindings
 mkdir -p -m755 %{buildroot}%{python2_sitelib}/vpp_papi
@@ -220,6 +225,7 @@ fi
 %exclude %{_libdir}/vpp_plugins
 %exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
+/etc/bash_completion.d/vppctl_completion
 
 %files python-api
 %defattr(644,root,root)
