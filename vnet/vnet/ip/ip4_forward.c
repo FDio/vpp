@@ -1743,8 +1743,7 @@ ip4_local (vlib_main_t * vm,
 	  dpo0 = load_balance_get_bucket_i(lb0, 0);
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
-	      vnet_buffer (p0)->ip.adj_index[VLIB_RX] =
-	          dpo0->dpoi_index;
+	      vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0;
 
           error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
 		     dpo0->dpoi_type == DPO_RECEIVE) ?
@@ -2180,7 +2179,6 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 
 typedef enum {
   IP4_REWRITE_NEXT_DROP,
-  IP4_REWRITE_NEXT_ARP,
   IP4_REWRITE_NEXT_ICMP_ERROR,
 } ip4_rewrite_next_t;
 
@@ -2188,14 +2186,12 @@ always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * frame,
-		    int rewrite_for_locally_received_packets,
 		    int is_midchain)
 {
   ip_lookup_main_t * lm = &ip4_main.lookup_main;
   u32 * from = vlib_frame_vector_args (frame);
   u32 n_left_from, n_left_to_next, * to_next, next_index;
   vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
-  vlib_rx_or_tx_t adj_rx_tx = rewrite_for_locally_received_packets ? VLIB_RX : VLIB_TX;
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -2212,11 +2208,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  ip4_header_t * ip0, * ip1;
 	  u32 pi0, rw_len0, next0, error0, checksum0, adj_index0;
 	  u32 pi1, rw_len1, next1, error1, checksum1, adj_index1;
-          u32 next0_override, next1_override;
           u32 tx_sw_if_index0, tx_sw_if_index1;
-
-          if (rewrite_for_locally_received_packets)
-              next0_override = next1_override = 0;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -2243,8 +2235,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[adj_rx_tx];
-	  adj_index1 = vnet_buffer (p1)->ip.adj_index[adj_rx_tx];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
           /* We should never rewrite a pkt using the MISS adjacency */
           ASSERT(adj_index0 && adj_index1);
@@ -2257,28 +2249,19 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  /* Decrement TTL & update checksum.
 	     Works either endian, so no need for byte swap. */
-	  if (! rewrite_for_locally_received_packets)
+	  if (PREDICT_TRUE(!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
 	    {
-	      i32 ttl0 = ip0->ttl, ttl1 = ip1->ttl;
+                i32 ttl0 = ip0->ttl;
 
 	      /* Input node should have reject packets with ttl 0. */
 	      ASSERT (ip0->ttl > 0);
-	      ASSERT (ip1->ttl > 0);
 
 	      checksum0 = ip0->checksum + clib_host_to_net_u16 (0x0100);
-	      checksum1 = ip1->checksum + clib_host_to_net_u16 (0x0100);
-
 	      checksum0 += checksum0 >= 0xffff;
-	      checksum1 += checksum1 >= 0xffff;
 
 	      ip0->checksum = checksum0;
-	      ip1->checksum = checksum1;
-
 	      ttl0 -= 1;
-	      ttl1 -= 1;
-
 	      ip0->ttl = ttl0;
-	      ip1->ttl = ttl1;
 
               /*
                * If the ttl drops below 1 when forwarding, generate
@@ -2292,6 +2275,32 @@ ip4_rewrite_inline (vlib_main_t * vm,
                               ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
                   next0 = IP4_REWRITE_NEXT_ICMP_ERROR;
                 }
+
+	      /* Verify checksum. */
+	      ASSERT (ip0->checksum == ip4_header_checksum (ip0));
+	    }
+          else
+            {
+              p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+            }
+	  if (PREDICT_TRUE(!(p1->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	    {
+	      i32 ttl1 = ip1->ttl;
+
+	      /* Input node should have reject packets with ttl 0. */
+	      ASSERT (ip1->ttl > 0);
+
+	      checksum1 = ip1->checksum + clib_host_to_net_u16 (0x0100);
+	      checksum1 += checksum1 >= 0xffff;
+
+	      ip1->checksum = checksum1;
+	      ttl1 -= 1;
+	      ip1->ttl = ttl1;
+
+              /*
+               * If the ttl drops below 1 when forwarding, generate
+               * an ICMP response.
+               */
               if (PREDICT_FALSE(ttl1 <= 0))
                 {
                   error1 = IP4_ERROR_TIME_EXPIRED;
@@ -2305,20 +2314,14 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      ASSERT (ip0->checksum == ip4_header_checksum (ip0));
 	      ASSERT (ip1->checksum == ip4_header_checksum (ip1));
 	    }
+          else
+            {
+              p1->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+            }
 
 	  /* Rewrite packet header and updates lengths. */
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 	  adj1 = ip_get_adjacency (lm, adj_index1);
-
-          if (rewrite_for_locally_received_packets)
-            {
-              if (PREDICT_FALSE(adj0->lookup_next_index
-                                == IP_LOOKUP_NEXT_ARP))
-                next0_override = IP4_REWRITE_NEXT_ARP;
-              if (PREDICT_FALSE(adj1->lookup_next_index
-                                == IP_LOOKUP_NEXT_ARP))
-                next1_override = IP4_REWRITE_NEXT_ARP;
-            }
 
           /* Worth pipelining. No guarantee that adj0,1 are hot... */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
@@ -2337,14 +2340,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
           next0 = (error0 == IP4_ERROR_NONE)
             ? adj0[0].rewrite_header.next_index : next0;
 
-          if (rewrite_for_locally_received_packets)
-              next0 = next0 && next0_override ? next0_override : next0;
-
           next1 = (error1 == IP4_ERROR_NONE)
             ? adj1[0].rewrite_header.next_index : next1;
-
-          if (rewrite_for_locally_received_packets)
-              next1 = next1 && next1_override ? next1_override : next1;
 
           /*
            * We've already accounted for an ethernet_header_t elsewhere
@@ -2411,17 +2408,13 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  vlib_buffer_t * p0;
 	  ip4_header_t * ip0;
 	  u32 pi0, rw_len0, adj_index0, next0, error0, checksum0;
-          u32 next0_override;
           u32 tx_sw_if_index0;
-
-          if (rewrite_for_locally_received_packets)
-              next0_override = 0;
 
 	  pi0 = to_next[0] = from[0];
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
-	  adj_index0 = vnet_buffer (p0)->ip.adj_index[adj_rx_tx];
+	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
           /* We should never rewrite a pkt using the MISS adjacency */
           ASSERT(adj_index0);
@@ -2434,7 +2427,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
           next0 = IP4_REWRITE_NEXT_DROP;            /* drop on error */
 
 	  /* Decrement TTL & update checksum. */
-	  if (! rewrite_for_locally_received_packets)
+	  if (PREDICT_TRUE(!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
 	    {
 	      i32 ttl0 = ip0->ttl;
 
@@ -2465,16 +2458,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
                               ICMP4_time_exceeded_ttl_exceeded_in_transit, 0);
                 }
 	    }
-
-          if (rewrite_for_locally_received_packets)
+          else
             {
-              /*
-               * We have to override the next_index in ARP adjacencies,
-               * because they're set up for ip4-arp, not this node...
-               */
-              if (PREDICT_FALSE(adj0->lookup_next_index
-                                == IP_LOOKUP_NEXT_ARP))
-                next0_override = IP4_REWRITE_NEXT_ARP;
+              p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
             }
 
 	  /* Guess we are only writing on simple Ethernet header. */
@@ -2521,9 +2507,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
             }
 
-          if (rewrite_for_locally_received_packets)
-              next0 = next0 && next0_override ? next0_override : next0;
-
 	  from += 1;
 	  n_left_from -= 1;
 	  to_next += 1;
@@ -2539,7 +2522,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
   /* Need to do trace after rewrites to pick up new packet data. */
   if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, adj_rx_tx);
+    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
 
   return frame->n_vectors;
 }
@@ -2581,8 +2564,7 @@ ip4_rewrite_transit (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
 		     vlib_frame_t * frame)
 {
-  return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0, 0);
+  return ip4_rewrite_inline (vm, node, frame, 0);
 }
 
 /** @brief IPv4 local rewrite node.
@@ -2617,14 +2599,12 @@ ip4_rewrite_transit (vlib_main_t * vm,
     - <code> adj->rewrite_header.next_index </code>
       or @c error-drop
 */
-
 static uword
 ip4_rewrite_local (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_frame_t * frame)
+                   vlib_node_runtime_t * node,
+                   vlib_frame_t * frame)
 {
-  return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 1, 0);
+  return ip4_rewrite_inline (vm, node, frame, 0);
 }
 
 static uword
@@ -2632,9 +2612,9 @@ ip4_midchain (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * frame)
 {
-  return ip4_rewrite_inline (vm, node, frame,
-			     /* rewrite_for_locally_received_packets */ 0, 1);
+  return ip4_rewrite_inline (vm, node, frame, 1);
 }
+
 
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   .function = ip4_rewrite_transit,
@@ -2643,10 +2623,9 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 
   .format_trace = format_ip4_rewrite_trace,
 
-  .n_next_nodes = 3,
+  .n_next_nodes = 2,
   .next_nodes = {
     [IP4_REWRITE_NEXT_DROP] = "error-drop",
-    [IP4_REWRITE_NEXT_ARP] = "ip4-arp",
     [IP4_REWRITE_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
