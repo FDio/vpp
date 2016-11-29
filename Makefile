@@ -300,10 +300,10 @@ build-vat:
 run-vat:
 	@sudo $(BR)/install-$(PLATFORM)_debug-native/vpp-api-test/bin/vpp_api_test
 
-pkg-deb:
+pkg-deb: doxygen-siphon-list
 	$(call make,$(PLATFORM),install-deb)
 
-pkg-rpm: dist
+pkg-rpm: dist doxygen-siphon-list
 	$(call make,$(PLATFORM),install-rpm)
 
 ctags: ctags.files
@@ -342,6 +342,9 @@ doxygen:
 	$(call make-doxy)
 
 wipe-doxygen:
+	$(call make-doxy)
+
+doxygen-siphon-list:
 	$(call make-doxy)
 
 define banner
