@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_62523c15",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-29T03:44:53Z",
+      "side": 1,
+      "message": "ASSERT is not a valid error handling approach. It will crash for a debug image and do nothing on a non-debug image. I expect there should be proper error change and return an error to indicate tunnel is not created.",
+      "range": {
+        "startLine": 528,
+        "startChar": 9,
+        "endLine": 528,
+        "endChar": 18
+      },
+      "revId": "83f09130425ea81458d5613f250dac7dc0236d1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
