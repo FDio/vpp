@@ -231,7 +231,12 @@ $(eval $(call siphon-process,itemlist,itemlist))
 
 # This target can be used just to generate the siphoned things
 .PHONY: doxygen-siphon
-doxygen-siphon: $(SIPHON_DOCS) $(SIPHON_ITEMLIST)
+doxygen-siphon: $(SIPHON_DOCS)
+
+# This target is used generate list of cli commands for use with
+# the bash completion element for vppctl
+.PHONY: doxygen-siphon-list
+doxygen-siphon-list: $(SIPHON_ITEMLIST)
 
 # Generate the doxygen docs
 .PHONY: doxygen
