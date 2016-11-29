@@ -87,9 +87,9 @@ span_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t *b0, *c0;
 	  vlib_buffer_t *b1, *c1;
 	  u32 sw_if_index0;
-	  u32 next0 = 0;	//SPAN_NEXT_ORIG_ETHERNET;
+	  u32 next0 = 0;
 	  u32 sw_if_index1;
-	  u32 next1 = 1;	//SPAN_NEXT_ORIG_ETHERNET;
+	  u32 next1 = 0;
 
 	  /* speculatively enqueue b0, b1 to the current next frame */
 	  to_next[0] = bi0 = from[0];
@@ -173,7 +173,7 @@ span_node_fn (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0, *c0;
 	  u32 sw_if_index0;
-	  u32 next0 = 0;	//SPAN_NEXT_ORIG_ETHERNET;
+	  u32 next0 = 0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  to_next[0] = bi0 = from[0];
