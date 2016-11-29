@@ -264,12 +264,34 @@ typedef struct
 
 typedef struct
 {
+  uword dst;
+  uword src;
+  u32 len;
+} vhost_copy_t;
+
+typedef struct
+{
+  u16 qid; /** The interface queue index (Not the virtio vring idx) */
+  u16 device_index; /** The device index */
+  u32 virtio_ring_flags; /** Runtime queue flags  **/
+  u16 first_desc_len; /** Length of the first data descriptor **/
+  virtio_net_hdr_mrg_rxbuf_t hdr; /** Virtio header **/
+} vhost_trace_t;
+
+typedef struct
+{
+  u32 *rx_buffers;
   vhost_iface_and_queue_t *rx_queues;
+  vhost_copy_t *copy;
+  virtio_net_hdr_mrg_rxbuf_t *tx_headers;
+
+  /* This is here so it doesn't end-up
+   * using stack or registers. */
+  vhost_trace_t *current_trace;
 } vhost_cpu_t;
 
 typedef struct
 {
-  u32 **rx_buffers;
   u32 mtu_bytes;
   vhost_user_intf_t *vhost_user_interfaces;
   u32 *vhost_user_inactive_interfaces_index;
