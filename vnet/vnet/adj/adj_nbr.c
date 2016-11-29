@@ -979,7 +979,7 @@ const static dpo_vft_t adj_nbr_incompl_dpo_vft = {
  */
 const static char* const nbr_ip4_nodes[] =
 {
-    "ip4-rewrite-transit",
+    "ip4-rewrite",
     NULL,
 };
 const static char* const nbr_ip6_nodes[] =
