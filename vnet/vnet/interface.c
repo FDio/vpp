@@ -687,7 +687,9 @@ vnet_register_interface (vnet_main_t * vnm,
   vnet_hw_interface_class_t *hw_class =
     vnet_get_hw_interface_class (vnm, hw_class_index);
   vlib_main_t *vm = vnm->vlib_main;
-  u32 hw_index;
+  vnet_feature_config_main_t *fcm;
+  vnet_config_main_t *cm;
+  u32 hw_index, i;
   char *tx_node_name, *output_node_name;
 
   pool_get (im->hw_interfaces, hw);
@@ -832,6 +834,28 @@ vnet_register_interface (vnet_main_t * vnm,
       vlib_node_add_next_with_slot (vm, hw->output_node_index,
 				    hw->tx_node_index,
 				    VNET_INTERFACE_OUTPUT_NEXT_TX);
+
+      /* add interface to the list of "output-interface" feature arc start nodes
+         and clone nexts from 1st interface if it exists */
+      fcm = vnet_feature_get_config_main (im->output_feature_arc_index);
+      cm = &fcm->config_main;
+      i = vec_len (cm->start_node_indices);
+      vec_validate (cm->start_node_indices, i);
+      cm->start_node_indices[i] = hw->output_node_index;
+      if (hw_index)
+	{
+	  /* copy nexts from 1st interface */
+	  vnet_hw_interface_t *first_hw;
+	  vlib_node_t *first_node;
+
+	  first_hw = vnet_get_hw_interface (vnm, /* hw_if_index */ 0);
+	  first_node = vlib_get_node (vm, first_hw->output_node_index);
+
+	  /* 1st 2 nexts are already added above */
+	  for (i = 2; i < vec_len (first_node->next_nodes); i++)
+	    vlib_node_add_next_with_slot (vm, hw->output_node_index,
+					  first_node->next_nodes[i], i);
+	}
     }
 
   setup_output_node (vm, hw->output_node_index, hw_class);

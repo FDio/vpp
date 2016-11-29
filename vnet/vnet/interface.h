@@ -621,6 +621,8 @@ typedef struct
   u32 pcap_pkts_to_capture;
   uword *pcap_drop_filter_hash;
 
+  /* feature_arc_index */
+  u8 output_feature_arc_index;
 } vnet_interface_main_t;
 
 static inline void

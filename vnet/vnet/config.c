@@ -174,7 +174,6 @@ vnet_config_init (vlib_main_t * vm,
 		     STRUCT_SIZE_OF (vnet_config_t, config_string_vector[0]),
 		     sizeof (uword));
 
-  ASSERT (n_start_node_names >= 1);
   ASSERT (n_feature_node_names >= 1);
 
   vec_resize (cm->start_node_indices, n_start_node_names);

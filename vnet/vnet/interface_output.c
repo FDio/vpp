@@ -38,6 +38,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/feature/feature.h>
 
 typedef struct
 {
@@ -430,6 +431,8 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
   u32 cpu_index = vm->cpu_index;
   vnet_interface_main_t *im = &vnm->interface_main;
   u32 next_index = VNET_INTERFACE_OUTPUT_NEXT_TX;
+  u32 current_config_index = ~0;
+  u8 arc = im->output_feature_arc_index;
 
   n_buffers = frame->n_vectors;
 
@@ -472,6 +475,17 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
   n_bytes = 0;
   n_packets = 0;
 
+  /* interface-output feature arc handling */
+  if (PREDICT_FALSE (vnet_have_features (arc, rt->sw_if_index)))
+    {
+      vnet_feature_config_main_t *fcm;
+      fcm = vnet_feature_get_config_main (arc);
+      current_config_index = vnet_get_feature_config_index (arc,
+							    rt->sw_if_index);
+      vnet_get_config_data (&fcm->config_main, &current_config_index,
+			    &next_index, 0);
+    }
+
   while (from < from_end)
     {
       /* Get new next frame since previous incomplete frame may have less
@@ -511,6 +525,14 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
 
 	  n_bytes += n_bytes_b0 + n_bytes_b1;
 	  n_packets += 2;
+
+	  if (PREDICT_FALSE (current_config_index != ~0))
+	    {
+	      b0->feature_arc_index = arc;
+	      b1->feature_arc_index = arc;
+	      b0->current_config_index = current_config_index;
+	      b1->current_config_index = current_config_index;
+	    }
 
 	  if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
 	    {
@@ -554,6 +576,12 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
 	  tx_swif0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	  n_bytes += n_bytes_b0;
 	  n_packets += 1;
+
+	  if (PREDICT_FALSE (current_config_index != ~0))
+	    {
+	      b0->feature_arc_index = arc;
+	      b0->current_config_index = current_config_index;
+	    }
 
 	  if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
 	    {
@@ -1133,6 +1161,77 @@ VLIB_REGISTER_NODE (vnet_per_buffer_interface_output_node,static) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (vnet_per_buffer_interface_output_node,
 			      vnet_per_buffer_interface_output);
+
+static uword
+interface_tx_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      vlib_frame_t * from_frame)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 last_sw_if_index = ~0;
+  vlib_frame_t *to_frame = 0;
+  vnet_hw_interface_t *hw = 0;
+  u32 *from, *to_next = 0;
+  u32 n_left_from;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+  while (n_left_from > 0)
+    {
+      u32 bi0;
+      vlib_buffer_t *b0;
+      u32 sw_if_index0;
+
+      bi0 = from[0];
+      from++;
+      n_left_from--;
+      b0 = vlib_get_buffer (vm, bi0);
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+
+      if (PREDICT_FALSE ((last_sw_if_index != sw_if_index0) || to_frame == 0))
+	{
+	  if (to_frame)
+	    {
+	      hw = vnet_get_sup_hw_interface (vnm, last_sw_if_index);
+	      vlib_put_frame_to_node (vm, hw->tx_node_index, to_frame);
+	    }
+	  last_sw_if_index = sw_if_index0;
+	  hw = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	  to_frame = vlib_get_frame_to_node (vm, hw->tx_node_index);
+	  to_next = vlib_frame_vector_args (to_frame);
+	}
+
+      to_next[0] = bi0;
+      to_next++;
+      to_frame->n_vectors++;
+    }
+  vlib_put_frame_to_node (vm, hw->tx_node_index, to_frame);
+  return from_frame->n_vectors;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (interface_tx, static) = {
+  .function = interface_tx_node_fn,
+  .name = "interface-tx",
+  .vector_size = sizeof (u32),
+  .n_next_nodes = 1,
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VNET_FEATURE_ARC_INIT (interface_output, static) =
+{
+  .arc_name  = "interface-output",
+  .start_nodes = VNET_FEATURES (0),
+  .arc_index_ptr = &vnet_main.interface_main.output_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (interface_tx, static) = {
+  .arc_name = "interface-output",
+  .node_name = "interface-tx",
+  .runs_before = 0,
+};
+/* *INDENT-ON* */
 
 clib_error_t *
 vnet_per_buffer_interface_output_hw_interface_add_del (vnet_main_t * vnm,
