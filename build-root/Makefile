@@ -1141,7 +1141,8 @@ package_wipe_script =											\
   @message=$(if $(is_build_tool),"Wiping build $(PACKAGE)","Wiping build/install $(PACKAGE)") ;		\
   $(call build_msg_fn,$$message) ;									\
   $(BUILD_ENV) ;											\
-  rm -rf $(if $(is_build_tool),$(PACKAGE_BUILD_DIR),$(PACKAGE_INSTALL_DIR) $(PACKAGE_BUILD_DIR))
+  rm -rf $(if $(is_build_tool),$(PACKAGE_BUILD_DIR),$(PACKAGE_INSTALL_DIR) $(PACKAGE_BUILD_DIR));	\
+  rm -f $(MU_BUILD_ROOT_DIR)/docs/siphon_docs/clicmd.itemlist
 
 .PHONY: %-wipe
 %-wipe:
