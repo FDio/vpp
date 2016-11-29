@@ -256,81 +256,65 @@ init_icmp46_echo_request (icmp46_echo_request_t * icmp46_echo,
   return data_len;
 }
 
-/*
- * Given adj index, return sw_if_index, possibly overwritten
- * by a parameter. There is mostly debug outputs here,
- * but it turned out handy to have these.
- */
-
-static u32
-adj_index_to_sw_if_index (vlib_main_t * vm, ip_lookup_main_t * lm,
-                          char *lookup_next_nodes[], u32 adj_index0,
-                          u32 sw_if_index, u8 verbose)
-{
-  ip_adjacency_t *adj0 = ip_get_adjacency (lm, adj_index0);
-  u32 sw_if_index0 = adj0->rewrite_header.sw_if_index;
-  if (verbose)
-    {
-      vlib_cli_output (vm, "Adjacency index: %u, sw_if_index: %u\n",
-                       adj_index0, sw_if_index0);
-      vlib_cli_output (vm, "Adj: %s\n",
-                       lookup_next_nodes[adj0->lookup_next_index]);
-      vlib_cli_output (vm, "Adj Interface: %d\n", adj0->if_address_index);
-    }
-
-  if (~0 != sw_if_index)
-    {
-      sw_if_index0 = sw_if_index;
-      if (verbose)
-        {
-          vlib_cli_output (vm, "Forced set interface: %d\n", sw_if_index0);
-        }
-    }
-  return sw_if_index0;
-}
-
 static send_ip46_ping_result_t
-send_ip6_ping (vlib_main_t * vm, ip6_main_t * im, ip6_address_t * pa6,
+send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
+               u32 table_id, ip6_address_t * pa6,
                u32 sw_if_index, u16 seq_host, u16 id_host, u16 data_len,
                u8 verbose)
 {
   icmp6_echo_request_header_t *h0;
   u32 bi0 = 0;
-  u32 sw_if_index0;
-  ip_lookup_main_t *lm = &im->lookup_main;
   int bogus_length = 0;
-  u32 adj_index0;
   vlib_buffer_t *p0;
   vlib_frame_t *f;
   u32 *to_next;
-  u32 fib_index0;
 
   if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
     return SEND_PING_ALLOC_FAIL;
 
   p0 = vlib_get_buffer (vm, bi0);
 
-  /* Determine sw_if_index0 of source intf, may be force-set via sw_if_index. */
-  vnet_buffer (p0)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;  /* use interface VRF */
-  fib_index0 = 0;
-  adj_index0 = fib_entry_get_adj(ip6_fib_table_lookup(fib_index0, pa6, 128));
+  /*
+   * if the user did not provide a source interface, use the any interface
+   * that the destination resolves via.
+   */
+  if (~0 == sw_if_index)
+    {
+      fib_node_index_t fib_entry_index;
+      u32 fib_index;
 
-  if (ADJ_INDEX_INVALID == adj_index0)
+      fib_index = ip6_fib_index_from_table_id(table_id);
+
+      if (~0 == fib_index)
+      {
+          vlib_buffer_free (vm, &bi0, 1);
+          return SEND_PING_NO_TABLE;
+      }
+
+      fib_entry_index = ip6_fib_table_lookup(fib_index, pa6, 128);
+      sw_if_index = fib_entry_get_resolving_interface(fib_entry_index);
+      /*
+       * Set the TX interface to force ip-lookup to use its table ID
+       */
+      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index;
+    }
+  else
+    {
+      /*
+       * force an IP lookup in the table bound to the user's chosen
+       * source interface.
+       */
+      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+          ip6_fib_table_get_index_for_sw_if_index(sw_if_index);
+    }
+
+  if (~0 == sw_if_index)
     {
       vlib_buffer_free (vm, &bi0, 1);
       return SEND_PING_NO_INTERFACE;
     }
 
-  sw_if_index0 =
-    adj_index_to_sw_if_index (vm, lm, ip6_lookup_next_nodes, adj_index0,
-                              sw_if_index, verbose);
-  if ((~0 == sw_if_index0) && (~0 == sw_if_index))
-    {
-      vlib_buffer_free (vm, &bi0, 1);
-      return SEND_PING_NO_INTERFACE;
-    }
-  vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index0;
+  vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;
 
   h0 = vlib_buffer_get_current (p0);
 
@@ -344,7 +328,7 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im, ip6_address_t * pa6,
   h0->ip6.src_address = *pa6;
 
   /* Fill in the correct source now */
-  ip6_address_t *a = ip6_interface_first_address (im, sw_if_index0);
+  ip6_address_t *a = ip6_interface_first_address (im, sw_if_index);
   h0->ip6.src_address = a[0];
 
   /* Fill in icmp fields */
@@ -381,19 +365,17 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im, ip6_address_t * pa6,
 static send_ip46_ping_result_t
 send_ip4_ping (vlib_main_t * vm,
                ip4_main_t * im,
+               u32 table_id,
                ip4_address_t * pa4,
                u32 sw_if_index,
                u16 seq_host, u16 id_host, u16 data_len, u8 verbose)
 {
   icmp4_echo_request_header_t *h0;
   u32 bi0 = 0;
-  u32 sw_if_index0;
   ip_lookup_main_t *lm = &im->lookup_main;
-  u32 adj_index0;
   vlib_buffer_t *p0;
   vlib_frame_t *f;
   u32 *to_next;
-  u32 fib_index0;
   u32 if_add_index0;
 
   if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
@@ -401,28 +383,47 @@ send_ip4_ping (vlib_main_t * vm,
 
   p0 = vlib_get_buffer (vm, bi0);
 
-  /* Determine sw_if_index0 of the source intf, may be force-set via sw_if_index.  */
-  vnet_buffer (p0)->sw_if_index[VLIB_RX] = 0;
-  vnet_buffer (p0)->sw_if_index[VLIB_TX] = ~0;  /* use interface VRF */
-  fib_index0 = 0;
-  adj_index0 = fib_entry_get_adj(ip4_fib_table_lookup(
-				     ip4_fib_get(fib_index0), pa4, 32));
+  /*
+   * if the user did not provide a source interface, use the any interface
+   * that the destination resolves via.
+   */
+  if (~0 == sw_if_index)
+  {
+      fib_node_index_t fib_entry_index;
+      u32 fib_index;
 
-  if (ADJ_INDEX_INVALID == adj_index0)
+      fib_index = ip4_fib_index_from_table_id(table_id);
+
+      if (~0 == fib_index)
+      {
+          vlib_buffer_free (vm, &bi0, 1);
+          return SEND_PING_NO_TABLE;
+      }
+
+      fib_entry_index = ip4_fib_table_lookup(ip4_fib_get(fib_index), pa4, 32);
+      sw_if_index = fib_entry_get_resolving_interface(fib_entry_index);
+      /*
+       * Set the TX interface to force ip-lookup to use the user's table ID
+       */
+      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index;
+    }
+  else
+    {
+      /*
+       * force an IP lookup in the table bound to the user's chosen
+       * source interface.
+       */
+      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+          ip4_fib_table_get_index_for_sw_if_index(sw_if_index);
+    }
+
+  if (~0 == sw_if_index)
     {
       vlib_buffer_free (vm, &bi0, 1);
       return SEND_PING_NO_INTERFACE;
     }
 
-  sw_if_index0 =
-    adj_index_to_sw_if_index (vm, lm, ip4_lookup_next_nodes, adj_index0,
-                              sw_if_index, verbose);
-  if ((~0 == sw_if_index0) && (~0 == sw_if_index))
-    {
-      vlib_buffer_free (vm, &bi0, 1);
-      return SEND_PING_NO_INTERFACE;
-    }
-  vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index0;
+  vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;
 
   h0 = vlib_buffer_get_current (p0);
 
@@ -439,7 +440,7 @@ send_ip4_ping (vlib_main_t * vm,
   h0->ip4.src_address = *pa4;
 
   /* Fill in the correct source now */
-  if_add_index0 = lm->if_address_pool_index_by_sw_if_index[sw_if_index0];
+  if_add_index0 = lm->if_address_pool_index_by_sw_if_index[sw_if_index];
   if (PREDICT_TRUE (if_add_index0 != ~0))
     {
       ip_interface_address_t *if_add =
@@ -532,7 +533,7 @@ print_ip4_icmp_reply (vlib_main_t * vm, u32 bi0)
  */
 
 static void
-run_ping_ip46_address (vlib_main_t * vm, ip4_address_t * pa4,
+run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
                        ip6_address_t * pa6, u32 sw_if_index,
                        f64 ping_interval, u32 ping_repeat, u32 data_len,
                        u32 verbose)
@@ -571,14 +572,14 @@ run_ping_ip46_address (vlib_main_t * vm, ip4_address_t * pa4,
       pr = vec_elt_at_index (pm->ping_runs, ping_run_index);
       pr->curr_seq = i;
       if (pa6 &&
-          (SEND_PING_OK == send_ip6_ping (vm, ping_main.ip6_main, pa6,
+          (SEND_PING_OK == send_ip6_ping (vm, ping_main.ip6_main, table_id, pa6,
                                           sw_if_index, i, icmp_id, data_len,
                                           verbose)))
         {
           n_requests++;
         }
       if (pa4 &&
-          (SEND_PING_OK == send_ip4_ping (vm, ping_main.ip4_main, pa4,
+          (SEND_PING_OK == send_ip4_ping (vm, ping_main.ip4_main, table_id, pa4,
                                           sw_if_index, i, icmp_id, data_len,
                                           verbose)))
         {
@@ -667,9 +668,12 @@ ping_ip_address (vlib_main_t * vm,
   u32 data_len = PING_DEFAULT_DATA_LEN;
   u32 verbose = 0;
   f64 ping_interval = PING_DEFAULT_INTERVAL;
+  u32 sw_if_index, table_id;
+
+  table_id = 0;
   ping_ip4 = ping_ip6 = 0;
-  u32 sw_if_index;
   sw_if_index = ~0;
+
   if (unformat (input, "%U", unformat_ip4_address, &a4))
     {
       ping_ip4 = 1;
@@ -757,6 +761,17 @@ ping_ip_address (vlib_main_t * vm,
               goto done;
             }
         }
+      else if (unformat (input, "table-id"))
+        {
+          if (!unformat (input, "du", &table_id))
+            {
+              error =
+                clib_error_return (0,
+                                   "expecting table-id but got `%U'",
+                                   format_unformat_error, input);
+              goto done;
+            }
+        }
       else if (unformat (input, "interval"))
         {
           if (!unformat (input, "%f", &ping_interval))
@@ -791,7 +806,7 @@ ping_ip_address (vlib_main_t * vm,
         }
     }
 
-  run_ping_ip46_address (vm, ping_ip4 ? &a4 : NULL, ping_ip6 ? &a6 : NULL,
+  run_ping_ip46_address (vm, table_id, ping_ip4 ? &a4 : NULL, ping_ip6 ? &a6 : NULL,
                          sw_if_index, ping_interval, ping_repeat, data_len,
                          verbose);
 done:
@@ -844,7 +859,7 @@ VLIB_CLI_COMMAND (ping_command, static) =
 {
   .path = "ping",
   .function = ping_ip_address,
-  .short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>} [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>] [size <pktsize>] [interval <sec>] [repeat <cnt>] [verbose]",
+  .short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>} [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>] [size <pktsize>] [interval <sec>] [repeat <cnt>] [table-id <id>] [verbose]",
 };
 /* *INDENT-ON* */
 
