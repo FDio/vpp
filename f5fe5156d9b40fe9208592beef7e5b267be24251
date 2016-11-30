@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_ccfb6246",
+        "filename": "vnet/vnet/interface_cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1127,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2016-11-30T14:07:36Z",
+      "side": 1,
+      "message": "A general idea which popped up while i was reading here, so tagging it here: assuming people will need this tagging stuff for other entities, would it make sense to make a completely separate \"set tag \u003cobject-type\u003e \u003cobject-id\u003e \u003ctag\u003e\" command/API, and have \u003cobject-type\u003e being a string indexing a hashtable containing tag_by_object_id vectors or hashes ?\n\nThis way people can store whatever stuff they want for whatever things they need for the future...",
+      "revId": "f5fe5156d9b40fe9208592beef7e5b267be24251",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
