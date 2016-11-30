@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_8a79ba95",
+        "filename": "plugins/flowperpkt-plugin/flowperpkt/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 409,
+      "author": {
+        "id": 399
+      },
+      "writtenOn": "2016-11-30T20:44:29Z",
+      "side": 1,
+      "message": "Lines 409-411 are identical to lines 406-408, copy paste error? Same goes for lines lines 421-423 and 424-426.",
+      "revId": "f9e3e39581fbe9edcf5877db88a23f6ef8282e8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
