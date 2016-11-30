@@ -52,7 +52,7 @@ always_inline uword
 vxlan_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame,
-             char is_ip4)
+             u32 is_ip4)
 {
   u32 n_left_from, next_index, * from, * to_next;
   vxlan_main_t * vxm = &vxlan_main;
@@ -601,3 +601,411 @@ VLIB_REGISTER_NODE (vxlan6_input_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_input_node, vxlan6_input)
 
+
+typedef enum {
+  IP_VXLAN_BYPASS_NEXT_DROP,
+  IP_VXLAN_BYPASS_NEXT_VXLAN,
+  IP_VXLAN_BYPASS_N_NEXT,
+} ip_vxan_bypass_next_t;
+
+always_inline uword
+ip_vxlan_bypass_inline (vlib_main_t * vm,
+			 vlib_node_runtime_t * node,
+			 vlib_frame_t * frame,
+			 u32 is_ip4)
+{
+  vxlan_main_t * vxm = &vxlan_main;
+  u32 * from, * to_next, n_left_from, n_left_to_next, next_index;
+  vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
+  ip4_address_t addr4; /* last IPv4 address matching a local VTEP address */
+  ip6_address_t addr6; /* last IPv6 address matching a local VTEP address */
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  if (node->flags & VLIB_NODE_FLAG_TRACE)
+    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
+
+  if (is_ip4) addr4.data_u32 = ~0;
+  else ip6_address_set_zero (&addr6);
+
+  while (n_left_from > 0)
+    {
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+      	{
+      	  vlib_buffer_t * b0, * b1;
+      	  ip4_header_t * ip0, * ip1;
+      	  udp_header_t * udp0, * udp1;
+      	  u32 bi0, ip_len0, udp_len0, flags0, next0;
+      	  u32 bi1, ip_len1, udp_len1, flags1, next1;
+      	  i32 len_diff0, len_diff1;
+      	  u8 error0, good_udp0, proto0;
+      	  u8 error1, good_udp1, proto1;
+
+	  /* Prefetch next iteration. */
+	  {
+	    vlib_buffer_t * p2, * p3;
+
+	    p2 = vlib_get_buffer (vm, from[2]);
+	    p3 = vlib_get_buffer (vm, from[3]);
+
+	    vlib_prefetch_buffer_header (p2, LOAD);
+	    vlib_prefetch_buffer_header (p3, LOAD);
+
+	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	  }
+
+      	  bi0 = to_next[0] = from[0];
+      	  bi1 = to_next[1] = from[1];
+      	  from += 2;
+      	  n_left_from -= 2;
+      	  to_next += 2;
+      	  n_left_to_next -= 2;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  b1 = vlib_get_buffer (vm, bi1);
+	  ip0 = vlib_buffer_get_current (b0);
+	  ip1 = vlib_buffer_get_current (b1);
+
+	  /* Setup packet for next IP feature */
+	  vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_RX], &next0, b0);
+	  vnet_feature_next(vnet_buffer(b1)->sw_if_index[VLIB_RX], &next1, b1);
+
+	  /* Treat IP frag packets as "experimental" protocol for now
+	     until support of IP frag reassembly is implemented */
+	  proto0 = ip4_is_fragment(ip0) ? 0xfe : ip0->protocol;
+	  proto1 = ip4_is_fragment(ip1) ? 0xfe : ip1->protocol;
+
+	  /* Process packet 0 */
+	  if (proto0 != IP_PROTOCOL_UDP)
+	    goto exit0; /* not UDP packet */
+
+	  udp0 = ip4_next_header (ip0);
+	  if (udp0->dst_port != clib_host_to_net_u16 (UDP_DST_PORT_vxlan))
+	    goto exit0; /* not VXLAN packet */
+
+	  if (is_ip4) 
+	    {
+	      if (addr4.as_u32 != ip0->dst_address.as_u32)
+	        {
+		  if (!hash_get (vxm->vtep4, ip0->dst_address.as_u32))
+		    goto exit0; /* no local VTEP for VXLAN packet */
+		  addr4 = ip0->dst_address;
+	        }
+	    }
+	  else goto exit0; /* IP6 VXLAN bypass not yet supported */
+
+	  /* vxlan-input node expect current at VXLAN header */
+	  vlib_buffer_advance (b0, sizeof(ip4_header_t)+sizeof(udp_header_t));
+
+	  flags0 = b0->flags;
+	  good_udp0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+
+	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	  good_udp0 |= udp0->checksum == 0;
+
+	  /* Verify UDP length */
+	  ip_len0 = clib_net_to_host_u16 (ip0->length);
+	  udp_len0 = clib_net_to_host_u16 (udp0->length);
+
+	  len_diff0 = ip_len0 - udp_len0;
+
+	  /* Verify UDP checksum */
+	  if (PREDICT_FALSE (!good_udp0))
+	    {
+	      if (!(flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED))
+		  flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
+	      good_udp0 =
+		  (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	    }
+
+	  error0 = good_udp0 ? 0 : IP4_ERROR_UDP_CHECKSUM;
+	  error0 = (len_diff0 >= 0) ? error0 : IP4_ERROR_UDP_LENGTH;
+
+	  next0 = error0 ? 
+	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
+	  b0->error = error0 ? error_node->errors[error0] : 0;
+
+	exit0:
+	  /* Process packet 1 */
+	  if (proto1 != IP_PROTOCOL_UDP)
+	    goto exit1; /* not UDP packet */
+
+	  udp1 = ip4_next_header (ip1);
+	  if (udp1->dst_port != clib_host_to_net_u16 (UDP_DST_PORT_vxlan))
+	    goto exit1; /* not VXLAN packet */
+
+	  if (is_ip4) 
+	    {
+	      if (addr4.as_u32 != ip1->dst_address.as_u32)
+	        {
+		  if (!hash_get (vxm->vtep4, ip1->dst_address.as_u32))
+		    goto exit1; /* no local VTEP for VXLAN packet */
+		  addr4 = ip1->dst_address;
+	        }
+	    }
+	  else goto exit1; /* IP6 VXLAN bypass not yet supported */
+
+	  /* vxlan-input node expect current at VXLAN header */
+	  vlib_buffer_advance (b1, sizeof(ip4_header_t)+sizeof(udp_header_t));
+
+	  flags1 = b1->flags;
+	  good_udp1 = (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+
+	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	  good_udp1 |= udp1->checksum == 0;
+
+	  /* Verify UDP length */
+	  ip_len1 = clib_net_to_host_u16 (ip1->length);
+	  udp_len1 = clib_net_to_host_u16 (udp1->length);
+
+	  len_diff1 = ip_len1 - udp_len1;
+
+	  /* Verify UDP checksum */
+	  if (PREDICT_FALSE (!good_udp1))
+	    {
+	      if (!(flags1 & IP_BUFFER_L4_CHECKSUM_COMPUTED))
+		  flags1 = ip4_tcp_udp_validate_checksum (vm, b1);
+	      good_udp1 =
+		  (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	    }
+
+	  error1 = good_udp1 ? 0 : IP4_ERROR_UDP_CHECKSUM;
+	  error1 = (len_diff1 >= 0) ? error1 : IP4_ERROR_UDP_LENGTH;
+
+	  next1 = error1 ? 
+	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
+	  b1->error = error1 ? error_node->errors[error1] : 0;
+ 
+	exit1:
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, bi1, next0, next1);
+	}
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  vlib_buffer_t * b0;
+	  ip4_header_t * ip0;
+	  udp_header_t * udp0;
+      	  u32 bi0, ip_len0, udp_len0, flags0, next0;
+	  i32 len_diff0;
+	  u8 error0, good_udp0, proto0;
+
+	  bi0 = to_next[0] = from[0];
+	  from += 1;
+	  n_left_from -= 1;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  ip0 = vlib_buffer_get_current (b0);
+
+	  /* Setup packet for next IP feature */
+	  vnet_feature_next(vnet_buffer(b0)->sw_if_index[VLIB_RX], &next0, b0);
+
+	  /* Treat IP frag packets as "experimental" protocol for now
+	     until support of IP frag reassembly is implemented */
+	  proto0 = ip4_is_fragment(ip0) ? 0xfe : ip0->protocol;
+
+	  if (proto0 != IP_PROTOCOL_UDP)
+	    goto exit; /* not UDP packet */
+
+	  udp0 = ip4_next_header (ip0);
+	  if (udp0->dst_port != clib_host_to_net_u16 (UDP_DST_PORT_vxlan))
+	    goto exit; /* not VXLAN packet */
+
+	  if (is_ip4) 
+	    {
+	      if (addr4.as_u32 != ip0->dst_address.as_u32)
+	        {
+		  if (!hash_get (vxm->vtep4, ip0->dst_address.as_u32))
+		    goto exit; /* no local VTEP for VXLAN packet */
+		  addr4 = ip0->dst_address;
+	        }
+	    }
+	  else goto exit; /* IP6 VXLAN bypass not yet supported */
+
+	  /* vxlan-input node expect current at VXLAN header */
+	  vlib_buffer_advance (b0, sizeof(ip4_header_t)+sizeof(udp_header_t));
+
+	  flags0 = b0->flags;
+	  good_udp0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+
+	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
+	  good_udp0 |= udp0->checksum == 0;
+
+	  /* Verify UDP length */
+	  ip_len0 = clib_net_to_host_u16 (ip0->length);
+	  udp_len0 = clib_net_to_host_u16 (udp0->length);
+
+	  len_diff0 = ip_len0 - udp_len0;
+
+	  /* Verify UDP checksum */
+	  if (PREDICT_FALSE (!good_udp0))
+	    {
+	      if (!(flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED))
+		  flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
+	      good_udp0 =
+		  (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	    }
+
+	  error0 = good_udp0 ? 0 : IP4_ERROR_UDP_CHECKSUM;
+	  error0 = (len_diff0 >= 0) ? error0 : IP4_ERROR_UDP_LENGTH;
+
+	  next0 = error0 ? 
+	    IP_VXLAN_BYPASS_NEXT_DROP : IP_VXLAN_BYPASS_NEXT_VXLAN;
+	  b0->error = error0 ? error_node->errors[error0] : 0;
+
+	exit:
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+static uword
+ip4_vxlan_bypass (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * frame)
+{
+  return ip_vxlan_bypass_inline (vm, node, frame, /* is_ip4 */ 1);
+}
+
+VLIB_REGISTER_NODE (ip4_vxlan_bypass_node) = {
+  .function = ip4_vxlan_bypass,
+  .name = "ip4-vxlan-bypass",
+  .vector_size = sizeof (u32),
+
+  .n_next_nodes = IP_VXLAN_BYPASS_N_NEXT,
+  .next_nodes = {
+    [IP_VXLAN_BYPASS_NEXT_DROP] = "error-drop",
+    [IP_VXLAN_BYPASS_NEXT_VXLAN] = "vxlan4-input",
+  },
+
+  .format_buffer = format_ip4_header,
+  .format_trace = format_ip4_forward_next_trace,
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_vxlan_bypass_node,ip4_vxlan_bypass)
+
+
+static clib_error_t *
+set_ip_vxlan_bypass (vlib_main_t * vm,
+		     unformat_input_t * input,
+		     vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, * line_input = &_line_input;
+  vnet_main_t * vnm = vnet_get_main();
+  clib_error_t * error = 0;
+  u32 sw_if_index, is_del;
+
+  sw_if_index = ~0;
+  is_del = 0;
+
+  if (! unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+	  ;
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else
+        {
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  if (~0 == sw_if_index)
+    {
+      error = clib_error_return (0, "unknown interface `%U'",
+				 format_unformat_error, line_input);
+      goto done;
+    }
+
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass", sw_if_index,
+			       is_del == 0, 0, 0);
+ done:
+  return error;
+}
+
+/*?
+ * This command adds the 'ip4-vxlan-bypass' graph node for a given interface. 
+ * By adding the IPv4 vxlan-bypass graph node to an interface, the node checks
+ *  for and validate input vxlan packet and bypass ip4-lookup, ip4-local, 
+ * ip4-udp-lookup nodes to speedup vxlan packet forwarding. This node will 
+ * cause extra overhead to for non-vxlan packets which is kept at a minimum.
+ *
+ * @cliexpar
+ * @parblock
+ * Example of graph node before ip4-vxlan-bypass is enabled:
+ * @cliexstart{show vlib graph ip4-vxlan-bypass}
+ *            Name                      Next                    Previous
+ * ip4-vxlan-bypass                error-drop [0]
+ *                                vxlan4-input [1]
+ *                                 ip4-lookup [2]      
+ * @cliexend
+ *
+ * Example of how to enable ip4-vxlan-bypass on an interface:
+ * @cliexcmd{set interface ip vxlan-bypass GigabitEthernet2/0/0}
+ *
+ * Example of graph node after ip4-vxlan-bypass is enabled:
+ * @cliexstart{show vlib graph ip4-vxlan-bypass}
+ *            Name                      Next                    Previous         
+ * ip4-vxlan-bypass                error-drop [0]               ip4-input        
+ *                                vxlan4-input [1]        ip4-input-no-checksum  
+ *                                 ip4-lookup [2]      
+ * @cliexend
+ *
+ * Example of how to display the feature enabed on an interface:
+ * @cliexstart{show ip interface features GigabitEthernet2/0/0}
+ * IP feature paths configured on GigabitEthernet2/0/0...
+ *
+ * ipv4 unicast:
+ *   ip4-vxlan-bypass
+ *   ip4-lookup
+ *
+ * ipv4 multicast:
+ *   ip4-lookup-multicast
+ *
+ * ipv4 multicast:
+ *   interface-output
+ *
+ * ipv6 unicast:
+ *   ip6-lookup
+ *
+ * ipv6 multicast:
+ *   ip6-lookup
+ *
+ * ipv6 multicast:
+ *   interface-output
+ * @cliexend
+ *
+ * Example of how to disable unicast source checking on an interface:
+ * @cliexcmd{set interface ip vxlan-bypass GigabitEthernet2/0/0 del}
+ * @endparblock
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_interface_ip_vxlan_bypass_command, static) = {
+  .path = "set interface ip vxlan-bypass",
+  .function = set_ip_vxlan_bypass,
+  .short_help = "set interface ip vxlan-bypass <interface> [del]",
+};
+
+/* Dummy init function to get us linked in. */
+clib_error_t * ip4_vxlan_bypass_init (vlib_main_t * vm)
+{ return 0; }
+
+VLIB_INIT_FUNCTION (ip4_vxlan_bypass_init);

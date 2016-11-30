@@ -293,4 +293,14 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
     return c;
 }
 
+void
+ip4_forward_next_trace (vlib_main_t * vm,
+                        vlib_node_runtime_t * node,
+                        vlib_frame_t * frame,
+                        vlib_rx_or_tx_t which_adj_index);
+
+u8 * format_ip4_forward_next_trace (u8 * s, va_list * args);
+
+u32 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
+
 #endif /* included_ip_ip4_h */
