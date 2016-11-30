@@ -80,7 +80,7 @@ typedef struct
 {
   u8 endian;
   u8 enabled;
-  u8 wrapped;
+  u8 bit_flags;
   u8 pad;
   u32 nitems;
   u32 curindex;
@@ -91,7 +91,7 @@ typedef struct
 typedef CLIB_PACKED
 (struct
  {
-   u8 endian; u8 wrapped;
+   u8 endian; u8 bit_flags;
    u32 nitems;
 }) vl_api_trace_file_header_t;
 /* *INDENT-ON* */
@@ -104,6 +104,15 @@ typedef enum
 
 #define VL_API_LITTLE_ENDIAN 0x00
 #define VL_API_BIG_ENDIAN 0x01
+
+#define TRACE_FLAG_WRAPPED 0x01
+#define TRACE_FLAG_VARIABLE_LEN 0x02
+
+#ifndef offsetof
+/** Return the offset of a field in a structure. */
+#define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)
+#endif
+
 
 typedef struct
 {
