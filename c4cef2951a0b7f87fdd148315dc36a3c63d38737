@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_af724847",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 10102,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-30T15:30:56Z",
+      "side": 1,
+      "message": "This means VAT CLI behaves differently than the VPP CLI which always make sure to add the specified node as next node to vxlan-input node. It is not the \"normal\" behavior. I suppose it may be OK since a VAT CLI should match an VPP API. If someone specify a next_index which does not exist, however, it may cause VPP to crash. I wonder if we should add a check in the VPP vxlan function vnet_vxlan_add_del_tunnel() to make sure next_index is valid and return an error if not.",
+      "parentUuid": "5a2585a7_2c2546ab",
+      "range": {
+        "startLine": 10102,
+        "startChar": 14,
+        "endLine": 10102,
+        "endChar": 35
+      },
+      "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_b95e1a11",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 7
