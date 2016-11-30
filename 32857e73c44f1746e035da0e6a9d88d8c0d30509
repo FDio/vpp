@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_cf191424",
+        "filename": "build-root/vagrant/build.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-11-30T15:07:59Z",
+      "side": 1,
+      "message": "Ok, I\u0027ll change that asap",
+      "parentUuid": "5a2585a7_4f26446a",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 66,
+        "endChar": 44
+      },
+      "revId": "32857e73c44f1746e035da0e6a9d88d8c0d30509",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_eff5f0cb",
         "filename": "doxygen/Makefile",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-11-30T14:59:47Z",
       "side": 1,
       "message": "I don\u0027t think this Makefile should try to write to this privileged directory directory; rather vpp.spec should copy the file to there in the rpm packaging, and similar in the .deb packaging. That way the build process can still be run by developers in a non-privileged account.",
+      "range": {
+        "startLine": 117,
+        "startChar": 0,
+        "endLine": 117,
+        "endChar": 29
+      },
+      "revId": "32857e73c44f1746e035da0e6a9d88d8c0d30509",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_cff0f4cb",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-11-30T15:07:59Z",
+      "side": 1,
+      "message": "Would it be ok to use /build-root/docs/siphon_docs as the temporary directory that vpp.spec/vpp.postinst use to send it from? Or would you rather not using the docs directory for that sort of thing?",
+      "parentUuid": "5a2585a7_eff5f0cb",
       "range": {
         "startLine": 117,
         "startChar": 0,
