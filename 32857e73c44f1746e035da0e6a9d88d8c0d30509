@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_4f26446a",
+        "filename": "build-root/vagrant/build.sh",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-30T14:59:47Z",
+      "side": 1,
+      "message": "Maybe extend this comment to note that it does not build all of the documentation; it only parses the CLI commands.",
+      "range": {
+        "startLine": 66,
+        "startChar": 0,
+        "endLine": 66,
+        "endChar": 44
+      },
+      "revId": "32857e73c44f1746e035da0e6a9d88d8c0d30509",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_eff5f0cb",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-11-30T14:59:47Z",
+      "side": 1,
+      "message": "I don\u0027t think this Makefile should try to write to this privileged directory directory; rather vpp.spec should copy the file to there in the rpm packaging, and similar in the .deb packaging. That way the build process can still be run by developers in a non-privileged account.",
+      "range": {
+        "startLine": 117,
+        "startChar": 0,
+        "endLine": 117,
+        "endChar": 29
+      },
+      "revId": "32857e73c44f1746e035da0e6a9d88d8c0d30509",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
