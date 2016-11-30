@@ -83,7 +83,7 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
+    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
     do {body;} while (0);                                       \
@@ -96,6 +96,7 @@ do {                                                            \
 _(POT_PROFILE_ADD, pot_profile_add)                                     \
 _(POT_PROFILE_ACTIVATE, pot_profile_activate)                           \
 _(POT_PROFILE_DEL, pot_profile_del)                                     \
+_(POT_PROFILE_SHOW_CONFIG, pot_profile_show_config)                                     \
 
 static void vl_api_pot_profile_add_t_handler
 (vl_api_pot_profile_add_t *mp)
@@ -130,6 +131,41 @@ static void vl_api_pot_profile_add_t_handler
  ERROROUT:
     vec_free(name);
     REPLY_MACRO(VL_API_POT_PROFILE_ADD_REPLY);
+}
+
+static void vl_api_pot_profile_show_config_t_handler
+(vl_api_pot_profile_show_config_t *mp)
+{
+    pot_main_t * sm = &pot_main;
+    int rv = 0;
+    int id = mp->id;
+    vl_api_pot_profile_show_config_reply_t * rmp;
+    pot_profile *profile = NULL;
+    profile = pot_profile_find(id);
+    if(profile){
+        REPLY_MACRO2(VL_API_POT_PROFILE_SHOW_CONFIG_REPLY,
+			rmp->id=id;
+			rmp->validator=profile->validator;
+			rmp->secret_key=profile->secret_key;
+			rmp->secret_share=profile->secret_share;
+			rmp->prime=profile->prime;
+			rmp->bit_mask=profile->bit_mask;
+			rmp->lpc=profile->lpc;
+			rmp->polynomial_public=profile->poly_pre_eval;
+			);
+    }
+    else{
+        REPLY_MACRO2(VL_API_POT_PROFILE_SHOW_CONFIG_REPLY,
+			rmp->id=0;
+			rmp->validator=0;
+			rmp->secret_key=0;
+			rmp->secret_share=0;
+			rmp->prime=0;
+			rmp->bit_mask=0;
+			rmp->lpc=0;
+			rmp->polynomial_public=0;
+			);
+    }
 }
 
 static void vl_api_pot_profile_activate_t_handler
@@ -227,7 +263,7 @@ static clib_error_t * pot_init (vlib_main_t * vm)
 
   bzero(sm, sizeof(pot_main));
   (void)pot_util_init();
-  name = format (0, "pot_%08x%c", api_version, 0);
+  name = format (0, "ioam_pot_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
   sm->msg_id_base = vl_msg_api_get_msg_ids 
