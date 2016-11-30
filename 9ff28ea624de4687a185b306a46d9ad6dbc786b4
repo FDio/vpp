@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_2acac64f",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-30T23:07:11Z",
+      "side": 1,
+      "message": "i\u0027d suggest APIs specific to ip4 go in ip4.h",
+      "parentUuid": "5a2585a7_aaffd600",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_0f5efc45",
         "filename": "vnet/vnet/vxlan/decap.c",
         "patchSetId": 1
@@ -101,6 +119,24 @@
       "side": 1,
       "message": "I did not see ip4-input node check if DIP of packet being 0 and drop it. Thus, adding this check here to make sure if we do receive such a packet, it won\u0027t slip through to vxlan-input without ip-lookup. If you think ip4-input will drop packets with DIP of 0, I am more than happy to remove this check.",
       "parentUuid": "5a2585a7_0f5efc45",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4ab512cc",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-30T23:07:11Z",
+      "side": 1,
+      "message": "ip4_input won\u0027t drop all zeros. A FIB lookup will, though that\u0027s too late.\nyou could init addr4 to all 1s. IP mcast packets won\u0027t reach this unicast input feature.",
+      "parentUuid": "5a2585a7_cf059415",
       "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
