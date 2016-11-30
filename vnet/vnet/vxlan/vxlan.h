@@ -141,6 +141,11 @@ typedef struct {
   uword * vxlan4_tunnel_by_key; /* keyed on ipv4.dst + vni */
   uword * vxlan6_tunnel_by_key; /* keyed on ipv6.dst + vni */
 
+  /* local VTEP IPs used by vxlan-bypass node to check if received
+     VXLAN packet DIP matches any local VTEP address */
+  uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
+  uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
+
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_tunnel_hw_if_indices;
 
