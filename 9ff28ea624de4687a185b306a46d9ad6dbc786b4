@@ -143,6 +143,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_cac0e22c",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-30T23:13:04Z",
+      "side": 1,
+      "message": "That\u0027s a good point. Will do. I initially had this on ip mcast feature as well so did not use ~0 as initial value. Then I realized vxlan mcast packet should always go through proper mcast lookup and not bypassed.",
+      "parentUuid": "5a2585a7_4ab512cc",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_2a3ac6cd",
         "filename": "vnet/vnet/vxlan/decap.c",
         "patchSetId": 1
