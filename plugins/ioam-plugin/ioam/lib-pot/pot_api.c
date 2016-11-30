@@ -83,7 +83,7 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
+    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
     do {body;} while (0);                                       \
@@ -96,6 +96,7 @@ do {                                                            \
 _(POT_PROFILE_ADD, pot_profile_add)                                     \
 _(POT_PROFILE_ACTIVATE, pot_profile_activate)                           \
 _(POT_PROFILE_DEL, pot_profile_del)                                     \
+_(POT_PROFILE_SHOW_CONFIG_DUMP, pot_profile_show_config_dump)                                     \
 
 static void vl_api_pot_profile_add_t_handler
 (vl_api_pot_profile_add_t *mp)
@@ -130,6 +131,51 @@ static void vl_api_pot_profile_add_t_handler
  ERROROUT:
     vec_free(name);
     REPLY_MACRO(VL_API_POT_PROFILE_ADD_REPLY);
+}
+
+static void send_pot_profile_details(vl_api_pot_profile_show_config_dump_t *mp, u8 id)
+{
+    vl_api_pot_profile_show_config_details_t * rmp;
+    pot_main_t * sm = &pot_main;
+    pot_profile *profile = pot_profile_find(id);
+    int rv = 0;
+    if(profile){
+        REPLY_MACRO2(VL_API_POT_PROFILE_SHOW_CONFIG_DETAILS,
+			rmp->id=id;
+			rmp->validator=profile->validator;
+			rmp->secret_key=clib_host_to_net_u64(profile->secret_key);
+			rmp->secret_share=clib_host_to_net_u64(profile->secret_share);
+			rmp->prime=clib_host_to_net_u64(profile->prime);
+			rmp->bit_mask=clib_host_to_net_u64(profile->bit_mask);
+			rmp->lpc=clib_host_to_net_u64(profile->lpc);
+			rmp->polynomial_public=clib_host_to_net_u64(profile->poly_pre_eval);
+			);
+    }
+    else{
+        REPLY_MACRO2(VL_API_POT_PROFILE_SHOW_CONFIG_DETAILS,
+			rmp->id=id;
+			rmp->validator=0;
+			rmp->secret_key=0;
+			rmp->secret_share=0;
+			rmp->prime=0;
+			rmp->bit_mask=0;
+			rmp->lpc=0;
+			rmp->polynomial_public=0;
+			);
+    }
+}
+
+static void vl_api_pot_profile_show_config_dump_t_handler
+(vl_api_pot_profile_show_config_dump_t *mp)
+{
+    u8 id = mp->id;
+    u8 dump_call_id = ~0;
+    if(dump_call_id==id){
+        for(id=0;id<MAX_POT_PROFILES;id++)
+	    send_pot_profile_details(mp,id);
+    }
+    else
+        send_pot_profile_details(mp,id);
 }
 
 static void vl_api_pot_profile_activate_t_handler
