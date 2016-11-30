@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_2a7c0620",
+        "filename": "vpp/vnet/main.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-11-30T22:58:34Z",
+      "side": 1,
+      "message": "can we just gave int variant of this function? caller which expects void will just ignore returned value...",
+      "range": {
+        "startLine": 35,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 6
+      },
+      "revId": "82d4d6346bfc94e890d48e2e1308f6eca05619d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
