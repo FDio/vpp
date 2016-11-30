@@ -127,6 +127,30 @@
       "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2af9a6c8",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 832,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-30T21:56:42Z",
+      "side": 1,
+      "message": "OK, I will change this since both you and Neale agree on this point. Will try to minimize the clock impact.",
+      "parentUuid": "5a2585a7_2a3ac6cd",
+      "range": {
+        "startLine": 827,
+        "startChar": 0,
+        "endLine": 832,
+        "endChar": 30
+      },
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
