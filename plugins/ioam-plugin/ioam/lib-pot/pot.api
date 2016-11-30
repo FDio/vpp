@@ -95,3 +95,39 @@ define pot_profile_del_reply {
     u32 context;
     i32 retval;
 };
+
+/** \brief Show POT Profiles
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param id - id of the profile
+*/
+define pot_profile_show_config_dump {
+  u32 client_index;
+  u32 context;
+  u8 id;
+};
+
+/** \brief Show POT profile reply
+    @param id - id of the profile
+    @param validator - True/False to indicate if this is verifier
+    @param secret_key - Verification key
+    @param secret_share - Share of the 1st polynomial
+    @param prime - Prime number used for modulo operation
+    @param max_bits - Max bits to be used for Random number generation
+    @param lpc - Lagrange basis polynomial
+    @param polynomial_public - pre-evaluated public polynomial
+    @param list_name_len - length of the name of this profile list
+    @param list_name - name of this profile list
+*/
+define pot_profile_show_config_details {
+  u32 context;
+  i32 retval;
+  u8 id;
+  u8 validator;
+  u64 secret_key;
+  u64 secret_share;
+  u64 prime;
+  u64 bit_mask;
+  u64 lpc;
+  u64 polynomial_public;
+};
