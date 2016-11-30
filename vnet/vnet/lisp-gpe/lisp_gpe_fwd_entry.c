@@ -141,6 +141,8 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
 			  u32 dst_fib_index, const ip_prefix_t * dst_prefix)
 {
   fib_prefix_t dst_fib_prefix, src_fib_prefix;
+  u8 have_default = 0;
+  u32 n_entries;
 
   ASSERT (NULL != dst_prefix);
   ASSERT (NULL != src_prefix);
@@ -150,19 +152,26 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
 
   fib_table_entry_delete (src_fib_index, &src_fib_prefix, FIB_SOURCE_LISP);
 
-  /* check if only default left */
-  if (1 == fib_table_get_num_entries (src_fib_index,
-				      src_fib_prefix.fp_proto,
-				      FIB_SOURCE_LISP))
+  /* check if only default left or empty */
+  fib_prefix_t default_pref = {
+    .fp_proto = dst_fib_prefix.fp_proto
+  };
+
+  if (fib_table_lookup_exact_match (src_fib_index,
+				    &default_pref) != FIB_NODE_INDEX_INVALID)
+    have_default = 1;
+
+  n_entries = fib_table_get_num_entries (src_fib_index,
+					 src_fib_prefix.fp_proto,
+					 FIB_SOURCE_LISP);
+  if (n_entries == 0 || (have_default && n_entries == 1))
     {
       /*
        * remove src FIB default route
        */
-      fib_prefix_t prefix = {
-	.fp_proto = dst_fib_prefix.fp_proto,
-      };
-      fib_table_entry_special_remove (src_fib_index, &prefix,
-				      FIB_SOURCE_LISP);
+      if (have_default)
+	fib_table_entry_special_remove (src_fib_index, &default_pref,
+					FIB_SOURCE_LISP);
 
       /*
        * there's nothing left now, unlock the source FIB and the
