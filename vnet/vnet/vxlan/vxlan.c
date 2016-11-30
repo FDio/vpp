@@ -252,7 +252,7 @@ int vnet_vxlan_add_del_tunnel
   vxlan_tunnel_t *t = 0;
   vnet_main_t * vnm = vxm->vnet_main;
   vnet_hw_interface_t * hi;
-  uword * p;
+  uword * p, * pvtep;
   u32 hw_if_index = ~0;
   u32 sw_if_index = ~0;
   int rv;
@@ -265,12 +265,14 @@ int vnet_vxlan_add_del_tunnel
     key4.vni = clib_host_to_net_u32 (a->vni << 8);
   
     p = hash_get (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+    pvtep = hash_get (vxm->vtep4, a->src.ip4.as_u32);
   } else {
     key6.src.as_u64[0] = a->dst.ip6.as_u64[0];
     key6.src.as_u64[1] = a->dst.ip6.as_u64[1];
     key6.vni = clib_host_to_net_u32 (a->vni << 8);
 
     p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
+    pvtep = NULL;  /* ip6 vxlan-bypass not yet implemented */
   }
   
   if (a->is_add)
@@ -313,7 +315,11 @@ int vnet_vxlan_add_del_tunnel
         }
 
       if (!is_ip6)
-        hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
+        {
+	  hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
+	  if (pvtep) pvtep[0]++;
+	  else hash_set (vxm->vtep4, a->src.ip4.as_u32, 1);
+        }
       else
         hash_set_mem (vxm->vxlan6_tunnel_by_key, t->key6, t - vxm->tunnels);
       
@@ -417,7 +423,7 @@ int vnet_vxlan_add_del_tunnel
   else
     {
       /* deleting a tunnel: tunnel must exist */
-      if (!p) 
+      if (!p)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       t = pool_elt_at_index (vxm->tunnels, p[0]);
@@ -444,6 +450,12 @@ int vnet_vxlan_add_del_tunnel
       if (!is_ip6)
         {
           hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+	  if (pvtep)
+	    {
+	      pvtep[0]--;
+	      if (pvtep[0] == 0)
+	        hash_unset (vxm->vtep4, a->src.ip4.as_u32);
+	    }
 	}
       else
         {

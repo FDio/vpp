@@ -155,6 +155,7 @@ _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
+_(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)               \
 _(SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe)     \
@@ -1462,6 +1463,29 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_VPATH_REPLY);
+}
+
+static void
+  vl_api_sw_interface_set_vxlan_bypass_t_handler
+  (vl_api_sw_interface_set_vxlan_bypass_t * mp)
+{
+  vl_api_sw_interface_set_vxlan_bypass_reply_t *rmp;
+  int rv = 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->is_ipv6)
+    {
+      /* not yet implemented */
+    }
+  else
+    vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
+				 sw_if_index, mp->enable, 0, 0);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_VXLAN_BYPASS_REPLY);
 }
 
 static void

@@ -3448,6 +3448,7 @@ _(sw_interface_add_del_address_reply)                   \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
+_(sw_interface_set_vxlan_bypass_reply)                  \
 _(sw_interface_set_l2_bridge_reply)                     \
 _(sw_interface_set_dpdk_hqos_pipe_reply)                \
 _(sw_interface_set_dpdk_hqos_subport_reply)             \
@@ -3597,6 +3598,7 @@ _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
+_(SW_INTERFACE_SET_VXLAN_BYPASS_REPLY, sw_interface_set_vxlan_bypass_reply) \
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
@@ -5009,6 +5011,56 @@ api_sw_interface_set_vpath (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = is_enable;
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+}
+
+static int
+api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_vxlan_bypass_t *mp;
+  f64 timeout;
+  u32 sw_if_index = 0;
+  u8 sw_if_index_set = 0;
+  u8 is_enable = 0;
+  u8 is_ipv6 = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "enable"))
+	is_enable = 1;
+      else if (unformat (i, "disable"))
+	is_enable = 0;
+      else if (unformat (i, "ip4"))
+	is_ipv6 = 0;
+      else if (unformat (i, "ip6"))
+	is_ipv6 = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable = is_enable;
+  mp->is_ipv6 = is_ipv6;
 
   /* send it... */
   S;
@@ -16728,6 +16780,8 @@ _(sw_interface_set_mpls_enable,                                                \
   "<intfc> | sw_if_index [disable | dis]")                                \
 _(sw_interface_set_vpath,                                               \
   "<intfc> | sw_if_index <id> enable | disable")                        \
+_(sw_interface_set_vxlan_bypass,                                               \
+  "<intfc> | sw_if_index <id> [ip4 | ip6] enable | disable")                        \
 _(sw_interface_set_l2_xconnect,                                         \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \

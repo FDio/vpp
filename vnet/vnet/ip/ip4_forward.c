@@ -973,6 +973,12 @@ VNET_FEATURE_INIT (ip4_ipsec, static) = {
 VNET_FEATURE_INIT (ip4_vpath, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "vpath-input-ip4",
+  .runs_before = VNET_FEATURES ("ip4-vxlan-bypass"),
+};
+
+VNET_FEATURE_INIT (ip4_vxlan_bypass, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-vxlan-bypass",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
@@ -1143,7 +1149,7 @@ typedef struct {
   u8 packet_data[64 - 1*sizeof(u32)];
 } ip4_forward_next_trace_t;
 
-static u8 * format_ip4_forward_next_trace (u8 * s, va_list * args)
+u8 * format_ip4_forward_next_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -1389,7 +1395,7 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
   return sum16;
 }
 
-static u32
+u32
 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
 {
   ip4_header_t * ip0 = vlib_buffer_get_current (p0);
