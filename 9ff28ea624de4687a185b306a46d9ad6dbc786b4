@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_ef2170b5",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 985,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-30T18:29:22Z",
+      "side": 1,
+      "message": "over time we will have many such proclamations that feature X must be last or first. I would suggest that in order to avoid repeated defences of why this really really must be last, I would suggest you write the feature in a way it can be placed anywhere in the list.\nthis means getting \u0027next\u0027 from the feature arc, and on matching vxlan traffic, jump of the arc and follow the vxlan processing.",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_af7da8b3",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-30T18:29:22Z",
+      "side": 1,
+      "message": "since these function are now non-static they are part of the \u0027IP API\u0027, so the declarations should be in ip.h",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_0f5efc45",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-11-30T18:29:22Z",
+      "side": 1,
+      "message": "do you need this \u003d\u003d0 check. when it is 0 it isn\u0027t \u003d\u003d ip0-\u003edst_address.",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
