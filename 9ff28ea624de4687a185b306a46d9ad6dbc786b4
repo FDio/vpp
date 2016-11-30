@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_af024809",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 985,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-30T19:52:59Z",
+      "side": 1,
+      "message": "I am trying to minimize the overhead for non-vxlan packets when vxlan-bypass is enabled on an interface. There is quite a few clocks extra for vxlan-bypass node to call vnet_feature_next() instead of just setting next0 to ip-lookup. What do you think? Would these extra clock for each non-vxlan packet be worth the flexibility? BTW, I had comments in the vxlan-bypass node code how to change this if the flexibility is required later. What do you think?",
+      "parentUuid": "5a2585a7_ef2170b5",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_af7da8b3",
         "filename": "vnet/vnet/vxlan/decap.c",
         "patchSetId": 1
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_aaffd600",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-30T19:52:59Z",
+      "side": 1,
+      "message": "I will clean this up. Should they be in ip4.h or in ip.h?",
+      "parentUuid": "5a2585a7_af7da8b3",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_0f5efc45",
         "filename": "vnet/vnet/vxlan/decap.c",
         "patchSetId": 1
@@ -47,6 +83,24 @@
       "writtenOn": "2016-11-30T18:29:22Z",
       "side": 1,
       "message": "do you need this \u003d\u003d0 check. when it is 0 it isn\u0027t \u003d\u003d ip0-\u003edst_address.",
+      "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_cf059415",
+        "filename": "vnet/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 710,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-11-30T19:52:59Z",
+      "side": 1,
+      "message": "I did not see ip4-input node check if DIP of packet being 0 and drop it. Thus, adding this check here to make sure if we do receive such a packet, it won\u0027t slip through to vxlan-input without ip-lookup. If you think ip4-input will drop packets with DIP of 0, I am more than happy to remove this check.",
+      "parentUuid": "5a2585a7_0f5efc45",
       "revId": "9ff28ea624de4687a185b306a46d9ad6dbc786b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
