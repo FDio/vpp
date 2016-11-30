@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Marek Gradzki <mgradzki@cisco.com>
+Code-Review+2: Ole Trøan <otroan@employees.org>
+Submitted-by: Ole Trøan <otroan@employees.org>
+Submitted-at: Wed, 30 Nov 2016 18:24:38 +0000
+Reviewed-on: https://gerrit.fd.io/r/3963
+Project: vpp
+Branch: refs/heads/master
