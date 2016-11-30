@@ -143,7 +143,10 @@ flowperpkt_template_rewrite (flow_report_main_t * frm,
   /*
    * Supported Fields:
    *
+   * ingressInterface, TLV type 10, u32
    * egressInterface, TLV type 14, u32
+   * sourceIpv4Address, TLV type 8, u32
+   * destinationIPv4Address, TLV type 12, u32
    * ipClassOfService, TLV type 5, u8
    * flowStartNanoseconds, TLV type 156, dateTimeNanoseconds (f64)
    *   Implementation: f64 nanoseconds since VPP started
@@ -152,8 +155,8 @@ flowperpkt_template_rewrite (flow_report_main_t * frm,
    *   warning: wireshark doesn't understand this TLV at all
    */
 
-  /* Currently 4 fields */
-  field_count += 4;
+  /* Currently 7 fields */
+  field_count += 7;
 
   /* allocate rewrite space */
   vec_validate_aligned (rewrite,
@@ -183,8 +186,17 @@ flowperpkt_template_rewrite (flow_report_main_t * frm,
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
   /* Add TLVs to the template */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ , ingressInterface,
+				      4);
+  f++;
   f->e_id_length = ipfix_e_id_length (0 /* enterprise */ , egressInterface,
 				      4);
+  f++;
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ , sourceIPv4Address,
+				      4);
+  f++;
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      destinationIPv4Address, 4);
   f++;
   f->e_id_length = ipfix_e_id_length (0 /* enterprise */ , ipClassOfService,
 				      1);
