@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_19dbeeee",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-11-30T06:22:37Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_d61c156d",
+      "range": {
+        "startLine": 51,
+        "startChar": 25,
+        "endLine": 51,
+        "endChar": 32
+      },
+      "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_79bf92d1",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 7
@@ -36,6 +60,30 @@
       "writtenOn": "2016-11-29T19:47:49Z",
       "side": 1,
       "message": "Have you tested this in VAT and does it work? This is an API client separate from VPP itself. I doubt the calls to vlib_get_node_by_name or vlib_node_add_next would work. One possibility is to made a call to api_add_node_next to see if it work, I think. Please make sure to test VAT and make sure creating a VXLAN tunnel with NSH does work properly.",
+      "range": {
+        "startLine": 10102,
+        "startChar": 14,
+        "endLine": 10102,
+        "endChar": 35
+      },
+      "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2c2546ab",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 10102,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-11-30T06:22:37Z",
+      "side": 1,
+      "message": "Thanks for reminding. I tried, but failed. \nMy understanding is as follows:\nnode name is passed to Honeycomb via Rest API, and in HC, node name is mapped to next_index, which is then passed to API. vl_api_vxlan_add_del_tunnel_t_handler is used to handle vxlan tunnel with next_index. vl_api_vxlan_add_del_tunnel_t_print is used to print API\u0027s configuration, and api_vxlan_add_del_tunnel is used to replay API configuration dumped by vl_api_vxlan_add_del_tunnel_t_print. All above is acted on next_index, so there is no need to parse node_name in VAT.",
+      "parentUuid": "5a2585a7_79bf92d1",
       "range": {
         "startLine": 10102,
         "startChar": 14,
