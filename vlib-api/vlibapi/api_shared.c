@@ -34,6 +34,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vppinfra/elog.h>
+#include <vlibmemory/api.h>
 
 api_main_t api_main;
 
@@ -87,6 +88,10 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
   u8 *msg_copy;
   trace_cfg_t *cfgp;
   u16 msg_id = ntohs (*((u16 *) msg));
+  /* Real length is in front of the data */
+  msgbuf_t *msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
+  u32 len_delta = offsetof(msgbuf_t, data) - offsetof(msgbuf_t, data_len);
+  u32 real_len;
 
   cfgp = am->api_trace_cfg + msg_id;
 
@@ -108,16 +113,24 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
     }
   else
     {
-      tp->wrapped = 1;
+      tp->bit_flags |= TRACE_FLAG_WRAPPED;
       old_trace = tp->traces + tp->curindex++;
       if (tp->curindex == tp->nitems)
 	tp->curindex = 0;
       vec_free (*old_trace);
       this_trace = old_trace;
     }
+  if (tp->bit_flags & TRACE_FLAG_VARIABLE_LEN)
+    {
+      real_len = ntohl(msgbuf->data_len) + len_delta;
+      msg -= len_delta;
+    }
+  else
+    real_len = cfgp->size;
 
-  vec_validate (msg_copy, cfgp->size - 1);
-  clib_memcpy (msg_copy, msg, cfgp->size);
+  /* clib_warning("msg id: %d, cfg len: %d real len: %d", msg_id, cfgp->size, real_len); */
+  vec_validate (msg_copy, real_len - 1);
+  clib_memcpy (msg_copy, msg, real_len);
   *this_trace = msg_copy;
 }
 
@@ -189,7 +202,7 @@ vl_msg_api_trace_free (api_main_t * am, vl_api_trace_which_t which)
     return -1;
 
   tp->curindex = 0;
-  tp->wrapped = 0;
+  tp->bit_flags = 0;
 
   for (i = 0; i < vec_len (tp->traces); i++)
     {
@@ -236,7 +249,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
   /* Write the file header */
   fh.nitems = vec_len (tp->traces);
   fh.endian = tp->endian;
-  fh.wrapped = tp->wrapped;
+  fh.bit_flags = tp->bit_flags;
 
   if (fwrite (&fh, sizeof (fh), 1, fp) != 1)
     {
@@ -244,7 +257,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
     }
 
   /* No-wrap case */
-  if (tp->wrapped == 0)
+  if ((tp->bit_flags & TRACE_FLAG_WRAPPED) == 0)
     {
       /*
        * Note: vec_len return 0 when fed a NULL pointer.
@@ -361,6 +374,12 @@ vl_msg_api_trace_configure (api_main_t * am, vl_api_trace_which_t which,
     }
 
   tp->nitems = nitems;
+  /*
+   * Embed the message length by default into the trace.
+   * This setting can not be changed dynamically,
+   * so we preset it here and do not expose any CLI.
+   */
+  tp->bit_flags |= TRACE_FLAG_VARIABLE_LEN;
   if (was_on)
     {
       (void) vl_msg_api_trace_onoff (am, which, was_on);
@@ -762,6 +781,8 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   static u8 *tmpbuf;
   u32 nitems;
   void **saved_print_handlers = 0;
+  u8 is_variable_len = 0;
+  const u32 variable_len_delta = offsetof(msgbuf_t, data) - offsetof(msgbuf_t, data_len);
 
   fd = open ((char *) filename, O_RDONLY);
 
@@ -819,16 +840,20 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       munmap (hp, file_size);
       return;
     }
-  if (hp->wrapped)
+  if (hp->bit_flags & TRACE_FLAG_WRAPPED)
     vlib_cli_output (vm,
 		     "Note: wrapped/incomplete trace, results may vary\n");
+  if (hp->bit_flags & TRACE_FLAG_VARIABLE_LEN)
+    {
+      is_variable_len = 1;
+      vlib_cli_output(vm, "Trace embeds message size\n");
+    }
 
   if (which == CUSTOM_DUMP)
     {
       saved_print_handlers = (void **) vec_dup (am->msg_print_handlers);
       vl_msg_api_custom_dump_configure (am);
     }
-
 
   msg = (u8 *) (hp + 1);
 
@@ -837,6 +862,15 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       trace_cfg_t *cfgp;
       int size;
       u16 msg_id;
+      u32 real_len = 0;
+
+      if (is_variable_len)
+        {
+          /* advance the msg by the size of the partial msgbuf_t so it points at data */
+          msg += variable_len_delta;
+          msgbuf_t *msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
+          real_len = ntohl(msgbuf->data_len);
+        }
 
       if (clib_arch_is_little_endian)
 	msg_id = ntohs (*((u16 *) msg));
@@ -850,7 +884,11 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  munmap (hp, file_size);
 	  return;
 	}
-      size = cfgp->size;
+      if (is_variable_len)
+        size = real_len;
+      else
+        size = cfgp->size;
+
       msg += size;
     }
 
@@ -860,6 +898,14 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       u16 *msg_idp;
       u16 msg_id;
       int size;
+      u32 real_len = 0;
+
+      if (is_variable_len)
+        {
+          msg += variable_len_delta;
+          msgbuf_t *msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
+          real_len = ntohl(msgbuf->data_len);
+        }
 
       if (which == DUMP)
 	vlib_cli_output (vm, "---------- trace %d -----------\n", i);
@@ -876,7 +922,15 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  munmap (hp, file_size);
 	  return;
 	}
-      size = cfgp->size;
+
+      if (is_variable_len)
+        size = real_len;
+      else
+        size = cfgp->size;
+
+      if (size != cfgp->size)
+        vlib_cli_output(vm, "=== size: %d, cfg size: %d ===\n",  size, cfgp->size);
+
 
       /* Copy the buffer (from the read-only mmap'ed file) */
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
@@ -1029,9 +1083,10 @@ format_vl_msg_api_trace_status (u8 * s, va_list * args)
       return s;
     }
 
-  s = format (s, "%s: used %d of %d items, %s enabled, %s wrapped\n",
+  s = format (s, "%s: used %d of %d items, %s enabled, %s wrapped, %s allow variable length messages\n",
 	      trace_name, vec_len (tp->traces), tp->nitems,
-	      tp->enabled ? "is" : "is not", tp->wrapped ? "has" : "has not");
+	      tp->enabled ? "is" : "is not", tp->bit_flags & TRACE_FLAG_WRAPPED ? "has" : "has not",
+              tp->bit_flags & TRACE_FLAG_VARIABLE_LEN ? "does" : "does not");
   return s;
 }
 
