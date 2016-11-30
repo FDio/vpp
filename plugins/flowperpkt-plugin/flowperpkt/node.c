@@ -27,7 +27,10 @@
 typedef struct
 {
   /** interface handle */
-  u32 sw_if_index;
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  u32 src_address;
+  u32 dst_address;
   /** ToS bits */
   u8 tos;
   /** packet timestamp */
@@ -45,8 +48,11 @@ format_flowperpkt_trace (u8 * s, va_list * args)
   flowperpkt_trace_t *t = va_arg (*args, flowperpkt_trace_t *);
 
   s = format (s,
-	      "FLOWPERPKT: sw_if_index %d, tos %0x2, timestamp %lld, size %d",
-	      t->sw_if_index, t->tos, t->timestamp, t->buffer_size);
+	      "FLOWPERPKT: rx_sw_if_index %d, tx_sw_if_index %d, src %U dst %U tos %0x2, timestamp %lld, size %d",
+	      t->rx_sw_if_index, t->tx_sw_if_index,
+	      format_ip4_address, &t->src_address,
+	      format_ip4_address, &t->dst_address,
+	      t->tos, t->timestamp, t->buffer_size);
   return s;
 }
 
@@ -89,7 +95,8 @@ typedef enum
 static inline void
 add_to_flow_record (vlib_main_t * vm,
 		    flowperpkt_main_t * fm,
-		    u32 sw_if_index,
+		    u32 rx_sw_if_index, u32 tx_sw_if_index,
+		    u32 src_address, u32 dst_address,
 		    u8 tos, u64 timestamp, u16 length, int do_flush)
 {
   u32 my_cpu_number = vm->cpu_index;
@@ -171,6 +178,7 @@ add_to_flow_record (vlib_main_t * vm,
       ip->ip_version_and_header_length = 0x45;
       ip->ttl = 254;
       ip->protocol = IP_PROTOCOL_UDP;
+      ip->flags_and_fragment_offset = 0;
       ip->src_address.as_u32 = frm->src_address.as_u32;
       ip->dst_address.as_u32 = frm->ipfix_collector.as_u32;
       udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
@@ -195,13 +203,31 @@ add_to_flow_record (vlib_main_t * vm,
     {
 
       /* Add data */
+      /* Ingress interface */
+      {
+	u32 ingress_interface = clib_host_to_net_u32 (rx_sw_if_index);
+	clib_memcpy (b0->data + offset, &ingress_interface,
+		     sizeof (ingress_interface));
+	offset += sizeof (ingress_interface);
+      }
       /* Egress interface */
       {
-	u32 egress_interface = clib_host_to_net_u32 (sw_if_index);
+	u32 egress_interface = clib_host_to_net_u32 (tx_sw_if_index);
 	clib_memcpy (b0->data + offset, &egress_interface,
 		     sizeof (egress_interface));
 	offset += sizeof (egress_interface);
       }
+      /* ip4 src address */
+      {
+	clib_memcpy (b0->data + offset, &src_address, sizeof (src_address));
+	offset += sizeof (src_address);
+      }
+      /* ip4 dst address */
+      {
+	clib_memcpy (b0->data + offset, &dst_address, sizeof (dst_address));
+	offset += sizeof (dst_address);
+      }
+
       /* ToS */
       b0->data[offset++] = tos;
 
@@ -218,7 +244,7 @@ add_to_flow_record (vlib_main_t * vm,
 
       b0->current_length +=
 	/* sw_if_index + tos + timestamp + length = 15 */
-	sizeof (u32) + sizeof (u8) + sizeof (f64) + sizeof (u16);
+	4 * sizeof (u32) + sizeof (u8) + sizeof (f64) + sizeof (u16);
 
     }
   /* Time to flush the buffer? */
@@ -270,7 +296,10 @@ flowperpkt_flush_callback (void)
   vlib_main_t *vm = vlib_get_main ();
   flowperpkt_main_t *fm = &flowperpkt_main;
 
-  add_to_flow_record (vm, fm, 0 /* sw_if_index */ ,
+  add_to_flow_record (vm, fm, 0 /* rx_sw_if_index */ ,
+		      0 /* tx_sw_if_index */ ,
+		      0 /* src_address */ ,
+		      0 /* dst_address */ ,
 		      0 /* ToS */ ,
 		      0ULL /* timestamp */ ,
 		      0 /* length */ ,
@@ -346,7 +375,10 @@ flowperpkt_node_fn (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
 	    add_to_flow_record (vm, fm,
+				vnet_buffer (b0)->sw_if_index[VLIB_RX],
 				vnet_buffer (b0)->sw_if_index[VLIB_TX],
+				ip0->src_address.as_u32,
+				ip0->dst_address.as_u32,
 				ip0->tos, now, len0, 0 /* flush */ );
 
 	  ip1 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
@@ -355,7 +387,10 @@ flowperpkt_node_fn (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
 	    add_to_flow_record (vm, fm,
+				vnet_buffer (b1)->sw_if_index[VLIB_RX],
 				vnet_buffer (b1)->sw_if_index[VLIB_TX],
+				ip1->src_address.as_u32,
+				ip1->dst_address.as_u32,
 				ip1->tos, now, len1, 0 /* flush */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
@@ -364,18 +399,22 @@ flowperpkt_node_fn (vlib_main_t * vm,
 		{
 		  flowperpkt_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+		  t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+		  t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+		  t->src_address = ip0->src_address.as_u32;
+		  t->dst_address = ip0->dst_address.as_u32;
 		  t->tos = ip0->tos;
 		  t->timestamp = now;
 		  t->buffer_size = len0;
-
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
 		  flowperpkt_trace_t *t =
 		    vlib_add_trace (vm, node, b1, sizeof (*t));
-
-		  t->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+		  t->rx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+		  t->tx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+		  t->src_address = ip1->src_address.as_u32;
+		  t->dst_address = ip1->dst_address.as_u32;
 		  t->tos = ip1->tos;
 		  t->timestamp = now;
 		  t->buffer_size = len1;
@@ -422,15 +461,21 @@ flowperpkt_node_fn (vlib_main_t * vm,
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
 	    add_to_flow_record (vm, fm,
+				vnet_buffer (b0)->sw_if_index[VLIB_RX],
 				vnet_buffer (b0)->sw_if_index[VLIB_TX],
-				ip0->tos, now, len0, 0 /* do flush */ );
+				ip0->src_address.as_u32,
+				ip0->dst_address.as_u32,
+				ip0->tos, now, len0, 0 /* flush */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      flowperpkt_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	      t->src_address = ip0->src_address.as_u32;
+	      t->dst_address = ip0->dst_address.as_u32;
 	      t->tos = ip0->tos;
 	      t->timestamp = now;
 	      t->buffer_size = len0;
