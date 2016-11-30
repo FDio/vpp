@@ -352,9 +352,11 @@ ifeq ($(OS_VERSION_ID),16.04)
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
 endif
+	$(call banner,"Building deb packages")
 	@make pkg-deb
 endif
 ifeq ($(OS_ID),centos)
+	$(call banner,"Building rpm packages")
 	@make pkg-rpm
 endif
 
