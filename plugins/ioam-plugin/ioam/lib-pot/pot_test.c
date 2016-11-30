@@ -63,6 +63,18 @@ _(pot_profile_add_reply)                          \
 _(pot_profile_activate_reply)                     \
 _(pot_profile_del_reply)
 
+#define foreach_custom_reply_retval_handler     		\
+_(pot_profile_show_config_details,				\
+    errmsg("		ID:%d\n",mp->id);			\
+    errmsg("	 Validator:%d\n",mp->validator);		\
+    errmsg("	secret_key:%Lx\n",clib_net_to_host_u64(mp->secret_key));		\
+    errmsg("  secret_share:%Lx\n",clib_net_to_host_u64(mp->secret_share));		\
+    errmsg("  	     prime:%Lx\n",clib_net_to_host_u64(mp->prime));			\
+    errmsg("  	   bitmask:%Lx\n",clib_net_to_host_u64(mp->bit_mask));		\
+    errmsg("  	       lpc:%Lx\n",clib_net_to_host_u64(mp->lpc));			\
+    errmsg("   public poly:%Lx\n",clib_net_to_host_u64(mp->polynomial_public));	\
+		)
+
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
     (vl_api_##n##_t * mp)                               \
@@ -79,6 +91,23 @@ _(pot_profile_del_reply)
 foreach_standard_reply_retval_handler;
 #undef _
 
+#define _(n,body)                                       \
+    static void vl_api_##n##_t_handler                  \
+    (vl_api_##n##_t * mp)                               \
+    {                                                   \
+        vat_main_t * vam = pot_test_main.vat_main;   \
+        i32 retval = ntohl(mp->retval);                 \
+        if (vam->async_mode) {                          \
+            vam->async_errors += (retval < 0);          \
+        } else {                                        \
+            vam->retval = retval;                       \
+            vam->result_ready = 1;                      \
+        }                                               \
+	do{body;}while(0);				\
+    }
+foreach_custom_reply_retval_handler;
+#undef _
+
 /* 
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
@@ -87,6 +116,7 @@ foreach_standard_reply_retval_handler;
 _(POT_PROFILE_ADD_REPLY, pot_profile_add_reply)                         \
 _(POT_PROFILE_ACTIVATE_REPLY, pot_profile_activate_reply)               \
 _(POT_PROFILE_DEL_REPLY, pot_profile_del_reply)                         \
+_(POT_PROFILE_SHOW_CONFIG_DETAILS, pot_profile_show_config_details)
 
 
 /* M: construct, but don't yet send a message */
@@ -255,6 +285,28 @@ static int api_pot_profile_del (vat_main_t *vam)
     return 0;
 }
 
+static int api_pot_profile_show_config_dump (vat_main_t *vam)
+{
+    pot_test_main_t * sm = &pot_test_main;
+    unformat_input_t *input = vam->input;
+    vl_api_pot_profile_show_config_dump_t *mp;
+    f64 timeout;
+    u8 id = 0;
+
+    while(unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
+    {
+      if(unformat(input,"id %d",&id));
+      else
+        break;
+    }
+    M(POT_PROFILE_SHOW_CONFIG_DUMP, pot_profile_show_config_dump);
+
+    mp->id = id;
+
+    S; W;
+    return 0;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -266,7 +318,7 @@ _(pot_profile_add, "name <name> id [0-1] "                              \
   "[validator-key <0xu64>] [validity <0xu64>]")                         \
 _(pot_profile_activate, "name <name> id [0-1] ")    			\
 _(pot_profile_del, "[id <nn>]")                                         \
-
+_(pot_profile_show_config_dump, "id [0-1]")
 
 void vat_api_hookup (vat_main_t *vam)
 {
@@ -301,7 +353,7 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
 
   sm->vat_main = vam;
 
-  name = format (0, "pot_%08x%c", api_version, 0);
+  name = format (0, "ioam_pot_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
