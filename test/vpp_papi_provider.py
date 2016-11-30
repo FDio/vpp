@@ -34,6 +34,7 @@ class VppPapiProvider(object):
         self.hook = Hook("vpp-papi-provider")
         self.name = name
         self.shm_prefix = shm_prefix
+        self.connected = False
 
     def register_hook(self, hook):
         """Replace hook registration with new hook
@@ -45,7 +46,9 @@ class VppPapiProvider(object):
 
     def connect(self):
         """Connect the API to VPP"""
-        vpp_papi.connect(self.name, self.shm_prefix)
+        if not self.connected:
+            vpp_papi.connect(self.name, self.shm_prefix)
+            self.connected=True
 
     def disconnect(self):
         """Disconnect the API from VPP"""
