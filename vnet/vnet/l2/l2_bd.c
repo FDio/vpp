@@ -54,9 +54,6 @@ bd_validate (l2_bridge_domain_t * bd_config)
       bd_config->feature_bitmap = ~L2INPUT_FEAT_ARP_TERM;
       bd_config->bvi_sw_if_index = ~0;
       bd_config->members = 0;
-      bd_config->flood_count = 0;
-      bd_config->tun_master_count = 0;
-      bd_config->tun_normal_count = 0;
       bd_config->mac_by_ip4 = 0;
       bd_config->mac_by_ip6 = hash_create_mem (0, sizeof (ip6_address_t),
 					       sizeof (uword));
@@ -117,48 +114,31 @@ bd_delete_bd_index (bd_main_t * bdm, u32 bd_id)
   return 0;
 }
 
-static void
-update_flood_count (l2_bridge_domain_t * bd_config)
-{
-  bd_config->flood_count = vec_len (bd_config->members) -
-    (bd_config->tun_master_count ? bd_config->tun_normal_count : 0);
-}
-
 void
 bd_add_member (l2_bridge_domain_t * bd_config, l2_flood_member_t * member)
 {
-  u32 ix;
-  vnet_sw_interface_t *sw_if = vnet_get_sw_interface
-    (vnet_get_main (), member->sw_if_index);
-
   /*
    * Add one element to the vector
-   * vector is ordered [ bvi, normal/tun_masters..., tun_normals... ]
+   *
    * When flooding, the bvi interface (if present) must be the last member
    * processed due to how BVI processing can change the packet. To enable
    * this order, we make the bvi interface the first in the vector and
    * flooding walks the vector in reverse.
    */
-  switch (sw_if->flood_class)
+  if ((member->flags == L2_FLOOD_MEMBER_NORMAL) ||
+      (vec_len (bd_config->members) == 0))
     {
-    case VNET_FLOOD_CLASS_TUNNEL_MASTER:
-      bd_config->tun_master_count++;
-      /* Fall through */
-    default:
-      /* Fall through */
-    case VNET_FLOOD_CLASS_NORMAL:
-      ix = (member->flags & L2_FLOOD_MEMBER_BVI) ? 0 :
-	vec_len (bd_config->members) - bd_config->tun_normal_count;
-      break;
-    case VNET_FLOOD_CLASS_TUNNEL_NORMAL:
-      ix = vec_len (bd_config->members);
-      bd_config->tun_normal_count++;
-      break;
-    }
+      vec_add1 (bd_config->members, *member);
 
-  vec_insert_elts (bd_config->members, member, 1, ix);
-  update_flood_count (bd_config);
+    }
+  else
+    {
+      /* Move 0th element to the end */
+      vec_add1 (bd_config->members, bd_config->members[0]);
+      bd_config->members[0] = *member;
+    }
 }
+
 
 #define BD_REMOVE_ERROR_OK        0
 #define BD_REMOVE_ERROR_NOT_FOUND 1
@@ -171,22 +151,9 @@ bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index)
   /* Find and delete the member */
   vec_foreach_index (ix, bd_config->members)
   {
-    l2_flood_member_t *m = vec_elt_at_index (bd_config->members, ix);
-    if (m->sw_if_index == sw_if_index)
+    if (vec_elt (bd_config->members, ix).sw_if_index == sw_if_index)
       {
-	vnet_sw_interface_t *sw_if = vnet_get_sw_interface
-	  (vnet_get_main (), sw_if_index);
-
-	if (sw_if->flood_class != VNET_FLOOD_CLASS_NORMAL)
-	  {
-	    if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_MASTER)
-	      bd_config->tun_master_count--;
-	    else if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_NORMAL)
-	      bd_config->tun_normal_count--;
-	  }
 	vec_del1 (bd_config->members, ix);
-	update_flood_count (bd_config);
-
 	return BD_REMOVE_ERROR_OK;
       }
   }
@@ -887,27 +854,28 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	  if (detail || intf)
 	    {
 	      /* Show all member interfaces */
-	      int i;
-	      vec_foreach_index (i, bd_config->members)
+
+	      l2_flood_member_t *member;
+	      u32 header = 0;
+
+	      vec_foreach (member, bd_config->members)
 	      {
-		l2_flood_member_t *member =
-		  vec_elt_at_index (bd_config->members, i);
 		u32 vtr_opr, dot1q, tag1, tag2;
-		if (i == 0)
+		if (!header)
 		  {
-		    vlib_cli_output (vm, "\n%=30s%=7s%=5s%=5s%=9s%=30s",
+		    header = 1;
+		    vlib_cli_output (vm, "\n%=30s%=7s%=5s%=5s%=30s",
 				     "Interface", "Index", "SHG", "BVI",
-				     "TxFlood", "VLAN-Tag-Rewrite");
+				     "VLAN-Tag-Rewrite");
 		  }
 		l2vtr_get (vm, vnm, member->sw_if_index, &vtr_opr, &dot1q,
 			   &tag1, &tag2);
-		vlib_cli_output (vm, "%=30U%=7d%=5d%=5s%=9s%=30U",
+		vlib_cli_output (vm, "%=30U%=7d%=5d%=5s%=30U",
 				 format_vnet_sw_if_index_name, vnm,
 				 member->sw_if_index, member->sw_if_index,
 				 member->shg,
 				 member->flags & L2_FLOOD_MEMBER_BVI ? "*" :
-				 "-", i < bd_config->flood_count ? "*" : "-",
-				 format_vtr, vtr_opr, dot1q, tag1, tag2);
+				 "-", format_vtr, vtr_opr, dot1q, tag1, tag2);
 	      }
 	    }
 

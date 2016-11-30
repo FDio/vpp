@@ -28,7 +28,6 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ip/udp.h>
 #include <vnet/dpo/dpo.h>
-#include <vnet/adj/adj_types.h>
 
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;            /* 20 bytes */
@@ -85,8 +84,6 @@ typedef struct {
   ip46_address_t src;
   ip46_address_t dst;
 
-  u32 mcast_sw_if_index;
-
   /* The FIB index for src/dst addresses */
   u32 encap_fib_index;
 
@@ -99,12 +96,8 @@ typedef struct {
    */
   fib_node_t node;
 
-  /*
-   * The FIB entry for (depending on VXLAN tunnel is unicast or mcast)
-   * sending unicast VXLAN encap packets or receiving mcast VXLAN packets
-   */
+  /* The FIB entry sourced by the tunnel for its destination prefix */
   fib_node_index_t fib_entry_index;
-  adj_index_t mcast_adj_index;
 
   /**
    * The tunnel is a child of the FIB entry for its desintion. This is
@@ -168,7 +161,6 @@ typedef struct {
    * structure, this seems less of abreaking change */
   u8 is_ip6;
   ip46_address_t src, dst;
-  u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_next_index;
   u32 vni;

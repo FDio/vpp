@@ -67,17 +67,8 @@ typedef struct
   /* bridge domain id, not to be confused with bd_index */
   u32 bd_id;
 
-  /* Vector of member ports */
+  /* Vector of members in the replication group */
   l2_flood_member_t *members;
-
-  /* First flood_count member ports are flooded */
-  u32 flood_count;
-
-  /* Tunnel Master (Multicast vxlan) are always flooded */
-  u32 tun_master_count;
-
-  /* Tunnels (Unicast vxlan) are flooded if there are no masters */
-  u32 tun_normal_count;
 
   /* hash ip4/ip6 -> mac for arp/nd termination */
   uword *mac_by_ip4;
