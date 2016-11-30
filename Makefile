@@ -344,7 +344,6 @@ verify: install-dep $(BR)/.bootstrap.ok
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building for PLATFORM=vpp_lite using gcc")
 	@make -C build-root PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
-	@make test
 ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),16.04)
 	$(call banner,"Installing dependencies")
