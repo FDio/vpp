@@ -8174,7 +8174,7 @@ static void
   vlib_main_t *vm = vlib_get_main ();
 
   rv = span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
-			      ntohl (mp->sw_if_index_to), mp->enable);
+			      ntohl (mp->sw_if_index_to), mp->state);
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY);
 }
@@ -8191,6 +8191,8 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
     return;
+
+  // FIXME
 
   vec_foreach (dst_sw_if_index, sm->dst_by_src_sw_if_index)
   {

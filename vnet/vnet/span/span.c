@@ -21,22 +21,27 @@
 
 int
 span_add_delete_entry (vlib_main_t * vm,
-		       u32 src_sw_if_index, u32 dst_sw_if_index, u8 is_add)
+		       u32 src_sw_if_index, u32 dst_sw_if_index, u8 state)
 {
   span_main_t *sm = &span_main;
+  span_instance_t *si;
 
-  if ((src_sw_if_index == ~0) || (dst_sw_if_index == ~0 && is_add)
+  if (state > 3)
+    return VNET_API_ERROR_UNIMPLEMENTED;
+
+  if ((src_sw_if_index == ~0) || (dst_sw_if_index == ~0 && state > 0)
       || (src_sw_if_index == dst_sw_if_index))
     return VNET_API_ERROR_INVALID_INTERFACE;
 
-  vnet_sw_interface_t *sw =
-    vnet_get_sw_interface (sm->vnet_main, src_sw_if_index);
-
-  vec_validate_aligned (sm->dst_by_src_sw_if_index, sw->sw_if_index,
+  vec_validate_aligned (sm->interfaces, src_sw_if_index,
 			CLIB_CACHE_LINE_BYTES);
-  sm->dst_by_src_sw_if_index[sw->sw_if_index] = is_add ? dst_sw_if_index : 0;
+  si = vec_elt_at_index (sm->interfaces, src_sw_if_index);
+  si->state = state;
+  si->mirror_sw_if_index = dst_sw_if_index;
   vnet_feature_enable_disable ("device-input", "span-input",
-			       sw->sw_if_index, is_add, 0, 0);
+			       src_sw_if_index, ((state & 1) != 0), 0, 0);
+  vnet_feature_enable_disable ("interface-output", "span-output",
+			       src_sw_if_index, ((state & 2) != 0), 0, 0);
   return 0;
 }
 
@@ -48,7 +53,7 @@ set_interface_span_command_fn (vlib_main_t * vm,
   span_main_t *sm = &span_main;
   u32 src_sw_if_index = ~0;
   u32 dst_sw_if_index = ~0;
-  u8 is_add = 1;
+  u8 state = 3;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -59,13 +64,19 @@ set_interface_span_command_fn (vlib_main_t * vm,
 			 sm->vnet_main, &dst_sw_if_index))
 	;
       else if (unformat (input, "disable"))
-	is_add = 0;
+	state = 0;
+      else if (unformat (input, "rx"))
+	state = 1;
+      else if (unformat (input, "tx"))
+	state = 2;
+      else if (unformat (input, "both"))
+	state = 3;
       else
 	break;
     }
 
   int rv =
-    span_add_delete_entry (vm, src_sw_if_index, dst_sw_if_index, is_add);
+    span_add_delete_entry (vm, src_sw_if_index, dst_sw_if_index, state);
   if (rv == VNET_API_ERROR_INVALID_INTERFACE)
     return clib_error_return (0, "Invalid interface");
   return 0;
@@ -86,13 +97,13 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 {
 
   span_main_t *sm = &span_main;
+  span_instance_t *si;
   vnet_main_t *vnm = &vnet_main;
-  u32 src_sw_if_index = 0, *dst_sw_if_index;
   u8 header = 1;
 
-  vec_foreach (dst_sw_if_index, sm->dst_by_src_sw_if_index)
+  vec_foreach (si, sm->interfaces)
   {
-    if (*dst_sw_if_index > 0)	// && *dst_sw_if_index != ~0)
+    if (si->state > 0)
       {
 	if (header)
 	  {
@@ -100,11 +111,11 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
 			     "SPAN source interface to destination interface table");
 	    header = 0;
 	  }
+	// FIXME add direction
 	vlib_cli_output (vm, "%32U => %-32U",
-			 format_vnet_sw_if_index_name, vnm, src_sw_if_index,
-			 format_vnet_sw_if_index_name, vnm, *dst_sw_if_index);
+			 format_vnet_sw_if_index_name, vnm, si - sm->interfaces,
+			 format_vnet_sw_if_index_name, vnm, si->mirror_sw_if_index);
       }
-    src_sw_if_index++;
   }
   return 0;
 }
