@@ -53,14 +53,14 @@ static const ip4_fib_table_special_prefix_t ip4_specials[] = {
     },
     {
 	/*
-	 * 240.0.0.0/8
+	 * 240.0.0.0/4
 	 * drop class E
 	 */
 	.ift_prefix = {
 	    .fp_addr = {
 		.ip4.data_u32 = 0xf0000000,
 	    },
-	    .fp_len   = 8,
+	    .fp_len   = 4,
 	    .fp_proto = FIB_PROTOCOL_IP4,
 	},
 	.ift_source = FIB_SOURCE_SPECIAL,
@@ -69,14 +69,14 @@ static const ip4_fib_table_special_prefix_t ip4_specials[] = {
     },
     {
 	/*
-	 * 224.0.0.0/8
+	 * 224.0.0.0/4
 	 * drop all mcast
 	 */
 	.ift_prefix = {
 	    .fp_addr = {
 		.ip4.data_u32 = 0xe0000000,
 	    },
-	    .fp_len   = 8,
+	    .fp_len   = 4,
 	    .fp_proto = FIB_PROTOCOL_IP4,
 	},
 	.ift_source = FIB_SOURCE_SPECIAL,
