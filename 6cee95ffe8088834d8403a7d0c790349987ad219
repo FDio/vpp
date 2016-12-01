@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_206d4733",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-12-01T20:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_05749dcd",
+      "range": {
+        "startLine": 276,
+        "startChar": 8,
+        "endLine": 276,
+        "endChar": 39
+      },
+      "revId": "6cee95ffe8088834d8403a7d0c790349987ad219",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_c57d75b3",
         "filename": "vnet/vnet/vxlan/vxlan.c",
         "patchSetId": 11
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_e0761f06",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-12-01T20:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_c57d75b3",
+      "range": {
+        "startLine": 324,
+        "startChar": 6,
+        "endLine": 324,
+        "endChar": 8
+      },
+      "revId": "6cee95ffe8088834d8403a7d0c790349987ad219",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_a5638919",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 11
@@ -59,6 +107,30 @@
       "writtenOn": "2016-12-01T16:29:06Z",
       "side": 1,
       "message": "Please revert this back to ~0 as this is the value used for using the vxlan tunnel creation API to default to l2-input. There are VPP API client out there that depends on this behavior. This means the following logic:\n      if (a-\u003edecap_next_index \u003d\u003d ~0)\n\t  a-\u003edecap_next_index \u003d VXLAN_INPUT_NEXT_L2_INPUT;\nshould also be put back into vnet_vxlan_add_del_tunnel() function.",
+      "range": {
+        "startLine": 10093,
+        "startChar": 25,
+        "endLine": 10093,
+        "endChar": 50
+      },
+      "revId": "6cee95ffe8088834d8403a7d0c790349987ad219",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_80651b47",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 10093,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-12-01T20:51:29Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_a5638919",
       "range": {
         "startLine": 10093,
         "startChar": 25,
