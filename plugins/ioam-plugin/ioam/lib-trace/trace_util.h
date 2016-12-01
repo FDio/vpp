@@ -74,8 +74,6 @@ int trace_util_init (void);
 /*
  * Find a trace profile by ID
  */
-always_inline trace_profile *trace_profile_find (void);
-
 always_inline trace_profile *
 trace_profile_find (void)
 {
@@ -83,7 +81,6 @@ trace_profile_find (void)
 
   return (&(sm->profile));
 }
-
 
 /* setup and clean up profile */
 int trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,

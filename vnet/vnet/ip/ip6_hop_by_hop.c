@@ -56,32 +56,6 @@ typedef enum
     IP6_HBYH_IOAM_INPUT_N_NEXT,
 } ip6_hbyh_ioam_input_next_t;
 
-
-u32
-ioam_flow_add (u8 encap, u8 * flow_name)
-{
-  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
-  flow_data_t *flow = 0;
-  u32 index = 0;
-  u8 i;
-
-  pool_get (hm->flows, flow);
-  memset (flow, 0, sizeof (flow_data_t));
-
-  index = flow - hm->flows;
-  strncpy ((char *) flow->flow_name, (char *) flow_name, 31);
-
-  if (!encap)
-    IOAM_SET_DECAP (index);
-
-  for (i = 0; i < 255; i++)
-    {
-      if (hm->flow_handler[i])
-	flow->ctx[i] = hm->flow_handler[i] (index, 1);
-    }
-  return (index);
-}
-
 static uword
 unformat_opaque_ioam (unformat_input_t * input, va_list * args)
 {

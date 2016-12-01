@@ -20,7 +20,7 @@ AM_LDFLAGS = -module -shared -avoid-version
 # iOAM Proof of Transit
 ########################################
 
-ioam_pot_plugin_la_SOURCES =			\
+libioam_pot_plugin_la_SOURCES =			\
 	ioam/lib-pot/pot_util.c			\
 	ioam/encap/ip6_ioam_pot.c		\
 	ioam/lib-pot/pot_util.h			\
@@ -53,21 +53,21 @@ noinst_HEADERS =				\
   ioam/lib-pot/pot_util.h			\
   ioam/lib-pot/math64.h
 
-ioam_pot_test_plugin_la_SOURCES =		\
+libioam_pot_test_plugin_la_SOURCES =		\
 	ioam/lib-pot/pot_test.c			\
 	ioam/lib-pot/pot_plugin.api.h
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
-vppapitestplugins_LTLIBRARIES = ioam_pot_test_plugin.la
-vppplugins_LTLIBRARIES = ioam_pot_plugin.la
+vppapitestplugins_LTLIBRARIES = libioam_pot_test_plugin.la
+vppplugins_LTLIBRARIES = libioam_pot_plugin.la
 
 ########################################
 # iOAM trace export
 ########################################
 
-ioam_export_plugin_la_SOURCES =   \
+libioam_export_plugin_la_SOURCES =   \
 ioam/export/ioam_export.c         \
 ioam/export/node.c                \
 ioam/export/ioam_export.api.h     \
@@ -80,22 +80,22 @@ noinst_HEADERS +=                       \
   ioam/export/ioam_export_msg_enum.h    \
   ioam/export/ioam_export.api.h
 
-ioam_export_test_plugin_la_SOURCES =  \
+libioam_export_test_plugin_la_SOURCES =  \
   ioam/export/ioam_export_test.c      \
   ioam/export/ioam_export_plugin.api.h
 
-vppapitestplugins_LTLIBRARIES += ioam_export_test_plugin.la
-vppplugins_LTLIBRARIES += ioam_export_plugin.la
+vppapitestplugins_LTLIBRARIES += libioam_export_test_plugin.la
+vppplugins_LTLIBRARIES += libioam_export_plugin.la
 
 ########################################
 # iOAM Trace
 ########################################
-ioam_trace_plugin_la_SOURCES =			\
+libioam_trace_plugin_la_SOURCES =			\
 	ioam/lib-trace/trace_util.c			\
 	ioam/encap/ip6_ioam_trace.c		\
 	ioam/lib-trace/trace_util.h			\
 	ioam/lib-trace/trace_api.c
-
+	
 BUILT_SOURCES +=					\
 	ioam/lib-trace/trace.api.h ioam/lib-trace/trace.py
 
@@ -108,27 +108,49 @@ noinst_HEADERS +=                       \
   ioam/lib-trace/trace.api.h			\
   ioam/lib-trace/trace_util.h
 
-ioam_trace_test_plugin_la_SOURCES =		\
+libioam_trace_test_plugin_la_SOURCES =		\
 	ioam/lib-trace/trace_test.c			\
 	ioam/lib-trace/trace_plugin.api.h
 
-vppapitestplugins_LTLIBRARIES += ioam_trace_test_plugin.la
-vppplugins_LTLIBRARIES += ioam_trace_plugin.la
+vppapitestplugins_LTLIBRARIES += libioam_trace_test_plugin.la
+vppplugins_LTLIBRARIES += libioam_trace_plugin.la
 
 ########################################
 # iOAM E2E plugin
 ########################################
 
-ioam_e2e_plugin_la_SOURCES =                \
+libioam_e2e_plugin_la_SOURCES =                \
 	ioam/encap/ip6_ioam_e2e.c               \
-	ioam/encap/ip6_ioam_seqno.c             \
-	ioam/encap/ip6_ioam_seqno_analyse.c
+	ioam/encap/ip6_ioam_seqno.c				\
+	ioam/lib-e2e/ioam_seqno_lib.c
 
 noinst_HEADERS +=                    \
 	ioam/encap/ip6_ioam_e2e.h        \
-	ioam/encap/ip6_ioam_seqno.h
+	ioam/encap/ip6_ioam_seqno.h		 \
+	ioam/lib-e2e/ioam_seqno_lib.h
 
-vppplugins_LTLIBRARIES += ioam_e2e_plugin.la
+vppplugins_LTLIBRARIES += libioam_e2e_plugin.la
+
+########################################
+# iOAM Analyse plugin
+########################################
+
+libioam_analyse_plugin_la_SOURCES =                \
+	ioam/analyse/ioam_analyse.c                 \
+	ioam/analyse/ioam_summary_export.c		    \
+	ioam/analyse/ip6_ioam_analyse_node.c
+
+noinst_HEADERS +=                    \
+	ioam/analyse/ioam_analyse.h        \
+	ioam/analyse/ioam_summary_export.h		 \
+	ioam/analyse/ip6_ioam_analyse_node.h
+
+libioam_analyse_plugin_la_LIBADD =	\
+    libioam_export_plugin.la \
+    libioam_e2e_plugin.la	\
+    libioam_pot_plugin.la
+
+vppplugins_LTLIBRARIES += libioam_analyse_plugin.la
 
 # Remove *.la files
 install-data-hook:

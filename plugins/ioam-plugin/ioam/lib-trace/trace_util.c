@@ -60,7 +60,6 @@ trace_util_init (void)
   return (rv);
 }
 
-
 int
 trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,
 		      u32 trace_tsp, u32 node_id, u32 app_data)

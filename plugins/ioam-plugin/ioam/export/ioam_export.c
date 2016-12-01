@@ -82,6 +82,10 @@ do {                                                            \
 #define foreach_ioam_export_plugin_api_msg                        \
 _(IOAM_EXPORT_IP6_ENABLE_DISABLE, ioam_export_ip6_enable_disable)
 
+ioam_export_main_t ioam_export_main;
+
+vlib_node_registration_t export_node;
+
 /*
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.

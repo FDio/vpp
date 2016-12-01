@@ -16,25 +16,14 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
-
 #include <vnet/ip/ip6.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <vnet/ip/ip6_hop_by_hop_packet.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
 
+#include <ioam/encap/ip6_ioam_pot.h>
 #include <ioam/lib-pot/pot_util.h>
-
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  u8 pot_type;
-#define PROFILE_ID_MASK 0xF
-  u8 reserved_profile_id; /* 4 bits reserved, 4 bits to carry profile id */
-  u64 random;
-  u64 cumulative;
-}) ioam_pot_option_t;
 
 #define foreach_ip6_hop_by_hop_ioam_pot_stats				\
   _(PROCESSED, "Pkts with ip6 hop-by-hop pot options")			\
@@ -180,19 +169,19 @@ ip6_hbh_ioam_proof_of_transit_pop_handler (vlib_buffer_t *b, ip6_header_t *ip,
   int rv = 0;
   pot_profile *pot_profile = 0;
   u8 result = 0;
-  
+
   pot0 = (ioam_pot_option_t *) opt0;
   random = clib_net_to_host_u64(pot0->random);
   cumulative = clib_net_to_host_u64(pot0->cumulative);
   pot_profile = pot_profile_get_active();
   result =  pot_validate (pot_profile,
 			  cumulative, random);
-	  
-  if (result == 1) 
+
+  if (result == 1)
     {
       ip6_ioam_stats_increment_counter (IP6_IOAM_POT_PASSED, 1);
     }
-  else 
+  else
     {
       ip6_ioam_stats_increment_counter (IP6_IOAM_POT_FAILED, 1);
     }

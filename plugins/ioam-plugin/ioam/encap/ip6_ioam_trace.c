@@ -160,8 +160,6 @@ ioam_trace_get_sizeof_handler (u32 * result)
   return 0;
 }
 
-
-
 int
 ip6_hop_by_hop_ioam_trace_rewrite_handler (u8 * rewrite_string,
 					   u8 * rewrite_size)

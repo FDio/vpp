@@ -110,7 +110,7 @@ ioam_e2e_flow_handler (u32 ctx, u8 add)
     {
       pool_get(ioam_e2e_main.e2e_data, data);
       data->flow_ctx =  ctx;
-      ioam_seqno_init_bitmap(&data->seqno_data);
+      ioam_seqno_init_data(&data->seqno_data);
       return ((u32) (data - ioam_e2e_main.e2e_data));
     }
 
