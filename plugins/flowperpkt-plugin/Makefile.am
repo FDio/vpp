@@ -28,14 +28,25 @@ flowperpkt_plugin_la_SOURCES = flowperpkt/flowperpkt.c  \
 	flowperpkt/flowperpkt_plugin.api.h
 flowperpkt_plugin_la_LDFLAGS = -module
 
-BUILT_SOURCES = flowperpkt/flowperpkt.api.h
+BUILT_SOURCES =					\
+	flowperpkt/flowperpkt.api.h		\
+	flowperpkt/flowperpkt.api.json
 
-SUFFIXES = .api.h .api
+SUFFIXES = .api.h .api .api.json
 
 %.api.h: %.api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
+
+%.api.json: %.api
+	@echo "  JSON APIGEN  " $@ ;				\
+	mkdir -p `dirname $@` ;					\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --json $@
+
+apidir = $(prefix)/flowperpkt/
+api_DATA = flowperpkt/flowperpkt.api.json
 
 noinst_HEADERS =			\
   flowperpkt/flowperpkt_all_api_h.h			\

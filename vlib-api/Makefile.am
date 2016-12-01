@@ -67,9 +67,12 @@ nobase_include_HEADERS +=			\
 	vlibsocket/vl_socket_msg_enum.h		\
 	vlibsocket/sockclnt.api.h
 
-BUILT_SOURCES = vlibsocket/sockclnt.api.h vlibmemory/memclnt.api.h 
+BUILT_SOURCES =					\
+	vlibsocket/sockclnt.api.h		\
+	vlibmemory/memclnt.api.h		\
+	vlibmemory/memclnt.api.json
 
-SUFFIXES = .api.h .api
+SUFFIXES = .api.h .api .api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
@@ -78,4 +81,4 @@ include $(top_srcdir)/suffix-rules.mk
 
 # install the API definition, so we can produce java bindings, etc.
 apidir = $(prefix)/vlibmemory
-api_DATA = vlibmemory/memclnt.api
+api_DATA = vlibmemory/memclnt.api.json
