@@ -57,9 +57,9 @@ static char *span_error_strings[] = {
 #undef _
 };
 
-static uword
-span_node_fn (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline uword
+span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame, int is_input)
 {
   span_main_t *sm = &span_main;
   vnet_main_t *vnm = &vnet_main;
@@ -68,6 +68,7 @@ span_node_fn (vlib_main_t * vm,
   u32 next_index, mirror_sw_if_index0, mirror_sw_if_index1;
   u32 last_mirror_sw_if_index = ~0;
   vlib_frame_t *mirror_frame = 0;
+  vlib_rx_or_tx_t rxtx = is_input ? VLIB_RX : VLIB_TX;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -100,10 +101,10 @@ span_node_fn (vlib_main_t * vm,
 	  n_left_from -= 2;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[rxtx];
 	  mirror_sw_if_index0 = sm->dst_by_src_sw_if_index[sw_if_index0];
 	  b1 = vlib_get_buffer (vm, bi1);
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[rxtx];
 	  mirror_sw_if_index1 = sm->dst_by_src_sw_if_index[sw_if_index1];
 
 	  /* get frame to mirror interface */
@@ -183,7 +184,7 @@ span_node_fn (vlib_main_t * vm,
 	  n_left_from -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[rxtx];
 	  mirror_sw_if_index0 = sm->dst_by_src_sw_if_index[sw_if_index0];
 
 	  /* get frame to mirror interface */
@@ -229,10 +230,43 @@ span_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+span_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		    vlib_frame_t * frame)
+{
+  return span_node_inline_fn (vm, node, frame, 1);
+}
+
+static uword
+span_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame)
+{
+  return span_node_inline_fn (vm, node, frame, 0);
+}
+
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (span_node) = {
-  .function = span_node_fn,
+VLIB_REGISTER_NODE (span_input_node) = {
+  .function = span_input_node_fn,
   .name = "span-input",
+  .vector_size = sizeof (u32),
+  .format_trace = format_span_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(span_error_strings),
+  .error_strings = span_error_strings,
+
+  .n_next_nodes = 0,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (span_output_node) = {
+  .function = span_output_node_fn,
+  .name = "span-output",
   .vector_size = sizeof (u32),
   .format_trace = format_span_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
