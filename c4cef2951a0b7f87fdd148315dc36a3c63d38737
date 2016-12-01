@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_aabc766d",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 10102,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2016-12-01T02:15:43Z",
+      "side": 1,
+      "message": "Have added range check for next_index in function vnet_vxlan_add_del_tunnel().",
+      "parentUuid": "5a2585a7_af724847",
+      "range": {
+        "startLine": 10102,
+        "startChar": 14,
+        "endLine": 10102,
+        "endChar": 35
+      },
+      "revId": "c4cef2951a0b7f87fdd148315dc36a3c63d38737",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_b95e1a11",
         "filename": "vpp-api-test/vat/api_format.c",
         "patchSetId": 7
