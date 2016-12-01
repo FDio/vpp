@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_850acdd0",
+        "filename": "vpp-api-test/scripts/vppctl",
+        "patchSetId": 4
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 671
+      },
+      "writtenOn": "2016-12-01T07:05:35Z",
+      "side": 1,
+      "message": "File \"/usr/bin/vppctl\", line 111\n    prompt.cmdloop()\n         ^\nIndentationError: expected an indented block\n\nAdd indentation will solve this.",
+      "range": {
+        "startLine": 111,
+        "startChar": 24,
+        "endLine": 111,
+        "endChar": 30
+      },
+      "revId": "1f417aac76d44c8ac03879cbc048129eeb1e0cab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
