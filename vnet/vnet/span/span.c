@@ -37,6 +37,8 @@ span_add_delete_entry (vlib_main_t * vm,
   sm->dst_by_src_sw_if_index[sw->sw_if_index] = is_add ? dst_sw_if_index : 0;
   vnet_feature_enable_disable ("device-input", "span-input",
 			       sw->sw_if_index, is_add, 0, 0);
+  vnet_feature_enable_disable ("interface-output", "span-output",
+			       sw->sw_if_index, is_add, 0, 0);
   return 0;
 }
 
