@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -13,18 +13,25 @@
  * limitations under the License.
  */
 
-#ifndef __included_ip6_ioam_seqno_h__
-#define __included_ip6_ioam_seqno_h__
+#ifndef PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_E2E_UTIL_H_
+#define PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_E2E_UTIL_H_
 
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <ioam/lib-e2e/e2e_util.h>
+#include <ioam/lib-e2e/ioam_seqno_lib.h>
 
-int ioam_seqno_encap_handler(vlib_buffer_t *b, ip6_header_t *ip,
-                             ip6_hop_by_hop_option_t *opt);
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct {
+  u8 e2e_type;
+  u8 reserved;
+  u32 e2e_data;
+}) ioam_e2e_packet_t;
+/* *INDENT-ON* */
 
-int
-ioam_seqno_decap_handler(vlib_buffer_t *b, ip6_header_t *ip,
-                         ip6_hop_by_hop_option_t *opt);
+#endif /* PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_E2E_UTIL_H_ */
 
-#endif
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
