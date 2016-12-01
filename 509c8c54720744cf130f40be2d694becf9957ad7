@@ -16,6 +16,24 @@
       "revId": "509c8c54720744cf130f40be2d694becf9957ad7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_80799b95",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-12-01T17:55:43Z",
+      "side": 1,
+      "message": "Good point. It should never happen unless there is some kind of memory corruption. The question is then - do we return an error or still try to delete the tunnel even under corrupted state? If we proceed to delete the tunnel and check pvtep against null before de-refencing it later in the code without returning any error, would that be a preferred approach?",
+      "parentUuid": "5a2585a7_2041c739",
+      "revId": "509c8c54720744cf130f40be2d694becf9957ad7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
