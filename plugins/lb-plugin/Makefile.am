@@ -24,12 +24,25 @@ vppplugins_LTLIBRARIES = lb_plugin.la
 
 lb_plugin_la_SOURCES = lb/lb.c lb/node.c lb/cli.c lb/util.c lb/refcount.c lb/api.c
 
-SUFFIXES = .api.h .api
+BUILT_SOURCES =					\
+	lb/lb.api.h		\
+	lb/lb.api.json
+
+SUFFIXES = .api.h .api .api.json
 
 %.api.h: %.api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
+
+%.api.json: %.api
+	@echo "  JSON APIGEN  " $@ ;				\
+	mkdir -p `dirname $@` ;					\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --json $@
+
+apidir = $(prefix)/lb/
+api_DATA = lb/lb.api.json
 
 noinst_HEADERS = lb/lb.h lb/util.h lb/refcount.h  lb/lbhash.h lb/lb.api.h
 

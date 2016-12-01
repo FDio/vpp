@@ -25,7 +25,7 @@ vppplugins_LTLIBRARIES = sample_plugin.la
 sample_plugin_la_SOURCES = sample/sample.c sample/node.c \
 	sample/sample_plugin.api.h
 
-BUILT_SOURCES = sample/sample.api.h
+BUILT_SOURCES = sample/sample.api.h sample/sample.api.json
 
 SUFFIXES = .api.h .api
 
@@ -33,6 +33,15 @@ SUFFIXES = .api.h .api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
+
+%.api.json: %.api
+	@echo "  JSON APIGEN  " $@ ;				\
+	mkdir -p `dirname $@` ;					\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --json $@
+
+apidir = $(prefix)/sample/
+api_DATA = sample.api.json
 
 noinst_HEADERS =				\
   sample/sample_all_api_h.h			\

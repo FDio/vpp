@@ -98,7 +98,12 @@ mkdir -p -m755 %{buildroot}%{_bindir}
 mkdir -p -m755 %{buildroot}%{_unitdir}
 install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
 install -p -m 755 %{_mu_build_dir}/%{_vpp_build_dir}/vppapigen/vppapigen %{buildroot}%{_bindir}
-install -p -m 755 %{_mu_build_dir}/../vppapigen/pyvppapigen.py %{buildroot}%{_bindir}
+
+# core api
+mkdir -p -m755 %{buildroot}/usr/share/vpp/api
+install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/vpp-api/vpe.api.json %{buildroot}/usr/share/vpp/api
+install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vlib-api/vlibmemory/memclnt.api.json %{buildroot}/usr/share/vpp/api
+
 #
 # configs
 #
@@ -122,6 +127,10 @@ do
           ln -fs $file $(echo $file | sed -e 's/\(\.so\.[0-9]\+\).*/\1/') )
 	( cd %{buildroot}%{_libdir} && 
           ln -fs $file $(echo $file | sed -e 's/\(\.so\)\.[0-9]\+.*/\1/') )
+done
+for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vnet -type f -name '*.api.json' -print )
+do
+	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
 done
 
 # Python bindings
@@ -178,6 +187,11 @@ do
            %{buildroot}/usr/lib/vpp_api_test_plugins/$file
 done
 
+for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/plugins -type f -name '*.api.json' -print )
+do
+	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
+done
+
 %post
 sysctl --system
 %systemd_post vpp.service
@@ -214,12 +228,14 @@ fi
 /usr/bin/elftool
 %config /etc/sysctl.d/80-vpp.conf
 %config /etc/vpp/startup.conf
+/usr/share/vpp/api/*
 
 %files lib
 %defattr(-,bin,bin)
 %exclude %{_libdir}/vpp_plugins
 %exclude %{_libdir}/vpp_api_test_plugins
 %{_libdir}/*
+/usr/share/vpp/api/*
 
 %files python-api
 %defattr(644,root,root)
@@ -229,7 +245,6 @@ fi
 %defattr(-,bin,bin)
 /usr/bin/vppapigen
 /usr/bin/jvpp_gen.py
-/usr/bin/pyvppapigen.py
 %{_includedir}/*
 %{python2_sitelib}/jvppgen/*
 /usr/share/doc/vpp/examples/sample-plugin
@@ -238,3 +253,4 @@ fi
 %defattr(-,bin,bin)
 /usr/lib/vpp_plugins/*
 /usr/lib/vpp_api_test_plugins/*
+/usr/share/vpp/api/*
