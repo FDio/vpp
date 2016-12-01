@@ -34,6 +34,24 @@
       "revId": "509c8c54720744cf130f40be2d694becf9957ad7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_204b072d",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-01T18:32:36Z",
+      "side": 1,
+      "message": "in the case of memory corruption we are going to crash sooner or later, and sooner is better.\nbut i wasn\u0027t thinking memory corruption for this, more algorithmic error. cases (now or in the future) where a tunnel would not be in the vtep DB, perhaps say the mcast dst tunnel. Then we have 2 classes of tunnel, those that do and those that don\u0027t go in the vtep DB - and associated logic to tell them apart. That logic then must be identical on add and delete - and more importantly act on the same data - but does it act on data that is constant for the lifetime of the tunnel, etc. plus the entry is reference counted and that is always a mine field.\nPerhaps a flag on the tunnel object to say is vtep DB added - then remove if it is. \n\nit\u0027s getting dark in this rat hole now, so I\u0027m going to crawl out and leave it :)\n\nstill +1 from me. your choice to change it.",
+      "parentUuid": "5a2585a7_80799b95",
+      "revId": "509c8c54720744cf130f40be2d694becf9957ad7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
