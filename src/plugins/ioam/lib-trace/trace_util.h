@@ -89,7 +89,14 @@ int trace_profile_create (trace_profile * profile, u8 trace_type, u8 num_elts,
 
 void clear_trace_profiles (void);
 
-
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct
+{
+  u8 ioam_trace_type;
+  u8 data_list_elts_left;
+  u32 elts[0];	/* Variable type. So keep it generic */
+}) ioam_trace_hdr_t;
+/* *INDENT-ON* */
 
 #define    BIT_TTL_NODEID       (1<<0)
 #define    BIT_ING_INTERFACE    (1<<1)

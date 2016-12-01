@@ -45,16 +45,6 @@ typedef struct
 #define HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT 60	/* Third highest bit set (change en-route) */
 #define HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE 29
 
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  u8 e2e_type;
-  u8 reserved;
-  u32 e2e_data;
-}) ioam_e2e_option_t;
-/* *INDENT-ON* */
-
 #endif /* __included_ip6_hop_by_hop_packet_h__ */
 
 /*
