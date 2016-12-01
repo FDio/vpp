@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_caeea2b4",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1198,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "Hmmm. Doesn\u0027t inspire confidence.",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_aa2b56ea",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1357,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "CLIB_CACHE_LINE_BYTES, please",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6a356e45",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1446,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "vm-\u003ecpu_index instead of os_get_cpu_number()?",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4a3ab237",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1479,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "256 forever and ever, or should this be a #define?",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_8a177aa3",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1543,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "The compiler will probably help you [and anyone reading the code will be happier!] if you add a variable n_rx_buffers_left or some such, and avoid (especially) cpu-\u003erx_buffers[--_vec_len(cpu-\u003erx_buffers)];\n\nOr, let p \u003d cpu-\u003erx_buffers + _vec_len(cpu-\u003erx_buffers) - 1, use it, and decrement it.",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2a264617",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1552,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "You know this is correct, and I know this is correct but for God\u0027s sake take it easy on someone trying to understand the code.\n\nIt reminds me of a joke: what do you get if you ask a pig to mate with \u003cxxx\u003e? Nothing, there are some things that even a pig won\u0027t do.\n\nJust don\u0027t go there...",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_0a238a06",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1561,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "See above",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ea1f1eb6",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1635,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "Uuuuh, the comment doesn\u0027t inspire confidence...",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ca1c62c4",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1906,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "vm-\u003ecpu_index?",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2af8867b",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-01T00:03:23Z",
+      "side": 1,
+      "message": "I think doxygen expects /*\u003c The interface ... */ to document the qid member, etc.",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
