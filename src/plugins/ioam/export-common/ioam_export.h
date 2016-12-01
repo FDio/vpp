@@ -20,6 +20,7 @@
 #include <vnet/ip/ip_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/udp.h>
 #include <vnet/flow/ipfix_packet.h>
 
@@ -43,6 +44,7 @@ typedef struct
 {
   /* API message ID base */
   u16 msg_id_base;
+  u16 set_id;
 
   /* TODO: to support multiple collectors all this has to be grouped and create a vector here */
   u8 *record_header;
@@ -67,14 +69,15 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-  u32 ip4_lookup_node_index;
+  ethernet_main_t *ethernet_main;
+  u32 next_node_index;
 
   uword my_hbh_slot;
   u32 export_process_node_index;
 } ioam_export_main_t;
 
-ioam_export_main_t ioam_export_main;
-ioam_export_main_t vxlan_gpe_ioam_export_main;
+extern ioam_export_main_t ioam_export_main;
+extern ioam_export_main_t vxlan_gpe_ioam_export_main;
 
 extern vlib_node_registration_t export_node;
 extern vlib_node_registration_t vxlan_export_node;
@@ -85,6 +88,24 @@ extern vlib_node_registration_t vxlan_export_node;
  * ~(MTU (1500) - [ip hdr(40) + UDP(8) + ipfix (24)]) / DEFAULT_EXPORT_SIZE
  */
 #define DEFAULT_EXPORT_RECORDS 7
+
+inline static void
+ioam_export_set_next_node (ioam_export_main_t * em, u8 * next_node_name)
+{
+  vlib_node_t *next_node;
+
+  next_node = vlib_get_node_by_name (em->vlib_main, next_node_name);
+  em->next_node_index = next_node->index;
+}
+
+inline static void
+ioam_export_reset_next_node (ioam_export_main_t * em)
+{
+  vlib_node_t *next_node;
+
+  next_node = vlib_get_node_by_name (em->vlib_main, (u8 *) "ip4-lookup");
+  em->next_node_index = next_node->index;
+}
 
 always_inline ioam_export_buffer_t *
 ioam_export_get_my_buffer (ioam_export_main_t * em, u32 thread_id)
@@ -154,15 +175,13 @@ ioam_export_thread_buffer_init (ioam_export_main_t * em, vlib_main_t * vm)
   int no_of_threads = vec_len (vlib_worker_threads);
   int i;
   ioam_export_buffer_t *eb = 0;
-  vlib_node_t *ip4_lookup_node;
 
   pool_alloc_aligned (em->buffer_pool,
 		      no_of_threads - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (em->buffer_per_thread,
 			no_of_threads - 1, CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned (em->lockp, no_of_threads - 1, CLIB_CACHE_LINE_BYTES);
-  ip4_lookup_node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
-  em->ip4_lookup_node_index = ip4_lookup_node->index;
+
   if (!em->buffer_per_thread || !em->buffer_pool || !em->lockp)
     {
       return (-1);
@@ -186,6 +205,7 @@ ioam_export_thread_buffer_init (ioam_export_main_t * em, vlib_main_t * vm)
 }
 
 #define IPFIX_IOAM_EXPORT_ID 272
+#define IPFIX_VXLAN_IOAM_EXPORT_ID 273
 
 /* Used to build the rewrite */
 /* data set packet */
@@ -241,8 +261,8 @@ ioam_export_header_create (ioam_export_main_t * em,
   ip->protocol = IP_PROTOCOL_UDP;
   ip->src_address.as_u32 = src_address->as_u32;
   ip->dst_address.as_u32 = collector_address->as_u32;
-  udp->src_port = clib_host_to_net_u16 (4939 /* $$FIXME */ );
-  udp->dst_port = clib_host_to_net_u16 (4939);
+  udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
+  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
   /* FIXUP: UDP length */
   udp->length = clib_host_to_net_u16 (vec_len (rewrite) +
 				      (DEFAULT_EXPORT_RECORDS *
@@ -253,7 +273,7 @@ ioam_export_header_create (ioam_export_main_t * em,
   h->domain_id = clib_host_to_net_u32 (em->domain_id);
 
   /*FIXUP: Setid length in octets if records exported are not default */
-  s->set_id_length = ipfix_set_id_length (IPFIX_IOAM_EXPORT_ID,
+  s->set_id_length = ipfix_set_id_length (em->set_id,
 					  (sizeof (*s) +
 					   (DEFAULT_EXPORT_RECORDS *
 					    DEFAULT_EXPORT_SIZE)));
@@ -309,11 +329,10 @@ ioam_export_send_buffer (ioam_export_main_t * em, vlib_main_t * vm,
   /* FIXUP: lengths if different from default */
   if (PREDICT_FALSE (eb->records_in_this_buffer != DEFAULT_EXPORT_RECORDS))
     {
-      s->set_id_length =
-	ipfix_set_id_length (IPFIX_IOAM_EXPORT_ID /* set_id */ ,
-			     b0->current_length - (sizeof (*ip) +
-						   sizeof (*udp) +
-						   sizeof (*h)));
+      s->set_id_length = ipfix_set_id_length (em->set_id /* set_id */ ,
+					      b0->current_length -
+					      (sizeof (*ip) + sizeof (*udp) +
+					       sizeof (*h)));
       h->version_length =
 	version_length (b0->current_length - (sizeof (*ip) + sizeof (*udp)));
       sum0 = ip->checksum;
@@ -328,12 +347,12 @@ ioam_export_send_buffer (ioam_export_main_t * em, vlib_main_t * vm,
 
   /* Enqueue pkts to ip4-lookup */
 
-  nf = vlib_get_frame_to_node (vm, em->ip4_lookup_node_index);
+  nf = vlib_get_frame_to_node (vm, em->next_node_index);
   nf->n_vectors = 0;
   to_next = vlib_frame_vector_args (nf);
   nf->n_vectors = 1;
   to_next[0] = eb->buffer_index;
-  vlib_put_frame_to_node (vm, em->ip4_lookup_node_index, nf);
+  vlib_put_frame_to_node (vm, em->next_node_index, nf);
   return (1);
 
 }
@@ -452,7 +471,7 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
   return 0;			/* not so much */
 }
 
-#define ioam_export_node_common(EM, VM, N, F, HTYPE, L, V, NEXT)               \
+#define ioam_export_node_common(EM, VM, N, F, HTYPE, L, V, NEXT, FIXUP_FUNC)   \
 do {                                                                           \
   u32 n_left_from, *from, *to_next;                                            \
   export_next_t next_index;                                                    \
@@ -510,6 +529,7 @@ do {                                                                           \
 	  ip_len1 =                                                            \
 	    ip_len1 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len1;     \
 	  copy3cachelines (eb0->data + eb0->current_length, ip0, ip_len0);     \
+	  FIXUP_FUNC(eb0, p0);                                                 \
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;                          \
 	  my_buf->records_in_this_buffer++;                                    \
 	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)        \
@@ -522,6 +542,7 @@ do {                                                                           \
 	  if (PREDICT_FALSE (eb0 == 0))                                        \
 	    goto NO_BUFFER1;                                                   \
 	  copy3cachelines (eb0->data + eb0->current_length, ip1, ip_len1);     \
+	  FIXUP_FUNC(eb0, p1);                                                 \
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;                          \
 	  my_buf->records_in_this_buffer++;                                    \
 	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)        \
@@ -578,6 +599,7 @@ do {                                                                           \
 	  ip_len0 =                                                            \
 	    ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len0;     \
 	  copy3cachelines (eb0->data + eb0->current_length, ip0, ip_len0);     \
+	  FIXUP_FUNC(eb0, p0);                                                 \
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;                          \
 	  my_buf->records_in_this_buffer++;                                    \
 	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)        \

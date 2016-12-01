@@ -83,6 +83,8 @@ do {                                                            \
 #define foreach_vxlan_gpe_ioam_export_plugin_api_msg                        \
 _(VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE, vxlan_gpe_ioam_export_enable_disable)
 
+ioam_export_main_t vxlan_gpe_ioam_export_main;
+
 extern void vxlan_gpe_set_next_override (uword next);
 /* Action function shared between message handler and debug CLI */
 int
@@ -242,6 +244,8 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
   clib_error_t *error = 0;
   u8 *name;
 
+  em->set_id = IPFIX_VXLAN_IOAM_EXPORT_ID;
+
   name = format (0, "vxlan_gpe_ioam_export_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */
@@ -254,6 +258,7 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
   em->my_hbh_slot = ~0;
   em->vlib_main = vm;
   em->vnet_main = vnet_get_main ();
+  ioam_export_reset_next_node (em);
   vec_free (name);
 
   return error;

@@ -13,8 +13,40 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include "ip6_ioam_seqno.h"
+#ifndef PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_
+#define PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_
+
+#include <vppinfra/types.h>
+
+#define SEQ_CHECK_VALUE 0x80000000 /* for seq number wraparound detection */
+
+#define SEQNO_WINDOW_SIZE 2048
+#define SEQNO_WINDOW_ARRAY_SIZE 64
+
+typedef struct seqno_bitmap_ {
+  u32 window_size;
+  u32 array_size;
+  u32 mask;
+  u32 pad;
+  u64 highest;
+  u64 array[SEQNO_WINDOW_ARRAY_SIZE];    /* Will be alloc to array_size */
+} seqno_bitmap;
+
+typedef struct seqno_rx_info_ {
+  u64 rx_packets;
+  u64 lost_packets;
+  u64 reordered_packets;
+  u64 dup_packets;
+  seqno_bitmap bitmap;
+} seqno_rx_info;
+
+/* This structure is 64-byte aligned */
+typedef struct ioam_seqno_data_ {
+  union {
+    u32 seq_num; /* Useful only for encap node */
+    seqno_rx_info seqno_rx;
+  };
+} ioam_seqno_data;
 
 static inline void BIT_SET (u64 *p, u32 n)
 {
@@ -73,7 +105,8 @@ static inline u8 seqno_check_wraparound(u32 a, u32 b)
  *     - Updates the bitmap with received sequence number
  *     - counts the received/lost/duplicate/reordered packets
  */
-void ioam_analyze_seqno (seqno_rx_info *seqno_rx, u64 seqno)
+inline static void
+ioam_analyze_seqno (seqno_rx_info *seqno_rx, u64 seqno)
 {
   int diff;
   static int peer_dead_count;
@@ -139,3 +172,15 @@ void ioam_analyze_seqno (seqno_rx_info *seqno_rx, u64 seqno)
   BIT_SET(bitmap->array, seqno & bitmap->mask);
   return;
 }
+
+u8 *
+show_ioam_seqno_analyse_data_fn(u8 *s, seqno_rx_info *rx);
+
+u8 *
+show_ioam_seqno_cmd_fn(u8 *s, ioam_seqno_data *seqno_data, u8 enc);
+
+void ioam_seqno_init_data(ioam_seqno_data *data);
+
+void ioam_seqno_init_rx_info(seqno_rx_info *data);
+
+#endif /* PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_ */
