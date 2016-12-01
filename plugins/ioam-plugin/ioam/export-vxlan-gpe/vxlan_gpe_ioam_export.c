@@ -83,6 +83,8 @@ do {                                                            \
 #define foreach_vxlan_gpe_ioam_export_plugin_api_msg                        \
 _(VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE, vxlan_gpe_ioam_export_enable_disable)
 
+ioam_export_main_t vxlan_gpe_ioam_export_main;
+
 /*
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.
@@ -244,6 +246,9 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
   u8 *name;
   u32 node_index = export_node.index;
   vlib_node_t *vxlan_gpe_decap_ioam_node = NULL;
+
+  em->set_id = IPFIX_VXLAN_IOAM_EXPORT_ID;
+  ioam_export_reset_next_node (em);
 
   name = format (0, "vxlan_gpe_ioam_export_%08x%c", api_version, 0);
 
