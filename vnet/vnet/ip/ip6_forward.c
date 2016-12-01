@@ -49,6 +49,9 @@
 
 #include <vppinfra/bihash_template.c>
 
+/* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
+#define OI_DECAP   0x80000000
+
 /**
  * @file
  * @brief IPv6 Forwarding.
