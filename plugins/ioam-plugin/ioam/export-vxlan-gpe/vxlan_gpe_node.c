@@ -17,9 +17,9 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
-#include <ioam/export-common/ioam_export.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
+#include <ioam/export-common/ioam_export.h>
 
 typedef struct
 {
@@ -121,6 +121,12 @@ copy3cachelines (void *dst, const void *src, size_t n)
 #endif
 }
 
+static void
+vxlan_gpe_export_fixup_func (vlib_buffer_t * export_buf,
+			     vlib_buffer_t * pak_buf)
+{
+  /* Todo: on implementing VXLAN GPE analyse */
+}
 
 static uword
 vxlan_gpe_export_node_fn (vlib_main_t * vm,
@@ -129,7 +135,8 @@ vxlan_gpe_export_node_fn (vlib_main_t * vm,
   ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
   ioam_export_node_common (em, vm, node, frame, ip4_header_t, length,
 			   ip_version_and_header_length,
-			   EXPORT_NEXT_VXLAN_GPE_INPUT);
+			   EXPORT_NEXT_VXLAN_GPE_INPUT,
+			   vxlan_gpe_export_fixup_func);
   return frame->n_vectors;
 }
 
