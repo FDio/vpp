@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_c5ffb5a9",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1335,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-12-01T08:12:36Z",
+      "side": 0,
+      "message": "Interesting point. I replied to Dave\u0027s comment.",
+      "parentUuid": "5a2585a7_6afe8e6d",
+      "range": {
+        "startLine": 1335,
+        "startChar": 2,
+        "endLine": 1335,
+        "endChar": 15
+      },
+      "revId": "a5c89189cad3b68384c0f3ef43c35b5e3b2b8720",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_4a03d273",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2016-12-01T00:03:57Z",
       "side": 0,
       "message": "We typically use C style comments, why you are changing it?",
+      "range": {
+        "startLine": 1341,
+        "startChar": 2,
+        "endLine": 1341,
+        "endChar": 5
+      },
+      "revId": "a5c89189cad3b68384c0f3ef43c35b5e3b2b8720",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_05f6ddd7",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1341,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-12-01T08:12:36Z",
+      "side": 0,
+      "message": "I didn\u0027t know // was not a C-style comment.",
+      "parentUuid": "5a2585a7_4a03d273",
       "range": {
         "startLine": 1341,
         "startChar": 2,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_2520b948",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1383,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-12-01T08:12:36Z",
+      "side": 0,
+      "message": "See response to Dave.",
+      "parentUuid": "5a2585a7_0af5ca82",
+      "range": {
+        "startLine": 1383,
+        "startChar": 2,
+        "endLine": 1383,
+        "endChar": 35
+      },
+      "revId": "a5c89189cad3b68384c0f3ef43c35b5e3b2b8720",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_ca4582b4",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -82,6 +154,30 @@
       "writtenOn": "2016-12-01T00:03:57Z",
       "side": 0,
       "message": "What is the benefit of doing this change?",
+      "range": {
+        "startLine": 2014,
+        "startChar": 32,
+        "endLine": 2014,
+        "endChar": 42
+      },
+      "revId": "a5c89189cad3b68384c0f3ef43c35b5e3b2b8720",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a5ba69df",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2014,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2016-12-01T08:12:36Z",
+      "side": 0,
+      "message": "There is no n_packets variable anymore.",
+      "parentUuid": "5a2585a7_ca4582b4",
       "range": {
         "startLine": 2014,
         "startChar": 32,
