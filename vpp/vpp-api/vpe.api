@@ -4881,14 +4881,14 @@ define flow_classify_details {
     @param context - sender context which was passed in the request
     @param sw_if_index_from - interface to be mirorred
     @param sw_if_index_to - interface where the traffic is mirrored
-    @param enable - 1 enable SPAN, 0 SPAN on given interface
+    @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
 */
 define sw_interface_span_enable_disable{
     u32 client_index;
     u32 context;
     u32 sw_if_index_from;
     u32 sw_if_index_to;
-    u8  enable;
+    u8  state;
 };
 
 /** \brief Reply to SPAN enable/disable request
@@ -4912,11 +4912,13 @@ define sw_interface_span_dump {
     @param context - sender context which was passed in the request
     @param sw_if_index_from - mirorred interface
     @param sw_if_index_to - interface where the traffic is mirrored
+    @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
 */
 define sw_interface_span_details {
     u32 context;
     u32 sw_if_index_from;
     u32 sw_if_index_to;
+    u8 state;
 };
 
 /** \brief Query relative index via node names

@@ -21,8 +21,14 @@
 
 typedef struct
 {
-  /* destination interface index by source interface index */
-  u32 *dst_by_src_sw_if_index;
+  u32 mirror_sw_if_index;
+  u8 state;
+} span_intance_t;
+
+typedef struct
+{
+  /* per-interface vector of span instances */
+  span_interface_t **interfaces;
 
   /* convenience */
   vlib_main_t *vlib_main;
