@@ -27,7 +27,7 @@
 #include <vppinfra/elog.h>
 #include <vnet/plugin/plugin.h>
 
-#include <ioam/lib-trace/trace_util.h>
+#include <ioam/encap/ip6_ioam_trace.h>
 
 /* Timestamp precision multipliers for seconds, milliseconds, microseconds
  * and nanoseconds respectively.
@@ -39,15 +39,6 @@ typedef union
   u64 as_u64;
   u32 as_u32[2];
 } time_u64_t;
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  u8 ioam_trace_type;
-  u8 data_list_elts_left;
-  u32 elts[0]; /* Variable type. So keep it generic */
-}) ioam_trace_option_t;
-/* *INDENT-ON* */
 
 
 extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
@@ -201,8 +192,9 @@ ip6_hop_by_hop_ioam_trace_rewrite_handler (u8 * rewrite_string,
     HBH_OPTION_TYPE_DATA_CHANGE_ENROUTE;
   trace_option->hdr.length = 2 /*ioam_trace_type,data_list_elts_left */  +
     trace_option_elts * trace_data_size;
-  trace_option->ioam_trace_type = profile->trace_type & TRACE_TYPE_MASK;
-  trace_option->data_list_elts_left = trace_option_elts;
+  trace_option->trace_hdr.ioam_trace_type =
+    profile->trace_type & TRACE_TYPE_MASK;
+  trace_option->trace_hdr.data_list_elts_left = trace_option_elts;
   *rewrite_size =
     sizeof (ioam_trace_option_t) + (trace_option_elts * trace_data_size);
 
@@ -238,24 +230,24 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
 
   time_u64.as_u64 = 0;
 
-  if (PREDICT_TRUE (trace->data_list_elts_left))
+  if (PREDICT_TRUE (trace->trace_hdr.data_list_elts_left))
     {
-      trace->data_list_elts_left--;
+      trace->trace_hdr.data_list_elts_left--;
       /* fetch_trace_data_size returns in bytes. Convert it to 4-bytes
        * to skip to this node's location.
        */
       elt_index =
-	trace->data_list_elts_left *
-	fetch_trace_data_size (trace->ioam_trace_type) / 4;
-      elt = &trace->elts[elt_index];
-      if (trace->ioam_trace_type & BIT_TTL_NODEID)
+	trace->trace_hdr.data_list_elts_left *
+	fetch_trace_data_size (trace->trace_hdr.ioam_trace_type) / 4;
+      elt = &trace->trace_hdr.elts[elt_index];
+      if (trace->trace_hdr.ioam_trace_type & BIT_TTL_NODEID)
 	{
 	  *elt =
 	    clib_host_to_net_u32 ((ip->hop_limit << 24) | profile->node_id);
 	  elt++;
 	}
 
-      if (trace->ioam_trace_type & BIT_ING_INTERFACE)
+      if (trace->trace_hdr.ioam_trace_type & BIT_ING_INTERFACE)
 	{
 	  *elt =
 	    (vnet_buffer (b)->sw_if_index[VLIB_RX] & 0xFFFF) << 16 |
@@ -264,7 +256,7 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
 	  elt++;
 	}
 
-      if (trace->ioam_trace_type & BIT_TIMESTAMP)
+      if (trace->trace_hdr.ioam_trace_type & BIT_TIMESTAMP)
 	{
 	  /* Send least significant 32 bits */
 	  f64 time_f64 =
@@ -276,7 +268,7 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
 	  elt++;
 	}
 
-      if (trace->ioam_trace_type & BIT_APPDATA)
+      if (trace->trace_hdr.ioam_trace_type & BIT_APPDATA)
 	{
 	  /* $$$ set elt0->app_data */
 	  *elt = clib_host_to_net_u32 (profile->app_data);
@@ -302,17 +294,19 @@ ip6_hbh_ioam_trace_data_list_trace_handler (u8 * s,
 
   trace = (ioam_trace_option_t *) opt;
   s =
-    format (s, "  Trace Type 0x%x , %d elts left\n", trace->ioam_trace_type,
-	    trace->data_list_elts_left);
+    format (s, "  Trace Type 0x%x , %d elts left\n",
+	    trace->trace_hdr.ioam_trace_type,
+	    trace->trace_hdr.data_list_elts_left);
   trace_data_size_in_words =
-    fetch_trace_data_size (trace->ioam_trace_type) / 4;
-  elt = &trace->elts[0];
-  while ((u8 *) elt < ((u8 *) (&trace->elts[0]) + trace->hdr.length - 2
-		       /* -2 accounts for ioam_trace_type,elts_left */ ))
+    fetch_trace_data_size (trace->trace_hdr.ioam_trace_type) / 4;
+  elt = &trace->trace_hdr.elts[0];
+  while ((u8 *) elt <
+	 ((u8 *) (&trace->trace_hdr.elts[0]) + trace->hdr.length - 2
+	  /* -2 accounts for ioam_trace_type,elts_left */ ))
     {
       s = format (s, "    [%d] %U\n", elt_index,
 		  format_ioam_data_list_element,
-		  elt, &trace->ioam_trace_type);
+		  elt, &trace->trace_hdr.ioam_trace_type);
       elt_index++;
       elt += trace_data_size_in_words;
     }

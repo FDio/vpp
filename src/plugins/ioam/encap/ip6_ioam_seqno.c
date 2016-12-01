@@ -28,20 +28,6 @@
 #include "ip6_ioam_seqno.h"
 #include "ip6_ioam_e2e.h"
 
-ioam_seqno_data_main_t ioam_seqno_main;
-
-void ioam_seqno_init_bitmap (ioam_seqno_data *data)
-{
-  seqno_bitmap *bitmap = &data->seqno_rx.bitmap;
-  bitmap->window_size = SEQNO_WINDOW_SIZE;
-  bitmap->array_size = SEQNO_WINDOW_ARRAY_SIZE;
-  bitmap->mask = 32 * SEQNO_WINDOW_ARRAY_SIZE - 1;
-  bitmap->array[0] = 0x00000000;/* pretend we haven seen sequence numbers 0*/
-  bitmap->highest = 0;
-
-  data->seq_num = 0;
-  return ;
-}
 
 /*
  * This Routine gets called from IPv6 hop-by-hop option handling.
@@ -60,7 +46,7 @@ ioam_seqno_encap_handler (vlib_buffer_t *b, ip6_header_t *ip,
 
   data = ioam_e2ec_get_seqno_data_from_flow_ctx(opaque_index);
   e2e = (ioam_e2e_option_t *) opt;
-  e2e->e2e_data = clib_host_to_net_u32(++data->seq_num);
+  e2e->e2e_hdr.e2e_data = clib_host_to_net_u32(++data->seq_num);
 
   return (rv);
 }
@@ -79,31 +65,8 @@ ioam_seqno_decap_handler (vlib_buffer_t *b, ip6_header_t *ip,
 
   data = ioam_e2ec_get_seqno_data_from_flow_ctx(opaque_index);
   e2e = (ioam_e2e_option_t *) opt;
-  ioam_analyze_seqno(&data->seqno_rx, (u64) clib_net_to_host_u32(e2e->e2e_data));
+  ioam_analyze_seqno(&data->seqno_rx,
+                     (u64) clib_net_to_host_u32(e2e->e2e_hdr.e2e_data));
 
   return (rv);
-}
-
-u8 *
-show_ioam_seqno_cmd_fn (u8 *s, ioam_seqno_data *seqno_data, u8 enc)
-{
-  seqno_rx_info *rx;
-
-  s = format(s, "SeqNo Data:\n");
-  if (enc)
-    {
-      s = format(s, "  Current Seq. Number : %llu\n", seqno_data->seq_num);
-    }
-  else
-    {
-      rx = &seqno_data->seqno_rx;
-      s = format(s, "  Highest Seq. Number : %llu\n", rx->bitmap.highest);
-      s = format(s, "     Packets received : %llu\n", rx->rx_packets);
-      s = format(s, "         Lost packets : %llu\n", rx->lost_packets);
-      s = format(s, "    Reordered packets : %llu\n", rx->reordered_packets);
-      s = format(s, "    Duplicate packets : %llu\n", rx->dup_packets);
-    }
-
-  format(s, "\n");
-  return s;
 }

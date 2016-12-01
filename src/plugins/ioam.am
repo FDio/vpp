@@ -129,17 +129,39 @@ vxlan_gpe_ioam_export_test_plugin_la_SOURCES =          \
 vppapitestplugins_LTLIBRARIES += vxlan_gpe_ioam_export_test_plugin.la
 
 ########################################
-# iOAM E2E plugin
+# iOAM E2E
 ########################################
 
 IOAM_E2E_SRC =                			\
 	ioam/encap/ip6_ioam_e2e.c               \
-	ioam/encap/ip6_ioam_seqno.c             \
-	ioam/encap/ip6_ioam_seqno_analyse.c
+	ioam/encap/ip6_ioam_seqno.c		\
+	ioam/lib-e2e/ioam_seqno_lib.c
 
-IOAM_E2E_NOINST_HDR =                   \
+IOAM_E2E_NOINST_HDR =                    \
 	ioam/encap/ip6_ioam_e2e.h        \
-	ioam/encap/ip6_ioam_seqno.h
+	ioam/encap/ip6_ioam_seqno.h	 \
+	ioam/lib-e2e/ioam_seqno_lib.h
+
+########################################
+# ipfix collector
+########################################
+
+IPFIX_COLLECTOR_SRC =				\
+	ioam/ipfixcollector/ipfixcollector.c	\
+	ioam/ipfixcollector/node.c		\
+	ioam/ipfixcollector/ipfixcollector.h
+
+########################################
+# iOAM Analyse
+########################################
+
+IOAM_ANALYSE_SRC = 				\
+	ioam/analyse/ip6/ip6_ioam_analyse.c	\
+	ioam/analyse/ip6/node.c			\
+	ioam/analyse/ip6/ip6_ioam_analyse.h	\
+	ioam/analyse/ioam_summary_export.c	\
+	ioam/analyse/ioam_analyse.h		\
+	ioam/analyse/ioam_summary_export.h
 
 ########################################
 # iOAM plugins
@@ -150,7 +172,9 @@ ioam_plugin_la_SOURCES =		\
         $(IOAM_EXPORT_SRC)              \
         $(IOAM_TRACE_SRC)               \
         $(IOAM_VXLAN_GPE_SRC)   	\
-        $(IOAM_E2E_SRC)
+        $(IOAM_E2E_SRC)			\
+	$(IPFIX_COLLECTOR_SRC)		\
+	$(IOAM_ANALYSE_SRC)
 
 API_FILES +=				\
         $(IOAM_POT_API)                 \
