@@ -492,9 +492,6 @@ int ip6_hbh_register_option (u8 option,
 int ip6_hbh_unregister_option (u8 option);
 void ip6_hbh_set_next_override (uword next);
 
-/* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
-#define OI_DECAP   0x80000000
-
 #endif /* included_ip_ip6_h */
 
 /*
