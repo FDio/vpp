@@ -129,7 +129,7 @@ vxlan_gpe_export_node_fn (vlib_main_t * vm,
   ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
   ioam_export_node_common (em, vm, node, frame, ip4_header_t, length,
 			   ip_version_and_header_length,
-			   EXPORT_NEXT_VXLAN_GPE_INPUT);
+			   EXPORT_NEXT_VXLAN_GPE_INPUT, 0);
   return frame->n_vectors;
 }
 
