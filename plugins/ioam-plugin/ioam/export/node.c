@@ -18,6 +18,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <ioam/export-common/ioam_export.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 typedef struct
 {
@@ -126,7 +127,7 @@ ip6_export_node_fn (vlib_main_t * vm,
   ioam_export_main_t *em = &ioam_export_main;
   ioam_export_node_common(em, vm, node, frame, ip6_header_t, payload_length,
                           ip_version_traffic_class_and_flow_label, 
-                          EXPORT_NEXT_POP_HBYH);
+                          EXPORT_NEXT_POP_HBYH, 1);
   return frame->n_vectors;
 }
 
