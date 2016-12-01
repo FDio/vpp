@@ -28,7 +28,8 @@ ioam_pot_plugin_la_SOURCES =			\
 	ioam/lib-pot/pot_api.c
 
 BUILT_SOURCES =					\
-	ioam/lib-pot/pot.api.h ioam/lib-pot/pot.py
+	ioam/lib-pot/pot.api.h			\
+	ioam/lib-pot/pot.api.json
 
 SUFFIXES = .api.h .api
 
@@ -37,14 +38,17 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
 
-%.py: %.api
-	$(info Creating Python binding for $@)
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<				\
-	| vppapigen --input - --python -				\
-	| pyvppapigen.py --input - > $@
+%.api.json: %.api
+	@echo "  JSON APIGEN  " $@ ;				\
+	mkdir -p `dirname $@` ;					\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --json $@
 
-pyapidir = ${prefix}/vpp_papi_plugins
-pyapi_DATA = ioam/lib-pot/pot.py
+apidir = $(prefix)/ioam/
+api_DATA =					\
+	ioam/lib-pot/pot.api.json		\
+	ioam/lib-trace/trace.api.json		\
+	ioam/export/ioam_export.api.json
 
 noinst_HEADERS =				\
   ioam/lib-pot/pot_all_api_h.h			\
@@ -73,7 +77,9 @@ ioam/export/node.c                \
 ioam/export/ioam_export.api.h     \
 ioam/export/ioam_export_thread.c
 
-BUILT_SOURCES += ioam/export/ioam_export.api.h
+BUILT_SOURCES +=				\
+	ioam/export/ioam_export.api.h		\
+	ioam/export/ioam_export.api.json
 
 noinst_HEADERS +=                       \
   ioam/export/ioam_export_all_api_h.h   \
@@ -96,10 +102,9 @@ ioam_trace_plugin_la_SOURCES =			\
 	ioam/lib-trace/trace_util.h			\
 	ioam/lib-trace/trace_api.c
 
-BUILT_SOURCES +=					\
-	ioam/lib-trace/trace.api.h ioam/lib-trace/trace.py
-
-pyapi_DATA += ioam/lib-trace/trace.py
+BUILT_SOURCES +=				\
+	ioam/lib-trace/trace.api.h		\
+	ioam/lib-trace/trace.api.json
 
 noinst_HEADERS +=                       \
   ioam/export/ioam_export_all_api_h.h   \

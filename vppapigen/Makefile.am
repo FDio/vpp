@@ -14,7 +14,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 bin_PROGRAMS = vppapigen
-bin_SCRIPTS =  pyvppapigen.py
+bin_SCRIPTS =
 
 BUILT_SOURCES = gram.h
 

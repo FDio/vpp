@@ -15,7 +15,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
-BUILT_SOURCES = vnet/interface.api.h
+BUILT_SOURCES = vnet/interface.api.h vnet/interface.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -884,12 +884,12 @@ pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
 noinst_PROGRAMS += pcap2pg
 
 # Set the suffix list
-SUFFIXES = .api.h .api
+SUFFIXES = .api.h .api .api.json
 
 # install the API definition, so we can produce java bindings, etc.
 
-apidir = $(prefix)/vpp-api
-api_DATA = vnet/interface.api
+apidir = $(prefix)/vnet
+api_DATA = vnet/interface.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+rm -f $2
+
+for i in $(find ${1}/vpp -name *.api.json -type f -print); do
+    echo ../${i} /usr/share/vpp/api/ >> ${2}
+done
+for i in $(find ${1}/vlib-api -name *.api.json -type f -print); do
+    echo ../${i} /usr/share/vpp/api/ >> ${2}
+done
+
