@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "5a2585a7_caba220a",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "We are in process on removing dependency on dpdk for vnet and vlib.",
+      "range": {
+        "startLine": 43,
+        "startChar": 0,
+        "endLine": 43,
+        "endChar": 71
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_caeea2b4",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -70,6 +93,52 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_8a3c1a95",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1510,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "please don\u0027t use C++ comments. I know that they are used in the code already, but we agreed on sticking to gnu coding standards and we should convert them...",
+      "range": {
+        "startLine": 1508,
+        "startChar": 3,
+        "endLine": 1510,
+        "endChar": 58
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ea6b9e83",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1529,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "vec_reset_lenght",
+      "range": {
+        "startLine": 1529,
+        "startChar": 2,
+        "endLine": 1529,
+        "endChar": 27
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_8a177aa3",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -121,6 +190,29 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_6a41ee0a",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1575,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "see comment above. DPDK tx function is responsible for filling rte_mbuf based on vlib_buffer_t metadata.",
+      "range": {
+        "startLine": 1572,
+        "startChar": 0,
+        "endLine": 1575,
+        "endChar": 6
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_ea1f1eb6",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -138,6 +230,98 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_ca68e289",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1647,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "please don\u0027t use _vec_len. It is internal macro.",
+      "range": {
+        "startLine": 1647,
+        "startChar": 38,
+        "endLine": 1647,
+        "endChar": 46
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_aa0596c3",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1720,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "How API client is going to be notified if this happens?",
+      "range": {
+        "startLine": 1714,
+        "startChar": 0,
+        "endLine": 1720,
+        "endChar": 5
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_aa5eb6e7",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1849,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "please use macro, cacheline on some platoforms can be different size",
+      "range": {
+        "startLine": 1849,
+        "startChar": 39,
+        "endLine": 1849,
+        "endChar": 41
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4a5d12e9",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1889,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "please use cpu_index as it was used before.",
+      "range": {
+        "startLine": 1889,
+        "startChar": 32,
+        "endLine": 1889,
+        "endChar": 52
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_ca1c62c4",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -149,6 +333,29 @@
       "writtenOn": "2016-12-01T00:03:23Z",
       "side": 1,
       "message": "vm-\u003ecpu_index?",
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2a72c67c",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1912,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T00:03:57Z",
+      "side": 1,
+      "message": "Please use vec_reset_length(). _vec_len is internal macro...",
+      "range": {
+        "startLine": 1912,
+        "startChar": 2,
+        "endLine": 1912,
+        "endChar": 10
+      },
       "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
