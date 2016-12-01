@@ -8174,7 +8174,7 @@ static void
   vlib_main_t *vm = vlib_get_main ();
 
   rv = span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
-			      ntohl (mp->sw_if_index_to), mp->enable);
+			      ntohl (mp->sw_if_index_to), mp->state);
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY);
 }
@@ -8184,14 +8184,17 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 {
 
   unix_shared_memory_queue_t *q;
-  vl_api_sw_interface_span_details_t *rmp;
-  span_main_t *sm = &span_main;
-  u32 src_sw_if_index = 0, *dst_sw_if_index;
+  //vl_api_sw_interface_span_details_t *rmp;
+  //span_main_t *sm = &span_main;
+  //u32 src_sw_if_index = 0, *dst_sw_if_index;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
     return;
 
+  // FIXME
+
+#if 0
   vec_foreach (dst_sw_if_index, sm->dst_by_src_sw_if_index)
   {
     if (*dst_sw_if_index > 0)
@@ -8208,6 +8211,7 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
       }
     src_sw_if_index++;
   }
+#endif
 }
 
 static void

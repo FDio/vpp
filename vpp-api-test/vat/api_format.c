@@ -15390,7 +15390,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
   f64 timeout;
   u32 src_sw_if_index = ~0;
   u32 dst_sw_if_index = ~0;
-  u8 enable = 1;
+  u8 state = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15405,7 +15405,13 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
       else if (unformat (i, "dst_sw_if_index %d", &dst_sw_if_index))
 	;
       else if (unformat (i, "disable"))
-	enable = 0;
+	state = 0;
+      else if (unformat (i, "rx"))
+	state = 1;
+      else if (unformat (i, "tx"))
+	state = 2;
+      else if (unformat (i, "both"))
+	state = 3;
       else
 	break;
     }
@@ -15414,7 +15420,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
 
   mp->sw_if_index_from = htonl (src_sw_if_index);
   mp->sw_if_index_to = htonl (dst_sw_if_index);
-  mp->enable = enable;
+  mp->state = state;
 
   S;
   W;
@@ -15428,8 +15434,9 @@ vl_api_sw_interface_span_details_t_handler (vl_api_sw_interface_span_details_t
 {
   vat_main_t *vam = &vat_main;
 
-  fformat (vam->ofp, "%u => %u\n",
-	   ntohl (mp->sw_if_index_from), ntohl (mp->sw_if_index_to));
+  fformat (vam->ofp, "%u => %u (state %u)\n",
+	   ntohl (mp->sw_if_index_from),
+	   ntohl (mp->sw_if_index_to), mp->state);
 }
 
 static void
@@ -15450,6 +15457,7 @@ static void
   vat_json_object_add_uint (node, "src-if-index",
 			    ntohl (mp->sw_if_index_from));
   vat_json_object_add_uint (node, "dst-if-index", ntohl (mp->sw_if_index_to));
+  vat_json_object_add_uint (node, "state", mp->state);
 }
 
 static int

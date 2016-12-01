@@ -70,6 +70,9 @@
 #define LOG2_VNET_BUFFER_RTE_MBUF_IS_VALID LOG2_VLIB_BUFFER_FLAG_USER(7)
 #define VNET_BUFFER_RTE_MBUF_IS_VALID (1 << LOG2_VNET_BUFFER_RTE_MBUF_IS_VALID)
 
+#define LOG2_VNET_BUFFER_SPAN_CLONE LOG2_VLIB_BUFFER_FLAG_USER(8)
+#define VNET_BUFFER_SPAN_CLONE (1 << LOG2_VNET_BUFFER_SPAN_CLONE)
+
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \
