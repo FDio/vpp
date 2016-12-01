@@ -18,6 +18,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <ioam/export/ioam_export.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 
 typedef struct
 {
@@ -148,9 +149,9 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  u32 next0 = EXPORT_NEXT_POP_HBYH;
 	  u32 next1 = EXPORT_NEXT_POP_HBYH;
 	  u32 bi0, bi1;
-	  ip6_header_t *ip60, *ip61;
+	  ip6_header_t *ip60, *ip61, *ip6_temp;
 	  vlib_buffer_t *p0, *p1;
-	  u32 ip_len0, ip_len1;
+	  u32 ip_len0, ip_len1, flow_label_temp;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -201,6 +202,13 @@ ip6_export_node_fn (vlib_main_t * vm,
 	    ip_len1 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len1;
 
 	  copy3cachelines (eb0->data + eb0->current_length, ip60, ip_len0);
+
+	  /* Copy opaque index */
+	  ip6_temp = (ip6_header_t *) (eb0->data + eb0->current_length);
+	  flow_label_temp = clib_net_to_host_u32(ip6_temp->ip_version_traffic_class_and_flow_label) & 0xFFF00000;
+	  flow_label_temp |= IOAM_MASK_DECAP_BIT((vnet_buffer(p0)->l2_classify.opaque_index));
+	  ip6_temp->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(flow_label_temp);
+
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;
 	  /* To maintain uniform size per export, each
 	   * record is default size, ip6 hdr can be
@@ -222,6 +230,11 @@ ip6_export_node_fn (vlib_main_t * vm,
 	    goto NO_BUFFER1;
 
 	  copy3cachelines (eb0->data + eb0->current_length, ip61, ip_len1);
+	  /* Copy opaque index */
+	  ip6_temp = (ip6_header_t *) (eb0->data + eb0->current_length);
+	  flow_label_temp = clib_net_to_host_u32(ip6_temp->ip_version_traffic_class_and_flow_label) & 0xFFF00000;
+	  flow_label_temp |= IOAM_MASK_DECAP_BIT((vnet_buffer(p1)->l2_classify.opaque_index));
+	  ip6_temp->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(flow_label_temp);
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;
 	  my_buf->records_in_this_buffer++;
 	  if (my_buf->records_in_this_buffer >= DEFAULT_EXPORT_RECORDS)
@@ -265,8 +278,8 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *p0;
 	  u32 next0 = EXPORT_NEXT_POP_HBYH;
-	  ip6_header_t *ip60;
-	  u32 ip_len0;
+	  ip6_header_t *ip60, *ip6_temp;;
+	  u32 ip_len0, flow_label_temp;
 
 	  /* speculatively enqueue p0 to the current next frame */
 	  bi0 = from[0];
@@ -290,6 +303,11 @@ ip6_export_node_fn (vlib_main_t * vm,
 	  ip_len0 =
 	    ip_len0 > DEFAULT_EXPORT_SIZE ? DEFAULT_EXPORT_SIZE : ip_len0;
 	  copy3cachelines (eb0->data + eb0->current_length, ip60, ip_len0);
+	  /* Copy opaque index */
+	  ip6_temp = (ip6_header_t *) (eb0->data + eb0->current_length);
+	  flow_label_temp = clib_net_to_host_u32(ip6_temp->ip_version_traffic_class_and_flow_label) & 0xFFF00000;
+	  flow_label_temp |= IOAM_MASK_DECAP_BIT(vnet_buffer(p0)->l2_classify.opaque_index);
+	  ip6_temp->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(flow_label_temp);
 	  eb0->current_length += DEFAULT_EXPORT_SIZE;
 	  /* To maintain uniform size per export, each
 	   * record is default size, ip6 hdr can be

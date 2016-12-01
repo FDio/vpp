@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef __included_ip6_ioam_seqno_h__
-#define __included_ip6_ioam_seqno_h__
+#ifndef PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_POT_H_
+#define PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_POT_H_
 
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <ioam/lib-e2e/ioam_seqno_lib.h>
+#include <vnet/ip/ip6_hop_by_hop_packet.h>
 
-int ioam_seqno_encap_handler(vlib_buffer_t *b, ip6_header_t *ip,
-                             ip6_hop_by_hop_option_t *opt);
+typedef CLIB_PACKED(struct {
+  ip6_hop_by_hop_option_t hdr;
+  u8 pot_type;
+#define PROFILE_ID_MASK 0xF
+  u8 reserved_profile_id; /* 4 bits reserved, 4 bits to carry profile id */
+  u64 random;
+  u64 cumulative;
+}) ioam_pot_option_t;
 
-int
-ioam_seqno_decap_handler(vlib_buffer_t *b, ip6_header_t *ip,
-                         ip6_hop_by_hop_option_t *opt);
-
-#endif
+#endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_POT_H_ */

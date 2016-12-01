@@ -44,4 +44,13 @@ ioam_e2ec_get_seqno_data_from_flow_ctx (u32 flow_ctx)
   return &(data->seqno_data);
 }
 
+static inline u32
+ioam_e2e_get_cur_seqno_from_flow_ctx (u32 flow_ctx)
+{
+  ioam_seqno_data *data = NULL;
+
+  data =  ioam_e2ec_get_seqno_data_from_flow_ctx(flow_ctx);
+  return data->seq_num;
+}
+
 #endif /* __included_ioam_e2e_h__ */

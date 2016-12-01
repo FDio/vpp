@@ -66,15 +66,15 @@ typedef struct {
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
   ethernet_main_t * ethernet_main;
-  u32 ip4_lookup_node_index;
+  u32 next_node_index;
 
   uword my_hbh_slot;
   u32 export_process_node_index;
 } ioam_export_main_t;
 
-ioam_export_main_t ioam_export_main;
+extern ioam_export_main_t ioam_export_main;
 
-vlib_node_registration_t export_node;
+extern vlib_node_registration_t export_node;
 
 #define DEFAULT_EXPORT_SIZE (3 * CLIB_CACHE_LINE_BYTES)
 /*
@@ -82,6 +82,24 @@ vlib_node_registration_t export_node;
  * ~(MTU (1500) - [ip hdr(40) + UDP(8) + ipfix (24)]) / DEFAULT_EXPORT_SIZE
  */
 #define DEFAULT_EXPORT_RECORDS 7
+
+inline static void ioam_export_set_next_node (u8 *next_node_name)
+{
+  vlib_node_t *next_node;
+
+  next_node = vlib_get_node_by_name (ioam_export_main.vlib_main,
+                                     next_node_name);
+  ioam_export_main.next_node_index = next_node->index;
+}
+
+inline static void ioam_export_reset_next_node (void)
+{
+  vlib_node_t *next_node;
+
+  next_node = vlib_get_node_by_name (ioam_export_main.vlib_main,
+                                     (u8 *) "ip4-lookup");
+  ioam_export_main.next_node_index = next_node->index;
+}
 
 always_inline ioam_export_buffer_t *ioam_export_get_my_buffer(u32 thread_id)
 {
@@ -149,7 +167,7 @@ inline static int ioam_export_thread_buffer_init (vlib_main_t *vm)
   int no_of_threads = vec_len(vlib_worker_threads);
   int i;
   ioam_export_buffer_t *eb = 0;
-  vlib_node_t * ip4_lookup_node;
+  vlib_node_t *next_node;
 
   pool_alloc_aligned(em->buffer_pool,
 		      no_of_threads - 1,
@@ -159,8 +177,8 @@ inline static int ioam_export_thread_buffer_init (vlib_main_t *vm)
 			CLIB_CACHE_LINE_BYTES);
   vec_validate_aligned(em->lockp, no_of_threads-1,
 		       CLIB_CACHE_LINE_BYTES);
-  ip4_lookup_node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
-  em->ip4_lookup_node_index = ip4_lookup_node->index;
+  next_node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
+  em->next_node_index = next_node->index;
   if (!em->buffer_per_thread || !em->buffer_pool || !em->lockp)
     {
       return(-1);
@@ -236,7 +254,8 @@ inline static int ioam_export_header_create (ip4_address_t * collector_address,
   ip->src_address.as_u32 = src_address->as_u32;
   ip->dst_address.as_u32 = collector_address->as_u32;
   udp->src_port = clib_host_to_net_u16 (4939 /* $$FIXME */);
-  udp->dst_port = clib_host_to_net_u16 (4939);
+  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
+
   /* FIXUP: UDP length */
   udp->length = clib_host_to_net_u16 (vec_len(rewrite) +
     (DEFAULT_EXPORT_RECORDS * DEFAULT_EXPORT_SIZE) - sizeof (*ip));
@@ -313,12 +332,12 @@ inline static int ioam_export_send_buffer (vlib_main_t *vm,
 
   /* Enqueue pkts to ip4-lookup */
 
-  nf = vlib_get_frame_to_node (vm, em->ip4_lookup_node_index);
+  nf = vlib_get_frame_to_node (vm, em->next_node_index);
   nf->n_vectors = 0;
   to_next = vlib_frame_vector_args (nf);
   nf->n_vectors = 1;
   to_next[0] = eb->buffer_index;
-  vlib_put_frame_to_node(vm, em->ip4_lookup_node_index, nf);
+  vlib_put_frame_to_node(vm, em->next_node_index, nf);
   return(1);
 
 }
