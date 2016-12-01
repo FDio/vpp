@@ -92,8 +92,6 @@ typedef struct
 
 extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 
-extern u8 *format_path_map (u8 * s, va_list * args);
-
 extern clib_error_t *ip6_ioam_enable (int has_trace_option,
 				      int has_pot_option,
 				      int has_seqno_option,
@@ -206,6 +204,32 @@ is_seqno_enabled (void)
 }
 
 int ip6_trace_profile_setup ();
+
+static inline u32
+ioam_flow_add (u8 encap, u8 * flow_name)
+{
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  flow_data_t *flow = 0;
+  u32 index = 0;
+  u8 i;
+
+  pool_get (hm->flows, flow);
+  memset (flow, 0, sizeof (flow_data_t));
+
+  index = flow - hm->flows;
+  strncpy ((char *) flow->flow_name, (char *) flow_name, 31);
+
+  if (!encap)
+    IOAM_SET_DECAP (index);
+
+  for (i = 0; i < 255; i++)
+    {
+      if (hm->flow_handler[i])
+	flow->ctx[i] = hm->flow_handler[i] (index, 1);
+    }
+  return (index);
+}
+
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */
 
 /*

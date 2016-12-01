@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#ifndef __included_ip6_ioam_seqno_h__
-#define __included_ip6_ioam_seqno_h__
+#ifndef PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_
+#define PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_
 
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <ioam/lib-e2e/e2e_util.h>
+#include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <ioam/lib-trace/trace_util.h>
 
-int ioam_seqno_encap_handler(vlib_buffer_t *b, ip6_header_t *ip,
-                             ip6_hop_by_hop_option_t *opt);
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct {
+  ip6_hop_by_hop_option_t hdr;
+  ioam_trace_hdr_t trace_hdr;
+}) ioam_trace_option_t;
+/* *INDENT-ON* */
 
-int
-ioam_seqno_decap_handler(vlib_buffer_t *b, ip6_header_t *ip,
-                         ip6_hop_by_hop_option_t *opt);
 
-#endif
+#endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_ */

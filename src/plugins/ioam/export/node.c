@@ -17,7 +17,9 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_hop_by_hop.h>
 #include <ioam/export-common/ioam_export.h>
+
 
 typedef struct
 {
@@ -119,6 +121,20 @@ copy3cachelines (void *dst, const void *src, size_t n)
 #endif
 }
 
+static void
+ip6_export_fixup_func (vlib_buffer_t * export_buf, vlib_buffer_t * pak_buf)
+{
+  ip6_header_t *ip6_temp =
+      (ip6_header_t *) (export_buf->data + export_buf->current_length);
+  u32 flow_label_temp =
+      clib_net_to_host_u32(ip6_temp->ip_version_traffic_class_and_flow_label)
+      & 0xFFF00000;
+  flow_label_temp |=
+      IOAM_MASK_DECAP_BIT((vnet_buffer(pak_buf)->l2_classify.opaque_index));
+  ip6_temp->ip_version_traffic_class_and_flow_label =
+      clib_host_to_net_u32(flow_label_temp);
+}
+
 static uword
 ip6_export_node_fn (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -126,7 +142,7 @@ ip6_export_node_fn (vlib_main_t * vm,
   ioam_export_main_t *em = &ioam_export_main;
   ioam_export_node_common(em, vm, node, frame, ip6_header_t, payload_length,
                           ip_version_traffic_class_and_flow_label, 
-                          EXPORT_NEXT_POP_HBYH);
+                          EXPORT_NEXT_POP_HBYH, ip6_export_fixup_func);
   return frame->n_vectors;
 }
 
