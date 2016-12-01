@@ -46,9 +46,9 @@ nobase_include_HEADERS =			\
 # install the API definition, so we can produce java bindings, etc.
 
 apidir = $(prefix)/vpp-api
-api_DATA = vpp-api/vpe.api
+api_DATA = vpp-api/vpe.api.json
 
-BUILT_SOURCES += vpp-api/vpe.api.h app/version.h
+BUILT_SOURCES += vpp-api/vpe.api.h app/version.h vpp-api/vpe.api.json
 
 app/version.o:	app/version.h
 
@@ -122,7 +122,7 @@ if WITH_IPV6SR
 endif
 
 # Set the suffix list
-SUFFIXES = .api.h .api
+SUFFIXES = .api.h .api .api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vpp source tree

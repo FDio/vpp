@@ -9,3 +9,7 @@ done
 for i in ${1}/plugins/lib64/vpp_api_test_plugins/*.so; do
 	echo ../${i} /usr/lib/vpp_api_test_plugins >> ${2}
 done
+
+for i in $(find ${1}/plugins -name *.api.json -type f -print); do
+    echo ../${i} /usr/share/vpp/api/ >> ${2}
+done

@@ -32,23 +32,8 @@ libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
 libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
 
-#
-# Core VPP API
-#
-$(srcdir)/vpp_papi/vpe.py: $(prefix)/../vpp/vpp-api/vpe.api
-	$(info Creating Python binding for $@)
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<	\
-	| vppapigen --input - --python -	\
-	| pyvppapigen.py --input - > $(srcdir)/vpp_papi/$(notdir $@)
-
-$(srcdir)/vpp_papi/memclnt.py: $(prefix)/../vlib-api/vlibmemory/memclnt.api
-	$(info Creating Python binding for $@)
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<	\
-	| vppapigen --input - --python -	\
-	| pyvppapigen.py --input - > $(srcdir)/vpp_papi/$(notdir $@)
-
 # TODO: Support both Python 2 and 3.
-install-exec-local: $(srcdir)/vpp_papi/vpe.py $(srcdir)/vpp_papi/memclnt.py
+install-exec-local:
 	cd $(srcdir);							\
 	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
 	PYTHONUSERBASE=$(prefix)					\

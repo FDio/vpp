@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for i in $(find ${1}/vnet -name *.api.json -type f -print); do
+    echo ../${i} /usr/share/vpp/api/ >> ${2}
+done
+

@@ -83,14 +83,14 @@ packagedir_jvpp_core = io/fd/vpp/jvpp/core
 
 BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 
-jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h $(abs_builddir)/../vpp-api/vpe.api.json
+jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h $(prefix)/../vpp/vpp-api/vpe.api.json
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/
 	mkdir -p jvpp-core/target
 	cd jvpp-core \
 		&& mkdir -p types dto future callfacade callback notification \
 		&& @srcdir@/jvpp/gen/jvpp_gen.py  --plugin_name core \
-		    -i $(abs_builddir)/../vpp-api/vpe.api.json \
-		    $(abs_builddir)/../vpp-api/interface.api.json \
+		    -i $(prefix)/../vpp/vpp-api/vpe.api.json \
+		    $(prefix)/../vnet/vnet/interface.api.json \
 		&& cp -rf types dto future callfacade callback notification *.java -t $(packagedir_jvpp_core) \
 		&& rm -rf types dto future callfacade callback notification *.java
 

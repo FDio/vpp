@@ -28,12 +28,20 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	  | sed -e 's:.*:../& /usr/bin:'				\
 	    > deb/debian/vpp.install ;					\
 									\
+	: core api definitions ;					\
+	./scripts/find-api-core-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp.install ;					\
+									\
 	: need symbolic links in the lib pkg ; 				\
 	find $(INSTALL_PREFIX)$(ARCH)/*/lib* \( -type f -o  -type l \)  \
 	  -print | egrep -e '*\.so\.*\.*\.*'				\
 	  | grep -v plugins\/						\
 	  | sed -e 's:.*:../& /usr/lib/x86_64-linux-gnu:'		\
 	    > deb/debian/vpp-lib.install ;				\
+									\
+	: vnet api definitions ;					\
+	./scripts/find-api-lib-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp-lib.install ;					\
 									\
 	: dev package ;							\
 	./scripts/find-dev-contents $(INSTALL_PREFIX)$(ARCH)		\
@@ -62,8 +70,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: dev package needs a couple of additions ;			\
 	echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../../vppapigen/pyvppapigen.py /usr/bin			\
-           >> deb/debian/vpp-dev.install ;				\
 	echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
 	for i in $$(ls ../vpp-api/java/jvpp/gen/jvppgen/*.py); do	\

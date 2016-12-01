@@ -28,7 +28,7 @@ snat_plugin_la_SOURCES = snat/snat.c		\
         snat/out2in.c				\
 	snat/snat_plugin.api.h
 
-BUILT_SOURCES = snat/snat.api.h snat/snat.py
+BUILT_SOURCES = snat/snat.api.h snat/snat.api.json
 
 SUFFIXES = .api.h .api
 
@@ -37,14 +37,14 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
 
-%.py: %.api
-	$(info Creating Python binding for $@)
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<                              \
-	| vppapigen --input - --python -                                \
-	| pyvppapigen.py --input - > $@
+%.api.json: %.api
+	@echo "  JSON APIGEN  " $@ ;				\
+	mkdir -p `dirname $@` ;					\
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
+	| vppapigen --input - --json $@
 
-pyapidir = ${prefix}/vpp_papi_plugins
-pyapi_DATA = snat/snat.py
+apidir = $(prefix)/snat/
+api_DATA = snat.api.json
 
 noinst_HEADERS =			\
   snat/snat_all_api_h.h			\
@@ -60,7 +60,7 @@ install-data-hook:
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
 
 apidir = $(prefix)/snat
-api_DATA = snat/snat.api
+api_DATA = snat/snat.api.json
 
 #
 # Java code generation
