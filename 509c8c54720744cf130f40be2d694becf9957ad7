@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_2041c739",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 426,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-01T17:39:54Z",
+      "side": 1,
+      "message": "a philosophical question. If p!\u003d0 but pvtep\u003d\u003d0 does the tunnel exist? I\u0027d say yes, but for some unknown reason it\u0027s not in the vtep DB. The delete should remove it from the tunnel DB.",
+      "revId": "509c8c54720744cf130f40be2d694becf9957ad7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
