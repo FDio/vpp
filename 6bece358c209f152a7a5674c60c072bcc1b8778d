@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_6a3b2eec",
+        "filename": "vnet/vnet/vxlan/vxlan.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-12-01T03:12:41Z",
+      "side": 1,
+      "message": "This range check looks reasonable to me now. Did you test default l2-input, nsh-proxy, and invalid cases to make sure they all work properly. If so, I think it can be merged, subject to Keith removing his \"-2\",",
+      "range": {
+        "startLine": 324,
+        "startChar": 11,
+        "endLine": 324,
+        "endChar": 33
+      },
+      "revId": "6bece358c209f152a7a5674c60c072bcc1b8778d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
