@@ -176,6 +176,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_85f3ed72",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1510,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T14:15:36Z",
+      "side": 1,
+      "message": "This doesn\u0027t have anything with gnu coding style. C comments are only /* */. C++ comments can also be //.",
+      "parentUuid": "5a2585a7_051dbd0f",
+      "range": {
+        "startLine": 1508,
+        "startChar": 3,
+        "endLine": 1510,
+        "endChar": 58
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_ea6b9e83",
         "filename": "vnet/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
@@ -211,6 +235,30 @@
       "side": 1,
       "message": "vec_reset_length checks whether the vector is NULL or not. I do not need to do that.",
       "parentUuid": "5a2585a7_ea6b9e83",
+      "range": {
+        "startLine": 1529,
+        "startChar": 2,
+        "endLine": 1529,
+        "endChar": 27
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_65e8017d",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1529,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T14:15:36Z",
+      "side": 1,
+      "message": "Checking null is good practice. Please use it.",
+      "parentUuid": "5a2585a7_e5199123",
       "range": {
         "startLine": 1529,
         "startChar": 2,
@@ -539,6 +587,30 @@
       "side": 1,
       "message": "Actually, this is the minimum frame size, not the cache line size.",
       "parentUuid": "5a2585a7_aa5eb6e7",
+      "range": {
+        "startLine": 1849,
+        "startChar": 39,
+        "endLine": 1849,
+        "endChar": 41
+      },
+      "revId": "1fb2c39e8c74c2447476d622586cd2092591ae82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_45ed058b",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1849,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T14:15:36Z",
+      "side": 1,
+      "message": "CLIB_PREFETCH works with cachelines, parameter can only be multiple of cacheline size.",
+      "parentUuid": "5a2585a7_c5ed75f1",
       "range": {
         "startLine": 1849,
         "startChar": 39,

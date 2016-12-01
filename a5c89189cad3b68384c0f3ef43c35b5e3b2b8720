@@ -187,6 +187,30 @@
       "revId": "a5c89189cad3b68384c0f3ef43c35b5e3b2b8720",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e5fbd145",
+        "filename": "vnet/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2014,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-01T14:15:36Z",
+      "side": 0,
+      "message": "what is the reason for removing n_packets except making this patchset bigger and harder to follow?",
+      "parentUuid": "5a2585a7_a5ba69df",
+      "range": {
+        "startLine": 2014,
+        "startChar": 32,
+        "endLine": 2014,
+        "endChar": 42
+      },
+      "revId": "a5c89189cad3b68384c0f3ef43c35b5e3b2b8720",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
