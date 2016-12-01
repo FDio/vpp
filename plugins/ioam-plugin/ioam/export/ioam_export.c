@@ -81,6 +81,10 @@ do {                                                            \
 #define foreach_ioam_export_plugin_api_msg                        \
 _(IOAM_EXPORT_IP6_ENABLE_DISABLE, ioam_export_ip6_enable_disable)
 
+ioam_export_main_t ioam_export_main;
+
+vlib_node_registration_t export_node;
+
 /*
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.
@@ -250,6 +254,9 @@ ioam_export_init (vlib_main_t * vm)
   u8 *name;
   u32 node_index = export_node.index;
   vlib_node_t *ip6_hbyh_node = NULL;
+
+  em->set_id = IPFIX_IOAM_EXPORT_ID;
+  ioam_export_reset_next_node (em);
 
   name = format (0, "ioam_export_%08x%c", api_version, 0);
 
