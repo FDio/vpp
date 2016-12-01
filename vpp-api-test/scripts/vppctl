@@ -108,7 +108,7 @@ if __name__ == '__main__':
                                 sys.stdout.write('\n')
                 else:
                         try:
-                        prompt.cmdloop()
+                                prompt.cmdloop()
                         except KeyboardInterrupt:
                                 sys.stdout.write('\n')
         else:
