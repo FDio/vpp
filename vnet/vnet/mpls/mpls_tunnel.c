@@ -385,7 +385,6 @@ VNET_DEVICE_CLASS (mpls_tunnel_class) = {
     .format_device = format_mpls_tunnel_device,
     .format_tx_trace = format_mpls_tunnel_tx_trace,
     .tx_function = mpls_tunnel_tx,
-    .no_flatten_output_chains = 1,
     .admin_up_down_function = mpls_tunnel_admin_up_down,
 };
 

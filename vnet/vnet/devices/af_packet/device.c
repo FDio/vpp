@@ -235,7 +235,6 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .clear_counters = af_packet_clear_hw_interface_counters,
   .admin_up_down_function = af_packet_interface_admin_up_down,
   .subif_add_del_function = af_packet_subif_add_del_function,
-  .no_flatten_output_chains = 1,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (af_packet_device_class,

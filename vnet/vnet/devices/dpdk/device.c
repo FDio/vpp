@@ -769,7 +769,6 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .admin_up_down_function = dpdk_interface_admin_up_down,
   .subif_add_del_function = dpdk_subif_add_del_function,
   .rx_redirect_to_node = dpdk_set_interface_next_node,
-  .no_flatten_output_chains = 1,
   .mac_addr_change_function = dpdk_set_mac_address,
 };
 

@@ -229,8 +229,9 @@ incr_output_stats (vnet_main_t * vnm,
 
 /* Interface output functions. */
 uword
-vnet_interface_output_node (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+vnet_interface_output_node_flatten (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
@@ -413,13 +414,12 @@ vnet_interface_output_node (vlib_main_t * vm,
   return n_buffers;
 }
 
-VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node);
-CLIB_MULTIARCH_SELECT_FN (vnet_interface_output_node);
+VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node_flatten);
+CLIB_MULTIARCH_SELECT_FN (vnet_interface_output_node_flatten);
 
 uword
-vnet_interface_output_node_no_flatten (vlib_main_t * vm,
-				       vlib_node_runtime_t * node,
-				       vlib_frame_t * frame)
+vnet_interface_output_node (vlib_main_t * vm,
+			    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
@@ -604,8 +604,8 @@ vnet_interface_output_node_no_flatten (vlib_main_t * vm,
   return n_buffers;
 }
 
-VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node_no_flatten);
-CLIB_MULTIARCH_SELECT_FN (vnet_interface_output_node_no_flatten);
+VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node);
+CLIB_MULTIARCH_SELECT_FN (vnet_interface_output_node);
 
 /* Use buffer's sw_if_index[VNET_TX] to choose output interface. */
 static uword

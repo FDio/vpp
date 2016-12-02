@@ -718,7 +718,6 @@ VNET_DEVICE_CLASS (tapcli_dev_class,static) = {
   .rx_redirect_to_node = tapcli_set_interface_next_node,
   .name_renumber = tap_name_renumber,
   .admin_up_down_function = tapcli_interface_admin_up_down,
-  .no_flatten_output_chains = 1,
 };
 
 /**

@@ -2107,7 +2107,6 @@ VNET_DEVICE_CLASS (vhost_user_dev_class,static) = {
   .format_device_name = format_vhost_user_interface_name,
   .name_renumber = vhost_user_name_renumber,
   .admin_up_down_function = vhost_user_interface_admin_up_down,
-  .no_flatten_output_chains = 1,
   .format_tx_trace = format_vhost_trace,
 };
 

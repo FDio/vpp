@@ -2452,6 +2452,7 @@ VNET_DEVICE_CLASS (ixge_device_class) = {
   .clear_counters = ixge_clear_hw_interface_counters,
   .admin_up_down_function = ixge_interface_admin_up_down,
   .rx_redirect_to_node = ixge_set_interface_next_node,
+  .flatten_output_chains = 1,
 };
 /* *INDENT-ON* */
 
