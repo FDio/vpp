@@ -104,7 +104,12 @@ mpls_tunnel_build_rewrite (vnet_main_t * vnm,
     mti = mpls_tunnel_db[sw_if_index];
     mt = pool_elt_at_index(mpls_tunnel_pool, mti);
 
+    /*
+     * The vector must be allocated as u8 so the length is correct
+     */
+    ASSERT(0 < vec_len(mt->mt_label_stack));
     vec_validate(rewrite, (sizeof(*muh) * vec_len(mt->mt_label_stack)) - 1);
+    ASSERT(rewrite);
     muh = (mpls_unicast_header_t *)rewrite;
 
     /*
@@ -123,15 +128,19 @@ mpls_tunnel_build_rewrite (vnet_main_t * vnm,
     vnet_mpls_uc_set_ttl(&muh[ii].label_exp_s_ttl, 255);
     vnet_mpls_uc_set_exp(&muh[ii].label_exp_s_ttl, 0);
 
-    if (VNET_LINK_MPLS == link_type &&
-	mt->mt_label_stack[ii] != MPLS_IETF_IMPLICIT_NULL_LABEL)
+    if ((VNET_LINK_MPLS == link_type) &&
+	(mt->mt_label_stack[ii] != MPLS_IETF_IMPLICIT_NULL_LABEL))
+    {
 	vnet_mpls_uc_set_s(&muh[ii].label_exp_s_ttl, MPLS_NON_EOS);
+    }
     else
+    {
 	vnet_mpls_uc_set_s(&muh[ii].label_exp_s_ttl, MPLS_EOS);
+    }
 
     muh[ii].label_exp_s_ttl = clib_host_to_net_u32(muh[ii].label_exp_s_ttl);
 
-    return ((u8*)muh);
+    return (rewrite);
 }
 
 /**

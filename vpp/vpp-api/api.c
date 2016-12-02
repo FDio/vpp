@@ -2149,7 +2149,8 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
     }
   else
     {
-      vnet_mpls_tunnel_del (ntohl (mp->mt_sw_if_index));
+      tunnel_sw_if_index = ntohl (mp->mt_sw_if_index);
+      vnet_mpls_tunnel_del (tunnel_sw_if_index);
     }
 
   dsunlock (sm);
