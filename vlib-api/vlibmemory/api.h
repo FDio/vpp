@@ -88,14 +88,6 @@ typedef struct vl_shmem_hdr_
 
 } vl_shmem_hdr_t;
 
-/* Note that the size of the structure is 16 bytes, with 4 bytes of padding after data[0]. */
-typedef struct msgbuf_
-{
-  unix_shared_memory_queue_t *q;
-  u32 data_len;
-  u8 data[0];
-} msgbuf_t;
-
 #define VL_SHM_VERSION 2
 
 #define VL_API_EPOCH_MASK 0xFF
