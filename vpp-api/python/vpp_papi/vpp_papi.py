@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Copyright (c) 2016 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,162 +12,379 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-#
-# Import C API shared object
-#
 from __future__ import print_function
-
-import signal, os, sys
-from struct import *
-
+import sys, os, logging, collections, struct, json, threading
+logging.basicConfig(level=logging.DEBUG)
 import vpp_api
-from vpp_api_base import *
-
-# Import API definitions. The core VPE API is imported into main namespace
-import memclnt
-
-# Cheating a bit, importing it into this namespace as well as a module.
-import vpe
-from vpe import *
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def msg_handler(msg):
-    if not msg:
-        eprint('vpp_api.read failed')
-        return
+class VPP():
+    def __init__(self, apifiles):
+        self.messages = {}
+        self.id_names = []
+        self.id_msgdef = []
+        self.buffersize = 10000
+        self.connected = False
+        self.header = struct.Struct('>HI')
+        self.results = {}
+        self.timeout = 5
+        self.apifile = []
 
-    id = unpack('>H', msg[0:2])
-    if id[0] == memclnt.VL_API_RX_THREAD_EXIT:
-        return;
+        for file in apifiles:
+            self.apifile.append(file)
+            with open(file) as apidef_file:
+                api = json.load(apidef_file)
+                for t in api['types']:
+                    self.add_type(t[0], t[1:])
 
-    #
-    # Decode message and returns a tuple.
-    #
-    try:
-        r = api_func_table[id[0]](msg)
-    except:
-        eprint('Message decode failed', id[0], api_func_table[id[0]])
-        raise
+                for m in api['messages']:
+                    self.add_message(m[0], m[1:])
 
-    if 'context' in r._asdict():
-        if r.context > 0:
-            context = r.context
+        # Basic sanity check
+        if not 'control_ping' in self.messages:
+            raise ValueError(1, 'Error in JSON message definitions')
 
-    #
-    # XXX: Call provided callback for event
-    # Are we guaranteed to not get an event during processing of other messages?
-    # How to differentiate what's a callback message and what not? Context = 0?
-    #
-    if not is_waiting_for_reply():
-        event_callback_call(r)
-        return
 
-    #
-    # Collect results until control ping
-    #
-    if id[0] == VL_API_CONTROL_PING_REPLY:
-        results_event_set(context)
-        waiting_for_reply_clear()
-        return
-    if not is_results_context(context):
-        eprint('Not expecting results for this context', context)
-        return
-    if is_results_more(context):
-        results_append(context, r)
-        return
+    class ContextId(object):
+        def __init__(self):
+            self.context = 0
+        def __call__(self):
+            self.context += 1
+            return self.context
+    get_context = ContextId()
 
-    results_set(context, r)
-    results_event_set(context)
-    waiting_for_reply_clear()
+    def status(self):
+        print('Connected') if self.connected else print('Not Connected')
+        print('Read API definitions from', self.apifile)
 
-def handler(signum, frame):
-    print('Signal handler called with signal', signum)
-    raise IOError("Couldn't connect to VPP!")
+    def __struct (self, t, n = None, e = 0, vl = None):
+        base_types = { 'u8' : 'B',
+                       'u16' : 'H',
+                       'u32' : 'I',
+                       'i32' : 'i',
+                       'u64' : 'Q',
+                       'f64' : 'd',
+                       }
+        pack = None
+        if t in base_types:
+            pack = base_types[t]
+            if not vl:
+                if e and t == 'u8':
+                    # Fixed byte array
+                    return struct.Struct('>' + str(e) + 's')
+                if e:
+                    # Fixed array of base type
+                    return [e, struct.Struct('>' + base_types[t])]
+            else:
+                # Variable length array
+                return [vl, struct.Struct('>s')] if t == 'u8' else [vl, struct.Struct('>' + base_types[t])]
 
-def connect(name, chroot_prefix = None):
-    # Set the signal handler
-    signal.signal(signal.SIGALRM, handler)
+            return struct.Struct('>' + base_types[t])
 
-    signal.alarm(3) # 3 second
-    if not chroot_prefix:
-        rv = vpp_api.connect(name, msg_handler)
-    else:
-        rv = vpp_api.connect(name, msg_handler, chroot_prefix)
+        if t in self.messages:
+            ### Return a list in case of array ###
+            if e and not vl:
+                return [e, lambda self, encode, buf, offset, args: (
+                    self.__struct_type(encode, self.messages[t], buf, offset, args)
+                )]
+            if vl:
+                return [vl, lambda self, encode, buf, offset, args: (
+                    self.__struct_type(encode, self.messages[t], buf, offset, args)
+                )]
+            return lambda self, encode, buf, offset, args: (
+                self.__struct_type(encode, self.messages[t], buf, offset, args)
+            )
 
-    signal.alarm(0)
+        raise ValueError
 
-    #
-    # Assign message id space for plugins
-    #
-    try:
-        plugin_map_plugins()
-    except:
-        return -1
-    return rv
+    def __struct_type(self, encode, msgdef, buf, offset, kwargs):
+        if encode:
+            return self.__struct_type_encode(msgdef, buf, offset, kwargs)
+        else:
+            return self.__struct_type_decode(msgdef, buf, offset)
 
-def disconnect():
-    rv = vpp_api.disconnect()
-    return rv
+    def __struct_type_encode(self, msgdef, buf, offset, kwargs):
+        off = offset
+        size = 0
+        for k,v in msgdef['args'].iteritems():
+            off += size
+            if k in kwargs:
+                if type(v) is list:
+                    if callable(v[1]):
+                        if v[0] in kwargs:
+                            e = kwargs[v[0]]
+                        else:
+                            e = v[0]
+                        size = 0
+                        for i in range(e):
+                            size += v[1](self, True, buf, off + size,
+                                         kwargs[k][i])
+                    else:
+                        if v[0] in kwargs:
+                            l = kwargs[v[0]]
+                        else:
+                            l = len(kwargs[k])
+                        if v[1].size == 1:
+                            buf[off:off + l] = bytearray(kwargs[k])
+                            size = l
+                        else:
+                            size = 0
+                            for i in kwargs[k]:
+                                v[1].pack_into(buf, off + size, i)
+                                size += v[1].size
+                else:
+                    if callable(v):
+                        size = v(self, True, buf, off, kwargs[k])
+                    else:
+                        v.pack_into(buf, off, kwargs[k])
+                        size = v.size
+            else:
+                size = v.size
 
-def register_event_callback(callback):
-    event_callback_set(callback)
+        return off + size - offset
 
-def plugin_name_to_id(plugin, name_to_id_table, base):
-    try:
-        m = globals()[plugin]
-    except KeyError:
-        m = sys.modules[plugin]
 
-    for name in name_to_id_table:
-        setattr(m, name, name_to_id_table[name] + base)
+    def __getitem__(self, name):
+        if name in self.messages:
+            return self.messages[name]
+        return None
 
-def plugin_map_plugins():
-    for p in plugins:
-        if p == 'memclnt' or p == 'vpe':
-            continue
+    def encode(self, msgdef, kwargs):
+        # Make suitably large buffer
+        buf = bytearray(self.buffersize)
+        offset = 0
+        size = self.__struct_type(True, msgdef, buf, offset, kwargs)
+        return buf[:offset + size]
+
+    def decode(self, msgdef, buf):
+        return self.__struct_type(False, msgdef, buf, 0, None)[1]
+
+    def __struct_type_decode(self, msgdef, buf, offset):
+        res = []
+        off = offset
+        size = 0
+        for k,v in msgdef['args'].iteritems():
+            off += size
+            if type(v) is list:
+                lst = []
+                if callable(v[1]): # compound type
+                    size = 0
+                    if v[0] in msgdef['args']: # vla
+                        e = int(res[-1])
+                    else: # fixed array
+                        e = v[0]
+                    res.append(lst)
+                    for i in range(e):
+                        (s,l) = v[1](self, False, buf, off + size, None)
+                        lst.append(l)
+                        size += s
+                    continue
+
+                if v[1].size == 1:
+                    size = int(res[-1])
+                    res.append(buf[off:off + size])
+                else:
+                    e = int(res[-1])
+                    if e == 0:
+                        raise ValueError
+                    lst = []
+                    res.append(lst)
+                    size = 0
+                    for i in range(e):
+                        lst.append(v[1].unpack_from(buf, off + size)[0])
+                        size += v[1].size
+            else:
+                if callable(v):
+                    (s,l) = v(self, False, buf, off, None)
+                    res.append(l)
+                    size += s
+                else:
+                    res.append(v.unpack_from(buf, off)[0])
+                    size = v.size
+
+        return off + size - offset, msgdef['return_tuple']._make(res)
+
+    def ret_tup(self, name):
+        if name in self.messages and 'return_tuple' in self.messages[name]:
+            return self.messages[name]['return_tuple']
+        return None
+
+    def add_message(self, name, msgdef):
+        if name in self.messages:
+            raise ValueError('Duplicate message name: ' + name)
+
+        args = collections.OrderedDict()
+        fields = []
+        msg = {}
+        for f in msgdef:
+            if type(f) is dict and 'crc' in f:
+                msg['crc'] = f['crc']
+                continue
+            field_name = f[1]
+            args[field_name] = self.__struct(*f)
+            fields.append(field_name)
+        msg['return_tuple'] = collections.namedtuple(name, fields,
+                                                     rename = True)
+        self.messages[name] = msg
+        self.messages[name]['args'] = args
+        return self.messages[name]
+
+    def add_type(self, name, typedef):
+        self.add_message('vl_api_' + name + '_t', typedef)
+
+    def make_function(self, i, msgdef, multipart):
+        return lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+
+    def _register_functions(self):
+        self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
+        self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
+        for name, msgdef in self.messages.iteritems():
+            if name in self.vpp_dictionary:
+                if self.messages[name]['crc'] != self.vpp_dictionary[name]['crc']:
+                    raise ValueError(3, 'Failed CRC checksum ' + name +
+                                     ' ' + self.messages[name]['crc'] +
+                                     ' ' + self.vpp_dictionary[name]['crc'])
+                i = self.vpp_dictionary[name]['id']
+                self.id_msgdef[i] = msgdef
+                self.id_names[i] = name
+                multipart = True if name.find('_dump') > 0 else False
+                setattr(self, name, self.make_function(i, msgdef, multipart))
+
+    def _write (self, buf):
+        if not self.connected:
+            raise IOError(1, 'Not connected')
+        return vpp_api.write(str(buf))
+
+    def _load_dictionary(self):
+        self.vpp_dictionary = {}
+        self.vpp_dictionary_maxid = 0
+
+        d = vpp_api.msg_table()
+
+        if not d:
+            raise IOError(3, 'Cannot get VPP API dictionary')
+        for i,n in d:
+            name, crc =  n.rsplit('_', 1)
+            crc = '0x' + crc
+            self.vpp_dictionary[name] = { 'id' : i, 'crc' : crc }
+            self.vpp_dictionary_maxid = max(self.vpp_dictionary_maxid, i)
+
+    def connect(self, name, chroot_prefix = None):
+        if not chroot_prefix:
+            rv = vpp_api.connect(name, self.msg_handler)
+        else:
+            rv = vpp_api.connect(name, self.msg_handler, chroot_prefix)
+
+        if rv != 0:
+            raise IOError(2, 'Connect failed')
+
+        self._load_dictionary()
+        self._register_functions()
+
+        # Initialise control ping
+        self.control_ping_index = self.vpp_dictionary['control_ping']['id']
+        self.control_ping_msgdef = self.messages['control_ping']
+
+        self.connected = True
+
+    def disconnect(self):
+        rv = vpp_api.disconnect()
+        return rv
+
+    def results_wait(self, context):
+        return (self.results[context]['e'].wait(self.timeout))
+
+    def results_prepare(self, context):
+        self.results[context] = {}
+        self.results[context]['e'] = threading.Event()
+        self.results[context]['e'].clear()
+        self.results[context]['r'] = []
+
+    def results_clean(self, context):
+        del self.results[context]
+
+    def msg_handler(self, msg):
+        if not msg:
+            eprint('vpp_api.read failed')
+            return
+
+        i, ci = self.header.unpack_from(msg, 0)
+        if self.id_names[i] == 'rx_thread_exit':
+            return;
 
         #
-        # Find base
-        # Update api table
+        # Decode message and returns a tuple.
         #
-        version = plugins[p]['version']
-        name = p + '_' + format(version, '08x')
-        r = memclnt.get_first_msg_id(name)
-        if r.retval != 0:
-            eprint('Failed getting first msg id for:', p, r, name)
-            raise
+        msgdef = self.id_msgdef[i]
+        if not msgdef:
+            raise IOError(2, 'Reply message undefined')
 
-        # Set base
-        base = r.first_msg_id
-        msg_id_base_set = plugins[p]['msg_id_base_set']
-        msg_id_base_set(base)
-        plugins[p]['base'] = base
-        func_table = plugins[p]['func_table']
-        i = r.first_msg_id
-        # Insert doesn't extend the table
-        if i + len(func_table) > len(api_func_table):
-            fill = [None] * (i + len(func_table) - len(api_func_table))
-            api_func_table.extend(fill)
-        for entry in func_table:
-            api_func_table[i] = entry
-            i += 1
-        plugin_name_to_id(p, plugins[p]['name_to_id_table'], base)
+        r = self.decode(msgdef, msg)
+        if 'context' in r._asdict():
+            if r.context > 0:
+                context = r.context
 
-#
-# Set up core API
-#
-memclnt.msg_id_base_set(1)
-plugins['memclnt']['base'] = 1
+        msgname = type(r).__name__
 
-# vpe
-msg_id_base_set(len(plugins['memclnt']['func_table']) + 1)
-plugins['vpe']['base'] = len(plugins['memclnt']['func_table']) + 1
-api_func_table = []
-api_func_table.append(None)
-api_func_table[1:] = plugins['memclnt']['func_table'] + plugins['vpe']['func_table']
-plugin_name_to_id('memclnt', plugins['memclnt']['name_to_id_table'], 1)
-plugin_name_to_id('vpe', plugins['vpe']['name_to_id_table'], plugins['vpe']['base'])
-plugin_name_to_id(__name__, plugins['vpe']['name_to_id_table'], plugins['vpe']['base'])
+        #
+        # XXX: Call provided callback for event
+        # Are we guaranteed to not get an event during processing of other messages?
+        # How to differentiate what's a callback message and what not? Context = 0?
+        #
+        #if not is_waiting_for_reply():
+        if r.context == 0 and self.event_callback:
+            self.event_callback(msgname, r)
+            return
+
+        #
+        # Collect results until control ping
+        #
+        if msgname == 'control_ping_reply':
+            self.results[context]['e'].set()
+            return
+
+        if not context in self.results:
+            eprint('Not expecting results for this context', context)
+            return
+
+        if 'm' in self.results[context]:
+            self.results[context]['r'].append(r)
+            return
+
+        self.results[context]['r'] = r
+        self.results[context]['e'].set()
+
+    def _control_ping(self, context):
+        self._write(self.encode(self.control_ping_msgdef,
+                        { '_vl_msg_id' : self.control_ping_index,
+                          'context' : context}))
+
+    def _call_vpp(self, i, msgdef, multipart, **kwargs):
+        if not 'context' in kwargs:
+            context = self.get_context()
+            kwargs['context'] = context
+        else:
+            context = kwargs['context']
+        kwargs['_vl_msg_id'] = i
+        b = self.encode(msgdef, kwargs)
+
+        self.results_prepare(context)
+
+        if multipart:
+            self.results[context]['m'] = True
+            self._control_ping(context)
+
+        self._write(b)
+
+        self.results_wait(context)
+        r = self.results[context]['r']
+        self.results_clean(context)
+        return r
+
+    def register_event_callback(self, callback):
+        self.event_callback = callback
+
