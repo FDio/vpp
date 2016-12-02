@@ -5639,7 +5639,8 @@ api_tap_connect (vat_main_t * vam)
 	random_mac = 1;
       else if (unformat (i, "tapname %s", &tap_name))
 	name_set = 1;
-      else if (unformat (i, "tag %s", &tag));
+      else if (unformat (i, "tag %s", &tag))
+	;
       else
 	break;
     }
@@ -5661,7 +5662,6 @@ api_tap_connect (vat_main_t * vam)
       errmsg ("tag too long\n");
       return -99;
     }
-  vec_add1 (tag, 0);
 
   /* Construct the API message */
   M (TAP_CONNECT, tap_connect);
