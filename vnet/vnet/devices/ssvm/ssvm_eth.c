@@ -476,7 +476,6 @@ VNET_DEVICE_CLASS (ssvm_eth_device_class) = {
   .admin_up_down_function = ssvm_eth_interface_admin_up_down,
   .subif_add_del_function = ssvm_eth_subif_add_del_function,
   .rx_redirect_to_node = ssvm_eth_set_interface_next_node,
-  .no_flatten_output_chains = 1,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (ssvm_eth_device_class,

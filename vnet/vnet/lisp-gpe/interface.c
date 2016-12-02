@@ -164,7 +164,6 @@ VNET_DEVICE_CLASS (lisp_gpe_device_class) = {
   .format_device_name = format_lisp_gpe_name,
   .format_tx_trace = format_lisp_gpe_tx_trace,
   .tx_function = lisp_gpe_interface_tx,
-  .no_flatten_output_chains = 1,
 };
 /* *INDENT-ON* */
 
@@ -304,7 +303,6 @@ VNET_DEVICE_CLASS (l2_lisp_gpe_device_class,static) = {
   .format_device_name = format_l2_lisp_gpe_name,
   .format_tx_trace = format_l2_lisp_gpe_tx_trace,
   .tx_function = l2_lisp_gpe_interface_tx,
-  .no_flatten_output_chains = 1,
 };
 /* *INDENT-ON* */
 

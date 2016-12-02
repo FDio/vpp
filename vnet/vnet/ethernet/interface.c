@@ -409,7 +409,6 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
   .format_device_name = format_simulated_ethernet_name,
   .tx_function = simulated_ethernet_interface_tx,
   .admin_up_down_function = simulated_ethernet_admin_up_down,
-  .no_flatten_output_chains = 1,
 };
 /* *INDENT-ON* */
 
