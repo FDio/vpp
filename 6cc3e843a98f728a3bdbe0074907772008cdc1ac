@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_5e815349",
+        "filename": "vlib-api/vlibapi/api.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-02T21:28:17Z",
+      "side": 1,
+      "message": "maybe\nSTATIC_ASSERT(sizeof(msgbuf_t) \u003d\u003d16);\n?",
+      "range": {
+        "startLine": 220,
+        "startChar": 2,
+        "endLine": 220,
+        "endChar": 11
+      },
+      "revId": "6cc3e843a98f728a3bdbe0074907772008cdc1ac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
