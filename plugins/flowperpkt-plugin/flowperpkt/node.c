@@ -183,6 +183,7 @@ add_to_flow_record (vlib_main_t * vm,
       ip->dst_address.as_u32 = frm->ipfix_collector.as_u32;
       udp->src_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
       udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_ipfix);
+      udp->checksum = 0;
 
       /* FIXUP: message header export_time */
       h->export_time = (u32)
