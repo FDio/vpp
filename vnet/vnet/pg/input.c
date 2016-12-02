@@ -1248,8 +1248,6 @@ pg_stream_fill_helper (pg_main_t * pg,
        /* set_data */
        DPDK == 1 || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE) != 0);
 
-  /* $$$ this doesn't work at the moment */
-  ASSERT (next_buffers == 0);
   if (next_buffers)
     pg_set_next_buffer_pointers (pg, s, buffers, next_buffers, n_alloc);
 
