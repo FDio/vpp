@@ -18,7 +18,7 @@ except ImportError:
     from distutils.core import setup, Extension
 
 setup (name = 'vpp_papi',
-       version = '1.2',
+       version = '1.3',
        description = 'VPP Python binding',
        author = 'Ole Troan',
        author_email = 'ot@cisco.com',
