@@ -186,12 +186,12 @@ class VppTestCase(unittest.TestCase):
         try:
             cls.run_vpp()
             cls.vpp_stdout_queue = Queue()
-            cls.vpp_stdout_reader_thread = Thread(
-                target=pump_output, args=(cls.vpp.stdout, cls.vpp_stdout_queue))
+            cls.vpp_stdout_reader_thread = Thread(target=pump_output, args=(
+                cls.vpp.stdout, cls.vpp_stdout_queue))
             cls.vpp_stdout_reader_thread.start()
             cls.vpp_stderr_queue = Queue()
-            cls.vpp_stderr_reader_thread = Thread(
-                target=pump_output, args=(cls.vpp.stderr, cls.vpp_stderr_queue))
+            cls.vpp_stderr_reader_thread = Thread(target=pump_output, args=(
+                cls.vpp.stderr, cls.vpp_stderr_queue))
             cls.vpp_stderr_reader_thread.start()
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix)
             if cls.step:
@@ -210,11 +210,12 @@ class VppTestCase(unittest.TestCase):
                                    "to 'continue' VPP from within gdb?", RED))
                 raise
         except:
+            t, v, tb = sys.exc_info()
             try:
                 cls.quit()
             except:
                 pass
-            raise
+            raise t, v, tb
 
     @classmethod
     def quit(cls):
@@ -231,7 +232,8 @@ class VppTestCase(unittest.TestCase):
                           " and finish running the testcase...")
 
         if hasattr(cls, 'vpp'):
-            cls.vapi.disconnect()
+            if hasattr(cls, 'vapi'):
+                cls.vapi.disconnect()
             cls.vpp.poll()
             if cls.vpp.returncode is None:
                 cls.vpp.terminate()
