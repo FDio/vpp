@@ -1,0 +1,38 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief Reply to l2_xconnect_dump 
+    @param context - sender context which was passed in the request
+    @param rx_sw_if_index - Receive interface index
+    @param tx_sw_if_index - Transmit interface index
+ */
+define l2_xconnect_details
+{
+  u32 context;
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+};
+
+/** \brief Dump L2 XConnects
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define l2_xconnect_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
