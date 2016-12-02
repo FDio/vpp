@@ -1733,24 +1733,27 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 
   if (mp->is_add)
     {
-      VALIDATE_SW_IF_INDEX (mp);
-      if (vec_len (l2im->configs) <= sw_if_index)
+      filter_mac = mp->filter_mac ? 1 : 0;
+      if (filter_mac == 0)
 	{
-	  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-	  goto bad_sw_if_index;
-	}
-      else
-	{
-	  l2_input_config_t *config;
-	  config = vec_elt_at_index (l2im->configs, sw_if_index);
-	  if (config->bridge == 0)
+	  VALIDATE_SW_IF_INDEX (mp);
+	  if (vec_len (l2im->configs) <= sw_if_index)
 	    {
 	      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
 	      goto bad_sw_if_index;
 	    }
+	  else
+	    {
+	      l2_input_config_t *config;
+	      config = vec_elt_at_index (l2im->configs, sw_if_index);
+	      if (config->bridge == 0)
+		{
+		  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+		  goto bad_sw_if_index;
+		}
+	    }
 	}
       static_mac = mp->static_mac ? 1 : 0;
-      filter_mac = mp->filter_mac ? 1 : 0;
       bvi_mac = mp->bvi_mac ? 1 : 0;
       l2fib_add_entry (mac, bd_index, sw_if_index, static_mac, filter_mac,
 		       bvi_mac);

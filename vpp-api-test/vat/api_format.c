@@ -5297,7 +5297,7 @@ api_l2fib_add_del (vat_main_t * vam)
   u8 mac_set = 0;
   u32 bd_id;
   u8 bd_id_set = 0;
-  u32 sw_if_index;
+  u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
   u8 static_mac = 0;
@@ -5358,7 +5358,7 @@ api_l2fib_add_del (vat_main_t * vam)
       return -99;
     }
 
-  if (is_add && (sw_if_index_set == 0))
+  if (is_add && sw_if_index_set == 0 && filter_mac == 0)
     {
       errmsg ("missing interface name or sw_if_index\n");
       return -99;
