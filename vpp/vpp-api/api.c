@@ -1854,8 +1854,9 @@ out:
 }
 
 static void
-vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp, vlib_main_t * vm)
+vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   int rv;
   vl_api_tap_connect_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
@@ -1868,10 +1869,6 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp, vlib_main_t * vm)
 				  &sw_if_index, mp->renumber,
 				  ntohl (mp->custom_dev_instance));
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
   /* Add tag if supplied */
   if (rv == 0 && mp->tag[0])
     {
@@ -1879,6 +1876,10 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp, vlib_main_t * vm)
       tag = format (0, "%s%c", mp->tag, 0);
       vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
     }
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_CONNECT_REPLY);
@@ -1890,12 +1891,13 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp, vlib_main_t * vm)
 }
 
 static void
-vl_api_tap_modify_t_handler (vl_api_tap_modify_t * mp, vlib_main_t * vm)
+vl_api_tap_modify_t_handler (vl_api_tap_modify_t * mp)
 {
   int rv;
   vl_api_tap_modify_reply_t *rmp;
   unix_shared_memory_queue_t *q;
   u32 sw_if_index = (u32) ~ 0;
+  vlib_main_t *vm = vlib_get_main ();
 
   rv = vnet_tap_modify (vm, ntohl (mp->sw_if_index), mp->tap_name,
 			mp->use_random_mac ? 0 : mp->mac_address,
@@ -1916,8 +1918,9 @@ vl_api_tap_modify_t_handler (vl_api_tap_modify_t * mp, vlib_main_t * vm)
 }
 
 static void
-vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp, vlib_main_t * vm)
+vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   int rv;
   vpe_api_main_t *vam = &vpe_api_main;
   vl_api_tap_delete_reply_t *rmp;
@@ -3003,9 +3006,10 @@ static void vl_api_dhcp_client_config_t_handler
 
 static void
   vl_api_sw_interface_ip6nd_ra_config_t_handler
-  (vl_api_sw_interface_ip6nd_ra_config_t * mp, vlib_main_t * vm)
+  (vl_api_sw_interface_ip6nd_ra_config_t * mp)
 {
   vl_api_sw_interface_ip6nd_ra_config_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   u8 is_no, suppress, managed, other, ll_option, send_unicast, cease,
     default_router;
@@ -3037,8 +3041,9 @@ static void
 
 static void
   vl_api_sw_interface_ip6nd_ra_prefix_t_handler
-  (vl_api_sw_interface_ip6nd_ra_prefix_t * mp, vlib_main_t * vm)
+  (vl_api_sw_interface_ip6nd_ra_prefix_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vl_api_sw_interface_ip6nd_ra_prefix_reply_t *rmp;
   int rv = 0;
   u8 is_no, use_default, no_advertise, off_link, no_autoconfig, no_onlink;
@@ -3065,8 +3070,9 @@ static void
 
 static void
   vl_api_sw_interface_ip6_enable_disable_t_handler
-  (vl_api_sw_interface_ip6_enable_disable_t * mp, vlib_main_t * vm)
+  (vl_api_sw_interface_ip6_enable_disable_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vl_api_sw_interface_ip6_enable_disable_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
   int rv = 0;
@@ -3098,8 +3104,9 @@ static void
 
 static void
   vl_api_sw_interface_ip6_set_link_local_address_t_handler
-  (vl_api_sw_interface_ip6_set_link_local_address_t * mp, vlib_main_t * vm)
+  (vl_api_sw_interface_ip6_set_link_local_address_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vl_api_sw_interface_ip6_set_link_local_address_reply_t *rmp;
   int rv = 0;
   clib_error_t *error;

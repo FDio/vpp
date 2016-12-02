@@ -208,6 +208,14 @@ typedef struct
   int is_mp_safe;
 } vl_msg_api_msg_config_t;
 
+typedef struct msgbuf_
+{
+  unix_shared_memory_queue_t *q;
+  u32 data_len;
+  u32 pad;
+  u8 data[0];
+} msgbuf_t;
+
 /* api_shared.c prototypes */
 int vl_msg_api_rx_trace_enabled (api_main_t * am);
 int vl_msg_api_tx_trace_enabled (api_main_t * am);
