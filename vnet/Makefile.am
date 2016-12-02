@@ -15,7 +15,8 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
-BUILT_SOURCES = vnet/interface.api.h vnet/interface.api.json
+BUILT_SOURCES = vnet/interface.api.h vnet/interface.api.json vnet/l2/l2.api.h \
+  vnet/l2/l2.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -116,6 +117,7 @@ nobase_include_HEADERS +=			\
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/l2/feat_bitmap.c				\
+ vnet/l2/l2_api.c      				\
  vnet/l2/l2_bd.c				\
  vnet/l2/l2_bvi.c				\
  vnet/l2/l2_input_classify.c			\
@@ -149,7 +151,8 @@ nobase_include_HEADERS +=			\
  vnet/l2/l2_fib.h				\
  vnet/l2/l2_rw.h                                \
  vnet/l2/l2_xcrw.h				\
- vnet/l2/l2_classify.h
+ vnet/l2/l2_classify.h				\
+ vnet/l2/l2.api.h
 
 ########################################
 # Layer 2 protocol: SRP
@@ -892,7 +895,7 @@ SUFFIXES = .api.h .api .api.json
 # install the API definition, so we can produce java bindings, etc.
 
 apidir = $(prefix)/vnet
-api_DATA = vnet/interface.api.json
+api_DATA = vnet/interface.api.json vnet/l2/l2.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree

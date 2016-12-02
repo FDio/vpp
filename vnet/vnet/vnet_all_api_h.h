@@ -30,6 +30,7 @@
 #endif /* included_from_layer_3 */
 
 #include <vnet/interface.api.h>
+#include <vnet/l2/l2.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
