@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -85,8 +86,10 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
   u8 **this_trace;
   u8 **old_trace;
   u8 *msg_copy;
+  u32 length;
   trace_cfg_t *cfgp;
   u16 msg_id = ntohs (*((u16 *) msg));
+  msgbuf_t *header = (msgbuf_t *) (((u8 *) msg) - offsetof (msgbuf_t, data));
 
   cfgp = am->api_trace_cfg + msg_id;
 
@@ -116,8 +119,10 @@ vl_msg_api_trace (api_main_t * am, vl_api_trace_t * tp, void *msg)
       this_trace = old_trace;
     }
 
-  vec_validate (msg_copy, cfgp->size - 1);
-  clib_memcpy (msg_copy, msg, cfgp->size);
+  length = clib_net_to_host_u32 (header->data_len);
+
+  vec_validate (msg_copy, length - 1);
+  clib_memcpy (msg_copy, msg, length);
   *this_trace = msg_copy;
 }
 
@@ -254,6 +259,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
        */
       for (i = 0; i < vec_len (tp->traces); i++)
 	{
+	  u32 msg_length;
 	  /*sa_ignore NO_NULL_CHK */
 	  msg = tp->traces[i];
 	  /*
@@ -262,6 +268,13 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
 	   */
 	  if (!msg)
 	    continue;
+
+	  msg_length = clib_host_to_net_u32 (vec_len (msg));
+	  if (fwrite (&msg_length, 1, sizeof (msg_length), fp)
+	      != sizeof (msg_length))
+	    {
+	      return (-14);
+	    }
 	  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
 	    {
 	      return (-11);
@@ -273,6 +286,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
       /* Wrap case: write oldest -> end of buffer */
       for (i = tp->curindex; i < vec_len (tp->traces); i++)
 	{
+	  u32 msg_length;
 	  msg = tp->traces[i];
 	  /*
 	   * This retarded check required to pass
@@ -280,6 +294,13 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
 	   */
 	  if (!msg)
 	    continue;
+
+	  msg_length = clib_host_to_net_u32 (vec_len (msg));
+	  if (fwrite (&msg_length, 1, sizeof (msg_length), fp)
+	      != sizeof (msg_length))
+	    {
+	      return (-14);
+	    }
 
 	  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
 	    {
@@ -289,6 +310,7 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
       /* write beginning of buffer -> oldest-1 */
       for (i = 0; i < tp->curindex; i++)
 	{
+	  u32 msg_length;
 	  /*sa_ignore NO_NULL_CHK */
 	  msg = tp->traces[i];
 	  /*
@@ -297,6 +319,13 @@ vl_msg_api_trace_save (api_main_t * am, vl_api_trace_which_t which, FILE * fp)
 	   */
 	  if (!msg)
 	    continue;
+
+	  msg_length = clib_host_to_net_u32 (vec_len (msg));
+	  if (fwrite (&msg_length, 1, sizeof (msg_length), fp)
+	      != sizeof (msg_length))
+	    {
+	      return (-14);
+	    }
 
 	  if (fwrite (msg, 1, vec_len (msg), fp) != vec_len (msg))
 	    {
@@ -668,7 +697,6 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   c->cleanup = cleanup;
   c->endian = endian;
   c->print = print;
-  c->size = size;
   c->traced = traced;
   c->replay = 1;
   c->message_bounce = 0;
@@ -759,7 +787,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
   u8 *msg;
   u8 endian_swap_needed = 0;
   api_main_t *am = &api_main;
-  static u8 *tmpbuf;
+  u8 *tmpbuf = 0;
   u32 nitems;
   void **saved_print_handlers = 0;
 
@@ -838,6 +866,9 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       int size;
       u16 msg_id;
 
+      size = clib_host_to_net_u32 (*(u32 *) msg);
+      msg += sizeof (u32);
+
       if (clib_arch_is_little_endian)
 	msg_id = ntohs (*((u16 *) msg));
       else
@@ -850,7 +881,6 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  munmap (hp, file_size);
 	  return;
 	}
-      size = cfgp->size;
       msg += size;
     }
 
@@ -864,6 +894,9 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       if (which == DUMP)
 	vlib_cli_output (vm, "---------- trace %d -----------\n", i);
 
+      size = clib_host_to_net_u32 (*(u32 *) msg);
+      msg += sizeof (u32);
+
       if (clib_arch_is_little_endian)
 	msg_id = ntohs (*((u16 *) msg));
       else
@@ -874,9 +907,9 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	{
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
 	  munmap (hp, file_size);
+	  vec_free (tmpbuf);
 	  return;
 	}
-      size = cfgp->size;
 
       /* Copy the buffer (from the read-only mmap'ed file) */
       vec_validate (tmpbuf, size - 1 + sizeof (uword));
@@ -897,6 +930,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	    {
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
 	      munmap (hp, file_size);
+	      vec_free (tmpbuf);
 	      return;
 	    }
 	  endian_fp = am->msg_endian_handlers[msg_id];
@@ -997,6 +1031,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
     }
 
   munmap (hp, file_size);
+  vec_free (tmpbuf);
 }
 
 u8 *

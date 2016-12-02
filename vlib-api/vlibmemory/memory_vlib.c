@@ -1042,122 +1042,12 @@ VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) = {
 };
 /* *INDENT-ON* */
 
-void
-vl_api_trace_print_file_cmd (vlib_main_t * vm, u32 first, u32 last,
-			     u8 * filename)
-{
-  FILE *fp;
-  static vl_api_trace_t *tp = 0;
-  int endian_swap = 0;
-  u32 i;
-  u16 msg_id;
-  static u8 *msg_buf = 0;
-  void (*endian_fp) (void *);
-  u8 *(*print_fp) (void *, void *);
-  int size;
-  api_main_t *am = &api_main;
-
-  /*
-   * On-demand: allocate enough space for the largest message
-   */
-  if (msg_buf == 0)
-    {
-      vec_validate (tp, 0);
-      int max_size = 0;
-      for (i = 0; i < vec_len (am->api_trace_cfg); i++)
-	{
-	  if (am->api_trace_cfg[i].size > max_size)
-	    max_size = am->api_trace_cfg[i].size;
-	}
-      /* round size to a multiple of the cache-line size */
-      max_size = (max_size + (CLIB_CACHE_LINE_BYTES - 1)) &
-	(~(CLIB_CACHE_LINE_BYTES - 1));
-      vec_validate (msg_buf, max_size - 1);
-    }
-
-  fp = fopen ((char *) filename, "r");
-
-  if (fp == NULL)
-    {
-      vlib_cli_output (vm, "Couldn't open %s\n", filename);
-      return;
-    }
-
-  /* first, fish the header record from the file */
-
-  if (fread (tp, sizeof (*tp), 1, fp) != 1)
-    {
-      fclose (fp);
-      vlib_cli_output (vm, "Header read error\n");
-      return;
-    }
-
-  /* Endian swap required? */
-  if (clib_arch_is_big_endian != tp->endian)
-    {
-      endian_swap = 1;
-    }
-
-  for (i = 0; i <= last; i++)
-    {
-      /* First 2 bytes are the message type */
-      if (fread (&msg_id, sizeof (u16), 1, fp) != 1)
-	{
-	  break;
-	}
-      msg_id = ntohs (msg_id);
-
-      if (fseek (fp, -2, SEEK_CUR) < 0)
-	{
-	  vlib_cli_output (vm, "fseek failed, %s", strerror (errno));
-	  fclose (fp);
-	  return;
-	}
-
-      /* Mild sanity check */
-      if (msg_id >= vec_len (am->msg_handlers))
-	{
-	  fclose (fp);
-	  vlib_cli_output (vm, "msg_id %d out of bounds\n", msg_id);
-	  return;
-	}
-
-      size = am->api_trace_cfg[msg_id].size;
-
-      if (fread (msg_buf, size, 1, fp) != 1)
-	{
-	  fclose (fp);
-	  vlib_cli_output (vm, "read error on %s\n", filename);
-	  return;
-	}
-
-      if (i < first)
-	continue;
-
-      if (endian_swap)
-	{
-	  endian_fp = am->msg_endian_handlers[msg_id];
-	  (*endian_fp) (msg_buf);
-	}
-
-      vlib_cli_output (vm, "[%d]: %s\n", i, am->msg_names[msg_id]);
-
-      print_fp = (void *) am->msg_print_handlers[msg_id];
-      (*print_fp) (msg_buf, vm);
-      vlib_cli_output (vm, "-------------\n");
-    }
-  fclose (fp);
-}
-
 static clib_error_t *
 vl_api_trace_command (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cli_cmd)
 {
   u32 nitems = 1024;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
-  u8 *filename;
-  u32 first = 0;
-  u32 last = ~0;
   api_main_t *am = &api_main;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1194,12 +1084,6 @@ vl_api_trace_command (vlib_main_t * vm,
 	  vl_msg_api_trace_free (am, VL_API_TRACE_RX);
 	  vl_msg_api_trace_free (am, VL_API_TRACE_TX);
 	}
-      else if (unformat (input, "print %s from %d to %d", &filename,
-			 &first, &last)
-	       || unformat (input, "print %s", &filename))
-	{
-	  goto print;
-	}
       else if (unformat (input, "debug on"))
 	{
 	  am->msg_print_flag = 1;
@@ -1214,10 +1098,6 @@ vl_api_trace_command (vlib_main_t * vm,
     }
   return 0;
 
-print:
-  vl_api_trace_print_file_cmd (vm, first, last, filename);
-  goto out;
-
 configure:
   if (vl_msg_api_trace_configure (am, which, nitems))
     {
@@ -1225,7 +1105,6 @@ configure:
 		       which, nitems);
     }
 
-out:
   return 0;
 }
 
