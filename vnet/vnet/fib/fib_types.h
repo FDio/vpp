@@ -32,11 +32,7 @@ typedef u32 fib_node_index_t;
  * Protocol Type. packed so it consumes a u8 only
  */
 typedef enum fib_protocol_t_ {
-#if CLIB_DEBUG > 0
-    FIB_PROTOCOL_IP4 = 1,
-#else
     FIB_PROTOCOL_IP4 = 0,
-#endif
     FIB_PROTOCOL_IP6,
     FIB_PROTOCOL_MPLS,
 }  __attribute__ ((packed)) fib_protocol_t;
