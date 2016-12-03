@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_9e0a1bd1",
+        "filename": "plugins/flowperpkt-plugin/flowperpkt/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 254,
+      "author": {
+        "id": 671
+      },
+      "writtenOn": "2016-12-03T03:29:36Z",
+      "side": 1,
+      "message": "Should this be \n4 * sizeof (u32) + sizeof (u8) + sizeof (f64) + sizeof (u16)\ninstead?",
+      "range": {
+        "startLine": 251,
+        "startChar": 0,
+        "endLine": 254,
+        "endChar": 39
+      },
+      "revId": "dcbc86a8afd3b928ffe5bd5a5d15da31ee762b4f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
