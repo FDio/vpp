@@ -183,9 +183,13 @@ format_dpdk_device_name (u8 * s, va_list * args)
     }
 
   rte_eth_dev_info_get (i, &dev_info);
-  ret = format (s, devname_format, device_name, dev_info.pci_dev->addr.bus,
-		dev_info.pci_dev->addr.devid,
-		dev_info.pci_dev->addr.function);
+
+  if (dev_info.pci_dev)
+    ret = format (s, devname_format, device_name, dev_info.pci_dev->addr.bus,
+		  dev_info.pci_dev->addr.devid,
+		  dev_info.pci_dev->addr.function);
+  else
+    ret = format (s, "%s%d", device_name, dm->devices[i].device_index);
 
   if (dm->devices[i].interface_name_suffix)
     return format (ret, "/%s", dm->devices[i].interface_name_suffix);

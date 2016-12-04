@@ -80,7 +80,7 @@ extern vlib_node_registration_t handoff_dispatch_node;
   _ ("net_enic", ENIC)            \
   _ ("net_vmxnet3", VMXNET3)      \
   _ ("net_af_packet", AF_PACKET)  \
-  _ ("net_bonding", BOND)         \
+  _ ("rte_bond_pmd", BOND)        \
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
   _ ("net_dpaa2", DPAA2)
