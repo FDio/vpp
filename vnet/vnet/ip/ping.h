@@ -78,19 +78,23 @@ typedef CLIB_PACKED(struct {
 
 
 typedef struct {
-  u8 packet_data[64];
-} icmp4_input_trace_t;
+  u16 id;
+  u16 seq;
+  u8 bound;
+} icmp_echo_trace_t;
 
 
 
 
 typedef enum {
-  ICMP6_ECHO_REPLY_NEXT_NORMAL,
+  ICMP6_ECHO_REPLY_NEXT_DROP,
+  ICMP6_ECHO_REPLY_NEXT_PUNT,
   ICMP6_ECHO_REPLY_N_NEXT,
 } icmp6_echo_reply_next_t;
 
 typedef enum {
-  ICMP4_ECHO_REPLY_NEXT_NORMAL,
+  ICMP4_ECHO_REPLY_NEXT_DROP,
+  ICMP4_ECHO_REPLY_NEXT_PUNT,
   ICMP4_ECHO_REPLY_N_NEXT,
 } icmp4_echo_reply_next_t;
 
