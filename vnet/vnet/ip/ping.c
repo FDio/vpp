@@ -29,14 +29,16 @@
 
 
 u8 *
-format_icmp4_input_trace (u8 * s, va_list * va)
+format_icmp_echo_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  icmp4_input_trace_t *t = va_arg (*va, icmp4_input_trace_t *);
+  icmp_echo_trace_t *t = va_arg (*va, icmp_echo_trace_t *);
 
-  s = format (s, "%U",
-              format_ip4_header, t->packet_data, sizeof (t->packet_data));
+  s = format (s, "ICMP echo id %d seq %d%s",
+              clib_net_to_host_u16(t->id),
+              clib_net_to_host_u16(t->seq),
+              t->bound ? "" : " (unknown)");
 
   return s;
 }
@@ -50,7 +52,7 @@ format_icmp4_input_trace (u8 * s, va_list * va)
  *
  */
 
-static void
+static int
 signal_ip46_icmp_reply_event (vlib_main_t * vm,
                               u8 event_type, vlib_buffer_t * b0)
 {
@@ -73,13 +75,13 @@ signal_ip46_icmp_reply_event (vlib_main_t * vm,
       }
       break;
     default:
-      return;
+      return 0;
     }
 
   uword *p = hash_get (pm->ping_run_by_icmp_id,
                        clib_net_to_host_u16 (net_icmp_id));
   if (!p)
-    return;
+    return 0;
 
   ping_run_t *pr = vec_elt_at_index (pm->ping_runs, p[0]);
   if (vlib_buffer_alloc (vm, &bi0_copy, 1) == 1)
@@ -90,6 +92,7 @@ signal_ip46_icmp_reply_event (vlib_main_t * vm,
   /* If buffer_alloc failed, bi0_copy == 0 - just signaling an event. */
 
   vlib_process_signal_event (vm, pr->cli_process_id, event_type, bi0_copy);
+  return 1;
 }
 
 /*
@@ -113,10 +116,19 @@ ip6_icmp_echo_reply_node_fn (vlib_main_t * vm,
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
 
-      signal_ip46_icmp_reply_event (vm, PING_RESPONSE_IP6, b0);
+      next0 = signal_ip46_icmp_reply_event (vm, PING_RESPONSE_IP6, b0) ?
+        ICMP6_ECHO_REPLY_NEXT_DROP : ICMP6_ECHO_REPLY_NEXT_PUNT;
 
-      /* push this pkt to the next graph node, always error-drop */
-      next0 = ICMP6_ECHO_REPLY_NEXT_NORMAL;
+      if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+         {
+           icmp6_echo_request_header_t *h0 = vlib_buffer_get_current (b0);
+           icmp_echo_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+           tr->id = h0->icmp_echo.id;
+           tr->seq = h0->icmp_echo.seq;
+           tr->bound = (next0 == ICMP6_ECHO_REPLY_NEXT_DROP);
+         }
+
+      /* push this pkt to the next graph node */
       vlib_set_next_frame_buffer (vm, node, next0, bi0);
 
       from += 1;
@@ -132,10 +144,11 @@ VLIB_REGISTER_NODE (ip6_icmp_echo_reply_node, static) =
   .function = ip6_icmp_echo_reply_node_fn,
   .name = "ip6-icmp-echo-reply",
   .vector_size = sizeof (u32),
-  .format_trace = format_icmp6_input_trace,
+  .format_trace = format_icmp_echo_trace,
   .n_next_nodes = ICMP6_ECHO_REPLY_N_NEXT,
   .next_nodes = {
-    [ICMP6_ECHO_REPLY_NEXT_NORMAL] = "error-drop",
+    [ICMP6_ECHO_REPLY_NEXT_DROP] = "error-drop",
+    [ICMP6_ECHO_REPLY_NEXT_PUNT] = "error-punt",
   },
 };
 /* *INDENT-ON* */
@@ -161,10 +174,19 @@ ip4_icmp_echo_reply_node_fn (vlib_main_t * vm,
       bi0 = from[0];
       b0 = vlib_get_buffer (vm, bi0);
 
-      /* push this pkt to the next graph node, always error-drop */
-      signal_ip46_icmp_reply_event (vm, PING_RESPONSE_IP4, b0);
+      next0 = signal_ip46_icmp_reply_event (vm, PING_RESPONSE_IP4, b0) ?
+        ICMP4_ECHO_REPLY_NEXT_DROP : ICMP4_ECHO_REPLY_NEXT_PUNT;
 
-      next0 = ICMP4_ECHO_REPLY_NEXT_NORMAL;
+      if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+         {
+           icmp4_echo_request_header_t *h0 = vlib_buffer_get_current (b0);
+           icmp_echo_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+           tr->id = h0->icmp_echo.id;
+           tr->seq = h0->icmp_echo.seq;
+           tr->bound = (next0 == ICMP4_ECHO_REPLY_NEXT_DROP);
+         }
+
+      /* push this pkt to the next graph node */
       vlib_set_next_frame_buffer (vm, node, next0, bi0);
 
       from += 1;
@@ -180,10 +202,11 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
   .function = ip4_icmp_echo_reply_node_fn,
   .name = "ip4-icmp-echo-reply",
   .vector_size = sizeof (u32),
-  .format_trace = format_icmp4_input_trace,
+  .format_trace = format_icmp_echo_trace,
   .n_next_nodes = ICMP4_ECHO_REPLY_N_NEXT,
   .next_nodes = {
-    [ICMP4_ECHO_REPLY_NEXT_NORMAL] = "error-drop",
+    [ICMP4_ECHO_REPLY_NEXT_DROP] = "error-drop",
+    [ICMP4_ECHO_REPLY_NEXT_PUNT] = "error-punt",
   },
 };
 /* *INDENT-ON* */
