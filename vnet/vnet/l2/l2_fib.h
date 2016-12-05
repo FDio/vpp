@@ -48,6 +48,8 @@ typedef struct
   };
 } l2fib_entry_key_t;
 
+STATIC_ASSERT_SIZEOF (l2fib_entry_key_t, 8);
+
 /*
  * The l2fib entry results
  */
@@ -62,8 +64,7 @@ typedef struct
       u8 static_mac:1;		/* static mac, no dataplane learning */
       u8 bvi:1;			/* mac is for a bridged virtual interface */
       u8 filter:1;		/* drop packets to/from this mac */
-      u8 refresh:1;		/* refresh flag for aging */
-      u8 unused1:4;
+      u8 unused1:5;
       u8 timestamp;		/* timestamp for aging */
       u16 unused2;
     } fields;
@@ -71,6 +72,7 @@ typedef struct
   };
 } l2fib_entry_result_t;
 
+STATIC_ASSERT_SIZEOF (l2fib_entry_result_t, 8);
 
 /**
  * Compute the hash for the given key and return
