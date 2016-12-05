@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_64147ef5",
+        "filename": "vppinfra/vppinfra/test_bihash_template.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-12-05T19:59:46Z",
+      "side": 1,
+      "message": "Is this really needed?",
+      "range": {
+        "startLine": 26,
+        "startChar": 2,
+        "endLine": 26,
+        "endChar": 5
+      },
+      "revId": "abd5dbadb50ddab2ed61506181bf6148f1283a21",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
