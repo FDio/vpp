@@ -59,9 +59,6 @@ install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
 
-apidir = $(prefix)/snat
-api_DATA = snat/snat.api.json
-
 #
 # Java code generation
 #
