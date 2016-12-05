@@ -24,12 +24,7 @@
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
-
-typedef struct
-{
-  u32 client_index;		/* in memclnt registration pool */
-  u32 client_pid;
-} vpe_client_registration_t;
+#include <vlibapi/api_helper_macros.h>
 
 typedef struct
 {

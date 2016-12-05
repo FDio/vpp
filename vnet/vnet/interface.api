@@ -1,5 +1,3 @@
-/* Hey Emacs use -*- mode: C -*- */
-
 /** \brief Set flags on the interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -52,4 +50,266 @@ define sw_interface_set_mtu_reply
   u32 context;
   i32 retval;
 };
+
+/** \brief Register for interface events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+define want_interface_events
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Reply for interface events registration
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define want_interface_events_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Interface details structure (fix this) 
+    @param sw_if_index - index of the interface
+    @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index  
+    @param l2_address_length - length of the interface's l2 address
+    @param pid - the interface's l2 address
+    @param interface_name - name of the interface
+    @param link_duplex - 1 if half duplex, 2 if full duplex
+    @param link_speed - 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G
+    @param link_MTU - max. transmittion unit 
+    @param sub_if_id - A number 0-N to uniquely identify this subif on super if
+    @param sub_dot1ad -  0 = dot1q, 1=dot1ad
+    @param sub_number_of_tags - Number of tags (0 - 2)
+    @param sub_outer_vlan_id
+    @param sub_inner_vlan_id
+    @param sub_exact_match
+    @param sub_default
+    @param sub_outer_vlan_id_any
+    @param sub_inner_vlan_id_any
+    @param vtr_op - vlan tag rewrite operation
+    @param vtr_push_dot1q
+    @param vtr_tag1
+    @param vtr_tag2
+*/
+define sw_interface_details
+{
+  u32 context;
+  u32 sw_if_index;
+
+  /* index of sup interface (e.g. hw interface).
+     equal to sw_if_index for super hw interface. */
+  u32 sup_sw_if_index;
+
+  /* Layer 2 address, if applicable */
+  u32 l2_address_length;
+  u8 l2_address[8];
+
+  /* Interface name */
+  u8 interface_name[64];
+
+  /* 1 = up, 0 = down */
+  u8 admin_up_down;
+  u8 link_up_down;
+
+  /* 1 = half duplex, 2 = full duplex */
+  u8 link_duplex;
+
+  /* 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G */
+  u8 link_speed;
+
+  /* MTU */
+  u16 link_mtu;
+
+  /* Subinterface ID. A number 0-N to uniquely identify this subinterface under the super interface */
+  u32 sub_id;
+
+  /* 0 = dot1q, 1=dot1ad */
+  u8 sub_dot1ad;
+
+  /* Number of tags 0-2 */
+  u8 sub_number_of_tags;
+  u16 sub_outer_vlan_id;
+  u16 sub_inner_vlan_id;
+  u8 sub_exact_match;
+  u8 sub_default;
+  u8 sub_outer_vlan_id_any;
+  u8 sub_inner_vlan_id_any;
+
+  /* vlan tag rewrite state */
+  u32 vtr_op;
+  u32 vtr_push_dot1q;		// ethertype of first pushed tag is dot1q/dot1ad
+  u32 vtr_tag1;			// first pushed tag
+  u32 vtr_tag2;			// second pushed tag
+  u8 tag[64];
+};
+
+/* works */
+define sw_interface_dump
+{
+  u32 client_index;
+  u32 context;
+  u8 name_filter_valid;
+  u8 name_filter[49];
+};
+
+/** \brief Set or delete one or all ip addresses on a specified interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to add/del addresses 
+    @param is_add - add address if non-zero, else delete
+    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param del_all - if non-zero delete all addresses on the interface
+    @param address_length - address length in bytes, 4 for ip4, 16 for ip6
+    @param address - array of address bytes
+*/
+define sw_interface_add_del_address
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_add;
+  u8 is_ipv6;
+  u8 del_all;
+  u8 address_length;
+  u8 address[16];
+};
+
+/** \brief Reply for interface events registration
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define sw_interface_add_del_address_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Associate the specified interface with a fib table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+    @param is_ipv6 - if non-zero ipv6, else ipv4
+    @param vrf_id - fib table/vrd id to associate the interface with
+*/
+define sw_interface_set_table
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+  u32 vrf_id;
+};
+
+/** \brief Reply for interface events registration
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define sw_interface_set_table_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Stats counters structure 
+    @param vnet_counter_type- such as ip4, ip6, punts, etc
+    @param is_combined - rx & tx total (all types) counts   
+    @param first_sw_if_index - first sw index in block of index, counts
+    @param count - number of interfaces this stats block includes counters for
+    @param data - contiguous block of vlib_counter_t structures 
+*/
+define vnet_interface_counters
+{
+  /* enums - plural - in vnet/interface.h */
+  u8 vnet_counter_type;
+  u8 is_combined;
+  u32 first_sw_if_index;
+  u32 count;
+  u8 data[count];
+};
+
+/** \brief Set unnumbered interface add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface with an IP address
+    @param unnumbered_sw_if_index - interface which will use the address
+    @param is_add - if non-zero set the association, else unset it
+*/
+define sw_interface_set_unnumbered
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;		/* use this intfc address */
+  u32 unnumbered_sw_if_index;	/* on this interface */
+  u8 is_add;
+};
+
+/** \brief Set unnumbered interface add / del response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define sw_interface_set_unnumbered_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Clear interface statistics
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to clear statistics
+*/
+define sw_interface_clear_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Reply to sw_interface_clear_stats 
+    @param context - sender context which was passed in the request
+    @param retval - return code of the set flags request
+*/
+define sw_interface_clear_stats_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Set / clear software interface tag
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface
+    @param add_del - 1 = add, 0 = delete
+    @param tag - an ascii tag
+*/
+define sw_interface_tag_add_del 
+{
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u32 sw_if_index;
+    u8 tag[64];
+};
+
+/** \brief Reply to set / clear software interface tag
+    @param context - sender context which was passed in the request
+    @param retval - return code for the request
+*/
+define sw_interface_tag_add_del_reply
+{
+    u32 context;
+    i32 retval;
+};
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
 
