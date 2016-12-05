@@ -110,6 +110,11 @@ class VPP():
     def __struct_type_encode(self, msgdef, buf, offset, kwargs):
         off = offset
         size = 0
+
+        for k in kwargs:
+            if k not in msgdef['args']:
+                raise ValueError(1, 'Invalid field-name in message call')
+
         for k,v in msgdef['args'].iteritems():
             off += size
             if k in kwargs:
@@ -143,7 +148,7 @@ class VPP():
                         v.pack_into(buf, off, kwargs[k])
                         size = v.size
             else:
-                size = v.size
+                size = v.size if not type(v) is list else 0
 
         return off + size - offset
 
@@ -262,7 +267,6 @@ class VPP():
     def _load_dictionary(self):
         self.vpp_dictionary = {}
         self.vpp_dictionary_maxid = 0
-
         d = vpp_api.msg_table()
 
         if not d:
@@ -281,6 +285,7 @@ class VPP():
 
         if rv != 0:
             raise IOError(2, 'Connect failed')
+        self.connected = True
 
         self._load_dictionary()
         self._register_functions()
@@ -288,8 +293,6 @@ class VPP():
         # Initialise control ping
         self.control_ping_index = self.vpp_dictionary['control_ping']['id']
         self.control_ping_msgdef = self.messages['control_ping']
-
-        self.connected = True
 
     def disconnect(self):
         rv = vpp_api.disconnect()
@@ -348,7 +351,7 @@ class VPP():
             return
 
         if not context in self.results:
-            eprint('Not expecting results for this context', context)
+            eprint('Not expecting results for this context', context, r)
             return
 
         if 'm' in self.results[context]:
