@@ -3921,7 +3921,8 @@ _(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)           \
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
 _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
-_(IP_NEIGHBOR_DETAILS, ip_neighbor_details)
+_(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
+_(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -5102,6 +5103,71 @@ api_sw_interface_set_table (vat_main_t * vam)
   S;
 
   /* Wait for a reply... */
+  W;
+}
+
+static void vl_api_sw_interface_get_table_reply_t_handler
+  (vl_api_sw_interface_get_table_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%d\n", ntohl (mp->vrf_id));
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+
+}
+
+static void vl_api_sw_interface_get_table_reply_t_handler_json
+  (vl_api_sw_interface_get_table_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_int (&node, "vrf_id", ntohl (mp->vrf_id));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static int
+api_sw_interface_get_table (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_get_table_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 is_ipv6 = 0;
+  f64 timeout;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  M (SW_INTERFACE_GET_TABLE, sw_interface_get_table);
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->is_ipv6 = is_ipv6;
+
+  S;
   W;
 }
 
@@ -17627,7 +17693,8 @@ _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 "[disable]")                                                        	\
 _(l2_xconnect_dump, "")                                             	\
 _(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
-_(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")
+_(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
+_(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

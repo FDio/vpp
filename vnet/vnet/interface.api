@@ -181,7 +181,7 @@ define sw_interface_add_del_address
   u8 address[16];
 };
 
-/** \brief Reply for interface events registration
+/** \brief Reply to sw_interface_add_del_address
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
 */
@@ -207,7 +207,7 @@ define sw_interface_set_table
   u32 vrf_id;
 };
 
-/** \brief Reply for interface events registration
+/** \brief Reply to sw_interface_set_table
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
 */
@@ -215,6 +215,30 @@ define sw_interface_set_table_reply
 {
   u32 context;
   i32 retval;
+};
+
+/** \brief Get VRF id assigned to interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+*/
+define sw_interface_get_table
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+};
+
+/** \brief Reply to get_sw_interface_vrf
+    @param context - sender context which was passed in the request
+    @param vrf_id - VRF id assigned to the interface
+*/
+define sw_interface_get_table_reply
+{
+  u32 context;
+  i32 retval;
+  u32 vrf_id;
 };
 
 /** \brief Stats counters structure 

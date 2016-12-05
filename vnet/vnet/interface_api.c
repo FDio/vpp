@@ -52,6 +52,7 @@ _(SW_INTERFACE_DUMP, sw_interface_dump)                         \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)   \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)               \
+_(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)     \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)           \
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)
@@ -325,6 +326,56 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_TABLE_REPLY);
+}
+
+static void
+send_sw_interface_get_table_reply (unix_shared_memory_queue_t * q,
+				   u32 context, int retval, u32 vrf_id)
+{
+  vl_api_sw_interface_get_table_reply_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_GET_TABLE_REPLY);
+  mp->context = context;
+  mp->retval = htonl (retval);
+  mp->vrf_id = htonl (vrf_id);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_sw_interface_get_table_t_handler (vl_api_sw_interface_get_table_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  fib_table_t *fib_table = 0;
+  u32 sw_if_index = ~0;
+  u32 fib_index = ~0;
+  u32 table_id = ~0;
+  fib_protocol_t fib_proto = FIB_PROTOCOL_IP4;
+  int rv = 0;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  if (mp->is_ipv6)
+    fib_proto = FIB_PROTOCOL_IP6;
+
+  fib_index = fib_table_get_index_for_sw_if_index (fib_proto, sw_if_index);
+  if (fib_index != ~0)
+    {
+      fib_table = fib_table_get (fib_index, fib_proto);
+      table_id = fib_table->ft_table_id;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  send_sw_interface_get_table_reply (q, mp->context, rv, table_id);
 }
 
 static void vl_api_sw_interface_set_unnumbered_t_handler
