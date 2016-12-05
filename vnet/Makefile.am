@@ -21,7 +21,9 @@ BUILT_SOURCES =					\
  vnet/l2/l2.api.h				\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.h				\
- vnet/map/map.api.json
+ vnet/map/map.api.json				\
+ vnet/fib/fib.api.h				\
+ vnet/fib/fib.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -793,6 +795,7 @@ nobase_include_HEADERS +=			\
 
 libvnet_la_SOURCES +=				\
   vnet/fib/fib.c                                \
+  vnet/fib/fib_api.c				\
   vnet/fib/fib_test.c                           \
   vnet/fib/ip4_fib.c                            \
   vnet/fib/ip6_fib.c                            \
@@ -829,7 +832,8 @@ nobase_include_HEADERS +=			\
   vnet/fib/fib_node.h				\
   vnet/fib/fib_node_list.h			\
   vnet/fib/fib_entry.h				\
-  vnet/fib/fib_entry_delegate.h
+  vnet/fib/fib_entry_delegate.h			\
+  vnet/fib/fib.api.h
 
 ########################################
 # ADJ
@@ -906,7 +910,8 @@ apidir = $(prefix)/vnet
 api_DATA =					\
  vnet/interface.api.json			\
  vnet/l2/l2.api.json				\
- vnet/map/map.api.json
+ vnet/map/map.api.json				\
+ vnet/fib/fib.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
