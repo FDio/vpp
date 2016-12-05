@@ -5441,6 +5441,7 @@ api_bridge_domain_add_del (vat_main_t * vam)
   u32 bd_id = ~0;
   u8 is_add = 1;
   u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
+  u32 mac_age = 0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5457,6 +5458,8 @@ api_bridge_domain_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "arp-term %d", &arp_term))
 	;
+      else if (unformat (i, "mac-age %d", &mac_age))
+	;
       else if (unformat (i, "del"))
 	{
 	  is_add = 0;
@@ -5472,6 +5475,12 @@ api_bridge_domain_add_del (vat_main_t * vam)
       return -99;
     }
 
+  if (mac_age > 255)
+    {
+      errmsg ("mac age must be less than 256 \n");
+      return -99;
+    }
+
   M (BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del);
 
   mp->bd_id = ntohl (bd_id);
@@ -5481,6 +5490,7 @@ api_bridge_domain_add_del (vat_main_t * vam)
   mp->learn = learn;
   mp->arp_term = arp_term;
   mp->is_add = is_add;
+  mp->mac_age = (u8) mac_age;
 
   S;
   W;

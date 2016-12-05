@@ -83,6 +83,9 @@ typedef struct
   uword *mac_by_ip4;
   uword *mac_by_ip6;
 
+  /* mac aging */
+  u8 mac_age;
+
 } l2_bridge_domain_t;
 
 /* Return 1 if bridge domain has been initialized */
@@ -109,6 +112,7 @@ u32 bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index);
 #define L2_ARP_TERM (1<<4)
 
 u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable);
+void bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age);
 
 /**
  * \brief Get or create a bridge domain.

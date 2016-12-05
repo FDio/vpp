@@ -23,6 +23,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_bd.h>
+#include <vnet/l2/l2_learn.h>
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/ip/ip4_packet.h>
@@ -262,6 +263,29 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable)
     }
 
   return 0;
+}
+
+/**
+    Set the mac age for the bridge domain.
+*/
+void
+bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
+{
+  l2_bridge_domain_t *bd_config;
+  int enable = 0;
+
+  vec_validate (l2input_main.bd_configs, bd_index);
+  bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
+  bd_config->mac_age = age;
+
+  /* check if there is at least one bd with mac aging enabled */
+  vec_foreach (bd_config, l2input_main.bd_configs)
+    if (bd_config->bd_id != ~0 && bd_config->mac_age != 0)
+    enable = 1;
+
+  vlib_process_signal_event (vm, l2fib_mac_age_scanner_process_node.index,
+			     enable ? L2_MAC_AGE_PROCESS_EVENT_START :
+			     L2_MAC_AGE_PROCESS_EVENT_STOP, 0);
 }
 
 /**
@@ -571,6 +595,71 @@ bd_arp_term (vlib_main_t * vm,
 done:
   return error;
 }
+
+static clib_error_t *
+bd_mac_age (vlib_main_t * vm,
+	    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  bd_main_t *bdm = &bd_main;
+  clib_error_t *error = 0;
+  u32 bd_index, bd_id;
+  u32 age;
+  uword *p;
+
+  if (!unformat (input, "%d", &bd_id))
+    {
+      error = clib_error_return (0, "expecting bridge-domain id but got `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+
+  if (p == 0)
+    return clib_error_return (0, "No such bridge domain %d", bd_id);
+
+  bd_index = p[0];
+
+  if (!unformat (input, "%u", &age))
+    {
+      error =
+	clib_error_return (0, "expecting ageing time in minutes but got `%U'",
+			   format_unformat_error, input);
+      goto done;
+    }
+
+  /* set the bridge domain flag */
+  if (age > 255)
+    {
+      error =
+	clib_error_return (0, "mac aging time cannot be bigger than 255");
+      goto done;
+    }
+  bd_set_mac_age (vm, bd_index, (u8) age);
+
+done:
+  return error;
+}
+
+/*?
+ * Layer 2 mac aging can be enabled and disabled on each
+ * bridge-domain. Use this command to set or disable mac aging
+ * on specific bridge-domains. It is disabled by default.
+ *
+ * @cliexpar
+ * Example of how to set mac aging (where 200 is the bridge-domain-id and
+ * 5 is aging time in minutes):
+ * @cliexcmd{set bridge-domain mac-age 200 5}
+ * Example of how to disable mac aging (where 200 is the bridge-domain-id):
+ * @cliexcmd{set bridge-domain flood 200 0}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (bd_mac_age_cli, static) = {
+  .path = "set bridge-domain mac-age",
+  .short_help = "set bridge-domain mac-age <bridge-domain-id> <mins>",
+  .function = bd_mac_age,
+};
+/* *INDENT-ON* */
 
 /*?
  * Modify whether or not an existing bridge-domain should terminate and respond
