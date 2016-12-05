@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_3e544753",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-05T09:15:21Z",
+      "side": 1,
+      "message": "Is there an extra tab here? If so, please remove",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_3edb27ef",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_trace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-05T09:15:21Z",
+      "side": 1,
+      "message": "Please remove this change",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_dee1c39b",
+        "filename": "plugins/ioam-plugin/ioam/export/ioam_export.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-05T09:15:21Z",
+      "side": 1,
+      "message": "Not sure why are these required here. If not needed can you please remove these.",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_fee47fad",
+        "filename": "plugins/ioam-plugin/ioam/export/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-05T09:15:21Z",
+      "side": 1,
+      "message": "All of these changes will conflict with the export changes of VxLAN-GPE. We may need to see how we can merge these changes.",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5ed6f3c6",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-05T09:15:21Z",
+      "side": 1,
+      "message": "Do we need this change?",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
