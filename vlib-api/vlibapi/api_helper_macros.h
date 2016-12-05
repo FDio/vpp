@@ -152,6 +152,85 @@ bad_tx_sw_if_index:				\
     ;                                           \
 } while (0);
 
+#define pub_sub_handler(lca,UCA)                                        \
+static void vl_api_want_##lca##_t_handler (                             \
+    vl_api_want_##lca##_t *mp)                                          \
+{                                                                       \
+    vpe_api_main_t *vam = &vpe_api_main;                                \
+    vpe_client_registration_t *rp;                                      \
+    vl_api_want_##lca##_reply_t *rmp;                                   \
+    uword *p;                                                           \
+    i32 rv = 0;                                                         \
+                                                                        \
+    p = hash_get (vam->lca##_registration_hash, mp->client_index);      \
+    if (p) {                                                            \
+        if (mp->enable_disable) {                                       \
+            clib_warning ("pid %d: already enabled...", mp->pid);       \
+            rv = VNET_API_ERROR_INVALID_REGISTRATION;                   \
+            goto reply;                                                 \
+        } else {                                                        \
+            rp = pool_elt_at_index (vam->lca##_registrations, p[0]);    \
+            pool_put (vam->lca##_registrations, rp);                    \
+            hash_unset (vam->lca##_registration_hash,                   \
+                mp->client_index);                                      \
+            goto reply;                                                 \
+        }                                                               \
+    }                                                                   \
+    if (mp->enable_disable == 0) {                                      \
+        clib_warning ("pid %d: already disabled...", mp->pid);          \
+        rv = VNET_API_ERROR_INVALID_REGISTRATION;                       \
+        goto reply;                                                     \
+    }                                                                   \
+    pool_get (vam->lca##_registrations, rp);                            \
+    rp->client_index = mp->client_index;                                \
+    rp->client_pid = mp->pid;                                           \
+    hash_set (vam->lca##_registration_hash, rp->client_index,           \
+              rp - vam->lca##_registrations);                           \
+                                                                        \
+reply:                                                                  \
+    REPLY_MACRO (VL_API_WANT_##UCA##_REPLY);                            \
+}
+
+#define foreach_registration_hash               \
+_(interface_events)                             \
+_(to_netconf_server)                            \
+_(from_netconf_server)                          \
+_(to_netconf_client)                            \
+_(from_netconf_client)                          \
+_(oam_events)
+
+/* WARNING: replicated in vpp/stats.h */
+typedef struct
+{
+  u32 client_index;		/* in memclnt registration pool */
+  u32 client_pid;
+} vpe_client_registration_t;
+
+struct _vl_api_ip4_arp_event;
+struct _vl_api_ip6_nd_event;
+
+typedef struct
+{
+#define _(a) uword *a##_registration_hash;              \
+    vpe_client_registration_t * a##_registrations;
+  foreach_registration_hash
+#undef _
+    /* notifications happen really early in the game */
+  u8 link_state_process_up;
+
+  /* ip4 arp event registration pool */
+  struct _vl_api_ip4_arp_event *arp_events;
+
+  /* ip6 nd event registration pool */
+  struct _vl_api_ip6_nd_event *nd_events;
+
+  /* convenience */
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+} vpe_api_main_t;
+
+extern vpe_api_main_t vpe_api_main;
+
 #endif /* __api_helper_macros_h__ */
 
 /*

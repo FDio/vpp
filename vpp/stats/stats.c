@@ -88,6 +88,13 @@ dslock (stats_main_t * sm, int release_hint, int tag)
 }
 
 void
+stats_dslock_with_hint (int hint, int tag)
+{
+  stats_main_t *sm = &stats_main;
+  dslock (sm, hint, tag);
+}
+
+void
 dsunlock (stats_main_t * sm)
 {
   u32 thread_id;
@@ -106,6 +113,13 @@ dsunlock (stats_main_t * sm)
       CLIB_MEMORY_BARRIER ();
       l->lock = 0;
     }
+}
+
+void
+stats_dsunlock (int hint, int tag)
+{
+  stats_main_t *sm = &stats_main;
+  dsunlock (sm);
 }
 
 static void
