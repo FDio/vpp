@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_de2b0393",
+        "filename": "vnet/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-12-05T10:20:50Z",
+      "side": 1,
+      "message": "link_mtu in sw_interface_details is u16...",
+      "range": {
+        "startLine": 43,
+        "startChar": 2,
+        "endLine": 43,
+        "endChar": 5
+      },
+      "revId": "f7bad5f5fb086b0e6bc5b6da2f1da4caffc9c4b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
