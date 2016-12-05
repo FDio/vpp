@@ -5414,3 +5414,30 @@ define sw_interface_tag_add_del_reply
     u32 context;
     i32 retval;
 };
+
+/** \brief Dump IP neighboors
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
+    @param sw_if_index - the interface to dump neighboors
+*/
+define ip_neighbor_dump
+{
+    u32 client_index;
+    u32 context;
+    u8  is_ipv6;
+    u32 sw_if_index;
+};
+
+/** \brief IP neighboors dump response
+    @param context - sender context which was passed in the request
+    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
+    @param is_static - [1|0] to indicate if neighbor is statically configured
+*/
+define ip_neighbor_details {
+    u32 context;
+    u8  is_ipv6;
+    u32 is_static;
+    u8  mac_address[6];
+    u8  ip_address[16];
+};

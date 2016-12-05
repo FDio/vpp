@@ -16,6 +16,7 @@
  */
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vppinfra/mhash.h>
 #include <vppinfra/md5.h>
@@ -31,26 +32,10 @@
  * adjacency tables and neighbor discovery logic.
  */
 
-typedef struct {
-  ip6_address_t ip6_address;
-  u32 sw_if_index;
-  u32 pad;
-} ip6_neighbor_key_t;
-
-/* can't use sizeof link_layer_address, that's 8 */ 
+/* can't use sizeof link_layer_address, that's 8 */
 #define ETHER_MAC_ADDR_LEN 6
 
-typedef struct {
-  ip6_neighbor_key_t key;
-  u8 link_layer_address[8];
-  u16 flags;
-#define IP6_NEIGHBOR_FLAG_STATIC (1 << 0)
-#define IP6_NEIGHBOR_FLAG_DYNAMIC  (2 << 0)
-  u64 cpu_time_last_updated;
-  fib_node_index_t fib_entry_index;
-} ip6_neighbor_t;
-
-/* advertised prefix option */ 
+/* advertised prefix option */
 typedef struct {
   /* basic advertised information */
   ip6_address_t prefix;
@@ -737,13 +722,31 @@ ip6_neighbor_sort (void *a1, void *a2)
   return cmp;
 }
 
+ip6_neighbor_t *
+ip6_neighbors_entries (u32 sw_if_index)
+{
+  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
+  ip6_neighbor_t *n, *ns = 0;
+
+  /* *INDENT-OFF* */
+  pool_foreach (n, nm->neighbor_pool, ({
+    if (sw_if_index != ~0 && n->key.sw_if_index != sw_if_index)
+      continue;
+    vec_add1 (ns, n[0]);
+  }));
+  /* *INDENT-ON* */
+
+  if (ns)
+    vec_sort_with_function (ns, ip6_neighbor_sort);
+  return ns;
+}
+
 static clib_error_t *
 show_ip6_neighbors (vlib_main_t * vm,
 		    unformat_input_t * input,
 		    vlib_cli_command_t * cmd)
 {
   vnet_main_t * vnm = vnet_get_main();
-  ip6_neighbor_main_t * nm = &ip6_neighbor_main;
   ip6_neighbor_t * n, * ns;
   clib_error_t * error = 0;
   u32 sw_if_index;
@@ -752,15 +755,11 @@ show_ip6_neighbors (vlib_main_t * vm,
   sw_if_index = ~0;
   (void) unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index);
 
-  ns = 0;
-  pool_foreach (n, nm->neighbor_pool, ({ vec_add1 (ns, n[0]); }));
+  ns = ip6_neighbors_entries (sw_if_index);
   if (ns)
     {
-      vec_sort_with_function (ns, ip6_neighbor_sort);
       vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, 0);
       vec_foreach (n, ns) {
-        if (sw_if_index != ~0 && n->key.sw_if_index != sw_if_index)
-          continue;
         vlib_cli_output (vm, "%U", format_ip6_neighbor_ip6_entry, vm, n);
       }
       vec_free (ns);

@@ -140,6 +140,28 @@ typedef struct
   };
 } ethernet_arp_header_t;
 
+typedef struct
+{
+  u32 sw_if_index;
+  ip4_address_t ip4_address;
+
+  u8 ethernet_address[6];
+
+  u16 flags;
+#define ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC  (1 << 0)
+#define ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC (1 << 1)
+
+  u64 cpu_time_last_updated;
+
+  /**
+   * The index of the adj-fib entry created
+   */
+  fib_node_index_t fib_entry_index;
+} ethernet_arp_ip4_entry_t;
+
+ethernet_arp_ip4_entry_t *ip4_neighbor_entries (u32 sw_if_index);
+u8 *format_ethernet_arp_ip4_entry (u8 * s, va_list * va);
+
 #endif /* included_ethernet_arp_packet_h */
 
 /*

@@ -322,6 +322,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/ip6_hop_by_hop.h			\
  vnet/ip/ip6_hop_by_hop_packet.h		\
  vnet/ip/ip6_packet.h				\
+ vnet/ip/ip6_neighbor.h				\
  vnet/ip/ip.h					\
  vnet/ip/ip_packet.h				\
  vnet/ip/ip_source_and_port_range_check.h	\
