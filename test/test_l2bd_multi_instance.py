@@ -4,8 +4,8 @@
 **NOTES:**
     - higher number of pg-l2 interfaces causes problems => only 15 pg-l2 \
     interfaces in 5 bridge domains are tested
-    - more then 1 host per pg-l2 interface in configuration with 15 l2-pg \
-     interfaces leads to problems too
+    - jumbo packets in configuration with 14 l2-pg interfaces leads to \
+    problems too
 
 **config 1**
     - add 15 pg-l2 interfaces
@@ -105,10 +105,10 @@ class TestL2bdMultiInst(VppTestCase):
                 cls.hosts_by_pg_idx[pg_if.sw_if_index] = []
 
             # Create test host entries
-            cls.create_hosts(15)
+            cls.create_hosts(75)
 
-            # Packet sizes
-            cls.pg_if_packet_sizes = [64, 512, 1518, 9018]
+            # Packet sizes - jumbo packet (9018 bytes) skipped
+            cls.pg_if_packet_sizes = [64, 512, 1518]
 
             # Set up all interfaces
             for i in cls.pg_interfaces:
@@ -171,7 +171,7 @@ class TestL2bdMultiInst(VppTestCase):
                 hosts.append(host)
 
     def create_bd_and_mac_learn(self, count, start=1):
-        """"
+        """
         Create required number of bridge domains with MAC learning enabled, put
         3 l2-pg interfaces to every bridge domain and send MAC learning packets.
 
@@ -206,7 +206,7 @@ class TestL2bdMultiInst(VppTestCase):
         self.logger.info(self.vapi.ppcli("show l2fib"))
 
     def delete_bd(self, count, start=1):
-        """"
+        """
         Delete required number of bridge domains.
 
         :param int count: Number of bridge domains to be created.
@@ -306,13 +306,9 @@ class TestL2bdMultiInst(VppTestCase):
         Enable/disable defined feature(s) of the bridge domain.
 
         :param int bd_id: Bridge domain ID.
-        :param list args: List of feature/status pairs. Allowed features:
-            - learn,
-            - forward,
-            - flood,
-            - uu_flood and
-            - arp_term
-            Status False means disable, status True means enable the feature.
+        :param list args: List of feature/status pairs. Allowed features: \
+        learn, forward, flood, uu_flood and arp_term. Status False means \
+        disable, status True means enable the feature.
         :raise: ValueError in case of unknown feature in the input.
         """
         for flag in args:
@@ -338,13 +334,9 @@ class TestL2bdMultiInst(VppTestCase):
         of listed features.
 
         :param int bd_id: Bridge domain ID.
-        :param list args: List of feature/status pairs. Allowed features:
-            - learn,
-            - forward,
-            - flood,
-            - uu_flood and
-            - arp_term
-            Status False means disable, status True means enable the feature.
+        :param list args: List of feature/status pairs. Allowed features: \
+        learn, forward, flood, uu_flood and arp_term. Status False means \
+        disable, status True means enable the feature.
         :return: 1 if bridge domain is configured, otherwise return 0.
         :raise: ValueError in case of unknown feature in the input.
         """
@@ -376,14 +368,14 @@ class TestL2bdMultiInst(VppTestCase):
         """
         Create packet streams for all configured l2-pg interfaces, send all
         prepared packet streams and verify that:
-            - all packets received correctly on all pg-l2 interfaces assigned to
-                bridge domains
-            - no packet received on all pg-l2 interfaces not assigned to bridge
-                domains
+            - all packets received correctly on all pg-l2 interfaces assigned \
+            to bridge domains
+            - no packet received on all pg-l2 interfaces not assigned to \
+            bridge domains
 
-        :raise: RuntimeError if no packet captured on l2-pg interface assigned
-            to the bridge domain or if any packet is captured on l2-pg interface
-            not assigned to the bridge domain.
+        :raise: RuntimeError if no packet captured on l2-pg interface assigned \
+        to the bridge domain or if any packet is captured on l2-pg interface \
+        not assigned to the bridge domain.
         """
         # Test
         # Create incoming packet streams for packet-generator interfaces

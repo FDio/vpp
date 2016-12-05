@@ -1,6 +1,8 @@
 from abc import abstractmethod, ABCMeta
 import socket
 
+from util import Host
+
 
 class VppInterface(object):
     """Generic VPP interface."""
