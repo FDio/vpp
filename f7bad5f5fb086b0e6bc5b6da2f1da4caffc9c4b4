@@ -22,6 +22,29 @@
       "revId": "f7bad5f5fb086b0e6bc5b6da2f1da4caffc9c4b4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5e171352",
+        "filename": "vnet/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-05T10:26:56Z",
+      "side": 1,
+      "message": "trailing whitespace",
+      "range": {
+        "startLine": 46,
+        "startChar": 39,
+        "endLine": 46,
+        "endChar": 41
+      },
+      "revId": "f7bad5f5fb086b0e6bc5b6da2f1da4caffc9c4b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
