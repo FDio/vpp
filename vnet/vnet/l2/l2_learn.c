@@ -113,7 +113,8 @@ l2learn_process (vlib_node_runtime_t * node,
 		 u32 sw_if_index0,
 		 l2fib_entry_key_t * key0,
 		 l2fib_entry_key_t * cached_key,
-		 u32 * bucket0, l2fib_entry_result_t * result0, u32 * next0)
+		 u32 * bucket0,
+		 l2fib_entry_result_t * result0, u32 * next0, u8 timestamp)
 {
   u32 feature_bitmap;
 
@@ -135,11 +136,10 @@ l2learn_process (vlib_node_runtime_t * node,
     {
       /*
        * The entry was in the table, and the sw_if_index matched, the normal case
-       *
-       * TODO: for dataplane learning and aging, do this:
-       *      if refresh=0 and not a static mac, set refresh=1
        */
       counter_base[L2LEARN_ERROR_HIT] += 1;
+      if (PREDICT_FALSE (result0->fields.timestamp != timestamp))
+	result0->fields.timestamp = timestamp;
 
     }
   else if (result0->raw == ~0)
@@ -166,7 +166,7 @@ l2learn_process (vlib_node_runtime_t * node,
 
 	  result0->raw = 0;	/* clear all fields */
 	  result0->fields.sw_if_index = sw_if_index0;
-	  /* TODO: set timestamp in entry to clock for dataplane aging */
+	  result0->fields.timestamp = timestamp;
 	  kv.key = key0->raw;
 	  kv.value = result0->raw;
 
@@ -203,6 +203,7 @@ l2learn_process (vlib_node_runtime_t * node,
 
 	  result0->raw = 0;	/* clear all fields */
 	  result0->fields.sw_if_index = sw_if_index0;
+	  result0->fields.timestamp = timestamp;
 
 	  kv.key = key0->raw;
 	  kv.value = result0->raw;
@@ -242,6 +243,7 @@ l2learn_node_fn (vlib_main_t * vm,
   vlib_error_main_t *em = &vm->error_main;
   l2fib_entry_key_t cached_key;
   l2fib_entry_result_t cached_result;
+  u8 timestamp = (u8) (vlib_time_now (vm) / 60);
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -377,19 +379,19 @@ l2learn_node_fn (vlib_main_t * vm,
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b0, sw_if_index0, &key0, &cached_key,
-			   &bucket0, &result0, &next0);
+			   &bucket0, &result0, &next0, timestamp);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b1, sw_if_index1, &key1, &cached_key,
-			   &bucket1, &result1, &next1);
+			   &bucket1, &result1, &next1, timestamp);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b2, sw_if_index2, &key2, &cached_key,
-			   &bucket2, &result2, &next2);
+			   &bucket2, &result2, &next2, timestamp);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b3, sw_if_index3, &key3, &cached_key,
-			   &bucket3, &result3, &next3);
+			   &bucket3, &result3, &next3, timestamp);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -445,7 +447,7 @@ l2learn_node_fn (vlib_main_t * vm,
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b0, sw_if_index0, &key0, &cached_key,
-			   &bucket0, &result0, &next0);
+			   &bucket0, &result0, &next0, timestamp);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

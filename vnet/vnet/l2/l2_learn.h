@@ -45,6 +45,14 @@ typedef struct
 
 l2learn_main_t l2learn_main;
 
+extern vlib_node_registration_t l2fib_mac_age_scanner_process_node;
+
+enum
+{
+  L2_MAC_AGE_PROCESS_EVENT_START = 1,
+  L2_MAC_AGE_PROCESS_EVENT_STOP = 2,
+} l2_mac_age_process_event_t;
+
 #endif
 
 /*
