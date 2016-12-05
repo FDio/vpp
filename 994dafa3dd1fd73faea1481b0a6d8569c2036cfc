@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_e13060ea",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-05T10:38:55Z",
+      "side": 1,
+      "message": "this naming is very unfortunate\nwe have .vpp in every test case representing the running vpp instance. so this is extremely confusing.\nalso I think the VPP name is confusing.\n\nsuggest changing .vpp -\u003e .papi\nVPP -\u003e PAPI",
+      "range": {
+        "startLine": 43,
+        "startChar": 13,
+        "endLine": 43,
+        "endChar": 16
+      },
+      "revId": "994dafa3dd1fd73faea1481b0a6d8569c2036cfc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
