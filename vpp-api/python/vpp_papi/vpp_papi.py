@@ -110,6 +110,11 @@ class VPP():
     def __struct_type_encode(self, msgdef, buf, offset, kwargs):
         off = offset
         size = 0
+
+        for k in kwargs:
+            if k not in msgdef['args']:
+                raise ValueError(1, 'Invalid field-name in message call ' + k)
+
         for k,v in msgdef['args'].iteritems():
             off += size
             if k in kwargs:
@@ -143,7 +148,7 @@ class VPP():
                         v.pack_into(buf, off, kwargs[k])
                         size = v.size
             else:
-                size = v.size
+                size = v.size if not type(v) is list else 0
 
         return off + size - offset
 
@@ -262,7 +267,6 @@ class VPP():
     def _load_dictionary(self):
         self.vpp_dictionary = {}
         self.vpp_dictionary_maxid = 0
-
         d = vpp_api.msg_table()
 
         if not d:
@@ -273,14 +277,16 @@ class VPP():
             self.vpp_dictionary[name] = { 'id' : i, 'crc' : crc }
             self.vpp_dictionary_maxid = max(self.vpp_dictionary_maxid, i)
 
-    def connect(self, name, chroot_prefix = None):
+    def connect(self, name, chroot_prefix = None, async = False):
+        msg_handler = self.msg_handler if not async else self.msg_handler_async
         if not chroot_prefix:
-            rv = vpp_api.connect(name, self.msg_handler)
+            rv = vpp_api.connect(name, msg_handler)
         else:
-            rv = vpp_api.connect(name, self.msg_handler, chroot_prefix)
+            rv = vpp_api.connect(name, msg_handler, chroot_prefix)
 
         if rv != 0:
             raise IOError(2, 'Connect failed')
+        self.connected = True
 
         self._load_dictionary()
         self._register_functions()
@@ -288,8 +294,6 @@ class VPP():
         # Initialise control ping
         self.control_ping_index = self.vpp_dictionary['control_ping']['id']
         self.control_ping_msgdef = self.messages['control_ping']
-
-        self.connected = True
 
     def disconnect(self):
         rv = vpp_api.disconnect()
@@ -348,7 +352,7 @@ class VPP():
             return
 
         if not context in self.results:
-            eprint('Not expecting results for this context', context)
+            eprint('Not expecting results for this context', context, r)
             return
 
         if 'm' in self.results[context]:
@@ -357,6 +361,27 @@ class VPP():
 
         self.results[context]['r'] = r
         self.results[context]['e'].set()
+
+    def msg_handler_async(self, msg):
+        if not msg:
+            eprint('vpp_api.read failed')
+            return
+
+        i, ci = self.header.unpack_from(msg, 0)
+        if self.id_names[i] == 'rx_thread_exit':
+            return;
+
+        #
+        # Decode message and returns a tuple.
+        #
+        msgdef = self.id_msgdef[i]
+        if not msgdef:
+            raise IOError(2, 'Reply message undefined')
+
+        r = self.decode(msgdef, msg)
+        msgname = type(r).__name__
+
+        self.event_callback(msgname, r)
 
     def _control_ping(self, context):
         self._write(self.encode(self.control_ping_msgdef,
@@ -384,6 +409,17 @@ class VPP():
         r = self.results[context]['r']
         self.results_clean(context)
         return r
+
+    def _call_vpp_async(self, i, msgdef, multipart, **kwargs):
+        if not 'context' in kwargs:
+            context = self.get_context()
+            kwargs['context'] = context
+        else:
+            context = kwargs['context']
+        kwargs['_vl_msg_id'] = i
+        b = self.encode(msgdef, kwargs)
+
+        self._write(b)
 
     def register_event_callback(self, callback):
         self.event_callback = callback
