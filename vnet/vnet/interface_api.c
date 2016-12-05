@@ -22,6 +22,7 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
+#include <vnet/ethernet/ethernet.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -42,7 +43,8 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
-_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)
+_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)       \
+_(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -66,6 +68,50 @@ vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_FLAGS_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
+{
+  vl_api_sw_interface_set_mtu_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 flags = ETHERNET_INTERFACE_FLAG_MTU;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u16 mtu = ntohs (mp->mtu);
+  ethernet_main_t *em = &ethernet_main;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, sw_if_index);
+  ethernet_interface_t *eif = ethernet_get_interface (em, sw_if_index);
+
+  if (!eif)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto bad_sw_if_index;
+    }
+
+  if (mtu < hi->min_supported_packet_bytes)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  if (mtu > hi->max_supported_packet_bytes)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  if (hi->max_packet_bytes != mtu)
+    {
+      hi->max_packet_bytes = mtu;
+      ethernet_set_flags (vnm, sw_if_index, flags);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_MTU_REPLY);
 }
 
 

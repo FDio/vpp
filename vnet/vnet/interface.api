@@ -29,3 +29,27 @@ define sw_interface_set_flags_reply
   i32 retval;
 };
 
+/** \brief Set interface MTU
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface to set MTU on
+    @param mtu - MTU
+*/
+define sw_interface_set_mtu
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u16 mtu;
+};
+
+/** \brief Reply to sw_interface_set_mtu
+    @param context - sender context which was passed in the request
+    @param retval - return code of the set flags request
+*/
+define sw_interface_set_mtu_reply
+{
+  u32 context;
+  i32 retval;
+};
+

@@ -2879,6 +2879,18 @@ static void *vl_api_sw_interface_tag_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_sw_interface_set_mtu_t_print
+  (vl_api_sw_interface_set_mtu_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_mtu ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+  s = format (s, "tag %d ", ntohs (mp->mtu));
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3049,7 +3061,8 @@ _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
-_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)
+_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
+_(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

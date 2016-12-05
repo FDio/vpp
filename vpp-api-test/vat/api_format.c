@@ -3546,7 +3546,8 @@ _(delete_subif_reply)                                   \
 _(l2_interface_pbb_tag_rewrite_reply)                   \
 _(punt_reply)                                           \
 _(feature_enable_disable_reply)				\
-_(sw_interface_tag_add_del_reply)
+_(sw_interface_tag_add_del_reply)			\
+_(sw_interface_set_mtu_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -3787,7 +3788,8 @@ _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
 _(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)		\
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
-_(L2_XCONNECT_DETAILS, l2_xconnect_details)
+_(L2_XCONNECT_DETAILS, l2_xconnect_details)                           	\
+_(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)
 
 /* M: construct, but don't yet send a message */
 
@@ -16359,6 +16361,49 @@ api_l2_xconnect_dump (vat_main_t * vam)
 }
 
 static int
+api_sw_interface_set_mtu (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_mtu_t *mp;
+  f64 timeout;
+  u32 sw_if_index = ~0;
+  u32 mtu = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "mtu %d", &mtu))
+	;
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  if (mtu == 0)
+    {
+      errmsg ("no mtu specified\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_MTU, sw_interface_set_mtu);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->mtu = ntohs ((u16) mtu);
+
+  S;
+  W;
+}
+
+
+static int
 q_or_quit (vat_main_t * vam)
 {
   longjmp (vam->jump_buf, 1);
@@ -17031,7 +17076,8 @@ _(feature_enable_disable, "arc_name <arc_name> "                        \
   "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")	\
 _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 "[disable]")                                                        	\
-_(l2_xconnect_dump, "")
+_(l2_xconnect_dump, "")                                             	\
+_(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
