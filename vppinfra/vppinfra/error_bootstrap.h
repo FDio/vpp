@@ -85,6 +85,9 @@ do {							\
 #define STATIC_ASSERT(truth,...) _Static_assert(truth, __VA_ARGS__)
 #endif
 
+#define STATIC_ASSERT_SIZEOF(d, s) \
+  STATIC_ASSERT (sizeof (d) == s, "Size of " #d " must be " # s " bytes")
+
 /* Assert without allocating memory. */
 #define ASSERT_AND_PANIC(truth)			\
 do {						\
