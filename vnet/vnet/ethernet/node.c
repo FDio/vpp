@@ -1334,6 +1334,10 @@ ethernet_register_l3_redirect (vlib_main_t * vm, u32 node_index)
   i = vlib_node_add_next (vm, ethernet_input_type_node.index, node_index);
 
   ASSERT (i == em->redirect_l3_next);
+
+  i = vlib_node_add_next (vm, ethernet_input_not_l2_node.index, node_index);
+
+  ASSERT (i == em->redirect_l3_next);
 }
 
 /*
