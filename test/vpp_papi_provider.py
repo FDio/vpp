@@ -1,4 +1,4 @@
-import os
+import os, fnmatch
 import array
 from hook import Hook
 
@@ -11,8 +11,7 @@ except:
     pass
 
 if do_import:
-    import vpp_papi
-
+    from vpp_papi import VPP
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
@@ -20,8 +19,6 @@ MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 class L2_VTR_OP:
     L2_POP_1 = 3
-
-need_swap = True if os.sys.byteorder == 'little' else False
 
 class VppPapiProvider(object):
     """VPP-api provider using vpp-papi
@@ -36,6 +33,14 @@ class VppPapiProvider(object):
         self.name = name
         self.shm_prefix = shm_prefix
         self.test_class = test_class
+        jsonfiles = []
+
+        install_dir=os.getenv('VPP_TEST_INSTALL_PATH')
+        for root, dirnames, filenames in os.walk(install_dir):
+            for filename in fnmatch.filter(filenames, '*.api.json'):
+                jsonfiles.append(os.path.join(root, filename))
+
+        self.papi = VPP(jsonfiles)
 
     def register_hook(self, hook):
         """Replace hook registration with new hook
@@ -47,11 +52,11 @@ class VppPapiProvider(object):
 
     def connect(self):
         """Connect the API to VPP"""
-        vpp_papi.connect(self.name, self.shm_prefix)
+        self.papi.connect(self.name, self.shm_prefix)
 
     def disconnect(self):
         """Disconnect the API from VPP"""
-        vpp_papi.disconnect()
+        self.papi.disconnect()
 
     def api(self, api_fn, api_args, expected_retval=0):
         """Call API function and check it's return value
@@ -64,7 +69,7 @@ class VppPapiProvider(object):
 
         """
         self.hook.before_api(api_fn.__name__, api_args)
-        reply = api_fn(*api_args)
+        reply = api_fn(**api_args)
         if hasattr(reply, 'retval') and reply.retval != expected_retval:
             msg = "API call failed, expected retval == %d, got %s" % (
                 expected_retval, repr(reply))
@@ -83,10 +88,10 @@ class VppPapiProvider(object):
         """
         self.hook.before_cli(cli)
         cli += '\n'
-        r = vpp_papi.cli_inband(len(cli), cli)
+        r = self.papi.cli_inband(length=len(cli), cmd=cli)
         self.hook.after_cli(cli)
         if hasattr(r, 'reply'):
-            return r.reply[0].decode().rstrip('\x00')
+            return r.reply.decode().rstrip('\x00')
 
     def ppcli(self, cli):
         """
@@ -102,7 +107,7 @@ class VppPapiProvider(object):
 
     def show_version(self):
         """ """
-        return vpp_papi.show_version()
+        return self.papi.show_version()
 
     def pg_create_interface(self, pg_index):
         """
@@ -110,7 +115,8 @@ class VppPapiProvider(object):
         :param pg_index:
 
         """
-        return self.api(vpp_papi.pg_create_interface, (pg_index, ))
+        return self.api(self.papi.pg_create_interface,
+                        { "interface_id" : pg_index })
 
     def sw_interface_dump(self, filter=None):
         """
@@ -119,10 +125,10 @@ class VppPapiProvider(object):
 
         """
         if filter is not None:
-            args = (1, filter)
+            args = {"name_filter_valid" : 1, "name_filter" : filter}
         else:
-            args = (0, b'')
-        return self.api(vpp_papi.sw_interface_dump, args)
+            args = {}
+        return self.api(self.papi.sw_interface_dump, args)
 
     def sw_interface_set_table(self, sw_if_index, is_ipv6, table_id):
         """
@@ -133,8 +139,9 @@ class VppPapiProvider(object):
         :param table_id:
 
         """
-        return self.api(vpp_papi.sw_interface_set_table,
-                        (sw_if_index, is_ipv6, table_id))
+        return self.api(self.papi.sw_interface_set_table,
+                        { 'sw_if_index' : sw_if_index, 'is_ipv6' : is_ipv6,
+                          'vrf_id' : table_id})
 
     def sw_interface_add_del_address(self, sw_if_index, addr, addr_len,
                                      is_ipv6=0, is_add=1, del_all=0):
@@ -148,8 +155,13 @@ class VppPapiProvider(object):
         :param del_all:  (Default value = 0)
 
         """
-        return self.api(vpp_papi.sw_interface_add_del_address,
-                        (sw_if_index, is_add, is_ipv6, del_all, addr_len, addr))
+        return self.api(self.papi.sw_interface_add_del_address,
+                        { 'sw_if_index' : sw_if_index,
+                          'is_add' : is_add,
+                          'is_ipv6' : is_ipv6,
+                          'del_all' : del_all,
+                          'address_length' : addr_len,
+                          'address' : addr})
 
     def sw_interface_enable_disable_mpls(self, sw_if_index,
                                          is_enable=1):
@@ -159,29 +171,13 @@ class VppPapiProvider(object):
         :param is_enable:  (Default value = 1)
 
         """
-        return self.api(vpp_papi.sw_interface_set_mpls_enable,
-                        (sw_if_index, is_enable))
+        return self.api(self.papi.sw_interface_set_mpls_enable,
+                        {'sw_if_index' : sw_if_index,
+                         'enable' : is_enable })
 
     def sw_interface_ra_suppress(self, sw_if_index):
-        suppress = 1
-        managed = 0
-        other = 0
-        ll_option = 0
-        send_unicast = 0
-        cease = 0
-        is_no = 0
-        default_router = 0
-        max_interval = 0
-        min_interval = 0
-        lifetime = 0
-        initial_count = 0
-        initial_interval = 0
-        async = False
-        return self.api(vpp_papi.sw_interface_ip6nd_ra_config,
-                        (sw_if_index, suppress, managed, other,
-                         ll_option, send_unicast, cease, is_no,
-                         default_router, max_interval, min_interval,
-                         lifetime, initial_count, initial_interval, async))
+        return self.api(self.papi.sw_interface_ip6nd_ra_config,
+                        {'sw_if_index' : sw_if_index })
 
     def vxlan_add_del_tunnel(
             self,
@@ -205,9 +201,15 @@ class VppPapiProvider(object):
         :param vni:  (Default value = 0)
 
         """
-        return self.api(vpp_papi.vxlan_add_del_tunnel,
-                        (is_add, is_ipv6, src_addr, dst_addr, mcast_sw_if_index,
-			 encap_vrf_id, decap_next_index, vni))
+        return self.api(self.papi.vxlan_add_del_tunnel,
+                        {'is_add' : is_add,
+                         'is_ipv6' : is_ipv6,
+                         'src_address' : src_addr,
+                         'dst_address' : dst_addr,
+                         'mcast_sw_if_index' : mcast_sw_if_index,
+			 'encap_vrf_id' : encap_vrf_id,
+                         'decap_next_index' : decap_next_index,
+                         'vni' : vni})
 
     def bridge_domain_add_del(self, bd_id, flood=1, uu_flood=1, forward=1,
                               learn=1, arp_term=0, is_add=1):
@@ -226,9 +228,14 @@ class VppPapiProvider(object):
             (Default value = 1)
         :param int is_add: Add or delete flag. (Default value = 1)
         """
-        return self.api(vpp_papi.bridge_domain_add_del,
-                        (bd_id, flood, uu_flood, forward, learn, arp_term,
-                         is_add))
+        return self.api(self.papi.bridge_domain_add_del,
+                        { 'bd_id' : bd_id,
+                          'flood' : flood,
+                          'uu_flood' : uu_flood,
+                          'forward' : forward,
+                          'learn' : learn,
+                          'arp_term' : arp_term,
+                          'is_add' : is_add})
 
     def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
                       filter_mac=0, bvi_mac=0):
@@ -246,9 +253,14 @@ class VppPapiProvider(object):
         :param int bvi_mac: Set to 1 to create entry that points to BVI
             interface. (Default value = 0)
         """
-        return self.api(vpp_papi.l2fib_add_del,
-                        (self._convert_mac(mac), bd_id, sw_if_index, is_add,
-                         static_mac, filter_mac, bvi_mac))
+        return self.api(self.papi.l2fib_add_del,
+                        { 'mac' : self._convert_mac(mac),
+                          'bd_id' : bd_id,
+                          'sw_if_index' : sw_if_index,
+                          'is_add' : is_add,
+                          'static_mac' : static_mac,
+                          'filter_mac' : filter_mac,
+                          'bvi_mac' : bvi_mac })
 
     def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
                                    shg=0, bvi=0, enable=1):
@@ -261,8 +273,12 @@ class VppPapiProvider(object):
             (Default value = 0)
         :param int enable: Add or remove interface. (Default value = 1)
         """
-        return self.api(vpp_papi.sw_interface_set_l2_bridge,
-                        (sw_if_index, bd_id, shg, bvi, enable))
+        return self.api(self.papi.sw_interface_set_l2_bridge,
+                        { 'rx_sw_if_index' : sw_if_index,
+                          'bd_id' : bd_id,
+                          'shg' : shg,
+                          'bvi' : bvi,
+                          'enable' : enable })
 
     def bridge_flags(self, bd_id, is_set, feature_bitmap):
         """Enable/disable required feature of the bridge domain with defined ID.
@@ -276,7 +292,10 @@ class VppPapiProvider(object):
             - uu-flood (1 << 3) or
             - arp-term (1 << 4).
         """
-        return self.api(vpp_papi.bridge_flags, (bd_id, is_set, feature_bitmap))
+        return self.api(self.papi.bridge_flags,
+                        {'bd_id' : bd_id,
+                         'is_set' : is_set,
+                         'feature_bitmap' : feature_bitmap })
 
     def bridge_domain_dump(self, bd_id=0):
         """
@@ -285,7 +304,8 @@ class VppPapiProvider(object):
             existing bridge domains returned)
         :return: Dictionary of bridge domain(s) data.
         """
-        return self.api(vpp_papi.bridge_domain_dump, (bd_id, ))
+        return self.api(self.papi.bridge_domain_dump,
+                        {'bd_id' : bd_id })
 
     def sw_interface_set_l2_xconnect(self, rx_sw_if_index, tx_sw_if_index,
                                      enable):
@@ -298,8 +318,10 @@ class VppPapiProvider(object):
             cross-connect if equal to 0.
 
         """
-        return self.api(vpp_papi.sw_interface_set_l2_xconnect,
-                        (rx_sw_if_index, tx_sw_if_index, enable))
+        return self.api(self.papi.sw_interface_set_l2_xconnect,
+                        { 'rx_sw_if_index' : rx_sw_if_index,
+                          'tx_sw_if_index' : tx_sw_if_index,
+                          'enable' : enable })
 
     def sw_interface_set_l2_tag_rewrite(self, sw_if_index, vtr_oper, push=0, tag1=0, tag2=0):
         """L2 interface vlan tag rewrite configure request
@@ -312,8 +334,12 @@ class VppPapiProvider(object):
         :param tag2 - Needed for any push 2 or translate x-2 vtr ops
 
         """
-        return self.api(vpp_papi.l2_interface_vlan_tag_rewrite,
-                        (sw_if_index, vtr_oper, push, tag1, tag2))
+        return self.api(self.papi.l2_interface_vlan_tag_rewrite,
+                        { 'sw_if_index' : sw_if_index,
+                          'vtr_op' : vtr_oper,
+                          'push_dot1q' : push,
+                          'tag1' : tag1,
+                          'tag2' : tag2 })
 
     def sw_interface_set_flags(self, sw_if_index, admin_up_down,
                                link_up_down=0, deleted=0):
@@ -325,8 +351,11 @@ class VppPapiProvider(object):
         :param deleted:  (Default value = 0)
 
         """
-        return self.api(vpp_papi.sw_interface_set_flags,
-                        (sw_if_index, admin_up_down, link_up_down, deleted))
+        return self.api(self.papi.sw_interface_set_flags,
+                        { 'sw_if_index' : sw_if_index,
+                          'admin_up_down' : admin_up_down,
+                          'link_up_down' : link_up_down,
+                          'deleted' : deleted })
 
     def create_subif(self, sw_if_index, sub_id, outer_vlan, inner_vlan,
                      no_tags=0, one_tag=0, two_tags=0, dot1ad=0, exact_match=0,
@@ -349,26 +378,27 @@ class VppPapiProvider(object):
 
         """
         return self.api(
-            vpp_papi.create_subif,
-            (sw_if_index,
-             sub_id,
-             no_tags,
-             one_tag,
-             two_tags,
-             dot1ad,
-             exact_match,
-             default_sub,
-             outer_vlan_id_any,
-             inner_vlan_id_any,
-             outer_vlan,
-             inner_vlan))
+            self.papi.create_subif,
+            { 'sw_if_index' : sw_if_index,
+              'sub_id' : sub_id,
+              'no_tags' : no_tags,
+              'one_tag' : one_tag,
+              'two_tags' : two_tags,
+              'dot1ad' : dot1ad,
+              'exact_match' : exact_match,
+              'default_sub' : default_sub,
+              'outer_vlan_id_any' : outer_vlan_id_any,
+              'inner_vlan_id_any' : inner_vlan_id_any,
+              'outer_vlan_id' : outer_vlan,
+              'inner_vlan_id' : inner_vlan })
 
     def delete_subif(self, sw_if_index):
         """Delete subinterface
 
         :param sw_if_index:
         """
-        return self.api(vpp_papi.delete_subif, ([sw_if_index]))
+        return self.api(self.papi.delete_subif,
+                        { 'sw_if_index' : sw_if_index })
 
     def create_vlan_subif(self, sw_if_index, vlan):
         """
@@ -377,14 +407,17 @@ class VppPapiProvider(object):
         :param sw_if_index:
 
         """
-        return self.api(vpp_papi.create_vlan_subif, (sw_if_index, vlan))
+        return self.api(self.papi.create_vlan_subif,
+                        {'sw_if_index' : sw_if_index,
+                         'vlan_id' : vlan })
 
     def create_loopback(self, mac=''):
         """
 
         :param mac: (Optional)
         """
-        return self.api(vpp_papi.create_loopback, (mac,))
+        return self.api(self.papi.create_loopback,
+                        { 'mac_address' : mac })
 
     def ip_add_del_route(
             self,
@@ -434,36 +467,32 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
-        stack = array.array('I', next_hop_out_label_stack)
-        if need_swap:
-            stack.byteswap()
-        stack = stack.tostring()
 
         return self.api(
-            vpp_papi.ip_add_del_route,
-            (next_hop_sw_if_index,
-             table_id,
-             classify_table_index,
-             next_hop_table_id,
-             create_vrf_if_needed,
-             is_add,
-             is_drop,
-             is_unreach,
-             is_prohibit,
-             is_ipv6,
-             is_local,
-             is_classify,
-             is_multipath,
-             is_resolve_host,
-             is_resolve_attached,
-             not_last,
-             next_hop_weight,
-             dst_address_length,
-             dst_address,
-             next_hop_address,
-             next_hop_n_out_labels,
-             next_hop_via_label,
-             stack))
+            self.papi.ip_add_del_route,
+            { 'next_hop_sw_if_index' : next_hop_sw_if_index,
+              'table_id' : table_id,
+              'classify_table_index' : classify_table_index,
+              'next_hop_table_id' : next_hop_table_id,
+              'create_vrf_if_needed' : create_vrf_if_needed,
+              'is_add' : is_add,
+              'is_drop' : is_drop,
+              'is_unreach' : is_unreach,
+              'is_prohibit' : is_prohibit,
+              'is_ipv6' : is_ipv6,
+              'is_local' : is_local,
+              'is_classify' : is_classify,
+              'is_multipath' : is_multipath,
+              'is_resolve_host' : is_resolve_host,
+              'is_resolve_attached' : is_resolve_attached,
+              'not_last' : not_last,
+              'next_hop_weight' : next_hop_weight,
+              'dst_address_length' : dst_address_length,
+              'dst_address' : dst_address,
+              'next_hop_address' : next_hop_address,
+              'next_hop_n_out_labels' : next_hop_n_out_labels,
+              'next_hop_via_label' : next_hop_via_label,
+              'next_hop_out_label_stack' : next_hop_out_label_stack })
 
     def ip_neighbor_add_del(self,
                             sw_if_index,
@@ -486,15 +515,15 @@ class VppPapiProvider(object):
         """
 
         return self.api(
-            vpp_papi.ip_neighbor_add_del,
-            (vrf_id,
-             sw_if_index,
-             is_add,
-             is_ipv6,
-             is_static,
-             mac_address,
-             dst_address
-             )
+            self.papi.ip_neighbor_add_del,
+            { 'vrf_id' : vrf_id,
+              'sw_if_index' : sw_if_index,
+              'is_add' : is_add,
+              'is_ipv6' : is_ipv6,
+              'is_static' : is_static,
+              'mac_address' : mac_address,
+              'dst_address' : dst_address
+             }
         )
 
     def sw_interface_span_enable_disable(
@@ -506,7 +535,10 @@ class VppPapiProvider(object):
         :param enable
 
         """
-        return self.api(vpp_papi.sw_interface_span_enable_disable, (sw_if_index_from, sw_if_index_to, enable ))
+        return self.api(self.papi.sw_interface_span_enable_disable,
+                        { 'sw_if_index_from' : sw_if_index_from,
+                          'sw_if_index_to' : sw_if_index_to,
+                          'enable' : enable })
 
     def gre_tunnel_add_del(self,
                            src_address,
@@ -526,13 +558,13 @@ class VppPapiProvider(object):
         """
 
         return self.api(
-            vpp_papi.gre_add_del_tunnel,
-            (is_add,
-             is_ip6,
-             is_teb,
-             src_address,
-             dst_address,
-             outer_fib_id)
+            self.papi.gre_add_del_tunnel,
+            { 'is_add' : is_add,
+              'is_ipv6' : is_ip6,
+              'teb' : is_teb,
+              'src_address' : src_address,
+              'dst_address' : dst_address,
+              'outer_fib_id' : outer_fib_id }
         )
 
     def mpls_route_add_del(
@@ -580,31 +612,27 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
-        stack = array.array('I', next_hop_out_label_stack)
-        if need_swap:
-            stack.byteswap()
-        stack = stack.tostring()
 
         return self.api(
-            vpp_papi.mpls_route_add_del,
-            (label,
-             eos,
-             table_id,
-             classify_table_index,
-             create_vrf_if_needed,
-             is_add,
-             is_classify,
-             is_multipath,
-             is_resolve_host,
-             is_resolve_attached,
-             next_hop_proto_is_ip4,
-             next_hop_weight,
-             next_hop_address,
-             next_hop_n_out_labels,
-             next_hop_sw_if_index,
-             next_hop_table_id,
-             next_hop_via_label,
-             stack))
+            self.papi.mpls_route_add_del,
+            { 'mr_label' : label,
+              'mr_eos' : eos,
+              'mr_table_id' : table_id,
+              'mr_classify_table_index' : classify_table_index,
+              'mr_create_table_if_needed' : create_vrf_if_needed,
+              'mr_is_add' : is_add,
+              'mr_is_classify' : is_classify,
+              'mr_is_multipath' : is_multipath,
+              'mr_is_resolve_host' : is_resolve_host,
+              'mr_is_resolve_attached' : is_resolve_attached,
+              'mr_next_hop_proto_is_ip4' : next_hop_proto_is_ip4,
+              'mr_next_hop_weight' : next_hop_weight,
+              'mr_next_hop' : next_hop_address,
+              'mr_next_hop_n_out_labels' : next_hop_n_out_labels,
+              'mr_next_hop_sw_if_index' : next_hop_sw_if_index,
+              'mr_next_hop_table_id' : next_hop_table_id,
+              'mr_next_hop_via_label' : next_hop_via_label,
+              'mr_next_hop_out_label_stack' : next_hop_out_label_stack })
 
     def mpls_ip_bind_unbind(
             self,
@@ -619,15 +647,15 @@ class VppPapiProvider(object):
         """
         """
         return self.api(
-            vpp_papi.mpls_ip_bind_unbind,
-            (table_id,
-             label,
-             ip_table_id,
-             create_vrf_if_needed,
-             is_bind,
-             is_ip4,
-             dst_address_length,
-             dst_address))
+            self.papi.mpls_ip_bind_unbind,
+            {'mb_mpls_table_id' : table_id,
+             'mb_label' : label,
+             'mb_ip_table_id' : ip_table_id,
+             'mb_create_table_if_needed' : create_vrf_if_needed,
+             'mb_is_bind' : is_bind,
+             'mb_is_ip4' : is_ip4,
+             'mb_address_length' : dst_address_length,
+             'mb_address' : dst_address})
 
     def mpls_tunnel_add_del(
             self,
@@ -666,23 +694,18 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
-        stack = array.array('I', next_hop_out_label_stack)
-        if need_swap:
-            stack.byteswap()
-        stack = stack.tostring()
-
         return self.api(
-            vpp_papi.mpls_tunnel_add_del,
-            (tun_sw_if_index,
-             is_add,
-             l2_only,
-             next_hop_proto_is_ip4,
-             next_hop_weight,
-             next_hop_address,
-             next_hop_n_out_labels,
-             next_hop_sw_if_index,
-             next_hop_table_id,
-             stack))
+            self.papi.mpls_tunnel_add_del,
+            {'mt_sw_if_index' : tun_sw_if_index,
+              'mt_is_add' : is_add,
+              'mt_l2_only' : l2_only,
+              'mt_next_hop_proto_is_ip4' : next_hop_proto_is_ip4,
+              'mt_next_hop_weight' : next_hop_weight,
+              'mt_next_hop' : next_hop_address,
+              'mt_next_hop_n_out_labels' : next_hop_n_out_labels,
+              'mt_next_hop_sw_if_index' :next_hop_sw_if_index,
+              'mt_next_hop_table_id' : next_hop_table_id,
+              'mt_next_hop_out_label_stack' : next_hop_out_label_stack })
 
         return self.api(vpp_papi.sw_interface_span_enable_disable,
                         (sw_if_index_from, sw_if_index_to, enable))
