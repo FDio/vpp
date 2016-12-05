@@ -248,3 +248,9 @@ pneum_write (char *p, int l)
   }
   return (rv);
 }
+
+uint32_t
+pneum_get_msg_index (unsigned char * name)
+{
+  return vl_api_get_msg_index (name);
+}

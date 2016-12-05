@@ -15,6 +15,7 @@
 #ifndef included_pneum_h
 #define included_pneum_h
 
+#include <stdint.h>
 #include <vppinfra/types.h>
 
 typedef void (*pneum_callback_t)(unsigned char * data, int len);
@@ -25,5 +26,6 @@ int pneum_write(char *data, int len);
 void pneum_free(void * msg);
 uword * pneum_msg_table_get_hash (void);
 int pneum_msg_table_size(void);
+uint32_t pneum_get_msg_index(unsigned char * name);
 
 #endif
