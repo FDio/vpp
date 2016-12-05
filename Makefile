@@ -220,6 +220,7 @@ define test
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
 	  VPP_TEST_API_TEST_BIN=$(BR)/install-$(2)-native/vpp-api-test/bin/vpp_api_test \
 	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(2)-native/plugins/lib64/vpp_plugins \
+	  VPP_TEST_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(BR)/install-$(2)-native/vpp-api/lib64/ \
 	  WS_ROOT=$(WS_ROOT) V=$(V) TEST=$(TEST) VPP_PYTHON_PREFIX=$(VPP_PYTHON_PREFIX) $(3)
 endef
