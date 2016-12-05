@@ -36,25 +36,6 @@
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 
-typedef struct
-{
-  u32 sw_if_index;
-  ip4_address_t ip4_address;
-
-  u8 ethernet_address[6];
-
-  u16 flags;
-#define ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC  (1 << 0)
-#define ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC (1 << 1)
-
-  u64 cpu_time_last_updated;
-
-  /**
-   * The index of the adj-fib entry created
-   */
-  fib_node_index_t fib_entry_index;
-} ethernet_arp_ip4_entry_t;
-
 /**
  * @brief Per-interface ARP configuration and state
  */
@@ -252,7 +233,7 @@ format_ethernet_arp_header (u8 * s, va_list * va)
   return s;
 }
 
-static u8 *
+u8 *
 format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 {
   vnet_main_t *vnm = va_arg (*va, vnet_main_t *);
@@ -1284,6 +1265,25 @@ ip4_arp_entry_sort (void *a1, void *a2)
   return cmp;
 }
 
+ethernet_arp_ip4_entry_t *
+ip4_neighbor_entries (u32 sw_if_index)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_ip4_entry_t *n, *ns = 0;
+
+  /* *INDENT-OFF* */
+  pool_foreach (n, am->ip4_entry_pool, ({
+    if (sw_if_index != ~0 && n->sw_if_index != sw_if_index)
+      continue;
+    vec_add1 (ns, n[0]);
+  }));
+  /* *INDENT-ON* */
+
+  if (ns)
+    vec_sort_with_function (ns, ip4_arp_entry_sort);
+  return ns;
+}
+
 static clib_error_t *
 show_ip4_arp (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -1299,22 +1299,12 @@ show_ip4_arp (vlib_main_t * vm,
   sw_if_index = ~0;
   (void) unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index);
 
-  es = 0;
-  /* *INDENT-OFF* */
-  pool_foreach (e, am->ip4_entry_pool,
-  ({
-    vec_add1 (es, e[0]);
-  }));
-  /* *INDENT-ON* */
-
+  es = ip4_neighbor_entries (sw_if_index);
   if (es)
     {
-      vec_sort_with_function (es, ip4_arp_entry_sort);
       vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, 0);
       vec_foreach (e, es)
       {
-	if (sw_if_index != ~0 && e->sw_if_index != sw_if_index)
-	  continue;
 	vlib_cli_output (vm, "%U", format_ethernet_arp_ip4_entry, vnm, e);
       }
       vec_free (es);

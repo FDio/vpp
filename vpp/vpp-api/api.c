@@ -52,6 +52,7 @@
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/unix/tapcli.h>
 #include <vnet/mpls/mpls.h>
@@ -328,7 +329,9 @@ _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
-_(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
+_(FEATURE_ENABLE_DISABLE, feature_enable_disable)			                  \
+_(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
+_(IP_NEIGHBOR_DETAILS, ip_neighbor_details)
 
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
@@ -8391,6 +8394,80 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_FEATURE_ENABLE_DISABLE_REPLY);
+}
+
+static void
+send_ip_neighbor_details (u8 is_ipv6,
+			  u8 is_static,
+			  u8 * mac_address,
+			  u8 * ip_address,
+			  unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_ip_neighbor_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS);
+  mp->context = context;
+  mp->is_ipv6 = is_ipv6;
+  mp->is_static = is_static;
+  memcpy (mp->mac_address, mac_address, 6);
+  memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_ip_neighbor_details_t_handler (vl_api_ip_neighbor_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  if (mp->is_ipv6)
+    {
+      ip6_neighbor_t *n, *ns;
+
+      ns = ip6_neighbors_entries (sw_if_index);
+      /* *INDENT-OFF* */
+      vec_foreach (n, ns)
+      {
+        send_ip_neighbor_details (mp->is_ipv6,
+				  ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
+				  (u8 *) n->link_layer_address,
+				  (u8 *) & (n->key.ip6_address.as_u8),
+				  q, mp->context);
+      }
+      /* *INDENT-ON* */
+      vec_free (ns);
+    }
+  else
+    {
+      ethernet_arp_ip4_entry_t *n, *ns;
+
+      ns = ip4_neighbor_entries (sw_if_index);
+      /* *INDENT-OFF* */
+      vec_foreach (n, ns)
+      {
+        send_ip_neighbor_details (mp->is_ipv6,
+          ((n->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? 1 : 0),
+          (u8*) n->ethernet_address,
+          (u8*) & (n->ip4_address.as_u8),
+          q, mp->context);
+      }
+      /* *INDENT-ON* */
+      vec_free (ns);
+    }
 }
 
 #define BOUNCE_HANDLER(nn)                                              \

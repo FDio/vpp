@@ -3917,10 +3917,11 @@ _(L2_INTERFACE_PBB_TAG_REWRITE_REPLY, l2_interface_pbb_tag_rewrite_reply) \
 _(PUNT_REPLY, punt_reply)                                               \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
-_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)		\
+_(FEATURE_ENABLE_DISABLE_REPLY, feature_enable_disable_reply)           \
 _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
-_(L2_XCONNECT_DETAILS, l2_xconnect_details)                           	\
-_(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)
+_(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
+_(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
+_(IP_NEIGHBOR_DETAILS, ip_neighbor_details)
 
 /* M: construct, but don't yet send a message */
 
@@ -15395,6 +15396,97 @@ api_ip_fib_dump (vat_main_t * vam)
   W;
 }
 
+static void vl_api_ip_neighbor_details_t_handler
+  (vl_api_ip_neighbor_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  fformat (vam->ofp, "%c %U %U\n",
+	   (mp->is_static) ? 'S' : 'D',
+	   format_ethernet_address, &mp->mac_address,
+	   (mp->is_ipv6) ? format_ip6_address : format_ip4_address,
+	   &mp->ip_address);
+}
+
+static void vl_api_ip_neighbor_details_t_handler_json
+  (vl_api_ip_neighbor_details_t * mp)
+{
+
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node;
+  struct in_addr ip4;
+  struct in6_addr ip6;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_string_copy (node, "flag",
+				   (mp->is_static) ? (u8 *) "static" : (u8 *)
+				   "dynamic");
+
+  vat_json_object_add_string_copy (node, "link_layer",
+				   format (0, "%U", format_ethernet_address,
+					   &mp->mac_address));
+
+  if (mp->is_ipv6)
+    {
+      clib_memcpy (&ip6, &mp->ip_address, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "ip_address", ip6);
+    }
+  else
+    {
+      clib_memcpy (&ip4, &mp->ip_address, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "ip_address", ip4);
+    }
+}
+
+static int
+api_ip_neighbor_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_neighbor_dump_t *mp;
+  f64 timeout;
+  u8 is_ipv6 = 0;
+  u32 sw_if_index = ~0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "ip6"))
+	is_ipv6 = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index\n");
+      return -99;
+    }
+
+  M (IP_NEIGHBOR_DUMP, ip_neighbor_dump);
+  mp->is_ipv6 = (u8) is_ipv6;
+  mp->sw_if_index = ntohl (sw_if_index);
+  S;
+
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
+  W;
+}
+
 #define vl_api_ip6_fib_details_t_endian vl_noop_handler
 #define vl_api_ip6_fib_details_t_print vl_noop_handler
 
@@ -17480,7 +17572,8 @@ _(feature_enable_disable, "arc_name <arc_name> "                        \
 _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 "[disable]")                                                        	\
 _(l2_xconnect_dump, "")                                             	\
-_(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")
+_(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
+_(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
