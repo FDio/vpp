@@ -974,6 +974,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
       if (disable_flags)
 	bd_set_flags (vm, bd_index, disable_flags, 0 /* disable */ );
 
+      bd_set_mac_age (vm, mp->mac_age, mp->mac_age);
     }
   else
     rv = bd_delete_bd_index (bdm, bd_id);
@@ -1011,6 +1012,7 @@ send_bridge_domain_details (unix_shared_memory_queue_t * q,
   mp->learn = bd_feature_learn (bd_config);
   mp->arp_term = bd_feature_arp_term (bd_config);
   mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
+  mp->mac_age = bd_config->mac_age;
   mp->n_sw_ifs = ntohl (n_sw_ifs);
   mp->context = context;
 

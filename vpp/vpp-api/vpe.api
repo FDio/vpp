@@ -2890,6 +2890,7 @@ define ip6_nd_event
     @param forward - enable/disable forwarding on all interfaces in the bd
     @param learn - enable/disable learning on all interfaces in the bd
     @param arp_term - enable/disable arp termination in the bd
+    @param mac_age - mac aging time in min, 0 for disabled
     @param is_add - add or delete flag
 */
 define bridge_domain_add_del
@@ -2902,6 +2903,7 @@ define bridge_domain_add_del
   u8 forward;
   u8 learn;
   u8 arp_term;
+  u8 mac_age;
   u8 is_add;
 };
 
@@ -2934,6 +2936,7 @@ define bridge_domain_dump
     @param forward - forwarding state on all interfaces in the bd
     @param learn - learning state on all interfaces in the bd
     @param arp_term - arp termination state on all interfaces in the bd
+    @param mac_age - mac aging time in min, 0 for disabled
     @param n_sw_ifs - number of sw_if_index's in the domain
 */
 define bridge_domain_details
@@ -2945,6 +2948,7 @@ define bridge_domain_details
   u8 forward;
   u8 learn;
   u8 arp_term;
+  u8 mac_age;
   u32 bvi_sw_if_index;
   u32 n_sw_ifs;
 };
