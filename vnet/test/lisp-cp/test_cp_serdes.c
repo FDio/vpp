@@ -318,7 +318,7 @@ static clib_error_t * test_lisp_msg_put_mreq_with_lcaf ()
       0x00, 0x00,             /* reserved1, flags */
       0x02,                   /* type = Instance ID */
       0x17,                   /* IID mask-len */
-      0x00, 0x0a,             /* iid length + next AFI lenght */
+      0x00, 0x0a,             /* lenght */
       0x90, 0x91, 0x92, 0x93, /* IID / VNI */
 
       0x00, 0x01,             /* AFI = ipv4 */
@@ -522,7 +522,7 @@ test_lisp_parse_lcaf ()
       0x00, 0x00,             /* reserved1, flags */
       0x02,                   /* type = Instance ID */
       0x18,                   /* IID mask-len */
-      0x0a, 0x00,             /* iid length + next AFI lenght */
+      0x00, 0x0a,             /* lenght */
       /* LCAF Instance ID */
       0x00, 0x00, 0x00, 0x09, /* iid */
       0x00, 0x01,             /* AFI = ipv4 */

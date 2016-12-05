@@ -1099,7 +1099,7 @@ sd_write (u8 * p, void *a)
   size += sizeof (u16);
   memset (h, 0, sizeof (h[0]));
   LCAF_TYPE (h) = LCAF_SOURCE_DEST;
-  u16 lcaf_len = 4 + sizeof (lcaf_src_dst_hdr_t)
+  u16 lcaf_len = sizeof (lcaf_src_dst_hdr_t)
     + fid_addr_size_to_write (&sd_src (sd))
     + fid_addr_size_to_write (&sd_dst (sd));
   LCAF_LENGTH (h) = clib_host_to_net_u16 (lcaf_len);

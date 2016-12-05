@@ -394,7 +394,7 @@ test_src_dst_with_vni_serdes (void)
       0x12, 0x34, 0x56, 0x78,  /* reserved; source-ML, Dest-ML */
 
       0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
-      0x0c, 0x00, 0x00, 0x14,  /* LCAF type = source/dest key, rsvd, length */
+      0x0c, 0x00, 0x00, 0x10,  /* LCAF type = source/dest key, rsvd, length */
       0x00, 0x00, 0x18, 0x10,  /* reserved; source-ML, Dest-ML */
 
       0x00, 0x01,              /* AFI = ip4 */
@@ -458,7 +458,7 @@ test_src_dst_serdes (void)
   u8 expected_data[] =
     {
       0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
-      0x0c, 0x00, 0x00, 0x18,  /* LCAF type = source/dest key, rsvd, length */
+      0x0c, 0x00, 0x00, 0x14,  /* LCAF type = source/dest key, rsvd, length */
       0x00, 0x00, 0x00, 0x00,  /* reserved; source-ML, Dest-ML */
 
       0x40, 0x05,              /* AFI = MAC */
