@@ -74,7 +74,7 @@ This package contains VPP plugins
 %package python-api
 Summary: VPP api python bindings
 Group: Development/Libraries
-Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools
 
 %description python-api
 This package contains the python bindings for the vpp api
@@ -134,11 +134,8 @@ do
 done
 
 # Python bindings
-mkdir -p -m755 %{buildroot}%{python2_sitelib}/vpp_papi
-for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/*/lib/python2.7/site-packages/ -type f -print | grep -v pyc | grep -v pyo)
-do
-	install -p -m 666 $file %{buildroot}%{python2_sitelib}/vpp_papi/
-done
+mkdir -p -m755 %{buildroot}%{python2_sitelib}
+install -p -m 666 %{_mu_build_dir}/%{_vpp_install_dir}/*/lib/python2.7/site-packages/vpp_papi-*.egg %{buildroot}%{python2_sitelib}
 
 #
 # devel
@@ -196,11 +193,19 @@ done
 sysctl --system
 %systemd_post vpp.service
 
+%post python-api
+easy_install -z %{python2_sitelib}/vpp_papi-*.egg
+
 %preun
 %systemd_preun vpp.service
 
 %postun
 %systemd_postun
+
+%postun python-api
+# This might not be the best way to proceed
+sed -i '/^.\/vpp_papi-.*egg/d' %{python2_sitelib}/easy-install.pth
+
 
 # Unbind user-mode PCI drivers
 removed=
@@ -239,7 +244,7 @@ fi
 
 %files python-api
 %defattr(644,root,root)
-%{python2_sitelib}/vpp_papi/*
+%{python2_sitelib}/vpp_papi-*.egg
 
 %files devel
 %defattr(-,bin,bin)
