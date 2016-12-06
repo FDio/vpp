@@ -2499,7 +2499,7 @@ static void vl_api_classify_add_del_table_t_handler
     (cm, mp->mask, nbuckets, memory_size,
      skip_n_vectors, match_n_vectors,
      next_table_index, miss_next_index, &table_index,
-     current_data_flag, current_data_offset, mp->is_add);
+     current_data_flag, current_data_offset, mp->is_add, mp->del_chain);
 
 out:
   /* *INDENT-OFF* */

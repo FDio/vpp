@@ -8891,6 +8891,7 @@ api_classify_add_del_table (vat_main_t * vam)
   u32 skip = ~0;
   u32 match = ~0;
   int is_add = 1;
+  int del_chain = 0;
   u32 table_index = ~0;
   u32 next_table_index = ~0;
   u32 miss_next_index = ~0;
@@ -8904,6 +8905,11 @@ api_classify_add_del_table (vat_main_t * vam)
     {
       if (unformat (i, "del"))
 	is_add = 0;
+      else if (unformat (i, "del-chain"))
+	{
+	  is_add = 0;
+	  del_chain = 1;
+	}
       else if (unformat (i, "buckets %d", &nbuckets))
 	;
       else if (unformat (i, "memory_size %d", &memory_size))
@@ -8963,6 +8969,7 @@ api_classify_add_del_table (vat_main_t * vam)
   M2 (CLASSIFY_ADD_DEL_TABLE, classify_add_del_table, vec_len (mask));
 
   mp->is_add = is_add;
+  mp->del_chain = del_chain;
   mp->table_index = ntohl (table_index);
   mp->nbuckets = ntohl (nbuckets);
   mp->memory_size = ntohl (memory_size);
@@ -17485,7 +17492,7 @@ _(sr_multicast_map_add_del,                                             \
   "address [ip6 multicast address] sr-policy [policy name] [del]")	\
 _(classify_add_del_table,                                               \
   "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
-  " [del] mask <mask-value>\n"                                          \
+  " [del] [del-chain] mask <mask-value>\n"                              \
   " [l2-miss-next | miss-next | acl-miss-next] <name|nn>\n" 		\
   " [current-data-flag <n>] [current-data-offset <nn>] [table <nn>]")   \
 _(classify_add_del_session,                                             \

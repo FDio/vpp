@@ -416,7 +416,8 @@ acl_classify_add_del_table_big (vnet_classify_main_t * cm, u8 * mask,
 				      memory_size, skip, match,
 				      next_table_index, miss_next_index,
 				      table_index, current_data_flag,
-				      current_data_offset, is_add);
+				      current_data_offset, is_add,
+				      1 /* delete_chain */);
 }
 
 static int
@@ -440,7 +441,8 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
 				      memory_size, skip, match,
 				      next_table_index, miss_next_index,
 				      table_index, current_data_flag,
-				      current_data_offset, is_add);
+				      current_data_offset, is_add,
+				      1 /* delete_chain */);
 }
 
 

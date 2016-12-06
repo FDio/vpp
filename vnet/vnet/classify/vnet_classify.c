@@ -142,7 +142,7 @@ vnet_classify_new_table (vnet_classify_main_t *cm,
 }
 
 void vnet_classify_delete_table_index (vnet_classify_main_t *cm, 
-                                       u32 table_index)
+                                       u32 table_index, int del_chain)
 {
   vnet_classify_table_t * t;
 
@@ -151,8 +151,9 @@ void vnet_classify_delete_table_index (vnet_classify_main_t *cm,
     return;
 
   t = pool_elt_at_index (cm->tables, table_index);
-  if (t->next_table_index != ~0)
-    vnet_classify_delete_table_index (cm, t->next_table_index);
+  if (del_chain && t->next_table_index != ~0)
+    /* Recursively delete the entire chain */
+    vnet_classify_delete_table_index (cm, t->next_table_index, del_chain);
 
   vec_free (t->mask);
   vec_free (t->buckets);
@@ -656,7 +657,8 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
                                  u32 * table_index,
                                  u8 current_data_flag,
                                  i16 current_data_offset,
-                                 int is_add)
+                                 int is_add,
+                                 int del_chain)
 {
   vnet_classify_table_t * t;
 
@@ -688,7 +690,7 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
       return 0;
     }
   
-  vnet_classify_delete_table_index (cm, *table_index);
+  vnet_classify_delete_table_index (cm, *table_index, del_chain);
   return 0;
 }
 
@@ -1385,6 +1387,7 @@ classify_table_command_fn (vlib_main_t * vm,
   u32 skip = ~0;
   u32 match = ~0;
   int is_add = 1;
+  int del_chain = 0;
   u32 table_index = ~0;
   u32 next_table_index = ~0;
   u32 miss_next_index = ~0;
@@ -1400,6 +1403,11 @@ classify_table_command_fn (vlib_main_t * vm,
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
     if (unformat (input, "del"))
       is_add = 0;
+    else if (unformat (input, "del-chain"))
+      {
+	is_add = 0;
+        del_chain = 1;
+      }
     else if (unformat (input, "buckets %d", &nbuckets))
       ;
     else if (unformat (input, "skip %d", &skip))
@@ -1451,8 +1459,8 @@ classify_table_command_fn (vlib_main_t * vm,
     return clib_error_return (0, "table index required for delete");
 
   rv = vnet_classify_add_del_table (cm, mask, nbuckets, memory_size,
-        skip, match, next_table_index, miss_next_index,
-        &table_index, current_data_flag, current_data_offset, is_add);
+        skip, match, next_table_index, miss_next_index, &table_index,
+	current_data_flag, current_data_offset, is_add, del_chain);
   switch (rv)
     {
     case 0:
@@ -1470,7 +1478,8 @@ VLIB_CLI_COMMAND (classify_table, static) = {
   .short_help = 
   "classify table [miss-next|l2-miss_next|acl-miss-next <next_index>]"
   "\n mask <mask-value> buckets <nn> [skip <n>] [match <n>]"
-  "\n [current-data-flag <n>] [current-data-offset <n>] [table <n>] [del]",
+  "\n [current-data-flag <n>] [current-data-offset <n>] [table <n>]"
+  "\n [del] [del-chain]",
   .function = classify_table_command_fn,
 };
 
