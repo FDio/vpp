@@ -2172,8 +2172,23 @@ static void *vl_api_sw_interface_span_enable_disable_t_print
   s = format (0, "SCRIPT: sw_interface_span_enable_disable ");
   s = format (s, "src_sw_if_index %u ", ntohl (mp->sw_if_index_from));
   s = format (s, "dst_sw_if_index %u ", ntohl (mp->sw_if_index_to));
-  if (!mp->enable)
-    s = format (s, "disable ");
+
+  switch (mp->state)
+    {
+    case 0:
+      s = format (s, "disable ");
+      break;
+    case 1:
+      s = format (s, "rx ");
+      break;
+    case 2:
+      s = format (s, "tx ");
+      break;
+    case 3:
+    default:
+      s = format (s, "both ");
+      break;
+    }
 
   FINISH;
 }

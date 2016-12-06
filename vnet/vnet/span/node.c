@@ -57,23 +57,61 @@ static char *span_error_strings[] = {
 #undef _
 };
 
-static uword
-span_node_fn (vlib_main_t * vm,
-	      vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline void
+span_mirror (vlib_main_t * vm, span_interface_t * si0, vlib_buffer_t * b0,
+	     vlib_frame_t ** mirror_frames, int is_rx)
+{
+  vlib_buffer_t *c0;
+  vnet_main_t *vnm = &vnet_main;
+  u32 *to_mirror_next = 0;
+  u32 i;
+
+  if (is_rx != 0 && si0->num_rx_mirror_ports == 0)
+    return;
+
+  if (is_rx == 0 && si0->num_tx_mirror_ports == 0)
+    return;
+
+  /* Don't do it again */
+  if (PREDICT_FALSE (b0->flags & VNET_BUFFER_SPAN_CLONE))
+    return;
+
+  /* *INDENT-OFF* */
+  clib_bitmap_foreach (i, is_rx ? si0->rx_mirror_ports : si0->tx_mirror_ports, (
+    {
+      if (mirror_frames[i] == 0)
+	mirror_frames[i] = vnet_get_frame_to_sw_interface (vnm, i);
+      to_mirror_next = vlib_frame_vector_args (mirror_frames[i]);
+      to_mirror_next += mirror_frames[i]->n_vectors;
+      c0 = vlib_buffer_copy (vm, b0);
+      vnet_buffer (c0)->sw_if_index[VLIB_TX] = i;
+      c0->flags |= VNET_BUFFER_SPAN_CLONE;
+      to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
+      mirror_frames[i]->n_vectors++;
+    }));
+  /* *INDENT-ON* */
+}
+
+static_always_inline uword
+span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame, int is_rx)
 {
   span_main_t *sm = &span_main;
   vnet_main_t *vnm = &vnet_main;
-  u32 n_left_from, *from, *to_next, *to_mirror_next = 0;
+  u32 n_left_from, *from, *to_next;
   u32 n_span_packets = 0;
-  u32 next_index, mirror_sw_if_index0, mirror_sw_if_index1;
-  u32 last_mirror_sw_if_index = ~0;
-  vlib_frame_t *mirror_frame = 0;
+  u32 next_index;
+  u32 sw_if_index;
+  static __thread vlib_frame_t **mirror_frames = 0;
+  vlib_rx_or_tx_t rxtx = is_rx ? VLIB_RX : VLIB_TX;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
 
-  /* TODO dual loop */
+  vec_validate_aligned (mirror_frames, sm->max_sw_if_index,
+			CLIB_CACHE_LINE_BYTES);
+
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
@@ -84,8 +122,9 @@ span_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  u32 bi1;
-	  vlib_buffer_t *b0, *c0;
-	  vlib_buffer_t *b1, *c1;
+	  vlib_buffer_t *b0;
+	  vlib_buffer_t *b1;
+	  span_interface_t *si0, *si1;
 	  u32 sw_if_index0;
 	  u32 next0 = 0;
 	  u32 sw_if_index1;
@@ -100,68 +139,30 @@ span_node_fn (vlib_main_t * vm,
 	  n_left_from -= 2;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  mirror_sw_if_index0 = sm->dst_by_src_sw_if_index[sw_if_index0];
 	  b1 = vlib_get_buffer (vm, bi1);
-	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-	  mirror_sw_if_index1 = sm->dst_by_src_sw_if_index[sw_if_index1];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[rxtx];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[rxtx];
+	  si0 = vec_elt_at_index (sm->interfaces, sw_if_index0);
+	  si1 = vec_elt_at_index (sm->interfaces, sw_if_index1);
 
-	  /* get frame to mirror interface */
-	  if (PREDICT_FALSE
-	      ((last_mirror_sw_if_index != mirror_sw_if_index0)
-	       || mirror_frame == 0))
-	    {
-	      if (mirror_frame)
-		vnet_put_frame_to_sw_interface (vnm, last_mirror_sw_if_index,
-						mirror_frame);
-	      last_mirror_sw_if_index = mirror_sw_if_index0;
-	      mirror_frame =
-		vnet_get_frame_to_sw_interface (vnm, mirror_sw_if_index0);
-	      to_mirror_next = vlib_frame_vector_args (mirror_frame);
-	    }
-	  /* get frame to mirror interface */
-	  if (PREDICT_FALSE
-	      ((last_mirror_sw_if_index != mirror_sw_if_index1)
-	       || mirror_frame == 0))
-	    {
-	      if (mirror_frame)
-		vnet_put_frame_to_sw_interface (vnm, last_mirror_sw_if_index,
-						mirror_frame);
-	      last_mirror_sw_if_index = mirror_sw_if_index1;
-	      mirror_frame =
-		vnet_get_frame_to_sw_interface (vnm, mirror_sw_if_index0);
-	      to_mirror_next = vlib_frame_vector_args (mirror_frame);
-	    }
-	  c0 = vlib_buffer_copy (vm, b0);
-	  vnet_buffer (c0)->sw_if_index[VLIB_TX] = mirror_sw_if_index0;
-	  to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
-	  to_mirror_next += 1;
-	  mirror_frame->n_vectors++;
+	  span_mirror (vm, si0, b0, mirror_frames, is_rx);
+	  span_mirror (vm, si1, b1, mirror_frames, is_rx);
 
 	  vnet_feature_next (sw_if_index0, &next0, b0);
-
-	  c1 = vlib_buffer_copy (vm, b1);
-	  vnet_buffer (c1)->sw_if_index[VLIB_TX] = mirror_sw_if_index1;
-	  to_mirror_next[0] = vlib_get_buffer_index (vm, c1);
-	  to_mirror_next += 1;
-	  mirror_frame->n_vectors++;
-
 	  vnet_feature_next (sw_if_index1, &next1, b1);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      span_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->src_sw_if_index = sw_if_index0;
-	      t->mirror_sw_if_index =
-		sm->dst_by_src_sw_if_index[sw_if_index0];
+	      //t->mirror_sw_if_index = si0->mirror_sw_if_index;
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      span_trace_t *t = vlib_add_trace (vm, node, b1, sizeof (*t));
 	      t->src_sw_if_index = sw_if_index1;
-	      t->mirror_sw_if_index =
-		sm->dst_by_src_sw_if_index[sw_if_index1];
+	      //t->mirror_sw_if_index = si1->mirror_sw_if_index;
 	    }
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -171,7 +172,8 @@ span_node_fn (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  vlib_buffer_t *b0, *c0;
+	  vlib_buffer_t *b0;
+	  span_interface_t *si0;
 	  u32 sw_if_index0;
 	  u32 next0 = 0;
 
@@ -183,27 +185,9 @@ span_node_fn (vlib_main_t * vm,
 	  n_left_from -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  mirror_sw_if_index0 = sm->dst_by_src_sw_if_index[sw_if_index0];
-
-	  /* get frame to mirror interface */
-	  if (PREDICT_FALSE
-	      ((last_mirror_sw_if_index != mirror_sw_if_index0)
-	       || mirror_frame == 0))
-	    {
-	      if (mirror_frame)
-		vnet_put_frame_to_sw_interface (vnm, last_mirror_sw_if_index,
-						mirror_frame);
-	      last_mirror_sw_if_index = mirror_sw_if_index0;
-	      mirror_frame =
-		vnet_get_frame_to_sw_interface (vnm, mirror_sw_if_index0);
-	      to_mirror_next = vlib_frame_vector_args (mirror_frame);
-	    }
-	  c0 = vlib_buffer_copy (vm, b0);
-	  vnet_buffer (c0)->sw_if_index[VLIB_TX] = mirror_sw_if_index0;
-	  to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
-	  to_mirror_next += 1;
-	  mirror_frame->n_vectors++;
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[rxtx];
+	  si0 = vec_elt_at_index (sm->interfaces, sw_if_index0);
+	  span_mirror (vm, si0, b0, mirror_frames, is_rx);
 
 	  vnet_feature_next (sw_if_index0, &next0, b0);
 
@@ -211,8 +195,6 @@ span_node_fn (vlib_main_t * vm,
 	    {
 	      span_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->src_sw_if_index = sw_if_index0;
-	      t->mirror_sw_if_index =
-		sm->dst_by_src_sw_if_index[sw_if_index0];
 	    }
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -222,16 +204,39 @@ span_node_fn (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vnet_put_frame_to_sw_interface (vnm, last_mirror_sw_if_index, mirror_frame);
+
+  for (sw_if_index = 0; sw_if_index < vec_len (mirror_frames); sw_if_index++)
+    {
+      if (mirror_frames[sw_if_index] == 0)
+	continue;
+
+      vnet_put_frame_to_sw_interface (vnm, sw_if_index,
+				      mirror_frames[sw_if_index]);
+      mirror_frames[sw_if_index] = 0;
+    }
   vlib_node_increment_counter (vm, span_node.index, SPAN_ERROR_HITS,
 			       n_span_packets);
 
   return frame->n_vectors;
 }
 
+static uword
+span_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		    vlib_frame_t * frame)
+{
+  return span_node_inline_fn (vm, node, frame, 1);
+}
+
+static uword
+span_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     vlib_frame_t * frame)
+{
+  return span_node_inline_fn (vm, node, frame, 0);
+}
+
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (span_node) = {
-  .function = span_node_fn,
+VLIB_REGISTER_NODE (span_input_node) = {
+  .function = span_input_node_fn,
   .name = "span-input",
   .vector_size = sizeof (u32),
   .format_trace = format_span_trace,
@@ -248,9 +253,30 @@ VLIB_REGISTER_NODE (span_node) = {
   },
 };
 
+VLIB_NODE_FUNCTION_MULTIARCH (span_input_node, span_input_node_fn)
+
+VLIB_REGISTER_NODE (span_output_node) = {
+  .function = span_output_node_fn,
+  .name = "span-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_span_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(span_error_strings),
+  .error_strings = span_error_strings,
+
+  .n_next_nodes = 0,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (span_output_node, span_output_node_fn)
+
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_node, span_node_fn)
 /*
  * fd.io coding-style-patch-verification: ON
  *

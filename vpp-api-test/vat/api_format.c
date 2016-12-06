@@ -15881,7 +15881,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
   f64 timeout;
   u32 src_sw_if_index = ~0;
   u32 dst_sw_if_index = ~0;
-  u8 enable = 1;
+  u8 state = 3;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15896,7 +15896,13 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
       else if (unformat (i, "dst_sw_if_index %d", &dst_sw_if_index))
 	;
       else if (unformat (i, "disable"))
-	enable = 0;
+	state = 0;
+      else if (unformat (i, "rx"))
+	state = 1;
+      else if (unformat (i, "tx"))
+	state = 2;
+      else if (unformat (i, "both"))
+	state = 3;
       else
 	break;
     }
@@ -15905,7 +15911,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
 
   mp->sw_if_index_from = htonl (src_sw_if_index);
   mp->sw_if_index_to = htonl (dst_sw_if_index);
-  mp->enable = enable;
+  mp->state = state;
 
   S;
   W;
@@ -15918,9 +15924,32 @@ vl_api_sw_interface_span_details_t_handler (vl_api_sw_interface_span_details_t
 					    * mp)
 {
   vat_main_t *vam = &vat_main;
+  u8 *sw_if_from_name = 0;
+  u8 *sw_if_to_name = 0;
+  u32 sw_if_index_from = ntohl (mp->sw_if_index_from);
+  u32 sw_if_index_to = ntohl (mp->sw_if_index_to);
+  char *states[] = { "none", "rx", "tx", "both" };
+  hash_pair_t *p;
 
-  fformat (vam->ofp, "%u => %u\n",
-	   ntohl (mp->sw_if_index_from), ntohl (mp->sw_if_index_to));
+  /* *INDENT-OFF* */
+  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
+  ({
+    if ((u32) p->value[0] == sw_if_index_from)
+      {
+        sw_if_from_name = (u8 *)(p->key);
+        if (sw_if_to_name)
+          break;
+      }
+    if ((u32) p->value[0] == sw_if_index_to)
+      {
+        sw_if_to_name = (u8 *)(p->key);
+        if (sw_if_from_name)
+          break;
+      }
+  }));
+  /* *INDENT-ON* */
+  fformat (vam->ofp, "%20s => %20s (%s)\n",
+	   sw_if_from_name, sw_if_to_name, states[mp->state]);
 }
 
 static void
@@ -15929,6 +15958,29 @@ static void
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
+  u8 *sw_if_from_name = 0;
+  u8 *sw_if_to_name = 0;
+  u32 sw_if_index_from = ntohl (mp->sw_if_index_from);
+  u32 sw_if_index_to = ntohl (mp->sw_if_index_to);
+  hash_pair_t *p;
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
+  ({
+    if ((u32) p->value[0] == sw_if_index_from)
+      {
+        sw_if_from_name = (u8 *)(p->key);
+        if (sw_if_to_name)
+          break;
+      }
+    if ((u32) p->value[0] == sw_if_index_to)
+      {
+        sw_if_to_name = (u8 *)(p->key);
+        if (sw_if_from_name)
+          break;
+      }
+  }));
+  /* *INDENT-ON* */
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -15938,9 +15990,11 @@ static void
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  vat_json_object_add_uint (node, "src-if-index",
-			    ntohl (mp->sw_if_index_from));
-  vat_json_object_add_uint (node, "dst-if-index", ntohl (mp->sw_if_index_to));
+  vat_json_object_add_uint (node, "src-if-index", sw_if_index_from);
+  vat_json_object_add_string_copy (node, "src-if-name", sw_if_from_name);
+  vat_json_object_add_uint (node, "dst-if-index", sw_if_index_to);
+  vat_json_object_add_string_copy (node, "dst-if-name", sw_if_to_name);
+  vat_json_object_add_uint (node, "state", mp->state);
 }
 
 static int
@@ -17542,7 +17596,7 @@ _(set_ipfix_classify_stream, "[domain <domain-id>] [src_port <src-port>]") \
 _(ipfix_classify_stream_dump, "")                                       \
 _(ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]")\
 _(ipfix_classify_table_dump, "")                                        \
-_(sw_interface_span_enable_disable, "[src <intfc> | src_sw_if_index <id>] [[dst <intfc> | dst_sw_if_index <id>] | disable]") \
+_(sw_interface_span_enable_disable, "[src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
 _(sw_interface_span_dump, "")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \

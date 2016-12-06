@@ -21,7 +21,9 @@ BUILT_SOURCES =					\
  vnet/l2/l2.api.h				\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.h				\
- vnet/map/map.api.json
+ vnet/map/map.api.json				\
+ vnet/span/span.api.h				\
+ vnet/span/span.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -667,10 +669,12 @@ nobase_include_HEADERS += 			\
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/span/span.c	\
+  vnet/span/span_api.c  \
+  vnet/span/span.c	    \
   vnet/span/node.c
 
 nobase_include_HEADERS += 			\
+  vnet/span/span.api.h  \
   vnet/span/span.h
 
 ########################################
