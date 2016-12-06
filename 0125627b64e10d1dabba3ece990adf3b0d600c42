@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_4f5d1be9",
+        "filename": "vnet/vnet/ip/udp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-06T10:12:44Z",
+      "side": 1,
+      "message": "calculating the checksum is a non-negligible switch time cost. Can we instead revert DPDK 16.11 behaviour to allow a 0 value checksum. Or give it the intelligence to recognise when 0 is ok.",
+      "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
