@@ -34,6 +34,24 @@
       "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2f776fd6",
+        "filename": "vnet/vnet/ip/udp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-06T14:02:40Z",
+      "side": 1,
+      "message": "this patch is changing VPP behaviour to add a checksum in the tunnel cases where we used to have 0 value as a checkusm. A zero value is valid both for v4 (where the chksum is always optional) and v6 (RFC6935) when the UDP payload is a a tunneled packet (and so the payload is protected by the chksum of the inner packet.). So IMO DPDK is wrong in identifying these packets as having invalid chksums.",
+      "parentUuid": "5a2585a7_4f9e3b58",
+      "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
