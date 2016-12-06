@@ -1180,6 +1180,8 @@ static void *vl_api_classify_add_del_table_t_print
     {
       s = format (s, "table %d ", ntohl (mp->table_index));
       s = format (s, "del ");
+      if (mp->del_chain != 0)
+	s = format (s, "chain");
     }
   else
     {
