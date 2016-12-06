@@ -1211,6 +1211,7 @@ define bd_ip_mac_add_del_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add- if non-zero add the table, else delete it
+    @param del_chain - if non-zero delete the whole chain of tables
     @param table_index - if add, reuturns index of the created table, else specifies the table to delete  
     @param nbuckets - number of buckets when adding a table
     @param memory_size - memory size when adding a table
@@ -1235,6 +1236,7 @@ define classify_add_del_table
   u32 client_index;
   u32 context;
   u8 is_add;
+  u8 del_chain;
   u32 table_index;
   u32 nbuckets;
   u32 memory_size;

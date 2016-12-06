@@ -489,7 +489,8 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
                                  u32 * table_index,
                                  u8 current_data_flag,
                                  i16 current_data_offset,
-                                 int is_add);
+                                 int is_add,
+				 int del_chain);
 
 unformat_function_t unformat_ip4_mask;
 unformat_function_t unformat_ip6_mask;
