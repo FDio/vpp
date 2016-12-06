@@ -92,6 +92,7 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJN
 		    -i $(prefix)/../vpp/vpp-api/vpe.api.json \
 		    $(prefix)/../vnet/vnet/interface.api.json \
 		    $(prefix)/../vnet/vnet/l2.api.json \
+		    $(prefix)/../vnet/vnet/map.api.json \
 		&& cp -rf types dto future callfacade callback notification *.java -t $(packagedir_jvpp_core) \
 		&& rm -rf types dto future callfacade callback notification *.java
 

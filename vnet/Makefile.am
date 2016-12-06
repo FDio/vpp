@@ -15,8 +15,13 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
-BUILT_SOURCES = vnet/interface.api.h vnet/interface.api.json vnet/l2/l2.api.h \
-  vnet/l2/l2.api.json
+BUILT_SOURCES =					\
+ vnet/interface.api.h				\
+ vnet/interface.api.json			\
+ vnet/l2/l2.api.h				\
+ vnet/l2/l2.api.json				\
+ vnet/map/map.api.h				\
+ vnet/map/map.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -393,17 +398,19 @@ nobase_include_HEADERS +=			\
 ########################################
 # Layer 3 protocol: MAP
 ########################################
-libvnet_la_SOURCES +=                           \
- vnet/map/map.c                                 \
- vnet/map/map_dpo.c                             \
- vnet/map/ip4_map.c                             \
- vnet/map/ip6_map.c                             \
- vnet/map/ip4_map_t.c                           \
- vnet/map/ip6_map_t.c
+libvnet_la_SOURCES +=				\
+ vnet/map/map.c					\
+ vnet/map/map_dpo.c				\
+ vnet/map/ip4_map.c				\
+ vnet/map/ip6_map.c				\
+ vnet/map/ip4_map_t.c				\
+ vnet/map/ip6_map_t.c				\
+ vnet/map/map_api.c
 
-nobase_include_HEADERS +=                       \
- vnet/map/map.h                                 \
- vnet/map/map_dpo.h
+nobase_include_HEADERS +=			\
+ vnet/map/map.h					\
+ vnet/map/map_dpo.h				\
+ vnet/map/map.api.h
 
 if ENABLE_TESTS
 TESTS += test_map
@@ -896,7 +903,10 @@ SUFFIXES = .api.h .api .api.json
 # install the API definition, so we can produce java bindings, etc.
 
 apidir = $(prefix)/vnet
-api_DATA = vnet/interface.api.json vnet/l2/l2.api.json
+api_DATA =					\
+ vnet/interface.api.json			\
+ vnet/l2/l2.api.json				\
+ vnet/map/map.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
