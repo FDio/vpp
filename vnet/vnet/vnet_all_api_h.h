@@ -31,6 +31,7 @@
 
 #include <vnet/interface.api.h>
 #include <vnet/l2/l2.api.h>
+#include <vnet/span/span.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

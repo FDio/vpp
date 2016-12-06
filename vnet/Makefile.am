@@ -16,7 +16,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
 BUILT_SOURCES = vnet/interface.api.h vnet/interface.api.json vnet/l2/l2.api.h \
-  vnet/l2/l2.api.json
+  vnet/l2/l2.api.json vnet/span/span.api.h
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -659,10 +659,12 @@ nobase_include_HEADERS += 			\
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/span/span.c	\
+  vnet/span/span_api.c  \
+  vnet/span/span.c	    \
   vnet/span/node.c
 
 nobase_include_HEADERS += 			\
+  vnet/span/span.api.h  \
   vnet/span/span.h
 
 ########################################
