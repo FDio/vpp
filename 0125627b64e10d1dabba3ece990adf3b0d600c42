@@ -70,6 +70,24 @@
       "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ea6155d4",
+        "filename": "vnet/vnet/ip/udp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-06T15:13:47Z",
+      "side": 1,
+      "message": "this worked with 16.07 on the same NIC (same testbed). perhaps 16.11 passes different parameters to the NIC to identify \u0027invalid\u0027 checksums.",
+      "parentUuid": "5a2585a7_2a3abdcd",
+      "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
