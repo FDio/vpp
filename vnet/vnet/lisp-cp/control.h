@@ -136,7 +136,6 @@ typedef struct
 
   /* pool of pending map requests */
   pending_map_request_t *pending_map_requests_pool;
-  volatile u32 *pending_map_request_lock;
 
   /* hash map of sent map register messages */
   uword *map_register_messages_by_nonce;
@@ -301,21 +300,6 @@ int vnet_lisp_rloc_probe_enable_disable (u8 is_enable);
 int vnet_lisp_map_register_enable_disable (u8 is_enable);
 u8 vnet_lisp_map_register_state_get (void);
 u8 vnet_lisp_rloc_probe_state_get (void);
-
-static inline void
-lisp_pending_map_request_lock (lisp_cp_main_t * lcm)
-{
-  if (lcm->pending_map_request_lock)
-    while (__sync_lock_test_and_set (lcm->pending_map_request_lock, 1))
-      /* sweet dreams */ ;
-}
-
-static inline void
-lisp_pending_map_request_unlock (lisp_cp_main_t * lcm)
-{
-  if (lcm->pending_map_request_lock)
-    *lcm->pending_map_request_lock = 0;
-}
 
 #endif /* VNET_CONTROL_H_ */
 
