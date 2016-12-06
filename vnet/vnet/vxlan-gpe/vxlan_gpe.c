@@ -199,6 +199,7 @@ static int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t)
   /* UDP header, randomize src port on something, maybe? */
   h0->udp.src_port = clib_host_to_net_u16 (4790);
   h0->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_vxlan_gpe);
+  h0->udp.checksum = 0;
 
   /* VXLAN header. Are we having fun yet? */
   h0->vxlan.flags = VXLAN_GPE_FLAGS_I | VXLAN_GPE_FLAGS_P;

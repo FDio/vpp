@@ -48,6 +48,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
 			       lisp_gpe_next_protocol_e payload_proto)
 {
   lisp_gpe_header_t *lisp0;
+  udp_header_t *udp0;
   u8 *rw = 0;
   int len;
 
@@ -73,9 +74,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
       ip_address_copy_addr (&ip0->dst_address, &lgt->key->rmt);
       ip0->checksum = ip4_header_checksum (ip0);
 
-      /* UDP header, randomize src port on something, maybe? */
-      h0->udp.src_port = clib_host_to_net_u16 (4341);
-      h0->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_lisp_gpe);
+      udp0 = &h0->udp;
 
       /* LISP-gpe header */
       lisp0 = &h0->lisp;
@@ -102,13 +101,16 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
       ip_address_copy_addr (&ip0->src_address, &lgt->key->lcl);
       ip_address_copy_addr (&ip0->dst_address, &lgt->key->rmt);
 
-      /* UDP header, randomize src port on something, maybe? */
-      h0->udp.src_port = clib_host_to_net_u16 (4341);
-      h0->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_lisp_gpe);
+      udp0 = &h0->udp;
 
       /* LISP-gpe header */
       lisp0 = &h0->lisp;
     }
+
+  /* UDP header, randomize src port on something, maybe? */
+  udp0->src_port = clib_host_to_net_u16 (4341);
+  udp0->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_lisp_gpe);
+  udp0->checksum = 0;
 
   lisp0->flags = ladj->flags;
   lisp0->ver_res = 0;

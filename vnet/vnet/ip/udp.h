@@ -147,6 +147,12 @@ ip_udp_fixup_one (vlib_main_t * vm,
       new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
                                      - sizeof (*ip0));
       udp0->length = new_l0;
+
+      /* Encaps like LISP recommend that the UDP checksum SHOULD be set to 0.
+       * Still, to avoid DPDK packet drops, compute it. */
+      udp0->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ip0);
+      if (udp0->checksum == 0)
+        udp0->checksum = 0xffff;
     }
   else
     {
