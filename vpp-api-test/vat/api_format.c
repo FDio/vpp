@@ -15270,7 +15270,7 @@ vl_api_mpls_fib_details_t_handler (vl_api_mpls_fib_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   int count = ntohl (mp->count);
-  vl_api_fib_path_t *fp;
+  vl_api_fib_path2_t *fp;
   int i;
 
   fformat (vam->ofp,
@@ -15305,7 +15305,7 @@ static void vl_api_mpls_fib_details_t_handler_json
   vat_json_node_t *node = NULL;
   struct in_addr ip4;
   struct in6_addr ip6;
-  vl_api_fib_path_t *fp;
+  vl_api_fib_path2_t *fp;
   int i;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
@@ -17773,43 +17773,6 @@ vat_api_hookup (vat_main_t * vam)
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_cli_function;
 #undef _
-}
-
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 memory_api_version = v;
-#include <vlibmemory/vl_memory_api_h.h>
-#undef vl_api_version
-
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 vnet_interface_api_version = v;
-#include <vnet/interface.api.h>
-#undef vl_api_version
-
-#undef vl_api_version
-#define vl_api_version(n,v) static u32 vpp_api_version = v;
-#include <vpp-api/vpe.api.h>
-#undef vl_api_version
-
-static u32 *api_versions[] = {
-  &memory_api_version,
-  &vnet_interface_api_version,
-  &vpp_api_version,
-};
-
-void
-vl_client_add_api_signatures (vl_api_memclnt_create_t * mp)
-{
-  int i;
-
-  ASSERT (ARRAY_LEN (mp->api_versions) >= ARRAY_LEN (api_versions));
-
-  /*
-   * Send the API signatures. This bit of code must
-   * match the checks in ../vpe/api/api.c: vl_msg_api_version_check().
-   */
-
-  for (i = 0; i < ARRAY_LEN (api_versions); i++)
-    mp->api_versions[i] = clib_host_to_net_u32 (*api_versions[i]);
 }
 
 /*

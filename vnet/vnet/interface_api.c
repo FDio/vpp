@@ -27,6 +27,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/vnet_msg_enum.h>
+#include <vnet/fib/fib_api.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -677,7 +678,7 @@ vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
+#include <vnet/interface.api.h>
 #undef vl_msg_name_crc_list
 
 static void

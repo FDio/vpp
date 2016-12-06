@@ -33,6 +33,7 @@
 #include <vnet/map/map.api.h>
 #include <vnet/l2/l2.api.h>
 #include <vnet/span/span.api.h>
+#include <vnet/ip/ip.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
