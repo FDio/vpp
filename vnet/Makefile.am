@@ -15,13 +15,15 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
-BUILT_SOURCES =					\
- vnet/interface.api.h				\
- vnet/interface.api.json			\
- vnet/l2/l2.api.h				\
- vnet/l2/l2.api.json				\
- vnet/map/map.api.h				\
- vnet/map/map.api.json
+BUILT_SOURCES =						\
+vnet/interface.api.h 					\
+vnet/interface.api.json 				\
+vnet/ip/ip.api.h 					\
+vnet/ip/ip.api.json					\
+vnet/l2/l2.api.h 					\
+vnet/l2/l2.api.json 					\
+vnet/map/map.api.h					\
+vnet/map/map.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -299,6 +301,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip6_input.c				\
  vnet/ip/ip6_neighbor.c				\
  vnet/ip/ip6_pg.c				\
+ vnet/ip/ip_api.c				\
  vnet/ip/ip_checksum.c				\
  vnet/ip/ip_frag.c				\
  vnet/ip/ip.h					\
@@ -318,6 +321,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/icmp4.h				\
  vnet/ip/icmp6.h				\
  vnet/ip/igmp_packet.h				\
+ vnet/ip/ip.api.h				\
  vnet/ip/ip4_error.h				\
  vnet/ip/ip4.h					\
  vnet/ip/ip4_mtrie.h				\
@@ -822,6 +826,7 @@ libvnet_la_SOURCES +=				\
 
 nobase_include_HEADERS +=			\
   vnet/fib/fib.h				\
+  vnet/fib/fib_api.h				\
   vnet/fib/ip4_fib.h				\
   vnet/fib/ip6_fib.h				\
   vnet/fib/fib_types.h				\
@@ -903,8 +908,10 @@ SUFFIXES = .api.h .api .api.json
 # install the API definition, so we can produce java bindings, etc.
 
 apidir = $(prefix)/vnet
+
 api_DATA =					\
  vnet/interface.api.json			\
+ vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json
 
