@@ -70,6 +70,9 @@
 #define LOG2_VNET_BUFFER_LOCALLY_ORIGINATED LOG2_VLIB_BUFFER_FLAG_USER(7)
 #define VNET_BUFFER_LOCALLY_ORIGINATED (1 << LOG2_VNET_BUFFER_LOCALLY_ORIGINATED)
 
+#define LOG2_VNET_BUFFER_SPAN_CLONE LOG2_VLIB_BUFFER_FLAG_USER(8)
+#define VNET_BUFFER_SPAN_CLONE (1 << LOG2_VNET_BUFFER_SPAN_CLONE)
+
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \

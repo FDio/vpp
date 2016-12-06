@@ -301,8 +301,6 @@ _(SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream)                 \
 _(IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump)               \
 _(IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del)           \
 _(IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump)                 \
-_(SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable)   \
-_(SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump)                       \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
@@ -7575,52 +7573,6 @@ static void
   for (i = 0; i < vec_len (fcm->tables); i++)
     if (ipfix_classify_table_index_valid (i))
       send_ipfix_classify_table_details (i, q, mp->context);
-}
-
-static void
-  vl_api_sw_interface_span_enable_disable_t_handler
-  (vl_api_sw_interface_span_enable_disable_t * mp)
-{
-  vl_api_sw_interface_span_enable_disable_reply_t *rmp;
-  int rv;
-
-  vlib_main_t *vm = vlib_get_main ();
-
-  rv = span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
-			      ntohl (mp->sw_if_index_to), mp->enable);
-
-  REPLY_MACRO (VL_API_SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY);
-}
-
-static void
-vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
-{
-
-  unix_shared_memory_queue_t *q;
-  vl_api_sw_interface_span_details_t *rmp;
-  span_main_t *sm = &span_main;
-  u32 src_sw_if_index = 0, *dst_sw_if_index;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  vec_foreach (dst_sw_if_index, sm->dst_by_src_sw_if_index)
-  {
-    if (*dst_sw_if_index > 0)
-      {
-	rmp = vl_msg_api_alloc (sizeof (*rmp));
-	memset (rmp, 0, sizeof (*rmp));
-	rmp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_SPAN_DETAILS);
-	rmp->context = mp->context;
-
-	rmp->sw_if_index_from = htonl (src_sw_if_index);
-	rmp->sw_if_index_to = htonl (*dst_sw_if_index);
-
-	vl_msg_api_send_shmem (q, (u8 *) & rmp);
-      }
-    src_sw_if_index++;
-  }
 }
 
 static void

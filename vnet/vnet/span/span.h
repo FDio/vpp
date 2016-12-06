@@ -21,8 +21,19 @@
 
 typedef struct
 {
-  /* destination interface index by source interface index */
-  u32 *dst_by_src_sw_if_index;
+  clib_bitmap_t *rx_mirror_ports;
+  clib_bitmap_t *tx_mirror_ports;
+  u32 num_rx_mirror_ports;
+  u32 num_tx_mirror_ports;
+} span_interface_t;
+
+typedef struct
+{
+  /* per-interface vector of span instances */
+  span_interface_t *interfaces;
+
+  /* biggest sw_if_index used so far */
+  u32 max_sw_if_index;
 
   /* convenience */
   vlib_main_t *vlib_main;
