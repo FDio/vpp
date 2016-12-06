@@ -309,7 +309,7 @@ typedef struct
   union
   {
     u32 locator_set_index;
-    locator_t *locators;	/* used for map register message */
+    locator_t *locators;
   };
 
   u32 ttl;
