@@ -83,7 +83,7 @@ packagedir_jvpp_core = io/fd/vpp/jvpp/core
 
 BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 
-jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h $(prefix)/../vpp/vpp-api/vpe.api.json
+jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h $(prefix)/../vpp/vpp-api/vpe.api.json $(prefix)/../vnet/vnet/ip.api.json
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/
 	mkdir -p jvpp-core/target
 	cd jvpp-core \
@@ -93,6 +93,7 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: jvpp-registry/io_fd_vpp_jvpp_VppJN
 		    $(prefix)/../vnet/vnet/interface.api.json \
 		    $(prefix)/../vnet/vnet/l2.api.json \
 		    $(prefix)/../vnet/vnet/map.api.json \
+		    $(prefix)/../vnet/vnet/ip.api.json \
 		&& cp -rf types dto future callfacade callback notification *.java -t $(packagedir_jvpp_core) \
 		&& rm -rf types dto future callfacade callback notification *.java
 
