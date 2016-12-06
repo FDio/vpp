@@ -1223,7 +1223,14 @@ VNET_FEATURE_ARC_INIT (interface_output, static) =
 {
   .arc_name  = "interface-output",
   .start_nodes = VNET_FEATURES (0),
+  .end_node = "interface-tx",
   .arc_index_ptr = &vnet_main.interface_main.output_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (span_tx, static) = {
+  .arc_name = "interface-output",
+  .node_name = "span-output",
+  .runs_before = VNET_FEATURES ("interface-tx"),
 };
 
 VNET_FEATURE_INIT (interface_tx, static) = {
