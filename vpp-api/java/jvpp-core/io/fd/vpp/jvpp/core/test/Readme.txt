@@ -2,7 +2,7 @@ This package contains basic tests for jvpp. To run the tests:
 
 - Make sure VPP is running
 - From VPP's build-root/ folder execute:
-  - sudo java -cp build-vpp_debug-native/vpp-api/java/jvpp-registry-16.12.jar:build-vpp_debug-native/vpp-api/java/jvpp-core-16.12.jar io.fd.vpp.jvpp.core.test.[test name]
+  - sudo java -cp build-vpp-native/vpp-api/java/jvpp-registry-17.01.jar:build-vpp-native/vpp-api/java/jvpp-core-17.01.jar io.fd.vpp.jvpp.core.test.[test name]
 
 Available tests:
 CallbackApiTest - Similar to ControlPingTest, invokes more complex calls (e.g. interface dump) using low level JVpp APIs
