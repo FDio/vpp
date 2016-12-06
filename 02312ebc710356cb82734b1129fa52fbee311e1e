@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_ca1c59c4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "\"Add API support for deleting a classifier chain, VPP-206\" or similar",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ea1f15b6",
+        "filename": "plugins/acl-plugin/acl/acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 419,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "1 \u003d\u003e \"1 /* delete_chain */\" or similar",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_aa790dfe",
+        "filename": "vnet/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "/* Recursively delete the entire chain */",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_8a7e51e3",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 8908,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "if (unformat (i, \"del-chain\"))\n  {\n     is_add \u003d 0;\n     del_chain \u003d 1;\n   }",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4a8869e7",
+        "filename": "vpp-api-test/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 17492,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "[del][del-chain]",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2a6d1d33",
+        "filename": "vpp/vpp-api/custom_dump.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1182,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "if (mp-\u003eis_add \u003d\u003d 0)\n   s \u003d format (s, \"%s \", mp-\u003edel_chain ? \"del-chain\" : \"del\");",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_0a6a611a",
+        "filename": "vpp/vpp-api/custom_dump.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1183,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-06T22:46:19Z",
+      "side": 1,
+      "message": "Delete this",
+      "revId": "02312ebc710356cb82734b1129fa52fbee311e1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
