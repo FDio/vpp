@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
