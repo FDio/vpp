@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_4fb99be8",
+        "filename": "vnet/vnet/ip/ip6_forward.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 1234,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-06T11:40:21Z",
+      "side": 1,
+      "message": "This can be GPL violation. Please discuss with Ed Warnicke.",
+      "range": {
+        "startLine": 1234,
+        "startChar": 2,
+        "endLine": 1234,
+        "endChar": 51
+      },
+      "revId": "7ed5a7316a0cdb11131e08badea5b2904b88b596",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
