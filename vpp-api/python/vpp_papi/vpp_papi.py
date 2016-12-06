@@ -398,13 +398,11 @@ class VPP():
         b = self.encode(msgdef, kwargs)
 
         self.results_prepare(context)
+        self._write(b)
 
         if multipart:
             self.results[context]['m'] = True
             self._control_ping(context)
-
-        self._write(b)
-
         self.results_wait(context)
         r = self.results[context]['r']
         self.results_clean(context)

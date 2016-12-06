@@ -917,7 +917,8 @@ api_DATA =					\
  vnet/interface.api.json			\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
- vnet/map/map.api.json
+ vnet/map/map.api.json				\
+ vnet/span/span.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
