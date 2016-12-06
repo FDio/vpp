@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_aaffcd00",
+        "filename": "vnet/vnet/fib/fib.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-06T14:33:39Z",
+      "side": 1,
+      "message": "shouldn\u0027t this be in the same file as the equivalent \u0027set\u0027 API.\nSet/Get a table is an action on an interface, not on a FIB. So this is part of the interface\u0027s API and belongs in interface_XXX.c",
+      "revId": "8de228c13589383a0a319d79faca3bdd7e1d3ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
