@@ -16,6 +16,24 @@
       "revId": "8de228c13589383a0a319d79faca3bdd7e1d3ed5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ca47b94a",
+        "filename": "vnet/vnet/fib/fib.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2016-12-06T14:59:37Z",
+      "side": 1,
+      "message": "I have put it here because the API function calls only functions from FIB directory, but it is true that in the end the main information it reads is in ip4_main and ip6_main structures.\nSo I\u0027ll move it to the other interface API functions.",
+      "parentUuid": "5a2585a7_aaffcd00",
+      "revId": "8de228c13589383a0a319d79faca3bdd7e1d3ed5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
