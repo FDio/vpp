@@ -37,12 +37,7 @@ rte_delay_us_override (unsigned us)
 
   /* Don't bother intercepting for short delays */
   if (us < 10)
-    {
-#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
-      rte_delay_us_block (us);
-#endif
-      return 0;
-    }
+    return 0;
 
   /*
    * Only intercept if we are in a vlib process.
@@ -72,6 +67,13 @@ rte_delay_us_override (unsigned us)
     }
   return 0;			// no override
 }
+
+static void
+rte_delay_us_override_cb (unsigned us)
+{
+  if (rte_delay_us_override (us) == 0)
+    rte_delay_us_block (us);
+}
 #endif
 
 static void
@@ -88,7 +90,7 @@ vpe_main_init (vlib_main_t * vm)
 #if DPDK
 #if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
   /* register custom delay function */
-  rte_delay_us_callback_register ((void (*)) rte_delay_us_override);
+  rte_delay_us_callback_register (rte_delay_us_override_cb);
 #endif
 #endif
 }
