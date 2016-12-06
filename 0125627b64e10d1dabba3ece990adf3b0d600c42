@@ -16,6 +16,24 @@
       "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4f9e3b58",
+        "filename": "vnet/vnet/ip/udp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-06T12:19:06Z",
+      "side": 1,
+      "message": "The real question here is: Should we drop packets which doesn\u0027t have valid L4 checksum on the VPP driver level or not. I don\u0027t think DPDK is wrong here, they just signal to us that L4 checksum is not valid and we simply drop such packets.",
+      "parentUuid": "5a2585a7_4f5d1be9",
+      "revId": "0125627b64e10d1dabba3ece990adf3b0d600c42",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
