@@ -40,6 +40,13 @@ class _PacketInfo(object):
     #: Store the copy of the former packet.
     data = None
 
+    def __eq__(self, other):
+        index = self.index == other.index
+        src = self.src == other.src
+        dst = self.dst == other.dst
+        data = self.data == other.data
+        return index and src and dst and data
+
 
 def pump_output(out, deque):
     for line in iter(out.readline, b''):

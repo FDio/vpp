@@ -540,6 +540,9 @@ class VppPapiProvider(object):
              'next_hop_via_label': next_hop_via_label,
              'next_hop_out_label_stack': next_hop_out_label_stack})
 
+    def ip_fib_dump(self):
+        return self.api(self.papi.ip_fib_dump, {})
+
     def ip_neighbor_add_del(self,
                             sw_if_index,
                             mac_address,

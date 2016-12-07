@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
-import unittest
+import random
 import socket
+import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
@@ -199,6 +199,270 @@ class TestIPv4(VppTestCase):
         for i in self.sub_interfaces:
             pkts = i.parent.get_capture()
             self.verify_capture(i, pkts)
+
+
+class TestIPv4FibCrud(VppTestCase):
+    """ FIB - add/update/delete - ip4 routes
+
+    Test scenario:
+        - add 1k,
+        - del 100,
+        - add new 1k,
+        - del 1.5k
+
+    ..note:: Python API is to slow to add many routes, needs C code replacement.
+    """
+
+    def config_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
+        """
+
+        :param start_dest_addr:
+        :param next_hop_addr:
+        :param count:
+        :return list: added ips with 32 prefix
+        """
+        added_ips = []
+        dest_addr = int(
+            socket.inet_pton(socket.AF_INET, start_dest_addr).encode('hex'), 16)
+        dest_addr_len = 32
+        n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
+        for _ in range(count):
+            n_dest_addr = '{:08x}'.format(dest_addr).decode('hex')
+            self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
+                                       n_next_hop_addr)
+            added_ips.append(socket.inet_ntoa(n_dest_addr))
+            dest_addr += 1
+        return added_ips
+
+    def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
+
+        removed_ips = []
+        dest_addr = int(
+            socket.inet_pton(socket.AF_INET, start_dest_addr).encode('hex'), 16)
+        dest_addr_len = 32
+        n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
+        for _ in range(count):
+            n_dest_addr = '{:08x}'.format(dest_addr).decode('hex')
+            self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
+                                       n_next_hop_addr, is_add=0)
+            removed_ips.append(socket.inet_ntoa(n_dest_addr))
+            dest_addr += 1
+        return removed_ips
+
+    def create_stream(self, src_if, dst_if, dst_ips, count):
+        pkts = []
+
+        for _ in range(count):
+            dst_addr = random.choice(dst_ips)
+            info = self.create_packet_info(
+                src_if.sw_if_index, dst_if.sw_if_index)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IP(src=src_if.remote_ip4, dst=dst_addr) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            size = random.choice(self.pg_if_packet_sizes)
+            self.extend_packet(p, random.choice(self.pg_if_packet_sizes))
+            pkts.append(p)
+
+        return pkts
+
+    def _find_ip_match(self, find_in, pkt):
+        for p in find_in:
+            if self.payload_to_info(str(p[Raw])) == self.payload_to_info(str(pkt[Raw])):
+                if p[IP].src != pkt[IP].src:
+                    break
+                if p[IP].dst != pkt[IP].dst:
+                    break
+                if p[UDP].sport != pkt[UDP].sport:
+                    break
+                if p[UDP].dport != pkt[UDP].dport:
+                    break
+                return p
+        return None
+
+    @staticmethod
+    def _match_route_detail(route_detail, ip, address_length=32, table_id=0):
+        if route_detail.address == socket.inet_pton(socket.AF_INET, ip):
+            if route_detail.table_id != table_id:
+                return False
+            elif route_detail.address_length != address_length:
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    def verify_capture(self, dst_interface, received_pkts, expected_pkts):
+        self.assertEqual(len(received_pkts), len(expected_pkts))
+        to_verify = list(expected_pkts)
+        for p in received_pkts:
+            self.assertEqual(p.src, dst_interface.local_mac)
+            self.assertEqual(p.dst, dst_interface.remote_mac)
+            x = self._find_ip_match(to_verify, p)
+            to_verify.remove(x)
+        self.assertListEqual(to_verify, [])
+
+    def verify_route_dump(self, fib_dump, ips):
+
+        def _ip_in_route_dump(ip, fib_dump):
+            return next((route for route in fib_dump
+                         if self._match_route_detail(route, ip)),
+                        False)
+
+        for ip in ips:
+            self.assertTrue(_ip_in_route_dump(ip, fib_dump),
+                            'IP {} is not in fib dump.'.format(ip))
+
+    def verify_not_in_route_dump(self, fib_dump, ips):
+
+        def _ip_in_route_dump(ip, fib_dump):
+            return next((route for route in fib_dump
+                         if self._match_route_detail(route, ip)),
+                        False)
+
+        for ip in ips:
+            self.assertFalse(_ip_in_route_dump(ip, fib_dump),
+                             'IP {} is in fib dump.'.format(ip))
+
+    @classmethod
+    def setUpClass(cls):
+        """
+        #. Create and initialize 3 pg interfaces.
+        #. initialize class attributes configured_routes and deleted_routes
+           to store information between tests.
+        """
+        super(TestIPv4FibCrud, cls).setUpClass()
+
+        try:
+            # create 3 pg interfaces
+            cls.create_pg_interfaces(range(3))
+
+            cls.interfaces = list(cls.pg_interfaces)
+
+            # setup all interfaces
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+
+            cls.configured_routes = []
+            cls.deleted_routes = []
+            cls.pg_if_packet_sizes = [64, 512, 1518, 9018]
+
+        except Exception:
+            super(TestIPv4FibCrud, cls).tearDownClass()
+            raise
+
+    def setUp(self):
+        super(TestIPv4FibCrud, self).setUp()
+        self.packet_infos = {}
+
+    def test_1_add_routes(self):
+        """ Add 1k routes
+
+        - add 100 routes check with traffic script.
+        """
+        # config 1M FIB entries
+        self.configured_routes.extend(self.config_fib_many_to_one(
+            "10.0.0.0", self.pg0.remote_ip4, 100))
+
+        fib_dump = self.vapi.ip_fib_dump()
+        self.verify_route_dump(fib_dump, self.configured_routes)
+
+        self.stream_1 = self.create_stream(
+            self.pg1, self.pg0, self.configured_routes, 100)
+        self.stream_2 = self.create_stream(
+            self.pg2, self.pg0, self.configured_routes, 100)
+        self.pg1.add_stream(self.stream_1)
+        self.pg2.add_stream(self.stream_2)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture()
+        self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
+
+
+    def test_2_del_routes(self):
+        """ Delete 100 routes
+
+        - delete 10 routes check with traffic script.
+        """
+        self.deleted_routes.extend(self.unconfig_fib_many_to_one(
+            "10.0.0.10", self.pg0.remote_ip4, 10))
+        for x in self.deleted_routes:
+            self.configured_routes.remove(x)
+
+        fib_dump = self.vapi.ip_fib_dump()
+        self.verify_route_dump(fib_dump, self.configured_routes)
+
+        self.stream_1 = self.create_stream(
+            self.pg1, self.pg0, self.configured_routes, 100)
+        self.stream_2 = self.create_stream(
+            self.pg2, self.pg0, self.configured_routes, 100)
+        self.stream_3 = self.create_stream(
+            self.pg1, self.pg0, self.deleted_routes, 100)
+        self.stream_4 = self.create_stream(
+            self.pg2, self.pg0, self.deleted_routes, 100)
+        self.pg1.add_stream(self.stream_1 + self.stream_3)
+        self.pg2.add_stream(self.stream_2 + self.stream_4)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture()
+        self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
+
+    def test_3_add_new_routes(self):
+        """ Add 1k routes
+
+        - re-add 5 routes check with traffic script.
+        - add 100 routes check with traffic script.
+        """
+        tmp = self.config_fib_many_to_one(
+            "10.0.0.10", self.pg0.remote_ip4, 5)
+        self.configured_routes.extend(tmp)
+        for x in tmp:
+            self.deleted_routes.remove(x)
+
+        self.configured_routes.extend(self.config_fib_many_to_one(
+            "10.0.1.0", self.pg0.remote_ip4, 100))
+
+        fib_dump = self.vapi.ip_fib_dump()
+        self.verify_route_dump(fib_dump, self.configured_routes)
+
+        self.stream_1 = self.create_stream(
+            self.pg1, self.pg0, self.configured_routes, 300)
+        self.stream_2 = self.create_stream(
+            self.pg2, self.pg0, self.configured_routes, 300)
+        self.stream_3 = self.create_stream(
+            self.pg1, self.pg0, self.deleted_routes, 100)
+        self.stream_4 = self.create_stream(
+            self.pg2, self.pg0, self.deleted_routes, 100)
+
+        self.pg1.add_stream(self.stream_1 + self.stream_3)
+        self.pg2.add_stream(self.stream_2 + self.stream_4)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture()
+        self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
+
+    def test_4_del_routes(self):
+        """ Delete 1.5k routes
+
+        - delete 5 routes check with traffic script.
+        - add 100 routes check with traffic script.
+        """
+        self.deleted_routes.extend(self.unconfig_fib_many_to_one(
+            "10.0.0.0", self.pg0.remote_ip4, 15))
+        self.deleted_routes.extend(self.unconfig_fib_many_to_one(
+            "10.0.0.20", self.pg0.remote_ip4, 85))
+        self.deleted_routes.extend(self.unconfig_fib_many_to_one(
+            "10.0.1.0", self.pg0.remote_ip4, 100))
+        fib_dump = self.vapi.ip_fib_dump()
+        self.verify_not_in_route_dump(fib_dump, self.deleted_routes)
 
 
 if __name__ == '__main__':
