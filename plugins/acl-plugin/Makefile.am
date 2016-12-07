@@ -57,3 +57,57 @@ acl_test_plugin_la_SOURCES = acl/acl_test.c acl/acl_plugin.api.h
 install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
+
+#
+# Java code generation
+#
+jvpp_registry_root = ../../vpp-api/java
+jvpp_registry_version = 17.01
+jacl_jarfile = jvpp-acl-$(PACKAGE_VERSION).jar
+jvpp_package_dir = io/fd/vpp/jvpp/acl
+jvpp_root = acl/jvpp
+jvpp_target_dir = target
+jvpp_target = $(jvpp_root)/$(jvpp_target_dir)
+api_file=$(srcdir)/acl/acl.api
+
+lib_LTLIBRARIES = libjvpp_acl.la
+libjvpp_acl_la_SOURCES = acl/acl.api.h acl/jvpp_acl.c acl/jvpp/io_fd_vpp_jvpp_acl_JVppAclImpl.h
+libjvpp_acl_la_LIBADD = -lvlibmemoryclient -lvlibapi -lvppinfra \
+	              -lpthread -lm -lrt -L$(jvpp_registry_root)/.libs -ljvpp_common
+libjvpp_acl_la_LDFLAGS = -module
+libjvpp_acl_la_CPPFLAGS = -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I../ -I$(srcdir)/../
+
+BUILT_SOURCES += $(jvpp_root)/io_fd_vpp_jvpp_acl_JVppAclImpl.h
+
+$(jvpp_root)/io_fd_vpp_jvpp_acl_JVppAclImpl.h: acl.api.json
+	dir=`pwd`;						\
+	mkdir -p $(jvpp_target); \
+	mkdir -p $(jvpp_root)/$(jvpp_package_dir); 		\
+	cd $(jvpp_root)/$(jvpp_package_dir);			\
+	mkdir -p types dto future callfacade callback notification test; 	\
+	@srcdir@/$(jvpp_registry_root)/jvpp/gen/jvpp_gen.py -i $${dir}/acl.api.json --plugin_name acl;		\
+	cd -;							\
+	mv -f $(jvpp_root)/$(jvpp_package_dir)/jvpp_acl_gen.h $(jvpp_root)/jvpp_acl_gen.h;							\
+	cp $(srcdir)/$(jvpp_root)/$(jvpp_package_dir)/test/*.java $(jvpp_root)/$(jvpp_package_dir)/test/;				\
+	cd $(jvpp_root);				\
+	$(JAVAC) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d $(jvpp_target_dir) $(jvpp_package_dir)/*.java \
+		$(jvpp_package_dir)/types/*.java \
+		$(jvpp_package_dir)/dto/*.java \
+		$(jvpp_package_dir)/callback/*.java \
+		$(jvpp_package_dir)/notification/*.java \
+		$(jvpp_package_dir)/future/*.java 	\
+		$(jvpp_package_dir)/callfacade/*.java 	\
+		$(jvpp_package_dir)/test/*.java \
+		|| (echo "acl jvpp compilation failed: $$?"; exit 1);	\
+	$(JAVAH) -classpath .:$(jvpp_target_dir):../../$(jvpp_registry_root)/jvpp-registry-$(jvpp_registry_version).jar -d . io.fd.vpp.jvpp.acl.JVppAclImpl ;
+
+$(jacl_jarfile): libjvpp_acl.la
+	cp .libs/libjvpp_acl.so.0.0.0 $(jvpp_target);				\
+	cd $(jvpp_target);				\
+	$(JAR) cfv $(JARFLAGS) ../../../$@ libjvpp_acl.so.0.0.0 $(jvpp_package_dir)/* ; cd ..;
+
+acl.api.json:
+	@echo "  jAcl_sfc API"; \
+        vppapigen --input $(api_file) --json acl.api.json;
+
+all-local: $(jacl_jarfile)
