@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_10adf431",
+        "filename": "vnet/vnet/l2/l2_fib.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 764,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-07T18:14:14Z",
+      "side": 1,
+      "message": "can h-\u003enbuckets ever decrease whilst this process is suspended?",
+      "revId": "d171d48edc1672564db8bb920586b8ea220df14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_10d854ee",
         "filename": "vpp/vpp-api/api.c",
         "patchSetId": 9
