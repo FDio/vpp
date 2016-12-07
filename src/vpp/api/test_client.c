@@ -607,7 +607,6 @@ _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY, sw_interface_ip6_set_link_local
  _(CREATE_LOOPBACK_REPLY, create_loopback_reply)			\
  _(CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)	\
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)			\
-_(SR_TUNNEL_ADD_DEL_REPLY,sr_tunnel_add_del_reply)          \
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY, sw_interface_set_l2_xconnect_reply) \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)
 

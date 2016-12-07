@@ -24,7 +24,7 @@
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/sr/sr_packet.h>
+#include <vnet/sr/sr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/policer/xlate.h>
@@ -960,143 +960,215 @@ static void *vl_api_l2_patch_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_sr_tunnel_add_del_t_print
-  (vl_api_sr_tunnel_add_del_t * mp, void *handle)
+static void *vl_api_sr_localsid_add_del_t_print
+  (vl_api_sr_localsid_add_del_t * mp, void *handle)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  u8 *s;
+
+  s = format (0, "SCRIPT: sr_localsid_add_del ");
+
+  switch (mp->behavior)
+    {
+    case SR_BEHAVIOR_END:
+      s = format (s, "Address: %U\nBehavior: End",
+		  format_ip6_address, (ip6_address_t *) mp->localsid_addr);
+      s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
+      break;
+    case SR_BEHAVIOR_X:
+      s =
+	format (s,
+		"Address: %U\nBehavior: X (Endpoint with Layer-3 cross-connect)"
+		"\nIface: %U\nNext hop: %U", format_ip6_address,
+		(ip6_address_t *) mp->localsid_addr,
+		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
+		format_ip6_address, (ip6_address_t *) mp->nh_addr);
+      s = format (s, (mp->end_psp ? "End.PSP: True" : "End.PSP: False"));
+      break;
+    case SR_BEHAVIOR_DX4:
+      s =
+	format (s,
+		"Address: %U\nBehavior: DX4 (Endpoint with decapsulation with IPv4 cross-connect)"
+		"\nIface: %U\nNext hop: %U", format_ip6_address,
+		(ip6_address_t *) mp->localsid_addr,
+		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
+		format_ip4_address, (ip4_address_t *) mp->nh_addr);
+      break;
+    case SR_BEHAVIOR_DX6:
+      s =
+	format (s,
+		"Address: %U\nBehavior: DX6 (Endpoint with decapsulation with IPv6 cross-connect)"
+		"\nIface: %UNext hop: %U", format_ip6_address,
+		(ip6_address_t *) mp->localsid_addr,
+		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index),
+		format_ip6_address, (ip6_address_t *) mp->nh_addr);
+      break;
+    case SR_BEHAVIOR_DX2:
+      s =
+	format (s,
+		"Address: %U\nBehavior: DX2 (Endpoint with decapulation and Layer-2 cross-connect)"
+		"\nIface: %U", format_ip6_address,
+		(ip6_address_t *) mp->localsid_addr,
+		format_vnet_sw_if_index_name, vnm, ntohl (mp->sw_if_index));
+      break;
+    case SR_BEHAVIOR_DT6:
+      s =
+	format (s,
+		"Address: %U\nBehavior: DT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
+		"\nTable: %u", format_ip6_address,
+		(ip6_address_t *) mp->localsid_addr, ntohl (mp->fib_table));
+      break;
+    case SR_BEHAVIOR_DT4:
+      s =
+	format (s,
+		"Address: %U\nBehavior: DT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
+		"\nTable: %u", format_ip6_address,
+		(ip6_address_t *) mp->localsid_addr, ntohl (mp->fib_table));
+      break;
+    default:
+      if (mp->behavior >= SR_BEHAVIOR_LAST)
+	{
+	  s = format (s, "Address: %U\n Behavior: %u",
+		      format_ip6_address, (ip6_address_t *) mp->localsid_addr,
+		      mp->behavior);
+	}
+      else
+	//Should never get here...
+	s = format (s, "Internal error");
+      break;
+    }
+  FINISH;
+}
+
+static void *vl_api_sr_steering_add_del_t_print
+  (vl_api_sr_steering_add_del_t * mp, void *handle)
 {
   u8 *s;
-  ip6_address_t *this_address;
+
+  s = format (0, "SCRIPT: sr_steering_add_del ");
+
+  s = format (s, (mp->is_del ? "Del: True" : "Del: False"));
+
+  switch (mp->traffic_type)
+    {
+    case SR_STEER_L2:
+      s = format (s, "Traffic type: L2 iface: %u", ntohl (mp->sw_if_index));
+      break;
+    case SR_STEER_IPV4:
+      s = format (s, "Traffic type: IPv4 %U/%u", format_ip4_address,
+		  (ip4_address_t *) mp->prefix_addr, ntohl (mp->mask_width));
+      break;
+    case SR_STEER_IPV6:
+      s = format (s, "Traffic type: IPv6 %U/%u", format_ip6_address,
+		  (ip6_address_t *) mp->prefix_addr, ntohl (mp->mask_width));
+      break;
+    default:
+      s = format (s, "Traffic type: Unknown(%u)", mp->traffic_type);
+      break;
+    }
+  s = format (s, "BindingSID: %U", format_ip6_address,
+	      (ip6_address_t *) mp->bsid_addr);
+
+  s = format (s, "SR Policy Index: %u", ntohl (mp->sr_policy_index));
+
+  s = format (s, "FIB_table: %u", ntohl (mp->table_id));
+
+  FINISH;
+}
+
+static void *vl_api_sr_policy_add_t_print
+  (vl_api_sr_policy_add_t * mp, void *handle)
+{
+  u8 *s;
+
+  ip6_address_t *segments = 0, *seg;
+  ip6_address_t *this_address = (ip6_address_t *) mp->segments;
+
   int i;
-  u16 flags_host_byte_order;
-  u8 pl_flag;
-
-  s = format (0, "SCRIPT: sr_tunnel_add_del ");
-
-  if (mp->name[0])
-    s = format (s, "name %s ", mp->name);
-
-  s = format (s, "src %U dst %U/%d ", format_ip6_address,
-	      (ip6_address_t *) mp->src_address,
-	      format_ip6_address,
-	      (ip6_address_t *) mp->dst_address, mp->dst_mask_width);
-
-  this_address = (ip6_address_t *) mp->segs_and_tags;
   for (i = 0; i < mp->n_segments; i++)
     {
-      s = format (s, "next %U ", format_ip6_address, this_address);
-      this_address++;
-    }
-  for (i = 0; i < mp->n_tags; i++)
-    {
-      s = format (s, "tag %U ", format_ip6_address, this_address);
+      vec_add2 (segments, seg, 1);
+      clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
       this_address++;
     }
 
-  flags_host_byte_order = clib_net_to_host_u16 (mp->flags_net_byte_order);
+  s = format (0, "SCRIPT: sr_policy_add ");
 
-  if (flags_host_byte_order & IP6_SR_HEADER_FLAG_CLEANUP)
-    s = format (s, " clean ");
+  s = format (s, "BSID: %U", format_ip6_address,
+	      (ip6_address_t *) mp->bsid_addr);
 
-  if (flags_host_byte_order & IP6_SR_HEADER_FLAG_PROTECTED)
-    s = format (s, "protected ");
+  s =
+    format (s,
+	    (mp->is_encap ? "Behavior: Encapsulation" :
+	     "Behavior: SRH insertion"));
 
-  for (i = 1; i <= 4; i++)
-    {
-      pl_flag = ip6_sr_policy_list_flags (flags_host_byte_order, i);
+  s = format (s, "FIB_table: %u", ntohl (mp->fib_table));
 
-      switch (pl_flag)
-	{
-	case IP6_SR_HEADER_FLAG_PL_ELT_NOT_PRESENT:
-	  continue;
+  s = format (s, (mp->type ? "Type: Default" : "Type: Spray"));
 
-	case IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE:
-	  s = format (s, "InPE %d ", i);
-	  break;
+  s = format (s, "SID list weight: %u", ntohl (mp->weight));
 
-	case IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE:
-	  s = format (s, "EgPE %d ", i);
-	  break;
-
-	case IP6_SR_HEADER_FLAG_PL_ELT_ORIG_SRC_ADDR:
-	  s = format (s, "OrgSrc %d ", i);
-	  break;
-
-	default:
-	  clib_warning ("BUG: pl elt %d value %d", i, pl_flag);
-	  break;
-	}
-    }
-
-  if (mp->policy_name[0])
-    s = format (s, "policy_name %s ", mp->policy_name);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
+  s = format (s, "{");
+  vec_foreach (seg, segments)
+  {
+    s = format (s, "%U, ", format_ip6_address, seg);
+  }
+  s = format (s, "\b\b } ");
 
   FINISH;
 }
 
-static void *vl_api_sr_policy_add_del_t_print
-  (vl_api_sr_policy_add_del_t * mp, void *handle)
+static void *vl_api_sr_policy_mod_t_print
+  (vl_api_sr_policy_mod_t * mp, void *handle)
 {
   u8 *s;
+  u32 weight;
+
+  ip6_address_t *segments = 0, *seg;
+  ip6_address_t *this_address = (ip6_address_t *) mp->segments;
+
   int i;
-
-  s = format (0, "SCRIPT: sr_policy_add_del ");
-
-  if (mp->name[0])
-    s = format (s, "name %s ", mp->name);
-
-
-  if (mp->tunnel_names[0])
+  for (i = 0; i < mp->n_segments; i++)
     {
-      // start deserializing tunnel_names
-      int num_tunnels = mp->tunnel_names[0];	//number of tunnels
-      u8 *deser_tun_names = mp->tunnel_names;
-      deser_tun_names += 1;	//moving along
-
-      u8 *tun_name = 0;
-      int tun_name_len = 0;
-
-      for (i = 0; i < num_tunnels; i++)
-	{
-	  tun_name_len = *deser_tun_names;
-	  deser_tun_names += 1;
-	  vec_resize (tun_name, tun_name_len);
-	  memcpy (tun_name, deser_tun_names, tun_name_len);
-	  s = format (s, "tunnel %s ", tun_name);
-	  deser_tun_names += tun_name_len;
-	  tun_name = 0;
-	}
+      vec_add2 (segments, seg, 1);
+      clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
+      this_address++;
     }
 
-  if (mp->is_add == 0)
-    s = format (s, "del ");
+  s = format (0, "SCRIPT: sr_policy_mod ");
+
+  s = format (s, "BSID: %U", format_ip6_address,
+	      (ip6_address_t *) mp->bsid_addr);
+
+  s = format (s, "SR Policy index: %u", ntohl (mp->sr_policy_index));
+
+  s = format (s, "Operation: %u", mp->operation);
+
+  s = format (s, "SID list index: %u", ntohl (mp->sl_index));
+
+  s = format (s, "SID list weight: %u", ntohl (mp->weight));
+
+  s = format (s, "{");
+  vec_foreach (seg, segments)
+  {
+    s = format (s, "%U, ", format_ip6_address, seg);
+  }
+  s = format (s, "\b\b } ");
 
   FINISH;
 }
 
-static void *vl_api_sr_multicast_map_add_del_t_print
-  (vl_api_sr_multicast_map_add_del_t * mp, void *handle)
+static void *vl_api_sr_policy_del_t_print
+  (vl_api_sr_policy_del_t * mp, void *handle)
 {
+  u8 *s;
 
-  u8 *s = 0;
-  /* int i; */
-
-  s = format (0, "SCRIPT: sr_multicast_map_add_del ");
-
-  if (mp->multicast_address[0])
-    s = format (s, "address %U ", format_ip6_address, &mp->multicast_address);
-
-  if (mp->policy_name[0])
-    s = format (s, "sr-policy %s ", &mp->policy_name);
-
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
+  s = format (0, "SCRIPT: sr_policy_del ");
+  u8 bsid_addr[16];
+  u32 sr_policy_index;
+  s = format (s, "To be delivered. Good luck.");
   FINISH;
 }
-
 
 static void *vl_api_classify_add_del_table_t_print
   (vl_api_classify_add_del_table_t * mp, void *handle)
@@ -2864,9 +2936,11 @@ _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)                       \
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)                                   \
-_(SR_TUNNEL_ADD_DEL, sr_tunnel_add_del)					\
-_(SR_POLICY_ADD_DEL, sr_policy_add_del)					\
-_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
+_(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)                             \
+_(SR_STEERING_ADD_DEL, sr_steering_add_del)                             \
+_(SR_POLICY_ADD, sr_policy_add)                                         \
+_(SR_POLICY_MOD, sr_policy_mod)                                         \
+_(SR_POLICY_DEL, sr_policy_del)                                         \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
 _(L2_FLAGS, l2_flags)                                                   \
