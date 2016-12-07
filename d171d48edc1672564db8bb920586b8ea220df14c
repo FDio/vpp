@@ -36,6 +36,29 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_2462f1d8",
+        "filename": "vnet/vnet/l2/l2_fib.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 805,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2016-12-07T23:22:21Z",
+      "side": 1,
+      "message": "Sorry I notice this patch just now. But we should not age out a MAC entry if is a static MAC. Can you add this check please? This also mean during learning, there is no need to update static MAC time stamp if this make it more efficient.",
+      "range": {
+        "startLine": 805,
+        "startChar": 8,
+        "endLine": 805,
+        "endChar": 23
+      },
+      "revId": "d171d48edc1672564db8bb920586b8ea220df14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_10d854ee",
         "filename": "vpp/vpp-api/api.c",
         "patchSetId": 9
