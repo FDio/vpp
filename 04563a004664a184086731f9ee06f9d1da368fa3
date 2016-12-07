@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_f5337af4",
+        "filename": "build-root/rpm/vpp.spec",
+        "patchSetId": 2
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2016-12-07T08:15:52Z",
+      "side": 1,
+      "message": "There isn\u0027t a option to easy_install or some other way to specify the sitelib?",
+      "range": {
+        "startLine": 206,
+        "startChar": 0,
+        "endLine": 207,
+        "endChar": 66
+      },
+      "revId": "04563a004664a184086731f9ee06f9d1da368fa3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
