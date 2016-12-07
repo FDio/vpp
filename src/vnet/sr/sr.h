@@ -12,256 +12,283 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 /**
  * @file
- * @brief Segment Routing header
+ * @brief Segment Routing data structures definitions
+ *
  */
+
 #ifndef included_vnet_sr_h
 #define included_vnet_sr_h
 
 #include <vnet/vnet.h>
 #include <vnet/sr/sr_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/ethernet/ethernet.h>
 
-#include <openssl/opensslconf.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/crypto.h>
-#include <openssl/sha.h>
-#include <openssl/opensslv.h>
-#include <openssl/hmac.h>
+#define IPv6_DEFAULT_HEADER_LENGTH 40
+#define IPv6_DEFAULT_HOP_LIMIT 64
+#define IPv6_DEFAULT_MAX_MASK_WIDTH 128
+
+#define SR_BEHAVIOR_END 1
+#define SR_BEHAVIOR_X 2
+#define SR_BEHAVIOR_D_FIRST 3	/* Unused. Separator in between regular and D */
+#define SR_BEHAVIOR_DX2 4
+#define SR_BEHAVIOR_DX6 5
+#define SR_BEHAVIOR_DX4 6
+#define SR_BEHAVIOR_DT6 7
+#define SR_BEHAVIOR_DT4 8
+#define SR_BEHAVIOR_LAST 9	/* Must always be the last one */
+
+#define SR_STEER_L2 2
+#define SR_STEER_IPV4 4
+#define SR_STEER_IPV6 6
+
+#define SR_FUNCTION_SIZE 4
+#define SR_ARGUMENT_SIZE 4
+
+#define SR_SEGMENT_LIST_WEIGHT_DEFAULT 1
 
 /**
- *    @brief Segment Route tunnel key
+ * @brief SR Segment List (SID list)
  */
 typedef struct
 {
-  ip6_address_t src;
-  ip6_address_t dst;
-} ip6_sr_tunnel_key_t;
+  ip6_address_t *segments;		/**< SIDs (key) */
 
+  u32 weight;						/**< SID list weight (wECMP / UCMP) */
+
+  u8 *rewrite;					/**< Precomputed rewrite header */
+  u8 *rewrite_bsid;				/**< Precomputed rewrite header for bindingSID */
+
+  dpo_id_t bsid_dpo;				/**< DPO for Encaps/Insert for BSID */
+  dpo_id_t ip6_dpo;				/**< DPO for Encaps/Insert IPv6 */
+  dpo_id_t ip4_dpo;				/**< DPO for Encaps IPv6 */
+} ip6_sr_sl_t;
+
+/* SR policy types */
+#define SR_POLICY_TYPE_DEFAULT 0
+#define SR_POLICY_TYPE_SPRAY 1
 /**
- * @brief Segment Route tunnel
+ * @brief SR Policy
  */
 typedef struct
 {
-  /** src, dst address */
-  ip6_sr_tunnel_key_t key;
+  u32 *segments_lists;		/**< SID lists indexes (vector) */
 
-  /** Pptional tunnel name */
-  u8 *name;
+  ip6_address_t bsid;			/**< BindingSID (key) */
 
-  /** Mask width for FIB entry */
-  u32 dst_mask_width;
+  u8 type;					/**< Type (default is 0) */
 
-  /** First hop, to save 1 elt in the segment list */
-  ip6_address_t first_hop;
+  /* SR Policy specific DPO                                                                               */
+  /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
+  /* IF Type = SPRAY then Spray DPO with all SID lists                    */
+  dpo_id_t bsid_dpo;			/**< SR Policy specific DPO - BSID */
+  dpo_id_t ip4_dpo;			/**< SR Policy specific DPO - IPv6 */
+  dpo_id_t ip6_dpo;			/**< SR Policy specific DPO - IPv4 */
 
-  /** RX Fib index */
-  u32 rx_fib_index;
-  /** TX Fib index */
-  u32 tx_fib_index;
+  u32 fib_table;			/**< FIB table */
 
-  /** The actual ip6 SR header */
-  u8 *rewrite;
-
-  /** Indicates that this tunnel is part of a policy comprising
-     of multiple tunnels. If == ~0 tunnel is not part of a policy */
-  u32 policy_index;
-
-  /**
-   * The FIB node graph linkage
-   */
-  fib_node_t node;
-
-  /**
-   * The FIB entry index for the first hop. We track this so we
-   * don't need an extra lookup for it in the data plane
-   */
-  fib_node_index_t fib_entry_index;
-
-  /**
-   * This tunnel's sibling index in the children of the FIB entry
-   */
-  u32 sibling_index;
-
-  /**
-   * The DPO contributed by the first-hop FIB entry.
-   */
-  dpo_id_t first_hop_dpo;
-} ip6_sr_tunnel_t;
-
-/**
- * @brief Shared secret for keyed-hash message authentication code (HMAC).
- */
-typedef struct
-{
-  u8 *shared_secret;
-} ip6_sr_hmac_key_t;
-
-/**
- * @brief Args required for add/del tunnel.
- *
- * Else we end up passing a LOT of parameters around.
- */
-typedef struct
-{
-  /** Key (header imposition case) */
-  ip6_address_t *src_address;
-  ip6_address_t *dst_address;
-  u32 dst_mask_width;
-  u32 rx_table_id;
-  u32 tx_table_id;
-
-  /** optional name argument - for referencing SR tunnel/policy by name */
-  u8 *name;
-
-  /** optional policy name */
-  u8 *policy_name;
-
-  /** segment list, when inserting an ip6 SR header */
-  ip6_address_t *segments;
-
-  /**
-   * "Tag" list, aka segments inserted at the end of the list,
-   * past last_seg
-   */
-  ip6_address_t *tags;
-
-  /** Shared secret => generate SHA-256 HMAC security fields */
-  u8 *shared_secret;
-
-  /** Flags, e.g. cleanup, policy-list flags */
-  u16 flags_net_byte_order;
-
-  /** Delete the tunnnel? */
-  u8 is_del;
-} ip6_sr_add_del_tunnel_args_t;
-
-/**
- * @brief Args for creating a policy.
- *
- * Typically used for multicast replication.
- * ie a multicast address can be associated with a policy,
- * then replicated across a number of unicast SR tunnels.
- */
-typedef struct
-{
-  /** policy name */
-  u8 *name;
-
-  /** tunnel names */
-  u8 **tunnel_names;
-
-  /** Delete the policy? */
-  u8 is_del;
-} ip6_sr_add_del_policy_args_t;
-
-/**
- * @brief Segment Routing policy.
- *
- * Typically used for multicast replication.
- * ie a multicast address can be associated with a policy,
- * then replicated across a number of unicast SR tunnels.
- */
-typedef struct
-{
-  /** name of policy */
-  u8 *name;
-
-  /** vector to SR tunnel index */
-  u32 *tunnel_indices;
-
+  u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
 } ip6_sr_policy_t;
 
 /**
- * @brief Args for mapping of multicast address to policy name.
- *
- * Typically used for multicast replication.
- * ie a multicast address can be associated with a policy,
- * then replicated across a number of unicast SR tunnels.
+ * @brief SR LocalSID
  */
 typedef struct
 {
-  /** multicast IP6 address */
-  ip6_address_t *multicast_address;
+  ip6_address_t localsid;		/**< LocalSID IPv6 address */
 
-  /** name of policy to map to */
-  u8 *policy_name;
+  char end_psp;					/**< Combined with End.PSP? */
 
-  /** Delete the mapping */
-  u8 is_del;
+  u16 behavior;					/**< Behavior associated to this localsid */
 
-} ip6_sr_add_del_multicastmap_args_t;
+  union
+  {
+    u32 sw_if_index;				/**< xconnect only */
+    u32 vrf_index;				/**< vrf only */
+  };
+
+  u32 fib_table;				/**< FIB table where localsid is registered */
+
+  u32 vlan_index;				/**< VLAN tag (not an index) */
+
+  ip46_address_t next_hop;		/**< Next_hop for xconnect usage only */
+
+  u32 nh_adj;						/**< Next_adj for xconnect usage only */
+
+  void *plugin_mem;				/**< Memory to be used by the plugin callback functions */
+} ip6_sr_localsid_t;
+
+typedef int (sr_plugin_callback_t) (ip6_sr_localsid_t * localsid);
 
 /**
- * @brief Segment Routing state.
+ * @brief SR LocalSID behavior registration
  */
 typedef struct
 {
-  /** pool of tunnel instances, sr entry only */
-  ip6_sr_tunnel_t *tunnels;
+  u16 sr_localsid_function_number;			/**< SR LocalSID plugin function (>SR_BEHAVIOR_LAST) */
 
-  /** find an sr "tunnel" by its outer-IP src/dst */
-  uword *tunnel_index_by_key;
+  u8 *function_name;							/**< Function name. (key). */
 
-  /** find an sr "tunnel" by its name */
-  uword *tunnel_index_by_name;
+  u8 *keyword_str;							/**< Behavior keyword (i.e. End.X) */
 
-  /** policy pool */
-  ip6_sr_policy_t *policies;
+  u8 *def_str;								/**< Behavior definition (i.e. Endpoint with cross-connect) */
 
-  /** find a policy by name */
-  uword *policy_index_by_policy_name;
+  u8 *params_str;							/**< Behavior parameters (i.e. <oif> <IP46next_hop>) */
 
-  /** multicast address to policy mapping */
-  uword *policy_index_by_multicast_address;
+  dpo_type_t dpo;							/**< DPO type registration */
 
-  /** hmac key id by shared secret */
-  uword *hmac_key_by_shared_secret;
+  format_function_t *ls_format;				/**< LocalSID format function */
 
-  /** ip6-rewrite next index for reinstalling the original dst address */
-  u32 ip6_rewrite_sr_next_index;
+  unformat_function_t *ls_unformat;			/**< LocalSID unformat function */
 
-  /** application API callback */
-  void *sr_local_cb;
+  sr_plugin_callback_t *creation;			/**< Function within plugin that will be called after localsid creation*/
 
-  /** validate hmac keys */
-  u8 validate_hmac;
+  sr_plugin_callback_t *removal;			/**< Function within plugin that will be called before localsid removal */
+} sr_localsid_fn_registration_t;
 
-  /** pool of hmac keys */
-  ip6_sr_hmac_key_t *hmac_keys;
+/**
+ * @brief Steering db key
+ *
+ * L3 is IPv4/IPv6 + mask
+ * L2 is sf_if_index + vlan
+ */
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      ip46_address_t prefix;			/**< IP address of the prefix */
+      u32 mask_width;					/**< Mask width of the prefix */
+      u32 fib_table;					/**< VRF of the prefix */
+    } l3;
+    struct
+    {
+      u32 sw_if_index;					/**< Incoming software interface */
+    } l2;
+  };
+  u8 traffic_type;					/**< Traffic type (IPv4, IPv6, L2) */
+} sr_steering_key_t;
 
-  /** Openssl var */
-  EVP_MD *md;
-  /** Openssl var */
-  HMAC_CTX *hmac_ctx;
+typedef struct
+{
+  sr_steering_key_t classify;		/**< Traffic classification */
+  u32 sr_policy;					/**< SR Policy index */
+} ip6_sr_steering_policy_t;
 
-  /** enable debug spew */
-  u8 is_debug;
+/**
+ * @brief Segment Routing main datastructure
+ */
+typedef struct
+{
+  /* ip6-lookup next index for imposition FIB entries */
+  u32 ip6_lookup_sr_next_index;
 
-  /** convenience */
+  /* ip6-replicate next index for multicast tunnel */
+  u32 ip6_lookup_sr_spray_index;
+
+  /* IP4-lookup -> SR rewrite next index */
+  u32 ip4_lookup_sr_policy_rewrite_encaps_index;
+  u32 ip4_lookup_sr_policy_rewrite_insert_index;
+
+  /* IP6-lookup -> SR rewrite next index */
+  u32 ip6_lookup_sr_policy_rewrite_encaps_index;
+  u32 ip6_lookup_sr_policy_rewrite_insert_index;
+
+  /* L2-input -> SR rewrite next index */
+  u32 l2_sr_policy_rewrite_index;
+
+  /* IP6-lookup -> SR LocalSID (SR End processing) index */
+  u32 ip6_lookup_sr_localsid_index;
+
+  /* SR SID lists */
+  ip6_sr_sl_t *sid_lists;
+
+  /* SR policies */
+  ip6_sr_policy_t *sr_policies;
+
+  /* Find an SR policy by its BindingSID */
+  ip6_address_t *sr_policy_index_by_key;
+
+  /* Pool of SR localsid instances */
+  ip6_sr_localsid_t *localsids;
+
+  /* Find a SR localsid instance based on its functionID */
+  ip6_address_t *localsids_index_by_key;
+
+  /* Pool of SR steer policies instances */
+  ip6_sr_steering_policy_t *steer_policies;
+
+  /* Find a steer policy based on its classifier */
+  sr_steering_key_t *steer_policies_index_by_key;
+
+  /* L2 steering ifaces - sr_policies */
+  u32 *sw_iface_sr_policies;
+
+  /* Spray DPO */
+  dpo_type_t sr_pr_spray_dpo_type;
+
+  /* Plugin functions */
+  sr_localsid_fn_registration_t *plugin_functions;
+
+  /* Find plugin function by name */
+  uword *plugin_functions_by_key;
+
+  /* Counters */
+  vlib_combined_counter_main_t sr_ls_valid_counters;
+  vlib_combined_counter_main_t sr_ls_invalid_counters;
+
+  /* SR Policies FIBs */
+  u32 fib_table_ip6;
+  u32 fib_table_ip4;
+
+  /* convenience */
   vlib_main_t *vlib_main;
-  /** convenience */
   vnet_main_t *vnet_main;
 } ip6_sr_main_t;
 
 ip6_sr_main_t sr_main;
 
-format_function_t format_ip6_sr_header;
-format_function_t format_ip6_sr_header_with_length;
+extern vlib_node_registration_t sr_policy_rewrite_encaps_node;
+extern vlib_node_registration_t sr_policy_rewrite_insert_node;
+extern vlib_node_registration_t sr_localsid_node;
+extern vlib_node_registration_t sr_localsid_d_node;
 
-vlib_node_registration_t ip6_sr_input_node;
+void sr_dpo_lock (dpo_id_t * dpo);
+void sr_dpo_unlock (dpo_id_t * dpo);
 
-int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a);
-int ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a);
-int ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a);
+int sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
+				   u8 * keyword_str, u8 * def_str,
+				   u8 * params_str, dpo_type_t * dpo,
+				   format_function_t * ls_format,
+				   unformat_function_t * ls_unformat,
+				   sr_plugin_callback_t * creation_fn,
+				   sr_plugin_callback_t * removal_fn);
 
-void vnet_register_sr_app_callback (void *cb);
+int
+sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
+int
+sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
+	       u8 operation, ip6_address_t * segments, u32 sl_index,
+	       u32 weight);
+int sr_policy_del (ip6_address_t * bsid, u32 index);
 
-void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
-		  ip6_sr_header_t * sr);
+int sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+		     char end_psp, u8 behavior, u32 sw_if_index,
+		     u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
+		     void *ls_plugin_mem);
+
+int
+sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
+		    u32 table_id, ip46_address_t * prefix, u32 mask_width,
+		    u32 sw_if_index, u8 traffic_type);
 
 #endif /* included_vnet_sr_h */
 
