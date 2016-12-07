@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_d5c07e2c",
+        "filename": "plugins/ioam-plugin/Makefile.am",
+        "patchSetId": 4
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2016-12-07T10:48:36Z",
+      "side": 1,
+      "message": "please use 17.01",
+      "range": {
+        "startLine": 148,
+        "startChar": 24,
+        "endLine": 148,
+        "endChar": 29
+      },
+      "revId": "932227be45cbe2353124d6331b0b800eef76c3bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
