@@ -20,60 +20,36 @@
  * limitations under the License.
  */
 
-/**
- *  @file
- *  @brief The Segment Routing Header (SRH).
+/*
+ *   The Segment Routing Header (SRH) is defined as follows:
  *
- *  The Segment Routing Header (SRH) is defined in the diagram below.
- *
- *
- *     0                   1                   2                   3
- *     0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    | Next Header   |  Hdr Ext Len  | Routing Type  | Segments Left |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    | First Segment |             Flags             |  HMAC Key ID  |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |            Segment List[0] (128 bits ipv6 address)            |
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |                                                               |
- *                                  ...
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |            Segment List[n] (128 bits ipv6 address)            |
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |            Policy List[0] (optional)                          |
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |            Policy List[1] (optional)                          |
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |            Policy List[2] (optional)                          |
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    |                                                               |
- *    |                                                               |
- *    |                                                               |
- *    |                       HMAC (256 bits)                         |
- *    |                        (optional)                             |
- *    |                                                               |
- *    |                                                               |
- *    |                                                               |
- *    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   | Next Header   |  Hdr Ext Len  | Routing Type  | Segments Left |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   | First Segment |     Flags     |           RESERVED            |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |                                                               |
+ *   |            Segment List[0] (128 bits IPv6 address)            |
+ *   |                                                               |
+ *   |                                                               |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |                                                               |
+ *   |                                                               |
+ *                                 ...
+ *   |                                                               |
+ *   |                                                               |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |                                                               |
+ *   |            Segment List[n] (128 bits IPv6 address)            |
+ *   |                                                               |
+ *   |                                                               |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   //                                                             //
+ *   //         Optional Type Length Value objects (variable)       //
+ *   //                                                             //
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *   where:
  *
@@ -87,57 +63,39 @@
  *
  *   o  Segments Left.  Defined in [RFC2460], it contains the index, in
  *      the Segment List, of the next segment to inspect.  Segments Left
- *      is decremented at each segment and it is used as an index in the
- *      segment list.
+ *      is decremented at each segment.
  *
- *   o  First Segment: offset in the SRH, not including the first 8 octets
- *      and expressed in 16-octet units, pointing to the last element of
- *      the segment list, which is in fact the first segment of the
- *      segment routing path.
+ *   o  First Segment: contains the index, in the Segment List, of the
+ *      first segment of the path which is in fact the last element of the
+ *      Segment List.
  *
- *   o  Flags: 16 bits of flags.  Following flags are defined:
+ *   o  Flags: 8 bits of flags.  Following flags are defined:
  *
- *                              1
- *          0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
- *         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *         |C|P|R|R|    Policy Flags       |
- *         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *         0 1 2 3 4 5 6 7
+ *        +-+-+-+-+-+-+-+-+
+ *        |U|P|O|A|H|  U  |
+ *        +-+-+-+-+-+-+-+-+
  *
- *         C-flag: Clean-up flag.  Set when the SRH has to be removed from
- *         the packet when packet reaches the last segment.
+ *        U: Unused and for future use.  SHOULD be unset on transmission
+ *        and MUST be ignored on receipt.
  *
- *         P-flag: Protected flag.  Set when the packet has been rerouted
- *         through FRR mechanism by a SR endpoint node.  See Section 6.3
- *         for more details.
+ *        P-flag: Protected flag.  Set when the packet has been rerouted
+ *        through FRR mechanism by an SR endpoint node.
  *
- *         R-flags.  Reserved and for future use.
+ *        O-flag: OAM flag.  When set, it indicates that this packet is
+ *        an operations and management (OAM) packet.
  *
- *         Policy Flags.  Define the type of the IPv6 addresses encoded
- *         into the Policy List (see below).  The following have been
- *         defined:
+ *        A-flag: Alert flag.  If present, it means important Type Length
+ *        Value (TLV) objects are present.  See Section 3.1 for details
+ *        on TLVs objects.
  *
- *            Bits 4-6: determine the type of the first element after the
- *            segment list.
+ *        H-flag: HMAC flag.  If set, the HMAC TLV is present and is
+ *        encoded as the last TLV of the SRH.  In other words, the last
+ *        36 octets of the SRH represent the HMAC information.  See
+ *        Section 3.1.5 for details on the HMAC TLV.
  *
- *            Bits 7-9: determine the type of the second element.
- *
- *            Bits 10-12: determine the type of the third element.
- *
- *            Bits 13-15: determine the type of the fourth element.
- *
- *         The following values are used for the type:
- *
- *            0x0: Not present.  If value is set to 0x0, it means the
- *            element represented by these bits is not present.
- *
- *            0x1: SR Ingress.
- *
- *            0x2: SR Egress.
- *
- *            0x3: Original Source Address.
- *
- *   o  HMAC Key ID and HMAC field, and their use are defined in
- *      [I-D.vyncke-6man-segment-routing-security].
+ *   o  RESERVED: SHOULD be unset on transmission and MUST be ignored on
+ *      receipt.
  *
  *   o  Segment List[n]: 128 bit IPv6 addresses representing the nth
  *      segment in the Segment List.  The Segment List is encoded starting
@@ -147,23 +105,8 @@
  *      contains the first segment of the path.  The index contained in
  *      "Segments Left" identifies the current active segment.
  *
- *   o  Policy List.  Optional addresses representing specific nodes in
- *      the SR path such as:
+ *   o  Type Length Value (TLV) are described in Section 3.1.
  *
- *         SR Ingress: a 128 bit generic identifier representing the
- *         ingress in the SR domain (i.e.: it needs not to be a valid IPv6
- *         address).
- *
- *         SR Egress: a 128 bit generic identifier representing the egress
- *         in the SR domain (i.e.: it needs not to be a valid IPv6
- *         address).
- *
- *         Original Source Address: IPv6 address originally present in the
- *         SA field of the packet.
- *
- *      The segments in the Policy List are encoded after the segment list
- *      and they are optional.  If none are in the SRH, all bits of the
- *      Policy List Flags MUST be set to 0x0.
  */
 
 #ifndef IPPROTO_IPV6_ROUTE
@@ -171,81 +114,46 @@
 #endif
 
 #define ROUTING_HEADER_TYPE_SR    4
-/**
-    @brief SR header struct.
-*/
+
 typedef struct
 {
-  /** Protocol for next header. */
+  /* Protocol for next header. */
   u8 protocol;
-
-  /**
+  /*
    * Length of routing header in 8 octet units,
    * not including the first 8 octets
    */
   u8 length;
 
-  /** Type of routing header; type 4 = segement routing */
+  /* Type of routing header; type 4 = segement routing */
   u8 type;
 
-  /** Next segment in the segment list */
+  /* Next segment in the segment list */
   u8 segments_left;
 
-  /**
-   * Policy list pointer: offset in the SRH of the policy
-   * list - in 16-octet units - not including the first 8 octets.
-   */
+  /* Pointer to the first segment in the header */
   u8 first_segment;
 
-  /** Flag bits */
-#define IP6_SR_HEADER_FLAG_CLEANUP    (0x8000)
-  /** Flag bits */
-#define IP6_SR_HEADER_FLAG_PROTECTED  (0x4000)
-  /** Flag bits */
-#define IP6_SR_HEADER_FLAG_RESERVED   (0x3000)
-  /** Flag bits */
-#define IP6_SR_HEADER_FLAG_PL_ELT_NOT_PRESENT (0x0)
-    /** Flag bits */
-#define IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE (0x1)
-    /** Flag bits */
-#define IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE (0x2)
-    /** Flag bits */
-#define IP6_SR_HEADER_FLAG_PL_ELT_ORIG_SRC_ADDR (0x3)
-  /** values 0x4 - 0x7 are reserved */
-  u16 flags;
-  u8 hmac_key;
+  /* Flag bits */
+#define IP6_SR_HEADER_FLAG_PROTECTED  (0x40)
+#define IP6_SR_HEADER_FLAG_OAM        (0x20)
+#define IP6_SR_HEADER_FLAG_ALERT      (0x10)
+#define IP6_SR_HEADER_FLAG_HMAC       (0x80)
 
-  /** The segment + policy list elts */
+  /* values 0x0, 0x4 - 0x7 are reserved */
+  u8 flags;
+  u16 reserved;
+
+  /* The segment elts */
   ip6_address_t segments[0];
 } __attribute__ ((packed)) ip6_sr_header_t;
 
-static inline int
-ip6_sr_policy_list_shift_from_index (int pl_index)
-{
-  return (-3 * pl_index) + 12;
-}
-
-/** pl_index is one-origined */
-static inline int
-ip6_sr_policy_list_flags (u16 flags_host_byte_order, int pl_index)
-{
-  int shift;
-
-  if (pl_index <= 0 || pl_index > 4)
-    return 0;
-
-  shift = (-3 * pl_index) + 12;
-  flags_host_byte_order >>= shift;
-
-  return (flags_host_byte_order & 7);
-}
+/*
+* fd.io coding-style-patch-verification: ON
+*
+* Local Variables:
+* eval: (c-set-style "gnu")
+* End:
+*/
 
 #endif /* included_vnet_sr_packet_h */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
