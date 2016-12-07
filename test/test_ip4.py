@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-
-import unittest
+import random
 import socket
+import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
@@ -173,6 +173,7 @@ class TestIPv4(VppTestCase):
                             "Interface %s: Packet expected from interface %s "
                             "didn't arrive" % (dst_if.name, i.name))
 
+    @unittest.skip('Temporary disabled. develop new')
     def test_fib(self):
         """ IPv4 FIB test
 
@@ -199,6 +200,180 @@ class TestIPv4(VppTestCase):
         for i in self.sub_interfaces:
             pkts = i.parent.get_capture()
             self.verify_capture(i, pkts)
+
+
+class TestIPv4FibCrud(VppTestCase):
+    """ FIB - add/update/delete - ip4 routes
+
+    add 1k, del 100, add new 1k, del 1.5k
+
+    ..note:: Python API is to slow to add many routes, needs C code replacement.
+    """
+
+    def config_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
+        """
+
+        :param start_dest_addr:
+        :param next_hop_addr:
+        :param count:
+        :return list: added ips with 32 prefix
+        """
+        added_ips = []
+        dest_addr = int(
+            socket.inet_pton(socket.AF_INET, start_dest_addr).encode('hex'), 16)
+        dest_addr_len = 32
+        n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
+        for _ in range(count):
+            n_dest_addr = '{:08x}'.format(dest_addr).decode('hex')
+            self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
+                                       n_next_hop_addr)
+            added_ips.append(socket.inet_ntoa(n_dest_addr))
+            dest_addr += 1
+        return added_ips
+
+    def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
+
+        removed_ips = []
+        dest_addr = int(
+            socket.inet_pton(socket.AF_INET, start_dest_addr).encode('hex'), 16)
+        dest_addr_len = 32
+        n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
+        for _ in range(count):
+            n_dest_addr = '{:08x}'.format(dest_addr).decode('hex')
+            self.vapi.ip_add_del_route(n_dest_addr, dest_addr_len,
+                                       n_next_hop_addr, is_add=0)
+            removed_ips.append(socket.inet_ntoa(n_dest_addr))
+            dest_addr += 1
+        return removed_ips
+
+    def setUp(self):
+        """
+
+        """
+        super(TestIPv4FibCrud, self).setUp()
+
+        # create 3 pg interfaces
+        self.create_pg_interfaces(range(3))
+
+        self.interfaces = list(self.pg_interfaces)
+
+        # setup all interfaces
+        for i in self.interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        self.configured_routes = []
+        self.deleted_routes = []
+        self.pg_if_packet_sizes = [64, 512, 1518, 9018]
+
+    def create_stream(self, src_if, dst_if, dst_ips, count):
+        pkts = []
+
+        for _ in range(count):
+            dst_addr = random.choice(dst_ips)
+            info = self.create_packet_info(
+                src_if.sw_if_index, dst_if.sw_if_index)
+            payload = self.info_to_payload(info)
+            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+                 IP(src=src_if.remote_ip4, dst=dst_addr) /
+                 UDP(sport=1234, dport=1234) /
+                 Raw(payload))
+            info.data = p.copy()
+            size = random.choice(self.pg_if_packet_sizes)
+            self.extend_packet(p, random.choice(self.pg_if_packet_sizes))
+            pkts.append(p)
+
+        return pkts
+
+    def _find_ip_match(self, find_in, pkt):
+        for p in find_in:
+            if self.payload_to_info(str(p[Raw])) == self.payload_to_info(str(pkt[Raw])):
+                if p[IP].src != pkt[IP].src:
+                    break
+                if p[IP].dst != pkt[IP].dst:
+                    break
+                if p[UDP].sport != pkt[UDP].sport:
+                    break
+                if p[UDP].dport != pkt[UDP].dport:
+                    break
+                return p
+        return None
+
+    def verify_capture(self, dst_interface, received_pkts, expected_pkts):
+        self.assertEqual(len(received_pkts), len(expected_pkts))
+        to_verify = list(expected_pkts)
+        for p in received_pkts:
+            self.assertEqual(p.src, dst_interface.local_mac)
+            self.assertEqual(p.dst, dst_interface.remote_mac)
+            x = self._find_ip_match(to_verify, p)
+            to_verify.remove(x)
+        self.assertListEqual(to_verify, [])
+
+    def test_1_add_routes(self):
+        """ Add 1k routes
+
+        - add routes check with traffic script.
+        """
+        count = 100
+
+        # config 1M FIB entries
+        self.configured_routes = self.config_fib_many_to_one(
+            "10.0.0.0", self.pg0.remote_ip4, count)
+
+        self.stream_1 = self.create_stream(
+            self.pg1, self.pg0, self.configured_routes, 100)
+        self.stream_2 = self.create_stream(
+            self.pg2, self.pg0, self.configured_routes, 100)
+        self.pg1.add_stream(self.stream_1)
+        self.pg2.add_stream(self.stream_2)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture()
+        self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
+
+
+    def test_2_del_routes(self):
+        """ Delete 100 routes
+
+        - delete routes check with traffic script.
+        """
+        count = 10
+        self.deleted_routes = self.unconfig_fib_many_to_one(
+            "10.0.0.10", self.pg0.remote_ip4, count)
+        self.configured_routes -= set(self.deleted_routes)
+
+
+        self.stream_1 = self.create_stream(
+            self.pg1, self.pg0, self.configured_routes, 100)
+        self.stream_2 = self.create_stream(
+            self.pg2, self.pg0, self.configured_routes, 100)
+        self.stream_3 = self.create_stream(
+            self.pg1, self.pg0, self.configured_routes, 100)
+        self.stream_4 = self.create_stream(
+            self.pg2, self.pg0, self.configured_routes, 100)
+        self.pg1.add_stream(self.stream_1)
+        self.pg2.add_stream(self.stream_2)
+        self.pg1.add_stream(self.stream_3)
+        self.pg2.add_stream(self.stream_4)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        pkts = self.pg0.get_capture()
+        self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
+
+
+
+
+    @unittest.skip('')
+    def test_3_add_new_routes(self):
+        """ Add 1k routes
+
+        - add routes check with traffic script.
+        """
+        pass
 
 
 if __name__ == '__main__':
