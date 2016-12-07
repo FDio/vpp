@@ -486,6 +486,9 @@ check_idle_sessions (l2sess_main_t * sm, u32 sw_if_index, u64 now)
 #endif
 
   sm->timer_wheel_next_expiring_time = now + sm->timer_wheel_tick;
+  if (PREDICT_FALSE ( 0 == sm->data_from_advancing_timing_wheel )) {
+    return;
+  }
 
   if (PREDICT_FALSE (_vec_len (sm->data_from_advancing_timing_wheel) > 0))
     {

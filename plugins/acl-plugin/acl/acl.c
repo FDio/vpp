@@ -109,23 +109,6 @@ do {                                                            \
     vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
 } while(0);
 
-#define VALIDATE_SW_IF_INDEX(mp)                                \
- do { u32 __sw_if_index = ntohl(mp->sw_if_index);               \
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __sw_if_index)) {                    \
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_sw_if_index;                                   \
-    }                                                           \
-} while(0);
-
-#define BAD_SW_IF_INDEX_LABEL                   \
-do {                                            \
-bad_sw_if_index:                                \
-    ;                                           \
-} while (0);
-
-
 
 /* List of message types that this plugin understands */
 
@@ -1377,15 +1360,17 @@ static void
 vl_api_acl_interface_add_del_t_handler (vl_api_acl_interface_add_del_t * mp)
 {
   acl_main_t *sm = &acl_main;
+  vnet_interface_main_t *im = &sm->vnet_main->interface_main;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
   vl_api_acl_interface_add_del_reply_t *rmp;
   int rv = -1;
-  VALIDATE_SW_IF_INDEX (mp);
 
-  rv =
-    acl_interface_add_del_inout_acl (ntohl (mp->sw_if_index), mp->is_add,
+  if (pool_is_free_index(im->sw_interfaces, sw_if_index))
+    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  else
+    rv =
+      acl_interface_add_del_inout_acl (sw_if_index, mp->is_add,
 				     mp->is_input, ntohl (mp->acl_index));
-
-  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_ACL_INTERFACE_ADD_DEL_REPLY);
 }
@@ -1398,19 +1383,22 @@ vl_api_acl_interface_set_acl_list_t_handler
   vl_api_acl_interface_set_acl_list_reply_t *rmp;
   int rv = 0;
   int i;
-  VALIDATE_SW_IF_INDEX (mp);
+  vnet_interface_main_t *im = &sm->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
-  acl_interface_reset_inout_acls (sw_if_index, 0);
-  acl_interface_reset_inout_acls (sw_if_index, 1);
-
-  for (i = 0; i < mp->count; i++)
+  if (pool_is_free_index(im->sw_interfaces, sw_if_index))
+    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  else
     {
-      acl_interface_add_del_inout_acl (sw_if_index, 1, (i < mp->n_input),
-				       ntohl (mp->acls[i]));
-    }
+      acl_interface_reset_inout_acls (sw_if_index, 0);
+      acl_interface_reset_inout_acls (sw_if_index, 1);
 
-  BAD_SW_IF_INDEX_LABEL;
+      for (i = 0; i < mp->count; i++)
+        {
+          acl_interface_add_del_inout_acl (sw_if_index, 1, (i < mp->n_input),
+				       ntohl (mp->acls[i]));
+        }
+    }
 
   REPLY_MACRO (VL_API_ACL_INTERFACE_SET_ACL_LIST_REPLY);
 }
@@ -1567,7 +1555,6 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
   vnet_sw_interface_t *swif;
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
 
-  int rv = -1;
   u32 sw_if_index;
   unix_shared_memory_queue_t *q;
 
@@ -1588,17 +1575,9 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
     }
   else
     {
-      VALIDATE_SW_IF_INDEX (mp);
       sw_if_index = ntohl (mp->sw_if_index);
-      send_acl_interface_list_details (am, q, sw_if_index, mp->context);
-    }
-  return;
-
-  BAD_SW_IF_INDEX_LABEL;
-  if (rv == -1)
-    {
-      /* FIXME API: should we signal an error here at all ? */
-      return;
+      if (!pool_is_free_index(im->sw_interfaces, sw_if_index))
+        send_acl_interface_list_details (am, q, sw_if_index, mp->context);
     }
 }
 
@@ -1642,13 +1621,15 @@ vl_api_macip_acl_interface_add_del_t_handler
   acl_main_t *sm = &acl_main;
   vl_api_macip_acl_interface_add_del_reply_t *rmp;
   int rv = -1;
-  VALIDATE_SW_IF_INDEX (mp);
+  vnet_interface_main_t *im = &sm->vnet_main->interface_main;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
 
-  rv =
-    macip_acl_interface_add_del_acl (ntohl (mp->sw_if_index), mp->is_add,
+  if (pool_is_free_index(im->sw_interfaces, sw_if_index))
+    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  else
+    rv =
+      macip_acl_interface_add_del_acl (ntohl (mp->sw_if_index), mp->is_add,
 				     ntohl (mp->acl_index));
-
-  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_MACIP_ACL_INTERFACE_ADD_DEL_REPLY);
 }
