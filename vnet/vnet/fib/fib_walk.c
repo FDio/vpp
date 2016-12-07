@@ -177,6 +177,7 @@ static u64 fib_walk_hist_vists_per_walk[HISTOGRAM_VISITS_PER_WALK_N_BUCKETS];
  * @brief History of state for the last 128 walks
  */
 #define HISTORY_N_WALKS 128
+#define MAX_HISTORY_REASONS 16
 static u32 history_last_walk_pos;
 typedef struct fib_walk_history_t_ {
     u32 fwh_n_visits;
@@ -184,7 +185,7 @@ typedef struct fib_walk_history_t_ {
     f64 fwh_completed;
     fib_node_ptr_t fwh_parent;
     fib_walk_flags_t fwh_flags;
-    fib_node_bw_reason_flag_t fwh_reason;
+    fib_node_bw_reason_flag_t fwh_reason[MAX_HISTORY_REASONS];
 } fib_walk_history_t;
 static fib_walk_history_t fib_walk_history[HISTORY_N_WALKS];
 
@@ -241,8 +242,7 @@ fib_walk_queue_get_front (fib_walk_priority_t prio)
 static void
 fib_walk_destroy (fib_walk_t *fwalk)
 {
-    fib_node_back_walk_ctx_t *ctx;
-    u32 bucket;
+    u32 bucket, ii;
 
     if (FIB_NODE_INDEX_INVALID != fwalk->fw_prio_sibling)
     {
@@ -277,16 +277,19 @@ fib_walk_destroy (fib_walk_t *fwalk)
     fib_walk_history[history_last_walk_pos].fwh_flags =
 	fwalk->fw_flags;
 
-    fib_walk_history[history_last_walk_pos].fwh_reason = 0;
-    vec_foreach(ctx, fwalk->fw_ctx)
+    vec_foreach_index(ii, fwalk->fw_ctx)
     {
-        fib_walk_history[history_last_walk_pos].fwh_reason |=
-            ctx->fnbw_reason;
+        if (ii < MAX_HISTORY_REASONS)
+        {
+            fib_walk_history[history_last_walk_pos].fwh_reason[ii] =
+                fwalk->fw_ctx[ii].fnbw_reason;
+        }
     }
 
     history_last_walk_pos = (history_last_walk_pos + 1) % HISTORY_N_WALKS;
 
     fib_node_deinit(&fwalk->fw_node);
+    vec_free(fwalk->fw_ctx);
     pool_put(fib_walk_pool, fwalk);
 }
 
@@ -315,7 +318,7 @@ typedef enum fib_walk_advance_rc_t_
 static fib_walk_advance_rc_t
 fib_walk_advance (fib_node_index_t fwi)
 {
-    fib_node_back_walk_ctx_t *ctx;
+    fib_node_back_walk_ctx_t *ctx, *old;
     fib_node_back_walk_rc_t wrc;
     fib_node_ptr_t sibling;
     fib_walk_t *fwalk;
@@ -332,6 +335,8 @@ fib_walk_advance (fib_node_index_t fwi)
 
     if (more_elts)
     {
+        old = fwalk->fw_ctx;
+
 	vec_foreach(ctx, fwalk->fw_ctx)
 	{
 	    wrc = fib_node_back_walk_one(&sibling, ctx);
@@ -345,6 +350,14 @@ fib_walk_advance (fib_node_index_t fwi)
 		 * this walk has merged with the one further along the node's
 		 * dependecy list.
 		 */
+		return (FIB_WALK_ADVANCE_MERGE);
+	    }
+            if (old != fwalk->fw_ctx)
+            {
+                /*
+                 * nasty re-entrant addition of a walk has realloc'd the vector
+                 * break out
+                 */
 		return (FIB_WALK_ADVANCE_MERGE);
 	    }
 	}
@@ -565,7 +578,7 @@ fib_walk_alloc (fib_node_type_t parent_type,
     /*
      * make a copy of the backwalk context so the depth count remains
      * the same for each sibling visitsed. This is important in the case
-     * where a parents has a loop via one child, but all the others are not.
+     * where a parent has a loop via one child, but all the others are not.
      * if the looped child were visited first, the depth count would exceed, the
      * max and the walk would terminate before it reached the other siblings.
      */
@@ -801,42 +814,40 @@ static fib_node_back_walk_rc_t
 fib_walk_back_walk_notify (fib_node_t *node,
 			   fib_node_back_walk_ctx_t *ctx)
 {
-    fib_node_back_walk_ctx_t *old;
+    fib_node_back_walk_ctx_t *last;
     fib_walk_t *fwalk;
 
     fwalk = fib_walk_get_from_node(node);
 
     /*
-     * check whether the walk context can be merge with another,
-     * or whether it needs to be appended.
+     * check whether the walk context can be merged with the most recent.
+     * the most recent was the one last added and is thus at the back of the vector.
+     * we can merge walks if the reason for the walk is the same.
      */
-    vec_foreach(old, fwalk->fw_ctx)
+    last = vec_end(fwalk->fw_ctx) - 1;
+
+    if (last->fnbw_reason == ctx->fnbw_reason)
     {
-	/*
-	 * we can merge walks if the reason for the walk is the same.
-	 */
-	if (old->fnbw_reason == ctx->fnbw_reason)
-	{
-	    /*
-	     * copy the largest of the depth values. in the presence of a loop,
-	     * the same walk will merge with itself. if we take the smaller depth
-	     * then it will never end.
-	     */
-	    old->fnbw_depth = ((old->fnbw_depth >= ctx->fnbw_depth) ?
-				old->fnbw_depth :
-				ctx->fnbw_depth);
-	    goto out;
-	}
+        /*
+         * copy the largest of the depth values. in the presence of a loop,
+         * the same walk will merge with itself. if we take the smaller depth
+         * then it will never end.
+         */
+        last->fnbw_depth = ((last->fnbw_depth >= ctx->fnbw_depth) ?
+                            last->fnbw_depth :
+                            ctx->fnbw_depth);
+    }
+    else
+    {
+        /*
+         * walks could not be merged, this means that the walk infront needs to
+         * perform different action to this one that has caught up. the one in
+         * front was scheduled first so append the new walk context to the back
+         * of the list.
+         */
+        vec_add1(fwalk->fw_ctx, *ctx);
     }
 
-    /*
-     * walks could not be merged, this means that the walk infront needs to
-     * perform different action to this one that has caught up. the one in front
-     * was scheduled first so append the new walk context to the back of the list.
-     */
-    vec_add1(fwalk->fw_ctx, *ctx);
-
-out:
     return (FIB_NODE_BACK_WALK_MERGE);
 }
 
@@ -979,10 +990,11 @@ fib_walk_show (vlib_main_t * vm,
 
     while (ii != history_last_walk_pos)
     {
-	if (0 != fib_walk_history[ii].fwh_reason)
+	if (0 != fib_walk_history[ii].fwh_reason[0])
 	{
             fib_node_back_walk_reason_t reason;
             u8 *s = NULL;
+            u32 jj;
 
 	    s = format(s, "[@%d]: %s:%d visits:%d duration:%.2f completed:%.2f ",
                        ii, fib_node_type_get_name(fib_walk_history[ii].fwh_parent.fnp_type),
@@ -996,10 +1008,15 @@ fib_walk_show (vlib_main_t * vm,
                 s = format(s, "async, ");
 
             s = format(s, "reason:");
-            FOR_EACH_FIB_NODE_BW_REASON(reason) {
-                if ((1<<reason) & fib_walk_history[ii].fwh_reason) {
-                    s = format (s, "%s,", fib_node_bw_reason_names[reason]);
+            jj = 0;
+            while (0 != fib_walk_history[ii].fwh_reason[jj])
+            {
+                FOR_EACH_FIB_NODE_BW_REASON(reason) {
+                    if ((1<<reason) & fib_walk_history[ii].fwh_reason[jj]) {
+                        s = format (s, "%s,", fib_node_bw_reason_names[reason]);
+                    }
                 }
+                jj++;
             }
             vlib_cli_output(vm, "%v", s);
 	}
