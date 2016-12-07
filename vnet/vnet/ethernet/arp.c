@@ -374,13 +374,15 @@ arp_mk_complete (adj_index_t ai, ethernet_arp_ip4_entry_t * e)
 }
 
 static void
-arp_mk_incomplete (adj_index_t ai, ethernet_arp_ip4_entry_t * e)
+arp_mk_incomplete (adj_index_t ai)
 {
+  ip_adjacency_t *adj = adj_get (ai);
+
   adj_nbr_update_rewrite
     (ai,
      ADJ_NBR_REWRITE_FLAG_INCOMPLETE,
      ethernet_build_rewrite (vnet_get_main (),
-			     e->sw_if_index,
+			     adj->rewrite_header.sw_if_index,
 			     VNET_LINK_ARP,
 			     VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
 }
@@ -417,9 +419,7 @@ arp_mk_complete_walk (adj_index_t ai, void *ctx)
 static adj_walk_rc_t
 arp_mk_incomplete_walk (adj_index_t ai, void *ctx)
 {
-  ethernet_arp_ip4_entry_t *e = ctx;
-
-  arp_mk_incomplete (ai, e);
+  arp_mk_incomplete (ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -1620,9 +1620,10 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   if (NULL != e)
     {
-      adj_nbr_walk_nh4 (e->sw_if_index,
-			&e->ip4_address, arp_mk_incomplete_walk, e);
       arp_entry_free (eai, e);
+
+      adj_nbr_walk_nh4 (e->sw_if_index,
+			&e->ip4_address, arp_mk_incomplete_walk, NULL);
     }
 
   return 0;

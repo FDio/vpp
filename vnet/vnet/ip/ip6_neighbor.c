@@ -402,13 +402,15 @@ ip6_nd_mk_complete (adj_index_t ai, ip6_neighbor_t * nbr)
 }
 
 static void
-ip6_nd_mk_incomplete (adj_index_t ai, ip6_neighbor_t * nbr)
+ip6_nd_mk_incomplete (adj_index_t ai)
 {
+  ip_adjacency_t *adj = adj_get(ai);
+
   adj_nbr_update_rewrite (
       ai,
       ADJ_NBR_REWRITE_FLAG_INCOMPLETE,
       ethernet_build_rewrite (vnet_get_main (),
-			      nbr->key.sw_if_index,
+                              adj->rewrite_header.sw_if_index,
 			      adj_get_link_type(ai),
 			      VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST));
 }
@@ -452,9 +454,7 @@ ip6_nd_mk_complete_walk (adj_index_t ai, void *ctx)
 static adj_walk_rc_t
 ip6_nd_mk_incomplete_walk (adj_index_t ai, void *ctx)
 {
-  ip6_neighbor_t *nbr = ctx;
-
-  ip6_nd_mk_incomplete (ai, nbr);
+  ip6_nd_mk_incomplete (ai);
 
   return (ADJ_WALK_RC_CONTINUE);
 }
@@ -683,13 +683,13 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
     }
   
   n = pool_elt_at_index (nm->neighbor_pool, p[0]);
+  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
 
   adj_nbr_walk_nh6 (sw_if_index,
 		    &n->key.ip6_address,
 		    ip6_nd_mk_incomplete_walk,
-		    n);
+		    NULL);
 
-  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
   fib_table_entry_delete_index (n->fib_entry_index,  FIB_SOURCE_ADJ);
   pool_put (nm->neighbor_pool, n);
   

@@ -168,6 +168,17 @@ typedef void (*adj_midchain_fixup_t)(vlib_main_t * vm,
 				     struct ip_adjacency_t_ *adj,
 				     vlib_buffer_t * b0);
 
+/**
+ * @brief Flags on an IP adjacency
+ */
+typedef enum ip_adjacency_flags_t_
+{
+    /**
+     * Currently a sync walk is active. Used to prevent re-entrant walking
+     */
+    IP_ADJ_SYNC_WALK_ACTIVE = (1 << 0),
+} ip_adjacency_flags_t;
+
 /** @brief IP unicast adjacency.
     @note cache aligned.
 */
@@ -254,6 +265,12 @@ typedef struct ip_adjacency_t_ {
    * remaining cachelines
    */
   fib_node_t ia_node;
+
+  /**
+   * Flags on the adjacency
+   */
+  ip_adjacency_flags_t ia_flags;
+
 } ip_adjacency_t;
 
 STATIC_ASSERT((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0),
