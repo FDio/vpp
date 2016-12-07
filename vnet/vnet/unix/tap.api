@@ -1,0 +1,123 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpe control-plane API messages for
+    the Linux kernel TAP device driver
+*/
+
+/** \brief Initialize a new tap interface with the given paramters 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param use_random_mac - let the system generate a unique mac address
+    @param tap_name - name to associate with the new interface
+    @param mac_address - mac addr to assign to the interface if use_radom not set
+*/
+define tap_connect
+{
+  u32 client_index;
+  u32 context;
+  u8 use_random_mac;
+  u8 tap_name[64];
+  u8 mac_address[6];
+  u8 renumber;
+  u32 custom_dev_instance;
+  u8 tag[64];
+};
+
+/** \brief Reply for tap connect request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new tap interface
+*/
+define tap_connect_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Modify a tap interface with the given paramters 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index of existing tap interface
+    @param use_random_mac - let the system generate a unique mac address
+    @param tap_name - name to associate with the new interface
+    @param mac_address - mac addr to assign to the interface if use_radom not set
+*/
+define tap_modify
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 use_random_mac;
+  u8 tap_name[64];
+  u8 mac_address[6];
+  u8 renumber;
+  u32 custom_dev_instance;
+};
+
+/** \brief Reply for tap modify request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index if the modified tap interface
+*/
+define tap_modify_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete tap interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index of existing tap interface
+*/
+define tap_delete
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Reply for tap delete request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define tap_delete_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump tap interfaces request */
+define sw_interface_tap_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for tap dump request
+    @param sw_if_index - software index of tap interface
+    @param dev_name - Linux tap device name
+*/
+define sw_interface_tap_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 dev_name[64];
+};
