@@ -709,3 +709,90 @@ class VppPapiProvider(object):
 
         return self.api(vpp_papi.sw_interface_span_enable_disable,
                         (sw_if_index_from, sw_if_index_to, enable))
+
+    def snat_interface_add_del_feature(
+            self,
+            sw_if_index,
+            is_inside=1,
+            is_add=1):
+        """Enable/disable S-NAT feature on the interface
+
+        :param sw_if_index: Software index of the interface
+        :param is_inside: 1 if inside, 0 if outside (Default value = 1)
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_interface_add_del_feature,
+            {'is_add' : is_add,
+             'is_inside' : is_inside,
+             'sw_if_index' : sw_if_index})
+
+    def snat_add_static_mapping(
+            self,
+            local_ip,
+            external_ip,
+            local_port=0,
+            external_port=0,
+            addr_only=1,
+            vrf_id=0,
+            is_add=1,
+            is_ip4=1):
+        """Add/delete S-NAT static mapping
+
+        :param local_ip: Local IP address
+        :param external_ip: External IP address
+        :param local_port: Local port number (Default value = 0)
+        :param external_port: External port number (Default value = 0)
+        :param addr_only: 1 if address only mapping, 0 if address and port
+        :param vrf_id: VRF ID
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        :param is_ip4: 1 if address type is IPv4 (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_add_static_mapping,
+            {'is_add' : is_add,
+             'is_ip4' : is_ip4,
+             'addr_only' : addr_only,
+             'local_ip_address' : local_ip,
+             'external_ip_address' : external_ip,
+             'local_port' : local_port,
+             'external_port' : external_port,
+             'vrf_id' : vrf_id})
+
+    def snat_add_address_range(
+            self,
+            first_ip_address,
+            last_ip_address,
+            is_add=1,
+            is_ip4=1):
+        """Add/del S-NAT address range
+
+        :param first_ip_address: First IP address
+        :param last_ip_address: Last IP address
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        :param is_ip4: 1 if address type is IPv4 (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_add_address_range,
+            {'is_ip4' : is_ip4,
+             'first_ip_address' : first_ip_address,
+             'last_ip_address' : last_ip_address,
+             'is_add' : is_add})
+
+    def snat_address_dump(self):
+        """Dump S-NAT addresses
+        :return: Dictionary of S-NAT addresses
+        """
+        return self.api(self.papi.snat_address_dump, {})
+
+    def snat_interface_dump(self):
+        """Dump interfaces with S-NAT feature
+        :return: Dictionary of interfaces with S-NAT feature
+        """
+        return self.api(self.papi.snat_interface_dump, {})
+
+    def snat_static_mapping_dump(self):
+        """Dump S-NAT static mappings
+        :return: Dictionary of S-NAT static mappings
+        """
+        return self.api(self.papi.snat_static_mapping_dump, {})
