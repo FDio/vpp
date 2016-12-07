@@ -534,13 +534,6 @@ static void vl_api_create_loopback_reply_t_handler
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
-static void
-vl_api_sr_tunnel_add_del_reply_t_handler (vl_api_sr_tunnel_add_del_reply_t *
-					  mp)
-{
-  fformat (stdout, "sr tunnel add/del reply %d\n", ntohl (mp->retval));
-}
-
 static void vl_api_l2_patch_add_del_reply_t_handler
   (vl_api_l2_patch_add_del_reply_t * mp)
 {
@@ -599,7 +592,6 @@ _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY, sw_interface_ip6_enable_disable_reply) 
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS_REPLY, sw_interface_ip6_set_link_local_address_reply) \
  _(CREATE_LOOPBACK_REPLY, create_loopback_reply)			\
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)			\
-_(SR_TUNNEL_ADD_DEL_REPLY,sr_tunnel_add_del_reply)          \
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY, sw_interface_set_l2_xconnect_reply) \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY, sw_interface_set_l2_bridge_reply)
 

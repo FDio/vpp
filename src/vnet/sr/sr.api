@@ -12,108 +12,207 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
-/** \brief IPv6 segment routing tunnel add / del request
+
+/** \brief IPv6 SR LocalSID add/del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - add the tunnel if non-zero, else delete it
-    @param name[] - tunnel name (len. 64)
-    @param src_address[] -
-    @param dst_address[] -
-    @param dst_mask_width -
-    @param inner_vrf_id -
-    @param outer_vrf_id -
-    @param flags_net_byte_order -
-    @param n_segments -
-    @param n_tags -
-    @param segs_and_tags[] -
-    @param policy_name[] - name of policy to associate this tunnel to (len. 64)
+    @param is_del Boolean of whether its a delete instruction
+    @param localsid_addr IPv6 address of the localsid
+    @param end_psp Boolean of whether decapsulation is allowed in this function
+    @param behavior Type of behavior (function) for this localsid
+    @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the fib_table.
+    @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
+    @param fib_table  FIB table in which we should install the localsid entry
+    @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
 */
-define sr_tunnel_add_del
+define sr_localsid_add_del
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 name[64];
-  u8 src_address[16];
-  u8 dst_address[16];
-  u8 dst_mask_width;
-  u32 inner_vrf_id;
-  u32 outer_vrf_id;
-  u16 flags_net_byte_order;
+  u8 is_del;
+  u8 localsid_addr[16];
+  u8 end_psp;
+  u8 behavior;
+  u32 sw_if_index;
+  u32 vlan_index;
+  u32 fib_table;
+  u8 nh_addr[16];
+};
+
+/** \brief IPv6 SR LocalSID add/del request response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define sr_localsid_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPv6 SR policy add
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bsid is the bindingSID of the SR Policy
+    @param weight is the weight of the sid list. optional.
+    @param is_encap is the behavior of the SR policy. (0.SRH insert // 1.Encapsulation)
+    @param type is the type of the SR policy. (0.Default // 1.Spray)
+    @param fib_table is the VRF where to install the FIB entry for the BSID
+    @param segments is a vector of IPv6 address composing the segment list
+*/
+define sr_policy_add
+{
+  u32 client_index;
+  u32 context;
+  u8 bsid_addr[16];
+  u32 weight;
+  u8 is_encap;
+  u8 type;
+  u32 fib_table;
   u8 n_segments;
-  u8 n_tags;
-  u8 policy_name[64];
-  u8 segs_and_tags[0];
+  u8 segments[0];
 };
 
-/** \brief IPv6 segment routing tunnel add / del response
+/** \brief IPv6 SR Policy add request response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
-define sr_tunnel_add_del_reply
+define sr_policy_add_reply
 {
   u32 context;
   i32 retval;
 };
 
-/** \brief IPv6 segment routing policy add / del request
+/** \brief IPv6 SR policy modification
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - add the tunnel if non-zero, else delete it
-    @param name[] - policy name (len. 64)
-    @param tunnel_names[] -
+    @param bsid is the bindingSID of the SR Policy
+    @param sr_policy_index is the index of the SR policy
+    @param fib_table is the VRF where to install the FIB entry for the BSID
+    @param operation is the operation to perform (among the top ones)
+    @param segments is a vector of IPv6 address composing the segment list
+    @param sl_index is the index of the Segment List to modify/delete
+    @param weight is the weight of the sid list. optional.
+    @param is_encap Mode. Encapsulation or SRH insertion.
 */
-define sr_policy_add_del
+define sr_policy_mod
 {
   u32 client_index;
   u32 context;
-  u8 is_add;
-  u8 name[64];
-  u8 tunnel_names[0];
+  u8 bsid_addr[16];
+  u32 sr_policy_index;
+  u32 fib_table;
+  u8 operation;
+  u32 sl_index;
+  u32 weight;
+  u8 n_segments;
+  u8 segments[0];
 };
 
-/** \brief IPv6 segment routing policy add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request 
- 
-    
-*/
-define sr_policy_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief IPv6 segment routing multicast map to policy add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add the tunnel if non-zero, else delete it
-    @param multicast_address[] - IP6 multicast address
-    @param policy_name[] = policy name (len.64)
-*/
-define sr_multicast_map_add_del
-{
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-  u8 multicast_address[16];
-  u8 policy_name[64];
-};
-
-/** \brief IPv6 segment routing multicast map to policy add / del response
+/** \brief IPv6 SR Policy modification request response
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
 */
-define sr_multicast_map_add_del_reply
+define sr_policy_mod_reply
 {
   u32 context;
   i32 retval;
 };
+
+/** \brief IPv6 SR policy deletion
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bsid is the bindingSID of the SR Policy
+    @param index is the index of the SR policy
+*/
+define sr_policy_del
+{
+  u32 client_index;
+  u32 context;
+  u8 bsid_addr[16];
+  u32 sr_policy_index;
+};
+
+/** \brief IPv6 SR Policy deletion request response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define sr_policy_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPv6 SR steering add/del
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_del
+    @param bsid is the bindingSID of the SR Policy (alt to sr_policy_index)
+    @param sr_policy is the index of the SR Policy (alt to bsid)
+    @param table_id is the VRF where to install the FIB entry for the BSID
+    @param prefix is the IPv4/v6 address for L3 traffic type
+    @param mask_width is the mask for L3 traffic type
+    @param sw_if_index is the incoming interface for L2 traffic
+    @param traffic_type describes the type of traffic
+*/
+define sr_steering_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_del;
+  u8 bsid_addr[16];
+  u32 sr_policy_index;
+  u32 table_id;
+  u8 prefix_addr[16];
+  u32 mask_width;
+  u32 sw_if_index;
+  u8 traffic_type;
+};
+
+/** \brief IPv6 SR steering add/del request response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define sr_steering_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump the list of SR LocalSIDs
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+/**define sr_localsids_dump
+{
+  u32 client_index;
+  u32 context;
+};*/
+
+/** \brief Details about a single SR LocalSID
+    @param context - returned sender context, to match reply w/ request
+    @param localsid_addr IPv6 address of the localsid
+    @param behavior Type of behavior (function) for this localsid
+    @param end_psp Boolean of whether decapsulation is allowed in this function
+    @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the fib_table.
+    @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
+    @param fib_table  FIB table in which we should install the localsid entry
+    @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
+*/
+/**manual_endian define sr_localsid_details
+{
+  u32 context;
+  u8 localsid_addr[16];
+  u8 behavior;
+  u8 end_psp;
+  u32 sw_if_index;
+  u32 vlan_index;
+  u32 fib_table;
+  u8 nh_addr[16];
+};*/
 
 /*
+ * fd.io coding-style-patch-verification: ON
  * Local Variables:
  * eval: (c-set-style "gnu")
  * End:
  */
- 
