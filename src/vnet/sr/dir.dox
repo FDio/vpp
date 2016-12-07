@@ -18,8 +18,8 @@
  @brief Segment Routing code
 
  An implementation of Segment Routing as per:
- draft-previdi-6man-segment-routing-header-05
+ draft-ietf-6man-segment-routing-header-05
 
- See file: rfc_draft_05.txt 
+ @see ietf_draft_05.txt 
  
 */
