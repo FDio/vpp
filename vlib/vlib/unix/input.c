@@ -112,11 +112,21 @@ linux_epoll_input (vlib_main_t * vm,
 	  (((i64) t - (i64) clib_cpu_time_now ())
 	   * vm->clib_time.seconds_per_clock)
 	  /* subtract off some slop time */  - 50e-6;
-	timeout_ms = timeout * 1e3;
 
-	/* Must be between 1 and 10 ms. */
-	timeout_ms = clib_max (1, timeout_ms);
-	timeout_ms = clib_min (max_timeout_ms, timeout_ms);
+	if (timeout < 1e3)
+	  {
+	    /* We have event happenning in less than 1 ms so
+	       don't allow epoll to wait */
+	    timeout_ms = 0;
+	  }
+	else
+	  {
+	    timeout_ms = timeout * 1e3;
+
+	    /* Must be between 1 and 10 ms. */
+	    timeout_ms = clib_max (1, timeout_ms);
+	    timeout_ms = clib_min (max_timeout_ms, timeout_ms);
+	  }
       }
 
     /* If we still have input nodes polling (e.g. vnet packet generator)
