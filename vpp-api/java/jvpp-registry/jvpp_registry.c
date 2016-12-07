@@ -216,9 +216,7 @@ static int connect_to_vpe(char *name) {
             vl_api_control_ping_reply_t_print,
             sizeof(vl_api_control_ping_reply_t), 1);
 
-    send_initial_control_ping();
-
-    return 0;
+    return send_initial_control_ping();
 }
 
 JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
