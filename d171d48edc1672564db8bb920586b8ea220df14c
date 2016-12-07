@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_70d1d8cc",
+        "filename": "vnet/vnet/l2/l2_bd.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-07T18:05:20Z",
+      "side": 1,
+      "message": "please update the comment to say \u0027mac aging in minutes\u0027.",
+      "revId": "d171d48edc1672564db8bb920586b8ea220df14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_10d854ee",
+        "filename": "vpp/vpp-api/api.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 977,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-07T18:05:20Z",
+      "side": 1,
+      "message": "bd_index as second argument.",
+      "revId": "d171d48edc1672564db8bb920586b8ea220df14c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
