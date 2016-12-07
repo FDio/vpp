@@ -18,6 +18,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/sr/sr.h>
 #include <vlibmemory/api.h>
 
 #include <vnet/interface.h>
@@ -43,159 +44,129 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
-_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)
+_(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)             \
+_(SR_POLICY_DEL, sr_policy_del)                         \
+_(SR_STEERING_ADD_DEL, sr_steering_add_del)
+//_(SR_LOCALSIDS, sr_localsids_dump)
+//_(SR_LOCALSID_BEHAVIORS, sr_localsid_behaviors_dump)
 
-static void vl_api_sr_tunnel_add_del_t_handler
-  (vl_api_sr_tunnel_add_del_t * mp)
+static void vl_api_sr_localsid_add_del_t_handler
+  (vl_api_sr_localsid_add_del_t * mp)
 {
-#if IP6SR == 0
-  clib_warning ("unimplemented");
-#else
-  ip6_sr_add_del_tunnel_args_t _a, *a = &_a;
+  vl_api_sr_localsid_add_del_reply_t *rmp;
   int rv = 0;
-  vl_api_sr_tunnel_add_del_reply_t *rmp;
+/*
+ * int sr_cli_localsid (char is_del, ip6_address_t *localsid_addr,
+ *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
+ *  ip46_address_t *nh_addr, void *ls_plugin_mem)
+ */
+  rv = sr_cli_localsid (mp->is_del,
+			(ip6_address_t *) & mp->localsid_addr,
+			mp->end_psp,
+			mp->behavior,
+			ntohl (mp->sw_if_index),
+			ntohl (mp->vlan_index),
+			ntohl (mp->fib_table),
+			(ip46_address_t *) & mp->nh_addr, NULL);
+
+  REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
+{
+  vl_api_sr_policy_add_reply_t *rmp;
   ip6_address_t *segments = 0, *seg;
-  ip6_address_t *tags = 0, *tag;
-  ip6_address_t *this_address;
+  ip6_address_t *this_address = (ip6_address_t *) mp->segments;
+
   int i;
-
-  if (mp->n_segments == 0)
-    {
-      rv = -11;
-      goto out;
-    }
-
-  memset (a, 0, sizeof (*a));
-  a->src_address = (ip6_address_t *) & mp->src_address;
-  a->dst_address = (ip6_address_t *) & mp->dst_address;
-  a->dst_mask_width = mp->dst_mask_width;
-  a->flags_net_byte_order = mp->flags_net_byte_order;
-  a->is_del = (mp->is_add == 0);
-  a->rx_table_id = ntohl (mp->outer_vrf_id);
-  a->tx_table_id = ntohl (mp->inner_vrf_id);
-
-  a->name = format (0, "%s", mp->name);
-  if (!(vec_len (a->name)))
-    a->name = 0;
-
-  a->policy_name = format (0, "%s", mp->policy_name);
-  if (!(vec_len (a->policy_name)))
-    a->policy_name = 0;
-
-  /* Yank segments and tags out of the API message */
-  this_address = (ip6_address_t *) mp->segs_and_tags;
   for (i = 0; i < mp->n_segments; i++)
     {
       vec_add2 (segments, seg, 1);
       clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
       this_address++;
     }
-  for (i = 0; i < mp->n_tags; i++)
+
+/*
+ * sr_policy_add (ip6_address_t *bsid, ip6_address_t *segments,
+ *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+ */
+  int rv = 0;
+  rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
+		      segments,
+		      ntohl (mp->weight),
+		      mp->type, ntohl (mp->fib_table), mp->is_encap);
+
+  REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
+}
+
+static void
+vl_api_sr_policy_mod_t_handler (vl_api_sr_policy_mod_t * mp)
+{
+  vl_api_sr_policy_mod_reply_t *rmp;
+
+  ip6_address_t *segments = 0, *seg;
+  ip6_address_t *this_address = (ip6_address_t *) mp->segments;
+
+  int i;
+  for (i = 0; i < mp->n_segments; i++)
     {
-      vec_add2 (tags, tag, 1);
-      clib_memcpy (tag->as_u8, this_address->as_u8, sizeof (*this_address));
+      vec_add2 (segments, seg, 1);
+      clib_memcpy (seg->as_u8, this_address->as_u8, sizeof (*this_address));
       this_address++;
     }
 
-  a->segments = segments;
-  a->tags = tags;
+  int rv = 0;
+/*
+ * int
+ * sr_policy_mod(ip6_address_t *bsid, u32 index, u32 fib_table,
+ *               u8 operation, ip6_address_t *segments, u32 sl_index,
+ *               u32 weight, u8 is_encap)
+ */
+  rv = sr_policy_mod ((ip6_address_t *) & mp->bsid_addr,
+		      ntohl (mp->sr_policy_index),
+		      ntohl (mp->fib_table),
+		      mp->operation,
+		      segments, ntohl (mp->sl_index), ntohl (mp->weight));
 
-  rv = ip6_sr_add_del_tunnel (a);
-
-out:
-
-  REPLY_MACRO (VL_API_SR_TUNNEL_ADD_DEL_REPLY);
-#endif
+  REPLY_MACRO (VL_API_SR_POLICY_MOD_REPLY);
 }
 
-static void vl_api_sr_policy_add_del_t_handler
-  (vl_api_sr_policy_add_del_t * mp)
+static void
+vl_api_sr_policy_del_t_handler (vl_api_sr_policy_del_t * mp)
 {
-#if IP6SR == 0
-  clib_warning ("unimplemented");
-#else
-  ip6_sr_add_del_policy_args_t _a, *a = &_a;
+  vl_api_sr_policy_del_reply_t *rmp;
   int rv = 0;
-  vl_api_sr_policy_add_del_reply_t *rmp;
-  int i;
+/*
+ * int
+ * sr_policy_del (ip6_address_t *bsid, u32 index)
+ */
+  rv = sr_policy_del ((ip6_address_t *) & mp->bsid_addr,
+		      ntohl (mp->sr_policy_index));
 
-  memset (a, 0, sizeof (*a));
-  a->is_del = (mp->is_add == 0);
-
-  a->name = format (0, "%s", mp->name);
-  if (!(vec_len (a->name)))
-    {
-      rv = VNET_API_ERROR_NO_SUCH_NODE2;
-      goto out;
-    }
-
-  if (!(mp->tunnel_names[0]))
-    {
-      rv = VNET_API_ERROR_NO_SUCH_NODE2;
-      goto out;
-    }
-
-  // start deserializing tunnel_names
-  int num_tunnels = mp->tunnel_names[0];	//number of tunnels
-  u8 *deser_tun_names = mp->tunnel_names;
-  deser_tun_names += 1;		//moving along
-
-  u8 *tun_name = 0;
-  int tun_name_len = 0;
-
-  for (i = 0; i < num_tunnels; i++)
-    {
-      tun_name_len = *deser_tun_names;
-      deser_tun_names += 1;
-      vec_resize (tun_name, tun_name_len);
-      memcpy (tun_name, deser_tun_names, tun_name_len);
-      vec_add1 (a->tunnel_names, tun_name);
-      deser_tun_names += tun_name_len;
-      tun_name = 0;
-    }
-
-  rv = ip6_sr_add_del_policy (a);
-
-out:
-
-  REPLY_MACRO (VL_API_SR_POLICY_ADD_DEL_REPLY);
-#endif
+  REPLY_MACRO (VL_API_SR_POLICY_DEL_REPLY);
 }
 
-static void vl_api_sr_multicast_map_add_del_t_handler
-  (vl_api_sr_multicast_map_add_del_t * mp)
+static void vl_api_sr_steering_add_del_t_handler
+  (vl_api_sr_steering_add_del_t * mp)
 {
-#if IP6SR == 0
-  clib_warning ("unimplemented");
-#else
-  ip6_sr_add_del_multicastmap_args_t _a, *a = &_a;
+  vl_api_sr_steering_add_del_reply_t *rmp;
   int rv = 0;
-  vl_api_sr_multicast_map_add_del_reply_t *rmp;
+/*
+ * int
+ * sr_steering_policy(int is_del, ip6_address_t *bsid, u32 sr_policy_index,
+ *  u32 table_id, ip46_address_t *prefix, u32 mask_width, u32 sw_if_index,
+ *  u8 traffic_type)
+ */
+  rv = sr_steering_policy (mp->is_del,
+			   (ip6_address_t *) & mp->bsid_addr,
+			   ntohl (mp->sr_policy_index),
+			   ntohl (mp->table_id),
+			   (ip46_address_t *) & mp->prefix_addr,
+			   ntohl (mp->mask_width),
+			   ntohl (mp->sw_if_index), mp->traffic_type);
 
-  memset (a, 0, sizeof (*a));
-  a->is_del = (mp->is_add == 0);
-
-  a->multicast_address = (ip6_address_t *) & mp->multicast_address;
-  a->policy_name = format (0, "%s", mp->policy_name);
-
-  if (a->multicast_address == 0)
-    {
-      rv = -1;
-      goto out;
-    }
-
-  if (!(a->policy_name))
-    {
-      rv = -2;
-      goto out;
-    }
-
-  rv = ip6_sr_add_del_multicastmap (a);
-
-out:
-
-  REPLY_MACRO (VL_API_SR_MULTICAST_MAP_ADD_DEL_REPLY);
-#endif
+  REPLY_MACRO (VL_API_SR_STEERING_ADD_DEL_REPLY);
 }
 
 /*
@@ -233,27 +204,26 @@ sr_api_hookup (vlib_main_t * vm)
 #undef _
 
   /*
-   * Manually register the sr tunnel add del msg, so we trace
+   * Manually register the sr policy add msg, so we trace
    * enough bytes to capture a typical segment list
    */
-  vl_msg_api_set_handlers (VL_API_SR_TUNNEL_ADD_DEL,
-			   "sr_tunnel_add_del",
-			   vl_api_sr_tunnel_add_del_t_handler,
+  vl_msg_api_set_handlers (VL_API_SR_POLICY_ADD,
+			   "sr_policy_add",
+			   vl_api_sr_policy_add_t_handler,
 			   vl_noop_handler,
-			   vl_api_sr_tunnel_add_del_t_endian,
-			   vl_api_sr_tunnel_add_del_t_print, 256, 1);
-
+			   vl_api_sr_policy_add_t_endian,
+			   vl_api_sr_policy_add_t_print, 256, 1);
 
   /*
-   * Manually register the sr policy add del msg, so we trace
-   * enough bytes to capture a typical tunnel name list
+   * Manually register the sr policy mod msg, so we trace
+   * enough bytes to capture a typical segment list
    */
-  vl_msg_api_set_handlers (VL_API_SR_POLICY_ADD_DEL,
-			   "sr_policy_add_del",
-			   vl_api_sr_policy_add_del_t_handler,
+  vl_msg_api_set_handlers (VL_API_SR_POLICY_MOD,
+			   "sr_policy_mod",
+			   vl_api_sr_policy_mod_t_handler,
 			   vl_noop_handler,
-			   vl_api_sr_policy_add_del_t_endian,
-			   vl_api_sr_policy_add_del_t_print, 256, 1);
+			   vl_api_sr_policy_mod_t_endian,
+			   vl_api_sr_policy_mod_t_print, 256, 1);
 
   /*
    * Set up the (msg_name, crc, message-id) table
