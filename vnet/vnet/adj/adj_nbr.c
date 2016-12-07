@@ -297,9 +297,11 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 				 u32 next_node,
 				 u8 *rewrite)
 {
+    ip_adjacency_t *walk_adj;
     adj_index_t walk_ai;
     vlib_main_t * vm;
     u32 old_next;
+    int do_walk;
 
     vm = vlib_get_main();
     old_next = adj->lookup_next_index;
@@ -317,6 +319,39 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
                                &adj->sub_type.nbr.next_hop,
                                adj->rewrite_header.sw_if_index);
     }
+
+    /*
+     * Don't call the walk re-entrantly
+     */
+    if (ADJ_INDEX_INVALID != walk_ai)
+    {
+        walk_adj = adj_get(walk_ai);
+        if (IP_ADJ_SYNC_WALK_ACTIVE & walk_adj->ia_flags)
+        {
+            do_walk = 0;
+        }
+        else
+        {
+            /*
+             * Prevent re-entrant walk of the same adj
+             */
+            walk_adj->ia_flags |= IP_ADJ_SYNC_WALK_ACTIVE;
+            do_walk = 1;
+        }
+    }
+    else
+    {
+        do_walk = 0;
+    }
+
+    /*
+     * lock the adjacencies that are affected by updates this walk will provoke.
+     * Since the aim of the walk is to update children to link to a different
+     * DPO, this adj will no longer be in use and its lock count will drop to 0.
+     * We don't want it to be deleted as part of this endevour.
+     */
+    adj_lock(adj_get_index(adj));
+    adj_lock(walk_ai);
 
     /*
      * Updating a rewrite string is not atomic;
@@ -346,7 +381,8 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      *  1 - mac change
      *  2 - adj type change
      */
-    if (old_next != adj_next_index &&
+    if (do_walk &&
+        old_next != adj_next_index &&
         ADJ_INDEX_INVALID != walk_ai)
     {
         /*
@@ -407,8 +443,9 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      */
     vlib_worker_thread_barrier_release(vm);
 
-    if (old_next != adj->lookup_next_index &&
-        ADJ_INDEX_INVALID != walk_ai)
+    if (do_walk &&
+        (old_next != adj->lookup_next_index) &&
+        (ADJ_INDEX_INVALID != walk_ai))
     {
         /*
          * backwalk to the children so they can stack on the now updated
@@ -420,6 +457,16 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 
 	fib_walk_sync(FIB_NODE_TYPE_ADJ, walk_ai, &bw_ctx);
     }
+    /*
+     * Prevent re-entrant walk of the same adj
+     */
+    if (do_walk)
+    {
+        walk_adj->ia_flags &= ~IP_ADJ_SYNC_WALK_ACTIVE;
+    }
+
+    adj_unlock(adj_get_index(adj));
+    adj_unlock(walk_ai);
 }
 
 typedef struct adj_db_count_ctx_t_ {

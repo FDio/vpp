@@ -66,6 +66,7 @@ adj_alloc (fib_protocol_t proto)
     fib_node_init(&adj->ia_node,
                   FIB_NODE_TYPE_ADJ);
     adj->ia_nh_proto = proto;
+    adj->ia_flags = 0;
 
     ip4_main.lookup_main.adjacency_heap = adj_pool;
     ip6_main.lookup_main.adjacency_heap = adj_pool;
