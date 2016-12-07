@@ -34,6 +34,7 @@
 #include <vnet/l2/l2.api.h>
 #include <vnet/span/span.api.h>
 #include <vnet/ip/ip.api.h>
+#include <vnet/unix/tap.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

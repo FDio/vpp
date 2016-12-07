@@ -25,7 +25,9 @@ BUILT_SOURCES = 				\
  vnet/map/map.api.h				\
  vnet/map/map.api.json				\
  vnet/span/span.api.h				\
- vnet/span/span.api.json
+ vnet/span/span.api.json			\
+ vnet/unix/tap.api.h				\
+ vnet/unix/tap.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -787,12 +789,14 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
   vnet/unix/gdb_funcs.c				\
   vnet/unix/pcap.c				\
+  vnet/unix/tap_api.c				\
   vnet/unix/tapcli.c				\
   vnet/unix/tuntap.c
 
 nobase_include_HEADERS +=			\
   vnet/unix/pcap.h				\
   vnet/unix/tuntap.h				\
+  vnet/unix/tap.api.h				\
   vnet/unix/tapcli.h
 
 ########################################
@@ -918,7 +922,8 @@ api_DATA =					\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
- vnet/span/span.api.json
+ vnet/span/span.api.json			\
+ vnet/unix/tap.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree

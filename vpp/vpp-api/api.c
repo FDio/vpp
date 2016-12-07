@@ -53,8 +53,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip6_neighbor.h>
-#include <vnet/unix/tuntap.h>
-#include <vnet/unix/tapcli.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/mpls/mpls_tunnel.h>
 #include <vnet/dhcp/proxy.h>
@@ -165,10 +163,6 @@ _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
 _(L2_FLAGS, l2_flags)                                                   \
 _(BRIDGE_FLAGS, bridge_flags)                                           \
-_(TAP_CONNECT, tap_connect)                                             \
-_(TAP_MODIFY, tap_modify)                                               \
-_(TAP_DELETE, tap_delete)                                               \
-_(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)                         \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)				\
@@ -322,13 +316,8 @@ typedef enum
 static vlib_node_registration_t vpe_resolver_process_node;
 vpe_api_main_t vpe_api_main;
 
-static void send_sw_interface_flags_deleted (vpe_api_main_t * am,
-					     unix_shared_memory_queue_t * q,
-					     u32 sw_if_index);
-
 static int arp_change_delete_callback (u32 pool_index, u8 * notused);
 static int nd_change_delete_callback (u32 pool_index, u8 * notused);
-
 
 /* Clean up all registrations belonging to the indicated client */
 int
@@ -1236,102 +1225,6 @@ out:
 }
 
 static void
-vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  int rv;
-  vl_api_tap_connect_reply_t *rmp;
-  vnet_main_t *vnm = vnet_get_main ();
-  unix_shared_memory_queue_t *q;
-  u32 sw_if_index = (u32) ~ 0;
-  u8 *tag;
-
-  rv = vnet_tap_connect_renumber (vm, mp->tap_name,
-				  mp->use_random_mac ? 0 : mp->mac_address,
-				  &sw_if_index, mp->renumber,
-				  ntohl (mp->custom_dev_instance));
-
-  /* Add tag if supplied */
-  if (rv == 0 && mp->tag[0])
-    {
-      mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
-      tag = format (0, "%s%c", mp->tag, 0);
-      vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
-    }
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_TAP_CONNECT_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
-  rmp->sw_if_index = ntohl (sw_if_index);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-static void
-vl_api_tap_modify_t_handler (vl_api_tap_modify_t * mp)
-{
-  int rv;
-  vl_api_tap_modify_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
-  u32 sw_if_index = (u32) ~ 0;
-  vlib_main_t *vm = vlib_get_main ();
-
-  rv = vnet_tap_modify (vm, ntohl (mp->sw_if_index), mp->tap_name,
-			mp->use_random_mac ? 0 : mp->mac_address,
-			&sw_if_index, mp->renumber,
-			ntohl (mp->custom_dev_instance));
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_TAP_MODIFY_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
-  rmp->sw_if_index = ntohl (sw_if_index);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-static void
-vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  int rv;
-  vpe_api_main_t *vam = &vpe_api_main;
-  vl_api_tap_delete_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-
-  rv = vnet_tap_delete (vm, sw_if_index);
-  if (!rv)
-    {
-      vnet_main_t *vnm = vnet_get_main ();
-      vnet_clear_sw_interface_tag (vnm, sw_if_index);
-    }
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_TAP_DELETE_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-
-  if (!rv)
-    send_sw_interface_flags_deleted (vam, q, sw_if_index);
-}
-
-static void
 vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
 {
   vl_api_create_vlan_subif_reply_t *rmp;
@@ -1709,11 +1602,9 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MPLS_ENABLE_REPLY);
 }
 
-static void send_sw_interface_flags_deleted (vpe_api_main_t * am,
-					     unix_shared_memory_queue_t * q,
-					     u32 sw_if_index)
-  __attribute__ ((unused));
-
+/*
+ * WARNING: replicated pending api refactor completion
+ */
 static void
 send_sw_interface_flags_deleted (vpe_api_main_t * am,
 				 unix_shared_memory_queue_t * q,
@@ -2881,49 +2772,6 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (vl_api_sw_if_l2tpv3_tunnel_dump_t *
     send_sw_if_l2tpv3_tunnel_details (am, q, session, lm, mp->context);
   }));
   /* *INDENT-ON* */
-}
-
-static void
-send_sw_interface_tap_details (vpe_api_main_t * am,
-			       unix_shared_memory_queue_t * q,
-			       tapcli_interface_details_t * tap_if,
-			       u32 context)
-{
-  vl_api_sw_interface_tap_details_t *mp;
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_TAP_DETAILS);
-  mp->sw_if_index = ntohl (tap_if->sw_if_index);
-  strncpy ((char *) mp->dev_name,
-	   (char *) tap_if->dev_name, ARRAY_LEN (mp->dev_name) - 1);
-  mp->context = context;
-
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-vl_api_sw_interface_tap_dump_t_handler (vl_api_sw_interface_tap_dump_t * mp)
-{
-  int rv = 0;
-  vpe_api_main_t *am = &vpe_api_main;
-  unix_shared_memory_queue_t *q;
-  tapcli_interface_details_t *tapifs = NULL;
-  tapcli_interface_details_t *tap_if = NULL;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    return;
-
-  rv = vnet_tap_dump_ifs (&tapifs);
-  if (rv)
-    return;
-
-  vec_foreach (tap_if, tapifs)
-  {
-    send_sw_interface_tap_details (am, q, tap_if, mp->context);
-  }
-
-  vec_free (tapifs);
 }
 
 static void
