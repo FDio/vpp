@@ -22,7 +22,6 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vnet/ip/ip.h>
-#include <vnet/sr/sr_packet.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/vxlan/vxlan.h>
@@ -3916,9 +3915,11 @@ _(sw_interface_ip6nd_ra_prefix_reply)                   \
 _(sw_interface_ip6nd_ra_config_reply)                   \
 _(set_arp_neighbor_limit_reply)                         \
 _(l2_patch_add_del_reply)                               \
-_(sr_tunnel_add_del_reply)                              \
-_(sr_policy_add_del_reply)                              \
-_(sr_multicast_map_add_del_reply)                       \
+_(sr_policy_add_reply)                                  \
+_(sr_policy_mod_reply)                                  \
+_(sr_policy_del_reply)                                  \
+_(sr_localsid_add_del_reply)                            \
+_(sr_steering_add_del_reply)                            \
 _(classify_add_del_session_reply)                       \
 _(classify_set_interface_ip_table_reply)                \
 _(classify_set_interface_l2_tables_reply)               \
@@ -4095,9 +4096,11 @@ _(SW_INTERFACE_IP6ND_RA_CONFIG_REPLY,                                   \
   sw_interface_ip6nd_ra_config_reply)                                   \
 _(SET_ARP_NEIGHBOR_LIMIT_REPLY, set_arp_neighbor_limit_reply)           \
 _(L2_PATCH_ADD_DEL_REPLY, l2_patch_add_del_reply)                       \
-_(SR_TUNNEL_ADD_DEL_REPLY, sr_tunnel_add_del_reply)                     \
-_(SR_POLICY_ADD_DEL_REPLY, sr_policy_add_del_reply)                     \
-_(SR_MULTICAST_MAP_ADD_DEL_REPLY, sr_multicast_map_add_del_reply)                     \
+_(SR_POLICY_ADD_REPLY, sr_policy_add_reply)                             \
+_(SR_POLICY_MOD_REPLY, sr_policy_mod_reply)                             \
+_(SR_POLICY_DEL_REPLY, sr_policy_del_reply)                             \
+_(SR_LOCALSID_ADD_DEL_REPLY, sr_localsid_add_del_reply)                 \
+_(SR_STEERING_ADD_DEL_REPLY, sr_steering_add_del_reply)                 \
 _(CLASSIFY_ADD_DEL_TABLE_REPLY, classify_add_del_table_reply)           \
 _(CLASSIFY_ADD_DEL_SESSION_REPLY, classify_add_del_session_reply)       \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE_REPLY,                                \
@@ -8227,6 +8230,64 @@ api_l2_patch_add_del (vat_main_t * vam)
   return ret;
 }
 
+u8 is_del;
+u8 localsid_addr[16];
+u8 end_psp;
+u8 behavior;
+u32 sw_if_index;
+u32 vlan_index;
+u32 fib_table;
+u8 nh_addr[16];
+
+static int
+api_sr_localsid_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sr_localsid_add_del_t *mp;
+
+  u8 is_del;
+  ip6_address_t localsid;
+  u8 end_psp = 0;
+  u8 behavior = ~0;
+  u32 sw_if_index;
+  u32 fib_table = ~(u32) 0;
+  ip6_address_t next_hop;
+
+  bool nexthop_set = 0;
+
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_del = 1;
+      else if (unformat (i, "address %U", unformat_ip6_address, &localsid));
+      else if (unformat (i, "next-hop %U", unformat_ip6_address, &next_hop))
+	nexthop_set = 1;
+      else if (unformat (i, "behavior %u", &behavior));
+      else if (unformat (i, "sw_if_index %u", &sw_if_index));
+      else if (unformat (i, "fib-table %u", &fib_table));
+      else if (unformat (i, "end.psp %u", &behavior));
+      else
+	break;
+    }
+
+  M (SR_LOCALSID_ADD_DEL, mp);
+
+  clib_memcpy (mp->localsid_addr, &localsid, sizeof (mp->localsid_addr));
+  if (nexthop_set)
+    clib_memcpy (mp->nh_addr, &next_hop, sizeof (mp->nh_addr));
+  mp->behavior = behavior;
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->fib_table = ntohl (fib_table);
+  mp->end_psp = end_psp;
+  mp->is_del = is_del;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 static int
 api_ioam_enable (vat_main_t * vam)
 {
@@ -8276,277 +8337,6 @@ api_ioam_disable (vat_main_t * vam)
   W (ret);
   return ret;
 }
-
-static int
-api_sr_tunnel_add_del (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sr_tunnel_add_del_t *mp;
-  int is_del = 0;
-  int pl_index;
-  ip6_address_t src_address;
-  int src_address_set = 0;
-  ip6_address_t dst_address;
-  u32 dst_mask_width;
-  int dst_address_set = 0;
-  u16 flags = 0;
-  u32 rx_table_id = 0;
-  u32 tx_table_id = 0;
-  ip6_address_t *segments = 0;
-  ip6_address_t *this_seg;
-  ip6_address_t *tags = 0;
-  ip6_address_t *this_tag;
-  ip6_address_t next_address, tag;
-  u8 *name = 0;
-  u8 *policy_name = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "del"))
-	is_del = 1;
-      else if (unformat (i, "name %s", &name))
-	;
-      else if (unformat (i, "policy %s", &policy_name))
-	;
-      else if (unformat (i, "rx_fib_id %d", &rx_table_id))
-	;
-      else if (unformat (i, "tx_fib_id %d", &tx_table_id))
-	;
-      else if (unformat (i, "src %U", unformat_ip6_address, &src_address))
-	src_address_set = 1;
-      else if (unformat (i, "dst %U/%d",
-			 unformat_ip6_address, &dst_address, &dst_mask_width))
-	dst_address_set = 1;
-      else if (unformat (i, "next %U", unformat_ip6_address, &next_address))
-	{
-	  vec_add2 (segments, this_seg, 1);
-	  clib_memcpy (this_seg->as_u8, next_address.as_u8,
-		       sizeof (*this_seg));
-	}
-      else if (unformat (i, "tag %U", unformat_ip6_address, &tag))
-	{
-	  vec_add2 (tags, this_tag, 1);
-	  clib_memcpy (this_tag->as_u8, tag.as_u8, sizeof (*this_tag));
-	}
-      else if (unformat (i, "clean"))
-	flags |= IP6_SR_HEADER_FLAG_CLEANUP;
-      else if (unformat (i, "protected"))
-	flags |= IP6_SR_HEADER_FLAG_PROTECTED;
-      else if (unformat (i, "InPE %d", &pl_index))
-	{
-	  if (pl_index <= 0 || pl_index > 4)
-	    {
-	    pl_index_range_error:
-	      errmsg ("pl index %d out of range", pl_index);
-	      return -99;
-	    }
-	  flags |=
-	    IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE << (3 * (pl_index - 1));
-	}
-      else if (unformat (i, "EgPE %d", &pl_index))
-	{
-	  if (pl_index <= 0 || pl_index > 4)
-	    goto pl_index_range_error;
-	  flags |=
-	    IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE << (3 * (pl_index - 1));
-	}
-      else if (unformat (i, "OrgSrc %d", &pl_index))
-	{
-	  if (pl_index <= 0 || pl_index > 4)
-	    goto pl_index_range_error;
-	  flags |=
-	    IP6_SR_HEADER_FLAG_PL_ELT_ORIG_SRC_ADDR << (3 * (pl_index - 1));
-	}
-      else
-	break;
-    }
-
-  if (!src_address_set)
-    {
-      errmsg ("src address required");
-      return -99;
-    }
-
-  if (!dst_address_set)
-    {
-      errmsg ("dst address required");
-      return -99;
-    }
-
-  if (!segments)
-    {
-      errmsg ("at least one sr segment required");
-      return -99;
-    }
-
-  M2 (SR_TUNNEL_ADD_DEL, mp,
-      vec_len (segments) * sizeof (ip6_address_t)
-      + vec_len (tags) * sizeof (ip6_address_t));
-
-  clib_memcpy (mp->src_address, &src_address, sizeof (mp->src_address));
-  clib_memcpy (mp->dst_address, &dst_address, sizeof (mp->dst_address));
-  mp->dst_mask_width = dst_mask_width;
-  mp->flags_net_byte_order = clib_host_to_net_u16 (flags);
-  mp->n_segments = vec_len (segments);
-  mp->n_tags = vec_len (tags);
-  mp->is_add = is_del == 0;
-  clib_memcpy (mp->segs_and_tags, segments,
-	       vec_len (segments) * sizeof (ip6_address_t));
-  clib_memcpy (mp->segs_and_tags +
-	       vec_len (segments) * sizeof (ip6_address_t), tags,
-	       vec_len (tags) * sizeof (ip6_address_t));
-
-  mp->outer_vrf_id = ntohl (rx_table_id);
-  mp->inner_vrf_id = ntohl (tx_table_id);
-  memcpy (mp->name, name, vec_len (name));
-  memcpy (mp->policy_name, policy_name, vec_len (policy_name));
-
-  vec_free (segments);
-  vec_free (tags);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sr_policy_add_del (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_sr_policy_add_del_t *mp;
-  int is_del = 0;
-  u8 *name = 0;
-  u8 *tunnel_name = 0;
-  u8 **tunnel_names = 0;
-
-  int name_set = 0;
-  int tunnel_set = 0;
-  int j = 0;
-  int tunnel_names_length = 1;	// Init to 1 to offset the #tunnel_names counter byte
-  int tun_name_len = 0;		// Different naming convention used as confusing these would be "bad" (TM)
-  int ret;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "del"))
-	is_del = 1;
-      else if (unformat (input, "name %s", &name))
-	name_set = 1;
-      else if (unformat (input, "tunnel %s", &tunnel_name))
-	{
-	  if (tunnel_name)
-	    {
-	      vec_add1 (tunnel_names, tunnel_name);
-	      /* For serializer:
-	         - length = #bytes to store in serial vector
-	         - +1 = byte to store that length
-	       */
-	      tunnel_names_length += (vec_len (tunnel_name) + 1);
-	      tunnel_set = 1;
-	      tunnel_name = 0;
-	    }
-	}
-      else
-	break;
-    }
-
-  if (!name_set)
-    {
-      errmsg ("policy name required");
-      return -99;
-    }
-
-  if ((!tunnel_set) && (!is_del))
-    {
-      errmsg ("tunnel name required");
-      return -99;
-    }
-
-  M2 (SR_POLICY_ADD_DEL, mp, tunnel_names_length);
-
-
-
-  mp->is_add = !is_del;
-
-  memcpy (mp->name, name, vec_len (name));
-  // Since mp->tunnel_names is of type u8[0] and not a u8 *, u8 ** needs to be serialized
-  u8 *serial_orig = 0;
-  vec_validate (serial_orig, tunnel_names_length);
-  *serial_orig = vec_len (tunnel_names);	// Store the number of tunnels as length in first byte of serialized vector
-  serial_orig += 1;		// Move along one byte to store the length of first tunnel_name
-
-  for (j = 0; j < vec_len (tunnel_names); j++)
-    {
-      tun_name_len = vec_len (tunnel_names[j]);
-      *serial_orig = tun_name_len;	// Store length of tunnel name in first byte of Length/Value pair
-      serial_orig += 1;		// Move along one byte to store the actual tunnel name
-      memcpy (serial_orig, tunnel_names[j], tun_name_len);
-      serial_orig += tun_name_len;	// Advance past the copy
-    }
-  memcpy (mp->tunnel_names, serial_orig - tunnel_names_length, tunnel_names_length);	// Regress serial_orig to head then copy fwd
-
-  vec_free (tunnel_names);
-  vec_free (tunnel_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sr_multicast_map_add_del (vat_main_t * vam)
-{
-  unformat_input_t *input = vam->input;
-  vl_api_sr_multicast_map_add_del_t *mp;
-  int is_del = 0;
-  ip6_address_t multicast_address;
-  u8 *policy_name = 0;
-  int multicast_address_set = 0;
-  int ret;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "del"))
-	is_del = 1;
-      else
-	if (unformat
-	    (input, "address %U", unformat_ip6_address, &multicast_address))
-	multicast_address_set = 1;
-      else if (unformat (input, "sr-policy %s", &policy_name))
-	;
-      else
-	break;
-    }
-
-  if (!is_del && !policy_name)
-    {
-      errmsg ("sr-policy name required");
-      return -99;
-    }
-
-
-  if (!multicast_address_set)
-    {
-      errmsg ("address required");
-      return -99;
-    }
-
-  M (SR_MULTICAST_MAP_ADD_DEL, mp);
-
-  mp->is_add = !is_del;
-  memcpy (mp->policy_name, policy_name, vec_len (policy_name));
-  clib_memcpy (mp->multicast_address, &multicast_address,
-	       sizeof (mp->multicast_address));
-
-
-  vec_free (policy_name);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
 
 #define foreach_tcp_proto_field                 \
 _(src_port)                                     \
@@ -18166,14 +17956,9 @@ _(set_arp_neighbor_limit, "arp_nbr_limit <n> [ipv6]")                   \
 _(l2_patch_add_del,                                                     \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \
-_(sr_tunnel_add_del,                                                    \
-  "[name <name>] src <ip6-addr> dst <ip6-addr>/<mw> \n"                 \
-  "(next <ip6-addr>)+ [tag <ip6-addr>]* [clean] [reroute] \n"           \
-  "[policy <policy_name>]")						\
-_(sr_policy_add_del,                                                    \
-  "name <name> tunnel <tunnel-name> [tunnel <tunnel-name>]* [del]")	\
-_(sr_multicast_map_add_del,                                             \
-  "address [ip6 multicast address] sr-policy [policy name] [del]")	\
+_(sr_localsid_add_del,                                                  \
+  "(del) address <addr> next_hop <addr> behavior <beh>\n"               \
+  "fib-table <num> (end.psp) sw_if_index <num>")                        \
 _(classify_add_del_table,                                               \
   "buckets <nn> [skip <n>] [match <n>] [memory_size <nn-bytes>]\n"	\
   " [del] [del-chain] mask <mask-value>\n"                              \

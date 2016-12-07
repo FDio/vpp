@@ -1,4 +1,0 @@
-sr_tunnel_add_del name sr2 src ::a:1:1:0:6 dst ff15::2/128 next ::a:1:1:0:f next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean 
-sr_tunnel_add_del name sr3 src ::b:1:1:0:6 dst ff16::2/128 next ::a:1:1:0:13 next ::a:1:1:0:1a next ff15::1 tag ::a:1:1:0:7  clean
-sr_policy_add_del name pol1 tunnel sr2 tunnel sr3
-sr_multicast_map_add_del address ff15::1 sr-policy pol1
