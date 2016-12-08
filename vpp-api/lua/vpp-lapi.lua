@@ -15,6 +15,155 @@
  */
 ]]
 
+-- json decode/encode from https://gist.github.com/tylerneylon/59f4bcf316be525b30ab
+-- licensed by the author tylerneylon into public domain. Thanks!
+
+local json = {}
+
+-- Internal functions.
+
+local function kind_of(obj)
+  if type(obj) ~= 'table' then return type(obj) end
+  local i = 1
+  for _ in pairs(obj) do
+    if obj[i] ~= nil then i = i + 1 else return 'table' end
+  end
+  if i == 1 then return 'table' else return 'array' end
+end
+
+local function escape_str(s)
+  local in_char  = {'\\', '"', '/', '\b', '\f', '\n', '\r', '\t'}
+  local out_char = {'\\', '"', '/',  'b',  'f',  'n',  'r',  't'}
+  for i, c in ipairs(in_char) do
+    s = s:gsub(c, '\\' .. out_char[i])
+  end
+  return s
+end
+
+-- Returns pos, did_find; there are two cases:
+-- 1. Delimiter found: pos = pos after leading space + delim; did_find = true.
+-- 2. Delimiter not found: pos = pos after leading space;     did_find = false.
+-- This throws an error if err_if_missing is true and the delim is not found.
+local function skip_delim(str, pos, delim, err_if_missing)
+  pos = pos + #str:match('^%s*', pos)
+  if str:sub(pos, pos) ~= delim then
+    if err_if_missing then
+      error('Expected ' .. delim .. ' near position ' .. pos)
+    end
+    return pos, false
+  end
+  return pos + 1, true
+end
+
+-- Expects the given pos to be the first character after the opening quote.
+-- Returns val, pos; the returned pos is after the closing quote character.
+local function parse_str_val(str, pos, val)
+  val = val or ''
+  local early_end_error = 'End of input found while parsing string.'
+  if pos > #str then error(early_end_error) end
+  local c = str:sub(pos, pos)
+  if c == '"'  then return val, pos + 1 end
+  if c ~= '\\' then return parse_str_val(str, pos + 1, val .. c) end
+  -- We must have a \ character.
+  local esc_map = {b = '\b', f = '\f', n = '\n', r = '\r', t = '\t'}
+  local nextc = str:sub(pos + 1, pos + 1)
+  if not nextc then error(early_end_error) end
+  return parse_str_val(str, pos + 2, val .. (esc_map[nextc] or nextc))
+end
+
+-- Returns val, pos; the returned pos is after the number's final character.
+local function parse_num_val(str, pos)
+  local num_str = str:match('^-?%d+%.?%d*[eE]?[+-]?%d*', pos)
+  local val = tonumber(num_str)
+  if not val then error('Error parsing number at position ' .. pos .. '.') end
+  return val, pos + #num_str
+end
+
+
+-- Public values and functions.
+
+function json.stringify(obj, as_key)
+  local s = {}  -- We'll build the string as an array of strings to be concatenated.
+  local kind = kind_of(obj)  -- This is 'array' if it's an array or type(obj) otherwise.
+  if kind == 'array' then
+    if as_key then error('Can\'t encode array as key.') end
+    s[#s + 1] = '['
+    for i, val in ipairs(obj) do
+      if i > 1 then s[#s + 1] = ', ' end
+      s[#s + 1] = json.stringify(val)
+    end
+    s[#s + 1] = ']'
+  elseif kind == 'table' then
+    if as_key then error('Can\'t encode table as key.') end
+    s[#s + 1] = '{'
+    for k, v in pairs(obj) do
+      if #s > 1 then s[#s + 1] = ', ' end
+      s[#s + 1] = json.stringify(k, true)
+      s[#s + 1] = ':'
+      s[#s + 1] = json.stringify(v)
+    end
+    s[#s + 1] = '}'
+  elseif kind == 'string' then
+    return '"' .. escape_str(obj) .. '"'
+  elseif kind == 'number' then
+    if as_key then return '"' .. tostring(obj) .. '"' end
+    return tostring(obj)
+  elseif kind == 'boolean' then
+    return tostring(obj)
+  elseif kind == 'nil' then
+    return 'null'
+  else
+    error('Unjsonifiable type: ' .. kind .. '.')
+  end
+  return table.concat(s)
+end
+
+json.null = {}  -- This is a one-off table to represent the null value.
+
+function json.parse(str, pos, end_delim)
+  pos = pos or 1
+  if pos > #str then error('Reached unexpected end of input.') end
+  local pos = pos + #str:match('^%s*', pos)  -- Skip whitespace.
+  local first = str:sub(pos, pos)
+  if first == '{' then  -- Parse an object.
+    local obj, key, delim_found = {}, true, true
+    pos = pos + 1
+    while true do
+      key, pos = json.parse(str, pos, '}')
+      if key == nil then return obj, pos end
+      if not delim_found then error('Comma missing between object items.') end
+      pos = skip_delim(str, pos, ':', true)  -- true -> error if missing.
+      obj[key], pos = json.parse(str, pos)
+      pos, delim_found = skip_delim(str, pos, ',')
+    end
+  elseif first == '[' then  -- Parse an array.
+    local arr, val, delim_found = {}, true, true
+    pos = pos + 1
+    while true do
+      val, pos = json.parse(str, pos, ']')
+      if val == nil then return arr, pos end
+      if not delim_found then error('Comma missing between array items.') end
+      arr[#arr + 1] = val
+      pos, delim_found = skip_delim(str, pos, ',')
+    end
+  elseif first == '"' then  -- Parse a string.
+    return parse_str_val(str, pos + 1)
+  elseif first == '-' or first:match('%d') then  -- Parse a number.
+    return parse_num_val(str, pos)
+  elseif first == end_delim then  -- End of an object or array.
+    return nil, pos + 1
+  else  -- Parse true, false, or null.
+    local literals = {['true'] = true, ['false'] = false, ['null'] = json.null}
+    for lit_str, lit_val in pairs(literals) do
+      local lit_end = pos + #lit_str - 1
+      if str:sub(pos, lit_end) == lit_str then return lit_val, lit_end + 1 end
+    end
+    local pos_info_str = 'position ' .. pos .. ': ' .. str:sub(pos, pos + 10)
+    error('Invalid json syntax starting at ' .. pos_info_str)
+  end
+end
+
+
 local vpp = {}
 
 local ffi = require("ffi")
@@ -278,6 +427,7 @@ function vpp.init(vpp, args)
  int pneum_read(char **data, int *l);
  int pneum_write(char *data, int len);
  void pneum_free(char *data);
+ uint32_t pneum_get_msg_index(unsigned char * name);
 ]]
 
   vpp.pneum_path = args.pneum_path
@@ -294,6 +444,7 @@ function vpp.init(vpp, args)
   vpp.msg_number_to_name = {}
   vpp.msg_number_to_type = {}
   vpp.msg_number_to_pointer_type = {}
+  vpp.msg_name_to_crc = {}
   vpp.c_type_to_fields = {}
   vpp.events = {}
   vpp.plugin_version = {}
@@ -523,6 +674,19 @@ function vpp.init(vpp, args)
   return vpp
 end
 
+function vpp.resolve_message_number(msgname)
+  local name = msgname .. "_" .. vpp.msg_name_to_crc[msgname]
+  local idx = vpp.pneum.pneum_get_msg_index(vpp.c_str(name))
+  if vpp.debug_dump then
+    print("Index for " .. tostring(name) .. " is " .. tostring(idx))
+  end
+  vpp.msg_name_to_number[msgname] = idx
+  vpp.msg_number_to_name[idx] = msgname
+  vpp.msg_number_to_type[idx] = "vl_api_" .. msgname .. "_t"
+  vpp.msg_number_to_pointer_type[idx] = vpp.msg_number_to_type[idx] .. " *"
+  ffi.cdef("\n\n enum { vl_msg_" .. msgname .. " = " .. idx .. " };\n\n")
+end
+
 function vpp.connect(vpp, client_name)
     local name = "lua_client"
     if client_name then
@@ -532,11 +696,96 @@ function vpp.connect(vpp, client_name)
     if tonumber(ret) == 0 then
       vpp.is_connected = true
     end
+    for k, v in pairs(vpp.msg_name_to_number) do
+      vpp.resolve_message_number(k)
+    end
   end
 
 function vpp.disconnect(vpp)
     vpp.pneum.pneum_disconnect()
   end
+
+function vpp.json_api(vpp, path, plugin_name)
+    -- print("Consuming the VPP api from "..path)
+    local ffii = {}
+    local f = io.open(path, "r")
+    if not f then
+      print("Could not open " .. path)
+      return nil
+    end
+    local data = f:read("*all")
+    local json = json.parse(data)
+    if not (json.types or json.messages) then
+      print("Can not parse " .. path)
+      return nil
+    end
+
+    local all_types = {}
+
+    for i, v in ipairs(json.types) do
+      table.insert(all_types, { typeonly = 1, desc = v })
+    end
+    for i, v in ipairs(json.messages) do
+      table.insert(all_types, { typeonly = 0, desc = v })
+    end
+    for i, v in ipairs(all_types) do
+      local typeonly = v.typeonly
+      local name = v.desc[1]
+      local c_type = "vl_api_" .. name .. "_t"
+
+      local fields = {}
+      -- vpp.msg_name_to_fields[name] = fields
+      -- print("CTYPE " .. c_type)
+      vpp.c_type_to_fields[c_type] = fields
+      vpp.t_lua2c[c_type] = vpp.t_lua2c["__MSG__"]
+      vpp.t_c2lua[c_type] = vpp.t_c2lua["__MSG__"]
+
+      local cdef = { "\n\n#pragma pack(1)\ntypedef struct _vl_api_", name, " {\n" }
+      for ii, vv in ipairs(v.desc) do
+        if type(vv) == "table" then
+          if vv.crc then
+            vpp.msg_name_to_crc[name] = string.sub(vv.crc, 3) -- strip the leading 0x
+          else
+            local fieldtype = vv[1]
+            local fieldname = vv[2]
+            local fieldcount = vv[3]
+            local fieldcountvar = vv[4]
+            local fieldrec = { name = fieldname, c_type = fieldtype, array = fieldcount, array_size = fieldcountvar }
+            if fieldcount then
+              table.insert(cdef, "  " .. fieldtype .. " " .. fieldname .. "[" .. fieldcount .. "];\n")
+              if fieldtype == "u8" then
+                -- any array of bytes is treated as a string
+              elseif vpp.t_lua2c[fieldtype] then
+                -- print("Array of " .. fieldtype .. " is ok!")
+              else
+                print("Unknown array type: ", name,  " : " , fieldname, " : ", fieldtype, ":", fieldcount, ":", fieldcountvar)
+              end
+            else
+              table.insert(cdef, "  " .. fieldtype .. " " .. fieldname .. ";\n")
+            end
+            fields[fieldname] = fieldrec
+          end
+        end
+      end
+
+      table.insert(cdef, "} vl_api_" .. name .. "_t;")
+      table.insert(ffii, table.concat(cdef))
+
+      if typeonly == 0 then
+        -- we will want to resolve this later
+        if vpp.debug_dump then
+          print("Remember to resolve " .. name)
+        end
+        vpp.msg_name_to_number[name] = -1
+        if vpp.is_connected then
+          vpp.resolve_message_number(name)
+        end
+      end
+
+    end
+    local cdef_full = table.concat(ffii)
+    ffi.cdef(cdef_full)
+end
 
 function vpp.consume_api(vpp, path, plugin_name)
     -- print("Consuming the VPP api from "..path)
@@ -636,7 +885,8 @@ function vpp.lua2c(vpp, c_type, src, dst_c_ptr)
   if lua2c then
     return(lua2c(c_type, src, dst_c_ptr))
   else
-    print("vpp.lua2c: do not know how to store type " .. c_type)
+    print("vpp.lua2c: do not know how to store type " .. tostring(c_type))
+    local x = "a" .. nil
     return 0
   end
 end
@@ -708,6 +958,9 @@ function vpp.api_call(vpp, api_name, req_table, options_in)
     local cstruct = ""
     local options = options_in or {}
     if msg_num then
+      if vpp.debug_dump then
+        print("Message #" .. tostring(msg_num) .. " for name " .. tostring(api_name))
+      end
       vpp:api_write(api_name, req_table)
       if not vpp.msg_name_to_number[end_message_name] or options.force_ping then
         end_message_name = "control_ping_reply"
