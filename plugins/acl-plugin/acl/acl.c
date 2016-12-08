@@ -1263,6 +1263,29 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
 /* No check for validity of sw_if_index - the callers were supposed to validate */
 
 static int
+macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
+{
+  int rv;
+  u32 macip_acl_index;
+  macip_acl_list_t *a;
+  vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
+  macip_acl_index = am->macip_acl_by_sw_if_index[sw_if_index];
+  /* No point in deleting MACIP ACL which is not applied */
+  if (~0 == macip_acl_index)
+    return -1;
+  a = &am->macip_acls[macip_acl_index];
+  /* remove the classifier tables off the interface L2 ACL */
+  rv =
+    vnet_set_input_acl_intfc (am->vlib_main, sw_if_index, a->ip4_table_index,
+			      a->ip6_table_index, a->l2_table_index, 0);
+  /* Unset the MACIP ACL index */
+  am->macip_acl_by_sw_if_index[sw_if_index] = ~0;
+  return rv;
+}
+
+/* No check for validity of sw_if_index - the callers were supposed to validate */
+
+static int
 macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
 			     u32 macip_acl_index)
 {
@@ -1274,22 +1297,14 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
     }
   a = &am->macip_acls[macip_acl_index];
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
+  /* If there already a MACIP ACL applied, unapply it */
+  if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
+    macip_acl_interface_del_acl(am, sw_if_index);
   am->macip_acl_by_sw_if_index[sw_if_index] = macip_acl_index;
   /* Apply the classifier tables for L2 ACLs */
   rv =
     vnet_set_input_acl_intfc (am->vlib_main, sw_if_index, a->ip4_table_index,
 			      a->ip6_table_index, a->l2_table_index, 1);
-  return rv;
-}
-
-static int
-macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
-{
-  int rv;
-  vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
-  am->macip_acl_by_sw_if_index[sw_if_index] = ~0;
-  /* remove the classifier tables off the interface L2 ACL */
-  rv = vnet_set_input_acl_intfc (am->vlib_main, sw_if_index, ~0, ~0, ~0, 0);
   return rv;
 }
 
