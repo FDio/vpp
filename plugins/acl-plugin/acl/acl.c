@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <stddef.h>
+
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <acl/acl.h>
@@ -1080,6 +1082,16 @@ match_type_compare (macip_match_type_t * m1, macip_match_type_t * m2)
   return match_type_metric (m1) - match_type_metric (m2);
 }
 
+/* Get the offset of L3 source within ethernet packet */
+static int
+get_l3_src_offset(int is6)
+{
+  if(is6)
+    return (sizeof(ethernet_header_t) + offsetof(ip6_header_t, src_address));
+  else
+    return (sizeof(ethernet_header_t) + offsetof(ip4_header_t, src_address));
+}
+
 static int
 macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 {
@@ -1118,8 +1130,8 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
   vec_foreach (mt, mvec)
   {
     int mask_len;
-    int is6 = a->rules[i].is_ipv6;
-    int l3_src_offs = is6 ? 22 : 26;	/* See the ascii art packet format above to verify these */
+    int is6 = mt->is_ipv6;
+    int l3_src_offs = get_l3_src_offset(is6);
     memset (mask, 0, sizeof (mask));
     memcpy (&mask[6], mt->mac_mask, 6);
     for (i = 0; i < (mt->prefix_len / 8); i++)
@@ -1131,7 +1143,12 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	mask[l3_src_offs + (mt->prefix_len / 8)] =
 	  0xff - ((1 << (8 - mt->prefix_len % 8)) - 1);
       }
-    mask_len = ((l3_src_offs + (mt->prefix_len / 8)) / 16 + 1) * 16;
+    /*
+     * Round-up the number of bytes needed to store the prefix,
+     * and round up the number of vectors too
+     */
+    mask_len = ((l3_src_offs + ((mt->prefix_len+7) / 8) +
+                (sizeof (u32x4)-1))/sizeof(u32x4)) * sizeof (u32x4);
     acl_classify_add_del_table_small (cm, mask, mask_len, last_table,
 				(~0 == last_table) ? 0 : ~0, &mt->table_index,
 				1);
@@ -1147,7 +1164,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
       u32 action = 0;
       u32 metadata = 0;
       int is6 = a->rules[i].is_ipv6;
-      int l3_src_offs = is6 ? 22 : 26;	/* See the ascii art packet format above to verify these */
+      int l3_src_offs = get_l3_src_offset(is6);
       memset (mask, 0, sizeof (mask));
       memcpy (&mask[6], a->rules[i].src_mac, 6);
       if (is6)
@@ -1219,8 +1236,10 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
       r->is_ipv6 = rules[i].is_ipv6;
       memcpy (&r->src_mac, rules[i].src_mac, 6);
       memcpy (&r->src_mac_mask, rules[i].src_mac_mask, 6);
-
-      memcpy (&r->src_ip_addr, rules[i].src_ip_addr, sizeof (r->src_ip_addr));
+      if(rules[i].is_ipv6)
+        memcpy (&r->src_ip_addr.ip6, rules[i].src_ip_addr, 16);
+      else
+        memcpy (&r->src_ip_addr.ip4, rules[i].src_ip_addr, 4);
       r->src_prefixlen = rules[i].src_ip_prefix_len;
     }
 
@@ -1664,9 +1683,12 @@ send_macip_acl_details (acl_main_t * am, unix_shared_memory_queue_t * q,
 	  memcpy (rules[i].src_mac, &r->src_mac, sizeof (r->src_mac));
 	  memcpy (rules[i].src_mac_mask, &r->src_mac_mask,
 		  sizeof (r->src_mac_mask));
-
-	  memcpy (rules[i].src_ip_addr, &r->src_ip_addr,
-		  sizeof (r->src_ip_addr));
+          if (r->is_ipv6)
+            memcpy (rules[i].src_ip_addr, &r->src_ip_addr.ip6,
+		  sizeof (r->src_ip_addr.ip6));
+          else
+            memcpy (rules[i].src_ip_addr, &r->src_ip_addr.ip4,
+		  sizeof (r->src_ip_addr.ip4));
 	  rules[i].src_ip_prefix_len = r->src_prefixlen;
 	}
     }
