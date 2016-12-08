@@ -982,7 +982,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
       if (disable_flags)
 	bd_set_flags (vm, bd_index, disable_flags, 0 /* disable */ );
 
-      bd_set_mac_age (vm, mp->mac_age, mp->mac_age);
+      bd_set_mac_age (vm, bd_index, mp->mac_age);
     }
   else
     rv = bd_delete_bd_index (bdm, bd_id);
