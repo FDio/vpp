@@ -311,7 +311,23 @@ typedef enum {
 static void bfd_udp4_find_headers (vlib_buffer_t *b, const ip4_header_t **ip4,
                                    const udp_header_t **udp)
 {
-  *ip4 = vnet_buffer (b)->ip.header;
+  /* sanity check first */
+  const i32 start = vnet_buffer (b)->ip.start_of_ip_header;
+  if (start < 0 && start < sizeof (b->pre_data))
+    {
+      BFD_ERR ("Start of ip header is before pre_data, ignoring");
+      *ip4 = NULL;
+      *udp = NULL;
+      return;
+    }
+  *ip4 = (ip4_header_t *)(b->data + start);
+  if ((u8 *)*ip4 > (u8 *)vlib_buffer_get_current (b))
+    {
+      BFD_ERR ("Start of ip header is beyond current data, ignoring");
+      *ip4 = NULL;
+      *udp = NULL;
+      return;
+    }
   *udp = (udp_header_t *)((*ip4) + 1);
 }
 
@@ -493,14 +509,14 @@ static uword bfd_udp_input (vlib_main_t *vm, vlib_node_runtime_t *rt,
       next0 = BFD_UDP_INPUT_NEXT_NORMAL;
       if (BFD_UDP_ERROR_NONE == error0)
         {
-	  /* if everything went fine, check for poll bit, if present, re-use
-	     the buffer and based on (now update) session parameters, send the
-	     final packet back */
+          /* if everything went fine, check for poll bit, if present, re-use
+             the buffer and based on (now update) session parameters, send the
+             final packet back */
           const bfd_pkt_t *pkt = vlib_buffer_get_current (b0);
           if (bfd_pkt_get_poll (pkt))
             {
               bfd_send_final (vm, b0, bs);
-	      next0 = BFD_UDP_INPUT_NEXT_REPLY;
+              next0 = BFD_UDP_INPUT_NEXT_REPLY;
             }
         }
       vlib_set_next_frame_buffer (vm, rt, next0, bi0);
