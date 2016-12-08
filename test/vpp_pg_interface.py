@@ -238,24 +238,29 @@ class VppPGInterface(VppInterface):
         pg_interface.enable_capture()
         self.test.pg_start()
         self.test.logger.info(self.test.vapi.cli("show trace"))
-        ndp_reply = pg_interface.get_capture()
-        if ndp_reply is None or len(ndp_reply) == 0:
+        replies = pg_interface.get_capture()
+        if replies is None or len(replies) == 0:
             self.test.logger.info(
                 "No NDP received on port %s" %
                 pg_interface.name)
             return
-        ndp_reply = ndp_reply[0]
-        # Make Dot1AD packet content recognizable to scapy
-        if ndp_reply.type == 0x88a8:
-            ndp_reply.type = 0x8100
-            ndp_reply = Ether(str(ndp_reply))
-        try:
-            ndp_na = ndp_reply[ICMPv6ND_NA]
-            opt = ndp_na[ICMPv6NDOptDstLLAddr]
-            self.test.logger.info("VPP %s MAC address is %s " %
-                                  (self.name, opt.lladdr))
-            self._local_mac = opt.lladdr
-        except:
-            self.test.logger.error(
-                ppp("Unexpected response to NDP request:", ndp_reply))
+        # Enabling IPv6 on an interface can generate more than the
+        # ND reply we are looking for (namely MLD). So loop through
+        # the replies to look for want we want.
+        for ndp_reply in replies:
+            # Make Dot1AD packet content recognizable to scapy
+            if ndp_reply.type == 0x88a8:
+                ndp_reply.type = 0x8100
+                ndp_reply = Ether(str(ndp_reply))
+            try:
+                ndp_na = ndp_reply[ICMPv6ND_NA]
+                opt = ndp_na[ICMPv6NDOptDstLLAddr]
+                self.test.logger.info("VPP %s MAC address is %s " %
+                                      (self.name, opt.lladdr))
+                self._local_mac = opt.lladdr
+            except:
+                self.test.logger.info(
+                    ppp("Unexpected response to NDP request:", ndp_reply))
+        # if no packets above provided the local MAC, then this failed.
+        if not hasattr(self, '_local_mac'):
             raise
