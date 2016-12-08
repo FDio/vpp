@@ -277,10 +277,10 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
   memset (xd->hqos_ht, 0, sizeof (xd->hqos_ht[0]));
 
   /* Allocate space for one SWQ per worker thread in the I/O TX thread data structure */
-  vec_validate (xd->hqos_ht->swq, worker_thread_count - 1);
+  vec_validate (xd->hqos_ht->swq, worker_thread_count);
 
   /* SWQ */
-  for (i = 0; i < worker_thread_count; i++)
+  for (i = 0; i < worker_thread_count + 1; i++)
     {
       u32 swq_flags = RING_F_SP_ENQ | RING_F_SC_DEQ;
 
@@ -354,9 +354,13 @@ dpdk_port_setup_hqos (dpdk_device_t * xd, dpdk_device_config_hqos_t * hqos)
   xd->hqos_ht->flush_count = 0;
 
   /* Set up per-thread device data for each worker thread */
-  for (i = 0; i < worker_thread_count; i++)
+  for (i = 0; i < worker_thread_count + 1; i++)
     {
-      u32 tid = worker_thread_first + i;
+      u32 tid;
+      if (i)
+	tid = worker_thread_first + (i - 1);
+      else
+	tid = i;
 
       xd->hqos_wt[tid].swq = xd->hqos_ht->swq[i];
       xd->hqos_wt[tid].hqos_field0_slabpos = hqos->pktfield0_slabpos;
