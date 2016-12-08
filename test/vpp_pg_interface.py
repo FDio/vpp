@@ -147,7 +147,7 @@ class VppPGInterface(VppInterface):
             self.test.logger.debug("File %s does not exist, probably because no"
                                    " packets arrived" % self.out_path)
             if remark:
-                raise Exception("No packets captured on %s(%s)" %
+                raise Exception("No packets captured on %s (%s)" %
                                 (self.name, remark))
             else:
                 raise Exception("No packets captured on %s" % self.name)
@@ -171,7 +171,7 @@ class VppPGInterface(VppInterface):
                 pass
             if remark:
                 raise AssertionError(
-                    "Capture file present for interface %s(%s)" %
+                    "Capture file present for interface %s (%s)" %
                     (self.name, remark))
             else:
                 raise AssertionError("Capture file present for interface %s" %
