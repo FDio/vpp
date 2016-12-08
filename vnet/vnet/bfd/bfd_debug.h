@@ -47,6 +47,7 @@
       _s = format (_s, "%6.02f:DBG:%s:%d:%s():" fmt, vlib_time_now (vm), \
                    __file, __LINE__, __func__, ##__VA_ARGS__);           \
       printf ("%s\n", _s);                                               \
+      fflush (stdout);                                                   \
       vec_free (_s);                                                     \
     }                                                                    \
   while (0);
@@ -60,6 +61,7 @@
       _s = format (_s, "%6.02f:ERR:%s:%d:%s():" fmt, vlib_time_now (vm), \
                    __file, __LINE__, __func__, ##__VA_ARGS__);           \
       printf ("%s\n", _s);                                               \
+      fflush (stdout);                                                   \
       vec_free (_s);                                                     \
     }                                                                    \
   while (0);

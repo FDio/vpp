@@ -2,6 +2,7 @@ import os
 import fnmatch
 import time
 from hook import Hook
+from collections import deque
 
 # Sphinx creates auto-generated documentation by importing the python source
 # files and collecting the docstrings from them. The NO_VPP_PAPI flag allows the
@@ -48,7 +49,7 @@ class VppPapiProvider(object):
                 jsonfiles.append(os.path.join(root, filename))
 
         self.papi = VPP(jsonfiles)
-        self._events = list()
+        self._events = deque()
 
     def register_hook(self, hook):
         """Replace hook registration with new hook
@@ -59,19 +60,25 @@ class VppPapiProvider(object):
         self.hook = hook
 
     def collect_events(self):
+        """ Collect all events from the internal queue and clear the queue. """
         e = self._events
-        self._events = list()
+        self._events = deque()
         return e
 
     def wait_for_event(self, timeout, name=None):
+        """ Wait for and return next event. """
+        if self._events:
+            self.test_class.logger.debug("Not waiting, event already queued")
         limit = time.time() + timeout
         while time.time() < limit:
             if self._events:
-                e = self._events.pop(0)
+                e = self._events.popleft()
                 if name and type(e).__name__ != name:
                     raise Exception(
                         "Unexpected event received: %s, expected: %s" %
                         (type(e).__name__, name))
+                self.test_class.logger.debug("Returning event %s:%s" %
+                                             (name, e))
                 return e
             time.sleep(0)  # yield
         if name is not None:
@@ -79,8 +86,10 @@ class VppPapiProvider(object):
         raise Exception("Event did not occur within timeout")
 
     def __call__(self, name, event):
+        """ Enqueue event in the internal event queue. """
         # FIXME use the name instead of relying on type(e).__name__ ?
         # FIXME #2 if this throws, it is eaten silently, Ole?
+        self.test_class.logger.debug("New event: %s: %s" % (name, event))
         self._events.append(event)
 
     def connect(self):
@@ -93,7 +102,7 @@ class VppPapiProvider(object):
         self.papi.disconnect()
 
     def api(self, api_fn, api_args, expected_retval=0):
-        """Call API function and check it's return value
+        """ Call API function and check it's return value.
         Call the appropriate hooks before and after the API call
 
         :param api_fn: API function to call
@@ -107,14 +116,13 @@ class VppPapiProvider(object):
         if hasattr(reply, 'retval') and reply.retval != expected_retval:
             msg = "API call failed, expected retval == %d, got %s" % (
                 expected_retval, repr(reply))
-            self.test_class.logger.error(msg)
+            self.test_class.logger.info(msg)
             raise Exception(msg)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
     def cli(self, cli):
-        """
-        Execute a CLI, calling the before/after hooks appropriately.
+        """ Execute a CLI, calling the before/after hooks appropriately.
 
         :param cli: CLI to execute
         :returns: CLI output
@@ -128,8 +136,7 @@ class VppPapiProvider(object):
             return r.reply.decode().rstrip('\x00')
 
     def ppcli(self, cli):
-        """
-        Helping method to print CLI command in case of info logging level.
+        """ Helper method to print CLI command in case of info logging level.
 
         :param cli: CLI to execute
         :returns: CLI output
@@ -165,8 +172,7 @@ class VppPapiProvider(object):
         return self.api(self.papi.sw_interface_dump, args)
 
     def sw_interface_set_table(self, sw_if_index, is_ipv6, table_id):
-        """
-          Set the IPvX Table-id for the Interface
+        """ Set the IPvX Table-id for the Interface
 
         :param sw_if_index:
         :param is_ipv6:

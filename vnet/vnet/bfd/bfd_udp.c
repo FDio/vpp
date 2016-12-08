@@ -26,6 +26,9 @@ typedef struct
   mhash_t bfd_session_idx_by_bfd_key;
 } bfd_udp_main_t;
 
+static vlib_node_registration_t bfd_udp4_input_node;
+static vlib_node_registration_t bfd_udp6_input_node;
+
 bfd_udp_main_t bfd_udp_main;
 
 void bfd_udp_transport_to_buffer (vlib_main_t *vm, vlib_buffer_t *b,
@@ -510,12 +513,22 @@ static uword bfd_udp_input (vlib_main_t *vm, vlib_node_runtime_t *rt,
       if (BFD_UDP_ERROR_NONE == error0)
         {
           /* if everything went fine, check for poll bit, if present, re-use
-             the buffer and based on (now update) session parameters, send the
+             the buffer and based on (now updated) session parameters, send the
              final packet back */
           const bfd_pkt_t *pkt = vlib_buffer_get_current (b0);
           if (bfd_pkt_get_poll (pkt))
             {
               bfd_send_final (vm, b0, bs);
+              if (is_ipv6)
+                {
+                  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
+                                               b0->error, 1);
+                }
+              else
+                {
+                  vlib_node_increment_counter (vm, bfd_udp4_input_node.index,
+                                               b0->error, 1);
+                }
               next0 = BFD_UDP_INPUT_NEXT_REPLY;
             }
         }

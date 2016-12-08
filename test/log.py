@@ -26,7 +26,8 @@ class ColorFormatter(logging.Formatter):
         return message
 
 handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(ColorFormatter())
+handler.setFormatter(ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
+                                    datefmt="%H:%M:%S"))
 
 global_logger = logging.getLogger()
 global_logger.addHandler(handler)

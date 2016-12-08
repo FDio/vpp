@@ -6,7 +6,7 @@ import tempfile
 import time
 import resource
 from time import sleep
-from Queue import Queue
+from collections import deque
 from threading import Thread
 from inspect import getdoc
 from hook import StepHook, PollHook
@@ -41,9 +41,9 @@ class _PacketInfo(object):
     data = None
 
 
-def pump_output(out, queue):
+def pump_output(out, deque):
     for line in iter(out.readline, b''):
-        queue.put(line)
+        deque.append(line)
 
 
 class VppTestCase(unittest.TestCase):
@@ -185,13 +185,13 @@ class VppTestCase(unittest.TestCase):
         # doesn't get called and we might end with a zombie vpp
         try:
             cls.run_vpp()
-            cls.vpp_stdout_queue = Queue()
+            cls.vpp_stdout_deque = deque()
             cls.vpp_stdout_reader_thread = Thread(target=pump_output, args=(
-                cls.vpp.stdout, cls.vpp_stdout_queue))
+                cls.vpp.stdout, cls.vpp_stdout_deque))
             cls.vpp_stdout_reader_thread.start()
-            cls.vpp_stderr_queue = Queue()
+            cls.vpp_stderr_deque = deque()
             cls.vpp_stderr_reader_thread = Thread(target=pump_output, args=(
-                cls.vpp.stderr, cls.vpp_stderr_queue))
+                cls.vpp.stderr, cls.vpp_stderr_deque))
             cls.vpp_stderr_reader_thread.start()
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls)
             if cls.step:
@@ -239,27 +239,26 @@ class VppTestCase(unittest.TestCase):
                 cls.vpp.terminate()
             del cls.vpp
 
-        if hasattr(cls, 'vpp_stdout_queue'):
+        if hasattr(cls, 'vpp_stdout_deque'):
             cls.logger.info(single_line_delim)
             cls.logger.info('VPP output to stdout while running %s:',
                             cls.__name__)
             cls.logger.info(single_line_delim)
             f = open(cls.tempdir + '/vpp_stdout.txt', 'w')
-            while not cls.vpp_stdout_queue.empty():
-                line = cls.vpp_stdout_queue.get_nowait()
-                f.write(line)
-                cls.logger.info('VPP stdout: %s' % line.rstrip('\n'))
+            vpp_output = "".join(cls.vpp_stdout_deque)
+            f.write(vpp_output)
+            cls.logger.info('\n%s', vpp_output)
+            cls.logger.info(single_line_delim)
 
-        if hasattr(cls, 'vpp_stderr_queue'):
+        if hasattr(cls, 'vpp_stderr_deque'):
             cls.logger.info(single_line_delim)
             cls.logger.info('VPP output to stderr while running %s:',
                             cls.__name__)
             cls.logger.info(single_line_delim)
             f = open(cls.tempdir + '/vpp_stderr.txt', 'w')
-            while not cls.vpp_stderr_queue.empty():
-                line = cls.vpp_stderr_queue.get_nowait()
-                f.write(line)
-                cls.logger.info('VPP stderr: %s' % line.rstrip('\n'))
+            vpp_output = "".join(cls.vpp_stderr_deque)
+            f.write(vpp_output)
+            cls.logger.info('\n%s', vpp_output)
             cls.logger.info(single_line_delim)
 
     @classmethod
@@ -280,6 +279,15 @@ class VppTestCase(unittest.TestCase):
         """ Clear trace before running each test"""
         if self.vpp_dead:
             raise Exception("VPP is dead when setting up the test")
+        time.sleep(.1)
+        self.vpp_stdout_deque.append(
+            "--- test setUp() for %s.%s(%s) starts here ---\n" %
+            (self.__class__.__name__, self._testMethodName,
+             self._testMethodDoc))
+        self.vpp_stderr_deque.append(
+            "--- test setUp() for %s.%s(%s) starts here ---\n" %
+            (self.__class__.__name__, self._testMethodName,
+             self._testMethodDoc))
         self.vapi.cli("clear trace")
         # store the test instance inside the test class - so that objects
         # holding the class can access instance methods (like assertEqual)
@@ -297,14 +305,14 @@ class VppTestCase(unittest.TestCase):
             i.enable_capture()
 
     @classmethod
-    def pg_start(cls):
+    def pg_start(cls, sleep_time=1):
         """
         Enable the packet-generator and send all prepared packet streams
         Remove the packet streams afterwards
         """
         cls.vapi.cli("trace add pg-input 50")  # 50 is maximum
         cls.vapi.cli('packet-generator enable')
-        sleep(1)  # give VPP some time to process the packets
+        sleep(sleep_time)  # give VPP some time to process the packets
         for stream in cls.pg_streams:
             cls.vapi.cli('packet-generator delete %s' % stream)
         cls.pg_streams = []
