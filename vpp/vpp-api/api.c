@@ -3104,6 +3104,7 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
   u32 encap_fib_index;
   uword *p;
   ip4_main_t *im = &ip4_main;
+  vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
 
   p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
@@ -3129,6 +3130,13 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
       goto out;
     }
   a->mcast_sw_if_index = ntohl (mp->mcast_sw_if_index);
+  if (ip46_address_is_multicast (&a->dst) &&
+      pool_is_free_index (vnm->interface_main.sw_interfaces,
+			  a->mcast_sw_if_index))
+    {
+      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      goto out;
+    }
   a->encap_fib_index = encap_fib_index;
   a->decap_next_index = ntohl (mp->decap_next_index);
   a->vni = ntohl (mp->vni);
