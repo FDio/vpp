@@ -252,14 +252,14 @@ class BFDTestCase(VppTestCase):
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         self.verify_event(e, expected_state=BFDState.down)
 
-    @unittest.skip("this test is not working yet")
     def test_large_required_min_rx(self):
+        """ large remote RequiredMinRxInterval """
         self.bfd_session_up()
-        interval = 5000000
+        interval = 3000000
         self.test_session.update(required_min_rx_interval=interval)
         self.test_session.send_packet()
         now = time.time()
-        count = 1
+        count = 0
         while time.time() < now + interval / 1000000:
             try:
                 p = self.wait_for_bfd_packet()

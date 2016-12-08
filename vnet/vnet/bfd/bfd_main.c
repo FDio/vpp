@@ -129,6 +129,17 @@ bfd_calc_next_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 	  bs->tx_timeout_clocks = now +
 	    (1 - .25 * (random_f64 (&bm->random_seed))) *
 	    bs->transmit_interval_clocks;
+	  if (bs->tx_timeout_clocks < now)
+	    {
+	      /* huh, we've missed it already, skip the missed events */
+	      const u64 missed =
+		(now - bs->tx_timeout_clocks) / bs->transmit_interval_clocks;
+	      BFD_ERR ("Missed %lu transmit events (now is %lu, calc "
+		       "tx_timeout is %lu)!",
+		       missed, now, bs->tx_timeout_clocks);
+	      bs->tx_timeout_clocks +=
+		(missed + 1) * bs->transmit_interval_clocks;
+	    }
 	}
       else
 	{
@@ -137,6 +148,17 @@ bfd_calc_next_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 	    now +
 	    (.9 - .15 * (random_f64 (&bm->random_seed))) *
 	    bs->transmit_interval_clocks;
+	  if (bs->tx_timeout_clocks < now)
+	    {
+	      /* huh, we've missed it already, skip the missed events */
+	      const u64 missed =
+		(now - bs->tx_timeout_clocks) / bs->transmit_interval_clocks;
+	      BFD_ERR ("Missed %lu transmit events (now is %lu, calc "
+		       "tx_timeout is %lu)!",
+		       missed, now, bs->tx_timeout_clocks);
+	      bs->tx_timeout_clocks +=
+		(missed + 1) * bs->transmit_interval_clocks;
+	    }
 	}
     }
   else
@@ -200,12 +222,11 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
   BFD_DBG ("bs_idx=%u, tx_timeout=%lu, rx_timeout=%lu, next=%s", bs->bs_idx,
 	   bs->tx_timeout_clocks, rx_timeout,
 	   next == bs->tx_timeout_clocks ? "tx" : "rx");
-  if (next && (next < bs->wheel_time_clocks || !bs->wheel_time_clocks))
+  /* sometimes the wheel expires an event a bit sooner than requested, account
+     for that here */
+  if (next && (now + bm->wheel_inaccuracy > bs->wheel_time_clocks ||
+	       next < bs->wheel_time_clocks || !bs->wheel_time_clocks))
     {
-      if (bs->wheel_time_clocks)
-	{
-	  timing_wheel_delete (&bm->wheel, bs->bs_idx);
-	}
       bs->wheel_time_clocks = next;
       BFD_DBG ("timing_wheel_insert(%p, %lu (%ld clocks/%.2fs in the "
 	       "future), %u);",
@@ -232,6 +253,22 @@ bfd_set_desired_min_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now,
   BFD_DBG ("Set desired min tx to %uus/%lu clocks/%.2fs",
 	   bs->desired_min_tx_us, bs->desired_min_tx_clocks,
 	   bs->desired_min_tx_clocks / bm->cpu_cps);
+  bfd_recalc_detection_time (bm, bs);
+  bfd_recalc_tx_interval (bm, bs);
+  bfd_calc_next_tx (bm, bs, now);
+  bfd_set_timer (bm, bs, now, handling_wakeup);
+}
+
+static void
+bfd_set_remote_required_min_rx (bfd_main_t * bm, bfd_session_t * bs,
+				u64 now,
+				u32 remote_required_min_rx_us,
+				int handling_wakeup)
+{
+  bs->remote_min_rx_us = remote_required_min_rx_us;
+  bs->remote_min_rx_clocks = bfd_us_to_clocks (bm, bs->remote_min_rx_us);
+  BFD_DBG ("Set remote min rx to %uus/%lu clocks/%.2fs", bs->remote_min_rx_us,
+	   bs->remote_min_rx_clocks, bs->remote_min_rx_clocks / bm->cpu_cps);
   bfd_recalc_detection_time (bm, bs);
   bfd_recalc_tx_interval (bm, bs);
   bfd_calc_next_tx (bm, bs, now);
@@ -470,7 +507,9 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
      bfd.SessionState is Up, and bfd.RemoteSessionState is Up) and a Poll
      Sequence is not being transmitted.
    */
-  if (now >= bs->tx_timeout_clocks)
+  /* sometimes the wheel expires an event a bit sooner than requested, account
+     for that here */
+  if (now + bm->wheel_inaccuracy >= bs->tx_timeout_clocks)
     {
       BFD_DBG ("Send periodic control frame for bs_idx=%lu", bs->bs_idx);
       vlib_buffer_t *b = bfd_create_frame (vm, rt, bs);
@@ -484,7 +523,9 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
     }
   else
     {
-      BFD_DBG ("No need to send control frame now");
+      BFD_DBG
+	("No need to send control frame now, now is %lu, tx_timeout is %lu",
+	 now, bs->tx_timeout_clocks);
     }
   bfd_set_timer (bm, bs, now, handling_wakeup);
 }
@@ -502,7 +543,10 @@ static void
 bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 		      int handling_wakeup)
 {
-  if (bs->last_rx_clocks + bs->detection_time_clocks < now)
+  /* sometimes the wheel expires an event a bit sooner than requested, account
+     for that here */
+  if (bs->last_rx_clocks + bs->detection_time_clocks <=
+      now + bm->wheel_inaccuracy)
     {
       BFD_DBG ("Rx timeout, session goes down");
       bfd_set_diag (bs, BFD_DIAG_CODE_det_time_exp);
@@ -535,31 +579,6 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
       bfd_send_periodic (vm, rt, bm, bs, now, 1);
       break;
     }
-}
-
-/*
- * bfd input routine
- */
-bfd_error_t
-bfd_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0)
-{
-  // bfd_main_t *bm = &bfd_main;
-  bfd_error_t e;
-
-  /* find our interface */
-  bfd_session_t *s = NULL;
-  // bfd_get_intf (lm, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-
-  if (!s)
-    {
-      /* bfd disabled on this interface, we're done */
-      return BFD_ERROR_DISABLED;
-    }
-
-  /* Actually scan the packet */
-  e = BFD_ERROR_NONE;		// bfd_packet_scan (lm, n, vlib_buffer_get_current (b0));
-
-  return e;
 }
 
 /*
@@ -637,7 +656,6 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	if (!pool_is_free_index (bm->sessions, bs_idx))
 	  {
 	    bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
-	    bs->wheel_time_clocks = 0;	/* no longer scheduled */
 	    bfd_on_timeout (vm, rt, bm, bs, now);
 	  }
       }
@@ -714,6 +732,7 @@ bfd_main_init (vlib_main_t * vm)
   BFD_DBG ("cps is %.2f", bm->cpu_cps);
   const u64 now = clib_cpu_time_now ();
   timing_wheel_init (&bm->wheel, now, bm->cpu_cps);
+  bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
 
   return 0;
 }
@@ -864,14 +883,12 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   bs->remote_discr = pkt->my_disc;
   bs->remote_state = bfd_pkt_get_state (pkt);
   bs->remote_demand = bfd_pkt_get_demand (pkt);
-  bs->remote_min_rx_us = clib_net_to_host_u32 (pkt->req_min_rx);
-  bs->remote_min_rx_clocks = bfd_us_to_clocks (bm, bs->remote_min_rx_us);
-  BFD_DBG ("Set remote min rx to %lu clocks/%.2fs", bs->remote_min_rx_clocks,
-	   bs->remote_min_rx_clocks / bm->cpu_cps);
+  u64 now = clib_cpu_time_now ();
+  bs->last_rx_clocks = now;
   bs->remote_desired_min_tx_us = clib_net_to_host_u32 (pkt->des_min_tx);
   bs->remote_detect_mult = pkt->head.detect_mult;
-  bfd_recalc_detection_time (bm, bs);
-  bs->last_rx_clocks = clib_cpu_time_now ();
+  bfd_set_remote_required_min_rx (bm, bs, now,
+				  clib_net_to_host_u32 (pkt->req_min_rx), 0);
   /* FIXME
      If the Required Min Echo RX Interval field is zero, the
      transmission of Echo packets, if any, MUST cease.

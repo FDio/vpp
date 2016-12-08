@@ -442,7 +442,7 @@ static bfd_udp_error_t bfd_udp4_scan (vlib_main_t *vm, vlib_node_runtime_t *rt,
       BFD_ERR ("BFD session lookup failed - no session matches BFD pkt");
       return BFD_UDP_ERROR_BAD;
     }
-  BFD_DBG ("BFD session found, bs_idx=%d", bs->bs_idx);
+  BFD_DBG ("BFD session found, bs_idx=%u", bs->bs_idx);
   if (!bfd_verify_pkt_session (pkt, b->current_length, bs))
     {
       return BFD_UDP_ERROR_BAD;

@@ -23,32 +23,30 @@
 #define BFD_DEBUG (0)
 
 #if BFD_DEBUG
-#define BFD_DEBUG_FILE_DEF              \
-  static const char *__file = NULL;     \
-  if (!__file)                          \
-    {                                   \
-      __file = strrchr (__FILE__, '/'); \
-      if (__file)                       \
-        {                               \
-          ++__file;                     \
-        }                               \
-      else                              \
-        {                               \
-          __file = __FILE__;            \
-        }                               \
-    }
+#define BFD_DEBUG_FILE_DEF            \
+  static const char *__file = NULL;   \
+  {                                   \
+    __file = strrchr (__FILE__, '/'); \
+    if (__file)                       \
+      {                               \
+        ++__file;                     \
+      }                               \
+    else                              \
+      {                               \
+        __file = __FILE__;            \
+      }                               \
+  }
 
 #define BFD_DBG(fmt, ...)                                                \
   do                                                                     \
     {                                                                    \
       BFD_DEBUG_FILE_DEF                                                 \
-      u8 *_s = NULL;                                                     \
+      static u8 *_s = NULL;                                              \
       vlib_main_t *vm = vlib_get_main ();                                \
       _s = format (_s, "%6.02f:DBG:%s:%d:%s():" fmt, vlib_time_now (vm), \
                    __file, __LINE__, __func__, ##__VA_ARGS__);           \
-      printf ("%s\n", _s);                                               \
-      fflush (stdout);                                                   \
-      vec_free (_s);                                                     \
+      printf ("%.*s\n", vec_len (_s), _s);                               \
+      vec_reset_length (_s);                                             \
     }                                                                    \
   while (0);
 
@@ -56,13 +54,12 @@
   do                                                                     \
     {                                                                    \
       BFD_DEBUG_FILE_DEF                                                 \
-      u8 *_s = NULL;                                                     \
+      static u8 *_s = NULL;                                              \
       vlib_main_t *vm = vlib_get_main ();                                \
       _s = format (_s, "%6.02f:ERR:%s:%d:%s():" fmt, vlib_time_now (vm), \
                    __file, __LINE__, __func__, ##__VA_ARGS__);           \
-      printf ("%s\n", _s);                                               \
-      fflush (stdout);                                                   \
-      vec_free (_s);                                                     \
+      printf ("%.*s\n", vec_len (_s), _s);                               \
+      vec_reset_length (_s);                                             \
     }                                                                    \
   while (0);
 
