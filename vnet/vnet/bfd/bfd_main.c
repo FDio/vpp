@@ -570,15 +570,23 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	{
 	  BFD_DBG ("wait for event without timeout");
 	  (void) vlib_process_wait_for_event (vm);
+	  event_type = vlib_process_get_events (vm, &event_data);
 	}
       else
 	{
 	  f64 timeout = ((i64) next_expire - (i64) now) / bm->cpu_cps;
 	  BFD_DBG ("wait for event with timeout %.02f", timeout);
-	  ASSERT (timeout > 0);
-	  (void) vlib_process_wait_for_event_or_clock (vm, timeout);
+	  if (timeout < 0)
+	    {
+	      BFD_DBG ("negative timeout, already expired, skipping wait");
+	      event_type = ~0;
+	    }
+	  else
+	    {
+	      (void) vlib_process_wait_for_event_or_clock (vm, timeout);
+	      event_type = vlib_process_get_events (vm, &event_data);
+	    }
 	}
-      event_type = vlib_process_get_events (vm, &event_data);
       now = clib_cpu_time_now ();
       switch (event_type)
 	{
