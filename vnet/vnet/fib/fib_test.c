@@ -48,7 +48,7 @@
 #define FIB_TEST(_cond, _comment, _args...)			\
 {								\
     if (!FIB_TEST_I(_cond, _comment, ##_args)) {		\
-	return;\
+	return 1;                                               \
 	ASSERT(!("FAIL: " _comment));				\
     }								\
 }
@@ -104,7 +104,7 @@ VNET_DEVICE_CLASS (test_interface_device_class,static) = {
 
 static u8 *hw_address;
 
-static void
+static int
 fib_test_mk_intf (u32 ninterfaces)
 {
     clib_error_t * error = NULL;
@@ -158,6 +158,8 @@ fib_test_mk_intf (u32 ninterfaces)
 	tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
 					  tm->hw_if_indicies[i]);
     }
+
+    return (0);
 }
 
 #define FIB_TEST_REC_FORW(_rec_prefix, _via_prefix, _bucket)		\
@@ -570,7 +572,7 @@ fib_test_validate_entry (fib_node_index_t fei,
     return (res);
 }
 
-static void
+static int
 fib_test_v4 (void)
 {
     /*
@@ -3649,10 +3651,10 @@ fib_test_v4 (void)
     FIB_TEST((NBR-5 == pool_elts(fib_urpf_list_pool)), "uRPF pool size is %d",
     	     pool_elts(fib_urpf_list_pool));
 
-    return;
+    return 0;
 }
 
-static void
+static int
 fib_test_v6 (void)
 {
     /*
@@ -4531,12 +4533,14 @@ fib_test_v6 (void)
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
+
+    return (0);
 }
 
 /*
  * Test Attached Exports
  */
-static void
+static int
 fib_test_ae (void)
 {
     const dpo_id_t *dpo, *dpo_drop;
@@ -5077,13 +5081,15 @@ fib_test_ae (void)
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
+
+    return (0);
 }
 
 
 /*
  * Test the recursive route route handling for GRE tunnels
  */
-static void
+static int
 fib_test_label (void)
 {
     fib_node_index_t fei, ai_mpls_10_10_10_1, ai_v4_10_10_11_1, ai_v4_10_10_11_2, ai_mpls_10_10_11_2, ai_mpls_10_10_11_1;
@@ -6180,6 +6186,8 @@ fib_test_label (void)
     FIB_TEST(lb_count+1 == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",
              lb_count+1, pool_elts(load_balance_pool));
+
+    return (0);
 }
 
 #define N_TEST_CHILDREN 4
@@ -6253,7 +6261,7 @@ f64 fib_walk_process_queues(vlib_main_t * vm,
                             const f64 quota);
 u32 fib_walk_queue_get_size(fib_walk_priority_t prio);
 
-static void
+static int
 fib_test_walk (void)
 {
     fib_node_back_walk_ctx_t high_ctx = {}, low_ctx = {};
@@ -6652,10 +6660,12 @@ fib_test_walk (void)
      */
     FIB_TEST((1 == fib_test_nodes[PARENT_INDEX].destroyed),
              "Parent was destroyed");
+
+    return (0);
 }
 
-static void
-lfib_test_deagg (void)
+static int
+lfib_test (void)
 {
     const mpls_label_t deag_label = 50;
     const u32 lfib_index = 0;
@@ -7024,6 +7034,8 @@ lfib_test_deagg (void)
     FIB_TEST(lb_count == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",
              lb_count, pool_elts(load_balance_pool));
+
+    return (0);
 }
 
 static clib_error_t *
@@ -7031,28 +7043,31 @@ fib_test (vlib_main_t * vm,
 	  unformat_input_t * input,
 	  vlib_cli_command_t * cmd_arg)
 {
+    int res;
+
+    res = 0;
     fib_test_mk_intf(4);
 
     if (unformat (input, "ip"))
     {
-	fib_test_v4();
-	fib_test_v6();
+	res += fib_test_v4();
+	res += fib_test_v6();
     }
     else if (unformat (input, "label"))
     {
-	fib_test_label();
+	res += fib_test_label();
     }
     else if (unformat (input, "ae"))
     {
-	fib_test_ae();
+	res += fib_test_ae();
     }
     else if (unformat (input, "lfib"))
     {
-	lfib_test_deagg();
+	res += lfib_test();
     }
     else if (unformat (input, "walk"))
     {
-	fib_test_walk();
+	res += fib_test_walk();
     }
     else
     {
@@ -7062,14 +7077,21 @@ fib_test (vlib_main_t * vm,
          *
          * fib_test_walk();
          */
-	fib_test_v4();
-	fib_test_v6();
-	fib_test_ae();
-	fib_test_label();
-	lfib_test_deagg();
+	res += fib_test_v4();
+	res += fib_test_v6();
+	res += fib_test_ae();
+	res += fib_test_label();
+	res += lfib_test();
     }
 
-    return (NULL);
+    if (res)
+    {
+        return clib_error_return(0, "FIB Unit Test Failed");
+    }
+    else
+    {
+        return (NULL);
+    }
 }
 
 VLIB_CLI_COMMAND (test_fib_command, static) = {
