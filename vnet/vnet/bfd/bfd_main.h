@@ -49,7 +49,7 @@ typedef enum
 typedef struct
 {
   /* index in bfd_main.sessions pool */
-  uword bs_idx;
+  u32 bs_idx;
 
   /* session state */
   bfd_state_e local_state;
@@ -93,10 +93,13 @@ typedef struct
   /* 1 if remote system sets demand mode, 0 otherwise */
   u8 remote_demand;
 
+  /* local detect multiplier */
   u8 local_detect_mult;
+
+  /* remote detect multiplier */
   u8 remote_detect_mult;
 
-  /* set to value of timer in timing wheel, 0 if not set */
+  /* set to value of timer in timing wheel, 0 if never set */
   u64 wheel_time_clocks;
 
   /* transmit interval */
@@ -134,6 +137,9 @@ typedef struct
   /* timing wheel for scheduling timeouts */
   timing_wheel_t wheel;
 
+  /* timing wheel inaccuracy, in clocks */
+  u64 wheel_inaccuracy;
+
   /* hashmap - bfd session by discriminator */
   u32 *session_by_disc;
 
@@ -149,9 +155,6 @@ typedef struct
 
   /* for generating random numbers */
   u32 random_seed;
-
-  /* pool of event subscribers */
-  //event_subscriber_t *subscribers;
 
 } bfd_main_t;
 
@@ -184,7 +187,6 @@ enum
   BFD_EVENT_NEW_SESSION,
 } bfd_process_event_e;
 
-bfd_error_t bfd_input (vlib_main_t * vm, vlib_buffer_t * b0, u32 bi0);
 u8 *bfd_input_format_trace (u8 * s, va_list * args);
 
 bfd_session_t *bfd_get_session (bfd_main_t * bm, bfd_transport_t t);
