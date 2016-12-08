@@ -59,8 +59,8 @@ typedef enum
   BFD_INPUT_N_NEXT,
 } bfd_input_next_t;
 
-static void bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs,
-				 u64 now);
+static void bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
+				 int handling_wakeup);
 
 static void
 bfd_set_defaults (bfd_main_t * bm, bfd_session_t * bs)
@@ -88,7 +88,8 @@ bfd_set_diag (bfd_session_t * bs, bfd_diag_code_e code)
 }
 
 static void
-bfd_set_state (bfd_main_t * bm, bfd_session_t * bs, bfd_state_e new_state)
+bfd_set_state (bfd_main_t * bm, bfd_session_t * bs,
+	       bfd_state_e new_state, int handling_wakeup)
 {
   if (bs->local_state != new_state)
     {
@@ -96,7 +97,7 @@ bfd_set_state (bfd_main_t * bm, bfd_session_t * bs, bfd_state_e new_state)
 	       bfd_state_string (bs->local_state),
 	       bfd_state_string (new_state));
       bs->local_state = new_state;
-      bfd_on_state_change (bm, bs, clib_cpu_time_now ());
+      bfd_on_state_change (bm, bs, clib_cpu_time_now (), handling_wakeup);
     }
 }
 
@@ -175,7 +176,8 @@ bfd_recalc_detection_time (bfd_main_t * bm, bfd_session_t * bs)
 }
 
 static void
-bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now)
+bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
+	       int handling_wakeup)
 {
   u64 next = 0;
   u64 rx_timeout = 0;
@@ -212,12 +214,18 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 	       (i64) (bs->wheel_time_clocks - clib_cpu_time_now ()) /
 	       bm->cpu_cps, bs->bs_idx);
       timing_wheel_insert (&bm->wheel, bs->wheel_time_clocks, bs->bs_idx);
+      if (!handling_wakeup)
+	{
+	  vlib_process_signal_event (bm->vlib_main,
+				     bm->bfd_process_node_index,
+				     BFD_EVENT_RESCHEDULE, bs->bs_idx);
+	}
     }
 }
 
 static void
 bfd_set_desired_min_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now,
-			u32 desired_min_tx_us)
+			u32 desired_min_tx_us, int handling_wakeup)
 {
   bs->desired_min_tx_us = desired_min_tx_us;
   bs->desired_min_tx_clocks = bfd_us_to_clocks (bm, bs->desired_min_tx_us);
@@ -227,7 +235,7 @@ bfd_set_desired_min_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now,
   bfd_recalc_detection_time (bm, bs);
   bfd_recalc_tx_interval (bm, bs);
   bfd_calc_next_tx (bm, bs, now);
-  bfd_set_timer (bm, bs, now);
+  bfd_set_timer (bm, bs, now, handling_wakeup);
 }
 
 void
@@ -295,12 +303,12 @@ bfd_session_set_flags (u32 bs_idx, u8 admin_up_down)
   bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
   if (admin_up_down)
     {
-      bfd_set_state (bm, bs, BFD_STATE_down);
+      bfd_set_state (bm, bs, BFD_STATE_down, 0);
     }
   else
     {
       bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
-      bfd_set_state (bm, bs, BFD_STATE_admin_down);
+      bfd_set_state (bm, bs, BFD_STATE_admin_down, 0);
     }
   return 0;
 }
@@ -344,7 +352,8 @@ bfd_input_format_trace (u8 * s, va_list * args)
 }
 
 static void
-bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now)
+bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
+		     int handling_wakeup)
 {
   BFD_DBG ("State changed: %U", format_bfd_session, bs);
   bfd_event (bm, bs);
@@ -353,20 +362,24 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now)
     case BFD_STATE_admin_down:
       bfd_set_desired_min_tx (bm, bs, now,
 			      clib_max (bs->config_desired_min_tx_us,
-					BFD_DEFAULT_DESIRED_MIN_TX_US));
+					BFD_DEFAULT_DESIRED_MIN_TX_US),
+			      handling_wakeup);
       break;
     case BFD_STATE_down:
       bfd_set_desired_min_tx (bm, bs, now,
 			      clib_max (bs->config_desired_min_tx_us,
-					BFD_DEFAULT_DESIRED_MIN_TX_US));
+					BFD_DEFAULT_DESIRED_MIN_TX_US),
+			      handling_wakeup);
       break;
     case BFD_STATE_init:
       bfd_set_desired_min_tx (bm, bs, now,
 			      clib_max (bs->config_desired_min_tx_us,
-					BFD_DEFAULT_DESIRED_MIN_TX_US));
+					BFD_DEFAULT_DESIRED_MIN_TX_US),
+			      handling_wakeup);
       break;
     case BFD_STATE_up:
-      bfd_set_desired_min_tx (bm, bs, now, bs->config_desired_min_tx_us);
+      bfd_set_desired_min_tx (bm, bs, now, bs->config_desired_min_tx_us,
+			      handling_wakeup);
       break;
     }
 }
@@ -441,7 +454,8 @@ bfd_init_control_frame (vlib_buffer_t * b, bfd_session_t * bs)
 
 static void
 bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		   bfd_main_t * bm, bfd_session_t * bs, u64 now)
+		   bfd_main_t * bm, bfd_session_t * bs, u64 now,
+		   int handling_wakeup)
 {
   if (!bs->remote_min_rx_us)
     {
@@ -472,7 +486,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       BFD_DBG ("No need to send control frame now");
     }
-  bfd_set_timer (bm, bs, now);
+  bfd_set_timer (bm, bs, now, handling_wakeup);
 }
 
 void
@@ -485,13 +499,14 @@ bfd_send_final (vlib_main_t * vm, vlib_buffer_t * b, bfd_session_t * bs)
 }
 
 static void
-bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now)
+bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
+		      int handling_wakeup)
 {
   if (bs->last_rx_clocks + bs->detection_time_clocks < now)
     {
       BFD_DBG ("Rx timeout, session goes down");
       bfd_set_diag (bs, BFD_DIAG_CODE_det_time_exp);
-      bfd_set_state (bm, bs, BFD_STATE_down);
+      bfd_set_state (bm, bs, BFD_STATE_down, handling_wakeup);
     }
 }
 
@@ -508,7 +523,7 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
       abort ();
       break;
     case BFD_STATE_down:
-      bfd_send_periodic (vm, rt, bm, bs, now);
+      bfd_send_periodic (vm, rt, bm, bs, now, 1);
       break;
     case BFD_STATE_init:
       BFD_ERR ("Unexpected timeout when in %s state",
@@ -516,8 +531,8 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
       abort ();
       break;
     case BFD_STATE_up:
-      bfd_check_rx_timeout (bm, bs, now);
-      bfd_send_periodic (vm, rt, bm, bs, now);
+      bfd_check_rx_timeout (bm, bs, now, 1);
+      bfd_send_periodic (vm, rt, bm, bs, now, 1);
       break;
     }
 }
@@ -602,7 +617,7 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    {
 	      bfd_session_t *bs =
 		pool_elt_at_index (bm->sessions, *event_data);
-	      bfd_send_periodic (vm, rt, bm, bs, now);
+	      bfd_send_periodic (vm, rt, bm, bs, now, 1);
 	    }
 	  while (0);
 	  break;
@@ -710,6 +725,7 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_t t)
 {
   bfd_session_t *result;
   pool_get (bm->sessions, result);
+  memset (result, 0, sizeof (*result));
   result->bs_idx = result - bm->sessions;
   result->transport = t;
   result->local_discr = random_u32 (&bm->random_seed);
@@ -871,17 +887,17 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   if (BFD_STATE_admin_down == bs->remote_state)
     {
       bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
-      bfd_set_state (bm, bs, BFD_STATE_down);
+      bfd_set_state (bm, bs, BFD_STATE_down, 0);
     }
   else if (BFD_STATE_down == bs->local_state)
     {
       if (BFD_STATE_down == bs->remote_state)
 	{
-	  bfd_set_state (bm, bs, BFD_STATE_init);
+	  bfd_set_state (bm, bs, BFD_STATE_init, 0);
 	}
       else if (BFD_STATE_init == bs->remote_state)
 	{
-	  bfd_set_state (bm, bs, BFD_STATE_up);
+	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
 	}
     }
   else if (BFD_STATE_init == bs->local_state)
@@ -889,7 +905,7 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
       if (BFD_STATE_up == bs->remote_state ||
 	  BFD_STATE_init == bs->remote_state)
 	{
-	  bfd_set_state (bm, bs, BFD_STATE_up);
+	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
 	}
     }
   else				/* BFD_STATE_up == bs->local_state */
@@ -897,7 +913,7 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
       if (BFD_STATE_down == bs->remote_state)
 	{
 	  bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
-	  bfd_set_state (bm, bs, BFD_STATE_down);
+	  bfd_set_state (bm, bs, BFD_STATE_down, 0);
 	}
     }
 }

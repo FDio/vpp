@@ -161,7 +161,8 @@ class VppBFDUDPSession(VppObject):
     def detect_mult(self):
         return self._detect_mult
 
-    def __init__(self, test, interface, peer_addr, local_addr=None, af=AF_INET):
+    def __init__(self, test, interface, peer_addr, local_addr=None, af=AF_INET,
+                 desired_min_tx=100000, required_min_rx=100000, detect_mult=3):
         self._test = test
         self._interface = interface
         self._af = af
@@ -169,9 +170,9 @@ class VppBFDUDPSession(VppObject):
         self._peer_addr = peer_addr
         self._peer_addr_n = socket.inet_pton(af, peer_addr)
         self._bs_index = None
-        self._desired_min_tx = 200000  # 0.2s
-        self._required_min_rx = 200000  # 0.2s
-        self._detect_mult = 3  # 3 packets need to be missed
+        self._desired_min_tx = desired_min_tx
+        self._required_min_rx = required_min_rx
+        self._detect_mult = detect_mult
 
     def add_vpp_config(self):
         is_ipv6 = 1 if AF_INET6 == self.af else 0
