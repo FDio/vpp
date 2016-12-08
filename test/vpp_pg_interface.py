@@ -145,7 +145,7 @@ class VppPGInterface(VppInterface):
             output = rdpcap(self.out_path)
             self.test.logger.debug("Capture has %s packets" % len(output.res))
         except:
-            self.test.logger.debug("Exception in scapy.rdpcap(%s): %s" %
+            self.test.logger.debug("Exception in scapy.rdpcap (%s): %s" %
                                    (self.out_path, format_exc()))
             return None
         before = len(output.res)
@@ -182,7 +182,7 @@ class VppPGInterface(VppInterface):
             if expected_count == 0:
                 raise Exception(
                     "Internal error, expected packet count for %s is 0!" % name)
-        self.test.logger.debug("Expecting to capture %s(%s) packets on %s" % (
+        self.test.logger.debug("Expecting to capture %s (%s) packets on %s" % (
             expected_count, based_on, name))
         while remaining_time > 0:
             before = time.time()
@@ -213,22 +213,20 @@ class VppPGInterface(VppInterface):
             try:
                 capture = self.get_capture(
                     0, remark=remark, filter_out_fn=filter_out_fn)
-                if capture:
-                    if len(capture.res) == 0:
-                        # junk filtered out, we're good
-                        return
-                    self.test.logger.error(
-                        ppc("Unexpected packets captured:", capture))
+                if not capture:
+                    # junk filtered out, we're good
+                    return
+                self.test.logger.error(
+                    ppc("Unexpected packets captured:", capture))
             except:
                 pass
             if remark:
                 raise AssertionError(
-                    "Non-empty capture file present for interface %s(%s)" %
+                    "Non-empty capture file present for interface %s (%s)" %
                     (self.name, remark))
             else:
-                raise AssertionError(
-                    "Non-empty capture file present for interface %s" %
-                    self.name)
+                raise AssertionError("Capture file present for interface %s" %
+                                     self.name)
 
     def wait_for_capture_file(self, timeout=1):
         """
