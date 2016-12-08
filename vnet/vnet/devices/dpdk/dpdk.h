@@ -467,7 +467,6 @@ struct rte_mbuf *dpdk_zerocopy_replicate_packet_mb (vlib_buffer_t * b);
   _(NONE, "no error")							\
   _(RX_PACKET_ERROR, "Rx packet errors")				\
   _(RX_BAD_FCS, "Rx bad fcs")						\
-  _(L4_CHECKSUM_ERROR, "Rx L4 checksum errors")				\
   _(IP_CHECKSUM_ERROR, "Rx ip checksum errors")				\
   _(RX_ALLOC_FAIL, "rx buf alloc from free list failed")		\
   _(RX_ALLOC_NO_PHYSMEM, "rx buf alloc failed no physmem")		\

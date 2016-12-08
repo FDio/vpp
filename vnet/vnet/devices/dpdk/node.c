@@ -79,11 +79,6 @@ dpdk_rx_error_from_mb (struct rte_mbuf *mb, u32 * next, u8 * error)
       *error = DPDK_ERROR_IP_CHECKSUM_ERROR;
       *next = VNET_DEVICE_INPUT_NEXT_DROP;
     }
-  else if (mb->ol_flags & PKT_RX_L4_CKSUM_BAD)
-    {
-      *error = DPDK_ERROR_L4_CHECKSUM_ERROR;
-      *next = VNET_DEVICE_INPUT_NEXT_DROP;
-    }
   else
     *error = DPDK_ERROR_NONE;
 }
@@ -353,8 +348,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	      dpdk_rx_next_from_mb (mb3, b3, &next3);
 	    }
 
-	  if (PREDICT_FALSE (or_ol_flags & (PKT_RX_IP_CKSUM_BAD |
-					    PKT_RX_L4_CKSUM_BAD)))
+	  if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
 	    {
 	      dpdk_rx_error_from_mb (mb0, &next0, &error0);
 	      dpdk_rx_error_from_mb (mb1, &next1, &error1);
@@ -564,8 +558,7 @@ poll_rate_limit (dpdk_main_t * dm)
 
     @em Uses:
     - <code>struct rte_mbuf mb->ol_flags</code>
-        - PKT_EXT_RX_PKT_ERROR, PKT_EXT_RX_BAD_FCS
-        PKT_RX_IP_CKSUM_BAD, PKT_RX_L4_CKSUM_BAD
+        - PKT_RX_IP_CKSUM_BAD
     - <code> RTE_ETH_IS_xxx_HDR(mb->packet_type) </code>
         - packet classification result
 
