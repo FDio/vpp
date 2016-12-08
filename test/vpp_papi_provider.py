@@ -595,6 +595,54 @@ class VppPapiProvider(object):
              }
         )
 
+    def reset_vrf(self,
+                  vrf_id,
+                  is_ipv6=0,
+                  ):
+        """ Reset VRF (remove all routes etc.) request.
+
+        :param int vrf_id: ID of the FIB table / VRF to reset.
+        :param int is_ipv6: 1 for IPv6 neighbor, 0 for IPv4. (Default = 0)
+        """
+
+        return self.api(
+            self.papi.reset_vrf,
+            {'vrf_id': vrf_id,
+             'is_ipv6': is_ipv6,
+             }
+        )
+
+    def reset_fib(self,
+                  vrf_id,
+                  is_ipv6=0,
+                  ):
+        """ Reset VRF (remove all routes etc.) request.
+
+        :param int vrf_id: ID of the FIB table / VRF to reset.
+        :param int is_ipv6: 1 for IPv6 neighbor, 0 for IPv4. (Default = 0)
+        """
+
+        return self.api(
+            self.papi.reset_fib,
+            {'vrf_id': vrf_id,
+             'is_ipv6': is_ipv6,
+             }
+        )
+
+    def ip_dump(self,
+                is_ipv6=0,
+                ):
+        """ Return IP dump.
+
+        :param int is_ipv6: 1 for IPv6 neighbor, 0 for IPv4. (Default = 0)
+        """
+
+        return self.api(
+            self.papi.ip_dump,
+            {'is_ipv6': is_ipv6,
+             }
+        )
+
     def sw_interface_span_enable_disable(
             self, sw_if_index_from, sw_if_index_to, state=1):
         """
