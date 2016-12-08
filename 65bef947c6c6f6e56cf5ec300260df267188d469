@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_871407f6",
+        "filename": "vnet/vnet/ethernet/arp.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1957,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-08T12:08:09Z",
+      "side": 1,
+      "message": "Please make sure that this code is not running for more than 10 usec.If it is running more then you need to call vlib_process_suspend(...) to give chance to other processes to run...",
+      "range": {
+        "startLine": 1900,
+        "startChar": 1,
+        "endLine": 1957,
+        "endChar": 11
+      },
+      "revId": "65bef947c6c6f6e56cf5ec300260df267188d469",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
