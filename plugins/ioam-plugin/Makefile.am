@@ -198,9 +198,6 @@ all-local: $(jioam_trace_jarfile)
 
 jioam_pot_jarfile = jvpp-ioam-pot-$(PACKAGE_VERSION).jar
 jvpp_pot_package_dir = io/fd/vpp/jvpp/ioampot
-jvpp_root = ioam/jvpp
-jvpp_target_dir = target
-jvpp_target = $(jvpp_root)/$(jvpp_target_dir)
 pot_api_file=$(srcdir)/ioam/lib-pot/pot.api
 
 
