@@ -85,7 +85,9 @@ typedef struct {
   ip46_address_t src;
   ip46_address_t dst;
 
+  /* mcast packet output intfc index (used only if dst is mcast) */
   u32 mcast_sw_if_index;
+
   /* decap next index */
   u32 decap_next_index;
 
