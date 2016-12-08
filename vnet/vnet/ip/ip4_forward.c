@@ -1472,8 +1472,8 @@ ip4_local (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-          vnet_buffer (p0)->ip.header = ip0;
-          vnet_buffer (p1)->ip.header = ip1;
+          vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
+          vnet_buffer (p1)->ip.start_of_ip_header = p1->current_data;
 
           fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
                                 vnet_buffer (p0)->sw_if_index[VLIB_RX]);
@@ -1682,7 +1682,7 @@ ip4_local (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (p0);
 
-          vnet_buffer (p0)->ip.header = ip0;
+          vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
                                 vnet_buffer(p0)->sw_if_index[VLIB_RX]);

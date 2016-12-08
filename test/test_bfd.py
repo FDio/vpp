@@ -128,6 +128,7 @@ class BFDTestCase(VppTestCase):
             raise
 
     def setUp(self):
+        super(BFDTestCase, self).setUp()
         self.vapi.want_bfd_events()
         self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
         self.vpp_session.add_vpp_config()
