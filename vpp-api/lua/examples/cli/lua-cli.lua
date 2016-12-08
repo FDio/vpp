@@ -557,12 +557,14 @@ end
 
 function init_vpp(vpp)
   local root_dir = "/home/ubuntu/vpp"
-  local pneum_path = root_dir .. "/build-root/install-vpp_debug-native/vpp-api/lib64/libpneum.so"
+  local pneum_path = root_dir .. "/build-root/install-vpp_lite_debug-native/vpp-api/lib64/libpneum.so"
 
   vpp:init({ pneum_path = pneum_path })
 
-  vpp:consume_api(root_dir .. "/build-root/install-vpp_debug-native/vlib-api/vlibmemory/memclnt.api")
-  vpp:consume_api(root_dir .. "/build-root/install-vpp_debug-native/vpp/vpp-api/vpe.api")
+  vpp:init({ pneum_path = pneum_path })
+  vpp:json_api(root_dir .. "/build-root/install-vpp_lite_debug-native/vpp/vpp-api/vpe.api.json")
+
+
 
   vpp:connect("lua_cli")
 end
@@ -652,7 +654,7 @@ for linenum, line in ipairs(vpp_clis) do
   -- print(line, ret)
 end
 
-for msgnum, msgname in ipairs(vpp.msg_number_to_name) do
+for msgnum, msgname in pairs(vpp.msg_number_to_name) do
   local cli, numspaces = string.gsub(msgname, "_", " ")
   device.output["call " .. cli .. " " .. dotdotdot] = function(rl)
     print("ARGH")
