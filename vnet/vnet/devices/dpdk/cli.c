@@ -307,7 +307,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
     xd->nb_rx_desc = nb_rx_desc;
 
   if (nb_tx_desc != (u32) ~ 0)
-    xd->nb_rx_desc = nb_rx_desc;
+    xd->nb_tx_desc = nb_tx_desc;
 
   rv = dpdk_port_setup (dm, xd);
 
