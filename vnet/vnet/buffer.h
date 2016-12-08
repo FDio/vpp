@@ -144,8 +144,8 @@ typedef struct
 	  u32 data;
 	} icmp;
 
-	/* IP header - saved by ip*_local nodes */
-	void *header;
+	/* IP header offset from vlib_buffer.data - saved by ip*_local nodes */
+	i32 start_of_ip_header;
       };
 
     } ip;

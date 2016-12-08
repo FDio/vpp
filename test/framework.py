@@ -278,6 +278,8 @@ class VppTestCase(unittest.TestCase):
 
     def setUp(self):
         """ Clear trace before running each test"""
+        if self.vpp_dead:
+            raise Exception("VPP is dead when setting up the test")
         self.vapi.cli("clear trace")
         # store the test instance inside the test class - so that objects
         # holding the class can access instance methods (like assertEqual)
