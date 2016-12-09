@@ -931,10 +931,9 @@ ip4_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
 VNET_FEATURE_ARC_INIT (ip4_unicast, static) =
 {
   .arc_name = "ip4-unicast",
-  .start_nodes =
-  VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
-  .arc_index_ptr =
-  &ip4_main.lookup_main.ucast_feature_arc_index,};
+  .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .arc_index_ptr = &ip4_main.lookup_main.ucast_feature_arc_index,
+};
 
 VNET_FEATURE_INIT (ip4_flow_classify, static) =
 {
@@ -1048,6 +1047,7 @@ VNET_FEATURE_ARC_INIT (ip4_output, static) =
 {
   .arc_name = "ip4-output",
   .start_nodes = VNET_FEATURES ("ip4-rewrite", "ip4-midchain"),
+  .end_node = "interface-output",
   .arc_index_ptr = &ip4_main.lookup_main.output_feature_arc_index,
 };
 
@@ -1086,9 +1086,6 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 			       is_add, 0, 0);
 
   vnet_feature_enable_disable ("ip4-multicast", "ip4-drop", sw_if_index,
-			       is_add, 0, 0);
-
-  vnet_feature_enable_disable ("ip4-output", "interface-output", sw_if_index,
 			       is_add, 0, 0);
 
   return /* no error */ 0;
@@ -2395,12 +2392,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	     rewrite_header.max_l3_packet_bytes ? IP4_ERROR_MTU_EXCEEDED :
 	     error1);
 
-	  next0 = (error0 == IP4_ERROR_NONE)
-	    ? adj0[0].rewrite_header.next_index : next0;
-
-	  next1 = (error1 == IP4_ERROR_NONE)
-	    ? adj1[0].rewrite_header.next_index : next1;
-
 	  /*
 	   * We've already accounted for an ethernet_header_t elsewhere
 	   */
@@ -2420,6 +2411,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	   * to see the IP headerr */
 	  if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
 	    {
+	      next0 = adj0[0].rewrite_header.next_index;
 	      p0->current_data -= rw_len0;
 	      p0->current_length += rw_len0;
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
@@ -2430,6 +2422,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    }
 	  if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	    {
+	      next1 = adj1[0].rewrite_header.next_index;
 	      p1->current_data -= rw_len1;
 	      p1->current_length += rw_len1;
 
