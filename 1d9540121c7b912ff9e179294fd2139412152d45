@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_fdc0fc2b",
+        "filename": "vnet/vnet/ip/ip4_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-09T19:31:00Z",
+      "side": 1,
+      "message": "I appreciate this preserves existing behaviour, but we should check the TTL on mcast packets too - drop them if they are expired.",
+      "revId": "1d9540121c7b912ff9e179294fd2139412152d45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
