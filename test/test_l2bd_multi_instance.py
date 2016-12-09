@@ -366,16 +366,17 @@ class TestL2bdMultiInst(VppTestCase):
 
     def run_verify_test(self):
         """
-        Create packet streams for all configured l2-pg interfaces, send all
+        Create packet streams for all configured l2-pg interfaces, send all \
         prepared packet streams and verify that:
-            - all packets received correctly on all pg-l2 interfaces assigned \
-            to bridge domains
-            - no packet received on all pg-l2 interfaces not assigned to \
-            bridge domains
+            - all packets received correctly on all pg-l2 interfaces assigned
+              to bridge domains
+            - no packet received on all pg-l2 interfaces not assigned to
+              bridge domains
 
-        :raise: RuntimeError if no packet captured on l2-pg interface assigned \
-        to the bridge domain or if any packet is captured on l2-pg interface \
-        not assigned to the bridge domain.
+        :raise RuntimeError: if no packet captured on l2-pg interface assigned
+                             to the bridge domain or if any packet is captured
+                             on l2-pg interface not assigned to the bridge
+                             domain.
         """
         # Test
         # Create incoming packet streams for packet-generator interfaces

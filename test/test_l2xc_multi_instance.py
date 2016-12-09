@@ -266,16 +266,17 @@ class TestL2xcMultiInst(VppTestCase):
 
     def run_verify_test(self):
         """
-        Create packet streams for all configured l2-pg interfaces, send all
+        Create packet streams for all configured l2-pg interfaces, send all \
         prepared packet streams and verify that:
-            - all packets received correctly on all pg-l2 interfaces assigned \
-        to cross-connects
-            - no packet received on all pg-l2 interfaces not assigned to \
-        cross-connects
+            - all packets received correctly on all pg-l2 interfaces assigned
+              to cross-connects
+            - no packet received on all pg-l2 interfaces not assigned to
+              cross-connects
 
-        :raise: RuntimeError if no packet captured on l2-pg interface assigned \
-        to the cross-connect or if any packet is captured on l2-pg interface \
-        not assigned to the cross-connect.
+        :raise RuntimeError: if no packet captured on l2-pg interface assigned
+                             to the cross-connect or if any packet is captured
+                             on l2-pg interface not assigned to the
+                             cross-connect.
         """
         # Test
         # Create incoming packet streams for packet-generator interfaces

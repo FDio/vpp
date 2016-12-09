@@ -581,8 +581,7 @@ class VppPapiProvider(object):
 
         :param sw_if_index_from:
         :param sw_if_index_to:
-        :param enable
-
+        :param state:
         """
         return self.api(self.papi.sw_interface_span_enable_disable,
                         {'sw_if_index_from': sw_if_index_from,
