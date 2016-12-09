@@ -824,11 +824,11 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
       if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
 	return;
     }
-  vnet_feature_enable_disable ("ip4-unicast", "ip4-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
+			       !is_enable, 0, 0);
 
-  vnet_feature_enable_disable ("ip4-multicast", "ip4-lookup-multicast",
-			       sw_if_index, is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-drop", sw_if_index,
+			       !is_enable, 0, 0);
 
 }
 
@@ -932,6 +932,7 @@ VNET_FEATURE_ARC_INIT (ip4_unicast, static) =
 {
   .arc_name = "ip4-unicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .end_node = "ip4-lookup",
   .arc_index_ptr = &ip4_main.lookup_main.ucast_feature_arc_index,
 };
 
@@ -1018,6 +1019,7 @@ VNET_FEATURE_ARC_INIT (ip4_multicast, static) =
 {
   .arc_name = "ip4-multicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
+  .end_node = "ip4-lookup-multicast",
   .arc_index_ptr = &ip4_main.lookup_main.mcast_feature_arc_index,
 };
 
