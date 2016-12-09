@@ -334,7 +334,7 @@ typedef struct locator_pair
   ip_address_t lcl_loc;
   ip_address_t rmt_loc;
 
-  u8 priority;			/* TODO remove */
+  u8 priority;
   u8 weight;
 } locator_pair_t;
 
