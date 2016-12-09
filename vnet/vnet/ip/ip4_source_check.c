@@ -50,35 +50,39 @@
  */
 
 
-typedef struct {
+typedef struct
+{
   u8 packet_data[64];
-    index_t urpf;
+  index_t urpf;
 } ip4_source_check_trace_t;
 
-static u8 * format_ip4_source_check_trace (u8 * s, va_list * va)
+static u8 *
+format_ip4_source_check_trace (u8 * s, va_list * va)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
-  ip4_source_check_trace_t * t = va_arg (*va, ip4_source_check_trace_t *);
+  ip4_source_check_trace_t *t = va_arg (*va, ip4_source_check_trace_t *);
 
   s = format (s, "%U",
-	      format_ip4_header,
-	      t->packet_data, sizeof (t->packet_data));
+	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
 
   return s;
 }
 
-typedef enum {
+typedef enum
+{
   IP4_SOURCE_CHECK_NEXT_DROP,
   IP4_SOURCE_CHECK_N_NEXT,
 } ip4_source_check_next_t;
 
-typedef enum {
+typedef enum
+{
   IP4_SOURCE_CHECK_REACHABLE_VIA_RX,
   IP4_SOURCE_CHECK_REACHABLE_VIA_ANY,
 } ip4_source_check_type_t;
 
-typedef union {
+typedef union
+{
   u32 fib_index;
 } ip4_source_check_config_t;
 
@@ -88,9 +92,10 @@ ip4_source_check_inline (vlib_main_t * vm,
 			 vlib_frame_t * frame,
 			 ip4_source_check_type_t source_check_type)
 {
-  u32 n_left_from, * from, * to_next;
+  u32 n_left_from, *from, *to_next;
   u32 next_index;
-  vlib_node_runtime_t * error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
+  vlib_node_runtime_t *error_node =
+    vlib_node_get_runtime (vm, ip4_input_node.index);
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -105,23 +110,22 @@ ip4_source_check_inline (vlib_main_t * vm,
     {
       u32 n_left_to_next;
 
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  vlib_buffer_t * p0, * p1;
-	  ip4_header_t * ip0, * ip1;
-	  ip4_fib_mtrie_t * mtrie0, * mtrie1;
+	  vlib_buffer_t *p0, *p1;
+	  ip4_header_t *ip0, *ip1;
+	  ip4_fib_mtrie_t *mtrie0, *mtrie1;
 	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
-	  ip4_source_check_config_t * c0, * c1;
-	  const load_balance_t * lb0, * lb1;
+	  ip4_source_check_config_t *c0, *c1;
+	  const load_balance_t *lb0, *lb1;
 	  u32 pi0, next0, pass0, lb_index0;
 	  u32 pi1, next1, pass1, lb_index1;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t * p2, * p3;
+	    vlib_buffer_t *p2, *p3;
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
@@ -146,68 +150,88 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  c0 = vnet_feature_next_with_data(vnet_buffer (p0)->sw_if_index[VLIB_RX] , &next0, p0, sizeof (c0[0]));
-	  c1 = vnet_feature_next_with_data(vnet_buffer (p1)->sw_if_index[VLIB_RX] , &next1, p1, sizeof (c1[0]));
+	  c0 =
+	    vnet_feature_next_with_data (vnet_buffer (p0)->sw_if_index
+					 [VLIB_RX], &next0, p0,
+					 sizeof (c0[0]));
+	  c1 =
+	    vnet_feature_next_with_data (vnet_buffer (p1)->sw_if_index
+					 [VLIB_RX], &next1, p1,
+					 sizeof (c1[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
 
 	  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 0);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
+	  leaf1 =
+	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 0);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 1);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
+	  leaf1 =
+	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 1);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 2);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
+	  leaf1 =
+	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 2);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
-	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 3);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
+	  leaf1 =
+	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 3);
 
 	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 	  lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 
-	  lb0 = load_balance_get(lb_index0);
-	  lb1 = load_balance_get(lb_index1);
+	  lb0 = load_balance_get (lb_index0);
+	  lb1 = load_balance_get (lb_index1);
 
 	  /* Pass multicast. */
-	  pass0 = ip4_address_is_multicast (&ip0->src_address) || ip0->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
-	  pass1 = ip4_address_is_multicast (&ip1->src_address) || ip1->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
+	  pass0 = ip4_address_is_multicast (&ip0->src_address)
+	    || ip0->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF);
+	  pass1 = ip4_address_is_multicast (&ip1->src_address)
+	    || ip1->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF);
 
 	  if (IP4_SOURCE_CHECK_REACHABLE_VIA_RX == source_check_type)
-	  {
-	      pass0 |= fib_urpf_check(lb0->lb_urpf,
-				      vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	      pass1 |= fib_urpf_check(lb1->lb_urpf,
-				      vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  }
+	    {
+	      pass0 |= fib_urpf_check (lb0->lb_urpf,
+				       vnet_buffer (p0)->sw_if_index
+				       [VLIB_RX]);
+	      pass1 |=
+		fib_urpf_check (lb1->lb_urpf,
+				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	    }
 	  else
-	  {
-	      pass0 |= fib_urpf_check_size(lb0->lb_urpf);
-	      pass1 |= fib_urpf_check_size(lb1->lb_urpf);
-	  }
+	    {
+	      pass0 |= fib_urpf_check_size (lb0->lb_urpf);
+	      pass1 |= fib_urpf_check_size (lb1->lb_urpf);
+	    }
 	  next0 = (pass0 ? next0 : IP4_SOURCE_CHECK_NEXT_DROP);
 	  next1 = (pass1 ? next1 : IP4_SOURCE_CHECK_NEXT_DROP);
 
-	  p0->error = error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
-	  p1->error = error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
+	  p0->error =
+	    error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
+	  p1->error =
+	    error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, pi1, next0, next1);
 	}
-    
+
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  vlib_buffer_t * p0;
-	  ip4_header_t * ip0;
-	  ip4_fib_mtrie_t * mtrie0;
+	  vlib_buffer_t *p0;
+	  ip4_header_t *ip0;
+	  ip4_fib_mtrie_t *mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
-	  ip4_source_check_config_t * c0;
+	  ip4_source_check_config_t *c0;
 	  u32 pi0, next0, pass0, lb_index0;
- 	  const load_balance_t * lb0;
+	  const load_balance_t *lb0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -219,39 +243,49 @@ ip4_source_check_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  c0 = vnet_feature_next_with_data(vnet_buffer (p0)->sw_if_index[VLIB_RX] , &next0, p0, sizeof (c0[0]));
+	  c0 =
+	    vnet_feature_next_with_data (vnet_buffer (p0)->sw_if_index
+					 [VLIB_RX], &next0, p0,
+					 sizeof (c0[0]));
 
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
 	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
 
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
+	  leaf0 =
+	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
 
 	  lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 
-	  lb0 = load_balance_get(lb_index0);
+	  lb0 = load_balance_get (lb_index0);
 
 	  /* Pass multicast. */
-	  pass0 = ip4_address_is_multicast (&ip0->src_address) || ip0->src_address.as_u32 == clib_host_to_net_u32(0xFFFFFFFF);
+	  pass0 = ip4_address_is_multicast (&ip0->src_address)
+	    || ip0->src_address.as_u32 == clib_host_to_net_u32 (0xFFFFFFFF);
 
 	  if (IP4_SOURCE_CHECK_REACHABLE_VIA_RX == source_check_type)
-	  {
-	      pass0 |= fib_urpf_check(lb0->lb_urpf,
-				      vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  }
+	    {
+	      pass0 |= fib_urpf_check (lb0->lb_urpf,
+				       vnet_buffer (p0)->sw_if_index
+				       [VLIB_RX]);
+	    }
 	  else
-	  {
-	      pass0 |= fib_urpf_check_size(lb0->lb_urpf);
-	  }
+	    {
+	      pass0 |= fib_urpf_check_size (lb0->lb_urpf);
+	    }
 
 	  next0 = (pass0 ? next0 : IP4_SOURCE_CHECK_NEXT_DROP);
-	  p0->error = error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
+	  p0->error =
+	    error_node->errors[IP4_ERROR_UNICAST_SOURCE_CHECK_FAILS];
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -269,17 +303,20 @@ ip4_source_check_reachable_via_any (vlib_main_t * vm,
 				    vlib_node_runtime_t * node,
 				    vlib_frame_t * frame)
 {
-  return ip4_source_check_inline (vm, node, frame, IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
+  return ip4_source_check_inline (vm, node, frame,
+				  IP4_SOURCE_CHECK_REACHABLE_VIA_ANY);
 }
 
 static uword
 ip4_source_check_reachable_via_rx (vlib_main_t * vm,
-				    vlib_node_runtime_t * node,
-				    vlib_frame_t * frame)
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame)
 {
-  return ip4_source_check_inline (vm, node, frame, IP4_SOURCE_CHECK_REACHABLE_VIA_RX);
+  return ip4_source_check_inline (vm, node, frame,
+				  IP4_SOURCE_CHECK_REACHABLE_VIA_RX);
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_check_source_reachable_via_any) = {
   .function = ip4_source_check_reachable_via_any,
   .name = "ip4-source-check-via-any",
@@ -293,10 +330,12 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_any) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_source_check_trace,
 };
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_check_source_reachable_via_any,
-			      ip4_source_check_reachable_via_any)
+			      ip4_source_check_reachable_via_any);
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
   .function = ip4_source_check_reachable_via_rx,
   .name = "ip4-source-check-via-rx",
@@ -310,39 +349,40 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
   .format_buffer = format_ip4_header,
   .format_trace = format_ip4_source_check_trace,
 };
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_check_source_reachable_via_rx,
-			      ip4_source_check_reachable_via_rx)
+			      ip4_source_check_reachable_via_rx);
 
 static clib_error_t *
 set_ip_source_check (vlib_main_t * vm,
-		     unformat_input_t * input,
-		     vlib_cli_command_t * cmd)
+		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
-  vnet_main_t * vnm = vnet_get_main();
-  ip4_main_t * im = &ip4_main;
-  clib_error_t * error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  ip4_main_t *im = &ip4_main;
+  clib_error_t *error = 0;
   u32 sw_if_index, is_del;
   ip4_source_check_config_t config;
-  char * feature_name = "ip4-source-check-via-rx";
+  char *feature_name = "ip4-source-check-via-rx";
 
   sw_if_index = ~0;
   is_del = 0;
 
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat_user (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
-	  ;
+      if (unformat_user
+	  (line_input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
       else if (unformat (line_input, "del"))
-        is_del = 1;
+	is_del = 1;
       else if (unformat (line_input, "loose"))
 	feature_name = "ip4-source-check-via-any";
       else
-        {
+	{
 	  error = unformat_parse_error (line_input);
 	  goto done;
 	}
@@ -358,7 +398,7 @@ set_ip_source_check (vlib_main_t * vm,
   config.fib_index = im->fib_index_by_sw_if_index[sw_if_index];
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
 			       is_del == 0, &config, sizeof (config));
- done:
+done:
   return error;
 }
 
@@ -429,21 +469,20 @@ VLIB_CLI_COMMAND (set_interface_ip_source_check_command, static) = {
 
 static clib_error_t *
 ip_source_check_accept (vlib_main_t * vm,
-			unformat_input_t * input,
-			vlib_cli_command_t * cmd)
+			unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  unformat_input_t _line_input, * line_input = &_line_input;
+  unformat_input_t _line_input, *line_input = &_line_input;
   fib_prefix_t pfx = {
-      .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_proto = FIB_PROTOCOL_IP4,
   };
-  clib_error_t * error = NULL;
+  clib_error_t *error = NULL;
   u32 table_id, is_add, fib_index;
 
   is_add = 1;
   table_id = ~0;
 
   /* Get a line of input. */
-  if (! unformat_user (input, unformat_line_input, line_input))
+  if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -455,25 +494,21 @@ ip_source_check_accept (vlib_main_t * vm,
       else if (unformat (line_input, "add"))
 	is_add = 1;
       else if (unformat (line_input, "%U/%d",
-			 unformat_ip4_address,
-			 &pfx.fp_addr.ip4,
-			 &pfx.fp_len))
-	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+			 unformat_ip4_address, &pfx.fp_addr.ip4, &pfx.fp_len))
+	pfx.fp_proto = FIB_PROTOCOL_IP4;
       else
-      {
+	{
 	  error = unformat_parse_error (line_input);
 	  goto done;
-      }
+	}
     }
 
   if (~0 != table_id)
     {
-      fib_index = fib_table_id_find_fib_index(pfx.fp_proto, table_id);
+      fib_index = fib_table_id_find_fib_index (pfx.fp_proto, table_id);
       if (~0 == fib_index)
-        {
-	  error = clib_error_return (0,
-				     "Nonexistent table id %d",
-				     table_id);
+	{
+	  error = clib_error_return (0, "Nonexistent table id %d", table_id);
 	  goto done;
 	}
     }
@@ -484,18 +519,16 @@ ip_source_check_accept (vlib_main_t * vm,
 
   if (is_add)
     {
-      fib_table_entry_special_add(fib_index,
-				  &pfx,
-				  FIB_SOURCE_URPF_EXEMPT,
-				  FIB_ENTRY_FLAG_DROP,
-				  ADJ_INDEX_INVALID);
+      fib_table_entry_special_add (fib_index,
+				   &pfx,
+				   FIB_SOURCE_URPF_EXEMPT,
+				   FIB_ENTRY_FLAG_DROP, ADJ_INDEX_INVALID);
     }
   else
-  {
-      fib_table_entry_special_remove(fib_index,
-				     &pfx,
-				     FIB_SOURCE_URPF_EXEMPT);
-  }
+    {
+      fib_table_entry_special_remove (fib_index,
+				      &pfx, FIB_SOURCE_URPF_EXEMPT);
+    }
 
 done:
   return (error);
@@ -523,7 +556,18 @@ VLIB_CLI_COMMAND (ip_source_check_accept_command, static) = {
 
 
 /* Dummy init function to get us linked in. */
-clib_error_t * ip4_source_check_init (vlib_main_t * vm)
-{ return 0; }
+clib_error_t *
+ip4_source_check_init (vlib_main_t * vm)
+{
+  return 0;
+}
 
 VLIB_INIT_FUNCTION (ip4_source_check_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

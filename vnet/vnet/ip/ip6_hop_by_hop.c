@@ -460,6 +460,7 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 {
   .function = ip6_add_hop_by_hop_node_fn,.name =
@@ -476,19 +477,21 @@ VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 #undef _
   }
 ,};
+/* *INDENT-ON* */
 
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_add_hop_by_hop_node,
-			      ip6_add_hop_by_hop_node_fn)
+			      ip6_add_hop_by_hop_node_fn);
 /* The main h-b-h tracer was already invoked, no need to do much here */
-     typedef struct
-     {
-       u32 next_index;
-     } ip6_pop_hop_by_hop_trace_t;
+typedef struct
+{
+  u32 next_index;
+} ip6_pop_hop_by_hop_trace_t;
 
 /* packet trace format function */
-     static u8 *format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
+static u8 *
+format_ip6_pop_hop_by_hop_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -816,8 +819,9 @@ VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_pop_hop_by_hop_node,
-			      ip6_pop_hop_by_hop_node_fn)
-     static clib_error_t *ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
+			      ip6_pop_hop_by_hop_node_fn);
+static clib_error_t *
+ip6_hop_by_hop_ioam_init (vlib_main_t * vm)
 {
   clib_error_t *error;
   ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;

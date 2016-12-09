@@ -31,18 +31,30 @@
   _ (PARAM_PROBLEM_SENT, "parameter problem response sent")		\
   _ (DROP, "error message dropped")
 
-typedef enum {
+typedef enum
+{
 #define _(f,s) ICMP4_ERROR_##f,
   foreach_icmp4_error
 #undef _
 } icmp4_error_t;
 
-typedef struct {
+typedef struct
+{
   u8 packet_data[64];
 } icmp_input_trace_t;
 
 format_function_t format_icmp4_input_trace;
-void ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type, u32 node_index);
-void icmp4_error_set_vnet_buffer (vlib_buffer_t *b, u8 type, u8 code, u32 data);
+void ip4_icmp_register_type (vlib_main_t * vm, icmp4_type_t type,
+			     u32 node_index);
+void icmp4_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code,
+				  u32 data);
 
 #endif /* included_vnet_icmp4_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

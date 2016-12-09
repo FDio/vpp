@@ -43,21 +43,24 @@
 #include <vppinfra/byte_order.h>
 #include <vppinfra/error.h>
 
-typedef enum ip_protocol {
+typedef enum ip_protocol
+{
 #define ip_protocol(n,s) IP_PROTOCOL_##s = n,
 #include "protocols.def"
 #undef ip_protocol
 } ip_protocol_t;
 
 /* TCP/UDP ports. */
-typedef enum {
+typedef enum
+{
 #define ip_port(s,n) IP_PORT_##s = n,
 #include "ports.def"
 #undef ip_port
 } ip_port_t;
 
 /* Classifies protocols into UDP, ICMP or other. */
-typedef enum {
+typedef enum
+{
   IP_BUILTIN_PROTOCOL_UDP,
   IP_BUILTIN_PROTOCOL_ICMP,
   IP_BUILTIN_PROTOCOL_UNKNOWN,
@@ -74,7 +77,8 @@ typedef enum {
   _ (102, hsrp)					\
   _ (22, igmp_v3)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) IP_MULTICAST_GROUP_##f = n,
   foreach_ip_builtin_multicast_group
 #undef _
@@ -111,7 +115,9 @@ ip_csum_add_even (ip_csum_t c, ip_csum_t x)
 /* Update checksum changing field at even byte offset from 0 -> x. */
 always_inline ip_csum_t
 ip_csum_sub_even (ip_csum_t c, ip_csum_t x)
-{ return ip_csum_with_carry (c, x); }
+{
+  return ip_csum_with_carry (c, x);
+}
 
 always_inline ip_csum_t
 ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t new,
@@ -135,7 +141,8 @@ ip_csum_update_inline (ip_csum_t sum, ip_csum_t old, ip_csum_t new,
 			 STRUCT_OFFSET_OF (type, field),	\
 			 STRUCT_SIZE_OF (type, field))
 
-always_inline u16 ip_csum_fold (ip_csum_t c)
+always_inline u16
+ip_csum_fold (ip_csum_t c)
 {
   /* Reduce to 16 bits. */
 #if uword_bits == 64
@@ -150,15 +157,24 @@ always_inline u16 ip_csum_fold (ip_csum_t c)
 }
 
 /* Copy data and checksum at the same time. */
-ip_csum_t ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_bytes);
+ip_csum_t ip_csum_and_memcpy (ip_csum_t sum, void *dst, void *src,
+			      uword n_bytes);
 
 always_inline u16
-ip_csum_and_memcpy_fold (ip_csum_t sum, void * dst)
+ip_csum_and_memcpy_fold (ip_csum_t sum, void *dst)
 {
   return ip_csum_fold (sum);
 }
 
 /* Checksum routine. */
-ip_csum_t ip_incremental_checksum (ip_csum_t sum, void * data, uword n_bytes);
+ip_csum_t ip_incremental_checksum (ip_csum_t sum, void *data, uword n_bytes);
 
 #endif /* included_ip_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

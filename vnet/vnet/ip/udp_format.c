@@ -40,9 +40,10 @@
 #include <vnet/ip/ip.h>
 
 /* Format UDP header. */
-u8 * format_udp_header (u8 * s, va_list * args)
+u8 *
+format_udp_header (u8 * s, va_list * args)
 {
-  udp_header_t * udp = va_arg (*args, udp_header_t *);
+  udp_header_t *udp = va_arg (*args, udp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   uword indent;
   u32 header_bytes = sizeof (udp[0]);
@@ -66,18 +67,25 @@ u8 * format_udp_header (u8 * s, va_list * args)
   /* Recurse into next protocol layer. */
   if (max_header_bytes != 0 && header_bytes < max_header_bytes)
     {
-      ip_main_t * im = &ip_main;
-      tcp_udp_port_info_t * pi;
+      ip_main_t *im = &ip_main;
+      tcp_udp_port_info_t *pi;
 
       pi = ip_get_tcp_udp_port_info (im, udp->dst_port);
 
       if (pi && pi->format_header)
 	s = format (s, "\n%U%U",
-		    format_white_space, indent - 2,
-		    pi->format_header,
+		    format_white_space, indent - 2, pi->format_header,
 		    /* next protocol header */ (udp + 1),
 		    max_header_bytes - sizeof (udp[0]));
     }
 
   return s;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

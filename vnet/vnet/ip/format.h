@@ -50,9 +50,9 @@ unformat_function_t unformat_tcp_udp_port;
 
 typedef enum format_ip_adjacency_flags_t_
 {
-    FORMAT_IP_ADJACENCY_NONE,
-    FORMAT_IP_ADJACENCY_BRIEF  = FORMAT_IP_ADJACENCY_NONE,
-    FORMAT_IP_ADJACENCY_DETAIL = (1 << 0),
+  FORMAT_IP_ADJACENCY_NONE,
+  FORMAT_IP_ADJACENCY_BRIEF = FORMAT_IP_ADJACENCY_NONE,
+  FORMAT_IP_ADJACENCY_DETAIL = (1 << 0),
 } format_ip_adjacency_flags_t;
 
 format_function_t format_ip_adjacency;
@@ -60,7 +60,8 @@ format_function_t format_ip_adjacency_packet_data;
 
 format_function_t format_ip46_address;
 
-typedef enum {
+typedef enum
+{
   IP46_TYPE_ANY,
   IP46_TYPE_IP4,
   IP46_TYPE_IP6
@@ -103,3 +104,11 @@ format_function_t format_tcp_header, format_udp_header;
 unformat_function_t unformat_pg_tcp_header, unformat_pg_udp_header;
 
 #endif /* included_ip_format_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
