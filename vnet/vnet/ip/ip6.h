@@ -56,13 +56,15 @@
 #define IP6_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define IP6_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
-typedef struct {
+typedef struct
+{
   ip6_address_t addr;
   u32 dst_address_length;
   u32 vrf_index;
 } ip6_fib_key_t;
 
-typedef struct {
+typedef struct
+{
   /* Table ID (hash key) for this FIB. */
   u32 table_id;
 
@@ -80,31 +82,31 @@ typedef void (ip6_add_del_interface_address_function_t)
    uword opaque,
    u32 sw_if_index,
    ip6_address_t * address,
-   u32 address_length,
-   u32 if_address_index,
-   u32 is_del);
+   u32 address_length, u32 if_address_index, u32 is_del);
 
-typedef struct {
-  ip6_add_del_interface_address_function_t * function;
+typedef struct
+{
+  ip6_add_del_interface_address_function_t *function;
   uword function_opaque;
 } ip6_add_del_interface_address_callback_t;
 
 /**
  * Enumeration of the FIB table instance types
  */
-typedef enum ip6_fib_table_instance_type_t_ {
+typedef enum ip6_fib_table_instance_type_t_
+{
     /**
      * This table stores the routes that are used to forward traffic.
      * The key is the prefix, the result the adjacnecy to forward on.
      */
-    IP6_FIB_TABLE_FWDING,
+  IP6_FIB_TABLE_FWDING,
     /**
      * The table that stores ALL routes learned by the DP.
      * Some of these routes may not be ready to install in forwarding
      * at a given time.
      * The key in this table is the prefix, the result is the fib_entry_t
      */
-    IP6_FIB_TABLE_NON_FWDING,
+  IP6_FIB_TABLE_NON_FWDING,
 } ip6_fib_table_instance_type_t;
 
 #define IP6_FIB_NUM_TABLES (IP6_FIB_TABLE_NON_FWDING+1)
@@ -112,17 +114,19 @@ typedef enum ip6_fib_table_instance_type_t_ {
 /**
  * A represenation of a single IP6 table
  */
-typedef struct ip6_fib_table_instance_t_ {
+typedef struct ip6_fib_table_instance_t_
+{
   /* The hash table */
-  BVT(clib_bihash) ip6_hash;
+  BVT (clib_bihash) ip6_hash;
 
   /* bitmap / refcounts / vector of mask widths to search */
-  uword * non_empty_dst_address_length_bitmap;
-  u8 * prefix_lengths_in_search_order;
+  uword *non_empty_dst_address_length_bitmap;
+  u8 *prefix_lengths_in_search_order;
   i32 dst_address_length_refcounts[129];
 } ip6_fib_table_instance_t;
 
-typedef struct ip6_main_t {
+typedef struct ip6_main_t
+{
   /**
    * The two FIB tables; fwding and non-fwding
    */
@@ -131,26 +135,27 @@ typedef struct ip6_main_t {
   ip_lookup_main_t lookup_main;
 
   /* Pool of FIBs. */
-  struct fib_table_t_ * fibs;
+  struct fib_table_t_ *fibs;
 
   /* Network byte orders subnet mask for each prefix length */
   ip6_address_t fib_masks[129];
 
   /* Table index indexed by software interface. */
-  u32 * fib_index_by_sw_if_index;
+  u32 *fib_index_by_sw_if_index;
 
   /* IP6 enabled count by software interface */
-  u8 * ip_enabled_by_sw_if_index;
+  u8 *ip_enabled_by_sw_if_index;
 
   /* Hash table mapping table id to fib index.
      ID space is not necessarily dense; index space is dense. */
-  uword * fib_index_by_table_id;
+  uword *fib_index_by_table_id;
 
   /* Hash table mapping interface rewrite adjacency index by sw if index. */
-  uword * interface_route_adj_index_by_sw_if_index;
+  uword *interface_route_adj_index_by_sw_if_index;
 
   /* Functions to call when interface address changes. */
-  ip6_add_del_interface_address_callback_t * add_del_interface_address_callbacks;
+    ip6_add_del_interface_address_callback_t
+    * add_del_interface_address_callbacks;
 
   /* Template used to generate IP6 neighbor solicitation packets. */
   vlib_packet_template_t discover_neighbor_packet_template;
@@ -162,7 +167,8 @@ typedef struct ip6_main_t {
   /* Seed for Jenkins hash used to compute ip6 flow hash. */
   u32 flow_hash_seed;
 
-  struct {
+  struct
+  {
     /* TTL to use for host generated packets. */
     u8 ttl;
 
@@ -187,13 +193,16 @@ extern vlib_node_registration_t ip6_midchain_node;
 extern vlib_node_registration_t ip6_icmp_neighbor_discovery_event_node;
 
 /* ipv6 neighbor discovery - timer/event types */
-typedef enum {
+typedef enum
+{
   ICMP6_ND_EVENT_INIT,
 } ip6_icmp_neighbor_discovery_event_type_t;
 
-typedef union {
+typedef union
+{
   u32 add_del_swindex;
-  struct {
+  struct
+  {
     u32 up_down_swindex;
     u32 fib_index;
   } up_down_event;
@@ -202,13 +211,13 @@ typedef union {
 always_inline uword
 ip6_destination_matches_route (const ip6_main_t * im,
 			       const ip6_address_t * key,
-			       const ip6_address_t * dest,
-			       uword dest_length)
+			       const ip6_address_t * dest, uword dest_length)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (key->as_uword); i++)
     {
-      if ((key->as_uword[i] ^ dest->as_uword[i]) & im->fib_masks[dest_length].as_uword[i])
+      if ((key->as_uword[i] ^ dest->as_uword[i]) & im->
+	  fib_masks[dest_length].as_uword[i])
 	return 0;
     }
   return 1;
@@ -219,7 +228,7 @@ ip6_destination_matches_interface (ip6_main_t * im,
 				   ip6_address_t * key,
 				   ip_interface_address_t * ia)
 {
-  ip6_address_t * a = ip_interface_address_get_address (&im->lookup_main, ia);
+  ip6_address_t *a = ip_interface_address_get_address (&im->lookup_main, ia);
   return ip6_destination_matches_route (im, key, a, ia->address_length);
 }
 
@@ -233,7 +242,8 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
   int i;
   for (i = 0; i < ARRAY_LEN (key->as_uword); i++)
     {
-      if ((clib_mem_unaligned (&key->as_uword[i], uword) ^ dest->as_uword[i]) & im->fib_masks[dest_length].as_uword[i])
+      if ((clib_mem_unaligned (&key->as_uword[i], uword) ^ dest->as_uword[i])
+	  & im->fib_masks[dest_length].as_uword[i])
 	return 0;
     }
   return 1;
@@ -241,36 +251,38 @@ ip6_unaligned_destination_matches_route (ip6_main_t * im,
 
 always_inline int
 ip6_src_address_for_packet (ip_lookup_main_t * lm,
-			    u32 sw_if_index,
-			    ip6_address_t * src)
+			    u32 sw_if_index, ip6_address_t * src)
 {
-    u32 if_add_index =
-	lm->if_address_pool_index_by_sw_if_index[sw_if_index];
-    if (PREDICT_TRUE(if_add_index != ~0)) {
-	ip_interface_address_t *if_add =
-	    pool_elt_at_index(lm->if_address_pool, if_add_index);
-	ip6_address_t *if_ip =
-	    ip_interface_address_get_address(lm, if_add);
-	*src = *if_ip;
-	return (0);
-    }
-    else
+  u32 if_add_index = lm->if_address_pool_index_by_sw_if_index[sw_if_index];
+  if (PREDICT_TRUE (if_add_index != ~0))
     {
-	src->as_u64[0] = 0;
-	src->as_u64[1] = 0;
+      ip_interface_address_t *if_add =
+	pool_elt_at_index (lm->if_address_pool, if_add_index);
+      ip6_address_t *if_ip = ip_interface_address_get_address (lm, if_add);
+      *src = *if_ip;
+      return (0);
     }
-    return (!0);
+  else
+    {
+      src->as_u64[0] = 0;
+      src->as_u64[1] = 0;
+    }
+  return (!0);
 }
 
 /* Find interface address which matches destination. */
 always_inline ip6_address_t *
-ip6_interface_address_matching_destination (ip6_main_t * im, ip6_address_t * dst, u32 sw_if_index,
-					    ip_interface_address_t ** result_ia)
+ip6_interface_address_matching_destination (ip6_main_t * im,
+					    ip6_address_t * dst,
+					    u32 sw_if_index,
+					    ip_interface_address_t **
+					    result_ia)
 {
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_interface_address_t * ia;
-  ip6_address_t * result = 0;
+  ip_lookup_main_t *lm = &im->lookup_main;
+  ip_interface_address_t *ia;
+  ip6_address_t *result = 0;
 
+  /* *INDENT-OFF* */
   foreach_ip_interface_address (lm, ia, sw_if_index,
                                 1 /* honor unnumbered */,
   ({
@@ -281,128 +293,115 @@ ip6_interface_address_matching_destination (ip6_main_t * im, ip6_address_t * dst
 	break;
       }
   }));
+  /* *INDENT-ON* */
   if (result_ia)
     *result_ia = result ? ia : 0;
   return result;
 }
 
-clib_error_t *
-ip6_add_del_interface_address (vlib_main_t * vm, u32 sw_if_index,
-			       ip6_address_t * address, u32 address_length,
-			       u32 is_del);
-void
-ip6_sw_interface_enable_disable (u32 sw_if_index,
-				 u32 is_enable);
+clib_error_t *ip6_add_del_interface_address (vlib_main_t * vm,
+					     u32 sw_if_index,
+					     ip6_address_t * address,
+					     u32 address_length, u32 is_del);
+void ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable);
 
 int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2);
 
-clib_error_t *
-ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index);
+clib_error_t *ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst,
+				  u32 sw_if_index);
 
-clib_error_t *
-ip6_set_neighbor_limit (u32 neighbor_limit);
+clib_error_t *ip6_set_neighbor_limit (u32 neighbor_limit);
 
 uword
 ip6_udp_register_listener (vlib_main_t * vm,
-			   u16 dst_port,
-			   u32 next_node_index);
+			   u16 dst_port, u32 next_node_index);
 
-u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0, ip6_header_t * ip0, int *bogus_lengthp);
+u16 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
+				       ip6_header_t * ip0,
+				       int *bogus_lengthp);
 
 void ip6_register_protocol (u32 protocol, u32 node_index);
 
 serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 
 void ip6_ethernet_update_adjacency (vnet_main_t * vnm,
-				    u32 sw_if_index,
-				    u32 ai);
+				    u32 sw_if_index, u32 ai);
 
 int
 vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
-                                u32 sw_if_index,
-                                ip6_address_t * a,
-                                u8 * link_layer_address,
-                                uword n_bytes_link_layer_address,
-                                int is_static);
+				u32 sw_if_index,
+				ip6_address_t * a,
+				u8 * link_layer_address,
+				uword n_bytes_link_layer_address,
+				int is_static);
 int
 vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
-                                  u32 sw_if_index,
-                                  ip6_address_t * a,
-                                  u8 * link_layer_address,
-                                  uword n_bytes_link_layer_address);
+				  u32 sw_if_index,
+				  ip6_address_t * a,
+				  u8 * link_layer_address,
+				  uword n_bytes_link_layer_address);
 
 void
-ip6_link_local_address_from_ethernet_mac_address (ip6_address_t *ip,
-                                                  u8 *mac);
+ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
+						  u8 * mac);
 
 void
-ip6_ethernet_mac_address_from_link_local_address (u8 *mac,
-                                                  ip6_address_t *ip);
+ip6_ethernet_mac_address_from_link_local_address (u8 * mac,
+						  ip6_address_t * ip);
 
 int vnet_set_ip6_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);
 
 int
-ip6_neighbor_ra_config(vlib_main_t * vm, u32 sw_if_index,
-		       u8 suppress, u8 managed, u8 other,
-		       u8 ll_option,  u8 send_unicast,  u8 cease,
-		       u8 use_lifetime,  u32 lifetime,
-		       u32 initial_count,  u32 initial_interval,
-		       u32 max_interval,  u32 min_interval,
-		       u8 is_no);
+ip6_neighbor_ra_config (vlib_main_t * vm, u32 sw_if_index,
+			u8 suppress, u8 managed, u8 other,
+			u8 ll_option, u8 send_unicast, u8 cease,
+			u8 use_lifetime, u32 lifetime,
+			u32 initial_count, u32 initial_interval,
+			u32 max_interval, u32 min_interval, u8 is_no);
 
 int
-ip6_neighbor_ra_prefix(vlib_main_t * vm, u32 sw_if_index,
-		       ip6_address_t *prefix_addr,  u8 prefix_len,
-		       u8 use_default,  u32 val_lifetime, u32 pref_lifetime,
-		       u8 no_advertise,  u8 off_link, u8 no_autoconfig, u8 no_onlink,
-		       u8 is_no);
+ip6_neighbor_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
+			ip6_address_t * prefix_addr, u8 prefix_len,
+			u8 use_default, u32 val_lifetime, u32 pref_lifetime,
+			u8 no_advertise, u8 off_link, u8 no_autoconfig,
+			u8 no_onlink, u8 is_no);
 
 
-clib_error_t *
-enable_ip6_interface(vlib_main_t * vm,
-		     u32 sw_if_index);
+clib_error_t *enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index);
 
-clib_error_t *
-disable_ip6_interface(vlib_main_t * vm,
-		     u32 sw_if_index);
+clib_error_t *disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index);
 
-int
-ip6_interface_enabled(vlib_main_t * vm,
-                      u32 sw_if_index);
+int ip6_interface_enabled (vlib_main_t * vm, u32 sw_if_index);
 
-clib_error_t *
-set_ip6_link_local_address(vlib_main_t * vm,
-			   u32 sw_if_index,
-			   ip6_address_t *address,
-			   u8 address_length);
+clib_error_t *set_ip6_link_local_address (vlib_main_t * vm,
+					  u32 sw_if_index,
+					  ip6_address_t * address,
+					  u8 address_length);
 
-void vnet_register_ip6_neighbor_resolution_event(vnet_main_t * vnm,
-                                                 void * address_arg,
-                                                 uword node_index,
-                                                 uword type_opaque,
-                                                 uword data);
+void vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
+						  void *address_arg,
+						  uword node_index,
+						  uword type_opaque,
+						  uword data);
 
 int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
-				      void * data_callback,
+				      void *data_callback,
 				      u32 pid,
-				      void * address_arg,
+				      void *address_arg,
 				      uword node_index,
 				      uword type_opaque,
-				      uword data,
-				      int is_add);
+				      uword data, int is_add);
 
 int vnet_ip6_nd_term (vlib_main_t * vm,
 		      vlib_node_runtime_t * node,
 		      vlib_buffer_t * p0,
 		      ethernet_header_t * eth,
 		      ip6_header_t * ip,
-		      u32 sw_if_index,
-		      u16 bd_index,
-		      u8 shg);
+		      u32 sw_if_index, u16 bd_index, u8 shg);
 
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
-                                 u32 table_index);
+				 u32 table_index);
 extern vlib_node_registration_t ip6_lookup_node;
 
 /* Compute flow hash.  We'll use it to select which Sponge to use for this
@@ -411,50 +410,55 @@ always_inline u32
 ip6_compute_flow_hash (const ip6_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
-    tcp_header_t * tcp = (void *) (ip + 1);
-    u64 a, b, c;
-    u64 t1, t2;
-    uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
-			|| ip->protocol == IP_PROTOCOL_UDP);
+  tcp_header_t *tcp = (void *) (ip + 1);
+  u64 a, b, c;
+  u64 t1, t2;
+  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
+		      || ip->protocol == IP_PROTOCOL_UDP);
 
-    t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
-    t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
+  t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
 
-    t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
-    t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
+  t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
 
-    a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
-    b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
-    b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
+  a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
+  b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
+  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
 
-    t1 = is_tcp_udp ? tcp->ports.src : 0;
-    t2 = is_tcp_udp ? tcp->ports.dst : 0;
+  t1 = is_tcp_udp ? tcp->ports.src : 0;
+  t2 = is_tcp_udp ? tcp->ports.dst : 0;
 
-    t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
-    t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
 
-    c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
-        ((t1<<16) | t2) : ((t2<<16) | t1);
+  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
+    ((t1 << 16) | t2) : ((t2 << 16) | t1);
 
-    hash_mix64 (a, b, c);
-    return (u32) c;
+  hash_mix64 (a, b, c);
+  return (u32) c;
 }
 
 /*
  * Hop-by-Hop handling
  */
-typedef struct {
+typedef struct
+{
   /* Array of function pointers to HBH option handling routines */
-  int (*options[256])(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
-  u8 *(*trace[256])(u8 *s, ip6_hop_by_hop_option_t *opt);
+  int (*options[256]) (vlib_buffer_t * b, ip6_header_t * ip,
+		       ip6_hop_by_hop_option_t * opt);
+  u8 *(*trace[256]) (u8 * s, ip6_hop_by_hop_option_t * opt);
   uword next_override;
 } ip6_hop_by_hop_main_t;
 
 extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;
 
 int ip6_hbh_register_option (u8 option,
-			     int options(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt),
-			     u8 *trace(u8 *s, ip6_hop_by_hop_option_t *opt));
+			     int options (vlib_buffer_t * b,
+					  ip6_header_t * ip,
+					  ip6_hop_by_hop_option_t * opt),
+			     u8 * trace (u8 * s,
+					 ip6_hop_by_hop_option_t * opt));
 int ip6_hbh_unregister_option (u8 option);
 void ip6_hbh_set_next_override (uword next);
 
@@ -462,3 +466,11 @@ void ip6_hbh_set_next_override (uword next);
 #define OI_DECAP   0x80000000
 
 #endif /* included_ip_ip6_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

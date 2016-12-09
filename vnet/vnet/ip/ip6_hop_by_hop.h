@@ -34,14 +34,16 @@
 /*
  * Stores the run time flow data of hbh options
  */
-typedef struct {
+typedef struct
+{
   u32 ctx[MAX_IP6_HBH_OPTION];
   u8 flow_name[64];
 } flow_data_t;
 
-typedef struct {
+typedef struct
+{
   /* The current rewrite we're using */
-  u8 * rewrite;
+  u8 *rewrite;
 
   /* Trace data processing callback */
   void *ioam_end_of_path_cb;
@@ -71,94 +73,111 @@ typedef struct {
 
   /* Array of function pointers to ADD and POP HBH option handling routines */
   u8 options_size[MAX_IP6_HBH_OPTION];
-  int (*add_options[MAX_IP6_HBH_OPTION])(u8 *rewrite_string, u8 *rewrite_size);
-  int (*pop_options[MAX_IP6_HBH_OPTION])(vlib_buffer_t *b, ip6_header_t *ip, ip6_hop_by_hop_option_t *opt);
-  int (*get_sizeof_options[MAX_IP6_HBH_OPTION])(u32 *rewrite_size);
+  int (*add_options[MAX_IP6_HBH_OPTION]) (u8 * rewrite_string,
+					  u8 * rewrite_size);
+  int (*pop_options[MAX_IP6_HBH_OPTION]) (vlib_buffer_t * b,
+					  ip6_header_t * ip,
+					  ip6_hop_by_hop_option_t * opt);
+  int (*get_sizeof_options[MAX_IP6_HBH_OPTION]) (u32 * rewrite_size);
   int (*config_handler[MAX_IP6_HBH_OPTION]) (void *data, u8 disable);
 
   /* Array of function pointers to handle hbh options being used with classifier */
-  u32 (*flow_handler[MAX_IP6_HBH_OPTION])(u32 flow_ctx, u8 add);
+    u32 (*flow_handler[MAX_IP6_HBH_OPTION]) (u32 flow_ctx, u8 add);
   flow_data_t *flows;
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } ip6_hop_by_hop_ioam_main_t;
 
 extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 
-extern u8 * format_path_map(u8 * s, va_list * args);
+extern u8 *format_path_map (u8 * s, va_list * args);
 
-extern clib_error_t *
-ip6_ioam_enable(int has_trace_option, int has_pot_option,
-                           int has_seqno_option, int has_analyse_option);
+extern clib_error_t *ip6_ioam_enable (int has_trace_option,
+				      int has_pot_option,
+				      int has_seqno_option,
+				      int has_analyse_option);
 
-extern int ip6_ioam_set_destination (ip6_address_t *addr, u32 mask_width,
-                  u32 vrf_id, int is_add, int is_pop, int is_none);
+extern int ip6_ioam_set_destination (ip6_address_t * addr, u32 mask_width,
+				     u32 vrf_id, int is_add, int is_pop,
+				     int is_none);
 
-extern clib_error_t * clear_ioam_rewrite_fn(void);
+extern clib_error_t *clear_ioam_rewrite_fn (void);
 
-static inline u8 is_zero_ip4_address (ip4_address_t *a)
+static inline u8
+is_zero_ip4_address (ip4_address_t * a)
 {
   return (a->as_u32 == 0);
 }
 
-static inline void copy_ip6_address (ip6_address_t *dst, ip6_address_t *src)
+static inline void
+copy_ip6_address (ip6_address_t * dst, ip6_address_t * src)
 {
   dst->as_u64[0] = src->as_u64[0];
   dst->as_u64[1] = src->as_u64[1];
 }
 
-static inline void set_zero_ip6_address (ip6_address_t *a)
+static inline void
+set_zero_ip6_address (ip6_address_t * a)
 {
   a->as_u64[0] = 0;
   a->as_u64[1] = 0;
 }
 
-static inline u8 cmp_ip6_address (ip6_address_t *a1, ip6_address_t *a2)
+static inline u8
+cmp_ip6_address (ip6_address_t * a1, ip6_address_t * a2)
 {
-  return ((a1->as_u64[0] == a2->as_u64[0]) && (a1->as_u64[1] == a2->as_u64[1]));
+  return ((a1->as_u64[0] == a2->as_u64[0])
+	  && (a1->as_u64[1] == a2->as_u64[1]));
 }
-static inline u8 is_zero_ip6_address (ip6_address_t *a)
+
+static inline u8
+is_zero_ip6_address (ip6_address_t * a)
 {
   return ((a->as_u64[0] == 0) && (a->as_u64[1] == 0));
 }
 
 int ip6_hbh_add_register_option (u8 option,
 				 u8 size,
-				 int rewrite_options(u8 *rewrite_string, u8 *size));
+				 int rewrite_options (u8 * rewrite_string,
+						      u8 * size));
 int ip6_hbh_add_unregister_option (u8 option);
 
 int ip6_hbh_pop_register_option (u8 option,
-                                 int options(vlib_buffer_t *b,
-                                             ip6_header_t *ip, ip6_hop_by_hop_option_t *opt));
+				 int options (vlib_buffer_t * b,
+					      ip6_header_t * ip,
+					      ip6_hop_by_hop_option_t * opt));
 int ip6_hbh_pop_unregister_option (u8 option);
 
 int
 ip6_hbh_get_sizeof_register_option (u8 option,
-                            int get_sizeof_hdr_options(u32 *rewrite_size));
+				    int get_sizeof_hdr_options (u32 *
+								rewrite_size));
 
 int
-ip6_ioam_set_rewrite (u8 **rwp, int has_trace_option,
+ip6_ioam_set_rewrite (u8 ** rwp, int has_trace_option,
 		      int has_pot_option, int has_seq_no);
 
 int
 ip6_hbh_config_handler_register (u8 option,
-                                 int config_handler(void *data, u8 disable));
+				 int config_handler (void *data, u8 disable));
 
 int ip6_hbh_config_handler_unregister (u8 option);
 
-int ip6_hbh_flow_handler_register(u8 option,
-                                  u32 ioam_flow_handler(u32 flow_ctx, u8 add));
+int ip6_hbh_flow_handler_register (u8 option,
+				   u32 ioam_flow_handler (u32 flow_ctx,
+							  u8 add));
 
-int ip6_hbh_flow_handler_unregister(u8 option);
+int ip6_hbh_flow_handler_unregister (u8 option);
 
-u8 * get_flow_name_from_flow_ctx(u32 flow_ctx);
+u8 *get_flow_name_from_flow_ctx (u32 flow_ctx);
 
-static inline flow_data_t * get_flow (u32 index)
+static inline flow_data_t *
+get_flow (u32 index)
 {
   flow_data_t *flow = NULL;
-  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
 
   if (pool_is_free_index (hm->flows, index))
     return NULL;
@@ -167,23 +186,32 @@ static inline flow_data_t * get_flow (u32 index)
   return flow;
 }
 
-static inline u32 get_flow_data_from_flow_ctx (u32 flow_ctx, u8 option)
+static inline u32
+get_flow_data_from_flow_ctx (u32 flow_ctx, u8 option)
 {
   flow_data_t *flow = NULL;
-  ip6_hop_by_hop_ioam_main_t * hm = &ip6_hop_by_hop_ioam_main;
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
   u32 index;
 
-  index = IOAM_MASK_DECAP_BIT(flow_ctx);
+  index = IOAM_MASK_DECAP_BIT (flow_ctx);
   //flow = pool_elt_at_index (hm->flows, index);
   flow = &hm->flows[index];
   return (flow->ctx[option]);
 }
 
-static inline u8 is_seqno_enabled (void)
+static inline u8
+is_seqno_enabled (void)
 {
   return (ip6_hop_by_hop_ioam_main.has_seqno_option);
 }
 
-int
-ip6_trace_profile_setup ();
+int ip6_trace_profile_setup ();
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

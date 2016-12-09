@@ -176,7 +176,7 @@ VLIB_REGISTER_NODE (udp4_punt_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (udp4_punt_node, udp4_punt)
+VLIB_NODE_FUNCTION_MULTIARCH (udp4_punt_node, udp4_punt);
 
 VLIB_REGISTER_NODE (udp6_punt_node) = {
   .function = udp6_punt,
@@ -194,9 +194,9 @@ VLIB_REGISTER_NODE (udp6_punt_node) = {
 #undef _
   },
 };
-
-VLIB_NODE_FUNCTION_MULTIARCH (udp6_punt_node, udp6_punt)
 /* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (udp6_punt_node, udp6_punt);;
 
 /**
  * @brief Request IP traffic punt to the local TCP/IP stack.

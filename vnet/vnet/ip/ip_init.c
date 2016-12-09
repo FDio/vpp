@@ -44,13 +44,13 @@ ip_main_t ip_main;
 clib_error_t *
 ip_main_init (vlib_main_t * vm)
 {
-  ip_main_t * im = &ip_main;
-  clib_error_t * error = 0;
+  ip_main_t *im = &ip_main;
+  clib_error_t *error = 0;
 
   memset (im, 0, sizeof (im[0]));
 
   {
-    ip_protocol_info_t * pi;
+    ip_protocol_info_t *pi;
     u32 i;
 
 #define ip_protocol(n,s)			\
@@ -75,20 +75,18 @@ do {						\
   }
 
   {
-    tcp_udp_port_info_t * pi;
+    tcp_udp_port_info_t *pi;
     u32 i;
-    static char * port_names[] = 
-      {
+    static char *port_names[] = {
 #define ip_port(s,n) #s,
 #include "ports.def"
 #undef ip_port
-      };
-    static u16 ports[] = 
-      {
+    };
+    static u16 ports[] = {
 #define ip_port(s,n) n,
 #include "ports.def"
 #undef ip_port
-      };
+    };
 
     vec_resize (im->port_infos, ARRAY_LEN (port_names));
     im->port_info_by_name = hash_create_string (0, sizeof (uword));
@@ -144,3 +142,11 @@ do {						\
 
 VLIB_INIT_FUNCTION (ip_main_init);
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -53,22 +53,34 @@
   _ (DROP, "error message dropped")
 
 
-typedef enum {
+typedef enum
+{
 #define _(f,s) ICMP6_ERROR_##f,
   foreach_icmp6_error
 #undef _
 } icmp6_error_t;
 
-typedef struct {
+typedef struct
+{
   u8 packet_data[64];
 } icmp6_input_trace_t;
 
 format_function_t format_icmp6_input_trace;
-void icmp6_register_type (vlib_main_t * vm, icmp6_type_t type, u32 node_index);
-void icmp6_error_set_vnet_buffer (vlib_buffer_t *b, u8 type, u8 code, u32 data);
+void icmp6_register_type (vlib_main_t * vm, icmp6_type_t type,
+			  u32 node_index);
+void icmp6_error_set_vnet_buffer (vlib_buffer_t * b, u8 type, u8 code,
+				  u32 data);
 
 extern vlib_node_registration_t ip6_icmp_input_node;
 
 #endif /* included_vnet_icmp6_h */
 
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

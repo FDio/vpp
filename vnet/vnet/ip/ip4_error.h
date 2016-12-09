@@ -76,11 +76,20 @@
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
   _ (INACL_SESSION_DENY, "input ACL session deny drops")
 
-typedef enum {
+typedef enum
+{
 #define _(sym,str) IP4_ERROR_##sym,
   foreach_ip4_error
 #undef _
-  IP4_N_ERROR,
+    IP4_N_ERROR,
 } ip4_error_t;
 
 #endif /* included_ip_ip4_error_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -37,8 +37,8 @@
 
 #include <vnet/vnet.h>
 
-#define IP_FRAG_FLAG_IP4_HEADER 0x01 //Encapsulating IPv4 header
-#define IP_FRAG_FLAG_IP6_HEADER 0x02 //Encapsulating IPv6 header
+#define IP_FRAG_FLAG_IP4_HEADER 0x01	//Encapsulating IPv4 header
+#define IP_FRAG_FLAG_IP6_HEADER 0x02	//Encapsulating IPv6 header
 
 #define IP4_FRAG_NODE_NAME "ip4-frag"
 #define IP6_FRAG_NODE_NAME "ip6-frag"
@@ -46,7 +46,8 @@
 extern vlib_node_registration_t ip4_frag_node;
 extern vlib_node_registration_t ip6_frag_node;
 
-typedef enum {
+typedef enum
+{
   IP4_FRAG_NEXT_IP4_LOOKUP,
   IP4_FRAG_NEXT_IP6_LOOKUP,
   IP4_FRAG_NEXT_ICMP_ERROR,
@@ -54,7 +55,8 @@ typedef enum {
   IP4_FRAG_N_NEXT
 } ip4_frag_next_t;
 
-typedef enum {
+typedef enum
+{
   IP6_FRAG_NEXT_IP4_LOOKUP,
   IP6_FRAG_NEXT_IP6_LOOKUP,
   IP6_FRAG_NEXT_DROP,
@@ -72,13 +74,23 @@ typedef enum {
  _(MEMORY, "could not allocate buffer")                 \
  _(UNKNOWN, "unknown error")
 
-typedef enum {
+typedef enum
+{
 #define _(sym,str) IP_FRAG_ERROR_##sym,
-   foreach_ip_frag_error
+  foreach_ip_frag_error
 #undef _
-   IP_FRAG_N_ERROR,
- } ip_frag_error_t;
+    IP_FRAG_N_ERROR,
+} ip_frag_error_t;
 
-void ip_frag_set_vnet_buffer(vlib_buffer_t *b, u16 offset, u16 mtu, u8 next_index, u8 flags);
+void ip_frag_set_vnet_buffer (vlib_buffer_t * b, u16 offset, u16 mtu,
+			      u8 next_index, u8 flags);
 
 #endif /* ifndef IP_FRAG_H */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

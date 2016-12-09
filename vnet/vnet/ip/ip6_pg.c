@@ -43,18 +43,16 @@
 static void
 ip6_pg_edit_function (pg_main_t * pg,
 		      pg_stream_t * s,
-		      pg_edit_group_t * g,
-		      u32 * packets,
-		      u32 n_packets)
+		      pg_edit_group_t * g, u32 * packets, u32 n_packets)
 {
-  vlib_main_t * vm = vlib_get_main();
+  vlib_main_t *vm = vlib_get_main ();
   u32 ip_header_offset = g->start_byte_offset;
 
   while (n_packets >= 2)
     {
       u32 pi0, pi1;
-      vlib_buffer_t * p0, * p1;
-      ip6_header_t * ip0, * ip1;
+      vlib_buffer_t *p0, *p1;
+      ip6_header_t *ip0, *ip1;
 
       pi0 = packets[0];
       pi1 = packets[1];
@@ -66,15 +64,19 @@ ip6_pg_edit_function (pg_main_t * pg,
       ip0 = (void *) (p0->data + ip_header_offset);
       ip1 = (void *) (p1->data + ip_header_offset);
 
-      ip0->payload_length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0) - ip_header_offset - sizeof (ip0[0]));
-      ip1->payload_length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p1) - ip_header_offset - sizeof (ip1[0]));
+      ip0->payload_length =
+	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0) -
+			      ip_header_offset - sizeof (ip0[0]));
+      ip1->payload_length =
+	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p1) -
+			      ip_header_offset - sizeof (ip1[0]));
     }
 
   while (n_packets >= 1)
     {
       u32 pi0;
-      vlib_buffer_t * p0;
-      ip6_header_t * ip0;
+      vlib_buffer_t *p0;
+      ip6_header_t *ip0;
 
       pi0 = packets[0];
       p0 = vlib_get_buffer (vm, pi0);
@@ -83,11 +85,14 @@ ip6_pg_edit_function (pg_main_t * pg,
 
       ip0 = (void *) (p0->data + ip_header_offset);
 
-      ip0->payload_length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0) - ip_header_offset - sizeof (ip0[0]));
+      ip0->payload_length =
+	clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, p0) -
+			      ip_header_offset - sizeof (ip0[0]));
     }
 }
 
-typedef struct {
+typedef struct
+{
   pg_edit_t ip_version;
   pg_edit_t traffic_class;
   pg_edit_t flow_label;
@@ -102,32 +107,29 @@ pg_ip6_header_init (pg_ip6_header_t * p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, ip6_header_t, f);
-  _ (payload_length);
-  _ (hop_limit);
-  _ (protocol);
-  _ (src_address);
-  _ (dst_address);
+  _(payload_length);
+  _(hop_limit);
+  _(protocol);
+  _(src_address);
+  _(dst_address);
 #undef _
 
   /* Initialize bit fields. */
   pg_edit_init_bitfield (&p->ip_version, ip6_header_t,
-			 ip_version_traffic_class_and_flow_label,
-			 28, 4);
+			 ip_version_traffic_class_and_flow_label, 28, 4);
   pg_edit_init_bitfield (&p->traffic_class, ip6_header_t,
-			 ip_version_traffic_class_and_flow_label,
-			 20, 8);
+			 ip_version_traffic_class_and_flow_label, 20, 8);
   pg_edit_init_bitfield (&p->flow_label, ip6_header_t,
-			 ip_version_traffic_class_and_flow_label,
-			 0, 20);
+			 ip_version_traffic_class_and_flow_label, 0, 20);
 }
 
 uword
 unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 {
-  pg_stream_t * s = va_arg (*args, pg_stream_t *);
-  pg_ip6_header_t * p;
+  pg_stream_t *s = va_arg (*args, pg_stream_t *);
+  pg_ip6_header_t *p;
   u32 group_index;
-  
+
   p = pg_create_edit_group (s, sizeof (p[0]), sizeof (ip6_header_t),
 			    &group_index);
   pg_ip6_header_init (p);
@@ -140,21 +142,19 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 
   p->payload_length.type = PG_EDIT_UNSPECIFIED;
 
-  if (! unformat (input, "%U: %U -> %U",
-		  unformat_pg_edit,
-		    unformat_ip_protocol, &p->protocol,
-		  unformat_pg_edit,
-		    unformat_ip6_address, &p->src_address,
-		  unformat_pg_edit,
-		    unformat_ip6_address, &p->dst_address))
+  if (!unformat (input, "%U: %U -> %U",
+		 unformat_pg_edit,
+		 unformat_ip_protocol, &p->protocol,
+		 unformat_pg_edit,
+		 unformat_ip6_address, &p->src_address,
+		 unformat_pg_edit, unformat_ip6_address, &p->dst_address))
     goto error;
 
   /* Parse options. */
   while (1)
     {
       if (unformat (input, "version %U",
-		    unformat_pg_edit,
-		    unformat_pg_number, &p->ip_version))
+		    unformat_pg_edit, unformat_pg_number, &p->ip_version))
 	;
 
       else if (unformat (input, "traffic-class %U",
@@ -168,8 +168,7 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 	;
 
       else if (unformat (input, "hop-limit %U",
-			 unformat_pg_edit,
-			 unformat_pg_number, &p->hop_limit))
+			 unformat_pg_edit, unformat_pg_number, &p->hop_limit))
 	;
 
       /* Can't parse input: try next protocol level. */
@@ -178,9 +177,9 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
     }
 
   {
-    ip_main_t * im = &ip_main;
+    ip_main_t *im = &ip_main;
     ip_protocol_t protocol;
-    ip_protocol_info_t * pi;
+    ip_protocol_info_t *pi;
 
     pi = 0;
     if (p->protocol.type == PG_EDIT_FIXED)
@@ -193,7 +192,7 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 	&& unformat_user (input, pi->unformat_pg_edit, s))
       ;
 
-    else if (! unformat_user (input, unformat_pg_payload, s))
+    else if (!unformat_user (input, unformat_pg_payload, s))
       goto error;
 
     if (p->payload_length.type == PG_EDIT_UNSPECIFIED
@@ -201,22 +200,32 @@ unformat_pg_ip6_header (unformat_input_t * input, va_list * args)
 	&& group_index + 1 < vec_len (s->edit_groups))
       {
 	pg_edit_set_fixed (&p->payload_length,
-			   pg_edit_group_n_bytes (s, group_index) - sizeof (ip6_header_t));
+			   pg_edit_group_n_bytes (s,
+						  group_index) -
+			   sizeof (ip6_header_t));
       }
 
     p = pg_get_edit_group (s, group_index);
     if (p->payload_length.type == PG_EDIT_UNSPECIFIED)
       {
-	pg_edit_group_t * g = pg_stream_get_group (s, group_index);
+	pg_edit_group_t *g = pg_stream_get_group (s, group_index);
 	g->edit_function = ip6_pg_edit_function;
       }
 
     return 1;
   }
 
- error:
+error:
   /* Free up any edits we may have added. */
   pg_free_edit_group (s);
   return 0;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

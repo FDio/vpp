@@ -51,23 +51,28 @@
   _ (ECE)					\
   _ (CWR)
 
-enum {
+enum
+{
 #define _(f) TCP_FLAG_BIT_##f,
   foreach_tcp_flag
 #undef _
-  TCP_N_FLAG_BITS,
+    TCP_N_FLAG_BITS,
 
 #define _(f) TCP_FLAG_##f = 1 << TCP_FLAG_BIT_##f,
   foreach_tcp_flag
 #undef _
 };
 
-typedef struct {
+typedef struct
+{
   /* Source and destination port. */
-  union {
-    union {
-      struct {
-        u16 src, dst;
+  union
+  {
+    union
+    {
+      struct
+      {
+	u16 src, dst;
       };
       u32 src_and_dst;
     } ports;
@@ -96,10 +101,13 @@ typedef struct {
 
 always_inline int
 tcp_header_bytes (tcp_header_t * t)
-{ return (t->tcp_header_u32s_and_reserved >> 4) * sizeof (u32); }
+{
+  return (t->tcp_header_u32s_and_reserved >> 4) * sizeof (u32);
+}
 
 /* TCP options. */
-typedef enum tcp_option_type {
+typedef enum tcp_option_type
+{
   TCP_OPTION_END = 0,
   TCP_OPTION_NOP = 1,
   TCP_OPTION_MSS = 2,
@@ -110,8 +118,9 @@ typedef enum tcp_option_type {
 } tcp_option_type_t;
 
 /* All except NOP and END have 1 byte length field. */
-typedef struct {
-  tcp_option_type_t type : 8;
+typedef struct
+{
+  tcp_option_type_t type:8;
 
   /* Length of this option in bytes. */
   u8 length;
@@ -119,3 +128,11 @@ typedef struct {
 
 #endif /* included_tcp_packet_h */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

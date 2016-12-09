@@ -41,7 +41,7 @@
 #define included_ip_main_h
 
 #include <vppinfra/hash.h>
-#include <vppinfra/heap.h>		/* adjacency heap */
+#include <vppinfra/heap.h>	/* adjacency heap */
 #include <vppinfra/ptclosure.h>
 
 #include <vnet/vnet.h>
@@ -66,71 +66,73 @@
 #include <vnet/classify/vnet_classify.h>
 
 /* Per protocol info. */
-typedef struct {
+typedef struct
+{
   /* Protocol name (also used as hash key). */
-  u8 * name;
+  u8 *name;
 
   /* Protocol number. */
   ip_protocol_t protocol;
 
   /* Format function for this IP protocol. */
-  format_function_t * format_header;
+  format_function_t *format_header;
 
   /* Parser for header. */
-  unformat_function_t * unformat_header;
+  unformat_function_t *unformat_header;
 
   /* Parser for per-protocol matches. */
-  unformat_function_t * unformat_match;
+  unformat_function_t *unformat_match;
 
   /* Parser for packet generator edits for this protocol. */
-  unformat_function_t * unformat_pg_edit;
+  unformat_function_t *unformat_pg_edit;
 } ip_protocol_info_t;
 
 /* Per TCP/UDP port info. */
-typedef struct {
+typedef struct
+{
   /* Port name (used as hash key). */
-  u8 * name;
+  u8 *name;
 
   /* UDP/TCP port number in network byte order. */
   u16 port;
 
   /* Port specific format function. */
-  format_function_t * format_header;
+  format_function_t *format_header;
 
   /* Parser for packet generator edits for this protocol. */
-  unformat_function_t * unformat_pg_edit;
+  unformat_function_t *unformat_pg_edit;
 } tcp_udp_port_info_t;
 
-typedef struct {
+typedef struct
+{
   /* Per IP protocol info. */
-  ip_protocol_info_t * protocol_infos;
+  ip_protocol_info_t *protocol_infos;
 
   /* Protocol info index hashed by 8 bit IP protocol. */
-  uword * protocol_info_by_protocol;
+  uword *protocol_info_by_protocol;
 
   /* Hash table mapping IP protocol name (see protocols.def)
      to protocol number. */
-  uword * protocol_info_by_name;
+  uword *protocol_info_by_name;
 
   /* Per TCP/UDP port info. */
-  tcp_udp_port_info_t * port_infos;
+  tcp_udp_port_info_t *port_infos;
 
   /* Hash table from network-byte-order port to port info index. */
-  uword * port_info_by_port;
+  uword *port_info_by_port;
 
   /* Hash table mapping TCP/UDP name to port info index. */
-  uword * port_info_by_name;
+  uword *port_info_by_name;
 } ip_main_t;
 
 extern ip_main_t ip_main;
 
-clib_error_t *
-ip_main_init (vlib_main_t * vm);
+clib_error_t *ip_main_init (vlib_main_t * vm);
 
 static inline ip_protocol_info_t *
 ip_get_protocol_info (ip_main_t * im, u32 protocol)
 {
-  uword * p;
+  uword *p;
 
   p = hash_get (im->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (im->protocol_infos, p[0]) : 0;
@@ -139,22 +141,22 @@ ip_get_protocol_info (ip_main_t * im, u32 protocol)
 static inline tcp_udp_port_info_t *
 ip_get_tcp_udp_port_info (ip_main_t * im, u32 port)
 {
-  uword * p;
+  uword *p;
 
   p = hash_get (im->port_info_by_port, port);
   return p ? vec_elt_at_index (im->port_infos, p[0]) : 0;
 }
-      
+
 always_inline ip_csum_t
-ip_incremental_checksum_buffer (vlib_main_t * vm, vlib_buffer_t * first_buffer,
+ip_incremental_checksum_buffer (vlib_main_t * vm,
+				vlib_buffer_t * first_buffer,
 				u32 first_buffer_offset,
-				u32 n_bytes_to_checksum,
-				ip_csum_t sum)
+				u32 n_bytes_to_checksum, ip_csum_t sum)
 {
-  vlib_buffer_t * b = first_buffer;
+  vlib_buffer_t *b = first_buffer;
   u32 n_bytes_left = n_bytes_to_checksum;
   ASSERT (b->current_length >= first_buffer_offset);
-  void * h;
+  void *h;
   u32 n;
 
   n = clib_min (n_bytes_left, b->current_length);
@@ -177,9 +179,17 @@ ip_incremental_checksum_buffer (vlib_main_t * vm, vlib_buffer_t * first_buffer,
   return sum;
 }
 
-void ip_del_all_interface_addresses (vlib_main_t *vm, u32 sw_if_index);
+void ip_del_all_interface_addresses (vlib_main_t * vm, u32 sw_if_index);
 
 extern vlib_node_registration_t ip4_inacl_node;
 extern vlib_node_registration_t ip6_inacl_node;
 
 #endif /* included_ip_main_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -40,7 +40,8 @@
 #ifndef included_udp_packet_h
 #define included_udp_packet_h
 
-typedef struct {
+typedef struct
+{
   /* Source and destination port. */
   u16 src_port, dst_port;
 
@@ -54,3 +55,11 @@ typedef struct {
 
 #endif /* included_udp_packet_h */
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

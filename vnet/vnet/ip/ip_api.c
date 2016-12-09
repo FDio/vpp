@@ -119,11 +119,11 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
-        send_ip_neighbor_details (mp->is_ipv6,
-				  ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
-				  (u8 *) n->link_layer_address,
-				  (u8 *) & (n->key.ip6_address.as_u8),
-				  q, mp->context);
+        send_ip_neighbor_details
+          (mp->is_ipv6, ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
+           (u8 *) n->link_layer_address,
+           (u8 *) & (n->key.ip6_address.as_u8),
+           q, mp->context);
       }
       /* *INDENT-ON* */
       vec_free (ns);
@@ -285,22 +285,21 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
         }));
       }
   }));
+  /* *INDENT-ON* */
 
-  vec_sort_with_function(lfeis, fib_entry_cmp_for_sort);
+  vec_sort_with_function (lfeis, fib_entry_cmp_for_sort);
 
-  vec_foreach(lfeip, lfeis)
+  vec_foreach (lfeip, lfeis)
   {
-    fib_entry_get_prefix(*lfeip, &pfx);
-    fib_index = fib_entry_get_fib_index(*lfeip);
-    fib_table = fib_table_get(fib_index, pfx.fp_proto);
+    fib_entry_get_prefix (*lfeip, &pfx);
+    fib_index = fib_entry_get_fib_index (*lfeip);
+    fib_table = fib_table_get (fib_index, pfx.fp_proto);
     api_rpaths = NULL;
-    fib_entry_encode(*lfeip, &api_rpaths);
+    fib_entry_encode (*lfeip, &api_rpaths);
     send_ip_fib_details (am, q,
-                         fib_table->ft_table_id,
-                         &pfx,
-                         api_rpaths,
-                         mp->context);
-    vec_free(api_rpaths);
+			 fib_table->ft_table_id, &pfx, api_rpaths,
+			 mp->context);
+    vec_free (api_rpaths);
   }
 
   vec_free (lfeis);
@@ -326,16 +325,16 @@ vl_api_ip6_fib_details_t_print (vl_api_ip6_fib_details_t * mp)
 
 static void
 send_ip6_fib_details (vpe_api_main_t * am,
-                      unix_shared_memory_queue_t * q,
-                      u32 table_id, fib_prefix_t *pfx,
-                      fib_route_path_encode_t *api_rpaths, u32 context)
+		      unix_shared_memory_queue_t * q,
+		      u32 table_id, fib_prefix_t * pfx,
+		      fib_route_path_encode_t * api_rpaths, u32 context)
 {
   vl_api_ip6_fib_details_t *mp;
   fib_route_path_encode_t *api_rpath;
   vl_api_fib_path_t *fp;
   int path_count;
 
-  path_count = vec_len(api_rpaths);
+  path_count = vec_len (api_rpaths);
   mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
   if (!mp)
     return;
@@ -345,11 +344,11 @@ send_ip6_fib_details (vpe_api_main_t * am,
 
   mp->table_id = htonl (table_id);
   mp->address_length = pfx->fp_len;
-  memcpy(mp->address, &pfx->fp_addr.ip6, sizeof(pfx->fp_addr.ip6));
+  memcpy (mp->address, &pfx->fp_addr.ip6, sizeof (pfx->fp_addr.ip6));
 
   mp->count = htonl (path_count);
   fp = mp->path;
-  vec_foreach(api_rpath, api_rpaths)
+  vec_foreach (api_rpath, api_rpaths)
   {
     memset (fp, 0, sizeof (*fp));
     switch (api_rpath->dpo.dpoi_type)
@@ -363,13 +362,13 @@ send_ip6_fib_details (vpe_api_main_t * am,
       case DPO_IP_NULL:
 	switch (api_rpath->dpo.dpoi_index)
 	  {
-	  case IP_NULL_DPO_ACTION_NUM+IP_NULL_ACTION_NONE:
+	  case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_NONE:
 	    fp->is_drop = true;
 	    break;
-	  case IP_NULL_DPO_ACTION_NUM+IP_NULL_ACTION_SEND_ICMP_UNREACH:
+	  case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_SEND_ICMP_UNREACH:
 	    fp->is_unreach = true;
 	    break;
-	  case IP_NULL_DPO_ACTION_NUM+IP_NULL_ACTION_SEND_ICMP_PROHIBIT:
+	  case IP_NULL_DPO_ACTION_NUM + IP_NULL_ACTION_SEND_ICMP_PROHIBIT:
 	    fp->is_prohibit = true;
 	    break;
 	  default:
@@ -379,8 +378,8 @@ send_ip6_fib_details (vpe_api_main_t * am,
       default:
 	break;
       }
-    fp->weight = htonl(api_rpath->rpath.frp_weight);
-    fp->sw_if_index = htonl(api_rpath->rpath.frp_sw_if_index);
+    fp->weight = htonl (api_rpath->rpath.frp_weight);
+    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
     copy_fib_next_hop (api_rpath, fp);
     fp++;
   }
@@ -388,60 +387,56 @@ send_ip6_fib_details (vpe_api_main_t * am,
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
-typedef struct apt_ip6_fib_show_ctx_t_ {
-    u32 fib_index;
-    fib_node_index_t *entries;
+typedef struct apt_ip6_fib_show_ctx_t_
+{
+  u32 fib_index;
+  fib_node_index_t *entries;
 } api_ip6_fib_show_ctx_t;
 
 static void
-api_ip6_fib_table_put_entries (clib_bihash_kv_24_8_t * kvp,
-                               void *arg)
+api_ip6_fib_table_put_entries (clib_bihash_kv_24_8_t * kvp, void *arg)
 {
   api_ip6_fib_show_ctx_t *ctx = arg;
 
   if ((kvp->key[2] >> 32) == ctx->fib_index)
     {
-      vec_add1(ctx->entries, kvp->value);
+      vec_add1 (ctx->entries, kvp->value);
     }
 }
 
 static void
-api_ip6_fib_table_get_all (unix_shared_memory_queue_t *q,
-                           vl_api_ip6_fib_dump_t *mp,
-                           fib_table_t *fib_table)
+api_ip6_fib_table_get_all (unix_shared_memory_queue_t * q,
+			   vl_api_ip6_fib_dump_t * mp,
+			   fib_table_t * fib_table)
 {
   vpe_api_main_t *am = &vpe_api_main;
   ip6_main_t *im6 = &ip6_main;
   ip6_fib_t *fib = &fib_table->v6;
   fib_node_index_t *fib_entry_index;
   api_ip6_fib_show_ctx_t ctx = {
-    .fib_index = fib->index,
-    .entries = NULL,
+    .fib_index = fib->index,.entries = NULL,
   };
   fib_route_path_encode_t *api_rpaths;
   fib_prefix_t pfx;
 
-  BV(clib_bihash_foreach_key_value_pair)
-    ((BVT(clib_bihash) *) &im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
-     api_ip6_fib_table_put_entries,
-     &ctx);
+  BV (clib_bihash_foreach_key_value_pair)
+    ((BVT (clib_bihash) *) & im6->ip6_table[IP6_FIB_TABLE_NON_FWDING].
+     ip6_hash, api_ip6_fib_table_put_entries, &ctx);
 
-  vec_sort_with_function(ctx.entries, fib_entry_cmp_for_sort);
+  vec_sort_with_function (ctx.entries, fib_entry_cmp_for_sort);
 
-  vec_foreach(fib_entry_index, ctx.entries)
-    {
-      fib_entry_get_prefix(*fib_entry_index, &pfx);
-      api_rpaths = NULL;
-      fib_entry_encode(*fib_entry_index, &api_rpaths);
-      send_ip6_fib_details (am, q,
-                            fib_table->ft_table_id,
-                            &pfx,
-                            api_rpaths,
-                            mp->context);
-      vec_free(api_rpaths);
-    }
+  vec_foreach (fib_entry_index, ctx.entries)
+  {
+    fib_entry_get_prefix (*fib_entry_index, &pfx);
+    api_rpaths = NULL;
+    fib_entry_encode (*fib_entry_index, &api_rpaths);
+    send_ip6_fib_details (am, q,
+			  fib_table->ft_table_id,
+			  &pfx, api_rpaths, mp->context);
+    vec_free (api_rpaths);
+  }
 
-  vec_free(ctx.entries);
+  vec_free (ctx.entries);
 }
 
 static void
@@ -460,6 +455,7 @@ vl_api_ip6_fib_dump_t_handler (vl_api_ip6_fib_dump_t * mp)
   ({
     api_ip6_fib_table_get_all(q, mp, fib_table);
   }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -610,7 +606,7 @@ add_del_route_t_handler (u8 is_multipath,
 	      if (pool_is_free_index (cm->tables,
 				      ntohl (classify_table_index)))
 		{
-		  stats_dsunlock();
+		  stats_dsunlock ();
 		  return VNET_API_ERROR_NO_SUCH_TABLE;
 		}
 
@@ -620,7 +616,7 @@ add_del_route_t_handler (u8 is_multipath,
 	    }
 	  else
 	    {
-	      stats_dsunlock();
+	      stats_dsunlock ();
 	      return VNET_API_ERROR_NO_SUCH_TABLE;
 	    }
 
@@ -651,7 +647,7 @@ add_del_route_t_handler (u8 is_multipath,
 	}
     }
 
-  stats_dsunlock();
+  stats_dsunlock ();
   return (0);
 }
 
@@ -914,9 +910,9 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
   if (q == 0)
     return;
 
-  /* *INDENT-OFF* */
   if (mp->is_ipv6)
     {
+      /* *INDENT-OFF* */
       foreach_ip_interface_address (lm6, ia, sw_if_index,
                                     1 /* honor unnumbered */,
       ({
@@ -924,10 +920,11 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
         u16 prefix_length = ia->address_length;
         send_ip_address_details(am, q, (u8*)r6, prefix_length, 1, mp->context);
       }));
+      /* *INDENT-ON* */
     }
-
   else
     {
+      /* *INDENT-OFF* */
       foreach_ip_interface_address (lm4, ia, sw_if_index,
                                     1 /* honor unnumbered */,
       ({
@@ -935,9 +932,8 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
         u16 prefix_length = ia->address_length;
         send_ip_address_details(am, q, (u8*)r4, prefix_length, 0, mp->context);
       }));
+      /* *INDENT-ON* */
     }
-  /* *INDENT-ON* */
-
   BAD_SW_IF_INDEX_LABEL;
 }
 

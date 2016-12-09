@@ -40,7 +40,7 @@
 #include <vnet/ip/ip.h>
 
 ip_csum_t
-ip_incremental_checksum (ip_csum_t sum, void * _data, uword n_bytes)
+ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)
 {
   uword data = pointer_to_uword (_data);
   ip_csum_t sum0, sum1;
@@ -61,27 +61,27 @@ do {						\
     }						\
 } while (0)
 
-  _ (u8);
-  _ (u16);
+  _(u8);
+  _(u16);
   if (BITS (ip_csum_t) > 32)
-    _ (u32);
+    _(u32);
 
 #undef _
 
- {
-   ip_csum_t * d = uword_to_pointer (data, ip_csum_t *);
+  {
+    ip_csum_t *d = uword_to_pointer (data, ip_csum_t *);
 
-   while (n_bytes >= 2 * sizeof (d[0]))
-     {
-       sum0 = ip_csum_with_carry (sum0, d[0]);
-       sum1 = ip_csum_with_carry (sum1, d[1]);
-       d += 2;
-       n_bytes -= 2 * sizeof (d[0]);
-     }
+    while (n_bytes >= 2 * sizeof (d[0]))
+      {
+	sum0 = ip_csum_with_carry (sum0, d[0]);
+	sum1 = ip_csum_with_carry (sum1, d[1]);
+	d += 2;
+	n_bytes -= 2 * sizeof (d[0]);
+      }
 
-   data = pointer_to_uword (d);
- }
-   
+    data = pointer_to_uword (d);
+  }
+
 #define _(t)								\
 do {									\
   if (n_bytes >= sizeof (t) && sizeof (t) <= sizeof (ip_csum_t))	\
@@ -92,47 +92,49 @@ do {									\
     }									\
 } while (0)
 
- if (BITS (ip_csum_t) > 32)
-   _ (u64);
- _ (u32);
- _ (u16);
- _ (u8);
+  if (BITS (ip_csum_t) > 32)
+    _(u64);
+  _(u32);
+  _(u16);
+  _(u8);
 
 #undef _
 
- /* Combine even and odd sums. */
- sum0 = ip_csum_with_carry (sum0, sum1);
+  /* Combine even and odd sums. */
+  sum0 = ip_csum_with_carry (sum0, sum1);
 
- return sum0;
+  return sum0;
 }
 
 ip_csum_t
-ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_bytes)
+ip_csum_and_memcpy (ip_csum_t sum, void *dst, void *src, uword n_bytes)
 {
   uword n_left;
   ip_csum_t sum0 = sum, sum1;
   n_left = n_bytes;
 
-  if (n_left && (pointer_to_uword (dst) & sizeof(u8)))
+  if (n_left && (pointer_to_uword (dst) & sizeof (u8)))
     {
-      u8 * d8, val;
+      u8 *d8, val;
 
       d8 = dst;
-      val = ((u8 *)src)[0];
+      val = ((u8 *) src)[0];
       d8[0] = val;
       dst += 1;
       src += 1;
       n_left -= 1;
-      sum0 = ip_csum_with_carry (sum0, val << (8 * CLIB_ARCH_IS_LITTLE_ENDIAN));
+      sum0 =
+	ip_csum_with_carry (sum0, val << (8 * CLIB_ARCH_IS_LITTLE_ENDIAN));
     }
 
-  while ((n_left >= sizeof (u16)) && (pointer_to_uword (dst) & (sizeof (sum) - sizeof (u16))))
+  while ((n_left >= sizeof (u16))
+	 && (pointer_to_uword (dst) & (sizeof (sum) - sizeof (u16))))
     {
-      u16 * d16, * s16;
+      u16 *d16, *s16;
 
       d16 = dst;
       s16 = src;
-      
+
       d16[0] = clib_mem_unaligned (&s16[0], u16);
 
       sum0 = ip_csum_with_carry (sum0, d16[0]);
@@ -155,8 +157,8 @@ ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_bytes)
       dst_even[0] = dst0;
       dst_even[1] = dst1;
 
-      dst += 2 * sizeof(dst_even[0]);
-      src += 2 * sizeof(dst_even[0]);
+      dst += 2 * sizeof (dst_even[0]);
+      src += 2 * sizeof (dst_even[0]);
       n_left -= 2 * sizeof (dst_even[0]);
 
       sum0 = ip_csum_with_carry (sum0, dst0);
@@ -175,8 +177,8 @@ ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_bytes)
 
       dst_even[0] = dst0;
 
-      dst += 1 * sizeof(sum);
-      src += 1 * sizeof(sum);
+      dst += 1 * sizeof (sum);
+      src += 1 * sizeof (sum);
       n_left -= 1 * sizeof (sum);
 
       sum0 = ip_csum_with_carry (sum0, dst0);
@@ -202,7 +204,7 @@ ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_bytes)
 
   if (n_left == 1)
     {
-      u8 * d8, * s8, val;
+      u8 *d8, *s8, val;
 
       d8 = dst;
       s8 = src;
@@ -216,3 +218,11 @@ ip_csum_and_memcpy (ip_csum_t sum, void * dst, void * src, uword n_bytes)
 
   return sum0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -58,21 +58,24 @@
   _ (0x31, router_solicitation)			\
   _ (0x32, router_termination)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) IGMP_TYPE_##f = n,
   foreach_igmp_type
 #undef _
 } igmp_type_t;
 
-typedef struct {
-  igmp_type_t type : 8;
+typedef struct
+{
+  igmp_type_t type:8;
 
   u8 code;
 
   u16 checksum;
 } igmp_header_t;
 
-typedef struct {
+typedef struct
+{
   /* membership_query, version <= 2 reports. */
   igmp_header_t header;
 
@@ -88,14 +91,16 @@ typedef struct {
   _ (5, allow_new_sources)			\
   _ (6, block_old_sources)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) IGMP_MEMBERSHIP_GROUP_##f = n,
   foreach_igmp_membership_group_v3_type
 #undef _
 } igmp_membership_group_v3_type_t;
 
-typedef struct {
-  igmp_membership_group_v3_type_t type : 8;
+typedef struct
+{
+  igmp_membership_group_v3_type_t type:8;
 
   /* Number of 32 bit words of aux data after source addresses. */
   u8 n_aux_u32s;
@@ -117,7 +122,8 @@ igmp_membership_group_v3_next (igmp_membership_group_v3_t * g)
 	  + g->n_aux_u32s * sizeof (u32));
 }
 
-typedef struct {
+typedef struct
+{
   /* Type 0x22. */
   igmp_header_t header;
 
@@ -130,7 +136,8 @@ typedef struct {
 } igmp_membership_report_v3_t;
 
 /* IP6 flavor of IGMP is called MLD which is embedded in ICMP6. */
-typedef struct {
+typedef struct
+{
   /* Preceeded by ICMP v6 header. */
   u16 max_response_delay_in_milliseconds;
   u16 reserved;
@@ -138,3 +145,11 @@ typedef struct {
 } mld_header_t;
 
 #endif /* included_vnet_igmp_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
