@@ -109,8 +109,8 @@ ip4_input_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t *p0, *p1;
 	  ip4_header_t *ip0, *ip1;
-	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0 = 0;
-	  u32 sw_if_index1, pi1, ip_len1, cur_len1, next1 = 0;
+	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
+	  u32 sw_if_index1, pi1, ip_len1, cur_len1, next1;
 	  i32 len_diff0, len_diff1;
 	  u8 error0, error1, arc0, arc1;
 
@@ -144,12 +144,33 @@ ip4_input_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  arc0 =
-	    ip4_address_is_multicast (&ip0->dst_address) ?
-	    lm->mcast_feature_arc_index : lm->ucast_feature_arc_index;
-	  arc1 =
-	    ip4_address_is_multicast (&ip1->dst_address) ?
-	    lm->mcast_feature_arc_index : lm->ucast_feature_arc_index;
+	  error0 = error1 = IP4_ERROR_NONE;
+
+	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip0->dst_address)))
+	    {
+	      arc0 = lm->mcast_feature_arc_index;
+	      next0 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+	    }
+	  else
+	    {
+	      arc0 = lm->ucast_feature_arc_index;
+	      next0 = IP4_INPUT_NEXT_LOOKUP;
+	      if (PREDICT_FALSE (ip0->ttl < 1))
+		error0 = IP4_ERROR_TIME_EXPIRED;
+	    }
+
+	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip1->dst_address)))
+	    {
+	      arc1 = lm->mcast_feature_arc_index;
+	      next1 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+	    }
+	  else
+	    {
+	      arc1 = lm->ucast_feature_arc_index;
+	      next1 = IP4_INPUT_NEXT_LOOKUP;
+	      if (PREDICT_FALSE (ip1->ttl < 1))
+		error1 = IP4_ERROR_TIME_EXPIRED;
+	    }
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
@@ -160,23 +181,14 @@ ip4_input_inline (vlib_main_t * vm,
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index1, 1);
 
-	  error0 = error1 = IP4_ERROR_NONE;
+	  /* Punt packets with options or wrong version. */
+	  if (PREDICT_FALSE (ip0->ip_version_and_header_length != 0x45))
+	    error0 = (ip0->ip_version_and_header_length & 0xf) != 5 ?
+	      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
 
-	  /* Punt packets with options. */
-	  error0 =
-	    (ip0->ip_version_and_header_length & 0xf) !=
-	    5 ? IP4_ERROR_OPTIONS : error0;
-	  error1 =
-	    (ip1->ip_version_and_header_length & 0xf) !=
-	    5 ? IP4_ERROR_OPTIONS : error1;
-
-	  /* Version != 4?  Drop it. */
-	  error0 =
-	    (ip0->ip_version_and_header_length >> 4) !=
-	    4 ? IP4_ERROR_VERSION : error0;
-	  error1 =
-	    (ip1->ip_version_and_header_length >> 4) !=
-	    4 ? IP4_ERROR_VERSION : error1;
+	  if (PREDICT_FALSE (ip1->ip_version_and_header_length != 0x45))
+	    error1 = (ip1->ip_version_and_header_length & 0xf) != 5 ?
+	      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
 
 	  /* Verify header checksum. */
 	  if (verify_checksum)
@@ -186,31 +198,17 @@ ip4_input_inline (vlib_main_t * vm,
 	      ip4_partial_header_checksum_x1 (ip0, sum0);
 	      ip4_partial_header_checksum_x1 (ip1, sum1);
 
-	      error0 =
-		0xffff !=
-		ip_csum_fold (sum0) ? IP4_ERROR_BAD_CHECKSUM : error0;
-	      error1 =
-		0xffff !=
-		ip_csum_fold (sum1) ? IP4_ERROR_BAD_CHECKSUM : error1;
+	      error0 = 0xffff != ip_csum_fold (sum0) ?
+		IP4_ERROR_BAD_CHECKSUM : error0;
+	      error1 = 0xffff != ip_csum_fold (sum1) ?
+		IP4_ERROR_BAD_CHECKSUM : error1;
 	    }
 
 	  /* Drop fragmentation offset 1 packets. */
-	  error0 =
-	    ip4_get_fragment_offset (ip0) ==
-	    1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
-	  error1 =
-	    ip4_get_fragment_offset (ip1) ==
-	    1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE : error1;
-
-	  /* TTL < 1? Drop it. */
-	  error0 = (ip0->ttl < 1
-		    && arc0 ==
-		    lm->ucast_feature_arc_index) ? IP4_ERROR_TIME_EXPIRED :
-	    error0;
-	  error1 = (ip1->ttl < 1
-		    && arc1 ==
-		    lm->ucast_feature_arc_index) ? IP4_ERROR_TIME_EXPIRED :
-	    error1;
+	  error0 = ip4_get_fragment_offset (ip0) == 1 ?
+	    IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
+	  error1 = ip4_get_fragment_offset (ip1) == 1 ?
+	    IP4_ERROR_FRAGMENT_OFFSET_ONE : error1;
 
 	  /* Verify lengths. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -242,10 +240,8 @@ ip4_input_inline (vlib_main_t * vm,
 		  next0 = IP4_INPUT_NEXT_ICMP_ERROR;
 		}
 	      else
-		next0 =
-		  error0 !=
-		  IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
-		  IP4_INPUT_NEXT_PUNT;
+		next0 = error0 != IP4_ERROR_OPTIONS ?
+		  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
 	    }
 	  if (PREDICT_FALSE (error1 != IP4_ERROR_NONE))
 	    {
@@ -257,10 +253,8 @@ ip4_input_inline (vlib_main_t * vm,
 		  next1 = IP4_INPUT_NEXT_ICMP_ERROR;
 		}
 	      else
-		next1 =
-		  error1 !=
-		  IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
-		  IP4_INPUT_NEXT_PUNT;
+		next1 = error1 != IP4_ERROR_OPTIONS ?
+		  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -271,7 +265,7 @@ ip4_input_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
-	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0 = 0;
+	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
 	  i32 len_diff0;
 	  u8 error0, arc0;
 
@@ -287,25 +281,30 @@ ip4_input_inline (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
-	  arc0 =
-	    ip4_address_is_multicast (&ip0->dst_address) ?
-	    lm->mcast_feature_arc_index : lm->ucast_feature_arc_index;
+	  error0 = IP4_ERROR_NONE;
+
+	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip0->dst_address)))
+	    {
+	      arc0 = lm->mcast_feature_arc_index;
+	      next0 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+	    }
+	  else
+	    {
+	      arc0 = lm->ucast_feature_arc_index;
+	      next0 = IP4_INPUT_NEXT_LOOKUP;
+	      if (PREDICT_FALSE (ip0->ttl < 1))
+		error0 = IP4_ERROR_TIME_EXPIRED;
+	    }
+
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 
-	  error0 = IP4_ERROR_NONE;
-
-	  /* Punt packets with options. */
-	  error0 =
-	    (ip0->ip_version_and_header_length & 0xf) !=
-	    5 ? IP4_ERROR_OPTIONS : error0;
-
-	  /* Version != 4?  Drop it. */
-	  error0 =
-	    (ip0->ip_version_and_header_length >> 4) !=
-	    4 ? IP4_ERROR_VERSION : error0;
+	  /* Punt packets with options or wrong version. */
+	  if (PREDICT_FALSE (ip0->ip_version_and_header_length != 0x45))
+	    error0 = (ip0->ip_version_and_header_length & 0xf) != 5 ?
+	      IP4_ERROR_OPTIONS : IP4_ERROR_VERSION;
 
 	  /* Verify header checksum. */
 	  if (verify_checksum)
@@ -322,12 +321,6 @@ ip4_input_inline (vlib_main_t * vm,
 	  error0 =
 	    ip4_get_fragment_offset (ip0) ==
 	    1 ? IP4_ERROR_FRAGMENT_OFFSET_ONE : error0;
-
-	  /* TTL < 1? Drop it. */
-	  error0 = (ip0->ttl < 1
-		    && arc0 ==
-		    lm->ucast_feature_arc_index) ? IP4_ERROR_TIME_EXPIRED :
-	    error0;
 
 	  /* Verify lengths. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -350,10 +343,8 @@ ip4_input_inline (vlib_main_t * vm,
 		  next0 = IP4_INPUT_NEXT_ICMP_ERROR;
 		}
 	      else
-		next0 =
-		  error0 !=
-		  IP4_ERROR_OPTIONS ? IP4_INPUT_NEXT_DROP :
-		  IP4_INPUT_NEXT_PUNT;
+		next0 = error0 != IP4_ERROR_OPTIONS ?
+		  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
