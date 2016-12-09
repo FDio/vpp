@@ -47,7 +47,7 @@ lisp_msg_put_mapping_record (vlib_buffer_t * b, mapping_t * record)
 
   memset (p, 0, sizeof (*p));
   MAP_REC_EID_PLEN (p) = gid_address_len (eid);
-  MAP_REC_TTL (p) = clib_host_to_net_u32 (record->ttl);
+  MAP_REC_TTL (p) = clib_host_to_net_u32 (MAP_REGISTER_DEFAULT_TTL);
   MAP_REC_AUTH (p) = record->authoritative ? 1 : 0;
   MAP_REC_LOC_COUNT (p) = vec_len (record->locators);
 

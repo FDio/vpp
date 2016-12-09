@@ -42,8 +42,10 @@ foreach_sfib4_subprefix (BVT (clib_bihash_kv) * kvp, void *arg)
   ASSERT (plen <= 32);
   mask = &a->ip4_table->ip4_fib_masks[plen];
 
-  u32 src_ip = clib_host_to_net_u32 (ip_prefix_v4 (&a->src).as_u32);
+  u32 src_ip = ip_prefix_v4 (&a->src).as_u32;
   src_ip &= mask->as_u32;
+  ip &= mask->as_u32;
+
   if (src_ip == ip)
     {
       /* found sub-prefix of src prefix */

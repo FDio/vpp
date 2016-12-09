@@ -36,9 +36,14 @@ typedef struct
 
 typedef struct
 {
-  mapping_t *mappings;
   u64 nonce;
-} map_reply_args_t;
+  u8 is_rloc_probe;
+  mapping_t *mappings;
+} map_records_arg_t;
+
+static int
+lisp_add_del_adjacency (lisp_cp_main_t * lcm, gid_address_t * local_eid,
+			gid_address_t * remote_eid, u8 is_add);
 
 u8
 vnet_lisp_get_map_request_mode (void)
@@ -366,6 +371,7 @@ get_locator_pairs (lisp_cp_main_t * lcm, mapping_t * lcl_map,
 				   &gid_address_ip (&rmt->address));
 		  ip_address_copy (&pair.lcl_loc, lcl_addr);
 		  pair.weight = rmt->weight;
+		  pair.priority = rmt->priority;
 		  vec_add1 (locator_pairs[0], pair);
 		  found = 1;
 		}
@@ -1156,7 +1162,10 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
 			      remove_mapping_if_needed, &a);
 
   vec_foreach (e, a.eids_to_be_deleted)
+  {
+    lisp_add_del_adjacency (lcm, 0, e, 0 /* is_add */ );
     vnet_lisp_add_del_mapping (e, 0, 0, 0, 0, 0 /* is add */ , 0, 0);
+  }
 
   vec_free (a.eids_to_be_deleted);
 }
@@ -1351,7 +1360,7 @@ cleanup:
  * Note that adjacencies are not stored, they only result in forwarding entries
  * being created.
  */
-int
+static int
 lisp_add_del_adjacency (lisp_cp_main_t * lcm, gid_address_t * local_eid,
 			gid_address_t * remote_eid, u8 is_add)
 {
@@ -3519,13 +3528,18 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
 static int
 send_rloc_probes (lisp_cp_main_t * lcm)
 {
+  u8 lprio = 0;
   mapping_t *lm;
   fwd_entry_t *e;
+  locator_pair_t *lp;
   u32 si;
 
   /* *INDENT-OFF* */
   pool_foreach (e, lcm->fwd_entry_pool,
   {
+    if (vec_len (e->locator_pairs) == 0)
+      continue;
+
     si = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &e->leid);
     if (~0 == si)
       {
@@ -3535,16 +3549,19 @@ send_rloc_probes (lisp_cp_main_t * lcm)
       }
     lm = pool_elt_at_index (lcm->mapping_pool, si);
 
-    if (vec_len (e->locator_pairs) == 0)
-      continue;
+    /* get the best (lowest) priority */
+    lprio = e->locator_pairs[0].priority;
 
-    /* TODO send rloc-probe for each pair? for now assume there is only one
-      pair at a time */
-    locator_pair_t *lp = &e->locator_pairs[0];
+    /* send rloc-probe for pair(s) with the best remote locator priority */
+    vec_foreach (lp, e->locator_pairs)
+      {
+        if (lp->priority != lprio)
+          break;
 
-    /* get first remote locator */
-    send_rloc_probe (lcm, &e->reid, lm->locator_set_index, &lp->lcl_loc,
-                     &lp->rmt_loc);
+        /* get first remote locator */
+        send_rloc_probe (lcm, &e->reid, lm->locator_set_index, &lp->lcl_loc,
+                         &lp->rmt_loc);
+      }
   });
   /* *INDENT-ON* */
 
@@ -3561,6 +3578,7 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
   u64 nonce = 0;
   u32 next_index, *to_next;
   ip_address_t *ms = 0;
+  mapping_t *records, *r, *g;
 
   // TODO: support multiple map servers and do election
   if (0 == vec_len (lcm->map_servers))
@@ -3575,38 +3593,44 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
       return -1;
     }
 
-  /* TODO build mapping records grouped by secret key and send one map-register
-     per group. Currently only one secret key per vpp is supported  */
-  mapping_t *records = build_map_register_record_list (lcm);
+  records = build_map_register_record_list (lcm);
   if (!records)
     return -1;
 
-  u8 *key = records[0].key;
-  u8 key_id = records[0].key_id;
+  vec_foreach (r, records)
+  {
+    u8 *key = r->key;
+    u8 key_id = r->key_id;
 
-  if (!key)
-    return 0;			/* no secret key -> map-register cannot be sent */
+    if (!key)
+      continue;			/* no secret key -> map-register cannot be sent */
 
-  b = build_map_register (lcm, &sloc, ms, &nonce, want_map_notif, records,
-			  key_id, key, &bi);
-  if (!b)
-    return -1;
+    g = 0;
+    // TODO: group mappings that share common key
+    vec_add1 (g, r[0]);
+    b = build_map_register (lcm, &sloc, ms, &nonce, want_map_notif, g,
+			    key_id, key, &bi);
+    vec_free (g);
+    if (!b)
+      continue;
+
+    vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+
+    next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
+      ip4_lookup_node.index : ip6_lookup_node.index;
+
+    f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
+
+    /* Enqueue the packet */
+    to_next = vlib_frame_vector_args (f);
+    to_next[0] = bi;
+    f->n_vectors = 1;
+    vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
+
+    hash_set (lcm->map_register_messages_by_nonce, nonce, 0);
+  }
   free_map_register_records (records);
 
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
-
-  next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
-    ip4_lookup_node.index : ip6_lookup_node.index;
-
-  f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
-
-  /* Enqueue the packet */
-  to_next = vlib_frame_vector_args (f);
-  to_next[0] = bi;
-  f->n_vectors = 1;
-  vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
-
-  hash_set (lcm->map_register_messages_by_nonce, nonce, 0);
   return 0;
 }
 
@@ -4110,26 +4134,30 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
 }
 
 static void
-map_reply_args_free (map_reply_args_t * a)
+map_records_arg_free (map_records_arg_t * a)
 {
   mapping_t *m;
   vec_foreach (m, a->mappings)
   {
-    gid_address_free (&m->eid);
     vec_free (m->locators);
+    gid_address_free (&m->eid);
   }
+
   clib_mem_free (a);
 }
 
 void *
-process_map_reply (map_reply_args_t * a)
+process_map_reply (map_records_arg_t * a)
 {
-  u64 *noncep;
-  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  u32 dst_map_index = ~0;
-  pending_map_request_t *pmr;
-  uword *pmr_index;
   mapping_t *m;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u32 dst_map_index = 0;
+  pending_map_request_t *pmr;
+  u64 *noncep;
+  uword *pmr_index;
+
+  if (a->is_rloc_probe)
+    goto done;
 
   /* Check pending requests table and nonce */
   pmr_index = hash_get (lcm->pending_map_requests_by_nonce, a->nonce);
@@ -4168,7 +4196,7 @@ process_map_reply (map_reply_args_t * a)
   pool_put (lcm->pending_map_requests_pool, pmr);
 
 done:
-  map_reply_args_free (a);
+  map_records_arg_free (a);
   return 0;
 }
 
@@ -4206,83 +4234,151 @@ is_auth_data_valid (map_notify_hdr_t * h, u32 msg_len,
 }
 
 static void
-process_map_notify (vlib_main_t * vm, lisp_cp_main_t * lcm, vlib_buffer_t * b)
+process_map_notify (map_records_arg_t * a)
 {
-  lisp_key_type_t key_id;
-  gid_address_t deid;
-  mapping_t *m;
-  u32 i, mi, len;
-  map_notify_hdr_t *mnotif_hdr;
-  u64 nonce;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   uword *pmr_index;
-  locator_t *locators = 0, *loc;
-  u16 auth_data_len = 0;
 
-  mnotif_hdr = vlib_buffer_get_current (b);
-  vlib_buffer_pull (b, sizeof (*mnotif_hdr));
-  memset (&deid, 0, sizeof (deid));
-
-  nonce = MNOTIFY_NONCE (mnotif_hdr);
-  key_id = clib_net_to_host_u16 (MNOTIFY_KEY_ID (mnotif_hdr));
-  auth_data_len = auth_data_len_by_key_id (key_id);
-
-  pmr_index = hash_get (lcm->map_register_messages_by_nonce, nonce);
+  pmr_index = hash_get (lcm->map_register_messages_by_nonce, a->nonce);
   if (!pmr_index)
     {
-      clib_warning ("No pending map-register entry with nonce %lu!", nonce);
+      clib_warning ("No pending map-register entry with nonce %lu!",
+		    a->nonce);
       return;
     }
 
-  /* advance buffer by authentication data */
-  vlib_buffer_pull (b, auth_data_len);
+  map_records_arg_free (a);
+  hash_unset (lcm->map_register_messages_by_nonce, a->nonce);
+}
+
+static mapping_t *
+get_mapping (lisp_cp_main_t * lcm, gid_address_t * e)
+{
+  u32 mi;
+
+  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, e);
+  if (~0 == mi)
+    {
+      clib_warning ("eid %U not found in map-cache!", unformat_gid_address,
+		    e);
+      return 0;
+    }
+  return pool_elt_at_index (lcm->mapping_pool, mi);
+}
+
+/**
+ * When map-notify is received it is necessary that all EIDs in the record
+ * list share common key. The key is then used to verify authentication
+ * data in map-notify message.
+ */
+static int
+map_record_integrity_check (lisp_cp_main_t * lcm, mapping_t * maps,
+			    u32 key_id, u8 ** key_out)
+{
+  u32 i, len = vec_len (maps);
+  mapping_t *m;
+
+  /* get key of the first mapping */
+  m = get_mapping (lcm, &maps[0].eid);
+  if (!m || !m->key)
+    return -1;
+
+  key_out[0] = m->key;
+
+  for (i = 1; i < len; i++)
+    {
+      m = get_mapping (lcm, &maps[i].eid);
+      if (!m || !m->key)
+	return -1;
+
+      if (key_id != m->key_id || vec_cmp (m->key, key_out[0]))
+	{
+	  clib_warning ("keys does not match! %v, %v", key_out[0], m->key);
+	  return -1;
+	}
+    }
+  return 0;
+}
+
+static int
+parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
+{
+  locator_t *locators = 0;
+  u32 i, len;
+  gid_address_t deid;
+  mapping_t m;
+  locator_t *loc;
 
   /* parse record eid */
-  for (i = 0; i < MNOTIFY_REC_COUNT (mnotif_hdr); i++)
+  for (i = 0; i < count; i++)
     {
       len = lisp_msg_parse_mapping_record (b, &deid, &locators, NULL);
       if (len == ~0)
 	{
 	  clib_warning ("Failed to parse mapping record!");
-	  vec_foreach (loc, locators)
-	  {
-	    locator_free (loc);
-	  }
+	  vec_foreach (loc, locators) locator_free (loc);
 	  vec_free (locators);
-	  return;
+	  return -1;
 	}
 
-      vec_free (locators);
+      m.locators = locators;
+      gid_address_copy (&m.eid, &deid);
+      vec_add1 (a->mappings, m);
     }
 
-  /* lookup eid in map-cache */
-  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &deid);
-  if (~0 == mi)
+  return 0;
+}
+
+static map_records_arg_t *
+parse_map_notify (vlib_buffer_t * b)
+{
+  int rc = 0;
+  map_notify_hdr_t *mnotif_hdr;
+  lisp_key_type_t key_id;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u8 *key = 0;
+  gid_address_t deid;
+  u16 auth_data_len = 0;
+  u8 record_count;
+  map_records_arg_t *a = clib_mem_alloc (sizeof (*a));
+
+  memset (a, 0, sizeof (*a));
+  mnotif_hdr = vlib_buffer_get_current (b);
+  vlib_buffer_pull (b, sizeof (*mnotif_hdr));
+  memset (&deid, 0, sizeof (deid));
+
+  a->nonce = MNOTIFY_NONCE (mnotif_hdr);
+  key_id = clib_net_to_host_u16 (MNOTIFY_KEY_ID (mnotif_hdr));
+  auth_data_len = auth_data_len_by_key_id (key_id);
+
+  /* advance buffer by authentication data */
+  vlib_buffer_pull (b, auth_data_len);
+
+  record_count = MNOTIFY_REC_COUNT (mnotif_hdr);
+  rc = parse_map_records (b, a, record_count);
+  if (rc != 0)
     {
-      clib_warning ("eid %U not found in map-cache!", unformat_gid_address,
-		    &deid);
-      return;
+      map_records_arg_free (a);
+      return 0;
     }
 
-  m = pool_elt_at_index (lcm->mapping_pool, mi);
-  if (!m->key)
+  rc = map_record_integrity_check (lcm, a->mappings, key_id, &key);
+  if (rc != 0)
     {
-      clib_warning ("There is no secret key assigned to %U!",
-		    format_gid_address, &deid);
-      goto done;
+      map_records_arg_free (a);
+      return 0;
     }
 
   /* verify authentication data */
   if (!is_auth_data_valid (mnotif_hdr, vlib_buffer_get_tail (b)
-			   - (u8 *) mnotif_hdr, m->key_id, m->key))
+			   - (u8 *) mnotif_hdr, key_id, key))
     {
       clib_warning ("Map-notify auth data verification failed for nonce %lu!",
-		    nonce);
-      goto done;
+		    a->nonce);
+      map_records_arg_free (a);
+      return 0;
     }
-
-done:
-  hash_unset (lcm->map_register_messages_by_nonce, nonce);
-  gid_address_free (&deid);
+  return a;
 }
 
 static vlib_buffer_t *
@@ -4374,7 +4470,7 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
   gid_address_t src, dst;
   u64 nonce;
   u32 i, len = 0;
-  gid_address_t *itr_rlocs = 0, *rloc;
+  gid_address_t *itr_rlocs = 0;
 
   mreq_hdr = vlib_buffer_get_current (b);
 
@@ -4416,10 +4512,8 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
   if (len == ~0)
     return;
 
-  /* for now we don't do anything with the itr's rlocs */
-  len =
-    lisp_msg_parse_itr_rlocs (b, &itr_rlocs,
-			      MREQ_ITR_RLOC_COUNT (mreq_hdr) + 1);
+  len = lisp_msg_parse_itr_rlocs (b, &itr_rlocs,
+				  MREQ_ITR_RLOC_COUNT (mreq_hdr) + 1);
   if (len == ~0)
     return;
 
@@ -4459,19 +4553,10 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
     }
 
 done:
-  vec_foreach (rloc, itr_rlocs)
-  {
-    gid_address_free (rloc);
-  }
+  vec_free (itr_rlocs);
 }
 
-static void
-queue_map_reply_for_processing (map_reply_args_t * a)
-{
-  vl_api_rpc_call_main_thread (process_map_reply, (u8 *) a, sizeof (a));
-}
-
-static map_reply_args_t *
+static map_records_arg_t *
 parse_map_reply (vlib_buffer_t * b)
 {
   locator_t probed;
@@ -4480,12 +4565,13 @@ parse_map_reply (vlib_buffer_t * b)
   u32 i, len = 0;
   mapping_t m;
   map_reply_hdr_t *mrep_hdr;
-  map_reply_args_t *a = clib_mem_alloc (sizeof (*a));
+  map_records_arg_t *a = clib_mem_alloc (sizeof (*a));
   memset (a, 0, sizeof (*a));
   locator_t *locators;
 
   mrep_hdr = vlib_buffer_get_current (b);
   a->nonce = MREP_NONCE (mrep_hdr);
+  a->is_rloc_probe = MREP_RLOC_PROBE (mrep_hdr);
   vlib_buffer_pull (b, sizeof (*mrep_hdr));
 
   for (i = 0; i < MREP_REC_COUNT (mrep_hdr); i++)
@@ -4502,7 +4588,7 @@ parse_map_reply (vlib_buffer_t * b)
       if (len == ~0)
 	{
 	  clib_warning ("Failed to parse mapping record!");
-	  map_reply_args_free (a);
+	  map_records_arg_free (a);
 	  return 0;
 	}
 
@@ -4513,17 +4599,30 @@ parse_map_reply (vlib_buffer_t * b)
   return a;
 }
 
+static void
+queue_map_reply_for_processing (map_records_arg_t * a)
+{
+  vl_api_rpc_call_main_thread (process_map_reply, (u8 *) a, sizeof (a));
+}
+
+static void
+queue_map_notify_for_processing (map_records_arg_t * a)
+{
+  vl_api_rpc_call_main_thread (process_map_notify, (u8 *) a, sizeof (a[0]));
+}
+
 static uword
 lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       vlib_frame_t * from_frame)
 {
-  map_reply_args_t *a;
   u32 n_left_from, *from, *to_next_drop;
   lisp_msg_type_e type;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  map_records_arg_t *a;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+
 
   while (n_left_from > 0)
     {
@@ -4557,7 +4656,9 @@ lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      process_map_request (vm, lcm, b0);
 	      break;
 	    case LISP_MAP_NOTIFY:
-	      process_map_notify (vm, lcm, b0);
+	      a = parse_map_notify (b0);
+	      if (a)
+		queue_map_notify_for_processing (a);
 	      break;
 	    default:
 	      clib_warning ("Unsupported LISP message type %d", type);
