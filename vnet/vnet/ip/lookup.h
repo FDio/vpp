@@ -57,7 +57,8 @@
 #include <vnet/feature/feature.h>
 
 /** @brief Common (IP4/IP6) next index stored in adjacency. */
-typedef enum {
+typedef enum
+{
   /** Adjacency to drop this packet. */
   IP_LOOKUP_NEXT_DROP,
   /** Adjacency to punt this packet. */
@@ -93,11 +94,13 @@ typedef enum {
   IP_LOOKUP_N_NEXT,
 } ip_lookup_next_t;
 
-typedef enum {
+typedef enum
+{
   IP4_LOOKUP_N_NEXT = IP_LOOKUP_N_NEXT,
 } ip4_lookup_next_t;
 
-typedef enum {
+typedef enum
+{
   /* Hop-by-hop header handling */
   IP6_LOOKUP_NEXT_HOP_BY_HOP = IP_LOOKUP_N_NEXT,
   IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP,
@@ -164,9 +167,9 @@ struct ip_adjacency_t_;
 /**
  * @brief A function type for post-rewrite fixups on midchain adjacency
  */
-typedef void (*adj_midchain_fixup_t)(vlib_main_t * vm,
-				     struct ip_adjacency_t_ *adj,
-				     vlib_buffer_t * b0);
+typedef void (*adj_midchain_fixup_t) (vlib_main_t * vm,
+				      struct ip_adjacency_t_ * adj,
+				      vlib_buffer_t * b0);
 
 /**
  * @brief Flags on an IP adjacency
@@ -176,22 +179,24 @@ typedef enum ip_adjacency_flags_t_
     /**
      * Currently a sync walk is active. Used to prevent re-entrant walking
      */
-    IP_ADJ_SYNC_WALK_ACTIVE = (1 << 0),
+  IP_ADJ_SYNC_WALK_ACTIVE = (1 << 0),
 } ip_adjacency_flags_t;
 
 /** @brief IP unicast adjacency.
     @note cache aligned.
 */
-typedef struct ip_adjacency_t_ {
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline0);
+typedef struct ip_adjacency_t_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /** Number of adjecencies in block.  Greater than 1 means multipath;
      otherwise equal to 1. */
   u16 n_adj;
 
   /** Next hop after ip4-lookup. */
-  union {
-    ip_lookup_next_t lookup_next_index : 16;
+  union
+  {
+    ip_lookup_next_t lookup_next_index:16;
     u16 lookup_next_index_as_int;
   };
 
@@ -199,7 +204,7 @@ typedef struct ip_adjacency_t_ {
   u32 if_address_index;
 
   /** Force re-lookup in a different FIB. ~0 => normal behavior */
-  u16 mcast_group_index;  
+  u16 mcast_group_index;
 
   /** Highest possible perf subgraph arc interposition, e.g. for ip6 ioam */
   u16 saved_lookup_next_index;
@@ -210,15 +215,17 @@ typedef struct ip_adjacency_t_ {
   vnet_link_t ia_link;
   u8 ia_nh_proto;
 
-  union {
+  union
+  {
     /**
      * IP_LOOKUP_NEXT_ARP/IP_LOOKUP_NEXT_REWRITE
      *
      * neighbour adjacency sub-type;
      */
-      struct {
-	  ip46_address_t next_hop;
-      } nbr;
+    struct
+    {
+      ip46_address_t next_hop;
+    } nbr;
       /**
        * IP_LOOKUP_NEXT_MIDCHAIN
        *
@@ -227,38 +234,40 @@ typedef struct ip_adjacency_t_ {
        * so be sure to leave the two structs with the next_hop
        * fields aligned.
        */
-      struct {
+    struct
+    {
 	  /**
 	   * The recursive next-hop
 	   */
-	  ip46_address_t next_hop;
+      ip46_address_t next_hop;
 	  /**
 	   * The node index of the tunnel's post rewrite/TX function.
 	   */
-	  u32 tx_function_node;
+      u32 tx_function_node;
 	  /**
 	   * The next DPO to use
 	   */
-	  dpo_id_t next_dpo;
+      dpo_id_t next_dpo;
 	  /**
 	   * A function to perform the post-rewrite fixup
 	   */
-	  adj_midchain_fixup_t fixup_func;
-      } midchain;
+      adj_midchain_fixup_t fixup_func;
+    } midchain;
       /**
        * IP_LOOKUP_NEXT_GLEAN
        *
        * Glean the address to ARP for from the packet's destination
        */
-      struct {
-	  ip46_address_t receive_addr;
-      } glean;
+    struct
+    {
+      ip46_address_t receive_addr;
+    } glean;
   } sub_type;
 
-  CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
 
   /* Rewrite in second/third cache lines */
-  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
+    vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
 
   /*
    * member not accessed in the data plane are relgated to the
@@ -273,17 +282,18 @@ typedef struct ip_adjacency_t_ {
 
 } ip_adjacency_t;
 
-STATIC_ASSERT((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline0) == 0),
-	      "IP adjacency cachline 0 is not offset");
-STATIC_ASSERT((STRUCT_OFFSET_OF(ip_adjacency_t, cacheline1) ==
-	       CLIB_CACHE_LINE_BYTES),
-	      "IP adjacency cachline 1 is more than one cachline size offset");
+STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
+	       "IP adjacency cachline 0 is not offset");
+STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
+		CLIB_CACHE_LINE_BYTES),
+	       "IP adjacency cachline 1 is more than one cachline size offset");
 
 /* An all zeros address */
 extern const ip46_address_t zero_addr;
 
 /* IP multicast adjacency. */
-typedef struct {
+typedef struct
+{
   /* Handle for this adjacency in adjacency heap. */
   u32 heap_handle;
 
@@ -291,31 +301,36 @@ typedef struct {
   u32 n_adj;
 
   /* Rewrite string. */
-  vnet_declare_rewrite (64 - 2*sizeof(u32));
-} ip_multicast_rewrite_t;
+    vnet_declare_rewrite (64 - 2 * sizeof (u32));
+}
+ip_multicast_rewrite_t;
 
-typedef struct {
+typedef struct
+{
   /* ip4-multicast-rewrite next index. */
   u32 next_index;
 
   u8 n_rewrite_bytes;
 
-  u8 rewrite_string[64 - 1*sizeof(u32) - 1*sizeof(u8)];
-} ip_multicast_rewrite_string_t;
+  u8 rewrite_string[64 - 1 * sizeof (u32) - 1 * sizeof (u8)];
+}
+ip_multicast_rewrite_string_t;
 
-typedef struct {
-  ip_multicast_rewrite_t * rewrite_heap;
+typedef struct
+{
+  ip_multicast_rewrite_t *rewrite_heap;
 
-  ip_multicast_rewrite_string_t * rewrite_strings;
+  ip_multicast_rewrite_string_t *rewrite_strings;
 
   /* Negative rewrite string index; >= 0 sw_if_index.
      Sorted.  Used to hash. */
-  i32 ** adjacency_id_vector;
+  i32 **adjacency_id_vector;
 
-  uword * adjacency_by_id_vector;
+  uword *adjacency_by_id_vector;
 } ip_multicast_lookup_main_t;
 
-typedef struct {
+typedef struct
+{
   /* Key for mhash; in fact, just a byte offset into mhash key vector. */
   u32 address_key;
 
@@ -337,7 +352,8 @@ typedef struct {
   u32 prev_this_sw_interface;
 } ip_interface_address_t;
 
-typedef enum {
+typedef enum
+{
   IP_LOCAL_NEXT_DROP,
   IP_LOCAL_NEXT_PUNT,
   IP_LOCAL_NEXT_UDP_LOOKUP,
@@ -347,25 +363,26 @@ typedef enum {
 
 struct ip_lookup_main_t;
 
-typedef struct ip_lookup_main_t {
+typedef struct ip_lookup_main_t
+{
   /* Adjacency heap. */
-  ip_adjacency_t * adjacency_heap;
+  ip_adjacency_t *adjacency_heap;
 
   /** load-balance  packet/byte counters indexed by LB index. */
   vlib_combined_counter_main_t load_balance_counters;
 
   /** Pool of addresses that are assigned to interfaces. */
-  ip_interface_address_t * if_address_pool;
+  ip_interface_address_t *if_address_pool;
 
   /** Hash table mapping address to index in interface address pool. */
   mhash_t address_to_if_address_index;
 
   /** Head of doubly linked list of interface addresses for each software interface.
      ~0 means this interface has no address. */
-  u32 * if_address_pool_index_by_sw_if_index;
+  u32 *if_address_pool_index_by_sw_if_index;
 
   /** First table index to use for this interface, ~0 => none */
-  u32 * classify_table_index_by_sw_if_index;
+  u32 *classify_table_index_by_sw_if_index;
 
   /** Feature arc indices */
   u8 mcast_feature_arc_index;
@@ -376,16 +393,16 @@ typedef struct ip_lookup_main_t {
      sizeof (uword).  First word is always adjacency index. */
   u32 fib_result_n_bytes, fib_result_n_words;
 
-  format_function_t * format_fib_result;
+  format_function_t *format_fib_result;
 
   /** 1 for ip6; 0 for ip4. */
   u32 is_ip6;
 
   /** Either format_ip4_address_and_length or format_ip6_address_and_length. */
-  format_function_t * format_address_and_length;
+  format_function_t *format_address_and_length;
 
   /** Special adjacency format functions */
-  format_function_t ** special_adjacency_format_functions;
+  format_function_t **special_adjacency_format_functions;
 
   /** Table mapping ip protocol to ip[46]-local node next index. */
   u8 local_next_by_ip_protocol[256];
@@ -395,10 +412,9 @@ typedef struct ip_lookup_main_t {
 } ip_lookup_main_t;
 
 always_inline ip_adjacency_t *
-ip_get_adjacency (ip_lookup_main_t * lm,
-		  u32 adj_index)
+ip_get_adjacency (ip_lookup_main_t * lm, u32 adj_index)
 {
-  ip_adjacency_t * adj;
+  ip_adjacency_t *adj;
 
   adj = vec_elt_at_index (lm->adjacency_heap, adj_index);
 
@@ -412,38 +428,35 @@ do {								\
 } while (0)
 
 /* Create new block of given number of contiguous adjacencies. */
-ip_adjacency_t *
-ip_add_adjacency (ip_lookup_main_t * lm,
-		  ip_adjacency_t * adj,
-		  u32 n_adj,
-		  u32 * adj_index_result);
+ip_adjacency_t *ip_add_adjacency (ip_lookup_main_t * lm,
+				  ip_adjacency_t * adj,
+				  u32 n_adj, u32 * adj_index_result);
 
-clib_error_t *
-ip_interface_address_add_del (ip_lookup_main_t * lm,
-			      u32 sw_if_index,
-			      void * address,
-			      u32 address_length,
-			      u32 is_del,
-			      u32 * result_index);
+clib_error_t *ip_interface_address_add_del (ip_lookup_main_t * lm,
+					    u32 sw_if_index,
+					    void *address,
+					    u32 address_length,
+					    u32 is_del, u32 * result_index);
 
-u8 *
-format_ip_flow_hash_config (u8 * s, va_list * args);
+u8 *format_ip_flow_hash_config (u8 * s, va_list * args);
 
 always_inline ip_interface_address_t *
-ip_get_interface_address (ip_lookup_main_t * lm, void * addr_fib)
+ip_get_interface_address (ip_lookup_main_t * lm, void *addr_fib)
 {
-  uword * p = mhash_get (&lm->address_to_if_address_index, addr_fib);
+  uword *p = mhash_get (&lm->address_to_if_address_index, addr_fib);
   return p ? pool_elt_at_index (lm->if_address_pool, p[0]) : 0;
 }
 
-u32
-fib_table_id_find_fib_index (fib_protocol_t proto,
-			     u32 table_id);
+u32 fib_table_id_find_fib_index (fib_protocol_t proto, u32 table_id);
 
 always_inline void *
-ip_interface_address_get_address (ip_lookup_main_t * lm, ip_interface_address_t * a)
-{ return mhash_key_to_mem (&lm->address_to_if_address_index, a->address_key); }
+ip_interface_address_get_address (ip_lookup_main_t * lm,
+				  ip_interface_address_t * a)
+{
+  return mhash_key_to_mem (&lm->address_to_if_address_index, a->address_key);
+}
 
+/* *INDENT-OFF* */
 #define foreach_ip_interface_address(lm,a,sw_if_index,loop,body)        \
 do {                                                                    \
     vnet_main_t *_vnm = vnet_get_main();                                     \
@@ -470,7 +483,16 @@ do {                                                                    \
         body;                                                           \
     }                                                                   \
 } while (0)
+/* *INDENT-ON* */
 
 void ip_lookup_init (ip_lookup_main_t * lm, u32 ip_lookup_node_index);
 
 #endif /* included_ip_lookup_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

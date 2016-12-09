@@ -21,13 +21,15 @@
 
 #include <vnet/fib/fib_types.h>
 
-typedef struct {
+typedef struct
+{
   ip6_address_t ip6_address;
   u32 sw_if_index;
   u32 pad;
 } ip6_neighbor_key_t;
 
-typedef struct {
+typedef struct
+{
   ip6_neighbor_key_t key;
   u8 link_layer_address[8];
   u16 flags;
@@ -37,6 +39,14 @@ typedef struct {
   fib_node_index_t fib_entry_index;
 } ip6_neighbor_t;
 
-ip6_neighbor_t * ip6_neighbors_entries (u32 sw_if_index);
+ip6_neighbor_t *ip6_neighbors_entries (u32 sw_if_index);
 
-#endif  /* included_ip6_neighbor_h */
+#endif /* included_ip6_neighbor_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

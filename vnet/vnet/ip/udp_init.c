@@ -42,17 +42,17 @@
 clib_error_t *
 udp_init (vlib_main_t * vm)
 {
-  ip_main_t * im = &ip_main;
-  ip_protocol_info_t * pi;
-  clib_error_t * error;
+  ip_main_t *im = &ip_main;
+  ip_protocol_info_t *pi;
+  clib_error_t *error;
 
   error = vlib_call_init_function (vm, ip_main_init);
 
-  if (! error)
+  if (!error)
     {
       pi = ip_get_protocol_info (im, IP_PROTOCOL_UDP);
       if (pi == 0)
-          return clib_error_return (0, "UDP protocol info AWOL");
+	return clib_error_return (0, "UDP protocol info AWOL");
       pi->format_header = format_udp_header;
       pi->unformat_pg_edit = unformat_pg_udp_header;
     }
@@ -61,3 +61,11 @@ udp_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (udp_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

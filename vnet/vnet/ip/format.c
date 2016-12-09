@@ -40,11 +40,12 @@
 #include <vnet/ip/ip.h>
 
 /* Format IP protocol. */
-u8 * format_ip_protocol (u8 * s, va_list * args)
+u8 *
+format_ip_protocol (u8 * s, va_list * args)
 {
   ip_protocol_t protocol = va_arg (*args, ip_protocol_t);
-  ip_main_t * im = &ip_main;
-  ip_protocol_info_t * pi = ip_get_protocol_info (im, protocol);
+  ip_main_t *im = &ip_main;
+  ip_protocol_info_t *pi = ip_get_protocol_info (im, protocol);
 
   if (pi)
     return format (s, "%s", pi->name);
@@ -52,15 +53,16 @@ u8 * format_ip_protocol (u8 * s, va_list * args)
     return format (s, "unknown %d", protocol);
 }
 
-uword unformat_ip_protocol (unformat_input_t * input, va_list * args)
+uword
+unformat_ip_protocol (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
-  ip_main_t * im = &ip_main;
-  ip_protocol_info_t * pi;
+  u8 *result = va_arg (*args, u8 *);
+  ip_main_t *im = &ip_main;
+  ip_protocol_info_t *pi;
   int i;
 
-  if (! unformat_user (input, unformat_vlib_number_by_name, 
-		       im->protocol_info_by_name, &i))
+  if (!unformat_user (input, unformat_vlib_number_by_name,
+		      im->protocol_info_by_name, &i))
     return 0;
 
   pi = vec_elt_at_index (im->protocol_infos, i);
@@ -68,12 +70,13 @@ uword unformat_ip_protocol (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-u8 * format_tcp_udp_port (u8 * s, va_list * args)
+u8 *
+format_tcp_udp_port (u8 * s, va_list * args)
 {
   int port = va_arg (*args, int);
-  ip_main_t * im = &ip_main;
-  tcp_udp_port_info_t * pi;
-  
+  ip_main_t *im = &ip_main;
+  tcp_udp_port_info_t *pi;
+
   pi = ip_get_tcp_udp_port_info (im, port);
   if (pi)
     s = format (s, "%s", pi->name);
@@ -83,13 +86,14 @@ u8 * format_tcp_udp_port (u8 * s, va_list * args)
   return s;
 }
 
-uword unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
+uword
+unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  ip_main_t * im = &ip_main;
-  tcp_udp_port_info_t * pi;
+  u16 *result = va_arg (*args, u16 *);
+  ip_main_t *im = &ip_main;
+  tcp_udp_port_info_t *pi;
   u32 i, port;
-  
+
 
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     im->port_info_by_name, &i))
@@ -107,3 +111,11 @@ uword unformat_tcp_udp_port (unformat_input_t * input, va_list * args)
   *result = port;
   return 1;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

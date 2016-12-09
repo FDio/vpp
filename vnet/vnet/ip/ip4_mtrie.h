@@ -54,49 +54,67 @@ typedef u32 ip4_fib_mtrie_leaf_t;
 #define IP4_FIB_MTRIE_LEAF_EMPTY (1 + 2*0)
 #define IP4_FIB_MTRIE_LEAF_ROOT  (0 + 2*0)
 
-always_inline u32 ip4_fib_mtrie_leaf_is_empty (ip4_fib_mtrie_leaf_t n)
-{ return n == IP4_FIB_MTRIE_LEAF_EMPTY; }
+always_inline u32
+ip4_fib_mtrie_leaf_is_empty (ip4_fib_mtrie_leaf_t n)
+{
+  return n == IP4_FIB_MTRIE_LEAF_EMPTY;
+}
 
-always_inline u32 ip4_fib_mtrie_leaf_is_non_empty (ip4_fib_mtrie_leaf_t n)
-{ return n != IP4_FIB_MTRIE_LEAF_EMPTY; }
+always_inline u32
+ip4_fib_mtrie_leaf_is_non_empty (ip4_fib_mtrie_leaf_t n)
+{
+  return n != IP4_FIB_MTRIE_LEAF_EMPTY;
+}
 
-always_inline u32 ip4_fib_mtrie_leaf_is_terminal (ip4_fib_mtrie_leaf_t n)
-{ return n & 1; }
+always_inline u32
+ip4_fib_mtrie_leaf_is_terminal (ip4_fib_mtrie_leaf_t n)
+{
+  return n & 1;
+}
 
-always_inline u32 ip4_fib_mtrie_leaf_get_adj_index (ip4_fib_mtrie_leaf_t n)
+always_inline u32
+ip4_fib_mtrie_leaf_get_adj_index (ip4_fib_mtrie_leaf_t n)
 {
   ASSERT (ip4_fib_mtrie_leaf_is_terminal (n));
   return n >> 1;
 }
 
-always_inline ip4_fib_mtrie_leaf_t ip4_fib_mtrie_leaf_set_adj_index (u32 adj_index)
+always_inline ip4_fib_mtrie_leaf_t
+ip4_fib_mtrie_leaf_set_adj_index (u32 adj_index)
 {
   ip4_fib_mtrie_leaf_t l;
-  l = 1 + 2*adj_index;
+  l = 1 + 2 * adj_index;
   ASSERT (ip4_fib_mtrie_leaf_get_adj_index (l) == adj_index);
   return l;
 }
 
-always_inline u32 ip4_fib_mtrie_leaf_is_next_ply (ip4_fib_mtrie_leaf_t n)
-{ return (n & 1) == 0; }
+always_inline u32
+ip4_fib_mtrie_leaf_is_next_ply (ip4_fib_mtrie_leaf_t n)
+{
+  return (n & 1) == 0;
+}
 
-always_inline u32 ip4_fib_mtrie_leaf_get_next_ply_index (ip4_fib_mtrie_leaf_t n)
+always_inline u32
+ip4_fib_mtrie_leaf_get_next_ply_index (ip4_fib_mtrie_leaf_t n)
 {
   ASSERT (ip4_fib_mtrie_leaf_is_next_ply (n));
   return n >> 1;
 }
 
-always_inline ip4_fib_mtrie_leaf_t ip4_fib_mtrie_leaf_set_next_ply_index (u32 i)
+always_inline ip4_fib_mtrie_leaf_t
+ip4_fib_mtrie_leaf_set_next_ply_index (u32 i)
 {
   ip4_fib_mtrie_leaf_t l;
-  l = 0 + 2*i;
+  l = 0 + 2 * i;
   ASSERT (ip4_fib_mtrie_leaf_get_next_ply_index (l) == i);
   return l;
 }
 
 /* One ply of the 4 ply mtrie fib. */
-typedef struct {
-  union {
+typedef struct
+{
+  union
+  {
     ip4_fib_mtrie_leaf_t leaves[256];
 
 #ifdef CLIB_HAVE_VEC128
@@ -111,16 +129,17 @@ typedef struct {
   i32 n_non_empty_leafs;
 
   /* Pad to cache line boundary. */
-  u8 pad[CLIB_CACHE_LINE_BYTES
-	 - 1 * sizeof (i32)];
-} ip4_fib_mtrie_ply_t;
+  u8 pad[CLIB_CACHE_LINE_BYTES - 1 * sizeof (i32)];
+}
+ip4_fib_mtrie_ply_t;
 
-STATIC_ASSERT(0  == sizeof(ip4_fib_mtrie_ply_t) % CLIB_CACHE_LINE_BYTES,
-	      "IP4 Mtrie ply cache line");
+STATIC_ASSERT (0 == sizeof (ip4_fib_mtrie_ply_t) % CLIB_CACHE_LINE_BYTES,
+	       "IP4 Mtrie ply cache line");
 
-typedef struct {
+typedef struct
+{
   /* Pool of plies.  Index zero is root ply. */
-  ip4_fib_mtrie_ply_t * ply_pool;
+  ip4_fib_mtrie_ply_t *ply_pool;
 
   /* Special case leaf for default route 0.0.0.0/0. */
   ip4_fib_mtrie_leaf_t default_leaf;
@@ -130,11 +149,10 @@ void ip4_fib_mtrie_init (ip4_fib_mtrie_t * m);
 
 struct ip4_fib_t;
 
-void ip4_fib_mtrie_add_del_route (struct ip4_fib_t * f,
+void ip4_fib_mtrie_add_del_route (struct ip4_fib_t *f,
 				  ip4_address_t dst_address,
 				  u32 dst_address_length,
-				  u32 adj_index,
-				  u32 is_del);
+				  u32 adj_index, u32 is_del);
 
 /* Returns adjacency index. */
 u32 ip4_mtrie_lookup_address (ip4_fib_mtrie_t * m, ip4_address_t dst);
@@ -149,7 +167,7 @@ ip4_fib_mtrie_lookup_step (ip4_fib_mtrie_t * m,
 			   u32 dst_address_byte_index)
 {
   ip4_fib_mtrie_leaf_t next_leaf;
-  ip4_fib_mtrie_ply_t * ply;
+  ip4_fib_mtrie_ply_t *ply;
   uword current_is_terminal = ip4_fib_mtrie_leaf_is_terminal (current_leaf);
 
   ply = m->ply_pool + (current_is_terminal ? 0 : (current_leaf >> 1));
@@ -160,3 +178,11 @@ ip4_fib_mtrie_lookup_step (ip4_fib_mtrie_t * m,
 }
 
 #endif /* included_ip_ip4_fib_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

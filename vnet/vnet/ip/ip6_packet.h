@@ -43,21 +43,26 @@
 #include <vnet/ip/tcp_packet.h>
 #include <vnet/ip/ip4_packet.h>
 
-typedef union {
+typedef union
+{
   u8 as_u8[16];
   u16 as_u16[8];
   u32 as_u32[4];
   u64 as_u64[2];
   uword as_uword[16 / sizeof (uword)];
-} ip6_address_t;
+}
+ip6_address_t;
 
 /* Packed so that the mhash key doesn't include uninitialized pad bytes */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /* IP address must be first for ip_interface_address_get_address() to work */
   ip6_address_t ip6_addr;
   u32 fib_index;
 }) ip6_address_fib_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (union {
   struct {
     u32 pad[3];
@@ -67,6 +72,7 @@ typedef CLIB_PACKED (union {
   u8 as_u8[16];
   u64 as_u64[2];
 }) ip46_address_t;
+/* *INDENT-ON* */
 #define ip46_address_is_ip4(ip46)	(((ip46)->pad[0] | (ip46)->pad[1] | (ip46)->pad[2]) == 0)
 #define ip46_address_mask_ip4(ip46)	((ip46)->pad[0] = (ip46)->pad[1] = (ip46)->pad[2] = 0)
 #define ip46_address_set_ip4(ip46, ip)	(ip46_address_mask_ip4(ip46), (ip46)->ip4 = (ip)[0])
@@ -75,12 +81,12 @@ typedef CLIB_PACKED (union {
 #define ip46_address_is_zero(ip46)	(((ip46)->as_u64[0] == 0) && ((ip46)->as_u64[1] == 0))
 
 always_inline void
-ip46_from_addr_buf(u32 is_ipv6, u8 *buf, ip46_address_t *ip)
+ip46_from_addr_buf (u32 is_ipv6, u8 * buf, ip46_address_t * ip)
 {
   if (is_ipv6)
     ip->ip6 = *((ip6_address_t *) buf);
   else
-    ip46_address_set_ip4(ip, (ip4_address_t *) buf);
+    ip46_address_set_ip4 (ip, (ip4_address_t *) buf);
 }
 
 always_inline void
@@ -100,7 +106,7 @@ ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,
    link local unicast	fe80::/10
    multicast		ff00::/8
    ietf reserved	everything else. */
-   
+
 #define foreach_ip6_multicast_address_scope	\
   _ (loopback, 0x1)				\
   _ (link_local, 0x2)				\
@@ -117,13 +123,15 @@ ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,
   _ (pim_routers, 0xd)                            \
  _ (mldv2_routers, 0x16)
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) IP6_MULTICAST_SCOPE_##f = n,
   foreach_ip6_multicast_address_scope
 #undef _
 } ip6_multicast_address_scope_t;
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) IP6_MULTICAST_GROUP_ID_##f = n,
   foreach_ip6_multicast_link_local_group_id
 #undef _
@@ -131,13 +139,15 @@ typedef enum {
 
 always_inline uword
 ip6_address_is_multicast (ip6_address_t * a)
-{ return a->as_u8[0] == 0xff; }
+{
+  return a->as_u8[0] == 0xff;
+}
 
 always_inline uword
 ip46_address_is_multicast (ip46_address_t * a)
 {
-  return ip46_address_is_ip4(a) ? ip4_address_is_multicast(&a->ip4) :
-	ip6_address_is_multicast(&a->ip6);
+  return ip46_address_is_ip4 (a) ? ip4_address_is_multicast (&a->ip4) :
+    ip6_address_is_multicast (&a->ip6);
 }
 
 always_inline void
@@ -163,7 +173,8 @@ ip6_set_solicited_node_multicast_address (ip6_address_t * a, u32 id)
 }
 
 always_inline void
-ip6_link_local_address_from_ethernet_address (ip6_address_t * a, u8 * ethernet_address)
+ip6_link_local_address_from_ethernet_address (ip6_address_t * a,
+					      u8 * ethernet_address)
 {
   a->as_u64[0] = a->as_u64[1] = 0;
   a->as_u16[0] = clib_host_to_net_u16 (0xfe80);
@@ -185,8 +196,8 @@ ip6_multicast_ethernet_address (u8 * ethernet_address, u32 group_id)
   ethernet_address[1] = 0x33;
   ethernet_address[2] = ((group_id >> 24) & 0xff);
   ethernet_address[3] = ((group_id >> 16) & 0xff);
-  ethernet_address[4] = ((group_id >>  8) & 0xff);
-  ethernet_address[5] = ((group_id >>  0) & 0xff);
+  ethernet_address[4] = ((group_id >> 8) & 0xff);
+  ethernet_address[5] = ((group_id >> 0) & 0xff);
 }
 
 always_inline uword
@@ -200,8 +211,8 @@ ip6_address_is_equal (ip6_address_t * a, ip6_address_t * b)
 }
 
 always_inline uword
-ip6_address_is_equal_masked (ip6_address_t * a, ip6_address_t * b, 
-                             ip6_address_t * mask)
+ip6_address_is_equal_masked (ip6_address_t * a, ip6_address_t * b,
+			     ip6_address_t * mask)
 {
   int i;
   for (i = 0; i < ARRAY_LEN (a->as_uword); i++)
@@ -211,7 +222,7 @@ ip6_address_is_equal_masked (ip6_address_t * a, ip6_address_t * b,
       b_masked = b->as_uword[i] & mask->as_uword[i];
 
       if (a_masked != b_masked)
-        return 0;
+	return 0;
     }
   return 1;
 }
@@ -242,7 +253,7 @@ ip6_address_mask_from_width (ip6_address_t * a, u32 width)
     {
       bitnum = (7 - (i & 7));
       byte = i / 8;
-      bit = 1<<bitnum;
+      bit = 1 << bitnum;
       a->as_u8[byte] |= bit;
     }
 }
@@ -260,7 +271,9 @@ ip6_address_is_zero (ip6_address_t * a)
 /* Check for unspecified address ::0 */
 always_inline uword
 ip6_address_is_unspecified (ip6_address_t * a)
-{ return ip6_address_is_zero (a); }
+{
+  return ip6_address_is_zero (a);
+}
 
 /* Check for loopback address ::1 */
 always_inline uword
@@ -277,17 +290,23 @@ ip6_address_is_loopback (ip6_address_t * a)
 /* Check for link local unicast fe80::/10. */
 always_inline uword
 ip6_address_is_link_local_unicast (ip6_address_t * a)
-{ return a->as_u8[0] == 0xfe && (a->as_u8[1] & 0xc0) == 0x80; }
+{
+  return a->as_u8[0] == 0xfe && (a->as_u8[1] & 0xc0) == 0x80;
+}
 
 /* Check for unique local unicast fc00::/7. */
 always_inline uword
 ip6_address_is_local_unicast (ip6_address_t * a)
-{ return (a->as_u8[0] & 0xfe) == 0xfc; }
+{
+  return (a->as_u8[0] & 0xfe) == 0xfc;
+}
 
 /* Check for unique global unicast 2000::/3. */
 always_inline uword
 ip6_address_is_global_unicast (ip6_address_t * a)
-{ return (a->as_u8[0] & 0xe0) == 0x20; }
+{
+  return (a->as_u8[0] & 0xe0) == 0x20;
+}
 
 /* Check for solicited node multicast 0xff02::1:ff00:0/104 */
 always_inline uword
@@ -299,7 +318,8 @@ ip6_is_solicited_node_multicast_address (ip6_address_t * a)
 	  && a->as_u8[12] == 0xff);
 }
 
-typedef struct {
+typedef struct
+{
   /* 4 bit version, 8 bit traffic class and 20 bit flow label. */
   u32 ip_version_traffic_class_and_flow_label;
 
@@ -319,22 +339,23 @@ typedef struct {
 
 always_inline void *
 ip6_next_header (ip6_header_t * i)
-{ return (void *) (i + 1); }
+{
+  return (void *) (i + 1);
+}
 
 always_inline void
-ip6_copy_header (ip6_header_t * dst,
-                 const ip6_header_t *src)
+ip6_copy_header (ip6_header_t * dst, const ip6_header_t * src)
 {
-    dst->ip_version_traffic_class_and_flow_label =
-        src->ip_version_traffic_class_and_flow_label;
-    dst->payload_length = src->payload_length;
-    dst->protocol = src->protocol;
-    dst->hop_limit = src->hop_limit;
+  dst->ip_version_traffic_class_and_flow_label =
+    src->ip_version_traffic_class_and_flow_label;
+  dst->payload_length = src->payload_length;
+  dst->protocol = src->protocol;
+  dst->hop_limit = src->hop_limit;
 
-    dst->src_address.as_uword[0] = src->src_address.as_uword[0];
-    dst->src_address.as_uword[1] = src->src_address.as_uword[1];
-    dst->dst_address.as_uword[0] = src->dst_address.as_uword[0];
-    dst->dst_address.as_uword[1] = src->dst_address.as_uword[1];
+  dst->src_address.as_uword[0] = src->src_address.as_uword[0];
+  dst->src_address.as_uword[1] = src->src_address.as_uword[1];
+  dst->dst_address.as_uword[0] = src->dst_address.as_uword[0];
+  dst->dst_address.as_uword[1] = src->dst_address.as_uword[1];
 }
 
 always_inline void
@@ -391,23 +412,30 @@ ip6_tcp_reply_x2 (ip6_header_t * ip0, ip6_header_t * ip1,
 }
 
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 data;
 }) ip6_pad1_option_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 type;
   u8 len;
   u8 data[0];
 }) ip6_padN_option_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-#define IP6_MLDP_ALERT_TYPE  0x5 
+#define IP6_MLDP_ALERT_TYPE  0x5
   u8 type;
   u8 len;
   u16 value;
 }) ip6_router_alert_option_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 next_hdr;
   /* Length of this header plus option data in 8 byte units. */
@@ -440,13 +468,16 @@ typedef CLIB_PACKED (struct {
   u8 n_data_u64s;
   u8 data[0];
 }) ip6_hop_by_hop_ext_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   u8 next_hdr;
   u8 rsv;
   u16 fragment_offset_and_more;
   u32 identification;
 }) ip6_frag_hdr_t;
+/* *INDENT-ON* */
 
 #define ip6_frag_hdr_offset(hdr) \
   (clib_net_to_host_u16((hdr)->fragment_offset_and_more) >> 3)
@@ -458,3 +489,11 @@ typedef CLIB_PACKED (struct {
   clib_host_to_net_u16(((offset) << 3) + !!(more))
 
 #endif /* included_ip6_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

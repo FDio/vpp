@@ -20,12 +20,14 @@
 
 #include <vnet/ip/lookup.h>
 
-typedef enum {
+typedef enum
+{
   PING_RESPONSE_IP6 = 42,
   PING_RESPONSE_IP4,
 } ping_response_type_t;
 
-typedef enum {
+typedef enum
+{
   SEND_PING_OK = 0,
   SEND_PING_ALLOC_FAIL,
   SEND_PING_NO_INTERFACE,
@@ -35,13 +37,15 @@ typedef enum {
 /*
  * Currently running ping command.
  */
-typedef struct ping_run_t {
+typedef struct ping_run_t
+{
   u16 icmp_id;
   u16 curr_seq;
   uword cli_process_id;
 } ping_run_t;
 
-typedef struct ping_main_t {
+typedef struct ping_main_t
+{
   ip6_main_t *ip6_main;
   ip4_main_t *ip4_main;
   ping_run_t *ping_runs;
@@ -57,28 +61,28 @@ ping_main_t ping_main;
 
 #define PING_MAXIMUM_DATA_SIZE 2000
 
-typedef CLIB_PACKED (struct {
-  u16 id;
-  u16 seq;
-  f64 time_sent;
-  u8 data[PING_MAXIMUM_DATA_SIZE];
-}) icmp46_echo_request_t;
+typedef CLIB_PACKED (struct
+		     {
+		     u16 id;
+		     u16 seq; f64 time_sent; u8 data[PING_MAXIMUM_DATA_SIZE];
+		     }) icmp46_echo_request_t;
 
 
-typedef CLIB_PACKED (struct {
-  ip6_header_t ip6;
-  icmp46_header_t icmp;
-  icmp46_echo_request_t icmp_echo;
-}) icmp6_echo_request_header_t;
+typedef CLIB_PACKED (struct
+		     {
+		     ip6_header_t ip6;
+		     icmp46_header_t icmp; icmp46_echo_request_t icmp_echo;
+		     }) icmp6_echo_request_header_t;
 
-typedef CLIB_PACKED(struct {
-    ip4_header_t ip4;
-    icmp46_header_t icmp;
-    icmp46_echo_request_t icmp_echo;
-}) icmp4_echo_request_header_t;
+typedef CLIB_PACKED (struct
+		     {
+		     ip4_header_t ip4;
+		     icmp46_header_t icmp; icmp46_echo_request_t icmp_echo;
+		     }) icmp4_echo_request_header_t;
 
 
-typedef struct {
+typedef struct
+{
   u16 id;
   u16 seq;
   u8 bound;
@@ -87,13 +91,15 @@ typedef struct {
 
 
 
-typedef enum {
+typedef enum
+{
   ICMP6_ECHO_REPLY_NEXT_DROP,
   ICMP6_ECHO_REPLY_NEXT_PUNT,
   ICMP6_ECHO_REPLY_N_NEXT,
 } icmp6_echo_reply_next_t;
 
-typedef enum {
+typedef enum
+{
   ICMP4_ECHO_REPLY_NEXT_DROP,
   ICMP4_ECHO_REPLY_NEXT_PUNT,
   ICMP4_ECHO_REPLY_N_NEXT,

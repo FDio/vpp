@@ -40,27 +40,30 @@
 #include <vnet/ip/ip.h>
 
 /* Format an IP4 address. */
-u8 * format_ip4_address (u8 * s, va_list * args)
+u8 *
+format_ip4_address (u8 * s, va_list * args)
 {
-  u8 * a = va_arg (*args, u8 *);
+  u8 *a = va_arg (*args, u8 *);
   return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
 }
 
 /* Format an IP4 route destination and length. */
-u8 * format_ip4_address_and_length (u8 * s, va_list * args)
+u8 *
+format_ip4_address_and_length (u8 * s, va_list * args)
 {
-  u8 * a = va_arg (*args, u8 *);
+  u8 *a = va_arg (*args, u8 *);
   u8 l = va_arg (*args, u32);
   return format (s, "%U/%d", format_ip4_address, a, l);
 }
 
 /* Parse an IP4 address %d.%d.%d.%d. */
-uword unformat_ip4_address (unformat_input_t * input, va_list * args)
+uword
+unformat_ip4_address (unformat_input_t * input, va_list * args)
 {
-  u8 * result = va_arg (*args, u8 *);
+  u8 *result = va_arg (*args, u8 *);
   unsigned a[4];
 
-  if (! unformat (input, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]))
+  if (!unformat (input, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]))
     return 0;
 
   if (a[0] >= 256 || a[1] >= 256 || a[2] >= 256 || a[3] >= 256)
@@ -75,9 +78,10 @@ uword unformat_ip4_address (unformat_input_t * input, va_list * args)
 }
 
 /* Format an IP4 header. */
-u8 * format_ip4_header (u8 * s, va_list * args)
+u8 *
+format_ip4_header (u8 * s, va_list * args)
 {
-  ip4_header_t * ip = va_arg (*args, ip4_header_t *);
+  ip4_header_t *ip = va_arg (*args, ip4_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   u32 ip_version, header_bytes;
   uword indent;
@@ -100,9 +104,8 @@ u8 * format_ip4_header (u8 * s, va_list * args)
   /* Show IP version and header length only with unexpected values. */
   if (ip_version != 4 || header_bytes != sizeof (ip4_header_t))
     s = format (s, "\n%Uversion %d, header length %d",
-		format_white_space, indent,
-		ip_version, header_bytes);
-    
+		format_white_space, indent, ip_version, header_bytes);
+
   s = format (s, "\n%Utos 0x%02x, ttl %d, length %d, checksum 0x%04x",
 	      format_white_space, indent,
 	      ip->tos, ip->ttl,
@@ -134,9 +137,9 @@ u8 * format_ip4_header (u8 * s, va_list * args)
       {
 	s = format (s, ", flags ");
 #define _(l) if (f & IP4_HEADER_FLAG_##l) s = format (s, #l);
-	_ (MORE_FRAGMENTS);
-	_ (DONT_FRAGMENT);
-	_ (CONGESTION);
+	_(MORE_FRAGMENTS);
+	_(DONT_FRAGMENT);
+	_(CONGESTION);
 #undef _
       }
   }
@@ -144,14 +147,13 @@ u8 * format_ip4_header (u8 * s, va_list * args)
   /* Recurse into next protocol layer. */
   if (max_header_bytes != 0 && header_bytes < max_header_bytes)
     {
-      ip_main_t * im = &ip_main;
-      ip_protocol_info_t * pi = ip_get_protocol_info (im, ip->protocol);
+      ip_main_t *im = &ip_main;
+      ip_protocol_info_t *pi = ip_get_protocol_info (im, ip->protocol);
 
       if (pi && pi->format_header)
 	s = format (s, "\n%U%U",
-		    format_white_space, indent - 2,
-		    pi->format_header,
-		    /* next protocol header */ (void*) ip + header_bytes,
+		    format_white_space, indent - 2, pi->format_header,
+		    /* next protocol header */ (void *) ip + header_bytes,
 		    max_header_bytes - header_bytes);
     }
 
@@ -159,15 +161,16 @@ u8 * format_ip4_header (u8 * s, va_list * args)
 }
 
 /* Parse an IP4 header. */
-uword unformat_ip4_header (unformat_input_t * input, va_list * args)
+uword
+unformat_ip4_header (unformat_input_t * input, va_list * args)
 {
-  u8 ** result = va_arg (*args, u8 **);
-  ip4_header_t * ip;
+  u8 **result = va_arg (*args, u8 **);
+  ip4_header_t *ip;
   int old_length;
 
   /* Allocate space for IP header. */
   {
-    void * p;
+    void *p;
 
     old_length = vec_len (*result);
     vec_add2 (*result, p, sizeof (ip4_header_t));
@@ -177,10 +180,10 @@ uword unformat_ip4_header (unformat_input_t * input, va_list * args)
   memset (ip, 0, sizeof (ip[0]));
   ip->ip_version_and_header_length = IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
 
-  if (! unformat (input, "%U: %U -> %U",
-		  unformat_ip_protocol, &ip->protocol,
-		  unformat_ip4_address, &ip->src_address,
-		  unformat_ip4_address, &ip->dst_address))
+  if (!unformat (input, "%U: %U -> %U",
+		 unformat_ip_protocol, &ip->protocol,
+		 unformat_ip4_address, &ip->src_address,
+		 unformat_ip4_address, &ip->dst_address))
     return 0;
 
   /* Parse options. */
@@ -195,8 +198,7 @@ uword unformat_ip4_header (unformat_input_t * input, va_list * args)
 	ip->ttl = i;
 
       else if (unformat (input, "fragment id %U offset %U",
-			 unformat_vlib_number, &i,
-			 unformat_vlib_number, &j))
+			 unformat_vlib_number, &i, unformat_vlib_number, &j))
 	{
 	  ip->fragment_id = clib_host_to_net_u16 (i);
 	  ip->flags_and_fragment_offset |=
@@ -205,14 +207,17 @@ uword unformat_ip4_header (unformat_input_t * input, va_list * args)
 
       /* Flags. */
       else if (unformat (input, "mf") || unformat (input, "MF"))
-	ip->flags_and_fragment_offset |= clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
+	ip->flags_and_fragment_offset |=
+	  clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
 
       else if (unformat (input, "df") || unformat (input, "DF"))
-	ip->flags_and_fragment_offset |= clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
+	ip->flags_and_fragment_offset |=
+	  clib_host_to_net_u16 (IP4_HEADER_FLAG_DONT_FRAGMENT);
 
       else if (unformat (input, "ce") || unformat (input, "CE"))
-	ip->flags_and_fragment_offset |= clib_host_to_net_u16 (IP4_HEADER_FLAG_CONGESTION);
-	
+	ip->flags_and_fragment_offset |=
+	  clib_host_to_net_u16 (IP4_HEADER_FLAG_CONGESTION);
+
       /* Can't parse input: try next protocol level. */
       else
 	break;
@@ -223,12 +228,12 @@ uword unformat_ip4_header (unformat_input_t * input, va_list * args)
 
   /* Recurse into next protocol layer. */
   {
-    ip_main_t * im = &ip_main;
-    ip_protocol_info_t * pi = ip_get_protocol_info (im, ip->protocol);
+    ip_main_t *im = &ip_main;
+    ip_protocol_info_t *pi = ip_get_protocol_info (im, ip->protocol);
 
     if (pi && pi->unformat_header)
       {
-	if (! unformat_user (input, pi->unformat_header, result))
+	if (!unformat_user (input, pi->unformat_header, result))
 	  return 0;
 
 	/* Result may have moved. */
@@ -241,3 +246,11 @@ uword unformat_ip4_header (unformat_input_t * input, va_list * args)
 
   return 1;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
