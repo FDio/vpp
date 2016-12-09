@@ -223,29 +223,38 @@ class VPP():
             raise ValueError('Duplicate message name: ' + name)
 
         args = collections.OrderedDict()
+        argtypes = collections.OrderedDict()
         fields = []
         msg = {}
         for f in msgdef:
             if type(f) is dict and 'crc' in f:
                 msg['crc'] = f['crc']
                 continue
+            field_type = f[0]
             field_name = f[1]
             args[field_name] = self.__struct(*f)
+            argtypes[field_name] = field_type
             fields.append(field_name)
         msg['return_tuple'] = collections.namedtuple(name, fields,
                                                      rename = True)
         self.messages[name] = msg
         self.messages[name]['args'] = args
+        self.messages[name]['argtypes'] = argtypes
         return self.messages[name]
 
     def add_type(self, name, typedef):
         self.add_message('vl_api_' + name + '_t', typedef)
 
-    def make_function(self, i, msgdef, multipart, async):
+    def make_function(self, name, i, msgdef, multipart, async):
         if (async):
-            return lambda **kwargs: (self._call_vpp_async(i, msgdef, multipart, **kwargs))
+            f = lambda **kwargs: (self._call_vpp_async(i, msgdef, multipart, **kwargs))
         else:
-            return lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+            f = lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+        args = self.messages[name]['args']
+        argtypes = self.messages[name]['argtypes']
+        f.__name__ = str(name)
+        f.__doc__ = ", ".join(["%s %s" % (argtypes[k], k) for k in args.keys()])
+        return f
 
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
@@ -260,7 +269,7 @@ class VPP():
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
                 multipart = True if name.find('_dump') > 0 else False
-                setattr(self, name, self.make_function(i, msgdef, multipart, async))
+                setattr(self, name, self.make_function(name, i, msgdef, multipart, async))
 
     def _write (self, buf):
         if not self.connected:
