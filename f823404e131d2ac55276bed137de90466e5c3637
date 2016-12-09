@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_da0546c3",
+        "filename": "plugins/ioam-plugin/ioam/encap/ip6_ioam_trace.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 162,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-09T05:40:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_3edb27ef",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_dee1c39b",
         "filename": "plugins/ioam-plugin/ioam/export/ioam_export.c",
         "patchSetId": 1
@@ -47,6 +65,24 @@
       "writtenOn": "2016-12-05T09:15:21Z",
       "side": 1,
       "message": "Not sure why are these required here. If not needed can you please remove these.",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ba0a7ad0",
+        "filename": "plugins/ioam-plugin/ioam/export/ioam_export.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-09T05:40:14Z",
+      "side": 1,
+      "message": "Earlier ioam_export_main was defined in .h file. In analyse we need to include .h file from export, so it will result in redefination of ioam_export_main. So moved defination to .c file and declaration to .h file.",
+      "parentUuid": "5a2585a7_dee1c39b",
       "revId": "f823404e131d2ac55276bed137de90466e5c3637",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_9a0fbee1",
+        "filename": "plugins/ioam-plugin/ioam/export/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-09T05:40:14Z",
+      "side": 1,
+      "message": "I will check VXLan export code and see how to fix this.",
+      "parentUuid": "5a2585a7_fee47fad",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_5ed6f3c6",
         "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
         "patchSetId": 1
@@ -81,6 +135,24 @@
       "writtenOn": "2016-12-05T09:15:21Z",
       "side": 1,
       "message": "Do we need this change?",
+      "revId": "f823404e131d2ac55276bed137de90466e5c3637",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5af956c7",
+        "filename": "plugins/ioam-plugin/ioam/lib-trace/trace_util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-09T05:40:14Z",
+      "side": 1,
+      "message": "Removed the change.",
+      "parentUuid": "5a2585a7_5ed6f3c6",
       "revId": "f823404e131d2ac55276bed137de90466e5c3637",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
