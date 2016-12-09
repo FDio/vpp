@@ -101,8 +101,8 @@ install -p -m 755 %{_mu_build_dir}/%{_vpp_build_dir}/vppapigen/vppapigen %{build
 
 # core api
 mkdir -p -m755 %{buildroot}/usr/share/vpp/api
-install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/vpp-api/vpe.api.json %{buildroot}/usr/share/vpp/api
-install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vlib-api/vlibmemory/memclnt.api.json %{buildroot}/usr/share/vpp/api
+install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/vpp-api/vpe.api.json %{buildroot}/usr/share/vpp/api
+install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/vlib-api/vlibmemory/memclnt.api.json %{buildroot}/usr/share/vpp/api
 
 #
 # configs
