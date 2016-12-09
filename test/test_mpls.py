@@ -4,7 +4,6 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_ip_route import IpRoute, RoutePath, MplsRoute, MplsIpBind
 
 from scapy.packet import Raw
@@ -13,7 +12,6 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 from util import ppp
-
 
 
 class TestMPLS(VppTestCase):
@@ -97,11 +95,12 @@ class TestMPLS(VppTestCase):
             pkts.append(p)
         return pkts
 
-    def verify_filter(self, capture, sent):
+    @staticmethod
+    def verify_filter(capture, sent):
         if not len(capture) == len(sent):
-            # filter out any IPv6 RAs from the captur
+            # filter out any IPv6 RAs from the capture
             for p in capture:
-                if (p.haslayer(IPv6)):
+                if p.haslayer(IPv6):
                     capture.remove(p)
         return capture
 
@@ -327,8 +326,8 @@ class TestMPLS(VppTestCase):
         try:
             self.assertEqual(0, len(rx))
         except:
-            error("MPLS non-EOS packets popped and forwarded")
-            error(packet.show())
+            self.logger.error("MPLS non-EOS packets popped and forwarded")
+            self.logger.error(ppp("", rx))
             raise
 
         #
@@ -352,7 +351,8 @@ class TestMPLS(VppTestCase):
         self.verify_capture_labelled_ip4(self.pg0, rx, tx, [33, 44, 45])
 
         #
-        # A recursive non-EOS x-connect, which resolves through another x-connect
+        # A recursive non-EOS x-connect, which resolves through another
+        # x-connect
         #
         route_34_neos = MplsRoute(self, 34, 0,
                                   [RoutePath("0.0.0.0",
@@ -369,11 +369,12 @@ class TestMPLS(VppTestCase):
         self.pg_start()
 
         rx = self.pg0.get_capture()
-        # it's the 2nd (counting from 0) lael in the stack that is swapped
+        # it's the 2nd (counting from 0) label in the stack that is swapped
         self.verify_capture_labelled(self.pg0, rx, tx, [33, 44, 46, 99], num=2)
 
         #
-        # an recursive IP route that resolves through the recursive non-eos x-connect
+        # an recursive IP route that resolves through the recursive non-eos
+        # x-connect
         #
         ip_10_0_0_1 = IpRoute(self, "10.0.0.1", 32,
                               [RoutePath("0.0.0.0",
@@ -505,7 +506,7 @@ class TestMPLS(VppTestCase):
         self.verify_capture_labelled_ip4(self.pg0, rx, tx, [32, 33, 34])
 
         #
-        # add a recursive path, with ouput label, via the 1 label route
+        # add a recursive path, with output label, via the 1 label route
         #
         route_11_0_0_1 = IpRoute(self, "11.0.0.1", 32,
                                  [RoutePath("10.0.0.1",
@@ -567,14 +568,16 @@ class TestMPLS(VppTestCase):
         #
         nh_addr = socket.inet_pton(socket.AF_INET, self.pg0.remote_ip4)
 
-        reply = self.vapi.mpls_tunnel_add_del(0xffffffff,  # don't know the if index yet
-                                              1,  # IPv4 next-hop
-                                              nh_addr,
-                                              self.pg0.sw_if_index,
-                                              0,  # next-hop-table-id
-                                              1,  # next-hop-weight
-                                              2,  # num-out-labels,
-                                              [44, 46])
+        reply = self.vapi.mpls_tunnel_add_del(
+            0xffffffff,  # don't know the if index yet
+            1,  # IPv4 next-hop
+            nh_addr,
+            self.pg0.sw_if_index,
+            0,  # next-hop-table-id
+            1,  # next-hop-weight
+            2,  # num-out-labels,
+            [44, 46]
+        )
         self.vapi.sw_interface_set_flags(reply.sw_if_index, admin_up_down=1)
 
         #
@@ -584,15 +587,17 @@ class TestMPLS(VppTestCase):
         nh_addr = socket.inet_pton(socket.AF_INET, "0.0.0.0")
         dest_addr_len = 32
 
-        self.vapi.ip_add_del_route(dest_addr,
-                                   dest_addr_len,
-                                   nh_addr,  # all zeros next-hop - tunnel is p2p
-                                   reply.sw_if_index,  # sw_if_index of the new tunnel
-                                   0,  # table-id
-                                   0,  # next-hop-table-id
-                                   1,  # next-hop-weight
-                                   0,  # num-out-labels,
-                                   [])  # out-label
+        self.vapi.ip_add_del_route(
+            dest_addr,
+            dest_addr_len,
+            nh_addr,  # all zeros next-hop - tunnel is p2p
+            reply.sw_if_index,  # sw_if_index of the new tunnel
+            0,  # table-id
+            0,  # next-hop-table-id
+            1,  # next-hop-weight
+            0,  # num-out-labels,
+            []  # out-label
+        )
 
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
