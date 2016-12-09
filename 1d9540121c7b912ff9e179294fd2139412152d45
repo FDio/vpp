@@ -16,6 +16,24 @@
       "revId": "1d9540121c7b912ff9e179294fd2139412152d45",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_bde274d3",
+        "filename": "vnet/vnet/ip/ip4_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-09T19:32:59Z",
+      "side": 1,
+      "message": "on second thoughts perhaps this change is better done in a separate commit. So if it does catch cases otherwise allowed, we don\u0027t confuse it with these perf only changes.",
+      "parentUuid": "5a2585a7_fdc0fc2b",
+      "revId": "1d9540121c7b912ff9e179294fd2139412152d45",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
