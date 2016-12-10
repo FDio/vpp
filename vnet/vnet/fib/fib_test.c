@@ -999,7 +999,7 @@ fib_test_v4 (void)
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_10_10_10_2_s_32,
 				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_NONE,
+				    FIB_ENTRY_FLAG_ATTACHED,
 				    FIB_PROTOCOL_IP4,
 				    &pfx_10_10_10_2_s_32.fp_addr,
 				    tm->hw[0]->sw_if_index,
@@ -3947,7 +3947,7 @@ fib_test_v6 (void)
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_2001_1_2_s_128,
 				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_NONE,
+				    FIB_ENTRY_FLAG_ATTACHED,
 				    FIB_PROTOCOL_IP6,
 				    &pfx_2001_1_2_s_128.fp_addr,
 				    tm->hw[0]->sw_if_index,
@@ -3986,7 +3986,7 @@ fib_test_v6 (void)
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_2001_1_3_s_128,
 				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_NONE,
+				    FIB_ENTRY_FLAG_ATTACHED,
 				    FIB_PROTOCOL_IP6,
 				    &pfx_2001_1_3_s_128.fp_addr,
 				    tm->hw[0]->sw_if_index,
@@ -4619,7 +4619,7 @@ fib_test_ae (void)
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_10_10_10_1_s_32,
 				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_NONE,
+				    FIB_ENTRY_FLAG_ATTACHED,
 				    FIB_PROTOCOL_IP4,
 				    &pfx_10_10_10_1_s_32.fp_addr,
 				    tm->hw[0]->sw_if_index,
@@ -4688,7 +4688,7 @@ fib_test_ae (void)
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_10_10_10_2_s_32,
 				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_NONE,
+				    FIB_ENTRY_FLAG_ATTACHED,
 				    FIB_PROTOCOL_IP4,
 				    &pfx_10_10_10_2_s_32.fp_addr,
 				    tm->hw[0]->sw_if_index,
@@ -4704,6 +4704,9 @@ fib_test_ae (void)
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib2 imported");
     FIB_TEST((ai == fib_entry_get_adj(fei)),
 	     "Import uses same adj as export");
+    FIB_TEST((FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags(fei)),
+             "ADJ-fib2 imported flags %d",
+             fib_entry_get_flags(fei));
 
     /*
      * create a 2nd FIB table into which routes will be imported
@@ -4756,7 +4759,7 @@ fib_test_ae (void)
     fib_table_entry_update_one_path(fib_index,
 				    &pfx_10_10_10_3_s_32,
 				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_NONE,
+				    FIB_ENTRY_FLAG_ATTACHED,
 				    FIB_PROTOCOL_IP4,
 				    &pfx_10_10_10_3_s_32.fp_addr,
 				    tm->hw[0]->sw_if_index,
