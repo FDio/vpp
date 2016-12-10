@@ -46,6 +46,11 @@ typedef struct mpls_label_dpo_t
     u16 mld_n_labels;
 
     /**
+     * Cached amount of header bytes to paint
+     */
+    u16 mld_n_hdr_bytes;
+
+    /**
      * Number of locks/users of the label
      */
     u16 mld_locks;
