@@ -189,7 +189,8 @@ fib_entry_import_add (fib_ae_import_t *import,
             fib_table_entry_special_dpo_add(import->faei_import_fib,
                                             &prefix,
                                             FIB_SOURCE_AE,
-                                            FIB_ENTRY_FLAG_EXCLUSIVE,
+                                            (fib_entry_get_flags(entry_index) |
+                                             FIB_ENTRY_FLAG_EXCLUSIVE),
                                             load_balance_get_bucket(dpo->dpoi_index, 0));
 
             fib_entry_lock(entry_index);
