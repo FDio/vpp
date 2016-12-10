@@ -23,7 +23,6 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
 
 /* Declare message IDs */
 #include <ioam/lib-trace/trace_msg_enum.h>
@@ -69,9 +68,7 @@ _(trace_profile_show_config_reply,										\
   if(mp->trace_type)												\
   {														\
      errmsg("                        Trace Type : 0x%x (%d)\n",mp->trace_type, mp->trace_type);			\
-     errmsg("         Trace timestamp precision : %d (%s)\n",mp->trace_tsp,					\
-       (mp->trace_tsp == TSP_SECONDS) ? "Seconds" : ((mp->trace_tsp ==TSP_MILLISECONDS) ?			\
-         "Milliseconds": (((mp->trace_tsp == TSP_MICROSECONDS) ? "Microseconds" : "Nanoseconds"))));		\
+     errmsg("         Trace timestamp precision : %d \n",mp->trace_tsp);					\
      errmsg("                           Node Id : 0x%x (%d)\n",htonl(mp->node_id), htonl(mp->node_id));		\
      errmsg("                          App Data : 0x%x (%d)\n",htonl(mp->app_data), htonl(mp->app_data));	\
   }														\
