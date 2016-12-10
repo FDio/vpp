@@ -90,6 +90,93 @@ mpls_input_inline (vlib_main_t * vm,
       vlib_get_next_frame (vm, node, next_index,
 			   to_next, n_left_to_next);
 
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+        {
+          u32 label0, bi0, next0, sw_if_index0;
+          u32 label1, bi1, next1, sw_if_index1;
+          mpls_unicast_header_t *h0, *h1;
+          vlib_buffer_t *b0, *b1;
+
+          /* Prefetch next iteration. */
+          {
+            vlib_buffer_t * p2, * p3;
+
+            p2 = vlib_get_buffer (vm, from[2]);
+            p3 = vlib_get_buffer (vm, from[3]);
+
+            vlib_prefetch_buffer_header (p2, STORE);
+            vlib_prefetch_buffer_header (p3, STORE);
+
+            CLIB_PREFETCH (p2->data, sizeof (h0[0]), STORE);
+            CLIB_PREFETCH (p3->data, sizeof (h1[0]), STORE);
+          }
+
+
+          bi0 = to_next[0] = from[0];
+          bi1 = to_next[1] = from[1];
+
+          from += 2;
+          to_next += 2;
+          n_left_from -= 2;
+          n_left_to_next -= 2;
+
+          b0 = vlib_get_buffer (vm, bi0);
+          b1 = vlib_get_buffer (vm, bi1);
+
+          h0 = vlib_buffer_get_current (b0);
+          h1 = vlib_buffer_get_current (b1);
+
+          sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+          sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+
+          label0 = clib_net_to_host_u32 (h0->label_exp_s_ttl);
+          label1 = clib_net_to_host_u32 (h1->label_exp_s_ttl);
+
+          /* TTL expired? */
+          if (PREDICT_FALSE(vnet_mpls_uc_get_ttl (label0) == 0))
+           {
+              next0 = MPLS_INPUT_NEXT_DROP;
+              b0->error = node->errors[MPLS_ERROR_TTL_EXPIRED];
+            }
+          else
+            {
+              next0 = MPLS_INPUT_NEXT_LOOKUP;
+              vnet_feature_arc_start(mm->input_feature_arc_index, sw_if_index0, &next0, b0);
+              vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
+            }
+
+          if (PREDICT_FALSE(vnet_mpls_uc_get_ttl (label1) == 0))
+           {
+              next1 = MPLS_INPUT_NEXT_DROP;
+              b1->error = node->errors[MPLS_ERROR_TTL_EXPIRED];
+            }
+          else
+            {
+              next1 = MPLS_INPUT_NEXT_LOOKUP;
+              vnet_feature_arc_start(mm->input_feature_arc_index, sw_if_index1, &next1, b1);
+              vlib_increment_simple_counter (cm, cpu_index, sw_if_index1, 1);
+            }
+
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              mpls_input_trace_t *tr = vlib_add_trace (vm, node,
+                                                       b0, sizeof (*tr));
+              tr->next_index = next0;
+              tr->label_host_byte_order = label0;
+            }
+          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              mpls_input_trace_t *tr = vlib_add_trace (vm, node,
+                                                       b1, sizeof (*tr));
+              tr->next_index = next1;
+              tr->label_host_byte_order = label1;
+            }
+
+          vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+                                           to_next, n_left_to_next,
+                                           bi0, bi1, next0, next1);
+        }
+
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;

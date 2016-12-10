@@ -58,6 +58,7 @@ mpls_output_inline (vlib_main_t * vm,
 {
   u32 n_left_from, next_index, * from, * to_next, cpu_index;
   vlib_node_runtime_t * error_node;
+  u32 n_left_to_next;
 
   cpu_index = os_get_cpu_number();
   error_node = vlib_node_get_runtime (vm, mpls_output_node.index);
@@ -67,10 +68,145 @@ mpls_output_inline (vlib_main_t * vm,
 
   while (n_left_from > 0)
     {
-      u32 n_left_to_next;
-
       vlib_get_next_frame (vm, node, next_index,
                            to_next, n_left_to_next);
+
+      while (n_left_from >= 4 && n_left_to_next >= 2)
+        {
+          ip_adjacency_t * adj0;
+          mpls_unicast_header_t *hdr0;
+          vlib_buffer_t * p0;
+          u32 pi0, rw_len0, adj_index0, next0, error0;
+
+          ip_adjacency_t * adj1;
+          mpls_unicast_header_t *hdr1;
+          vlib_buffer_t * p1;
+          u32 pi1, rw_len1, adj_index1, next1, error1;
+
+          /* Prefetch next iteration. */
+          {
+            vlib_buffer_t * p2, * p3;
+
+            p2 = vlib_get_buffer (vm, from[2]);
+            p3 = vlib_get_buffer (vm, from[3]);
+
+            vlib_prefetch_buffer_header (p2, STORE);
+            vlib_prefetch_buffer_header (p3, STORE);
+
+            CLIB_PREFETCH (p2->data, sizeof (hdr0[0]), STORE);
+            CLIB_PREFETCH (p3->data, sizeof (hdr1[0]), STORE);
+          }
+
+          pi0 = to_next[0] = from[0];
+          pi1 = to_next[1] = from[1];
+
+          from += 2;
+          n_left_from -= 2;
+          to_next += 2;
+          n_left_to_next -= 2;
+
+          p0 = vlib_get_buffer (vm, pi0);
+          p1 = vlib_get_buffer (vm, pi1);
+
+          adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+          adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+
+          /* We should never rewrite a pkt using the MISS adjacency */
+          ASSERT(adj_index0);
+          ASSERT(adj_index1);
+
+          adj0 = adj_get(adj_index0);
+          adj1 = adj_get(adj_index1);
+          hdr0 = vlib_buffer_get_current (p0);
+          hdr1 = vlib_buffer_get_current (p1);
+
+          /* Guess we are only writing on simple Ethernet header. */
+          vnet_rewrite_two_headers (adj0[0], adj1[0], hdr0, hdr1,
+                                   sizeof (ethernet_header_t));
+
+          /* Update packet buffer attributes/set output interface. */
+          rw_len0 = adj0[0].rewrite_header.data_bytes;
+          rw_len1 = adj1[0].rewrite_header.data_bytes;
+
+          if (PREDICT_FALSE (rw_len0 > sizeof(ethernet_header_t)))
+              vlib_increment_combined_counter
+                  (&adjacency_counters,
+                   cpu_index, adj_index0,
+                   /* packet increment */ 0,
+                   /* byte increment */ rw_len0-sizeof(ethernet_header_t));
+          if (PREDICT_FALSE (rw_len1 > sizeof(ethernet_header_t)))
+              vlib_increment_combined_counter
+                  (&adjacency_counters,
+                   cpu_index, adj_index1,
+                   /* packet increment */ 0,
+                   /* byte increment */ rw_len1-sizeof(ethernet_header_t));
+
+          /* Check MTU of outgoing interface. */
+          if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
+                           adj0[0].rewrite_header.max_l3_packet_bytes))
+            {
+              p0->current_data -= rw_len0;
+              p0->current_length += rw_len0;
+
+              vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+                  adj0[0].rewrite_header.sw_if_index;
+              next0 = adj0[0].rewrite_header.next_index;
+              error0 = IP4_ERROR_NONE;
+
+              if (is_midchain)
+                {
+                  adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+                }
+            }
+          else
+            {
+              error0 = IP4_ERROR_MTU_EXCEEDED;
+              next0 = MPLS_OUTPUT_NEXT_DROP;
+            }
+          if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p1) <=
+                           adj1[0].rewrite_header.max_l3_packet_bytes))
+            {
+              p1->current_data -= rw_len1;
+              p1->current_length += rw_len1;
+
+              vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+                  adj1[0].rewrite_header.sw_if_index;
+              next1 = adj1[0].rewrite_header.next_index;
+              error1 = IP4_ERROR_NONE;
+
+              if (is_midchain)
+                {
+                  adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
+                }
+            }
+          else
+            {
+              error1 = IP4_ERROR_MTU_EXCEEDED;
+              next1 = MPLS_OUTPUT_NEXT_DROP;
+            }
+
+          p0->error = error_node->errors[error0];
+          p1->error = error_node->errors[error1];
+
+          if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              mpls_output_trace_t *tr = vlib_add_trace (vm, node,
+                                                        p0, sizeof (*tr));
+              tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
+              tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
+            }
+          if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              mpls_output_trace_t *tr = vlib_add_trace (vm, node,
+                                                        p1, sizeof (*tr));
+              tr->adj_index = vnet_buffer(p1)->ip.adj_index[VLIB_TX];
+              tr->flow_hash = vnet_buffer(p1)->ip.flow_hash;
+            }
+
+          vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+                                           to_next, n_left_to_next,
+                                           pi0, pi1, next0, next1);
+        }
 
       while (n_left_from > 0 && n_left_to_next > 0)
         {
@@ -106,16 +242,8 @@ mpls_output_inline (vlib_main_t * vm,
                    /* byte increment */ rw_len0-sizeof(ethernet_header_t));
           
           /* Check MTU of outgoing interface. */
-          error0 = (vlib_buffer_length_in_chain (vm, p0) 
-                    > adj0[0].rewrite_header.max_l3_packet_bytes
-                    ? IP4_ERROR_MTU_EXCEEDED
-                    : IP4_ERROR_NONE);
-
-	  p0->error = error_node->errors[error0];
-
-          /* Don't adjust the buffer for ttl issue; icmp-error node wants
-           * to see the IP headerr */
-          if (PREDICT_TRUE(error0 == IP4_ERROR_NONE))
+          if (PREDICT_TRUE(vlib_buffer_length_in_chain (vm, p0) <=
+                           adj0[0].rewrite_header.max_l3_packet_bytes))
             {
               p0->current_data -= rw_len0;
               p0->current_length += rw_len0;
@@ -123,6 +251,7 @@ mpls_output_inline (vlib_main_t * vm,
               vnet_buffer (p0)->sw_if_index[VLIB_TX] =
                   adj0[0].rewrite_header.sw_if_index;
               next0 = adj0[0].rewrite_header.next_index;
+              error0 = IP4_ERROR_NONE;
 
 	      if (is_midchain)
 	        {
@@ -131,8 +260,10 @@ mpls_output_inline (vlib_main_t * vm,
             }
           else
             {
+              error0 = IP4_ERROR_MTU_EXCEEDED;
               next0 = MPLS_OUTPUT_NEXT_DROP;
             }
+	  p0->error = error_node->errors[error0];
 
 	  from += 1;
 	  n_left_from -= 1;
