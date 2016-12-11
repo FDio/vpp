@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_185516c6",
+        "filename": "vnet/vnet/dpo/mpls_label_dpo.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 183,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-11T14:14:28Z",
+      "side": 1,
+      "message": "Touch-and-go whether a x4 loop would be effective. This is the least likely of the 3 nodes in this patch, but never say never.",
+      "revId": "2547c90541f7afb3d50ab69acf5d84ec37f1add3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_3848d22c",
+        "filename": "vnet/vnet/mpls/mpls_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-11T14:14:28Z",
+      "side": 1,
+      "message": "Touch-and-go where a 4x loop would be effective.",
+      "revId": "2547c90541f7afb3d50ab69acf5d84ec37f1add3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_584b9e2b",
+        "filename": "vnet/vnet/mpls/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2016-12-11T14:14:28Z",
+      "side": 1,
+      "message": "Eyeballing the code, it looks like quad-looping may be effective. Certainly worth trying at some point.",
+      "revId": "2547c90541f7afb3d50ab69acf5d84ec37f1add3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
