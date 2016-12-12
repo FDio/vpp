@@ -241,10 +241,13 @@ class VPP():
     def add_type(self, name, typedef):
         self.add_message('vl_api_' + name + '_t', typedef)
 
-    def make_function(self, i, msgdef, multipart):
-        return lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+    def make_function(self, i, msgdef, multipart, async):
+        if (async):
+            return lambda **kwargs: (self._call_vpp_async(i, msgdef, multipart, **kwargs))
+        else:
+            return lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
 
-    def _register_functions(self):
+    def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
         for name, msgdef in self.messages.iteritems():
@@ -257,7 +260,7 @@ class VPP():
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
                 multipart = True if name.find('_dump') > 0 else False
-                setattr(self, name, self.make_function(i, msgdef, multipart))
+                setattr(self, name, self.make_function(i, msgdef, multipart, async))
 
     def _write (self, buf):
         if not self.connected:
@@ -289,7 +292,7 @@ class VPP():
         self.connected = True
 
         self._load_dictionary()
-        self._register_functions()
+        self._register_functions(async=async)
 
         # Initialise control ping
         self.control_ping_index = self.vpp_dictionary['control_ping']['id']
