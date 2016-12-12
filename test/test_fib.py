@@ -4,6 +4,7 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 
+
 class TestFIB(VppTestCase):
     """ FIB Test Case """
 
@@ -21,7 +22,8 @@ class TestFIB(VppTestCase):
         """ FIB Unit Tests """
         error = self.vapi.cli("test fib")
 
-        self.logger.critical(error)
+        if error:
+            self.logger.critical(error)
         self.assertEqual(error.find("Failed"), -1)
 
 if __name__ == '__main__':
