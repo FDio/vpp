@@ -152,7 +152,6 @@ l2_input_classify_node_fn (vlib_main_t * vm,
   vnet_classify_main_t *vcm = cm->vnet_classify_main;
   l2_input_classify_runtime_t *rt =
     (l2_input_classify_runtime_t *) node->runtime_data;
-  u32 feature_bitmap;
   u32 hits = 0;
   u32 misses = 0;
   u32 chain_hits = 0;
@@ -354,13 +353,6 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	  e0 = 0;
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
 
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap = vnet_buffer (b0)->l2.feature_bitmap
-	    & ~L2INPUT_FEAT_INPUT_CLASSIFY;
-
-	  /* save for next feature graph nodes */
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
 	  if (PREDICT_TRUE (table_index0 != ~0))
 	    {
 	      hash0 = vnet_buffer (b0)->l2_classify.hash;
@@ -415,9 +407,8 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	  if (PREDICT_TRUE (next0 == ~0))
 	    {
 	      // Determine the next node
-	      next0 =
-		feat_bitmap_get_next_node_index (cm->feat_next_node_index,
-						 feature_bitmap);
+	      vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_RX],
+				 &next0, b0);
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -491,12 +482,6 @@ l2_input_classify_init (vlib_main_t * vm)
   cm->vnet_main = vnet_get_main ();
   cm->vnet_classify_main = &vnet_classify_main;
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_input_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       cm->feat_next_node_index);
   rt->l2cm = cm;
   rt->vcm = cm->vnet_classify_main;
 
@@ -510,8 +495,8 @@ VLIB_INIT_FUNCTION (l2_input_classify_init);
 void
 vnet_l2_input_classify_enable_disable (u32 sw_if_index, int enable_disable)
 {
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_INPUT_CLASSIFY,
-			      (u32) enable_disable);
+  vnet_feature_enable_disable ("l2-input", "l2-input-classify", sw_if_index,
+			       enable_disable, 0, 0);
 }
 
 /** @brief Set l2 per-protocol, per-interface input classification tables.

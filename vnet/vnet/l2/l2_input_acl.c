@@ -25,7 +25,6 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/l2/feat_bitmap.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -36,10 +35,6 @@
 
 typedef struct
 {
-
-  /* Next nodes for each feature */
-  u32 feat_next_node_index[32];
-
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -99,7 +94,6 @@ l2_inacl_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   acl_next_index_t next_index;
-  l2_inacl_main_t *msm = &l2_inacl_main;
   input_acl_main_t *am = &input_acl_main;
   vnet_classify_main_t *vcm = am->vnet_classify_main;
   input_acl_table_id_t tid = INPUT_ACL_TABLE_L2;
@@ -236,6 +230,7 @@ l2_inacl_node_fn (vlib_main_t * vm,
 	  u64 hash0;
 	  u8 *h0;
 	  u8 error0;
+	  u32 sw_if_index0;
 
 	  /* Stride 3 seems to work best */
 	  if (PREDICT_TRUE (n_left_from > 3))
@@ -269,14 +264,9 @@ l2_inacl_node_fn (vlib_main_t * vm,
 	  e0 = 0;
 	  t0 = 0;
 
-	  /* Feature bitmap update */
-	  vnet_buffer (b0)->l2.feature_bitmap &= ~L2INPUT_FEAT_ACL;
-
-	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  /* Determine the next node */
-	  next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-						   vnet_buffer (b0)->
-						   l2.feature_bitmap);
+	  vnet_feature_next (sw_if_index0, &next0, b0);
 
 	  if (PREDICT_TRUE (table_index0 != ~0))
 	    {
@@ -412,13 +402,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_inacl_node, l2_inacl_node_fn)
 
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
-
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_inacl_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       mp->feat_next_node_index);
 
   return 0;
 }

@@ -1062,6 +1062,12 @@ ethernet_sw_interface_add_del (vnet_main_t * vnm,
       subint->sw_if_index = ~0;	// because interfaces are initially down
     }
 
+  vnet_feature_enable_disable ("l2-input", "l2-drop", sw_if_index,
+			       is_create, 0, 0);
+
+  vnet_feature_enable_disable ("l2-output", "interface-output", sw_if_index,
+			       is_create, 0, 0);
+
 done:
   return error;
 }

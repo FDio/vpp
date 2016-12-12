@@ -175,6 +175,66 @@ vnet_get_feature_index (u8 arc, const char *s)
   return reg->feature_index;
 }
 
+u8
+vnet_feature_on_interface (vnet_feature_config_main_t * cm, u32 sw_if_index,
+			   u8 arc_index, u32 feature_index)
+{
+  vnet_config_main_t *vcm;
+  vnet_config_t *cfg;
+  vnet_config_feature_t *feat;
+  int i;
+  u32 feature_node, current_config_index;
+
+  vcm = &(cm[arc_index].config_main);
+  vec_validate_init_empty (vcm->node_index_by_feature_index, feature_index,
+			   ~0);
+  feature_node = vec_elt (vcm->node_index_by_feature_index, feature_index);
+
+  if (NULL == cm[arc_index].config_index_by_sw_if_index ||
+      vec_len (cm[arc_index].config_index_by_sw_if_index) <= sw_if_index)
+    return 0;
+
+  current_config_index =
+    vec_elt (cm[arc_index].config_index_by_sw_if_index, sw_if_index);
+  if (current_config_index == ~0)
+    return 0;
+  if (current_config_index >= vec_len (vcm->config_pool_index_by_user_index))
+    return 0;
+
+  cfg =
+    pool_elt_at_index (vcm->config_pool,
+		       vcm->config_pool_index_by_user_index
+		       [current_config_index]);
+  for (i = 0; i < vec_len (cfg->features); i++)
+    {
+      feat = cfg->features + i;
+      if (feat->node_index == feature_node)
+	return 1;
+    }
+  return 0;
+}
+
+u8
+vnet_feature_check (u32 sw_if_index, const char *arc_name,
+		    const char *node_name)
+{
+  vnet_feature_main_t *fm = &feature_main;
+  vnet_feature_config_main_t *cm = fm->feature_config_mains;
+  u8 arc_index;
+  u32 feature_index;
+
+  arc_index = vnet_get_feature_arc_index (arc_name);
+  if (arc_index == (u8) ~ 0)
+    return 0;
+
+  feature_index = vnet_get_feature_index (arc_index, node_name);
+  if (feature_index == ~0)
+    return 0;
+
+  return vnet_feature_on_interface (cm, sw_if_index, arc_index,
+				    feature_index);
+}
+
 int
 vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
 					u32 sw_if_index, int enable_disable,
@@ -201,6 +261,11 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
 
   if (!enable_disable && feature_count < 1)
+    return 0;
+
+  if (enable_disable
+      && vnet_feature_on_interface (fm->feature_config_mains, sw_if_index,
+				    arc_index, feature_index))
     return 0;
 
   ci = (enable_disable
@@ -254,7 +319,6 @@ vnet_feature_enable_disable (const char *arc_name, const char *node_name,
 						 feature_config,
 						 n_feature_config_bytes);
 }
-
 
 /** Display the set of available driver features.
     Useful for verifying that expected features are present
