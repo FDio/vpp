@@ -68,7 +68,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host
+from util import Host, ppp
 
 
 class TestL2fib(VppTestCase):
@@ -282,8 +282,7 @@ class TestL2fib(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
@@ -327,14 +326,7 @@ class TestL2fib(VppTestCase):
         # Verify
         # Verify outgoing packet streams per packet-generator interface
         for i in self.pg_interfaces:
-            capture = i.get_capture()
-            self.logger.info("Verifying capture on interface %s" % i.name)
-            try:
-                self.assertEqual(len(capture), 0)
-            except AssertionError:
-                self.logger.error("The capture on interface %s is not empty!"
-                                  % i.name)
-                raise AssertionError("%d != 0" % len(capture))
+            i.assert_nothing_captured(remark="outgoing interface")
 
     def test_l2_fib_01(self):
         """ L2 FIB test 1 - program 100 MAC addresses

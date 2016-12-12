@@ -250,7 +250,7 @@ test-doc:
 test-wipe-doc:
 	@make -C test wipe-doc BR=$(BR)
 
-test-cov:
+test-cov: bootstrap
 	$(call test,vpp_lite,vpp_lite_gcov,cov)
 
 test-wipe-cov:
