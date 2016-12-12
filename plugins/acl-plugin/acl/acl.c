@@ -1851,10 +1851,6 @@ acl_setup_nodes (void)
   am->l2_output_classify_next_acl =
     vlib_node_add_next_with_slot (vm, n->index, acl_out_node.index, ~0);
 
-  feat_bitmap_init_next_nodes (vm, acl_in_node.index, L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       am->acl_in_node_input_next_node_index);
-
   memset (&am->acl_in_ip4_match_next[0], 0,
 	  sizeof (am->acl_in_ip4_match_next));
   memset (&am->acl_in_ip6_match_next[0], 0,
