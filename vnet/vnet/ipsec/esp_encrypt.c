@@ -25,8 +25,8 @@
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \
-_(IP4_INPUT, "ip4-input")                          \
-_(IP6_INPUT, "ip6-input")                          \
+_(IP4_LOOKUP, "ip4-lookup")                        \
+_(IP6_LOOKUP, "ip6-lookup")                        \
 _(INTERFACE_OUTPUT, "interface-output")
 
 #define _(v, s) ESP_ENCRYPT_NEXT_##v,
@@ -226,7 +226,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh6_0->esp.seq = clib_net_to_host_u32 (sa0->seq);
 	      ip_proto = ih6_0->ip6.protocol;
 
-	      next0 = ESP_ENCRYPT_NEXT_IP6_INPUT;
+	      next0 = ESP_ENCRYPT_NEXT_IP6_LOOKUP;
 	    }
 	  else
 	    {
@@ -248,7 +248,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->esp.seq = clib_net_to_host_u32 (sa0->seq);
 	      ip_proto = ih0->ip4.protocol;
 
-	      next0 = ESP_ENCRYPT_NEXT_IP4_INPUT;
+	      next0 = ESP_ENCRYPT_NEXT_IP4_LOOKUP;
 	    }
 
 	  if (PREDICT_TRUE
