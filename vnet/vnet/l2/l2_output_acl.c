@@ -24,7 +24,6 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vlib/cli.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_output.h>
 
 #include <vppinfra/error.h>
@@ -104,12 +103,9 @@ l2_outacl_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   l2_outacl_next_t next_index;
-  l2_outacl_main_t *msm = &l2_outacl_main;
   vlib_node_t *n = vlib_get_node (vm, l2_outacl_node.index);
   u32 node_counter_base_index = n->error_heap_index;
   vlib_error_main_t *em = &vm->error_main;
-  u32 cached_sw_if_index = (u32) ~ 0;
-  u32 cached_next_index = (u32) ~ 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -201,7 +197,6 @@ l2_outacl_node_fn (vlib_main_t * vm,
 	  u32 next0;
 	  u32 sw_if_index0;
 	  ethernet_header_t *h0;
-	  u32 feature_bitmap0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -234,20 +229,8 @@ l2_outacl_node_fn (vlib_main_t * vm,
 	   * Dummy for now, just go to next feature node
 	   */
 
-
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2OUTPUT_FEAT_ACL;
-
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2_outacl_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
+	  vnet_feature_next (sw_if_index0, &next0, b0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -290,13 +273,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_outacl_node.index,
-			       L2OUTPUT_N_FEAT,
-			       l2output_get_feat_names (),
-			       mp->next_nodes.feat_next_node_index);
-
   /* Initialize the output node mapping table */
   l2output_init_output_node_vec (&mp->next_nodes.output_node_index_vec);
 
@@ -334,7 +310,8 @@ int_l2_outacl (vlib_main_t * vm,
     }
 
   /* set the interface flag */
-  l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_ACL, enable);
+  vnet_feature_enable_disable ("l2-output", "l2-output-acl", sw_if_index,
+			       enable, 0, 0);
 
 done:
   return error;

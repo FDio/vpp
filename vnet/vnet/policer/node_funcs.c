@@ -727,14 +727,11 @@ policer_classify_inline (vlib_main_t * vm,
 
 	  if (tid == POLICER_CLASSIFY_TABLE_L2)
 	    {
-	      /* Feature bitmap update */
-	      vnet_buffer (b0)->l2.feature_bitmap &=
-		~L2INPUT_FEAT_POLICER_CLAS;
 	      /* Determine the next node */
-	      next0 =
-		feat_bitmap_get_next_node_index (pcm->feat_next_node_index,
-						 vnet_buffer (b0)->
-						 l2.feature_bitmap);
+	      u32 sw_if_index0;
+
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      vnet_feature_next (sw_if_index0, &next0, b0);
 	    }
 	  else
 	    vnet_get_config_data (pcm->vnet_config_main[tid],
@@ -916,13 +913,6 @@ policer_classify_init (vlib_main_t * vm)
   pcm->vlib_main = vm;
   pcm->vnet_main = vnet_get_main ();
   pcm->vnet_classify_main = &vnet_classify_main;
-
-  /* Initialize L2 feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_policer_classify_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       pcm->feat_next_node_index);
 
   return 0;
 }

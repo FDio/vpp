@@ -120,7 +120,9 @@ l2pbb_configure (vlib_main_t * vlib_main,
   out_config->push_bytes = in_config->pop_bytes;
 
 done:
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VTR, enable);
+  vnet_feature_enable_disable ("l2-input", "l2-input-vtr", sw_if_index,
+			       enable, 0, 0);
+
   if (config)
     config->out_vtr_flag = (u8) enable;
 
@@ -335,7 +337,8 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
   /* set the interface enable flags */
   enable = (vtr_op != L2_VTR_DISABLED);
   config->out_vtr_flag = (u8) enable;
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VTR, enable);
+  vnet_feature_enable_disable ("l2-input", "l2-input-vtr", sw_if_index,
+			       enable, 0, 0);
   /* output vtr enable is checked explicitly in l2_output */
 
 done:

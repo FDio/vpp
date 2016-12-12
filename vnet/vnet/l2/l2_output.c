@@ -23,9 +23,8 @@
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_output.h>
-
+#include <vnet/feature/feature.h>
 
 /* Feature graph node names */
 static char *l2output_feat_names[] = {
@@ -93,8 +92,8 @@ split_horizon_violation (u8 shg1, u8 shg2)
 }
 
 static_always_inline void
-l2output_vtr (vlib_node_runtime_t * node, l2_output_config_t * config,
-	      u32 feature_bitmap, vlib_buffer_t * b, u32 * next)
+l2output_vtr (vlib_node_runtime_t * node, u32 sw_if_index,
+	      l2_output_config_t * config, vlib_buffer_t * b, u32 * next)
 {
   if (PREDICT_FALSE (config->out_vtr_flag))
     {
@@ -107,8 +106,11 @@ l2output_vtr (vlib_node_runtime_t * node, l2_output_config_t * config,
 	   * configured. The flag for the post-vtr EFP Filter node is used
 	   * to trigger the pre-vtr check as well.
 	   */
-	  u32 failed1 = (feature_bitmap & L2OUTPUT_FEAT_EFP_FILTER)
-	    && (l2_efp_filter_process (b, &(config->input_vtr)));
+	  u8 has_efp_feature =
+	    vnet_feature_check (sw_if_index, "l2-output", "l2-efp-filter");
+	  u32 failed1 = (has_efp_feature
+			 &&
+			 (l2_efp_filter_process (b, &(config->input_vtr))));
 	  u32 failed2 = l2_vtr_process (b, &(config->output_vtr));
 
 	  if (PREDICT_FALSE (failed1 | failed2))
@@ -147,12 +149,6 @@ l2output_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2output_next_t next_index;
   l2output_main_t *msm = &l2output_main;
-  u32 cached_sw_if_index;
-  u32 cached_next_index;
-
-  /* Invalidate cache */
-  cached_sw_if_index = ~0;
-  cached_next_index = ~0;	/* warning be gone */
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -169,12 +165,10 @@ l2output_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
-	  u32 next0, next1, next2, next3;
+	  u32 next0 = ~0, next1 = ~0, next2 = ~0, next3 = ~0;
 	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
 	  ethernet_header_t *h0, *h1, *h2, *h3;
 	  l2_output_config_t *config0, *config1, *config2, *config3;
-	  u32 feature_bitmap0, feature_bitmap1;
-	  u32 feature_bitmap2, feature_bitmap3;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -263,56 +257,48 @@ l2output_node_fn (vlib_main_t * vm,
 	  config2 = vec_elt_at_index (msm->configs, sw_if_index2);
 	  config3 = vec_elt_at_index (msm->configs, sw_if_index3);
 
-	  /*
-	   * Get features from the config
-	   * TODO: mask out any non-applicable features
-	   */
-	  feature_bitmap0 = config0->feature_bitmap;
-	  feature_bitmap1 = config1->feature_bitmap;
-	  feature_bitmap2 = config2->feature_bitmap;
-	  feature_bitmap3 = config3->feature_bitmap;
-
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
+	  vlib_buffer_t *p0;
+	  vlib_buffer_t *p1;
+	  vlib_buffer_t *p2;
+	  vlib_buffer_t *p3;
+	  p0 = vlib_get_buffer (vm, bi0);
+	  p1 = vlib_get_buffer (vm, bi1);
+	  p2 = vlib_get_buffer (vm, bi2);
+	  p3 = vlib_get_buffer (vm, bi3);
+	  vnet_feature_arc_start (msm->output_feature_arc_index, sw_if_index0,
+				  &next0, p0);
+	  vnet_feature_arc_start (msm->output_feature_arc_index, sw_if_index1,
+				  &next0, p1);
+	  vnet_feature_arc_start (msm->output_feature_arc_index, sw_if_index2,
+				  &next0, p2);
+	  vnet_feature_arc_start (msm->output_feature_arc_index, sw_if_index3,
+				  &next0, p3);
 
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b1, sw_if_index1, feature_bitmap1, &next1);
-
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b2, sw_if_index2, feature_bitmap2, &next2);
-
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b3, sw_if_index3, feature_bitmap3, &next3);
-
-	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
-	  l2output_vtr (node, config1, feature_bitmap1, b1, &next1);
-	  l2output_vtr (node, config2, feature_bitmap2, b2, &next2);
-	  l2output_vtr (node, config3, feature_bitmap3, b3, &next3);
+	  l2output_vtr (node, sw_if_index0, config0, b0, &next0);
+	  l2output_vtr (node, sw_if_index1, config1, b1, &next1);
+	  l2output_vtr (node, sw_if_index2, config2, b2, &next2);
+	  l2output_vtr (node, sw_if_index3, config3, b3, &next3);
+	  if (next0 == ~0)
+	    {
+	      b0->error = node->errors[L2OUTPUT_ERROR_DROP];
+	      next0 = L2OUTPUT_NEXT_DROP;
+	    }
+	  if (next1 == ~0)
+	    {
+	      b1->error = node->errors[L2OUTPUT_ERROR_DROP];
+	      next1 = L2OUTPUT_NEXT_DROP;
+	    }
+	  if (next2 == ~0)
+	    {
+	      b2->error = node->errors[L2OUTPUT_ERROR_DROP];
+	      next2 = L2OUTPUT_NEXT_DROP;
+	    }
+	  if (next3 == ~0)
+	    {
+	      b3->error = node->errors[L2OUTPUT_ERROR_DROP];
+	      next3 = L2OUTPUT_NEXT_DROP;
+	    }
 
 	  /*
 	   * Perform the split horizon check
@@ -360,11 +346,10 @@ l2output_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0;
+	  u32 next0 = ~0;
 	  u32 sw_if_index0;
 	  ethernet_header_t *h0;
 	  l2_output_config_t *config0;
-	  u32 feature_bitmap0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -395,23 +380,17 @@ l2output_node_fn (vlib_main_t * vm,
 	  /* Get config for the output interface */
 	  config0 = vec_elt_at_index (msm->configs, sw_if_index0);
 
-	  /*
-	   * Get features from the config
-	   * TODO: mask out any non-applicable features
-	   */
-	  feature_bitmap0 = config0->feature_bitmap;
-
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
-
-	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
+	  vlib_buffer_t *p0;
+	  p0 = vlib_get_buffer (vm, bi0);
+	  vnet_feature_arc_start (msm->output_feature_arc_index, sw_if_index0,
+				  &next0, p0);
+	  l2output_vtr (node, sw_if_index0, config0, b0, &next0);
+	  if (next0 == ~0)
+	    {
+	      b0->error = node->errors[L2OUTPUT_ERROR_DROP];
+	      next0 = L2OUTPUT_NEXT_DROP;
+	    }
 
 	  /* Perform the split horizon check */
 	  if (PREDICT_FALSE
@@ -575,13 +554,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
   vec_validate (mp->configs, 100);
   /* Until we hook up the CLI config, just create 100 sw interface entries  and zero them */
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2output_node.index,
-			       L2OUTPUT_N_FEAT,
-			       l2output_get_feat_names (),
-			       mp->next_nodes.feat_next_node_index);
-
   /* Initialize the output node mapping table */
   l2output_init_output_node_vec (&mp->next_nodes.output_node_index_vec);
 
@@ -589,6 +561,50 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
 }
 
 VLIB_INIT_FUNCTION (l2output_init);
+
+/* *INDENT-OFF* */
+VNET_FEATURE_ARC_INIT (l2_output, static) =
+{
+  .arc_name = "l2-output",
+  .start_nodes = VNET_FEATURES ("l2-output"),
+  .arc_index_ptr = &l2output_main.output_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (l2_xcrw, static) =
+{
+  .arc_name = "l2-output",
+  .node_name = "l2-xcrw",
+  .runs_before = VNET_FEATURES ("l2-output-classify"),
+};
+
+VNET_FEATURE_INIT (l2_output_classify, static) =
+{
+  .arc_name = "l2-output",
+  .node_name = "l2-output-classify",
+  .runs_before = VNET_FEATURES ("l2-efp-filter"),
+};
+
+VNET_FEATURE_INIT (l2_efp_filter, static) =
+{
+  .arc_name = "l2-output",
+  .node_name = "l2-efp-filter",
+  .runs_before = VNET_FEATURES ("l2-output-acl"),
+};
+
+VNET_FEATURE_INIT (l2_output_acl, static) =
+{
+  .arc_name = "l2-output",
+  .node_name = "l2-output-acl",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+VNET_FEATURE_INIT (l2_interface_output, static) =
+{
+  .arc_name = "l2-output",
+  .node_name = "interface-output",
+  .runs_before = VNET_FEATURES (0),	/* not before any other features */
+};
+/* *INDENT-ON* */
 
 typedef struct
 {
@@ -677,26 +693,6 @@ l2output_intf_config (u32 sw_if_index)
 
   vec_validate (mp->configs, sw_if_index);
   return vec_elt_at_index (mp->configs, sw_if_index);
-}
-
-/** Enable (or disable) the feature in the bitmap for the given interface. */
-void
-l2output_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
-{
-  l2output_main_t *mp = &l2output_main;
-  l2_output_config_t *config;
-
-  vec_validate (mp->configs, sw_if_index);
-  config = vec_elt_at_index (mp->configs, sw_if_index);
-
-  if (enable)
-    {
-      config->feature_bitmap |= feature_bitmap;
-    }
-  else
-    {
-      config->feature_bitmap &= ~feature_bitmap;
-    }
 }
 
 /*
