@@ -42,9 +42,6 @@ typedef struct
   /* this is the bvi interface for the bridge-domain */
   u8 bvi;
 
-  /* config for which input features are configured on this interface */
-  u32 feature_bitmap;
-
   /* some of these flags are also in the feature bitmap */
   u8 learn_enable;
   u8 fwd_enable;
@@ -67,6 +64,9 @@ typedef struct
 
   /* bridge domain config vector indexed by bd_index */
   l2_bridge_domain_t *bd_configs;
+
+  /* Feature arc index */
+  u8 input_feature_arc_index;
 
   /* convenience variables */
   vlib_main_t *vlib_main;
@@ -117,6 +117,7 @@ typedef enum
 } l2input_feat_t;
 
 /* Feature bit masks */
+
 typedef enum
 {
 #define _(sym,str) L2INPUT_FEAT_##sym = (1<<L2INPUT_FEAT_##sym##_BIT),
@@ -166,10 +167,6 @@ bd_feature_arp_term (l2_bridge_domain_t * bd_config)
 
 /** Get a pointer to the config for the given interface */
 l2_input_config_t *l2input_intf_config (u32 sw_if_index);
-
-/* Enable (or disable) the feature in the bitmap for the given interface */
-u32 l2input_intf_bitmap_enable (u32 sw_if_index,
-				u32 feature_bitmap, u32 enable);
 
 /* Sets modifies flags from a bridge domain */
 u32 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value);

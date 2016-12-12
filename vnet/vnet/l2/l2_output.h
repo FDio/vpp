@@ -27,9 +27,6 @@
 /* The L2 output feature configuration, a per-interface struct */
 typedef struct
 {
-
-  u32 feature_bitmap;
-
   /*
    * vlan tag rewrite for ingress and egress
    * ingress vtr is located here because the same config data is used for
@@ -82,6 +79,9 @@ typedef struct
 
   /* config vector indexed by sw_if_index */
   l2_output_config_t *configs;
+
+  /* Feature arc index */
+  u8 output_feature_arc_index;
 
   /* Convenience variables */
   vlib_main_t *vlib_main;
@@ -269,10 +269,6 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 
 /** Get a pointer to the config for the given interface */
 l2_output_config_t *l2output_intf_config (u32 sw_if_index);
-
-/** Enable (or disable) the feature in the bitmap for the given interface */
-void l2output_intf_bitmap_enable (u32 sw_if_index,
-				  u32 feature_bitmap, u32 enable);
 
 #endif
 

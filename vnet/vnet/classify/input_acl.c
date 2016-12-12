@@ -25,16 +25,17 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
                               input_acl_table_id_t tid,
                               int feature_enable)
 {
+  vnet_feature_config_main_t *fcm;
+  u8 arc;
 
   if (tid == INPUT_ACL_TABLE_L2)
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_ACL,
-                                  feature_enable);
+      vnet_feature_enable_disable ("l2-input", "l2-input-acl",
+                 sw_if_index, feature_enable, 0, 0);
+      arc = vnet_get_feature_arc_index ("l2-input");
     }
   else
     { /* IP[46] */
-      vnet_feature_config_main_t *fcm;
-      u8 arc;
 
       if (tid == INPUT_ACL_TABLE_IP4)
 	{
@@ -48,10 +49,10 @@ vnet_inacl_ip_feature_enable (vlib_main_t * vnm,
 				       sw_if_index, feature_enable, 0, 0);
 	  arc = vnet_get_feature_arc_index ("ip6-unicast");
 	}
+    }
 
       fcm = vnet_get_feature_arc_config_main (arc);
       am->vnet_config_main[tid] = &fcm->config_main;
-    }
 
   return 0;
 }
