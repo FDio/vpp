@@ -120,21 +120,10 @@ feat_bitmap_drop_node_fn (vlib_main_t * vm,
 	    {
 	      feat_bitmap_drop_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->feature_bitmap = vnet_buffer (b0)->l2.feature_bitmap;
+	      t->feature_bitmap = 0;
 	    }
 
-	  if (vnet_buffer (b0)->l2.feature_bitmap == 1)
-	    {
-	      /*
-	       * If we are executing the last feature, this is the
-	       * No forwarding catch-all
-	       */
-	      b0->error = node->errors[FEAT_BITMAP_DROP_ERROR_NO_FWD];
-	    }
-	  else
-	    {
-	      b0->error = node->errors[FEAT_BITMAP_DROP_ERROR_NYI];
-	    }
+	  b0->error = node->errors[FEAT_BITMAP_DROP_ERROR_NYI];
 	  next0 = FEAT_BITMAP_DROP_NEXT_DROP;
 
 	  /* verify speculative enqueue, maybe switch current next frame */

@@ -21,7 +21,6 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_bvi.h>
 #include <vnet/replication.h>
 #include <vnet/l2/l2_fib.h>
@@ -478,13 +477,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2flood_node, l2flood_node_fn)
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2flood_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       mp->feat_next_node_index);
-
   return 0;
 }
 
@@ -533,8 +525,9 @@ int_flood (vlib_main_t * vm,
       enable = 0;
     }
 
-  /* set the interface flag */
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_FLOOD, enable);
+  /* enable/disable feature */
+  vnet_feature_enable_disable ("l2-input", "l2-flood", sw_if_index, enable, 0,
+			       0);
 
 done:
   return error;
