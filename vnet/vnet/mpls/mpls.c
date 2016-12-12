@@ -418,7 +418,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
       pfx.fp_proto = FIB_PROTOCOL_MPLS;
       pfx.fp_len = 21;
       pfx.fp_label = local_label;
-      pfx.fp_payload_proto = DPO_PROTO_MPLS;
+      pfx.fp_payload_proto = fib_proto_to_dpo(rpaths[0].frp_proto);
 
       if (NULL == rpaths)
       {
@@ -437,7 +437,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  if (~0 == fi)
 	  {
 	      error = clib_error_return(0 , "%U Via table %d does not exist",
-					format_fib_protocol, pfx.fp_payload_proto,
+					format_dpo_proto, pfx.fp_payload_proto,
 					rpaths[0].frp_fib_index);
 	      goto done;
 	  }
