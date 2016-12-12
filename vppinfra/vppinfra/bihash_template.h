@@ -61,7 +61,8 @@ typedef struct
     struct
     {
       u32 offset;
-      u8 pad[3];
+      u8 linear_search;
+      u8 pad[2];
       u8 log2_pages;
     };
     u64 as_u64;
@@ -80,6 +81,7 @@ typedef struct
 
   u32 nbuckets;
   u32 log2_nbuckets;
+  u32 linear_buckets;
   u8 *name;
 
     BVT (clib_bihash_value) ** freelists;
@@ -132,10 +134,9 @@ static inline int BV (clib_bihash_search_inline)
 {
   u64 hash;
   u32 bucket_index;
-  uword value_index;
   BVT (clib_bihash_value) * v;
   clib_bihash_bucket_t *b;
-  int i;
+  int i, limit;
 
   hash = BV (clib_bihash_hash) (kvp);
 
@@ -148,10 +149,14 @@ static inline int BV (clib_bihash_search_inline)
   hash >>= h->log2_nbuckets;
 
   v = BV (clib_bihash_get_value) (h, b->offset);
-  value_index = hash & ((1 << b->log2_pages) - 1);
-  v += value_index;
 
-  for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+  /* If the bucket has unresolvable collisions, use linear search */
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (PREDICT_FALSE (b->linear_search))
+    limit <<= b->log2_pages;
+
+  for (i = 0; i < limit; i++)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, kvp->key))
 	{
@@ -168,10 +173,9 @@ static inline int BV (clib_bihash_search_inline_2)
 {
   u64 hash;
   u32 bucket_index;
-  uword value_index;
   BVT (clib_bihash_value) * v;
   clib_bihash_bucket_t *b;
-  int i;
+  int i, limit;
 
   ASSERT (valuep);
 
@@ -184,12 +188,15 @@ static inline int BV (clib_bihash_search_inline_2)
     return -1;
 
   hash >>= h->log2_nbuckets;
-
   v = BV (clib_bihash_get_value) (h, b->offset);
-  value_index = hash & ((1 << b->log2_pages) - 1);
-  v += value_index;
 
-  for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+  /* If the bucket has unresolvable collisions, use linear search */
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (PREDICT_FALSE (b->linear_search))
+    limit <<= b->log2_pages;
+
+  for (i = 0; i < limit; i++)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
 	{

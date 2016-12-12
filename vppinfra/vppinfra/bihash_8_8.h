@@ -53,6 +53,7 @@ clib_bihash_is_free_8_8 (clib_bihash_kv_8_8_t * v)
 static inline u64
 clib_bihash_hash_8_8 (clib_bihash_kv_8_8_t * v)
 {
+  /* Note: to torture-test linear scan, make this fn return a constant */
 #if __SSE4_2__
   return _mm_crc32_u64 (0, v->key);
 #else

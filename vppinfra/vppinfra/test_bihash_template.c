@@ -111,37 +111,17 @@ test_bihash (test_main_t * tm)
 
   for (j = 0; j < tm->search_iter; j++)
     {
-      u64 hash1 = clib_xxhash (tm->keys[0]);
-
       for (i = 0; i < tm->nitems; i++)
 	{
-	  if (i < (tm->nitems - 3))
-	    {
-	      clib_bihash_bucket_t *b;
-	      BVT (clib_bihash_value) * v;
-	      u64 hash2 = clib_xxhash (tm->keys[i + 3]);
-	      u32 bucket_index = hash2 & (h->nbuckets - 1);
-	      b = &h->buckets[bucket_index];
-	      CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
-
-	      bucket_index = hash1 & (h->nbuckets - 1);
-	      b = &h->buckets[bucket_index];
-	      v = BV (clib_bihash_get_value) (h, b->offset);
-	      hash1 >>= h->log2_nbuckets;
-	      hash1 = hash1 & ((1 << b->log2_pages) - 1);
-	      v += hash1;
-	      CLIB_PREFETCH (v, CLIB_CACHE_LINE_BYTES, LOAD);
-
-	      hash1 = hash2;
-	    }
-
 	  kv.key = tm->keys[i];
 	  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
-	    clib_warning ("search for key %lld failed unexpectedly\n",
-			  tm->keys[i]);
+	    if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+	      clib_warning ("[%d] search for key %lld failed unexpectedly\n",
+			    i, tm->keys[i]);
 	  if (kv.value != (u64) (i + 1))
-	    clib_warning ("search for key %lld returned %lld, not %lld\n",
-			  tm->keys, kv.value, (u64) (i + 1));
+	    clib_warning
+	      ("[%d] search for key %lld returned %lld, not %lld\n", i,
+	       tm->keys, kv.value, (u64) (i + 1));
 	}
     }
 
