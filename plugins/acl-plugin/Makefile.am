@@ -31,20 +31,26 @@ acl_plugin_la_SOURCES =				\
 	acl/l2sess.h				\
 	acl/acl_plugin.api.h
 
-BUILT_SOURCES = acl/acl.api.h
+BUILT_SOURCES = acl/acl.api.h acl/acl.api.json
 
-SUFFIXES = .api.h .api
+SUFFIXES = .api.h .api .api.json
 
 #
 # ACL API
 #
 %.api.h: %.api
-	mkdir -p $(dir $@) ; \
+	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
 	| vppapigen --input - --output $@ --show-name $@
 
+%.api.json: %.api
+	@echo "  JSON APIGEN  " $@ ;                            \
+	mkdir -p `dirname $@` ;                                 \
+	$(CC) $(CPPFLAGS) -E -P -C -x c $^                      \
+	| vppapigen --input - --json $@
+
 apidir = $(prefix)/acl
-api_DATA = acl/acl.api
+api_DATA = acl/acl.api.json
 
 noinst_HEADERS =				\
   acl/acl_all_api_h.h				\
@@ -108,6 +114,6 @@ $(jacl_jarfile): libjvpp_acl.la
 
 acl.api.json:
 	@echo "  jAcl_sfc API"; \
-        vppapigen --input $(api_file) --json acl.api.json;
+	vppapigen --input $(api_file) --json acl.api.json;
 
 all-local: $(jacl_jarfile)
