@@ -7,16 +7,21 @@ endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
 PYTHON_DEPENDS=scapy==2.3.3 pexpect
-SCAPY_SOURCE=$(WS_ROOT)/build-root/python/virtualenv/lib/python2.7/site-packages/
+SCAPY_SOURCE=$(PYTHON_VENV_PATH)/lib/python2.7/site-packages/
 BUILD_COV_DIR = $(BR)/test-cov
 
+PIP_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/pip-install.done
+PIP_PATCH_DONE=$(VPP_PYTHON_PREFIX)/pip-patch.done
+PAPI_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/papi-install.done
 
-.pip-install.ok:
+PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
+
+$(PIP_INSTALL_DONE):
 	@virtualenv $(PYTHON_VENV_PATH)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
-.pip-patch.ok: .pip-install.ok
+$(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@echo --- patching ---
 	for f in $(CURDIR)/patches/scapy-2.3.3/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
@@ -24,18 +29,15 @@ BUILD_COV_DIR = $(BR)/test-cov
 	done
 	@touch $@
 
-.install.ok: .pip-patch.ok
+$(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/vpp-api/python && python setup.py install"
 	@touch $@
-
-PHONIES=.install.ok .pip-patch.ok .pip-install.ok
-.PHONY: $(PHONIES)
 
 define retest-func
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
 endef
 
-test: reset verify-python-path .install.ok
+test: reset verify-python-path $(PAPI_INSTALL_DONE)
 	$(call retest-func)
 
 retest: reset verify-python-path
@@ -48,17 +50,20 @@ reset:
 	@rm -rf /tmp/vpp-unittest-*
 
 wipe: reset
-	@rm -f $(PHONIES)
+	@rm -rf $(PYTHON_VENV_PATH)
+	@rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) sphinx"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
+.PHONY: wipe-doc
+
 wipe-doc:
 	@make -C doc wipe BR=$(BR)
 
-cov: wipe-cov reset verify-python-path .install.ok
+cov: wipe-cov reset verify-python-path $(PAPI_INSTALL_DONE)
 	@lcov --zerocounters --directory $(VPP_TEST_BUILD_DIR)
 	$(call retest-func)
 	@mkdir $(BUILD_COV_DIR)
@@ -66,6 +71,8 @@ cov: wipe-cov reset verify-python-path .install.ok
 	@genhtml $(BUILD_COV_DIR)/coverage.info --output-directory $(BUILD_COV_DIR)/html
 	@echo
 	@echo "Build finished. Code coverage report is in $(BUILD_COV_DIR)/html/index.html"
+
+.PHONY: wipe-cov
 
 wipe-cov: wipe
 	@rm -rf $(BUILD_COV_DIR)
