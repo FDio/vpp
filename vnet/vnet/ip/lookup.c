@@ -544,6 +544,15 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	}
       else if (vec_len (prefixs) > 0 &&
 	       unformat (line_input, "via %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+	{
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = prefixs[0].fp_proto;
+	  vec_add1 (rpaths, rpath);
+	}
+      else if (vec_len (prefixs) > 0 &&
+	       unformat (line_input, "via %U",
 			 unformat_dpo, &dpo, prefixs[0].fp_proto))
 	{
 	  vec_add1 (dpos, dpo);
