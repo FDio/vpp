@@ -21,16 +21,17 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
                                       policer_classify_table_id_t tid,
                                       int feature_enable)
 {
+  vnet_feature_config_main_t * fcm;
+  u8 arc;
+
   if (tid == POLICER_CLASSIFY_TABLE_L2)
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_POLICER_CLAS,
-                                  feature_enable);
+    vnet_feature_enable_disable ("l2-input", "l2-policer-classify",
+               sw_if_index, feature_enable, 0, 0);
+    arc = vnet_get_feature_arc_index ("l2-input");
     }
   else
     {
-      vnet_feature_config_main_t * fcm;
-      u8 arc;
-
       if (tid == POLICER_CLASSIFY_TABLE_IP4)
 	{
 	  vnet_feature_enable_disable ("ip4-unicast", "ip4-policer-classify",
@@ -44,10 +45,9 @@ vnet_policer_classify_feature_enable (vlib_main_t * vnm,
 				       sw_if_index, feature_enable, 0, 0);
 	  arc = vnet_get_feature_arc_index ("ip6-unicast");
 	}
-
+    }
       fcm = vnet_get_feature_arc_config_main (arc);
       pcm->vnet_config_main[tid] = &fcm->config_main;
-    }
 }
 
 int vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,

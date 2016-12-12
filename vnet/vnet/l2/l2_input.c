@@ -112,6 +112,31 @@ typedef enum
   L2INPUT_N_NEXT,
 } l2input_next_t;
 
+static uword
+l2_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  u32 *buffers = vlib_frame_vector_args (frame);
+  uword n_packets = frame->n_vectors;
+
+  vlib_error_drop_buffers (vm, node, buffers,
+			   /* stride */ 1,
+			   n_packets,
+			   /* next */ 0,
+			   l2input_node.index, L2INPUT_ERROR_DROP);
+
+  return n_packets;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (l2_drop_node, static) =
+{
+  .function = l2_drop,
+  .name = "l2-drop",
+  .vector_size = sizeof (u32),
+  .n_next_nodes = 1,
+  .next_nodes = {[0] = "error-drop"},
+};
+/* *INDENT-ON* */
 
 static_always_inline void
 classify_and_dispatch (vlib_main_t * vm,
@@ -137,15 +162,9 @@ classify_and_dispatch (vlib_main_t * vm,
   __attribute__ ((unused)) u8 l2bcast;
   __attribute__ ((unused)) u8 l2mcast;
   __attribute__ ((unused)) u8 l2_stat_kind;
-  u16 ethertype;
-  u8 protocol;
   l2_input_config_t *config;
-  l2_bridge_domain_t *bd_config;
   u16 bd_index0;
-  u32 feature_bitmap;
-  u32 feat_mask;
   ethernet_header_t *h0;
-  u8 *l3h0;
   u32 sw_if_index0;
 
 #define get_u32(addr) ( *((u32 *)(addr)) )
@@ -157,10 +176,6 @@ classify_and_dispatch (vlib_main_t * vm,
   sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
   h0 = vlib_buffer_get_current (b0);
-  l3h0 = (u8 *) h0 + vnet_buffer (b0)->l2.l2_len;
-
-  ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
-  feat_mask = ~0;
 
   /* determine layer2 kind for stat and mask */
   mcast_dmac = ethernet_address_cast (h0->dst_address);
@@ -171,15 +186,6 @@ classify_and_dispatch (vlib_main_t * vm,
     {
       u32 *dsthi = (u32 *) & h0->dst_address[0];
       u32 *dstlo = (u32 *) & h0->dst_address[2];
-      protocol = ((ip6_header_t *) l3h0)->protocol;
-
-      /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
-      feat_mask &= ~(L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD);
-
-      /* Disable ARP-term for non-ARP and non-ICMP6 packet */
-      if (ethertype != ETHERNET_TYPE_ARP &&
-	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
-	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
 
       /* dest mac is multicast or broadcast */
       if ((*dstlo == 0xFFFFFFFF) && (*dsthi == 0xFFFFFFFF))
@@ -223,31 +229,8 @@ classify_and_dispatch (vlib_main_t * vm,
       bd_index0 = config->bd_index;
       /* save BD ID for next feature graph nodes */
       vnet_buffer (b0)->l2.bd_index = bd_index0;
-
-      /* Get config for the bridge domain interface */
-      bd_config = vec_elt_at_index (msm->bd_configs, bd_index0);
-
-      /*
-       * Process bridge domain feature enables.
-       * To perform learning/flooding/forwarding, the corresponding bit
-       * must be enabled in both the input interface config and in the
-       * bridge domain config. In the bd_bitmap, bits for features other
-       * than learning/flooding/forwarding should always be set.
-       */
-      feat_mask = feat_mask & bd_config->feature_bitmap;
     }
-
-  /* mask out features from bitmap using packet type and bd config */
-  feature_bitmap = config->feature_bitmap & feat_mask;
-
-  /* save for next feature graph nodes */
-  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
-  /* Determine the next node */
-  *next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-					    feature_bitmap);
 }
-
 
 static uword
 l2input_node_fn (vlib_main_t * vm,
@@ -273,7 +256,7 @@ l2input_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
-	  u32 next0, next1, next2, next3;
+	  u32 next0 = ~0, next1 = ~0, next2 = ~0, next3 = ~0;
 	  u32 sw_if_index0, sw_if_index1, sw_if_index2, sw_if_index3;
 
 	  /* Prefetch next iteration. */
@@ -320,13 +303,14 @@ l2input_node_fn (vlib_main_t * vm,
 	  b2 = vlib_get_buffer (vm, bi2);
 	  b3 = vlib_get_buffer (vm, bi3);
 
+	  /* RX interface handles */
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
+	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
+
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
-	      /* RX interface handles */
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
-	      sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_RX];
-	      sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_RX];
 
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -369,6 +353,44 @@ l2input_node_fn (vlib_main_t * vm,
 	  vlib_node_increment_counter (vm, l2input_node.index,
 				       L2INPUT_ERROR_L2INPUT, 4);
 
+	  vlib_buffer_t *p0;
+	  vlib_buffer_t *p1;
+	  vlib_buffer_t *p2;
+	  vlib_buffer_t *p3;
+	  p0 = vlib_get_buffer (vm, bi0);
+	  p1 = vlib_get_buffer (vm, bi1);
+	  p2 = vlib_get_buffer (vm, bi2);
+	  p3 = vlib_get_buffer (vm, bi3);
+	  vnet_feature_arc_start (msm->input_feature_arc_index, sw_if_index0,
+				  &next0, p0);
+	  vnet_feature_arc_start (msm->input_feature_arc_index, sw_if_index1,
+				  &next1, p1);
+	  vnet_feature_arc_start (msm->input_feature_arc_index, sw_if_index2,
+				  &next2, p2);
+	  vnet_feature_arc_start (msm->input_feature_arc_index, sw_if_index3,
+				  &next3, p3);
+
+	  if (next0 == ~0)
+	    {
+	      b0->error = node->errors[L2INPUT_ERROR_DROP];
+	      next0 = L2INPUT_NEXT_DROP;
+	    }
+	  if (next1 == ~0)
+	    {
+	      b1->error = node->errors[L2INPUT_ERROR_DROP];
+	      next1 = L2INPUT_NEXT_DROP;
+	    }
+	  if (next2 == ~0)
+	    {
+	      b2->error = node->errors[L2INPUT_ERROR_DROP];
+	      next2 = L2INPUT_NEXT_DROP;
+	    }
+	  if (next3 == ~0)
+	    {
+	      b3->error = node->errors[L2INPUT_ERROR_DROP];
+	      next3 = L2INPUT_NEXT_DROP;
+	    }
+
 	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
 	  classify_and_dispatch (vm, node, cpu_index, msm, b1, &next1);
 	  classify_and_dispatch (vm, node, cpu_index, msm, b2, &next2);
@@ -386,7 +408,7 @@ l2input_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0;
+	  u32 next0 = ~0;
 	  u32 sw_if_index0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -398,13 +420,13 @@ l2input_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      ethernet_header_t *h0 = vlib_buffer_get_current (b0);
 	      l2input_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->sw_if_index = sw_if_index0;
 	      clib_memcpy (t->src, h0->src_address, 6);
 	      clib_memcpy (t->dst, h0->dst_address, 6);
@@ -412,6 +434,17 @@ l2input_node_fn (vlib_main_t * vm,
 
 	  vlib_node_increment_counter (vm, l2input_node.index,
 				       L2INPUT_ERROR_L2INPUT, 1);
+
+	  vlib_buffer_t *p0;
+	  p0 = vlib_get_buffer (vm, bi0);
+	  vnet_feature_arc_start (msm->input_feature_arc_index, sw_if_index0,
+				  &next0, p0);
+
+	  if (next0 == ~0)
+	    {
+	      b0->error = node->errors[L2INPUT_ERROR_DROP];
+	      next0 = L2INPUT_NEXT_DROP;
+	    }
 
 	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
 
@@ -466,18 +499,110 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2input_node, l2input_node_fn)
   vec_validate (mp->configs, 100);
   /* create 100 sw interface entries and zero them */
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2input_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       mp->feat_next_node_index);
-
   return 0;
 }
 
 VLIB_INIT_FUNCTION (l2input_init);
 
+/* *INDENT-OFF* */
+VNET_FEATURE_ARC_INIT (l2_input, static) =
+{
+  .arc_name = "l2-input",
+  .start_nodes = VNET_FEATURES ("l2-input"),
+  .arc_index_ptr = &l2input_main.input_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (l2_input_classify, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-input-classify",
+  .runs_before = VNET_FEATURES ("l2-policer-classify"),
+};
+
+VNET_FEATURE_INIT (l2_policer_classify, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-policer-classify",
+  .runs_before = VNET_FEATURES ("l2-input-acl"),
+};
+
+VNET_FEATURE_INIT (l2_input_acl, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-input-acl",
+  .runs_before = VNET_FEATURES ("l2-input-vpath"),
+};
+
+VNET_FEATURE_INIT (l2_input_vpath, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-input-vpath",
+  .runs_before = VNET_FEATURES ("l2-input-vtr"),
+};
+
+VNET_FEATURE_INIT (l2_input_vtr, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-input-vtr",
+  .runs_before = VNET_FEATURES ("l2-learn"),
+};
+
+VNET_FEATURE_INIT (l2_learn, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-learn",
+  .runs_before = VNET_FEATURES ("l2-rw"),
+};
+
+VNET_FEATURE_INIT (l2_rw, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-rw",
+  .runs_before = VNET_FEATURES ("l2-fwd"),
+};
+
+VNET_FEATURE_INIT (l2_fwd, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-fwd",
+  .runs_before = VNET_FEATURES ("l2-uu-flood"),
+};
+
+VNET_FEATURE_INIT (l2_uu_flood, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-uu-flood",
+  .runs_before = VNET_FEATURES ("l2-arp-term-l2db"),
+};
+
+VNET_FEATURE_INIT (l2_arp_term_l2db, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-arp-term-l2db",
+  .runs_before = VNET_FEATURES ("l2-flood"),
+};
+
+VNET_FEATURE_INIT (l2_flood, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-flood",
+  .runs_before = VNET_FEATURES ("l2-xconnect"),
+};
+
+VNET_FEATURE_INIT (l2_xconnect, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-xconnect",
+  .runs_before = VNET_FEATURES ("l2-drop"),
+};
+
+VNET_FEATURE_INIT (l2_drop, static) =
+{
+  .arc_name = "l2-input",
+  .node_name = "l2-drop",
+  .runs_before = VNET_FEATURES (0),	/* not before any other features */
+};
+/* *INDENT-ON* */
 
 /** Get a pointer to the config for the given interface. */
 l2_input_config_t *
@@ -487,28 +612,6 @@ l2input_intf_config (u32 sw_if_index)
 
   vec_validate (mp->configs, sw_if_index);
   return vec_elt_at_index (mp->configs, sw_if_index);
-}
-
-/** Enable (or disable) the feature in the bitmap for the given interface. */
-u32
-l2input_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
-{
-  l2input_main_t *mp = &l2input_main;
-  l2_input_config_t *config;
-
-  vec_validate (mp->configs, sw_if_index);
-  config = vec_elt_at_index (mp->configs, sw_if_index);
-
-  if (enable)
-    {
-      config->feature_bitmap |= feature_bitmap;
-    }
-  else
-    {
-      config->feature_bitmap &= ~feature_bitmap;
-    }
-
-  return config->feature_bitmap;
 }
 
 u32
@@ -601,7 +704,9 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
       config->bridge = 0;
       config->shg = 0;
       config->bd_index = 0;
-      config->feature_bitmap = L2INPUT_FEAT_DROP;
+      //vnet_feature_enable_disable ("l2-input", "ALL", 0, 0, 0);
+      vnet_feature_enable_disable ("l2-input", "l2-drop", sw_if_index, 1, 0,
+				   0);
 
       /* Make sure any L2-output packet to this interface now in L3 mode is
        * dropped. This may happen if L2 FIB MAC entry is stale */
@@ -615,12 +720,18 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
       config->output_sw_if_index = xc_sw_if_index;
 
       /* Make sure last-chance drop is configured */
-      config->feature_bitmap |=
-	L2INPUT_FEAT_DROP | L2INPUT_FEAT_INPUT_CLASSIFY;
+      vnet_feature_enable_disable ("l2-input", "l2-drop", sw_if_index, 1, 0,
+				   0);
+      vnet_feature_enable_disable ("l2-input", "l2-input-classify",
+				   sw_if_index, 1, 0, 0);
 
       /* Make sure bridging features are disabled */
-      config->feature_bitmap &=
-	~(L2INPUT_FEAT_LEARN | L2INPUT_FEAT_FWD | L2INPUT_FEAT_FLOOD);
+      vnet_feature_enable_disable ("l2-input", "l2-learn", sw_if_index, 0, 0,
+				   0);
+      vnet_feature_enable_disable ("l2-input", "l2-fwd", sw_if_index, 0, 0,
+				   0);
+      vnet_feature_enable_disable ("l2-input", "l2-flood", sw_if_index, 0, 0,
+				   0);
       shg = 0;			/* not used in xconnect */
 
       /* Insure all packets go to ethernet-input */
@@ -649,14 +760,24 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
 	   * Enable forwarding, flooding, learning and ARP termination by default
 	   * (note that ARP term is disabled on BD feature bitmap by default)
 	   */
-	  config->feature_bitmap |= L2INPUT_FEAT_FWD | L2INPUT_FEAT_UU_FLOOD |
-	    L2INPUT_FEAT_FLOOD | L2INPUT_FEAT_LEARN | L2INPUT_FEAT_ARP_TERM;
+	  vnet_feature_enable_disable ("l2-input", "l2-learn", sw_if_index, 1,
+				       0, 0);
+	  vnet_feature_enable_disable ("l2-input", "l2-fwd", sw_if_index, 1,
+				       0, 0);
+	  vnet_feature_enable_disable ("l2-input", "l2-flood", sw_if_index, 1,
+				       0, 0);
+	  vnet_feature_enable_disable ("l2-input", "l2-uu-flood", sw_if_index,
+				       1, 0, 0);
+	  vnet_feature_enable_disable ("l2-input", "arp-term-l2bd",
+				       sw_if_index, 1, 0, 0);
 
 	  /* Make sure last-chance drop is configured */
-	  config->feature_bitmap |= L2INPUT_FEAT_DROP;
+	  vnet_feature_enable_disable ("l2-input", "l2-drop", sw_if_index, 1,
+				       0, 0);
 
 	  /* Make sure xconnect is disabled */
-	  config->feature_bitmap &= ~L2INPUT_FEAT_XCONNECT;
+	  vnet_feature_enable_disable ("l2-input", "l2-xconnect", sw_if_index,
+				       0, 0, 0);
 
 	  /* Set up bridge domain */
 	  vec_validate (mp->bd_configs, bd_index);
@@ -681,7 +802,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
 	      l2fib_add_entry (mac, bd_index, sw_if_index, 1, 0, 1);	/* static + bvi */
 
 	      /* Disable learning by default. no use since l2fib entry is static. */
-	      config->feature_bitmap &= ~L2INPUT_FEAT_LEARN;
+	      vnet_feature_enable_disable ("l2-input", "l2-learn",
+					   sw_if_index, 0, 0, 0);
 
 	      /* Make loop output node send packet to l2-input node */
 	      slot =
@@ -705,13 +827,18 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
 	  config->output_sw_if_index = xc_sw_if_index;
 
 	  /* Make sure last-chance drop is configured */
-	  config->feature_bitmap |= L2INPUT_FEAT_DROP;
+	  vnet_feature_enable_disable ("l2-input", "l2-drop", sw_if_index, 1,
+				       0, 0);
 
 	  /* Make sure bridging features are disabled */
-	  config->feature_bitmap &=
-	    ~(L2INPUT_FEAT_LEARN | L2INPUT_FEAT_FWD | L2INPUT_FEAT_FLOOD);
-
-	  config->feature_bitmap |= L2INPUT_FEAT_XCONNECT;
+	  vnet_feature_enable_disable ("l2-input", "l2-learn", sw_if_index, 0,
+				       0, 0);
+	  vnet_feature_enable_disable ("l2-input", "l2-fwd", sw_if_index, 0,
+				       0, 0);
+	  vnet_feature_enable_disable ("l2-input", "l2-flood", sw_if_index, 0,
+				       0, 0);
+	  vnet_feature_enable_disable ("l2-input", "l2-xconnect", sw_if_index,
+				       1, 0, 0);
 	  shg = 0;		/* not used in xconnect */
 	}
 

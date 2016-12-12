@@ -70,10 +70,7 @@ acl_in_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   acl_in_next_t next_index;
   u32 pkts_acl_checked = 0;
-  u32 feature_bitmap0;
   u32 trace_bitmap = 0;
-  u32 *input_feat_next_node_index =
-    acl_main.acl_in_node_input_next_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -107,7 +104,6 @@ acl_in_node_fn (vlib_main_t * vm,
 
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  feature_bitmap0 = vnet_buffer (b0)->l2.feature_bitmap;
 
 	  input_acl_packet_match (sw_if_index0, b0, &next, &match_acl_index,
 				  &match_rule_index, &trace_bitmap);
@@ -117,9 +113,7 @@ acl_in_node_fn (vlib_main_t * vm,
 	    }
 	  if (next0 == ~0)
 	    {
-	      next0 =
-		feat_bitmap_get_next_node_index (input_feat_next_node_index,
-						 feature_bitmap0);
+	    vnet_feature_next (sw_if_index0, &next0, b0);
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -151,18 +145,22 @@ acl_in_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (acl_in_node) =
 {
-  .function = acl_in_node_fn,.name = "acl-plugin-in",.vector_size =
-    sizeof (u32),.format_trace = format_acl_in_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (acl_in_error_strings),.error_strings =
-    acl_in_error_strings,.n_next_nodes = ACL_IN_N_NEXT,
-    /* edit / add dispositions here */
-    .next_nodes =
-  {
-  [ACL_IN_ERROR_DROP] = "error-drop",
-      [ACL_IN_ETHERNET_INPUT] = "ethernet-input",
-      [ACL_IN_L2S_INPUT_IP4_ADD] = "aclp-l2s-input-ip4-add",
-      [ACL_IN_L2S_INPUT_IP6_ADD] = "aclp-l2s-input-ip6-add",}
-,};
+  .function = acl_in_node_fn,
+  .name = "acl-plugin-in",
+  .vector_size = sizeof (u32),
+  .format_trace = format_acl_in_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (acl_in_error_strings),
+  .error_strings = acl_in_error_strings,
+  .n_next_nodes = ACL_IN_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [ACL_IN_ERROR_DROP] = "error-drop",
+    [ACL_IN_ETHERNET_INPUT] = "ethernet-input",
+    [ACL_IN_L2S_INPUT_IP4_ADD] = "aclp-l2s-input-ip4-add",
+    [ACL_IN_L2S_INPUT_IP6_ADD] = "aclp-l2s-input-ip6-add",},
+};
+/* *INDENT-ON* */
