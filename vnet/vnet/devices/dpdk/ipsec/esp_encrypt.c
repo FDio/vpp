@@ -25,8 +25,8 @@
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \
-_(IP4_INPUT, "ip4-input")                          \
-_(IP6_INPUT, "ip6-input")                          \
+_(IP4_LOOKUP, "ip4-lookup")                        \
+_(IP6_LOOKUP, "ip6-lookup")                        \
 _(INTERFACE_OUTPUT, "interface-output")
 
 #define _(v, s) ESP_ENCRYPT_NEXT_##v,
@@ -287,7 +287,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
 
 	      /* in tunnel mode send it back to FIB */
-	      next0 = ESP_ENCRYPT_NEXT_IP4_INPUT;
+	      next0 = ESP_ENCRYPT_NEXT_IP4_LOOKUP;
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
 	  else if (sa0->is_tunnel && sa0->is_tunnel_ip6)
@@ -302,7 +302,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		sa0->tunnel_dst_addr.ip6.as_u64[1];
 
 	      /* in tunnel mode send it back to FIB */
-	      next0 = ESP_ENCRYPT_NEXT_IP6_INPUT;
+	      next0 = ESP_ENCRYPT_NEXT_IP6_LOOKUP;
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
 	  else
