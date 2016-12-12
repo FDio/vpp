@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 
 import unittest
-import socket
 from logging import *
 
 from framework import VppTestCase, VppTestRunner
-from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface
 from vpp_ip_route import IpRoute, RoutePath
 from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, Dot1Q, ARP, GRE
+from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import ICMPv6ND_NS, ICMPv6ND_RA, IPv6, UDP
-from scapy.contrib.mpls import MPLS
+from scapy.layers.inet6 import ICMPv6ND_RA, IPv6
 from scapy.volatile import RandMAC, RandIP
+
+from util import ppp, ppc
 
 
 class TestGRE(VppTestCase):
@@ -131,7 +131,7 @@ class TestGRE(VppTestCase):
 
     def verify_filter(self, capture, sent):
         if not len(capture) == len(sent):
-            # filter out any IPv6 RAs from the captur
+            # filter out any IPv6 RAs from the capture
             for p in capture:
                 if (p.haslayer(ICMPv6ND_RA)):
                     capture.remove(p)
@@ -163,8 +163,8 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
             except:
-                rx.show()
-                tx.show()
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
                 raise
 
     def verify_tunneled_l2o4(self, src_if, capture, sent,
@@ -196,8 +196,8 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.ttl, tx_ip.ttl)
 
             except:
-                rx.show()
-                tx.show()
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
                 raise
 
     def verify_tunneled_vlano4(self, src_if, capture, sent,
@@ -206,7 +206,7 @@ class TestGRE(VppTestCase):
             capture = self.verify_filter(capture, sent)
             self.assertEqual(len(capture), len(sent))
         except:
-            capture.show()
+            ppc("Unexpected packets captured:", capture)
             raise
 
         for i in range(len(capture)):
@@ -237,8 +237,8 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.ttl, tx_ip.ttl)
 
             except:
-                rx.show()
-                tx.show()
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
                 raise
 
     def verify_decapped_4o4(self, src_if, capture, sent):
@@ -261,8 +261,8 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.ttl + 1, tx_ip.ttl)
 
             except:
-                rx.show()
-                tx.show()
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
                 raise
 
     def verify_decapped_6o4(self, src_if, capture, sent):
@@ -284,8 +284,8 @@ class TestGRE(VppTestCase):
                 self.assertEqual(rx_ip.hlim + 1, tx_ip.hlim)
 
             except:
-                rx.show()
-                tx.show()
+                self.logger.error(ppp("Rx:", rx))
+                self.logger.error(ppp("Tx:", tx))
                 raise
 
     def test_gre(self):
@@ -333,14 +333,8 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
-
-        try:
-            self.assertEqual(0, len(rx))
-        except:
-            error("GRE packets forwarded without DIP resolved")
-            error(rx.show())
-            raise
+        self.pg0.assert_nothing_captured(
+            remark="GRE packets forwarded without DIP resolved")
 
         #
         # Add a route that resolves the tunnel's destination
@@ -397,13 +391,8 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
-        try:
-            self.assertEqual(0, len(rx))
-        except:
-            error("GRE packets forwarded despite no SRC address match")
-            error(rx.show())
-            raise
+        self.pg0.assert_nothing_captured(
+            remark="GRE packets forwarded despite no SRC address match")
 
         #
         # Configure IPv6 on the PG interface so we can route IPv6
@@ -427,13 +416,8 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
-        try:
-            self.assertEqual(0, len(rx))
-        except:
-            error("IPv6 GRE packets forwarded despite IPv6 not enabled on tunnel")
-            error(rx.show())
-            raise
+        self.pg0.assert_nothing_captured(remark="IPv6 GRE packets forwarded "
+                                         "despite IPv6 not enabled on tunnel")
 
         #
         # Enable IPv6 on the tunnel

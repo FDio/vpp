@@ -70,7 +70,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host
+from util import Host, ppp
+
 
 @unittest.skip("Crashes VPP")
 class TestL2bdMultiInst(VppTestCase):
@@ -92,12 +93,12 @@ class TestL2bdMultiInst(VppTestCase):
             # Packet flows mapping pg0 -> pg1, pg2 etc.
             cls.flows = dict()
             for i in range(0, len(cls.pg_interfaces), 3):
-                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i+1],
-                                                   cls.pg_interfaces[i+2]]
-                cls.flows[cls.pg_interfaces[i+1]] = [cls.pg_interfaces[i],
-                                                     cls.pg_interfaces[i+2]]
-                cls.flows[cls.pg_interfaces[i+2]] = [cls.pg_interfaces[i],
-                                                     cls.pg_interfaces[i+1]]
+                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i + 1],
+                                                   cls.pg_interfaces[i + 2]]
+                cls.flows[cls.pg_interfaces[i + 1]] = [cls.pg_interfaces[i],
+                                                       cls.pg_interfaces[i + 2]]
+                cls.flows[cls.pg_interfaces[i + 2]] = [cls.pg_interfaces[i],
+                                                       cls.pg_interfaces[i + 1]]
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
@@ -188,7 +189,7 @@ class TestL2bdMultiInst(VppTestCase):
             if self.bd_deleted_list.count(bd_id) == 1:
                 self.bd_deleted_list.remove(bd_id)
             for j in range(3):
-                pg_if = self.pg_interfaces[(i+start-1)*3+j]
+                pg_if = self.pg_interfaces[(i + start - 1) * 3 + j]
                 self.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
                                                      bd_id=bd_id)
                 self.logger.info("pg-interface %s added to bridge domain ID %d"
@@ -221,7 +222,7 @@ class TestL2bdMultiInst(VppTestCase):
             if self.bd_deleted_list.count(bd_id) == 0:
                 self.bd_deleted_list.append(bd_id)
             for j in range(3):
-                pg_if = self.pg_interfaces[(i+start-1)*3+j]
+                pg_if = self.pg_interfaces[(i + start - 1) * 3 + j]
                 self.pg_in_bd.remove(pg_if)
                 self.pg_not_in_bd.append(pg_if)
             self.logger.info("Bridge domain ID %d deleted" % bd_id)
@@ -290,8 +291,7 @@ class TestL2bdMultiInst(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(

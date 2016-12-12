@@ -15,6 +15,28 @@ def ppp(headline, packet):
     return o.getvalue()
 
 
+def ppc(headline, capture, limit=10):
+    """ Return string containing ppp() printout for a capture.
+
+    :param headline: printed as first line of output
+    :param capture: packets to print
+    :param limit: limit the print to # of packets
+    """
+    if not capture:
+        return headline
+    result = headline + "\n"
+    count = 1
+    for p in capture:
+        result.append(ppp("Packet #%s:" % count, p))
+        count += 1
+        if count >= limit:
+            break
+    if limit < len(capture):
+        result.append(
+            "Capture contains %s packets in total, of which %s were printed" %
+            (len(capture), limit))
+
+
 class NumericConstant(object):
     __metaclass__ = ABCMeta
 

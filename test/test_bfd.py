@@ -98,7 +98,7 @@ class BFDTestSession(object):
         p = self.create_packet()
         self.test.logger.debug(ppp("Sending packet:", p))
         self.test.pg0.add_stream([p])
-        self.test.pg_start(sleep_time=0)
+        self.test.pg_start()
 
     def verify_packet(self, packet):
         """ Verify correctness of BFD layer. """
