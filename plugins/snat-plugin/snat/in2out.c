@@ -405,6 +405,108 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
   return next0;
 }
 
+/**
+ * @brief Hairpinning
+ *
+ * Hairpinning allows two endpoints on the internal side of the NAT to
+ * communicate even if they only use each other's external IP addresses
+ * and ports.
+ *
+ * @param sm     SNAT main.
+ * @param b0     Vlib buffer.
+ * @param ip0    IP header.
+ * @param udp0   UDP header.
+ * @param tcp0   TCP header.
+ * @param proto0 SNAT protocol.
+ */
+static inline void
+snat_hairpinning (snat_main_t *sm,
+                  vlib_buffer_t * b0,
+                  ip4_header_t * ip0,
+                  udp_header_t * udp0,
+                  tcp_header_t * tcp0,
+                  u32 proto0)
+{
+  snat_session_key_t key0, sm0;
+  snat_static_mapping_key_t k0;
+  snat_session_t * s0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  ip_csum_t sum0;
+  u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si;
+  u16 new_dst_port0, old_dst_port0;
+
+  key0.addr = ip0->dst_address;
+  key0.port = udp0->dst_port;
+  key0.protocol = proto0;
+  key0.fib_index = sm->outside_fib_index;
+  kv0.key = key0.as_u64;
+
+  /* Check if destination is in active sessions */
+  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+    {
+      /* or static mappings */
+      if (!snat_static_mapping_match(sm, key0, &sm0, 1))
+        {
+          new_dst_addr0 = sm0.addr.as_u32;
+          new_dst_port0 = sm0.port;
+          vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+        }
+    }
+  else
+    {
+      si = value0.value;
+      if (sm->num_workers > 1)
+        {
+          k0.addr = ip0->dst_address;
+          k0.port = udp0->dst_port;
+          k0.fib_index = sm->outside_fib_index;
+          kv0.key = k0.as_u64;
+          if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+            ASSERT(0);
+          else
+            ti = value0.value;
+        }
+      else
+        ti = sm->num_workers;
+
+      s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
+      new_dst_addr0 = s0->in2out.addr.as_u32;
+      new_dst_port0 = s0->in2out.port;
+      vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+    }
+
+  /* Destination is behind the same NAT, use internal address and port */
+  if (new_dst_addr0)
+    {
+      old_dst_addr0 = ip0->dst_address.as_u32;
+      ip0->dst_address.as_u32 = new_dst_addr0;
+      sum0 = ip0->checksum;
+      sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+                             ip4_header_t, dst_address);
+      ip0->checksum = ip_csum_fold (sum0);
+
+      old_dst_port0 = tcp0->ports.dst;
+      if (PREDICT_TRUE(new_dst_port0 != old_dst_port0))
+        {
+          if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
+            {
+              tcp0->ports.dst = new_dst_port0;
+              sum0 = tcp0->checksum;
+              sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+                                     ip4_header_t, dst_address);
+              sum0 = ip_csum_update (sum0, old_dst_port0, new_dst_port0,
+                                     ip4_header_t /* cheat */, length);
+              tcp0->checksum = ip_csum_fold(sum0);
+            }
+          else
+            {
+              udp0->dst_port = new_dst_port0;
+              udp0->checksum = 0;
+            }
+        }
+    }
+}
+
 static inline uword
 snat_in2out_node_fn_inline (vlib_main_t * vm,
                             vlib_node_runtime_t * node,
@@ -594,6 +696,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               udp0->checksum = 0;
             }
 
+          /* Hairpinning */
+          snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
+
           /* Accounting */
           s0->last_heard = now;
           s0->total_pkts++;
@@ -738,6 +843,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               udp1->src_port = s1->out2in.port;
               udp1->checksum = 0;
             }
+
+          /* Hairpinning */
+          snat_hairpinning (sm, b1, ip1, udp1, tcp1, proto1);
 
           /* Accounting */
           s1->last_heard = now;
@@ -918,6 +1026,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               udp0->src_port = s0->out2in.port;
               udp0->checksum = 0;
             }
+
+          /* Hairpinning */
+          snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
           /* Accounting */
           s0->last_heard = now;
@@ -1429,6 +1540,9 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
                   tcp0->checksum = ip_csum_fold(sum0);
                 }
             }
+
+          /* Hairpinning */
+          snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
         trace0:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
