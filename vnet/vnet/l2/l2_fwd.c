@@ -125,22 +125,24 @@ l2fwd_process (vlib_main_t * vm,
 {
   if (PREDICT_FALSE (result0->raw == ~0))
     {
+      vnet_feature_next (sw_if_index0, next0, b0);
       /*
        * lookup miss, so flood
        * TODO:replicate packet to each intf in bridge-domain
        * For now just drop
        */
-      if (vnet_buffer (b0)->l2.feature_bitmap & L2INPUT_FEAT_UU_FLOOD)
+/*
+      if (vnet_feature_check (sw_if_index0, "l2-input", "l2-uu-flood"))
 	{
 	  *next0 = L2FWD_NEXT_FLOOD;
 	}
       else
 	{
-	  /* Flooding is disabled */
+	  // Flooding is disabled
 	  b0->error = node->errors[L2FWD_ERROR_FLOOD];
 	  *next0 = L2FWD_NEXT_DROP;
 	}
-
+*/
     }
   else
     {
@@ -402,6 +404,7 @@ l2fwd_node_fn (vlib_main_t * vm,
 #ifdef COUNTERS
 	  em->counters[node_counter_base_index + L2FWD_ERROR_L2FWD] += 1;
 #endif
+
 	  l2fib_lookup_1 (msm->mac_table, &cached_key, &cached_result, h0->dst_address, vnet_buffer (b0)->l2.bd_index, &key0,	/* not used */
 			  &bucket0,	/* not used */
 			  &result0);
@@ -505,11 +508,13 @@ int_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
   /* set the interface flag */
   if (l2input_intf_config (sw_if_index)->xconnect)
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_XCONNECT, enable);
+      vnet_feature_enable_disable ("l2-input", "l2-output",
+				   sw_if_index, enable, 0, 0);
     }
   else
     {
-      l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_FWD, enable);
+      vnet_feature_enable_disable ("l2-input", "l2-fwd",
+				   sw_if_index, enable, 0, 0);
     }
 
 done:

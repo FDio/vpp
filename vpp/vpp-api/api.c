@@ -687,7 +687,8 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VPATH, mp->enable);
+  vnet_feature_enable_disable ("l2-input", "vpath-input-l2",
+			       sw_if_index, mp->enable, 0, 0);
   vnet_feature_enable_disable ("ip4-unicast", "vpath-input-ip4",
 			       sw_if_index, mp->enable, 0, 0);
   vnet_feature_enable_disable ("ip4-multicast", "vpath-input-ip4",
@@ -1162,7 +1163,7 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
 
 #define _(a,b) \
     if (flags & L2INPUT_FEAT_ ## a) \
-        rbm = l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_ ## a, mp->is_set);
+        vnet_feature_enable_disable ("l2-input", #b, sw_if_index, mp->is_set, 0, 0);
   foreach_l2input_feat;
 #undef _
 
