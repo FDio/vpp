@@ -141,43 +141,83 @@ BV (split_and_rehash)
   (BVT (clib_bihash) * h,
    BVT (clib_bihash_value) * old_values, u32 new_log2_pages)
 {
-  BVT (clib_bihash_value) * new_values, *v, *new_v;
-  int i, j, k;
+  BVT (clib_bihash_value) * new_values, *new_v;
+  int i, j, length;
 
   new_values = BV (value_alloc) (h, new_log2_pages);
+  length = vec_len (old_values) * BIHASH_KVP_PER_PAGE;
 
-  v = old_values;
-  for (i = 0; i < vec_len (old_values); i++)
+  for (i = 0; i < length; i++)
     {
       u64 new_hash;
 
+      /* Entry not in use? Forget it */
+      if (BV (clib_bihash_is_free) (&(old_values->kvp[i])))
+	continue;
+
+      /* rehash the item onto its new home-page */
+      new_hash = BV (clib_bihash_hash) (&(old_values->kvp[i]));
+      new_hash >>= h->log2_nbuckets;
+      new_hash &= (1 << new_log2_pages) - 1;
+      new_v = &new_values[new_hash];
+
+      /* Across the new home-page */
       for (j = 0; j < BIHASH_KVP_PER_PAGE; j++)
 	{
-	  if (BV (clib_bihash_is_free) (&(v->kvp[j])) == 0)
+	  /* Empty slot */
+	  if (BV (clib_bihash_is_free) (&(new_v->kvp[j])))
 	    {
-	      new_hash = BV (clib_bihash_hash) (&(v->kvp[j]));
-	      new_hash >>= h->log2_nbuckets;
-	      new_hash &= (1 << new_log2_pages) - 1;
-
-	      new_v = &new_values[new_hash];
-
-	      for (k = 0; k < BIHASH_KVP_PER_PAGE; k++)
-		{
-		  if (BV (clib_bihash_is_free) (&(new_v->kvp[k])))
-		    {
-		      clib_memcpy (&(new_v->kvp[k]), &(v->kvp[j]),
-				   sizeof (new_v->kvp[k]));
-		      goto doublebreak;
-		    }
-		}
-	      /* Crap. Tell caller to try again */
-	      BV (value_free) (h, new_values);
-	      return 0;
+	      clib_memcpy (&(new_v->kvp[j]), &(old_values->kvp[i]),
+			   sizeof (new_v->kvp[j]));
+	      goto doublebreak;
 	    }
-	doublebreak:
-	  ;
 	}
-      v++;
+      /* Crap. Tell caller to try again */
+      BV (value_free) (h, new_values);
+      return 0;
+    doublebreak:;
+    }
+  return new_values;
+}
+
+static
+BVT (clib_bihash_value) *
+BV (split_and_rehash_linear)
+  (BVT (clib_bihash) * h,
+   BVT (clib_bihash_value) * old_values, u32 new_log2_pages)
+{
+  BVT (clib_bihash_value) * new_values;
+  int i, j, new_length;
+
+  new_values = BV (value_alloc) (h, new_log2_pages);
+  new_length = (1 << new_log2_pages) * BIHASH_KVP_PER_PAGE;
+
+  j = 0;
+  /* Across the old value array */
+  for (i = 0; i < vec_len (old_values) * BIHASH_KVP_PER_PAGE; i++)
+    {
+      /* Find a free slot in the new linear scan bucket */
+      for (; j < new_length; j++)
+	{
+	  /* Old value in use? Forget it. */
+	  if (BV (clib_bihash_is_free) (&(old_values->kvp[i])))
+	    goto doublebreak;
+
+	  /* New value should never be in use */
+	  if (BV (clib_bihash_is_free) (&(new_values->kvp[j])))
+	    {
+	      /* Copy the old value and move along */
+	      clib_memcpy (&(new_values->kvp[j]), &(old_values->kvp[i]),
+			   sizeof (new_values->kvp[j]));
+	      j++;
+	      goto doublebreak;
+	    }
+	  /* This should never happen... */
+	  clib_warning ("BUG: linear rehash failed!");
+	  BV (value_free) (h, new_values);
+	  return 0;
+	}
+    doublebreak:;
     }
   return new_values;
 }
@@ -188,12 +228,13 @@ int BV (clib_bihash_add_del)
   u32 bucket_index;
   clib_bihash_bucket_t *b, tmp_b;
   BVT (clib_bihash_value) * v, *new_v, *save_new_v, *working_copy;
-  u32 value_index;
   int rv = 0;
-  int i;
+  int i, limit;
   u64 hash, new_hash;
   u32 new_log2_pages;
   u32 cpu_number = os_get_cpu_number ();
+  int mark_bucket_linear;
+  int resplit_once;
 
   hash = BV (clib_bihash_hash) (add_v);
 
@@ -226,8 +267,11 @@ int BV (clib_bihash_add_del)
   BV (make_working_copy) (h, b);
 
   v = BV (clib_bihash_get_value) (h, h->saved_bucket.offset);
-  value_index = hash & ((1 << h->saved_bucket.log2_pages) - 1);
-  v += value_index;
+
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (b->linear_search)
+    limit <<= b->log2_pages;
 
   if (is_add)
     {
@@ -235,7 +279,7 @@ int BV (clib_bihash_add_del)
        * For obvious (in hindsight) reasons, see if we're supposed to
        * replace an existing key, then look for an empty slot.
        */
-      for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+      for (i = 0; i < limit; i++)
 	{
 	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
 	    {
@@ -246,7 +290,7 @@ int BV (clib_bihash_add_del)
 	      goto unlock;
 	    }
 	}
-      for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+      for (i = 0; i < limit; i++)
 	{
 	  if (BV (clib_bihash_is_free) (&(v->kvp[i])))
 	    {
@@ -260,7 +304,7 @@ int BV (clib_bihash_add_del)
     }
   else
     {
-      for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+      for (i = 0; i < limit; i++)
 	{
 	  if (!memcmp (&(v->kvp[i]), &add_v->key, sizeof (add_v->key)))
 	    {
@@ -276,24 +320,41 @@ int BV (clib_bihash_add_del)
     }
 
   new_log2_pages = h->saved_bucket.log2_pages + 1;
+  mark_bucket_linear = 0;
 
-expand_again:
   working_copy = h->working_copies[cpu_number];
+  resplit_once = 0;
+
   new_v = BV (split_and_rehash) (h, working_copy, new_log2_pages);
   if (new_v == 0)
     {
+    try_resplit:
+      resplit_once = 1;
       new_log2_pages++;
-      goto expand_again;
+      /* Try re-splitting. If that fails, fall back to linear search */
+      new_v = BV (split_and_rehash) (h, working_copy, new_log2_pages);
+      if (new_v == 0)
+	{
+	mark_linear:
+	  new_log2_pages--;
+	  /* pinned collisions, use linear search */
+	  new_v =
+	    BV (split_and_rehash_linear) (h, working_copy, new_log2_pages);
+	  mark_bucket_linear = 1;
+	}
     }
 
   /* Try to add the new entry */
   save_new_v = new_v;
   new_hash = BV (clib_bihash_hash) (add_v);
+  limit = BIHASH_KVP_PER_PAGE;
+  if (mark_bucket_linear)
+    limit <<= new_log2_pages;
   new_hash >>= h->log2_nbuckets;
-  new_hash &= (1 << min_log2 (vec_len (new_v))) - 1;
-  new_v += new_hash;
+  new_hash &= (1 << new_log2_pages) - 1;
+  new_v += mark_bucket_linear ? 0 : new_hash;
 
-  for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+  for (i = 0; i < limit; i++)
     {
       if (BV (clib_bihash_is_free) (&(new_v->kvp[i])))
 	{
@@ -302,13 +363,24 @@ expand_again:
 	}
     }
   /* Crap. Try again */
-  new_log2_pages++;
   BV (value_free) (h, save_new_v);
-  goto expand_again;
+  /*
+   * If we've already doubled the size of the bucket once,
+   * fall back to linear search now.
+   */
+  if (resplit_once)
+    goto mark_linear;
+  else
+    goto try_resplit;
 
 expand_ok:
-  tmp_b.log2_pages = min_log2 (vec_len (save_new_v));
+  /* Keep track of the number of linear-scan buckets */
+  if (tmp_b.linear_search ^ mark_bucket_linear)
+    h->linear_buckets += (mark_bucket_linear == 1) ? 1 : -1;
+
+  tmp_b.log2_pages = new_log2_pages;
   tmp_b.offset = BV (clib_bihash_get_offset) (h, save_new_v);
+  tmp_b.linear_search = mark_bucket_linear;
   CLIB_MEMORY_BARRIER ();
   b->as_u64 = tmp_b.as_u64;
   v = BV (clib_bihash_get_value) (h, h->saved_bucket.offset);
@@ -326,10 +398,9 @@ int BV (clib_bihash_search)
 {
   u64 hash;
   u32 bucket_index;
-  uword value_index;
   BVT (clib_bihash_value) * v;
   clib_bihash_bucket_t *b;
-  int i;
+  int i, limit;
 
   ASSERT (valuep);
 
@@ -344,10 +415,12 @@ int BV (clib_bihash_search)
   hash >>= h->log2_nbuckets;
 
   v = BV (clib_bihash_get_value) (h, b->offset);
-  value_index = hash & ((1 << b->log2_pages) - 1);
-  v += value_index;
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (PREDICT_FALSE (b->linear_search))
+    limit <<= b->log2_pages;
 
-  for (i = 0; i < BIHASH_KVP_PER_PAGE; i++)
+  for (i = 0; i < limit; i++)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
 	{
@@ -381,8 +454,8 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 
       if (verbose)
 	{
-	  s = format (s, "[%d]: heap offset %d, len %d\n", i,
-		      b->offset, (1 << b->log2_pages));
+	  s = format (s, "[%d]: heap offset %d, len %d, linear %d\n", i,
+		      b->offset, (1 << b->log2_pages), b->linear_search);
 	}
 
       v = BV (clib_bihash_get_value) (h, b->offset);
@@ -411,6 +484,7 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 
   s = format (s, "    %lld active elements\n", active_elements);
   s = format (s, "    %d free lists\n", vec_len (h->freelists));
+  s = format (s, "    %d linear search buckets\n", h->linear_buckets);
 
   return s;
 }
