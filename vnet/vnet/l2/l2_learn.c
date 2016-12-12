@@ -22,7 +22,6 @@
 #include <vlib/cli.h>
 
 #include <vnet/l2/l2_input.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_learn.h>
 
@@ -116,19 +115,8 @@ l2learn_process (vlib_node_runtime_t * node,
 		 u32 * bucket0,
 		 l2fib_entry_result_t * result0, u32 * next0, u8 timestamp)
 {
-  u32 feature_bitmap;
-
-  /* Set up the default next node (typically L2FWD) */
-
-  /* Remove ourself from the feature bitmap */
-  feature_bitmap = vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_LEARN;
-
-  /* Save for next feature graph nodes */
-  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
   /* Determine the next node */
-  *next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-					    feature_bitmap);
+  vnet_feature_next (sw_if_index0, next0, b0);
 
   /* Check mac table lookup result */
 
@@ -491,13 +479,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2learn_node, l2learn_node_fn)
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2learn_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       mp->feat_next_node_index);
-
   /* init the hash table ptr */
   mp->mac_table = get_mac_table ();
 
@@ -540,8 +521,9 @@ int_learn (vlib_main_t * vm,
       enable = 0;
     }
 
-  /* set the interface flag */
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_LEARN, enable);
+  /* enable/disable feature */
+  vnet_feature_enable_disable ("l2-input", "l2-learn", sw_if_index, enable, 0,
+			       0);
 
 done:
   return error;

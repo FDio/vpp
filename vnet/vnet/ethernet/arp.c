@@ -2119,6 +2119,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  l3h0 = (u8 *) eth0 + vnet_buffer (p0)->l2.l2_len;
 	  ethertype0 = clib_net_to_host_u16 (*(u16 *) (l3h0 - 2));
 	  arp0 = (ethernet_arp_header_t *) l3h0;
+	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
 	  if (PREDICT_FALSE ((ethertype0 != ETHERNET_TYPE_ARP) ||
 			     (arp0->opcode !=
@@ -2144,8 +2145,6 @@ arp_term_l2bd (vlib_main_t * vm,
 	    (arp0->l3_type !=
 	     clib_net_to_host_u16 (ETHERNET_TYPE_IP4) ?
 	     ETHERNET_ARP_ERROR_l3_type_not_ip4 : error0);
-
-	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
 	  if (error0)
 	    goto drop;
@@ -2220,7 +2219,8 @@ arp_term_l2bd (vlib_main_t * vm,
 	  cfg0 = vec_elt_at_index (l2im->configs, sw_if_index0);
 	  if (PREDICT_FALSE (cfg0->bvi))
 	    {
-	      vnet_buffer (p0)->l2.feature_bitmap |= L2INPUT_FEAT_FWD;
+	      vnet_feature_enable_disable ("l2-input", "l2-fwd", sw_if_index0,
+					   1, 0, 0);
 	      vnet_buffer (p0)->sw_if_index[VLIB_RX] = 0;
 	      goto next_l2_feature;
 	    }
@@ -2256,12 +2256,9 @@ arp_term_l2bd (vlib_main_t * vm,
 
 	next_l2_feature:
 	  {
-	    u32 feature_bitmap0 =
-	      vnet_buffer (p0)->l2.feature_bitmap & ~L2INPUT_FEAT_ARP_TERM;
-	    vnet_buffer (p0)->l2.feature_bitmap = feature_bitmap0;
-	    next0 =
-	      feat_bitmap_get_next_node_index (arp_term_next_node_index,
-					       feature_bitmap0);
+	    vnet_feature_enable_disable ("l2-input", "arp-term-l2bd",
+					 sw_if_index0, 0, 0, 0);
+	    vnet_feature_next (sw_if_index0, &next0, p0);
 	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					     to_next, n_left_to_next,
 					     pi0, next0);
@@ -2311,12 +2308,6 @@ VLIB_REGISTER_NODE (arp_term_l2bd_node, static) = {
 clib_error_t *
 arp_term_init (vlib_main_t * vm)
 {
-  // Initialize the feature next-node indexes
-  feat_bitmap_init_next_nodes (vm,
-			       arp_term_l2bd_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       arp_term_next_node_index);
   return 0;
 }
 

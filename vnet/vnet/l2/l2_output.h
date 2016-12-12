@@ -27,9 +27,6 @@
 /* The L2 output feature configuration, a per-interface struct */
 typedef struct
 {
-
-  u32 feature_bitmap;
-
   /*
    * vlan tag rewrite for ingress and egress
    * ingress vtr is located here because the same config data is used for
@@ -83,6 +80,9 @@ typedef struct
   /* config vector indexed by sw_if_index */
   l2_output_config_t *configs;
 
+  /* Feature arc index */
+  u8 output_feature_arc_index;
+
   /* Convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -94,17 +94,17 @@ l2output_main_t l2output_main;
 
 /* Mappings from feature ID to graph node name */
 #define foreach_l2output_feat \
- _(SPAN,              "feature-bitmap-drop")        \
- _(CFM,               "feature-bitmap-drop")        \
- _(QOS,               "feature-bitmap-drop")        \
- _(ACL,               "l2-output-acl")              \
- _(L2PT,              "feature-bitmap-drop")        \
- _(EFP_FILTER,        "l2-efp-filter")              \
- _(IPIW,              "feature-bitmap-drop")        \
- _(STP_BLOCKED,       "feature-bitmap-drop")        \
- _(LINESTATUS_DOWN,   "feature-bitmap-drop")        \
+ _(SPAN,              "l2-drop")        \
+ _(CFM,               "l2-drop")        \
+ _(QOS,               "l2-drop")        \
+ _(ACL,               "l2-output-acl")  \
+ _(L2PT,              "l2-drop")        \
+ _(EFP_FILTER,        "l2-efp-filter")  \
+ _(IPIW,              "l2-drop")        \
+ _(STP_BLOCKED,       "l2-drop")        \
+ _(LINESTATUS_DOWN,   "l2-drop")        \
  _(OUTPUT_CLASSIFY,   "l2-output-classify")	    \
- _(XCRW,	      "l2-xcrw")
+ _(XCRW,              "l2-xcrw")
 
 /* Feature bitmap positions */
 typedef enum
@@ -204,8 +204,7 @@ l2output_get_output_node (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 
   return next;
 }
 
-
-/** Determine the next L2 node based on the output feature bitmap */
+/** Determine the next L2 node*/
 always_inline void
 l2_output_dispatch (vlib_main_t * vlib_main,
 		    vnet_main_t * vnet_main,
@@ -214,65 +213,48 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 		    u32 * cached_sw_if_index,
 		    u32 * cached_next_index,
 		    l2_output_next_nodes_st * next_nodes,
-		    vlib_buffer_t * b0,
-		    u32 sw_if_index, u32 feature_bitmap, u32 * next0)
+		    vlib_buffer_t * b, u32 sw_if_index, u32 * next)
 {
-  if (feature_bitmap)
+  /*
+   * There are no features. Send packet to TX node for sw_if_index0
+   * This is a little tricky in that the output interface next node indexes
+   * are not precomputed at init time.
+   */
+  if (*next == ~0)
     {
-      /* There are some features to execute */
-
-      /* Save bitmap for the next feature graph nodes */
-      vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
-      /* Determine the next node */
-      *next0 =
-	feat_bitmap_get_next_node_index (next_nodes->feat_next_node_index,
-					 feature_bitmap);
-    }
-  else
-    {
-      /*
-       * There are no features. Send packet to TX node for sw_if_index0
-       * This is a little tricky in that the output interface next node indexes
-       * are not precomputed at init time.
-       */
-
       if (sw_if_index == *cached_sw_if_index)
 	{
 	  /* We hit in the one-entry cache. Use it. */
-	  *next0 = *cached_next_index;
+	  *next = *cached_next_index;
 	}
       else
 	{
 	  /* Look up the output TX node */
-	  *next0 = l2output_get_output_node (vlib_main,
-					     vnet_main,
-					     node_index,
-					     sw_if_index,
-					     &next_nodes->output_node_index_vec);
+	  *next = l2output_get_output_node (vlib_main,
+					    vnet_main,
+					    node_index,
+					    sw_if_index,
+					    &next_nodes->output_node_index_vec);
 
-	  if (*next0 == L2OUTPUT_NEXT_DROP)
+	  if (*next == L2OUTPUT_NEXT_DROP)
 	    {
-	      vnet_hw_interface_t *hw0;
-	      hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
+	      vnet_hw_interface_t *hw;
+	      hw = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
-	      if (hw0->flags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED)
-		b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
+	      if (hw->flags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED)
+		b->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
 	    }
 
 	  /* Update the one-entry cache */
 	  *cached_sw_if_index = sw_if_index;
-	  *cached_next_index = *next0;
+	  *cached_next_index = *next;
 	}
     }
 }
 
+
 /** Get a pointer to the config for the given interface */
 l2_output_config_t *l2output_intf_config (u32 sw_if_index);
-
-/** Enable (or disable) the feature in the bitmap for the given interface */
-void l2output_intf_bitmap_enable (u32 sw_if_index,
-				  u32 feature_bitmap, u32 enable);
 
 #endif
 

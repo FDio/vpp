@@ -14,7 +14,6 @@
  */
 
 #include <vlib/vlib.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_rw.h>
 
 /**
@@ -179,8 +178,8 @@ l2_rw_node_fn (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  u32 bi0, next0, sw_if_index0, feature_bitmap0, rwe_index0;
-	  u32 bi1, next1, sw_if_index1, feature_bitmap1, rwe_index1;
+	  u32 bi0, next0, sw_if_index0, rwe_index0;
+	  u32 bi1, next1, sw_if_index1, rwe_index1;
 	  vlib_buffer_t *b0, *b1;
 	  ethernet_header_t *h0, *h1;
 	  l2_rw_config_t *config0, *config1;
@@ -272,17 +271,9 @@ l2_rw_node_fn (vlib_main_t * vm,
 	      t->rewrite_entry_index = rwe_index1;
 	    }
 
-	  /* Update feature bitmap and get next feature index */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_RW;
-	  feature_bitmap1 =
-	    vnet_buffer (b1)->l2.feature_bitmap & ~L2INPUT_FEAT_RW;
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
-	  vnet_buffer (b1)->l2.feature_bitmap = feature_bitmap1;
-	  next0 = feat_bitmap_get_next_node_index (rw->feat_next_node_index,
-						   feature_bitmap0);
-	  next1 = feat_bitmap_get_next_node_index (rw->feat_next_node_index,
-						   feature_bitmap1);
+	  /* Determine the next node */
+	  vnet_feature_next (sw_if_index0, &next0, b0);
+	  vnet_feature_next (sw_if_index1, &next1, b1);
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -291,7 +282,7 @@ l2_rw_node_fn (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, next0, sw_if_index0, feature_bitmap0, rwe_index0;
+	  u32 bi0, next0, sw_if_index0, rwe_index0;
 	  vlib_buffer_t *b0;
 	  ethernet_header_t *h0;
 	  l2_rw_config_t *config0;
@@ -340,12 +331,8 @@ l2_rw_node_fn (vlib_main_t * vm,
 	      t->rewrite_entry_index = rwe_index0;
 	    }
 
-	  /* Update feature bitmap and get next feature index */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_RW;
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
-	  next0 = feat_bitmap_get_next_node_index (rw->feat_next_node_index,
-						   feature_bitmap0);
+	  /* Determine the next node */
+	  vnet_feature_next (sw_if_index0, &next0, b0);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -471,9 +458,9 @@ l2_rw_interface_set_table (u32 sw_if_index, u32 table_index, u32 miss_index)
 
   c->table_index = table_index;
   c->miss_index = miss_index;
-  u32 feature_bitmap = (table_index == ~0) ? 0 : L2INPUT_FEAT_RW;
 
-  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_RW, feature_bitmap);
+  /* enable/disable feature */
+  vnet_feature_enable_disable ("l2-input", "l2-rw", sw_if_index, 0, 0, 0);
 
   if (c->table_index == ~0)
     clib_bitmap_set (rw->configs_bitmap, sw_if_index, 0);
@@ -661,11 +648,7 @@ l2_rw_init (vlib_main_t * vm)
   rw->configs = 0;
   rw->entries = 0;
   clib_bitmap_alloc (rw->configs_bitmap, 1);
-  feat_bitmap_init_next_nodes (vm,
-			       l2_rw_node.index,
-			       L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       rw->feat_next_node_index);
+
   return 0;
 }
 

@@ -421,7 +421,9 @@ int vnet_vxlan_add_del_tunnel
 
       /* setup l2 input config with l2 feature and bd 0 to drop packet */
       vec_validate (l2im->configs, sw_if_index);
-      l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
+//      l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
+      vnet_feature_enable_disable ("l2-input", "l2-drop", sw_if_index, 1, 0, 0);
+
       l2im->configs[sw_if_index].bd_index = 0;
       
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
