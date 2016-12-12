@@ -2,12 +2,12 @@
 
 import socket
 import unittest
-from logging import *
 
 from framework import VppTestCase, VppTestRunner
 
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.l2 import Ether
+from util import ppp
 
 
 class TestSNAT(VppTestCase):
@@ -85,7 +85,7 @@ class TestSNAT(VppTestCase):
         :param dst_ip: Destination IP address (Default use global SNAT address)
         """
         if dst_ip is None:
-             dst_ip=self.snat_addr
+            dst_ip = self.snat_addr
         pkts = []
         # TCP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
@@ -142,8 +142,8 @@ class TestSNAT(VppTestCase):
                         self.assertNotEqual(packet[ICMP].id, self.icmp_id_in)
                     self.icmp_id_out = packet[ICMP].id
             except:
-                error("Unexpected or invalid packet (outside network):")
-                error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(outside network):", packet))
                 raise
 
     def verify_capture_in(self, capture, in_if, packet_num=3):
@@ -165,8 +165,8 @@ class TestSNAT(VppTestCase):
                 else:
                     self.assertEqual(packet[ICMP].id, self.icmp_id_in)
             except:
-                error("Unexpected or invalid packet (inside network):")
-                error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(inside network):", packet))
                 raise
 
     def clear_snat(self):
@@ -407,11 +407,10 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
-        self.verify_capture_out(capture, packet_num=0)
+        self.pg3.assert_nothing_captured()
 
     def test_multiple_inside_interfaces(self):
-        """ SNAT multiple inside interfaces with non-overlapping address space """
+        """SNAT multiple inside interfaces with non-overlapping address space"""
 
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
