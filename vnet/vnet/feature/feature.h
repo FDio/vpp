@@ -371,6 +371,9 @@ clib_error_t *vnet_feature_arc_init (vlib_main_t * vm,
 
 void vnet_interface_features_show (vlib_main_t * vm, u32 sw_if_index);
 
+u8 vnet_feature_check (u32 sw_if_index, const char *arc_name,
+		       const char *node_name);
+
 #endif /* included_feature_h */
 
 /*

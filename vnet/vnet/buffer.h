@@ -181,7 +181,6 @@ typedef struct
     /* l2 bridging path, only valid there */
     struct
     {
-      u32 feature_bitmap;
       u16 bd_index;		// bridge-domain index
       u8 l2_len;		// ethernet header length
       u8 shg;			// split-horizon group

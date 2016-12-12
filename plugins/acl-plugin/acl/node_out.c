@@ -67,14 +67,9 @@ static uword
 acl_out_node_fn (vlib_main_t * vm,
 		 vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  acl_main_t *am = &acl_main;
-  l2_output_next_nodes_st *next_nodes = &am->acl_out_output_next_nodes;
   u32 n_left_from, *from, *to_next;
   acl_out_next_t next_index;
   u32 pkts_acl_checked = 0;
-  u32 feature_bitmap0;
-  u32 cached_sw_if_index = (u32) ~ 0;
-  u32 cached_next_index = (u32) ~ 0;
   u32 match_acl_index = ~0;
   u32 match_rule_index = ~0;
   u32 trace_bitmap = 0;
@@ -109,7 +104,6 @@ acl_out_node_fn (vlib_main_t * vm,
 
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  feature_bitmap0 = vnet_buffer (b0)->l2.feature_bitmap;
 
 	  output_acl_packet_match (sw_if_index0, b0, &next, &match_acl_index,
 				   &match_rule_index, &trace_bitmap);
@@ -119,17 +113,8 @@ acl_out_node_fn (vlib_main_t * vm,
 	    }
 	  if (next0 == ~0)
 	    {
-	      l2_output_dispatch (vm,
-				  am->vnet_main,
-				  node,
-				  acl_out_node.index,
-				  &cached_sw_if_index,
-				  &cached_next_index,
-				  next_nodes,
-				  b0, sw_if_index0, feature_bitmap0, &next0);
+	      vnet_feature_next (sw_if_index0, &next0, b0);
 	    }
-
-
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -158,18 +143,22 @@ acl_out_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (acl_out_node) =
 {
-  .function = acl_out_node_fn,.name = "acl-plugin-out",.vector_size =
-    sizeof (u32),.format_trace = format_acl_out_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (acl_out_error_strings),.error_strings =
-    acl_out_error_strings,.n_next_nodes = ACL_OUT_N_NEXT,
-    /* edit / add dispositions here */
-    .next_nodes =
-  {
-  [ACL_OUT_ERROR_DROP] = "error-drop",
-      [ACL_OUT_INTERFACE_OUTPUT] = "interface-output",
-      [ACL_OUT_L2S_OUTPUT_IP4_ADD] = "aclp-l2s-output-ip4-add",
-      [ACL_OUT_L2S_OUTPUT_IP6_ADD] = "aclp-l2s-output-ip6-add",}
-,};
+  .function = acl_out_node_fn,
+  .name = "acl-plugin-out",
+  .vector_size = sizeof (u32),
+  .format_trace = format_acl_out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (acl_out_error_strings),
+  .error_strings = acl_out_error_strings,
+  .n_next_nodes = ACL_OUT_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [ACL_OUT_ERROR_DROP] = "error-drop",
+    [ACL_OUT_INTERFACE_OUTPUT] = "interface-output",
+    [ACL_OUT_L2S_OUTPUT_IP4_ADD] = "aclp-l2s-output-ip4-add",
+    [ACL_OUT_L2S_OUTPUT_IP6_ADD] = "aclp-l2s-output-ip6-add",},
+};
+/* *INDENT-ON* */
