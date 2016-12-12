@@ -5,7 +5,6 @@ import unittest
 import tempfile
 import time
 import resource
-from time import sleep
 from collections import deque
 from threading import Thread
 from inspect import getdoc
@@ -181,7 +180,8 @@ class VppTestCase(unittest.TestCase):
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
                         cls.tempdir, cls.shm_prefix)
         cls.setUpConstants()
-        cls.pg_streams = []
+        cls._captures = []
+        cls._zombie_captures = []
         cls.packet_infos = {}
         cls.verbose = 0
         cls.vpp_dead = False
@@ -312,17 +312,36 @@ class VppTestCase(unittest.TestCase):
             i.enable_capture()
 
     @classmethod
-    def pg_start(cls, sleep_time=1):
-        """
-        Enable the packet-generator and send all prepared packet streams
-        Remove the packet streams afterwards
-        """
+    def register_capture(cls, cap_name):
+        """ Register a capture in the testclass """
+        # add to the list of captures with current timestamp
+        cls._captures.append((time.time(), cap_name))
+        # filter out from zombies
+        cls._zombie_captures = [(stamp, name)
+                                for (stamp, name) in cls._zombie_captures
+                                if name != cap_name]
+
+    @classmethod
+    def pg_start(cls):
+        """ Remove any zombie captures and enable the packet generator """
+        # how long before capture is allowed to be deleted - otherwise vpp
+        # crashes - 100ms seems enough (this shouldn't be needed at all)
+        capture_ttl = 0.1
+        now = time.time()
+        for stamp, cap_name in cls._zombie_captures:
+            wait = stamp + capture_ttl - now
+            if wait > 0:
+                cls.logger.debug("Waiting for %ss before deleting capture %s",
+                                 wait, cap_name)
+                time.sleep(wait)
+                now = time.time()
+            cls.logger.debug("Removing zombie capture %s" % cap_name)
+            cls.vapi.cli('packet-generator delete %s' % cap_name)
+
         cls.vapi.cli("trace add pg-input 50")  # 50 is maximum
         cls.vapi.cli('packet-generator enable')
-        sleep(sleep_time)  # give VPP some time to process the packets
-        for stream in cls.pg_streams:
-            cls.vapi.cli('packet-generator delete %s' % stream)
-        cls.pg_streams = []
+        cls._zombie_captures = cls._captures
+        cls._captures = []
 
     @classmethod
     def create_pg_interfaces(cls, interfaces):

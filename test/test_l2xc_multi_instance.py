@@ -56,7 +56,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
 from framework import VppTestCase, VppTestRunner
-from util import Host
+from util import Host, ppp
 
 
 class TestL2xcMultiInst(VppTestCase):
@@ -79,7 +79,7 @@ class TestL2xcMultiInst(VppTestCase):
             cls.flows = dict()
             for i in range(len(cls.pg_interfaces)):
                 delta = 1 if i % 2 == 0 else -1
-                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i+delta]]
+                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i + delta]]
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
@@ -155,9 +155,9 @@ class TestL2xcMultiInst(VppTestCase):
         (Default value = 0)
         """
         for i in range(count):
-            rx_if = self.pg_interfaces[i+start]
+            rx_if = self.pg_interfaces[i + start]
             delta = 1 if i % 2 == 0 else -1
-            tx_if = self.pg_interfaces[i+start+delta]
+            tx_if = self.pg_interfaces[i + start + delta]
             self.vapi.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
                                                    tx_if.sw_if_index, 1)
             self.logger.info("Cross-connect from %s to %s created"
@@ -177,9 +177,9 @@ class TestL2xcMultiInst(VppTestCase):
         (Default value = 0)
         """
         for i in range(count):
-            rx_if = self.pg_interfaces[i+start]
+            rx_if = self.pg_interfaces[i + start]
             delta = 1 if i % 2 == 0 else -1
-            tx_if = self.pg_interfaces[i+start+delta]
+            tx_if = self.pg_interfaces[i + start + delta]
             self.vapi.sw_interface_set_l2_xconnect(rx_if.sw_if_index,
                                                    tx_if.sw_if_index, 0)
             self.logger.info("Cross-connect from %s to %s deleted"
@@ -253,8 +253,7 @@ class TestL2xcMultiInst(VppTestCase):
                 self.assertEqual(udp.sport, saved_packet[UDP].sport)
                 self.assertEqual(udp.dport, saved_packet[UDP].dport)
             except:
-                self.logger.error("Unexpected or invalid packet:")
-                self.logger.error(packet.show())
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
         for i in self.pg_interfaces:
             remaining_packet = self.get_next_packet_info_for_interface2(
@@ -291,21 +290,15 @@ class TestL2xcMultiInst(VppTestCase):
         # Verify
         # Verify outgoing packet streams per packet-generator interface
         for pg_if in self.pg_interfaces:
-            capture = pg_if.get_capture()
             if pg_if in self.pg_in_xc:
-                if len(capture) == 0:
-                    raise RuntimeError("Interface %s is cross-connect sink but "
-                                       "the capture is empty!" % pg_if.name)
+                capture = pg_if.get_capture(
+                    remark="interface is a cross-connect sink")
                 self.verify_capture(pg_if, capture)
             elif pg_if in self.pg_not_in_xc:
-                try:
-                    self.assertEqual(len(capture), 0)
-                except AssertionError:
-                    raise RuntimeError("Interface %s is not cross-connect sink "
-                                       "but the capture is not empty!"
-                                       % pg_if.name)
+                pg_if.assert_nothing_captured(
+                    remark="interface is not a cross-connect sink")
             else:
-                self.logger.error("Unknown interface: %s" % pg_if.name)
+                raise Exception("Unexpected interface: %s" % pg_if.name)
 
     def test_l2xc_inst_01(self):
         """ L2XC Multi-instance test 1 - create 10 cross-connects

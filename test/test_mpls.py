@@ -11,8 +11,6 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
-from util import ppp
-
 
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
@@ -60,7 +58,7 @@ class TestMPLS(VppTestCase):
                 else:
                     p = p / MPLS(label=mpls_labels[ii], ttl=mpls_ttl, s=0)
             if not ping:
-                p = (p / IP(src=src_if.local_ip4, dst=src_if.remote_ip4) / 
+                p = (p / IP(src=src_if.local_ip4, dst=src_if.remote_ip4) /
                      UDP(sport=1234, dport=1234) /
                      Raw(payload))
             else:
@@ -331,14 +329,8 @@ class TestMPLS(VppTestCase):
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-
-        rx = self.pg0.get_capture()
-        try:
-            self.assertEqual(0, len(rx))
-        except:
-            self.logger.error("MPLS non-EOS packets popped and forwarded")
-            self.logger.error(ppp("", rx))
-            raise
+        self.pg0.assert_nothing_captured(
+            remark="MPLS non-EOS packets popped and forwarded")
 
         #
         # A recursive EOS x-connect, which resolves through another x-connect
@@ -586,8 +578,7 @@ class TestMPLS(VppTestCase):
             0,  # next-hop-table-id
             1,  # next-hop-weight
             2,  # num-out-labels,
-            [44, 46]
-        )
+            [44, 46])
         self.vapi.sw_interface_set_flags(reply.sw_if_index, admin_up_down=1)
 
         #
@@ -606,8 +597,7 @@ class TestMPLS(VppTestCase):
             0,  # next-hop-table-id
             1,  # next-hop-weight
             0,  # num-out-labels,
-            []  # out-label
-        )
+            [])  # out-label
 
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
@@ -632,14 +622,7 @@ class TestMPLS(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
-
-        try:
-            self.assertEqual(0, len(rx))
-        except:
-            self.logger.error("MPLS TTL=0 packets forwarded")
-            self.logger.error(ppp("", rx))
-            raise
+        self.pg0.assert_nothing_captured(remark="MPLS TTL=0 packets forwarded")
 
         #
         # a stream with a non-zero MPLS TTL

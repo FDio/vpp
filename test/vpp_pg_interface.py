@@ -6,7 +6,7 @@ from vpp_interface import VppInterface
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
-from util import ppp
+from util import ppp, ppc
 
 
 class VppPGInterface(VppInterface):
@@ -114,24 +114,70 @@ class VppPGInterface(VppInterface):
         except:
             pass
         wrpcap(self.in_path, pkts)
+        self.test.register_capture(self.cap_name)
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.input_cli)
-        self.test.pg_streams.append(self.cap_name)
-        self.test.vapi.cli("trace add pg-input %d" % len(pkts))
 
-    def get_capture(self):
+    def get_capture(self, remark=None):
         """
         Get captured packets
 
         :returns: iterable packets
         """
         try:
+            self.wait_for_capture_file()
             output = rdpcap(self.out_path)
         except IOError:  # TODO
-            self.test.logger.error("File %s does not exist, probably because no"
+            self.test.logger.debug("File %s does not exist, probably because no"
                                    " packets arrived" % self.out_path)
-            return []
+            if remark:
+                raise Exception("No packets captured on %s(%s)" %
+                                (self.name, remark))
+            else:
+                raise Exception("No packets captured on %s" % self.name)
         return output
+
+    def assert_nothing_captured(self, remark=None):
+        if os.path.isfile(self.out_path):
+            try:
+                capture = self.get_capture()
+                self.test.logger.error(
+                    ppc("Unexpected packets captured:", capture))
+            except:
+                pass
+            if remark:
+                raise AssertionError(
+                    "Capture file present for interface %s(%s)" %
+                    (self.name, remark))
+            else:
+                raise AssertionError("Capture file present for interface %s" %
+                                     self.name)
+
+    def wait_for_capture_file(self, timeout=1):
+        """
+        Wait until pcap capture file appears
+
+        :param timeout: How long to wait for the packet (default 1s)
+
+        :raises Exception: if the capture file does not appear within timeout
+        """
+        limit = time.time() + timeout
+        if not os.path.isfile(self.out_path):
+            self.test.logger.debug(
+                "Waiting for capture file to appear, timeout is %ss", timeout)
+        else:
+            self.test.logger.debug("Capture file already exists")
+            return
+        while time.time() < limit:
+            if os.path.isfile(self.out_path):
+                break
+            time.sleep(0)  # yield
+        if os.path.isfile(self.out_path):
+            self.test.logger.debug("Capture file appeared after %fs" %
+                                   (time.time() - (limit - timeout)))
+        else:
+            self.test.logger.debug("Timeout - capture file still nowhere")
+            raise Exception("Capture file did not appear within timeout")
 
     def wait_for_packet(self, timeout):
         """
@@ -144,18 +190,8 @@ class VppPGInterface(VppInterface):
         """
         limit = time.time() + timeout
         if self._pcap_reader is None:
-            self.test.logger.debug("Waiting for the capture file to appear")
-            while time.time() < limit:
-                if os.path.isfile(self.out_path):
-                    break
-                time.sleep(0)  # yield
-            if os.path.isfile(self.out_path):
-                self.test.logger.debug("Capture file appeared after %fs" %
-                                       (time.time() - (limit - timeout)))
-                self._pcap_reader = PcapReader(self.out_path)
-            else:
-                self.test.logger.debug("Timeout - capture file still nowhere")
-                raise Exception("Packet didn't arrive within timeout")
+            self.wait_for_capture_file(timeout)
+            self._pcap_reader = PcapReader(self.out_path)
 
         self.test.logger.debug("Waiting for packet")
         while time.time() < limit:
@@ -197,11 +233,11 @@ class VppPGInterface(VppInterface):
         pg_interface.enable_capture()
         self.test.pg_start()
         self.test.logger.info(self.test.vapi.cli("show trace"))
-        arp_reply = pg_interface.get_capture()
-        if arp_reply is None or len(arp_reply) == 0:
-            self.test.logger.info(
-                "No ARP received on port %s" %
-                pg_interface.name)
+        try:
+            arp_reply = pg_interface.get_capture()
+        except:
+            self.test.logger.info("No ARP received on port %s" %
+                                  pg_interface.name)
             return
         arp_reply = arp_reply[0]
         # Make Dot1AD packet content recognizable to scapy
