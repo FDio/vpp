@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_8e12dc60",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 4469,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-12-13T06:49:30Z",
+      "side": 1,
+      "message": "This queues the processing of the reply, right? Could you change the name (uninspired suggestion: queue_map_reply_for_processing)?",
+      "range": {
+        "startLine": 4469,
+        "startChar": 0,
+        "endLine": 4469,
+        "endChar": 15
+      },
+      "revId": "0e0fba287aca7b39bdde6d265fdadd70ce68a54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6e17b052",
+        "filename": "vnet/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 4552,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2016-12-13T06:49:30Z",
+      "side": 1,
+      "message": "Test for 0 here or in queue_map_reply",
+      "range": {
+        "startLine": 4552,
+        "startChar": 6,
+        "endLine": 4552,
+        "endChar": 10
+      },
+      "revId": "0e0fba287aca7b39bdde6d265fdadd70ce68a54a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
