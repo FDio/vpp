@@ -2,6 +2,52 @@
   "comments": [
     {
       "key": {
+        "uuid": "5a2585a7_695c4a26",
+        "filename": "plugins/ioam-plugin/ioam/analyse/ip6/ip6_ioam_analyse.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-12-13T08:35:50Z",
+      "side": 1,
+      "message": "perhaps the action can be a separate function that can be called both from command and from api handler.",
+      "range": {
+        "startLine": 51,
+        "startChar": 2,
+        "endLine": 82,
+        "endChar": 5
+      },
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_493aaece",
+        "filename": "plugins/ioam-plugin/ioam/analyse/ip6/node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-12-13T08:35:50Z",
+      "side": 1,
+      "message": "s/Export/IPfix-Analyzer",
+      "range": {
+        "startLine": 73,
+        "startChar": 18,
+        "endLine": 73,
+        "endChar": 24
+      },
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_8e6d3c07",
         "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
         "patchSetId": 8
@@ -13,6 +59,29 @@
       "writtenOn": "2016-12-13T05:03:28Z",
       "side": 1,
       "message": "Should we think of a way to avoid transport specific code in common header file. This nullifies the purpose of having a common macro.",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2e7408ce",
+        "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-12-13T08:35:50Z",
+      "side": 1,
+      "message": "v6 version bits are lost",
+      "range": {
+        "startLine": 539,
+        "startChar": 11,
+        "endLine": 540,
+        "endChar": 52
+      },
       "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -47,6 +116,29 @@
       "writtenOn": "2016-12-13T05:03:28Z",
       "side": 1,
       "message": "Do we need this? if not required please remove",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a92b5281",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2016-12-13T08:35:50Z",
+      "side": 1,
+      "message": "we should eventually move this to ioam plugin from here.",
+      "range": {
+        "startLine": 209,
+        "startChar": 0,
+        "endLine": 209,
+        "endChar": 13
+      },
       "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
