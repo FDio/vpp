@@ -629,18 +629,17 @@ nobase_include_HEADERS +=			\
  vnet/dhcp/proxy_error.def
 
 ########################################
-# ipv6 segment routing
+# IPv6 Segment Routing
 ########################################
-
-if WITH_IPV6SR
 libvnet_la_SOURCES +=				\
  vnet/sr/sr.c					\
- vnet/sr/sr_replicate.c
-endif
+ vnet/sr/sr_spray.c				\
+ vnet/sr/sr_localsid.c				\
+ vnet/sr/sr_steering.c        \
+ vnet/sr/sr_policy_rewrite.c				     
  
-nobase_include_HEADERS +=			\
+nobase_include_HEADERS +=		\
  vnet/sr/sr_packet.h				\
- vnet/sr/sr_error.def				\
  vnet/sr/sr.h
 
 ########################################
