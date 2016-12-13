@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_8e6d3c07",
+        "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-13T05:03:28Z",
+      "side": 1,
+      "message": "Should we think of a way to avoid transport specific code in common header file. This nullifies the purpose of having a common macro.",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6e7210e7",
+        "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-13T05:03:28Z",
+      "side": 1,
+      "message": "Same comment as above please.",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ae68f8f5",
+        "filename": "plugins/ioam-plugin/ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-13T05:03:28Z",
+      "side": 1,
+      "message": "Do we need this? if not required please remove",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
