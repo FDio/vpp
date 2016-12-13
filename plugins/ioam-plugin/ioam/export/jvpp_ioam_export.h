@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef __included_jvpp_ioam_pot_h__
-#define __included_jvpp_ioam_pot_h__
+#ifndef __included_jvpp_ioam_export_h__
+#define __included_jvpp_ioam_export_h__
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -22,9 +22,9 @@
 #include <vlibmemory/api.h>
 #include <jni.h>
 
-/* Global state for JVPP-IOAM-POT */
+/* Global state for JVPP-IOAM-EXPORT */
 typedef struct {
-    /* Base message index for the pot plugin */
+    /* Base message index for the export plugin */
     u16 msg_id_base;
 
     /* Pointer to shared memory queue */
@@ -37,9 +37,9 @@ typedef struct {
     jobject callbackObject;
     jclass callbackClass;
 
-} ioampot_main_t;
+} ioamexport_main_t;
 
-ioampot_main_t ioampot_main __attribute__((aligned (64)));
+ioamexport_main_t ioamexport_main __attribute__((aligned (64)));
 
 
-#endif /* __included_jvpp_ioam_pot_h__ */
+#endif /* __included_jvpp_ioam_export_h__ */
