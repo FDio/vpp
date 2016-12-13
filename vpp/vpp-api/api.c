@@ -6876,10 +6876,10 @@ send_bfd_udp_session_details (unix_shared_memory_queue_t * q, u32 context,
     }
   else
     {
-      clib_memcpy (mp->local_addr, &key->local_addr.ip4.data,
-		   sizeof (&key->local_addr.ip4.data));
-      clib_memcpy (mp->peer_addr, &key->peer_addr.ip4.data,
-		   sizeof (&key->peer_addr.ip4.data));
+      clib_memcpy (mp->local_addr, key->local_addr.ip4.data,
+		   sizeof (key->local_addr.ip4.data));
+      clib_memcpy (mp->peer_addr, key->peer_addr.ip4.data,
+		   sizeof (key->peer_addr.ip4.data));
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
