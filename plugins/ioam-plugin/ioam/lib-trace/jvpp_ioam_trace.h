@@ -24,7 +24,7 @@
 
 /* Global state for JVPP-IOAM-TRACE */
 typedef struct {
-    /* Base message index for the nsh plugin */
+    /* Base message index for the trace plugin */
     u16 msg_id_base;
 
     /* Pointer to shared memory queue */
