@@ -31,4 +31,5 @@ setup (name = 'vpp_papi',
                libraries = ['pneum'],
            )],
        long_description = '''VPP Python language binding.''',
+       zip_safe = True,
 )

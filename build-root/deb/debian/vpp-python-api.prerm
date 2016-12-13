@@ -1,0 +1,4 @@
+#!/bin/sh -e
+
+# before removing python-api files
+easy_install -mxNq vpp_papi
