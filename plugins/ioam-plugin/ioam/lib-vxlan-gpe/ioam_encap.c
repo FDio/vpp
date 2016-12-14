@@ -56,10 +56,10 @@ vxlan_gpe_encap_ioam_v4_two_inline (vlib_main_t * vm,
 				    u32 * next0, u32 * next1)
 {
   next0[0] = next1[0] = VXLAN_GPE_ENCAP_IOAM_V4_NEXT_IP4_LOOKUP;
-  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, ngm, b0, next0,
+  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b0, next0,
 					    VXLAN_GPE_ENCAP_IOAM_V4_NEXT_DROP,
 					    0 /* use_adj */ );
-  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, ngm, b1, next1,
+  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b1, next1,
 					    VXLAN_GPE_ENCAP_IOAM_V4_NEXT_DROP,
 					    0 /* use_adj */ );
 }
@@ -142,7 +142,7 @@ vxlan_gpe_encap_ioam_v4 (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, ngm, b0,
+	  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b0,
 						    &next0,
 						    VXLAN_GPE_ENCAP_IOAM_V4_NEXT_DROP,
 						    0 /* use_adj */ );
