@@ -801,6 +801,11 @@ unix_shared_memory_queue_t *
 vl_api_client_index_to_input_queue (u32 index)
 {
   vl_api_registration_t *regp;
+  api_main_t *am = &api_main;
+
+  /* Special case: vlib trying to send itself a message */
+  if (index == (u32) ~ 0)
+    return (am->shmem_hdr->vl_input_queue);
 
   regp = vl_api_client_index_to_registration_internal (index);
   if (!regp)
