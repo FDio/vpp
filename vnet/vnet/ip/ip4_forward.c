@@ -1072,6 +1072,13 @@ VNET_FEATURE_INIT (ip4_interface_output, static) =
   .node_name = "interface-output",
   .runs_before = 0,	/* not before any other features */
 };
+
+VNET_FEATURE_INIT (vxlan_gpe_transit_ioam, static) =
+{
+  .arc_name = "ip4-output",
+  .node_name = "vxlan-gpe-transit-ioam",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
 /* *INDENT-ON* */
 
 static clib_error_t *
