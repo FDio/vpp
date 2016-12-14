@@ -102,7 +102,8 @@ class MplsRoute:
                                                next_hop_out_label_stack=path.nh_labels,
                                                next_hop_n_out_labels=len(
                                                    path.nh_labels),
-                                               next_hop_via_label=path.nh_via_label)
+                                               next_hop_via_label=path.nh_via_label,
+                                               next_hop_table_id=path.nh_table_id)
 
     def remove_vpp_config(self):
         for path in self.paths:

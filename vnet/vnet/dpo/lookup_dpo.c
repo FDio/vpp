@@ -385,6 +385,9 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    lb0 = load_balance_get(lbi0);
 	    lb1 = load_balance_get(lbi1);
 
+            vnet_buffer(b0)->sw_if_index[VLIB_TX] = fib_index0;
+            vnet_buffer(b1)->sw_if_index[VLIB_TX] = fib_index1;
+
 	    /* Use flow hash to compute multipath adjacency. */
 	    hash_c0 = vnet_buffer (b0)->ip.flow_hash = 0;
 	    hash_c1 = vnet_buffer (b1)->ip.flow_hash = 0;
@@ -499,6 +502,8 @@ lookup_dpo_ip4_inline (vlib_main_t * vm,
 	    /* do lookup */
 	    ip4_src_fib_lookup_one (fib_index0, input_addr, &lbi0);
 	    lb0 = load_balance_get(lbi0);
+
+            vnet_buffer(b0)->sw_if_index[VLIB_TX] = fib_index0;
 
 	    /* Use flow hash to compute multipath adjacency. */
 	    hash_c0 = vnet_buffer (b0)->ip.flow_hash = 0;
@@ -722,6 +727,9 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 	    lb0 = load_balance_get(lbi0);
 	    lb1 = load_balance_get(lbi1);
 
+            vnet_buffer(b0)->sw_if_index[VLIB_TX] = fib_index0;
+            vnet_buffer(b1)->sw_if_index[VLIB_TX] = fib_index1;
+
 	    /* Use flow hash to compute multipath adjacency. */
 	    hash_c0 = vnet_buffer (b0)->ip.flow_hash = 0;
 	    hash_c1 = vnet_buffer (b1)->ip.flow_hash = 0;
@@ -836,6 +844,8 @@ lookup_dpo_ip6_inline (vlib_main_t * vm,
 					       fib_index0,
 					       input_addr0);
 	    lb0 = load_balance_get(lbi0);
+
+            vnet_buffer(b0)->sw_if_index[VLIB_TX] = fib_index0;
 
 	    /* Use flow hash to compute multipath adjacency. */
 	    hash_c0 = vnet_buffer (b0)->ip.flow_hash = 0;
