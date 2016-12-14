@@ -1500,8 +1500,13 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
 				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  fib_index0 = (vnet_buffer (p0)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
+	    fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+
 	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
 				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	  fib_index1 = (vnet_buffer (p1)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
+	    fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
 
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 	  mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
@@ -1721,6 +1726,8 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
 				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  fib_index0 = (vnet_buffer (p0)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
+	    fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
