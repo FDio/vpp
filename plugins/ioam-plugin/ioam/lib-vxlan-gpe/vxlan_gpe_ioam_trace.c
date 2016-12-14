@@ -288,7 +288,11 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	  if (trace->ioam_trace_type & BIT_TTL_NODEID)
 	    {
 	      ip4_header_t *ip0 = vlib_buffer_get_current (b);
-	      *elt = clib_host_to_net_u32 (((ip0->ttl - 1) << 24) |
+	      /* The transit case is the only case where the TTL decrement happens
+	       * before iOAM processing. For now, use the use_adj flag as an overload.
+	       * We can probably use a separate flag instead of overloading the use_adj flag.
+	       */
+	      *elt = clib_host_to_net_u32 (((ip0->ttl - 1 + use_adj) << 24) |
 					   profile->node_id);
 	      elt++;
 	    }

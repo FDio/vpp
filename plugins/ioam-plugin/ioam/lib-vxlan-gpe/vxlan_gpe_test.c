@@ -64,7 +64,9 @@ vxlan_gpe_test_main_t vxlan_gpe_test_main;
 _(vxlan_gpe_ioam_enable_reply)                    \
 _(vxlan_gpe_ioam_disable_reply)                   \
 _(vxlan_gpe_ioam_vni_enable_reply)                \
-_(vxlan_gpe_ioam_vni_disable_reply)
+_(vxlan_gpe_ioam_vni_disable_reply)               \
+_(vxlan_gpe_ioam_transit_enable_reply)            \
+_(vxlan_gpe_ioam_transit_disable_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -86,11 +88,13 @@ foreach_standard_reply_retval_handler;
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
-#define foreach_vpe_api_reply_msg                                       \
-_(VXLAN_GPE_IOAM_ENABLE_REPLY, vxlan_gpe_ioam_enable_reply)             \
-_(VXLAN_GPE_IOAM_DISABLE_REPLY, vxlan_gpe_ioam_disable_reply)           \
-_(VXLAN_GPE_IOAM_VNI_ENABLE_REPLY, vxlan_gpe_ioam_vni_enable_reply)     \
-_(VXLAN_GPE_IOAM_VNI_DISABLE_REPLY, vxlan_gpe_ioam_vni_disable_reply)   \
+#define foreach_vpe_api_reply_msg                                              \
+_(VXLAN_GPE_IOAM_ENABLE_REPLY, vxlan_gpe_ioam_enable_reply)                    \
+_(VXLAN_GPE_IOAM_DISABLE_REPLY, vxlan_gpe_ioam_disable_reply)                  \
+_(VXLAN_GPE_IOAM_VNI_ENABLE_REPLY, vxlan_gpe_ioam_vni_enable_reply)            \
+_(VXLAN_GPE_IOAM_VNI_DISABLE_REPLY, vxlan_gpe_ioam_vni_disable_reply)          \
+_(VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY, vxlan_gpe_ioam_transit_enable_reply)    \
+_(VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY, vxlan_gpe_ioam_transit_disable_reply)  \
 
 
 /* M: construct, but don't yet send a message */
@@ -379,7 +383,149 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
   return 0;
 }
 
+static int
+api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
 
+  unformat_input_t *line_input = vam->input;
+  vl_api_vxlan_gpe_ioam_transit_enable_t *mp;
+  ip4_address_t local4;
+  ip6_address_t local6;
+  u8 ipv4_set = 0, ipv6_set = 0;
+  u8 local_set = 0;
+  u32 outer_fib_index = 0;
+  f64 timeout;
+
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "dst-ip %U", unformat_ip4_address, &local4))
+	{
+	  local_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "dst-ip %U",
+			 unformat_ip6_address, &local6))
+	{
+	  local_set = 1;
+	  ipv6_set = 1;
+	}
+
+      else if (unformat (line_input, "outer-fib-index %d", &outer_fib_index))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, line_input);
+	  return -99;
+	}
+    }
+
+  if (local_set == 0)
+    {
+      errmsg ("destination address not specified\n");
+      return -99;
+    }
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both IPv4 and IPv6 addresses specified");
+      return -99;
+    }
+
+
+  M (VXLAN_GPE_IOAM_TRANSIT_ENABLE, vxlan_gpe_ioam_transit_enable);
+
+
+  if (ipv6_set)
+    {
+      errmsg ("IPv6 currently unsupported");
+      return -1;
+    }
+  else
+    {
+      clib_memcpy (&mp->dst_addr, &local4, sizeof (local4));
+    }
+
+  mp->outer_fib_index = htonl (outer_fib_index);
+  mp->is_ipv6 = ipv6_set;
+
+  S;
+  W;
+
+  return (0);
+}
+
+static int
+api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
+{
+  vxlan_gpe_test_main_t *sm = &vxlan_gpe_test_main;
+
+  unformat_input_t *line_input = vam->input;
+  vl_api_vxlan_gpe_ioam_transit_disable_t *mp;
+  ip4_address_t local4;
+  ip6_address_t local6;
+  u8 ipv4_set = 0, ipv6_set = 0;
+  u8 local_set = 0;
+  u32 outer_fib_index;
+  f64 timeout;
+
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "dst-ip %U", unformat_ip4_address, &local4))
+	{
+	  local_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "dst-ip %U",
+			 unformat_ip6_address, &local6))
+	{
+	  local_set = 1;
+	  ipv6_set = 1;
+	}
+
+      else if (unformat (line_input, "outer-fib-index %d", &outer_fib_index))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, line_input);
+	  return -99;
+	}
+    }
+
+  if (local_set == 0)
+    {
+      errmsg ("destination address not specified\n");
+      return -99;
+    }
+  if (ipv4_set && ipv6_set)
+    {
+      errmsg ("both IPv4 and IPv6 addresses specified");
+      return -99;
+    }
+
+
+  M (VXLAN_GPE_IOAM_TRANSIT_DISABLE, vxlan_gpe_ioam_transit_disable);
+
+
+  if (ipv6_set)
+    {
+      return -1;
+    }
+  else
+    {
+      clib_memcpy (&mp->dst_addr, &local4, sizeof (local4));
+    }
+
+  mp->outer_fib_index = htonl (outer_fib_index);
+  mp->is_ipv6 = ipv6_set;
+
+  S;
+  W;
+
+
+  return (0);
+}
 
 /*
  * List of messages that the api test plugin sends,
@@ -393,6 +539,10 @@ _(vxlan_gpe_ioam_vni_enable, ""\
   "local <local_vtep_ip> remote <remote_vtep_ip> vni <vnid>") \
 _(vxlan_gpe_ioam_vni_disable, ""\
   "local <local_vtep_ip> remote <remote_vtep_ip> vni <vnid>") \
+_(vxlan_gpe_ioam_transit_enable, ""\
+  "dst-ip <dst_ip> [outer-fib-index <outer_fib_index>]") \
+_(vxlan_gpe_ioam_transit_disable, ""\
+  "dst-ip <dst_ip> [outer-fib-index <outer_fib_index>]") \
 
 
 void
