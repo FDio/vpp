@@ -94,11 +94,13 @@ do {                                                            \
 
 /* List of message types that this plugin understands */
 
-#define foreach_vxlan_gpe_plugin_api_msg                        \
-_(VXLAN_GPE_IOAM_ENABLE, vxlan_gpe_ioam_enable)                 \
-_(VXLAN_GPE_IOAM_DISABLE, vxlan_gpe_ioam_disable)               \
-_(VXLAN_GPE_IOAM_VNI_ENABLE, vxlan_gpe_ioam_vni_enable)         \
-_(VXLAN_GPE_IOAM_VNI_DISABLE, vxlan_gpe_ioam_vni_disable)       \
+#define foreach_vxlan_gpe_plugin_api_msg                               \
+_(VXLAN_GPE_IOAM_ENABLE, vxlan_gpe_ioam_enable)                        \
+_(VXLAN_GPE_IOAM_DISABLE, vxlan_gpe_ioam_disable)                      \
+_(VXLAN_GPE_IOAM_VNI_ENABLE, vxlan_gpe_ioam_vni_enable)                \
+_(VXLAN_GPE_IOAM_VNI_DISABLE, vxlan_gpe_ioam_vni_disable)              \
+_(VXLAN_GPE_IOAM_TRANSIT_ENABLE, vxlan_gpe_ioam_transit_enable)        \
+_(VXLAN_GPE_IOAM_TRANSIT_DISABLE, vxlan_gpe_ioam_transit_disable)      \
 
 
 static void vl_api_vxlan_gpe_ioam_enable_t_handler
@@ -239,6 +241,50 @@ static void vl_api_vxlan_gpe_ioam_vni_disable_t_handler
   VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_VNI_DISABLE_REPLY);
 }
 
+static void vl_api_vxlan_gpe_ioam_transit_enable_t_handler
+  (vl_api_vxlan_gpe_ioam_transit_enable_t * mp)
+{
+  int rv = 0;
+  vl_api_vxlan_gpe_ioam_transit_enable_reply_t *rmp;
+  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
+  ip46_address_t dst_addr;
+
+  memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
+  if (!mp->is_ipv6)
+    {
+      clib_memcpy (&dst_addr.ip4, &mp->dst_addr, sizeof (dst_addr.ip4));
+    }
+  rv = vxlan_gpe_enable_disable_ioam_for_dest (sm->vlib_main,
+					       dst_addr,
+					       ntohl (mp->outer_fib_index),
+					       mp->is_ipv6 ? 0 : 1,
+					       1 /* is_add */ );
+
+  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_ENABLE_REPLY);
+}
+
+static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
+  (vl_api_vxlan_gpe_ioam_transit_disable_t * mp)
+{
+  int rv = 0;
+  vl_api_vxlan_gpe_ioam_transit_disable_reply_t *rmp;
+  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
+  ip46_address_t dst_addr;
+
+  memset (&dst_addr.ip4, 0, sizeof (dst_addr.ip4));
+  if (!mp->is_ipv6)
+    {
+      clib_memcpy (&dst_addr.ip4, &mp->dst_addr, sizeof (dst_addr.ip4));
+    }
+
+  rv = vxlan_gpe_ioam_disable_for_dest (sm->vlib_main,
+					dst_addr,
+					ntohl (mp->outer_fib_index),
+					mp->is_ipv6 ? 0 : 1);
+  VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
+}
+
+
 /*
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.
@@ -255,6 +301,8 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
 
   sm->vlib_main = vm;
   sm->vnet_main = h->vnet_main;
+  sm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  sm->vlib_time_0 = vlib_time_now (vm);
   return error;
 }
 
@@ -308,6 +356,12 @@ vxlan_gpe_init (vlib_main_t * vm)
     vlib_node_add_next (vm, vxlan_gpe_decap_node->index, decap_node_index);
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IOAM, next_node);
 
+  vec_new (vxlan_gpe_ioam_sw_interface_t, pool_elts (sm->sw_interfaces));
+  sm->dst_by_ip4 = hash_create_mem (0, sizeof (fib_prefix_t), sizeof (uword));
+
+  sm->dst_by_ip6 = hash_create_mem (0, sizeof (fib_prefix_t), sizeof (uword));
+
+  vxlan_gpe_ioam_interface_init ();
   vec_free (name);
 
   return error;
