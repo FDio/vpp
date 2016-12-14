@@ -195,29 +195,17 @@ vat_main_t vat_main;
 static inline f64
 vat_time_now (vat_main_t * vam)
 {
-#if VPP_API_TEST_STANDALONE
-  return clib_time_now (&vam->clib_time);
-#else
   return vlib_time_now (vam->vlib_main);
-#endif
 }
 
-#if VPP_API_TEST_STANDALONE
-#define errmsg(fmt,args...)                                     \
-do {                                                            \
-    if(vam->ifp != stdin)                                       \
-        fformat(vam->ofp,"%s(%d): \n", vam->current_file,       \
-                vam->input_line_number);                        \
-    fformat(vam->ofp, fmt "\n", ##args);                        \
-    fflush(vam->ofp);                                           \
-} while(0);
-#else
 #define errmsg(fmt,args...)                             \
 do {                                                    \
-  vat_main_t *__vam = &vat_main;                        \
-  vlib_cli_output (vam->vlib_main, fmt, ##args);        \
- } while(0);
-#endif
+    if(vam->ifp != stdin)                               \
+        fformat(vam->ofp,"%s(%d): ", vam->current_file, \
+                vam->input_line_number);                \
+    fformat(vam->ofp, fmt, ##args);                     \
+    fflush(vam->ofp);					\
+} while(0);
 
 void vat_api_hookup (vat_main_t * vam);
 int api_sw_interface_dump (vat_main_t * vam);
@@ -239,7 +227,7 @@ u8 *format_ethernet_address (u8 * s, va_list * args);
 
 #if VPP_API_TEST_STANDALONE
 #define print fformat_append_cr
-void fformat_append_cr (FILE *, const char *fmt, ...);
+void fformat_append_cr (void *, const char *fmt, ...);
 #else
 #define print api_cli_output
 void api_cli_output (void *, const char *fmt, ...);

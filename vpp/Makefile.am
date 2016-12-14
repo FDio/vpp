@@ -31,7 +31,10 @@ vpp_SOURCES =					\
 
 vpp_SOURCES +=					\
   vpp-api/api.c					\
-  vpp-api/custom_dump.c
+  vpp-api/api_format.c				\
+  vpp-api/api_main.c				\
+  vpp-api/custom_dump.c				\
+  vpp-api/json_format.c
 
 # comment out to disable stats upload to gmond 
 
