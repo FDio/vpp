@@ -28,7 +28,9 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include "vat/json_format.h"
+#include "json_format.h"
+
+#include <vlib/vlib.h>
 
 typedef struct
 {
@@ -183,6 +185,9 @@ typedef struct
   u32 *ip4_fib_counters_vrf_id_by_index;
   ip6_fib_counter_t **ip6_fib_counters;
   u32 *ip6_fib_counters_vrf_id_by_index;
+
+  /* Convenience */
+  vlib_main_t *vlib_main;
 } vat_main_t;
 
 vat_main_t vat_main;
@@ -190,17 +195,30 @@ vat_main_t vat_main;
 static inline f64
 vat_time_now (vat_main_t * vam)
 {
+#if VPP_API_TEST_BUILTIN
+  return vlib_time_now (vam->vlib_main);
+#else
   return clib_time_now (&vam->clib_time);
+#endif
 }
 
+#if VPP_API_TEST_BUILTIN
 #define errmsg(fmt,args...)                             \
 do {                                                    \
-    if(vam->ifp != stdin)                               \
-        fformat(vam->ofp,"%s(%d): ", vam->current_file, \
-                vam->input_line_number);                \
-    fformat(vam->ofp, fmt, ##args);                     \
-    fflush(vam->ofp);					\
+  vat_main_t *__vam = &vat_main;                        \
+  vlib_cli_output (__vam->vlib_main, fmt, ##args);      \
+ } while(0);
+#else
+#define errmsg(fmt,args...)                                     \
+do {                                                            \
+  vat_main_t *__vam = &vat_main;                                \
+    if(__vam->ifp != stdin)                                     \
+        fformat(__vam->ofp,"%s(%d): \n", __vam->current_file,   \
+                __vam->input_line_number);                      \
+    fformat(__vam->ofp, fmt "\n", ##args);                      \
+    fflush(__vam->ofp);                                         \
 } while(0);
+#endif
 
 void vat_api_hookup (vat_main_t * vam);
 int api_sw_interface_dump (vat_main_t * vam);
@@ -220,6 +238,13 @@ uword unformat_ip6_address (unformat_input_t * input, va_list * args);
 u8 *format_ip4_address (u8 * s, va_list * args);
 u8 *format_ethernet_address (u8 * s, va_list * args);
 
+#if VPP_API_TEST_BUILTIN
+#define print api_cli_output
+void api_cli_output (void *, const char *fmt, ...);
+#else
+#define print fformat_append_cr
+void fformat_append_cr (FILE *, const char *fmt, ...);
+#endif
 
 #endif /* __included_vat_h__ */
 

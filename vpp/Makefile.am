@@ -13,7 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @VCGN@ @IPV6SR@
+AM_CFLAGS = -Wall @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @VCGN@ @IPV6SR@ @APICLI@
 
 noinst_PROGRAMS = 
 BUILT_SOURCES =
@@ -31,7 +31,15 @@ vpp_SOURCES =					\
 
 vpp_SOURCES +=					\
   vpp-api/api.c					\
-  vpp-api/custom_dump.c
+  vpp-api/custom_dump.c				\
+  vpp-api/json_format.c
+
+if WITH_APICLI
+  vpp_SOURCES +=				\
+  vpp-api/api_format.c				\
+  vpp-api/api_main.c				
+endif
+
 
 # comment out to disable stats upload to gmond 
 

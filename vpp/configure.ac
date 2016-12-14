@@ -34,6 +34,11 @@ AC_ARG_WITH(ipv6sr,
             [with_ipv6sr=0],
             [with_ipv6sr=1])
 
+AC_ARG_WITH(apicli,
+            AC_HELP_STRING([--without-apicli],[Disable binary api CLI]),
+            [with_apicli=0],
+            [with_apicli=1])
+
 AM_CONDITIONAL(WITH_DPDK, test "$with_dpdk" = "1")
 AM_CONDITIONAL(ENABLE_DPDK_SHARED, test "$enable_dpdk_shared" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk} -DDPDK_SHARED_LIB=${enable_dpdk_shared}"])
@@ -63,5 +68,8 @@ AC_SUBST(VCGN,[-DVCGN=${with_vcgn}])
 
 AM_CONDITIONAL(WITH_IPV6SR, test "$with_ipv6sr" = "1")
 AC_SUBST(IPV6SR,[-DIPV6SR=${with_ipv6sr}])
+
+AM_CONDITIONAL(WITH_APICLI, test "$with_apicli" = "1")
+AC_SUBST(APICLI,[-DVPP_API_TEST_BUILTIN=${with_apicli}])
 
 AC_OUTPUT([Makefile])
