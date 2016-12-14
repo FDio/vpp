@@ -21,8 +21,27 @@
 #include <vnet/ip/ip.h>
 
 
+typedef struct vxlan_gpe_sw_interface_
+{
+  u32 sw_if_index;
+} vxlan_gpe_ioam_sw_interface_t;
+
+typedef struct vxlan_gpe_dest_tunnels_
+{
+  ip46_address_t dst_addr;
+  u32 fp_proto;
+  u32 sibling_index;
+  fib_node_index_t fib_entry_index;
+  u32 outer_fib_index;
+} vxlan_gpe_ioam_dest_tunnels_t;
+
 typedef struct vxlan_gpe_ioam_main_
 {
+  /**
+   * Linkage into the FIB object graph
+   */
+  fib_node_t node;
+
   /* time scale transform. Joy. */
   u32 unix_time_0;
   f64 vlib_time_0;
@@ -65,6 +84,18 @@ typedef struct vxlan_gpe_ioam_main_
   uword encap_v4_next_node;
   uword encap_v6_next_node;
 
+  /* Software interfaces. */
+  vxlan_gpe_ioam_sw_interface_t *sw_interfaces;
+
+  /* hash ip4/ip6 -> list of destinations for doing transit iOAM operation */
+  vxlan_gpe_ioam_dest_tunnels_t *dst_tunnels;
+  uword *dst_by_ip4;
+  uword *dst_by_ip6;
+
+  /** per sw_if_index, to maintain bitmap */
+  u8 *bool_ref_by_sw_if_index;
+  fib_node_type_t fib_entry_type;
+
   /** State convenience vlib_main_t */
   vlib_main_t *vlib_main;
   /** State convenience vnet_main_t */
@@ -87,6 +118,7 @@ typedef struct
 
 vlib_node_registration_t vxlan_gpe_encap_ioam_v4_node;
 vlib_node_registration_t vxlan_gpe_decap_ioam_v4_node;
+vlib_node_registration_t vxlan_gpe_transit_ioam_v4_node;
 
 clib_error_t *vxlan_gpe_ioam_enable (int has_trace_option, int has_pot_option,
 				     int has_ppc_option);
@@ -123,6 +155,15 @@ int vxlan_gpe_ioam_unregister_option (u8 option);
 int vxlan_gpe_trace_profile_setup (void);
 
 int vxlan_gpe_trace_profile_cleanup (void);
+extern void vxlan_gpe_ioam_interface_init (void);
+int
+vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
+					ip46_address_t dst_addr,
+					u32 outer_fib_index,
+					u8 is_ipv4, u8 is_add);
+int vxlan_gpe_ioam_disable_for_dest
+  (vlib_main_t * vm, ip46_address_t dst_addr, u32 outer_fib_index,
+   u8 ipv4_set);
 
 typedef enum
 {

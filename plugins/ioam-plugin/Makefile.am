@@ -126,6 +126,7 @@ vppplugins_LTLIBRARIES += libioam_trace_plugin.la
 libioam_vxlan_gpe_plugin_la_SOURCES =			\
 	ioam/lib-vxlan-gpe/ioam_encap.c			\
 	ioam/lib-vxlan-gpe/ioam_decap.c			\
+	ioam/lib-vxlan-gpe/ioam_transit.c		\
 	ioam/lib-vxlan-gpe/ioam_pop.c			\
 	ioam/lib-vxlan-gpe/vxlan_gpe_api.c		\
 	ioam/lib-vxlan-gpe/vxlan_gpe_ioam_trace.c	\
