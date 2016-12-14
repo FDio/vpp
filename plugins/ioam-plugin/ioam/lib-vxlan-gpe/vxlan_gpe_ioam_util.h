@@ -83,7 +83,6 @@ format_vxlan_gpe_ioam_v4_trace (u8 * s, va_list * args)
 always_inline void
 vxlan_gpe_encap_decap_ioam_v4_one_inline (vlib_main_t * vm,
 					  vlib_node_runtime_t * node,
-					  vxlan_gpe_main_t * ngm,
 					  vlib_buffer_t * b0,
 					  u32 * next0, u32 drop_node_val,
 					  u8 use_adj)
