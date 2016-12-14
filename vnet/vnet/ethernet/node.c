@@ -369,7 +369,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  e1 = vlib_buffer_get_current (b1);
 	  type1 = clib_net_to_host_u16 (e1->type);
 
-	  /* Speed-path for the untagged L2 case */
+	  /* Speed-path for the untagged case */
 	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
 			    && !ethernet_frame_is_tagged (type0)
 			    && !ethernet_frame_is_tagged (type1)))
@@ -404,12 +404,21 @@ ethernet_input_inline (vlib_main_t * vm,
 		  vnet_buffer (b1)->l2.l2_len = sizeof (ethernet_header_t);
 		  vnet_buffer (b1)->ethernet.start_of_ethernet_header =
 		    b1->current_data;
-		  goto ship_it01;
 		}
-	      /* FALLTHROUGH into the general case */
+	      else
+		{
+		  determine_next_node (em, variant, 0, type0, b0,
+				       &error0, &next0);
+		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
+		  determine_next_node (em, variant, 0, type1, b1,
+				       &error1, &next1);
+		  vlib_buffer_advance (b1, sizeof (ethernet_header_t));
+		}
+	      goto ship_it01;
 	    }
-	slowpath:
 
+	  /* Slow-path for the tagged case */
+	slowpath:
 	  parse_header (variant,
 			b0,
 			&type0,
@@ -578,7 +587,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  e0 = vlib_buffer_get_current (b0);
 	  type0 = clib_net_to_host_u16 (e0->type);
 
-	  /* Speed-path for the untagged L2 case */
+	  /* Speed-path for the untagged case */
 	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
 			    && !ethernet_frame_is_tagged (type0)))
 	    {
@@ -603,11 +612,17 @@ ethernet_input_inline (vlib_main_t * vm,
 		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
 		  vnet_buffer (b0)->ethernet.start_of_ethernet_header =
 		    b0->current_data;
-		  goto ship_it0;
 		}
-	      /* FALLTHROUGH into the general case */
+	      else
+		{
+		  determine_next_node (em, variant, 0, type0, b0,
+				       &error0, &next0);
+		  vlib_buffer_advance (b0, sizeof (ethernet_header_t));
+		}
+	      goto ship_it0;
 	    }
 
+	  /* Slow-path for the tagged case */
 	  parse_header (variant,
 			b0,
 			&type0,
