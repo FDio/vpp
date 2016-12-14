@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_b4460a22",
+        "filename": "plugins/ioam-plugin/ioam/analyse/ip6/ip6_ioam_analyse.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-14T18:30:35Z",
+      "side": 1,
+      "message": "Done. Added ioam_analyse_enable_disable()",
+      "parentUuid": "5a2585a7_695c4a26",
+      "range": {
+        "startLine": 51,
+        "startChar": 2,
+        "endLine": 82,
+        "endChar": 5
+      },
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_493aaece",
         "filename": "plugins/ioam-plugin/ioam/analyse/ip6/node.c",
         "patchSetId": 8
@@ -36,6 +60,30 @@
       "writtenOn": "2016-12-13T08:35:50Z",
       "side": 1,
       "message": "s/Export/IPfix-Analyzer",
+      "range": {
+        "startLine": 73,
+        "startChar": 18,
+        "endLine": 73,
+        "endChar": 24
+      },
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_944b0e2b",
+        "filename": "plugins/ioam-plugin/ioam/analyse/ip6/node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-14T18:30:35Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_493aaece",
       "range": {
         "startLine": 73,
         "startChar": 18,
@@ -65,6 +113,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_34aa1a71",
+        "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 532,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-14T18:30:35Z",
+      "side": 1,
+      "message": "Done. No transport specific code in this MACRO anymore.",
+      "parentUuid": "5a2585a7_8e6d3c07",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_2e7408ce",
         "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
         "patchSetId": 8
@@ -76,6 +142,30 @@
       "writtenOn": "2016-12-13T08:35:50Z",
       "side": 1,
       "message": "v6 version bits are lost",
+      "range": {
+        "startLine": 539,
+        "startChar": 11,
+        "endLine": 540,
+        "endChar": 52
+      },
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_7a10894e",
+        "filename": "plugins/ioam-plugin/ioam/export-common/ioam_export.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 540,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-14T18:30:35Z",
+      "side": 1,
+      "message": "v6 version bits are not lost as we are doing \u0026 with 0xFFF00000.",
+      "parentUuid": "5a2585a7_2e7408ce",
       "range": {
         "startLine": 539,
         "startChar": 11,
@@ -122,6 +212,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_14383e9f",
+        "filename": "plugins/ioam-plugin/ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-14T18:30:35Z",
+      "side": 1,
+      "message": "Yes, this is required. I have moved definition of global variables to .c file and only declaration in .h.",
+      "parentUuid": "5a2585a7_ae68f8f5",
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_a92b5281",
         "filename": "vnet/vnet/ip/ip6_hop_by_hop.h",
         "patchSetId": 8
@@ -133,6 +241,30 @@
       "writtenOn": "2016-12-13T08:35:50Z",
       "side": 1,
       "message": "we should eventually move this to ioam plugin from here.",
+      "range": {
+        "startLine": 209,
+        "startChar": 0,
+        "endLine": 209,
+        "endChar": 13
+      },
+      "revId": "006577f465a71cdbf76bd0d16210df04fccaa7e8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_34ee9aed",
+        "filename": "vnet/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-14T18:30:35Z",
+      "side": 1,
+      "message": "Yes. We need to move all ioam related code from hbh to plugin. Will take that up later.",
+      "parentUuid": "5a2585a7_a92b5281",
       "range": {
         "startLine": 209,
         "startChar": 0,
