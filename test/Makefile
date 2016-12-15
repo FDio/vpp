@@ -6,38 +6,49 @@ ifndef VPP_PYTHON_PREFIX
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=scapy==2.3.3 pexpect
-SCAPY_SOURCE=$(PYTHON_VENV_PATH)/lib/python2.7/site-packages/
+SITE_PACKAGES=$(PYTHON_VENV_PATH)/site-packages
+SCAPY_PKG=scapy==2.3.3
+SCAPY_INSTALL_PATH=$(SITE_PACKAGES)/scapy
+PEXPECT_PKG=pexpect
+PEXPECT_INSTALL_PATH=$(SITE_PACKAGES)/pexpect
 BUILD_COV_DIR = $(BR)/test-cov
 
-PIP_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/pip-install.done
-PIP_PATCH_DONE=$(VPP_PYTHON_PREFIX)/pip-patch.done
-PAPI_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/papi-install.done
+$(PYTHON_VENV_PATH):
+	@virtualenv $(PYTHON_VENV_PATH) -p /usr/bin/pypy
 
-PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
+SCAPY_PATCH_DONE=$(VPP_PYTHON_PREFIX)/scapy-patch.done
 
-$(PIP_INSTALL_DONE):
-	@virtualenv $(PYTHON_VENV_PATH)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
-	@touch $@
+$(SCAPY_INSTALL_PATH): $(PYTHON_VENV_PATH)
+	@rm -f $(SCAPY_PATCH_DONE)
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(SCAPY_PKG)"
 
-$(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
+$(PEXPECT_INSTALL_PATH): $(PYTHON_VENV_PATH)
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PEXPECT_PKG)"
+
+SCAPY_PATCHES:= $(wildcard $(CURDIR)/patches/scapy-2.3.3/*.patch)
+
+$(SCAPY_PATCH_DONE): $(PYTHON_VENV_PATH) $(SCAPY_PATCHES) $(SCAPY_INSTALL_PATH)
 	@echo --- patching ---
-	for f in $(CURDIR)/patches/scapy-2.3.3/*.patch ; do \
+	for f in $(SCAPY_PATCHES) ; do \
 		echo Applying patch: $$(basename $$f) ; \
-		patch -p1 -d $(SCAPY_SOURCE) < $$f ; \
+		patch -p1 -d $(SITE_PACKAGES) < $$f ; \
 	done
 	@touch $@
 
-$(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/vpp-api/python && python setup.py install"
+pneum_wrap_setup: pneum_wrap/setup.py pneum_wrap/pneum_wrap_extra_code.c pneum_wrap/pneum_wrap_extra_defs.h pneum_wrap/build_pneum_wrap.py $(PYTHON_VENV_PATH)
+	bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install --force-reinstall ./pneum_wrap"
+
+DEPENDENCIES = $(VPP_PYTHON_PREFIX)/.dependencies
+.PHONY: $(DEPENDENCIES) pneum_wrap_setup
+
+$(DEPENDENCIES): $(SCAPY_PATCH_DONE) $(PEXPECT_INSTALL_PATH) pneum_wrap_setup
 	@touch $@
 
 define retest-func
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pypy run_tests.py discover -p test_$(TEST)\"*.py\""
 endef
 
-test: reset verify-python-path $(PAPI_INSTALL_DONE)
+test: reset verify-python-path $(DEPENDENCIES)
 	$(call retest-func)
 
 retest: reset verify-python-path
@@ -51,7 +62,6 @@ reset:
 
 wipe: reset
 	@rm -rf $(PYTHON_VENV_PATH)
-	@rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH)
@@ -63,7 +73,7 @@ doc: verify-python-path
 wipe-doc:
 	@make -C doc wipe BR=$(BR)
 
-cov: wipe-cov reset verify-python-path $(PAPI_INSTALL_DONE)
+cov: wipe-cov reset verify-python-path $(DEPENDENCIES)
 	@lcov --zerocounters --directory $(VPP_TEST_BUILD_DIR)
 	$(call retest-func)
 	@mkdir $(BUILD_COV_DIR)
