@@ -76,7 +76,7 @@ class TestGRE(VppTestCase):
                                  tunnel_src, tunnel_dst,
                                  src_ip, dst_ip):
         pkts = []
-        for i in range(0, 257):
+        for i in range(0, 27):
             info = self.create_packet_info(src_if.sw_if_index,
                                            src_if.sw_if_index)
             payload = self.info_to_payload(info)
@@ -93,7 +93,7 @@ class TestGRE(VppTestCase):
     def create_tunnel_stream_l2o4(self, src_if,
                                   tunnel_src, tunnel_dst):
         pkts = []
-        for i in range(0, 257):
+        for i in range(0, 27):
             info = self.create_packet_info(src_if.sw_if_index,
                                            src_if.sw_if_index)
             payload = self.info_to_payload(info)
@@ -112,7 +112,7 @@ class TestGRE(VppTestCase):
     def create_tunnel_stream_vlano4(self, src_if,
                                     tunnel_src, tunnel_dst, vlan):
         pkts = []
-        for i in range(0, 257):
+        for i in range(0, 27):
             info = self.create_packet_info(src_if.sw_if_index,
                                            src_if.sw_if_index)
             payload = self.info_to_payload(info)

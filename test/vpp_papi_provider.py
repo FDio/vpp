@@ -3,21 +3,7 @@ import fnmatch
 import time
 from hook import Hook
 from collections import deque
-
-# Sphinx creates auto-generated documentation by importing the python source
-# files and collecting the docstrings from them. The NO_VPP_PAPI flag allows the
-# vpp_papi_provider.py file to be importable without having to build the whole
-# vpp api if the user only wishes to generate the test documentation.
-do_import = True
-try:
-    no_vpp_papi = os.getenv("NO_VPP_PAPI")
-    if no_vpp_papi == "1":
-        do_import = False
-except:
-    pass
-
-if do_import:
-    from vpp_papi import VPP
+from vpp_papi import VPP
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
