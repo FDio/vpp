@@ -512,7 +512,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   pool_get (lcm->fwd_entry_pool, fe);
   fe->locator_pairs = a->locator_pairs;
   gid_address_copy (&fe->reid, &a->rmt_eid);
-  gid_address_copy (&fe->leid, &src_map->eid);
+  gid_address_copy (&fe->leid, &a->lcl_eid);
   fe->is_src_dst = is_src_dst;
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
 	    fe - lcm->fwd_entry_pool);
