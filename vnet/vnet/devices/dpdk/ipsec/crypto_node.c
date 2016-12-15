@@ -76,7 +76,7 @@ format_dpdk_crypto_input_trace (u8 * s, va_list * args)
   s = format (s, "dpdk_crypto: cryptodev-id %u queue-pair %u next-index %d",
 	      t->cdev, t->qp, t->next_index);
 
-  s = format (s, "status %u sa-idx %u\n", t->status, t->sa_idx);
+  s = format (s, " status %u sa-idx %u\n", t->status, t->sa_idx);
 
   return s;
 }
@@ -142,8 +142,9 @@ dpdk_crypto_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      dpdk_crypto_input_trace_t *tr;
-	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      vlib_trace_next_frame (vm, node, next0);
+	      dpdk_crypto_input_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
 	      tr->cdev = qpd->dev_id;
 	      tr->qp = qpd->qp_id;
 	      tr->status = cop->status;
