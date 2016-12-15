@@ -252,8 +252,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
               clib_memcpy(icb->iv, iv, 8);
               icb->cnt = clib_host_to_net_u32(1);
               sym_cop->cipher.iv.data = (u8 *)icb;
-              sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
-                         (u8 *)icb - rte_pktmbuf_mtod(mb0, u8 *));
+              sym_cop->cipher.iv.phys_addr = cop->phys_addr +
+		(uintptr_t)icb - (uintptr_t)cop;
               sym_cop->cipher.iv.length = 16;
 
               u8 *aad = priv->aad;
