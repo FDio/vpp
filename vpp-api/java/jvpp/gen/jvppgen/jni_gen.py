@@ -198,42 +198,42 @@ u8_array_struct_setter_template = Template("""
 """)
 
 u16_array_struct_setter_template = Template("""
-    jshort * ${field_reference_name}ArrayElements = (*env)->GetShortArrayElements(env, ${field_reference_name}, NULL);
     if (${field_reference_name}) {
+        jshort * ${field_reference_name}ArrayElements = (*env)->GetShortArrayElements(env, ${field_reference_name}, NULL);
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${field_reference_name});
         ${field_length_check}
         for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u16(${field_reference_name}ArrayElements[_i]);
         }
+        (*env)->ReleaseShortArrayElements (env, ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
     }
-    (*env)->ReleaseShortArrayElements (env, ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
     """)
 
 u32_array_struct_setter_template = Template("""
-    jint * ${field_reference_name}ArrayElements = (*env)->GetIntArrayElements(env, ${field_reference_name}, NULL);
     if (${field_reference_name}) {
+        jint * ${field_reference_name}ArrayElements = (*env)->GetIntArrayElements(env, ${field_reference_name}, NULL);
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${field_reference_name});
         ${field_length_check}
         for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u32(${field_reference_name}ArrayElements[_i]);
         }
+        (*env)->ReleaseIntArrayElements (env, ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
     }
-    (*env)->ReleaseIntArrayElements (env, ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
     """)
 
 u64_array_struct_setter_template = Template("""
-    jlong * ${field_reference_name}ArrayElements = (*env)->GetLongArrayElements(env, ${field_reference_name}, NULL);
     if (${field_reference_name}) {
+        jlong * ${field_reference_name}ArrayElements = (*env)->GetLongArrayElements(env, ${field_reference_name}, NULL);
         size_t _i;
         jsize cnt = (*env)->GetArrayLength (env, ${field_reference_name});
         ${field_length_check}
         for (_i = 0; _i < cnt; _i++) {
             mp->${c_name}[_i] = clib_host_to_net_u64(${field_reference_name}ArrayElements[_i]);
         }
+        (*env)->ReleaseLongArrayElements (env, ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
     }
-    (*env)->ReleaseLongArrayElements (env, ${field_reference_name}, ${field_reference_name}ArrayElements, 0);
     """)
 
 struct_setter_templates = {'u8': u8_struct_setter_template,
