@@ -415,16 +415,16 @@ vnet_mpls_local_label (vlib_main_t * vm,
       fib_node_index_t lfe, fib_index;
       u32 fi;
 
-      pfx.fp_proto = FIB_PROTOCOL_MPLS;
-      pfx.fp_len = 21;
-      pfx.fp_label = local_label;
-      pfx.fp_payload_proto = fib_proto_to_dpo(rpaths[0].frp_proto);
-
       if (NULL == rpaths)
       {
 	  error = clib_error_return(0 , "no paths");
 	  goto done;
       }
+
+      pfx.fp_proto = FIB_PROTOCOL_MPLS;
+      pfx.fp_len = 21;
+      pfx.fp_label = local_label;
+      pfx.fp_payload_proto = fib_proto_to_dpo(rpaths[0].frp_proto);
 
       /*
        * the CLI parsing stored table Ids, swap to FIB indicies

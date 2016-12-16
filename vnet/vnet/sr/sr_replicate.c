@@ -253,6 +253,8 @@ sr_replicate_node_fn (vlib_main_t * vm,
 		  /* Not the last tunnel to process */
 		  clone0 = rte_pktmbuf_clone
 		    (orig_mb0, bm->pktmbuf_pools[socket_id]);
+		  if (clone0 == 0)
+		    goto clone_fail;
 		  nb_seg = 0;
 		  clone0i = clone0;
 		  clone0_c = NULL;
@@ -289,6 +291,7 @@ sr_replicate_node_fn (vlib_main_t * vm,
 
 	      if (PREDICT_FALSE (!clone0 || !hdr_mb0))
 		{
+		clone_fail:
 		  b0->error = node->errors[SR_REPLICATE_ERROR_NO_BUFFERS];
 
 		  vec_foreach_index (i, rte_mbuf_vec)

@@ -463,7 +463,7 @@ session_is_alive (l2sess_main_t * sm, l2s_session_t * sess, u64 now, u64 *last_a
   return is_alive;
 }
 
-void
+static void
 check_idle_sessions (l2sess_main_t * sm, u32 sw_if_index, u64 now)
 {
   sm->timer_wheel_next_expiring_time = 0;
@@ -493,7 +493,7 @@ check_idle_sessions (l2sess_main_t * sm, u32 sw_if_index, u64 now)
   if (PREDICT_FALSE (_vec_len (sm->data_from_advancing_timing_wheel) > 0))
     {
       uword i;
-      for (i = 0; i < vec_len (sm->data_from_advancing_timing_wheel); i++)
+      for (i = 0; i < _vec_len (sm->data_from_advancing_timing_wheel); i++)
 	{
 	  u32 session_index = sm->data_from_advancing_timing_wheel[i];
 	  if (!pool_is_free_index (sm->sessions, session_index))
