@@ -403,10 +403,11 @@ int vnet_vxlan_gpe_add_del_tunnel
 
       t = pool_elt_at_index (gm->tunnels, p[0]);
 
-      vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */);
+      sw_if_index = t->sw_if_index;
+      vnet_sw_interface_set_flags (vnm, sw_if_index, 0 /* down */);
       vec_add1 (gm->free_vxlan_gpe_tunnel_hw_if_indices, t->hw_if_index);
 
-      gm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
+      gm->tunnel_index_by_sw_if_index[sw_if_index] = ~0;
 
       if (!a->is_ip6)
       {
