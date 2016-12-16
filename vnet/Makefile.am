@@ -350,6 +350,16 @@ nobase_include_HEADERS +=			\
  vnet/ip/udp_packet.h
 
 ########################################
+# Internet Group Management Protocol
+########################################
+
+nobase_include_HEADERS +=                       \
+ vnet/igmp/igmp.h
+
+libvnet_la_SOURCES +=                           \
+ vnet/igmp/igmp.c
+
+########################################
 # Bidirectional Forwarding Detection
 ########################################
 
