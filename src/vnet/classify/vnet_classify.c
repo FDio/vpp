@@ -327,50 +327,82 @@ split_and_rehash (vnet_classify_table_t * t,
                   u32 new_log2_pages)
 {
   vnet_classify_entry_t * new_values, * v, * new_v;
-  int i, j, k;
-  
-  new_values = vnet_classify_entry_alloc (t, new_log2_pages);
-  
-  for (i = 0; i < (vec_len (old_values)/t->entries_per_page); i++)
-    {
-      u64 new_hash;
-      
-      for (j = 0; j < t->entries_per_page; j++)
-        {
-          v = vnet_classify_entry_at_index 
-            (t, old_values, i * t->entries_per_page + j);
-          
-          if (vnet_classify_entry_is_busy (v))
-            {
-              /* Hack so we can use the packet hash routine */
-              u8 * key_minus_skip;
-              key_minus_skip = (u8 *) v->key;
-              key_minus_skip -= t->skip_n_vectors * sizeof (u32x4);
+  int i, j;
 
-              new_hash = vnet_classify_hash_packet (t, key_minus_skip);
-              new_hash >>= t->log2_nbuckets;
-              new_hash &= (1<<new_log2_pages) - 1;
-              
-              for (k = 0; k < t->entries_per_page; k++)
+  new_values = vnet_classify_entry_alloc (t, new_log2_pages);
+
+  for (i = 0; i < vec_len(old_values); i++)
+    {
+      v = vnet_classify_entry_at_index(t, old_values, i);
+      if (vnet_classify_entry_is_busy (v))
+        {
+          /* Hack so we can use the packet hash routine */
+          u8 * key_minus_skip;
+          key_minus_skip = (u8 *) v->key;
+          key_minus_skip -= t->skip_n_vectors * sizeof (u32x4);
+
+          u64 new_hash = vnet_classify_hash_packet (t, key_minus_skip);
+          new_hash >>= t->log2_nbuckets;
+          new_hash &= (1<<new_log2_pages) - 1;
+
+          for (j = 0; j < t->entries_per_page; j++)
+            {
+              new_v = vnet_classify_entry_at_index (t, new_values,
+                                                        new_hash + j);
+              if ((vnet_classify_entry_is_free (new_v)))
                 {
-                  new_v = vnet_classify_entry_at_index (t, new_values, 
-                                                        new_hash + k);
-                  
-                  if (vnet_classify_entry_is_free (new_v))
-                    {
-                      clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t) 
+                  clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t)
                               + (t->match_n_vectors * sizeof (u32x4)));
-                      new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
-                      goto doublebreak;
-                    }
+                  new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+                  goto doublebreak;
                 }
-              /* Crap. Tell caller to try again */
-              vnet_classify_entry_free (t, new_values);
-              return 0;
             }
-        doublebreak:
-          ;
+          /* Crap. Tell caller to try again */
+          vnet_classify_entry_free (t, new_values);
+          return 0;
         }
+    doublebreak:;
+    }
+  return new_values;
+}
+
+static vnet_classify_entry_t *
+split_and_rehash_linear (vnet_classify_table_t * t,
+                  vnet_classify_entry_t * old_values,
+                  u32 new_log2_pages)
+{
+  vnet_classify_entry_t * new_values, * v, * new_v;
+  int i, j;
+  new_values = vnet_classify_entry_alloc (t, new_log2_pages);
+  int new_length = vec_len(new_values);
+
+  j = 0;
+  for (i = 0; i < vec_len(old_values); i++)
+    {
+      v = vnet_classify_entry_at_index(t, old_values, i);
+      /* Old entry is free ? move on to the next one! */
+      if (vnet_classify_entry_is_free(v))
+        continue;
+      if (j >= new_length)
+        {
+          /* Should never happen since we are rehashing in the 2x bigger table */
+          clib_warning("BUG: classify linear rehash new bucket overflow");
+          goto linear_rehash_bug;
+        }
+      new_v = vnet_classify_entry_at_index (t, new_values, j);
+      if (vnet_classify_entry_is_free(new_v))
+        {
+          clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t)
+                              + (t->match_n_vectors * sizeof (u32x4)));
+          new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+          j++;
+          continue;
+        }
+      /* This should never happen since we are walking upwards in a newly allocated vector */
+    linear_rehash_bug:
+      clib_warning("BUG: classify bucket linear rehash failed");
+      vnet_classify_entry_free (t, new_values);
+      return 0;
     }
   return new_values;
 }
@@ -429,9 +461,13 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
     }
   
   make_working_copy (t, b);
+  int was_linear_search = b->linear_search;
   
   save_v = vnet_classify_get_entry (t, t->saved_bucket.offset);
-  value_index = hash & ((1<<t->saved_bucket.log2_pages)-1);
+  value_index = (b->linear_search == 0) ? hash & ((1<<t->saved_bucket.log2_pages)-1) : 0;
+  int limit = t->entries_per_page;
+  if (b->linear_search)
+    limit <<= b->log2_pages;
   
   if (is_add)
     {
@@ -440,7 +476,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
        * replace an existing key, then look for an empty slot.
        */
 
-      for (i = 0; i < t->entries_per_page; i++)
+      for (i = 0; i < limit; i++)
         {
           v = vnet_classify_entry_at_index (t, save_v, value_index + i);
 
@@ -456,7 +492,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
               goto unlock;
             }
         }
-      for (i = 0; i < t->entries_per_page; i++)
+      for (i = 0; i < limit; i++)
         {
           v = vnet_classify_entry_at_index (t, save_v, value_index + i);
 
@@ -475,7 +511,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
     }
   else
     {
-      for (i = 0; i < t->entries_per_page; i++)
+      for (i = 0; i < limit; i++)
         {
           v = vnet_classify_entry_at_index (t, save_v, value_index + i);
 
@@ -496,15 +532,27 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
     }
 
   new_log2_pages = t->saved_bucket.log2_pages + 1;
+  int mark_bucket_linear = 0;
 
- expand_again:
   working_copy = t->working_copies[cpu_number];
-  new_v = split_and_rehash (t, working_copy, new_log2_pages);
+  int resplit_once = 0;
 
+  new_v = split_and_rehash (t, working_copy, new_log2_pages);
   if (new_v == 0)
     {
+    try_resplit:
+      resplit_once = 1;
       new_log2_pages++;
-      goto expand_again;
+      /* Try re-splitting. If that fails, fall back to linear search */
+      new_v = split_and_rehash (t, working_copy, new_log2_pages);
+      if (new_v == 0)
+        {
+        mark_linear:
+          /* pinned collisions, use linear search and keep the same size */
+          new_log2_pages--;
+          new_v = split_and_rehash_linear (t, working_copy, new_log2_pages);
+          mark_bucket_linear = 1;
+        }
     }
 
   /* Try to add the new entry */
@@ -515,9 +563,10 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
   new_hash = vnet_classify_hash_packet_inline (t, key_minus_skip);
   new_hash >>= t->log2_nbuckets;
-  new_hash &= (1<<min_log2((vec_len(new_v)/t->entries_per_page))) - 1;
-  
-  for (i = 0; i < t->entries_per_page; i++)
+  new_hash &= mark_bucket_linear ? 0 : (1<<min_log2((vec_len(new_v)/t->entries_per_page))) - 1;
+  limit = mark_bucket_linear ? vec_len(save_new_v) : t->entries_per_page;
+
+  for (i = 0; i < limit; i++)
     {
       new_v = vnet_classify_entry_at_index (t, save_new_v, new_hash + i);
 
@@ -530,12 +579,19 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
         }
     }
   /* Crap. Try again */
-  new_log2_pages++;
   vnet_classify_entry_free (t, save_new_v);
-  goto expand_again;
+  if (resplit_once)
+    goto mark_linear;
+  else
+    goto try_resplit;
 
  expand_ok:
-  tmp_b.log2_pages = min_log2 (vec_len (save_new_v)/t->entries_per_page);
+  /* Keep track if the number of linear-scan buckets */
+  if (was_linear_search ^ mark_bucket_linear)
+    t->linear_buckets += (mark_bucket_linear == 1) ? 1 : -1;
+
+  tmp_b.linear_search = mark_bucket_linear;
+  tmp_b.log2_pages = new_log2_pages;
   tmp_b.offset = vnet_classify_get_offset (t, save_new_v);
   CLIB_MEMORY_BARRIER();
   b->as_u64 = tmp_b.as_u64;
@@ -610,8 +666,8 @@ u8 * format_classify_table (u8 * s, va_list * args)
 
       if (verbose)
         {
-          s = format (s, "[%d]: heap offset %d, len %d\n", i, 
-                      b->offset, (1<<b->log2_pages));
+          s = format (s, "[%d]: heap offset %d, len %d, linear %d\n", i,
+                      b->offset, (1<<b->log2_pages), b->linear_search);
         }
 
       save_v = vnet_classify_get_entry (t, b->offset);
@@ -643,6 +699,7 @@ u8 * format_classify_table (u8 * s, va_list * args)
 
   s = format (s, "    %lld active elements\n", active_elements);
   s = format (s, "    %d free lists\n", vec_len (t->freelists));
+  s = format (s, "    %d linear search buckets\n", t->linear_buckets);
   return s;
 }
 

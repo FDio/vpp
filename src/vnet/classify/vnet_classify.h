@@ -132,7 +132,8 @@ typedef struct {
   union {
     struct {
       u32 offset;
-      u8 pad[3];
+      u8 linear_search;
+      u8 pad[2];
       u8 log2_pages;
     };
     u64 as_u64;
@@ -151,6 +152,7 @@ typedef struct {
   u32 skip_n_vectors;
   u32 nbuckets;
   u32 log2_nbuckets;
+  u32 linear_buckets;
   int entries_per_page;
   u32 active_elements;
   u32 current_data_flag;
@@ -364,7 +366,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   vnet_classify_bucket_t * b;
   u32 value_index;
   u32 bucket_index;
-  int i;
+  int i, limit = t->entries_per_page;
 
   bucket_index = hash & (t->nbuckets-1);
   b = &t->buckets[bucket_index];
@@ -376,13 +378,16 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   hash >>= t->log2_nbuckets;
 
   v = vnet_classify_get_entry (t, b->offset);
-  value_index = hash & ((1<<b->log2_pages)-1);
+  value_index = (b->linear_search == 0) ? hash & ((1<<b->log2_pages)-1) : 0;
   v = vnet_classify_entry_at_index (t, v, value_index);
+
+  if (PREDICT_FALSE(b->linear_search))
+    limit <<= b->log2_pages;
 
 #ifdef CLASSIFY_USE_SSE
   if (U32X4_ALIGNED(h)) {
     u32x4 *data = (u32x4 *) h;
-    for (i = 0; i < t->entries_per_page; i++) {
+    for (i = 0; i < limit; i++) {
       key = v->key;
       result.as_u32x4 = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
       switch (t->match_n_vectors)
@@ -419,7 +424,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   {
     u32 skip_u64 = t->skip_n_vectors * 2;
     u64 *data64 = (u64 *)h;
-    for (i = 0; i < t->entries_per_page; i++) {
+    for (i = 0; i < limit; i++) {
       key = v->key;
 
       result.as_u64[0] = (data64[0 + skip_u64] & ((u64 *)mask)[0]) ^ ((u64 *)key)[0];
