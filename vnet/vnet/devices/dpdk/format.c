@@ -85,14 +85,26 @@
   _ (PKT_RX_FDIR, "RX packet with FDIR infos")                          \
   _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")              \
   _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")              \
+  _ (PKT_RX_EIP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")             \
+  _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")               \
   _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")          \
-  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")
+  _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")      \
+  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
+
+#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
+/* PTYPE added in DPDK-16.11 */
+#define RTE_PTYPE_L2_ETHER_VLAN             0x00000006
+#define RTE_PTYPE_L2_ETHER_QINQ             0x00000007
+#endif
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
   _ (L2, ETHER_TIMESYNC, "Ethernet packet for time sync")               \
   _ (L2, ETHER_ARP, "ARP packet")                                       \
   _ (L2, ETHER_LLDP, "LLDP (Link Layer Discovery Protocol) packet")     \
+  _ (L2, ETHER_NSH, "NSH (Network Service Header) packet")              \
+  _ (L2, ETHER_VLAN, "VLAN packet")                                     \
+  _ (L2, ETHER_QINQ, "QinQ packet")                                     \
   _ (L3, IPV4, "IPv4 packet without extension headers")                 \
   _ (L3, IPV4_EXT, "IPv4 packet with extension headers")                \
   _ (L3, IPV4_EXT_UNKNOWN, "IPv4 packet with or without extension headers") \
@@ -642,7 +654,8 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
 		format_dpdk_pkt_offload_flags, &mb->ol_flags);
 
-  if (mb->ol_flags & PKT_RX_VLAN_PKT)
+  if ((mb->ol_flags & PKT_RX_VLAN_PKT) &&
+      ((mb->ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) == 0))
     {
       ethernet_vlan_header_tv_t *vlan_hdr =
 	((ethernet_vlan_header_tv_t *) & (eth_hdr->type));
