@@ -473,6 +473,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
 	      rte_eth_link_get_nowait (i, &l);
+	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->nb_rx_desc = DPDK_NB_RX_DESC_ENIC;
 	      if (l.link_speed == 40000)
 		{
@@ -489,6 +490,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Intel Fortville */
 	    case VNET_DPDK_PMD_I40E:
 	    case VNET_DPDK_PMD_I40EVF:
+	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
 	      xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
 	      xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
@@ -561,6 +563,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 
 	    case VNET_DPDK_PMD_BOND:
+	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_BOND;
 	      break;
 
