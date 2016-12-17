@@ -83,27 +83,6 @@ do {                                                            \
 #define foreach_vxlan_gpe_ioam_export_plugin_api_msg                        \
 _(VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE, vxlan_gpe_ioam_export_enable_disable)
 
-/*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
-  clib_error_t *error = 0;
-
-  em->vlib_main = vm;
-  em->vnet_main = h->vnet_main;
-  em->ethernet_main = h->ethernet_main;
-
-  return error;
-}
-
 extern void vxlan_gpe_set_next_override (uword next);
 /* Action function shared between message handler and debug CLI */
 int
@@ -113,9 +92,25 @@ vxlan_gpe_ioam_export_enable_disable (ioam_export_main_t * em,
 				      ip4_address_t * src_address)
 {
   vlib_main_t *vm = em->vlib_main;
+  u32 node_index = export_node.index;
+  vlib_node_t *vxlan_gpe_decap_ioam_node = NULL;
 
   if (is_disable == 0)
     {
+      if (em->my_hbh_slot == ~0)
+	{
+	  /* Hook this export node to vxlan-gpe-decap-ioam-v4 */
+	  vxlan_gpe_decap_ioam_node =
+	    vlib_get_node_by_name (vm, (u8 *) "vxlan-gpe-decap-ioam-v4");
+	  if (!vxlan_gpe_decap_ioam_node)
+	    {
+	      /* node does not exist give up */
+	      return (-1);
+	    }
+	  em->my_hbh_slot =
+	    vlib_node_add_next (vm, vxlan_gpe_decap_ioam_node->index,
+				node_index);
+	}
       if (1 == ioam_export_header_create (em, collector_address, src_address))
 	{
 	  ioam_export_thread_buffer_init (em, vm);
@@ -221,7 +216,11 @@ set_vxlan_gpe_ioam_export_ipfix_command_fn (vlib_main_t * vm,
   /* Turn on the export timer process */
   // vlib_process_signal_event (vm, flow_report_process_node.index,
   //1, 0);
-  vxlan_gpe_ioam_export_enable_disable (em, is_disable, &collector, &src);
+  if (0 !=
+      vxlan_gpe_ioam_export_enable_disable (em, is_disable, &collector, &src))
+    {
+      return clib_error_return (0, "Unable to set ioam vxlan-gpe export");
+    }
 
   return 0;
 }
@@ -242,8 +241,6 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
   ioam_export_main_t *em = &vxlan_gpe_ioam_export_main;
   clib_error_t *error = 0;
   u8 *name;
-  u32 node_index = export_node.index;
-  vlib_node_t *vxlan_gpe_decap_ioam_node = NULL;
 
   name = format (0, "vxlan_gpe_ioam_export_%08x%c", api_version, 0);
 
@@ -254,12 +251,9 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
   em->vlib_time_0 = vlib_time_now (vm);
 
   error = vxlan_gpe_ioam_export_plugin_api_hookup (vm);
-
-  /* Hook this export node to vxlan-gpe-decap-ioam-v4 */
-  vxlan_gpe_decap_ioam_node =
-    vlib_get_node_by_name (vm, (u8 *) "vxlan-gpe-decap-ioam-v4");
-  em->my_hbh_slot =
-    vlib_node_add_next (vm, vxlan_gpe_decap_ioam_node->index, node_index);
+  em->my_hbh_slot = ~0;
+  em->vlib_main = vm;
+  em->vnet_main = vnet_get_main ();
   vec_free (name);
 
   return error;
