@@ -34,14 +34,19 @@ static char *dpdk_error_strings[] = {
 #undef _
 };
 
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
 always_inline int
 dpdk_mbuf_is_vlan (struct rte_mbuf *mb)
 {
+#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
   return (mb->packet_type & RTE_PTYPE_L2_ETHER_VLAN) ==
     RTE_PTYPE_L2_ETHER_VLAN;
-}
+#else
+  return
+    (mb->ol_flags &
+     (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) ==
+    PKT_RX_VLAN_PKT;
 #endif
+}
 
 always_inline int
 dpdk_mbuf_is_ip4 (struct rte_mbuf *mb)
@@ -56,34 +61,50 @@ dpdk_mbuf_is_ip6 (struct rte_mbuf *mb)
 }
 
 always_inline int
+vlib_buffer_is_ip4 (vlib_buffer_t * b)
+{
+  ethernet_header_t *h = (ethernet_header_t *) b->data;
+  return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP4));
+}
+
+always_inline int
+vlib_buffer_is_ip6 (vlib_buffer_t * b)
+{
+  ethernet_header_t *h = (ethernet_header_t *) b->data;
+  return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6));
+}
+
+always_inline int
 vlib_buffer_is_mpls (vlib_buffer_t * b)
 {
   ethernet_header_t *h = (ethernet_header_t *) b->data;
   return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST));
 }
 
-always_inline void
-dpdk_rx_next_from_mb (struct rte_mbuf *mb, vlib_buffer_t * b0, u32 * next0)
+always_inline u32
+dpdk_rx_next_from_mb (struct rte_mbuf * mb, vlib_buffer_t * b0)
 {
-  u32 n0;
+  if (PREDICT_FALSE (mb->packet_type == 0))
+    goto check_etype;
 
-#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
-  if (PREDICT_FALSE
-      ((mb->ol_flags & (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED)) ==
-       PKT_RX_VLAN_PKT))
-#else
   if (PREDICT_FALSE (dpdk_mbuf_is_vlan (mb)))
-#endif
-    n0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+    return VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   else if (PREDICT_TRUE (dpdk_mbuf_is_ip4 (mb)))
-    n0 = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    return VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
   else if (PREDICT_TRUE (dpdk_mbuf_is_ip6 (mb)))
-    n0 = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-  else if (PREDICT_TRUE (vlib_buffer_is_mpls (b0)))
-    n0 = VNET_DEVICE_INPUT_NEXT_MPLS_INPUT;
+    return VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
   else
-    n0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  *next0 = n0;
+    return VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+
+check_etype:
+  if (PREDICT_TRUE (vlib_buffer_is_ip4 (b0)))
+    return VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+  else if (PREDICT_TRUE (vlib_buffer_is_ip6 (b0)))
+    return VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+  else if (PREDICT_TRUE (vlib_buffer_is_mpls (b0)))
+    return VNET_DEVICE_INPUT_NEXT_MPLS_INPUT;
+  else
+    return VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 }
 
 always_inline void
@@ -130,7 +151,7 @@ dpdk_rx_trace (dpdk_main_t * dm,
       else if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HAVE_SUBIF))
 	next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
       else
-	dpdk_rx_next_from_mb (mb, b0, &next0);
+	next0 = dpdk_rx_next_from_mb (mb, b0);
       dpdk_rx_error_from_mb (mb, &next0, &error0);
 
       vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
@@ -357,10 +378,10 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    }
 	  else
 	    {
-	      dpdk_rx_next_from_mb (mb0, b0, &next0);
-	      dpdk_rx_next_from_mb (mb1, b1, &next1);
-	      dpdk_rx_next_from_mb (mb2, b2, &next2);
-	      dpdk_rx_next_from_mb (mb3, b3, &next3);
+	      next0 = dpdk_rx_next_from_mb (mb0, b0);
+	      next1 = dpdk_rx_next_from_mb (mb1, b1);
+	      next2 = dpdk_rx_next_from_mb (mb2, b2);
+	      next3 = dpdk_rx_next_from_mb (mb3, b3);
 	    }
 
 	  if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
@@ -478,7 +499,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  else if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HAVE_SUBIF))
 	    next0 = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 	  else
-	    dpdk_rx_next_from_mb (mb0, b0, &next0);
+	    next0 = dpdk_rx_next_from_mb (mb0, b0);
 	  dpdk_rx_error_from_mb (mb0, &next0, &error0);
 	  b0->error = node->errors[error0];
 
