@@ -67,7 +67,6 @@ typedef struct
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
-  ethernet_main_t *ethernet_main;
   u32 ip4_lookup_node_index;
 
   uword my_hbh_slot;
