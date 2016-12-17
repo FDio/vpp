@@ -21,6 +21,7 @@
 
 typedef enum
 {
+  VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT,
   VNET_DEVICE_INPUT_NEXT_IP4_INPUT,
   VNET_DEVICE_INPUT_NEXT_IP6_INPUT,
   VNET_DEVICE_INPUT_NEXT_MPLS_INPUT,
@@ -32,7 +33,8 @@ typedef enum
 #define VNET_DEVICE_INPUT_NEXT_NODES {					\
     [VNET_DEVICE_INPUT_NEXT_DROP] = "error-drop",			\
     [VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT] = "ethernet-input",		\
-    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = "ip4-input-no-checksum",	\
+    [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = "ip4-input-no-checksum",	\
+    [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = "ip4-input",			\
     [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = "ip6-input",			\
     [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",			\
 }

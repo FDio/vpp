@@ -189,13 +189,13 @@ typedef struct
   i8 cpu_socket;
 
   u16 flags;
-#define DPDK_DEVICE_FLAG_ADMIN_UP       (1 << 0)
-#define DPDK_DEVICE_FLAG_PROMISC        (1 << 1)
-#define DPDK_DEVICE_FLAG_PMD            (1 << 2)
-#define DPDK_DEVICE_FLAG_MAYBE_MULTISEG (1 << 3)
-
-#define DPDK_DEVICE_FLAG_HAVE_SUBIF     (1 << 5)
-#define DPDK_DEVICE_FLAG_HQOS           (1 << 6)
+#define DPDK_DEVICE_FLAG_ADMIN_UP           (1 << 0)
+#define DPDK_DEVICE_FLAG_PROMISC            (1 << 1)
+#define DPDK_DEVICE_FLAG_PMD                (1 << 2)
+#define DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE (1 << 3)
+#define DPDK_DEVICE_FLAG_MAYBE_MULTISEG     (1 << 4)
+#define DPDK_DEVICE_FLAG_HAVE_SUBIF         (1 << 5)
+#define DPDK_DEVICE_FLAG_HQOS               (1 << 6)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
