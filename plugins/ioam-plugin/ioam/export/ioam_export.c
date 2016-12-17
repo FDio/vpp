@@ -97,7 +97,6 @@ vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
 
   em->vlib_main = vm;
   em->vnet_main = h->vnet_main;
-  em->ethernet_main = h->ethernet_main;
 
   return error;
 }

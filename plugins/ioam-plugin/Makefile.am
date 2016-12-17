@@ -129,11 +129,17 @@ libioam_vxlan_gpe_plugin_la_SOURCES =			\
 	ioam/lib-vxlan-gpe/ioam_pop.c			\
 	ioam/lib-vxlan-gpe/vxlan_gpe_api.c		\
 	ioam/lib-vxlan-gpe/vxlan_gpe_ioam_trace.c	\
-    ioam/lib-vxlan-gpe/vxlan_gpe_ioam.c
+	ioam/lib-vxlan-gpe/vxlan_gpe_ioam.c		\
+	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.c	\
+	ioam/export-vxlan-gpe/vxlan_gpe_node.c		\
+	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h\
+	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_thread.c
 
 BUILT_SOURCES +=				\
 	ioam/lib-vxlan-gpe/vxlan_gpe.api.h		\
-	ioam/lib-vxlan-gpe/vxlan_gpe.api.json
+	ioam/lib-vxlan-gpe/vxlan_gpe.api.json		\
+	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h		\
+	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.json
 
 noinst_HEADERS +=                       \
   ioam/export/ioam_export_all_api_h.h   \
@@ -142,7 +148,10 @@ noinst_HEADERS +=                       \
   ioam/lib-vxlan-gpe/vxlan_gpe.api.h			\
   ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h			\
   ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h                    \
-  ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h
+  ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h		\
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h       \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_msg_enum.h        \
+  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h
 
 ioam_vxlan_gpe_test_plugin_la_SOURCES =		\
 	ioam/lib-vxlan-gpe/vxlan_gpe_test.c			\
@@ -153,33 +162,11 @@ libioam_vxlan_gpe_plugin_la_LIBADD = libioam_trace_plugin.la
 vppapitestplugins_LTLIBRARIES += ioam_vxlan_gpe_test_plugin.la
 vppplugins_LTLIBRARIES += libioam_vxlan_gpe_plugin.la
 
-########################################
-# iOAM export for VxLAN-GPE
-########################################
-
-libvxlan_gpe_ioam_export_plugin_la_SOURCES =   \
-ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.c         \
-ioam/export-vxlan-gpe/vxlan_gpe_node.c                \
-ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h     \
-ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_thread.c
-
-BUILT_SOURCES +=				\
-	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h		\
-	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.json
-
-noinst_HEADERS +=                                            \
-  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h       \
-  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_msg_enum.h        \
-  ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h
-
 vxlan_gpe_ioam_export_test_plugin_la_SOURCES =          \
   ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_test.c      \
   ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_plugin.api.h
 
-libvxlan_gpe_ioam_export_plugin_la_LIBADD = libioam_vxlan_gpe_plugin.la
-
 vppapitestplugins_LTLIBRARIES += vxlan_gpe_ioam_export_test_plugin.la
-vppplugins_LTLIBRARIES += libvxlan_gpe_ioam_export_plugin.la
 
 ########################################
 # iOAM E2E plugin
