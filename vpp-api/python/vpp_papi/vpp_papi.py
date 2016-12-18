@@ -15,7 +15,7 @@
 #
 
 from __future__ import print_function
-import sys, os, logging, collections, struct, json, threading
+import sys, os, logging, collections, struct, json, threading, glob
 logging.basicConfig(level=logging.DEBUG)
 import vpp_api
 
@@ -23,7 +23,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 class VPP():
-    def __init__(self, apifiles):
+    def __init__(self, apifiles = None, testmode = False):
         self.messages = {}
         self.id_names = []
         self.id_msgdef = []
@@ -33,6 +33,10 @@ class VPP():
         self.results = {}
         self.timeout = 5
         self.apifile = []
+
+        if not apifiles:
+            # Pick up API definitions from default directory
+            apifiles = glob.glob('/usr/share/vpp/api/*.api.json')
 
         for file in apifiles:
             self.apifile.append(file)
@@ -45,8 +49,8 @@ class VPP():
                     self.add_message(m[0], m[1:])
 
         # Basic sanity check
-        if not 'control_ping' in self.messages:
-            raise ValueError(1, 'Error in JSON message definitions')
+        if len(self.messages) == 0 and not testmode:
+            raise ValueError(1, 'Missing JSON message definitions')
 
 
     class ContextId(object):
@@ -61,7 +65,7 @@ class VPP():
         print('Connected') if self.connected else print('Not Connected')
         print('Read API definitions from', self.apifile)
 
-    def __struct (self, t, n = None, e = 0, vl = None):
+    def __struct (self, t, n = None, e = -1, vl = None):
         base_types = { 'u8' : 'B',
                        'u16' : 'H',
                        'u32' : 'I',
@@ -73,11 +77,14 @@ class VPP():
         if t in base_types:
             pack = base_types[t]
             if not vl:
-                if e and t == 'u8':
+                if e > 0 and t == 'u8':
                     # Fixed byte array
                     return struct.Struct('>' + str(e) + 's')
-                if e:
+                if e > 0:
                     # Fixed array of base type
+                    return [e, struct.Struct('>' + base_types[t])]
+                elif e == 0:
+                    # Old style variable array
                     return [e, struct.Struct('>' + base_types[t])]
             else:
                 # Variable length array
@@ -87,7 +94,7 @@ class VPP():
 
         if t in self.messages:
             ### Return a list in case of array ###
-            if e and not vl:
+            if e > 0 and not vl:
                 return [e, lambda self, encode, buf, offset, args: (
                     self.__struct_type(encode, self.messages[t], buf, offset, args)
                 )]
@@ -95,6 +102,9 @@ class VPP():
                 return [vl, lambda self, encode, buf, offset, args: (
                     self.__struct_type(encode, self.messages[t], buf, offset, args)
                 )]
+            else:
+                # TODO
+                raise NotImplementedError
             return lambda self, encode, buf, offset, args: (
                 self.__struct_type(encode, self.messages[t], buf, offset, args)
             )
@@ -190,7 +200,10 @@ class VPP():
                     continue
 
                 if v[1].size == 1:
-                    size = int(res[-1])
+                    if type(v[0]) is int:
+                        size = len(buf) - off
+                    else:
+                        size = int(res[-1])
                     res.append(buf[off:off + size])
                 else:
                     e = int(res[-1])
@@ -225,11 +238,13 @@ class VPP():
         args = collections.OrderedDict()
         fields = []
         msg = {}
-        for f in msgdef:
+        for i, f in enumerate(msgdef):
             if type(f) is dict and 'crc' in f:
                 msg['crc'] = f['crc']
                 continue
             field_name = f[1]
+            if len(f) == 3 and f[2] == 0 and i != len(f):
+                raise ValueError('Variable Length Array must be last: ' + name)
             args[field_name] = self.__struct(*f)
             fields.append(field_name)
         msg['return_tuple'] = collections.namedtuple(name, fields,
