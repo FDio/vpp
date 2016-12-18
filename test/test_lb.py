@@ -1,7 +1,7 @@
 import socket
 
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import ICMPv6ND_RA, IPv6
+from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
@@ -95,16 +95,7 @@ class TestLB(VppTestCase):
         self.assertEqual(str(inner), str(self.info.data[IPver]))
 
     def checkCapture(self, gre4, isv4):
-        # RA might appear in capture
-        try:
-            out = self.pg0.get_capture()
-            # filter out any IPv6 RAs from the capture
-            for p in out:
-                if (p.haslayer(ICMPv6ND_RA)):
-                    out.remove(p)
-            self.assertEqual(len(out), 0)
-        except:
-            pass
+        self.pg0.assert_nothing_captured()
         out = self.pg1.get_capture()
         self.assertEqual(len(out), len(self.packets))
 
