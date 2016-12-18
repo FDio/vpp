@@ -12,7 +12,7 @@ from vpp_papi_provider import L2_VTR_OP
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, GRE
 from scapy.layers.inet import IP, UDP
-from scapy.layers.inet6 import ICMPv6ND_RA, IPv6
+from scapy.layers.inet6 import IPv6
 from scapy.volatile import RandMAC, RandIP
 
 from util import ppp, ppc
@@ -129,18 +129,9 @@ class TestGRE(VppTestCase):
             pkts.append(p)
         return pkts
 
-    def verify_filter(self, capture, sent):
-        if not len(capture) == len(sent):
-            # filter out any IPv6 RAs from the capture
-            for p in capture:
-                if (p.haslayer(ICMPv6ND_RA)):
-                    capture.remove(p)
-        return capture
-
     def verify_tunneled_4o4(self, src_if, capture, sent,
                             tunnel_src, tunnel_dst):
 
-        capture = self.verify_filter(capture, sent)
         self.assertEqual(len(capture), len(sent))
 
         for i in range(len(capture)):
@@ -169,7 +160,6 @@ class TestGRE(VppTestCase):
 
     def verify_tunneled_l2o4(self, src_if, capture, sent,
                              tunnel_src, tunnel_dst):
-        capture = self.verify_filter(capture, sent)
         self.assertEqual(len(capture), len(sent))
 
         for i in range(len(capture)):
@@ -203,7 +193,6 @@ class TestGRE(VppTestCase):
     def verify_tunneled_vlano4(self, src_if, capture, sent,
                                tunnel_src, tunnel_dst, vlan):
         try:
-            capture = self.verify_filter(capture, sent)
             self.assertEqual(len(capture), len(sent))
         except:
             ppc("Unexpected packets captured:", capture)
@@ -242,7 +231,6 @@ class TestGRE(VppTestCase):
                 raise
 
     def verify_decapped_4o4(self, src_if, capture, sent):
-        capture = self.verify_filter(capture, sent)
         self.assertEqual(len(capture), len(sent))
 
         for i in range(len(capture)):
@@ -266,7 +254,6 @@ class TestGRE(VppTestCase):
                 raise
 
     def verify_decapped_6o4(self, src_if, capture, sent):
-        capture = self.verify_filter(capture, sent)
         self.assertEqual(len(capture), len(sent))
 
         for i in range(len(capture)):
