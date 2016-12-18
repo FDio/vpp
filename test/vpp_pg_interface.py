@@ -5,8 +5,20 @@ from vpp_interface import VppInterface
 
 from scapy.layers.l2 import Ether, ARP
 from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
-    ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr
+    ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, ICMPv6ND_RA, RouterAlert, \
+    IPv6ExtHdrHopByHop
 from util import ppp, ppc
+
+
+def is_ipv6_misc(p):
+    """ Is packet one of uninteresting IPv6 broadcasts? """
+    if p.haslayer(ICMPv6ND_RA):
+        return True
+    if p.haslayer(IPv6ExtHdrHopByHop):
+        for o in p[IPv6ExtHdrHopByHop].options:
+            if isinstance(o, RouterAlert):
+                return True
+    return False
 
 
 class VppPGInterface(VppInterface):
@@ -118,15 +130,19 @@ class VppPGInterface(VppInterface):
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.input_cli)
 
-    def get_capture(self, remark=None):
+    def get_capture(self, remark=None, filter_fn=is_ipv6_misc):
         """
         Get captured packets
 
+        :param remark: remark printed into debug logs
+        :param filter_fn: filter applied to each packet, packets for which
+                          the filter returns True are removed from capture
         :returns: iterable packets
         """
         try:
             self.wait_for_capture_file()
             output = rdpcap(self.out_path)
+            self.test.logger.debug("Capture has %s packets" % len(output.res))
         except IOError:  # TODO
             self.test.logger.debug("File %s does not exist, probably because no"
                                    " packets arrived" % self.out_path)
@@ -135,12 +151,20 @@ class VppPGInterface(VppInterface):
                                 (self.name, remark))
             else:
                 raise Exception("No packets captured on %s" % self.name)
+        before = len(output.res)
+        if filter_fn:
+            output.res = [p for p in output.res if not filter_fn(p)]
+        removed = len(output.res) - before
+        if removed:
+            self.test.logger.debug(
+                "Filtered out %s packets from capture (returning %s)" %
+                (removed, len(output.res)))
         return output
 
     def assert_nothing_captured(self, remark=None):
         if os.path.isfile(self.out_path):
             try:
-                capture = self.get_capture()
+                capture = self.get_capture(remark=remark)
                 self.test.logger.error(
                     ppc("Unexpected packets captured:", capture))
             except:
@@ -234,7 +258,7 @@ class VppPGInterface(VppInterface):
         self.test.pg_start()
         self.test.logger.info(self.test.vapi.cli("show trace"))
         try:
-            arp_reply = pg_interface.get_capture()
+            arp_reply = pg_interface.get_capture(filter_fn=None)
         except:
             self.test.logger.info("No ARP received on port %s" %
                                   pg_interface.name)
@@ -274,7 +298,7 @@ class VppPGInterface(VppInterface):
         pg_interface.enable_capture()
         self.test.pg_start()
         self.test.logger.info(self.test.vapi.cli("show trace"))
-        replies = pg_interface.get_capture()
+        replies = pg_interface.get_capture(filter_fn=None)
         if replies is None or len(replies) == 0:
             self.test.logger.info(
                 "No NDP received on port %s" %
