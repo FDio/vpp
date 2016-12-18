@@ -814,8 +814,8 @@ define sr_tunnel_add_del
   u16 flags_net_byte_order;
   u8 n_segments;
   u8 n_tags;
-  u8 segs_and_tags[0];
   u8 policy_name[64];
+  u8 segs_and_tags[0];
 };
 
 /** \brief IPv6 segment routing tunnel add / del response

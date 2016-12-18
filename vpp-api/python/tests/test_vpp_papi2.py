@@ -46,7 +46,7 @@ class TestPAPI(unittest.TestCase):
 
     def test_adding_new_message_object(self):
         p = json.loads(TestPAPI.show_version_msg)
-        msglist = VPP([])
+        msglist = VPP(testmode=json)
         msgdef = msglist.add_message(p[0], p[1:])
 
         # Verify that message can be retrieved
@@ -61,13 +61,13 @@ class TestPAPI(unittest.TestCase):
 
     def test_adding_new_message_object_with_array(self):
         p = json.loads(TestPAPI.ip_address_details_msg)
-        msglist = VPP([])
+        msglist = VPP(testmode=True)
         msglist.add_message(p[0], p[1:])
 
         self.assertTrue(msglist['ip_address_details'])
 
     def test_message_to_bytes(self):
-        msglist = VPP([])
+        msglist = VPP(testmode=True)
         p = json.loads(TestPAPI.show_version_msg)
         msgdef = msglist.add_message(p[0], p[1:])
 
@@ -133,12 +133,11 @@ class TestPAPI(unittest.TestCase):
         with_type_msg = '''["with_type_msg",
             ["u32", "length"],
             ["u16", "list", 0, "length"],
-            ["ip4_fib_counter", "counter"]
-
+            ["vl_api_ip4_fib_counter_t", "counter"]
         ]'''
 
         # Add new type
-        msglist = VPP([])
+        msglist = VPP(testmode=True)
         p = json.loads(counter_type)
         msglist.add_type(p[0], p[1:])
         p = json.loads(with_type_msg)
@@ -163,12 +162,12 @@ class TestPAPI(unittest.TestCase):
         with_type_msg = '''["with_type_msg",
             ["u32", "length"],
             ["u16", "list", 0, "length"],
-            ["ip4_fib_counter", "counter", 2]
+            ["vl_api_ip4_fib_counter_t", "counter", 2]
 
         ]'''
 
         # Add new type
-        msglist = VPP([])
+        msglist = VPP(testmode=True)
         p = json.loads(counter_type)
         msglist.add_type(p[0], p[1:])
         p = json.loads(with_type_msg)
@@ -185,7 +184,7 @@ class TestPAPI(unittest.TestCase):
 
         with_type_variable_msg = '''["with_type_variable_msg",
             ["u32", "length"],
-            ["ip4_fib_counter", "counter", 0, "length"]
+            ["vl_api_ip4_fib_counter_t", "counter", 0, "length"]
 
         ]'''
 
@@ -202,21 +201,8 @@ class TestPAPI(unittest.TestCase):
         self.assertEqual(1235, rv.counter[0].packets)
         self.assertEqual(333, rv.counter[1].packets)
 
-
-    def test_compound_data_type(self):
-        # Normal field
-        # Fixed array
-        # Variable array
-        pass
-
-    def test_return_tuple(self):
-        # Normal field
-        # Fixed array
-        # Variable array
-        pass
-
     def test_simple_array(self):
-        msglist = VPP([])
+        msglist = VPP(testmode=True)
 
         simple_byte_array = '''["simple_byte_array",
             ["u32", "length"],
@@ -268,8 +254,98 @@ class TestPAPI(unittest.TestCase):
         self.assertEqual(6, rv.length)
         self.assertEqual('foobar', rv.list)
 
+    def test_old_vla_array(self):
+        msglist = VPP(testmode = True)
+
+        # VLA
+        vla_byte_array = '''["vla_byte_array",
+            ["u32", "foobar"],
+            ["u32", "list", 2],
+            ["u32", "propercount"],
+            ["u8", "propermask", 0, "propercount"],
+            ["u8", "oldmask", 0],
+            {"crc" : "0xb2739495"}
+        ]'''
+        p = json.loads(vla_byte_array)
+        msgdef = msglist.add_message(p[0], p[1:])
+        b = msglist.encode(msgdef, {'list' : [123, 456], 'oldmask': b'foobar',
+                                    'propercount' : 2,
+                                    'propermask' : [8,9]})
+        self.assertEqual(24, len(b))
+        rv = msglist.decode(msgdef, b)
+        self.assertEqual(b'foobar', rv.oldmask)
+
+    def test_old_vla_array_not_last_member(self):
+        msglist = VPP(testmode = True)
+
+        # VLA
+        vla_byte_array = '''["vla_byte_array",
+            ["u8", "oldmask", 0],
+            ["u32", "foobar"],
+            {"crc" : "0xb2739495"}
+        ]'''
+        p = json.loads(vla_byte_array)
+        self.assertRaises(ValueError, msglist.add_message, p[0], p[1:])
+
+    def test_old_vla_array_u32(self):
+        msglist = VPP(testmode = True)
+
+        # VLA
+        vla_byte_array = '''["vla_byte_array",
+            ["u32", "foobar"],
+            ["u32", "oldmask", 0],
+            {"crc" : "0xb2739495"}
+        ]'''
+        p = json.loads(vla_byte_array)
+        msgdef = msglist.add_message(p[0], p[1:])
+        b = msglist.encode(msgdef, {'foobar' : 123, 'oldmask': [123, 456, 789]})
+        self.assertEqual(16, len(b))
+        rv = msglist.decode(msgdef, b)
+        self.assertEqual([123, 456, 789], rv.oldmask)
+
+    def test_old_vla_array_compound(self):
+        msglist = VPP(testmode = True)
+
+        # VLA
+        counter_type = '''["ip4_fib_counter",
+            ["u32", "address"],
+            ["u8", "address_length"],
+            ["u64", "packets"],
+            ["u64", "bytes"],
+            {"crc" : "0xb2739495"}
+        ]'''
+
+        vla_byte_array = '''["vla_byte_array",
+            ["vl_api_ip4_fib_counter_t", "counter", 0],
+            {"crc" : "0xb2739495"}
+        ]'''
+
+        p = json.loads(counter_type)
+        msglist.add_type(p[0], p[1:])
+
+        p = json.loads(vla_byte_array)
+        with self.assertRaises(NotImplementedError):
+            msgdef = msglist.add_message(p[0], p[1:])
+
+    def test_array_count_not_previous(self):
+        msglist = VPP(testmode = True)
+
+        # VLA
+        vla_byte_array = '''["vla_byte_array",
+            ["u32", "count"],
+            ["u32", "filler"],
+            ["u32", "lst", 0, "count"],
+            {"crc" : "0xb2739495"}
+        ]'''
+
+        p = json.loads(vla_byte_array)
+        msgdef = msglist.add_message(p[0], p[1:])
+        b = msglist.encode(msgdef, {'count': 3, 'lst': [1,2,3], 'filler' : 1 })
+        rv = msglist.decode(msgdef, b)
+        self.assertEqual(rv.lst, [1,2,3])
+
     def test_argument_name(self):
-        msglist = VPP([])
+        msglist = VPP(testmode=True)
 
 
         simple_name = '''["simple_name",
@@ -292,7 +368,7 @@ class TestConnectedPAPI(unittest.TestCase):
 
         rv = vpp.show_version()
         self.assertEqual(0, rv.retval)
-        print('RV', rv.program.decode().rstrip('\0x00'))
+        self.assertEqual('vpe', rv.program.decode().rstrip('\0x00'))
         vpp.disconnect()
 
 
