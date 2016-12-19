@@ -27,7 +27,9 @@ BUILT_SOURCES = 				\
  vnet/span/span.api.h				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json             \
+ vnet/vxlan/vxlan.api.h				\
+ vnet/vxlan/vxlan.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -232,12 +234,14 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
   vnet/vxlan/vxlan.c				\
   vnet/vxlan/encap.c				\
-  vnet/vxlan/decap.c	
+  vnet/vxlan/decap.c                \
+  vnet/vxlan/vxlan_api.c	
 
 nobase_include_HEADERS +=			\
   vnet/vxlan/vxlan.h				\
   vnet/vxlan/vxlan_packet.h         		\
-  vnet/vxlan/vxlan_error.def
+  vnet/vxlan/vxlan_error.def        \
+  vnet/vxlan/vxlan.api.h
 
 ########################################
 # Layer 2 / CDP
@@ -939,7 +943,8 @@ api_DATA =					\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json             \
+ vnet/vxlan/vxlan.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
