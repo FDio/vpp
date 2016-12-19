@@ -51,8 +51,6 @@
   return & fn;                                                         \
 }
 
-#if __x86_64__
-#include "cpuid.h"
 
 #define foreach_x86_64_flags \
 _ (sse3,     1, ecx, 0)   \
@@ -65,6 +63,9 @@ _ (avx512f,  7, ebx, 16)  \
 _ (aes,      1, ecx, 25)  \
 _ (sha,      7, ebx, 29)  \
 _ (invariant_tsc, 0x80000007, edx, 8)
+
+#if defined(__x86_64__)
+#include "cpuid.h"
 
 static inline int
 clib_get_cpuid (const u32 lev, u32 * eax, u32 * ebx, u32 * ecx, u32 * edx)
@@ -90,12 +91,17 @@ clib_cpu_supports_ ## flag()						\
 }
 foreach_x86_64_flags
 #undef _
+#else
+
+#define _(flag, func, reg, bit) \
+static inline int clib_cpu_supports_ ## flag() { return 0; }
+foreach_x86_64_flags
+#undef _
+#endif
 #endif
   format_function_t format_cpu_uarch;
 format_function_t format_cpu_model_name;
 format_function_t format_cpu_flags;
-
-#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

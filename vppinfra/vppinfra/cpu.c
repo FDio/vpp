@@ -101,6 +101,8 @@ format_cpu_model_name (u8 * s, va_list * args)
   vec_free (name);
   return s;
 
+#elif defined(__aarch64__)
+  return format (s, "armv8");
 #else /* ! __x86_64__ */
   return format (s, "unknown");
 #endif
@@ -109,7 +111,7 @@ format_cpu_model_name (u8 * s, va_list * args)
 u8 *
 format_cpu_flags (u8 * s, va_list * args)
 {
-#if __x86_64__
+#if defined(__x86_64__)
 #define _(flag, func, reg, bit) \
   if (clib_cpu_supports_ ## flag()) \
     s = format (s, #flag " ");

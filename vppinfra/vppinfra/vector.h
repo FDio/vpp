@@ -42,7 +42,7 @@
 
 /* Vector types. */
 
-#if defined (__MMX__) || defined (__IWMMXT__)
+#if defined (__MMX__) || defined (__IWMMXT__) || defined (__aarch64__)
 #define CLIB_HAVE_VEC64
 #endif
 
@@ -63,6 +63,10 @@
 
 #if defined (__aarch64__) || defined (__arm__)
 typedef unsigned int u32x4 _vector_size (16);
+typedef u8 u8x16 _vector_size (16);
+typedef u16 u16x8 _vector_size (16);
+typedef u32 u32x4 _vector_size (16);
+typedef u64 u64x2 _vector_size (16);
 #endif
 
 #ifdef CLIB_HAVE_VEC64
@@ -243,6 +247,10 @@ _(i64, 2);
 
 #if defined (__IWMMXT__)
 #include <vppinfra/vector_iwmmxt.h>
+#endif
+
+#if defined (__aarch64__)
+#include <vppinfra/vector_neon.h>
 #endif
 
 #if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
