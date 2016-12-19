@@ -189,6 +189,11 @@ do
 	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
 done
 
+#
+# remove RPATH from ELF binaries
+#
+../scripts/remove-rpath %{buildroot}
+
 %post
 sysctl --system
 %systemd_post vpp.service
