@@ -60,15 +60,15 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	 deb/debian/vpp-dpdk-dev.install ;				\
 									\
 	: bin package needs startup config ; 				\
-	echo ../../vpp/conf/startup.conf /etc/vpp 			\
+	echo ../../src/vpp/conf/startup.conf /etc/vpp 			\
 	   >> deb/debian/vpp.install ;					\
 									\
 	: and sysctl config ; 						\
-	echo ../../vpp/conf/80-vpp.conf /etc/sysctl.d 			\
+	echo ../../src/vpp/conf/80-vpp.conf /etc/sysctl.d 		\
 	   >> deb/debian/vpp.install ;					\
 									\
 	: dev package needs a couple of additions ;			\
-	echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
+	echo ../build-tool-native/tools/vppapigen /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
 	echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
