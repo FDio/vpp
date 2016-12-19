@@ -27,7 +27,9 @@ BUILT_SOURCES = 				\
  vnet/span/span.api.h				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/vxlan-gpe/vxlan_gpe.api.h		\
+ vnet/vxlan-gpe/vxlan_gpe.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -505,12 +507,14 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
  vnet/vxlan-gpe/vxlan_gpe.c			\
  vnet/vxlan-gpe/encap.c	        		\
- vnet/vxlan-gpe/decap.c
+ vnet/vxlan-gpe/decap.c				\
+ vnet/vxlan-gpe/vxlan_gpe_api.c
 
 nobase_include_HEADERS +=			\
  vnet/vxlan-gpe/vxlan_gpe.h			\
  vnet/vxlan-gpe/vxlan_gpe_packet.h		\
- vnet/vxlan-gpe/vxlan_gpe_error.def
+ vnet/vxlan-gpe/vxlan_gpe_error.def	\
+ vnet/vxlan-gpe/vxlan_gpe.api.h
 
 ########################################
 # Tunnel protocol: ipsec+gre
@@ -939,8 +943,9 @@ api_DATA =					\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.json
-
+ vnet/unix/tap.api.json				\
+ vnet/vxlan-gpe/vxlan_gpe.api.json
+ 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
 
