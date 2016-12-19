@@ -1,11 +1,5 @@
-vpp_configure_depend =				\
-	vppinfra-install			\
-	svm-install				\
-	vlib-api-install			\
-	vlib-install				\
-	vnet-install				\
+vpp_source = src
 
-# 
 ifeq ($($(PLATFORM)_dpdk_shared_lib),yes)
 vpp_configure_args = --enable-dpdk-shared
 else

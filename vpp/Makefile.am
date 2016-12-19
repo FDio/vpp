@@ -11,19 +11,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
-
-AM_CFLAGS = -Wall @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @VCGN@ @IPV6SR@
-
-noinst_PROGRAMS = 
-BUILT_SOURCES =
-bin_PROGRAMS = 
-CLEANFILES = 
-
 bin_PROGRAMS += vpp
 
 vpp_SOURCES =					\
-  vnet/main.c					\
+  main/main.c					\
   app/vpe_cli.c					\
   app/version.c					\
   oam/oam.c					\
@@ -38,15 +29,14 @@ vpp_SOURCES +=					\
 vpp_SOURCES +=					\
   vpp-api/gmon.c	
 
-nobase_include_HEADERS =			\
+nobase_include_HEADERS +=			\
   vpp-api/vpe_all_api_h.h			\
   vpp-api/vpe_msg_enum.h			\
   vpp-api/vpe.api.h
 
 # install the API definition, so we can produce java bindings, etc.
 
-apidir = $(prefix)/vpp-api
-api_DATA = vpp-api/vpe.api.json
+api_DATA += vpp-api/vpe.api.json
 
 BUILT_SOURCES += vpp-api/vpe.api.h app/version.h vpp-api/vpe.api.json
 
@@ -94,13 +84,12 @@ vpp_plugin_configure:
 	@echo "    fi" >> $@
 	@echo "fi" >> $@
 
-vpp_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib
+vpp_LDADD = libvlibapi.la libvlibmemory.la libvlib_unix.la libvlib.la
 
-vpp_LDADD += -lvnet
+vpp_LDADD += libvnet.la
 
-vpp_LDADD += -lsvm -lsvmdb -lrt
-
-vpp_LDADD += -lvnetplugin
+vpp_LDADD += libsvm.la libsvmdb.la -lrt
+vpp_LDADD += libvnetplugin.la
 
 if WITH_DPDK
 vpp_LDFLAGS = -Wl,--whole-archive
@@ -115,41 +104,36 @@ vpp_LDADD += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 endif
 endif
 
-vpp_LDADD += -lvppinfra -lm -lpthread -ldl
+vpp_LDADD += libvppinfra.la -lm -lpthread -ldl
 
 if WITH_IPV6SR
   vpp_LDADD += -lcrypto
 endif
 
-# Set the suffix list
-SUFFIXES = .api.h .api .api.json
-
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vpp source tree
-
-include $(top_srcdir)/suffix-rules.mk
 
 noinst_PROGRAMS += test_client
 
 test_client_SOURCES = vpp-api/test_client.c
-test_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+test_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm libvppinfra.la \
 	-lpthread -lm -lrt
 
 noinst_PROGRAMS += test_client test_ha
 
 test_ha_SOURCES = vpp-api/test_ha.c
-test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
+test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm libvppinfra.la \
 		-lpthread -lm -lrt
 
 
 noinst_PROGRAMS += summary_stats_client
 
 summary_stats_client_SOURCES = vpp-api/summary_stats_client.c
-summary_stats_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
+summary_stats_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm libvppinfra.la \
 	-lpthread -lm -lrt
 
 bin_PROGRAMS += vpp_get_metrics
 
 vpp_get_metrics_SOURCES = vpp-api/vpp_get_metrics.c
-vpp_get_metrics_LDADD = -lsvmdb -lsvm -lvppinfra \
+vpp_get_metrics_LDADD = -lsvmdb -lsvm libvppinfra.la \
 		-lpthread -lm -lrt

@@ -26,7 +26,7 @@
 
 #include "lex.h"
 #include "node.h"
-#include "gram.h"
+#include "tools/vppapigen/gram.h"
 
 FILE *ifp, *ofp, *pythonfp, *jsonfp;
 char *vlib_app_name = "vpp";

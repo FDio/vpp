@@ -1,7 +1,0 @@
-AC_INIT(svm, 1.0)
-LT_INIT
-AM_INIT_AUTOMAKE
-
-AM_SILENT_RULES([yes])
-
-AC_OUTPUT([Makefile])

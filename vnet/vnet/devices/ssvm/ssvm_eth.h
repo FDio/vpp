@@ -30,7 +30,7 @@
 #include <vnet/pg/pg.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 
-#include <ssvm.h>
+#include <svm/ssvm.h>
 
 extern vnet_device_class_t ssvm_eth_device_class;
 extern vlib_node_registration_t ssvm_eth_input_node;

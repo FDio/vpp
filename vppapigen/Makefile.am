@@ -11,19 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign
+bin_PROGRAMS += vppapigen
 
-bin_PROGRAMS = vppapigen
-bin_SCRIPTS =
+BUILT_SOURCES = tools/vppapigen/gram.h
 
-BUILT_SOURCES = gram.h
-
-gram.h: gram.y
-	$(YACC) -d @srcdir@/gram.y
-	mv y.tab.h gram.h
+tools/vppapigen/gram.h: tools/vppapigen/gram.y
+	$(YACC) -d @srcdir@/tools/vppapigen/gram.y
+	mv y.tab.h tools/vppapigen/gram.h
 	rm y.tab.c
 
-vppapigen_SOURCES = gram.y lex.c node.c
-vppapigen_CPPFLAGS =
-vppapigen_LDADD = -lvppinfra
+vppapigen_SOURCES = tools/vppapigen/gram.y tools/vppapigen/lex.c tools/vppapigen/node.c
+vppapigen_LDADD = libvppinfra.la
 vppapigen_LDFLAGS = -static

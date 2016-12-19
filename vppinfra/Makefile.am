@@ -10,12 +10,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CPPFLAGS = -Wall -Werror
 
+libvppinfradir = ${libdir}
+
 if WITH_UNIX
-  lib_LTLIBRARIES = libvppinfra.la
+  libvppinfra_LTLIBRARIES = libvppinfra.la
 endif
 
 lib_LIBRARIES =
@@ -269,6 +270,6 @@ libvppinfra_la_SOURCES =			\
 
 bin_PROGRAMS = elftool
 
-elftool_SOURCES = tools/elftool.c
+elftool_SOURCES = tools/elftool/elftool.c
 elftool_CPPFLAGS = $(AM_CPPFLAGS)
 elftool_LDADD = libvppinfra.la -lpthread -lrt -lm

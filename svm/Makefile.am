@@ -11,20 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign
+bin_PROGRAMS += svmtool svmdbtool
 
-bin_PROGRAMS = svmtool svmdbtool
+nobase_include_HEADERS += svm/svm.h svm/ssvm.h svm/svmdb.h
 
-AM_CFLAGS = -Wall
+libsvmdir = ${libdir}
+libsvm_LTLIBRARIES = libsvm.la libsvmdb.la
 
-nobase_include_HEADERS = svm.h ssvm.h svmdb.h
+libsvm_la_SOURCES = svm/svm.c svm/ssvm.c
 
-lib_LTLIBRARIES = libsvm.la libsvmdb.la
+svmtool_SOURCES = svm/svmtool.c
+svmtool_LDADD = libsvm.la libvppinfra.la -lpthread -lrt
 
-libsvm_la_SOURCES = svm.c ssvm.c
+libsvmdb_la_SOURCES = svm/svmdb.c
 
-svmtool_LDADD = libsvm.la -lvppinfra -lpthread -lrt
-
-libsvmdb_la_SOURCES = svmdb.c
-
-svmdbtool_LDADD = libsvmdb.la libsvm.la -lvppinfra -lpthread -lrt
+svmdbtool_SOURCES = svm/svmdbtool.c
+svmdbtool_LDADD = libsvmdb.la libsvm.la libvppinfra.la -lpthread -lrt

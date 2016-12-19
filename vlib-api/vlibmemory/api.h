@@ -21,7 +21,7 @@
 #define included_vlibmemory_api_h
 
 #include <vppinfra/error.h>
-#include <svm.h>
+#include <svm/svm.h>
 #include <vlib/vlib.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 #include <vlib/unix/unix.h>

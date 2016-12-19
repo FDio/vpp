@@ -11,15 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall @DPDK@
 
 PRE_DATA_SIZE=@PRE_DATA_SIZE@
 
-lib_LTLIBRARIES = libvlib.la
+libvlibdir = ${libdir}
+libvlib_LTLIBRARIES = libvlib.la
+libvlib_la_LIBAD = libvppinfra.la
 
-BUILT_SOURCES = vlib/config.h
+BUILT_SOURCES += vlib/config.h
 
 vlib/config.h:
 	echo "#define __PRE_DATA_SIZE" $(PRE_DATA_SIZE) > $@
@@ -45,7 +46,7 @@ libvlib_la_SOURCES =				\
   vlib/threads_cli.c				\
   vlib/trace.c
 
-nobase_include_HEADERS =			\
+nobase_include_HEADERS +=			\
   vlib/buffer_funcs.h				\
   vlib/buffer_node.h				\
   vlib/buffer.h					\
@@ -72,7 +73,7 @@ nobase_include_HEADERS =			\
   vlib/trace.h					\
   vlib/vlib.h
 
-lib_LTLIBRARIES += libvlib_unix.la
+libvlib_LTLIBRARIES += libvlib_unix.la
 
 libvlib_unix_la_SOURCES =			\
   vlib/unix/cj.c				\
@@ -93,12 +94,12 @@ nobase_include_HEADERS +=			\
   vlib/unix/unix.h
     
 if !WITH_DPDK
-noinst_PROGRAMS = vlib_unix 
+noinst_PROGRAMS += vlib_unix 
 
 vlib_unix_SOURCES =				\
   example/main_stub.c				\
   example/mc_test.c
 
 vlib_unix_LDADD = libvlib_unix.la libvlib.la \
-	          -lvppinfra -lpthread -lm -ldl -lrt
+	          libvppinfra.la -lpthread -lm -ldl -lrt
 endif
