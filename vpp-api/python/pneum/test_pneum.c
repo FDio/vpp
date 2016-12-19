@@ -45,6 +45,10 @@
 #include <vpp-api/vpe_all_api_h.h> 
 #undef vl_typedefs
 
+/* we are not linking with vlib */
+vlib_main_t vlib_global_main;
+vlib_main_t **vlib_mains;
+
 volatile int sigterm_received = 0;
 volatile u32 result_ready;
 volatile u16 result_msg_id;

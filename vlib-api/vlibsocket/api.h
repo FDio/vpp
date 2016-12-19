@@ -46,7 +46,7 @@ typedef struct
   i8 *input_buffer;
 } socket_main_t;
 
-socket_main_t socket_main;
+extern socket_main_t socket_main;
 
 void socksvr_add_pending_output (struct unix_file *uf,
 				 struct vl_api_registration_ *cf,

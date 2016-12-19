@@ -190,7 +190,7 @@ typedef struct
   char *root_path;
 } api_main_t;
 
-api_main_t api_main;
+extern api_main_t api_main;
 
 typedef struct
 {

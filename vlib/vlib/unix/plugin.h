@@ -82,7 +82,7 @@ typedef struct
   vlib_main_t *vlib_main;
 } plugin_main_t;
 
-plugin_main_t vlib_plugin_main;
+extern plugin_main_t vlib_plugin_main;
 
 int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
