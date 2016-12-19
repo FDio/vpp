@@ -618,7 +618,7 @@ int track_compare_name (const void *arg1, const void *arg2)
 
 void sort_state_statistics(sort_t type, FILE *ofp)
 {
-    int (*compare)(const void *, const void *);
+    int (*compare)(const void *, const void *) = 0;
 
     if (summary_stats_only)
         return;

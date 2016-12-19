@@ -1,0 +1,16 @@
+#!/bin/bash
+
+for f in $(find . -type l); do
+	s=$(realpath $f)
+	d=$(dirname $f)
+	git rm $f
+	mkdir -p $d
+	git mv $s $f
+done
+cd app/api
+git rm -f api_format.c vat.h
+ln -s ../../tools/vpp-api-test/api_format.c .
+ln -s ../../tools/vpp-api-test/vat.h .
+git add vat.h
+git add api_format.c
+cd ../..

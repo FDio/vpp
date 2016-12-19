@@ -1,24 +1,13 @@
 plugins_configure_depend = 			\
-    vppinfra-install 				\
-    vlib-api-install 				\
-    vpp-api-test-install 			\
-    vnet-install                                \
-    vlib-install 				\
-    vpp-api-install
+    vpp-api-install				\
+    vpp-install
 
-plugins_CPPFLAGS = $(call installed_includes_fn, 	\
-    vppinfra 					\
-    vlib 					\
-    vnet 					\
-    svm 					\
-    vpp-api-test 				\
-    vlib-api 				\
-    vpp-api)					
+plugins_CPPFLAGS = $(call installed_includes_fn, \
+    vpp  \
+    vpp-api)
 
-plugins_LDFLAGS = $(call installed_libs_fn, 	\
-    vppinfra					\
-    vlib					\
-    vlib-api)
+plugins_LDFLAGS = $(call installed_libs_fn,     \
+    vpp)
 
 ifeq ($($(PLATFORM)_enable_tests),yes)
 plugins_configure_args += --enable-tests
