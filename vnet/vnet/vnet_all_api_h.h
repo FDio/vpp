@@ -39,6 +39,7 @@
 #include <vnet/ip/ip.api.h>
 #include <vnet/unix/tap.api.h>
 #include <vnet/vxlan/vxlan.api.h>
+#include <vnet/vxlan-gpe/vxlan_gpe.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
