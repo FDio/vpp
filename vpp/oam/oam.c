@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <oam/oam.h>
+#include <app/oam/oam.h>
 
 #if DPDK > 0
 #include <vnet/devices/dpdk/dpdk.h>

@@ -28,7 +28,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include "vat/json_format.h"
+#include "tools/vpp-api-test/json_format.h"
 
 typedef struct
 {

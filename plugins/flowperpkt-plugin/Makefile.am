@@ -14,7 +14,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir}
 AM_LDFLAGS = -module -shared -avoid-version
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
@@ -27,7 +27,6 @@ flowperpkt_plugin_la_SOURCES = flowperpkt/flowperpkt.c  \
         flowperpkt/l2_node.c \
         flowperpkt/node.c \
 	flowperpkt/flowperpkt_plugin.api.h
-flowperpkt_plugin_la_LDFLAGS = -module
 
 BUILT_SOURCES =					\
 	flowperpkt/flowperpkt.api.h		\

@@ -42,7 +42,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/api_errno.h>
 
-#include <svmdb.h>
+#include <svm/svmdb.h>
 
 typedef struct
 {

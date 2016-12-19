@@ -37,20 +37,20 @@
 #include <vlibmemory/api.h>
 #include <vnet/lisp-cp/lisp_types.h>
 
-#include <stats/stats.h>
-#include <oam/oam.h>
+#include <app/stats/stats.h>
+#include <app/oam/oam.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_vtr.h>
 
-#include <vpp-api/vpe_msg_enum.h>
+#include <app/api/vpe_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)

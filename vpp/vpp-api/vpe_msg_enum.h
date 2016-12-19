@@ -21,7 +21,7 @@
 typedef enum
 {
   VL_ILLEGAL_MESSAGE_ID = 0,
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
   VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;
 #undef vl_msg_id

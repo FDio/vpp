@@ -19,7 +19,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 
-#include <vpp-api/vpe_msg_enum.h>
+#include <app/api/vpe_msg_enum.h>
 
 #if DPDK
 #include <vnet/devices/dpdk/dpdk.h>
