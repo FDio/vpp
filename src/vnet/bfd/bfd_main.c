@@ -126,38 +126,36 @@ bfd_calc_next_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
       if (bs->local_detect_mult > 1)
 	{
 	  /* common case - 75-100% of transmit interval */
-	  bs->tx_timeout_clocks = now +
+	  bs->tx_timeout_clocks = bs->last_tx_clocks +
 	    (1 - .25 * (random_f64 (&bm->random_seed))) *
 	    bs->transmit_interval_clocks;
 	  if (bs->tx_timeout_clocks < now)
 	    {
-	      /* huh, we've missed it already, skip the missed events */
-	      const u64 missed =
-		(now - bs->tx_timeout_clocks) / bs->transmit_interval_clocks;
-	      BFD_ERR ("Missed %lu transmit events (now is %lu, calc "
-		       "tx_timeout is %lu)!",
-		       missed, now, bs->tx_timeout_clocks);
-	      bs->tx_timeout_clocks +=
-		(missed + 1) * bs->transmit_interval_clocks;
+	      /* huh, we've missed it already, transmit now */
+	      BFD_DBG ("Missed %lu transmit events (now is %lu, calc "
+		       "tx_timeout is %lu)",
+		       (now - bs->tx_timeout_clocks) /
+		       bs->transmit_interval_clocks,
+		       now, bs->tx_timeout_clocks);
+	      bs->tx_timeout_clocks = now;
 	    }
 	}
       else
 	{
 	  /* special case - 75-90% of transmit interval */
 	  bs->tx_timeout_clocks =
-	    now +
+	    bs->last_tx_clocks +
 	    (.9 - .15 * (random_f64 (&bm->random_seed))) *
 	    bs->transmit_interval_clocks;
 	  if (bs->tx_timeout_clocks < now)
 	    {
-	      /* huh, we've missed it already, skip the missed events */
-	      const u64 missed =
-		(now - bs->tx_timeout_clocks) / bs->transmit_interval_clocks;
-	      BFD_ERR ("Missed %lu transmit events (now is %lu, calc "
-		       "tx_timeout is %lu)!",
-		       missed, now, bs->tx_timeout_clocks);
-	      bs->tx_timeout_clocks +=
-		(missed + 1) * bs->transmit_interval_clocks;
+	      /* huh, we've missed it already, transmit now */
+	      BFD_DBG ("Missed %lu transmit events (now is %lu, calc "
+		       "tx_timeout is %lu)",
+		       (now - bs->tx_timeout_clocks) /
+		       bs->transmit_interval_clocks,
+		       now, bs->tx_timeout_clocks);
+	      bs->tx_timeout_clocks = now;
 	    }
 	}
     }
@@ -485,7 +483,7 @@ bfd_init_control_frame (vlib_buffer_t * b, bfd_session_t * bs)
   pkt->your_disc = bs->remote_discr;
   pkt->des_min_tx = clib_host_to_net_u32 (bs->desired_min_tx_us);
   pkt->req_min_rx = clib_host_to_net_u32 (bs->required_min_rx_us);
-  pkt->req_min_echo_rx = clib_host_to_net_u32 (0);	/* FIXME */
+  pkt->req_min_echo_rx = clib_host_to_net_u32 (bs->required_min_echo_rx_us);
   b->current_length = bfd_length;
 }
 
@@ -519,6 +517,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       bfd_init_control_frame (b, bs);
       bfd_add_transport_layer (vm, b, bs);
+      bs->last_tx_clocks = now;
       bfd_calc_next_tx (bm, bs, now);
     }
   else
@@ -537,6 +536,7 @@ bfd_send_final (vlib_main_t * vm, vlib_buffer_t * b, bfd_session_t * bs)
   bfd_init_control_frame (b, bs);
   bfd_pkt_set_final (vlib_buffer_get_current (b));
   bfd_add_transport_layer (vm, b, bs);
+  bs->last_tx_clocks = clib_cpu_time_now ();
 }
 
 static void
@@ -946,6 +946,7 @@ format_bfd_session (u8 * s, va_list * args)
 		 "bfd.LocalDiag=%s, "
 		 "bfd.DesiredMinTxInterval=%u, "
 		 "bfd.RequiredMinRxInterval=%u, "
+		 "bfd.RequiredMinEchoRxInterval=%u, "
 		 "bfd.RemoteMinRxInterval=%u, "
 		 "bfd.DemandMode=%s, "
 		 "bfd.RemoteDemandMode=%s, "
@@ -954,7 +955,8 @@ format_bfd_session (u8 * s, va_list * args)
 		 bfd_state_string (bs->remote_state), bs->local_discr,
 		 bs->remote_discr, bfd_diag_code_string (bs->local_diag),
 		 bs->desired_min_tx_us, bs->required_min_rx_us,
-		 bs->remote_min_rx_us, (bs->local_demand ? "yes" : "no"),
+		 bs->required_min_echo_rx_us, bs->remote_min_rx_us,
+		 (bs->local_demand ? "yes" : "no"),
 		 (bs->remote_demand ? "yes" : "no"), bs->local_detect_mult);
 }
 

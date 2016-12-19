@@ -75,8 +75,11 @@ typedef struct
   /* desired min tx interval (clocks) */
   u64 desired_min_tx_clocks;
 
-  /* required min rx interval */
+  /* required min rx interval (microseconds) */
   u32 required_min_rx_us;
+
+  /* required min echo rx interval (microseconds) */
+  u32 required_min_echo_rx_us;
 
   /* remote min rx interval (microseconds) */
   u32 remote_min_rx_us;
@@ -84,7 +87,7 @@ typedef struct
   /* remote min rx interval (clocks) */
   u64 remote_min_rx_clocks;
 
-  /* remote desired min tx interval */
+  /* remote desired min tx interval (microseconds) */
   u32 remote_desired_min_tx_us;
 
   /* 1 if in demand mode, 0 otherwise */
@@ -107,6 +110,9 @@ typedef struct
 
   /* next time at which to transmit a packet */
   u64 tx_timeout_clocks;
+
+  /* timestamp of last packet transmitted */
+  u64 last_tx_clocks;
 
   /* timestamp of last packet received */
   u64 last_rx_clocks;

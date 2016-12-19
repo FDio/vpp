@@ -146,6 +146,7 @@ bfd_udp_add_session_internal (bfd_udp_main_t *bum, u32 sw_if_index,
     }
   bs->config_desired_min_tx_us = desired_min_tx_us;
   bs->required_min_rx_us = required_min_rx_us;
+  bs->required_min_echo_rx_us = required_min_rx_us; /* FIXME */
   bs->local_detect_mult = detect_mult;
   bfd_session_start (bum->bfd_main, bs);
   return 0;
