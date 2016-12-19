@@ -7,6 +7,8 @@ from bfd import *
 from framework import *
 from util import ppp
 
+us_in_sec = 1000000
+
 
 class BFDAPITestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) - API"""
@@ -74,6 +76,7 @@ def verify_udp(test, packet):
 
 
 class BFDTestSession(object):
+    """ BFD session as seen from test framework side """
 
     def __init__(self, test, interface, detect_mult=3):
         self.test = test
@@ -90,7 +93,9 @@ class BFDTestSession(object):
 
     def create_packet(self):
         packet = create_packet(self.interface)
+        self.test.logger.debug("BFD: Creating packet")
         for name, value in self.bfd_values.iteritems():
+            self.test.logger.debug("BFD: setting packet.%s=%s", name, value)
             packet[BFD].setfieldval(name, value)
         return packet
 
@@ -134,11 +139,12 @@ class BFDTestCase(VppTestCase):
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
         self.test_session = BFDTestSession(self, self.pg0)
+        self.test_session.update(required_min_rx_interval=100000)
 
     def tearDown(self):
-        self.vapi.want_bfd_events(enable_disable=0)
         self.vapi.collect_events()  # clear the event queue
         if not self.vpp_dead:
+            self.vapi.want_bfd_events(enable_disable=0)
             self.vpp_session.remove_vpp_config()
         super(BFDTestCase, self).tearDown()
 
@@ -167,8 +173,16 @@ class BFDTestCase(VppTestCase):
         self.assert_equal(e.state, expected_state, BFDState)
 
     def wait_for_bfd_packet(self, timeout=1):
+        """ wait for BFD packet
+
+        :param timeout: how long to wait max
+
+        :returns: tuple (packet, time spent waiting for packet)
+        """
         self.logger.info("BFD: Waiting for BFD packet")
+        before = time.time()
         p = self.pg0.wait_for_packet(timeout=timeout)
+        after = time.time()
         bfd = p[BFD]
         if bfd is None:
             raise Exception(ppp("Unexpected or invalid BFD packet:", p))
@@ -177,7 +191,26 @@ class BFDTestCase(VppTestCase):
         verify_ip(self, p, self.pg0.local_ip4, self.pg0.remote_ip4)
         verify_udp(self, p)
         self.test_session.verify_packet(p)
-        return p
+        return p, after - before
+
+    def bfd_session_up(self):
+        self.pg_enable_capture([self.pg0])
+        self.logger.info("BFD: Waiting for slow hello")
+        p, ttp = self.wait_for_bfd_packet()
+        self.logger.info("BFD: Sending Init")
+        self.test_session.update(my_discriminator=randint(0, 40000000),
+                                 your_discriminator=p[BFD].my_discriminator,
+                                 state=BFDState.init)
+        self.test_session.send_packet()
+        self.logger.info("BFD: Waiting for event")
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        self.verify_event(e, expected_state=BFDState.up)
+        self.logger.info("BFD: Session is Up")
+        self.test_session.update(state=BFDState.up)
+
+    def test_session_up(self):
+        """ bring BFD session up """
+        self.bfd_session_up()
 
     def test_slow_timer(self):
         """ verify slow periodic control frames while session down """
@@ -198,7 +231,7 @@ class BFDTestCase(VppTestCase):
     def test_zero_remote_min_rx(self):
         """ no packets when zero BFD RemoteMinRxInterval """
         self.pg_enable_capture([self.pg0])
-        p = self.wait_for_bfd_packet(2)
+        p, timeout = self.wait_for_bfd_packet(2)
         self.test_session.update(my_discriminator=randint(0, 40000000),
                                  your_discriminator=p[BFD].my_discriminator,
                                  state=BFDState.init,
@@ -212,26 +245,6 @@ class BFDTestCase(VppTestCase):
         except:
             return
         raise Exception(ppp("Received unexpected BFD packet:", p))
-
-    def bfd_session_up(self):
-        self.pg_enable_capture([self.pg0])
-        self.logger.info("BFD: Waiting for slow hello")
-        p = self.wait_for_bfd_packet(2)
-        self.logger.info("BFD: Sending Init")
-        self.test_session.update(my_discriminator=randint(0, 40000000),
-                                 your_discriminator=p[BFD].my_discriminator,
-                                 state=BFDState.init,
-                                 required_min_rx_interval=100000)
-        self.test_session.send_packet()
-        self.logger.info("BFD: Waiting for event")
-        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
-        self.verify_event(e, expected_state=BFDState.up)
-        self.logger.info("BFD: Session is Up")
-        self.test_session.update(state=BFDState.up)
-
-    def test_session_up(self):
-        """ bring BFD session up """
-        self.bfd_session_up()
 
     def test_hold_up(self):
         """ hold BFD session up """
@@ -260,7 +273,7 @@ class BFDTestCase(VppTestCase):
         self.test_session.send_packet()
         now = time.time()
         count = 0
-        while time.time() < now + interval / 1000000:
+        while time.time() < now + interval / us_in_sec:
             try:
                 p = self.wait_for_bfd_packet()
                 if count > 1:
@@ -270,6 +283,31 @@ class BFDTestCase(VppTestCase):
                 pass
         self.assert_in_range(count, 0, 1, "number of packets received")
 
+    def test_immediate_remote_min_rx_reduce(self):
+        """ immediately honor remote min rx reduction """
+        self.vpp_session.remove_vpp_config()
+        self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4,
+                                            desired_min_tx=10000)
+        self.vpp_session.add_vpp_config()
+        self.test_session.update(desired_min_tx_interval=1000000,
+                                 required_min_rx_interval=1000000)
+        self.bfd_session_up()
+        self.wait_for_bfd_packet()
+        interval = 100000
+        self.test_session.update(required_min_rx_interval=interval)
+        self.test_session.send_packet()
+        p, ttp = self.wait_for_bfd_packet()
+        # allow extra 10% to work around timing issues, first packet is special
+        self.assert_in_range(ttp, 0, 1.10 * interval / us_in_sec,
+                             "time between BFD packets")
+        p, ttp = self.wait_for_bfd_packet()
+        self.assert_in_range(ttp, .9 * .75 * interval / us_in_sec,
+                             1.10 * interval / us_in_sec,
+                             "time between BFD packets")
+        p, ttp = self.wait_for_bfd_packet()
+        self.assert_in_range(ttp, .9 * .75 * interval / us_in_sec,
+                             1.10 * interval / us_in_sec,
+                             "time between BFD packets")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
