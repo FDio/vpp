@@ -14,7 +14,7 @@
  */
 #include <vlib/vlib.h>
 #include <vppinfra/cpu.h>
-#include <app/version.h>
+#include <app/app/version.h>
 
 #if DPDK > 0
 #include <rte_version.h>

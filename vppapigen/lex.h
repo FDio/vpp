@@ -29,7 +29,7 @@ extern int yyparse (void);
 #define YYSTYPE void *
 #endif
 
-#include "gram.h"
+#include "tools/vppapigen/gram.h"
 
 enum lex_state {
     START_STATE = 1,
