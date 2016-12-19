@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ -z $1 ]; then
+	echo "Please specify path"
+	exit 1
+fi
+
+which chrpath &> /dev/null
+
+if [ $? -ne 0 ] ; then
+	echo "Please install chrpath tool"
+	exit 1
+fi
+
+libs=$(find $1 -type f -name \*.so)
+execs=$(find $1 -type f -path \*/bin/\* )
+
+for i in $libs $execs; do
+	chrpath $i 2> /dev/null | grep -q build-root
+	if [ $? -eq 0 ] ; then
+		chrpath $i
+	fi
+done
+
