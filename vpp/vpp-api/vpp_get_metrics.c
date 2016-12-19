@@ -44,7 +44,7 @@
 #include <vlib/unix/unix.h>
 #include <vnet/api_errno.h>
 
-#include <svmdb.h>
+#include <svm/svmdb.h>
 
 svmdb_client_t *c;
 volatile int signal_received;

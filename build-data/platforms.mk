@@ -68,7 +68,7 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	   >> deb/debian/vpp.install ;					\
 									\
 	: dev package needs a couple of additions ;			\
-	echo ../build-tool-native/vppapigen/vppapigen /usr/bin		\
+	echo ../build-tool-native/tools/vppapigen /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
 	echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\

@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vat/vat.h>
+#include <tools/vpp-api-test/vat.h>
 #include <vnet/ip/ip.h>
 
 uword

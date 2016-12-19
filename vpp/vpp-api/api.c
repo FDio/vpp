@@ -90,14 +90,15 @@
 #include <vnet/devices/dpdk/dpdk.h>
 #endif
 
-#include <stats/stats.h>
-#include <oam/oam.h>
+#include <app/stats/stats.h>
+#include <app/oam/oam.h>
+
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/interface.h>
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_bd.h>
-#include <vpp-api/vpe_msg_enum.h>
+#include <app/api/vpe_msg_enum.h>
 #include <vnet/span/span.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
@@ -108,15 +109,15 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #define vl_typedefs		/* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_typedefs
 #define vl_endianfun		/* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_endianfun
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_printfun
 #include <vlibapi/api_helper_macros.h>
 #define foreach_vpe_api_msg                                             \
@@ -4899,7 +4900,7 @@ VLIB_CLI_COMMAND (show_ip_arp_nd_events, static) = {
 /* *INDENT-ON* */
 
 #define vl_msg_name_crc_list
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_msg_name_crc_list
 
 static void

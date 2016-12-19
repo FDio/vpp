@@ -11,22 +11,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
-
-AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
-
-API_FILES =
-
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
-nobase_include_HEADERS =
-noinst_PROGRAMS =
-TESTS =
+
+libvnet_la_LIBAD = libvppinfra.la libvlib.la libsvm.la
 
 dpdk_libs =
 if WITH_DPDK
 dpdk_libs += -l:libdpdk.a
 endif
+
+libvnet_la_LDDAD = -l:libdpdk.a
 
 ########################################
 # Generic stuff
@@ -451,7 +446,7 @@ test_map_SOURCES =                             \
  vnet/map/test.c
 test_map_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_map_LDADD = libvnet.la -lvppinfra -lvlib	\
+test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
   -lpthread -lvlibmemory -lvlibapi -lvlib_unix	\
   -ldl -lsvm -lrt
 
@@ -574,30 +569,38 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/lisp-cp/lisp.api
 
 if ENABLE_TESTS
-LDS = -lvppinfra -l:libvlib.a $(dpdk_libs) -l:libvlibmemory.a \
-	-l:libvlibapi.a -l:libsvm.a -lpthread -ldl -lrt -lm -l:libvlib_unix.a
+LDS = \
+  libvppinfra.la \
+  libvnet.la \
+  libvlib.la  \
+  libvlib_unix.la \
+  libsvm.la \
+  libsvmdb.la \
+  libvlibapi.la \
+  libvlibmemory.la \
+  -lpthread -ldl -lrt -lm -lcrypto
 
 TESTS += test_cp_serdes test_lisp_types
+#TESTS += test_lisp_types
 
 test_cp_serdes_SOURCES =			\
- test/lisp-cp/test_cp_serdes.c			\
+ tests/vnet/lisp-cp/test_cp_serdes.c		\
  vnet/lisp-cp/lisp_msg_serdes.c			\
  vnet/lisp-cp/lisp_types.c			\
  vnet/lisp-cp/packets.c				\
  vnet/ip/ip_checksum.c
 
 test_lisp_types_SOURCES =			\
- test/lisp-cp/test_lisp_types.c			\
+ tests/vnet/lisp-cp/test_lisp_types.c		\
  vnet/lisp-cp/lisp_types.c
 
 test_cp_serdes_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_lisp_types_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_cp_serdes_LDADD = libvnet.la $(LDS)
-test_lisp_types_LDADD = libvnet.la $(LDS)
-
-test_cp_serdes_LDFLAGS = -static
-test_lisp_types_LDFLAGS = -static
+test_cp_serdes_LDFLAGS = -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive
+test_cp_serdes_LDADD = $(LDS)
+test_lisp_types_LDFLAGS = -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive
+test_lisp_types_LDADD = $(LDS)
 endif
 
 ########################################
@@ -628,14 +631,14 @@ API_FILES += vnet/lisp-gpe/lisp_gpe.api
 if ENABLE_TESTS
 TESTS += test_test
 
-test_test_SOURCES = test/lisp-gpe/test.c
+test_test_SOURCES = tests/vnet/lisp-gpe/test.c
 
 test_test_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_test_LDADD = $(LIBOBJS)
 
 noinst_PROGRAMS += $(TESTS)
-check_PROGRAMS = $(TESTS)
+check_PROGRAMS += $(TESTS)
 endif
 
 ########################################
@@ -962,32 +965,16 @@ libvnetplugin_la_SOURCES +=                    \
 nobase_include_HEADERS +=                      \
   vnet/plugin/plugin.h
 
-lib_LTLIBRARIES = libvnet.la libvnetplugin.la
+libvnetdir = ${libdir}
+libvnet_LTLIBRARIES = libvnet.la libvnetplugin.la
 
 pcap2pg_SOURCES = 				\
   vnet/unix/pcap2pg.c				\
   vnet/unix/pcap.h
 
 pcap2pg_LDFLAGS = -static
-pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
+pcap2pg_LDADD = libvnet.la libvppinfra.la -lpthread -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
 
-# Set the suffix list
-SUFFIXES = .api.h .api .api.json
-
-# install the API definition, so we can produce java bindings, etc.
-
-apidir = $(prefix)/vnet
-
-api_DATA = \
-	$(patsubst %.api,%.api.json,$(API_FILES))
-
-BUILT_SOURCES = \
-	$(patsubst %.api,%.api.json,$(API_FILES)) \
-	$(patsubst %.api,%.api.h,$(API_FILES))
-
-# The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
-# and requires a symbolic link at the top of the vnet source tree
-
-include $(top_srcdir)/suffix-rules.mk
+# vi:syntax=automake

@@ -16,8 +16,8 @@
  * plugin.c: plugin handling
  */
 
-#include <vat/vat.h>
-#include <vat/plugin.h>
+#include <tools/vpp-api-test/vat.h>
+#include <tools/vpp-api-test/plugin.h>
 #include <dlfcn.h>
 #include <dirent.h>
 
