@@ -11,41 +11,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
-ACLOCAL_AMFLAGS = -I m4
-AM_CFLAGS = -Wall
-
-BUILT_SOURCES =
-bin_PROGRAMS =
-CLEANFILES =
-lib_LTLIBRARIES =
-noinst_PROGRAMS = test_pneum
-nobase_include_HEADERS = pneum/pneum.h
+noinst_PROGRAMS += test_pneum
+nobase_include_HEADERS += vpp-api/python/pneum/pneum.h
 
 #
 # Python / C extension
 #
 lib_LTLIBRARIES += libpneum.la
-libpneum_la_SOURCES = pneum/pneum.c
-libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
-                     -lm -lrt
+libpneum_la_SOURCES = vpp-api/python/pneum/pneum.c
+libpneum_la_LIBADD = \
+	libvlibmemoryclient.la		\
+	libvlibapi.la			\
+	libsvm.la			\
+	libvppinfra.la			\
+	-lpthread -lm -lrt
+
 libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
 
 # TODO: Support both Python 2 and 3.
 install-exec-local:
-	cd $(srcdir);							\
+	cd $(srcdir)/vpp-api/python;					\
 	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
 	PYTHONUSERBASE=$(prefix)					\
-	python setup.py build_ext -L $(prefix)/lib64 \
-	-I $(prefix)/../vppinfra/include/ install --user
+	python setup.py build_ext -L $(prefix)/lib64			\
+	-I $(prefix)/include/ install --user
 
 #
 # Test client
 #
-noinst_PROGRAMS += test_pneum
-test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
-test_pneum_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
-                   -lm -lrt
+test_pneum_SOURCES = \
+	vpp-api/python/pneum/pneum.c		\
+	vpp-api/python/pneum/test_pneum.c
 
+test_pneum_LDADD = \
+	libvlibmemoryclient.la			\
+	libvlibapi.la				\
+	libsvm.la				\
+	libvppinfra.la				\
+	-lpthread -lm -lrt
 
+# vi:syntax=automake
