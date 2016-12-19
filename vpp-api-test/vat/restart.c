@@ -23,7 +23,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/hash.h>
-#include <svmdb.h>
+#include <svm/svmdb.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 #include <vppinfra/time.h>

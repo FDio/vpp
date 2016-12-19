@@ -26,7 +26,7 @@
 #undef included_from_layer_3
 
 /* Include the current layer (third) vpp API definition layer */
-#include <vpp-api/vpe.api.h>
+#include <app/api/vpe.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -1,2 +1,4 @@
 AUTOMAKE_OPTIONS = foreign
-SUBDIRS = python java
+SUBDIRS = java
+
+# vi:syntax=automake
