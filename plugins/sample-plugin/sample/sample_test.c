@@ -18,7 +18,7 @@
  *------------------------------------------------------------------
  */
 
-#include <vat/vat.h>
+#include <tools/vpp-api-test/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>

@@ -344,7 +344,7 @@ void node_define_print (node_t *this)
 
 void node_define_generate (node_t *this, enum passid which, FILE *fp)
 {
-    node_t *child, *save_child;
+    node_t *child;
 
     switch(which) {
     case TYPEDEF_PASS:
@@ -945,10 +945,6 @@ YYSTYPE add_defbody (YYSTYPE a1, YYSTYPE a2)
 
 YYSTYPE add_primtype (YYSTYPE a1, YYSTYPE a2, YYSTYPE a3)
 {
-    node_t *np1;
-
-    np1 = (node_t *)a1;
-    
     /* Hook instance to type node */
     deeper (a1, a2);
     if (a3) {

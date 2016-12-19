@@ -11,59 +11,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
-
-AM_CFLAGS = -Wall @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @VCGN@ @IPV6SR@ @APICLI@
-
-noinst_PROGRAMS = 
-BUILT_SOURCES =
-bin_PROGRAMS = 
-CLEANFILES = 
-
 bin_PROGRAMS += vpp
 
 vpp_SOURCES =					\
-  vnet/main.c					\
-  app/vpe_cli.c					\
-  app/version.c					\
-  oam/oam.c					\
-  stats/stats.c
+  app/vnet/main.c				\
+  app/app/vpe_cli.c				\
+  app/app/version.c				\
+  app/oam/oam.c					\
+  app/stats/stats.c
 
 vpp_SOURCES +=					\
-  vpp-api/api.c					\
-  vpp-api/custom_dump.c				\
-  vpp-api/json_format.c
+  app/api/api.c					\
+  app/api/custom_dump.c				\
+  app/api/json_format.c
 
 if WITH_APICLI
   vpp_SOURCES +=				\
-  vpp-api/api_format.c				\
-  vpp-api/api_main.c				
+  app/api/api_format.c				\
+  app/api/api_main.c
 endif
 
+# comment out to disable stats upload to gmond
 
-# comment out to disable stats upload to gmond 
-
+vpp_CFLAGS = @APICLI@
 vpp_SOURCES +=					\
-  vpp-api/gmon.c	
+  app/api/gmon.c
 
-nobase_include_HEADERS =			\
-  vpp-api/vpe_all_api_h.h			\
-  vpp-api/vpe_msg_enum.h			\
-  vpp-api/vpe.api.h
+nobase_include_HEADERS +=			\
+  app/api/vpe_all_api_h.h			\
+  app/api/vpe_msg_enum.h			\
+  app/api/vpe.api.h
 
-# install the API definition, so we can produce java bindings, etc.
+API_FILES += app/api/vpe.api
 
-apidir = $(prefix)/vpp-api
-api_DATA = vpp-api/vpe.api.json
+BUILT_SOURCES += app/app/version.h
 
-BUILT_SOURCES += vpp-api/vpe.api.h app/version.h vpp-api/vpe.api.json
+app/app/version.o:	app/app/version.h
 
-app/version.o:	app/version.h
+.PHONY:	app/app/version.h
 
-.PHONY:	app/version.h
-
-app/version.h:
-	@echo "  VERSION " $@ 
+app/app/version.h:
+	@echo "  VERSION " $@
 	@echo "#define VPP_BUILD_DATE \"$$(date)\"" > $@
 	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" >> $@
 	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $@
@@ -102,62 +90,70 @@ vpp_plugin_configure:
 	@echo "    fi" >> $@
 	@echo "fi" >> $@
 
-vpp_LDADD = -lvlibapi -lvlibmemory  -lvlib_unix -lvlib
+vpp_LDADD = \
+  libvlibapi.la \
+  libvlibmemory.la \
+  libvlib_unix.la \
+  libvlib.la \
+  libvnet.la \
+  libsvm.la \
+  libsvmdb.la \
+  libvnetplugin.la \
+  -lrt
 
-vpp_LDADD += -lvnet
-
-vpp_LDADD += -lsvm -lsvmdb -lrt
-
-vpp_LDADD += -lvnetplugin
-
-if WITH_DPDK
-vpp_LDFLAGS = -Wl,--whole-archive
-if ENABLE_DPDK_SHARED
-vpp_LDFLAGS += -ldpdk
-else
-vpp_LDFLAGS += -l:libdpdk.a
-endif
-vpp_LDFLAGS += -Wl,--no-whole-archive
-if WITH_DPDK_CRYPTO
-vpp_LDADD += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
-endif
-endif
-
-vpp_LDADD += -lvppinfra -lm -lpthread -ldl
+vpp_LDFLAGS = $(DPDK_LD_FLAGS)
+vpp_LDADD += libvppinfra.la -lm -lpthread -ldl $(DPDK_LD_ADD)
 
 if WITH_IPV6SR
   vpp_LDADD += -lcrypto
 endif
 
-# Set the suffix list
-SUFFIXES = .api.h .api .api.json
-
-# The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
-# and requires a symbolic link at the top of the vpp source tree
-
-include $(top_srcdir)/suffix-rules.mk
-
 noinst_PROGRAMS += test_client
 
-test_client_SOURCES = vpp-api/test_client.c
-test_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
-	-lpthread -lm -lrt
+test_client_SOURCES = \
+  app/api/test_client.c
+
+test_client_LDADD = \
+  libvlibmemoryclient.la \
+  libvlibapi.la \
+  libsvm.la \
+  libvppinfra.la \
+  -lpthread -lm -lrt
 
 noinst_PROGRAMS += test_client test_ha
 
-test_ha_SOURCES = vpp-api/test_ha.c
-test_ha_LDADD = -lvlibmemoryclient -lvlibapi -lsvmdb -lsvm -lvppinfra \
-		-lpthread -lm -lrt
+test_ha_SOURCES = \
+  app/api/test_ha.c
 
+test_ha_LDADD = \
+  libvlibmemoryclient.la \
+  libvlibapi.la \
+  libsvmdb.la \
+  libsvm.la \
+  libvppinfra.la \
+  -lpthread -lm -lrt
 
 noinst_PROGRAMS += summary_stats_client
 
-summary_stats_client_SOURCES = vpp-api/summary_stats_client.c
-summary_stats_client_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra \
-	-lpthread -lm -lrt
+summary_stats_client_SOURCES = \
+  app/api/summary_stats_client.c
+
+summary_stats_client_LDADD = \
+  libvlibmemoryclient.la \
+  libvlibapi.la \
+  libsvm.la \
+  libvppinfra.la \
+  -lpthread -lm -lrt
 
 bin_PROGRAMS += vpp_get_metrics
 
-vpp_get_metrics_SOURCES = vpp-api/vpp_get_metrics.c
-vpp_get_metrics_LDADD = -lsvmdb -lsvm -lvppinfra \
-		-lpthread -lm -lrt
+vpp_get_metrics_SOURCES = \
+  app/api/vpp_get_metrics.c
+
+vpp_get_metrics_LDADD = \
+  libsvmdb.la \
+  libsvm.la \
+  libvppinfra.la \
+  -lpthread -lm -lrt
+
+# vi:syntax=automake

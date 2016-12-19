@@ -11,27 +11,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
-
-AM_CFLAGS = -Wall @Q_PLATFORM_DEFINE@ @Q_PLATFORM_PLUGPATH@ @DPDK@ @DPDK_CRYPTO@
-
 libvatplugin_la_SOURCES = \
-  vat/plugin_api.c
+  tools/vpp-api-test/plugin_api.c
 
-lib_LTLIBRARIES = libvatplugin.la	
+lib_LTLIBRARIES += libvatplugin.la
 
-bin_PROGRAMS = vpp_api_test vpp_json_test vpp_restart
+bin_PROGRAMS += vpp_api_test vpp_json_test vpp_restart
 
-vpp_api_test_SOURCES = vat/api_format.c vat/main.c vat/plugin.c vat/vat.h vat/json_format.h vat/json_format.c
-vpp_json_test_SOURCES = vat/json_format.h vat/json_format.c vat/json_test.c
+vpp_api_test_SOURCES = \
+  tools/vpp-api-test/api_format.c 	\
+  tools/vpp-api-test/main.c		\
+  tools/vpp-api-test/plugin.c		\
+  tools/vpp-api-test/vat.h		\
+  tools/vpp-api-test/json_format.h	\
+  tools/vpp-api-test/json_format.c
 
-vpp_api_test_LDADD = -lvlibmemoryclient -lvlibapi -lsvm \
-	-lvppinfra -lpthread -lm \
-	-lrt -ldl libvatplugin.la
-vpp_json_test_LDADD = -lvppinfra -lm
-nobase_include_HEADERS = vat/vat.h vat/json_format.h
+vpp_json_test_SOURCES = \
+  tools/vpp-api-test/json_format.h	\
+  tools/vpp-api-test/json_format.c	\
+  tools/vpp-api-test/json_test.c
 
-vpp_restart_SOURCES = vat/restart.c
-vpp_restart_LDADD = -lsvmdb -lsvm -lvppinfra -lpthread -lrt
+vpp_api_test_LDFLAGS = $(DPDK_LD_FLAGS)
+vpp_api_test_LDADD = \
+  libvlib.la \
+  libvlib_unix.la \
+  libvlibmemoryclient.la		\
+  libsvm.la				\
+  libvatplugin.la			\
+  libvppinfra.la 			\
+  libvlibapi.la				\
+  libvlibmemory.la			\
+  libvnet.la \
+  $(DPDK_LD_ADD)			\
+  -lpthread -lm -lrt -ldl -lcrypto
 
-dist_bin_SCRIPTS = scripts/vppctl
+vpp_json_test_LDADD = libvppinfra.la -lm
+
+nobase_include_HEADERS += \
+  tools/vpp-api-test/vat.h 		\
+  tools/vpp-api-test/json_format.h
+
+vpp_restart_SOURCES =  \
+  tools/vpp-api-test/restart.c
+vpp_restart_LDADD = \
+  libsvmdb.la				\
+  libsvm.la				\
+  libvppinfra.la			\
+  -lpthread -lrt
+
+dist_bin_SCRIPTS += scripts/vppctl
+
+# vi:syntax=automake
