@@ -28,10 +28,6 @@ if ENABLE_sample_PLUGIN
 SUBDIRS += sample-plugin
 endif
 
-if ENABLE_sixrd_PLUGIN
-SUBDIRS += sixrd-plugin
-endif
-
 if ENABLE_ioam_PLUGIN
 SUBDIRS += ioam-plugin
 endif
@@ -42,10 +38,6 @@ endif
 
 if ENABLE_snat_PLUGIN
 SUBDIRS += snat-plugin
-endif
-
-if ENABLE_ila_PLUGIN
-SUBDIRS += ila-plugin
 endif
 
 if ENABLE_lb_PLUGIN

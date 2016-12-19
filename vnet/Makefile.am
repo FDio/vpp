@@ -11,11 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
-
-BUILT_SOURCES = 				\
+BUILT_SOURCES += 				\
  vnet/devices/af_packet/af_packet.api.h		\
  vnet/devices/af_packet/af_packet.api.json	\
  vnet/devices/netmap/netmap.api.h		\
@@ -47,14 +44,15 @@ BUILT_SOURCES = 				\
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
-nobase_include_HEADERS =
-noinst_PROGRAMS =
-TESTS =
+
+libvnet_la_LIBAD = libvppinfra.la libvlib.la libsvm.la
 
 dpdk_libs =
 if WITH_DPDK
 dpdk_libs += -l:libdpdk.a
 endif
+
+libvnet_la_LDDAD = -l:libdpdk.a
 
 ########################################
 # Generic stuff
@@ -462,7 +460,7 @@ test_map_SOURCES =                             \
  vnet/map/test.c
 test_map_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_map_LDADD = libvnet.la -lvppinfra -lvlib	\
+test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
   -lpthread -lvlibmemory -lvlibapi -lvlib_unix	\
   -ldl -lsvm -lrt
 
@@ -572,8 +570,8 @@ nobase_include_HEADERS +=			\
 
 
 if ENABLE_TESTS
-LDS = -lvppinfra -l:libvlib.a $(dpdk_libs) -l:libvlibmemory.a \
-	-l:libvlibapi.a -l:libsvm.a -lpthread -ldl -lrt -lm -l:libvlib_unix.a
+LDS = -Wl,--whole-archive libvppinfra.la libvlib.la libvlib_unix.la $(dpdk_libs) libvlibmemory.la \
+	libvlibapi.la libsvm.la libvnet.la -Wl,--no-whole-archive -lpthread -ldl -lrt -lm -lcrypto
 
 TESTS += test_cp_serdes test_lisp_types
 
@@ -591,11 +589,11 @@ test_lisp_types_SOURCES =			\
 test_cp_serdes_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_lisp_types_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_cp_serdes_LDADD = libvnet.la $(LDS)
-test_lisp_types_LDADD = libvnet.la $(LDS)
+test_cp_serdes_LDFLAGS = -static $(LDS)
+test_lisp_types_LDFLAGS = -static $(LDS)
 
-test_cp_serdes_LDFLAGS = -static
-test_lisp_types_LDFLAGS = -static
+#test_cp_serdes_LDFLAGS = -static
+#test_lisp_types_LDFLAGS = -static
 endif
 
 ########################################
@@ -629,7 +627,7 @@ test_test_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_test_LDADD = $(LIBOBJS)
 
 noinst_PROGRAMS += $(TESTS)
-check_PROGRAMS = $(TESTS)
+check_PROGRAMS += $(TESTS)
 endif
 
 ########################################
@@ -946,25 +944,26 @@ libvnetplugin_la_SOURCES +=                    \
 nobase_include_HEADERS +=                      \
   vnet/plugin/plugin.h
 
-lib_LTLIBRARIES = libvnet.la libvnetplugin.la
+libvnetdir = ${libdir}
+libvnet_LTLIBRARIES = libvnet.la libvnetplugin.la
 
 pcap2pg_SOURCES = 				\
   vnet/unix/pcap2pg.c				\
   vnet/unix/pcap.h
 
 pcap2pg_LDFLAGS = -static
-pcap2pg_LDADD = libvnet.la -l:libvppinfra.a -lpthread -lm -ldl
+pcap2pg_LDADD = libvnet.la libvppinfra.la -lpthread -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
 
 # Set the suffix list
-SUFFIXES = .api.h .api .api.json
+#SUFFIXES = .api.h .api .api.json
 
 # install the API definition, so we can produce java bindings, etc.
 
-apidir = $(prefix)/vnet
+apidir += $(prefix)/vnet
 
-api_DATA =					\
+api_DATA +=					\
  vnet/devices/af_packet/af_packet.api.json	\
  vnet/devices/netmap/netmap.api.json		\
  vnet/devices/virtio/vhost_user.api.json	\
@@ -983,4 +982,5 @@ api_DATA =					\
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
 
-include $(top_srcdir)/suffix-rules.mk
+
+# vi:syntax=automake
