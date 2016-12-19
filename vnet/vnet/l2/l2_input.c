@@ -133,10 +133,6 @@ classify_and_dispatch (vlib_main_t * vm,
    *   set tx sw-if-handle
    */
 
-  u8 mcast_dmac;
-  __attribute__ ((unused)) u8 l2bcast;
-  __attribute__ ((unused)) u8 l2mcast;
-  __attribute__ ((unused)) u8 l2_stat_kind;
   u16 ethertype;
   u8 protocol;
   l2_input_config_t *config;
@@ -148,11 +144,7 @@ classify_and_dispatch (vlib_main_t * vm,
   u8 *l3h0;
   u32 sw_if_index0;
 
-#define get_u32(addr) ( *((u32 *)(addr)) )
 #define get_u16(addr) ( *((u16 *)(addr)) )
-#define STATS_IF_LAYER2_UCAST_INPUT_CNT 0
-#define STATS_IF_LAYER2_MCAST_INPUT_CNT 1
-#define STATS_IF_LAYER2_BCAST_INPUT_CNT 2
 
   sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
@@ -162,15 +154,15 @@ classify_and_dispatch (vlib_main_t * vm,
   ethertype = clib_net_to_host_u16 (get_u16 (l3h0 - 2));
   feat_mask = ~0;
 
+  /* Get config for the input interface */
+  config = vec_elt_at_index (msm->configs, sw_if_index0);
+
+  /* Save split horizon group */
+  vnet_buffer (b0)->l2.shg = config->shg;
+
   /* determine layer2 kind for stat and mask */
-  mcast_dmac = ethernet_address_cast (h0->dst_address);
-  l2bcast = 0;
-  l2mcast = 0;
-  l2_stat_kind = STATS_IF_LAYER2_UCAST_INPUT_CNT;
-  if (PREDICT_FALSE (mcast_dmac))
+  if (PREDICT_FALSE (ethernet_address_cast (h0->dst_address)))
     {
-      u32 *dsthi = (u32 *) & h0->dst_address[0];
-      u32 *dstlo = (u32 *) & h0->dst_address[2];
       protocol = ((ip6_header_t *) l3h0)->protocol;
 
       /* Disable bridge forwarding (flooding will execute instead if not xconnect) */
@@ -180,33 +172,6 @@ classify_and_dispatch (vlib_main_t * vm,
       if (ethertype != ETHERNET_TYPE_ARP &&
 	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
 	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
-
-      /* dest mac is multicast or broadcast */
-      if ((*dstlo == 0xFFFFFFFF) && (*dsthi == 0xFFFFFFFF))
-	{
-	  /* dest mac == FF:FF:FF:FF:FF:FF */
-	  l2_stat_kind = STATS_IF_LAYER2_BCAST_INPUT_CNT;
-	  l2bcast = 1;
-	}
-      else
-	{
-	  l2_stat_kind = STATS_IF_LAYER2_MCAST_INPUT_CNT;
-	  l2mcast = 1;
-	}
-    }
-  /* TODO: take l2 stat */
-
-  /* Get config for the input interface */
-  config = vec_elt_at_index (msm->configs, sw_if_index0);
-
-  /* Save split horizon group */
-  vnet_buffer (b0)->l2.shg = config->shg;
-
-  if (config->xconnect)
-    {
-      /* Set the output interface */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
-
     }
   else
     {
@@ -215,10 +180,19 @@ classify_and_dispatch (vlib_main_t * vm,
        * to 0 so it is not dropped for VXLAN tunnels or other ports with the
        * same SHG as that of the BVI.
        */
-      if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] == L2INPUT_BVI
-			 && !mcast_dmac))
+      if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] ==
+			 L2INPUT_BVI))
 	vnet_buffer (b0)->l2.shg = 0;
+    }
 
+
+  if (config->xconnect)
+    {
+      /* Set the output interface */
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
+    }
+  else
+    {
       /* Do bridge-domain processing */
       bd_index0 = config->bd_index;
       /* save BD ID for next feature graph nodes */
