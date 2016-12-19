@@ -203,7 +203,7 @@ vlib_unix_get_main (void)
 }
 
 /* thread stack array; vec_len = max number of threads */
-u8 **vlib_thread_stacks;
+extern u8 **vlib_thread_stacks;
 
 /* utils */
 
