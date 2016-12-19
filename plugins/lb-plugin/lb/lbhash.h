@@ -31,7 +31,9 @@
 
 #include <vnet/vnet.h>
 
+#if defined (__SSE4_2__)
 #include <immintrin.h>
+#endif
 
 /*
  * @brief Number of entries per bucket.
