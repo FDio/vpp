@@ -95,6 +95,9 @@ static void vl_api_control_ping_reply_t_handler
   tm->pings_replied++;
 }
 
+vlib_main_t vlib_global_main;
+vlib_main_t **vlib_mains;
+
 void
 vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 {

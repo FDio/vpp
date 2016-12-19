@@ -676,9 +676,9 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * _dst0,
 }
 
 #if CLIB_DEBUG > 0
-u32 *vlib_buffer_state_validation_lock;
-uword *vlib_buffer_state_validation_hash;
-void *vlib_buffer_state_heap;
+extern u32 *vlib_buffer_state_validation_lock;
+extern uword *vlib_buffer_state_validation_hash;
+extern void *vlib_buffer_state_heap;
 #endif
 
 static inline void

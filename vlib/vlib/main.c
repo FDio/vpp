@@ -50,6 +50,8 @@ CJ_GLOBAL_LOG_PROTOTYPE;
    speculative vector enqueues which overflow vector data in next frame. */
 #define VLIB_FRAME_SIZE_ALLOC (VLIB_FRAME_SIZE + 4)
 
+u32 wraps;
+
 always_inline u32
 vlib_frame_bytes (u32 n_scalar_bytes, u32 n_vector_bytes)
 {
