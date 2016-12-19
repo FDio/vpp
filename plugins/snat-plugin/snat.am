@@ -1,0 +1,44 @@
+
+# Copyright (c) <current-year> <your-organization>
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+vppplugins_LTLIBRARIES += snat_plugin.la
+snat_plugin_la_CFLAGS = -Wall @DPDK@ -I{src} -I${srcdir}/@snat_srcdir@
+snat_plugin_la_LDFLAGS = -module -shared -avoid-version
+snat_plugin_la_SOURCES = \
+	@snat_srcdir@/snat/snat.c		\
+        @snat_srcdir@/snat/in2out.c		\
+        @snat_srcdir@/snat/out2in.c		\
+	@snat_srcdir@/snat/snat_plugin.api.h
+
+BUILT_SOURCES += \
+	@snat_srcdir@/snat/snat.api.h \
+	@snat_srcdir@/snat/snat.api.json
+
+apidir += $(prefix)/@snat_srcdir@/snat
+api_DATA += @snat_srcdir@/snat/snat.api.json
+
+noinst_HEADERS += \
+  @snat_srcdir@/snat/snat_all_api_h.h		\
+  @snat_srcdir@/snat/snat_msg_enum.h		\
+  @snat_srcdir@/snat/snat.api.h
+
+#vppapitestplugins_LTLIBRARIES += snat_test_plugin.la
+#snat_test_plugin_la_CFLAGS = -Wall @DPDK@ -I${srcdir} -I${srcdir}/@snat_srcdir@
+#snat_test_plugin_la_LDFLAGS = -module -shared -avoid-version
+#snat_test_plugin_la_SOURCES = \
+#  @snat_srcdir@/snat/snat_test.c 		\
+#  @snat_srcdir@/snat/snat_plugin.api.h
+
+# vi:syntax=automake

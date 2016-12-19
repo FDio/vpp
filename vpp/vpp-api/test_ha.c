@@ -46,8 +46,8 @@
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <svm.h>
-#include <svmdb.h>
+#include <svm/svm.h>
+#include <svm/svmdb.h>
 
 #include <vpp-api/vpe_msg_enum.h>
 

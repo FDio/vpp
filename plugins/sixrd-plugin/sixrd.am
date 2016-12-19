@@ -11,21 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-bin_PROGRAMS += svmtool svmdbtool
+libsixrd_plugin_la_CFLAGS = -Wall -I@sixrd_srcdir@
+libsixrd_plugin_la_LDFLAGS = -module -shared -avoid-version
 
-nobase_include_HEADERS += svm/svm.h svm/ssvm.h svm/svmdb.h
+libsixrd_plugin_la_SOURCES =			\
+	@sixrd_srcdir@/sixrd/sixrd.c		\
+	@sixrd_srcdir@/sixrd/sixrd_dpo.c	\
+	@sixrd_srcdir@/sixrd/ip4_sixrd.c	\
+	@sixrd_srcdir@/sixrd/ip6_sixrd.c
 
-libsvmdir = ${libdir}
-libsvm_LTLIBRARIES = libsvm.la libsvmdb.la
+noinst_HEADERS +=				\
+	@sixrd_srcdir@/sixrd/sixrd.h		\
+	@sixrd_srcdir@/sixrd/sixrd_dpo.h
 
-libsvm_la_SOURCES = svm/svm.c svm/ssvm.c
-
-svmtool_SOURCES = svm/svmtool.c
-svmtool_LDADD = libsvm.la libvppinfra.la -lpthread -lrt
-
-libsvmdb_la_SOURCES = svm/svmdb.c
-
-svmdbtool_SOURCES = svm/svmdbtool.c
-svmdbtool_LDADD = libsvmdb.la libsvm.la libvppinfra.la -lpthread -lrt
+vppplugins_LTLIBRARIES += libsixrd_plugin.la
 
 # vi:syntax=automake
