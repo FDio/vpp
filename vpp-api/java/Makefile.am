@@ -84,8 +84,7 @@ packagedir_jvpp_core = io/fd/vpp/jvpp/core
 BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 
 JSON_FILES = \
-	$(prefix)/../vpp/vpp-api/vpe.api.json \
-	$(wildcard $(prefix)/../vnet/vnet/*.api.json)
+	$(wildcard $(prefix)/../vpp/share/vpp/api/core/*.api.json)
 
 jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h:		\
     jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h	\
