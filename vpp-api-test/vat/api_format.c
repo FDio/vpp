@@ -30,7 +30,7 @@
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 
-#include <vpp-api/vpe_msg_enum.h>
+#include <app/api/vpe_msg_enum.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/classify/input_acl.h>
@@ -55,19 +55,19 @@
 #include <sys/stat.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun		/* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_printfun
 
 uword

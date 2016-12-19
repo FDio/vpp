@@ -1,0 +1,40 @@
+
+# Copyright (c) <current-year> <your-organization>
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+flowperpkt_plugin_la_CFLAGS = -Wall -I${srcdir}/@flowperpkt_srcdir@ -I@flowperpkt_srcdir@
+flowperpkt_plugin_la_LDFLAGS = -module -shared -avoid-version
+
+vppplugins_LTLIBRARIES += flowperpkt_plugin.la
+vppapitestplugins_LTLIBRARIES += flowperpkt_test_plugin.la
+
+flowperpkt_plugin_la_SOURCES = \
+        @flowperpkt_srcdir@/flowperpkt/flowperpkt.c  \
+        @flowperpkt_srcdir@/flowperpkt/l2_node.c \
+        @flowperpkt_srcdir@/flowperpkt/node.c \
+	@flowperpkt_srcdir@/flowperpkt/flowperpkt_plugin.api.h
+
+API_FILES += @flowperpkt_srcdir@/flowperpkt/flowperpkt.api
+
+noinst_HEADERS +=			\
+  @flowperpkt_srcdir@/flowperpkt/flowperpkt_all_api_h.h			\
+  @flowperpkt_srcdir@/flowperpkt/flowperpkt_msg_enum.h			\
+  @flowperpkt_srcdir@/flowperpkt/flowperpkt.api.h
+
+flowperpkt_test_plugin_la_CFLAGS = -Wall -I${srcdir}/@flowperpkt_srcdir@ -I@flowperpkt_srcdir@
+flowperpkt_test_plugin_la_LDFLAGS = -module -shared -avoid-version
+flowperpkt_test_plugin_la_SOURCES = \
+  @flowperpkt_srcdir@/flowperpkt/flowperpkt_test.c \
+  @flowperpkt_srcdir@/flowperpkt/flowperpkt_plugin.api.h
+
+# vi:syntax=automake

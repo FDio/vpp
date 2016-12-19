@@ -31,16 +31,16 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include <vpp-api/vpe_msg_enum.h>
+#include <app/api/vpe_msg_enum.h>
 
 #include "pneum.h"
 
 #define vl_typedefs             /* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <app/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 vlib_main_t vlib_global_main;
