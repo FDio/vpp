@@ -18,6 +18,10 @@
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-cp/lisp_cp_messages.h>
 
+/* FIXME */
+#include <vlibapi/api_helper_macros.h>
+vpe_api_main_t vpe_api_main;
+
 #define _assert(e)                    \
   error = CLIB_ERROR_ASSERT (e);      \
   if (error)                          \

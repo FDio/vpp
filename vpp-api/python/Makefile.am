@@ -11,15 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
+AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir}
 
 BUILT_SOURCES =
 bin_PROGRAMS =
 CLEANFILES =
 lib_LTLIBRARIES =
-noinst_PROGRAMS = test_pneum
+noinst_PROGRAMS =
 nobase_include_HEADERS = pneum/pneum.h
 
 #
@@ -27,8 +27,13 @@ nobase_include_HEADERS = pneum/pneum.h
 #
 lib_LTLIBRARIES += libpneum.la
 libpneum_la_SOURCES = pneum/pneum.c
-libpneum_la_LIBADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
-                     -lm -lrt
+libpneum_la_LIBADD = \
+  $(top_builddir)/libvppinfra.la \
+  $(top_builddir)/libvlibmemoryclient.la \
+  $(top_builddir)/libvlibapi.la \
+  $(top_builddir)/libsvm.la \
+  -lpthread -lm -lrt
+
 libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
 
@@ -38,14 +43,18 @@ install-exec-local:
 	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
 	PYTHONUSERBASE=$(prefix)					\
 	python setup.py build_ext -L $(prefix)/lib64 \
-	-I $(prefix)/../vppinfra/include/ install --user
+	-I $(prefix)/include/ install --user
 
 #
 # Test client
 #
 noinst_PROGRAMS += test_pneum
 test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
-test_pneum_LDADD = -lvlibmemoryclient -lvlibapi -lsvm -lvppinfra -lpthread \
-                   -lm -lrt
+test_pneum_LDADD = \
+  $(top_builddir)/libvppinfra.la \
+  $(top_builddir)/libvlibmemoryclient.la \
+  $(top_builddir)/libvlibapi.la \
+  $(top_builddir)/libsvm.la \
+  -lpthread -lm -lrt
 
 

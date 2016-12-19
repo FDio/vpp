@@ -18,7 +18,7 @@
 
 */
 #include <inttypes.h>
-#include <vat/json_format.h>
+#include <tools/vpp-api-test/json_format.h>
 #include <vnet/ip/ip.h>
 #include <vppinfra/vec.h>
 

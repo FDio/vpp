@@ -21,7 +21,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/hash.h>
-#include <svmdb.h>
+#include <svm/svmdb.h>
 #include <errno.h>
 
 mmodule vpp_module;
