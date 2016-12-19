@@ -1,9 +1,0 @@
-AC_INIT(sixrd_plugin, 1.0)
-LT_INIT
-AM_INIT_AUTOMAKE
-AM_SILENT_RULES([yes])
-AC_PREFIX_DEFAULT([/usr])
-
-AC_PROG_CC
-
-AC_OUTPUT([Makefile])
