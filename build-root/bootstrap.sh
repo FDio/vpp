@@ -45,7 +45,7 @@ cd $wsroot
 
 cd $build_root
 echo Compile native tools
-for tool in vppapigen
+for tool in tools
 do
     make V=0 is_build_tool=yes $tool-install
 done

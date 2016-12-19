@@ -15,18 +15,18 @@
 
 #include <vnet/vnet.h>
 
-#include <vpp-api/vpe_msg_enum.h>
+#include <vpp/api/vpe_msg_enum.h>
 #define vl_typedefs             /* define message structures */
-#include <vpp-api/vpe_all_api_h.h>
+#include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
 
 #define vl_endianfun
-#include <vpp-api/vpe_all_api_h.h>
+#include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <vpp-api/vpe_all_api_h.h>
+#include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
 #include <vnet/api_errno.h>
