@@ -176,7 +176,7 @@ typedef struct vlib_main_t
 } vlib_main_t;
 
 /* Global main structure. */
-vlib_main_t vlib_global_main;
+extern vlib_main_t vlib_global_main;
 
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
@@ -278,7 +278,7 @@ vlib_last_vector_length_per_node (vlib_main_t * vm)
   return n == 0 ? 0 : (f64) v / (f64) n;
 }
 
-u32 wraps;
+extern u32 wraps;
 
 always_inline void
 vlib_increment_main_loop_counter (vlib_main_t * vm)
@@ -315,7 +315,7 @@ always_inline void vlib_set_queue_signal_callback
 int vlib_main (vlib_main_t * vm, unformat_input_t * input);
 
 /* Thread stacks, for os_get_cpu_number */
-u8 **vlib_thread_stacks;
+extern u8 **vlib_thread_stacks;
 
 /* Number of thread stacks that the application needs */
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));

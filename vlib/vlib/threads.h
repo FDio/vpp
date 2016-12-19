@@ -18,7 +18,7 @@
 #include <vlib/main.h>
 #include <linux/sched.h>
 
-vlib_main_t **vlib_mains;
+extern vlib_main_t **vlib_mains;
 
 void vlib_set_thread_name (char *name);
 
@@ -108,7 +108,7 @@ typedef struct
   pthread_t thread_id;
 } vlib_worker_thread_t;
 
-vlib_worker_thread_t *vlib_worker_threads;
+extern vlib_worker_thread_t *vlib_worker_threads;
 
 typedef struct
 {
@@ -322,7 +322,7 @@ typedef struct
 
 } vlib_thread_main_t;
 
-vlib_thread_main_t vlib_thread_main;
+extern vlib_thread_main_t vlib_thread_main;
 
 #define VLIB_REGISTER_THREAD(x,...)                     \
   __VA_ARGS__ vlib_thread_registration_t x;             \

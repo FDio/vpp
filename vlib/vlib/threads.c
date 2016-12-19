@@ -51,6 +51,7 @@ vl (void *p)
   return vec_len (p);
 }
 
+vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
 
 uword
