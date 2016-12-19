@@ -22,6 +22,7 @@ include /usr/share/dpkg/default.mk
 
 override_dh_install:
 	dh_install --exclude .git
+	../scripts/remove-rpath .
 
 override_dh_strip:
 	dh_strip --dbg-package=vpp-dbg
