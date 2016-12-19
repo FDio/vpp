@@ -154,6 +154,24 @@
       "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c6aa04d4",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T13:42:05Z",
+      "side": 1,
+      "message": "dpkg-query is used to check if certain packages are installed, for example on line 138, dpkg-query is used to check if any of the dependencies are already installed, and will usually reply back with null if it is not there, but when it checks for graphviz in the ubuntu vagrant box it returns back an odd reply, line 138 then presumes from this it is installed even though it is not, thus giving an error during build when \"dot\" from graphviz is run",
+      "parentUuid": "5a2585a7_a66818bb",
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
