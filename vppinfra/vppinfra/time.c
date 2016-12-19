@@ -144,8 +144,10 @@ os_cpu_clock_frequency (void)
 {
   f64 cpu_freq;
 
+#ifdef __x86_64__
   if (clib_cpu_supports_invariant_tsc ())
     return estimate_clock_frequency (1e-3);
+#endif
 
   /* First try /sys version. */
   cpu_freq = clock_frequency_from_sys_filesystem ();

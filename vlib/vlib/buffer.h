@@ -56,7 +56,7 @@
 #define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
 #endif
 
-#ifdef CLIB_HAVE_VEC128
+#if defined (CLIB_HAVE_VEC128) || defined (__aarch64__)
 typedef u8x16 vlib_copy_unit_t;
 #else
 typedef u64 vlib_copy_unit_t;
