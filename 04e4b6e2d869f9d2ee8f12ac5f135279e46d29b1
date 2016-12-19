@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_aba3419d",
+        "filename": "vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2016-12-19T03:54:21Z",
+      "side": 1,
+      "message": "Need to remove this line.",
+      "range": {
+        "startLine": 132,
+        "startChar": 16,
+        "endLine": 132,
+        "endChar": 21
+      },
+      "revId": "04e4b6e2d869f9d2ee8f12ac5f135279e46d29b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_8ba08591",
+        "filename": "vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 247,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2016-12-19T03:54:21Z",
+      "side": 1,
+      "message": "1. The last item is crc, so it should be \u0027i !\u003d len(msgdef) - 2\u0027.\n\n2. There\u0027s one API definition that doesn\u0027t follow the above assumption (last one is VLA).\n\ndiff --git a/vpp/vpp-api/vpe.api b/vpp/vpp-api/vpe.api\nindex b13c260..d5818cb 100644\n--- a/vpp/vpp-api/vpe.api\n+++ b/vpp/vpp-api/vpe.api\n@@ -814,8 +814,8 @@ define sr_tunnel_add_del\n   u16 flags_net_byte_order;\n   u8 n_segments;\n   u8 n_tags;\n-  u8 segs_and_tags[0];\n   u8 policy_name[64];\n+  u8 segs_and_tags[0];\n };\n\n3. What if there\u0027re VLA parameters more than one?",
+      "range": {
+        "startLine": 247,
+        "startChar": 54,
+        "endLine": 247,
+        "endChar": 60
+      },
+      "revId": "04e4b6e2d869f9d2ee8f12ac5f135279e46d29b1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
