@@ -7,7 +7,6 @@ AM_SILENT_RULES([yes])
 
 AC_PROG_CC
 
-AC_OUTPUT([python/Makefile])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 

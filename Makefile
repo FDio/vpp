@@ -32,7 +32,7 @@ endif
 
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
-DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope
+DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += python-dev python-virtualenv python-pip lcov chrpath autoconf
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
@@ -147,7 +147,7 @@ else
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/gcc
 	@ln -s /usr/bin/ccache $(BR)/tools/ccache-bin/g++
 endif
-	@make -C $(BR) V=$(V) is_build_tool=yes vppapigen-install
+	@make -C $(BR) V=$(V) is_build_tool=yes tools-install
 	@touch $@
 
 bootstrap: $(BR)/.bootstrap.ok
