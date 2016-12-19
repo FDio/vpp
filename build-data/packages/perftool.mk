@@ -1,5 +1,4 @@
-perftool_configure_depend = vppinfra-install
+perftool_source = src
 
-perftool_CPPFLAGS = $(call installed_includes_fn, vppinfra)
+perftool_configure_args = --disable-vlib --disable-svm --enable-perftool
 
-perftool_LDFLAGS = $(call installed_libs_fn, vppinfra)
