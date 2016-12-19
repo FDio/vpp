@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_a602583c",
+        "filename": "vlib/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-12-19T19:57:53Z",
+      "side": 1,
+      "message": "I don\u0027t know if it\u0027s possible as CLIB_HAVE_VEC128 also defines 256bits vectors, which - as far I know - are not available on armv8 NEON until the scalable vector extension (SVE).\nMaybe we could have a CLIB_HAVE_VEC256 and CLIB_HAVE_VEC_512 ? (for avx-512 ?)",
+      "parentUuid": "5a2585a7_46d8541d",
+      "range": {
+        "startLine": 59,
+        "startChar": 34,
+        "endLine": 59,
+        "endChar": 55
+      },
+      "revId": "3477084c4a590380b19eb589b0903c8534c38b5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_a6d138fd",
         "filename": "vlib/vlib/node.c",
         "patchSetId": 1
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_86ff5c34",
+        "filename": "vlib/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 438,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-12-19T19:57:53Z",
+      "side": 1,
+      "message": "I will update this :)",
+      "parentUuid": "5a2585a7_a6d138fd",
+      "range": {
+        "startLine": 436,
+        "startChar": 0,
+        "endLine": 438,
+        "endChar": 70
+      },
+      "revId": "3477084c4a590380b19eb589b0903c8534c38b5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_c6ec44ca",
         "filename": "vppinfra/vppinfra/time.c",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2016-12-19T18:50:05Z",
       "side": 1,
       "message": "Can you make clib_cpu_supports_invariant_tsc returning 0 instead of needing to wrap it with macros....",
+      "range": {
+        "startLine": 147,
+        "startChar": 0,
+        "endLine": 150,
+        "endChar": 6
+      },
+      "revId": "3477084c4a590380b19eb589b0903c8534c38b5e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_269668f1",
+        "filename": "vppinfra/vppinfra/time.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 194
+      },
+      "writtenOn": "2016-12-19T19:57:53Z",
+      "side": 1,
+      "message": "Sure, I\u0027ll find the appropriate place for it and will update the patch tonight !",
+      "parentUuid": "5a2585a7_c6ec44ca",
       "range": {
         "startLine": 147,
         "startChar": 0,
