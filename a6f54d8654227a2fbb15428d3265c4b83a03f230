@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_06d6cc4f",
+        "filename": "Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T14:13:54Z",
+      "side": 1,
+      "message": "These were brought in with a rebase",
+      "parentUuid": "5a2585a7_664b505a",
+      "range": {
+        "startLine": 36,
+        "startChar": 55,
+        "endLine": 36,
+        "endChar": 59
+      },
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_4648545b",
         "filename": "Makefile",
         "patchSetId": 12
@@ -36,6 +60,30 @@
       "writtenOn": "2016-12-19T13:17:51Z",
       "side": 1,
       "message": "Why the space after .bootstrap.ok?",
+      "range": {
+        "startLine": 190,
+        "startChar": 26,
+        "endLine": 190,
+        "endChar": 27
+      },
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c6cfa4af",
+        "filename": "Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T14:13:54Z",
+      "side": 1,
+      "message": "Fixed in patch",
+      "parentUuid": "5a2585a7_4648545b",
       "range": {
         "startLine": 190,
         "startChar": 26,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_a6c49892",
+        "filename": "Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T14:13:54Z",
+      "side": 1,
+      "message": "Fixed in patch",
+      "parentUuid": "5a2585a7_26754898",
+      "range": {
+        "startLine": 201,
+        "startChar": 34,
+        "endLine": 201,
+        "endChar": 35
+      },
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_067a4c88",
         "filename": "Makefile",
         "patchSetId": 12
@@ -82,6 +154,30 @@
       "writtenOn": "2016-12-19T13:17:51Z",
       "side": 1,
       "message": "why the test-cov targets?",
+      "range": {
+        "startLine": 251,
+        "startChar": 10,
+        "endLine": 251,
+        "endChar": 19
+      },
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e6caa0a0",
+        "filename": "Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T14:13:54Z",
+      "side": 1,
+      "message": "These were brought in with a rebase",
+      "parentUuid": "5a2585a7_067a4c88",
       "range": {
         "startLine": 251,
         "startChar": 10,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_86c19c82",
+        "filename": "build-root/Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T14:13:54Z",
+      "side": 1,
+      "message": "Fixed in patch",
+      "parentUuid": "5a2585a7_e66e20c9",
+      "range": {
+        "startLine": 1158,
+        "startChar": 0,
+        "endLine": 1158,
+        "endChar": 1
+      },
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_c67324b0",
         "filename": "build-root/Makefile",
         "patchSetId": 12
@@ -128,6 +248,30 @@
       "writtenOn": "2016-12-19T13:17:51Z",
       "side": 1,
       "message": "space at eol?",
+      "range": {
+        "startLine": 1174,
+        "startChar": 60,
+        "endLine": 1174,
+        "endChar": 62
+      },
+      "revId": "a6f54d8654227a2fbb15428d3265c4b83a03f230",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_66beb001",
+        "filename": "build-root/Makefile",
+        "patchSetId": 12
+      },
+      "lineNbr": 1174,
+      "author": {
+        "id": 632
+      },
+      "writtenOn": "2016-12-19T14:13:54Z",
+      "side": 1,
+      "message": "Fixed in patch",
+      "parentUuid": "5a2585a7_c67324b0",
       "range": {
         "startLine": 1174,
         "startChar": 60,
