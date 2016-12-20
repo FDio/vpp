@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_1d173aef",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "more pythonic way to do this is:\n\nfor size in packet_sizes:\n    ...",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ddbf72cf",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "https://docs.python.org/2/library/unittest.html#unittest.TestCase.assertIsNotNone",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_9db9eaeb",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 240,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "https://docs.python.org/2/library/unittest.html#unittest.TestCase.assertIsNotNone",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_7dce3e85",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 255,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "https://docs.python.org/2/library/unittest.html#unittest.TestCase.assertIsNotNone",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_dda652c1",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 282,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "maybe self.pg0.assert_nothing_captured() (\u0026pg3) makes sense here?",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_bdab8688",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "~ as above",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_9db0caf5",
+        "filename": "test/test_classifier.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-20T13:38:59Z",
+      "side": 1,
+      "message": "~ as above",
+      "revId": "83305912b11f6e09f5e24f1f94fcbfadb74f63c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
