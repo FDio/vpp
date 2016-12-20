@@ -4061,7 +4061,7 @@ vnet_ip6_nd_term (vlib_main_t * vm,
 }
 
 void
-ethernet_ndp_change_mac (vlib_main_t * vm, u32 sw_if_index)
+ethernet_ndp_change_mac (u32 sw_if_index)
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   ip6_neighbor_t *n;

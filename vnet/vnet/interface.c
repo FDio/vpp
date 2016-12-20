@@ -1311,25 +1311,16 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
       if (dev_class->mac_addr_change_function)
 	{
 	  error =
-	    dev_class->mac_addr_change_function (vnet_get_hw_interface
-						 (vnm, hw_if_index),
-						 (char *) &mac_address);
+	    dev_class->mac_addr_change_function (hi, (char *) &mac_address);
 	}
       if (!error)
 	{
-	  ethernet_main_t *em = &ethernet_main;
-	  ethernet_interface_t *ei =
-	    pool_elt_at_index (em->interfaces, hi->hw_instance);
+	  vnet_hw_interface_class_t *hw_class;
 
-	  vec_validate (hi->hw_address,
-			STRUCT_SIZE_OF (ethernet_header_t, src_address) - 1);
-	  clib_memcpy (hi->hw_address, &mac_address,
-		       vec_len (hi->hw_address));
+	  hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
 
-	  clib_memcpy (ei->address, (u8 *) & mac_address,
-		       sizeof (ei->address));
-	  ethernet_arp_change_mac (vnm, hw_if_index);
-	  ethernet_ndp_change_mac (vnm->vlib_main, hw_if_index);
+	  if (NULL != hw_class->mac_addr_change_function)
+	    hw_class->mac_addr_change_function (hi, (char *) &mac_address);
 	}
       else
 	{
