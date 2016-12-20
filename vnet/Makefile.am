@@ -27,7 +27,9 @@ BUILT_SOURCES = 				\
  vnet/span/span.api.h				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/devices/netmap/netmap.api.h				\
+ vnet/devices/netmap/netmap.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -779,11 +781,12 @@ libvnet_la_SOURCES +=				\
   vnet/devices/netmap/netmap.c			\
   vnet/devices/netmap/device.c			\
   vnet/devices/netmap/node.c			\
-  vnet/devices/netmap/cli.c
+  vnet/devices/netmap/cli.c				\
+  vnet/devices/netmap/netmap_api.c
 
 nobase_include_HEADERS +=			\
-  vnet/devices/netmap/netmap.h
-
+  vnet/devices/netmap/netmap.h		\
+  vnet/devices/netmap/netmap.api.h
 
 ########################################
 # Driver feature graph arc support
@@ -939,7 +942,8 @@ api_DATA =					\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/devices/netmap/netmap.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
