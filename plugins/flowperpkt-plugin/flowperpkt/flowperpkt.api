@@ -22,7 +22,7 @@ manual_print define flowperpkt_tx_interface_add_del
 
   /* Enable / disable the feature */
   u8 is_add;
-  u8 is_ipv6;
+  u8 which;  /* 0 = ipv4, 1 = l2, 2 = ipv6 (not yet implemented) */
 
   /* Interface handle */
   u32 sw_if_index;
