@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_9d11eaae",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1083,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2016-12-20T14:39:28Z",
+      "side": 1,
+      "message": "This should go to plugin...",
+      "range": {
+        "startLine": 1077,
+        "startChar": 0,
+        "endLine": 1083,
+        "endChar": 2
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
