@@ -220,6 +220,10 @@ class VppPGInterface(VppInterface):
                 if len(capture.res) == expected_count:
                     # bingo, got the packets we expected
                     return capture
+                elif len(capture.res) > expected_count:
+                    self.test.logger.error(
+                        ppc("Unexpected packets captured:", capture))
+                    break
                 else:
                     self.test.logger.debug("Partial capture containing %s "
                                            "packets doesn't match expected "
@@ -251,8 +255,6 @@ class VppPGInterface(VppInterface):
                 if not capture or len(capture.res) == 0:
                     # junk filtered out, we're good
                     return
-                self.test.logger.error(
-                    ppc("Unexpected packets captured:", capture))
             except:
                 pass
             self.generate_debug_aid("empty-assert")
