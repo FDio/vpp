@@ -28,6 +28,7 @@
  * VXLAN APIs: see .../vnet/vnet/vxlan/{vxlan.api, vxlan_api.c}
  * AF-PACKET APIs: ... see /vnet/devices/af_packet/{af_packet.api, af_packet_api.c}
  * NETMAP APIs: see ... /vnet/vnet/devices/netmap/{netmap.api, netmap_api.c}
+ * VHOST-USER APIs: see .../vnet/devices/virtio/{vhost_user.api, vhost_user_api.c}
  */
 
 /** \brief Create a new subinterface with the given vlan id
@@ -1542,84 +1543,6 @@ define l2_interface_vlan_tag_rewrite_reply
   i32 retval;
 };
 
-/** \brief vhost-user interface create request
-    @param client_index - opaque cookie to identify the sender
-    @param is_server - our side is socket server
-    @param sock_filename - unix socket filename, used to speak with frontend
-    @param use_custom_mac - enable or disable the use of the provided hardware address
-    @param mac_address - hardware address to use if 'use_custom_mac' is set
-*/
-define create_vhost_user_if
-{
-  u32 client_index;
-  u32 context;
-  u8 is_server;
-  u8 sock_filename[256];
-  u8 renumber;
-  u32 custom_dev_instance;
-  u8 use_custom_mac;
-  u8 mac_address[6];
-  u8 tag[64];
-};
-
-/** \brief vhost-user interface create response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param sw_if_index - interface the operation is applied to
-*/
-define create_vhost_user_if_reply
-{
-  u32 context;
-  i32 retval;
-  u32 sw_if_index;
-};
-
-/** \brief vhost-user interface modify request
-    @param client_index - opaque cookie to identify the sender
-    @param is_server - our side is socket server
-    @param sock_filename - unix socket filename, used to speak with frontend
-*/
-define modify_vhost_user_if
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 is_server;
-  u8 sock_filename[256];
-  u8 renumber;
-  u32 custom_dev_instance;
-};
-
-/** \brief vhost-user interface modify response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define modify_vhost_user_if_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief vhost-user interface delete request
-    @param client_index - opaque cookie to identify the sender
-*/
-define delete_vhost_user_if
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-};
-
-/** \brief vhost-user interface delete response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define delete_vhost_user_if_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 define create_subif
 {
   u32 client_index;
@@ -1672,35 +1595,6 @@ define show_version_reply
   u8 version[32];
   u8 build_date[32];
   u8 build_directory[256];
-};
-
-/** \brief Vhost-user interface details structure (fix this)
-    @param sw_if_index - index of the interface
-    @param interface_name - name of interface
-    @param virtio_net_hdr_sz - net header size
-    @param features - interface features
-    @param is_server - vhost-user server socket
-    @param sock_filename - socket filename
-    @param num_regions - number of used memory regions
-*/
-define sw_interface_vhost_user_details
-{
-  u32 context;
-  u32 sw_if_index;
-  u8 interface_name[64];
-  u32 virtio_net_hdr_sz;
-  u64 features;
-  u8 is_server;
-  u8 sock_filename[256];
-  u32 num_regions;
-  i32 sock_errno;
-};
-
-/* works */
-define sw_interface_vhost_user_dump
-{
-  u32 client_index;
-  u32 context;
 };
 
 /** \brief l2 fib table entry structure

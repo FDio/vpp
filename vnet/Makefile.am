@@ -20,6 +20,8 @@ BUILT_SOURCES = 				\
  vnet/devices/af_packet/af_packet.api.json	\
  vnet/devices/netmap/netmap.api.h		\
  vnet/devices/netmap/netmap.api.json		\
+ vnet/devices/virtio/vhost_user.api.h		\
+ vnet/devices/virtio/vhost_user.api.json	\
  vnet/interface.api.h				\
  vnet/interface.api.json			\
  vnet/ip/ip.api.h				\
@@ -751,10 +753,12 @@ endif
 ########################################
 
 libvnet_la_SOURCES +=       \
-  vnet/devices/virtio/vhost-user.c
+  vnet/devices/virtio/vhost-user.c	\
+  vnet/devices/virtio/vhost_user_api.c
 
 nobase_include_HEADERS +=     \
-  vnet/devices/virtio/vhost-user.h
+  vnet/devices/virtio/vhost-user.h	\
+  vnet/devices/virtio/vhost_user.api.h
 
 ########################################
 # ssvm ethernet
@@ -947,6 +951,7 @@ apidir = $(prefix)/vnet
 api_DATA =					\
  vnet/devices/af_packet/af_packet.api.json	\
  vnet/devices/netmap/netmap.api.json		\
+ vnet/devices/virtio/vhost_user.api.json	\
  vnet/interface.api.json			\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\

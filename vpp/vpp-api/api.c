@@ -101,7 +101,6 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #endif /* IPSEC */
-#include <vnet/devices/virtio/vhost-user.h>
 
 #include <stats/stats.h>
 #include <oam/oam.h>
@@ -198,11 +197,6 @@ _(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
-_(CREATE_VHOST_USER_IF, create_vhost_user_if)                           \
-_(MODIFY_VHOST_USER_IF, modify_vhost_user_if)                           \
-_(DELETE_VHOST_USER_IF, delete_vhost_user_if)                           \
-_(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
-_(SW_INTERFACE_VHOST_USER_DETAILS, sw_interface_vhost_user_details)	\
 _(SHOW_VERSION, show_version)						\
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)	                                \
 _(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)                               \
@@ -1606,27 +1600,6 @@ static void
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MPLS_ENABLE_REPLY);
 }
 
-/*
- * WARNING: replicated pending api refactor completion
- */
-static void
-send_sw_interface_flags_deleted (vpe_api_main_t * am,
-				 unix_shared_memory_queue_t * q,
-				 u32 sw_if_index)
-{
-  vl_api_sw_interface_set_flags_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_SET_FLAGS);
-  mp->sw_if_index = ntohl (sw_if_index);
-
-  mp->admin_up_down = 0;
-  mp->link_up_down = 0;
-  mp->deleted = 1;
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
 void
 send_oam_event (oam_target_t * t)
 {
@@ -2580,145 +2553,6 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2_INTERFACE_VLAN_TAG_REWRITE_REPLY);
-}
-
-static void
-vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
-{
-  int rv = 0;
-  vl_api_create_vhost_user_if_reply_t *rmp;
-  u32 sw_if_index = (u32) ~ 0;
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
-
-  rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, &sw_if_index, (u64) ~ 0,
-			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     (mp->use_custom_mac) ? mp->mac_address : NULL);
-
-  /* Remember an interface tag for the new interface */
-  if (rv == 0)
-    {
-      /* If a tag was supplied... */
-      if (mp->tag[0])
-	{
-	  /* Make sure it's a proper C-string */
-	  mp->tag[ARRAY_LEN (mp->tag) - 1] = 0;
-	  u8 *tag = format (0, "%s%c", mp->tag, 0);
-	  vnet_set_sw_interface_tag (vnm, tag, sw_if_index);
-	}
-    }
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_CREATE_VHOST_USER_IF_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
-vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
-{
-  int rv = 0;
-  vl_api_modify_vhost_user_if_reply_t *rmp;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
-
-  rv = vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
-			     mp->is_server, sw_if_index, (u64) ~ 0,
-			     mp->renumber, ntohl (mp->custom_dev_instance));
-
-  REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
-}
-
-static void
-vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
-{
-  int rv = 0;
-  vl_api_delete_vhost_user_if_reply_t *rmp;
-  vpe_api_main_t *vam = &vpe_api_main;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
-
-  rv = vhost_user_delete_if (vnm, vm, sw_if_index);
-
-  REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
-  if (!rv)
-    {
-      unix_shared_memory_queue_t *q =
-	vl_api_client_index_to_input_queue (mp->client_index);
-      if (!q)
-	return;
-
-      vnet_clear_sw_interface_tag (vnm, sw_if_index);
-      send_sw_interface_flags_deleted (vam, q, sw_if_index);
-    }
-}
-
-static void
-  vl_api_sw_interface_vhost_user_details_t_handler
-  (vl_api_sw_interface_vhost_user_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-send_sw_interface_vhost_user_details (vpe_api_main_t * am,
-				      unix_shared_memory_queue_t * q,
-				      vhost_user_intf_details_t * vui,
-				      u32 context)
-{
-  vl_api_sw_interface_vhost_user_details_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_VHOST_USER_DETAILS);
-  mp->sw_if_index = ntohl (vui->sw_if_index);
-  mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);
-  mp->features = clib_net_to_host_u64 (vui->features);
-  mp->is_server = vui->is_server;
-  mp->num_regions = ntohl (vui->num_regions);
-  mp->sock_errno = ntohl (vui->sock_errno);
-  mp->context = context;
-
-  strncpy ((char *) mp->sock_filename,
-	   (char *) vui->sock_filename, ARRAY_LEN (mp->sock_filename) - 1);
-  strncpy ((char *) mp->interface_name,
-	   (char *) vui->if_name, ARRAY_LEN (mp->interface_name) - 1);
-
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-  vl_api_sw_interface_vhost_user_dump_t_handler
-  (vl_api_sw_interface_vhost_user_dump_t * mp)
-{
-  int rv = 0;
-  vpe_api_main_t *am = &vpe_api_main;
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
-  vhost_user_intf_details_t *ifaces = NULL;
-  vhost_user_intf_details_t *vuid = NULL;
-  unix_shared_memory_queue_t *q;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    return;
-
-  rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
-  if (rv)
-    return;
-
-  vec_foreach (vuid, ifaces)
-  {
-    send_sw_interface_vhost_user_details (am, q, vuid, mp->context);
-  }
-  vec_free (ifaces);
 }
 
 static void
