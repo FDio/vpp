@@ -27,7 +27,7 @@ class BridgeDomain(object):
                 Raw('\xa5' * 100))
 
     @abstractmethod
-    def encapsulate(self, pkt):
+    def encapsulate(self, pkt, vni):
         """ Encapsulate packet """
         pass
 
@@ -47,7 +47,7 @@ class BridgeDomain(object):
         Verify receipt of decapsulated frames on pg1
         """
 
-        encapsulated_pkt = self.encapsulate(self.frame_pg0_to_pg1)
+        encapsulated_pkt = self.encapsulate(self.frame_pg0_to_pg1, self.vni)
 
         self.pg0.add_stream([encapsulated_pkt, ])
 
@@ -99,3 +99,65 @@ class BridgeDomain(object):
         self.assertEqual(payload[UDP].sport, self.frame_pg1_to_pg0[UDP].sport)
         self.assertEqual(payload[UDP].dport, self.frame_pg1_to_pg0[UDP].dport)
         self.assertEqual(payload[Raw], self.frame_pg1_to_pg0[Raw])
+
+    def test_ucast_flood(self):
+        """ Unicast flood test
+        Send frames from pg3
+        Verify receipt of encapsulated frames on pg0
+        """
+        self.pg3.add_stream([self.frame_pg1_to_pg0])
+
+        self.pg0.enable_capture()
+
+        self.pg_start()
+
+        # Pick first received frame and check if it's corectly encapsulated.
+        out = self.pg0.get_capture()
+        self.assertEqual(len(out), 10,
+                         'Invalid number of packets on '
+                         'output: {}'.format(len(out)))
+
+    def test_mcast_flood(self):
+        """ Multicast flood test
+        Send frames from pg2
+        Verify receipt of encapsulated frames on pg0
+        """
+        self.pg2.add_stream([self.frame_pg1_to_pg0])
+
+        self.pg0.enable_capture()
+
+        self.pg_start()
+
+        # Pick first received frame and check if it's corectly encapsulated.
+        out = self.pg0.get_capture()
+        self.assertEqual(len(out), 1,
+                         'Invalid number of packets on '
+                         'output: {}'.format(len(out)))
+        pkt = out[0]
+        # self.check_encapsulation(pkt)
+
+        payload = self.decapsulate(pkt)
+        # TODO: add error messages
+        self.assertEqual(payload[Ether].src, self.frame_pg1_to_pg0[Ether].src)
+        self.assertEqual(payload[Ether].dst, self.frame_pg1_to_pg0[Ether].dst)
+        self.assertEqual(payload[IP].src, self.frame_pg1_to_pg0[IP].src)
+        self.assertEqual(payload[IP].dst, self.frame_pg1_to_pg0[IP].dst)
+        self.assertEqual(payload[UDP].sport, self.frame_pg1_to_pg0[UDP].sport)
+        self.assertEqual(payload[UDP].dport, self.frame_pg1_to_pg0[UDP].dport)
+        self.assertEqual(payload[Raw], self.frame_pg1_to_pg0[Raw])
+
+    def test_mcast_rcv(self):
+        """ Multicast receive test
+        Send 20 encapsulated frames from pg0 only 10 match unicast tunnels
+        Verify receipt of 10 decap frames on pg2
+        """
+        mac = self.pg0.remote_mac
+        mcast_stream = [self.encap_mcast(self.frame_pg0_to_pg1, ip, mac, 2)
+            for ip in self.ip4_range(self.pg0.remote_ip4n, 10, 30)]
+        self.pg0.add_stream(mcast_stream)
+        self.pg2.enable_capture()
+        self.pg_start()
+        out = self.pg2.get_capture();
+        self.assertEqual(len(out), 10,
+                         'Invalid number of packets on (10 expected) '
+                         'output: %d' % len(out))
