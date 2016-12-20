@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "5a2585a7_fd790efd",
+        "filename": "vnet/vnet/fib/fib_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-20T14:43:29Z",
+      "side": 1,
+      "message": "please use the API:\n\n /**\n * @brief\n *  Create a new FIB node type and Register the function table for it.\n *\n * @param vft\n * virtual function table\n *\n * @return new FIB node type\n */\nextern fib_node_type_t fib_node_register_new_type (const fib_node_vft_t *vft);\n\nrather than add plugin types into the main code.",
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_9d11eaae",
         "filename": "vnet/vnet/ip/ip4_forward.c",
         "patchSetId": 4
