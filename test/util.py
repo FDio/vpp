@@ -81,6 +81,11 @@ class Host(object):
         """ IPv6 address """
         return self._ip6
 
+    @property
+    def ip6n(self):
+        """ IPv6 address """
+        return socket.inet_pton(socket.AF_INET6, self._ip6)
+    
     def __init__(self, mac=None, ip4=None, ip6=None):
         self._mac = mac
         self._ip4 = ip4

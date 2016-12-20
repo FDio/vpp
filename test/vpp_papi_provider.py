@@ -215,9 +215,10 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'enable': is_enable})
 
-    def sw_interface_ra_suppress(self, sw_if_index):
+    def sw_interface_ra_suppress(self, sw_if_index, suppress=1):
         return self.api(self.papi.sw_interface_ip6nd_ra_config,
-                        {'sw_if_index': sw_if_index})
+                        {'sw_if_index': sw_if_index,
+                         'suppress': suppress})
 
     def vxlan_add_del_tunnel(
             self,
@@ -542,6 +543,9 @@ class VppPapiProvider(object):
 
     def ip_fib_dump(self):
         return self.api(self.papi.ip_fib_dump, {})
+
+    def ip6_fib_dump(self):
+        return self.api(self.papi.ip6_fib_dump, {})
 
     def ip_neighbor_add_del(self,
                             sw_if_index,
