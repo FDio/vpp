@@ -472,12 +472,15 @@ vlib_worker_thread_init (vlib_worker_thread_t * w)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
-  /* worker threads wants no signals. */
-  {
-    sigset_t s;
-    sigfillset (&s);
-    pthread_sigmask (SIG_SETMASK, &s, 0);
-  }
+  /*
+   * Note: disabling signals in worker threads as follows
+   * prevents the api post-mortem dump scheme from working
+   * {
+   *    sigset_t s;
+   *    sigfillset (&s);
+   *    pthread_sigmask (SIG_SETMASK, &s, 0);
+   *  }
+   */
 
   clib_mem_set_heap (w->thread_mheap);
 
