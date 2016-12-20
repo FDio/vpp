@@ -394,16 +394,18 @@ ethernet_input_inline (vlib_main_t * vm,
 		  subint0 = &intf0->untagged_subint;
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
+
+	      vnet_buffer (b0)->ethernet.start_of_ethernet_header =
+		b0->current_data;
+	      vnet_buffer (b1)->ethernet.start_of_ethernet_header =
+		b1->current_data;
+
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
 		  next0 = em->l2_next;
 		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
-		  vnet_buffer (b0)->ethernet.start_of_ethernet_header =
-		    b0->current_data;
 		  next1 = em->l2_next;
 		  vnet_buffer (b1)->l2.l2_len = sizeof (ethernet_header_t);
-		  vnet_buffer (b1)->ethernet.start_of_ethernet_header =
-		    b1->current_data;
 		}
 	      else
 		{
@@ -606,12 +608,14 @@ ethernet_input_inline (vlib_main_t * vm,
 		  subint0 = &intf0->untagged_subint;
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
+
+	      vnet_buffer (b0)->ethernet.start_of_ethernet_header =
+		b0->current_data;
+
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
 		  next0 = em->l2_next;
 		  vnet_buffer (b0)->l2.l2_len = sizeof (ethernet_header_t);
-		  vnet_buffer (b0)->ethernet.start_of_ethernet_header =
-		    b0->current_data;
 		}
 	      else
 		{
