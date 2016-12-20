@@ -30,6 +30,8 @@ BUILT_SOURCES = 				\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.h				\
  vnet/l2/l2.api.json				\
+ vnet/l2tp/l2tp.api.h				\
+ vnet/l2tp/l2tp.api.json			\
  vnet/map/map.api.h				\
  vnet/map/map.api.json				\
  vnet/span/span.api.h				\
@@ -487,11 +489,13 @@ libvnet_la_SOURCES +=				\
  vnet/l2tp/l2tp.c				\
  vnet/l2tp/encap.c 				\
  vnet/l2tp/decap.c  				\
- vnet/l2tp/pg.c
+ vnet/l2tp/pg.c					\
+ vnet/l2tp/l2tp_api.c
  
 nobase_include_HEADERS +=			\
  vnet/l2tp/l2tp.h				\
- vnet/l2tp/packet.h				
+ vnet/l2tp/packet.h				\
+ vnet/l2tp/l2tp.api.h	
 
 ########################################
 # Tunnel protocol: gre+mpls
@@ -964,12 +968,13 @@ api_DATA =					\
  vnet/interface.api.json			\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
+ vnet/l2tp/l2tp.api.json			\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.json			\
  vnet/vxlan-gpe/vxlan_gpe.api.json
- 
+
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
 

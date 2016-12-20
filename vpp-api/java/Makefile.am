@@ -91,6 +91,7 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h:		\
     $(prefix)/../vpp/vpp-api/vpe.api.json		\
     $(prefix)/../vnet/vnet/gre.api.json			\
     $(prefix)/../vnet/vnet/ip.api.json 			\
+    $(prefix)/../vnet/vnet/l2tp.api.json		\
     $(prefix)/../vnet/vnet/tap.api.json 		\
     $(prefix)/../vnet/vnet/vxlan.api.json		\
     $(prefix)/../vnet/vnet/vxlan_gpe.api.json
@@ -106,6 +107,7 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h:		\
 		    $(prefix)/../vnet/vnet/gre.api.json \
 		    $(prefix)/../vnet/vnet/interface.api.json \
 		    $(prefix)/../vnet/vnet/l2.api.json \
+		    $(prefix)/../vnet/vnet/l2tp.api.json \
 		    $(prefix)/../vnet/vnet/map.api.json \
 		    $(prefix)/../vnet/vnet/ip.api.json \
 		    $(prefix)/../vnet/vnet/span.api.json \

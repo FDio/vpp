@@ -36,6 +36,7 @@
 #include <vnet/interface.api.h>
 #include <vnet/map/map.api.h>
 #include <vnet/l2/l2.api.h>
+#include <vnet/l2tp/l2tp.api.h>
 #include <vnet/span/span.api.h>
 #include <vnet/ip/ip.api.h>
 #include <vnet/unix/tap.api.h>

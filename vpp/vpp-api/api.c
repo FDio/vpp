@@ -49,7 +49,6 @@
 #include <vnet/vnet.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_bd.h>
-#include <vnet/l2tp/l2tp.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip6_neighbor.h>
@@ -184,11 +183,6 @@ _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)     \
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)   \
 _(GET_NODE_INDEX, get_node_index)                                       \
 _(ADD_NODE_NEXT, add_node_next)						\
-_(L2TPV3_CREATE_TUNNEL, l2tpv3_create_tunnel)                           \
-_(L2TPV3_SET_TUNNEL_COOKIES, l2tpv3_set_tunnel_cookies)                 \
-_(L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable)     \
-_(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
-_(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \
@@ -2553,63 +2547,6 @@ static void
 }
 
 static void
-send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
-				  unix_shared_memory_queue_t * q,
-				  l2t_session_t * s,
-				  l2t_main_t * lm, u32 context)
-{
-  vl_api_sw_if_l2tpv3_tunnel_details_t *mp;
-  u8 *if_name = NULL;
-  vnet_sw_interface_t *si = NULL;
-
-  si = vnet_get_hw_sw_interface (lm->vnet_main, s->hw_if_index);
-
-  if_name = format (if_name, "%U",
-		    format_vnet_sw_interface_name, lm->vnet_main, si);
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_IF_L2TPV3_TUNNEL_DETAILS);
-  strncpy ((char *) mp->interface_name,
-	   (char *) if_name, ARRAY_LEN (mp->interface_name) - 1);
-  mp->sw_if_index = ntohl (si->sw_if_index);
-  mp->local_session_id = s->local_session_id;
-  mp->remote_session_id = s->remote_session_id;
-  mp->local_cookie[0] = s->local_cookie[0];
-  mp->local_cookie[1] = s->local_cookie[1];
-  mp->remote_cookie = s->remote_cookie;
-  clib_memcpy (mp->client_address, &s->client_address,
-	       sizeof (s->client_address));
-  clib_memcpy (mp->our_address, &s->our_address, sizeof (s->our_address));
-  mp->l2_sublayer_present = s->l2_sublayer_present;
-  mp->context = context;
-
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-
-static void
-vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (vl_api_sw_if_l2tpv3_tunnel_dump_t *
-					   mp)
-{
-  vpe_api_main_t *am = &vpe_api_main;
-  l2t_main_t *lm = &l2t_main;
-  unix_shared_memory_queue_t *q;
-  l2t_session_t *session;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    return;
-
-  /* *INDENT-OFF* */
-  pool_foreach (session, lm->sessions,
-  ({
-    send_sw_if_l2tpv3_tunnel_details (am, q, session, lm, mp->context);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
 vl_api_l2_fib_table_entry_t_handler (vl_api_l2_fib_table_entry_t * mp)
 {
   clib_warning ("BUG");
@@ -2810,114 +2747,6 @@ out:
     rmp->next_index = ntohl(next_index);
   }));
   /* *INDENT-ON* */
-}
-
-static void vl_api_l2tpv3_create_tunnel_t_handler
-  (vl_api_l2tpv3_create_tunnel_t * mp)
-{
-  vl_api_l2tpv3_create_tunnel_reply_t *rmp;
-  l2t_main_t *lm = &l2t_main;
-  u32 sw_if_index = (u32) ~ 0;
-  int rv;
-
-  if (mp->is_ipv6 != 1)
-    {
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      goto out;
-    }
-
-  u32 encap_fib_index;
-
-  if (mp->encap_vrf_id != ~0)
-    {
-      uword *p;
-      ip6_main_t *im = &ip6_main;
-      if (!
-	  (p =
-	   hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id))))
-	{
-	  rv = VNET_API_ERROR_NO_SUCH_FIB;
-	  goto out;
-	}
-      encap_fib_index = p[0];
-    }
-  else
-    {
-      encap_fib_index = ~0;
-    }
-
-  rv = create_l2tpv3_ipv6_tunnel (lm,
-				  (ip6_address_t *) mp->client_address,
-				  (ip6_address_t *) mp->our_address,
-				  ntohl (mp->local_session_id),
-				  ntohl (mp->remote_session_id),
-				  clib_net_to_host_u64 (mp->local_cookie),
-				  clib_net_to_host_u64 (mp->remote_cookie),
-				  mp->l2_sublayer_present,
-				  encap_fib_index, &sw_if_index);
-
-out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_L2TPV3_CREATE_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void vl_api_l2tpv3_set_tunnel_cookies_t_handler
-  (vl_api_l2tpv3_set_tunnel_cookies_t * mp)
-{
-  vl_api_l2tpv3_set_tunnel_cookies_reply_t *rmp;
-  l2t_main_t *lm = &l2t_main;
-  int rv;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  rv = l2tpv3_set_tunnel_cookies (lm, ntohl (mp->sw_if_index),
-				  clib_net_to_host_u64 (mp->new_local_cookie),
-				  clib_net_to_host_u64
-				  (mp->new_remote_cookie));
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_L2TPV3_SET_TUNNEL_COOKIES_REPLY);
-}
-
-static void vl_api_l2tpv3_interface_enable_disable_t_handler
-  (vl_api_l2tpv3_interface_enable_disable_t * mp)
-{
-  int rv;
-  vnet_main_t *vnm = vnet_get_main ();
-  vl_api_l2tpv3_interface_enable_disable_reply_t *rmp;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  rv = l2tpv3_interface_enable_disable
-    (vnm, ntohl (mp->sw_if_index), mp->enable_disable);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_L2TPV3_INTERFACE_ENABLE_DISABLE_REPLY);
-}
-
-static void vl_api_l2tpv3_set_lookup_key_t_handler
-  (vl_api_l2tpv3_set_lookup_key_t * mp)
-{
-  int rv = 0;
-  l2t_main_t *lm = &l2t_main;
-  vl_api_l2tpv3_set_lookup_key_reply_t *rmp;
-
-  if (mp->key > L2T_LOOKUP_SESSION_ID)
-    {
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto out;
-    }
-
-  lm->lookup_type = mp->key;
-
-out:
-  REPLY_MACRO (VL_API_L2TPV3_SET_LOOKUP_KEY_REPLY);
 }
 
 static void vl_api_vxlan_add_del_tunnel_t_handler
