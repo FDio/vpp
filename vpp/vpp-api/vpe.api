@@ -30,6 +30,7 @@
  * NETMAP APIs: see ... /vnet/vnet/devices/netmap/{netmap.api, netmap_api.c}
  * VHOST-USER APIs: see .../vnet/devices/virtio/{vhost_user.api, vhost_user_api.c}
  * VXLAN GPE APIs: see .../vnet/vnet/vxlan-gpe/{vxlan_gpe.api, vxlan_gpe_api.c}
+ * GRE APIs: see .../vnet/vnet/gre/{gre.api, gre_api.c}
  */
 
 /** \brief Create a new subinterface with the given vlan id
@@ -1475,43 +1476,6 @@ define l2tpv3_set_lookup_key_reply
 {
   u32 context;
   i32 retval;
-};
-
-define gre_add_del_tunnel
-{
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-  u8 is_ipv6;
-  u8 teb;
-  u8 src_address[16];
-  u8 dst_address[16];
-  u32 outer_fib_id;
-};
-
-define gre_add_del_tunnel_reply
-{
-  u32 context;
-  i32 retval;
-  u32 sw_if_index;
-};
-
-define gre_tunnel_dump
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-};
-
-define gre_tunnel_details
-{
-  u32 context;
-  u32 sw_if_index;
-  u8 is_ipv6;
-  u8 teb;
-  u8 src_address[16];
-  u8 dst_address[16];
-  u32 outer_fib_id;
 };
 
 /** \brief L2 interface vlan tag rewrite configure request

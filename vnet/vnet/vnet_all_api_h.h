@@ -32,6 +32,7 @@
 #include <vnet/devices/af_packet/af_packet.api.h>
 #include <vnet/devices/netmap/netmap.api.h>
 #include <vnet/devices/virtio/vhost_user.api.h>
+#include <vnet/gre/gre.api.h>
 #include <vnet/interface.api.h>
 #include <vnet/map/map.api.h>
 #include <vnet/l2/l2.api.h>

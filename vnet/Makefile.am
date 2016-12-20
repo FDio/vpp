@@ -22,6 +22,8 @@ BUILT_SOURCES = 				\
  vnet/devices/netmap/netmap.api.json		\
  vnet/devices/virtio/vhost_user.api.h		\
  vnet/devices/virtio/vhost_user.api.json	\
+ vnet/gre/gre.api.h				\
+ vnet/gre/gre.api.json				\
  vnet/interface.api.h				\
  vnet/interface.api.json			\
  vnet/ip/ip.api.h				\
@@ -469,12 +471,14 @@ libvnet_la_SOURCES +=				\
  vnet/gre/gre.c					\
  vnet/gre/node.c				\
  vnet/gre/interface.c				\
- vnet/gre/pg.c
+ vnet/gre/pg.c					\
+ vnet/gre/gre_api.c
  
 nobase_include_HEADERS +=			\
  vnet/gre/gre.h					\
  vnet/gre/packet.h				\
- vnet/gre/error.def
+ vnet/gre/error.def				\
+ vnet/gre/gre.api.h
 
 ########################################
 # Tunnel protocol: l2tpv3
@@ -956,6 +960,7 @@ api_DATA =					\
  vnet/devices/af_packet/af_packet.api.json	\
  vnet/devices/netmap/netmap.api.json		\
  vnet/devices/virtio/vhost_user.api.json	\
+ vnet/gre/gre.api.json				\
  vnet/interface.api.json			\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
