@@ -16,6 +16,8 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
 BUILT_SOURCES = 				\
+ vnet/devices/af_packet/af_packet.api.h		\
+ vnet/devices/af_packet/af_packet.api.json	\
  vnet/interface.api.h				\
  vnet/interface.api.json			\
  vnet/ip/ip.api.h				\
@@ -27,7 +29,7 @@ BUILT_SOURCES = 				\
  vnet/span/span.api.h				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json             \
+ vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.h				\
  vnet/vxlan/vxlan.api.json
 
@@ -770,10 +772,12 @@ libvnet_la_SOURCES +=				\
   vnet/devices/af_packet/af_packet.c		\
   vnet/devices/af_packet/device.c		\
   vnet/devices/af_packet/node.c			\
-  vnet/devices/af_packet/cli.c
+  vnet/devices/af_packet/cli.c			\
+  vnet/devices/af_packet/af_packet_api.c
 
-nobase_include_HEADERS +=			\
-  vnet/devices/af_packet/af_packet.h
+nobase_include_HEADERS +=				\
+  vnet/devices/af_packet/af_packet.h	\
+  vnet/devices/af_packet/af_packet.api.h
 
 ########################################
 # NETMAP interface
@@ -938,12 +942,13 @@ SUFFIXES = .api.h .api .api.json
 apidir = $(prefix)/vnet
 
 api_DATA =					\
+ vnet/devices/af_packet/af_packet.api.json	\
  vnet/interface.api.json			\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.json             \
+ vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk

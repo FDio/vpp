@@ -82,7 +82,6 @@
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
-#include <vnet/devices/af_packet/af_packet.h>
 #include <vnet/policer/policer.h>
 #include <vnet/devices/netmap/netmap.h>
 #include <vnet/flow/flow_report.h>
@@ -265,8 +264,6 @@ _(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs)       \
 _(SHOW_LISP_PITR, show_lisp_pitr)                                       \
 _(SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode)               \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
-_(AF_PACKET_CREATE, af_packet_create)                                   \
-_(AF_PACKET_DELETE, af_packet_delete)                                   \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
@@ -5463,50 +5460,6 @@ vl_api_ioam_disable_t_handler (vl_api_ioam_disable_t * mp)
     }
 
   REPLY_MACRO (VL_API_IOAM_DISABLE_REPLY);
-}
-
-static void
-vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_af_packet_create_reply_t *rmp;
-  int rv = 0;
-  u8 *host_if_name = NULL;
-  u32 sw_if_index;
-
-  host_if_name = format (0, "%s", mp->host_if_name);
-  vec_add1 (host_if_name, 0);
-
-  rv = af_packet_create_if (vm, host_if_name,
-			    mp->use_random_hw_addr ? 0 : mp->hw_addr,
-			    &sw_if_index);
-
-  vec_free (host_if_name);
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_AF_PACKET_CREATE_REPLY,
-  ({
-    rmp->sw_if_index = clib_host_to_net_u32(sw_if_index);
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
-vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_af_packet_delete_reply_t *rmp;
-  int rv = 0;
-  u8 *host_if_name = NULL;
-
-  host_if_name = format (0, "%s", mp->host_if_name);
-  vec_add1 (host_if_name, 0);
-
-  rv = af_packet_delete_if (vm, host_if_name);
-
-  vec_free (host_if_name);
-
-  REPLY_MACRO (VL_API_AF_PACKET_DELETE_REPLY);
 }
 
 static void

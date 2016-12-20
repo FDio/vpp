@@ -29,6 +29,7 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #endif /* included_from_layer_3 */
 
+#include <vnet/devices/af_packet/af_packet.api.h>
 #include <vnet/interface.api.h>
 #include <vnet/map/map.api.h>
 #include <vnet/l2/l2.api.h>
