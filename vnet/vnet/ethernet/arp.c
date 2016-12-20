@@ -2333,7 +2333,7 @@ change_arp_mac (u32 sw_if_index, ethernet_arp_ip4_entry_t * e)
 }
 
 void
-ethernet_arp_change_mac (vnet_main_t * vnm, u32 sw_if_index)
+ethernet_arp_change_mac (u32 sw_if_index)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t *e;

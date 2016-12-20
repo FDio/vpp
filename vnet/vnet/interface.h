@@ -293,6 +293,9 @@ typedef struct _vnet_hw_interface_class
   /* Function to call when link state changes. */
   vnet_interface_function_t *link_up_down_function;
 
+  /* Function to call when link MAC changes. */
+  vnet_interface_set_mac_address_function_t *mac_addr_change_function;
+
   /* Format function to display interface name. */
   format_function_t *format_interface_name;
 

@@ -538,7 +538,8 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 				       uword type_opaque,
 				       uword data, int is_add);
 
-void ethernet_arp_change_mac (vnet_main_t * vnm, u32 sw_if_index);
+void ethernet_arp_change_mac (u32 sw_if_index);
+void ethernet_ndp_change_mac (u32 sw_if_index);
 
 void arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 
