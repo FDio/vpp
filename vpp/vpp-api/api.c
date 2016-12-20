@@ -83,7 +83,6 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/policer.h>
-#include <vnet/devices/netmap/netmap.h>
 #include <vnet/flow/flow_report.h>
 #include <vnet/ipsec-gre/ipsec_gre.h>
 #include <vnet/flow/flow_report_classify.h>
@@ -268,8 +267,6 @@ _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
 _(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
-_(NETMAP_CREATE, netmap_create)                                         \
-_(NETMAP_DELETE, netmap_delete)                                         \
 _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                                   \
 _(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                             \
 _(MPLS_FIB_DUMP, mpls_fib_dump)                                         \
@@ -5663,44 +5660,6 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 					 mp->context);
 	}
     }
-}
-
-static void
-vl_api_netmap_create_t_handler (vl_api_netmap_create_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_netmap_create_reply_t *rmp;
-  int rv = 0;
-  u8 *if_name = NULL;
-
-  if_name = format (0, "%s", mp->netmap_if_name);
-  vec_add1 (if_name, 0);
-
-  rv =
-    netmap_create_if (vm, if_name, mp->use_random_hw_addr ? 0 : mp->hw_addr,
-		      mp->is_pipe, mp->is_master, 0);
-
-  vec_free (if_name);
-
-  REPLY_MACRO (VL_API_NETMAP_CREATE_REPLY);
-}
-
-static void
-vl_api_netmap_delete_t_handler (vl_api_netmap_delete_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_netmap_delete_reply_t *rmp;
-  int rv = 0;
-  u8 *if_name = NULL;
-
-  if_name = format (0, "%s", mp->netmap_if_name);
-  vec_add1 (if_name, 0);
-
-  rv = netmap_delete_if (vm, if_name);
-
-  vec_free (if_name);
-
-  REPLY_MACRO (VL_API_NETMAP_DELETE_REPLY);
 }
 
 static void

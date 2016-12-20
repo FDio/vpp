@@ -18,6 +18,8 @@ AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 BUILT_SOURCES = 				\
  vnet/devices/af_packet/af_packet.api.h		\
  vnet/devices/af_packet/af_packet.api.json	\
+ vnet/devices/netmap/netmap.api.h		\
+ vnet/devices/netmap/netmap.api.json		\
  vnet/interface.api.h				\
  vnet/interface.api.json			\
  vnet/ip/ip.api.h				\
@@ -787,11 +789,12 @@ libvnet_la_SOURCES +=				\
   vnet/devices/netmap/netmap.c			\
   vnet/devices/netmap/device.c			\
   vnet/devices/netmap/node.c			\
-  vnet/devices/netmap/cli.c
+  vnet/devices/netmap/cli.c				\
+  vnet/devices/netmap/netmap_api.c
 
 nobase_include_HEADERS +=			\
-  vnet/devices/netmap/netmap.h
-
+  vnet/devices/netmap/netmap.h		\
+  vnet/devices/netmap/netmap.api.h
 
 ########################################
 # Driver feature graph arc support
@@ -943,6 +946,7 @@ apidir = $(prefix)/vnet
 
 api_DATA =					\
  vnet/devices/af_packet/af_packet.api.json	\
+ vnet/devices/netmap/netmap.api.json		\
  vnet/interface.api.json			\
  vnet/ip/ip.api.json				\
  vnet/l2/l2.api.json				\
