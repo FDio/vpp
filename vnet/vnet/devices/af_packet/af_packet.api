@@ -1,0 +1,71 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief Create host-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if_name - interface name
+    @param hw_addr - interface MAC
+    @param use_random_hw_addr - use random generated MAC
+*/
+define af_packet_create
+{
+  u32 client_index;
+  u32 context;
+
+  u8 host_if_name[64];
+  u8 hw_addr[6];
+  u8 use_random_hw_addr;
+};
+
+/** \brief Create host-interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define af_packet_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete host-interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param host_if_name - interface name
+*/
+define af_packet_delete
+{
+  u32 client_index;
+  u32 context;
+
+  u8 host_if_name[64];
+};
+
+/** \brief Delete host-interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define af_packet_delete_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
