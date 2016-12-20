@@ -160,9 +160,9 @@ done;
 
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../sample-plugin && find -type f -print)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../plugins/sample-plugin && git ls-files .)
 do
-	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../sample-plugin/$file \
+	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../plugins/sample-plugin/$file \
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
 done
 
