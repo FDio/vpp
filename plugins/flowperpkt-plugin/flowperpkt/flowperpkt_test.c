@@ -132,6 +132,7 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   f64 timeout;
   int enable_disable = 1;
+  u8 which = 0;			/* ipv4 by default */
   u32 sw_if_index = ~0;
   vl_api_flowperpkt_tx_interface_add_del_t *mp;
 
@@ -144,6 +145,8 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "disable"))
 	enable_disable = 0;
+      else if (unformat (i, "l2"))
+	which = 1;
       else
 	break;
     }
@@ -158,7 +161,7 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
   M (FLOWPERPKT_TX_INTERFACE_ADD_DEL, flowperpkt_tx_interface_add_del);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = enable_disable;
-  mp->is_ipv6 = 0;		/* $$$$ */
+  mp->which = which;
 
   /* send it... */
   S;

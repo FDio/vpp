@@ -1,5 +1,5 @@
 /*
- * node.c - ipv4 ipfix-per-packet graph node
+ * l2_node.c - l2 ipfix-per-packet graph node
  *
  * Copyright (c) <current-year> <your-organization>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,7 @@
 #include <flowperpkt/flowperpkt.h>
 
 /**
- * @file ipv4 flow record generator graph node
+ * @file l2 flow record generator graph node
  */
 
 typedef struct
@@ -29,57 +29,58 @@ typedef struct
   /** interface handle */
   u32 rx_sw_if_index;
   u32 tx_sw_if_index;
-  u32 src_address;
-  u32 dst_address;
-  /** ToS bits */
-  u8 tos;
+  /** src and dst L2 addresses */
+  u8 src_mac[6];
+  u8 dst_mac[6];
+  /** Ethertype */
+  u16 ethertype;
   /** packet timestamp */
   u64 timestamp;
   /** size of the buffer */
   u16 buffer_size;
-} flowperpkt_ipv4_trace_t;
+} flowperpkt_l2_trace_t;
 
 /* packet trace format function */
 static u8 *
-format_flowperpkt_ipv4_trace (u8 * s, va_list * args)
+format_flowperpkt_l2_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  flowperpkt_ipv4_trace_t *t = va_arg (*args, flowperpkt_ipv4_trace_t *);
+  flowperpkt_l2_trace_t *t = va_arg (*args, flowperpkt_l2_trace_t *);
 
   s = format (s,
-	      "FLOWPERPKT-V4: rx_sw_if_index %d, tx_sw_if_index %d, src %U dst %U tos %0x2, timestamp %lld, size %d",
+	      "FLOWPERPKT-L2: rx_sw_if_index %d, tx_sw_if_index %d, src %U dst %U ethertype %0x2, timestamp %lld, size %d",
 	      t->rx_sw_if_index, t->tx_sw_if_index,
-	      format_ip4_address, &t->src_address,
-	      format_ip4_address, &t->dst_address,
-	      t->tos, t->timestamp, t->buffer_size);
+	      format_ethernet_address, &t->src_mac,
+	      format_ethernet_address, &t->dst_mac,
+	      t->ethertype, t->timestamp, t->buffer_size);
   return s;
 }
 
-vlib_node_registration_t flowperpkt_ipv4_node;
+vlib_node_registration_t flowperpkt_l2_node;
 
 /* No counters at the moment */
-#define foreach_flowperpkt_ipv4_error
+#define foreach_flowperpkt_l2_error
 
 typedef enum
 {
 #define _(sym,str) FLOWPERPKT_ERROR_##sym,
-  foreach_flowperpkt_ipv4_error
+  foreach_flowperpkt_l2_error
 #undef _
     FLOWPERPKT_N_ERROR,
-} flowperpkt_ipv4_error_t;
+} flowperpkt_l2_error_t;
 
-static char *flowperpkt_ipv4_error_strings[] = {
+static char *flowperpkt_l2_error_strings[] = {
 #define _(sym,string) string,
-  foreach_flowperpkt_ipv4_error
+  foreach_flowperpkt_l2_error
 #undef _
 };
 
 typedef enum
 {
-  FLOWPERPKT_IPV4_NEXT_DROP,
-  FLOWPERPKT_IPV4_N_NEXT,
-} flowperpkt_ipv4_next_t;
+  FLOWPERPKT_L2_NEXT_DROP,
+  FLOWPERPKT_L2_N_NEXT,
+} flowperpkt_l2_next_t;
 
 /**
  * @brief add an entry to the flow record under construction
@@ -93,11 +94,11 @@ typedef enum
  */
 
 static inline void
-add_to_flow_record_ipv4 (vlib_main_t * vm,
-			 flowperpkt_main_t * fm,
-			 u32 rx_sw_if_index, u32 tx_sw_if_index,
-			 u32 src_address, u32 dst_address,
-			 u8 tos, u64 timestamp, u16 length, int do_flush)
+add_to_flow_record_l2 (vlib_main_t * vm,
+		       flowperpkt_main_t * fm,
+		       u32 rx_sw_if_index, u32 tx_sw_if_index,
+		       u8 * src_mac, u8 * dst_mac,
+		       u16 ethertype, u64 timestamp, u16 length, int do_flush)
 {
   u32 my_cpu_number = vm->cpu_index;
   flow_report_main_t *frm = &flow_report_main;
@@ -113,7 +114,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
   vlib_buffer_free_list_t *fl;
 
   /* Find or allocate a buffer */
-  b0 = fm->ipv4_buffers_per_worker[my_cpu_number];
+  b0 = fm->l2_buffers_per_worker[my_cpu_number];
 
   /* Need to allocate a buffer? */
   if (PREDICT_FALSE (b0 == 0))
@@ -127,7 +128,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
 	return;
 
       /* Initialize the buffer */
-      b0 = fm->ipv4_buffers_per_worker[my_cpu_number] =
+      b0 = fm->l2_buffers_per_worker[my_cpu_number] =
 	vlib_get_buffer (vm, bi0);
       fl =
 	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
@@ -139,16 +140,16 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
     {
       /* use the current buffer */
       bi0 = vlib_get_buffer_index (vm, b0);
-      offset = fm->ipv4_next_record_offset_per_worker[my_cpu_number];
+      offset = fm->l2_next_record_offset_per_worker[my_cpu_number];
     }
 
   /* Find or allocate a frame */
-  f = fm->ipv4_frames_per_worker[my_cpu_number];
+  f = fm->l2_frames_per_worker[my_cpu_number];
   if (PREDICT_FALSE (f == 0))
     {
       u32 *to_next;
       f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-      fm->ipv4_frames_per_worker[my_cpu_number] = f;
+      fm->l2_frames_per_worker[my_cpu_number] = f;
 
       /* Enqueue the buffer */
       to_next = vlib_frame_vector_args (f);
@@ -219,19 +220,20 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
 		     sizeof (egress_interface));
 	offset += sizeof (egress_interface);
       }
-      /* ip4 src address */
+      /* src mac address */
       {
-	clib_memcpy (b0->data + offset, &src_address, sizeof (src_address));
-	offset += sizeof (src_address);
+	clib_memcpy (b0->data + offset, src_mac, 6);
+	offset += 6;
       }
-      /* ip4 dst address */
+      /* dst mac address */
       {
-	clib_memcpy (b0->data + offset, &dst_address, sizeof (dst_address));
-	offset += sizeof (dst_address);
+	clib_memcpy (b0->data + offset, dst_mac, 6);
+	offset += 6;
       }
 
-      /* ToS */
-      b0->data[offset++] = tos;
+      /* ethertype */
+      b0->data[offset++] = ethertype >> 8;
+      b0->data[offset++] = ethertype & 0xFF;
 
       /* Timestamp */
       clib_memcpy (b0->data + offset, &timestamp, sizeof (f64));
@@ -245,14 +247,14 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
       }
 
       b0->current_length +=
-	/* sw_if_index + tos + timestamp + length = 15 */
-	4 * sizeof (u32) + sizeof (u8) + sizeof (f64) + sizeof (u16);
+	/* 2*sw_if_index + 2*mac + ethertype + timestamp + length = 32 */
+	2 * sizeof (u32) + 12 + sizeof (u16) + sizeof (f64) + sizeof (u16);
 
     }
   /* Time to flush the buffer? */
   if (PREDICT_FALSE
-      (do_flush || (offset + 4 * sizeof (u32) + sizeof (u8)
-		    + sizeof (f64) + sizeof (u16)) > frm->path_mtu))
+      (do_flush || (offset + 2 * sizeof (u32) + 12 + sizeof (u16) +
+		    +sizeof (f64) + sizeof (u16)) > frm->path_mtu))
     {
       tp = vlib_buffer_get_current (b0);
       ip = (ip4_header_t *) & tp->ip4;
@@ -260,7 +262,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
       h = (ipfix_message_header_t *) (udp + 1);
       s = (ipfix_set_header_t *) (h + 1);
 
-      s->set_id_length = ipfix_set_id_length (fm->ipv4_report_id,
+      s->set_id_length = ipfix_set_id_length (fm->l2_report_id,
 					      b0->current_length -
 					      (sizeof (*ip) + sizeof (*udp) +
 					       sizeof (*h)));
@@ -283,38 +285,38 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
       ASSERT (ip->checksum == ip4_header_checksum (ip));
 
       vlib_put_frame_to_node (vm, ip4_lookup_node.index,
-			      fm->ipv4_frames_per_worker[my_cpu_number]);
-      fm->ipv4_frames_per_worker[my_cpu_number] = 0;
-      fm->ipv4_buffers_per_worker[my_cpu_number] = 0;
+			      fm->l2_frames_per_worker[my_cpu_number]);
+      fm->l2_frames_per_worker[my_cpu_number] = 0;
+      fm->l2_buffers_per_worker[my_cpu_number] = 0;
       offset = 0;
     }
 
-  fm->ipv4_next_record_offset_per_worker[my_cpu_number] = offset;
+  fm->l2_next_record_offset_per_worker[my_cpu_number] = offset;
 }
 
 void
-flowperpkt_flush_callback_ipv4 (void)
+flowperpkt_flush_callback_l2 (void)
 {
   vlib_main_t *vm = vlib_get_main ();
   flowperpkt_main_t *fm = &flowperpkt_main;
 
-  add_to_flow_record_ipv4 (vm, fm, 0 /* rx_sw_if_index */ ,
-			   0 /* tx_sw_if_index */ ,
-			   0 /* src_address */ ,
-			   0 /* dst_address */ ,
-			   0 /* ToS */ ,
-			   0ULL /* timestamp */ ,
-			   0 /* length */ ,
-			   1 /* do_flush */ );
+  add_to_flow_record_l2 (vm, fm, 0 /* rx_sw_if_index */ ,
+			 0 /* tx_sw_if_index */ ,
+			 0 /* src mac */ ,
+			 0 /* dst mac */ ,
+			 0 /* ethertype */ ,
+			 0ULL /* timestamp */ ,
+			 0 /* length */ ,
+			 1 /* do_flush */ );
 }
 
 
 static uword
-flowperpkt_ipv4_node_fn (vlib_main_t * vm,
-			 vlib_node_runtime_t * node, vlib_frame_t * frame)
+flowperpkt_l2_node_fn (vlib_main_t * vm,
+		       vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
-  flowperpkt_ipv4_next_t next_index;
+  flowperpkt_l2_next_t next_index;
   flowperpkt_main_t *fm = &flowperpkt_main;
   u64 now;
 
@@ -333,9 +335,9 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  u32 next0 = FLOWPERPKT_IPV4_NEXT_DROP;
-	  u32 next1 = FLOWPERPKT_IPV4_NEXT_DROP;
-	  ip4_header_t *ip0, *ip1;
+	  u32 next0 = FLOWPERPKT_L2_NEXT_DROP;
+	  u32 next1 = FLOWPERPKT_L2_NEXT_DROP;
+	  ethernet_header_t *eh0, *eh1;
 	  u16 len0, len1;
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
@@ -370,54 +372,51 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	  vnet_feature_next (vnet_buffer (b1)->sw_if_index[VLIB_TX],
 			     &next1, b1);
 
-	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
-				  vnet_buffer (b0)->ip.save_rewrite_length);
-
+	  eh0 = vlib_buffer_get_current (b0);
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_ipv4 (vm, fm,
-				     vnet_buffer (b0)->sw_if_index[VLIB_RX],
-				     vnet_buffer (b0)->sw_if_index[VLIB_TX],
-				     ip0->src_address.as_u32,
-				     ip0->dst_address.as_u32,
-				     ip0->tos, now, len0, 0 /* flush */ );
+	    add_to_flow_record_l2 (vm, fm,
+				   vnet_buffer (b0)->sw_if_index[VLIB_RX],
+				   vnet_buffer (b0)->sw_if_index[VLIB_TX],
+				   eh0->src_address,
+				   eh0->dst_address,
+				   eh0->type, now, len0, 0 /* flush */ );
 
-	  ip1 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
-				  vnet_buffer (b1)->ip.save_rewrite_length);
-	  len1 = vlib_buffer_length_in_chain (vm, b1);
+	  eh1 = vlib_buffer_get_current (b0);
+	  len1 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_ipv4 (vm, fm,
-				     vnet_buffer (b1)->sw_if_index[VLIB_RX],
-				     vnet_buffer (b1)->sw_if_index[VLIB_TX],
-				     ip1->src_address.as_u32,
-				     ip1->dst_address.as_u32,
-				     ip1->tos, now, len1, 0 /* flush */ );
+	    add_to_flow_record_l2 (vm, fm,
+				   vnet_buffer (b1)->sw_if_index[VLIB_RX],
+				   vnet_buffer (b1)->sw_if_index[VLIB_TX],
+				   eh1->src_address,
+				   eh1->dst_address,
+				   eh1->type, now, len1, 0 /* flush */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  flowperpkt_ipv4_trace_t *t =
+		  flowperpkt_l2_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
 		  t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 		  t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-		  t->src_address = ip0->src_address.as_u32;
-		  t->dst_address = ip0->dst_address.as_u32;
-		  t->tos = ip0->tos;
+		  clib_memcpy (t->src_mac, eh0->src_address, 6);
+		  clib_memcpy (t->dst_mac, eh0->dst_address, 6);
+		  t->ethertype = clib_net_to_host_u16 (eh0->type);
 		  t->timestamp = now;
 		  t->buffer_size = len0;
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  flowperpkt_ipv4_trace_t *t =
+		  flowperpkt_l2_trace_t *t =
 		    vlib_add_trace (vm, node, b1, sizeof (*t));
 		  t->rx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 		  t->tx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-		  t->src_address = ip1->src_address.as_u32;
-		  t->dst_address = ip1->dst_address.as_u32;
-		  t->tos = ip1->tos;
+		  clib_memcpy (t->src_mac, eh1->src_address, 6);
+		  clib_memcpy (t->dst_mac, eh1->dst_address, 6);
+		  t->ethertype = clib_net_to_host_u16 (eh1->type);
 		  t->timestamp = now;
 		  t->buffer_size = len1;
 		}
@@ -433,8 +432,8 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0 = FLOWPERPKT_IPV4_NEXT_DROP;
-	  ip4_header_t *ip0;
+	  u32 next0 = FLOWPERPKT_L2_NEXT_DROP;
+	  ethernet_header_t *eh0;
 	  u16 len0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -450,35 +449,27 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
 			     &next0, b0);
 
-	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
-				  vnet_buffer (b0)->ip.save_rewrite_length);
-	  /*
-	   * egressInterface, TLV type 14, u32
-	   * ipClassOfService, TLV type 5, u8
-	   * flowStartNanoseconds, TLV type 156, dateTimeNanoseconds (f64)
-	   *   Implementation: f64 nanoseconds since VPP started
-	   * dataLinkFrameSize, TLV type 312, u16
-	   */
+	  eh0 = vlib_buffer_get_current (b0);
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_ipv4 (vm, fm,
-				     vnet_buffer (b0)->sw_if_index[VLIB_RX],
-				     vnet_buffer (b0)->sw_if_index[VLIB_TX],
-				     ip0->src_address.as_u32,
-				     ip0->dst_address.as_u32,
-				     ip0->tos, now, len0, 0 /* flush */ );
+	    add_to_flow_record_l2 (vm, fm,
+				   vnet_buffer (b0)->sw_if_index[VLIB_RX],
+				   vnet_buffer (b0)->sw_if_index[VLIB_TX],
+				   eh0->src_address,
+				   eh0->dst_address,
+				   eh0->type, now, len0, 0 /* flush */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      flowperpkt_ipv4_trace_t *t =
+	      flowperpkt_l2_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	      t->src_address = ip0->src_address.as_u32;
-	      t->dst_address = ip0->dst_address.as_u32;
-	      t->tos = ip0->tos;
+	      clib_memcpy (t->src_mac, eh0->src_address, 6);
+	      clib_memcpy (t->dst_mac, eh0->dst_address, 6);
+	      t->ethertype = clib_net_to_host_u16 (eh0->type);
 	      t->timestamp = now;
 	      t->buffer_size = len0;
 	    }
@@ -495,8 +486,8 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 }
 
 /**
- * @brief IPFIX ipv4 flow-per-packet graph node
- * @node flowperpkt-ipv4
+ * @brief IPFIX l2 flow-per-packet graph node
+ * @node flowperpkt-l2
  *
  * This is the IPFIX flow-record-per-packet node.
  *
@@ -525,21 +516,21 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
  */
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (flowperpkt_ipv4_node) = {
-  .function = flowperpkt_ipv4_node_fn,
-  .name = "flowperpkt-ipv4",
+VLIB_REGISTER_NODE (flowperpkt_l2_node) = {
+  .function = flowperpkt_l2_node_fn,
+  .name = "flowperpkt-l2",
   .vector_size = sizeof (u32),
-  .format_trace = format_flowperpkt_ipv4_trace,
+  .format_trace = format_flowperpkt_l2_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(flowperpkt_ipv4_error_strings),
-  .error_strings = flowperpkt_ipv4_error_strings,
+  .n_errors = ARRAY_LEN(flowperpkt_l2_error_strings),
+  .error_strings = flowperpkt_l2_error_strings,
 
-  .n_next_nodes = FLOWPERPKT_IPV4_N_NEXT,
+  .n_next_nodes = FLOWPERPKT_L2_N_NEXT,
 
   /* edit / add dispositions here */
   .next_nodes = {
-    [FLOWPERPKT_IPV4_NEXT_DROP] = "error-drop",
+    [FLOWPERPKT_L2_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */

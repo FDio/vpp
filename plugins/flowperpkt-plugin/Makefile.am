@@ -24,6 +24,7 @@ vppplugins_LTLIBRARIES = flowperpkt_plugin.la
 vppapitestplugins_LTLIBRARIES = flowperpkt_test_plugin.la
 
 flowperpkt_plugin_la_SOURCES = flowperpkt/flowperpkt.c  \
+        flowperpkt/l2_node.c \
         flowperpkt/node.c \
 	flowperpkt/flowperpkt_plugin.api.h
 flowperpkt_plugin_la_LDFLAGS = -module
