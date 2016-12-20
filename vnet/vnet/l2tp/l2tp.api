@@ -1,0 +1,126 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief l2tpv3 tunnel interface create request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param client_address - remote client tunnel ip address
+    @param client_address - local tunnel ip address
+    @param is_ipv6 - ipv6 if non-zero, else ipv4
+    @param local_session_id - local tunnel session id
+    @param remote_session_id - remote tunnel session id
+    @param local_cookie - local tunnel cookie
+    @param l2_sublayer_present - l2 sublayer is present in packets if non-zero
+    @param encap_vrf_id - fib identifier used for outgoing encapsulated packets
+*/
+define l2tpv3_create_tunnel
+{
+  u32 client_index;
+  u32 context;
+  u8 client_address[16];
+  u8 our_address[16];
+  u8 is_ipv6;
+  u32 local_session_id;
+  u32 remote_session_id;
+  u64 local_cookie;
+  u64 remote_cookie;
+  u8 l2_sublayer_present;
+  u32 encap_vrf_id;
+};
+
+/** \brief l2tpv3 tunnel interface create response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param sw_if_index - index of the new tunnel interface
+*/
+define l2tpv3_create_tunnel_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+define l2tpv3_set_tunnel_cookies
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u64 new_local_cookie;
+  u64 new_remote_cookie;
+};
+
+/** \brief L2TP tunnel set cookies response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define l2tpv3_set_tunnel_cookies_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+define sw_if_l2tpv3_tunnel_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 interface_name[64];
+  u8 client_address[16];
+  u8 our_address[16];
+  u32 local_session_id;
+  u32 remote_session_id;
+  u64 local_cookie[2];
+  u64 remote_cookie;
+  u8 l2_sublayer_present;
+};
+
+define sw_if_l2tpv3_tunnel_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define l2tpv3_interface_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 sw_if_index;
+};
+
+define l2tpv3_interface_enable_disable_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+define l2tpv3_set_lookup_key
+{
+  u32 client_index;
+  u32 context;
+  /* 0 = ip6 src_address, 1 = ip6 dst_address, 2 = session_id */
+  u8 key;
+};
+
+define l2tpv3_set_lookup_key_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
