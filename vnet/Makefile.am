@@ -27,7 +27,9 @@ BUILT_SOURCES = 				\
  vnet/span/span.api.h				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/devices/virtio/vhost_user.api.h		\
+ vnet/devices/virtio/vhost_user.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -743,10 +745,12 @@ endif
 ########################################
 
 libvnet_la_SOURCES +=       \
-  vnet/devices/virtio/vhost-user.c
+  vnet/devices/virtio/vhost-user.c	\
+  vnet/devices/virtio/vhost_user_api.c
 
 nobase_include_HEADERS +=     \
-  vnet/devices/virtio/vhost-user.h
+  vnet/devices/virtio/vhost-user.h	\
+  vnet/devices/virtio/vhost_user.api.h
 
 ########################################
 # ssvm ethernet
@@ -939,7 +943,8 @@ api_DATA =					\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/devices/virtio/vhost_user.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
