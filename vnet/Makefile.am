@@ -27,7 +27,9 @@ BUILT_SOURCES = 				\
  vnet/span/span.api.h				\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/gre/gre.api.h					\
+ vnet/gre/gre.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -457,12 +459,14 @@ libvnet_la_SOURCES +=				\
  vnet/gre/gre.c					\
  vnet/gre/node.c				\
  vnet/gre/interface.c				\
- vnet/gre/pg.c
+ vnet/gre/pg.c					\
+ vnet/gre/gre_api.c
  
 nobase_include_HEADERS +=			\
  vnet/gre/gre.h					\
  vnet/gre/packet.h				\
- vnet/gre/error.def
+ vnet/gre/error.def				\
+ vnet/gre/gre.api.h
 
 ########################################
 # Tunnel protocol: l2tpv3
@@ -939,7 +943,8 @@ api_DATA =					\
  vnet/l2/l2.api.json				\
  vnet/map/map.api.json				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.json
+ vnet/unix/tap.api.json				\
+ vnet/gre/gre.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
