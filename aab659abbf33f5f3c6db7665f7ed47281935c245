@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_339fc761",
+        "filename": "vnet/vnet/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-12-21T15:19:14Z",
+      "side": 1,
+      "message": "New files should have a copyright notice of your own organisation, not Cisco.",
+      "range": {
+        "startLine": 2,
+        "startChar": 3,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "aab659abbf33f5f3c6db7665f7ed47281935c245",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_d38d2333",
+        "filename": "vnet/vnet/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-12-21T15:19:14Z",
+      "side": 1,
+      "message": "Where did this come from? You shouldn\u0027t include someone elses license agreement; this one predates the formation of fd.io",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 38,
+        "endChar": 3
+      },
+      "revId": "aab659abbf33f5f3c6db7665f7ed47281935c245",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_737c2f21",
+        "filename": "vnet/vnet/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 696,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-12-21T15:19:14Z",
+      "side": 1,
+      "message": "New files should be covered by the code style checks, which requires a comment block at the end to enable enforcement. You can copy it from somewhere else.",
+      "revId": "aab659abbf33f5f3c6db7665f7ed47281935c245",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_f38fff21",
+        "filename": "vnet/vnet/igmp/igmp.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2016-12-21T15:19:14Z",
+      "side": 1,
+      "message": "Same comment per igmp.c",
+      "range": {
+        "startLine": 2,
+        "startChar": 0,
+        "endLine": 2,
+        "endChar": 50
+      },
+      "revId": "aab659abbf33f5f3c6db7665f7ed47281935c245",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
