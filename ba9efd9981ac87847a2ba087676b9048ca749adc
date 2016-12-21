@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_306c5d9c",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "This is deferred for now. The counter increment and show counters need to be implemented for Encap/Decap as well. We can consider this in a future commit",
+      "parentUuid": "5a2585a7_7d251ec1",
+      "range": {
+        "startLine": 27,
+        "startChar": 2,
+        "endLine": 27,
+        "endChar": 14
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_5d2262ba",
         "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2016-12-21T04:11:53Z",
       "side": 1,
       "message": "Dual packet processing loop not implemented.",
+      "range": {
+        "startLine": 70,
+        "startChar": 32,
+        "endLine": 70,
+        "endChar": 46
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_1069618b",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "For output features, dual loop is not implemented (e.g. IPSEC)",
+      "parentUuid": "5a2585a7_5d2262ba",
       "range": {
         "startLine": 70,
         "startChar": 32,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_f005b5c2",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_7d02be3f",
+      "range": {
+        "startLine": 97,
+        "startChar": 23,
+        "endLine": 97,
+        "endChar": 27
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_5dff0235",
         "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
         "patchSetId": 4
@@ -82,6 +154,30 @@
       "writtenOn": "2016-12-21T04:11:53Z",
       "side": 1,
       "message": "Pls use UDP_DST_PORT_vxlan_gpe",
+      "range": {
+        "startLine": 98,
+        "startChar": 51,
+        "endLine": 98,
+        "endChar": 55
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_d00ab9d1",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_5dff0235",
       "range": {
         "startLine": 98,
         "startChar": 51,
@@ -117,6 +213,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_b00f2de1",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_902551ad",
+      "range": {
+        "startLine": 101,
+        "startChar": 22,
+        "endLine": 101,
+        "endChar": 28
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_fd790efd",
         "filename": "vnet/vnet/fib/fib_node.h",
         "patchSetId": 4
@@ -134,6 +254,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_506fe992",
+        "filename": "vnet/vnet/fib/fib_node.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_fd790efd",
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_9d11eaae",
         "filename": "vnet/vnet/ip/ip4_forward.c",
         "patchSetId": 4
@@ -145,6 +283,30 @@
       "writtenOn": "2016-12-20T14:39:28Z",
       "side": 1,
       "message": "This should go to plugin...",
+      "range": {
+        "startLine": 1077,
+        "startChar": 0,
+        "endLine": 1083,
+        "endChar": 2
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_7072e57d",
+        "filename": "vnet/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1083,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2016-12-21T06:31:54Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_9d11eaae",
       "range": {
         "startLine": 1077,
         "startChar": 0,
