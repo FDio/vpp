@@ -41,7 +41,9 @@ BUILT_SOURCES = 				\
  vnet/vxlan/vxlan.api.h				\
  vnet/vxlan/vxlan.api.json			\
  vnet/vxlan-gpe/vxlan_gpe.api.h			\
- vnet/vxlan-gpe/vxlan_gpe.api.json
+ vnet/vxlan-gpe/vxlan_gpe.api.json		\
+ vnet/lisp-cp/lisp.api.h			\
+ vnet/lisp-cp/lisp.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -556,7 +558,8 @@ libvnet_la_SOURCES +=				\
  vnet/lisp-cp/control.c				\
  vnet/lisp-cp/gid_dictionary.c			\
  vnet/lisp-cp/lisp_msg_serdes.c			\
- vnet/lisp-cp/packets.c			
+ vnet/lisp-cp/packets.c				\
+ vnet/lisp-cp/lisp_api.c
 
 nobase_include_HEADERS +=			\
  vnet/lisp-cp/lisp_types.h			\
@@ -564,8 +567,8 @@ nobase_include_HEADERS +=			\
  vnet/lisp-cp/gid_dictionary.h			\
  vnet/lisp-cp/lisp_cp_messages.h		\
  vnet/lisp-cp/lisp_msg_serdes.h			\
- vnet/lisp-cp/control.h				
-
+ vnet/lisp-cp/control.h				\			
+ vnet/lisp-cp/lisp.api.h
 
 if ENABLE_TESTS
 LDS = -lvppinfra -l:libvlib.a $(dpdk_libs) -l:libvlibmemory.a \
@@ -606,14 +609,14 @@ libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe_fwd_entry.c		\
  vnet/lisp-gpe/lisp_gpe_tenant.c		\
  vnet/lisp-gpe/interface.c			\
- vnet/lisp-gpe/decap.c				
+ vnet/lisp-gpe/decap.c
 
 nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe.h			\
  vnet/lisp-gpe/lisp_gpe_fwd_entry.h		\
  vnet/lisp-gpe/lisp_gpe_tenant.h		\
  vnet/lisp-gpe/lisp_gpe_packet.h		\
- vnet/lisp-gpe/lisp_gpe_error.def		
+ vnet/lisp-gpe/lisp_gpe_error.def
 
 if ENABLE_TESTS
 TESTS += test_test
@@ -973,7 +976,8 @@ api_DATA =					\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.json			\
- vnet/vxlan-gpe/vxlan_gpe.api.json
+ vnet/vxlan-gpe/vxlan_gpe.api.json	\
+ vnet/lisp-cp/lisp.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
