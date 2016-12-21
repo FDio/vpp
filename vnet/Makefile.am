@@ -49,7 +49,9 @@ BUILT_SOURCES = 				\
  vnet/ipsec-gre/ipsec_gre.api.h		\
  vnet/ipsec-gre/ipsec_gre.api.json	\
  vnet/lisp-cp/lisp.api.h			\
- vnet/lisp-cp/lisp.api.json
+ vnet/lisp-cp/lisp.api.json			\
+ vnet/lisp-gpe/lisp_gpe.api.h		\
+ vnet/lisp-gpe/lisp_gpe.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -621,14 +623,16 @@ libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe_fwd_entry.c		\
  vnet/lisp-gpe/lisp_gpe_tenant.c		\
  vnet/lisp-gpe/interface.c			\
- vnet/lisp-gpe/decap.c
+ vnet/lisp-gpe/decap.c				\
+ vnet/lisp-gpe/lisp_gpe_api.c			
 
 nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe.h			\
  vnet/lisp-gpe/lisp_gpe_fwd_entry.h		\
  vnet/lisp-gpe/lisp_gpe_tenant.h		\
  vnet/lisp-gpe/lisp_gpe_packet.h		\
- vnet/lisp-gpe/lisp_gpe_error.def
+ vnet/lisp-gpe/lisp_gpe_error.def		\
+ vnet/lisp-gpe/lisp_gpe.api.h		
 
 if ENABLE_TESTS
 TESTS += test_test
@@ -992,7 +996,8 @@ api_DATA =					\
  vnet/bfd/bfd.api.json				\
  vnet/ipsec/ipsec.api.json			\
  vnet/ipsec-gre/ipsec_gre.api.json	\
- vnet/lisp-cp/lisp.api.json
+ vnet/lisp-cp/lisp.api.json			\
+ vnet/lisp-gpe/lisp_gpe.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree

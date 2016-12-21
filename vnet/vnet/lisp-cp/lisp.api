@@ -174,28 +174,6 @@ define lisp_add_del_map_resolver_reply
   i32 retval;
 };
 
-/** \brief enable or disable lisp-gpe protocol
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_en - enable protocol if non-zero, else disable
-*/
-define lisp_gpe_enable_disable
-{
-  u32 client_index;
-  u32 context;
-  u8 is_en;
-};
-
-/** \brief Reply for gpe enable/disable
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define lisp_gpe_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief enable or disable LISP feature
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
