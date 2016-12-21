@@ -434,7 +434,7 @@ class TestACL(unittest.TestCase):
 
         rv = vpp.acl_plugin_get_version()
         print('RV', rv)
-        self.assertEqual(rv.major, 0)
+        self.assertEqual(rv.major, 1)
         self.assertEqual(rv.minor, 1)
 
         rv = vpp.acl_add_replace(acl_index = 0xFFFFFFFF,
@@ -472,6 +472,16 @@ class TestACL(unittest.TestCase):
         vpp = VPP(jsonfiles)
         vpp.status()
 
+    def test_acl_interface_get(self):
+        vpp = VPP(jsonfiles)
+
+        vpp.connect('test_vpp_papi2')
+
+        rv = vpp.macip_acl_interface_get()
+
+        print('RV', rv)
+
+        vpp.disconnect()
 
 if __name__ == '__main__':
     unittest.main()
