@@ -1,0 +1,203 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_f3ffffff",
+        "filename": "test/template_bd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "why do you add pg1_to_pg0 stream to pg3?",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_1003a110",
+        "filename": "test/template_bd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "does it make sense to add \n\nself.pg0.assert_nothing_captured()\nself.pg1.assert_nothing_captured()\nself.pg2.assert_nothing_captured()\n\nhere? if not, could you also verify that the captures for pg0/1/2 are correct?",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_50092930",
+        "filename": "test/template_bd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "why do you add pg1_to_pg0 stream to pg2?",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_90179151",
+        "filename": "test/template_bd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "is there a specific reason why we are having a TODO in new code? it seems to me that this is the best time to add the messages...\n\nto save some typing, you could use the helper assert ...\nVppTestCase.assert_equal...\n\ne.g.\n\nself.assertEqual(payload[Ether].src, self.frame_pg1_to_pg0[Ether].src)\n-\u003e\nself.assert_equal(real_value\u003dpayload[Ether].src, expected_value\u003dself.frame_pg1_to_pg0[Ether].src,\n\"Ethernet source MAC\")\n\n(if not using keywords real_value/expected_value, make sure the order is correct)",
+      "range": {
+        "startLine": 140,
+        "startChar": 10,
+        "endLine": 140,
+        "endChar": 14
+      },
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_30069d21",
+        "filename": "test/template_bd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "same as above regarding assert_nothing_captured",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_b309772e",
+        "filename": "test/template_bd.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 163,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "same as above regarding assert_nothing_captured",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_73130f5d",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "if you change this parameter to non-network src_ip, then you won\u0027t need to convert it to string.\n\neach address in the framework is present in both forms - \n\nas string e.g. pg0.remote_ip4\nas binary e.g. pg0.remote_ip4n\n\nso there is no need to convert the addresses most of the time",
+      "range": {
+        "startLine": 32,
+        "startChar": 31,
+        "endLine": 32,
+        "endChar": 38
+      },
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_930e7b33",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "I see this ip4 used in several places - could we add it as per-class constant?",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_b0128d60",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "this is too long, please make sure the code is PEP8 compliant\n\nyou can use e.g. autopep8 tool to verify/correct common cases\n\n(install the tool by issuing e.g. pip install autopep8)",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_331d8767",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "what if other flags are set too?",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_d01d1975",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-21T12:24:14Z",
+      "side": 1,
+      "message": "@staticmethod instead\n\nthe code does not use cls parameter",
+      "revId": "d851591c21f5d6f19175abce2f20859dc79bd082",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
