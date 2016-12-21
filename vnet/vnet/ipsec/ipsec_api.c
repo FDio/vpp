@@ -1,0 +1,537 @@
+/*
+ *------------------------------------------------------------------
+ * ipsec_api.c - ipsec api
+ *
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+#include <vnet/vnet.h>
+#include <vlibmemory/api.h>
+
+#include <vnet/interface.h>
+#include <vnet/api_errno.h>
+#include <vnet/ip/ip.h>
+
+#include <vnet/vnet_msg_enum.h>
+
+#if IPSEC > 0
+#include <vnet/ipsec/ipsec.h>
+#include <vnet/ipsec/ikev2.h>
+#endif /* IPSEC */
+
+#define vl_typedefs		/* define message structures */
+#include <vnet/vnet_all_api_h.h>
+#undef vl_typedefs
+
+#define vl_endianfun		/* define message structures */
+#include <vnet/vnet_all_api_h.h>
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include <vnet/vnet_all_api_h.h>
+#undef vl_printfun
+
+#include <vlibapi/api_helper_macros.h>
+
+#define foreach_vpe_api_msg                                             \
+_(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                 \
+_(IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd)             \
+_(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)                     \
+_(IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry)                     \
+_(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
+_(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
+_(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
+_(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
+_(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
+_(IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts)                           \
+_(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)
+
+static void vl_api_ipsec_spd_add_del_t_handler
+  (vl_api_ipsec_spd_add_del_t * mp)
+{
+#if IPSEC == 0
+  clib_warning ("unimplemented");
+#else
+
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_spd_add_del_reply_t *rmp;
+  int rv;
+
+#if DPDK > 0
+  rv = ipsec_add_del_spd (vm, ntohl (mp->spd_id), mp->is_add);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_SPD_ADD_DEL_REPLY);
+#endif
+}
+
+static void vl_api_ipsec_interface_add_del_spd_t_handler
+  (vl_api_ipsec_interface_add_del_spd_t * mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_interface_add_del_spd_reply_t *rmp;
+  int rv;
+  u32 sw_if_index __attribute__ ((unused));
+  u32 spd_id __attribute__ ((unused));
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  spd_id = ntohl (mp->spd_id);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+#if IPSEC > 0
+  rv = ipsec_set_interface_spd (vm, sw_if_index, spd_id, mp->is_add);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_IPSEC_INTERFACE_ADD_DEL_SPD_REPLY);
+}
+
+static void vl_api_ipsec_spd_add_del_entry_t_handler
+  (vl_api_ipsec_spd_add_del_entry_t * mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_spd_add_del_entry_reply_t *rmp;
+  int rv;
+
+#if IPSEC > 0
+  ipsec_policy_t p;
+
+  memset (&p, 0, sizeof (p));
+
+  p.id = ntohl (mp->spd_id);
+  p.priority = ntohl (mp->priority);
+  p.is_outbound = mp->is_outbound;
+  p.is_ipv6 = mp->is_ipv6;
+
+  if (mp->is_ipv6 || mp->is_ip_any)
+    {
+      clib_memcpy (&p.raddr.start, mp->remote_address_start, 16);
+      clib_memcpy (&p.raddr.stop, mp->remote_address_stop, 16);
+      clib_memcpy (&p.laddr.start, mp->local_address_start, 16);
+      clib_memcpy (&p.laddr.stop, mp->local_address_stop, 16);
+    }
+  else
+    {
+      clib_memcpy (&p.raddr.start.ip4.data, mp->remote_address_start, 4);
+      clib_memcpy (&p.raddr.stop.ip4.data, mp->remote_address_stop, 4);
+      clib_memcpy (&p.laddr.start.ip4.data, mp->local_address_start, 4);
+      clib_memcpy (&p.laddr.stop.ip4.data, mp->local_address_stop, 4);
+    }
+  p.protocol = mp->protocol;
+  p.rport.start = ntohs (mp->remote_port_start);
+  p.rport.stop = ntohs (mp->remote_port_stop);
+  p.lport.start = ntohs (mp->local_port_start);
+  p.lport.stop = ntohs (mp->local_port_stop);
+  /* policy action resolve unsupported */
+  if (mp->policy == IPSEC_POLICY_ACTION_RESOLVE)
+    {
+      clib_warning ("unsupported action: 'resolve'");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+  p.policy = mp->policy;
+  p.sa_id = ntohl (mp->sa_id);
+
+  rv = ipsec_add_del_policy (vm, &p, mp->is_add);
+  if (rv)
+    goto out;
+
+  if (mp->is_ip_any)
+    {
+      p.is_ipv6 = 1;
+      rv = ipsec_add_del_policy (vm, &p, mp->is_add);
+    }
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+  goto out;
+#endif
+
+out:
+  REPLY_MACRO (VL_API_IPSEC_SPD_ADD_DEL_ENTRY_REPLY);
+}
+
+static void vl_api_ipsec_sad_add_del_entry_t_handler
+  (vl_api_ipsec_sad_add_del_entry_t * mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_sad_add_del_entry_reply_t *rmp;
+  int rv;
+#if IPSEC > 0
+  ipsec_sa_t sa;
+
+  memset (&sa, 0, sizeof (sa));
+
+  sa.id = ntohl (mp->sad_id);
+  sa.spi = ntohl (mp->spi);
+  /* security protocol AH unsupported */
+  if (mp->protocol == IPSEC_PROTOCOL_AH)
+    {
+      clib_warning ("unsupported security protocol 'AH'");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+  sa.protocol = mp->protocol;
+  /* check for unsupported crypto-alg */
+  if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+      mp->crypto_algorithm >= IPSEC_CRYPTO_N_ALG)
+    {
+      clib_warning ("unsupported crypto-alg: '%U'", format_ipsec_crypto_alg,
+		    mp->crypto_algorithm);
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+  sa.crypto_alg = mp->crypto_algorithm;
+  sa.crypto_key_len = mp->crypto_key_length;
+  clib_memcpy (&sa.crypto_key, mp->crypto_key, sizeof (sa.crypto_key));
+  /* check for unsupported integ-alg */
+#if DPDK_CRYPTO==1
+  if (mp->integrity_algorithm < IPSEC_INTEG_ALG_NONE ||
+#else
+  if (mp->integrity_algorithm < IPSEC_INTEG_ALG_SHA1_96 ||
+#endif
+      mp->integrity_algorithm >= IPSEC_INTEG_N_ALG)
+    {
+      clib_warning ("unsupported integ-alg: '%U'", format_ipsec_integ_alg,
+		    mp->integrity_algorithm);
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+
+#if DPDK_CRYPTO==1
+  /*Special cases, aes-gcm-128 encryption */
+  if (mp->crypto_algorithm == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    {
+      if (mp->integrity_algorithm != IPSEC_INTEG_ALG_NONE
+	  && mp->integrity_algorithm != IPSEC_INTEG_ALG_AES_GCM_128)
+	{
+	  clib_warning
+	    ("unsupported: aes-gcm-128 crypto-alg needs none as integ-alg");
+	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  goto out;
+	}
+      else			/*set integ-alg internally to aes-gcm-128 */
+	mp->integrity_algorithm = IPSEC_INTEG_ALG_AES_GCM_128;
+    }
+  else if (mp->integrity_algorithm == IPSEC_INTEG_ALG_AES_GCM_128)
+    {
+      clib_warning ("unsupported integ-alg: aes-gcm-128");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+  else if (mp->integrity_algorithm == IPSEC_INTEG_ALG_NONE)
+    {
+      clib_warning ("unsupported integ-alg: none");
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+    }
+#endif
+
+  sa.integ_alg = mp->integrity_algorithm;
+  sa.integ_key_len = mp->integrity_key_length;
+  clib_memcpy (&sa.integ_key, mp->integrity_key, sizeof (sa.integ_key));
+  sa.use_esn = mp->use_extended_sequence_number;
+  sa.is_tunnel = mp->is_tunnel;
+  sa.is_tunnel_ip6 = mp->is_tunnel_ipv6;
+  if (sa.is_tunnel_ip6)
+    {
+      clib_memcpy (&sa.tunnel_src_addr, mp->tunnel_src_address, 16);
+      clib_memcpy (&sa.tunnel_dst_addr, mp->tunnel_dst_address, 16);
+    }
+  else
+    {
+      clib_memcpy (&sa.tunnel_src_addr.ip4.data, mp->tunnel_src_address, 4);
+      clib_memcpy (&sa.tunnel_dst_addr.ip4.data, mp->tunnel_dst_address, 4);
+    }
+
+  rv = ipsec_add_del_sa (vm, &sa, mp->is_add);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+  goto out;
+#endif
+
+out:
+  REPLY_MACRO (VL_API_IPSEC_SAD_ADD_DEL_ENTRY_REPLY);
+}
+
+static void
+send_ipsec_spd_details (ipsec_policy_t * p, unix_shared_memory_queue_t * q,
+			u32 context)
+{
+  vl_api_ipsec_spd_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IPSEC_SPD_DETAILS);
+  mp->context = context;
+
+  mp->spd_id = htonl (p->id);
+  mp->priority = htonl (p->priority);
+  mp->is_outbound = p->is_outbound;
+  mp->is_ipv6 = p->is_ipv6;
+  if (p->is_ipv6)
+    {
+      memcpy (mp->local_start_addr, &p->laddr.start.ip6, 16);
+      memcpy (mp->local_stop_addr, &p->laddr.stop.ip6, 16);
+      memcpy (mp->remote_start_addr, &p->raddr.start.ip6, 16);
+      memcpy (mp->remote_stop_addr, &p->raddr.stop.ip6, 16);
+    }
+  else
+    {
+      memcpy (mp->local_start_addr, &p->laddr.start.ip4, 4);
+      memcpy (mp->local_stop_addr, &p->laddr.stop.ip4, 4);
+      memcpy (mp->remote_start_addr, &p->raddr.start.ip4, 4);
+      memcpy (mp->remote_stop_addr, &p->raddr.stop.ip4, 4);
+    }
+  mp->local_start_port = htons (p->lport.start);
+  mp->local_stop_port = htons (p->lport.stop);
+  mp->remote_start_port = htons (p->rport.start);
+  mp->remote_stop_port = htons (p->rport.stop);
+  mp->protocol = p->protocol;
+  mp->policy = p->policy;
+  mp->sa_id = htonl (p->sa_id);
+  mp->bytes = clib_host_to_net_u64 (p->counter.bytes);
+  mp->packets = clib_host_to_net_u64 (p->counter.packets);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  ipsec_main_t *im = &ipsec_main;
+  ipsec_policy_t *policy;
+  ipsec_spd_t *spd;
+  uword *p;
+  u32 spd_index;
+#if IPSEC > 0
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  p = hash_get (im->spd_index_by_spd_id, ntohl (mp->spd_id));
+  if (!p)
+    return;
+
+  spd_index = p[0];
+  spd = pool_elt_at_index (im->spds, spd_index);
+
+  /* *INDENT-OFF* */
+  pool_foreach (policy, spd->policies,
+  ({
+    if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
+      send_ipsec_spd_details (policy, q,
+                              mp->context);}
+    ));
+  /* *INDENT-ON* */
+#else
+  clib_warning ("unimplemented");
+#endif
+}
+
+static void
+vl_api_ipsec_sa_set_key_t_handler (vl_api_ipsec_sa_set_key_t * mp)
+{
+  vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
+  vl_api_ipsec_sa_set_key_reply_t *rmp;
+  int rv;
+#if IPSEC > 0
+  ipsec_sa_t sa;
+  sa.id = ntohl (mp->sa_id);
+  sa.crypto_key_len = mp->crypto_key_length;
+  clib_memcpy (&sa.crypto_key, mp->crypto_key, sizeof (sa.crypto_key));
+  sa.integ_key_len = mp->integrity_key_length;
+  clib_memcpy (&sa.integ_key, mp->integrity_key, sizeof (sa.integ_key));
+
+  rv = ipsec_set_sa_key (vm, &sa);
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_SA_SET_KEY_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
+{
+  vl_api_ikev2_profile_add_del_reply_t *rmp;
+  int rv = 0;
+
+#if IPSEC > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  u8 *tmp = format (0, "%s", mp->name);
+  error = ikev2_add_del_profile (vm, tmp, mp->is_add);
+  vec_free (tmp);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_ADD_DEL_REPLY);
+}
+
+static void
+  vl_api_ikev2_profile_set_auth_t_handler
+  (vl_api_ikev2_profile_set_auth_t * mp)
+{
+  vl_api_ikev2_profile_set_auth_reply_t *rmp;
+  int rv = 0;
+
+#if IPSEC > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  u8 *tmp = format (0, "%s", mp->name);
+  u8 *data = vec_new (u8, mp->data_len);
+  clib_memcpy (data, mp->data, mp->data_len);
+  error = ikev2_set_profile_auth (vm, tmp, mp->auth_method, data, mp->is_hex);
+  vec_free (tmp);
+  vec_free (data);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_AUTH_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
+{
+  vl_api_ikev2_profile_add_del_reply_t *rmp;
+  int rv = 0;
+
+#if IPSEC > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  u8 *tmp = format (0, "%s", mp->name);
+  u8 *data = vec_new (u8, mp->data_len);
+  clib_memcpy (data, mp->data, mp->data_len);
+  error = ikev2_set_profile_id (vm, tmp, mp->id_type, data, mp->is_local);
+  vec_free (tmp);
+  vec_free (data);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_ID_REPLY);
+}
+
+static void
+vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
+{
+  vl_api_ikev2_profile_set_ts_reply_t *rmp;
+  int rv = 0;
+
+#if IPSEC > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+  u8 *tmp = format (0, "%s", mp->name);
+  error = ikev2_set_profile_ts (vm, tmp, mp->proto, mp->start_port,
+				mp->end_port, (ip4_address_t) mp->start_addr,
+				(ip4_address_t) mp->end_addr, mp->is_local);
+  vec_free (tmp);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_PROFILE_SET_TS_REPLY);
+}
+
+static void
+vl_api_ikev2_set_local_key_t_handler (vl_api_ikev2_set_local_key_t * mp)
+{
+  vl_api_ikev2_profile_set_ts_reply_t *rmp;
+  int rv = 0;
+
+#if IPSEC > 0
+  vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *error;
+
+  error = ikev2_set_local_key (vm, mp->key_file);
+  if (error)
+    rv = VNET_API_ERROR_UNSPECIFIED;
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IKEV2_SET_LOCAL_KEY_REPLY);
+}
+
+/*
+ * ipsec_api_hookup
+ * Add vpe's API message handlers to the table.
+ * vlib has alread mapped shared memory and
+ * added the client registration handlers.
+ * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
+ */
+#define vl_msg_name_crc_list
+#include <vnet/vnet_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (api_main_t * am)
+{
+#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+  foreach_vl_msg_name_crc_ipsec;
+#undef _
+}
+
+static clib_error_t *
+ipsec_api_hookup (vlib_main_t * vm)
+{
+  api_main_t *am = &api_main;
+
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+                           vl_api_##n##_t_handler,              \
+                           vl_noop_handler,                     \
+                           vl_api_##n##_t_endian,               \
+                           vl_api_##n##_t_print,                \
+                           sizeof(vl_api_##n##_t), 1);
+  foreach_vpe_api_msg;
+#undef _
+
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  setup_message_id_table (am);
+
+  return 0;
+}
+
+VLIB_API_INIT_FUNCTION (ipsec_api_hookup);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

@@ -1,0 +1,457 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief IPsec: Add/delete Security Policy Database
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add SPD if non-zero, else delete
+    @param spd_id - SPD instance id (control plane allocated)
+*/
+
+define ipsec_spd_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u32 spd_id;
+};
+
+/** \brief Reply for IPsec: Add/delete Security Policy Database entry
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+define ipsec_spd_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPsec: Add/delete SPD from interface
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add security mode if non-zero, else delete
+    @param sw_if_index - index of the interface
+    @param spd_id - SPD instance id to use for lookups
+*/
+
+
+define ipsec_interface_add_del_spd
+{
+  u32 client_index;
+  u32 context;
+
+  u8 is_add;
+  u32 sw_if_index;
+  u32 spd_id;
+};
+
+/** \brief Reply for IPsec: Add/delete SPD from interface
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+define ipsec_interface_add_del_spd_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPsec: Add/delete Security Policy Database entry
+
+    See RFC 4301, 4.4.1.1 on how to match packet to selectors
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add SPD if non-zero, else delete
+    @param spd_id - SPD instance id (control plane allocated)
+    @param priority - priority of SPD entry (non-unique value).  Used to order SPD matching - higher priorities match before lower
+    @param is_outbound - entry applies to outbound traffic if non-zero, otherwise applies to inbound traffic
+    @param is_ipv6 - remote/local address are IPv6 if non-zero, else IPv4
+    @param remote_address_start - start of remote address range to match
+    @param remote_address_stop - end of remote address range to match
+    @param local_address_start - start of local address range to match
+    @param local_address_stop - end of local address range to match
+    @param protocol - protocol type to match [0 means any]
+    @param remote_port_start - start of remote port range to match ...
+    @param remote_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
+    @param local_port_start - start of local port range to match ...
+    @param local_port_stop - end of remote port range to match [0 to 65535 means ANY, 65535 to 0 means OPAQUE]
+    @param policy - 0 = bypass (no IPsec processing), 1 = discard (discard packet with ICMP processing), 2 = resolve (send request to control plane for SA resolving, and discard without ICMP processing), 3 = protect (apply IPsec policy using following parameters)
+    @param sa_id - SAD instance id (control plane allocated)
+
+*/
+
+define ipsec_spd_add_del_entry
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+
+  u32 spd_id;
+  i32 priority;
+  u8 is_outbound;
+
+  // Selector
+  u8 is_ipv6;
+  u8 is_ip_any;
+  u8 remote_address_start[16];
+  u8 remote_address_stop[16];
+  u8 local_address_start[16];
+  u8 local_address_stop[16];
+
+  u8 protocol;
+
+  u16 remote_port_start;
+  u16 remote_port_stop;
+  u16 local_port_start;
+  u16 local_port_stop;
+
+  // Policy
+  u8 policy;
+  u32 sa_id;
+};
+
+/** \brief Reply for IPsec: Add/delete Security Policy Database entry
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+define ipsec_spd_add_del_entry_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPsec: Add/delete Security Association Database entry
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add SAD entry if non-zero, else delete
+
+    @param sad_id - sad id
+
+    @param spi - security parameter index
+
+    @param protocol - 0 = AH, 1 = ESP
+
+    @param crypto_algorithm - 0 = Null, 1 = AES-CBC-128, 2 = AES-CBC-192, 3 = AES-CBC-256, 4 = 3DES-CBC
+    @param crypto_key_length - length of crypto_key in bytes
+    @param crypto_key - crypto keying material
+
+    @param integrity_algorithm - 0 = None, 1 = MD5-96, 2 = SHA1-96, 3 = SHA-256, 4 = SHA-384, 5=SHA-512
+    @param integrity_key_length - length of integrity_key in bytes
+    @param integrity_key - integrity keying material
+
+    @param use_extended_sequence_number - use ESN when non-zero
+
+    @param is_tunnel - IPsec tunnel mode if non-zero, else transport mode
+    @param is_tunnel_ipv6 - IPsec tunnel mode is IPv6 if non-zero, else IPv4 tunnel only valid if is_tunnel is non-zero
+    @param tunnel_src_address - IPsec tunnel source address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+    @param tunnel_dst_address - IPsec tunnel destination address IPv6 if is_tunnel_ipv6 is non-zero, else IPv4. Only valid if is_tunnel is non-zero
+
+    To be added:
+     Anti-replay
+     IPsec tunnel address copy mode (to support GDOI)
+ */
+
+define ipsec_sad_add_del_entry
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+
+  u32 sad_id;
+
+  u32 spi;
+
+  u8 protocol;
+
+  u8 crypto_algorithm;
+  u8 crypto_key_length;
+  u8 crypto_key[128];
+
+  u8 integrity_algorithm;
+  u8 integrity_key_length;
+  u8 integrity_key[128];
+
+  u8 use_extended_sequence_number;
+
+  u8 is_tunnel;
+  u8 is_tunnel_ipv6;
+  u8 tunnel_src_address[16];
+  u8 tunnel_dst_address[16];
+};
+
+/** \brief Reply for IPsec: Add/delete Security Association Database entry
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+define ipsec_sad_add_del_entry_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPsec: Update Security Association keys
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param sa_id - sa id
+
+    @param crypto_key_length - length of crypto_key in bytes
+    @param crypto_key - crypto keying material
+
+    @param integrity_key_length - length of integrity_key in bytes
+    @param integrity_key - integrity keying material
+*/
+
+define ipsec_sa_set_key
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sa_id;
+
+  u8 crypto_key_length;
+  u8 crypto_key[128];
+
+  u8 integrity_key_length;
+  u8 integrity_key[128];
+};
+
+/** \brief Reply for IPsec: Update Security Association keys
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+
+define ipsec_sa_set_key_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Add/delete profile
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_add - Add IKEv2 profile if non-zero, else delete
+*/
+define ikev2_profile_add_del
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_add;
+};
+
+/** \brief Reply for IKEv2: Add/delete profile
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 profile authentication method
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param auth_method - IKEv2 authentication method (shared-key-mic/rsa-sig)
+    @param is_hex - Authentication data in hex format if non-zero, else string
+    @param data_len - Authentication data length
+    @param data - Authentication data (for rsa-sig cert file path)
+*/
+define ikev2_profile_set_auth
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 auth_method;
+  u8 is_hex;
+  u32 data_len;
+  u8 data[0];
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 profile authentication method
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_set_auth_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 profile local/remote identification
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_local - Identification is local if non-zero, else remote
+    @param id_type - Identification type
+    @param data_len - Identification data length
+    @param data - Identification data
+*/
+define ikev2_profile_set_id
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_local;
+  u8 id_type;
+  u32 data_len;
+  u8 data[0];
+};
+
+/** \brief Reply for IKEv2:
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_set_id_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 profile traffic selector parameters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param is_local - Traffic selector is local if non-zero, else remote
+    @param proto - Traffic selector IP protocol (if zero not relevant)
+    @param start_port - The smallest port number allowed by traffic selector
+    @param end_port - The largest port number allowed by traffic selector
+    @param start_addr - The smallest address included in traffic selector
+    @param end_addr - The largest address included in traffic selector
+*/
+define ikev2_profile_set_ts
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u8 is_local;
+  u8 proto;
+  u16 start_port;
+  u16 end_port;
+  u32 start_addr;
+  u32 end_addr;
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 profile traffic selector parameters
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_profile_set_ts_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 local RSA private key
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param key_file - Key file absolute path
+*/
+define ikev2_set_local_key
+{
+  u32 client_index;
+  u32 context;
+
+  u8 key_file[256];
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 local key
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_set_local_key_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump ipsec policy database data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param spd_id - SPD instance id
+    @param sa_id - SA id, optional, set to ~0 to see all policies in SPD
+*/
+define ipsec_spd_dump {
+    u32 client_index;
+    u32 context;
+    u32 spd_id;
+    u32 sa_id;
+};
+
+/** \brief IPsec policy database response
+    @param context - sender context which was passed in the request
+    @param spd_id - SPD instance id
+    @param priority - numeric value to control policy evaluation order
+    @param is_outbound - [1|0] to indicate if direction is [out|in]bound
+    @param is_ipv6 - [1|0] to indicate if address family is ipv[6|4]
+    @param local_start_addr - first address in local traffic selector range
+    @param local_stop_addr - last address in local traffic selector range
+    @param local_start_port - first port in local traffic selector range
+    @param local_stop_port - last port in local traffic selector range
+    @param remote_start_addr - first address in remote traffic selector range
+    @param remote_stop_addr - last address in remote traffic selector range
+    @param remote_start_port - first port in remote traffic selector range
+    @param remote_stop_port - last port in remote traffic selector range
+    @param protocol - traffic selector protocol
+    @param policy - policy action
+    @param sa_id - SA id
+    @param bytes - byte count of packets matching this policy
+    @param packets - count of packets matching this policy
+*/
+
+define ipsec_spd_details {
+    u32 context;
+    u32 spd_id;
+    i32 priority;
+    u8 is_outbound;
+    u8 is_ipv6;
+    u8 local_start_addr[16];
+    u8 local_stop_addr[16];
+    u16 local_start_port;
+    u16 local_stop_port;
+    u8 remote_start_addr[16];
+    u8 remote_stop_addr[16];
+    u16 remote_start_port;
+    u16 remote_stop_port;
+    u8 protocol;
+    u8 policy;
+    u32 sa_id;
+    u64 bytes;
+    u64 packets;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+ 
