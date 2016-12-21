@@ -211,7 +211,6 @@ always_inline vlib_buffer_known_state_t
 vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  ASSERT (os_get_cpu_number () == 0);
 
   uword *p = hash_get (bm->buffer_known_hash, buffer_index);
   return p ? p[0] : VLIB_BUFFER_UNKNOWN;
@@ -223,7 +222,6 @@ vlib_buffer_set_known_state (vlib_main_t * vm,
 			     vlib_buffer_known_state_t state)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  ASSERT (os_get_cpu_number () == 0);
   hash_set (bm->buffer_known_hash, buffer_index, state);
 }
 
@@ -364,14 +362,20 @@ always_inline void *
 vlib_physmem_alloc_aligned (vlib_main_t * vm, clib_error_t ** error,
 			    uword n_bytes, uword alignment)
 {
+  static u32 os_physmem_alloc_aligned_lock = 0;
+  while (__sync_lock_test_and_set (&os_physmem_alloc_aligned_lock, 1));
   void *r =
     vm->os_physmem_alloc_aligned (&vm->physmem_main, n_bytes, alignment);
-  if (!r)
-    *error =
-      clib_error_return (0, "failed to allocate %wd bytes of I/O memory",
-			 n_bytes);
-  else
-    *error = 0;
+  os_physmem_alloc_aligned_lock = 0;
+  if (error)
+    {
+      if (!r)
+	*error =
+	  clib_error_return (0, "failed to allocate %wd bytes of I/O memory",
+			     n_bytes);
+      else
+	*error = 0;
+    }
   return r;
 }
 

@@ -330,12 +330,6 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
   if (CLIB_DEBUG == 0)
     return;
 
-  ASSERT (os_get_cpu_number () == 0);
-
-  /* smp disaster check */
-  if (vlib_mains)
-    ASSERT (vm == vlib_mains[0]);
-
   is_free = expected_state == VLIB_BUFFER_KNOWN_ALLOCATED;
   b = buffers;
   for (i = 0; i < n_buffers; i++)
@@ -463,7 +457,6 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
-#if DPDK > 0
   int i;
 
   ASSERT (os_get_cpu_number () == 0);
@@ -493,7 +486,11 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
   memset (f, 0, sizeof (f[0]));
   f->index = f - bm->buffer_free_list_pool;
   f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
+#if DPDK > 0
   f->min_n_buffers_each_physmem_alloc = 16;
+#else
+  f->min_n_buffers_each_physmem_alloc = 256;
+#endif
   f->name = clib_mem_is_heap_object (name) ? name : format (0, "%s", name);
 
   /* Setup free buffer template. */
@@ -519,47 +516,6 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
       wf->unaligned_buffers = 0;
       wf->n_alloc = 0;
     }
-#else
-
-  if (!is_default && pool_elts (bm->buffer_free_list_pool) == 0)
-    {
-      u32 default_free_free_list_index;
-
-      default_free_free_list_index = vlib_buffer_create_free_list_helper (vm,
-									  /* default buffer size */
-									  VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
-									  /* is_public */
-									  1,
-									  /* is_default */
-									  1,
-									  (u8
-									   *)
-									  "default");
-      ASSERT (default_free_free_list_index ==
-	      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-
-      if (n_data_bytes == VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES && is_public)
-	return default_free_free_list_index;
-    }
-
-  pool_get_aligned (bm->buffer_free_list_pool, f, CLIB_CACHE_LINE_BYTES);
-
-  memset (f, 0, sizeof (f[0]));
-  f->index = f - bm->buffer_free_list_pool;
-  f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
-  f->min_n_buffers_each_physmem_alloc = 256;
-  f->name = clib_mem_is_heap_object (name) ? name : format (0, "%s", name);
-
-  /* Setup free buffer template. */
-  f->buffer_init_template.free_list_index = f->index;
-
-  if (is_public)
-    {
-      uword *p = hash_get (bm->free_list_by_size, f->n_data_bytes);
-      if (!p)
-	hash_set (bm->free_list_by_size, f->n_data_bytes, f->index);
-    }
-#endif
 
   return f->index;
 }
@@ -646,13 +602,16 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
   u32 merge_index;
-#if DPDK > 0
   int i;
 
   ASSERT (os_get_cpu_number () == 0);
 
   f = vlib_buffer_get_free_list (vm, free_list_index);
 
+#if DPDK == 0
+  ASSERT (vec_len (f->unaligned_buffers) + vec_len (f->aligned_buffers) ==
+	  f->n_alloc);
+#endif
   merge_index = vlib_buffer_get_free_list_with_size (vm, f->n_data_bytes);
   if (merge_index != ~0 && merge_index != free_list_index)
     {
@@ -674,26 +633,6 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
       memset (f, 0xab, sizeof (f[0]));
       pool_put (bm->buffer_free_list_pool, f);
     }
-#else
-
-  f = vlib_buffer_get_free_list (vm, free_list_index);
-
-  ASSERT (vec_len (f->unaligned_buffers) + vec_len (f->aligned_buffers) ==
-	  f->n_alloc);
-  merge_index = vlib_buffer_get_free_list_with_size (vm, f->n_data_bytes);
-  if (merge_index != ~0 && merge_index != free_list_index)
-    {
-      merge_free_lists (pool_elt_at_index (bm->buffer_free_list_pool,
-					   merge_index), f);
-    }
-
-  del_free_list (vm, f);
-
-  /* Poison it. */
-  memset (f, 0xab, sizeof (f[0]));
-
-  pool_put (bm->buffer_free_list_pool, f);
-#endif
 }
 
 /* Make sure free list has at least given number of free buffers. */
@@ -785,9 +724,8 @@ fill_free_list (vlib_main_t * vm,
       n_bytes = n_this_chunk * (sizeof (b[0]) + fl->n_data_bytes);
 
       /* drb: removed power-of-2 ASSERT */
-      buffers = vm->os_physmem_alloc_aligned (&vm->physmem_main,
-					      n_bytes,
-					      sizeof (vlib_buffer_t));
+      buffers = vlib_physmem_alloc_aligned (vm, 0, n_bytes,
+					    sizeof (vlib_buffer_t));
       if (!buffers)
 	return n_alloc;
 
@@ -842,10 +780,6 @@ alloc_from_free_list (vlib_main_t * vm,
   uword u_len, n_left;
   uword n_unaligned_start, n_unaligned_end, n_filled;
 
-#if DPDK == 0
-  ASSERT (os_get_cpu_number () == 0);
-
-#endif
   n_left = n_alloc_buffers;
   dst = alloc_buffers;
   n_unaligned_start = ((BUFFERS_PER_COPY - copy_alignment (dst))
@@ -961,9 +895,6 @@ u32
 vlib_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-#if DPDK == 0
-  ASSERT (os_get_cpu_number () == 0);
-#endif
 
   return alloc_from_free_list
     (vm,
@@ -1103,8 +1034,6 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   u8 free0, free1 = 0, free_next0, free_next1;
   u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	     u32 follow_buffer_next);
-
-  ASSERT (os_get_cpu_number () == 0);
 
   cb = bm->buffer_free_callback;
 
@@ -1362,9 +1291,13 @@ vlib_packet_template_init (vlib_main_t * vm,
 			   uword min_n_buffers_each_physmem_alloc,
 			   char *fmt, ...)
 {
-#if DPDK > 0
   va_list va;
+#if DPDK > 0
   __attribute__ ((unused)) u8 *name;
+#else
+  vlib_buffer_free_list_t *fl;
+  u8 *name;
+#endif
 
   va_start (va, fmt);
   name = va_format (0, fmt, &va);
@@ -1375,19 +1308,7 @@ vlib_packet_template_init (vlib_main_t * vm,
 
   vec_add (t->packet_data, packet_data, n_packet_data_bytes);
 
-  vlib_worker_thread_barrier_release (vm);
-#else
-  vlib_buffer_free_list_t *fl;
-  va_list va;
-  u8 *name;
-
-  va_start (va, fmt);
-  name = va_format (0, fmt, &va);
-  va_end (va);
-
-  memset (t, 0, sizeof (t[0]));
-
-  vec_add (t->packet_data, packet_data, n_packet_data_bytes);
+#if DPDK == 0
   t->min_n_buffers_each_physmem_alloc = min_n_buffers_each_physmem_alloc;
 
   t->free_list_index = vlib_buffer_create_free_list_helper
@@ -1407,6 +1328,8 @@ vlib_packet_template_init (vlib_main_t * vm,
   fl->buffer_init_template.current_length = n_packet_data_bytes;
   fl->buffer_init_template.flags = 0;
 #endif
+
+  vlib_worker_thread_barrier_release (vm);
 }
 
 void *
@@ -1862,7 +1785,6 @@ static u8 *
 format_vlib_buffer_free_list (u8 * s, va_list * va)
 {
   vlib_buffer_free_list_t *f = va_arg (*va, vlib_buffer_free_list_t *);
-#if DPDK > 0
   u32 threadnum = va_arg (*va, u32);
   uword bytes_alloc, bytes_free, n_free, size;
 
@@ -1877,21 +1799,6 @@ format_vlib_buffer_free_list (u8 * s, va_list * va)
   bytes_free = size * n_free;
 
   s = format (s, "%7d%30s%12d%12d%=12U%=12U%=12d%=12d", threadnum,
-#else
-  uword bytes_alloc, bytes_free, n_free, size;
-
-  if (!f)
-    return format (s, "%=30s%=12s%=12s%=12s%=12s%=12s%=12s",
-		   "Name", "Index", "Size", "Alloc", "Free", "#Alloc",
-		   "#Free");
-
-  size = sizeof (vlib_buffer_t) + f->n_data_bytes;
-  n_free = vec_len (f->aligned_buffers) + vec_len (f->unaligned_buffers);
-  bytes_alloc = size * f->n_alloc;
-  bytes_free = size * n_free;
-
-  s = format (s, "%30s%12d%12d%=12U%=12U%=12d%=12d",
-#endif
 	      f->name, f->index, f->n_data_bytes,
 	      format_memory_size, bytes_alloc,
 	      format_memory_size, bytes_free, f->n_alloc, n_free);
@@ -1903,7 +1810,6 @@ static clib_error_t *
 show_buffers (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-#if DPDK > 0
   vlib_buffer_main_t *bm;
   vlib_buffer_free_list_t *f;
   vlib_main_t *curr_vm;
@@ -1926,18 +1832,6 @@ show_buffers (vlib_main_t * vm,
     }
   while (vm_index < vec_len (vlib_mains));
 
-#else
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  vlib_buffer_free_list_t *f;
-
-  vlib_cli_output (vm, "%U", format_vlib_buffer_free_list, 0);
-  /* *INDENT-OFF* */
-  pool_foreach (f, bm->buffer_free_list_pool, ({
-    vlib_cli_output (vm, "%U", format_vlib_buffer_free_list, f);
-  }));
-/* *INDENT-ON* */
-
-#endif
   return 0;
 }
 
