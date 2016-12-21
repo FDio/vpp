@@ -165,17 +165,21 @@ class VppPGInterface(VppInterface):
         if os.path.isfile(self.out_path):
             try:
                 capture = self.get_capture(remark=remark)
+                if len(capture.res) == 0:
+                    # junk filtered out, we're good
+                    return
                 self.test.logger.error(
                     ppc("Unexpected packets captured:", capture))
             except:
                 pass
             if remark:
                 raise AssertionError(
-                    "Capture file present for interface %s(%s)" %
+                    "Non-empty capture file present for interface %s(%s)" %
                     (self.name, remark))
             else:
-                raise AssertionError("Capture file present for interface %s" %
-                                     self.name)
+                raise AssertionError(
+                    "Non-empty capture file present for interface %s" %
+                    self.name)
 
     def wait_for_capture_file(self, timeout=1):
         """
