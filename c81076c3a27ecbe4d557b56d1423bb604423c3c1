@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_134babb1",
+        "filename": "build-root/Makefile",
+        "patchSetId": 15
+      },
+      "lineNbr": 1145,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-12-21T16:03:14Z",
+      "side": 1,
+      "message": "do we need the trailing semi-colon?",
+      "range": {
+        "startLine": 1145,
+        "startChar": 61,
+        "endLine": 1145,
+        "endChar": 62
+      },
+      "revId": "c81076c3a27ecbe4d557b56d1423bb604423c3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_f3c7ff10",
+        "filename": "build-root/Makefile",
+        "patchSetId": 15
+      },
+      "lineNbr": 1156,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2016-12-21T16:03:14Z",
+      "side": 1,
+      "message": "do we need the trailing semi-colon?",
+      "range": {
+        "startLine": 1156,
+        "startChar": 10,
+        "endLine": 1156,
+        "endChar": 19
+      },
+      "revId": "c81076c3a27ecbe4d557b56d1423bb604423c3c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
