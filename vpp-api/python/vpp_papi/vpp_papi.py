@@ -206,9 +206,6 @@ class VPP():
                     e = v[0] if type(v[0]) is int else res[v[2]]
                     if e == -1:
                         e = (len(buf) - off) / v[1].size
-                    if e == 0:
-                        raise ValueError(1,
-                                         'Variable length array, empty length: ' + k)
                     lst = []
                     res.append(lst)
                     size = 0
