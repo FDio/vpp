@@ -43,6 +43,7 @@
 #include <vnet/vxlan/vxlan.api.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.api.h>
 #include <vnet/bfd/bfd.api.h>
+#include <vnet/ipsec/ipsec.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -43,7 +43,9 @@ BUILT_SOURCES = 				\
  vnet/vxlan-gpe/vxlan_gpe.api.h			\
  vnet/vxlan-gpe/vxlan_gpe.api.json		\
  vnet/bfd/bfd.api.h					\
- vnet/bfd/bfd.api.json
+ vnet/bfd/bfd.api.json				\
+ vnet/ipsec/ipsec.api.h				\
+ vnet/ipsec/ipsec.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -403,7 +405,8 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ikev2_crypto.c			\
  vnet/ipsec/ikev2_cli.c				\
  vnet/ipsec/ikev2_payload.c			\
- vnet/ipsec/ikev2_format.c
+ vnet/ipsec/ikev2_format.c			\
+ vnet/ipsec/ipsec_api.c
 if WITH_DPDK_CRYPTO
 libvnet_la_SOURCES +=       			\
  vnet/devices/dpdk/ipsec/esp_encrypt.c		\
@@ -421,7 +424,8 @@ nobase_include_HEADERS +=     		        \
  vnet/ipsec/ipsec.h                             \
  vnet/ipsec/esp.h				\
  vnet/ipsec/ikev2.h                             \
- vnet/ipsec/ikev2_priv.h
+ vnet/ipsec/ikev2_priv.h					\
+ vnet/ipsec/ipsec.api.h
 if WITH_DPDK_CRYPTO
 nobase_include_HEADERS +=     		        \
  vnet/devices/dpdk/ipsec/ipsec.h		\
@@ -978,7 +982,8 @@ api_DATA =					\
  vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.json			\
  vnet/vxlan-gpe/vxlan_gpe.api.json	\
- vnet/bfd/bfd.api.json
+ vnet/bfd/bfd.api.json				\
+ vnet/ipsec/ipsec.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
