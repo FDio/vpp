@@ -63,7 +63,7 @@ install-data-hook:
 # Java code generation
 #
 jvpp_registry_root = ../../vpp-api/java
-jvpp_registry_version = 17.01
+jvpp_registry_version = 17.04
 jsnat_jarfile = jvpp-snat-$(PACKAGE_VERSION).jar
 jvpp_package_dir = io/fd/vpp/jvpp/snat
 jvpp_root = snat/jvpp

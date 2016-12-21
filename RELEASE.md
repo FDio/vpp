@@ -1,13 +1,18 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_1704
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
+@page release_notes_1704 Release notes for VPP 17.04
+
+@todo Release 17.04 needs release notes.
+
 @page release_notes_1701 Release notes for VPP 17.01
 
 @note This release was for a while known as 16.12.
-@todo Release 17.01 needs release notes.
+@todo Release 17.01 needs release notes. It will show up here soon...
 
 ## Features
 

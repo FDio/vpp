@@ -68,7 +68,7 @@ install-data-hook:
 # Java code generation
 #
 jvpp_registry_root = ../../vpp-api/java
-jvpp_registry_version = 17.01
+jvpp_registry_version = 17.04
 jacl_jarfile = jvpp-acl-$(PACKAGE_VERSION).jar
 jvpp_package_dir = io/fd/vpp/jvpp/acl
 jvpp_root = acl/jvpp
