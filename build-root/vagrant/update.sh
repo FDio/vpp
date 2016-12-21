@@ -25,19 +25,22 @@ fi
 
 # Do initial setup for the system
 if [ $DISTRIB_ID == "Ubuntu" ]; then
-    # Fix grub-pc on Virtualbox with Ubuntu
+
+    export DEBIAN_PRIORITY=critical
     export DEBIAN_FRONTEND=noninteractive
+    export DEBCONF_NONINTERACTIVE_SEEN=true
+    APT_OPTS="--assume-yes --no-install-suggests --no-install-recommends -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\""
 
     # Standard update + upgrade dance
-    apt-get update
-    apt-get upgrade -y
+    apt-get update ${APT_OPTS} >/dev/null
+    apt-get upgrade ${APT_OPTS} >/dev/null
 
     # Fix the silly notion that /bin/sh should point to dash by pointing it to bash
 
     update-alternatives --install /bin/sh sh /bin/bash 100
 
     # Install useful but non-mandatory tools
-    apt-get install -y emacs  git-review gdb gdbserver
+    apt-get install -y emacs git-review gdb gdbserver
 elif [ $DISTRIB_ID == "CentOS" ]; then
     # Standard update + upgrade dance
     yum check-update
