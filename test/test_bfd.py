@@ -184,10 +184,10 @@ class BFDTestCase(VppTestCase):
         self.pg_enable_capture([self.pg0])
         expected_packets = 3
         self.logger.info("BFD: Waiting for %d BFD packets" % expected_packets)
-        self.wait_for_bfd_packet()
+        self.wait_for_bfd_packet(2)
         for i in range(expected_packets):
             before = time.time()
-            self.wait_for_bfd_packet()
+            self.wait_for_bfd_packet(2)
             after = time.time()
             # spec says the range should be <0.75, 1>, allow extra 0.05 margin
             # to work around timing issues
@@ -198,7 +198,7 @@ class BFDTestCase(VppTestCase):
     def test_zero_remote_min_rx(self):
         """ no packets when zero BFD RemoteMinRxInterval """
         self.pg_enable_capture([self.pg0])
-        p = self.wait_for_bfd_packet()
+        p = self.wait_for_bfd_packet(2)
         self.test_session.update(my_discriminator=randint(0, 40000000),
                                  your_discriminator=p[BFD].my_discriminator,
                                  state=BFDState.init,
@@ -216,7 +216,7 @@ class BFDTestCase(VppTestCase):
     def bfd_session_up(self):
         self.pg_enable_capture([self.pg0])
         self.logger.info("BFD: Waiting for slow hello")
-        p = self.wait_for_bfd_packet()
+        p = self.wait_for_bfd_packet(2)
         self.logger.info("BFD: Sending Init")
         self.test_session.update(my_discriminator=randint(0, 40000000),
                                  your_discriminator=p[BFD].my_discriminator,

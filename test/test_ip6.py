@@ -116,8 +116,7 @@ class TestIPv6(VppTestCase):
         pkts = []
         for i in range(0, 257):
             dst_if = self.flows[src_if][i % 2]
-            info = self.create_packet_info(
-                src_if.sw_if_index, dst_if.sw_if_index)
+            info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6) /

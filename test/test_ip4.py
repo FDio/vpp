@@ -108,8 +108,7 @@ class TestIPv4(VppTestCase):
         pkts = []
         for i in range(0, 257):
             dst_if = self.flows[src_if][i % 2]
-            info = self.create_packet_info(
-                src_if.sw_if_index, dst_if.sw_if_index)
+            info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
@@ -254,15 +253,13 @@ class TestIPv4FibCrud(VppTestCase):
 
         for _ in range(count):
             dst_addr = random.choice(dst_ips)
-            info = self.create_packet_info(
-                src_if.sw_if_index, dst_if.sw_if_index)
+            info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_addr) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
-            size = random.choice(self.pg_if_packet_sizes)
             self.extend_packet(p, random.choice(self.pg_if_packet_sizes))
             pkts.append(p)
 
@@ -270,7 +267,8 @@ class TestIPv4FibCrud(VppTestCase):
 
     def _find_ip_match(self, find_in, pkt):
         for p in find_in:
-            if self.payload_to_info(str(p[Raw])) == self.payload_to_info(str(pkt[Raw])):
+            if self.payload_to_info(str(p[Raw])) == \
+                    self.payload_to_info(str(pkt[Raw])):
                 if p[IP].src != pkt[IP].src:
                     break
                 if p[IP].dst != pkt[IP].dst:
@@ -357,7 +355,7 @@ class TestIPv4FibCrud(VppTestCase):
 
     def setUp(self):
         super(TestIPv4FibCrud, self).setUp()
-        self.packet_infos = {}
+        self.reset_packet_infos()
 
     def test_1_add_routes(self):
         """ Add 1k routes
@@ -381,9 +379,8 @@ class TestIPv4FibCrud(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        pkts = self.pg0.get_capture()
+        pkts = self.pg0.get_capture(len(self.stream_1) + len(self.stream_2))
         self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
-
 
     def test_2_del_routes(self):
         """ Delete 100 routes
@@ -411,7 +408,7 @@ class TestIPv4FibCrud(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        pkts = self.pg0.get_capture()
+        pkts = self.pg0.get_capture(len(self.stream_1) + len(self.stream_2))
         self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
 
     def test_3_add_new_routes(self):
@@ -446,7 +443,7 @@ class TestIPv4FibCrud(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        pkts = self.pg0.get_capture()
+        pkts = self.pg0.get_capture(len(self.stream_1) + len(self.stream_2))
         self.verify_capture(self.pg0, pkts, self.stream_1 + self.stream_2)
 
     def test_4_del_routes(self):
