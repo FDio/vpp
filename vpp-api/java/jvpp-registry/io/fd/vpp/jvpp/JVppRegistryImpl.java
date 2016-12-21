@@ -108,11 +108,11 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
         final ControlPingCallback callback;
         synchronized (pingCalls) {
             callback = pingCalls.remove(reply.context);
-        }
-        if (callback == null) {
-            LOG.log(Level.WARNING, "No callback was registered for reply context=" + reply.context + " Contexts waiting="
+            if (callback == null) {
+                LOG.log(Level.WARNING, "No callback was registered for reply context=" + reply.context + " Contexts waiting="
                     + pingCalls.keySet());
-            return;
+                return;
+            }
         }
         // pass the reply to the callback registered by the ping caller
         callback.onControlPingReply(reply);

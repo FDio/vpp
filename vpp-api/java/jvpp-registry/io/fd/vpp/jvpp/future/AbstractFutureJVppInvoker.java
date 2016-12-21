@@ -51,8 +51,10 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
         this.requests = Objects.requireNonNull(requestMap, "Null requestMap");
     }
 
-    protected synchronized final Map<Integer, CompletableFuture<? extends JVppReply<?>>> getRequests() {
-        return this.requests;
+    protected final Map<Integer, CompletableFuture<? extends JVppReply<?>>> getRequests() {
+        synchronized (requests) {
+            return requests;
+        }
     }
 
     // TODO use Optional in Future, java8
