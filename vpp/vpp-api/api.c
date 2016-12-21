@@ -73,8 +73,6 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 #include <vnet/lisp-cp/control.h>
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
@@ -217,14 +215,11 @@ _(IOAM_DISABLE, ioam_disable)                                           \
 _(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
 _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
-_(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
 _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
 _(LISP_ADD_DEL_MAP_SERVER, lisp_add_del_map_server)                     \
-_(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
 _(LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable)       \
 _(LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable)   \
-_(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
 _(LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping)             \
 _(LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency)                       \
 _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
@@ -233,7 +228,6 @@ _(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \
 _(LISP_LOCATOR_DUMP, lisp_locator_dump)                                 \
 _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
-_(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_MAP_SERVER_DUMP, lisp_map_server_dump)                           \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
@@ -3241,33 +3235,6 @@ typedef CLIB_PACKED (struct {
 }) rloc_t;
 /* *INDENT-ON* */
 
-static locator_pair_t *
-unformat_lisp_loc_pairs (void *lcl_locs, void *rmt_locs, u32 rloc_num)
-{
-  u32 i;
-  locator_pair_t *pairs = 0, pair;
-  rloc_t *r;
-
-  for (i = 0; i < rloc_num; i++)
-    {
-      /* local locator */
-      r = &((rloc_t *) lcl_locs)[i];
-      memset (&pair.lcl_loc, 0, sizeof (pair.lcl_loc));
-      ip_address_set (&pair.lcl_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
-
-      /* remote locators */
-      r = &((rloc_t *) rmt_locs)[i];
-      memset (&pair.rmt_loc, 0, sizeof (pair.rmt_loc));
-      ip_address_set (&pair.rmt_loc, &r->addr, r->is_ip4 ? IP4 : IP6);
-
-      pair.priority = r->priority;
-      pair.weight = r->weight;
-
-      vec_add1 (pairs, pair);
-    }
-  return pairs;
-}
-
 static locator_t *
 unformat_lisp_locs (void *rmt_locs, u32 rloc_num)
 {
@@ -3288,39 +3255,6 @@ unformat_lisp_locs (void *rmt_locs, u32 rloc_num)
       vec_add1 (locs, loc);
     }
   return locs;
-}
-
-static void
-  vl_api_lisp_gpe_add_del_fwd_entry_t_handler
-  (vl_api_lisp_gpe_add_del_fwd_entry_t * mp)
-{
-  vl_api_lisp_gpe_add_del_fwd_entry_reply_t *rmp;
-  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
-  locator_pair_t *pairs = 0;
-  int rv = 0;
-
-  memset (a, 0, sizeof (a[0]));
-
-  rv = unformat_lisp_eid_api (&a->rmt_eid, mp->vni, mp->eid_type,
-			      mp->rmt_eid, mp->rmt_len);
-  rv |= unformat_lisp_eid_api (&a->lcl_eid, mp->vni, mp->eid_type,
-			       mp->lcl_eid, mp->lcl_len);
-
-  pairs = unformat_lisp_loc_pairs (mp->lcl_locs, mp->rmt_locs, mp->loc_num);
-
-  if (rv || 0 == pairs)
-    goto send_reply;
-
-  a->is_add = mp->is_add;
-  a->locator_pairs = pairs;
-  a->dp_table = mp->dp_table;
-  a->vni = mp->vni;
-  a->action = mp->action;
-
-  rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
-  vec_free (pairs);
-send_reply:
-  REPLY_MACRO (VL_API_LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY);
 }
 
 static void
@@ -3358,20 +3292,6 @@ vl_api_lisp_add_del_map_resolver_t_handler (vl_api_lisp_add_del_map_resolver_t
 }
 
 static void
-vl_api_lisp_gpe_enable_disable_t_handler (vl_api_lisp_gpe_enable_disable_t *
-					  mp)
-{
-  vl_api_lisp_gpe_enable_disable_reply_t *rmp;
-  int rv = 0;
-  vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
-
-  a->is_en = mp->is_en;
-  vnet_lisp_gpe_enable_disable (a);
-
-  REPLY_MACRO (VL_API_LISP_GPE_ENABLE_DISABLE_REPLY);
-}
-
-static void
   vl_api_lisp_map_register_enable_disable_t_handler
   (vl_api_lisp_map_register_enable_disable_t * mp)
 {
@@ -3401,38 +3321,6 @@ vl_api_lisp_enable_disable_t_handler (vl_api_lisp_enable_disable_t * mp)
 
   vnet_lisp_enable_disable (mp->is_en);
   REPLY_MACRO (VL_API_LISP_ENABLE_DISABLE_REPLY);
-}
-
-static void
-vl_api_lisp_gpe_add_del_iface_t_handler (vl_api_lisp_gpe_add_del_iface_t * mp)
-{
-  vl_api_lisp_gpe_add_del_iface_reply_t *rmp;
-  int rv = 0;
-
-  if (mp->is_l2)
-    {
-      if (mp->is_add)
-	{
-	  if (~0 ==
-	      lisp_gpe_tenant_l2_iface_add_or_lock (mp->vni, mp->dp_table))
-	    rv = 1;
-	}
-      else
-	lisp_gpe_tenant_l2_iface_unlock (mp->vni);
-    }
-  else
-    {
-      if (mp->is_add)
-	{
-	  if (~0 ==
-	      lisp_gpe_tenant_l3_iface_add_or_lock (mp->vni, mp->dp_table))
-	    rv = 1;
-	}
-      else
-	lisp_gpe_tenant_l3_iface_unlock (mp->vni);
-    }
-
-  REPLY_MACRO (VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
 }
 
 static void
@@ -3878,59 +3766,6 @@ vl_api_lisp_eid_table_dump_t_handler (vl_api_lisp_eid_table_dump_t * mp)
       }));
       /* *INDENT-ON* */
     }
-}
-
-static void
-send_lisp_gpe_fwd_entry_details (lisp_gpe_fwd_entry_t * lfe,
-				 unix_shared_memory_queue_t * q, u32 context)
-{
-  vl_api_lisp_gpe_tunnel_details_t *rmp;
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_LISP_GPE_TUNNEL_DETAILS);
-
-  rmp->tunnels = lfe - lgm->lisp_fwd_entry_pool;
-
-  rmp->is_ipv6 = ip_prefix_version (&(lfe->key->rmt.ippref)) == IP6 ? 1 : 0;
-  ip_address_copy_addr (rmp->source_ip,
-			&ip_prefix_addr (&(lfe->key->rmt.ippref)));
-  ip_address_copy_addr (rmp->destination_ip,
-			&ip_prefix_addr (&(lfe->key->rmt.ippref)));
-
-  rmp->encap_fib_id = htonl (0);
-  rmp->decap_fib_id = htonl (lfe->eid_fib_index);
-  rmp->iid = htonl (lfe->key->vni);
-  rmp->context = context;
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-static void
-vl_api_lisp_gpe_tunnel_dump_t_handler (vl_api_lisp_gpe_tunnel_dump_t * mp)
-{
-  unix_shared_memory_queue_t *q = NULL;
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  lisp_gpe_fwd_entry_t *lfe = NULL;
-
-  if (pool_elts (lgm->lisp_fwd_entry_pool) == 0)
-    {
-      return;
-    }
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
-
-  /* *INDENT-OFF* */
-  pool_foreach(lfe, lgm->lisp_fwd_entry_pool,
-  ({
-    send_lisp_gpe_fwd_entry_details(lfe, q, mp->context);
-  }));
-  /* *INDENT-ON* */
 }
 
 static void
