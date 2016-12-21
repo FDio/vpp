@@ -72,9 +72,6 @@
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
@@ -187,9 +184,6 @@ _(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
-_(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
-_(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
-_(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(POLICER_ADD_DEL, policer_add_del)                                     \
 _(POLICER_DUMP, policer_dump)                                           \
@@ -2977,105 +2971,6 @@ static void vl_api_vxlan_gpe_tunnel_dump_t_handler
       t = &vgm->tunnels[vgm->tunnel_index_by_sw_if_index[sw_if_index]];
       send_vxlan_gpe_tunnel_details (t, q, mp->context);
     }
-}
-
-static void
-vl_api_lisp_gpe_enable_disable_t_handler (vl_api_lisp_gpe_enable_disable_t *
-					  mp)
-{
-  vl_api_lisp_gpe_enable_disable_reply_t *rmp;
-  int rv = 0;
-  vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
-
-  a->is_en = mp->is_en;
-  vnet_lisp_gpe_enable_disable (a);
-
-  REPLY_MACRO (VL_API_LISP_GPE_ENABLE_DISABLE_REPLY);
-}
-
-static void
-vl_api_lisp_gpe_add_del_iface_t_handler (vl_api_lisp_gpe_add_del_iface_t * mp)
-{
-  vl_api_lisp_gpe_add_del_iface_reply_t *rmp;
-  int rv = 0;
-
-  if (mp->is_l2)
-    {
-      if (mp->is_add)
-	{
-	  if (~0 ==
-	      lisp_gpe_tenant_l2_iface_add_or_lock (mp->vni, mp->dp_table))
-	    rv = 1;
-	}
-      else
-	lisp_gpe_tenant_l2_iface_unlock (mp->vni);
-    }
-  else
-    {
-      if (mp->is_add)
-	{
-	  if (~0 ==
-	      lisp_gpe_tenant_l3_iface_add_or_lock (mp->vni, mp->dp_table))
-	    rv = 1;
-	}
-      else
-	lisp_gpe_tenant_l3_iface_unlock (mp->vni);
-    }
-
-  REPLY_MACRO (VL_API_LISP_GPE_ADD_DEL_IFACE_REPLY);
-}
-
-static void
-send_lisp_gpe_fwd_entry_details (lisp_gpe_fwd_entry_t * lfe,
-				 unix_shared_memory_queue_t * q, u32 context)
-{
-  vl_api_lisp_gpe_tunnel_details_t *rmp;
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_LISP_GPE_TUNNEL_DETAILS);
-
-  rmp->tunnels = lfe - lgm->lisp_fwd_entry_pool;
-
-  rmp->is_ipv6 = ip_prefix_version (&(lfe->key->rmt.ippref)) == IP6 ? 1 : 0;
-  ip_address_copy_addr (rmp->source_ip,
-			&ip_prefix_addr (&(lfe->key->rmt.ippref)));
-  ip_address_copy_addr (rmp->destination_ip,
-			&ip_prefix_addr (&(lfe->key->rmt.ippref)));
-
-  rmp->encap_fib_id = htonl (0);
-  rmp->decap_fib_id = htonl (lfe->eid_fib_index);
-  rmp->iid = htonl (lfe->key->vni);
-  rmp->context = context;
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-static void
-vl_api_lisp_gpe_tunnel_dump_t_handler (vl_api_lisp_gpe_tunnel_dump_t * mp)
-{
-  unix_shared_memory_queue_t *q = NULL;
-  lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  lisp_gpe_fwd_entry_t *lfe = NULL;
-
-  if (pool_elts (lgm->lisp_fwd_entry_pool) == 0)
-    {
-      return;
-    }
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
-
-  /* *INDENT-OFF* */
-  pool_foreach(lfe, lgm->lisp_fwd_entry_pool,
-  ({
-    send_lisp_gpe_fwd_entry_details(lfe, q, mp->context);
-  }));
-  /* *INDENT-ON* */
 }
 
 static void
