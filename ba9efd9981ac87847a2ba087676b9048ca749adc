@@ -2,6 +2,121 @@
   "comments": [
     {
       "key": {
+        "uuid": "5a2585a7_7d251ec1",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-21T04:11:53Z",
+      "side": 1,
+      "message": "Couldn\u0027t see this counter incremented in node function in this file. Is this used anywhere else?",
+      "range": {
+        "startLine": 27,
+        "startChar": 2,
+        "endLine": 27,
+        "endChar": 14
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5d2262ba",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-21T04:11:53Z",
+      "side": 1,
+      "message": "Dual packet processing loop not implemented.",
+      "range": {
+        "startLine": 70,
+        "startChar": 32,
+        "endLine": 70,
+        "endChar": 46
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_7d02be3f",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-21T04:11:53Z",
+      "side": 1,
+      "message": "Use IP_PROTOCOL_UDP",
+      "range": {
+        "startLine": 97,
+        "startChar": 23,
+        "endLine": 97,
+        "endChar": 27
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5dff0235",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-21T04:11:53Z",
+      "side": 1,
+      "message": "Pls use UDP_DST_PORT_vxlan_gpe",
+      "range": {
+        "startLine": 98,
+        "startChar": 51,
+        "endLine": 98,
+        "endChar": 55
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_902551ad",
+        "filename": "plugins/ioam-plugin/ioam/lib-vxlan-gpe/ioam_transit.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2016-12-21T04:11:53Z",
+      "side": 1,
+      "message": "Shouldn\u0027t we check whether the packet destination is equal to what is configured? Else we may add ioam data for tunnels which aren\u0027t required.",
+      "range": {
+        "startLine": 101,
+        "startChar": 22,
+        "endLine": 101,
+        "endChar": 28
+      },
+      "revId": "ba9efd9981ac87847a2ba087676b9048ca749adc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_fd790efd",
         "filename": "vnet/vnet/fib/fib_node.h",
         "patchSetId": 4
