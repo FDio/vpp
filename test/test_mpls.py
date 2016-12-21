@@ -12,6 +12,7 @@ from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
 
+
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
 
@@ -44,11 +45,17 @@ class TestMPLS(VppTestCase):
         super(TestMPLS, self).tearDown()
 
     # the default of 64 matches the IP packet TTL default
-    def create_stream_labelled_ip4(self, src_if, mpls_labels, mpls_ttl=255, ping=0, ip_itf=None):
+    def create_stream_labelled_ip4(
+            self,
+            src_if,
+            mpls_labels,
+            mpls_ttl=255,
+            ping=0,
+            ip_itf=None):
+        self.reset_packet_infos()
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = Ether(dst=src_if.local_mac, src=src_if.remote_mac)
 
@@ -71,10 +78,10 @@ class TestMPLS(VppTestCase):
         return pkts
 
     def create_stream_ip4(self, src_if, dst_ip):
+        self.reset_packet_infos()
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_ip) /
@@ -85,10 +92,10 @@ class TestMPLS(VppTestCase):
         return pkts
 
     def create_stream_labelled_ip6(self, src_if, mpls_label, mpls_ttl):
+        self.reset_packet_infos()
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  MPLS(label=mpls_label, ttl=mpls_ttl) /
@@ -342,7 +349,6 @@ class TestMPLS(VppTestCase):
                                             labels=[44, 45])])
         route_34_eos.add_vpp_config()
 
-        self.vapi.cli("clear trace")
         tx = self.create_stream_labelled_ip4(self.pg0, [34])
         self.pg0.add_stream(tx)
 
@@ -628,7 +634,6 @@ class TestMPLS(VppTestCase):
         # a stream with a non-zero MPLS TTL
         # PG0 is in the default table
         #
-        self.vapi.cli("clear trace")
         tx = self.create_stream_labelled_ip4(self.pg0, [0])
         self.pg0.add_stream(tx)
 
@@ -692,9 +697,9 @@ class TestMPLS(VppTestCase):
         # A de-agg route - next-hop lookup in default table
         #
         route_34_eos = MplsRoute(self, 34, 1,
-                                  [RoutePath("0.0.0.0",
-                                             0xffffffff,
-                                             nh_table_id=0)])
+                                 [RoutePath("0.0.0.0",
+                                            0xffffffff,
+                                            nh_table_id=0)])
         route_34_eos.add_vpp_config()
 
         #
@@ -716,9 +721,9 @@ class TestMPLS(VppTestCase):
         # A de-agg route - next-hop lookup in non-default table
         #
         route_35_eos = MplsRoute(self, 35, 1,
-                                  [RoutePath("0.0.0.0",
-                                             0xffffffff,
-                                             nh_table_id=1)])
+                                 [RoutePath("0.0.0.0",
+                                            0xffffffff,
+                                            nh_table_id=1)])
         route_35_eos.add_vpp_config()
 
         #
@@ -727,13 +732,15 @@ class TestMPLS(VppTestCase):
         # default table and egress unlabelled in the non-default
         #
         self.vapi.cli("clear trace")
-        tx = self.create_stream_labelled_ip4(self.pg0, [35], ping=1, ip_itf=self.pg1)
+        tx = self.create_stream_labelled_ip4(
+            self.pg0, [35], ping=1, ip_itf=self.pg1)
         self.pg0.add_stream(tx)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg1.get_capture()
+        packet_count = self.get_packet_count_for_if_idx(self.pg0.sw_if_index)
+        rx = self.pg1.get_capture(packet_count)
         self.verify_capture_ip4(self.pg1, rx, tx, ping_resp=1)
 
         route_35_eos.remove_vpp_config()

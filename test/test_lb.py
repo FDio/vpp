@@ -69,10 +69,10 @@ class TestLB(VppTestCase):
                 UDP(sport=10000 + id, dport=20000 + id))
 
     def generatePackets(self, src_if, isv4):
-        self.packet_infos = {}
+        self.reset_packet_infos()
         pkts = []
         for pktid in self.packets:
-            info = self.create_packet_info(src_if.sw_if_index, pktid)
+            info = self.create_packet_info(src_if, self.pg1)
             payload = self.info_to_payload(info)
             ip = self.getIPv4Flow(pktid) if isv4 else self.getIPv6Flow(pktid)
             packet = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -90,14 +90,13 @@ class TestLB(VppTestCase):
         self.assertEqual(gre.version, 0)
         inner = IPver(str(gre.payload))
         payload_info = self.payload_to_info(str(inner[Raw]))
-        self.info = self.get_next_packet_info_for_interface2(
-            self.pg0.sw_if_index, payload_info.dst, self.info)
+        self.info = self.packet_infos[payload_info.index]
+        self.assertEqual(payload_info.src, self.pg0.sw_if_index)
         self.assertEqual(str(inner), str(self.info.data[IPver]))
 
     def checkCapture(self, gre4, isv4):
         self.pg0.assert_nothing_captured()
-        out = self.pg1.get_capture()
-        self.assertEqual(len(out), len(self.packets))
+        out = self.pg1.get_capture(len(self.packets))
 
         load = [0] * len(self.ass)
         self.info = None

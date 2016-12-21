@@ -56,10 +56,7 @@ class BridgeDomain(object):
         self.pg_start()
 
         # Pick first received frame and check if it's the non-encapsulated frame
-        out = self.pg1.get_capture()
-        self.assertEqual(len(out), 1,
-                         'Invalid number of packets on '
-                         'output: {}'.format(len(out)))
+        out = self.pg1.get_capture(1)
         pkt = out[0]
 
         # TODO: add error messages
@@ -83,10 +80,7 @@ class BridgeDomain(object):
         self.pg_start()
 
         # Pick first received frame and check if it's corectly encapsulated.
-        out = self.pg0.get_capture()
-        self.assertEqual(len(out), 1,
-                         'Invalid number of packets on '
-                         'output: {}'.format(len(out)))
+        out = self.pg0.get_capture(1)
         pkt = out[0]
         self.check_encapsulation(pkt)
 

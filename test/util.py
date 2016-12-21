@@ -24,17 +24,14 @@ def ppc(headline, capture, limit=10):
     """
     if not capture:
         return headline
-    result = headline + "\n"
-    count = 1
-    for p in capture:
-        result.append(ppp("Packet #%s:" % count, p))
-        count += 1
-        if count >= limit:
-            break
+    tail = ""
     if limit < len(capture):
-        result.append(
-            "Capture contains %s packets in total, of which %s were printed" %
-            (len(capture), limit))
+        tail = "\nPrint limit reached, %s out of %s packets printed" % (
+            len(capture), limit)
+        limit = len(capture)
+    body = "".join([ppp("Packet #%s:" % count, p)
+                    for count, p in zip(range(0, limit), capture)])
+    return "%s\n%s%s" % (headline, body, tail)
 
 
 class NumericConstant(object):
