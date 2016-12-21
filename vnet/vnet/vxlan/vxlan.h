@@ -138,17 +138,27 @@ typedef enum {
 } vxlan_input_error_t;
 
 typedef struct {
+  ip46_address_t ip;
+  fib_node_index_t fib_entry_index;
+  adj_index_t mcast_adj_index;
+} mcast_remote_t;
+
+typedef struct {
   /* vector of encap tunnel instances */
-  vxlan_tunnel_t *tunnels;
+  vxlan_tunnel_t * tunnels;
 
   /* lookup tunnel by key */
   uword * vxlan4_tunnel_by_key; /* keyed on ipv4.dst + vni */
   uword * vxlan6_tunnel_by_key; /* keyed on ipv6.dst + vni */
 
-  /* local VTEP IPs used by vxlan-bypass node to check if received
-     VXLAN packet DIP matches any local VTEP address */
+  /* local VTEP IPs ref count used by vxlan-bypass node to check if
+     received VXLAN packet DIP matches any local VTEP address */
   uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
   uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
+
+  /* set of active remote mcast VTEP */
+  mcast_remote_t * mcast_eps;
+  uword * mcast_ep_by_ip; /* mcast VTEPs keyed on their ip46 addr */
 
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_tunnel_hw_if_indices;
