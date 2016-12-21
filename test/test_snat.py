@@ -241,7 +241,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in
@@ -249,7 +249,7 @@ class TestSNAT(VppTestCase):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
     def test_static_in(self):
@@ -270,7 +270,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture, nat_ip, True)
 
         # out2in
@@ -278,7 +278,7 @@ class TestSNAT(VppTestCase):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
     def test_static_out(self):
@@ -299,7 +299,7 @@ class TestSNAT(VppTestCase):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
         # in2out
@@ -307,7 +307,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture, nat_ip, True)
 
     def test_static_with_port_in(self):
@@ -333,7 +333,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in
@@ -341,7 +341,7 @@ class TestSNAT(VppTestCase):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
     def test_static_with_port_out(self):
@@ -367,7 +367,7 @@ class TestSNAT(VppTestCase):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
         # in2out
@@ -375,7 +375,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
     def test_static_vrf_aware(self):
@@ -401,7 +401,7 @@ class TestSNAT(VppTestCase):
         self.pg4.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture, nat_ip1, True)
 
         # inside interface VRF don't match SNAT static mapping VRF (packets
@@ -427,7 +427,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in 1st interface
@@ -435,7 +435,7 @@ class TestSNAT(VppTestCase):
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
 
         # in2out 2nd interface
@@ -443,7 +443,7 @@ class TestSNAT(VppTestCase):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in 2nd interface
@@ -451,7 +451,7 @@ class TestSNAT(VppTestCase):
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture()
+        capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg1)
 
         # in2out 3rd interface
@@ -459,7 +459,7 @@ class TestSNAT(VppTestCase):
         self.pg2.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in 3rd interface
@@ -467,7 +467,7 @@ class TestSNAT(VppTestCase):
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg2.get_capture()
+        capture = self.pg2.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg2)
 
     def test_inside_overlapping_interfaces(self):
@@ -485,7 +485,7 @@ class TestSNAT(VppTestCase):
         self.pg4.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in 1st interface
@@ -493,7 +493,7 @@ class TestSNAT(VppTestCase):
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg4.get_capture()
+        capture = self.pg4.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg4)
 
         # in2out 2nd interface
@@ -501,7 +501,7 @@ class TestSNAT(VppTestCase):
         self.pg5.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in 2nd interface
@@ -509,7 +509,7 @@ class TestSNAT(VppTestCase):
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg5.get_capture()
+        capture = self.pg5.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg5)
 
         # in2out 3rd interface
@@ -517,7 +517,7 @@ class TestSNAT(VppTestCase):
         self.pg6.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg3.get_capture()
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in 3rd interface
@@ -525,7 +525,7 @@ class TestSNAT(VppTestCase):
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg6.get_capture()
+        capture = self.pg6.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg6)
 
     def test_hairpinning(self):
@@ -553,8 +553,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
-        self.assertEqual(1, len(capture))
+        capture = self.pg0.get_capture(1)
         p = capture[0]
         try:
             ip = p[IP]
@@ -575,8 +574,7 @@ class TestSNAT(VppTestCase):
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture()
-        self.assertEqual(1, len(capture))
+        capture = self.pg0.get_capture(1)
         p = capture[0]
         try:
             ip = p[IP]
@@ -613,8 +611,7 @@ class TestSNAT(VppTestCase):
         self.pg_start()
 
         # verify number of translated packet
-        capture = self.pg1.get_capture()
-        self.assertEqual(pkts_num, len(capture))
+        self.pg1.get_capture(pkts_num)
 
     def tearDown(self):
         super(TestSNAT, self).tearDown()

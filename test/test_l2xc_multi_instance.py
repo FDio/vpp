@@ -113,7 +113,7 @@ class TestL2xcMultiInst(VppTestCase):
         Clear trace and packet infos before running each test.
         """
         super(TestL2xcMultiInst, self).setUp()
-        self.packet_infos = {}
+        self.reset_packet_infos()
 
     def tearDown(self):
         """
@@ -205,8 +205,7 @@ class TestL2xcMultiInst(VppTestCase):
             for i in range(0, n_int):
                 dst_host = dst_hosts[i]
                 src_host = random.choice(src_hosts)
-                pkt_info = self.create_packet_info(
-                    src_if.sw_if_index, dst_if.sw_if_index)
+                pkt_info = self.create_packet_info(src_if, dst_if)
                 payload = self.info_to_payload(pkt_info)
                 p = (Ether(dst=dst_host.mac, src=src_host.mac) /
                      IP(src=src_host.ip4, dst=dst_host.ip4) /
