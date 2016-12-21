@@ -10,6 +10,7 @@ from threading import Thread
 from inspect import getdoc
 from hook import StepHook, PollHook
 from vpp_pg_interface import VppPGInterface
+from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from scapy.packet import Raw
@@ -63,9 +64,13 @@ class VppTestCase(unittest.TestCase):
         """List of packet infos"""
         return self._packet_infos
 
-    @packet_infos.setter
-    def packet_infos(self, value):
-        self._packet_infos = value
+    @classmethod
+    def get_packet_count_for_if_idx(cls, dst_if_index):
+        """Get the number of packet info for specified destination if index"""
+        if dst_if_index in cls._packet_count_for_dst_if_idx:
+            return cls._packet_count_for_dst_if_idx[dst_if_index]
+        else:
+            return 0
 
     @classmethod
     def instance(cls):
@@ -184,9 +189,9 @@ class VppTestCase(unittest.TestCase):
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
                         cls.tempdir, cls.shm_prefix)
         cls.setUpConstants()
+        cls.reset_packet_infos()
         cls._captures = []
         cls._zombie_captures = []
-        cls.packet_infos = {}
         cls.verbose = 0
         cls.vpp_dead = False
         print(double_line_delim)
@@ -394,31 +399,37 @@ class VppTestCase(unittest.TestCase):
         if extend > 0:
             packet[Raw].load += ' ' * extend
 
-    def add_packet_info_to_list(self, info):
-        """
-        Add packet info to the testcase's packet info list
+    @classmethod
+    def reset_packet_infos(cls):
+        """ Reset the list of packet info objects and packet counts to zero """
+        cls._packet_infos = {}
+        cls._packet_count_for_dst_if_idx = {}
 
-        :param info: packet info
-
-        """
-        info.index = len(self.packet_infos)
-        self.packet_infos[info.index] = info
-
-    def create_packet_info(self, src_pg_index, dst_pg_index):
+    @classmethod
+    def create_packet_info(cls, src_if, dst_if):
         """
         Create packet info object containing the source and destination indexes
         and add it to the testcase's packet info list
 
-        :param src_pg_index: source packet-generator index
-        :param dst_pg_index: destination packet-generator index
+        :param VppInterface src_if: source interface
+        :param VppInterface dst_if: destination interface
 
         :returns: _PacketInfo object
 
         """
         info = _PacketInfo()
-        self.add_packet_info_to_list(info)
-        info.src = src_pg_index
-        info.dst = dst_pg_index
+        info.index = len(cls._packet_infos)
+        info.src = src_if.sw_if_index
+        info.dst = dst_if.sw_if_index
+        if isinstance(dst_if, VppSubInterface):
+            dst_idx = dst_if.parent.sw_if_index
+        else:
+            dst_idx = dst_if.sw_if_index
+        if dst_idx in cls._packet_count_for_dst_if_idx:
+            cls._packet_count_for_dst_if_idx[dst_idx] += 1
+        else:
+            cls._packet_count_for_dst_if_idx[dst_idx] = 1
+        cls._packet_infos[info.index] = info
         return info
 
     @staticmethod
@@ -462,10 +473,10 @@ class VppTestCase(unittest.TestCase):
             next_index = 0
         else:
             next_index = info.index + 1
-        if next_index == len(self.packet_infos):
+        if next_index == len(self._packet_infos):
             return None
         else:
-            return self.packet_infos[next_index]
+            return self._packet_infos[next_index]
 
     def get_next_packet_info_for_interface(self, src_index, info):
         """

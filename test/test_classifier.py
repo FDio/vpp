@@ -11,6 +11,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from util import ppp
 
+
 class TestClassifier(VppTestCase):
     """ Classifier Test Case """
 
@@ -84,8 +85,7 @@ class TestClassifier(VppTestCase):
         """
         pkts = []
         for size in packet_sizes:
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           dst_if.sw_if_index)
+            info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
@@ -150,8 +150,8 @@ class TestClassifier(VppTestCase):
         :param str dst_port: destination port number <0-ffff>
         """
 
-        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(proto, src_ip,
-                dst_ip, src_port, dst_port)).rstrip('0')
+        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(
+            proto, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
 
     @staticmethod
     def build_ip_match(proto='', src_ip='', dst_ip='',
@@ -164,11 +164,13 @@ class TestClassifier(VppTestCase):
         :param str src_port: source port number <0-ffff>
         :param str dst_port: destination port number <0-ffff>
         """
-        if src_ip: src_ip = socket.inet_aton(src_ip).encode('hex')
-        if dst_ip: dst_ip = socket.inet_aton(dst_ip).encode('hex')
+        if src_ip:
+            src_ip = socket.inet_aton(src_ip).encode('hex')
+        if dst_ip:
+            dst_ip = socket.inet_aton(dst_ip).encode('hex')
 
-        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(proto, src_ip,
-                dst_ip, src_port, dst_port)).rstrip('0')
+        return ('{:0>20}{:0>12}{:0>8}{:0>12}{:0>4}'.format(
+            proto, src_ip, dst_ip, src_port, dst_port)).rstrip('0')
 
     @staticmethod
     def build_mac_mask(dst_mac='', src_mac='', ether_type=''):
@@ -180,7 +182,7 @@ class TestClassifier(VppTestCase):
         """
 
         return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                ether_type)).rstrip('0')
+                                              ether_type)).rstrip('0')
 
     @staticmethod
     def build_mac_match(dst_mac='', src_mac='', ether_type=''):
@@ -190,11 +192,13 @@ class TestClassifier(VppTestCase):
         :param str src_mac: destination MAC address <x:x:x:x:x:x>
         :param str ether_type: ethernet type <0-ffff>
         """
-        if dst_mac: dst_mac = dst_mac.replace(':', '')
-        if src_mac: src_mac = src_mac.replace(':', '')
+        if dst_mac:
+            dst_mac = dst_mac.replace(':', '')
+        if src_mac:
+            src_mac = src_mac.replace(':', '')
 
         return ('{:0>12}{:0>12}{:0>4}'.format(dst_mac, src_mac,
-                ether_type)).rstrip('0')
+                                              ether_type)).rstrip('0')
 
     def create_classify_table(self, key, mask, data_offset=0, is_add=1):
         """Create Classify Table
@@ -206,12 +210,12 @@ class TestClassifier(VppTestCase):
             - create(1) or delete(0)
         """
         r = self.vapi.classify_add_del_table(
-                is_add,
-                binascii.unhexlify(mask),
-                match_n_vectors=(len(mask)-1)//32 + 1,
-                miss_next_index=0,
-                current_data_flag=1,
-                current_data_offset=data_offset)
+            is_add,
+            binascii.unhexlify(mask),
+            match_n_vectors=(len(mask) - 1) // 32 + 1,
+            miss_next_index=0,
+            current_data_flag=1,
+            current_data_offset=data_offset)
         self.assertIsNotNone(r, msg='No response msg for add_del_table')
         self.acl_tbl_idx[key] = r.new_table_index
 
@@ -228,12 +232,12 @@ class TestClassifier(VppTestCase):
             - create(1) or delete(0)
         """
         r = self.vapi.classify_add_del_session(
-                is_add,
-                table_index,
-                binascii.unhexlify(match),
-                opaque_index=0,
-                action=pbr_option,
-                metadata=vrfid)
+            is_add,
+            table_index,
+            binascii.unhexlify(match),
+            opaque_index=0,
+            action=pbr_option,
+            metadata=vrfid)
         self.assertIsNotNone(r, msg='No response msg for add_del_session')
 
     def input_acl_set_interface(self, intf, table_index, is_add=1):
@@ -245,9 +249,9 @@ class TestClassifier(VppTestCase):
             - enable(1) or disable(0)
         """
         r = self.vapi.input_acl_set_interface(
-                is_add,
-                intf.sw_if_index,
-                ip4_table_index=table_index)
+            is_add,
+            intf.sw_if_index,
+            ip4_table_index=table_index)
         self.assertIsNotNone(r, msg='No response msg for acl_set_interface')
 
     def test_acl_ip(self):
@@ -264,14 +268,15 @@ class TestClassifier(VppTestCase):
         self.pg0.add_stream(pkts)
 
         self.create_classify_table('ip', self.build_ip_mask(src_ip='ffffffff'))
-        self.create_classify_session(self.pg0, self.acl_tbl_idx.get('ip'),
-                self.build_ip_match(src_ip=self.pg0.remote_ip4))
+        self.create_classify_session(
+            self.pg0, self.acl_tbl_idx.get('ip'),
+            self.build_ip_match(src_ip=self.pg0.remote_ip4))
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'))
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        pkts = self.pg1.get_capture()
+        pkts = self.pg1.get_capture(len(pkts))
         self.verify_capture(self.pg1, pkts)
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('ip'), 0)
         self.pg0.assert_nothing_captured(remark="packets forwarded")
@@ -291,16 +296,17 @@ class TestClassifier(VppTestCase):
         pkts = self.create_stream(self.pg0, self.pg2, self.pg_if_packet_sizes)
         self.pg0.add_stream(pkts)
 
-        self.create_classify_table('mac',
-                self.build_mac_mask(src_mac='ffffffffffff'), data_offset=-14)
-        self.create_classify_session(self.pg0, self.acl_tbl_idx.get('mac'),
-                self.build_mac_match(src_mac=self.pg0.remote_mac))
+        self.create_classify_table(
+            'mac', self.build_mac_mask(src_mac='ffffffffffff'), data_offset=-14)
+        self.create_classify_session(
+            self.pg0, self.acl_tbl_idx.get('mac'),
+            self.build_mac_match(src_mac=self.pg0.remote_mac))
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'))
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        pkts = self.pg2.get_capture()
+        pkts = self.pg2.get_capture(len(pkts))
         self.verify_capture(self.pg2, pkts)
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('mac'), 0)
         self.pg0.assert_nothing_captured(remark="packets forwarded")
@@ -322,16 +328,17 @@ class TestClassifier(VppTestCase):
 
         self.create_classify_table('pbr', self.build_ip_mask(src_ip='ffffffff'))
         pbr_option = 1
-        self.create_classify_session(self.pg0, self.acl_tbl_idx.get('pbr'),
-                self.build_ip_match(src_ip=self.pg0.remote_ip4),
-                pbr_option, self.pbr_vrfid)
+        self.create_classify_session(
+            self.pg0, self.acl_tbl_idx.get('pbr'),
+            self.build_ip_match(src_ip=self.pg0.remote_ip4),
+            pbr_option, self.pbr_vrfid)
         self.config_pbr_fib_entry(self.pg3)
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('pbr'))
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        pkts = self.pg3.get_capture()
+        pkts = self.pg3.get_capture(len(pkts))
         self.verify_capture(self.pg3, pkts)
         self.input_acl_set_interface(self.pg0, self.acl_tbl_idx.get('pbr'), 0)
         self.pg0.assert_nothing_captured(remark="packets forwarded")

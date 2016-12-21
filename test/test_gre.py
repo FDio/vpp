@@ -43,8 +43,7 @@ class TestGRE(VppTestCase):
     def create_stream_ip4(self, src_if, src_ip, dst_ip):
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_ip, dst=dst_ip) /
@@ -59,8 +58,7 @@ class TestGRE(VppTestCase):
                                  src_ip, dst_ip):
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=tunnel_src, dst=tunnel_dst) /
@@ -77,8 +75,7 @@ class TestGRE(VppTestCase):
                                  src_ip, dst_ip):
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=tunnel_src, dst=tunnel_dst) /
@@ -94,8 +91,7 @@ class TestGRE(VppTestCase):
                                   tunnel_src, tunnel_dst):
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=tunnel_src, dst=tunnel_dst) /
@@ -113,8 +109,7 @@ class TestGRE(VppTestCase):
                                     tunnel_src, tunnel_dst, vlan):
         pkts = []
         for i in range(0, 257):
-            info = self.create_packet_info(src_if.sw_if_index,
-                                           src_if.sw_if_index)
+            info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=tunnel_src, dst=tunnel_dst) /
@@ -342,7 +337,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_tunneled_4o4(self.pg0, rx, tx,
                                  self.pg0.local_ip4, "1.1.1.2")
 
@@ -361,7 +356,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_decapped_4o4(self.pg0, rx, tx)
 
         #
@@ -426,7 +421,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_decapped_6o4(self.pg0, rx, tx)
 
         #
@@ -483,7 +478,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg1.get_capture()
+        rx = self.pg1.get_capture(len(tx))
         self.verify_tunneled_4o4(self.pg1, rx, tx,
                                  self.pg1.local_ip4, "2.2.2.2")
 
@@ -503,7 +498,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_decapped_4o4(self.pg0, rx, tx)
 
         #
@@ -564,7 +559,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_tunneled_l2o4(self.pg0, rx, tx,
                                   self.pg0.local_ip4,
                                   "2.2.2.3")
@@ -578,7 +573,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_tunneled_l2o4(self.pg0, rx, tx,
                                   self.pg0.local_ip4,
                                   "2.2.2.2")
@@ -635,7 +630,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_tunneled_vlano4(self.pg0, rx, tx,
                                     self.pg0.local_ip4,
                                     "2.2.2.3",
@@ -651,7 +646,7 @@ class TestGRE(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg0.get_capture()
+        rx = self.pg0.get_capture(len(tx))
         self.verify_tunneled_vlano4(self.pg0, rx, tx,
                                     self.pg0.local_ip4,
                                     "2.2.2.2",
