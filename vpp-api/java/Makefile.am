@@ -94,7 +94,9 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h:		\
     $(prefix)/../vnet/vnet/l2tp.api.json		\
     $(prefix)/../vnet/vnet/tap.api.json 		\
     $(prefix)/../vnet/vnet/vxlan.api.json		\
-    $(prefix)/../vnet/vnet/vxlan_gpe.api.json
+    $(prefix)/../vnet/vnet/vxlan_gpe.api.json	\
+    $(prefix)/../vnet/vnet/tap.api.json			\
+    $(prefix)/../vnet/vnet/bfd.api.json
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/
 	mkdir -p jvpp-core/target
 	cd jvpp-core \
@@ -114,6 +116,7 @@ jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h:		\
 		    $(prefix)/../vnet/vnet/tap.api.json \
 		    $(prefix)/../vnet/vnet/vxlan.api.json \
 		    $(prefix)/../vnet/vnet/vxlan_gpe.api.json \
+		    $(prefix)/../vnet/vnet/bfd.api.json \
 		&& cp -rf types dto future callfacade callback notification *.java -t $(packagedir_jvpp_core) \
 		&& rm -rf types dto future callfacade callback notification *.java
 

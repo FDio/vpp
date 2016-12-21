@@ -42,6 +42,7 @@
 #include <vnet/unix/tap.api.h>
 #include <vnet/vxlan/vxlan.api.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.api.h>
+#include <vnet/bfd/bfd.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -41,7 +41,9 @@ BUILT_SOURCES = 				\
  vnet/vxlan/vxlan.api.h				\
  vnet/vxlan/vxlan.api.json			\
  vnet/vxlan-gpe/vxlan_gpe.api.h			\
- vnet/vxlan-gpe/vxlan_gpe.api.json
+ vnet/vxlan-gpe/vxlan_gpe.api.json		\
+ vnet/bfd/bfd.api.h					\
+ vnet/bfd/bfd.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -373,13 +375,15 @@ nobase_include_HEADERS +=                       \
  vnet/bfd/bfd_protocol.h			\
  vnet/bfd/bfd_main.h                            \
  vnet/bfd/bfd_api.h                            \
- vnet/bfd/bfd_udp.h
+ vnet/bfd/bfd_udp.h								\
+ vnet/bfd/bfd.api.h
 
 libvnet_la_SOURCES +=				\
  vnet/bfd/bfd_api.h                            \
  vnet/bfd/bfd_udp.c                             \
  vnet/bfd/bfd_main.c                            \
- vnet/bfd/bfd_protocol.c
+ vnet/bfd/bfd_protocol.c						\
+ vnet/bfd/bfd_api.c
 
 ########################################
 # Layer 3 protocol: IPSec
@@ -973,7 +977,8 @@ api_DATA =					\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.json			\
- vnet/vxlan-gpe/vxlan_gpe.api.json
+ vnet/vxlan-gpe/vxlan_gpe.api.json	\
+ vnet/bfd/bfd.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
