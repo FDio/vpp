@@ -350,7 +350,7 @@ cli_show_trace_buffer (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  vlib_cli_output (vm, (char *) s);
+  vlib_cli_output (vm, "%v", s);
   vec_free (s);
   return 0;
 }
