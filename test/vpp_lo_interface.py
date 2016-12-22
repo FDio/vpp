@@ -11,3 +11,6 @@ class VppLoInterface(VppInterface):
         self._sw_if_index = r.sw_if_index
         super(VppLoInterface, self).__init__(test)
         self._lo_index = lo_index
+
+    def vpp_delete(self):
+        r = self._test.vapi.delete_loopback(self._sw_if_index)

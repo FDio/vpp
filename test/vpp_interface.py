@@ -170,10 +170,14 @@ class VppInterface(object):
                 "in interface dump %s" %
                 (self.sw_if_index, repr(r)))
 
-    def config_ip4(self):
-        """Configure IPv4 address on the VPP interface."""
-        addr = self.local_ip4n
-        addr_len = 24
+    def config_ip4(self, custom_ip=None, addr_len=24):
+        """Configure IPv4 address on the VPP interface.
+
+        :param str custom_ip:
+        :param int addr_len: IPv4 prefix length.
+        """
+        addr = socket.inet_pton(socket.AF_INET, custom_ip) \
+            if custom_ip else self.local_ip4n
         self.test.vapi.sw_interface_add_del_address(
             self.sw_if_index, addr, addr_len)
         self.has_ip4_config = True
@@ -244,6 +248,10 @@ class VppInterface(object):
     def admin_up(self):
         """Put interface ADMIN-UP."""
         self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=1)
+
+    def admin_down(self):
+        """Put interface ADMIN-down."""
+        self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=0)
 
     def add_sub_if(self, sub_if):
         """Register a sub-interface with this interface.
