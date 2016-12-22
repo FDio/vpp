@@ -589,6 +589,33 @@ class TestSNAT(VppTestCase):
             self.logger.error(ppp("Unexpected or invalid packet:"), p)
             raise
 
+    def test_max_translations_per_user(self):
+        """ MAX translations per user - recycle the least recently used """
+
+        self.snat_add_address(self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # get maximum number of translations per user
+        snat_config = self.vapi.snat_show_config()
+
+        # send more than maximum number of translations per user packets
+        pkts_num = snat_config.max_translations_per_user + 5
+        pkts = []
+        for port in range(0, pkts_num):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 TCP(sport=1025 + port))
+            pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # verify number of translated packet
+        capture = self.pg1.get_capture()
+        self.assertEqual(pkts_num, len(capture))
+
     def tearDown(self):
         super(TestSNAT, self).tearDown()
         if not self.vpp_dead:

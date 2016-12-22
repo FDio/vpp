@@ -974,13 +974,13 @@ vl_api_snat_show_config_t_handler
 
   REPLY_MACRO2(VL_API_SNAT_SHOW_CONFIG_REPLY,
   ({
-    rmp->translation_buckets = htons (sm->translation_buckets);
-    rmp->translation_memory_size = htons (sm->translation_memory_size);
-    rmp->user_buckets = htons (sm->user_buckets);
-    rmp->user_memory_size = htons (sm->user_memory_size);
-    rmp->max_translations_per_user = htons (sm->max_translations_per_user);
-    rmp->outside_vrf_id = htons (sm->outside_vrf_id);
-    rmp->inside_vrf_id = htons (sm->inside_vrf_id);
+    rmp->translation_buckets = htonl (sm->translation_buckets);
+    rmp->translation_memory_size = htonl (sm->translation_memory_size);
+    rmp->user_buckets = htonl (sm->user_buckets);
+    rmp->user_memory_size = htonl (sm->user_memory_size);
+    rmp->max_translations_per_user = htonl (sm->max_translations_per_user);
+    rmp->outside_vrf_id = htonl (sm->outside_vrf_id);
+    rmp->inside_vrf_id = htonl (sm->inside_vrf_id);
     rmp->static_mapping_only = sm->static_mapping_only;
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
