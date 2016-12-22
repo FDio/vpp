@@ -842,6 +842,12 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_static_mapping_dump, {})
 
+    def snat_show_config(self):
+        """Show S-NAT config
+        :return: S-NAT config parameters
+        """
+        return self.api(self.papi.snat_show_config, {})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 

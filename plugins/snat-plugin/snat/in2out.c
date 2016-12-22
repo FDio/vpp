@@ -203,7 +203,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
           /* Get the session */
           s = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
                                  session_index);
-      } while (!snat_is_session_static (s));
+      } while (snat_is_session_static (s));
 
       /* Remove in2out, out2in keys */
       kv0.key = s->in2out.as_u64;
