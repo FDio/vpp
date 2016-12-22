@@ -465,6 +465,10 @@ class VppPapiProvider(object):
         return self.api(self.papi.create_loopback,
                         {'mac_address': mac})
 
+    def delete_loopback(self, sw_if_index):
+        return self.api(self.papi.delete_loopback,
+                        {'sw_if_index': sw_if_index, })
+
     def ip_add_del_route(
             self,
             dst_address,

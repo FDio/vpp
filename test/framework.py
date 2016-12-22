@@ -182,6 +182,8 @@ class VppTestCase(unittest.TestCase):
         cls.setUpConstants()
         cls._captures = []
         cls._zombie_captures = []
+        cls.pg_interfaces = []
+        cls.lo_interfaces = []
         cls.packet_infos = {}
         cls.verbose = 0
         cls.vpp_dead = False
@@ -346,9 +348,11 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def create_pg_interfaces(cls, interfaces):
         """
-        Create packet-generator interfaces
+        Create packet-generator interfaces and append it to class list of
+        pg interfaces.
 
-        :param interfaces: iterable indexes of the interfaces
+        :param interfaces: iterable indexes of the interfaces.
+        :returns list: List of created interfaces.
 
         """
         result = []
@@ -356,23 +360,24 @@ class VppTestCase(unittest.TestCase):
             intf = VppPGInterface(cls, i)
             setattr(cls, intf.name, intf)
             result.append(intf)
-        cls.pg_interfaces = result
+        cls.pg_interfaces.extend(result)
         return result
 
     @classmethod
     def create_loopback_interfaces(cls, interfaces):
         """
-        Create loopback interfaces
+        Create loopback interfaces and append it to class list of
+        loopback interfaces.
 
-        :param interfaces: iterable indexes of the interfaces
-
+        :param interfaces: iterable indexes of the interfaces.
+        :returns list: List of created interfaces.
         """
         result = []
         for i in interfaces:
             intf = VppLoInterface(cls, i)
             setattr(cls, intf.name, intf)
             result.append(intf)
-        cls.lo_interfaces = result
+        cls.lo_interfaces.extend(result)
         return result
 
     @staticmethod
