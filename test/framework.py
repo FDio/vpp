@@ -355,9 +355,10 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def create_pg_interfaces(cls, interfaces):
         """
-        Create packet-generator interfaces
+        Create packet-generator interfaces.
 
-        :param interfaces: iterable indexes of the interfaces
+        :param interfaces: iterable indexes of the interfaces.
+        :returns: List of created interfaces.
 
         """
         result = []
@@ -371,10 +372,10 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def create_loopback_interfaces(cls, interfaces):
         """
-        Create loopback interfaces
+        Create loopback interfaces.
 
-        :param interfaces: iterable indexes of the interfaces
-
+        :param interfaces: iterable indexes of the interfaces.
+        :returns: List of created interfaces.
         """
         result = []
         for i in interfaces:
