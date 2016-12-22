@@ -15,43 +15,27 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
-BUILT_SOURCES = 				\
- vnet/devices/af_packet/af_packet.api.h		\
+JSON_API_FILES = \
  vnet/devices/af_packet/af_packet.api.json	\
- vnet/devices/netmap/netmap.api.h		\
  vnet/devices/netmap/netmap.api.json		\
- vnet/devices/virtio/vhost_user.api.h		\
  vnet/devices/virtio/vhost_user.api.json	\
- vnet/gre/gre.api.h				\
  vnet/gre/gre.api.json				\
- vnet/interface.api.h				\
  vnet/interface.api.json			\
- vnet/ip/ip.api.h				\
  vnet/ip/ip.api.json				\
- vnet/l2/l2.api.h				\
  vnet/l2/l2.api.json				\
- vnet/l2tp/l2tp.api.h				\
  vnet/l2tp/l2tp.api.json			\
- vnet/map/map.api.h				\
  vnet/map/map.api.json				\
- vnet/span/span.api.h				\
  vnet/span/span.api.json			\
- vnet/unix/tap.api.h				\
  vnet/unix/tap.api.json				\
- vnet/vxlan/vxlan.api.h				\
  vnet/vxlan/vxlan.api.json			\
- vnet/vxlan-gpe/vxlan_gpe.api.h			\
  vnet/vxlan-gpe/vxlan_gpe.api.json		\
- vnet/bfd/bfd.api.h					\
  vnet/bfd/bfd.api.json				\
- vnet/ipsec/ipsec.api.h				\
  vnet/ipsec/ipsec.api.json			\
- vnet/ipsec-gre/ipsec_gre.api.h		\
- vnet/ipsec-gre/ipsec_gre.api.json	\
- vnet/lisp-cp/lisp.api.h			\
+ vnet/ipsec-gre/ipsec_gre.api.json		\
  vnet/lisp-cp/lisp.api.json			\
- vnet/lisp-gpe/lisp_gpe.api.h		\
  vnet/lisp-gpe/lisp_gpe.api.json
+
+BUILT_SOURCES = $(JSON_API_FILES) $(patsubst %.json,%.h,$(JSON_API_FILES))
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
