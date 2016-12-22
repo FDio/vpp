@@ -41,7 +41,9 @@ BUILT_SOURCES = 				\
  vnet/vxlan/vxlan.api.h				\
  vnet/vxlan/vxlan.api.json			\
  vnet/vxlan-gpe/vxlan_gpe.api.h			\
- vnet/vxlan-gpe/vxlan_gpe.api.json
+ vnet/vxlan-gpe/vxlan_gpe.api.json		\
+ vnet/ipsec-gre/ipsec_gre.api.h			\
+ vnet/ipsec-gre/ipsec_gre.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -540,11 +542,13 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
  vnet/ipsec-gre/ipsec_gre.c			\
  vnet/ipsec-gre/node.c				\
- vnet/ipsec-gre/interface.c
+ vnet/ipsec-gre/interface.c			\
+ vnet/ipsec-gre/ipsec_gre_api.c
 
 nobase_include_HEADERS +=			\
  vnet/ipsec-gre/ipsec_gre.h		        \
- vnet/ipsec-gre/error.def
+ vnet/ipsec-gre/error.def			\
+ vnet/ipsec-gre/ipsec_gre.api.h
 
 ########################################
 # LISP control plane: lisp-cp
@@ -973,7 +977,8 @@ api_DATA =					\
  vnet/span/span.api.json			\
  vnet/unix/tap.api.json				\
  vnet/vxlan/vxlan.api.json			\
- vnet/vxlan-gpe/vxlan_gpe.api.json
+ vnet/vxlan-gpe/vxlan_gpe.api.json	\
+ vnet/ipsec-gre/ipsec_gre.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
