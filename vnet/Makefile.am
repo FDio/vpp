@@ -45,7 +45,9 @@ BUILT_SOURCES = 				\
  vnet/bfd/bfd.api.h					\
  vnet/bfd/bfd.api.json				\
  vnet/ipsec/ipsec.api.h				\
- vnet/ipsec/ipsec.api.json
+ vnet/ipsec/ipsec.api.json			\
+ vnet/ipsec-gre/ipsec_gre.api.h			\
+ vnet/ipsec-gre/ipsec_gre.api.json
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -548,11 +550,13 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
  vnet/ipsec-gre/ipsec_gre.c			\
  vnet/ipsec-gre/node.c				\
- vnet/ipsec-gre/interface.c
+ vnet/ipsec-gre/interface.c			\
+ vnet/ipsec-gre/ipsec_gre_api.c
 
 nobase_include_HEADERS +=			\
  vnet/ipsec-gre/ipsec_gre.h		        \
- vnet/ipsec-gre/error.def
+ vnet/ipsec-gre/error.def			\
+ vnet/ipsec-gre/ipsec_gre.api.h
 
 ########################################
 # LISP control plane: lisp-cp
@@ -983,7 +987,8 @@ api_DATA =					\
  vnet/vxlan/vxlan.api.json			\
  vnet/vxlan-gpe/vxlan_gpe.api.json	\
  vnet/bfd/bfd.api.json				\
- vnet/ipsec/ipsec.api.json
+ vnet/ipsec/ipsec.api.json			\
+ vnet/ipsec-gre/ipsec_gre.api.json
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
