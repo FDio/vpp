@@ -83,48 +83,19 @@ packagedir_jvpp_core = io/fd/vpp/jvpp/core
 
 BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 
+JSON_FILES = \
+	$(prefix)/../vpp/vpp-api/vpe.api.json \
+	$(wildcard $(prefix)/../vnet/vnet/*.api.json)
+
 jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h:		\
     jvpp-registry/io_fd_vpp_jvpp_VppJNIConnection.h	\
-    $(prefix)/../vnet/vnet/af_packet.api.json		\
-    $(prefix)/../vnet/vnet/netmap.api.json		\
-    $(prefix)/../vnet/vnet/vhost_user.api.json		\
-    $(prefix)/../vpp/vpp-api/vpe.api.json		\
-    $(prefix)/../vnet/vnet/gre.api.json			\
-    $(prefix)/../vnet/vnet/ip.api.json 			\
-    $(prefix)/../vnet/vnet/l2tp.api.json		\
-    $(prefix)/../vnet/vnet/tap.api.json 		\
-    $(prefix)/../vnet/vnet/vxlan.api.json		\
-    $(prefix)/../vnet/vnet/vxlan_gpe.api.json	\
-    $(prefix)/../vnet/vnet/tap.api.json			\
-    $(prefix)/../vnet/vnet/bfd.api.json			\
-    $(prefix)/../vnet/vnet/ipsec.api.json		\
-    $(prefix)/../vnet/vnet/ipsec_gre.api.json	\
-    $(prefix)/../vnet/vnet/lisp.api.json		\
-    $(prefix)/../vnet/vnet/lisp_gpe.api.json
+    $(JSON_FILES)
 	cp -rf @srcdir@/jvpp-core/* -t jvpp-core/
 	mkdir -p jvpp-core/target
 	cd jvpp-core \
 		&& mkdir -p types dto future callfacade callback notification \
 		&& @srcdir@/jvpp/gen/jvpp_gen.py  --plugin_name core \
-		    -i $(prefix)/../vpp/vpp-api/vpe.api.json \
-		    $(prefix)/../vnet/vnet/af_packet.api.json \
-		    $(prefix)/../vnet/vnet/netmap.api.json \
-		    $(prefix)/../vnet/vnet/vhost_user.api.json \
-		    $(prefix)/../vnet/vnet/gre.api.json \
-		    $(prefix)/../vnet/vnet/interface.api.json \
-		    $(prefix)/../vnet/vnet/l2.api.json \
-		    $(prefix)/../vnet/vnet/l2tp.api.json \
-		    $(prefix)/../vnet/vnet/map.api.json \
-		    $(prefix)/../vnet/vnet/ip.api.json \
-		    $(prefix)/../vnet/vnet/span.api.json \
-		    $(prefix)/../vnet/vnet/tap.api.json \
-		    $(prefix)/../vnet/vnet/vxlan.api.json \
-		    $(prefix)/../vnet/vnet/vxlan_gpe.api.json \
-		    $(prefix)/../vnet/vnet/bfd.api.json \
-		    $(prefix)/../vnet/vnet/ipsec.api.json \
-		    $(prefix)/../vnet/vnet/ipsec_gre.api.json \
-		    $(prefix)/../vnet/vnet/lisp.api.json \
-		    $(prefix)/../vnet/vnet/lisp_gpe.api.json \
+		    -i $(JSON_FILES) \
 		&& cp -rf types dto future callfacade callback notification *.java -t $(packagedir_jvpp_core) \
 		&& rm -rf types dto future callfacade callback notification *.java
 

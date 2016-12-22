@@ -15,43 +15,7 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 
 AM_CFLAGS = -Wall -Werror @DPDK@ @DPDK_CRYPTO@ @IPSEC@ @IPV6SR@
 
-BUILT_SOURCES = 				\
- vnet/devices/af_packet/af_packet.api.h		\
- vnet/devices/af_packet/af_packet.api.json	\
- vnet/devices/netmap/netmap.api.h		\
- vnet/devices/netmap/netmap.api.json		\
- vnet/devices/virtio/vhost_user.api.h		\
- vnet/devices/virtio/vhost_user.api.json	\
- vnet/gre/gre.api.h				\
- vnet/gre/gre.api.json				\
- vnet/interface.api.h				\
- vnet/interface.api.json			\
- vnet/ip/ip.api.h				\
- vnet/ip/ip.api.json				\
- vnet/l2/l2.api.h				\
- vnet/l2/l2.api.json				\
- vnet/l2tp/l2tp.api.h				\
- vnet/l2tp/l2tp.api.json			\
- vnet/map/map.api.h				\
- vnet/map/map.api.json				\
- vnet/span/span.api.h				\
- vnet/span/span.api.json			\
- vnet/unix/tap.api.h				\
- vnet/unix/tap.api.json				\
- vnet/vxlan/vxlan.api.h				\
- vnet/vxlan/vxlan.api.json			\
- vnet/vxlan-gpe/vxlan_gpe.api.h			\
- vnet/vxlan-gpe/vxlan_gpe.api.json		\
- vnet/bfd/bfd.api.h					\
- vnet/bfd/bfd.api.json				\
- vnet/ipsec/ipsec.api.h				\
- vnet/ipsec/ipsec.api.json			\
- vnet/ipsec-gre/ipsec_gre.api.h		\
- vnet/ipsec-gre/ipsec_gre.api.json	\
- vnet/lisp-cp/lisp.api.h			\
- vnet/lisp-cp/lisp.api.json			\
- vnet/lisp-gpe/lisp_gpe.api.h		\
- vnet/lisp-gpe/lisp_gpe.api.json
+API_FILES =
 
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
@@ -67,18 +31,18 @@ endif
 ########################################
 # Generic stuff
 ########################################
-libvnet_la_SOURCES +=					\
-  vnet/config.c						\
-  vnet/devices/devices.c				\
-  vnet/handoff.c					\
-  vnet/interface.c					\
-  vnet/interface_api.c					\
-  vnet/interface_cli.c					\
-  vnet/interface_format.c				\
-  vnet/interface_output.c				\
-  vnet/misc.c						\
-  vnet/replication.c                                    \
-  vnet/rewrite.c				
+libvnet_la_SOURCES +=				\
+  vnet/config.c					\
+  vnet/devices/devices.c			\
+  vnet/handoff.c				\
+  vnet/interface.c				\
+  vnet/interface_api.c				\
+  vnet/interface_cli.c				\
+  vnet/interface_format.c			\
+  vnet/interface_output.c			\
+  vnet/misc.c					\
+  vnet/replication.c				\
+  vnet/rewrite.c
 
 nobase_include_HEADERS +=			\
   vnet/api_errno.h				\
@@ -97,6 +61,8 @@ nobase_include_HEADERS +=			\
   vnet/vnet.h					\
   vnet/vnet_all_api_h.h				\
   vnet/vnet_msg_enum.h
+
+API_FILES += vnet/interface.api
 
 ########################################
 # Policer infra
@@ -120,7 +86,7 @@ libvnet_la_SOURCES +=				\
   vnet/cop/cop.c				\
   vnet/cop/node1.c				\
   vnet/cop/ip4_whitelist.c			\
-  vnet/cop/ip6_whitelist.c	
+  vnet/cop/ip6_whitelist.c
 
 nobase_include_HEADERS +=			\
   vnet/cop/cop.h
@@ -152,7 +118,7 @@ nobase_include_HEADERS +=			\
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/l2/feat_bitmap.c				\
- vnet/l2/l2_api.c      				\
+ vnet/l2/l2_api.c				\
  vnet/l2/l2_bd.c				\
  vnet/l2/l2_bvi.c				\
  vnet/l2/l2_input_classify.c			\
@@ -168,7 +134,7 @@ libvnet_la_SOURCES +=				\
  vnet/l2/l2_output_acl.c			\
  vnet/l2/l2_output.c				\
  vnet/l2/l2_patch.c				\
- vnet/l2/l2_rw.c                                \
+ vnet/l2/l2_rw.c				\
  vnet/l2/l2_vtr.c				\
  vnet/l2/l2_xcrw.c
 
@@ -184,10 +150,12 @@ nobase_include_HEADERS +=			\
  vnet/l2/l2_bvi.h				\
  vnet/l2/l2_flood.h				\
  vnet/l2/l2_fib.h				\
- vnet/l2/l2_rw.h                                \
+ vnet/l2/l2_rw.h				\
  vnet/l2/l2_xcrw.h				\
  vnet/l2/l2_classify.h				\
  vnet/l2/l2.api.h
+
+API_FILES += vnet/l2/l2.api
 
 ########################################
 # Layer 2 protocol: SRP
@@ -256,14 +224,16 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
   vnet/vxlan/vxlan.c				\
   vnet/vxlan/encap.c				\
-  vnet/vxlan/decap.c                \
-  vnet/vxlan/vxlan_api.c	
+  vnet/vxlan/decap.c				\
+  vnet/vxlan/vxlan_api.c
 
 nobase_include_HEADERS +=			\
   vnet/vxlan/vxlan.h				\
-  vnet/vxlan/vxlan_packet.h         		\
-  vnet/vxlan/vxlan_error.def        \
+  vnet/vxlan/vxlan_packet.h			\
+  vnet/vxlan/vxlan_error.def			\
   vnet/vxlan/vxlan.api.h
+
+API_FILES += vnet/vxlan/vxlan.api
 
 ########################################
 # Layer 2 / CDP
@@ -271,7 +241,7 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
   vnet/cdp/cdp_input.c				\
   vnet/cdp/cdp_node.c				\
-  vnet/cdp/cdp_periodic.c	
+  vnet/cdp/cdp_periodic.c
 
 nobase_include_HEADERS +=			\
   vnet/cdp/cdp_protocol.h
@@ -280,9 +250,9 @@ nobase_include_HEADERS +=			\
 # Layer 2 / LLDP
 ########################################
 libvnet_la_SOURCES +=				\
-  vnet/lldp/lldp_input.c				\
+  vnet/lldp/lldp_input.c			\
   vnet/lldp/lldp_node.c				\
-  vnet/lldp/lldp_output.c	\
+  vnet/lldp/lldp_output.c			\
   vnet/lldp/lldp_cli.c
 
 nobase_include_HEADERS +=			\
@@ -375,31 +345,35 @@ nobase_include_HEADERS +=			\
  vnet/ip/udp.h					\
  vnet/ip/udp_packet.h
 
+API_FILES += vnet/ip/ip.api
+
 ########################################
 # Bidirectional Forwarding Detection
 ########################################
 
-nobase_include_HEADERS +=                       \
+nobase_include_HEADERS +=			\
  vnet/bfd/bfd_protocol.h			\
- vnet/bfd/bfd_main.h                            \
- vnet/bfd/bfd_api.h                            \
- vnet/bfd/bfd_udp.h								\
+ vnet/bfd/bfd_main.h				\
+ vnet/bfd/bfd_api.h				\
+ vnet/bfd/bfd_udp.h				\
  vnet/bfd/bfd.api.h
 
 libvnet_la_SOURCES +=				\
- vnet/bfd/bfd_api.h                            \
- vnet/bfd/bfd_udp.c                             \
- vnet/bfd/bfd_main.c                            \
- vnet/bfd/bfd_protocol.c						\
+ vnet/bfd/bfd_api.h				\
+ vnet/bfd/bfd_udp.c				\
+ vnet/bfd/bfd_main.c				\
+ vnet/bfd/bfd_protocol.c			\
  vnet/bfd/bfd_api.c
+
+API_FILES += vnet/bfd/bfd.api
 
 ########################################
 # Layer 3 protocol: IPSec
 ########################################
 if WITH_IPSEC
-libvnet_la_SOURCES +=       			\
+libvnet_la_SOURCES +=				\
  vnet/ipsec/ipsec.c				\
- vnet/ipsec/ipsec_cli.c  			\
+ vnet/ipsec/ipsec_cli.c				\
  vnet/ipsec/ipsec_format.c			\
  vnet/ipsec/ipsec_input.c			\
  vnet/ipsec/ipsec_if.c				\
@@ -413,8 +387,11 @@ libvnet_la_SOURCES +=       			\
  vnet/ipsec/ikev2_payload.c			\
  vnet/ipsec/ikev2_format.c			\
  vnet/ipsec/ipsec_api.c
+
+API_FILES += vnet/ipsec/ipsec.api
+
 if WITH_DPDK_CRYPTO
-libvnet_la_SOURCES +=       			\
+libvnet_la_SOURCES +=				\
  vnet/devices/dpdk/ipsec/esp_encrypt.c		\
  vnet/devices/dpdk/ipsec/esp_decrypt.c		\
  vnet/devices/dpdk/ipsec/crypto_node.c		\
@@ -423,17 +400,17 @@ libvnet_la_SOURCES +=       			\
 endif
 endif
 
-libvnet_la_SOURCES +=       			\
+libvnet_la_SOURCES +=				\
  vnet/ipsec/ipsec_output.c
 
-nobase_include_HEADERS +=     		        \
- vnet/ipsec/ipsec.h                             \
+nobase_include_HEADERS +=			\
+ vnet/ipsec/ipsec.h				\
  vnet/ipsec/esp.h				\
- vnet/ipsec/ikev2.h                             \
- vnet/ipsec/ikev2_priv.h					\
+ vnet/ipsec/ikev2.h				\
+ vnet/ipsec/ikev2_priv.h			\
  vnet/ipsec/ipsec.api.h
 if WITH_DPDK_CRYPTO
-nobase_include_HEADERS +=     		        \
+nobase_include_HEADERS +=			\
  vnet/devices/dpdk/ipsec/ipsec.h		\
  vnet/devices/dpdk/ipsec/esp.h
 endif
@@ -466,6 +443,8 @@ nobase_include_HEADERS +=			\
  vnet/map/map_dpo.h				\
  vnet/map/map.api.h
 
+API_FILES += vnet/map/map.api
+
 if ENABLE_TESTS
 TESTS += test_map
 test_map_SOURCES =                             \
@@ -489,12 +468,14 @@ libvnet_la_SOURCES +=				\
  vnet/gre/interface.c				\
  vnet/gre/pg.c					\
  vnet/gre/gre_api.c
- 
+
 nobase_include_HEADERS +=			\
  vnet/gre/gre.h					\
  vnet/gre/packet.h				\
  vnet/gre/error.def				\
  vnet/gre/gre.api.h
+
+API_FILES += vnet/gre/gre.api
 
 ########################################
 # Tunnel protocol: l2tpv3
@@ -505,11 +486,13 @@ libvnet_la_SOURCES +=				\
  vnet/l2tp/decap.c  				\
  vnet/l2tp/pg.c					\
  vnet/l2tp/l2tp_api.c
- 
+
 nobase_include_HEADERS +=			\
  vnet/l2tp/l2tp.h				\
  vnet/l2tp/packet.h				\
- vnet/l2tp/l2tp.api.h	
+ vnet/l2tp/l2tp.api.h
+
+API_FILES += vnet/l2tp/l2tp.api
 
 ########################################
 # Tunnel protocol: gre+mpls
@@ -523,11 +506,11 @@ libvnet_la_SOURCES +=				\
  vnet/mpls/interface.c			        \
  vnet/mpls/mpls_tunnel.c		        \
  vnet/mpls/pg.c
- 
+
 nobase_include_HEADERS +=			\
  vnet/mpls/mpls.h				\
- vnet/mpls/mpls_types.h			        \
- vnet/mpls/mpls_tunnel.h		        \
+ vnet/mpls/mpls_types.h				\
+ vnet/mpls/mpls_tunnel.h			\
  vnet/mpls/packet.h				\
  vnet/mpls/error.def
 
@@ -538,15 +521,17 @@ nobase_include_HEADERS +=			\
 
 libvnet_la_SOURCES +=				\
  vnet/vxlan-gpe/vxlan_gpe.c			\
- vnet/vxlan-gpe/encap.c	        		\
+ vnet/vxlan-gpe/encap.c				\
  vnet/vxlan-gpe/decap.c				\
  vnet/vxlan-gpe/vxlan_gpe_api.c
 
 nobase_include_HEADERS +=			\
  vnet/vxlan-gpe/vxlan_gpe.h			\
  vnet/vxlan-gpe/vxlan_gpe_packet.h		\
- vnet/vxlan-gpe/vxlan_gpe_error.def	\
+ vnet/vxlan-gpe/vxlan_gpe_error.def		\
  vnet/vxlan-gpe/vxlan_gpe.api.h
+
+API_FILES += vnet/vxlan-gpe/vxlan_gpe.api
 
 ########################################
 # Tunnel protocol: ipsec+gre
@@ -558,9 +543,11 @@ libvnet_la_SOURCES +=				\
  vnet/ipsec-gre/ipsec_gre_api.c
 
 nobase_include_HEADERS +=			\
- vnet/ipsec-gre/ipsec_gre.h		        \
+ vnet/ipsec-gre/ipsec_gre.h			\
  vnet/ipsec-gre/error.def			\
  vnet/ipsec-gre/ipsec_gre.api.h
+
+API_FILES += vnet/ipsec-gre/ipsec_gre.api
 
 ########################################
 # LISP control plane: lisp-cp
@@ -581,8 +568,10 @@ nobase_include_HEADERS +=			\
  vnet/lisp-cp/gid_dictionary.h			\
  vnet/lisp-cp/lisp_cp_messages.h		\
  vnet/lisp-cp/lisp_msg_serdes.h			\
- vnet/lisp-cp/control.h				\			
+ vnet/lisp-cp/control.h				\
  vnet/lisp-cp/lisp.api.h
+
+API_FILES += vnet/lisp-cp/lisp.api
 
 if ENABLE_TESTS
 LDS = -lvppinfra -l:libvlib.a $(dpdk_libs) -l:libvlibmemory.a \
@@ -591,14 +580,14 @@ LDS = -lvppinfra -l:libvlib.a $(dpdk_libs) -l:libvlibmemory.a \
 TESTS += test_cp_serdes test_lisp_types
 
 test_cp_serdes_SOURCES =			\
- test/lisp-cp/test_cp_serdes.c		\
+ test/lisp-cp/test_cp_serdes.c			\
  vnet/lisp-cp/lisp_msg_serdes.c			\
  vnet/lisp-cp/lisp_types.c			\
  vnet/lisp-cp/packets.c				\
  vnet/ip/ip_checksum.c
 
 test_lisp_types_SOURCES =			\
- test/lisp-cp/test_lisp_types.c		\
+ test/lisp-cp/test_lisp_types.c			\
  vnet/lisp-cp/lisp_types.c
 
 test_cp_serdes_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -617,14 +606,14 @@ endif
 
 libvnet_la_SOURCES +=				\
  vnet/lisp-gpe/lisp_gpe.c			\
- vnet/lisp-gpe/lisp_gpe_sub_interface.c         \
- vnet/lisp-gpe/lisp_gpe_adjacency.c             \
- vnet/lisp-gpe/lisp_gpe_tunnel.c                \
+ vnet/lisp-gpe/lisp_gpe_sub_interface.c		\
+ vnet/lisp-gpe/lisp_gpe_adjacency.c		\
+ vnet/lisp-gpe/lisp_gpe_tunnel.c		\
  vnet/lisp-gpe/lisp_gpe_fwd_entry.c		\
  vnet/lisp-gpe/lisp_gpe_tenant.c		\
  vnet/lisp-gpe/interface.c			\
  vnet/lisp-gpe/decap.c				\
- vnet/lisp-gpe/lisp_gpe_api.c			
+ vnet/lisp-gpe/lisp_gpe_api.c
 
 nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe.h			\
@@ -632,7 +621,9 @@ nobase_include_HEADERS +=			\
  vnet/lisp-gpe/lisp_gpe_tenant.h		\
  vnet/lisp-gpe/lisp_gpe_packet.h		\
  vnet/lisp-gpe/lisp_gpe_error.def		\
- vnet/lisp-gpe/lisp_gpe.api.h		
+ vnet/lisp-gpe/lisp_gpe.api.h
+
+API_FILES += vnet/lisp-gpe/lisp_gpe.api
 
 if ENABLE_TESTS
 TESTS += test_test
@@ -652,10 +643,10 @@ endif
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/dhcp/client.c				\
- vnet/dhcp/client.h	
+ vnet/dhcp/client.h
 
 nobase_include_HEADERS +=			\
- vnet/dhcp/client.h	
+ vnet/dhcp/client.h
 
 ########################################
 # DHCP proxy
@@ -663,7 +654,7 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
  vnet/dhcp/proxy_node.c				\
  vnet/dhcp/proxy.h
- 
+
 nobase_include_HEADERS +=			\
  vnet/dhcp/packet.h				\
  vnet/dhcp/proxy.h				\
@@ -678,7 +669,7 @@ libvnet_la_SOURCES +=				\
  vnet/sr/sr.c					\
  vnet/sr/sr_replicate.c
 endif
- 
+
 nobase_include_HEADERS +=			\
  vnet/sr/sr_packet.h				\
  vnet/sr/sr_error.def				\
@@ -689,14 +680,14 @@ nobase_include_HEADERS +=			\
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/dhcpv6/proxy_node.c
- 
+
 nobase_include_HEADERS +=			\
  vnet/dhcpv6/packet.h				\
  vnet/dhcpv6/proxy.h				\
  vnet/dhcpv6/proxy_error.def
 
 ########################################
-# IPFIX / netflow v10 
+# IPFIX / netflow v10
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/flow/flow_report.c
@@ -739,6 +730,8 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS += 			\
   vnet/span/span.api.h  \
   vnet/span/span.h
+
+API_FILES += vnet/span/span.api
 
 ########################################
 # Packet generator
@@ -791,6 +784,8 @@ nobase_include_HEADERS +=     \
   vnet/devices/virtio/vhost-user.h	\
   vnet/devices/virtio/vhost_user.api.h
 
+API_FILES += vnet/devices/virtio/vhost_user.api
+
 ########################################
 # ssvm ethernet
 ########################################
@@ -812,9 +807,11 @@ libvnet_la_SOURCES +=				\
   vnet/devices/af_packet/cli.c			\
   vnet/devices/af_packet/af_packet_api.c
 
-nobase_include_HEADERS +=				\
+nobase_include_HEADERS +=			\
   vnet/devices/af_packet/af_packet.h	\
   vnet/devices/af_packet/af_packet.api.h
+
+API_FILES += vnet/devices/af_packet/af_packet.api
 
 ########################################
 # NETMAP interface
@@ -824,12 +821,14 @@ libvnet_la_SOURCES +=				\
   vnet/devices/netmap/netmap.c			\
   vnet/devices/netmap/device.c			\
   vnet/devices/netmap/node.c			\
-  vnet/devices/netmap/cli.c				\
+  vnet/devices/netmap/cli.c			\
   vnet/devices/netmap/netmap_api.c
 
 nobase_include_HEADERS +=			\
   vnet/devices/netmap/netmap.h		\
   vnet/devices/netmap/netmap.api.h
+
+API_FILES += vnet/devices/netmap/netmap.api
 
 ########################################
 # Driver feature graph arc support
@@ -846,7 +845,7 @@ nobase_include_HEADERS +=			\
 # Unix kernel related
 ########################################
 
-# FIXME: vnet/unix/hgshm.c 
+# FIXME: vnet/unix/hgshm.c
 
 libvnet_la_SOURCES +=				\
   vnet/unix/gdb_funcs.c				\
@@ -860,6 +859,8 @@ nobase_include_HEADERS +=			\
   vnet/unix/tuntap.h				\
   vnet/unix/tap.api.h				\
   vnet/unix/tapcli.h
+
+API_FILES += vnet/unix/tap.api
 
 ########################################
 # FIB
@@ -916,39 +917,39 @@ libvnet_la_SOURCES +=				\
   vnet/adj/adj_glean.c   			\
   vnet/adj/adj_midchain.c   			\
   vnet/adj/adj_l2.c      			\
-  vnet/adj/adj.c                            
+  vnet/adj/adj.c
 
 nobase_include_HEADERS +=			\
   vnet/adj/adj.h				\
   vnet/adj/adj_types.h				\
   vnet/adj/adj_rewrite.h			\
   vnet/adj/adj_glean.h  			\
-  vnet/adj/adj_nbr.h				
+  vnet/adj/adj_nbr.h
 
 ########################################
 # Data-Plane Objects
 ########################################
 
 libvnet_la_SOURCES +=				\
-  vnet/dpo/dpo.c                                \
-  vnet/dpo/drop_dpo.c                           \
-  vnet/dpo/ip_null_dpo.c                        \
-  vnet/dpo/punt_dpo.c                           \
-  vnet/dpo/receive_dpo.c                        \
+  vnet/dpo/dpo.c				\
+  vnet/dpo/drop_dpo.c				\
+  vnet/dpo/ip_null_dpo.c			\
+  vnet/dpo/punt_dpo.c				\
+  vnet/dpo/receive_dpo.c			\
   vnet/dpo/load_balance.c			\
   vnet/dpo/load_balance_map.c			\
-  vnet/dpo/lookup_dpo.c   			\
-  vnet/dpo/classify_dpo.c   			\
+  vnet/dpo/lookup_dpo.c				\
+  vnet/dpo/classify_dpo.c			\
   vnet/dpo/mpls_label_dpo.c
 
 nobase_include_HEADERS +=			\
-  vnet/dpo/load_balance.h                       \
-  vnet/dpo/drop_dpo.h                           \
-  vnet/dpo/lookup_dpo.h                         \
-  vnet/dpo/punt_dpo.h                           \
-  vnet/dpo/classify_dpo.h                       \
-  vnet/dpo/receive_dpo.h                        \
-  vnet/dpo/ip_null_dpo.h                        \
+  vnet/dpo/load_balance.h			\
+  vnet/dpo/drop_dpo.h				\
+  vnet/dpo/lookup_dpo.h				\
+  vnet/dpo/punt_dpo.h				\
+  vnet/dpo/classify_dpo.h			\
+  vnet/dpo/receive_dpo.h			\
+  vnet/dpo/ip_null_dpo.h			\
   vnet/dpo/dpo.h
 
 ########################################
@@ -979,25 +980,12 @@ SUFFIXES = .api.h .api .api.json
 
 apidir = $(prefix)/vnet
 
-api_DATA =					\
- vnet/devices/af_packet/af_packet.api.json	\
- vnet/devices/netmap/netmap.api.json		\
- vnet/devices/virtio/vhost_user.api.json	\
- vnet/gre/gre.api.json				\
- vnet/interface.api.json			\
- vnet/ip/ip.api.json				\
- vnet/l2/l2.api.json				\
- vnet/l2tp/l2tp.api.json			\
- vnet/map/map.api.json				\
- vnet/span/span.api.json			\
- vnet/unix/tap.api.json				\
- vnet/vxlan/vxlan.api.json			\
- vnet/vxlan-gpe/vxlan_gpe.api.json	\
- vnet/bfd/bfd.api.json				\
- vnet/ipsec/ipsec.api.json			\
- vnet/ipsec-gre/ipsec_gre.api.json	\
- vnet/lisp-cp/lisp.api.json			\
- vnet/lisp-gpe/lisp_gpe.api.json
+api_DATA = \
+	$(patsubst %.api,%.api.json,$(API_FILES))
+
+BUILT_SOURCES = \
+	$(patsubst %.api,%.api.json,$(API_FILES)) \
+	$(patsubst %.api,%.api.h,$(API_FILES))
 
 # The actual %.api.h rule is in .../build-data/packages/suffix-rules.mk
 # and requires a symbolic link at the top of the vnet source tree
