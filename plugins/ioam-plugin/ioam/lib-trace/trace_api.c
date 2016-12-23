@@ -165,25 +165,6 @@ static void vl_api_trace_profile_show_config_t_handler
     }
 }
 
-/*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  trace_main_t *sm = &trace_main;
-  clib_error_t *error = 0;
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  return error;
-}
-
 /* Set up the API message handling tables */
 static clib_error_t *
 trace_plugin_api_hookup (vlib_main_t * vm)
@@ -225,6 +206,10 @@ trace_init (vlib_main_t * vm)
 
   bzero (sm, sizeof (trace_main));
   (void) trace_util_init ();
+
+  sm->vlib_main = vm;
+  sm->vnet_main = vnet_get_main ();
+
   name = format (0, "ioam_trace_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */

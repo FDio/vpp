@@ -81,26 +81,6 @@ do {                                                            \
 #define foreach_ioam_export_plugin_api_msg                        \
 _(IOAM_EXPORT_IP6_ENABLE_DISABLE, ioam_export_ip6_enable_disable)
 
-/*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  ioam_export_main_t *em = &ioam_export_main;
-  clib_error_t *error = 0;
-
-  em->vlib_main = vm;
-  em->vnet_main = h->vnet_main;
-
-  return error;
-}
-
 /* Action function shared between message handler and debug CLI */
 
 int
@@ -249,6 +229,9 @@ ioam_export_init (vlib_main_t * vm)
   u8 *name;
   u32 node_index = export_node.index;
   vlib_node_t *ip6_hbyh_node = NULL;
+
+  em->vlib_main = vm;
+  em->vnet_main = vnet_get_main ();
 
   name = format (0, "ioam_export_%08x%c", api_version, 0);
 

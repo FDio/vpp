@@ -284,28 +284,6 @@ static void vl_api_vxlan_gpe_ioam_transit_disable_t_handler
   VXLAN_GPE_REPLY_MACRO (VL_API_VXLAN_GPE_IOAM_TRANSIT_DISABLE_REPLY);
 }
 
-
-/*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  vxlan_gpe_ioam_main_t *sm = &vxlan_gpe_ioam_main;
-  clib_error_t *error = 0;
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  sm->unix_time_0 = (u32) time (0);	/* Store starting time */
-  sm->vlib_time_0 = vlib_time_now (vm);
-  return error;
-}
-
 /* Set up the API message handling tables */
 static clib_error_t *
 vxlan_gpe_plugin_api_hookup (vlib_main_t * vm)
@@ -336,6 +314,11 @@ vxlan_gpe_init (vlib_main_t * vm)
   vlib_node_t *vxlan_gpe_encap_node = NULL;
   vlib_node_t *vxlan_gpe_decap_node = NULL;
   uword next_node = 0;
+
+  sm->vlib_main = vm;
+  sm->vnet_main = vnet_get_main ();
+  sm->unix_time_0 = (u32) time (0);	/* Store starting time */
+  sm->vlib_time_0 = vlib_time_now (vm);
 
   name = format (0, "ioam_vxlan_gpe_%08x%c", api_version, 0);
 
