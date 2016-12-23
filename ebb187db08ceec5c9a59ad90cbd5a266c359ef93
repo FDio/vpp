@@ -1,0 +1,326 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_8472af7a",
+        "filename": "test/framework.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 381,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "revert this per xmpp discussion",
+      "range": {
+        "startLine": 348,
+        "startChar": 2,
+        "endLine": 381,
+        "endChar": 21
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a446cb21",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "remove unused import",
+      "range": {
+        "startLine": 16,
+        "startChar": 19,
+        "endLine": 16,
+        "endChar": 25
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c441d70c",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "remove unused import",
+      "range": {
+        "startLine": 18,
+        "startChar": 34,
+        "endLine": 18,
+        "endChar": 37
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_844bcf2a",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "remove unused import",
+      "range": {
+        "startLine": 19,
+        "startChar": 35,
+        "endLine": 19,
+        "endChar": 38
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6448e32d",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "remove unused import",
+      "range": {
+        "startLine": 20,
+        "startChar": 25,
+        "endLine": 20,
+        "endChar": 28
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4455e7c4",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "remove unused import",
+      "range": {
+        "startLine": 23,
+        "startChar": 30,
+        "endLine": 23,
+        "endChar": 44
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2452dbdd",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "add descriptions please",
+      "range": {
+        "startLine": 47,
+        "startChar": 8,
+        "endLine": 50,
+        "endChar": 11
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_045fdfe6",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "add descriptions please",
+      "range": {
+        "startLine": 62,
+        "startChar": 8,
+        "endLine": 65,
+        "endChar": 11
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a4148bf5",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "this does not return anything",
+      "range": {
+        "startLine": 91,
+        "startChar": 8,
+        "endLine": 91,
+        "endChar": 16
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_84f98fca",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "this does not return anything",
+      "range": {
+        "startLine": 107,
+        "startChar": 8,
+        "endLine": 107,
+        "endChar": 16
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4403a7b8",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "this could be moved to query_vpp_config and that could be used instead (see my other comment)",
+      "range": {
+        "startLine": 145,
+        "startChar": 0,
+        "endLine": 147,
+        "endChar": 57
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_24009ba9",
+        "filename": "test/test_interface_crud.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "~ assertNotTrue(query_vpp_config(...))",
+      "range": {
+        "startLine": 167,
+        "startChar": 7,
+        "endLine": 169,
+        "endChar": 61
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c458b7fc",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 173,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "remove this parameter\n\nI don\u0027t see it used anywhere\n\nif we *REALLY* need to assign an IP4 address outside the common addressing scheme, there needs to be a mechanism to track such addresses and a custom function to do so, so that it\u0027s clear that such usage is a special case",
+      "range": {
+        "startLine": 173,
+        "startChar": 25,
+        "endLine": 173,
+        "endChar": 39
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c40f97e0",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T12:00:20Z",
+      "side": 1,
+      "message": "please implement the interface defined by VppObject, at least partially\n\nso this method should be named remove_vpp_config\n\nit would be nice to have the other 3 methods too (add/query, object_id)",
+      "range": {
+        "startLine": 15,
+        "startChar": 8,
+        "endLine": 15,
+        "endChar": 18
+      },
+      "revId": "ebb187db08ceec5c9a59ad90cbd5a266c359ef93",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
