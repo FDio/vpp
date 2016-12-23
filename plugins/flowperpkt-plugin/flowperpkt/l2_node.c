@@ -79,6 +79,7 @@ static char *flowperpkt_l2_error_strings[] = {
 typedef enum
 {
   FLOWPERPKT_L2_NEXT_DROP,
+  FLOWPERPKT_L2_NEXT_IP4_LOOKUP,
   FLOWPERPKT_L2_N_NEXT,
 } flowperpkt_l2_next_t;
 
@@ -95,6 +96,7 @@ typedef enum
 
 static inline void
 add_to_flow_record_l2 (vlib_main_t * vm,
+		       vlib_node_runtime_t * node,
 		       flowperpkt_main_t * fm,
 		       u32 rx_sw_if_index, u32 tx_sw_if_index,
 		       u8 * src_mac, u8 * dst_mac,
@@ -284,6 +286,18 @@ add_to_flow_record_l2 (vlib_main_t * vm,
 
       ASSERT (ip->checksum == ip4_header_checksum (ip));
 
+      if (PREDICT_FALSE (vlib_get_trace_count (vm, node) > 0))
+	{
+	  vlib_trace_buffer (vm, node, FLOWPERPKT_L2_NEXT_IP4_LOOKUP, b0,
+			     0 /* follow chain */ );
+	  flowperpkt_l2_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  memset (t, 0, sizeof (*t));
+	  t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	  t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  t->buffer_size = b0->current_length;
+	}
+
       vlib_put_frame_to_node (vm, ip4_lookup_node.index,
 			      fm->l2_frames_per_worker[my_cpu_number]);
       fm->l2_frames_per_worker[my_cpu_number] = 0;
@@ -299,8 +313,10 @@ flowperpkt_flush_callback_l2 (void)
 {
   vlib_main_t *vm = vlib_get_main ();
   flowperpkt_main_t *fm = &flowperpkt_main;
+  vlib_node_runtime_t *node;
+  node = vlib_node_get_runtime (vm, flowperpkt_l2_node.index);
 
-  add_to_flow_record_l2 (vm, fm, 0 /* rx_sw_if_index */ ,
+  add_to_flow_record_l2 (vm, node, fm, 0 /* rx_sw_if_index */ ,
 			 0 /* tx_sw_if_index */ ,
 			 0 /* src mac */ ,
 			 0 /* dst mac */ ,
@@ -376,7 +392,7 @@ flowperpkt_l2_node_fn (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_l2 (vm, fm,
+	    add_to_flow_record_l2 (vm, node, fm,
 				   vnet_buffer (b0)->sw_if_index[VLIB_RX],
 				   vnet_buffer (b0)->sw_if_index[VLIB_TX],
 				   eh0->src_address,
@@ -387,7 +403,7 @@ flowperpkt_l2_node_fn (vlib_main_t * vm,
 	  len1 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_l2 (vm, fm,
+	    add_to_flow_record_l2 (vm, node, fm,
 				   vnet_buffer (b1)->sw_if_index[VLIB_RX],
 				   vnet_buffer (b1)->sw_if_index[VLIB_TX],
 				   eh1->src_address,
@@ -453,7 +469,7 @@ flowperpkt_l2_node_fn (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_l2 (vm, fm,
+	    add_to_flow_record_l2 (vm, node, fm,
 				   vnet_buffer (b0)->sw_if_index[VLIB_RX],
 				   vnet_buffer (b0)->sw_if_index[VLIB_TX],
 				   eh0->src_address,
@@ -531,6 +547,7 @@ VLIB_REGISTER_NODE (flowperpkt_l2_node) = {
   /* edit / add dispositions here */
   .next_nodes = {
     [FLOWPERPKT_L2_NEXT_DROP] = "error-drop",
+    [FLOWPERPKT_L2_NEXT_IP4_LOOKUP] = "ip4-lookup",
   },
 };
 /* *INDENT-ON* */
