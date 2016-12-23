@@ -213,26 +213,6 @@ static void vl_api_pot_profile_del_t_handler
     REPLY_MACRO(VL_API_POT_PROFILE_DEL_REPLY);
 }
 
-
-/* 
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t * 
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-                      int from_early_init)
-{
-  pot_main_t * sm = &pot_main;
-  clib_error_t * error = 0;
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  return error;
-}
-
 /* Set up the API message handling tables */
 static clib_error_t *
 pot_plugin_api_hookup (vlib_main_t *vm)
@@ -273,6 +253,10 @@ static clib_error_t * pot_init (vlib_main_t * vm)
 
   bzero(sm, sizeof(pot_main));
   (void)pot_util_init();
+
+  sm->vlib_main = vm;
+  sm->vnet_main = vnet_get_main();
+
   name = format (0, "ioam_pot_%08x%c", api_version, 0);
 
   /* Ask for a correctly-sized block of API message decode slots */

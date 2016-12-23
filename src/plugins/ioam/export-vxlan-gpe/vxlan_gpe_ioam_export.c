@@ -92,7 +92,7 @@ vxlan_gpe_ioam_export_enable_disable (ioam_export_main_t * em,
 				      ip4_address_t * src_address)
 {
   vlib_main_t *vm = em->vlib_main;
-  u32 node_index = export_node.index;
+  u32 node_index = vxlan_export_node.index;
   vlib_node_t *vxlan_gpe_decap_ioam_node = NULL;
 
   if (is_disable == 0)

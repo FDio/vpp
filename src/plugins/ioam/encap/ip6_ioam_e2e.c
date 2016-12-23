@@ -25,8 +25,6 @@
 #include <vppinfra/elog.h>
 
 #include <vnet/ip/ip6_hop_by_hop.h>
-#include <vnet/plugin/plugin.h>
-
 #include "ip6_ioam_e2e.h"
 
 ioam_e2e_main_t ioam_e2e_main;
@@ -167,23 +165,6 @@ VLIB_CLI_COMMAND (ioam_show_e2e_cmd, static) = {
 };
 
 /*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-                      int from_early_init)
-{
-  clib_error_t * error = 0;
-
-  ioam_e2e_main.vlib_main = vm;
-  ioam_e2e_main.vnet_main = h->vnet_main;
-  return error;
-}
-
-/*
  * Init handler E2E headet handling.
  * Init hanlder registers encap, decap, trace and Rewrite handlers.
  */
@@ -221,6 +202,9 @@ ioam_e2e_init (vlib_main_t * vm)
       return (clib_error_create("Registration of "
           "HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE Flow handler failed"));
     }
+
+  ioam_e2e_main.vlib_main = vm;
+  ioam_e2e_main.vnet_main = vnet_get_main();
 
   return (0);
 }
