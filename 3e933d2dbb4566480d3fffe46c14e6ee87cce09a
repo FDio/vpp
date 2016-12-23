@@ -1,0 +1,211 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_24553b1d",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 14,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "please removed unused imports\n\nsocket, binascii, time, hexdump and ppp are all unused\n\nalso, please make the source code PEP8 compliant\n\nmost of simple stuff like indentation etc. can be checked with\n\npycodestyle (pip install pycodestyle)\n\nand (most) automatically fixed with\n\nautopep8 (pip install autopep8 / apt install python-autopep8)\n\nautopep8 sometimes does a silly formatting but mostly does a good job",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 14,
+        "endChar": 20
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_04323f10",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "this is probably a copy paste error since I don\u0027t see any loopbacks created...",
+      "range": {
+        "startLine": 25,
+        "startChar": 13,
+        "endLine": 25,
+        "endChar": 52
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ffffbeff",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "this can be removed, since the tearDown is inherited automatically from VppTestCase",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 42,
+        "endChar": 46
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c43b17ea",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "this needs to be adjusted after my recent change, since create_packet_info now does accounting for expected packet counts.\n\njust remove .sw_if_index from parameters and you\u0027re good\n\n-\u003e create_packet_info(src_if, dst_if)",
+      "range": {
+        "startLine": 54,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 62
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_242c1bab",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "the automatic packet count accounting won\u0027t work in this case because the expected packets don\u0027t match the packet stream, correct?\n\n4 packets are expected here, correct?\n\n-\u003e capture \u003d collector_if.get_capture(4)\n\nwe need to know how many packets to expect, otherwise we don\u0027t know if we read partial pcap from vpp (it can happen)",
+      "range": {
+        "startLine": 95,
+        "startChar": 8,
+        "endLine": 95,
+        "endChar": 44
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_44060722",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "instead of doing all this, you could use python sorcery to write more compact, more pythonic:\n\ndef apply_mask(raw, mask):\n    return \"\".join(\n        [\n            \"%02x\" % ord(r) if m is None or m !\u003d \"X\" else \"XX\"\n            for r, m in map(None, raw, mask[:len(raw)*2:2])\n        ]\n    )\n\ndata_result \u003d apply_mask(x, data_udp_string)\ntemplate_result \u003d apply_mask(x, template_udp_string)\nl2_data_result \u003d apply_mask(x, l2_data_udp_string)\nl2_template_result \u003d apply_mask(x, l2_template_udp_string)",
+      "range": {
+        "startLine": 114,
+        "startChar": 0,
+        "endLine": 158,
+        "endChar": 25
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2403fb10",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "python has well defined True and False, so instead of storing 1 and comparing \u003d\u003d 1, you could just store True and assert the value of the variable directly",
+      "range": {
+        "startLine": 175,
+        "startChar": 25,
+        "endLine": 175,
+        "endChar": 47
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_642223bb",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 189,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "172.16.3.2 is automatically generated in the vpp_interface.py also with automatically generated mac address as \"remote host\"\n\nself.pg2.configure_ipv4_neighbors()\n\nconfigures the arp entry via VPP API ip_neighbor_add_del",
+      "range": {
+        "startLine": 189,
+        "startChar": 8,
+        "endLine": 189,
+        "endChar": 65
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_442f27a2",
+        "filename": "test/test_flowperpkt.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 190,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2016-12-23T22:26:09Z",
+      "side": 1,
+      "message": "I see set_ipfix_exporter API in vpe.api\n\ncould we use that API instead of CLI?\n\njust add a simple wrapper into vpp_papi_provider.py (many examples inside)\n\nand call self.vapi.set_ipfix_exporter(...) here",
+      "range": {
+        "startLine": 190,
+        "startChar": 8,
+        "endLine": 190,
+        "endChar": 131
+      },
+      "revId": "3e933d2dbb4566480d3fffe46c14e6ee87cce09a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
