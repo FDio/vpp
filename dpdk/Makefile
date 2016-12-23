@@ -21,7 +21,8 @@ DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_MARCH            ?= native
 DPDK_TUNE             ?= generic
 DPDK_DEBUG            ?= n
-DPDK_CRYPTO_PMD        ?= n
+DPDK_CRYPTO_PMD       ?= n
+DPDK_MLX5_PMD         ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
@@ -122,6 +123,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(DPDK_CRYPTO_PMD))
 	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(DPDK_CRYPTO_PMD))
 	$(call set,RTE_LIBRTE_PMD_QAT,$(DPDK_CRYPTO_PMD))
+	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	@# not needed
 	$(call set,RTE_LIBRTE_TIMER,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)

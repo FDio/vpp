@@ -83,6 +83,7 @@ extern vlib_node_registration_t handoff_dispatch_node;
   _ ("rte_bond_pmd", BOND)        \
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
+  _ ("net_mlx5", MLX5)            \
   _ ("net_dpaa2", DPAA2)
 #else
 #define foreach_dpdk_pmd          \
@@ -118,6 +119,7 @@ typedef enum
   VNET_DPDK_PORT_TYPE_ETH_1G,
   VNET_DPDK_PORT_TYPE_ETH_10G,
   VNET_DPDK_PORT_TYPE_ETH_40G,
+  VNET_DPDK_PORT_TYPE_ETH_100G,
   VNET_DPDK_PORT_TYPE_ETH_BOND,
   VNET_DPDK_PORT_TYPE_ETH_SWITCH,
   VNET_DPDK_PORT_TYPE_AF_PACKET,
