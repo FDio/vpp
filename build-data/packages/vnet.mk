@@ -41,4 +41,7 @@ endif
 ifeq ($($(PLATFORM)_uses_dpdk_cryptodev),yes)
 vnet_configure_args += --with-dpdk-crypto
 endif
+ifeq ($($(PLATFORM)_uses_dpdk_mlx5_pmd),yes)
+vnet_configure_args += --with-dpdk-mlx5-pmd
+endif
 endif
