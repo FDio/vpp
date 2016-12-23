@@ -1860,7 +1860,7 @@ show_snat_command_fn (vlib_main_t * vm,
             ({
               s = format (s, " %d", j);
             }));
-          vlib_cli_output (vm, "  %d busy ports:%s", ap->busy_ports, s);
+          vlib_cli_output (vm, "  %d busy ports:%v", ap->busy_ports, s);
         }
     }
 
@@ -1873,7 +1873,7 @@ show_snat_command_fn (vlib_main_t * vm,
             {
               vlib_worker_thread_t *w =
                 vlib_worker_threads + *worker + sm->first_worker_index;
-              vlib_cli_output (vm, "  %s", w->name);
+              vlib_cli_output (vm, "  %v", w->name);
             }
         }
     }
@@ -1924,7 +1924,7 @@ show_snat_command_fn (vlib_main_t * vm,
                 continue;
 
               vlib_worker_thread_t *w = vlib_worker_threads + j;
-              vlib_cli_output (vm, "Thread %d (%s at lcore %u):", j, w->name,
+              vlib_cli_output (vm, "Thread %d (%v at lcore %u):", j, w->name,
                                w->lcore_id);
               vlib_cli_output (vm, "  %d list pool elements",
                                pool_elts (tsm->list_pool));
