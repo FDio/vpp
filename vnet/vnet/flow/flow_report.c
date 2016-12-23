@@ -189,7 +189,9 @@ flow_report_process (vlib_main_t * vm,
 
   while (1) 
     {
-      vlib_process_suspend (vm, 5.0);
+      vlib_process_wait_for_event_or_clock (vm, 5.0);
+      event_type = vlib_process_get_events (vm, &event_data);
+      vec_reset_length (event_data);
       
       vec_foreach (fr, frm->reports)
         {
@@ -463,6 +465,24 @@ VLIB_CLI_COMMAND (set_ipfix_exporter_command, static) = {
                   "[template-interval <template-interval>]",
                   "[udp-checksum]",
     .function = set_ipfix_exporter_command_fn,
+};
+
+
+static clib_error_t *
+ipfix_flush_command_fn (vlib_main_t * vm,
+                        unformat_input_t * input,
+                        vlib_cli_command_t * cmd)
+{
+  /* poke the flow reporting process */
+  vlib_process_signal_event (vm, flow_report_process_node.index,
+                             1, 0);
+  return 0;
+}
+
+VLIB_CLI_COMMAND (ipfix_flush_command, static) = {
+    .path = "ipfix flush",
+    .short_help = "flush the current ipfix data [for make test]",
+    .function = ipfix_flush_command_fn,
 };
 
 static clib_error_t * 
