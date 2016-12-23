@@ -40,7 +40,7 @@ format_export_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t export_node;
+vlib_node_registration_t vxlan_export_node;
 
 #define foreach_export_error \
 _(RECORDED, "Packets recorded for export")
@@ -137,7 +137,7 @@ vxlan_gpe_export_node_fn (vlib_main_t * vm,
  * Node for VXLAN-GPE export
  */
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (export_node) =
+VLIB_REGISTER_NODE (vxlan_export_node) =
 {
   .function = vxlan_gpe_export_node_fn,
   .name = "vxlan-gpe-ioam-export",

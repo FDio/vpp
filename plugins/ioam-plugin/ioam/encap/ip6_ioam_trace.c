@@ -24,6 +24,7 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
+#include <vnet/plugin/plugin.h>
 
 #include <ioam/lib-trace/trace_util.h>
 
@@ -348,6 +349,18 @@ VLIB_CLI_COMMAND (ip6_show_ioam_trace_cmd, static) = {
 };
 /* *INDENT-ON* */
 
+/*
+ * This routine exists to convince the vlib plugin framework that
+ * we haven't accidentally copied a random .dll into the plugin directory.
+ *
+ * Also collects global variable pointers passed from the vpp engine
+ */
+clib_error_t *
+vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
+		      int from_early_init)
+{
+  return 0;
+}
 
 static clib_error_t *
 ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
