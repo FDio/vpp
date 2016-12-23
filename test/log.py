@@ -24,13 +24,6 @@ class ColorFormatter(logging.Formatter):
         if hasattr(record, 'color'):
             message = colorize(message, record.color)
         return message
-
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
-                                    datefmt="%H:%M:%S"))
-
-global_logger = logging.getLogger()
-global_logger.addHandler(handler)
 try:
     verbose = int(os.getenv("V", 0))
 except:
@@ -44,13 +37,21 @@ elif verbose == 1:
 else:
     log_level = 40
 
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(ColorFormatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
+                                    datefmt="%H:%M:%S"))
+handler.setLevel(log_level)
+
+global_logger = logging.getLogger()
+global_logger.addHandler(handler)
+
 scapy_logger = logging.getLogger("scapy.runtime")
 scapy_logger.setLevel(logging.ERROR)
 
 
 def getLogger(name):
     logger = logging.getLogger(name)
-    logger.setLevel(log_level)
+    logger.setLevel(logging.DEBUG)
     return logger
 
 # Static variables to store color formatting strings.

@@ -13,6 +13,7 @@ from vpp_pg_interface import VppPGInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from scapy.packet import Raw
+from logging import FileHandler, DEBUG
 from log import *
 
 """
@@ -175,6 +176,9 @@ class VppTestCase(unittest.TestCase):
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-' + cls.__name__ + '-')
+        file_handler = FileHandler("%s/log.txt" % cls.tempdir)
+        file_handler.setLevel(DEBUG)
+        cls.logger.addHandler(file_handler)
         cls.shm_prefix = cls.tempdir.split("/")[-1]
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
