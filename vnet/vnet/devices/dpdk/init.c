@@ -293,11 +293,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   vec_validate_aligned (dm->hqos_threads, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-#ifdef NETMAP
-  if (rte_netmap_probe () < 0)
-    return clib_error_return (0, "rte netmap probe failed");
-#endif
-
   nports = rte_eth_dev_count ();
   if (nports < 1)
     {
@@ -448,6 +443,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    else
 	    xd->pmd = VNET_DPDK_PMD_UNKNOWN;
 
+	  xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
+	  xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
+	  xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
 
 	  switch (xd->pmd)
 	    {
@@ -463,8 +461,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBEVF:
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-	      xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
-	      xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
 	      break;
 	    case VNET_DPDK_PMD_DPAA2:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
@@ -474,17 +470,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_ENIC:
 	      rte_eth_link_get_nowait (i, &l);
 	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
-	      xd->nb_rx_desc = DPDK_NB_RX_DESC_ENIC;
 	      if (l.link_speed == 40000)
-		{
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-		  xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
-		}
+		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
 	      else
-		{
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-		  xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
-		}
+		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
 	      break;
 
 	      /* Intel Fortville */
@@ -492,8 +481,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_I40EVF:
 	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-	      xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
-	      xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
 
 	      switch (dev_info.pci_dev->id.device_id)
 		{
@@ -521,27 +508,74 @@ dpdk_lib_init (dpdk_main_t * dm)
 		{
 		case 0x540d:	/* T580-CR */
 		case 0x5410:	/* T580-LP-cr */
-		  xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
-		  xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
 		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
 		  break;
 		case 0x5403:	/* T540-CR */
-		  xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
-		  xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
 		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
 		  break;
 		default:
-		  xd->nb_rx_desc = DPDK_NB_RX_DESC_10GE;
-		  xd->nb_tx_desc = DPDK_NB_TX_DESC_10GE;
 		  xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 		}
 	      break;
 
+	    case VNET_DPDK_PMD_MLX5:
+	      {
+		char *pn_100g[] = { "MCX415A-CCAT", "MCX416A-CCAT", 0 };
+		char *pn_40g[] = { "MCX413A-BCAT", "MCX414A-BCAT",
+		  "MCX415A-BCAT", "MCX416A-BCAT", "MCX4131A-BCAT", 0
+		};
+		char *pn_10g[] = { "MCX4111A-XCAT", "MCX4121A-XCAT", 0 };
+
+		vlib_pci_device_t *pd = vlib_get_pci_device (&pci_addr);
+		u8 *pn = 0;
+		char **c;
+		int found = 0;
+		pn = format (0, "%U%c",
+			     format_vlib_pci_vpd, pd->vpd_r, "PN", 0);
+
+		if (!pn)
+		  break;
+
+		c = pn_100g;
+		while (!found && c[0])
+		  {
+		    if (strncmp ((char *) pn, c[0], strlen (c[0])) == 0)
+		      {
+			xd->port_type = VNET_DPDK_PORT_TYPE_ETH_100G;
+			break;
+		      }
+		    c++;
+		  }
+
+		c = pn_40g;
+		while (!found && c[0])
+		  {
+		    if (strncmp ((char *) pn, c[0], strlen (c[0])) == 0)
+		      {
+			xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
+			break;
+		      }
+		    c++;
+		  }
+
+		c = pn_10g;
+		while (!found && c[0])
+		  {
+		    if (strncmp ((char *) pn, c[0], strlen (c[0])) == 0)
+		      {
+			xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
+			break;
+		      }
+		    c++;
+		  }
+
+		vec_free (pn);
+	      }
+
+	      break;
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
-	      xd->nb_rx_desc = DPDK_NB_RX_DESC_40GE;
-	      xd->nb_tx_desc = DPDK_NB_TX_DESC_40GE;
 	      break;
 
 	      /* virtio */

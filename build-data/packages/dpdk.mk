@@ -27,6 +27,11 @@ ifneq ($(DPDK_CRYPTO_PMD),)
 DPDK_MAKE_ARGS += DPDK_CRYPTO_PMD=y
 endif
 
+DPDK_MLX5_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx5_pmd))
+ifneq ($(DPDK_MLX5_PMD),)
+DPDK_MAKE_ARGS += DPDK_MLX5_PMD=y
+endif
+
 DPDK_PLATFORM_TARGET=$(strip $($(PLATFORM)_dpdk_target))
 ifneq ($(DPDK_PLATFORM_TARGET),)
 DPDK_MAKE_ARGS += DPDK_TARGET=$(DPDK_PLATFORM_TARGET)

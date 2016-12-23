@@ -13,15 +13,10 @@
  * limitations under the License.
  */
 
-#define DPDK_NB_RX_DESC_DEFAULT   512
-#define DPDK_NB_TX_DESC_DEFAULT   512
+#define DPDK_NB_RX_DESC_DEFAULT   1024
+#define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_NB_RX_DESC_VIRTIO    256
 #define DPDK_NB_TX_DESC_VIRTIO    256
-#define DPDK_NB_RX_DESC_10GE    1024
-#define DPDK_NB_TX_DESC_10GE    1024
-#define DPDK_NB_RX_DESC_40GE    1024
-#define DPDK_NB_TX_DESC_40GE    1024
-#define DPDK_NB_RX_DESC_ENIC    1024
 
 #define I40E_DEV_ID_SFP_XL710           0x1572
 #define I40E_DEV_ID_QSFP_A              0x1583
