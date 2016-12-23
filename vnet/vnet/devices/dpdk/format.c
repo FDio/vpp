@@ -184,6 +184,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "FortyGigabitEthernet";
       break;
 
+    case VNET_DPDK_PORT_TYPE_ETH_100G:
+      device_name = "HundredGigabitEthernet";
+      break;
+
     case VNET_DPDK_PORT_TYPE_ETH_BOND:
       return format (s, "BondEthernet%d", dm->devices[i].device_index);
 
@@ -266,6 +270,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_CXGBE:
       dev_type = "Chelsio T4/T5";
+      break;
+
+    case VNET_DPDK_PMD_MLX5:
+      dev_type = "Mellanox ConnectX-4 Family";
       break;
 
     case VNET_DPDK_PMD_VMXNET3:

@@ -121,6 +121,9 @@ vpp_LDFLAGS += -Wl,--no-whole-archive
 if WITH_DPDK_CRYPTO
 vpp_LDADD += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 endif
+if WITH_DPDK_MLX5_PMD
+vpp_LDFLAGS += -libverbs -lmlx5 -lnuma
+endif
 endif
 
 vpp_LDADD += -lvppinfra -lm -lpthread -ldl

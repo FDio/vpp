@@ -14,6 +14,11 @@ AC_ARG_WITH(dpdk_crypto,
             [with_dpdk_crypto=1],
             [with_dpdk_crypto=0])
 
+AC_ARG_WITH(dpdk_mlx5_pmd,
+            AC_HELP_STRING([--with-dpdk-mlx5-pmd],[Use Mellanox ConnetxX-4 DPDK PMD]),
+            [with_dpdk_mlx5_pmd=1],
+            [with_dpdk_mlx5_pmd=0])
+
 AC_ARG_ENABLE(dpdk-shared,
               AC_HELP_STRING([--enable-dpdk-shared],[Link with DPDK shared lib]),
               [enable_dpdk_shared=1],
@@ -44,7 +49,7 @@ AM_CONDITIONAL(ENABLE_DPDK_SHARED, test "$enable_dpdk_shared" = "1")
 AC_SUBST(DPDK,["-DDPDK=${with_dpdk} -DDPDK_SHARED_LIB=${enable_dpdk_shared}"])
 AM_CONDITIONAL(WITH_DPDK_CRYPTO, test "$with_dpdk_crypto" = "1")
 AC_SUBST(DPDK_CRYPTO,[-DDPDK_CRYPTO=${with_dpdk_crypto}])
-
+AM_CONDITIONAL(WITH_DPDK_MLX5_PMD, test "$with_dpdk_mlx5_pmd" = "1")
 
 AM_COND_IF(
 	[ENABLE_DPDK_SHARED],
