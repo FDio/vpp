@@ -230,6 +230,7 @@ clib_error_t *vlib_pci_map_resource_fixed (vlib_pci_device_t * dev,
 					   u32 resource, u8 * addr,
 					   void **result);
 
+vlib_pci_device_t *vlib_get_pci_device (vlib_pci_addr_t * addr);
 /* Free's device. */
 void vlib_pci_free_device (vlib_pci_device_t * dev);
 
@@ -237,6 +238,7 @@ unformat_function_t unformat_vlib_pci_addr;
 format_function_t format_vlib_pci_addr;
 format_function_t format_vlib_pci_handle;
 format_function_t format_vlib_pci_link_speed;
+format_function_t format_vlib_pci_vpd;
 
 #endif /* included_vlib_pci_h */
 
