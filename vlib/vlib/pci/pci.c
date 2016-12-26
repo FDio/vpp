@@ -52,6 +52,19 @@
 
 vlib_pci_main_t pci_main;
 
+vlib_pci_device_t *
+vlib_get_pci_device (vlib_pci_addr_t * addr)
+{
+  vlib_pci_main_t *pm = &pci_main;
+  uword *p;
+  p = hash_get (pm->pci_dev_index_by_pci_addr, addr->as_u32);
+
+  if (p == 0)
+    return 0;
+
+  return vec_elt_at_index (pm->pci_devs, p[0]);
+}
+
 static clib_error_t *
 show_pci_fn (vlib_main_t * vm,
 	     unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -70,9 +83,9 @@ show_pci_fn (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
-  vlib_cli_output (vm, "%-13s%-7s%-12s%-15s%-20s%-40s",
-		   "Address", "Socket", "VID:PID", "Link Speed", "Driver",
-		   "Product Name");
+  vlib_cli_output (vm, "%-13s%-5s%-12s%-13s%-16s%-32s%s",
+		   "Address", "Sock", "VID:PID", "Link Speed", "Driver",
+		   "Product Name", "Vital Product Data");
 
   /* *INDENT-OFF* */
   pool_foreach (d, pm->pci_devs, ({
@@ -85,12 +98,13 @@ show_pci_fn (vlib_main_t * vm,
     if (d->numa_node >= 0)
       s = format (s, "  %d", d->numa_node);
 
-    vlib_cli_output (vm, "%-13U%-7v%04x:%04x   %-15U%-20s%-40v",
+    vlib_cli_output (vm, "%-13U%-5v%04x:%04x   %-13U%-16s%-32v%U",
 		     format_vlib_pci_addr, &d->bus_address, s,
 		     d->vendor_id, d->device_id,
 		     format_vlib_pci_link_speed, d,
 		     d->driver_name ? (char *) d->driver_name : "",
-		     d->product_name);
+		     d->product_name,
+		     format_vlib_pci_vpd, d->vpd_r, 0);
   }));
 /* *INDENT-ON* */
 
@@ -150,6 +164,78 @@ format_vlib_pci_link_speed (u8 * s, va_list * va)
   if ((r->link_status & 0xf) == 3)
     return format (s, "8.0 GT/s x%u", width);
   return format (s, "unknown");
+}
+
+u8 *
+format_vlib_pci_vpd (u8 * s, va_list * args)
+{
+  u8 *data = va_arg (*args, u8 *);
+  u8 *id = va_arg (*args, u8 *);
+  uword indent = format_get_indent (s);
+  char *string_types[] = { "PN", "EC", "SN", "MN", 0 };
+  uword p = 0;
+  int first_line = 1;
+
+  if (vec_len (data) < 3)
+    return s;
+
+  while (p + 3 < vec_len (data))
+    {
+
+      if (data[p] == 0 && data[p + 1] == 0)
+	return s;
+
+      if (p + data[p + 2] > vec_len (data))
+	return s;
+
+      if (id == 0)
+	{
+	  int is_string = 0;
+	  char **c = string_types;
+
+	  while (c[0])
+	    {
+	      if (*(u16 *) & data[p] == *(u16 *) c[0])
+		is_string = 1;
+	      c++;
+	    }
+
+	  if (data[p + 2])
+	    {
+	      if (!first_line)
+		s = format (s, "\n%U", format_white_space, indent);
+	      else
+		{
+		  first_line = 0;
+		  s = format (s, " ");
+		}
+
+	      s = format (s, "%c%c: ", data[p], data[p + 1]);
+	      if (is_string)
+		vec_add (s, data + p + 3, data[p + 2]);
+	      else
+		{
+		  int i;
+		  const int max_bytes = 8;
+		  s = format (s, "0x");
+		  for (i = 0; i < clib_min (data[p + 2], max_bytes); i++)
+		    s = format (s, " %02x", data[p + 3 + i]);
+
+		  if (data[p + 2] > max_bytes)
+		    s = format (s, " ...");
+		}
+	    }
+	}
+      else if (*(u16 *) & data[p] == *(u16 *) id)
+	{
+	  vec_add (s, data + p + 3, data[p + 2]);
+	  return s;
+	}
+
+      p += 3 + data[p + 2];
+    }
+
+  return s;
 }
 
 
