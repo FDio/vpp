@@ -73,6 +73,5 @@ api_DATA = \
 	$(patsubst %.api,%.api.json,$(API_FILES))
 
 BUILT_SOURCES += \
-	$(patsubst %.api,%.api.json,$(API_FILES)) \
 	$(patsubst %.api,%.api.h,$(API_FILES))
 
