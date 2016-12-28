@@ -12,3 +12,5 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage ioam_plugin_doc
 - @subpage lb_plugin_doc
 - @subpage flowperpkt_plugin_doc
+- @subpage span_doc
+- @subpage bfd_doc

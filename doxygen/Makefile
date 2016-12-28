@@ -42,13 +42,17 @@ DOC_MAC_PY_DEPENDS = pyparsing jinja2
 DOXY_DIR ?= $(WS_ROOT)/doxygen
 
 # Primary source directories
+DOXY_SRC ?= src
 DOXY_SRC_DIRECTORIES = \
-	vppinfra \
-	svm \
-	vlib \
-	vlib-api \
-	vnet \
-	vpp \
+	$(DOXY_SRC)/vppinfra \
+	$(DOXY_SRC)/svm \
+	$(DOXY_SRC)/vlib \
+	$(DOXY_SRC)/vlibapi \
+	$(DOXY_SRC)/vlibmemory \
+	$(DOXY_SRC)/vlibsocket \
+	$(DOXY_SRC)/vnet \
+	$(DOXY_SRC)/vpp \
+	$(DOXY_SRC)/vpp-api \
 	vpp-api
 
 # Input directories and files
@@ -56,6 +60,7 @@ DOXY_INPUT ?= \
 	$(wildcard $(WS_ROOT)/*.md) \
 	$(wildcard $(DOXY_DIR)/*.md) \
 	$(DOXY_SRC_DIRECTORIES) \
+	$(DOXY_SRC)/plugins \
 	plugins
 
 # Strip leading workspace path from input names
@@ -67,9 +72,10 @@ DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 # there's a DPDK equivalent that conflicts.
 # These must be left-anchored paths for the regexp below to work.
 DOXY_EXCLUDE ?= \
-	vlib/vlib/buffer.c \
-	vlib/example \
-	plugins/sample-plugin
+	$(DOXY_SRC)/vlib/vlib/buffer.c \
+	$(DOXY_SRC)/vlib/example \
+	plugins/sample-plugin \
+	vpp-api/lua
 
 # Generate a regexp for filenames to exclude
 DOXY_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_EXCLUDE))' | sed -e 's/ /|/g')))
@@ -164,9 +170,11 @@ endif
 bootstrap-doxygen: $(BR)/.doxygen-bootstrap.ok
 
 .DELETE_ON_ERROR: $(BR)/.doxygen-siphon.dep
-$(BR)/.doxygen-siphon.dep: Makefile
+$(BR)/.doxygen-siphon.dep: Makefile \
+		$(addprefix,$(WSROOT),$(DOXY_INPUT))
 	@echo "Building siphon dependencies..."
-	@set -e; rm -f "$@"; for input in $(DOXY_INPUT); do \
+	@rm -f "$@"; for input in $(DOXY_INPUT); do \
+		[ -e "$(WS_ROOT)/$$input" ] && \
 		find "$(WS_ROOT)/$$input" -type f \
 			\( -name '*.[ch]' -or -name '*.dox' \) -print \
 			| grep -v -E '^$(WS_ROOT)/$(DOXY_EXCLUDE_REGEXP)' \
@@ -182,7 +190,15 @@ $(BR)/.doxygen-siphon.dep: Makefile
 .NOTPARALLEL: $(SIPHON_FILES)
 $(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
 		$(DOXY_DIR)/siphon-generate \
+		$(addprefix,$(WSROOT),$(DOXY_INPUT)) \
 		$(wildcard $(DOXY_DIR)/siphon/*.py)
+	@echo "Validating source tree..."
+	@set -e; for input in $(DOXY_INPUT); do \
+		if [ ! -e "$(WS_ROOT)/$$input" ]; then \
+			echo "ERROR: Input path '$$input' does not exist." >&2; \
+			exit 1; \
+		fi; \
+	done
 	@rm -rf "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@mkdir -p "$(SIPHON_INPUT)" "$(SIPHON_OUTPUT)"
 	@touch $(SIPHON_INPUT)/files
