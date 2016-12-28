@@ -11,6 +11,8 @@ AM_PROG_AS
 AM_PROG_LIBTOOL
 AC_PROG_YACC
 
+AM_CONDITIONAL([CROSSCOMPILE], [test "$cross_compiling" == "yes"])
+
 ###############################################################################
 # Macros
 ###############################################################################
@@ -171,6 +173,20 @@ AM_COND_IF([ENABLE_G2],
 [
   PKG_CHECK_MODULES(g2, gtk+-2.0)
 ])
+
+# If cross-compiling, we need external vppapigen and we cannot continue without it
+# For native builds, we just set dependency on vpppaigen binary in top_builddir
+AM_COND_IF([CROSSCOMPILE],
+[
+  AC_PATH_PROG([VPPAPIGEN], [vppapigen], [no])
+  if test "$VPPAPIGEN" = "no"; then
+    AC_MSG_ERROR([Externaly built vppapigen is needed when cross-compiling...])
+  fi
+],[
+  VPPAPIGEN=\$\(top_builddir\)/vppapigen
+])
+AC_SUBST([VPPAPIGEN])
+
 
 ###############################################################################
 # JAVA
