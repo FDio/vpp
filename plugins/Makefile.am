@@ -28,22 +28,7 @@ if ENABLE_sample_PLUGIN
 SUBDIRS += sample-plugin
 endif
 
-if ENABLE_ioam_PLUGIN
-SUBDIRS += ioam-plugin
-endif
-
 if ENABLE_vcgn_PLUGIN
 SUBDIRS += vcgn-plugin
 endif
 
-if ENABLE_snat_PLUGIN
-SUBDIRS += snat-plugin
-endif
-
-if ENABLE_lb_PLUGIN
-SUBDIRS += lb-plugin
-endif
-
-if ENABLE_acl_PLUGIN
-SUBDIRS += acl-plugin
-endif

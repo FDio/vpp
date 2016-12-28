@@ -52,8 +52,7 @@ DOXY_SRC_DIRECTORIES = \
 	$(DOXY_SRC)/vlibsocket \
 	$(DOXY_SRC)/vnet \
 	$(DOXY_SRC)/vpp \
-	$(DOXY_SRC)/vpp-api \
-	vpp-api
+	$(DOXY_SRC)/vpp-api
 
 # Input directories and files
 DOXY_INPUT ?= \
@@ -74,8 +73,8 @@ DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 DOXY_EXCLUDE ?= \
 	$(DOXY_SRC)/vlib/vlib/buffer.c \
 	$(DOXY_SRC)/vlib/example \
-	plugins/sample-plugin \
-	vpp-api/lua
+	$(DOXY_SRC)/vpp-api/lua \
+	plugins/sample-plugin
 
 # Generate a regexp for filenames to exclude
 DOXY_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_EXCLUDE))' | sed -e 's/ /|/g')))

@@ -22,9 +22,14 @@ BUILT_SOURCES =
 vppplugins_LTLIBRARIES =
 vppapitestplugins_LTLIBRARIES =
 noinst_HEADERS =
+nobase_apiinclude_HEADERS =
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
+
+if ENABLE_ACL_PLUGIN
+include acl.am
+endif
 
 if ENABLE_FLOWPERPKT_PLUGIN
 include flowperpkt.am
@@ -34,8 +39,20 @@ if ENABLE_ILA_PLUGIN
 include ila.am
 endif
 
+if ENABLE_IOAM_PLUGIN
+include ioam.am
+endif
+
+if ENABLE_LB_PLUGIN
+include lb.am
+endif
+
 if ENABLE_SIXRD_PLUGIN
 include sixrd.am
+endif
+
+if ENABLE_SNAT_PLUGIN
+include snat.am
 endif
 
 include ../suffix-rules.mk
@@ -50,6 +67,7 @@ install-data-hook:
 ###############################################################################
 
 apidir = $(prefix)/share/vpp/api/plugins
+apiincludedir = ${includedir}/vpp_plugins
 
 api_DATA = \
 	$(patsubst %.api,%.api.json,$(API_FILES))

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+rm -f $2
+
+for i in $(find ${1}/vpp/lib/python2.7/site-packages/ -type f -print); do
+    echo ../${i} /usr/lib/python2.7/site-packages/vpp_papi >> ${2}
+done
+

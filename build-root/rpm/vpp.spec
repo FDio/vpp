@@ -71,12 +71,28 @@ Requires: vpp = %{_version}-%{_release}
 %description plugins
 This package contains VPP plugins
 
-%package python-api
+%package api-lua
+Summary: VPP api lua bindings
+Group: Development/Libraries
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
+
+%description api-lua
+This package contains the lua bindings for the vpp api
+
+%package api-java
+Summary: VPP api java bindings
+Group: Development/Libraries
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}
+
+%description api-java
+This package contains the java bindings for the vpp api
+
+%package api-python
 Summary: VPP api python bindings
 Group: Development/Libraries
 Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools
 
-%description python-api
+%description api-python
 This package contains the python bindings for the vpp api
 
 %prep
@@ -131,6 +147,22 @@ do
 	install -p -m 644 $file %{buildroot}/usr/share/vpp/api
 done
 
+# Lua bindings
+mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/lua/examples/cli
+mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/lua/examples/lute
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua && git ls-files .)
+do
+	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua/$file \
+	   %{buildroot}/usr/share/doc/vpp/examples/lua/$file
+done
+
+# Java bindings
+mkdir -p -m755 %{buildroot}/usr/share/java
+for file in $(find %{_mu_build_dir}/%{_vpp_install_dir}/vpp/share/java -type f -name '*.jar' -print )
+do
+	install -p -m 644 $file %{buildroot}/usr/share/java
+done
+
 # Python bindings
 mkdir -p -m755 %{buildroot}%{python2_sitelib}
 install -p -m 666 %{_mu_build_dir}/%{_vpp_install_dir}/*/lib/python2.7/site-packages/vpp_papi-*.egg %{buildroot}%{python2_sitelib}
@@ -151,16 +183,16 @@ do
 done
 
 mkdir -p -m755 %{buildroot}%{python2_sitelib}/jvppgen
-install -p -m755 %{_mu_build_dir}/../vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
-for i in $(ls %{_mu_build_dir}/../vpp-api/java/jvpp/gen/jvppgen/*.py); do
+install -p -m755 %{_mu_build_dir}/../src/vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
+for i in $(ls %{_mu_build_dir}/../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do
    install -p -m666 ${i} %{buildroot}%{python2_sitelib}/jvppgen
 done;
 
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../plugins/sample-plugin && git ls-files .)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin && git ls-files .)
 do
-	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../plugins/sample-plugin/$file \
+	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin/$file \
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
 done
 
@@ -170,22 +202,10 @@ done
 # 
 mkdir -p -m755 %{buildroot}/usr/lib/vpp_plugins
 mkdir -p -m755 %{buildroot}/usr/lib/vpp_api_test_plugins
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_plugins && find -type f -print)
-do
-        install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_plugins/$file \
-           %{buildroot}/usr/lib/vpp_plugins/$file
-done
-
 for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/lib64/vpp_plugins && find -type f -print)
 do
         install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/lib64/vpp_plugins/$file \
            %{buildroot}/usr/lib/vpp_plugins/$file
-done
-
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins && find -type f -print)
-do
-        install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins/$file \
-           %{buildroot}/usr/lib/vpp_api_test_plugins/$file
 done
 
 for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/lib64/vpp_api_test_plugins && find -type f -print)
@@ -208,13 +228,13 @@ done
 sysctl --system
 %systemd_post vpp.service
 
-%post python-api
+%post api-python
 easy_install -z %{python2_sitelib}/vpp_papi-*.egg
 
 %preun
 %systemd_preun vpp.service
 
-%preun python-api
+%preun api-python
 easy_install -mxNq vpp_papi
 
 %postun
@@ -255,7 +275,15 @@ fi
 %{_libdir}/*
 /usr/share/vpp/api/*
 
-%files python-api
+%files api-lua
+%defattr(644,root,root)
+/usr/share/doc/vpp/examples/lua
+
+%files api-java
+%defattr(644,root,root)
+/usr/share/java/*
+
+%files api-python
 %defattr(644,root,root)
 %{python2_sitelib}/vpp_papi-*.egg
 

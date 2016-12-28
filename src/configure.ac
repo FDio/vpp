@@ -3,7 +3,8 @@ LT_INIT
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
-AC_CONFIG_FILES([Makefile plugins/Makefile vpp-api/python/Makefile])
+AC_CONFIG_FILES([Makefile plugins/Makefile vpp-api/python/Makefile vpp-api/java/Makefile])
+AC_CONFIG_MACRO_DIR([m4])
 
 AC_PROG_CC
 AM_PROG_AS
@@ -89,6 +90,8 @@ ENABLE_ARG(g2,		[Enable g2])
 # --disable-X
 DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
 DISABLE_ARG(svm,	[Disable svm and dependant libs and binaries])
+DISABLE_ARG(papi,	[Disable Python API bindings])
+DISABLE_ARG(japi,	[Disable Java API bindings])
 
 # --with-X
 WITH_ARG(dpdk,		[Use use DPDK])
@@ -131,6 +134,25 @@ AC_DEFINE_UNQUOTED(DPDK_CRYPTO,		[${n_with_dpdk_crypto}])
 AC_DEFINE_UNQUOTED(IPSEC,		[${n_with_ipsec}])
 AC_DEFINE_UNQUOTED(IPV6SR,		[${n_with_ipv6sr}])
 
+
+# Silence following noise:
+# ar: `u' modifier ignored since `D' is the default (see `U')
+AR_FLAGS=cr
+AC_SUBST(AR_FLAGS)
+
+###############################################################################
+# Plugins
+###############################################################################
+
+# Please keep alphabetical order
+PLUGIN_ENABLED(acl)
+PLUGIN_ENABLED(flowperpkt)
+PLUGIN_ENABLED(ila)
+PLUGIN_ENABLED(ioam)
+PLUGIN_ENABLED(lb)
+PLUGIN_ENABLED(sixrd)
+PLUGIN_ENABLED(snat)
+
 ###############################################################################
 # Dependency checks
 ###############################################################################
@@ -151,12 +173,17 @@ AM_COND_IF([ENABLE_G2],
 ])
 
 ###############################################################################
-# Plugins
+# JAVA
 ###############################################################################
 
-PLUGIN_ENABLED(sixrd)
-PLUGIN_ENABLED(ila)
-PLUGIN_ENABLED(flowperpkt)
+AM_COND_IF([ENABLE_JAPI],
+[
+  AX_VPP_FIND_JDK8
+  AC_SUBST(JAVA_HOME)
+  AC_SUBST(JAVAC)
+  AC_SUBST(JAVAH)
+  AC_SUBST(JAR)
+])
 
 ###############################################################################
 # Output
@@ -172,6 +199,11 @@ PRINT_VAL([includedir], ${includedir})
 PRINT_VAL([CFLAGS], ${CFLAGS})
 PRINT_VAL([CPPFLAGS], ${CPPFLAGS})
 PRINT_VAL([LDFLAGS], ${LDFLAGS})
+AM_COND_IF([ENABLE_JAPI],
+[
+  PRINT_VAL([JAVA_VERSION], ${JAVA_VERSION})
+  PRINT_VAL([JAVA_HOME], ${JAVA_HOME})
+])
 
 AC_MSG_RESULT([])
 AC_MSG_RESULT([with:])

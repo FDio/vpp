@@ -18,10 +18,10 @@
 	@echo "  APIGEN  " $@ ;					\
 	mkdir -p `dirname $@` ;					\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --output $@ --show-name $@
+	| vppapigen --input - --output $@ --show-name $@ > /dev/null
 
 %.api.json: %.api
-	@echo "  JSON APIGEN  " $@ ;				\
+	@echo "  JSON API" $@ ;					\
 	mkdir -p `dirname $@` ;					\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --json $@
+	| vppapigen --input - --json $@ > /dev/null

@@ -57,7 +57,7 @@ endif
 
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
-.PHONY: ctags cscope plugins plugins-release build-vpp-api
+.PHONY: ctags cscope
 .PHONY: test test-debug retest retest-debug test-doc test-wipe-doc test-help test-wipe
 .PHONY: test-cov test-wipe-cov
 
@@ -69,8 +69,6 @@ help:
 	@echo " wipe-release        - wipe all products of release build "
 	@echo " build               - build debug binaries"
 	@echo " build-release       - build release binaries"
-	@echo " plugins             - build debug plugin binaries"
-	@echo " plugins-release     - build release plugin binaries"
 	@echo " rebuild             - wipe and build debug binares"
 	@echo " rebuild-release     - wipe and build release binares"
 	@echo " run                 - run debug binary"
@@ -83,8 +81,6 @@ help:
 	@echo " retest              - run functional tests"
 	@echo " retest-debug        - run functional tests (debug build)"
 	@echo " test-help           - show help on test framework"
-	@echo " build-vat           - build vpp-api-test tool"
-	@echo " build-vpp-api       - build vpp-api"
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
@@ -206,19 +202,10 @@ wipe-release: $(BR)/.bootstrap.ok
 
 rebuild-release: wipe-release build-release
 
-plugins: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,plugins-install)
-
-plugins-release: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM),plugins-install)
-
-build-vpp-api: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,vpp-api-install)
-
 VPP_PYTHON_PREFIX=$(BR)/python
 
 define test
-	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-api-install plugins-install vpp-install,)
+	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
 	make -C test \
 	  BR=$(BR) \
 	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
@@ -265,12 +252,12 @@ define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(1)/plugins/lib64/vpp_plugins
+	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(1)/vpp/lib64/vpp_plugins
 endef
 else
 define run
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(1)/plugins/lib64/vpp_plugins
+	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(1)/vpp/lib64/vpp_plugins
 endef
 endif
 

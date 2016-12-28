@@ -1,0 +1,6 @@
+#!/bin/bash
+
+#i for now put everything into examples directory
+
+echo ../../src/vpp-api/lua /usr/share/vpp/examples > ${2}
+

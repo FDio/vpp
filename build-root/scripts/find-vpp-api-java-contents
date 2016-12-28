@@ -1,0 +1,8 @@
+#!/bin/bash
+
+rm -f $2
+
+for i in $(find ${1}/vpp/share/java/ -type f -print); do
+  echo ../${i} /usr/share/java >> ${2}
+done
+

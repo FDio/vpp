@@ -29,14 +29,12 @@ vpp_uses_dpdk = yes
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
 
-vpp_root_packages = vpp vpp-api gmod plugins
+vpp_root_packages = vpp gmod
 
 vpp_configure_args_vpp = --with-dpdk
 
 # Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
 vlib_configure_args_vpp = --with-pre-data=128
-
-plugins_configure_args_vpp = --with-dpdk
 
 # DPDK configuration parameters
 # vpp_uses_dpdk_cryptodev = yes

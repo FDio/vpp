@@ -25,7 +25,7 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 									\
 	: generate file manifests ;					\
 	find $(INSTALL_PREFIX)$(ARCH)/*/bin -type f -print		\
-	  | sed -e 's:.*:../& /usr/bin:'				\
+	  | sed -e 's:.*:../& /usr/bin:' | grep -v vppapigen		\
 	    > deb/debian/vpp.install ;					\
 									\
 	: core api definitions ;					\
@@ -51,9 +51,17 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	./scripts/find-plugins-contents $(INSTALL_PREFIX)$(ARCH)	\
 	 deb/debian/vpp-plugins.install ;				\
 									\
-	: python-api package ;						\
-	./scripts/find-python-api-contents $(INSTALL_PREFIX)$(ARCH)	\
-	 deb/debian/vpp-python-api.install ;				\
+	: vpp-api-lua package ;						\
+	./scripts/find-vpp-api-lua-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp-api-lua.install ;				\
+									\
+	: vpp-api-java package ;					\
+	./scripts/find-vpp-api-java-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp-api-java.install ;				\
+									\
+	: vpp-api-python package ;					\
+	./scripts/find-vpp-api-python-contents $(INSTALL_PREFIX)$(ARCH)	\
+	 deb/debian/vpp-api-python.install ;				\
 									\
 	: dpdk headers ;						\
 	./scripts/find-dpdk-contents $(INSTALL_PREFIX)$(ARCH)		\
@@ -70,9 +78,9 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: dev package needs a couple of additions ;			\
 	echo ../build-tool-native/tools/vppapigen /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin		\
+	echo ../../src/vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
-	for i in $$(ls ../vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
+	for i in $$(ls ../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
 	   echo ../$${i} /usr/lib/python2.7/dist-packages/jvppgen	\
 	       >> deb/debian/vpp-dev.install;				\
 	done;								\

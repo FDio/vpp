@@ -79,7 +79,15 @@ include vnet.am
 include vpp.am
 include vpp-api-test.am
 
-SUBDIRS += vpp-api/python plugins
+SUBDIRS += plugins
+
+if ENABLE_PAPI
+SUBDIRS += vpp-api/python
+endif
+
+if ENABLE_JAPI
+SUBDIRS += vpp-api/java
+endif
 
 ###############################################################################
 # API

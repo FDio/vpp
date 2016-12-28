@@ -16,16 +16,16 @@ do
 done        
 
 # sample plugin
-paths=`(cd ..; find plugins/sample-plugin -type f -print | grep -v autom4te)`
+paths=`(cd ..; find src/examples/sample-plugin -type f -print | grep -v autom4te)`
 
 for path in $paths
 do
-    relpath=`echo $path | sed -e 's:.*plugins/::'`
+    relpath=`echo $path | sed -e 's:.*src/examples/::'`
     dir=`dirname $relpath`
     if [ $dir = "sample-plugin" ] ; then
-        echo ../../$path /usr/share/doc/vpp/examples/plugins/sample-plugin >> $2
+        echo ../../$path /usr/share/doc/vpp/examples/sample-plugin/ >> $2
     else
         echo ../../$path \
-        /usr/share/doc/vpp/examples/plugins/$dir >> $2
+        /usr/share/doc/vpp/examples/$dir >> $2
     fi
 done        

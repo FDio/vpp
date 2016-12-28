@@ -53,11 +53,6 @@ AM_CONDITIONAL(ENABLE_$1_PLUGIN, test "$enable_the_plugin" = "1")
 # SUBDIRS += new-plugin
 # endif
 
-PLUGIN_ENABLED(ioam)
-PLUGIN_ENABLED(snat)
-PLUGIN_ENABLED(lb)
-PLUGIN_ENABLED(acl)
-
 # Disabled plugins, require --enable-XXX-plugin
 PLUGIN_DISABLED(vcgn)
 PLUGIN_DISABLED(sample)

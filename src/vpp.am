@@ -74,7 +74,7 @@ PLUGIN_DPDK_ARG=""
 endif
 
 vpp_plugin_configure:
-	@echo "PLUGIN CONFIGURE " $@ 
+	@echo "PLUGIN CFG" $@
 	@echo "#!/bin/bash" > $@
 	@echo " " >> $@
 	@echo "set +eu" >> $@
