@@ -1,4 +1,4 @@
-# VPP SPAN implementation
+# VPP SPAN implementation    {#span_doc}
 
 This is a memo intended to contain documentation of the VPP SPAN implementation.
 Everything that is not directly obvious should come here.
