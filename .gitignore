@@ -80,11 +80,11 @@ GTAGS
 *.pyc
 
 # Python api generator
-/vpp-api/python/build
-/vpp-api/python/dist
-/vpp-api/python/vpp_papi.egg-info
-/vpp-api/python/vpp_papi/memclnt.py
-/vpp-api/python/vpp_papi/vpe.py
+/src/vpp-api/python/build
+/src/vpp-api/python/dist
+/src/vpp-api/python/vpp_papi.egg-info
+/src/vpp-api/python/vpp_papi/memclnt.py
+/src/vpp-api/python/vpp_papi/vpe.py
 
 # Build files in the test directory
 /test/*.ok

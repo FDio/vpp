@@ -151,16 +151,16 @@ do
 done
 
 mkdir -p -m755 %{buildroot}%{python2_sitelib}/jvppgen
-install -p -m755 %{_mu_build_dir}/../vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
-for i in $(ls %{_mu_build_dir}/../vpp-api/java/jvpp/gen/jvppgen/*.py); do
+install -p -m755 %{_mu_build_dir}/../src/vpp-api/java/jvpp/gen/jvpp_gen.py %{buildroot}/usr/bin
+for i in $(ls %{_mu_build_dir}/../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do
    install -p -m666 ${i} %{buildroot}%{python2_sitelib}/jvppgen
 done;
 
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../plugins/sample-plugin && git ls-files .)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin && git ls-files .)
 do
-	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../plugins/sample-plugin/$file \
+	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin/$file \
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
 done
 
@@ -170,22 +170,10 @@ done
 # 
 mkdir -p -m755 %{buildroot}/usr/lib/vpp_plugins
 mkdir -p -m755 %{buildroot}/usr/lib/vpp_api_test_plugins
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_plugins && find -type f -print)
-do
-        install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_plugins/$file \
-           %{buildroot}/usr/lib/vpp_plugins/$file
-done
-
 for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/lib64/vpp_plugins && find -type f -print)
 do
         install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/lib64/vpp_plugins/$file \
            %{buildroot}/usr/lib/vpp_plugins/$file
-done
-
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins && find -type f -print)
-do
-        install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/plugins/lib64/vpp_api_test_plugins/$file \
-           %{buildroot}/usr/lib/vpp_api_test_plugins/$file
 done
 
 for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/vpp/lib64/vpp_api_test_plugins && find -type f -print)

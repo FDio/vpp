@@ -16,7 +16,7 @@ do
 done        
 
 # sample plugin
-paths=`(cd ..; find plugins/sample-plugin -type f -print | grep -v autom4te)`
+paths=`(cd ..; find src/examples/sample-plugin -type f -print | grep -v autom4te)`
 
 for path in $paths
 do

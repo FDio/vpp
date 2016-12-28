@@ -70,9 +70,9 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	: dev package needs a couple of additions ;			\
 	echo ../build-tool-native/tools/vppapigen /usr/bin		\
 	   >> deb/debian/vpp-dev.install ;				\
-	echo ../../vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin		\
+	echo ../../src/vpp-api/java/jvpp/gen/jvpp_gen.py /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\
-	for i in $$(ls ../vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
+	for i in $$(ls ../src/vpp-api/java/jvpp/gen/jvppgen/*.py); do	\
 	   echo ../$${i} /usr/lib/python2.7/dist-packages/jvppgen	\
 	       >> deb/debian/vpp-dev.install;				\
 	done;								\

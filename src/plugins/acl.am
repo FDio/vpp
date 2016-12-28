@@ -11,24 +11,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
+vppapitestplugins_LTLIBRARIES += acl_test_plugin.la
+vppplugins_LTLIBRARIES += acl_plugin.la
 
-# To add a new plugin subdirectory:
-#
-# add a stanza here:
-# if ENABLE_new_PLUGIN
-# SUBDIRS += new-plugin
-# endif
-#
-# Also: add PLUGIN(new) to configure.ac
+acl_plugin_la_SOURCES =				\
+	acl/acl.c				\
+	acl/node_in.c				\
+	acl/node_out.c				\
+	acl/l2sess.c				\
+	acl/l2sess_node.c			\
+	acl/l2sess.h				\
+	acl/acl_plugin.api.h
 
-SUBDIRS =
+API_FILES += acl/acl.api
 
-if ENABLE_sample_PLUGIN
-SUBDIRS += sample-plugin
-endif
+nobase_apiinclude_HEADERS +=			\
+  acl/acl_all_api_h.h				\
+  acl/acl_msg_enum.h				\
+  acl/acl.api.h
 
-if ENABLE_vcgn_PLUGIN
-SUBDIRS += vcgn-plugin
-endif
+acl_test_plugin_la_SOURCES = acl/acl_test.c acl/acl_plugin.api.h
 
+# vi:syntax=automake
