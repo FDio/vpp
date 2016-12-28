@@ -156,6 +156,7 @@ AM_COND_IF([ENABLE_G2],
 
 PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(ila)
+PLUGIN_ENABLED(lb)
 PLUGIN_ENABLED(flowperpkt)
 
 ###############################################################################

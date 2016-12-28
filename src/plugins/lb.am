@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Cisco and/or its affiliates.
+# Copyright (c) 2016 Cisco Systems, Inc.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -11,35 +11,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign subdir-objects
+vppapitestplugins_LTLIBRARIES += lb_test_plugin.la
+vppplugins_LTLIBRARIES += lb_plugin.la
 
-# To add a new plugin subdirectory:
-#
-# add a stanza here:
-# if ENABLE_new_PLUGIN
-# SUBDIRS += new-plugin
-# endif
-#
-# Also: add PLUGIN(new) to configure.ac
+lb_plugin_la_SOURCES =			\
+	lb/lb.c				\
+	lb/node.c			\
+	lb/cli.c			\
+	lb/util.c			\
+	lb/refcount.c			\
+	lb/api.c
 
-SUBDIRS =
+BUILT_SOURCES +=			\
+	lb/lb.api.h			\
+	lb/lb.api.json
 
-if ENABLE_sample_PLUGIN
-SUBDIRS += sample-plugin
-endif
+API_FILES += lb/lb.api
 
-if ENABLE_ioam_PLUGIN
-SUBDIRS += ioam-plugin
-endif
+noinst_HEADERS +=			\
+	lb/lb.h				\
+	lb/util.h			\
+	lb/refcount.h			\
+	lb/lbhash.h			\
+	lb/lb.api.h
 
-if ENABLE_vcgn_PLUGIN
-SUBDIRS += vcgn-plugin
-endif
+lb_test_plugin_la_SOURCES =		\
+	lb/lb_test.c			\
+	lb/lb_plugin.api.h
 
-if ENABLE_snat_PLUGIN
-SUBDIRS += snat-plugin
-endif
-
-if ENABLE_acl_PLUGIN
-SUBDIRS += acl-plugin
-endif
+# vi:syntax=automake

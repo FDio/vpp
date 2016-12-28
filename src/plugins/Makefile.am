@@ -34,6 +34,10 @@ if ENABLE_ILA_PLUGIN
 include ila.am
 endif
 
+if ENABLE_LB_PLUGIN
+include lb.am
+endif
+
 if ENABLE_SIXRD_PLUGIN
 include sixrd.am
 endif
