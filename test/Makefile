@@ -30,7 +30,7 @@ $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@touch $@
 
 $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/vpp-api/python && python setup.py install"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && cd $(WS_ROOT)/src/vpp-api/python && python setup.py install"
 	@touch $@
 
 define retest-func
