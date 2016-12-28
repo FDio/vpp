@@ -13,14 +13,17 @@
 
 bin_PROGRAMS += vppapigen
 
-BUILT_SOURCES += tools/vppapigen/gram.h
+# We cannot rely on BUILT_SOURCES here as other built sources are relying
+# on vppapigen, so make can start compiling lex.c before gram.h is created.
+# This way we introduce new dependency by running C preprocessor.
 
-tools/vppapigen/gram.h: tools/vppapigen/gram.y
+tools/vppapigen/lex_e.c: tools/vppapigen/lex.c tools/vppapigen/gram.y
 	@$(YACC) -d @srcdir@/tools/vppapigen/gram.y
 	@mv y.tab.h tools/vppapigen/gram.h
 	@rm y.tab.c
+	@$(CC) -I. -E -o $@ $<
 
-vppapigen_SOURCES = tools/vppapigen/gram.y tools/vppapigen/lex.c tools/vppapigen/node.c
+vppapigen_SOURCES = tools/vppapigen/gram.y tools/vppapigen/lex_e.c tools/vppapigen/node.c
 vppapigen_LDADD = libvppinfra.la
 vppapigen_LDFLAGS = -static
 
