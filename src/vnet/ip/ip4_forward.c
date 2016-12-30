@@ -860,30 +860,36 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
       /* When adding an address check that it does not conflict
          with an existing address. */
       ip_interface_address_t *ia;
-      foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index,
-				    0 /* honor unnumbered */ ,
-				    (
-				      {
-				      ip4_address_t * x =
-				      ip_interface_address_get_address
-				      (&im->lookup_main, ia);
-				      if (ip4_destination_matches_route
-					  (im, address, x, ia->address_length)
-					  ||
-					  ip4_destination_matches_route (im,
-									 x,
-									 address,
-									 address_length))
-				      return
-				      clib_error_create
-				      ("failed to add %U which conflicts with %U for interface %U",
-				       format_ip4_address_and_length, address,
-				       address_length,
-				       format_ip4_address_and_length, x,
-				       ia->address_length,
-				       format_vnet_sw_if_index_name, vnm,
-				       sw_if_index);}
-				    ));
+      vnet_sw_interface_t *si;
+      pool_foreach(si, (&vnm->interface_main)->sw_interfaces,
+            (
+              {
+              foreach_ip_interface_address (&im->lookup_main, ia, si->sw_if_index,
+                    0 /* honor unnumbered */ ,
+                    (
+                      {
+                      ip4_address_t * x =
+                      ip_interface_address_get_address
+                      (&im->lookup_main, ia);
+                      if (ip4_destination_matches_route
+                    (im, address, x, ia->address_length)
+                    ||
+                    ip4_destination_matches_route (im,
+                           x,
+                           address,
+                           address_length))
+                      return
+                      clib_error_create
+                      ("failed to add %U which conflicts with %U of interface %U",
+                       format_ip4_address_and_length, address,
+                       address_length,
+                       format_ip4_address_and_length, x,
+                       ia->address_length,
+                       format_vnet_sw_if_index_name, vnm,
+                       si->sw_if_index);}
+                    ));
+                }
+            ));
     }
 
   elts_before = pool_elts (lm->if_address_pool);
