@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_bff6d5d5",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 864,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-30T10:48:19Z",
+      "side": 1,
+      "message": "use\n  /* *INDENT-OFF* */\naround all for-each macros.\nyou may also want to consider refactoring some of this inner loop code into a separate function. Heavy indentation is not always a good thing.",
+      "revId": "3e3ce6e088b7cc8e8545531d620a4b461c8425c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_9f0319b8",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 866,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2016-12-30T10:48:19Z",
+      "side": 1,
+      "message": "the CSIT tests are failing in the VRF tests.\nhere you treat prefixes on interfaces in different VRFs as the same prefix. This is wrong. If the interfaces are in different VRFs then the prefixs are different.",
+      "revId": "3e3ce6e088b7cc8e8545531d620a4b461c8425c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
