@@ -58,12 +58,25 @@
   _ (0x31, router_solicitation)			\
   _ (0x32, router_termination)
 
+#define igmp_no_code 0
+
+#define foreach_igmp_code                 \
+  _ (membership_query, 0, igmp_version_1) \
+  _ (membership_query, 1, igmp_version_2)
+
 typedef enum
 {
 #define _(n,f) IGMP_TYPE_##f = n,
   foreach_igmp_type
 #undef _
 } igmp_type_t;
+
+typedef enum
+{
+#define _(t,n,f) IGMP_TYPE_##t##_##f = n,
+  foreach_igmp_code
+#undef _
+} igmp_code_t;
 
 typedef struct
 {

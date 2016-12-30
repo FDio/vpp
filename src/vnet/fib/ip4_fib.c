@@ -80,7 +80,7 @@ static const ip4_fib_table_special_prefix_t ip4_specials[] = {
 	    .fp_proto = FIB_PROTOCOL_IP4,
 	},
 	.ift_source = FIB_SOURCE_SPECIAL,
-	.ift_flag    = FIB_ENTRY_FLAG_DROP,
+	.ift_flag    = FIB_ENTRY_FLAG_LOCAL,
     },
     {
 	/*

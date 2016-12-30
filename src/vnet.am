@@ -336,6 +336,16 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/ip/ip.api
 
 ########################################
+# Internet Group Management Protocol
+########################################
+
+nobase_include_HEADERS +=                       \
+ vnet/igmp/igmp.h
+
+libvnet_la_SOURCES +=                           \
+ vnet/igmp/igmp.c
+
+########################################
 # Bidirectional Forwarding Detection
 ########################################
 
