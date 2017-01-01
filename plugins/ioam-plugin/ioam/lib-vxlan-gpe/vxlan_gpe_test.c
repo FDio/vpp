@@ -466,7 +466,7 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
   ip6_address_t local6;
   u8 ipv4_set = 0, ipv6_set = 0;
   u8 local_set = 0;
-  u32 outer_fib_index;
+  u32 outer_fib_index = 0;
   f64 timeout;
 
 
