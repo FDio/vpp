@@ -136,6 +136,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_TABLE,n)
 	$(call set,RTE_LIBRTE_PIPELINE,n)
 	$(call set,RTE_KNI_KMOD,n)
+	$(call set,RTE_EAL_IGB_UIO,n)
 	@rm -f .config.ok
 
 $(CURDIR)/$(DPDK_TARBALL):
