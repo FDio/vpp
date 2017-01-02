@@ -148,7 +148,7 @@ class VppPGInterface(VppInterface):
         before = len(output.res)
         if filter_out_fn:
             output.res = [p for p in output.res if not filter_out_fn(p)]
-        removed = len(output.res) - before
+        removed = before - len(output.res)
         if removed:
             self.test.logger.debug(
                 "Filtered out %s packets from capture (returning %s)" %
