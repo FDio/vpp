@@ -34,16 +34,9 @@ bfd_us_to_clocks (bfd_main_t * bm, u64 us)
 
 static vlib_node_registration_t bfd_process_node;
 
-typedef enum
-{
-#define F(t, n) BFD_OUTPUT_##t,
-  foreach_bfd_transport (F)
-#undef F
-    BFD_OUTPUT_N_NEXT,
-} bfd_output_next_t;
-
-static u32 bfd_next_index_by_transport[] = {
-#define F(t, n) [BFD_TRANSPORT_##t] = BFD_OUTPUT_##t,
+/* set to 0 here, real values filled at startup */
+static u32 bfd_node_index_by_transport[] = {
+#define F(t, n) [BFD_TRANSPORT_##t] = 0,
   foreach_bfd_transport (F)
 #undef F
 };
@@ -378,7 +371,7 @@ bfd_input_format_trace (u8 * s, va_list * args)
 		      clib_net_to_host_u32 (pkt->des_min_tx));
 	  s = format (s, "    required min rx interval: %u\n",
 		      clib_net_to_host_u32 (pkt->req_min_rx));
-	  s = format (s, "    required min echo rx interval: %u\n",
+	  s = format (s, "    required min echo rx interval: %u",
 		      clib_net_to_host_u32 (pkt->req_min_echo_rx));
 	}
     }
@@ -426,10 +419,12 @@ bfd_add_transport_layer (vlib_main_t * vm, vlib_buffer_t * b,
   switch (bs->transport)
     {
     case BFD_TRANSPORT_UDP4:
-      /* fallthrough */
+      BFD_DBG ("Transport bfd via udp4, bs_idx=%u", bs->bs_idx);
+      bfd_add_udp4_transport (vm, b, &bs->udp);
+      break;
     case BFD_TRANSPORT_UDP6:
-      BFD_DBG ("Transport bfd via udp, bs_idx=%u", bs->bs_idx);
-      bfd_add_udp_transport (vm, b, &bs->udp);
+      BFD_DBG ("Transport bfd via udp6, bs_idx=%u", bs->bs_idx);
+      bfd_add_udp6_transport (vm, b, &bs->udp);
       break;
     }
 }
@@ -448,17 +443,14 @@ bfd_create_frame (vlib_main_t * vm, vlib_node_runtime_t * rt,
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   ASSERT (b->current_data == 0);
 
-  u32 *to_next;
-  u32 n_left_to_next;
+  vlib_frame_t *f =
+    vlib_get_frame_to_node (vm, bfd_node_index_by_transport[bs->transport]);
 
-  vlib_get_next_frame (vm, rt, bfd_next_index_by_transport[bs->transport],
-		       to_next, n_left_to_next);
-
+  u32 *to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
-  n_left_to_next -= 1;
+  f->n_vectors = 1;
 
-  vlib_put_next_frame (vm, rt, bfd_next_index_by_transport[bs->transport],
-		       n_left_to_next);
+  vlib_put_frame_to_node (vm, bfd_node_index_by_transport[bs->transport], f);
   return b;
 }
 
@@ -680,13 +672,8 @@ VLIB_REGISTER_NODE (bfd_process_node, static) = {
   .function = bfd_process,
   .type = VLIB_NODE_TYPE_PROCESS,
   .name = "bfd-process",
-  .n_next_nodes = BFD_OUTPUT_N_NEXT,
-  .next_nodes =
-      {
-#define F(t, n) [BFD_OUTPUT_##t] = n,
-          foreach_bfd_transport (F)
-#undef F
-      },
+  .n_next_nodes = 0,
+  .next_nodes = {},
 };
 /* *INDENT-ON* */
 
@@ -734,6 +721,13 @@ bfd_main_init (vlib_main_t * vm)
   timing_wheel_init (&bm->wheel, now, bm->cpu_cps);
   bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
 
+  vlib_node_t *node = NULL;
+#define F(t, n)                               \
+  node = vlib_get_node_by_name (vm, (u8 *)n); \
+  bfd_node_index_by_transport[BFD_TRANSPORT_##t] = node->index;\
+  BFD_DBG("node '%s' has index %u", n, node->index);
+  foreach_bfd_transport (F);
+#undef F
   return 0;
 }
 

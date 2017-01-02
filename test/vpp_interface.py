@@ -131,7 +131,7 @@ class VppInterface(object):
                 2, count + 2):  # 0: network address, 1: local vpp address
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
             ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
-            ip6 = "fd01:%04x::%04x" % (self.sw_if_index, i)
+            ip6 = "fd01:%x::%x" % (self.sw_if_index, i)
             host = Host(mac, ip4, ip6)
             self._remote_hosts.append(host)
             self._hosts_by_mac[mac] = host
@@ -155,7 +155,7 @@ class VppInterface(object):
         self.has_ip4_config = False
         self.ip4_table_id = 0
 
-        self._local_ip6 = "fd01:%04x::1" % self.sw_if_index
+        self._local_ip6 = "fd01:%x::1" % self.sw_if_index
         self._local_ip6n = socket.inet_pton(socket.AF_INET6, self.local_ip6)
         self.local_ip6_prefix_len = 64
         self.has_ip6_config = False
@@ -225,6 +225,13 @@ class VppInterface(object):
         except AttributeError:
             self.has_ip6_config = False
         self.has_ip6_config = False
+
+    def configure_ipv6_neighbors(self):
+        """For every remote host assign neighbor's MAC to IPv6 address."""
+        for host in self._remote_hosts:
+            macn = host.mac.replace(":", "").decode('hex')
+            self.test.vapi.ip_neighbor_add_del(
+                self.sw_if_index, macn, host.ip6n, is_ipv6=1)
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""

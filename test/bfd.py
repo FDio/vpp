@@ -111,14 +111,24 @@ class VppBFDUDPSession(VppObject):
     def local_addr(self):
         """ BFD session local address (VPP address) """
         if self._local_addr is None:
-            return self._interface.local_ip4
+            if self.af == AF_INET:
+                return self._interface.local_ip4
+            elif self.af == AF_INET6:
+                return self._interface.local_ip6
+            else:
+                raise Exception("Unexpected af %s' % af" % self.af)
         return self._local_addr
 
     @property
     def local_addr_n(self):
         """ BFD session local address (VPP address) - raw, suitable for API """
         if self._local_addr is None:
-            return self._interface.local_ip4n
+            if self.af == AF_INET:
+                return self._interface.local_ip4n
+            elif self.af == AF_INET6:
+                return self._interface.local_ip6n
+            else:
+                raise Exception("Unexpected af %s' % af" % self.af)
         return self._local_addr_n
 
     @property
