@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 
 import unittest
-import socket
-import binascii
-import time
 
 from framework import VppTestCase, VppTestRunner
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
-from scapy.utils import hexdump
-from util import ppp
+
 
 class TestFlowperpkt(VppTestCase):
     """ Flow-per-packet plugin: test both L2 and IP4 reporting """
@@ -22,7 +18,6 @@ class TestFlowperpkt(VppTestCase):
 
         **Config:**
             - create three PG interfaces
-            - create a couple of loopback interfaces
         """
         super(TestFlowperpkt, self).setUp()
 
@@ -37,11 +32,6 @@ class TestFlowperpkt(VppTestCase):
             intf.config_ip4()
             intf.resolve_arp()
 
-    def tearDown(self):
-        """Run standard test teardown"""
-        super(TestFlowperpkt, self).tearDown()
-
-
     def create_stream(self, src_if, dst_if, packet_sizes):
         """Create a packet stream to tickle the plugin
 
@@ -51,8 +41,7 @@ class TestFlowperpkt(VppTestCase):
         """
         pkts = []
         for size in packet_sizes:
-            info = self.create_packet_info(src_if.sw_if_index, 
-                                           dst_if.sw_if_index)
+            info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
             p = (Ether(src=src_if.local_mac, dst=dst_if.remote_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
@@ -63,119 +52,84 @@ class TestFlowperpkt(VppTestCase):
             pkts.append(p)
         return pkts
 
+    @staticmethod
+    def compare_with_mask(payload, masked_expected_data):
+        if len(payload) * 2 != len(masked_expected_data):
+            return False
+
+        # iterate over pairs: raw byte from payload and ASCII code for that byte
+        # from masked payload (or XX if masked)
+        for i in range(len(payload)):
+            p = payload[i]
+            m = masked_expected_data[2 * i:2 * i + 2]
+            if m != "XX":
+                if "%02x" % ord(p) != m:
+                    return False
+        return True
+
     def verify_ipfix(self, collector_if):
         """Check the ipfix capture"""
-        found_data_packet = 0
-        found_template_packet = 0
-        found_l2_data_packet = 0
-        found_l2_template_packet = 0
+        found_data_packet = False
+        found_template_packet = False
+        found_l2_data_packet = False
+        found_l2_template_packet = False
 
         # Scapy, of course, understands ipfix not at all...
         # These data vetted by manual inspection in wireshark
         # X'ed out fields are timestamps, which will absolutely
-        # fail to compare. At L2, kill the pg src MAC address, which
-        # is random.
-        
-        data_udp_string = "1283128300370000000a002fXXXXXXXX00000000000000010100001f0000000100000002ac100102ac10020200XXXXXXXXXXXXXXXX0092"
+        # fail to compare.
 
-        template_udp_string = "12831283003c0000000a0034XXXXXXXX00000002000000010002002401000007000a0004000e000400080004000c000400050001009c000801380002"
+        data_udp_string = "1283128300370000000a002fXXXXXXXX000000000000000101"\
+            "00001f0000000100000002ac100102ac10020200XXXXXXXXXXXXXXXX0092"
 
-        l2_data_udp_string =  "12831283003c0000000a0034XXXXXXXX0000000100000001010100240000000100000002XXXXXXXXXXXX02020000ff020008XXXXXXXXXXXXXXXX0092"
+        template_udp_string = "12831283003c0000000a0034XXXXXXXX00000002000000"\
+            "010002002401000007000a0004000e000400080004000c000400050001009c00"\
+            "0801380002"
 
-        l2_template_udp_string = "12831283003c0000000a0034XXXXXXXX00000002000000010002002401010007000a0004000e0004003800060050000601000002009c000801380002"
+        l2_data_udp_string = "12831283003c0000000a0034XXXXXXXX000000010000000"\
+            "1010100240000000100000002%s02020000ff020008XXXXXXXXXXX"\
+            "XXXXX0092" % self.pg1.local_mac.translate(None, ":")
 
-        cap_x = "X"
-        data_udp_len = len(data_udp_string)
-        template_udp_len = len(template_udp_string)
-        l2_data_udp_len = len(l2_data_udp_string)
-        l2_template_udp_len = len(l2_template_udp_string)
+        l2_template_udp_string = "12831283003c0000000a0034XXXXXXXX00000002000"\
+            "000010002002401010007000a0004000e0004003800060050000601000002009"\
+            "c000801380002"
 
-        self.logger.info("Look for ipfix packets on %s sw_if_index %d " 
+        self.logger.info("Look for ipfix packets on %s sw_if_index %d "
                          % (collector_if.name, collector_if.sw_if_index))
-        capture = collector_if.get_capture()
+        # expecting 4 packets on collector interface based on traffic on other
+        # interfaces
+        capture = collector_if.get_capture(4)
 
         for p in capture:
-            data_result = ""
-            template_result = ""
-            l2_data_result = ""
-            l2_template_result = ""
-            unmasked_result = ""
             ip = p[IP]
             udp = p[UDP]
             self.logger.info("src %s dst %s" % (ip.src, ip.dst))
-            self.logger.info(" udp src_port %s dst_port %s" 
+            self.logger.info(" udp src_port %s dst_port %s"
                              % (udp.sport, udp.dport))
 
-            # Hex-dump the UDP datagram 4 ways in parallel
-            # X'ing out incomparable fields
-            # Python completely bites at this sort of thing, of course
+            payload = str(udp)
 
-            x = str(udp)
-            l = len(x)
-            i = 0
-            while i < l:
-                # If current index within range
-                if i < data_udp_len/2:
-                    # See if we're supposed to don't care the data
-                    if ord(data_udp_string[i*2]) == ord(cap_x[0]):
-                        data_result = data_result + "XX"
-                    else:
-                        data_result = data_result + ("%02x" % ord(x[i]))
-                else:
-                    # index out of range, emit actual data
-                    # The test will fail, but it may help debug, etc.
-                    data_result = data_result + ("%02x" % ord(x[i]))
-                    
-                if i < template_udp_len/2:
-                    if ord(template_udp_string[i*2]) == ord(cap_x[0]):
-                        template_result = template_result + "XX"
-                    else:
-                        template_result = template_result + ("%02x" % ord(x[i]))
-                else:
-                    template_result = template_result + ("%02x" % ord(x[i]))
-
-                if i < l2_data_udp_len/2:
-                    # See if we're supposed to don't care the data
-                    if ord(l2_data_udp_string[i*2]) == ord(cap_x[0]):
-                        l2_data_result = l2_data_result + "XX"
-                    else:
-                        l2_data_result = l2_data_result + ("%02x" % ord(x[i]))
-                else:
-                    # index out of range, emit actual data
-                    # The test will fail, but it may help debug, etc.
-                    l2_data_result = l2_data_result + ("%02x" % ord(x[i]))
-                
-                if i < l2_template_udp_len/2:
-                    if ord(l2_template_udp_string[i*2]) == ord(cap_x[0]):
-                        l2_template_result = l2_template_result + "XX"
-                    else:
-                        l2_template_result = l2_template_result + ("%02x" % ord(x[i]))
-                else:
-                    l2_template_result = l2_template_result + ("%02x" % ord(x[i]))
-                # In case we need to 
-                unmasked_result = unmasked_result + ("%02x" % ord(x[i]))
-
-                i = i + 1
-
-            if data_result == data_udp_string:
-                self.logger.info ("found ip4 data packet")
-                found_data_packet = 1
-            elif template_result == template_udp_string:
-                self.logger.info ("found ip4 template packet")
-                found_template_packet = 1
-            elif l2_data_result == l2_data_udp_string:
-                self.logger.info ("found l2 data packet")
-                found_l2_data_packet = 1
-            elif l2_template_result == l2_template_udp_string:
-                self.logger.info ("found l2 template packet")
-                found_l2_template_packet = 1
+            if self.compare_with_mask(payload, data_udp_string):
+                self.logger.info("found ip4 data packet")
+                found_data_packet = True
+            elif self.compare_with_mask(payload, template_udp_string):
+                self.logger.info("found ip4 template packet")
+                found_template_packet = True
+            elif self.compare_with_mask(payload, l2_data_udp_string):
+                self.logger.info("found l2 data packet")
+                found_l2_data_packet = True
+            elif self.compare_with_mask(payload, l2_template_udp_string):
+                self.logger.info("found l2 template packet")
+                found_l2_template_packet = True
             else:
-                self.logger.info ("unknown pkt '%s'" % unmasked_result)
-                
-        self.assertTrue (found_data_packet == 1)
-        self.assertTrue (found_template_packet == 1)
-        self.assertTrue (found_l2_data_packet == 1)
-        self.assertTrue (found_l2_template_packet == 1)
+                unmasked_payload = "".join(["%02x" % ord(c) for c in payload])
+                self.logger.error("unknown pkt '%s'" % unmasked_payload)
+
+        self.assertTrue(found_data_packet, "Data packet not found")
+        self.assertTrue(found_template_packet, "Template packet not found")
+        self.assertTrue(found_l2_data_packet, "L2 data packet not found")
+        self.assertTrue(found_l2_template_packet,
+                        "L2 template packet not found")
 
     def test_L3_fpp(self):
         """ Flow per packet L3 test """
@@ -186,37 +140,34 @@ class TestFlowperpkt(VppTestCase):
         # an ARP request
 
         self.pg_enable_capture(self.pg_interfaces)
-        self.vapi.cli("set ip arp pg2 172.16.3.2 dead.beef.0002")
-        self.logger.info(self.vapi.cli("set ipfix exporter collector 172.16.3.2 src 172.16.3.1 path-mtu 1450 template-interval 1"))
+        self.pg2.configure_ipv4_neighbors()
+        self.vapi.set_ipfix_exporter(collector_address=self.pg2.remote_ip4n,
+                                     src_address=self.pg2.local_ip4n,
+                                     path_mtu=1450,
+                                     template_interval=1)
 
         # Export flow records for all pkts transmitted on pg1
-
-        self.logger.info(self.vapi.cli("flowperpkt feature add-del pg1"))
-        self.logger.info(self.vapi.cli("flowperpkt feature add-del pg1 l2"))
+        self.vapi.cli("flowperpkt feature add-del pg1")
+        self.vapi.cli("flowperpkt feature add-del pg1 l2")
 
         # Arrange to minimally trace generated ipfix packets
-        self.logger.info(self.vapi.cli("trace add flowperpkt-ipv4 10"))
-        self.logger.info(self.vapi.cli("trace add flowperpkt-l2 10"))
+        self.vapi.cli("trace add flowperpkt-ipv4 10")
+        self.vapi.cli("trace add flowperpkt-l2 10")
 
         # Create a stream from pg0 -> pg1, which causes
         # an ipfix packet to be transmitted on pg2
-        
-        pkts = self.create_stream(self.pg0, self.pg1, 
+
+        pkts = self.create_stream(self.pg0, self.pg1,
                                   self.pg_if_packet_sizes)
         self.pg0.add_stream(pkts)
         self.pg_start()
-        
+
         # Flush the ipfix collector, so we don't need any
         # asinine time.sleep(5) action
+        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
 
-        self.logger.info(self.vapi.cli("ipfix flush"))
-        
         # Make sure the 4 pkts we expect actually showed up
         self.verify_ipfix(self.pg2)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
-            
-        
-    
-        

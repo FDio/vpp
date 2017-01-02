@@ -901,7 +901,6 @@ class VppPapiProvider(object):
             miss_next_index=0xFFFFFFFF,
             current_data_flag=0,
             current_data_offset=0):
-
         """
         :param is_add:
         :param mask:
@@ -918,17 +917,17 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.classify_add_del_table,
-            {'is_add' : is_add,
-             'table_index' : table_index,
-             'nbuckets' : nbuckets,
+            {'is_add': is_add,
+             'table_index': table_index,
+             'nbuckets': nbuckets,
              'memory_size': memory_size,
-             'skip_n_vectors' : skip_n_vectors,
-             'match_n_vectors' : match_n_vectors,
-             'next_table_index' : next_table_index,
-             'miss_next_index' : miss_next_index,
-             'current_data_flag' : current_data_flag,
-             'current_data_offset' : current_data_offset,
-             'mask' : mask})
+             'skip_n_vectors': skip_n_vectors,
+             'match_n_vectors': match_n_vectors,
+             'next_table_index': next_table_index,
+             'miss_next_index': miss_next_index,
+             'current_data_flag': current_data_flag,
+             'current_data_offset': current_data_offset,
+             'mask': mask})
 
     def classify_add_del_session(
             self,
@@ -953,14 +952,14 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.classify_add_del_session,
-            {'is_add' : is_add,
-             'table_index' : table_index,
-             'hit_next_index' : hit_next_index,
-             'opaque_index' : opaque_index,
-             'advance' : advance,
-             'action' : action,
-             'metadata' : metadata,
-             'match' : match})
+            {'is_add': is_add,
+             'table_index': table_index,
+             'hit_next_index': hit_next_index,
+             'opaque_index': opaque_index,
+             'advance': advance,
+             'action': action,
+             'metadata': metadata,
+             'match': match})
 
     def input_acl_set_interface(
             self,
@@ -979,8 +978,29 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.input_acl_set_interface,
-            {'sw_if_index' : sw_if_index,
-             'ip4_table_index' : ip4_table_index,
-             'ip6_table_index' : ip6_table_index,
-             'l2_table_index' : l2_table_index,
-             'is_add' : is_add})
+            {'sw_if_index': sw_if_index,
+             'ip4_table_index': ip4_table_index,
+             'ip6_table_index': ip6_table_index,
+             'l2_table_index': l2_table_index,
+             'is_add': is_add})
+
+    def set_ipfix_exporter(
+            self,
+            collector_address,
+            src_address,
+            path_mtu,
+            template_interval,
+            vrf_id=0,
+            collector_port=4739,
+            udp_checksum=0):
+        return self.api(
+            self.papi.set_ipfix_exporter,
+            {
+                'collector_address': collector_address,
+                'collector_port': collector_port,
+                'src_address': src_address,
+                'vrf_id': vrf_id,
+                'path_mtu': path_mtu,
+                'template_interval': template_interval,
+                'udp_checksum': udp_checksum,
+            })
