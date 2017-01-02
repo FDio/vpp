@@ -25,7 +25,7 @@
 #include <vnet/bfd/bfd_udp.h>
 
 #define foreach_bfd_transport(F) \
-  F (UDP4, "ip4-rewrite")  \
+  F (UDP4, "ip4-rewrite") \
   F (UDP6, "ip6-rewrite")
 
 typedef enum

@@ -76,18 +76,23 @@ class Host(object):
 
     @property
     def ip4(self):
-        """ IPv4 address """
+        """ IPv4 address - string """
         return self._ip4
 
     @property
     def ip4n(self):
-        """ IPv4 address """
+        """ IPv4 address of remote host - raw, suitable as API parameter."""
         return socket.inet_pton(socket.AF_INET, self._ip4)
 
     @property
     def ip6(self):
-        """ IPv6 address """
+        """ IPv6 address - string """
         return self._ip6
+
+    @property
+    def ip6n(self):
+        """ IPv6 address of remote host - raw, suitable as API parameter."""
+        return socket.inet_pton(socket.AF_INET6, self._ip6)
 
     def __init__(self, mac=None, ip4=None, ip6=None):
         self._mac = mac

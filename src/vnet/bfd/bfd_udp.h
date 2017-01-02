@@ -42,8 +42,10 @@ typedef struct
   adj_index_t adj_index;
 } bfd_udp_session_t;
 
-void bfd_add_udp_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			    bfd_udp_session_t * bs);
+void bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
+			     bfd_udp_session_t * bs);
+void bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
+			     bfd_udp_session_t * bs);
 
 #endif /* __included_bfd_udp_h__ */
 

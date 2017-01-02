@@ -31,53 +31,80 @@ static vlib_node_registration_t bfd_udp6_input_node;
 
 bfd_udp_main_t bfd_udp_main;
 
-void bfd_udp_transport_to_buffer (vlib_main_t *vm, vlib_buffer_t *b,
-                                  bfd_udp_session_t *bus)
+void bfd_add_udp4_transport (vlib_main_t *vm, vlib_buffer_t *b,
+                             bfd_udp_session_t *bus)
 {
   udp_header_t *udp;
-  u16 udp_length, ip_length;
-  bfd_udp_key_t *key = &bus->key;
+  const bfd_udp_key_t *key = &bus->key;
 
   b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
-  if (ip46_address_is_ip4 (&key->local_addr))
-    {
-      ip4_header_t *ip4;
-      const size_t data_size = sizeof (*ip4) + sizeof (*udp);
-      vlib_buffer_advance (b, -data_size);
-      ip4 = vlib_buffer_get_current (b);
-      udp = (udp_header_t *)(ip4 + 1);
-      memset (ip4, 0, data_size);
-      ip4->ip_version_and_header_length = 0x45;
-      ip4->ttl = 255;
-      ip4->protocol = IP_PROTOCOL_UDP;
-      ip4->src_address.as_u32 = key->local_addr.ip4.as_u32;
-      ip4->dst_address.as_u32 = key->peer_addr.ip4.as_u32;
-
-      udp->src_port = clib_host_to_net_u16 (50000); /* FIXME */
-      udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
-
-      /* fix ip length, checksum and udp length */
-      ip_length = vlib_buffer_length_in_chain (vm, b);
-
-      ip4->length = clib_host_to_net_u16 (ip_length);
-      ip4->checksum = ip4_header_checksum (ip4);
-
-      udp_length = ip_length - (sizeof (*ip4));
-      udp->length = clib_host_to_net_u16 (udp_length);
-    }
-  else
-    {
-      BFD_ERR ("not implemented");
-      abort ();
-    }
-}
-
-void bfd_add_udp_transport (vlib_main_t *vm, vlib_buffer_t *b,
-                            bfd_udp_session_t *bus)
-{
   vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
-  bfd_udp_transport_to_buffer (vm, b, bus);
+  ip4_header_t *ip4;
+  const size_t headers_size = sizeof (*ip4) + sizeof (*udp);
+  vlib_buffer_advance (b, -headers_size);
+  ip4 = vlib_buffer_get_current (b);
+  udp = (udp_header_t *)(ip4 + 1);
+  memset (ip4, 0, headers_size);
+  ip4->ip_version_and_header_length = 0x45;
+  ip4->ttl = 255;
+  ip4->protocol = IP_PROTOCOL_UDP;
+  ip4->src_address.as_u32 = key->local_addr.ip4.as_u32;
+  ip4->dst_address.as_u32 = key->peer_addr.ip4.as_u32;
+
+  udp->src_port = clib_host_to_net_u16 (50000); /* FIXME */
+  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
+
+  /* fix ip length, checksum and udp length */
+  const u16 ip_length = vlib_buffer_length_in_chain (vm, b);
+
+  ip4->length = clib_host_to_net_u16 (ip_length);
+  ip4->checksum = ip4_header_checksum (ip4);
+
+  const u16 udp_length = ip_length - (sizeof (*ip4));
+  udp->length = clib_host_to_net_u16 (udp_length);
+}
+
+void bfd_add_udp6_transport (vlib_main_t *vm, vlib_buffer_t *b,
+                             bfd_udp_session_t *bus)
+{
+  udp_header_t *udp;
+  const bfd_udp_key_t *key = &bus->key;
+
+  b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+  vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
+  vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
+  ip6_header_t *ip6;
+  const size_t headers_size = sizeof (*ip6) + sizeof (*udp);
+  vlib_buffer_advance (b, -headers_size);
+  ip6 = vlib_buffer_get_current (b);
+  udp = (udp_header_t *)(ip6 + 1);
+  memset (ip6, 0, headers_size);
+  ip6->ip_version_traffic_class_and_flow_label =
+      clib_host_to_net_u32 (0x6 << 28);
+  ip6->hop_limit = 255;
+  ip6->protocol = IP_PROTOCOL_UDP;
+  clib_memcpy (&ip6->src_address, &key->local_addr.ip6,
+               sizeof (ip6->src_address));
+  clib_memcpy (&ip6->dst_address, &key->peer_addr.ip6,
+               sizeof (ip6->dst_address));
+
+  udp->src_port = clib_host_to_net_u16 (50000); /* FIXME */
+  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
+
+  /* fix ip payload length and udp length */
+  const u16 udp_length = vlib_buffer_length_in_chain (vm, b) - (sizeof (*ip6));
+  udp->length = clib_host_to_net_u16 (udp_length);
+  ip6->payload_length = udp->length;
+
+  /* IPv6 UDP checksum is mandatory */
+  int bogus = 0;
+  udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+  ASSERT (bogus == 0);
+  if (udp->checksum == 0)
+    {
+      udp->checksum = 0xffff;
+    }
 }
 
 static bfd_session_t *bfd_lookup_session (bfd_udp_main_t *bum,
@@ -345,29 +372,29 @@ static bfd_udp_error_t bfd_udp4_verify_transport (const ip4_header_t *ip4,
   const bfd_udp_key_t *key = &bus->key;
   if (ip4->src_address.as_u32 != key->peer_addr.ip4.as_u32)
     {
-      BFD_ERR ("IP src addr mismatch, got %U, expected %U", format_ip4_address,
-               ip4->src_address.as_u32, format_ip4_address,
-               key->peer_addr.ip4.as_u32);
+      BFD_ERR ("IPv4 src addr mismatch, got %U, expected %U",
+               format_ip4_address, ip4->src_address.as_u8, format_ip4_address,
+               key->peer_addr.ip4.as_u8);
       return BFD_UDP_ERROR_BAD;
     }
   if (ip4->dst_address.as_u32 != key->local_addr.ip4.as_u32)
     {
-      BFD_ERR ("IP dst addr mismatch, got %U, expected %U", format_ip4_address,
-               ip4->dst_address.as_u32, format_ip4_address,
-               key->local_addr.ip4.as_u32);
+      BFD_ERR ("IPv4 dst addr mismatch, got %U, expected %U",
+               format_ip4_address, ip4->dst_address.as_u8, format_ip4_address,
+               key->local_addr.ip4.as_u8);
       return BFD_UDP_ERROR_BAD;
     }
   const u8 expected_ttl = 255;
   if (ip4->ttl != expected_ttl)
     {
-      BFD_ERR ("IP unexpected TTL value %d, expected %d", ip4->ttl,
+      BFD_ERR ("IPv4 unexpected TTL value %u, expected %u", ip4->ttl,
                expected_ttl);
       return BFD_UDP_ERROR_BAD;
     }
   if (clib_net_to_host_u16 (udp->src_port) < 49152 ||
       clib_net_to_host_u16 (udp->src_port) > 65535)
     {
-      BFD_ERR ("Invalid UDP src port %d, out of range <49152,65535>",
+      BFD_ERR ("Invalid UDP src port %u, out of range <49152,65535>",
                udp->src_port);
     }
   return BFD_UDP_ERROR_NONE;
@@ -460,10 +487,128 @@ static bfd_udp_error_t bfd_udp4_scan (vlib_main_t *vm, vlib_node_runtime_t *rt,
   return BFD_UDP_ERROR_NONE;
 }
 
-static bfd_udp_error_t bfd_udp6_scan (vlib_main_t *vm, vlib_buffer_t *b)
+static void bfd_udp6_find_headers (vlib_buffer_t *b, const ip6_header_t **ip6,
+                                   const udp_header_t **udp)
 {
-  /* TODO */
-  return BFD_UDP_ERROR_BAD;
+  /* sanity check first */
+  const i32 start = vnet_buffer (b)->ip.start_of_ip_header;
+  if (start < 0 && start < sizeof (b->pre_data))
+    {
+      BFD_ERR ("Start of ip header is before pre_data, ignoring");
+      *ip6 = NULL;
+      *udp = NULL;
+      return;
+    }
+  *ip6 = (ip6_header_t *)(b->data + start);
+  if ((u8 *)*ip6 > (u8 *)vlib_buffer_get_current (b))
+    {
+      BFD_ERR ("Start of ip header is beyond current data, ignoring");
+      *ip6 = NULL;
+      *udp = NULL;
+      return;
+    }
+  *udp = (udp_header_t *)((*ip6) + 1);
+}
+
+static bfd_udp_error_t bfd_udp6_verify_transport (const ip6_header_t *ip6,
+                                                  const udp_header_t *udp,
+                                                  const bfd_session_t *bs)
+{
+  const bfd_udp_session_t *bus = &bs->udp;
+  const bfd_udp_key_t *key = &bus->key;
+  if (ip6->src_address.as_u64[0] != key->peer_addr.ip6.as_u64[0] &&
+      ip6->src_address.as_u64[1] != key->peer_addr.ip6.as_u64[1])
+    {
+      BFD_ERR ("IP src addr mismatch, got %U, expected %U", format_ip6_address,
+               ip6, format_ip6_address, &key->peer_addr.ip6);
+      return BFD_UDP_ERROR_BAD;
+    }
+  if (ip6->dst_address.as_u64[0] != key->local_addr.ip6.as_u64[0] &&
+      ip6->dst_address.as_u64[1] != key->local_addr.ip6.as_u64[1])
+    {
+      BFD_ERR ("IP dst addr mismatch, got %U, expected %U", format_ip6_address,
+               ip6, format_ip6_address, &key->local_addr.ip6);
+      return BFD_UDP_ERROR_BAD;
+    }
+  const u8 expected_hop_limit = 255;
+  if (ip6->hop_limit != expected_hop_limit)
+    {
+      BFD_ERR ("IPv6 unexpected hop-limit value %u, expected %u",
+               ip6->hop_limit, expected_hop_limit);
+      return BFD_UDP_ERROR_BAD;
+    }
+  if (clib_net_to_host_u16 (udp->src_port) < 49152 ||
+      clib_net_to_host_u16 (udp->src_port) > 65535)
+    {
+      BFD_ERR ("Invalid UDP src port %u, out of range <49152,65535>",
+               udp->src_port);
+    }
+  return BFD_UDP_ERROR_NONE;
+}
+
+static bfd_udp_error_t bfd_udp6_scan (vlib_main_t *vm, vlib_node_runtime_t *rt,
+                                      vlib_buffer_t *b, bfd_session_t **bs_out)
+{
+  const bfd_pkt_t *pkt = vlib_buffer_get_current (b);
+  if (sizeof (*pkt) > b->current_length)
+    {
+      BFD_ERR (
+          "Payload size %d too small to hold bfd packet of minimum size %d",
+          b->current_length, sizeof (*pkt));
+      return BFD_UDP_ERROR_BAD;
+    }
+  const ip6_header_t *ip6;
+  const udp_header_t *udp;
+  bfd_udp6_find_headers (b, &ip6, &udp);
+  if (!ip6 || !udp)
+    {
+      BFD_ERR ("Couldn't find ip6 or udp header");
+      return BFD_UDP_ERROR_BAD;
+    }
+  if (!bfd_verify_pkt_common (pkt))
+    {
+      return BFD_UDP_ERROR_BAD;
+    }
+  bfd_session_t *bs = NULL;
+  if (pkt->your_disc)
+    {
+      BFD_DBG ("Looking up BFD session using discriminator %u",
+               pkt->your_disc);
+      bs = bfd_find_session_by_disc (bfd_udp_main.bfd_main, pkt->your_disc);
+    }
+  else
+    {
+      bfd_udp_key_t key;
+      memset (&key, 0, sizeof (key));
+      key.sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+      key.local_addr.ip6.as_u64[0] = ip6->dst_address.as_u64[0];
+      key.local_addr.ip6.as_u64[1] = ip6->dst_address.as_u64[1];
+      key.peer_addr.ip6.as_u64[0] = ip6->src_address.as_u64[0];
+      key.peer_addr.ip6.as_u64[1] = ip6->src_address.as_u64[1];
+      BFD_DBG ("Looking up BFD session using key (sw_if_index=%u, local=%U, "
+               "peer=%U)",
+               key.sw_if_index, format_ip6_address, &key.local_addr,
+               format_ip6_address, &key.peer_addr);
+      bs = bfd_lookup_session (&bfd_udp_main, &key);
+    }
+  if (!bs)
+    {
+      BFD_ERR ("BFD session lookup failed - no session matches BFD pkt");
+      return BFD_UDP_ERROR_BAD;
+    }
+  BFD_DBG ("BFD session found, bs_idx=%u", bs->bs_idx);
+  if (!bfd_verify_pkt_session (pkt, b->current_length, bs))
+    {
+      return BFD_UDP_ERROR_BAD;
+    }
+  bfd_udp_error_t err;
+  if (BFD_UDP_ERROR_NONE != (err = bfd_udp6_verify_transport (ip6, udp, bs)))
+    {
+      return err;
+    }
+  bfd_rpc_update_session (bs->bs_idx, pkt);
+  *bs_out = bs;
+  return BFD_UDP_ERROR_NONE;
 }
 
 /*
@@ -504,7 +649,7 @@ static uword bfd_udp_input (vlib_main_t *vm, vlib_node_runtime_t *rt,
       /* scan this bfd pkt. error0 is the counter index to bmp */
       if (is_ipv6)
         {
-          error0 = bfd_udp6_scan (vm, b0);
+          error0 = bfd_udp6_scan (vm, rt, b0, &bs);
         }
       else
         {
