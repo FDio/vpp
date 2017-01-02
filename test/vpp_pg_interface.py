@@ -91,8 +91,7 @@ class VppPGInterface(VppInterface):
         self._input_cli = "packet-generator new pcap %s source pg%u name %s" % (
             self.in_path, self.pg_index, self.cap_name)
 
-    def enable_capture(self):
-        """ Enable capture on this packet-generator interface"""
+    def rotate_out_file(self):
         try:
             if os.path.isfile(self.out_path):
                 os.rename(self.out_path,
@@ -104,6 +103,10 @@ class VppPGInterface(VppInterface):
                            self._out_file))
         except:
             pass
+
+    def enable_capture(self):
+        """ Enable capture on this packet-generator interface"""
+        self.rotate_out_file()
         # FIXME this should be an API, but no such exists atm
         self.test.vapi.cli(self.capture_cli)
         self._pcap_reader = None
@@ -328,6 +331,7 @@ class VppPGInterface(VppInterface):
             self.test.logger.info("No ARP received on port %s" %
                                   pg_interface.name)
             return
+        self.rotate_out_file()
         arp_reply = captured_packet.copy()  # keep original for exception
         # Make Dot1AD packet content recognizable to scapy
         if arp_reply.type == 0x88a8:
@@ -387,6 +391,7 @@ class VppPGInterface(VppInterface):
                 self._local_mac = opt.lladdr
                 self.test.logger.debug(self.test.vapi.cli("show trace"))
                 # we now have the MAC we've been after
+                self.rotate_out_file()
                 return
             except:
                 self.test.logger.info(
@@ -394,4 +399,5 @@ class VppPGInterface(VppInterface):
             now = time.time()
 
         self.test.logger.debug(self.test.vapi.cli("show trace"))
+        self.rotate_out_file()
         raise Exception("Timeout while waiting for NDP response")

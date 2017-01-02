@@ -164,7 +164,7 @@ class TestFlowperpkt(VppTestCase):
 
         # Flush the ipfix collector, so we don't need any
         # asinine time.sleep(5) action
-        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        self.vapi.cli("ipfix flush")
 
         # Make sure the 4 pkts we expect actually showed up
         self.verify_ipfix(self.pg2)
