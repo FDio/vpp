@@ -173,11 +173,11 @@ class VppPGInterface(VppInterface):
             expected_count = \
                 self.test.get_packet_count_for_if_idx(self.sw_if_index)
             based_on = "based on stored packet_infos"
+            if expected_count == 0:
+                raise Exception(
+                    "Internal error, expected packet count for %s is 0!" % name)
         self.test.logger.debug("Expecting to capture %s(%s) packets on %s" % (
             expected_count, based_on, name))
-        if expected_count == 0:
-            raise Exception(
-                "Internal error, expected packet count for %s is 0!" % name)
         while remaining_time > 0:
             before = time.time()
             capture = self._get_capture(remaining_time, filter_out_fn)
@@ -186,6 +186,8 @@ class VppPGInterface(VppInterface):
                 if len(capture.res) == expected_count:
                     # bingo, got the packets we expected
                     return capture
+            elif expected_count == 0:
+                return None
             remaining_time -= elapsed_time
         if capture:
             raise Exception("Captured packets mismatch, captured %s packets, "
@@ -209,8 +211,8 @@ class VppPGInterface(VppInterface):
                     if len(capture.res) == 0:
                         # junk filtered out, we're good
                         return
-                self.test.logger.error(
-                    ppc("Unexpected packets captured:", capture))
+                    self.test.logger.error(
+                        ppc("Unexpected packets captured:", capture))
             except:
                 pass
             if remark:
@@ -235,9 +237,8 @@ class VppPGInterface(VppInterface):
             self.test.logger.debug("Waiting for capture file %s to appear, "
                                    "timeout is %ss" % (self.out_path, timeout))
         else:
-            self.test.logger.debug(
-                "Capture file %s already exists" %
-                self.out_path)
+            self.test.logger.debug("Capture file %s already exists" %
+                                   self.out_path)
             return True
         while time.time() < limit:
             if os.path.isfile(self.out_path):
