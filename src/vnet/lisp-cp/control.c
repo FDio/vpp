@@ -512,7 +512,12 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   pool_get (lcm->fwd_entry_pool, fe);
   fe->locator_pairs = a->locator_pairs;
   gid_address_copy (&fe->reid, &a->rmt_eid);
-  gid_address_copy (&fe->leid, &a->lcl_eid);
+
+  if (is_src_dst)
+    gid_address_copy (&fe->leid, &a->lcl_eid);
+  else
+    gid_address_copy (&fe->leid, &src_map->eid);
+
   fe->is_src_dst = is_src_dst;
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
 	    fe - lcm->fwd_entry_pool);
@@ -4486,13 +4491,26 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
   return 0;
 }
 
+static void
+find_ip_header (vlib_buffer_t * b, u8 ** ip_hdr)
+{
+  const i32 start = vnet_buffer (b)->ip.start_of_ip_header;
+  if (start < 0 && start < -sizeof (b->pre_data))
+    {
+      *ip_hdr = 0;
+      return;
+    }
+
+  *ip_hdr = b->data + start;
+  if ((u8 *) * ip_hdr > (u8 *) vlib_buffer_get_current (b))
+    *ip_hdr = 0;
+}
+
 void
 process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
 		     vlib_buffer_t * b)
 {
-  u8 *ip_hdr = 0, *udp_hdr;
-  ip4_header_t *ip4;
-  ip6_header_t *ip6;
+  u8 *ip_hdr = 0;
   ip_address_t *dst_loc = 0, probed_loc, src_loc;
   mapping_t m;
   map_request_hdr_t *mreq_hdr;
@@ -4502,39 +4520,15 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
   gid_address_t *itr_rlocs = 0;
 
   mreq_hdr = vlib_buffer_get_current (b);
-
-  // TODO ugly workaround to find out whether LISP is carried by ip4 or 6
-  // and needs to be fixed
-  udp_hdr = (u8 *) vlib_buffer_get_current (b) - sizeof (udp_header_t);
-  ip4 = (ip4_header_t *) (udp_hdr - sizeof (ip4_header_t));
-  ip6 = (ip6_header_t *) (udp_hdr - sizeof (ip6_header_t));
-
-  if ((ip4->ip_version_and_header_length & 0xF0) == 0x40)
-    ip_hdr = (u8 *) ip4;
-  else
-    {
-      u32 flags = clib_net_to_host_u32
-	(ip6->ip_version_traffic_class_and_flow_label);
-      if ((flags & 0xF0000000) == 0x60000000)
-	ip_hdr = (u8 *) ip6;
-      else
-	{
-	  clib_warning ("internal error: cannot determine whether packet "
-			"is ip4 or 6!");
-	  return;
-	}
-    }
-
-  vlib_buffer_pull (b, sizeof (*mreq_hdr));
-
-  nonce = MREQ_NONCE (mreq_hdr);
-
   if (!MREQ_SMR (mreq_hdr) && !MREQ_RLOC_PROBE (mreq_hdr))
     {
       clib_warning
 	("Only SMR Map-Requests and RLOC probe supported for now!");
       return;
     }
+
+  vlib_buffer_pull (b, sizeof (*mreq_hdr));
+  nonce = MREQ_NONCE (mreq_hdr);
 
   /* parse src eid */
   len = lisp_msg_parse_addr (b, &src);
@@ -4564,6 +4558,13 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
 	}
       else if (MREQ_RLOC_PROBE (mreq_hdr))
 	{
+	  find_ip_header (b, &ip_hdr);
+	  if (!ip_hdr)
+	    {
+	      clib_warning ("Cannot find the IP header!");
+	      return;
+	    }
+
 	  memset (&m, 0, sizeof (m));
 	  u32 mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
 
