@@ -138,7 +138,7 @@ typedef enum {
 } vxlan_input_error_t;
 
 typedef struct {
-  ip46_address_t ip;
+  ip46_address_t * ip;
   fib_node_index_t fib_entry_index;
   adj_index_t mcast_adj_index;
 } mcast_remote_t;
