@@ -258,6 +258,9 @@ static clib_error_t * " plugin-name "_init (vlib_main_t * vm)
 
   error = " plugin-name "_plugin_api_hookup (vm);
 
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (sm, &api_main);
+
   vec_free(name);
 
   return error;
