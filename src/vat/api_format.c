@@ -3574,7 +3574,7 @@ _(sw_interface_set_dpdk_hqos_subport_reply)             \
 _(sw_interface_set_dpdk_hqos_tctbl_reply)               \
 _(bridge_domain_add_del_reply)                          \
 _(sw_interface_set_l2_xconnect_reply)                   \
-_(l2fib_add_del_reply)                                  \
+_(l2_fib_add_del_reply)                                 \
 _(ip_add_del_route_reply)                               \
 _(mpls_route_add_del_reply)                             \
 _(mpls_ip_bind_unbind_reply)                            \
@@ -3734,7 +3734,7 @@ _(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                               \
 _(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
-_(L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                             \
+_(L2_FIB_ADD_DEL_REPLY, l2_fib_add_del_reply)                           \
 _(L2_FLAGS_REPLY, l2_flags_reply)                                       \
 _(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
 _(TAP_CONNECT_REPLY, tap_connect_reply)					\
@@ -5506,10 +5506,10 @@ api_bridge_domain_add_del (vat_main_t * vam)
 }
 
 static int
-api_l2fib_add_del (vat_main_t * vam)
+api_l2_fib_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_l2fib_add_del_t *mp;
+  vl_api_l2_fib_add_del_t *mp;
   f64 timeout;
   u64 mac = 0;
   u8 mac_set = 0;
@@ -5593,7 +5593,7 @@ api_l2fib_add_del (vat_main_t * vam)
 
   for (j = 0; j < count; j++)
     {
-      M (L2FIB_ADD_DEL, l2fib_add_del);
+      M (L2_FIB_ADD_DEL, l2_fib_add_del);
 
       mp->mac = mac;
       mp->bd_id = ntohl (bd_id);
@@ -17445,7 +17445,7 @@ _(sw_interface_set_dpdk_hqos_tctbl,                                     \
 _(bridge_domain_add_del,                                                \
   "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [del]\n") \
 _(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                   \
-_(l2fib_add_del,                                                        \
+_(l2_fib_add_del,                                                        \
   "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
 _(l2_flags,                                                             \
   "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood]\n") \
