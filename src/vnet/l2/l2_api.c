@@ -273,6 +273,156 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
 }
 
 static void
+vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  bd_main_t *bdm = &bd_main;
+  vl_api_bridge_domain_add_del_reply_t *rmp;
+  int rv = 0;
+  u32 enable_flags = 0, disable_flags = 0;
+  u32 bd_id = ntohl (mp->bd_id);
+  u32 bd_index;
+
+  if (mp->is_add)
+    {
+      bd_index = bd_find_or_add_bd_index (bdm, bd_id);
+
+      if (mp->flood)
+	enable_flags |= L2_FLOOD;
+      else
+	disable_flags |= L2_FLOOD;
+
+      if (mp->uu_flood)
+	enable_flags |= L2_UU_FLOOD;
+      else
+	disable_flags |= L2_UU_FLOOD;
+
+      if (mp->forward)
+	enable_flags |= L2_FWD;
+      else
+	disable_flags |= L2_FWD;
+
+      if (mp->arp_term)
+	enable_flags |= L2_ARP_TERM;
+      else
+	disable_flags |= L2_ARP_TERM;
+
+      if (mp->learn)
+	enable_flags |= L2_LEARN;
+      else
+	disable_flags |= L2_LEARN;
+
+      if (enable_flags)
+	bd_set_flags (vm, bd_index, enable_flags, 1 /* enable */ );
+
+      if (disable_flags)
+	bd_set_flags (vm, bd_index, disable_flags, 0 /* disable */ );
+
+      bd_set_mac_age (vm, bd_index, mp->mac_age);
+    }
+  else
+    rv = bd_delete_bd_index (bdm, bd_id);
+
+  REPLY_MACRO (VL_API_BRIDGE_DOMAIN_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_bridge_domain_details_t_handler (vl_api_bridge_domain_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+  vl_api_bridge_domain_sw_if_details_t_handler
+  (vl_api_bridge_domain_sw_if_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+send_bridge_domain_details (unix_shared_memory_queue_t * q,
+			    l2_bridge_domain_t * bd_config,
+			    u32 n_sw_ifs, u32 context)
+{
+  vl_api_bridge_domain_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_BRIDGE_DOMAIN_DETAILS);
+  mp->bd_id = ntohl (bd_config->bd_id);
+  mp->flood = bd_feature_flood (bd_config);
+  mp->uu_flood = bd_feature_uu_flood (bd_config);
+  mp->forward = bd_feature_forward (bd_config);
+  mp->learn = bd_feature_learn (bd_config);
+  mp->arp_term = bd_feature_arp_term (bd_config);
+  mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
+  mp->mac_age = bd_config->mac_age;
+  mp->n_sw_ifs = ntohl (n_sw_ifs);
+  mp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+send_bd_sw_if_details (l2input_main_t * l2im,
+		       unix_shared_memory_queue_t * q,
+		       l2_flood_member_t * member, u32 bd_id, u32 context)
+{
+  vl_api_bridge_domain_sw_if_details_t *mp;
+  l2_input_config_t *input_cfg;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_BRIDGE_DOMAIN_SW_IF_DETAILS);
+  mp->bd_id = ntohl (bd_id);
+  mp->sw_if_index = ntohl (member->sw_if_index);
+  input_cfg = vec_elt_at_index (l2im->configs, member->sw_if_index);
+  mp->shg = input_cfg->shg;
+  mp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
+{
+  bd_main_t *bdm = &bd_main;
+  l2input_main_t *l2im = &l2input_main;
+  unix_shared_memory_queue_t *q;
+  l2_bridge_domain_t *bd_config;
+  u32 bd_id, bd_index;
+  u32 end;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  if (q == 0)
+    return;
+
+  bd_id = ntohl (mp->bd_id);
+
+  bd_index = (bd_id == ~0) ? 0 : bd_find_or_add_bd_index (bdm, bd_id);
+  end = (bd_id == ~0) ? vec_len (l2im->bd_configs) : bd_index + 1;
+  for (; bd_index < end; bd_index++)
+    {
+      bd_config = l2input_bd_config_from_index (l2im, bd_index);
+      /* skip dummy bd_id 0 */
+      if (bd_config && (bd_config->bd_id > 0))
+	{
+	  u32 n_sw_ifs;
+	  l2_flood_member_t *m;
+
+	  n_sw_ifs = vec_len (bd_config->members);
+	  send_bridge_domain_details (q, bd_config, n_sw_ifs, mp->context);
+
+	  vec_foreach (m, bd_config->members)
+	  {
+	    send_bd_sw_if_details (l2im, q, m, bd_config->bd_id, mp->context);
+	  }
+	}
+    }
+}
+
+static void
 vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();

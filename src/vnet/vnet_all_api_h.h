@@ -47,6 +47,7 @@
 #include <vnet/ipsec-gre/ipsec_gre.api.h>
 #include <vnet/lisp-cp/lisp.api.h>
 #include <vnet/lisp-gpe/lisp_gpe.api.h>
+#include <vnet/mpls/mpls.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
