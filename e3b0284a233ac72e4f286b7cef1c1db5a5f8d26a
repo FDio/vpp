@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_08bc8d68",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Reworked to use dictionary pg_if_by_vrf_id.",
+      "parentUuid": "5a2585a7_d0e2b9d4",
+      "range": {
+        "startLine": 159,
+        "startChar": 39,
+        "endLine": 159,
+        "endChar": 55
+      },
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_10c1612e",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 3
@@ -36,6 +60,24 @@
       "writtenOn": "2016-12-21T09:06:42Z",
       "side": 1,
       "message": "if not vrf_id in self.vrf_list: ?",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_10a72151",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_10c1612e",
       "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -59,6 +101,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_b06ded06",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_f0ddb515",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_10d8411c",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 3
@@ -70,6 +130,24 @@
       "writtenOn": "2016-12-21T09:06:42Z",
       "side": 1,
       "message": "same as above - maybe the map needs to map vrf_id to a tuple\n\n(pg_if from line 159, [list of pg_if used by foreach on line 170])",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e8b0218d",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Reworked to use dictionary pg_if_by_vrf_id.",
+      "parentUuid": "5a2585a7_10d8411c",
       "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -93,6 +171,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_707785d5",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_f004957f",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_d0099996",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 3
@@ -104,6 +200,24 @@
       "writtenOn": "2016-12-21T09:06:42Z",
       "side": 1,
       "message": "as above",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_507489ce",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_d0099996",
       "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -133,6 +247,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_420b96d6",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_b0fe0d6a",
+      "range": {
+        "startLine": 191,
+        "startChar": 3,
+        "endLine": 201,
+        "endChar": 42
+      },
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_70cae550",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 3
@@ -144,6 +282,24 @@
       "writtenOn": "2016-12-21T09:06:42Z",
       "side": 1,
       "message": "for dst_host in dst_if.remote_hosts:",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_b0e84d7d",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_70cae550",
       "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -167,6 +323,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_f0601537",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_d0bbd9c2",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_f0b6d5db",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 3
@@ -178,6 +352,24 @@
       "writtenOn": "2016-12-21T09:06:42Z",
       "side": 1,
       "message": "https://docs.python.org/2/library/unittest.html#unittest.TestCase.assertIsNone",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_50512961",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 275,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_f0b6d5db",
       "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -201,6 +393,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_30e57da8",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 332,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_10aa8170",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_d094f938",
         "filename": "test/vpp_interface.py",
         "patchSetId": 3
@@ -212,6 +422,24 @@
       "writtenOn": "2016-12-21T09:06:42Z",
       "side": 1,
       "message": "deleted? this is confusing",
+      "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_f01255b3",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-01-03T16:52:14Z",
+      "side": 1,
+      "message": "Copy/paste error...\nDone",
+      "parentUuid": "5a2585a7_d094f938",
       "revId": "e3b0284a233ac72e4f286b7cef1c1db5a5f8d26a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
