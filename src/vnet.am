@@ -498,15 +498,18 @@ libvnet_la_SOURCES +=				\
  vnet/mpls/node.c				\
  vnet/mpls/interface.c			        \
  vnet/mpls/mpls_tunnel.c		        \
- vnet/mpls/pg.c
+ vnet/mpls/pg.c			        \
+ vnet/mpls/mpls_api.c
 
 nobase_include_HEADERS +=			\
  vnet/mpls/mpls.h				\
  vnet/mpls/mpls_types.h				\
  vnet/mpls/mpls_tunnel.h			\
  vnet/mpls/packet.h				\
- vnet/mpls/error.def
+ vnet/mpls/error.def			\
+ vnet/mpls/mpls.api.h
 
+API_FILES += vnet/mpls/mpls.api
 
 ########################################
 # Tunnel protocol: vxlan-gpe
@@ -666,13 +669,17 @@ nobase_include_HEADERS +=			\
 if WITH_IPV6SR
 libvnet_la_SOURCES +=				\
  vnet/sr/sr.c					\
- vnet/sr/sr_replicate.c
+ vnet/sr/sr_replicate.c				\
+ vnet/sr/sr_api.c
 endif
 
 nobase_include_HEADERS +=			\
  vnet/sr/sr_packet.h				\
  vnet/sr/sr_error.def				\
- vnet/sr/sr.h
+ vnet/sr/sr.h						\
+ vnet/sr/sr.api.h
+
+API_FILES += vnet/sr/sr.api
 
 ########################################
 # DHCPv6 proxy
