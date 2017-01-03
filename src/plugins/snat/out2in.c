@@ -872,6 +872,13 @@ snat_out2in_worker_handoff_fn (vlib_main_t * vm,
       key0.port = udp0->dst_port;
       key0.fib_index = rx_fib_index0;
 
+      if (PREDICT_FALSE(ip0->protocol == IP_PROTOCOL_ICMP))
+        {
+          icmp46_header_t * icmp0 = (icmp46_header_t *) udp0;
+          icmp_echo_header_t *echo0 = (icmp_echo_header_t *)(icmp0+1);
+          key0.port = echo0->identifier;
+        }
+
       kv0.key = key0.as_u64;
 
       /* Ever heard of of the "user" before? */
