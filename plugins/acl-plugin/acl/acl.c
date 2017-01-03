@@ -1044,6 +1044,7 @@ typedef struct
   u8 prefix_len;
   u32 count;
   u32 table_index;
+  u32 arp_table_index;
 } macip_match_type_t;
 
 static u32
@@ -1127,6 +1128,34 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
   vec_sort_with_function (mvec, match_type_compare);
   /* Create the classifier tables */
   last_table = ~0;
+  /* First add ARP tables */
+  vec_foreach (mt, mvec)
+  {
+    int mask_len;
+    int is6 = mt->is_ipv6;
+
+    mt->arp_table_index = ~0;
+    if (!is6)
+      {
+        memset (mask, 0, sizeof (mask));
+        memcpy (&mask[6], mt->mac_mask, 6);
+        memset (&mask[12], 0xff, 2); /* ethernet protocol */
+        memcpy (&mask[14 + 8], mt->mac_mask, 6);
+
+        for (i = 0; i < (mt->prefix_len / 8); i++)
+          mask[14 + 14 + i] = 0xff;
+        if (mt->prefix_len % 8)
+          mask[14 + 14 + (mt->prefix_len / 8)] = 0xff - ((1 << (8 - mt->prefix_len % 8)) - 1);
+
+        mask_len = ((14 + 14 + ((mt->prefix_len+7) / 8) +
+                (sizeof (u32x4)-1))/sizeof(u32x4)) * sizeof (u32x4);
+        acl_classify_add_del_table_small (cm, mask, mask_len, last_table,
+                               (~0 == last_table) ? 0 : ~0, &mt->arp_table_index,
+                               1);
+        last_table = mt->arp_table_index;
+      }
+  }
+  /* Now add IP[46] tables */
   vec_foreach (mt, mvec)
   {
     int mask_len;
@@ -1167,13 +1196,18 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
       int l3_src_offs = get_l3_src_offset(is6);
       memset (mask, 0, sizeof (mask));
       memcpy (&mask[6], a->rules[i].src_mac, 6);
+      memset (&mask[12], 0xff, 2); /* ethernet protocol */
       if (is6)
 	{
 	  memcpy (&mask[l3_src_offs], &a->rules[i].src_ip_addr.ip6, 16);
+	  mask[12] = 0x86;
+	  mask[13] = 0xdd;
 	}
       else
 	{
 	  memcpy (&mask[l3_src_offs], &a->rules[i].src_ip_addr.ip4, 4);
+	  mask[12] = 0x08;
+	  mask[13] = 0x00;
 	}
       match_type_index =
 	macip_find_match_type (mvec, a->rules[i].src_mac_mask,
@@ -1183,6 +1217,19 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
       vnet_classify_add_del_session (cm, mvec[match_type_index].table_index,
 				     mask, a->rules[i].is_permit ? ~0 : 0, i,
 				     0, action, metadata, 1);
+      /* add ARP table entry too */
+      if (!is6 && (mvec[match_type_index].arp_table_index != ~0))
+        {
+          memset (mask, 0, sizeof (mask));
+          memcpy (&mask[6], a->rules[i].src_mac, 6);
+          mask[12] = 0x08;
+          mask[13] = 0x06;
+          memcpy (&mask[14 + 8], a->rules[i].src_mac, 6);
+          memcpy (&mask[14 + 14], &a->rules[i].src_ip_addr.ip4, 4);
+          vnet_classify_add_del_session (cm, mvec[match_type_index].arp_table_index,
+                                    mask, a->rules[i].is_permit ? ~0 : 0, i,
+                                    0, action, metadata, 1);
+        }
     }
   return 0;
 }
