@@ -36,3 +36,232 @@ define l2_xconnect_dump
   u32 context;
 };
 
+/** \brief l2 fib table entry structure
+    @param bd_id - the l2 fib / bridge domain table id
+    @param mac - the entry's mac address
+    @param sw_if_index - index of the interface
+    @param static_mac - the entry is statically configured.
+    @param filter_mac - the entry is a mac filter entry.
+    @param bvi_mac - the mac address is a bridge virtual interface
+*/
+define l2_fib_table_entry
+{
+  u32 context;
+  u32 bd_id;
+  u64 mac;
+  u32 sw_if_index;
+  u8 static_mac;
+  u8 filter_mac;
+  u8 bvi_mac;
+};
+
+/** \brief Dump l2 fib (aka bridge domain) table
+    @param client_index - opaque cookie to identify the sender
+    @param bd_id - the l2 fib / bridge domain table identifier
+*/
+define l2_fib_table_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+};
+
+/** \brief L2 fib clear table request, clear all mac entries in the l2 fib
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define l2_fib_clear_table
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief L2 fib clear table response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define l2_fib_clear_table_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief L2 FIB add entry request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mac - the entry's mac address
+    @param bd_id - the entry's bridge domain id
+    @param sw_if_index - the interface
+    @param is_add - If non zero add the entry, else delete it
+    @param static_mac - 
+    @param filter_mac -
+*/
+define l2fib_add_del
+{
+  u32 client_index;
+  u32 context;
+  u64 mac;
+  u32 bd_id;
+  u32 sw_if_index;
+  u8 is_add;
+  u8 static_mac;
+  u8 filter_mac;
+  u8 bvi_mac;
+};
+
+/** \brief L2 FIB add entry response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the add l2fib entry request
+*/
+define l2fib_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Set L2 flags request !!! TODO - need more info, feature bits in l2_input.h
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface 
+    @param is_set - if non-zero, set the bits, else clear them
+    @param feature_bitmap - non-zero bits to set or clear
+*/
+define l2_flags
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_set;
+  u32 feature_bitmap;
+};
+
+/** \brief Set L2 bits response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the set l2 bits request
+*/
+define l2_flags_reply
+{
+  u32 context;
+  i32 retval;
+  u32 resulting_feature_bitmap;
+};
+
+/** \brief L2 bridge domain add or delete request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the bridge domain to create
+    @param flood - enable/disable bcast/mcast flooding in the bd
+    @param uu_flood - enable/disable uknown unicast flood in the bd
+    @param forward - enable/disable forwarding on all interfaces in the bd
+    @param learn - enable/disable learning on all interfaces in the bd
+    @param arp_term - enable/disable arp termination in the bd
+    @param mac_age - mac aging time in min, 0 for disabled
+    @param is_add - add or delete flag
+*/
+define bridge_domain_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+  u8 flood;
+  u8 uu_flood;
+  u8 forward;
+  u8 learn;
+  u8 arp_term;
+  u8 mac_age;
+  u8 is_add;
+};
+
+/** \brief L2 bridge domain add or delete response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the set bridge flags request
+*/
+define bridge_domain_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief L2 bridge domain request operational state details
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the bridge domain id desired or ~0 to request all bds
+*/
+define bridge_domain_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+};
+
+/** \brief L2 bridge domain operational state response
+    @param bd_id - the bridge domain id
+    @param flood - bcast/mcast flooding state on all interfaces in the bd
+    @param uu_flood - uknown unicast flooding state on all interfaces in the bd
+    @param forward - forwarding state on all interfaces in the bd
+    @param learn - learning state on all interfaces in the bd
+    @param arp_term - arp termination state on all interfaces in the bd
+    @param mac_age - mac aging time in min, 0 for disabled
+    @param n_sw_ifs - number of sw_if_index's in the domain
+*/
+define bridge_domain_details
+{
+  u32 context;
+  u32 bd_id;
+  u8 flood;
+  u8 uu_flood;
+  u8 forward;
+  u8 learn;
+  u8 arp_term;
+  u8 mac_age;
+  u32 bvi_sw_if_index;
+  u32 n_sw_ifs;
+};
+
+/** \brief L2 bridge domain sw interface operational state response
+    @param bd_id - the bridge domain id
+    @param sw_if_index - sw_if_index in the domain
+    @param shg - split horizon group for the interface
+*/
+define bridge_domain_sw_if_details
+{
+  u32 context;
+  u32 bd_id;
+  u32 sw_if_index;
+  u8 shg;
+};
+
+/** \brief Set bridge flags (such as L2_LEARN, L2_FWD, L2_FLOOD, 
+    L2_UU_FLOOD, or L2_ARP_TERM) request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the bridge domain to set the flags for
+    @param is_set - if non-zero, set the flags, else clear them
+    @param feature_bitmap - bits that are non-zero to set or clear
+*/
+define bridge_flags
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+  u8 is_set;
+  u32 feature_bitmap;
+};
+
+/** \brief Set bridge flags response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the set bridge flags request
+    @param resulting_feature_bitmap - the feature bitmap value after the request is implemented
+*/
+define bridge_flags_reply
+{
+  u32 context;
+  i32 retval;
+  u32 resulting_feature_bitmap;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
