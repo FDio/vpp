@@ -2325,9 +2325,13 @@ vhost_user_process (vlib_main_t * vm,
 		  strncpy (sun.sun_path, (char *) vui->sock_filename,
 			   sizeof (sun.sun_path) - 1);
 
+		  /* Avoid hanging VPP if the other end does not accept */
+		  fcntl(sockfd, F_SETFL, O_NONBLOCK);
 		  if (connect (sockfd, (struct sockaddr *) &sun,
 			       sizeof (struct sockaddr_un)) == 0)
 		    {
+		      /* Set the socket to blocking as it was before */
+		      fcntl(sockfd, F_SETFL, 0);
 		      vui->sock_errno = 0;
 		      template.file_descriptor = sockfd;
 		      template.private_data =
