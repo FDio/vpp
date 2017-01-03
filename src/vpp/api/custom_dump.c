@@ -323,12 +323,12 @@ static void *vl_api_bridge_domain_dump_t_print
   FINISH;
 }
 
-static void *vl_api_l2fib_add_del_t_print
-  (vl_api_l2fib_add_del_t * mp, void *handle)
+static void *vl_api_l2_fib_add_del_t_print
+  (vl_api_l2_fib_add_del_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: l2fib_add_del ");
+  s = format (0, "SCRIPT: l2_fib_add_del ");
 
   s = format (s, "mac %U ", format_ethernet_address, &mp->mac);
 
@@ -2996,7 +2996,7 @@ _(SR_TUNNEL_ADD_DEL, sr_tunnel_add_del)					\
 _(SR_POLICY_ADD_DEL, sr_policy_add_del)					\
 _(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
-_(L2FIB_ADD_DEL, l2fib_add_del)                                         \
+_(L2_FIB_ADD_DEL, l2_fib_add_del)                                       \
 _(L2_FLAGS, l2_flags)                                                   \
 _(BRIDGE_FLAGS, bridge_flags)                                           \
 _(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
