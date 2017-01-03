@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_85f9884f",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-03T10:35:03Z",
+      "side": 1,
+      "message": "ep-\u003eip is later used in mcast_ep_remove",
+      "revId": "12802ad7bbe802ae1aba3b528d0edeb6ee7dd4f8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
