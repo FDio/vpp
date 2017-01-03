@@ -2578,6 +2578,11 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
   int server_sock_fd = -1;
 
+  if (sock_filename == NULL || !(strlen (sock_filename) > 0))
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
   if (is_server)
     {
       if ((rv =
