@@ -1,0 +1,246 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
+           a per-prefix label entry.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mb_mpls_table_id - The MPLS table-id the MPLS entry will be added in
+    @param mb_label - The MPLS label value to bind
+    @param mb_ip_table_id - The IP table-id of the IP prefix to bind to.
+    @param mb_create_table_if_needed - Create either/both tables if required.
+    @param mb_is_bind - Bind or unbind
+    @param mb_is_ip4 - The prefix to bind to is IPv4
+    @param mb_address_length - Length of IP prefix
+    @param mb_address[16] - IP prefix/
+*/
+define mpls_ip_bind_unbind
+{
+  u32 client_index;
+  u32 context;
+  u32 mb_mpls_table_id;
+  u32 mb_label;
+  u32 mb_ip_table_id;
+  u8 mb_create_table_if_needed;
+  u8 mb_is_bind;
+  u8 mb_is_ip4;
+  u8 mb_address_length;
+  u8 mb_address[16];
+};
+
+/** \brief Reply for MPLS IP bind/unbind request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define mpls_ip_bind_unbind_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief MPLS tunnel Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mt_is_add - Is this a route add or delete
+    @param mt_sw_if_index - The SW interface index of the tunnel to delete
+    @param mt_next_hop_proto_is_ip4 - The next-hop is IPV4
+    @param mt_next_hop_weight - The weight, for UCMP
+    @param mt_next_hop[16] - the nextop address
+    @param mt_next_hop_sw_if_index - the next-hop SW interface
+    @param mt_next_hop_table_id - the next-hop table-id (if appropriate)
+    @param mt_next_hop_n_out_labels - the number of next-hop output labels
+    @param mt_next_hop_out_label_stack - the next-hop output label stack,  outer most first
+*/
+define mpls_tunnel_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 mt_sw_if_index;
+  u8 mt_is_add;
+  u8 mt_l2_only;
+  u8 mt_next_hop_proto_is_ip4;
+  u8 mt_next_hop_weight;
+  u8 mt_next_hop[16];
+  u8 mt_next_hop_n_out_labels;
+  u32 mt_next_hop_sw_if_index;
+  u32 mt_next_hop_table_id;
+  u32 mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
+};
+
+/** \brief Reply for MPLS tunnel add / del request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - SW interface index of the tunnel created
+*/
+define mpls_tunnel_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Dump mpls eth tunnel table
+    @param client_index - opaque cookie to identify the sender
+    @param tunnel_index - eth tunnel identifier or -1 in case of all tunnels
+*/
+define mpls_tunnel_dump
+{
+  u32 client_index;
+  u32 context;
+  i32 tunnel_index;
+};
+
+/** \brief mpls eth tunnel operational state response
+    @param tunnel_index - eth tunnel identifier
+    @param intfc_address - interface ipv4 addr
+    @param mask_width - interface ipv4 addr mask
+    @param hw_if_index - interface id
+    @param l2_only -
+    @param tunnel_dst_mac -
+    @param tx_sw_if_index -
+    @param encap_index - reference to mpls label table
+    @param nlabels - number of resolved labels
+    @param labels - resolved labels
+*/
+define mpls_tunnel_details
+{
+  u32 context;
+  u32 tunnel_index;
+  u8 mt_l2_only;
+  u8 mt_sw_if_index;
+  u8 mt_next_hop_proto_is_ip4;
+  u8 mt_next_hop[16];
+  u32 mt_next_hop_sw_if_index;
+  u32 mt_next_hop_table_id;
+  u32 mt_next_hop_n_labels;
+  u32 mt_next_hop_out_labels[mt_next_hop_n_labels];
+};
+
+/** \brief MPLS Route Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mr_label - The MPLS label value
+    @param mr_eos - The End of stack bit
+    @param mr_table_id - The MPLS table-id the route is added in
+    @param mr_classify_table_index - If this is a classify route, 
+                                     this is the classify table index
+    @param  mr_create_table_if_needed - If the MPLS or IP tables do not exist,
+                                        create them
+    @param mr_is_add - Is this a route add or delete
+    @param mr_is_classify - Is this route result a classify
+    @param mr_is_multipath - Is this route update a multipath - i.e. is this
+                             a path addition to an existing route
+    @param mr_is_resolve_host - Recurse resolution constraint via a host prefix
+    @param mr_is_resolve_attached - Recurse resolution constraint via attached prefix
+    @param mr_next_hop_proto_is_ip4 - The next-hop is IPV4
+    @param mr_next_hop_weight - The weight, for UCMP
+    @param mr_next_hop[16] - the nextop address
+    @param mr_next_hop_sw_if_index - the next-hop SW interface
+    @param mr_next_hop_table_id - the next-hop table-id (if appropriate)
+    @param mr_next_hop_n_out_labels - the number of labels in the label stack
+    @param mr_next_hop_out_label_stack - the next-hop output label stack, outer most first
+    @param next_hop_via_label - The next-hop is a resolved via a local label
+*/
+define mpls_route_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 mr_label;
+  u8 mr_eos;
+  u32 mr_table_id;
+  u32 mr_classify_table_index;
+  u8 mr_create_table_if_needed;
+  u8 mr_is_add;
+  u8 mr_is_classify;
+  u8 mr_is_multipath;
+  u8 mr_is_resolve_host;
+  u8 mr_is_resolve_attached;
+  u8 mr_next_hop_proto_is_ip4;
+  u8 mr_next_hop_weight;
+  u8 mr_next_hop[16];
+  u8 mr_next_hop_n_out_labels;
+  u32 mr_next_hop_sw_if_index;
+  u32 mr_next_hop_table_id;
+  u32 mr_next_hop_via_label;
+  u32 mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
+};
+
+/** \brief Reply for MPLS route add / del request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define mpls_route_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief FIB path
+    @param sw_if_index - index of the interface
+    @param weight - The weight, for UCMP
+    @param is_local - local if non-zero, else remote
+    @param is_drop - Drop the packet
+    @param is_unreach - Drop the packet and rate limit send ICMP unreachable
+    @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
+    @param afi - the afi of the next hop, IP46_TYPE_IP4=1, IP46_TYPE_IP6=2
+    @param next_hop[16] - the next hop address
+
+    WARNING: this type is replicated, pending cleanup completion
+
+*/
+typeonly manual_print manual_endian define fib_path2
+{
+  u32 sw_if_index;
+  u32 weight;
+  u8 is_local;
+  u8 is_drop;
+  u8 is_unreach;
+  u8 is_prohibit;
+  u8 afi;
+  u8 next_hop[16];
+};
+
+/** \brief Dump MPLS fib table
+    @param client_index - opaque cookie to identify the sender
+*/
+define mpls_fib_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief mpls FIB table response
+    @param table_id - MPLS fib table id
+    @param s_bit - End-of-stack bit
+    @param label - MPLS label value
+    @param count - the number of fib_path in path
+    @param path  - array of of fib_path structures
+*/
+manual_endian manual_print define mpls_fib_details
+{
+  u32 context;
+  u32 table_id;
+  u8  eos_bit;
+  u32 label;
+  u32 count;
+  vl_api_fib_path2_t path[count];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+ 
