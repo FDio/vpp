@@ -55,8 +55,8 @@ vpp/app/version.h:
 	@echo "#define VPP_BUILD_DATE \"$$(date)\"" > $@
 	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" >> $@
 	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $@
-	@echo "#define VPP_BUILD_TOPDIR \"$$(git rev-parse --show-toplevel)\"" 	>> $@
-	@echo "#define VPP_BUILD_VER \"$$(../../scripts/version)\"" >> $@
+	@echo "#define VPP_BUILD_TOPDIR \"$$(cd $(srcdir) && git rev-parse --show-toplevel)\"" 	>> $@
+	@echo "#define VPP_BUILD_VER \"$$($(srcdir)/scripts/version)\"" >> $@
 
 # Generate a plugin configuration script. Misconfiguring a
 # plugin can cause very subtle problems.
