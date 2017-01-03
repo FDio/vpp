@@ -33,8 +33,7 @@ vpp_json_test_SOURCES = \
 
 vpp_api_test_LDFLAGS = $(DPDK_LD_FLAGS)
 vpp_api_test_LDADD = \
-  libvlib.la \
-  libvlib_unix.la \
+  libvlib.la				\
   libvlibmemoryclient.la		\
   libsvm.la				\
   libvatplugin.la			\

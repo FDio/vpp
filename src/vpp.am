@@ -93,7 +93,6 @@ vpp_plugin_configure:
 bin_vpp_LDADD = \
   libvlibapi.la \
   libvlibmemory.la \
-  libvlib_unix.la \
   libvlib.la \
   libvnet.la \
   libsvm.la \

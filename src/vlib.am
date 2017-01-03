@@ -12,14 +12,13 @@
 # limitations under the License.
 
 
-libvlibdir = ${libdir}
-libvlib_LTLIBRARIES = libvlib.la
-libvlib_la_LIBAD = libvppinfra.la
+lib_LTLIBRARIES += libvlib.la
+libvlib_la_LIBADD = libvppinfra.la -ldl -lpthread
 
 BUILT_SOURCES += vlib/config.h
 
 vlib/config.h:
-	echo "#define __PRE_DATA_SIZE" @PRE_DATA_SIZE@ > $@
+	@echo "#define __PRE_DATA_SIZE" @PRE_DATA_SIZE@ > $@
 
 libvlib_la_SOURCES =				\
   vlib/buffer.c					\
@@ -69,9 +68,7 @@ nobase_include_HEADERS +=			\
   vlib/trace.h					\
   vlib/vlib.h
 
-libvlib_LTLIBRARIES += libvlib_unix.la
-
-libvlib_unix_la_SOURCES =			\
+libvlib_la_SOURCES +=				\
   vlib/unix/cj.c				\
   vlib/unix/cli.c				\
   vlib/unix/input.c				\
@@ -88,7 +85,7 @@ nobase_include_HEADERS +=			\
   vlib/unix/physmem.h				\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
-    
+
 if !WITH_DPDK
 noinst_PROGRAMS += vlib_unix
 
@@ -96,7 +93,7 @@ vlib_unix_SOURCES =				\
   examples/vlib/main_stub.c			\
   examples/vlib/mc_test.c
 
-vlib_unix_LDADD = libvlib_unix.la libvlib.la \
+vlib_unix_LDADD = libvlib.la \
 	          libvppinfra.la -lpthread -lm -ldl -lrt
 endif
 
