@@ -22,21 +22,24 @@
 /* 
  * Note: API placement cleanup in progress
  * If you're looking for interface APIs, please
- * see .../vnet/vnet/{interface.api,interface_api.c}
- * IP APIs: see .../vnet/vnet/ip/{ip.api, ip_api.c}
- * TAP APIs: see .../vnet/vnet/unix/{tap.api, tap_api.c}
- * VXLAN APIs: see .../vnet/vnet/vxlan/{vxlan.api, vxlan_api.c}
+ * see .../src/vnet/{interface.api,interface_api.c}
+ * IP APIs: see .../src/vnet/ip/{ip.api, ip_api.c}
+ * TAP APIs: see .../src/vnet/unix/{tap.api, tap_api.c}
+ * VXLAN APIs: see .../src/vnet/vxlan/{vxlan.api, vxlan_api.c}
  * AF-PACKET APIs: ... see /vnet/devices/af_packet/{af_packet.api, af_packet_api.c}
- * NETMAP APIs: see ... /vnet/vnet/devices/netmap/{netmap.api, netmap_api.c}
+ * NETMAP APIs: see ... /src/vnet/devices/netmap/{netmap.api, netmap_api.c}
  * VHOST-USER APIs: see .../vnet/devices/virtio/{vhost_user.api, vhost_user_api.c}
- * VXLAN GPE APIs: see .../vnet/vnet/vxlan-gpe/{vxlan_gpe.api, vxlan_gpe_api.c}
- * GRE APIs: see .../vnet/vnet/gre/{gre.api, gre_api.c}
- * L2TP APIs: see .../vnet/vnet/l2tp/{l2tp.api, l2tp_api.c}
- * BFD APIs: see .../vnet/vnet/bfd/{bfd.api, bfd_api.c}
- * IPSEC APIs: see .../vnet/vnet/ipsec/{ipsec.api, ipsec_api.c}
- * IPSEC-GRE APIs: see .../vnet/vnet/ipsec-gre/{ipsec_gre.api, ipsec_gre_api.c}
- * LISP APIs: see .../vnet/vnet/lisp/{lisp.api, lisp_api.c}
- * LISP-GPE APIs: see .../vnet/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
+ * VXLAN GPE APIs: see .../src/vnet/vxlan-gpe/{vxlan_gpe.api, vxlan_gpe_api.c}
+ * GRE APIs: see .../src/vnet/gre/{gre.api, gre_api.c}
+ * L2 APIs: see .../src/vnet/l2/{l2.api, l2_api.c}
+ * L2TP APIs: see .../src/vnet/l2tp/{l2tp.api, l2tp_api.c}
+ * BFD APIs: see .../src/vnet/bfd/{bfd.api, bfd_api.c}
+ * IPSEC APIs: see .../src/vnet/ipsec/{ipsec.api, ipsec_api.c}
+ * IPSEC-GRE APIs: see .../src/vnet/ipsec-gre/{ipsec_gre.api, ipsec_gre_api.c}
+ * LISP APIs: see .../src/vnet/lisp/{lisp.api, lisp_api.c}
+ * LISP-GPE APIs: see .../src/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
+ * MPLS APIs: see .../src/vnet/mpls/{mpls.api, mpls_api.c}
+ * SR APIs: see .../src/vnet/sr/{sr.api, sr_api.c}
  * DPDK APIs: ... see /src/vnet/devices/dpdk/{dpdk.api, dpdk_api.c}
  */
 
@@ -88,231 +91,6 @@ define sw_interface_set_mpls_enable_reply
 {
   u32 context;
   i32 retval;
-};
-
-/** \brief MPLS Route Add / del route
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mr_label - The MPLS label value
-    @param mr_eos - The End of stack bit
-    @param mr_table_id - The MPLS table-id the route is added in
-    @param mr_classify_table_index - If this is a classify route, 
-                                     this is the classify table index
-    @param  mr_create_table_if_needed - If the MPLS or IP tables do not exist,
-                                        create them
-    @param mr_is_add - Is this a route add or delete
-    @param mr_is_classify - Is this route result a classify
-    @param mr_is_multipath - Is this route update a multipath - i.e. is this
-                             a path addition to an existing route
-    @param mr_is_resolve_host - Recurse resolution constraint via a host prefix
-    @param mr_is_resolve_attached - Recurse resolution constraint via attached prefix
-    @param mr_next_hop_proto_is_ip4 - The next-hop is IPV4
-    @param mr_next_hop_weight - The weight, for UCMP
-    @param mr_next_hop[16] - the nextop address
-    @param mr_next_hop_sw_if_index - the next-hop SW interface
-    @param mr_next_hop_table_id - the next-hop table-id (if appropriate)
-    @param mr_next_hop_n_out_labels - the number of labels in the label stack
-    @param mr_next_hop_out_label_stack - the next-hop output label stack, outer most first
-    @param next_hop_via_label - The next-hop is a resolved via a local label
-*/
-define mpls_route_add_del
-{
-  u32 client_index;
-  u32 context;
-  u32 mr_label;
-  u8 mr_eos;
-  u32 mr_table_id;
-  u32 mr_classify_table_index;
-  u8 mr_create_table_if_needed;
-  u8 mr_is_add;
-  u8 mr_is_classify;
-  u8 mr_is_multipath;
-  u8 mr_is_resolve_host;
-  u8 mr_is_resolve_attached;
-  u8 mr_next_hop_proto_is_ip4;
-  u8 mr_next_hop_weight;
-  u8 mr_next_hop[16];
-  u8 mr_next_hop_n_out_labels;
-  u32 mr_next_hop_sw_if_index;
-  u32 mr_next_hop_table_id;
-  u32 mr_next_hop_via_label;
-  u32 mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
-};
-
-/** \brief Reply for MPLS route add / del request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define mpls_route_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief Dump MPLS fib table
-    @param client_index - opaque cookie to identify the sender
-*/
-define mpls_fib_dump
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief FIB path
-    @param sw_if_index - index of the interface
-    @param weight - The weight, for UCMP
-    @param is_local - local if non-zero, else remote
-    @param is_drop - Drop the packet
-    @param is_unreach - Drop the packet and rate limit send ICMP unreachable
-    @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
-    @param afi - the afi of the next hop, IP46_TYPE_IP4=1, IP46_TYPE_IP6=2
-    @param next_hop[16] - the next hop address
-
-    WARNING: this type is replicated, pending cleanup completion
-
-*/
-typeonly manual_print manual_endian define fib_path2
-{
-  u32 sw_if_index;
-  u32 weight;
-  u8 is_local;
-  u8 is_drop;
-  u8 is_unreach;
-  u8 is_prohibit;
-  u8 afi;
-  u8 next_hop[16];
-};
-
-/** \brief mpls FIB table response
-    @param table_id - MPLS fib table id
-    @param s_bit - End-of-stack bit
-    @param label - MPLS label value
-    @param count - the number of fib_path in path
-    @param path  - array of of fib_path structures
-*/
-manual_endian manual_print define mpls_fib_details
-{
-  u32 context;
-  u32 table_id;
-  u8  eos_bit;
-  u32 label;
-  u32 count;
-  vl_api_fib_path2_t path[count];
-};
-
-/** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
-           a per-prefix label entry.
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mb_mpls_table_id - The MPLS table-id the MPLS entry will be added in
-    @param mb_label - The MPLS label value to bind
-    @param mb_ip_table_id - The IP table-id of the IP prefix to bind to.
-    @param mb_create_table_if_needed - Create either/both tables if required.
-    @param mb_is_bind - Bind or unbind
-    @param mb_is_ip4 - The prefix to bind to is IPv4
-    @param mb_address_length - Length of IP prefix
-    @param mb_address[16] - IP prefix/
-*/
-define mpls_ip_bind_unbind
-{
-  u32 client_index;
-  u32 context;
-  u32 mb_mpls_table_id;
-  u32 mb_label;
-  u32 mb_ip_table_id;
-  u8 mb_create_table_if_needed;
-  u8 mb_is_bind;
-  u8 mb_is_ip4;
-  u8 mb_address_length;
-  u8 mb_address[16];
-};
-
-/** \brief Reply for MPLS IP bind/unbind request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define mpls_ip_bind_unbind_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief MPLS tunnel Add / del route
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mt_is_add - Is this a route add or delete
-    @param mt_sw_if_index - The SW interface index of the tunnel to delete
-    @param mt_next_hop_proto_is_ip4 - The next-hop is IPV4
-    @param mt_next_hop_weight - The weight, for UCMP
-    @param mt_next_hop[16] - the nextop address
-    @param mt_next_hop_sw_if_index - the next-hop SW interface
-    @param mt_next_hop_table_id - the next-hop table-id (if appropriate)
-    @param mt_next_hop_n_out_labels - the number of next-hop output labels
-    @param mt_next_hop_out_label_stack - the next-hop output label stack,  outer most first
-*/
-define mpls_tunnel_add_del
-{
-  u32 client_index;
-  u32 context;
-  u32 mt_sw_if_index;
-  u8 mt_is_add;
-  u8 mt_l2_only;
-  u8 mt_next_hop_proto_is_ip4;
-  u8 mt_next_hop_weight;
-  u8 mt_next_hop[16];
-  u8 mt_next_hop_n_out_labels;
-  u32 mt_next_hop_sw_if_index;
-  u32 mt_next_hop_table_id;
-  u32 mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
-};
-
-/** \brief Reply for MPLS tunnel add / del request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-    @param sw_if_index - SW interface index of the tunnel created
-*/
-define mpls_tunnel_add_del_reply
-{
-  u32 context;
-  i32 retval;
-  u32 sw_if_index;
-};
-
-/** \brief Dump mpls eth tunnel table
-    @param client_index - opaque cookie to identify the sender
-    @param tunnel_index - eth tunnel identifier or -1 in case of all tunnels
-*/
-define mpls_tunnel_dump
-{
-  u32 client_index;
-  u32 context;
-  i32 tunnel_index;
-};
-
-/** \brief mpls eth tunnel operational state response
-    @param tunnel_index - eth tunnel identifier
-    @param intfc_address - interface ipv4 addr
-    @param mask_width - interface ipv4 addr mask
-    @param hw_if_index - interface id
-    @param l2_only -
-    @param tunnel_dst_mac -
-    @param tx_sw_if_index -
-    @param encap_index - reference to mpls label table
-    @param nlabels - number of resolved labels
-    @param labels - resolved labels
-*/
-define mpls_tunnel_details
-{
-  u32 context;
-  u32 tunnel_index;
-  u8 mt_l2_only;
-  u8 mt_sw_if_index;
-  u8 mt_next_hop_proto_is_ip4;
-  u8 mt_next_hop[16];
-  u32 mt_next_hop_sw_if_index;
-  u32 mt_next_hop_table_id;
-  u32 mt_next_hop_n_labels;
-  u32 mt_next_hop_out_labels[mt_next_hop_n_labels];
 };
 
 /** \brief Proxy ARP add / del request
@@ -797,102 +575,6 @@ define l2_patch_add_del_reply
   i32 retval;
 };
 
-/** \brief IPv6 segment routing tunnel add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add the tunnel if non-zero, else delete it
-    @param name[] - tunnel name (len. 64)
-    @param src_address[] -
-    @param dst_address[] -
-    @param dst_mask_width -
-    @param inner_vrf_id -
-    @param outer_vrf_id -
-    @param flags_net_byte_order -
-    @param n_segments -
-    @param n_tags -
-    @param segs_and_tags[] -
-    @param policy_name[] - name of policy to associate this tunnel to (len. 64)
-*/
-define sr_tunnel_add_del
-{
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-  u8 name[64];
-  u8 src_address[16];
-  u8 dst_address[16];
-  u8 dst_mask_width;
-  u32 inner_vrf_id;
-  u32 outer_vrf_id;
-  u16 flags_net_byte_order;
-  u8 n_segments;
-  u8 n_tags;
-  u8 policy_name[64];
-  u8 segs_and_tags[0];
-};
-
-/** \brief IPv6 segment routing tunnel add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_tunnel_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief IPv6 segment routing policy add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add the tunnel if non-zero, else delete it
-    @param name[] - policy name (len. 64)
-    @param tunnel_names[] -
-*/
-define sr_policy_add_del
-{
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-  u8 name[64];
-  u8 tunnel_names[0];
-};
-
-/** \brief IPv6 segment routing policy add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_policy_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief IPv6 segment routing multicast map to policy add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param is_add - add the tunnel if non-zero, else delete it
-    @param multicast_address[] - IP6 multicast address
-    @param policy_name[] = policy name (len.64)
-*/
-define sr_multicast_map_add_del
-{
-  u32 client_index;
-  u32 context;
-  u8 is_add;
-  u8 multicast_address[16];
-  u8 policy_name[64];
-};
-
-/** \brief IPv6 segment routing multicast map to policy add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_multicast_map_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Interface set vpath request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -971,95 +653,6 @@ define sw_interface_set_l2_bridge_reply
 {
   u32 context;
   i32 retval;
-};
-
-/** \brief L2 FIB add entry request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mac - the entry's mac address
-    @param bd_id - the entry's bridge domain id
-    @param sw_if_index - the interface
-    @param is_add - If non zero add the entry, else delete it
-    @param static_mac - 
-    @param filter_mac -
-*/
-define l2fib_add_del
-{
-  u32 client_index;
-  u32 context;
-  u64 mac;
-  u32 bd_id;
-  u32 sw_if_index;
-  u8 is_add;
-  u8 static_mac;
-  u8 filter_mac;
-  u8 bvi_mac;
-};
-
-/** \brief L2 FIB add entry response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the add l2fib entry request
-*/
-define l2fib_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief Set L2 flags request !!! TODO - need more info, feature bits in l2_input.h
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface 
-    @param is_set - if non-zero, set the bits, else clear them
-    @param feature_bitmap - non-zero bits to set or clear
-*/
-define l2_flags
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 is_set;
-  u32 feature_bitmap;
-};
-
-/** \brief Set L2 bits response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the set l2 bits request
-*/
-define l2_flags_reply
-{
-  u32 context;
-  i32 retval;
-  u32 resulting_feature_bitmap;
-};
-
-/** \brief Set bridge flags (such as L2_LEARN, L2_FWD, L2_FLOOD, 
-    L2_UU_FLOOD, or L2_ARP_TERM) request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param bd_id - the bridge domain to set the flags for
-    @param is_set - if non-zero, set the flags, else clear them
-    @param feature_bitmap - bits that are non-zero to set or clear
-*/
-define bridge_flags
-{
-  u32 client_index;
-  u32 context;
-  u32 bd_id;
-  u8 is_set;
-  u32 feature_bitmap;
-};
-
-/** \brief Set bridge flags response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the set bridge flags request
-    @param resulting_feature_bitmap - the feature bitmap value after the request is implemented
-*/
-define bridge_flags_reply
-{
-  u32 context;
-  i32 retval;
-  u32 resulting_feature_bitmap;
 };
 
 /** \brief Set bridge domain ip to mac entry request
@@ -1335,26 +928,6 @@ define dhcp_proxy_config_2_reply
   i32 retval;
 };
 
-/** \brief L2 fib clear table request, clear all mac entries in the l2 fib
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define l2_fib_clear_table
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief L2 fib clear table response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define l2_fib_clear_table_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief L2 interface ethernet flow point filtering enable/disable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -1461,36 +1034,6 @@ define show_version_reply
   u8 version[32];
   u8 build_date[32];
   u8 build_directory[256];
-};
-
-/** \brief l2 fib table entry structure
-    @param bd_id - the l2 fib / bridge domain table id
-    @param mac - the entry's mac address
-    @param sw_if_index - index of the interface
-    @param static_mac - the entry is statically configured.
-    @param filter_mac - the entry is a mac filter entry.
-    @param bvi_mac - the mac address is a bridge virtual interface
-*/
-define l2_fib_table_entry
-{
-  u32 context;
-  u32 bd_id;
-  u64 mac;
-  u32 sw_if_index;
-  u8 static_mac;
-  u8 filter_mac;
-  u8 bvi_mac;
-};
-
-/** \brief Dump l2 fib (aka bridge domain) table
-    @param client_index - opaque cookie to identify the sender
-    @param bd_id - the l2 fib / bridge domain table identifier
-*/
-define l2_fib_table_dump
-{
-  u32 client_index;
-  u32 context;
-  u32 bd_id;
 };
 
 /* Gross kludge, DGMS */
@@ -1600,91 +1143,6 @@ define ip6_nd_event
   u8 mac_ip;
 };
     
-/** \brief L2 bridge domain add or delete request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param bd_id - the bridge domain to create
-    @param flood - enable/disable bcast/mcast flooding in the bd
-    @param uu_flood - enable/disable uknown unicast flood in the bd
-    @param forward - enable/disable forwarding on all interfaces in the bd
-    @param learn - enable/disable learning on all interfaces in the bd
-    @param arp_term - enable/disable arp termination in the bd
-    @param mac_age - mac aging time in min, 0 for disabled
-    @param is_add - add or delete flag
-*/
-define bridge_domain_add_del
-{
-  u32 client_index;
-  u32 context;
-  u32 bd_id;
-  u8 flood;
-  u8 uu_flood;
-  u8 forward;
-  u8 learn;
-  u8 arp_term;
-  u8 mac_age;
-  u8 is_add;
-};
-
-/** \brief L2 bridge domain add or delete response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the set bridge flags request
-*/
-define bridge_domain_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief L2 bridge domain request operational state details
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param bd_id - the bridge domain id desired or ~0 to request all bds
-*/
-define bridge_domain_dump
-{
-  u32 client_index;
-  u32 context;
-  u32 bd_id;
-};
-
-/** \brief L2 bridge domain operational state response
-    @param bd_id - the bridge domain id
-    @param flood - bcast/mcast flooding state on all interfaces in the bd
-    @param uu_flood - uknown unicast flooding state on all interfaces in the bd
-    @param forward - forwarding state on all interfaces in the bd
-    @param learn - learning state on all interfaces in the bd
-    @param arp_term - arp termination state on all interfaces in the bd
-    @param mac_age - mac aging time in min, 0 for disabled
-    @param n_sw_ifs - number of sw_if_index's in the domain
-*/
-define bridge_domain_details
-{
-  u32 context;
-  u32 bd_id;
-  u8 flood;
-  u8 uu_flood;
-  u8 forward;
-  u8 learn;
-  u8 arp_term;
-  u8 mac_age;
-  u32 bvi_sw_if_index;
-  u32 n_sw_ifs;
-};
-
-/** \brief L2 bridge domain sw interface operational state response
-    @param bd_id - the bridge domain id
-    @param sw_if_index - sw_if_index in the domain
-    @param shg - split horizon group for the interface
-*/
-define bridge_domain_sw_if_details
-{
-  u32 context;
-  u32 bd_id;
-  u32 sw_if_index;
-  u8 shg;
-};
-
 /** \brief DHCP Client config add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
