@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_65133cb9",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T08:41:37Z",
+      "side": 1,
+      "message": "fix TODO :)",
+      "range": {
+        "startLine": 243,
+        "startChar": 10,
+        "endLine": 243,
+        "endChar": 14
+      },
+      "revId": "3b87b57a33efa214f4a50f29e9fa3e7739605609",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_051238b1",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 278,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T08:41:37Z",
+      "side": 1,
+      "message": "this does not query anything, could we change the name please to avoid confusion?\n\ne.g. to fib_dump_contains_ip4_entry(...)\nor is_ip4_entry_in_fib_dump(...)\n\nalso the implementation is inefficient, instead of creating a temporary object and then searching in it, could we just search the original object directly? we already have self.local_ip4n, so we don\u0027t need to translate the address using inet_pton at all.\n\ndef ...(self, dump):\n    return (self.local_ip4n, self.local_ip4_prefix_len, self.ip4_table_id) in dump",
+      "range": {
+        "startLine": 278,
+        "startChar": 8,
+        "endLine": 278,
+        "endChar": 39
+      },
+      "revId": "3b87b57a33efa214f4a50f29e9fa3e7739605609",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c53c3032",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T08:41:37Z",
+      "side": 1,
+      "message": "this should be the body\n\n        r \u003d test.vapi.create_loopback()\n        self._sw_if_index \u003d r.sw_if_index",
+      "range": {
+        "startLine": 16,
+        "startChar": 8,
+        "endLine": 16,
+        "endChar": 30
+      },
+      "revId": "3b87b57a33efa214f4a50f29e9fa3e7739605609",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e5260c16",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T08:41:37Z",
+      "side": 1,
+      "message": "what if the loopback interface is present, but ip4 is not configured?\n\nalso you missed arguments\n\nand query_vpp...\n\n-\u003e \n\nand query_vpp...(dump)",
+      "range": {
+        "startLine": 24,
+        "startChar": 57,
+        "endLine": 24,
+        "endChar": 97
+      },
+      "revId": "3b87b57a33efa214f4a50f29e9fa3e7739605609",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c5231004",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T08:41:37Z",
+      "side": 1,
+      "message": "please see the the comment regarding a similar method in vpp_interface.py\n\nthe same applies here for the temporary object ...\n\nfor i in dump:\n    if self.name \u003d\u003d i.interface_name.rstrip(...) and self.sw_if_index \u003d i.sw_if_index:\n        return True\nreturn False",
+      "range": {
+        "startLine": 26,
+        "startChar": 8,
+        "endLine": 26,
+        "endChar": 38
+      },
+      "revId": "3b87b57a33efa214f4a50f29e9fa3e7739605609",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
