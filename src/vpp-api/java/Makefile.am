@@ -30,6 +30,9 @@ CLEANDIRS =
 # jvpp-common
 #
 
+nobase_include_HEADERS =                \
+  jvpp-common/jvpp_common.h
+
 noinst_LTLIBRARIES += libjvpp_common.la
 libjvpp_common_la_SOURCES = jvpp-common/jvpp_common.c
 libjvpp_common_la_LDFLAGS =
