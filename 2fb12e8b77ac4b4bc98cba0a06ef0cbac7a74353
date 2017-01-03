@@ -1,0 +1,607 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_08ab6dd9",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "add abstract method encap_mcast()",
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_08f92de9",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "make this source file PEP8 compliant\n\nhttps://pypi.python.org/pypi/autopep8",
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c86fa591",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 89,
+        "startChar": 38,
+        "endLine": 89,
+        "endChar": 39
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a8e7b93f",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 106,
+        "startChar": 35,
+        "endLine": 106,
+        "endChar": 37
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e872617b",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 108,
+        "startChar": 35,
+        "endLine": 108,
+        "endChar": 36
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e8c4a193",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 126,
+        "startChar": 38,
+        "endLine": 126,
+        "endChar": 39
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c8c1e581",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 137,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 137,
+        "startChar": 70,
+        "endLine": 137,
+        "endChar": 71
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_08d00d4f",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 138,
+        "startChar": 63,
+        "endLine": 138,
+        "endChar": 65
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_28cbc9a6",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 138,
+        "startChar": 59,
+        "endLine": 138,
+        "endChar": 61
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e896e193",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "change this to remote_ip4",
+      "range": {
+        "startLine": 138,
+        "startChar": 46,
+        "endLine": 138,
+        "endChar": 57
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_e8ddc171",
+        "filename": "test/template_bd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 142,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 142,
+        "startChar": 35,
+        "endLine": 142,
+        "endChar": 37
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c8ac45f0",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "change this to src_ip",
+      "range": {
+        "startLine": 32,
+        "startChar": 31,
+        "endLine": 32,
+        "endChar": 38
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a8b9f92f",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "remove this line",
+      "range": {
+        "startLine": 37,
+        "startChar": 8,
+        "endLine": 37,
+        "endChar": 61
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_88b63d3c",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "rename this to mcast_mac",
+      "range": {
+        "startLine": 38,
+        "startChar": 44,
+        "endLine": 38,
+        "endChar": 54
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6838b1a0",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 79,
+        "startChar": 61,
+        "endLine": 79,
+        "endChar": 63
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_88bbdd0d",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 79,
+        "startChar": 57,
+        "endLine": 79,
+        "endChar": 59
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_a81a1915",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "this is not a good approach, instead create two methods\n\nadd_mcast_load()\ndel_mcast_load()\n\nyou can keep the add_del_mcast_load() as internal method (rename to _add_del_mcast_load() and call it from add_mcast_load() and del_mcast_load() to avoid copying code)\n\nbut call add_mcast_load(), del_mcast_load() in the test itself to make it more readable",
+      "range": {
+        "startLine": 89,
+        "startChar": 4,
+        "endLine": 89,
+        "endChar": 39
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_68d1d156",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 90,
+        "startChar": 59,
+        "endLine": 90,
+        "endChar": 62
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_88e4fd3b",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 90,
+        "startChar": 55,
+        "endLine": 90,
+        "endChar": 57
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_88699d8d",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "this variable is unused",
+      "range": {
+        "startLine": 92,
+        "startChar": 12,
+        "endLine": 92,
+        "endChar": 13
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_48ef351f",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "make this source file PEP8 compliant\n\nhttps://pypi.python.org/pypi/autopep8",
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_08824d4f",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "rename this to mcast_mac",
+      "range": {
+        "startLine": 128,
+        "startChar": 9,
+        "endLine": 128,
+        "endChar": 19
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_483df58e",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 147,
+        "startChar": 20,
+        "endLine": 147,
+        "endChar": 21
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2842a910",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 148,
+        "startChar": 69,
+        "endLine": 148,
+        "endChar": 70
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_0847ed20",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 149,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 149,
+        "startChar": 75,
+        "endLine": 149,
+        "endChar": 76
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_285989fe",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 156,
+        "startChar": 43,
+        "endLine": 156,
+        "endChar": 44
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4864d5b8",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-03T13:56:21Z",
+      "side": 1,
+      "message": "convert this to named constant",
+      "range": {
+        "startLine": 157,
+        "startChar": 75,
+        "endLine": 157,
+        "endChar": 76
+      },
+      "revId": "2fb12e8b77ac4b4bc98cba0a06ef0cbac7a74353",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
