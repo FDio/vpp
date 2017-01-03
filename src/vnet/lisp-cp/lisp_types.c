@@ -1440,8 +1440,11 @@ gid_address_cmp (gid_address_t * a1, gid_address_t * a2)
     return -1;
   if (gid_address_vni (a1) != gid_address_vni (a2))
     return -1;
-  if (gid_address_vni_mask (a1) != gid_address_vni_mask (a2))
-    return -1;
+
+  /* TODO vni mask is not supported, disable comparing for now
+     if (gid_address_vni_mask (a1) != gid_address_vni_mask (a2))
+     return -1;
+   */
 
   switch (gid_address_type (a1))
     {
