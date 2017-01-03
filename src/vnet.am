@@ -665,13 +665,17 @@ nobase_include_HEADERS +=			\
 if WITH_IPV6SR
 libvnet_la_SOURCES +=				\
  vnet/sr/sr.c					\
- vnet/sr/sr_replicate.c
+ vnet/sr/sr_replicate.c				\
+ vnet/sr/sr_api.c
 endif
 
 nobase_include_HEADERS +=			\
  vnet/sr/sr_packet.h				\
  vnet/sr/sr_error.def				\
- vnet/sr/sr.h
+ vnet/sr/sr.h						\
+ vnet/sr/sr.api.h
+
+API_FILES += vnet/sr/sr.api
 
 ########################################
 # DHCPv6 proxy
