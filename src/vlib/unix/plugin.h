@@ -48,7 +48,7 @@
  *
  * Applications control the plugin search path and name filter by
  * declaring the variables vlib_plugin_path and vlib_plugin_name_filter.
- * libvlib_unix.la supplies weak references for these symbols which
+ * libvlib.la supplies weak references for these symbols which
  * effectively disable the scheme. In order for the elf-section magic to
  * work, static plugins must be loaded at the earliest possible moment.
  *

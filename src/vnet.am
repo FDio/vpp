@@ -440,7 +440,7 @@ test_map_SOURCES =                             \
 test_map_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
-  -lpthread -lvlibmemory -lvlibapi -lvlib_unix	\
+  -lpthread -lvlibmemory -lvlibapi \
   -ldl -lsvm -lrt
 
 test_map_LDFLAGS = -static
@@ -566,7 +566,6 @@ LDS = \
   libvppinfra.la \
   libvnet.la \
   libvlib.la  \
-  libvlib_unix.la \
   libsvm.la \
   libsvmdb.la \
   libvlibapi.la \
