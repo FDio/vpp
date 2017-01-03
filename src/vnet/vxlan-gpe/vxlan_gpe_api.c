@@ -211,7 +211,7 @@ static void
 setup_message_id_table (api_main_t * am)
 {
 #define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_span;
+  foreach_vl_msg_name_crc_vxlan_gpe;
 #undef _
 }
 
