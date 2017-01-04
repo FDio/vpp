@@ -748,6 +748,7 @@ nobase_include_HEADERS +=			\
 ########################################
 if WITH_DPDK
 libvnet_la_SOURCES +=				\
+  vnet/devices/dpdk/buffer.c			\
   vnet/devices/dpdk/dpdk_priv.h		\
   vnet/devices/dpdk/device.c		\
   vnet/devices/dpdk/format.c		\

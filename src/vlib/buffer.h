@@ -46,7 +46,9 @@
 #include <vppinfra/vector.h>
 #include <vlib/error.h>		/* for vlib_error_t */
 
-#if DPDK > 0
+/* FIXME */
+#if 0
+#if FIXME > 0
 #include <rte_config.h>
 #define VLIB_BUFFER_DATA_SIZE		(2048)
 #define VLIB_BUFFER_PRE_DATA_SIZE	RTE_PKTMBUF_HEADROOM
@@ -54,6 +56,10 @@
 #include <vlib/config.h>	/* for __PRE_DATA_SIZE */
 #define VLIB_BUFFER_DATA_SIZE		(512)
 #define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
+#endif
+#else
+#define VLIB_BUFFER_DATA_SIZE           2048
+#define VLIB_BUFFER_PRE_DATA_SIZE       128
 #endif
 
 #if defined (CLIB_HAVE_VEC128) || defined (__aarch64__)
@@ -327,7 +333,51 @@ typedef struct
 #if DPDK == 1
   struct rte_mempool **pktmbuf_pools;
 #endif
+  /* Callbacks */
+    u32 (*vlib_buffer_alloc_cb) (struct vlib_main_t * vm, u32 * buffers,
+				 u32 n_buffers);
+    u32 (*vlib_buffer_alloc_from_free_list_cb) (struct vlib_main_t * vm,
+						u32 * buffers, u32 n_buffers,
+						u32 free_list_index);
+  void (*vlib_buffer_free_cb) (struct vlib_main_t * vm, u32 * buffers,
+			       u32 n_buffers);
+  void (*vlib_buffer_free_no_next_cb) (struct vlib_main_t * vm, u32 * buffers,
+				       u32 n_buffers);
+  void (*vlib_packet_template_init_cb) (struct vlib_main_t * vm, void *t,
+					void *packet_data,
+					uword n_packet_data_bytes,
+					uword
+					min_n_buffers_each_physmem_alloc,
+					u8 * name);
+  void (*vlib_buffer_delete_free_list_cb) (struct vlib_main_t * vm,
+					   u32 free_list_index);
+  int extern_buffer_mgmt;
 } vlib_buffer_main_t;
+
+typedef struct
+{
+  u32 (*vlib_buffer_alloc_cb) (struct vlib_main_t * vm, u32 * buffers,
+			       u32 n_buffers);
+  u32 (*vlib_buffer_alloc_from_free_list_cb) (struct vlib_main_t * vm,
+					      u32 * buffers, u32 n_buffers,
+					      u32 free_list_index);
+  void (*vlib_buffer_free_cb) (struct vlib_main_t * vm, u32 * buffers,
+			       u32 n_buffers);
+  void (*vlib_buffer_free_no_next_cb) (struct vlib_main_t * vm, u32 * buffers,
+				       u32 n_buffers);
+  void (*vlib_packet_template_init_cb) (struct vlib_main_t * vm, void *t,
+					void *packet_data,
+					uword n_packet_data_bytes,
+					uword
+					min_n_buffers_each_physmem_alloc,
+					u8 * name);
+  void (*vlib_buffer_delete_free_list_cb) (struct vlib_main_t * vm,
+					   u32 free_list_index);
+} vlib_buffer_cb_registration_t;
+
+void vlib_buffer_cb_init (struct vlib_main_t *vm);
+int vlib_buffer_cb_register (struct vlib_main_t *vm,
+			     vlib_buffer_cb_registration_t * cb);
 
 typedef struct
 {
