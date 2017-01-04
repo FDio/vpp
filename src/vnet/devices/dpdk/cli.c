@@ -164,9 +164,9 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
   struct rte_mempool *rmp;
   int i;
 
-  for (i = 0; i < vec_len (vm->buffer_main->pktmbuf_pools); i++)
+  for (i = 0; i < vec_len (dpdk_main.pktmbuf_pools); i++)
     {
-      rmp = vm->buffer_main->pktmbuf_pools[i];
+      rmp = dpdk_main.pktmbuf_pools[i];
       if (rmp)
 	{
 	  unsigned count = rte_mempool_avail_count (rmp);

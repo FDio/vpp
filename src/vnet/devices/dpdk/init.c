@@ -64,8 +64,6 @@ static struct rte_eth_conf port_conf_template = {
 clib_error_t *
 dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_main_t *bm = vm->buffer_main;
   int rv;
   int j;
 
@@ -107,7 +105,7 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 
       rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
 				   xd->cpu_socket, 0,
-				   bm->
+				   dm->
 				   pktmbuf_pools[xd->cpu_socket_id_by_queue
 						 [j]]);
 
@@ -115,7 +113,7 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
       if (rv < 0)
 	rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
 				     SOCKET_ID_ANY, 0,
-				     bm->
+				     dm->
 				     pktmbuf_pools[xd->cpu_socket_id_by_queue
 						   [j]]);
       if (rv < 0)

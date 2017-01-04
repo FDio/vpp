@@ -87,19 +87,18 @@ dpdk_set_mc_filter (vnet_hw_interface_t * hi,
 struct rte_mbuf *
 dpdk_replicate_packet_mb (vlib_buffer_t * b)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vlib_buffer_main_t *bm = vm->buffer_main;
+  dpdk_main_t *dm = &dpdk_main;
   struct rte_mbuf **mbufs = 0, *s, *d;
   u8 nb_segs;
   unsigned socket_id = rte_socket_id ();
   int i;
 
-  ASSERT (bm->pktmbuf_pools[socket_id]);
+  ASSERT (dm->pktmbuf_pools[socket_id]);
   s = rte_mbuf_from_vlib_buffer (b);
   nb_segs = s->nb_segs;
   vec_validate (mbufs, nb_segs - 1);
 
-  if (rte_pktmbuf_alloc_bulk (bm->pktmbuf_pools[socket_id], mbufs, nb_segs))
+  if (rte_pktmbuf_alloc_bulk (dm->pktmbuf_pools[socket_id], mbufs, nb_segs))
     {
       vec_free (mbufs);
       return 0;

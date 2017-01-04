@@ -20,14 +20,6 @@
 #include <vlib/threads.h>
 #include <vlib/unix/unix.h>
 
-#if DPDK==1
-#include <rte_config.h>
-#include <rte_common.h>
-#include <rte_eal.h>
-#include <rte_launch.h>
-#include <rte_lcore.h>
-#endif
-
 static u8 *
 format_sched_policy_and_priority (u8 * s, va_list * args)
 {
@@ -116,23 +108,6 @@ show_threads_fn (vlib_main_t * vm,
 	  vec_free (p);
 
 	  line = format (line, "%-7u%-7u%-7u%", lcore, core_id, socket_id);
-#if DPDK==1
-	  ASSERT (lcore <= RTE_MAX_LCORE);
-	  switch (lcore_config[lcore].state)
-	    {
-	    case WAIT:
-	      line = format (line, "wait");
-	      break;
-	    case RUNNING:
-	      line = format (line, "running");
-	      break;
-	    case FINISHED:
-	      line = format (line, "finished");
-	      break;
-	    default:
-	      line = format (line, "unknown");
-	    }
-#endif
 	}
       else
 	{
