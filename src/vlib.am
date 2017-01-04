@@ -23,6 +23,7 @@ vlib/config.h:
 
 libvlib_la_SOURCES =				\
   vlib/buffer.c					\
+  vlib/buffer_serialize.c			\
   vlib/cli.c					\
   vlib/cli.h					\
   vlib/config.h					\

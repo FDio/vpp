@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#define rte_mbuf_from_vlib_buffer(x) (((struct rte_mbuf *)x) - 1)
+#define vlib_buffer_from_rte_mbuf(x) ((vlib_buffer_t *)(x+1))
+
 #define DPDK_NB_RX_DESC_DEFAULT   1024
 #define DPDK_NB_TX_DESC_DEFAULT   1024
 #define DPDK_NB_RX_DESC_VIRTIO    256
