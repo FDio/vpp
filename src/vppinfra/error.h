@@ -190,6 +190,16 @@ do {							\
   _error_assert;				\
 })
 
+/*
+ * If we're running under Coverity, don't die on
+ * failed static assertions.
+ */
+#ifdef __COVERITY__
+#ifndef _Static_assert
+#define _Static_assert(x,y)
+#endif
+#endif
+
 #endif /* included_error_h */
 
 /*
