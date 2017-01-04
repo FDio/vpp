@@ -518,6 +518,35 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
 	    fe - lcm->fwd_entry_pool);
 }
 
+typedef struct
+{
+  u32 si;
+  u32 di;
+} fwd_entry_mt_arg_t;
+
+static void *
+dp_add_fwd_entry_thread_fn (void *arg)
+{
+  fwd_entry_mt_arg_t *a = arg;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  dp_add_fwd_entry (lcm, a->si, a->di);
+  return 0;
+}
+
+static int
+dp_add_fwd_entry_from_mt (u32 si, u32 di)
+{
+  fwd_entry_mt_arg_t a;
+
+  memset (&a, 0, sizeof (a));
+  a.si = si;
+  a.di = di;
+
+  vl_api_rpc_call_main_thread (dp_add_fwd_entry_thread_fn,
+			       (u8 *) & a, sizeof (a));
+  return 0;
+}
+
 /**
  * Returns vector of adjacencies.
  *
@@ -3950,7 +3979,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 					      &src);
 		  if (~0 != si)
 		    {
-		      dp_add_fwd_entry (lcm, si, di);
+		      dp_add_fwd_entry_from_mt (si, di);
 		    }
 		}
 	    }
