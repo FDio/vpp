@@ -17,7 +17,7 @@ PAPI_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/papi-install.done
 PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
 
 $(PIP_INSTALL_DONE):
-	@virtualenv $(PYTHON_VENV_PATH)
+	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
@@ -54,7 +54,7 @@ wipe: reset
 	@rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-python-path
-	@virtualenv $(PYTHON_VENV_PATH)
+	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) sphinx"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 

@@ -130,13 +130,15 @@ class TestSNAT(VppTestCase):
                     if same_port:
                         self.assertEqual(packet[TCP].sport, self.tcp_port_in)
                     else:
-                        self.assertNotEqual(packet[TCP].sport, self.tcp_port_in)
+                        self.assertNotEqual(
+                            packet[TCP].sport, self.tcp_port_in)
                     self.tcp_port_out = packet[TCP].sport
                 elif packet.haslayer(UDP):
                     if same_port:
                         self.assertEqual(packet[UDP].sport, self.udp_port_in)
                     else:
-                        self.assertNotEqual(packet[UDP].sport, self.udp_port_in)
+                        self.assertNotEqual(
+                            packet[UDP].sport, self.udp_port_in)
                     self.udp_port_out = packet[UDP].sport
                 else:
                     if same_port:
@@ -215,8 +217,14 @@ class TestSNAT(VppTestCase):
             addr_only = 0
         l_ip = socket.inet_pton(socket.AF_INET, local_ip)
         e_ip = socket.inet_pton(socket.AF_INET, external_ip)
-        self.vapi.snat_add_static_mapping(l_ip, e_ip, local_port, external_port,
-                                          addr_only, vrf_id, is_add)
+        self.vapi.snat_add_static_mapping(
+            l_ip,
+            e_ip,
+            local_port,
+            external_port,
+            addr_only,
+            vrf_id,
+            is_add)
 
     def snat_add_address(self, ip, is_add=1):
         """
@@ -413,7 +421,9 @@ class TestSNAT(VppTestCase):
         self.pg3.assert_nothing_captured()
 
     def test_multiple_inside_interfaces(self):
-        """SNAT multiple inside interfaces with non-overlapping address space"""
+        """
+        SNAT multiple inside interfaces with non-overlapping address space
+        """
 
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)

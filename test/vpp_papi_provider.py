@@ -5,9 +5,9 @@ from hook import Hook
 from collections import deque
 
 # Sphinx creates auto-generated documentation by importing the python source
-# files and collecting the docstrings from them. The NO_VPP_PAPI flag allows the
-# vpp_papi_provider.py file to be importable without having to build the whole
-# vpp api if the user only wishes to generate the test documentation.
+# files and collecting the docstrings from them. The NO_VPP_PAPI flag allows
+# the vpp_papi_provider.py file to be importable without having to build
+# the whole vpp api if the user only wishes to generate the test documentation.
 do_import = True
 try:
     no_vpp_papi = os.getenv("NO_VPP_PAPI")
@@ -904,8 +904,8 @@ class VppPapiProvider(object):
         """
         :param is_add:
         :param mask:
-        :param match_n_vectors (Default value = 1):
-        :param table_index (Default value = 0xFFFFFFFF)
+        :param match_n_vectors: (Default value = 1)
+        :param table_index: (Default value = 0xFFFFFFFF)
         :param nbuckets:  (Default value = 2)
         :param memory_size:  (Default value = 2097152)
         :param skip_n_vectors:  (Default value = 0)
