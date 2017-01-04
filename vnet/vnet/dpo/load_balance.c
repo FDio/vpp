@@ -279,8 +279,8 @@ load_balance_get_bucket (index_t lbi,
 }
 
 static int
-next_hop_sort_by_weight (load_balance_path_t * n1,
-                         load_balance_path_t * n2)
+next_hop_sort_by_weight (const load_balance_path_t * n1,
+                         const load_balance_path_t * n2)
 {
     return ((int) n1->path_weight - (int) n2->path_weight);
 }
@@ -289,7 +289,7 @@ next_hop_sort_by_weight (load_balance_path_t * n1,
    with weights corresponding to the number of adjacencies for each next hop.
    Returns number of adjacencies in block. */
 u32
-ip_multipath_normalize_next_hops (load_balance_path_t * raw_next_hops,
+ip_multipath_normalize_next_hops (const load_balance_path_t * raw_next_hops,
                                   load_balance_path_t ** normalized_next_hops,
                                   u32 *sum_weight_in,
                                   f64 multipath_next_hop_error_tolerance)
@@ -409,23 +409,25 @@ done:
 }
 
 static load_balance_path_t *
-load_balance_multipath_next_hop_fixup (load_balance_path_t *nhs,
+load_balance_multipath_next_hop_fixup (const load_balance_path_t *nhs,
                                        dpo_proto_t drop_proto)
 {
     if (0 == vec_len(nhs))
     {
-        load_balance_path_t *nh;
+        load_balance_path_t *new_nhs = NULL, *nh;
 
         /*
          * we need something for the load-balance. so use the drop
          */
-        vec_add2(nhs, nh, 1);
+        vec_add2(new_nhs, nh, 1);
 
         nh->path_weight = 1;
         dpo_copy(&nh->path_dpo, drop_dpo_get(drop_proto));
+
+        return (new_nhs);
     }
 
-    return (nhs);
+    return (NULL);
 }
 
 /*
@@ -467,11 +469,11 @@ load_balance_set_n_buckets (load_balance_t *lb,
 
 void
 load_balance_multipath_update (const dpo_id_t *dpo,
-                               load_balance_path_t * raw_next_hops,
+                               const load_balance_path_t * raw_nhs,
                                load_balance_flags_t flags)
 {
-    u32 sum_of_weights,n_buckets, ii;
-    load_balance_path_t * nh, * nhs;
+    load_balance_path_t *nh, *nhs, *fixed_nhs;
+    u32 sum_of_weights, n_buckets, ii;
     index_t lbmi, old_lbmi;
     load_balance_t *lb;
     dpo_id_t *tmp_dpo;
@@ -480,16 +482,16 @@ load_balance_multipath_update (const dpo_id_t *dpo,
 
     ASSERT(DPO_LOAD_BALANCE == dpo->dpoi_type);
     lb = load_balance_get(dpo->dpoi_index);
-    raw_next_hops =
-        load_balance_multipath_next_hop_fixup(raw_next_hops,
-                                              lb->lb_proto);
+    fixed_nhs = load_balance_multipath_next_hop_fixup(raw_nhs, lb->lb_proto);
     n_buckets =
-        ip_multipath_normalize_next_hops(raw_next_hops,
+        ip_multipath_normalize_next_hops((NULL == fixed_nhs ?
+                                          raw_nhs :
+                                          fixed_nhs),
                                          &nhs,
                                          &sum_of_weights,
                                          multipath_next_hop_error_tolerance);
 
-    ASSERT (n_buckets >= vec_len (raw_next_hops));
+    ASSERT (n_buckets >= vec_len (raw_nhs));
 
     /*
      * Save the old load-balance map used, and get a new one if required.
@@ -694,6 +696,7 @@ load_balance_multipath_update (const dpo_id_t *dpo,
         dpo_reset(&nh->path_dpo);
     }
     vec_free(nhs);
+    vec_free(fixed_nhs);
 
     load_balance_map_unlock(old_lbmi);
 }

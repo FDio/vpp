@@ -365,10 +365,10 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
 		     fib_forward_chain_type_t fct,
 		     dpo_id_t *dpo)
 {
-    load_balance_path_t *hash_key;
+    load_balance_path_t *nhs;
     fib_node_index_t *path_index;
 
-    hash_key  = NULL;
+    nhs  = NULL;
 
     if (!dpo_id_is_valid(dpo))
     {
@@ -388,21 +388,20 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
      */
     vec_foreach (path_index, path_list->fpl_paths)
     {
-	hash_key = fib_path_append_nh_for_multipath_hash(
-	               *path_index,
-		       fct,
-		       hash_key);
+	nhs = fib_path_append_nh_for_multipath_hash(*path_index,
+                                                    fct,
+                                                    nhs);
     }
 
     /*
      * Path-list load-balances, which if used, would be shared and hence
      * never need a load-balance map.
      */
-    load_balance_multipath_update(dpo, hash_key, LOAD_BALANCE_FLAG_NONE);
+    load_balance_multipath_update(dpo, nhs, LOAD_BALANCE_FLAG_NONE);
 
     FIB_PATH_LIST_DBG(path_list, "mk lb: %d", dpo->dpoi_index);
 
-    vec_free(hash_key);
+    vec_free(nhs);
 }
 
 /**
@@ -590,6 +589,17 @@ fib_path_list_resolve (fib_path_list_t *path_list)
 
     return (path_list);
 }
+
+u32
+fib_path_list_get_n_paths (fib_node_index_t path_list_index)
+{
+    fib_path_list_t *path_list;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    return (vec_len(path_list->fpl_paths));
+}
+
 
 u32
 fib_path_list_get_resolving_interface (fib_node_index_t path_list_index)
