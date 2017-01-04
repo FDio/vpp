@@ -95,10 +95,10 @@ class TestL2bdMultiInst(VppTestCase):
             for i in range(0, len(cls.pg_interfaces), 3):
                 cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i + 1],
                                                    cls.pg_interfaces[i + 2]]
-                cls.flows[cls.pg_interfaces[i + 1]] = [cls.pg_interfaces[i],
-                                                       cls.pg_interfaces[i + 2]]
-                cls.flows[cls.pg_interfaces[i + 2]] = [cls.pg_interfaces[i],
-                                                       cls.pg_interfaces[i + 1]]
+                cls.flows[cls.pg_interfaces[i + 1]] = \
+                    [cls.pg_interfaces[i], cls.pg_interfaces[i + 2]]
+                cls.flows[cls.pg_interfaces[i + 2]] = \
+                    [cls.pg_interfaces[i], cls.pg_interfaces[i + 1]]
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
@@ -172,8 +172,9 @@ class TestL2bdMultiInst(VppTestCase):
 
     def create_bd_and_mac_learn(self, count, start=1):
         """
-        Create required number of bridge domains with MAC learning enabled, put
-        3 l2-pg interfaces to every bridge domain and send MAC learning packets.
+        Create required number of bridge domains with MAC learning enabled,
+        put 3 l2-pg interfaces to every bridge domain and send MAC learning
+        packets.
 
         :param int count: Number of bridge domains to be created.
         :param int start: Starting number of the bridge domain ID.

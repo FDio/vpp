@@ -102,11 +102,12 @@ class TestSpan(VppTestCase):
         for i in self.interfaces:
             last_info[i.sw_if_index] = None
         dst_sw_if_index = dst_if.sw_if_index
-        if len(capture_pg1) != len(capture_pg2):
-            self.logger.error(
-                "Different number of outgoing and mirrored packets : %u != %u" %
-                (len(capture_pg1), len(capture_pg2)))
-            raise
+        self.AssertEqual(
+            len(capture_pg1),
+            len(capture_pg2),
+            "Different number of outgoing and mirrored packets : %u != %u" %
+            (len(capture_pg1),
+             len(capture_pg2)))
         for pkt_pg1, pkt_pg2 in zip(capture_pg1, capture_pg2):
             try:
                 ip1 = pkt_pg1[IP]

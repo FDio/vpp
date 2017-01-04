@@ -114,8 +114,9 @@ class TestClassifier(VppTestCase):
                 payload_info = self.payload_to_info(str(packet[Raw]))
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (dst_if.name, payload_info.src, packet_index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)" %
+                    (dst_if.name, payload_info.src, packet_index))
                 next_info = self.get_next_packet_info_for_interface2(
                     payload_info.src, dst_sw_if_index,
                     last_info[payload_info.src])
@@ -296,8 +297,9 @@ class TestClassifier(VppTestCase):
         pkts = self.create_stream(self.pg0, self.pg2, self.pg_if_packet_sizes)
         self.pg0.add_stream(pkts)
 
-        self.create_classify_table(
-            'mac', self.build_mac_mask(src_mac='ffffffffffff'), data_offset=-14)
+        self.create_classify_table('mac',
+                                   self.build_mac_mask(src_mac='ffffffffffff'),
+                                   data_offset=-14)
         self.create_classify_session(
             self.pg0, self.acl_tbl_idx.get('mac'),
             self.build_mac_match(src_mac=self.pg0.remote_mac))
@@ -326,7 +328,9 @@ class TestClassifier(VppTestCase):
         pkts = self.create_stream(self.pg0, self.pg3, self.pg_if_packet_sizes)
         self.pg0.add_stream(pkts)
 
-        self.create_classify_table('pbr', self.build_ip_mask(src_ip='ffffffff'))
+        self.create_classify_table(
+            'pbr', self.build_ip_mask(
+                src_ip='ffffffff'))
         pbr_option = 1
         self.create_classify_session(
             self.pg0, self.acl_tbl_idx.get('pbr'),

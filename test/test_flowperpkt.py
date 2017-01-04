@@ -57,8 +57,8 @@ class TestFlowperpkt(VppTestCase):
         if len(payload) * 2 != len(masked_expected_data):
             return False
 
-        # iterate over pairs: raw byte from payload and ASCII code for that byte
-        # from masked payload (or XX if masked)
+        # iterate over pairs: raw byte from payload and ASCII code for that
+        # byte from masked payload (or XX if masked)
         for i in range(len(payload)):
             p = payload[i]
             m = masked_expected_data[2 * i:2 * i + 2]
