@@ -382,6 +382,14 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         .fct = fct,
     };
 
+    /*
+     * As an optimisation we allocate the vector of next-hops to be sized
+     * equal to the maximum nuber of paths we will need, which is also the
+     * most likely number we will need, since in most cases the paths are 'up'.
+     */
+    vec_validate(ctx.next_hops, fib_path_list_get_n_paths(esrc->fes_pl));
+    vec_reset_length(ctx.next_hops);
+
     lb_proto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto);
 
     fib_path_list_walk(esrc->fes_pl,

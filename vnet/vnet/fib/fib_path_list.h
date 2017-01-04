@@ -104,6 +104,8 @@ extern fib_node_index_t fib_path_list_copy_and_path_remove(
     fib_node_index_t pl_index,
     fib_path_list_flags_t flags,
     const fib_route_path_t *path);
+extern u32 fib_path_list_get_n_paths(fib_node_index_t pl_index);
+
 extern void fib_path_list_contribute_forwarding(fib_node_index_t path_list_index,
 						fib_forward_chain_type_t type,
 						dpo_id_t *dpo);

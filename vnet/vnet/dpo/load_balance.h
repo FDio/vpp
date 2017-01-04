@@ -159,7 +159,7 @@ extern index_t load_balance_create(u32 num_buckets,
 				   flow_hash_config_t fhc);
 extern void load_balance_multipath_update(
     const dpo_id_t *dpo,
-    load_balance_path_t * raw_next_hops,
+    const load_balance_path_t * raw_next_hops,
     load_balance_flags_t flags);
 
 extern void load_balance_set_bucket(index_t lbi,
