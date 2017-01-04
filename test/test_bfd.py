@@ -135,7 +135,8 @@ class BFDTestCase(VppTestCase):
     def setUp(self):
         super(BFDTestCase, self).setUp()
         self.vapi.want_bfd_events()
-        self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        self.vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4)
         self.vpp_session.add_vpp_config()
         self.vpp_session.admin_up()
         self.test_session = BFDTestSession(self, self.pg0)
@@ -154,8 +155,10 @@ class BFDTestCase(VppTestCase):
         self.logger.debug("BFD: Event: %s" % repr(e))
         self.assert_equal(e.bs_index, self.vpp_session.bs_index,
                           "BFD session index")
-        self.assert_equal(e.sw_if_index, self.vpp_session.interface.sw_if_index,
-                          "BFD interface index")
+        self.assert_equal(
+            e.sw_if_index,
+            self.vpp_session.interface.sw_if_index,
+            "BFD interface index")
         is_ipv6 = 0
         if self.vpp_session.af == AF_INET6:
             is_ipv6 = 1
@@ -286,8 +289,8 @@ class BFDTestCase(VppTestCase):
     def test_immediate_remote_min_rx_reduce(self):
         """ immediately honor remote min rx reduction """
         self.vpp_session.remove_vpp_config()
-        self.vpp_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4,
-                                            desired_min_tx=10000)
+        self.vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4, desired_min_tx=10000)
         self.vpp_session.add_vpp_config()
         self.test_session.update(desired_min_tx_interval=1000000,
                                  required_min_rx_interval=1000000)
