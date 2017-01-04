@@ -14,6 +14,7 @@
 
 lib_LTLIBRARIES += libvlib.la
 libvlib_la_LIBADD = libvppinfra.la -ldl -lpthread
+libvlib_la_DEPENDENCIES = libvppinfra.la
 
 BUILT_SOURCES += vlib/config.h
 
