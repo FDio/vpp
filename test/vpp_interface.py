@@ -15,7 +15,7 @@ class VppInterface(object):
 
     @property
     def remote_mac(self):
-        """MAC-address of the remote interface "connected" to this interface."""
+        """MAC-address of the remote interface "connected" to this interface"""
         return self._remote_hosts[0].mac
 
     @property
@@ -261,19 +261,23 @@ class VppInterface(object):
 
     def admin_up(self):
         """Put interface ADMIN-UP."""
-        self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=1)
+        self.test.vapi.sw_interface_set_flags(self.sw_if_index,
+                                              admin_up_down=1)
 
     def admin_down(self):
         """Put interface ADMIN-down."""
-        self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=0)
+        self.test.vapi.sw_interface_set_flags(self.sw_if_index,
+                                              admin_up_down=0)
 
     def ip6_enable(self):
         """IPv6 Enable interface"""
-        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index, enable=1)
+        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index,
+                                                       enable=1)
 
     def ip6_disable(self):
         """Put interface ADMIN-DOWN."""
-        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index, enable=0)
+        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index,
+                                                       enable=0)
 
     def add_sub_if(self, sub_if):
         """Register a sub-interface with this interface.

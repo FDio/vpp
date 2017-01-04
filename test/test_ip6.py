@@ -8,8 +8,8 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, ICMPv6ND_RA, \
-    ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation
+from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
+    ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation
 from util import ppp
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid
@@ -172,8 +172,9 @@ class TestIPv6(VppTestCase):
                 payload_info = self.payload_to_info(str(packet[Raw]))
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (dst_if.name, payload_info.src, packet_index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)" %
+                    (dst_if.name, payload_info.src, packet_index))
                 next_info = self.get_next_packet_info_for_interface2(
                     payload_info.src, dst_sw_if_index,
                     last_info[payload_info.src])
@@ -229,9 +230,9 @@ class TestIPv6(VppTestCase):
         intf.assert_nothing_captured(remark=remark)
 
     def test_ns(self):
-        """ IPv6 Neighbour Soliciatation Exceptions
+        """ IPv6 Neighbour Solicitation Exceptions
 
-        Test sceanrio:
+        Test scenario:
            - Send an NS Sourced from an address not covered by the link sub-net
            - Send an NS to an mcast address the router has not joined
            - Send NS for a target address the router does not onn.
@@ -249,12 +250,13 @@ class TestIPv6(VppTestCase):
              ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
         pkts = [p]
 
-        self.send_and_assert_no_replies(self.pg0, pkts,
-                                        "No response to NS source by address not on sub-net")
+        self.send_and_assert_no_replies(
+            self.pg0, pkts,
+            "No response to NS source by address not on sub-net")
 
         #
-        # An NS for sent to a solicited mcast group the router is not a member of
-        #  FAILS
+        # An NS for sent to a solicited mcast group the router is
+        # not a member of FAILS
         #
         if 0:
             nsma = in6_getnsma(inet_pton(socket.AF_INET6, "fd::ffff"))
@@ -266,8 +268,9 @@ class TestIPv6(VppTestCase):
                  ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
             pkts = [p]
 
-            self.send_and_assert_no_replies(self.pg0, pkts,
-                                            "No response to NS sent to unjoined mcast address")
+            self.send_and_assert_no_replies(
+                self.pg0, pkts,
+                "No response to NS sent to unjoined mcast address")
 
         #
         # An NS whose target address is one the router does not own
@@ -307,15 +310,15 @@ class TestIPv6(VppTestCase):
                          in6_ptop(mk_ll_addr(intf.local_mac)))
 
     def test_rs(self):
-        """ IPv6 Router Soliciatation Exceptions
+        """ IPv6 Router Solicitation Exceptions
 
-        Test sceanrio:
+        Test scenario:
         """
 
         #
-        # Before we begin change the IPv6 RA responses to use the unicast address
-        # that way we will not confuse them with the periodic Ras which go to the Mcast
-        # address
+        # Before we begin change the IPv6 RA responses to use the unicast
+        # address - that way we will not confuse them with the periodic
+        # RAs which go to the mcast address
         #
         self.pg0.ip6_ra_config(send_unicast=1)
 
@@ -336,8 +339,8 @@ class TestIPv6(VppTestCase):
 
         #
         # When we reconfiure the IPv6 RA config, we reset the RA rate limiting,
-        # so we need to do this before each test below so as not to drop packets for
-        # rate limiting reasons. Test this works here.
+        # so we need to do this before each test below so as not to drop
+        # packets for rate limiting reasons. Test this works here.
         #
         self.pg0.ip6_ra_config(send_unicast=1)
         self.send_and_expect_ra(self.pg0, pkts, "Rate limit reset RS")
@@ -366,12 +369,12 @@ class TestIPv6(VppTestCase):
             self.pg0, pkts, "RS sourced from link-local", src_ip=ll)
 
         #
-        # Source from the unspecified address ::. This happens when the RS is sent before
-        # the host has a configured address/sub-net, i.e. auto-config.
-        # Since the sender has no IP address, the reply comes back mcast - so the
-        # capture needs to not filter this.
-        # If we happen to pick up the periodic RA at this point then so be it, it's not
-        # an error.
+        # Source from the unspecified address ::. This happens when the RS
+        # is sent before the host has a configured address/sub-net,
+        # i.e. auto-config. Since the sender has no IP address, the reply
+        # comes back mcast - so the capture needs to not filter this.
+        # If we happen to pick up the periodic RA at this point then so be it,
+        # it's not an error.
         #
         self.pg0.ip6_ra_config(send_unicast=1)
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -399,9 +402,9 @@ class TestIPv6(VppTestCase):
 
     @unittest.skip("Unsupported")
     def test_mrs(self):
-        """ IPv6 Multicast Router Soliciatation Exceptions
+        """ IPv6 Multicast Router Solicitation Exceptions
 
-        Test sceanrio:
+        Test scenario:
         """
 
         #
