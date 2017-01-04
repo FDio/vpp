@@ -425,6 +425,9 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   dpdk_config_main_t *conf;
+
+  /* mempool */
+  struct rte_mempool **pktmbuf_pools;
 } dpdk_main_t;
 
 dpdk_main_t dpdk_main;

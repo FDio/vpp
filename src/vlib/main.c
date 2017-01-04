@@ -465,7 +465,7 @@ vlib_put_next_frame (vlib_main_t * vm,
   vlib_frame_t *f;
   u32 n_vectors_in_frame;
 
-  if (DPDK == 0 && CLIB_DEBUG > 0)
+  if (vm->buffer_main->extern_buffer_mgmt == 0 && CLIB_DEBUG > 0)
     vlib_put_next_frame_validate (vm, r, next_index, n_vectors_left);
 
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
@@ -1012,8 +1012,8 @@ dispatch_node (vlib_main_t * vm,
 
       /* When in interrupt mode and vector rate crosses threshold switch to
          polling mode. */
-      if ((DPDK == 0 && dispatch_state == VLIB_NODE_STATE_INTERRUPT)
-	  || (DPDK == 0 && dispatch_state == VLIB_NODE_STATE_POLLING
+      if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT)
+	  || (dispatch_state == VLIB_NODE_STATE_POLLING
 	      && (node->flags
 		  & VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE)))
 	{
@@ -1615,6 +1615,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     vm->name = "VLIB";
 
   vec_validate (vm->buffer_main, 0);
+  vlib_buffer_cb_init (vm);
 
   if ((error = vlib_thread_init (vm)))
     {

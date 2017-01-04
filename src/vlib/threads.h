@@ -265,6 +265,13 @@ typedef enum
 
 typedef struct
 {
+  clib_error_t *(*vlib_launch_thread_cb) (void *fp, vlib_worker_thread_t * w,
+					  unsigned lcore_id);
+  clib_error_t *(*vlib_thread_set_lcore_cb) (u32 thread, u16 lcore);
+} vlib_thread_callbacks_t;
+
+typedef struct
+{
   /* Link list of registrations, built by constructors */
   vlib_thread_registration_t *next;
 
@@ -290,8 +297,8 @@ typedef struct
   /* Number of pthreads */
   u32 n_pthreads;
 
-  /* Number of DPDK eal threads */
-  u32 n_eal_threads;
+  /* Number of threads */
+  u32 n_threads;
 
   /* Number of cores to skip, must match the core mask */
   u32 skip_cores;
@@ -320,6 +327,9 @@ typedef struct
   /* scheduling policy priority */
   u32 sched_priority;
 
+  /* callbacks */
+  vlib_thread_callbacks_t cb;
+  int extern_thread_mgmt;
 } vlib_thread_main_t;
 
 extern vlib_thread_main_t vlib_thread_main;
@@ -458,6 +468,9 @@ vlib_get_worker_handoff_queue_elt (u32 frame_queue_index,
 
   return elt;
 }
+
+int vlib_thread_cb_register (struct vlib_main_t *vm,
+			     vlib_thread_callbacks_t * cb);
 
 #endif /* included_vlib_threads_h */
 
