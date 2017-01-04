@@ -643,7 +643,7 @@ flowperpkt_init (vlib_main_t * vm)
   vec_free (name);
 
   /* Decide how many worker threads we have */
-  num_threads = 1 /* main thread */  + tm->n_eal_threads;
+  num_threads = 1 /* main thread */  + tm->n_threads;
 
   /* Allocate per worker thread vectors */
   vec_validate (fm->ipv4_buffers_per_worker, num_threads - 1);

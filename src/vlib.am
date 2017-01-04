@@ -23,6 +23,7 @@ vlib/config.h:
 
 libvlib_la_SOURCES =				\
   vlib/buffer.c					\
+  vlib/buffer_serialize.c			\
   vlib/cli.c					\
   vlib/cli.h					\
   vlib/config.h					\
@@ -87,7 +88,6 @@ nobase_include_HEADERS +=			\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
 
-if !WITH_DPDK
 noinst_PROGRAMS += vlib_unix
 
 vlib_unix_SOURCES =				\
@@ -96,6 +96,5 @@ vlib_unix_SOURCES =				\
 
 vlib_unix_LDADD = libvlib.la \
 	          libvppinfra.la -lpthread -lm -ldl -lrt
-endif
 
 # vi:syntax=automake
