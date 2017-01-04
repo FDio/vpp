@@ -70,3 +70,9 @@ vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
 	-fPIC -Werror -fprofile-arcs -ftest-coverage
 vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
 	-fPIC -Werror -coverage
+
+vpp_coverity_TAG_CFLAGS = -g -O2 -march=$(MARCH) -mtune=$(MTUNE) \
+	-fPIC -Werror -D__COVERITY__
+vpp_coverity_TAG_LDFLAGS = -g -O2 -march=$(MARCH) -mtune=$(MTUNE) \
+	-fPIC -Werror -D__COVERITY__ 
+
