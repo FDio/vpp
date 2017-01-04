@@ -105,8 +105,8 @@ class PollHook(Hook):
                 s = signaldict[abs(self.testcase.vpp.returncode)]
             else:
                 s = "unknown"
-            msg = "VPP subprocess died unexpectedly with returncode %d [%s]" % (
-                self.testcase.vpp.returncode, s)
+            msg = "VPP subprocess died unexpectedly with returncode %d [%s]" %\
+                (self.testcase.vpp.returncode, s)
             self.logger.critical(msg)
             core_path = self.testcase.tempdir + '/core'
             if os.path.isfile(core_path):

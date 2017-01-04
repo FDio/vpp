@@ -148,8 +148,9 @@ class TestIPv4(VppTestCase):
                 payload_info = self.payload_to_info(str(packet[Raw]))
                 packet_index = payload_info.index
                 self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (dst_if.name, payload_info.src, packet_index))
+                self.logger.debug(
+                    "Got packet on port %s: src=%u (id=%u)" %
+                    (dst_if.name, payload_info.src, packet_index))
                 next_info = self.get_next_packet_info_for_interface2(
                     payload_info.src, dst_sw_if_index,
                     last_info[payload_info.src])
@@ -209,7 +210,7 @@ class TestIPv4FibCrud(VppTestCase):
         - add new 1k,
         - del 1.5k
 
-    ..note:: Python API is to slow to add many routes, needs C code replacement.
+    ..note:: Python API is too slow to add many routes, needs replacement.
     """
 
     def config_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
@@ -221,8 +222,9 @@ class TestIPv4FibCrud(VppTestCase):
         :return list: added ips with 32 prefix
         """
         added_ips = []
-        dest_addr = int(
-            socket.inet_pton(socket.AF_INET, start_dest_addr).encode('hex'), 16)
+        dest_addr = int(socket.inet_pton(socket.AF_INET,
+                                         start_dest_addr).encode('hex'),
+                        16)
         dest_addr_len = 32
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):
@@ -236,8 +238,9 @@ class TestIPv4FibCrud(VppTestCase):
     def unconfig_fib_many_to_one(self, start_dest_addr, next_hop_addr, count):
 
         removed_ips = []
-        dest_addr = int(
-            socket.inet_pton(socket.AF_INET, start_dest_addr).encode('hex'), 16)
+        dest_addr = int(socket.inet_pton(socket.AF_INET,
+                                         start_dest_addr).encode('hex'),
+                        16)
         dest_addr_len = 32
         n_next_hop_addr = socket.inet_pton(socket.AF_INET, next_hop_addr)
         for _ in range(count):

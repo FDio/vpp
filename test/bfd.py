@@ -145,8 +145,8 @@ class VppBFDUDPSession(VppObject):
                     session = s
                     break
         if session is None:
-            raise Exception(
-                "Could not find BFD session in VPP response: %s" % repr(result))
+            raise Exception("Could not find BFD session in VPP response: %s" %
+                            repr(result))
         return session.state
 
     @property
