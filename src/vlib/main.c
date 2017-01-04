@@ -1615,6 +1615,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     vm->name = "VLIB";
 
   vec_validate (vm->buffer_main, 0);
+  vlib_buffer_cb_init (vm);
 
   if ((error = vlib_thread_init (vm)))
     {

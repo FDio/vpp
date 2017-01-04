@@ -298,6 +298,27 @@ typedef struct vlib_buffer_free_list_t
 
 typedef struct
 {
+  u32 (*vlib_buffer_alloc_cb) (struct vlib_main_t * vm, u32 * buffers,
+			       u32 n_buffers);
+  u32 (*vlib_buffer_alloc_from_free_list_cb) (struct vlib_main_t * vm,
+					      u32 * buffers, u32 n_buffers,
+					      u32 free_list_index);
+  void (*vlib_buffer_free_cb) (struct vlib_main_t * vm, u32 * buffers,
+			       u32 n_buffers);
+  void (*vlib_buffer_free_no_next_cb) (struct vlib_main_t * vm, u32 * buffers,
+				       u32 n_buffers);
+  void (*vlib_packet_template_init_cb) (struct vlib_main_t * vm, void *t,
+					void *packet_data,
+					uword n_packet_data_bytes,
+					uword
+					min_n_buffers_each_physmem_alloc,
+					u8 * name);
+  void (*vlib_buffer_delete_free_list_cb) (struct vlib_main_t * vm,
+					   u32 free_list_index);
+} vlib_buffer_callbacks_t;
+
+typedef struct
+{
   /* Buffer free callback, for subversive activities */
   u32 (*buffer_free_callback) (struct vlib_main_t * vm,
 			       u32 * buffers,
@@ -324,10 +345,15 @@ typedef struct
   vlib_buffer_free_list_t **announce_list;
 
   /*  Vector of rte_mempools per socket */
-#if DPDK == 1
-  struct rte_mempool **pktmbuf_pools;
-#endif
+
+  /* Callbacks */
+  vlib_buffer_callbacks_t cb;
+  int extern_buffer_mgmt;
 } vlib_buffer_main_t;
+
+void vlib_buffer_cb_init (struct vlib_main_t *vm);
+int vlib_buffer_cb_register (struct vlib_main_t *vm,
+			     vlib_buffer_callbacks_t * cb);
 
 typedef struct
 {
@@ -384,11 +410,6 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
   return sm->tx.n_total_data_bytes + s->current_buffer_index +
     vec_len (s->overflow_buffer);
 }
-
-#if DPDK > 0
-#define rte_mbuf_from_vlib_buffer(x) (((struct rte_mbuf *)x) - 1)
-#define vlib_buffer_from_rte_mbuf(x) ((vlib_buffer_t *)(x+1))
-#endif
 
 /*
  */

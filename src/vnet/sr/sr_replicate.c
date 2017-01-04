@@ -30,6 +30,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/sr/sr.h>
 #include <vnet/devices/dpdk/dpdk.h>
+#include <vnet/devices/dpdk/dpdk_priv.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/ip6_fib.h>
 
@@ -142,6 +143,7 @@ static uword
 sr_replicate_node_fn (vlib_main_t * vm,
 		      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+  dpdk_main_t *dm = &dpdk_main;
   u32 n_left_from, *from, *to_next;
   sr_replicate_next_t next_index;
   int pkts_replicated = 0;
@@ -149,7 +151,6 @@ sr_replicate_node_fn (vlib_main_t * vm,
   int no_buffer_drops = 0;
   vlib_buffer_free_list_t *fl;
   unsigned socket_id = rte_socket_id ();
-  vlib_buffer_main_t *bm = vm->buffer_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -246,13 +247,13 @@ sr_replicate_node_fn (vlib_main_t * vm,
 	      vlib_buffer_t *clone0_c, *clone_b0;
 
 	      t0 = vec_elt_at_index (sm->tunnels, pol0->tunnel_indices[i]);
-	      hdr_mb0 = rte_pktmbuf_alloc (bm->pktmbuf_pools[socket_id]);
+	      hdr_mb0 = rte_pktmbuf_alloc (dm->pktmbuf_pools[socket_id]);
 
 	      if (i < (num_replicas - 1))
 		{
 		  /* Not the last tunnel to process */
 		  clone0 = rte_pktmbuf_clone
-		    (orig_mb0, bm->pktmbuf_pools[socket_id]);
+		    (orig_mb0, dm->pktmbuf_pools[socket_id]);
 		  if (clone0 == 0)
 		    goto clone_fail;
 		  nb_seg = 0;
