@@ -55,7 +55,8 @@ class BridgeDomain(object):
 
         self.pg_start()
 
-        # Pick first received frame and check if it's the non-encapsulated frame
+        # Pick first received frame and check if it's the non-encapsulated
+        # frame
         out = self.pg1.get_capture(1)
         pkt = out[0]
 

@@ -2,10 +2,10 @@
 """L2XC Multi-instance Test Case HLD:
 
 **NOTES:**
-    - higher number (more than 15) of pg-l2 interfaces causes problems => only \
-    14 pg-l2 interfaces and 10 cross-connects are tested
-    - jumbo packets in configuration with 14 l2-pg interfaces leads to \
-    problems too
+    - higher number (more than 15) of pg-l2 interfaces causes problems => only
+      14 pg-l2 interfaces and 10 cross-connects are tested
+    - jumbo packets in configuration with 14 l2-pg interfaces leads to
+      problems too
 
 **config 1**
     - add 14 pg-l2 interfaces
@@ -15,7 +15,8 @@
     - send L2 MAC frames between all pairs of pg-l2 interfaces
 
 **verify 1**
-    - all packets received correctly in case of cross-connected l2-pg interfaces
+    - all packets received correctly in case of cross-connected l2-pg
+      interfaces
     - no packet received in case of not cross-connected l2-pg interfaces
 
 **config 2**
@@ -25,7 +26,8 @@
     - send L2 MAC frames between all pairs of pg-l2 interfaces
 
 **verify 2**
-    - all packets received correctly in case of cross-connected l2-pg interfaces
+    - all packets received correctly in case of cross-connected l2-pg
+      interfaces
     - no packet received in case of not cross-connected l2-pg interfaces
 
 **config 3**
@@ -35,7 +37,8 @@
     - send L2 MAC frames between all pairs of pg-l2 interfaces
 
 **verify 3**
-    - all packets received correctly in case of cross-connected l2-pg interfaces
+    - all packets received correctly in case of cross-connected l2-pg
+      interfaces
     - no packet received in case of not cross-connected l2-pg interfaces
 
 **config 4**
@@ -79,7 +82,8 @@ class TestL2xcMultiInst(VppTestCase):
             cls.flows = dict()
             for i in range(len(cls.pg_interfaces)):
                 delta = 1 if i % 2 == 0 else -1
-                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i + delta]]
+                cls.flows[cls.pg_interfaces[i]] =\
+                    [cls.pg_interfaces[i + delta]]
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
