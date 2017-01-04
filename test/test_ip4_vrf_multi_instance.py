@@ -95,7 +95,8 @@ class TestIp4VrfMultiInst(VppTestCase):
 
         try:
             # Create pg interfaces
-            cls.create_pg_interfaces(range(cls.nr_of_vrfs * cls.pg_ifs_per_vrf))
+            cls.create_pg_interfaces(
+                range(cls.nr_of_vrfs * cls.pg_ifs_per_vrf))
 
             # Packet flows mapping pg0 -> pg1, pg2 etc.
             cls.flows = dict()
@@ -308,14 +309,14 @@ class TestIp4VrfMultiInst(VppTestCase):
         """
         Create packet streams for all configured l2-pg interfaces, send all
         prepared packet streams and verify that:
-            - all packets received correctly on all pg-l2 interfaces assigned to
-                bridge domains
+            - all packets received correctly on all pg-l2 interfaces assigned
+                to bridge domains
             - no packet received on all pg-l2 interfaces not assigned to bridge
                 domains
 
         :raise RuntimeError: If no packet captured on l2-pg interface assigned
-            to the bridge domain or if any packet is captured on l2-pg interface
-            not assigned to the bridge domain.
+            to the bridge domain or if any packet is captured on l2-pg
+            interface not assigned to the bridge domain.
         """
         # Test
         # Create incoming packet streams for packet-generator interfaces
