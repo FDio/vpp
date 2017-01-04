@@ -75,6 +75,7 @@ help:
 	@echo " wipe-release        - wipe all products of release build "
 	@echo " build               - build debug binaries"
 	@echo " build-release       - build release binaries"
+	@echo " build-coverity      - build coverity artifacts"
 	@echo " rebuild             - wipe and build debug binares"
 	@echo " rebuild-release     - wipe and build release binares"
 	@echo " run                 - run debug binary"
@@ -286,6 +287,9 @@ run-release:
 
 debug:
 	$(call run, $(BR)/install-$(PLATFORM)_debug-native,$(GDB) $(GDB_ARGS) --args)
+
+build-coverity: 
+	$(call make,$(PLATFORM)_coverity,install-packages)
 
 debug-release:
 	$(call run, $(BR)/install-$(PLATFORM)-native,$(GDB) $(GDB_ARGS) --args)
