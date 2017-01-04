@@ -22,29 +22,10 @@
 #include <vlib/threads.h>
 #include <vlib/unix/cj.h>
 
-
-#if DPDK==1
-#include <rte_config.h>
-#include <rte_common.h>
-#include <rte_eal.h>
-#include <rte_launch.h>
-#include <rte_lcore.h>
-#endif
 DECLARE_CJ_GLOBAL_LOG;
 
 #define FRAME_QUEUE_NELTS 32
 
-
-#if DPDK==1
-/*
- *  Weak definitions of DPDK symbols used in this file.
- *  Needed for linking test programs without DPDK libs.
- */
-unsigned __thread __attribute__ ((weak)) RTE_PER_LCORE (_lcore_id);
-struct lcore_config __attribute__ ((weak)) lcore_config[];
-unsigned __attribute__ ((weak)) rte_socket_id ();
-int __attribute__ ((weak)) rte_eal_remote_launch ();
-#endif
 u32
 vl (void *p)
 {
@@ -194,14 +175,17 @@ vlib_thread_init (vlib_main_t * vm)
     tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
 
   /* pin main thread to main_lcore  */
-#if DPDK==0
-  {
-    cpu_set_t cpuset;
-    CPU_ZERO (&cpuset);
-    CPU_SET (tm->main_lcore, &cpuset);
-    pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
-  }
-#endif
+  if (tm->cb.vlib_thread_set_lcore_cb)
+    {
+      tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
+    }
+  else
+    {
+      cpu_set_t cpuset;
+      CPU_ZERO (&cpuset);
+      CPU_SET (tm->main_lcore, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
 
   /* as many threads as stacks... */
   vec_validate_aligned (vlib_worker_threads, vec_len (vlib_thread_stacks) - 1,
@@ -520,32 +504,29 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   return rv;
 }
 
-static int
-vlib_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
+static clib_error_t *
+vlib_launch_thread_int (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)
 {
+  vlib_thread_main_t *tm = &vlib_thread_main;
   void *(*fp_arg) (void *) = fp;
 
   w->lcore_id = lcore_id;
-#if DPDK==1
-  if (!w->registration->use_pthreads)
-    if (rte_eal_remote_launch)	/* do we have dpdk linked */
-      return rte_eal_remote_launch (fp, (void *) w, lcore_id);
-    else
-      return -1;
+  if (tm->cb.vlib_launch_thread_cb && !w->registration->use_pthreads)
+    return tm->cb.vlib_launch_thread_cb (fp, (void *) w, lcore_id);
   else
-#endif
     {
-      int ret;
       pthread_t worker;
       cpu_set_t cpuset;
       CPU_ZERO (&cpuset);
       CPU_SET (lcore_id, &cpuset);
 
-      ret = pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w);
-      if (ret == 0)
-	return pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset);
-      else
-	return ret;
+      if (pthread_create (&worker, NULL /* attr */ , fp_arg, (void *) w))
+	return clib_error_return_unix (0, "pthread_create");
+
+      if (pthread_setaffinity_np (worker, sizeof (cpu_set_t), &cpuset))
+	return clib_error_return_unix (0, "pthread_setaffinity_np");
+
+      return 0;
     }
 }
 
@@ -769,6 +750,7 @@ start_workers (vlib_main_t * vm)
 
   for (i = 0; i < vec_len (tm->registrations); i++)
     {
+      clib_error_t *err;
       int j;
 
       tr = tm->registrations[i];
@@ -778,22 +760,24 @@ start_workers (vlib_main_t * vm)
 	  for (j = 0; j < tr->count; j++)
 	    {
 	      w = vlib_worker_threads + worker_thread_index++;
-	      if (vlib_launch_thread (vlib_worker_thread_bootstrap_fn, w, 0) <
-		  0)
-		clib_warning ("Couldn't start '%s' pthread ", tr->name);
+	      err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
+					    w, 0);
+	      if (err)
+		clib_error_report (err);
 	    }
 	}
       else
 	{
 	  uword c;
-            /* *INDENT-OFF* */
-            clib_bitmap_foreach (c, tr->coremask, ({
-              w = vlib_worker_threads + worker_thread_index++;
-              if (vlib_launch_thread (vlib_worker_thread_bootstrap_fn, w, c) < 0)
-                clib_warning ("Couldn't start DPDK lcore %d", c);
-
-            }));
-/* *INDENT-ON* */
+          /* *INDENT-OFF* */
+          clib_bitmap_foreach (c, tr->coremask, ({
+            w = vlib_worker_threads + worker_thread_index++;
+	    err = vlib_launch_thread_int (vlib_worker_thread_bootstrap_fn,
+					  w, c);
+	    if (err)
+	      clib_error_report (err);
+          }));
+          /* *INDENT-ON* */
 	}
     }
   vlib_worker_thread_barrier_sync (vm);
@@ -1105,7 +1089,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
     {
       tm->n_thread_stacks += tr->count;
       tm->n_pthreads += tr->count * tr->use_pthreads;
-      tm->n_eal_threads += tr->count * (tr->use_pthreads == 0);
+      tm->n_threads += tr->count * (tr->use_pthreads == 0);
       tr = tr->next;
     }
 
@@ -1423,6 +1407,7 @@ void
 vlib_worker_thread_fn (void *arg)
 {
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
 
   ASSERT (vm->cpu_index == os_get_cpu_number ());
@@ -1431,12 +1416,9 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
-#if DPDK > 0
   /* Wait until the dpdk init sequence is complete */
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  while (tm->worker_thread_release == 0)
+  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
-#endif
 
   vlib_worker_thread_internal (vm);
 }
@@ -1473,6 +1455,20 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
     }
 
   return (fqm - tm->frame_queue_mains);
+}
+
+
+int
+vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
+{
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (tm->extern_thread_mgmt)
+    return -1;
+
+  tm->cb.vlib_launch_thread_cb = cb->vlib_launch_thread_cb;
+  tm->extern_thread_mgmt = 1;
+  return 0;
 }
 
 clib_error_t *
