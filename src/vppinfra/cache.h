@@ -45,12 +45,8 @@
  */
 #ifndef CLIB_LOG2_CACHE_LINE_BYTES
 
-#if defined(__x86_64__) || defined(__ARM_ARCH_7A__)
+#if defined(__x86_64__) || defined(__ARM_ARCH_7A__) || defined (__aarch64__)
 #define CLIB_LOG2_CACHE_LINE_BYTES 6
-#endif
-
-#ifdef __aarch64__
-#define CLIB_LOG2_CACHE_LINE_BYTES 7
 #endif
 
 /* Default cache line size of 32 bytes. */
