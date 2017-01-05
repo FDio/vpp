@@ -79,7 +79,7 @@ extern vlib_node_registration_t handoff_dispatch_node;
   _ ("net_virtio", VIRTIO)        \
   _ ("net_enic", ENIC)            \
   _ ("net_vmxnet3", VMXNET3)      \
-  _ ("net_af_packet", AF_PACKET)  \
+  _ ("AF_PACKET PMD", AF_PACKET)  \
   _ ("rte_bond_pmd", BOND)        \
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
