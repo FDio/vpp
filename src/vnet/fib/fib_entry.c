@@ -230,6 +230,7 @@ fib_entry_last_lock_gone (fib_node_t *node)
 
     ASSERT(0 == vec_len(fib_entry->fe_delegates));
     vec_free(fib_entry->fe_delegates);
+    vec_free(fib_entry->fe_srcs);
     pool_put(fib_entry_pool, fib_entry);
 }
 
