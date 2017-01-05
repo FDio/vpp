@@ -188,6 +188,7 @@ jvpp-%-$(PACKAGE_VERSION).jar: libjvpp_%.la
 	@echo "  JAR      $@"
 	@cp .libs/libjvpp_$*.so jvpp-$*/target
 	@$(JAR) cf $(JARFLAGS) $@ -C jvpp-$*/target .
+	@$(JAR) uf $(JARFLAGS) $@ -C $(srcdir)/jvpp-$* io
 
 jardir = $(prefix)/share/java
 jar_DATA = $(JAR_FILES)
