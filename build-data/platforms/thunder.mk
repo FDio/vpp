@@ -27,10 +27,10 @@ vlib-cavium-dpdk_configure_args_thunder = --with-pre-data=128
 # native tool chain additions for this platform
 thunder_native_tools = vppapigen 
 
-thunder_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG 
-thunder_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG
+thunder_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_LOG2_CACHE_LINE_BYTES=7
+thunder_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DCLIB_LOG2_CACHE_LINE_BYTES=7
 
-thunder_TAG_CFLAGS = -g -O2
-thunder_TAG_LDFLAGS = -g -O2
+thunder_TAG_CFLAGS = -g -O2 -DCLIB_LOG2_CACHE_LINE_BYTES=7
+thunder_TAG_LDFLAGS = -g -O2 -DCLIB_LOG2_CACHE_LINE_BYTES=7
 
 
