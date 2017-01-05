@@ -99,7 +99,7 @@ DISABLE_ARG(japi,	[Disable Java API bindings])
 # --with-X
 WITH_ARG(dpdk,		[Use use DPDK])
 WITH_ARG(dpdk_crypto_sw,[Use DPDK cryptodev SW PMDs])
-WITH_ARG(dpdk_mlx5_pmd,	[Use DPDK with mlx5 PMD])
+WITH_ARG(dpdk_mlx5_pmd,        [Use DPDK with mlx5 PMD])
 
 # --without-X
 WITHOUT_ARG(libssl,	[Disable libssl])
@@ -123,6 +123,26 @@ AC_ARG_WITH(pre-data,
                *) with_pre_data="pre-data-not-set" ;;
 	     esac], [with_pre_data=128])
 
+# get cache line length in Bytes
+AC_ARG_WITH([cache-line-length],
+  AC_HELP_STRING([--cache-line-length],[set cache line length]),
+  [case $with_cache_line_length in
+    32) ;;
+    64) ;;
+    128) ;;
+    256) ;;
+    esac], [with_cache_line_length=$(getconf LEVEL1_DCACHE_LINESIZE)])
+
+# get log2 of cache line length
+[case $with_cache_line_length in
+    32)  LOG2_CACHE_LINE_BYTES=5;;
+    64)  LOG2_CACHE_LINE_BYTES=6;;
+    128) LOG2_CACHE_LINE_BYTES=7;;
+    235) LOG2_CACHE_LINE_BYTES=8;;
+    *)   LOG2_CACHE_LINE_BYTES="cache-line-length not set"
+esac]
+
+
 ###############################################################################
 # Substitutions and defines
 ###############################################################################
@@ -135,6 +155,7 @@ AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(DPDK_CRYPTO_SW,	[${n_with_dpdk_crypto_sw}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
 
+AC_DEFINE_UNQUOTED([CLIB_LOG2_CACHE_LINE_BYTES], [${LOG2_CACHE_LINE_BYTES}])
 
 # Silence following noise:
 # ar: `u' modifier ignored since `D' is the default (see `U')
@@ -219,6 +240,7 @@ AM_COND_IF([ENABLE_JAPI],
   PRINT_VAL([JAVA_VERSION], ${JAVA_VERSION})
   PRINT_VAL([JAVA_HOME], ${JAVA_HOME})
 ])
+PRINT_VAL([cache-line-length], ${with_cache_line_length})
 
 AC_MSG_RESULT([])
 AC_MSG_RESULT([with:])
