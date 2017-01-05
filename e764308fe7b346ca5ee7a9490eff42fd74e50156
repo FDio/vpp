@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_39bc3dbb",
+        "filename": "test/vpp_lo_interface.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-05T10:31:22Z",
+      "side": 1,
+      "message": "self.add_vpp_config()",
+      "range": {
+        "startLine": 10,
+        "startChar": 7,
+        "endLine": 11,
+        "endChar": 41
+      },
+      "revId": "e764308fe7b346ca5ee7a9490eff42fd74e50156",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
