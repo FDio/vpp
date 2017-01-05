@@ -691,6 +691,8 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
+  memset (c, 0, sizeof (*c));
+
   c->id = id;
   c->name = name;
   c->handler = handler;
