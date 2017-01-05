@@ -347,6 +347,8 @@ memory_api_init (char *region_name)
   vl_msg_api_msg_config_t cfg;
   vl_msg_api_msg_config_t *c = &cfg;
 
+  memset (c, 0, sizeof (*c));
+
   if ((rv = vl_map_shmem (region_name, 1 /* is_vlib */ )) < 0)
     return rv;
 
@@ -360,6 +362,7 @@ memory_api_init (char *region_name)
     c->size = sizeof(vl_api_##n##_t);                           \
     c->traced = 1; /* trace, so these msgs print */             \
     c->replay = 0; /* don't replay client create/delete msgs */ \
+    c->message_bounce = 0; /* don't bounce this message */	\
     vl_msg_api_config(c);} while (0);
 
   foreach_vlib_api_msg;
