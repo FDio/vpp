@@ -99,7 +99,7 @@ DISABLE_ARG(japi,	[Disable Java API bindings])
 # --with-X
 WITH_ARG(dpdk,		[Use use DPDK])
 WITH_ARG(dpdk_crypto_sw,[Use DPDK cryptodev SW PMDs])
-WITH_ARG(dpdk_mlx5_pmd,	[Use DPDK with mlx5 PMD])
+WITH_ARG(dpdk_mlx5_pmd,        [Use DPDK with mlx5 PMD])
 
 # --without-X
 WITHOUT_ARG(libssl,	[Disable libssl])
@@ -123,6 +123,39 @@ AC_ARG_WITH(pre-data,
                *) with_pre_data="pre-data-not-set" ;;
 	     esac], [with_pre_data=128])
 
+# get cache line length in Bytes
+# if none given, try to get a value from the host using getconf(1)
+# getconf returns the cache line size value given by the kernel.
+# It may not work on old kernels.
+AC_ARG_WITH([cache-line-size],
+    AC_HELP_STRING([--cache-line-size],[set cache line size]),
+    [case $with_cache_line_size in
+        32) ;;
+        64) ;;
+        128) ;;
+        256) ;;
+        esac],
+    [with_cache_line_size=$(getconf LEVEL1_DCACHE_LINESIZE)])
+
+
+# get log2 of cache line length
+# if no value was provided, and getconf failed to find one, use 64 by default.
+[case $with_cache_line_size in
+    # getconf failed to read LEVEL1_DCACHE_LINESIZE
+    # if the LEVEL1_DCACHE_LINESIZE is recognized by the system, but unavailable
+    # getconf shoudl return "undefined"; however it seems to return 0 in some cases
+    0|"undefined") with_cache_line_size=64 ; LOG2_CACHE_LINE_BYTES=6;;
+
+    32)  LOG2_CACHE_LINE_BYTES=5;;
+    64)  LOG2_CACHE_LINE_BYTES=6;;
+    128) LOG2_CACHE_LINE_BYTES=7;;
+    235) LOG2_CACHE_LINE_BYTES=8;;
+
+    # found but unsupported cache line length
+    *) LOG2_CACHE_LINE_BYTES="cache-line-size ${with_cache_line_size} not supported"
+esac]
+
+
 ###############################################################################
 # Substitutions and defines
 ###############################################################################
@@ -135,6 +168,7 @@ AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(DPDK_CRYPTO_SW,	[${n_with_dpdk_crypto_sw}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
 
+AC_DEFINE_UNQUOTED([CLIB_LOG2_CACHE_LINE_BYTES], [${LOG2_CACHE_LINE_BYTES}])
 
 # Silence following noise:
 # ar: `u' modifier ignored since `D' is the default (see `U')
@@ -219,6 +253,7 @@ AM_COND_IF([ENABLE_JAPI],
   PRINT_VAL([JAVA_VERSION], ${JAVA_VERSION})
   PRINT_VAL([JAVA_HOME], ${JAVA_HOME})
 ])
+PRINT_VAL([cache-line-size], ${with_cache_line_size})
 
 AC_MSG_RESULT([])
 AC_MSG_RESULT([with:])

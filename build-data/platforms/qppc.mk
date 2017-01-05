@@ -25,10 +25,10 @@ qppc_native_tools = vppapigen
 
 qppc_uses_dpdk = no
 
-qppc_debug_TAG_CFLAGS = -m64 -g -O0 -DCLIB_DEBUG -DCLIB_LOG2_CACHE_LINE_BYTES=6 -maltivec
-qppc_debug_TAG_LDFLAGS = -m64 -g -O0 -DCLIB_DEBUG -DCLIB_LOG2_CACHE_LINE_BYTES=6 -maltivec
+qppc_debug_TAG_CFLAGS = -m64 -g -O0 -DCLIB_DEBUG -maltivec
+qppc_debug_TAG_LDFLAGS = -m64 -g -O0 -DCLIB_DEBUG -maltivec
 
-qppc_TAG_CFLAGS = -m64 -g -O2 -DCLIB_LOG2_CACHE_LINE_BYTES=6 -maltivec
-qppc_TAG_LDFLAGS = -m64 -g -O2 -DCLIB_LOG2_CACHE_LINE_BYTES=6 -maltivec
+qppc_TAG_CFLAGS = -m64 -g -O2 -maltivec
+qppc_TAG_LDFLAGS = -m64 -g -O2 -maltivec
 
 

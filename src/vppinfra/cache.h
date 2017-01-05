@@ -44,24 +44,8 @@
  * Allow CFLAGS to override the arch-specific cache line size
  */
 #ifndef CLIB_LOG2_CACHE_LINE_BYTES
-
-#if defined(__x86_64__) || defined(__ARM_ARCH_7A__)
+#pragma message ( "cache line length undefined. Setting 64 as default value" )
 #define CLIB_LOG2_CACHE_LINE_BYTES 6
-#endif
-
-#ifdef __aarch64__
-#define CLIB_LOG2_CACHE_LINE_BYTES 7
-#endif
-
-/* Default cache line size of 32 bytes. */
-#ifndef CLIB_LOG2_CACHE_LINE_BYTES
-#define CLIB_LOG2_CACHE_LINE_BYTES 5
-#endif
-
-#endif /* CLIB_LOG2_CACHE_LINE_BYTES defined */
-
-#if (CLIB_LOG2_CACHE_LINE_BYTES >= 9)
-#error Cache line size 512 bytes or greater
 #endif
 
 #define CLIB_CACHE_LINE_BYTES (1 << CLIB_LOG2_CACHE_LINE_BYTES)
