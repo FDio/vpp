@@ -321,6 +321,24 @@ BUILD_ENV =										\
     set -eu$(BUILD_DEBUG) ;							        \
     set -o pipefail
 
+# cache line length, default to 64 Bytes
+CACHE_LINE_LENGTH = $(strip $($(PLATFORM)_cache_line_length))
+ifeq ($(CACHE_LINE_LENGTH),)
+	LOG2_CACHE_LINE_LENGTH=6
+else
+	ifeq ($(CACHE_LINE_LENGTH),32)
+		LOG2_CACHE_LINE_LENGTH=5
+	else ifeq ($(CACHE_LINE_LENGTH),64)
+		LOG2_CACHE_LINE_LENGTH=6
+	else ifeq ($(CACHE_LINE_LENGTH),128)
+		LOG2_CACHE_LINE_LENGTH=7
+	else ifeq ($(CACHE_LINE_LENGTH),256)
+		LOG2_CACHE_LINE_LENGTH=8
+	else
+		$(error unsupported cache line length: $(CACHE_LINE_LENGTH))
+	endif
+endif
+
 ######################################################################
 # Package build generic definitions
 ######################################################################

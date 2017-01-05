@@ -21,6 +21,7 @@ ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_march = armv8-a+crc
 vpp_mtune = thunderx
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
+vpp_cache_line_length = 128
 else
 vpp_march = native
 vpp_mtune = generic
@@ -49,24 +50,24 @@ vlib_configure_args_vpp = --with-pre-data=128
 # vpp_dpdk_shared_lib = yes
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
-	-fstack-protector-all -fPIC -Werror
+	-fstack-protector-all -fPIC -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
-	-fstack-protector-all -fPIC -Werror
+	-fstack-protector-all -fPIC -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 
 vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
+	-fstack-protector -fPIC -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
+	-fstack-protector -fPIC -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 
 vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
+	-fstack-protector -fPIC -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 vpp_clang_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
+	-fstack-protector -fPIC -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 
 vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
-	-fPIC -Werror -fprofile-arcs -ftest-coverage
+	-fPIC -Werror -fprofile-arcs -ftest-coverage -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
-	-fPIC -Werror -coverage
+	-fPIC -Werror -coverage -DCLIB_LOG2_CACHE_LINE_BYTES=$(LOG2_CACHE_LINE_LENGTH)
 
 vpp_coverity_TAG_CFLAGS = -g -O2 -march=$(MARCH) -mtune=$(MTUNE) \
 	-fPIC -Werror -D__COVERITY__
