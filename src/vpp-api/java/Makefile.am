@@ -91,6 +91,7 @@ BUILT_SOURCES += jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h
 JAR_FILES += jvpp-core-$(PACKAGE_VERSION).jar
 CLEANDIRS += jvpp-core/target
 jvpp_core_json_files = $(shell find @top_builddir@/vnet/ -type f -name '*.api.json')
+jvpp_core_json_files += @top_builddir@/vpp/api/vpe.api.json
 
 jvpp-core/io_fd_vpp_jvpp_core_JVppCoreImpl.h: $(jvpp_registry_ok) $(jvpp_core_json_files)
 	$(call japigen,core,JVppCoreImpl)
