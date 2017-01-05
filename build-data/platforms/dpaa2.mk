@@ -52,15 +52,14 @@ vlib_configure_args_dpaa2 = --with-pre-data=256
 
 
 dpaa2_debug_TAG_CFLAGS = -g -O2 -DCLIB_DEBUG -fPIC -fstack-protector-all \
-			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
+			-march=$(MARCH) -Werror
 dpaa2_debug_TAG_LDFLAGS = -g -O2 -DCLIB_DEBUG -fstack-protector-all \
-			-march=$(MARCH) -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
+			-march=$(MARCH) -Werror
 
 # Use -rdynamic is for stack tracing, O0 for debugging....default is O2
-# Use -DCLIB_LOG2_CACHE_LINE_BYTES to change cache line size
 dpaa2_TAG_CFLAGS = -g -O2 -fPIC -march=$(MARCH) -mcpu=$(dpaa2_mtune) \
-		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
+		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror
 dpaa2_TAG_LDFLAGS = -g -O2 -fPIC -march=$(MARCH) -mcpu=$(dpaa2_mtune) \
-		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror -DCLIB_LOG2_CACHE_LINE_BYTES=6
+		-mtune=$(dpaa2_mtune) -funroll-all-loops -Werror
 
 
