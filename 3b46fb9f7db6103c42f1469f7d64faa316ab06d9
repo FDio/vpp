@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_348e842f",
+        "filename": "Makefile",
+        "patchSetId": 21
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-01-06T22:11:00Z",
+      "side": 1,
+      "message": "My inclination is that if these dependencies are moving back to the root makefile, they should be removed entirely from the subordinate one in doxygen/\n\nSince these are only needed for documentation building and package generation, perhaps you could make it so they only get pulled in those cases?\n\nIf that\u0027s tricky, just remove it from the other place; I don\u0027t want to have to maintain it in two places.",
+      "revId": "3b46fb9f7db6103c42f1469f7d64faa316ab06d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_b4927455",
+        "filename": "Makefile",
+        "patchSetId": 21
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-01-06T22:11:00Z",
+      "side": 1,
+      "message": "Not entirely sure I like ANSI sequences in here. Messes up log files and whatnot. Is there precedent for this? What do others thing?",
+      "range": {
+        "startLine": 126,
+        "startChar": 24,
+        "endLine": 126,
+        "endChar": 61
+      },
+      "revId": "3b46fb9f7db6103c42f1469f7d64faa316ab06d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_14838805",
+        "filename": "doxygen/Makefile",
+        "patchSetId": 21
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-01-06T22:11:00Z",
+      "side": 1,
+      "message": "Don\u0027t like this - why is it needed, since you moved pkg deps to the root makefile?",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 33,
+        "endChar": 10
+      },
+      "revId": "3b46fb9f7db6103c42f1469f7d64faa316ab06d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
