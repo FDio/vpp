@@ -80,7 +80,7 @@ int main (int argc, char ** argv)
   vl_api_show_version_t message;
   vl_api_show_version_t *mp;
   int async = 1;
-  int rv = pneum_connect("pneum_client", NULL, NULL);
+  int rv = pneum_connect("pneum_client", NULL, NULL, 32 /* rx queue-length*/);
 
   if (rv != 0) {
     printf("Connect failed: %d\n", rv);

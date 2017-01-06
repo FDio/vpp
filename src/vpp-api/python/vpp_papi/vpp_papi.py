@@ -303,12 +303,12 @@ class VPP():
             self.vpp_dictionary[name] = { 'id' : i, 'crc' : crc }
             self.vpp_dictionary_maxid = max(self.vpp_dictionary_maxid, i)
 
-    def connect(self, name, chroot_prefix = None, async = False):
+    def connect(self, name, chroot_prefix = None, async = False, rx_qlen = 32):
         msg_handler = self.msg_handler if not async else self.msg_handler_async
         if not chroot_prefix:
-            rv = vpp_api.connect(name, msg_handler)
+            rv = vpp_api.connect(name, msg_handler, rx_qlen)
         else:
-            rv = vpp_api.connect(name, msg_handler, chroot_prefix)
+            rv = vpp_api.connect(name, msg_handler, rx_qlen, chroot_prefix)
 
         if rv != 0:
             raise IOError(2, 'Connect failed')

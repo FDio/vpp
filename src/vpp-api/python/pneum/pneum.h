@@ -19,7 +19,8 @@
 #include <vppinfra/types.h>
 
 typedef void (*pneum_callback_t)(unsigned char * data, int len);
-int pneum_connect(char * name, char * chroot_prefix, pneum_callback_t cb);
+int pneum_connect(char * name, char * chroot_prefix, pneum_callback_t cb,
+    int rx_qlen);
 int pneum_disconnect(void);
 int pneum_read(char **data, int *l);
 int pneum_write(char *data, int len);
