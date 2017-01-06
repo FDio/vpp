@@ -1114,6 +1114,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	    tmp = format (0, "--%s%c", #a, 0);	      \
 	    vec_add1 (conf->eal_init_args, tmp);      \
 	    vec_add1 (s, 0);			      \
+            if (!strncmp(#a, "vdev", 4))              \
+              if (strstr((char*)s, "af_packet"))      \
+                clib_warning ("af_packet obsoleted. Use CLI 'create host-interface'."); \
 	    vec_add1 (conf->eal_init_args, s);	      \
 	  }
 	foreach_eal_double_hyphen_arg
