@@ -61,6 +61,7 @@
 typedef struct
 {
   u8 *name;
+  u8 *filename;
   struct stat file_info;
   void *handle;
 } plugin_info_t;
@@ -86,6 +87,7 @@ extern plugin_main_t vlib_plugin_main;
 
 int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
+void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
 
 #endif /* __included_plugin_h__ */
 

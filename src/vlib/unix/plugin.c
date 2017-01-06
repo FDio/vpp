@@ -40,6 +40,20 @@ vnet_get_handoff_structure (void)
     return (*fp) ();
 }
 
+void *
+vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
+{
+  plugin_main_t *pm = &vlib_plugin_main;
+  uword *p;
+  plugin_info_t *pi;
+
+  if ((p = hash_get_mem (pm->plugin_by_name_hash, plugin_name)) == 0)
+    return 0;
+
+  pi = vec_elt_at_index (pm->plugin_info, p[0]);
+  return dlsym (pi->handle, symbol_name);
+}
+
 static int
 load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 {
@@ -48,7 +62,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   clib_error_t *error;
   void *handoff_structure;
 
-  handle = dlopen ((char *) pi->name, RTLD_LAZY);
+  handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
   /*
    * Note: this can happen if the plugin has an undefined symbol reference,
@@ -144,6 +158,7 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
       while ((entry = readdir (dp)))
 	{
 	  u8 *plugin_name;
+	  u8 *filename;
 
 	  if (pm->plugin_name_filter)
 	    {
@@ -153,17 +168,16 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 		  goto next;
 	    }
 
-	  plugin_name = format (0, "%s/%s%c", plugin_path[i],
-				entry->d_name, 0);
+	  filename = format (0, "%s/%s%c", plugin_path[i], entry->d_name, 0);
 
 	  /* Only accept .so */
-	  char *ext = strrchr ((const char *) plugin_name, '.');
+	  char *ext = strrchr ((const char *) filename, '.');
 	  /* unreadable */
 	  if (!ext || (strcmp (ext, ".so") != 0) ||
-	      stat ((char *) plugin_name, &statb) < 0)
+	      stat ((char *) filename, &statb) < 0)
 	    {
 	    ignore:
-	      vec_free (plugin_name);
+	      vec_free (filename);
 	      continue;
 	    }
 
@@ -171,20 +185,23 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 	  if (!S_ISREG (statb.st_mode))
 	    goto ignore;
 
+	  plugin_name = format (0, "%s%c", entry->d_name, 0);
 	  p = hash_get_mem (pm->plugin_by_name_hash, plugin_name);
 	  if (p == 0)
 	    {
 	      vec_add2 (pm->plugin_info, pi, 1);
 	      pi->name = plugin_name;
+	      pi->filename = filename;
 	      pi->file_info = statb;
 
 	      if (load_one_plugin (pm, pi, from_early_init))
 		{
 		  vec_free (plugin_name);
+		  vec_free (filename);
 		  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
+		  memset (pi, 0, sizeof (*pi));
 		  continue;
 		}
-	      memset (pi, 0, sizeof (*pi));
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
 			    pi - pm->plugin_info);
 	    }
