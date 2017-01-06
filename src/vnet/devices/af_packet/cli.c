@@ -32,6 +32,13 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
+/**
+ * @file
+ * @brief CLI for Host Interface Device Driver.
+ *
+ * This file contains the source code for CLI for the host interface.
+ */
+
 static clib_error_t *
 af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
@@ -81,10 +88,27 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * Create a host interface that will attach to a linux AF_PACKET
+ * interface, one side of a veth pair. The veth pair must already
+ * exist. Once created, a new host interface will exist in VPP
+ * with the name '<em>host-<ifname></em>', where '<em><ifname></em>'
+ * is the name of the specified veth pair. Use the
+ * '<em>show interfaces</em>' command to display host interface details.
+ *
+ * @cliexpar
+ * Example of how to create a host interface tied to one side of an
+ * existing linux veth pair named vpp1:
+ * @cliexstart{create host-interface name vpp1}
+ * host-vpp1
+ * @cliexend
+ * Once the host interface is created, enable the interface using:
+ * @cliexcmd{set interface state host-vpp1 up}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_packet_create_command, static) = {
   .path = "create host-interface",
-  .short_help = "create host-interface name <interface name> [hw-addr <mac>]",
+  .short_help = "create host-interface name <ifname> [hw-addr <mac-addr>]",
   .function = af_packet_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -119,10 +143,20 @@ af_packet_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * Delete a host interface. Use the linux interface name to identify
+ * the host interface to be deleted. In VPP, host interfaces are
+ * named as '<em>host-<ifname></em>', where '<em><ifname></em>'
+ * is the name of the linux interface.
+ *
+ * @cliexpar
+ * Example of how to delete a host interface named host-vpp1:
+ * @cliexcmd{delete host-interface name vpp1}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (af_packet_delete_command, static) = {
   .path = "delete host-interface",
-  .short_help = "delete host-interface name <interface name>",
+  .short_help = "delete host-interface name <ifname>",
   .function = af_packet_delete_command_fn,
 };
 /* *INDENT-ON* */
