@@ -45,12 +45,13 @@ static PyObject *
 wrap_connect (PyObject *self, PyObject *args)
 {
   char * name, * chroot_prefix = NULL;
+  int rx_qlen=32; /* default rx queue length */
   int rv;
   PyObject * temp = NULL;
   pneum_callback_t cb = NULL;
 
-  if (!PyArg_ParseTuple(args, "s|Os:wrap_connect",
-			&name, &temp, &chroot_prefix))
+  if (!PyArg_ParseTuple(args, "s|Ois:wrap_connect",
+			&name, &temp, &rx_qlen, &chroot_prefix))
     return (NULL);
 
   if (temp)
@@ -67,7 +68,7 @@ wrap_connect (PyObject *self, PyObject *args)
       cb = wrap_pneum_callback;
     }
   Py_BEGIN_ALLOW_THREADS
-    rv = pneum_connect(name, chroot_prefix, cb);
+  rv = pneum_connect(name, chroot_prefix, cb, rx_qlen);
   Py_END_ALLOW_THREADS
   return PyLong_FromLong(rv);
 }

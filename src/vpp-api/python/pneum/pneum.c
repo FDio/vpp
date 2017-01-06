@@ -126,7 +126,8 @@ pneum_msg_table_size(void)
 }
 
 int
-pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb)
+pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb, 
+               int rx_qlen)
 {
   int rv = 0;
   pneum_main_t *pm = &pneum_main;
@@ -139,7 +140,7 @@ pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb)
     return rv;
   }
 
-  if (vl_client_connect(name, 0, 32) < 0) {
+  if (vl_client_connect(name, 0, rx_qlen) < 0) {
     vl_client_api_unmap();
     return (-1);
   }
