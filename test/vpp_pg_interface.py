@@ -1,5 +1,6 @@
 import os
 import time
+import socket
 from traceback import format_exc
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from vpp_interface import VppInterface
@@ -9,7 +10,8 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, ICMPv6ND_RA, RouterAlert, \
     IPv6ExtHdrHopByHop
 from util import ppp, ppc
-
+from scapy.utils6 import in6_getnsma, in6_getnsmac
+from scapy.utils import inet_pton, inet_ntop
 
 def is_ipv6_misc(p):
     """ Is packet one of uninteresting IPv6 broadcasts? """
@@ -304,8 +306,11 @@ class VppPGInterface(VppInterface):
 
     def create_ndp_req(self):
         """Create NDP - NS applicable for this interface"""
-        return (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.remote_mac) /
-                IPv6(src=self.remote_ip6, dst=self.local_ip6) /
+        nsma = in6_getnsma(inet_pton(socket.AF_INET6, self.local_ip6))
+        d = inet_ntop(socket.AF_INET6, nsma)
+
+        return (Ether(dst=in6_getnsmac(nsma)) /
+                IPv6(dst=d, src=self.remote_ip6) /
                 ICMPv6ND_NS(tgt=self.local_ip6) /
                 ICMPv6NDOptSrcLLAddr(lladdr=self.remote_mac))
 
