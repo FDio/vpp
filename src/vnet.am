@@ -14,7 +14,12 @@
 libvnet_la_SOURCES =
 libvnetplugin_la_SOURCES =
 
-libvnet_la_LIBAD = libvppinfra.la libvlib.la libsvm.la
+libvnet_la_LIBADD = libvppinfra.la libsvm.la
+libvnet_la_DEPENDENCIES = libvppinfra.la libvlib.la libsvmdb.la libsvm.la libvlibapi.la libvlibmemory.la libvlibmemoryclient.la
+
+if WITH_IPV6SR
+libvnet_la_LIBADD += -lcrypto
+endif
 
 ########################################
 # Generic stuff
