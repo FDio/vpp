@@ -42,7 +42,7 @@ install-exec-local:
 	cd $(srcdir);							\
 	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
 	PYTHONUSERBASE=$(prefix)					\
-	python setup.py build_ext -L $(prefix)/lib64 \
+	python setup.py build_ext -L $(libdir)				\
 	-I $(prefix)/include/ install --user
 
 #
