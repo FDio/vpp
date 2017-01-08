@@ -12,9 +12,8 @@
 # limitations under the License.
 
 libvnet_la_SOURCES =
-libvnetplugin_la_SOURCES =
 
-libvnet_la_LIBADD = libvppinfra.la libsvm.la
+libvnet_la_LIBADD = libvppinfra.la libsvm.la libvlib.la libvlibmemory.la libvlibapi.la libvlibmemoryclient.la
 libvnet_la_DEPENDENCIES = libvppinfra.la libvlib.la libsvmdb.la libsvm.la libvlibapi.la libvlibmemory.la libvlibmemoryclient.la
 
 if WITH_IPV6SR
@@ -593,10 +592,8 @@ test_lisp_types_SOURCES =			\
 test_cp_serdes_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_lisp_types_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_cp_serdes_LDFLAGS = $(DPDK_LD_FLAGS)
-test_cp_serdes_LDADD = $(LDS) $(DPDK_LD_ADD)
-test_lisp_types_LDFLAGS = $(DPDK_LD_FLAGS)
-test_lisp_types_LDADD = $(LDS) $(DPDK_LD_ADD)
+test_cp_serdes_LDADD = $(LDS)
+test_lisp_types_LDADD = $(LDS)
 endif
 
 ########################################
@@ -748,24 +745,7 @@ nobase_include_HEADERS +=			\
   vnet/pg/pg.h					\
   vnet/pg/edit.h
 
-########################################
-# DPDK
-########################################
-if WITH_DPDK
-libvnet_la_SOURCES +=				\
-  vnet/devices/dpdk/buffer.c			\
-  vnet/devices/dpdk/dpdk_priv.h		\
-  vnet/devices/dpdk/device.c		\
-  vnet/devices/dpdk/format.c		\
-  vnet/devices/dpdk/init.c			\
-  vnet/devices/dpdk/node.c			\
-  vnet/devices/dpdk/thread.c			\
-  vnet/devices/dpdk/hqos.c			\
-  vnet/devices/dpdk/cli.c
-
-nobase_include_HEADERS +=			\
-  vnet/devices/dpdk/dpdk.h
-else
+if !WITH_DPDK
 libvnet_la_SOURCES +=				\
   vnet/devices/nic/ixge.c                       \
   vnet/devices/nic/ixge.h                       \
@@ -953,18 +933,10 @@ nobase_include_HEADERS +=			\
   vnet/dpo/ip_null_dpo.h			\
   vnet/dpo/dpo.h
 
-########################################
-# Plugin client library
-########################################
-
-libvnetplugin_la_SOURCES +=                    \
-  vnet/plugin/p1.c
-
 nobase_include_HEADERS +=                      \
   vnet/plugin/plugin.h
 
-libvnetdir = ${libdir}
-libvnet_LTLIBRARIES = libvnet.la libvnetplugin.la
+lib_LTLIBRARIES += libvnet.la
 
 pcap2pg_SOURCES = 				\
   vnet/unix/pcap2pg.c				\
