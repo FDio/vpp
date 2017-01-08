@@ -24,6 +24,9 @@
  *  @note Currently requires DPDK
 */
 
+#undef DPDK
+#define DPDK 0
+
 #if DPDK > 0			/* Cannot run replicate without DPDK */
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
