@@ -14,10 +14,6 @@
  */
 #include <vpp/oam/oam.h>
 
-#if DPDK > 0
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
-
 oam_main_t oam_main;
 
 static vlib_node_registration_t oam_node;

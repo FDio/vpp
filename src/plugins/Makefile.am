@@ -24,12 +24,17 @@ vppplugins_LTLIBRARIES =
 vppapitestplugins_LTLIBRARIES =
 noinst_HEADERS =
 nobase_apiinclude_HEADERS =
+nobase_include_HEADERS =
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
 if ENABLE_ACL_PLUGIN
 include acl.am
+endif
+
+if WITH_DPDK
+include dpdk.am
 endif
 
 if ENABLE_FLOWPERPKT_PLUGIN

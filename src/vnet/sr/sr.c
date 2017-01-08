@@ -20,6 +20,8 @@
  * @brief Segment Routing main functions
  *
  */
+#undef DPDK
+#define DPDK 0
 #include <vnet/vnet.h>
 #include <vnet/sr/sr.h>
 #include <vnet/fib/ip6_fib.h>
