@@ -86,6 +86,9 @@
 #undef __included_bihash_template_h__
 #include <vnet/l2/l2_fib.h>
 
+#undef DPDK
+#define DPDK 0
+
 #if DPDK > 0
 #include <vnet/devices/dpdk/dpdk.h>
 #endif

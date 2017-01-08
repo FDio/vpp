@@ -29,27 +29,6 @@ lib_LTLIBRARIES =
 BUILT_SOURCES =
 
 ###############################################################################
-# DPDK
-###############################################################################
-
-if WITH_DPDK
-if ENABLE_DPDK_SHARED
-DPDK_LD_FLAGS = -Wl,--whole-archive,-ldpdk,--no-whole-archive
-else
-DPDK_LD_FLAGS = -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive
-endif
-if WITH_DPDK_CRYPTO
-DPDK_LD_ADD = -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
-endif
-if WITH_DPDK_MLX5_PMD
-DPDK_LD_FLAGS += -libverbs -lmlx5 -lnuma
-endif
-else
-DPDK_LD_FLAGS =
-DPDK_LD_ADD =
-endif
-
-###############################################################################
 # Components
 ###############################################################################
 
