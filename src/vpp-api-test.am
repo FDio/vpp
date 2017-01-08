@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+libvatplugin_la_LIBADD = libvppinfra.la
+libvatplugin_la_DEPENDENCIES = libvppinfra.la
 libvatplugin_la_SOURCES = \
   vat/plugin_api.c
 

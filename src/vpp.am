@@ -44,19 +44,30 @@ nobase_include_HEADERS +=			\
 
 API_FILES += vpp/api/vpe.api
 
-BUILT_SOURCES += vpp/app/version.h
+BUILT_SOURCES += .version
 
 vpp/app/version.o:	vpp/app/version.h
 
-.PHONY:	vpp/app/version.h
+.PHONY:	.version
 
-vpp/app/version.h:
-	@echo "  VERSION " $@
-	@echo "#define VPP_BUILD_DATE \"$$(date)\"" > $@
-	@echo "#define VPP_BUILD_USER \"$$(whoami)\"" >> $@
-	@echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $@
-	@echo "#define VPP_BUILD_TOPDIR \"$$(cd $(srcdir) && git rev-parse --show-toplevel)\"" 	>> $@
-	@echo "#define VPP_BUILD_VER \"$$($(srcdir)/scripts/version)\"" >> $@
+VPP_VERSION = $(shell $(srcdir)/scripts/version)
+
+# update version.h only when version changes, to avoid
+# unnecessary re-linking of vpp binary
+
+.version:
+	@if [ "$$(cat .version 2> /dev/null)" != "$(VPP_VERSION)" ] ; then		\
+	  f="vpp/app/version.h" 							;\
+	  echo "  VERSION  $$f ($(VPP_VERSION))"					;\
+	  echo $(VPP_VERSION) > .version						;\
+	  echo "#define VPP_BUILD_DATE \"$$(date)\"" > $$f 				;\
+	  echo "#define VPP_BUILD_USER \"$$(whoami)\"" >> $$f 				;\
+	  echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $$f				;\
+	  echo -n "#define VPP_BUILD_TOPDIR " >> $$f					;\
+	  echo "\"$$(cd $(srcdir) && git rev-parse --show-toplevel)\"" >> $$f 		;\
+	  echo "#define VPP_BUILD_VER \"$(VPP_VERSION)\"" >> $$f			;\
+	fi
+
 
 # Generate a plugin configuration script. Misconfiguring a
 # plugin can cause very subtle problems.
@@ -102,10 +113,6 @@ bin_vpp_LDADD = \
 
 bin_vpp_LDFLAGS = $(DPDK_LD_FLAGS)
 bin_vpp_LDADD += libvppinfra.la -lm -lpthread -ldl $(DPDK_LD_ADD)
-
-if WITH_IPV6SR
-  bin_vpp_LDADD += -lcrypto
-endif
 
 noinst_PROGRAMS += bin/test_client
 
