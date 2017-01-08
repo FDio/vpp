@@ -108,11 +108,9 @@ bin_vpp_LDADD = \
   libvnet.la \
   libsvm.la \
   libsvmdb.la \
-  libvnetplugin.la \
   -lrt
 
-bin_vpp_LDFLAGS = $(DPDK_LD_FLAGS)
-bin_vpp_LDADD += libvppinfra.la -lm -lpthread -ldl $(DPDK_LD_ADD)
+bin_vpp_LDADD += libvppinfra.la -lm -lpthread -ldl
 
 noinst_PROGRAMS += bin/test_client
 
