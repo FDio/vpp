@@ -155,7 +155,6 @@ typedef struct
 
   /* Link local address to use (defaults to underlying physical for logical interfaces */
   ip6_address_t link_local_address;
-  u8 link_local_prefix_len;
 
 } ip6_radv_t;
 
@@ -2022,7 +2021,6 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  /* fill in default link-local address  (this may be overridden) */
 	  ip6_link_local_address_from_ethernet_address
 	    (&a->link_local_address, eth_if0->address);
-	  a->link_local_prefix_len = 64;
 
 	  mhash_init (&a->address_to_prefix_index, sizeof (uword),
 		      sizeof (ip6_address_t));
@@ -3266,9 +3264,7 @@ disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 	  /* essentially "disables" ipv6 on this interface */
 	  error = ip6_add_del_interface_address (vm, sw_if_index,
 						 &radv_info->
-						 link_local_address,
-						 radv_info->
-						 link_local_prefix_len,
+						 link_local_address, 128,
 						 1 /* is_del */ );
 
 	  ip6_neighbor_sw_interface_add_del (vnm, sw_if_index,
@@ -3372,7 +3368,6 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 		  else
 		    {
 		      radv_info->link_local_address = link_local_address;
-		      radv_info->link_local_prefix_len = 64;
 		    }
 		}
 	    }
@@ -3615,22 +3610,18 @@ set_ip6_link_local_address (vlib_main_t * vm,
       /* delete the old one */
       error = ip6_add_del_interface_address (vm, sw_if_index,
 					     &radv_info->link_local_address,
-					     radv_info->link_local_prefix_len
-					     /* address width */ ,
-					     1 /* is_del */ );
+					     128, 1 /* is_del */ );
 
       if (!error)
 	{
 	  /* add the new one */
 	  error = ip6_add_del_interface_address (vm, sw_if_index,
-						 address, address_length
-						 /* address width */ ,
+						 address, 128,
 						 0 /* is_del */ );
 
 	  if (!error)
 	    {
 	      radv_info->link_local_address = *address;
-	      radv_info->link_local_prefix_len = address_length;
 	    }
 	}
     }
