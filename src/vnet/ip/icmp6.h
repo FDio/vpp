@@ -37,10 +37,6 @@
      "neighbor discovery unsupported  interface")                       \
   _ (ROUTER_SOLICITATION_RADV_NOT_CONFIG,                               \
      "neighbor discovery not configured")                               \
-  _ (ROUTER_SOLICITATION_DEST_UNKNOWN,                                  \
-     "router solicitations for unknown destination")                    \
-  _ (ROUTER_SOLICITATION_SOURCE_UNKNOWN,                                \
-     "router solicitations for unknown source")                         \
   _ (ROUTER_ADVERTISEMENT_SOURCE_NOT_LINK_LOCAL,                        \
      "router advertisement source not link local")                      \
   _ (ROUTER_ADVERTISEMENTS_TX, "router advertisements sent")            \

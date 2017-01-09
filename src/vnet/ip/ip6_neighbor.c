@@ -155,8 +155,6 @@ typedef struct
 
   /* Link local address to use (defaults to underlying physical for logical interfaces */
   ip6_address_t link_local_address;
-  u8 link_local_prefix_len;
-
 } ip6_radv_t;
 
 typedef struct
@@ -1316,7 +1314,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 		      /* for solicited adverts - need to rate limit */
 		      if (is_solicitation)
 			{
-			  if ((now - radv_info->last_radv_time) <
+			  if (0 != radv_info->last_radv_time &&
+			      (now - radv_info->last_radv_time) <
 			      MIN_DELAY_BETWEEN_RAS)
 			    is_dropped = 1;
 			  else
@@ -1523,16 +1522,6 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			    error0 = ICMP6_ERROR_DST_LOOKUP_MISS;
 			  else
 			    {
-			      ip_adjacency_t *adj0 =
-				ip_get_adjacency (&im->lookup_main,
-						  adj_index0);
-			      error0 =
-				((adj0->rewrite_header.sw_if_index !=
-				  sw_if_index0
-				  || adj0->lookup_next_index !=
-				  IP_LOOKUP_NEXT_REWRITE) ?
-				 ICMP6_ERROR_ROUTER_SOLICITATION_DEST_UNKNOWN
-				 : error0);
 			      next0 =
 				is_dropped ? next0 :
 				ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW;
@@ -2022,7 +2011,6 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  /* fill in default link-local address  (this may be overridden) */
 	  ip6_link_local_address_from_ethernet_address
 	    (&a->link_local_address, eth_if0->address);
-	  a->link_local_prefix_len = 64;
 
 	  mhash_init (&a->address_to_prefix_index, sizeof (uword),
 		      sizeof (ip6_address_t));
@@ -3266,9 +3254,7 @@ disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 	  /* essentially "disables" ipv6 on this interface */
 	  error = ip6_add_del_interface_address (vm, sw_if_index,
 						 &radv_info->
-						 link_local_address,
-						 radv_info->
-						 link_local_prefix_len,
+						 link_local_address, 128,
 						 1 /* is_del */ );
 
 	  ip6_neighbor_sw_interface_add_del (vnm, sw_if_index,
@@ -3372,7 +3358,6 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 		  else
 		    {
 		      radv_info->link_local_address = link_local_address;
-		      radv_info->link_local_prefix_len = 64;
 		    }
 		}
 	    }
@@ -3585,8 +3570,7 @@ VLIB_CLI_COMMAND (ip6_nd_command, static) =
 
 clib_error_t *
 set_ip6_link_local_address (vlib_main_t * vm,
-			    u32 sw_if_index,
-			    ip6_address_t * address, u8 address_length)
+			    u32 sw_if_index, ip6_address_t * address)
 {
   clib_error_t *error = 0;
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
@@ -3615,22 +3599,18 @@ set_ip6_link_local_address (vlib_main_t * vm,
       /* delete the old one */
       error = ip6_add_del_interface_address (vm, sw_if_index,
 					     &radv_info->link_local_address,
-					     radv_info->link_local_prefix_len
-					     /* address width */ ,
-					     1 /* is_del */ );
+					     128, 1 /* is_del */ );
 
       if (!error)
 	{
 	  /* add the new one */
 	  error = ip6_add_del_interface_address (vm, sw_if_index,
-						 address, address_length
-						 /* address width */ ,
+						 address, 128,
 						 0 /* is_del */ );
 
 	  if (!error)
 	    {
 	      radv_info->link_local_address = *address;
-	      radv_info->link_local_prefix_len = address_length;
 	    }
 	}
     }
@@ -3652,21 +3632,19 @@ set_ip6_link_local_address_cmd (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 sw_if_index;
   ip6_address_t ip6_addr;
-  u32 addr_len = 0;
 
   if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
       /* get the rest of the command */
       while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
 	{
-	  if (unformat (input, "%U/%d",
-			unformat_ip6_address, &ip6_addr, &addr_len))
+	  if (unformat (input, "%U", unformat_ip6_address, &ip6_addr))
 	    break;
 	  else
 	    return (unformat_parse_error (input));
 	}
     }
-  error = set_ip6_link_local_address (vm, sw_if_index, &ip6_addr, addr_len);
+  error = set_ip6_link_local_address (vm, sw_if_index, &ip6_addr);
   return error;
 }
 
@@ -3678,13 +3656,13 @@ set_ip6_link_local_address_cmd (vlib_main_t * vm,
  *
  * @cliexpar
  * Example of how to assign an IPv6 Link-local address to an interface:
- * @cliexcmd{set ip6 link-local address GigabitEthernet2/0/0 FE80::AB8/64}
+ * @cliexcmd{set ip6 link-local address GigabitEthernet2/0/0 FE80::AB8}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_ip6_link_local_address_command, static) =
 {
   .path = "set ip6 link-local address",
-  .short_help = "set ip6 link-local address <interface> <ip6-address>/<width>",
+  .short_help = "set ip6 link-local address <interface> <ip6-address>",
   .function = set_ip6_link_local_address_cmd,
 };
 /* *INDENT-ON* */

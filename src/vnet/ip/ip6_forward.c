@@ -404,8 +404,10 @@ ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
     }
   else
     {
-      ASSERT (im->ip_enabled_by_sw_if_index[sw_if_index] > 0);
-      if (0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
+      /* The ref count is 0 when an address is removed from an interface that has
+       * no address - this is not a ciritical error */
+      if (0 == im->ip_enabled_by_sw_if_index[sw_if_index] ||
+	  0 != --im->ip_enabled_by_sw_if_index[sw_if_index])
 	return;
     }
 

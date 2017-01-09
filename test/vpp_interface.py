@@ -249,6 +249,12 @@ class VppInterface(object):
         """Configure IPv6 RA suppress on the VPP interface."""
         self.test.vapi.sw_interface_ra_suppress(self.sw_if_index)
 
+    def ip6_ra_config(self, suppress=0, send_unicast=0):
+        """Configure IPv6 RA suppress on the VPP interface."""
+        self.test.vapi.ip6_sw_interface_ra_config(self.sw_if_index,
+                                                  suppress,
+                                                  send_unicast)
+
     def admin_up(self):
         """Put interface ADMIN-UP."""
         self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=1)
@@ -256,6 +262,14 @@ class VppInterface(object):
     def admin_down(self):
         """Put interface ADMIN-down."""
         self.test.vapi.sw_interface_set_flags(self.sw_if_index, admin_up_down=0)
+
+    def ip6_enable(self):
+        """IPv6 Enable interface"""
+        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index, enable=1)
+
+    def ip6_disable(self):
+        """Put interface ADMIN-DOWN."""
+        self.test.vapi.ip6_sw_interface_enable_disable(self.sw_if_index, enable=0)
 
     def add_sub_if(self, sub_if):
         """Register a sub-interface with this interface.

@@ -219,6 +219,22 @@ class VppPapiProvider(object):
         return self.api(self.papi.sw_interface_ip6nd_ra_config,
                         {'sw_if_index': sw_if_index})
 
+    def ip6_sw_interface_ra_config(self, sw_if_index,
+                                   suppress,
+                                   send_unicast,):
+        return self.api(self.papi.sw_interface_ip6nd_ra_config,
+                        {'sw_if_index': sw_if_index,
+                         'suppress' : suppress,
+                         'send_unicast' : send_unicast})
+
+    def ip6_sw_interface_enable_disable(self, sw_if_index, enable):
+        """
+        Enable/Disable An interface for IPv6
+        """
+        return self.api(self.papi.sw_interface_ip6_enable_disable,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable})
+
     def vxlan_add_del_tunnel(
             self,
             src_addr,
