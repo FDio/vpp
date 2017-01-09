@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+DH_VERBOSE = 1
+PKG=vpp-dpdk
+
+MAKE_ARGS=-C .. DPDK_BUILD_DIR=$(CURDIR)/_build DPDK_INSTALL_DIR=$(CURDIR)/debian/tmp/usr
+
+include /usr/share/dpkg/default.mk
+
+%:
+	dh $@
+
+override_dh_clean:
+	make $(MAKE_ARGS) clean
+
+override_dh_auto_configure:
+	make $(MAKE_ARGS) config
+
+override_dh_install:
+	make $(MAKE_ARGS) install
+	dh_install -p$(PKG)-dev  --autodest /usr
+
+override_dh_strip:
+	dh_strip --dbg-package=$(PKG)-dbg
+
