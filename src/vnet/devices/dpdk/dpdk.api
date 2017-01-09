@@ -1,0 +1,103 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief DPDK interface HQoS pipe profile set request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface
+    @param subport - subport ID
+    @param pipe - pipe ID within its subport
+    @param profile - pipe profile ID
+*/
+define sw_interface_set_dpdk_hqos_pipe {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u32 subport;
+    u32 pipe;
+    u32 profile;
+};
+
+/** \brief DPDK interface HQoS pipe profile set reply
+    @param context - sender context, to match reply w/ request
+    @param retval - request return code
+*/
+define sw_interface_set_dpdk_hqos_pipe_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief DPDK interface HQoS subport parameters set request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface
+    @param subport - subport ID
+    @param tb_rate - subport token bucket rate (measured in bytes/second)
+    @param tb_size - subport token bucket size (measured in credits)
+    @param tc_rate - subport traffic class 0 .. 3 rates (measured in bytes/second)
+    @param tc_period - enforcement period for rates (measured in milliseconds)
+*/
+define sw_interface_set_dpdk_hqos_subport {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u32 subport;
+    u32 tb_rate;
+    u32 tb_size;
+    u32 tc_rate[4];
+    u32 tc_period;
+};
+
+/** \brief DPDK interface HQoS subport parameters set reply
+    @param context - sender context, to match reply w/ request
+    @param retval - request return code
+*/
+define sw_interface_set_dpdk_hqos_subport_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief DPDK interface HQoS tctbl entry set request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface
+    @param entry - entry index ID
+    @param tc - traffic class (0 .. 3)
+    @param queue - traffic class queue (0 .. 3)
+*/
+define sw_interface_set_dpdk_hqos_tctbl {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u32 entry;
+    u32 tc;
+    u32 queue;
+};
+
+/** \brief DPDK interface HQoS tctbl entry set reply
+    @param context - sender context, to match reply w/ request
+    @param retval - request return code
+*/
+define sw_interface_set_dpdk_hqos_tctbl_reply {
+    u32 context;
+    i32 retval;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+ 
