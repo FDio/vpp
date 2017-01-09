@@ -24,17 +24,36 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/bfd/bfd_udp.h>
 
-vnet_api_error_t bfd_udp_add_session (u32 sw_if_index, u32 desired_min_tx_us,
-				      u32 required_min_rx_us, u8 detect_mult,
-				      const ip46_address_t * local_addr,
-				      const ip46_address_t * peer_addr,
-				      u32 * bs_index);
+vnet_api_error_t
+bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
+		     const ip46_address_t * peer_addr, u32 desired_min_tx_us,
+		     u32 required_min_rx_us, u8 detect_mult,
+		     u8 is_authenticated, u32 conf_key_id, u8 bfd_key_id);
 
 vnet_api_error_t bfd_udp_del_session (u32 sw_if_index,
 				      const ip46_address_t * local_addr,
 				      const ip46_address_t * peer_addr);
 
-vnet_api_error_t bfd_session_set_flags (u32 bs_index, u8 admin_up_down);
+vnet_api_error_t bfd_udp_session_set_flags (u32 sw_if_index,
+					    const ip46_address_t * local_addr,
+					    const ip46_address_t * peer_addr,
+					    u8 admin_up_down);
+
+vnet_api_error_t bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
+				   const u8 * key);
+
+vnet_api_error_t bfd_auth_del_key (u32 conf_key_id);
+
+vnet_api_error_t bfd_udp_auth_activate (u32 sw_if_index,
+					const ip46_address_t * local_addr,
+					const ip46_address_t * peer_addr,
+					u32 conf_key_id, u8 bfd_key_id,
+					u8 is_delayed);
+
+vnet_api_error_t bfd_udp_auth_deactivate (u32 sw_if_index,
+					  const ip46_address_t * local_addr,
+					  const ip46_address_t * peer_addr,
+					  u8 is_delayed);
 
 #endif /* __included_bfd_api_h__ */
 
