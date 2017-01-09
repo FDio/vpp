@@ -18,7 +18,7 @@ include /usr/share/dpkg/default.mk
 
 # main packaging script based on dh7 syntax
 %:
-	dh $@ --with dkms --with systemd,python2
+	dh $@ --with systemd,python2
 
 override_dh_install:
 	dh_install --exclude .git
@@ -31,6 +31,3 @@ override_dh_shlibdeps:
 
 override_dh_strip:
 	dh_strip --dbg-package=vpp-dbg
-
-override_dh_dkms:
-	dh_dkms -pvpp-dpdk-dkms

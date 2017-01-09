@@ -63,10 +63,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	./scripts/find-vpp-api-python-contents $(INSTALL_PREFIX)$(ARCH)	\
 	 deb/debian/vpp-api-python.install ;				\
 									\
-	: dpdk headers ;						\
-	./scripts/find-dpdk-contents $(INSTALL_PREFIX)$(ARCH)		\
-	 deb/debian/vpp-dpdk-dev.install ;				\
-									\
 	: bin package needs startup config ; 				\
 	echo ../../src/vpp/conf/startup.conf /etc/vpp 			\
 	   >> deb/debian/vpp.install ;					\

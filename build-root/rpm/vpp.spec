@@ -43,7 +43,6 @@ Group: System Environment/Libraries
 %description lib
 This package contains the VPP shared libraries, including:
 vppinfra - foundation library supporting vectors, hashes, bitmaps, pools, and string formatting.
-dpdk - DPDK library
 svm - vm library
 vlib - vector processing library
 vlib-api - binary API library
