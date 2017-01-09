@@ -27,6 +27,7 @@ DPDK_MLX5_PMD         ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 16.11
+PKG_SUFFIX ?= vpp1
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -77,15 +78,16 @@ else
 $(error Unknown DPDK_MARCH)
 endif
 
+#	RTE_OUTPUT=$(I) \
 # assemble DPDK make arguments
 DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	T=$(DPDK_TARGET) \
 	RTE_CONFIG_TEMPLATE=../custom-config \
-	RTE_OUTPUT=$(I) \
 	EXTRA_CFLAGS="$(DPDK_EXTRA_CFLAGS)" \
 	EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)" \
 	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
 	CPU_LDFLAGS="$(DPDK_CPU_LDFLAGS)" \
+	DESTDIR=$(I) \
         $(DPDK_MAKE_EXTRA_ARGS)
 
 DPDK_SOURCE_FILES := $(shell  [ -e $(DPDK_SOURCE) ] && find $(DPDK_SOURCE) -name "*.[chS]")  
@@ -140,7 +142,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	@rm -f .config.ok
 
 $(CURDIR)/$(DPDK_TARBALL):
-	@mkdir -p $(B)
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) ] ; \
 		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $(CURDIR) ; \
 		else curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
@@ -148,6 +149,7 @@ $(CURDIR)/$(DPDK_TARBALL):
 	@rm -f $(B)/.download.ok
 
 $(B)/.download.ok: $(CURDIR)/$(DPDK_TARBALL)
+	@mkdir -p $(B)
 	@openssl md5 $< | cut -f 2 -d " " - > $(B)/$(DPDK_TARBALL).md5sum
 	@([ "$$(<$(B)/$(DPDK_TARBALL).md5sum)" = "$(DPDK_$(DPDK_VERSION)_TARBALL_MD5_CKSUM)" ] || \
 	( echo "Bad Checksum! Please remove $< and retry" && \
@@ -168,7 +170,7 @@ extract: $(B)/.extract.ok
 $(B)/.patch.ok: $(B)/.extract.ok
 ifneq ($(wildcard $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch),)
 	@echo --- patching ---
-	for f in $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch ; do \
+	@for f in $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch -p1 -d $(DPDK_SOURCE) < $$f ; \
 	done
@@ -194,7 +196,44 @@ $(B)/.build.ok: $(DPDK_SOURCE_FILES)
 .PHONY: build
 build: $(B)/.build.ok
 
+.PHONY: install
+install: $(B)/.build.ok
+
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
 
+##############################################################################
+# .deb packaging
+##############################################################################
+
+DEV_DEB=vpp-dpdk-dev_$(DPDK_VERSION)-$(PKG_SUFFIX)_$(shell dpkg --print-architecture).deb
+
+deb/debian/changelog: Makefile
+	@echo "vpp-dpdk ($(DPDK_VERSION)-$(PKG_SUFFIX)) unstable; urgency=low" > $@
+	@echo "" >> $@
+	@echo "  * DPDK Release $(DPDK_VERSION)" >> $@
+	@echo "" >> $@
+	@echo " -- VPP Dev <vpp-dev@lists.fd.io>  $(shell date -R)" >> $@
+
+$(DEV_DEB): deb/debian/changelog
+	@cd deb && dpkg-buildpackage -b -uc -us
+	git clean -fdx deb
+
+build-deb: $(DEV_DEB)
+
+install-deb: $(DEV_DEB)
+	@sudo dpkg -i $(DEV_DEB)
+
+INSTALLED_DEB_VER=$(shell dpkg-query --showformat='$${Version}' --show vpp-dpdk-dev)
+
+check-deb:
+ifneq ($(INSTALLED_DEB_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+	@echo "=========================================================="
+	@echo " Outdated DPDK package detected:"
+	@echo "  Installed: vpp-dpdk-dev $(INSTALLED_DEB_VER)"
+	@echo "  Current:   vpp-dpdk-dev $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo ""
+	@echo " Please upgrade by invoking 'make -C dpdk install-deb'"
+	@echo "=========================================================="
+endif
