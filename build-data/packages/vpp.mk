@@ -18,9 +18,10 @@ ifeq ($($(PLATFORM)_uses_external_dpdk),yes)
 vpp_CPPFLAGS += -I$($(PLATFORM)_dpdk_inc_dir)
 vpp_LDFLAGS += -L$($(PLATFORM)_dpdk_lib_dir)
 else
-vpp_configure_depend += dpdk-install
-vpp_CPPFLAGS += $(call installed_includes_fn, dpdk)
-vpp_LDFLAGS += $(call installed_libs_fn, dpdk)
+vpp_CPPFLAGS += -I/usr/include/dpdk
+#vpp_configure_depend += dpdk-install
+#vpp_CPPFLAGS += $(call installed_includes_fn, dpdk)
+#vpp_LDFLAGS += $(call installed_libs_fn, dpdk)
 endif
 ifeq ($($(PLATFORM)_uses_dpdk_cryptodev),yes)
 vpp_configure_args += --with-dpdk-crypto
