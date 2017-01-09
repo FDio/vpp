@@ -25,7 +25,7 @@
 #include <vnet/bfd/bfd_udp.h>
 
 #define foreach_bfd_transport(F) \
-  F (UDP4, "ip4-rewrite") \
+  F (UDP4, "ip4-rewrite")        \
   F (UDP6, "ip6-rewrite")
 
 typedef enum
@@ -45,6 +45,24 @@ typedef enum
   foreach_bfd_mode (F)
 #undef F
 } bfd_mode_e;
+
+typedef struct
+{
+  /* global configuration key ID */
+  u32 conf_key_id;
+
+  /* keeps track of how many sessions reference this key */
+  u32 use_count;
+
+  /*
+   * key data directly usable for bfd purposes - already padded with zeroes
+   * (so we don't need the actual length)
+   */
+  u8 key[20];
+
+  /* authentication type for this key */
+  bfd_auth_type_e auth_type;
+} bfd_auth_key_t;
 
 typedef struct
 {
@@ -120,6 +138,40 @@ typedef struct
   /* detection time */
   u64 detection_time_clocks;
 
+  /* authentication information */
+  struct
+  {
+    /* current key in use */
+    bfd_auth_key_t *curr_key;
+
+    /*
+     * set to next key to use if delayed switch is enabled - in that case
+     * the key is switched when first incoming packet is signed with next_key
+     */
+    bfd_auth_key_t *next_key;
+
+    /* sequence number incremented occasionally or always (if meticulous) */
+    u32 local_seq_number;
+
+    /* remote sequence number */
+    u32 remote_seq_number;
+
+    /* set to 1 if remote sequence number is known */
+    u8 remote_seq_number_known;
+
+    /* current key ID sent out in bfd packet */
+    u8 curr_bfd_key_id;
+
+    /* key ID to use when switched to next_key */
+    u8 next_bfd_key_id;
+
+    /*
+     * set to 1 if delayed action is pending, which might be activation
+     * of authentication, change of key or deactivation
+     */
+    u8 is_delayed;
+  } auth;
+
   /* transport type for this session */
   bfd_transport_t transport;
 
@@ -128,12 +180,6 @@ typedef struct
     bfd_udp_session_t udp;
   };
 } bfd_session_t;
-
-typedef struct
-{
-  u32 client_index;
-  u32 client_pid;
-} event_subscriber_t;
 
 typedef struct
 {
@@ -161,6 +207,12 @@ typedef struct
 
   /* for generating random numbers */
   u32 random_seed;
+
+  /* pool of authentication keys */
+  bfd_auth_key_t *auth_keys;
+
+  /* hashmap - index in pool auth_keys by conf_key_id */
+  u32 *auth_key_by_conf_key_id;
 
 } bfd_main_t;
 
@@ -202,12 +254,17 @@ bfd_session_t *bfd_find_session_by_disc (bfd_main_t * bm, u32 disc);
 void bfd_session_start (bfd_main_t * bm, bfd_session_t * bs);
 void bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * bfd, u32 bs_idx);
 int bfd_verify_pkt_common (const bfd_pkt_t * pkt);
-int bfd_verify_pkt_session (const bfd_pkt_t * pkt, u16 pkt_size,
-			    const bfd_session_t * bs);
+int bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size,
+			 bfd_session_t * bs);
 void bfd_event (bfd_main_t * bm, bfd_session_t * bs);
-void bfd_send_final (vlib_main_t * vm, vlib_buffer_t * b, bfd_session_t * bs);
+void bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
+				   bfd_session_t * bs);
 u8 *format_bfd_session (u8 * s, va_list * args);
-
+void bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down);
+unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
+vnet_api_error_t bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
+				    u8 bfd_key_id, u8 is_delayed);
+vnet_api_error_t bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed);
 
 #define USEC_PER_MS 1000LL
 #define USEC_PER_SECOND (1000 * USEC_PER_MS)

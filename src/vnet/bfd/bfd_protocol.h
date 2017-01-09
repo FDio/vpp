@@ -22,45 +22,93 @@
 #include <vppinfra/types.h>
 #include <vppinfra/clib.h>
 
+/* auth type value, max key length, name, description */
+#define foreach_bfd_auth_type(F)                          \
+  F (0, 0, reserved, "Reserved")                          \
+  F (1, 16, simple_password, "Simple Password")           \
+  F (2, 16, keyed_md5, "Keyed MD5")                       \
+  F (3, 16, meticulous_keyed_md5, "Meticulous Keyed MD5") \
+  F (4, 20, keyed_sha1, "Keyed SHA1")                     \
+  F (5, 20, meticulous_keyed_sha1, "Meticulous Keyed SHA1")
+
+#define BFD_AUTH_TYPE_NAME(t) BFD_AUTH_TYPE_##t
+
+typedef enum
+{
+#define F(n, l, t, s) BFD_AUTH_TYPE_NAME (t) = n,
+  foreach_bfd_auth_type (F)
+#undef F
+} bfd_auth_type_e;
+
+u32 bfd_max_len_for_auth_type (bfd_auth_type_e auth_type);
+const char *bfd_auth_type_str (bfd_auth_type_e auth_type);
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  /*
-   An optional Authentication Section MAY be present:
-
-    0                   1                   2                   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |   Auth Type   |   Auth Len    |    Authentication Data...     |
-   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
   u8 type;
   u8 len;
-  u8 data[0];
-}) bfd_auth_t;
+}) bfd_auth_common_t;
 /* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /*
-     The Mandatory Section of a BFD Control packet has the following
-     format:
+   * 4.4.  Keyed SHA1 and Meticulous Keyed SHA1 Authentication Section Format
 
-      0                   1                   2                   3
-      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     |Vers |  Diag   |Sta|P|F|C|A|D|M|  Detect Mult  |    Length     |
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     |                       My Discriminator                        |
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     |                      Your Discriminator                       |
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     |                    Desired Min TX Interval                    |
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     |                   Required Min RX Interval                    |
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-     |                 Required Min Echo RX Interval                 |
-     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  */
+   *     If the Authentication Present (A) bit is set in the header, and the
+   *     Authentication Type field contains 4 (Keyed SHA1) or 5 (Meticulous
+   *     Keyed SHA1), the Authentication Section has the following format:
+
+   *      0                   1                   2                   3
+   *      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *     |   Auth Type   |   Auth Len    |  Auth Key ID  |   Reserved    |
+   *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *     |                        Sequence Number                        |
+   *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *     |                       Auth Key/Hash...                        |
+   *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *     |                              ...                              |
+   *     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   */
+  bfd_auth_common_t type_len;
+  u8 key_id;
+  u8 reserved;
+  u32 seq_num;
+  /*
+   *  Auth Key/Hash
+
+   *     This field carries the 20-byte SHA1 hash for the packet.  When the
+   *     hash is calculated, the shared SHA1 key is stored in this field,
+   *     padded to a length of 20 bytes with trailing zero bytes if needed.
+   *     The shared key MUST be encoded and configured to section 6.7.4.
+   */
+  u8 hash[20];
+}) bfd_auth_sha1_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  /*
+   *  The Mandatory Section of a BFD Control packet has the following
+   *  format:
+
+   *   0                   1                   2                   3
+   *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *  |Vers |  Diag   |Sta|P|F|C|A|D|M|  Detect Mult  |    Length     |
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *  |                       My Discriminator                        |
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *  |                      Your Discriminator                       |
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *  |                    Desired Min TX Interval                    |
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *  |                   Required Min RX Interval                    |
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   *  |                 Required Min Echo RX Interval                 |
+   *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   */
   struct
   {
     u8 vers_diag;
@@ -79,8 +127,15 @@ typedef CLIB_PACKED (struct {
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   bfd_pkt_t pkt;
-  bfd_auth_t auth;
-}) bfd_pkt_with_auth_t;
+  bfd_auth_common_t common_auth;
+}) bfd_pkt_with_common_auth_t;
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  bfd_pkt_t pkt;
+  bfd_auth_sha1_t sha1_auth;
+}) bfd_pkt_with_sha1_auth_t;
 /* *INDENT-ON* */
 
 u8 bfd_pkt_get_version (const bfd_pkt_t * pkt);

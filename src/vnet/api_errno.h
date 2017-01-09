@@ -91,8 +91,10 @@ _(INVALID_ADDRESS_FAMILY, -97, "Invalid address family")                \
 _(INVALID_SUB_SW_IF_INDEX, -98, "Invalid sub-interface sw_if_index")    \
 _(TABLE_TOO_BIG, -99, "Table too big")                                  \
 _(CANNOT_ENABLE_DISABLE_FEATURE, -100, "Cannot enable/disable feature") \
-_(BFD_EEXIST, -101, "Duplicate BFD session") \
-_(BFD_NOENT, -102, "No such BFD session")
+_(BFD_EEXIST, -101, "Duplicate BFD object") \
+_(BFD_ENOENT, -102, "No such BFD object") \
+_(BFD_EINUSE, -103, "BFD object in use") \
+_(BFD_NOTSUPP, -104, "BFD feature not supported")
 
 typedef enum
 {
