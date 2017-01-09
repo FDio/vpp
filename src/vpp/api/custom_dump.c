@@ -238,6 +238,7 @@ static void *vl_api_sw_interface_set_l2_bridge_t_print
   FINISH;
 }
 
+#if DPDK > 0
 static void *vl_api_sw_interface_set_dpdk_hqos_pipe_t_print
   (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp, void *handle)
 {
@@ -287,6 +288,7 @@ static void *vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print
 
   FINISH;
 }
+#endif
 
 static void *vl_api_bridge_domain_add_del_t_print
   (vl_api_bridge_domain_add_del_t * mp, void *handle)
@@ -3002,9 +3004,6 @@ _(BRIDGE_FLAGS, bridge_flags)                                           \
 _(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
 _(CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)			\
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)		\
-_(SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe)     \
-_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport)\
-_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl)   \
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                         \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
@@ -3128,6 +3127,18 @@ vl_msg_api_custom_dump_configure (api_main_t * am)
     = (void *) vl_api_##f##_t_print;
   foreach_custom_print_function;
 #undef _
+
+#if DPDK > 0
+  /*
+   * manually add DPDK hqos print handlers
+   */
+  am->msg_print_handlers[VL_API_SW_INTERFACE_SET_DPDK_HQOS_PIPE] =
+    (void *) vl_api_sw_interface_set_dpdk_hqos_pipe_t_print;
+  am->msg_print_handlers[VL_API_SW_INTERFACE_SET_DPDK_HQOS_SUBPORT] =
+    (void *) vl_api_sw_interface_set_dpdk_hqos_subport_t_print;
+  am->msg_print_handlers[VL_API_SW_INTERFACE_SET_DPDK_HQOS_TCTBL] =
+    (void *) vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print;
+#endif
 }
 
 /*
