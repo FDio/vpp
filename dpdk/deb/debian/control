@@ -1,0 +1,21 @@
+Source: vpp-dpdk
+Section: net
+Priority: extra
+Maintainer: vpp-dev@lists.fd.io
+Build-Depends: debhelper (>= 9), dkms
+Standards-Version: 3.9.4
+
+Package: vpp-dpdk-dev
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: VPP DPDK Development Package
+
+Package: vpp-dpdk-dbg
+Architecture: any
+Depends: ${misc:Depends}
+Description: VPP DPDK Development Package - Debug Symbols
+
+Package: vpp-dpdk-dkms
+Architecture: any
+Depends: ${misc:Depends}
+Description: VPP DPDK Development Package - Kernel Modules

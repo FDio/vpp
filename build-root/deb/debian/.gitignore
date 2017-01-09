@@ -3,12 +3,9 @@ files
 *debhelper*
 *.substvars
 *.install
-vpp-dpdk-dkms*
 vpp/
 vpp-dev/
 vpp-lib/
-vpp-dpdk-dev/
-vpp-dpdk-dkms/
 vpp-dbg/
 vppctl/
 vpp-api-lua/
