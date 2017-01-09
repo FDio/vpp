@@ -1043,11 +1043,24 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  src_flags = fib_entry_get_flags (src_fei);
 
 	  if (!((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
-		(FIB_ENTRY_FLAG_CONNECTED & src_flags)) ||
-	      sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
+		(FIB_ENTRY_FLAG_CONNECTED & src_flags)))
 	    {
+	      /*
+	       * The packet was sent from an address that is not connected nor attached
+	       * i.e. it is not from an address that is covered by a link's sub-net,
+	       * nor is it a already learned host resp.
+	       */
 	      error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
 	      goto drop2;
+	    }
+	  if (sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
+	    {
+	      /*
+	       * The interface the ARP was received on is not the interface
+	       * on which the covering prefix is configured. Maybe this is a case
+	       * for unnumbered.
+	       */
+	      is_unnum0 = 1;
 	    }
 
 	  /* Reject requests/replies with our local interface address. */
