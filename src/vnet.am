@@ -759,10 +759,12 @@ libvnet_la_SOURCES +=				\
   vnet/devices/dpdk/init.c			\
   vnet/devices/dpdk/node.c			\
   vnet/devices/dpdk/hqos.c			\
-  vnet/devices/dpdk/cli.c
+  vnet/devices/dpdk/cli.c			\
+  vnet/devices/dpdk/dpdk_api.c
 
 nobase_include_HEADERS +=			\
-  vnet/devices/dpdk/dpdk.h
+  vnet/devices/dpdk/dpdk.h			\
+  vnet/devices/dpdk/dpdk.api.h
 else
 libvnet_la_SOURCES +=				\
   vnet/devices/nic/ixge.c                       \
@@ -770,6 +772,8 @@ libvnet_la_SOURCES +=				\
   vnet/devices/nic/sfp.c                        \
   vnet/devices/nic/sfp.h
 endif
+
+API_FILES += vnet/devices/dpdk/dpdk.api
 
 ########################################
 # virtio
