@@ -25,6 +25,9 @@
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_protocol.h>
 #include <vnet/bfd/bfd_main.h>
+#if WITH_LIBSSL > 0
+#include <openssl/sha.h>
+#endif
 
 static u64
 bfd_us_to_clocks (bfd_main_t * bm, u64 us)
@@ -40,6 +43,23 @@ static u32 bfd_node_index_by_transport[] = {
   foreach_bfd_transport (F)
 #undef F
 };
+
+static u8 *
+format_bfd_auth_key (u8 * s, va_list * args)
+{
+  const bfd_auth_key_t *key = va_arg (*args, bfd_auth_key_t *);
+  if (key)
+    {
+      s = format (s, "{auth-type=%u:%s, conf-key-id=%u, use-count=%u}, ",
+		  key->auth_type, bfd_auth_type_str (key->auth_type),
+		  key->conf_key_id, key->use_count);
+    }
+  else
+    {
+      s = format (s, "{none}");
+    }
+  return s;
+}
 
 /*
  * We actually send all bfd pkts to the "error" node after scanning
@@ -67,6 +87,9 @@ bfd_set_defaults (bfd_main_t * bm, bfd_session_t * bs)
   bs->desired_min_tx_clocks = bfd_us_to_clocks (bm, bs->desired_min_tx_us);
   bs->remote_min_rx_us = 1;
   bs->remote_demand = 0;
+  bs->auth.remote_seq_number = 0;
+  bs->auth.remote_seq_number_known = 0;
+  bs->auth.local_seq_number = random_u32 (&bm->random_seed);
 }
 
 static void
@@ -288,7 +311,7 @@ bfd_del_session (uword bs_idx)
   else
     {
       BFD_ERR ("no such session");
-      return VNET_API_ERROR_BFD_NOENT;
+      return VNET_API_ERROR_BFD_ENOENT;
     }
   return 0;
 }
@@ -319,16 +342,10 @@ bfd_state_string (bfd_state_e state)
 #undef F
 }
 
-vnet_api_error_t
-bfd_session_set_flags (u32 bs_idx, u8 admin_up_down)
+void
+bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
 {
   bfd_main_t *bm = &bfd_main;
-  if (pool_is_free_index (bm->sessions, bs_idx))
-    {
-      BFD_ERR ("invalid bs_idx=%u", bs_idx);
-      return VNET_API_ERROR_BFD_NOENT;
-    }
-  bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
   if (admin_up_down)
     {
       bfd_set_state (bm, bs, BFD_STATE_down, 0);
@@ -338,7 +355,6 @@ bfd_session_set_flags (u32 bs_idx, u8 admin_up_down)
       bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
       bfd_set_state (bm, bs, BFD_STATE_admin_down, 0);
     }
-  return 0;
 }
 
 u8 *
@@ -351,8 +367,8 @@ bfd_input_format_trace (u8 * s, va_list * args)
   if (t->len > STRUCT_SIZE_OF (bfd_pkt_t, head))
     {
       s = format (s, "BFD v%u, diag=%u(%s), state=%u(%s),\n"
-		  "    flags=(P:%u, F:%u, C:%u, A:%u, D:%u, M:%u), detect_mult=%u, "
-		  "length=%u\n",
+		  "    flags=(P:%u, F:%u, C:%u, A:%u, D:%u, M:%u), "
+		  "detect_mult=%u, length=%u\n",
 		  bfd_pkt_get_version (pkt), bfd_pkt_get_diag_code (pkt),
 		  bfd_diag_code_string (bfd_pkt_get_diag_code (pkt)),
 		  bfd_pkt_get_state (pkt),
@@ -362,8 +378,8 @@ bfd_input_format_trace (u8 * s, va_list * args)
 		  bfd_pkt_get_auth_present (pkt), bfd_pkt_get_demand (pkt),
 		  bfd_pkt_get_multipoint (pkt), pkt->head.detect_mult,
 		  pkt->head.length);
-      if (t->len >= sizeof (bfd_pkt_t)
-	  && pkt->head.length >= sizeof (bfd_pkt_t))
+      if (t->len >= sizeof (bfd_pkt_t) &&
+	  pkt->head.length >= sizeof (bfd_pkt_t))
 	{
 	  s = format (s, "    my discriminator: %u\n", pkt->my_disc);
 	  s = format (s, "    your discriminator: %u\n", pkt->your_disc);
@@ -430,8 +446,7 @@ bfd_add_transport_layer (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 static vlib_buffer_t *
-bfd_create_frame (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		  bfd_session_t * bs)
+bfd_create_frame_to_next_node (vlib_main_t * vm, bfd_session_t * bs)
 {
   u32 bi;
   if (vlib_buffer_alloc (vm, &bi, 1) != 1)
@@ -454,13 +469,82 @@ bfd_create_frame (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return b;
 }
 
+#if WITH_LIBSSL > 0
+static void
+bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
+{
+  bfd_pkt_with_sha1_auth_t *pkt = vlib_buffer_get_current (b);
+  bfd_auth_sha1_t *auth = &pkt->sha1_auth;
+  b->current_length += sizeof (*auth);
+  pkt->pkt.head.length += sizeof (*auth);
+  bfd_pkt_set_auth_present (&pkt->pkt);
+  memset (auth, 0, sizeof (*auth));
+  auth->type_len.type = bs->auth.curr_key->auth_type;
+  /*
+   * only meticulous authentication types require incrementing seq number
+   * for every message, but doing so doesn't violate the RFC
+   */
+  ++bs->auth.local_seq_number;
+  auth->type_len.len = sizeof (bfd_auth_sha1_t);
+  auth->key_id = bs->auth.curr_bfd_key_id;
+  auth->seq_num = clib_host_to_net_u32 (bs->auth.local_seq_number);
+  /*
+   * first copy the password into the packet, then calculate the hash
+   * and finally replace the password with the calculated hash
+   */
+  clib_memcpy (auth->hash, bs->auth.curr_key->key,
+	       sizeof (bs->auth.curr_key->key));
+  unsigned char hash[sizeof (auth->hash)];
+  SHA1 ((unsigned char *) pkt, sizeof (*pkt), hash);
+  BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
+  clib_memcpy (auth->hash, hash, sizeof (hash));
+#endif
+}
+
+static void
+bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
+{
+  if (bs->auth.curr_key)
+    {
+      const bfd_auth_type_e auth_type = bs->auth.curr_key->auth_type;
+      switch (auth_type)
+	{
+	case BFD_AUTH_TYPE_reserved:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_simple_password:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_keyed_md5:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_meticulous_keyed_md5:
+	  clib_warning ("Internal error, unexpected BFD auth type '%d'",
+			auth_type);
+	  break;
+#if WITH_LIBSSL > 0
+	case BFD_AUTH_TYPE_keyed_sha1:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
+	  bfd_add_sha1_auth_section (b, bs);
+	  break;
+#else
+	case BFD_AUTH_TYPE_keyed_sha1:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
+	  clib_warning ("Internal error, unexpected BFD auth type '%d'",
+			auth_type);
+	  break;
+#endif
+	}
+    }
+}
+
 static void
 bfd_init_control_frame (vlib_buffer_t * b, bfd_session_t * bs)
 {
   bfd_pkt_t *pkt = vlib_buffer_get_current (b);
-  const u32 bfd_length = 24;
-  memset (pkt, 0, sizeof (*pkt));
 
+  u32 bfd_length = 0;
+  bfd_length = sizeof (bfd_pkt_t);
+  memset (pkt, 0, sizeof (*pkt));
   bfd_pkt_set_version (pkt, 1);
   bfd_pkt_set_diag_code (pkt, bs->local_diag);
   bfd_pkt_set_state (pkt, bs->local_state);
@@ -477,6 +561,7 @@ bfd_init_control_frame (vlib_buffer_t * b, bfd_session_t * bs)
   pkt->req_min_rx = clib_host_to_net_u32 (bs->required_min_rx_us);
   pkt->req_min_echo_rx = clib_host_to_net_u32 (bs->required_min_echo_rx_us);
   b->current_length = bfd_length;
+  bfd_add_auth_section (b, bs);
 }
 
 static void
@@ -502,7 +587,7 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
   if (now + bm->wheel_inaccuracy >= bs->tx_timeout_clocks)
     {
       BFD_DBG ("Send periodic control frame for bs_idx=%lu", bs->bs_idx);
-      vlib_buffer_t *b = bfd_create_frame (vm, rt, bs);
+      vlib_buffer_t *b = bfd_create_frame_to_next_node (vm, bs);
       if (!b)
 	{
 	  return;
@@ -522,7 +607,8 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 }
 
 void
-bfd_send_final (vlib_main_t * vm, vlib_buffer_t * b, bfd_session_t * bs)
+bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
+			      bfd_session_t * bs)
 {
   BFD_DBG ("Send final control frame for bs_idx=%lu", bs->bs_idx);
   bfd_init_control_frame (b, bs);
@@ -624,13 +710,17 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	   * each event or timeout */
 	  break;
 	case BFD_EVENT_NEW_SESSION:
-	  do
+	  if (!pool_is_free_index (bm->sessions, *event_data))
 	    {
 	      bfd_session_t *bs =
 		pool_elt_at_index (bm->sessions, *event_data);
 	      bfd_send_periodic (vm, rt, bm, bs, now, 1);
 	    }
-	  while (0);
+	  else
+	    {
+	      BFD_DBG ("Ignoring event for non-existent session index %u",
+		       (u32) * event_data);
+	    }
 	  break;
 	default:
 	  clib_warning ("BUG: event type 0x%wx", event_type);
@@ -710,22 +800,25 @@ VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (bfd_hw_interface_up_down);
 static clib_error_t *
 bfd_main_init (vlib_main_t * vm)
 {
+#if BFD_DEBUG
+  setbuf (stdout, NULL);
+#endif
   bfd_main_t *bm = &bfd_main;
   bm->random_seed = random_default_seed ();
   bm->vlib_main = vm;
   bm->vnet_main = vnet_get_main ();
   memset (&bm->wheel, 0, sizeof (bm->wheel));
-  bm->cpu_cps = 2590000000;	// vm->clib_time.clocks_per_second;
+  bm->cpu_cps = vm->clib_time.clocks_per_second;
   BFD_DBG ("cps is %.2f", bm->cpu_cps);
   const u64 now = clib_cpu_time_now ();
   timing_wheel_init (&bm->wheel, now, bm->cpu_cps);
   bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
 
   vlib_node_t *node = NULL;
-#define F(t, n)                               \
-  node = vlib_get_node_by_name (vm, (u8 *)n); \
-  bfd_node_index_by_transport[BFD_TRANSPORT_##t] = node->index;\
-  BFD_DBG("node '%s' has index %u", n, node->index);
+#define F(t, n)                                                 \
+  node = vlib_get_node_by_name (vm, (u8 *)n);                   \
+  bfd_node_index_by_transport[BFD_TRANSPORT_##t] = node->index; \
+  BFD_DBG ("node '%s' has index %u", n, node->index);
   foreach_bfd_transport (F);
 #undef F
   return 0;
@@ -750,6 +843,14 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_t t)
 void
 bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 {
+  if (bs->auth.curr_key)
+    {
+      --bs->auth.curr_key->use_count;
+    }
+  if (bs->auth.next_key)
+    {
+      --bs->auth.next_key->use_count;
+    }
   hash_unset (bm->session_by_disc, bs->local_discr);
   pool_put (bm->sessions, bs);
 }
@@ -793,7 +894,7 @@ bfd_verify_pkt_common (const bfd_pkt_t * pkt)
     }
   if (pkt->head.length < sizeof (bfd_pkt_t) ||
       (bfd_pkt_get_auth_present (pkt) &&
-       pkt->head.length < sizeof (bfd_pkt_with_auth_t)))
+       pkt->head.length < sizeof (bfd_pkt_with_common_auth_t)))
     {
       BFD_ERR ("BFD verification failed - unexpected length: '%d' (auth "
 	       "present: %d)",
@@ -831,6 +932,226 @@ bfd_verify_pkt_common (const bfd_pkt_t * pkt)
   return 1;
 }
 
+static void
+bfd_session_switch_auth_to_next (bfd_session_t * bs)
+{
+  BFD_DBG ("Switching authentication key from %U to %U for bs_idx=%u",
+	   format_bfd_auth_key, bs->auth.curr_key, format_bfd_auth_key,
+	   bs->auth.next_key, bs->bs_idx);
+  bs->auth.is_delayed = 0;
+  if (bs->auth.curr_key)
+    {
+      --bs->auth.curr_key->use_count;
+    }
+  bs->auth.curr_key = bs->auth.next_key;
+  bs->auth.next_key = NULL;
+  bs->auth.curr_bfd_key_id = bs->auth.next_bfd_key_id;
+}
+
+static int
+bfd_auth_type_is_meticulous (bfd_auth_type_e auth_type)
+{
+  if (BFD_AUTH_TYPE_meticulous_keyed_md5 == auth_type ||
+      BFD_AUTH_TYPE_meticulous_keyed_sha1 == auth_type)
+    {
+      return 1;
+    }
+  return 0;
+}
+
+static int
+bfd_verify_pkt_auth_seq_num (bfd_session_t * bs,
+			     u32 received_seq_num, int is_meticulous)
+{
+  /*
+   * RFC 5880 6.8.1:
+   *
+   * This variable MUST be set to zero after no packets have been
+   * received on this session for at least twice the Detection Time.
+   */
+  u64 now = clib_cpu_time_now ();
+  if (now - bs->last_rx_clocks > bs->detection_time_clocks * 2)
+    {
+      BFD_DBG ("BFD peer unresponsive for %lu clocks, which is > 2 * "
+	       "detection_time=%u clocks, resetting remote_seq_number_known "
+	       "flag",
+	       now - bs->last_rx_clocks, bs->detection_time_clocks * 2);
+      bs->auth.remote_seq_number_known = 0;
+    }
+  if (bs->auth.remote_seq_number_known)
+    {
+      /* remote sequence number is known, verify its validity */
+      const u32 max_u32 = 0xffffffff;
+      /* the calculation might wrap, account for the special case... */
+      if (bs->auth.remote_seq_number > max_u32 - 3 * bs->local_detect_mult)
+	{
+	  /*
+	   * special case
+	   *
+	   *        x                   y                   z
+	   *  |----------+----------------------------+-----------|
+	   *  0          ^                            ^ 0xffffffff
+	   *             |        remote_seq_num------+
+	   *             |
+	   *             +-----(remote_seq_num + 3*detect_mult) % * 0xffffffff
+	   *
+	   *    x + y + z = 0xffffffff
+	   *    x + z = 3 * detect_mult
+	   */
+	  const u32 z = max_u32 - bs->auth.remote_seq_number;
+	  const u32 x = 3 * bs->local_detect_mult - z;
+	  if (received_seq_num > x &&
+	      received_seq_num < bs->auth.remote_seq_number + is_meticulous)
+	    {
+	      BFD_ERR
+		("Recvd sequence number=%u out of ranges <0, %u>, <%u, %u>",
+		 received_seq_num, x,
+		 bs->auth.remote_seq_number + is_meticulous, max_u32);
+	      return 0;
+	    }
+	}
+      else
+	{
+	  /* regular case */
+	  const u32 min = bs->auth.remote_seq_number + is_meticulous;
+	  const u32 max =
+	    bs->auth.remote_seq_number + 3 * bs->local_detect_mult;
+	  if (received_seq_num < min || received_seq_num > max)
+	    {
+	      BFD_ERR ("Recvd sequence number=%u out of range <%u, %u>",
+		       received_seq_num, min, max);
+	      return 0;
+	    }
+	}
+    }
+  return 1;
+}
+
+static int
+bfd_verify_pkt_auth_key_sha1 (const bfd_pkt_t * pkt, u32 pkt_size,
+			      bfd_session_t * bs, u8 bfd_key_id,
+			      bfd_auth_key_t * auth_key)
+{
+  ASSERT (auth_key->auth_type == BFD_AUTH_TYPE_keyed_sha1 ||
+	  auth_key->auth_type == BFD_AUTH_TYPE_meticulous_keyed_sha1);
+
+  u8 result[SHA_DIGEST_LENGTH];
+  bfd_pkt_with_common_auth_t *with_common = (void *) pkt;
+  if (pkt_size < sizeof (*with_common))
+    {
+      BFD_ERR ("Packet size too small to hold authentication common header");
+      return 0;
+    }
+  if (with_common->common_auth.type != auth_key->auth_type)
+    {
+      BFD_ERR ("BFD auth type mismatch, packet auth=%d:%s doesn't match "
+	       "in-use auth=%d:%s",
+	       with_common->common_auth.type,
+	       bfd_auth_type_str (with_common->common_auth.type),
+	       auth_key->auth_type, bfd_auth_type_str (auth_key->auth_type));
+      return 0;
+    }
+  bfd_pkt_with_sha1_auth_t *with_sha1 = (void *) pkt;
+  if (pkt_size < sizeof (*with_sha1) ||
+      with_sha1->sha1_auth.type_len.len < sizeof (with_sha1->sha1_auth))
+    {
+      BFD_ERR
+	("BFD size mismatch, payload size=%u, expected=%u, auth_len=%u, "
+	 "expected=%u", pkt_size, sizeof (*with_sha1),
+	 with_sha1->sha1_auth.type_len.len, sizeof (with_sha1->sha1_auth));
+      return 0;
+    }
+  if (with_sha1->sha1_auth.key_id != bfd_key_id)
+    {
+      BFD_ERR
+	("BFD key ID mismatch, packet key ID=%u doesn't match key ID=%u%s",
+	 with_sha1->sha1_auth.key_id, bfd_key_id,
+	 bs->
+	 auth.is_delayed ? " (but a delayed auth change is scheduled)" : "");
+      return 0;
+    }
+  SHA_CTX ctx;
+  if (!SHA1_Init (&ctx))
+    {
+      BFD_ERR ("SHA1_Init failed");
+      return 0;
+    }
+  /* ignore last 20 bytes - use the actual key data instead pkt data */
+  if (!SHA1_Update (&ctx, with_sha1,
+		    sizeof (*with_sha1) - sizeof (with_sha1->sha1_auth.hash)))
+    {
+      BFD_ERR ("SHA1_Update failed");
+      return 0;
+    }
+  if (!SHA1_Update (&ctx, auth_key->key, sizeof (auth_key->key)))
+    {
+      BFD_ERR ("SHA1_Update failed");
+      return 0;
+    }
+  if (!SHA1_Final (result, &ctx))
+    {
+      BFD_ERR ("SHA1_Final failed");
+      return 0;
+    }
+  if (0 == memcmp (result, with_sha1->sha1_auth.hash, SHA_DIGEST_LENGTH))
+    {
+      return 1;
+    }
+  BFD_ERR ("SHA1 hash: %U doesn't match the expected value: %U",
+	   format_hex_bytes, with_sha1->sha1_auth.hash, SHA_DIGEST_LENGTH,
+	   format_hex_bytes, result, SHA_DIGEST_LENGTH);
+  return 0;
+}
+
+static int
+bfd_verify_pkt_auth_key (const bfd_pkt_t * pkt, u32 pkt_size,
+			 bfd_session_t * bs, u8 bfd_key_id,
+			 bfd_auth_key_t * auth_key)
+{
+  switch (auth_key->auth_type)
+    {
+    case BFD_AUTH_TYPE_reserved:
+      clib_warning ("Internal error, unexpected auth_type=%d:%s",
+		    auth_key->auth_type,
+		    bfd_auth_type_str (auth_key->auth_type));
+      return 0;
+    case BFD_AUTH_TYPE_simple_password:
+      clib_warning
+	("Internal error, not implemented, unexpected auth_type=%d:%s",
+	 auth_key->auth_type, bfd_auth_type_str (auth_key->auth_type));
+      return 0;
+    case BFD_AUTH_TYPE_keyed_md5:
+      /* fallthrough */
+    case BFD_AUTH_TYPE_meticulous_keyed_md5:
+      clib_warning
+	("Internal error, not implemented, unexpected auth_type=%d:%s",
+	 auth_key->auth_type, bfd_auth_type_str (auth_key->auth_type));
+      return 0;
+    case BFD_AUTH_TYPE_keyed_sha1:
+      /* fallthrough */
+    case BFD_AUTH_TYPE_meticulous_keyed_sha1:
+#if WITH_LIBSSL > 0
+      do
+	{
+	  const u32 seq_num = clib_net_to_host_u32 (((bfd_pkt_with_sha1_auth_t
+						      *) pkt)->
+						    sha1_auth.seq_num);
+	  return bfd_verify_pkt_auth_seq_num (bs, seq_num,
+					      bfd_auth_type_is_meticulous
+					      (auth_key->auth_type))
+	    && bfd_verify_pkt_auth_key_sha1 (pkt, pkt_size, bs, bfd_key_id,
+					     auth_key);
+	}
+      while (0);
+#else
+      clib_warning
+	("Internal error, attempt to use SHA1 without SSL support");
+      return 0;
+#endif
+    }
+  return 0;
+}
+
 /**
  * @brief verify bfd packet - authentication
  *
@@ -839,30 +1160,81 @@ bfd_verify_pkt_common (const bfd_pkt_t * pkt)
  * @return 1 if bfd packet is valid
  */
 int
-bfd_verify_pkt_session (const bfd_pkt_t * pkt, u16 pkt_size,
-			const bfd_session_t * bs)
+bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size, bfd_session_t * bs)
 {
-  const bfd_pkt_with_auth_t *with_auth = (bfd_pkt_with_auth_t *) pkt;
-  if (!bfd_pkt_get_auth_present (pkt))
+  if (bfd_pkt_get_auth_present (pkt))
     {
+      /* authentication present in packet */
+      if (!bs->auth.curr_key)
+	{
+	  /* currently not using authentication - can we turn it on? */
+	  if (bs->auth.is_delayed && bs->auth.next_key)
+	    {
+	      /* yes, switch is scheduled - make sure the auth is valid */
+	      if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
+					   bs->auth.next_bfd_key_id,
+					   bs->auth.next_key))
+		{
+		  /* auth matches next key, do the switch, packet is valid */
+		  bfd_session_switch_auth_to_next (bs);
+		  return 1;
+		}
+	    }
+	}
+      else
+	{
+	  /* yes, using authentication, verify the key */
+	  if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
+				       bs->auth.curr_bfd_key_id,
+				       bs->auth.curr_key))
+	    {
+	      /* verification passed, packet is valid */
+	      return 1;
+	    }
+	  else
+	    {
+	      /* verification failed - but maybe we need to switch key */
+	      if (bs->auth.is_delayed && bs->auth.next_key)
+		{
+		  /* delayed switch present, verify if that key works */
+		  if (bfd_verify_pkt_auth_key (pkt, pkt_size, bs,
+					       bs->auth.next_bfd_key_id,
+					       bs->auth.next_key))
+		    {
+		      /* auth matches next key, switch key, packet is valid */
+		      bfd_session_switch_auth_to_next (bs);
+		      return 1;
+		    }
+		}
+	    }
+	}
+    }
+  else
+    {
+      /* authentication in packet not present */
       if (pkt_size > sizeof (*pkt))
 	{
 	  BFD_ERR ("BFD verification failed - unexpected packet size '%d' "
 		   "(auth not present)", pkt_size);
 	  return 0;
 	}
-    }
-  else
-    {
-      if (!with_auth->auth.type)
+      if (bs->auth.curr_key)
 	{
-	  BFD_ERR ("BFD verification failed - unexpected auth type: '%d'",
-		   with_auth->auth.type);
-	  return 0;
+	  /* currently authenticating - could we turn it off? */
+	  if (bs->auth.is_delayed && !bs->auth.next_key)
+	    {
+	      /* yes, delayed switch to NULL key is scheduled */
+	      bfd_session_switch_auth_to_next (bs);
+	      return 1;
+	    }
 	}
-      /* TODO FIXME - implement the actual verification */
+      else
+	{
+	  /* no auth in packet, no auth in use - packet is valid */
+	  return 1;
+	}
     }
-  return 1;
+  return 0;
 }
 
 void
@@ -879,6 +1251,38 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   bs->remote_demand = bfd_pkt_get_demand (pkt);
   u64 now = clib_cpu_time_now ();
   bs->last_rx_clocks = now;
+  if (bfd_pkt_get_auth_present (pkt))
+    {
+      bfd_auth_type_e auth_type =
+	((bfd_pkt_with_common_auth_t *) (pkt))->common_auth.type;
+      switch (auth_type)
+	{
+	case BFD_AUTH_TYPE_reserved:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_simple_password:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_keyed_md5:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_meticulous_keyed_md5:
+	  clib_warning ("Internal error, unexpected auth_type=%d:%s",
+			auth_type, bfd_auth_type_str (auth_type));
+	  break;
+	case BFD_AUTH_TYPE_keyed_sha1:
+	  /* fallthrough */
+	case BFD_AUTH_TYPE_meticulous_keyed_sha1:
+	  do
+	    {
+	      bfd_pkt_with_sha1_auth_t *with_sha1 =
+		(bfd_pkt_with_sha1_auth_t *) pkt;
+	      bs->auth.remote_seq_number =
+		clib_net_to_host_u32 (with_sha1->sha1_auth.seq_num);
+	      bs->auth.remote_seq_number_known = 1;
+	      BFD_DBG ("Received sequence number %u",
+		       bs->auth.remote_seq_number);
+	    }
+	  while (0);
+	}
+    }
   bs->remote_desired_min_tx_us = clib_net_to_host_u32 (pkt->des_min_tx);
   bs->remote_detect_mult = pkt->head.detect_mult;
   bfd_set_remote_required_min_rx (bm, bs, now,
@@ -933,25 +1337,129 @@ u8 *
 format_bfd_session (u8 * s, va_list * args)
 {
   const bfd_session_t *bs = va_arg (*args, bfd_session_t *);
-  return format (s, "BFD(%u): bfd.SessionState=%s, "
-		 "bfd.RemoteSessionState=%s, "
-		 "bfd.LocalDiscr=%u, "
-		 "bfd.RemoteDiscr=%u, "
-		 "bfd.LocalDiag=%s, "
-		 "bfd.DesiredMinTxInterval=%u, "
-		 "bfd.RequiredMinRxInterval=%u, "
-		 "bfd.RequiredMinEchoRxInterval=%u, "
-		 "bfd.RemoteMinRxInterval=%u, "
-		 "bfd.DemandMode=%s, "
-		 "bfd.RemoteDemandMode=%s, "
-		 "bfd.DetectMult=%u, ",
-		 bs->bs_idx, bfd_state_string (bs->local_state),
-		 bfd_state_string (bs->remote_state), bs->local_discr,
-		 bs->remote_discr, bfd_diag_code_string (bs->local_diag),
-		 bs->desired_min_tx_us, bs->required_min_rx_us,
-		 bs->required_min_echo_rx_us, bs->remote_min_rx_us,
-		 (bs->local_demand ? "yes" : "no"),
-		 (bs->remote_demand ? "yes" : "no"), bs->local_detect_mult);
+  s = format (s, "BFD(%u): bfd.SessionState=%s, "
+	      "bfd.RemoteSessionState=%s, "
+	      "bfd.LocalDiscr=%u, "
+	      "bfd.RemoteDiscr=%u, "
+	      "bfd.LocalDiag=%s, "
+	      "bfd.DesiredMinTxInterval=%u, "
+	      "bfd.RequiredMinRxInterval=%u, "
+	      "bfd.RequiredMinEchoRxInterval=%u, "
+	      "bfd.RemoteMinRxInterval=%u, "
+	      "bfd.DemandMode=%s, "
+	      "bfd.RemoteDemandMode=%s, "
+	      "bfd.DetectMult=%u, "
+	      "Auth: {local-seq-num=%u, "
+	      "remote-seq-num=%u, "
+	      "is-delayed=%s, "
+	      "curr-key=%U, "
+	      "next-key=%U}",
+	      bs->bs_idx, bfd_state_string (bs->local_state),
+	      bfd_state_string (bs->remote_state), bs->local_discr,
+	      bs->remote_discr, bfd_diag_code_string (bs->local_diag),
+	      bs->desired_min_tx_us, bs->required_min_rx_us,
+	      bs->required_min_echo_rx_us, bs->remote_min_rx_us,
+	      (bs->local_demand ? "yes" : "no"),
+	      (bs->remote_demand ? "yes" : "no"), bs->local_detect_mult,
+	      bs->auth.local_seq_number, bs->auth.remote_seq_number,
+	      (bs->auth.is_delayed ? "yes" : "no"), format_bfd_auth_key,
+	      bs->auth.curr_key, format_bfd_auth_key, bs->auth.next_key);
+  return s;
+}
+
+unsigned
+bfd_auth_type_supported (bfd_auth_type_e auth_type)
+{
+  if (auth_type == BFD_AUTH_TYPE_keyed_sha1 ||
+      auth_type == BFD_AUTH_TYPE_meticulous_keyed_sha1)
+    {
+      return 1;
+    }
+  return 0;
+}
+
+vnet_api_error_t
+bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
+		   u8 bfd_key_id, u8 is_delayed)
+{
+  bfd_main_t *bm = &bfd_main;
+  const uword *key_idx_p =
+    hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
+  if (!key_idx_p)
+    {
+      clib_warning ("Authentication key with config ID %u doesn't exist)",
+		    conf_key_id);
+      return VNET_API_ERROR_BFD_ENOENT;
+    }
+  const uword key_idx = *key_idx_p;
+  bfd_auth_key_t *key = pool_elt_at_index (bm->auth_keys, key_idx);
+  if (is_delayed)
+    {
+      if (bs->auth.next_key == key)
+	{
+	  /* already using this key, no changes required */
+	  return 0;
+	}
+      bs->auth.next_key = key;
+      bs->auth.next_bfd_key_id = bfd_key_id;
+      bs->auth.is_delayed = 1;
+    }
+  else
+    {
+      if (bs->auth.curr_key == key)
+	{
+	  /* already using this key, no changes required */
+	  return 0;
+	}
+      if (bs->auth.curr_key)
+	{
+	  --bs->auth.curr_key->use_count;
+	}
+      bs->auth.curr_key = key;
+      bs->auth.curr_bfd_key_id = bfd_key_id;
+      bs->auth.is_delayed = 0;
+    }
+  ++key->use_count;
+  BFD_DBG ("Session auth modified: %U", format_bfd_session, bs);
+  return 0;
+}
+
+vnet_api_error_t
+bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed)
+{
+#if WITH_LIBSSL > 0
+  if (!is_delayed)
+    {
+      /* not delayed - deactivate the current key right now */
+      if (bs->auth.curr_key)
+	{
+	  --bs->auth.curr_key->use_count;
+	  bs->auth.curr_key = NULL;
+	}
+      bs->auth.is_delayed = 0;
+    }
+  else
+    {
+      /* delayed - mark as so */
+      bs->auth.is_delayed = 1;
+    }
+  /*
+   * clear the next key unconditionally - either the auth change is not delayed
+   * in which case the caller expects the session to not use authentication
+   * from this point forward, or it is delayed, in which case the next_key
+   * needs to be set to NULL to make it so in the future
+   */
+  if (bs->auth.next_key)
+    {
+      --bs->auth.next_key->use_count;
+      bs->auth.next_key = NULL;
+    }
+  BFD_DBG ("Session auth modified: %U", format_bfd_session, bs);
+  return 0;
+#else
+  clib_warning ("SSL missing, cannot deactivate BFD authentication");
+  return VNET_API_ERROR_BFD_NOTSUPP;
+#endif
 }
 
 bfd_main_t bfd_main;

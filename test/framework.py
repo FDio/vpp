@@ -89,8 +89,8 @@ class VppTestCase(unittest.TestCase):
         if dl == "core":
             if resource.getrlimit(resource.RLIMIT_CORE)[0] <= 0:
                 # give a heads up if this is actually useless
-                cls.logger.critical("WARNING: core size limit is set 0, core "
-                                    "files will NOT be created")
+                print(colorize("WARNING: core size limit is set 0, core files "
+                               "will NOT be created", RED))
             cls.debug_core = True
         elif dl == "gdb":
             cls.debug_gdb = True
@@ -533,12 +533,11 @@ class VppTestCase(unittest.TestCase):
 
         self.assertEqual(real_value, expected_value, msg)
 
-    def assert_in_range(
-            self,
-            real_value,
-            expected_min,
-            expected_max,
-            name=None):
+    def assert_in_range(self,
+                        real_value,
+                        expected_min,
+                        expected_max,
+                        name=None):
         if name is None:
             msg = None
         else:
