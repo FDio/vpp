@@ -911,8 +911,7 @@ static void *vl_api_sw_interface_ip6_set_link_local_address_t_print
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-  s = format (s, "%U/%d ", format_ip6_address, mp->address,
-	      mp->address_length);
+  s = format (s, "%U ", format_ip6_address, mp->address);
 
   FINISH;
 }

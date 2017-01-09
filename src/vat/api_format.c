@@ -7671,7 +7671,6 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
   f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u32 address_length = 0;
   u8 v6_address_set = 0;
   ip6_address_t v6address;
 
@@ -7682,8 +7681,7 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
 	sw_if_index_set = 1;
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	sw_if_index_set = 1;
-      else if (unformat (i, "%U/%d",
-			 unformat_ip6_address, &v6address, &address_length))
+      else if (unformat (i, "%U", unformat_ip6_address, &v6address))
 	v6_address_set = 1;
       else
 	break;
@@ -7706,7 +7704,6 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
 
   mp->sw_if_index = ntohl (sw_if_index);
   clib_memcpy (mp->address, &v6address, sizeof (v6address));
-  mp->address_length = address_length;
 
   /* send it... */
   S;

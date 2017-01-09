@@ -1132,8 +1132,7 @@ static void
 
   error = set_ip6_link_local_address (vm,
 				      ntohl (mp->sw_if_index),
-				      (ip6_address_t *) mp->address,
-				      mp->address_length);
+				      (ip6_address_t *) mp->address);
   if (error)
     {
       clib_error_report (error);

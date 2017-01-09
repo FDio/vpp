@@ -311,7 +311,6 @@ define sw_interface_ip6_enable_disable_reply
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface to set link local on
     @param address[] - the new link local address
-    @param address_length - link local address length
 */
 define sw_interface_ip6_set_link_local_address
 {
@@ -319,7 +318,6 @@ define sw_interface_ip6_set_link_local_address
   u32 context;
   u32 sw_if_index;
   u8 address[16];
-  u8 address_length;
 };
 
 /** \brief IPv6 set link local address on interface response
