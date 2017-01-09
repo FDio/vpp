@@ -86,6 +86,9 @@ typedef struct vl_shmem_hdr_
   /* Number of messages reclaimed during application restart */
   u32 restart_reclaims;
 
+  /* Number of garbage-collected messages */
+  u32 garbage_collects;
+
 } vl_shmem_hdr_t;
 
 #define VL_SHM_VERSION 2

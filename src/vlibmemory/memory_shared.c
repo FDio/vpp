@@ -95,12 +95,31 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
        */
       if (rv->q)
 	{
+	  u32 now = (u32) time (0);
+
+	  if (PREDICT_TRUE (rv->gc_mark_timestamp == 0))
+	    rv->gc_mark_timestamp = now;
+	  else
+	    {
+	      if (now - rv->gc_mark_timestamp > 10)
+		{
+		  if (CLIB_DEBUG > 0)
+		    clib_warning ("garbage collect pool %d ring %d index %d",
+				  pool, i, q->head);
+		  shmem_hdr->garbage_collects++;
+		  goto collected;
+		}
+	    }
+
+
 	  /* yes, loser; try next larger pool */
 	  ap[i].misses++;
 	  if (pool == 0)
 	    pthread_mutex_unlock (&q->mutex);
 	  continue;
 	}
+    collected:
+
       /* OK, we have a winner */
       ap[i].hits++;
       /*
@@ -108,6 +127,7 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
        * don't need to know the queue to free the item.
        */
       rv->q = q;
+      rv->gc_mark_timestamp = 0;
       q->head++;
       if (q->head == q->maxsize)
 	q->head = 0;
@@ -201,6 +221,7 @@ vl_msg_api_free (void *a)
   if (rv->q)
     {
       rv->q = 0;
+      rv->gc_mark_timestamp = 0;
       return;
     }
 

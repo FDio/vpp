@@ -124,6 +124,7 @@ typedef struct
   u8 *is_mp_safe;
   struct ring_alloc_ *arings;
   u32 ring_misses;
+  u32 garbage_collects;
   u32 missing_clients;
   vl_api_trace_t *rx_trace;
   vl_api_trace_t *tx_trace;
@@ -212,7 +213,7 @@ typedef struct msgbuf_
 {
   unix_shared_memory_queue_t *q;
   u32 data_len;
-  u32 pad;
+  u32 gc_mark_timestamp;
   u8 data[0];
 } msgbuf_t;
 

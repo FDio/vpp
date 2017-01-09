@@ -853,9 +853,10 @@ vl_api_ring_command (vlib_main_t * vm,
   vlib_cli_output (vm, "%d ring miss fallback allocations\n",
 		   am->ring_misses);
 
-  vlib_cli_output (vm, "%d application restarts, %d reclaimed msgs\n",
-		   shmem_hdr->application_restarts,
-		   shmem_hdr->restart_reclaims);
+  vlib_cli_output
+    (vm, "%d application restarts, %d reclaimed msgs, %d garbage collects\n",
+     shmem_hdr->application_restarts,
+     shmem_hdr->restart_reclaims, shmem_hdr->garbage_collects);
   return 0;
 }
 
