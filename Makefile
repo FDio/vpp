@@ -30,6 +30,12 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
+ifeq ($(OS_ID),ubuntu)
+PKG=deb
+else ifeq ($(OS_ID),centos)
+PKG=rpm
+endif
+
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
@@ -84,6 +90,7 @@ help:
 	@echo " run-vat             - run vpp-api-test tool"
 	@echo " pkg-deb             - build DEB packages"
 	@echo " pkg-rpm             - build RPM packages"
+	@echo " dpdk-install-dev    - install DPDK development packages"
 	@echo " ctags               - (re)generate ctags database"
 	@echo " gtags               - (re)generate gtags database"
 	@echo " cscope              - (re)generate cscope database"
@@ -295,6 +302,9 @@ pkg-deb:
 pkg-rpm: dist
 	$(call make,$(PLATFORM),install-rpm)
 
+dpdk-install-dev:
+	make -C dpdk install-$(PKG)
+
 ctags: ctags.files
 	@ctags --totals --tag-relative -L $<
 	@rm $<
@@ -340,26 +350,19 @@ define banner
 	@echo " "
 endef
 
-verify: install-dep $(BR)/.bootstrap.ok
+verify: install-dep $(BR)/.bootstrap.ok dpdk-install-dev
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 	$(call banner,"Building for PLATFORM=vpp_lite using gcc")
 	@make -C build-root PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
-ifeq ($(OS_ID),ubuntu)
-ifeq ($(OS_VERSION_ID),16.04)
+ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	$(call banner,"Installing dependencies")
 	@sudo -E apt-get update
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
 endif
-	$(call banner,"Building deb packages")
-	@make pkg-deb
-endif
-ifeq ($(OS_ID),centos)
-	$(call banner,"Building rpm packages")
-	@make pkg-rpm
-endif
-	@make test
+	$(call banner,"Building $(PKG) packages")
+	@make pkg-$(PKG)
 
 

@@ -27,6 +27,7 @@ DPDK_MLX5_PMD         ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 16.11
+PKG_SUFFIX ?= vpp1
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -81,11 +82,11 @@ endif
 DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	T=$(DPDK_TARGET) \
 	RTE_CONFIG_TEMPLATE=../custom-config \
-	RTE_OUTPUT=$(I) \
 	EXTRA_CFLAGS="$(DPDK_EXTRA_CFLAGS)" \
 	EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)" \
 	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
 	CPU_LDFLAGS="$(DPDK_CPU_LDFLAGS)" \
+	DESTDIR=$(I) \
         $(DPDK_MAKE_EXTRA_ARGS)
 
 DPDK_SOURCE_FILES := $(shell  [ -e $(DPDK_SOURCE) ] && find $(DPDK_SOURCE) -name "*.[chS]")  
@@ -140,7 +141,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	@rm -f .config.ok
 
 $(CURDIR)/$(DPDK_TARBALL):
-	@mkdir -p $(B)
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) ] ; \
 		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $(CURDIR) ; \
 		else curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
@@ -148,6 +148,7 @@ $(CURDIR)/$(DPDK_TARBALL):
 	@rm -f $(B)/.download.ok
 
 $(B)/.download.ok: $(CURDIR)/$(DPDK_TARBALL)
+	@mkdir -p $(B)
 	@openssl md5 $< | cut -f 2 -d " " - > $(B)/$(DPDK_TARBALL).md5sum
 	@([ "$$(<$(B)/$(DPDK_TARBALL).md5sum)" = "$(DPDK_$(DPDK_VERSION)_TARBALL_MD5_CKSUM)" ] || \
 	( echo "Bad Checksum! Please remove $< and retry" && \
@@ -168,7 +169,7 @@ extract: $(B)/.extract.ok
 $(B)/.patch.ok: $(B)/.extract.ok
 ifneq ($(wildcard $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch),)
 	@echo --- patching ---
-	for f in $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch ; do \
+	@for f in $(CURDIR)/dpdk-$(DPDK_VERSION)_patches/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch -p1 -d $(DPDK_SOURCE) < $$f ; \
 	done
@@ -188,13 +189,130 @@ config: $(B)/.config.ok
 $(B)/.build.ok: $(DPDK_SOURCE_FILES)
 	@if [ ! -e $(B)/.config.ok ] ; then echo 'Please run "make config" first' && false ; fi
 	@make $(DPDK_MAKE_ARGS) install
-	@dkms/create_deb_manifest.sh $(DPDK_VERSION) $(subst $(realpath ..)/,,$(B))
 	@touch $@
 
 .PHONY: build
 build: $(B)/.build.ok
 
+.PHONY: install
+install: $(B)/.build.ok
+
 .PHONY: clean
 clean:
 	@rm -rf $(B) $(I)
 
+##############################################################################
+# .deb packaging
+##############################################################################
+
+DEB_ARCH=$(shell dpkg --print-architecture 2> /dev/null)
+DEV_DEB=vpp-dpdk-dev_$(DPDK_VERSION)-$(PKG_SUFFIX)_$(DEB_ARCH).deb
+INSTALLED_DEB_VER=$(shell dpkg-query --showformat='$${Version}' --show vpp-dpdk-dev 2> /dev/null)
+
+.PHONY: build-deb install-deb check-deb
+
+deb/debian/changelog: Makefile
+	@echo "vpp-dpdk ($(DPDK_VERSION)-$(PKG_SUFFIX)) unstable; urgency=low" > $@
+	@echo "" >> $@
+	@echo "  * DPDK Release $(DPDK_VERSION)" >> $@
+	@echo "" >> $@
+	@echo " -- VPP Dev <vpp-dev@lists.fd.io>  $(shell date -R)" >> $@
+
+$(DEV_DEB): deb/debian/changelog
+	@cd deb && dpkg-buildpackage -b -uc -us
+	git clean -fdx deb
+
+build-deb: $(DEV_DEB)
+
+install-deb:
+ifneq ($(INSTALLED_DEB_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+	@make $(DEV_DEB)
+	@sudo dpkg -i $(DEV_DEB)
+else
+	@echo "=========================================================="
+	@echo " Up-to-date DPDK package already installed"
+	@echo "=========================================================="
+endif
+
+check-deb:
+ifneq ($(INSTALLED_DEB_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+	@echo "=========================================================="
+	@echo " Outdated DPDK package detected:"
+	@echo "  Installed: vpp-dpdk-dev $(INSTALLED_DEB_VER)"
+	@echo "  Current:   vpp-dpdk-dev $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo ""
+	@echo " Please upgrade by invoking 'make dpdk-install-dev'"
+	@echo " from the top level directory."
+	@echo "=========================================================="
+endif
+
+##############################################################################
+# .rpm packaging
+##############################################################################
+
+RPM_ARCH=$(shell rpm --eval "%{_arch}" 2> /dev/null)
+DEV_RPM=vpp-dpdk-devel-$(DPDK_VERSION)-$(PKG_SUFFIX).$(RPM_ARCH).rpm
+INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-dpdk-devel | grep -v "not inst")
+
+.PHONY: build-rpm install-rpm check-rpm
+
+$(DEV_RPM): Makefile rpm/vpp-dpdk.spec
+	@rpmbuild -bb \
+	  --define "_topdir $(CURDIR)/rpm" \
+	  --define "_version $(DPDK_VERSION)" \
+	  --define "_release $(PKG_SUFFIX)" \
+	  $(CURDIR)/rpm/vpp-dpdk.spec
+	mv rpm/RPMS/$(RPM_ARCH)/*.rpm .
+	git clean -fdx rpm
+
+build-rpm: $(DEV_RPM)
+
+install-rpm:
+ifneq ($(INSTALLED_RPM_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+	@make $(DEV_RPM)
+	sudo rpm -Uih $(DEV_RPM)
+else
+	@echo "=========================================================="
+	@echo " Up-to-date DPDK package already installed"
+	@echo "=========================================================="
+endif
+
+check-rpm:
+ifneq ($(INSTALLED_RPM_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+	@echo "=========================================================="
+	@echo " Outdated DPDK package detected:"
+	@echo "  Installed: vpp-dpdk-devel $(INSTALLED_RPM_VER)"
+	@echo "  Current:   vpp-dpdk-devel $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo ""
+	@echo " Please upgrade by invoking 'make dpdk-install-dev'"
+	@echo " from the top level directory."
+	@echo "=========================================================="
+endif
+
+##############################################################################
+# ebuild support
+##############################################################################
+
+.PHONY: ebuild-build ebuild-install
+
+ebuild-build:
+ifeq ($(INSTALLED_DEB_VER)$(INSTALLED_RPM_VER),)
+	@echo "=========================================================="
+	@echo "Building DPDK from source. Consider installing development"
+	@echo "package by invoking 'make dpdk-install-dev' from the"
+	@echo "top level directory"
+	@echo "=========================================================="
+	make config
+else
+ifneq ($(INSTALLED_DEB_VER),)
+	make check-deb
+endif
+ifneq ($(INSTALLED_RPM_VER),)
+	make check-rpm
+endif
+endif
+
+ebuild-install:
+ifeq ($(INSTALLED_DEB_VER)$(INSTALLED_RPM_VER),)
+	make install
+endif

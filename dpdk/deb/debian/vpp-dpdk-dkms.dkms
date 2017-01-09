@@ -1,0 +1,8 @@
+PACKAGE_VERSION=#MODULE_VERSION#
+PACKAGE_NAME="vpp-dpdk-dkms"
+CLEAN="make clean"
+BUILT_MODULE_NAME[0]="igb_uio"
+BUILT_MODULE_LOCATION[0]="./"
+DEST_MODULE_LOCATION[0]="/kernel/net"
+MAKE[1]="make"
+AUTOINSTALL="yes"

@@ -1,0 +1,38 @@
+#!/usr/bin/make -f
+DH_VERBOSE = 1
+PKG=vpp-dpdk
+
+VERSION = $(shell dpkg-parsechangelog | sed -nr '/^Version:/s/Version: //p')
+BASE_VER = $(word 1, $(subst -, ,$(VERSION)))
+
+export DPDK_BUILD_DIR=$(CURDIR)/_build
+export DPDK_INSTALL_DIR=$(CURDIR)/debian/tmp/usr
+
+SRC=_build/dpdk-$(BASE_VER)
+
+MAKE_ARGS=-C ..
+
+include /usr/share/dpkg/default.mk
+
+%:
+	dh $@ --with dkms
+
+override_dh_clean:
+	make $(MAKE_ARGS) clean
+
+override_dh_auto_configure:
+	make $(MAKE_ARGS) config
+
+override_dh_install:
+	make $(MAKE_ARGS) install
+	dh_install -p$(PKG)-dkms \
+	  $(SRC)/lib/librte_eal/common/include/rte_pci_dev_feature_defs.h \
+	  $(SRC)/lib/librte_eal/common/include/rte_pci_dev_features.h     \
+	  $(SRC)/lib/librte_eal/linuxapp/igb_uio/igb_uio.c                \
+	  $(SRC)/lib/librte_eal/linuxapp/igb_uio/compat.h                 \
+	  debian/dkms/Makefile                                            \
+	  /usr/src/$(PKG)-dkms-$(VERSION)
+	dh_install -p$(PKG)-dev --autodest /usr
+
+override_dh_dkms:
+	dh_dkms -p$(PKG)-dkms -V $(VERSION)

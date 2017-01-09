@@ -1,0 +1,18 @@
+Source: vpp-dpdk
+Section: net
+Priority: extra
+Maintainer: vpp-dev@lists.fd.io
+Build-Depends: debhelper (>= 9), dkms
+Standards-Version: 3.9.4
+
+Package: vpp-dpdk-dev
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: DPDK Development Package for VPP
+Conflicts: dpdk, dpdk-dev, libdpdk-dev
+
+Package: vpp-dpdk-dkms
+Architecture: any
+Depends: ${misc:Depends}
+Description: DPDK Development Package for VPP - Kernel Modules
+Conflicts: dpdk-igb-uio-dkms
