@@ -42,8 +42,8 @@ ifneq ($(DPDK_MAKE_EXTRA_ARGS),)
 DPDK_MAKE_ARGS += DPDK_MAKE_EXTRA_ARGS="$(DPDK_MAKE_EXTRA_ARGS)"
 endif
 
-dpdk_configure = echo 
+dpdk_configure = echo
 
-dpdk_make_args = $(DPDK_MAKE_ARGS) config
+dpdk_make_args = $(DPDK_MAKE_ARGS) ebuild-build
 
-dpdk_install =  make $(DPDK_MAKE_ARGS) build
+dpdk_install =  make $(DPDK_MAKE_ARGS) ebuild-install
