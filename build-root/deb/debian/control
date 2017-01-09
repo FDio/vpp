@@ -26,14 +26,6 @@ Description: Vector Packet Processing--development support
  This package contains development support files for the VPP libraries
  .
 
-Package: vpp-dpdk-dev
-Architecture: any
-Depends: ${misc:Depends}
-Description: Vector Packet Processing--development support
- This package contains dpdk header files which match the dpdk version
- compiled into the vpp executable
- .
-
 Package: vpp-lib
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -41,7 +33,6 @@ Description: Vector Packet Processing--runtime libraries
  This package contains the VPP shared libraries, including:
  .
  vppinfra - foundation library supporting vectors, hashes, bitmaps, pools, and string formatting.
- dpdk - DPDK library
  svm - vm library
  vlib - vector processing library
  vlib-api - binary API library
@@ -57,7 +48,7 @@ Description: Vector Packet Processing--runtime plugins
 Package: vpp-dpdk-dkms
 Architecture: any
 Depends: ${misc:Depends}
-Description: DPDK 2.1 igb_uio_driver
+Description: DPDK igb_uio driver
  This package contains Linux kernel modules distributed with DPDK.
 
 Package: vpp-api-lua
