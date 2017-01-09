@@ -10,13 +10,14 @@ from scapy.layers.inet6 import IPv6, ICMPv6ND_NS, ICMPv6ND_NA,\
     ICMPv6NDOptSrcLLAddr, ICMPv6NDOptDstLLAddr, ICMPv6ND_RA, RouterAlert, \
     IPv6ExtHdrHopByHop
 from util import ppp, ppc
-from scapy.utils6 import in6_getnsma, in6_getnsmac
+from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
 
 def is_ipv6_misc(p):
     """ Is packet one of uninteresting IPv6 broadcasts? """
     if p.haslayer(ICMPv6ND_RA):
-        return True
+        if in6_ismaddr(p[IPv6].dst):
+            return True
     if p.haslayer(IPv6ExtHdrHopByHop):
         for o in p[IPv6ExtHdrHopByHop].options:
             if isinstance(o, RouterAlert):

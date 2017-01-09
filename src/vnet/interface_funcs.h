@@ -53,6 +53,14 @@ vnet_get_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 }
 
 always_inline vnet_sw_interface_t *
+vnet_get_sw_interface_safe (vnet_main_t * vnm, u32 sw_if_index)
+{
+  if (!pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
+    return pool_elt_at_index (vnm->interface_main.sw_interfaces, sw_if_index);
+  return (NULL);
+}
+
+always_inline vnet_sw_interface_t *
 vnet_get_hw_sw_interface (vnet_main_t * vnm, u32 hw_if_index)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);

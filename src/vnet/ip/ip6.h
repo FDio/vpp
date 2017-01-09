@@ -376,8 +376,7 @@ int ip6_interface_enabled (vlib_main_t * vm, u32 sw_if_index);
 
 clib_error_t *set_ip6_link_local_address (vlib_main_t * vm,
 					  u32 sw_if_index,
-					  ip6_address_t * address,
-					  u8 address_length);
+					  ip6_address_t * address);
 
 void vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
 						  void *address_arg,

@@ -1196,8 +1196,6 @@ ip6_set_link_local_address (test_main_t * tm)
   clib_memcpy (mp->address, &tmp[0], 8);
   clib_memcpy (&mp->address[8], &tmp[1], 8);
 
-  mp->address_length = 64;
-
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS);
 
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
