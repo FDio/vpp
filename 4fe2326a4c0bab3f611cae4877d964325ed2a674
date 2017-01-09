@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_cbf8ba7e",
+        "filename": "Makefile",
+        "patchSetId": 23
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-01-09T14:01:42Z",
+      "side": 1,
+      "message": "shouldn\u0027t these ANSI sequences be gone also.?",
+      "revId": "4fe2326a4c0bab3f611cae4877d964325ed2a674",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_abf56e84",
+        "filename": "Makefile",
+        "patchSetId": 23
+      },
+      "lineNbr": 211,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-01-09T14:01:42Z",
+      "side": 1,
+      "message": "and here?",
+      "range": {
+        "startLine": 211,
+        "startChar": 0,
+        "endLine": 211,
+        "endChar": 68
+      },
+      "revId": "4fe2326a4c0bab3f611cae4877d964325ed2a674",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
