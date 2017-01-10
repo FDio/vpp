@@ -1,0 +1,11 @@
+FROM centos:7
+
+ADD Makefile /
+
+RUN \
+	yum update -y && \
+	yum install -y redhat-lsb make sudo kernel kernel-headers && \
+	make UNATTENDED=yes install-dep && \
+	rm -rf /Makefile && \
+	yum clean all
+

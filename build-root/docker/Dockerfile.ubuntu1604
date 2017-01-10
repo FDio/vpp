@@ -1,0 +1,10 @@
+FROM ubuntu:16.04
+
+ADD Makefile /
+
+RUN \
+	apt-get update && \
+	apt-get -y --force-yes install make sudo linux-headers-virtual && \
+	make UNATTENDED=yes install-dep && \
+	rm -rf /Makefile /var/lib/apt/lists/*
+
