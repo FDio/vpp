@@ -27,6 +27,11 @@ noinst_HEADERS =
 dist_bin_SCRIPTS =
 lib_LTLIBRARIES =
 BUILT_SOURCES =
+install-data-local:
+	@echo "Building vppctl command list"
+	@DIR_SEARCH="$(srcdir) $(srcdir)/../plugins" ; \
+	DIR_EXCLUDE="examples" ; \
+	grep -wIr "\.path = " $$DIR_SEARCH --exclude-dir=$$DIR_EXCLUDE | cut -d '"' -f2 | sort -u > $(srcdir)/scripts/vppctl-cmd-list
 
 ###############################################################################
 # DPDK
