@@ -72,9 +72,10 @@ define japigen
 	@rm -rf jvpp-$(1)/target
 	@ @srcdir@/jvpp/gen/jvpp_gen.py --plugin_name $(1) --root_dir jvpp-$(1) \
 	  -i $(jvpp_$(1)_json_files) > /dev/null
-	@find jvpp-$(1)/target -name \*.java > jvpp-$(1).files
+	@find jvpp-$(1)/target -name \*.java > jvpp-$(1).generated.files
+	@find @srcdir@/jvpp-$(1) -name \*.java > jvpp-$(1).static.files
 	@$(JAVAC) -classpath jvpp-registry/target \
-	  -d jvpp-$(1)/target @jvpp-$(1).files
+	  -d jvpp-$(1)/target @jvpp-$(1).generated.files @jvpp-$(1).static.files
 	@$(JAVAH) -force \
 	  -classpath jvpp-registry/target:jvpp-$(1)/target \
 	  -d jvpp-$(1) io.fd.vpp.jvpp.$(1).$(2)
@@ -188,7 +189,6 @@ jvpp-%-$(PACKAGE_VERSION).jar: libjvpp_%.la
 	@echo "  JAR      $@"
 	@cp .libs/libjvpp_$*.so jvpp-$*/target
 	@$(JAR) cf $(JARFLAGS) $@ -C jvpp-$*/target .
-	@$(JAR) uf $(JARFLAGS) $@ -C $(srcdir)/jvpp-$* io
 
 jardir = $(prefix)/share/java
 jar_DATA = $(JAR_FILES)
