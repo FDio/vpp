@@ -2386,11 +2386,18 @@ VLIB_REGISTER_NODE (vhost_user_process_node,static) = {
 static void
 vhost_user_term_if (vhost_user_intf_t * vui)
 {
+  int q;
+
   // Delete configured thread pinning
   vec_reset_length (vui->workers);
   // disconnect interface sockets
   vhost_user_if_disconnect (vui);
   vhost_user_update_iface_state (vui);
+
+  for (q = 0; q < VHOST_VRING_MAX_N; q++)
+    {
+      clib_mem_free ((void *) vui->vring_locks[q]);
+    }
 
   if (vui->unix_server_index != ~0)
     {
