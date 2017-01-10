@@ -30,7 +30,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi)
   clib_error_t *(*fp) (vat_main_t *);
   clib_error_t *error;
 
-  handle = dlopen ((char *) pi->name, RTLD_LAZY);
+  handle = dlopen ((char *) pi->name, RTLD_LAZY|RTLD_GLOBAL);
 
   /*
    * Note: this can happen if the plugin has an undefined symbol reference,

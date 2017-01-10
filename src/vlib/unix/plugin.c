@@ -62,7 +62,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   clib_error_t *error;
   void *handoff_structure;
 
-  handle = dlopen ((char *) pi->filename, RTLD_LAZY);
+  handle = dlopen ((char *) pi->filename, RTLD_LAZY|RTLD_GLOBAL);
 
   /*
    * Note: this can happen if the plugin has an undefined symbol reference,
