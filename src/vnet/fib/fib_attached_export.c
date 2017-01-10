@@ -244,6 +244,12 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 {
     fib_entry_delegate_t *fed;
     fib_ae_import_t *import;
+    fib_node_index_t fei;
+
+    /*
+     * save index for later post-realloc retreival
+     */
+    fei = fib_entry_get_index(fib_entry);
 
     pool_get(fib_ae_import_pool, import);
 
@@ -292,11 +298,13 @@ fib_attached_export_import (fib_entry_t *fib_entry,
 
     /*
      * track the entry in the export table so we can update appropriately
-     * when it changes
+     * when it changes.
+     * Exporting prefixes will have allocated new fib_entry_t objects, so the pool
+     * may have realloc'd.
      */
-    import->faei_export_sibling =
-	fib_entry_cover_track(fib_entry_get(import->faei_export_entry),
-			      fib_entry_get_index(fib_entry));
+    fib_entry = fib_entry_get(fei);
+        import->faei_export_sibling =
+	  fib_entry_cover_track(fib_entry_get(import->faei_export_entry), fei);
 
     fed = fib_entry_delegate_find_or_add(fib_entry,
                                          FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
