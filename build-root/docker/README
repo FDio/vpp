@@ -1,0 +1,31 @@
+This is a simple shell script to run VPP build inside a Docker container.
+Very useful for all kinds of CI systems, or in general when there is a need
+to build VPP for a target different from the build machine.
+
+Currently three targets (build containers) are supported:
+Ubuntu 16.04
+Ubuntu 14.04
+CentOS 7
+
+It should be easy to add a new build container type by adding a Dockerfile.<OS>
+in this (build-root/docker) directory.
+
+The only requirement on the build machine is to have ‘docker’ installed and
+the user with the permissions to use it.
+
+Follow the official Docker documentation:
+https://docs.docker.com/engine/installation/
+TL;TR
+# curl -sSL https://get.docker.com/ | sh
+
+Examples:
+
+Quick build for Ubuntu 14.04:
+# build-root/docker/runc.sh ubuntu:14.04 build-root/vagrant/build.sh
+
+Build RPM packages on non-RPM based host (e.g. on Ubuntu 16.10):
+# build-root/docker/runc.sh centos:7 make bootstrap pkg-rpm
+
+Run make test on the host without Python run-time:
+# build-root/docker/runc.sh ubuntu:16.04 make bootstrap test
+
