@@ -59,8 +59,7 @@ DOXY_INPUT ?= \
 	$(wildcard $(WS_ROOT)/*.md) \
 	$(wildcard $(DOXY_DIR)/*.md) \
 	$(DOXY_SRC_DIRECTORIES) \
-	$(DOXY_SRC)/plugins \
-	plugins
+	$(DOXY_SRC)/plugins
 
 # Strip leading workspace path from input names
 DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
