@@ -286,10 +286,10 @@ build-vat:
 run-vat:
 	@sudo $(BR)/install-$(PLATFORM)_debug-native/vpp/bin/vpp_api_test
 
-pkg-deb:
+pkg-deb: build-vppctl-list
 	$(call make,$(PLATFORM),install-deb)
 
-pkg-rpm: dist
+pkg-rpm: dist build-vppctl-list
 	$(call make,$(PLATFORM),install-rpm)
 
 ctags: ctags.files
@@ -307,6 +307,12 @@ checkstyle:
 
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix
+
+build-vppctl-list:
+	@echo "Building vppctl command list"
+	@DIR_SEARCH="src/ plugins/" ; \
+	DIR_EXCLUDE="examples" ; \
+	grep -wIr "\.path = " $$DIR_SEARCH --exclude-dir=$$DIR_EXCLUDE | cut -d '"' -f2 | sort -u > src/scripts/vppctl-cmd-list
 
 #
 # Build the documentation
