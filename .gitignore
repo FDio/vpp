@@ -88,3 +88,6 @@ GTAGS
 
 # Build files in the test directory
 /test/*.ok
+
+# vppctl command list
+/src/scripts/vppctl-cmd-list
