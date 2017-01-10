@@ -73,14 +73,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 									\
 	: and sysctl config ; 						\
 	echo ../../src/vpp/conf/80-vpp.conf /etc/sysctl.d 		\
-	   >> deb/debian/vpp.install ;				        \
-									\
-	: bash completion for vppctl ;                                  \
-	echo ../../src/scripts/vppctl_completion /etc/bash_completion.d \
-	   >> deb/debian/vpp.install ;    				\
-									\
-	: move dictionary of vppctl commands ;				\
-	echo ../docs/siphon_docs/clicmd.itemlist /usr/share/vpp		\
 	   >> deb/debian/vpp.install ;					\
 									\
 	: dev package needs a couple of additions ;			\
