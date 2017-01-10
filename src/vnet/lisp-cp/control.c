@@ -4631,7 +4631,7 @@ parse_map_reply (vlib_buffer_t * b)
 static void
 queue_map_reply_for_processing (map_records_arg_t * a)
 {
-  vl_api_rpc_call_main_thread (process_map_reply, (u8 *) a, sizeof (a));
+  vl_api_rpc_call_main_thread (process_map_reply, (u8 *) a, sizeof (*a));
 }
 
 static void
