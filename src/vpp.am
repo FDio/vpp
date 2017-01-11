@@ -68,39 +68,6 @@ VPP_VERSION = $(shell $(srcdir)/scripts/version)
 	  echo "#define VPP_BUILD_VER \"$(VPP_VERSION)\"" >> $$f			;\
 	fi
 
-
-# Generate a plugin configuration script. Misconfiguring a
-# plugin can cause very subtle problems.
-
-bin_SCRIPTS = vpp_plugin_configure
-
-BUILT_SOURCES += vpp_plugin_configure
-
-.PHONY: vpp_plugin_configure
-
-if WITH_DPDK
-PLUGIN_DPDK_ARG="--with-dpdk"
-else
-PLUGIN_DPDK_ARG=""
-endif
-
-vpp_plugin_configure:
-	@echo "PLUGIN CFG" $@
-	@echo "#!/bin/bash" > $@
-	@echo " " >> $@
-	@echo "set +eu" >> $@
-	@echo " " >> $@
-	@echo "if [ -f ./configure ] ; then" >> $@
-	@echo "    CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ./configure --with-plugin-toolkit $(PLUGIN_DPDK_ARG)" >> $@
-	@echo "else" >> $@
-	@echo "    if [ -f ../configure ] ; then" >> $@
-	@echo "        CFLAGS='$(CFLAGS) $(AM_CFLAGS) -I/usr/include/vpp-dpdk' ../configure --with-plugin-toolkit $(PLUGIN_DPDK_ARG)" >> $@
-	@echo "    else" >> $@
-	@echo "        echo Couldnt find ./configure or ../configure " >> $@
-	@echo "        exit 1" >> $@
-	@echo "    fi" >> $@
-	@echo "fi" >> $@
-
 bin_vpp_LDADD = \
   libvlibapi.la \
   libvlibmemory.la \
@@ -108,12 +75,12 @@ bin_vpp_LDADD = \
   libvnet.la \
   libsvm.la \
   libsvmdb.la \
-  libvnetplugin.la \
   -lrt
 
 bin_vpp_LDFLAGS = $(DPDK_LD_FLAGS)
 bin_vpp_LDADD += libvppinfra.la -lm -lpthread -ldl $(DPDK_LD_ADD)
 
+if ENABLE_TESTS
 noinst_PROGRAMS += bin/test_client
 
 bin_test_client_SOURCES = \
@@ -138,6 +105,7 @@ bin_test_ha_LDADD = \
   libsvm.la \
   libvppinfra.la \
   -lpthread -lm -lrt
+endif
 
 noinst_PROGRAMS += bin/summary_stats_client
 
