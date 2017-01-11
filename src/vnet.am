@@ -11,8 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+lib_LTLIBRARIES += libvnet.la
+
 libvnet_la_SOURCES =
-libvnetplugin_la_SOURCES =
 
 libvnet_la_LIBADD = libvppinfra.la libsvm.la
 libvnet_la_DEPENDENCIES = libvppinfra.la libvlib.la libsvmdb.la libsvm.la libvlibapi.la libvlibmemory.la libvlibmemoryclient.la
@@ -966,14 +967,8 @@ nobase_include_HEADERS +=			\
 # Plugin client library
 ########################################
 
-libvnetplugin_la_SOURCES +=                    \
-  vnet/plugin/p1.c
-
 nobase_include_HEADERS +=                      \
   vnet/plugin/plugin.h
-
-libvnetdir = ${libdir}
-libvnet_LTLIBRARIES = libvnet.la libvnetplugin.la
 
 pcap2pg_SOURCES = 				\
   vnet/unix/pcap2pg.c				\

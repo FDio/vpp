@@ -11,13 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-libvppinfradir = ${libdir}
-
-if WITH_UNIX
-  libvppinfra_LTLIBRARIES = libvppinfra.la
-endif
-
-lib_LIBRARIES =
+lib_LTLIBRARIES += libvppinfra.la
 
 TESTS =
 

@@ -17,6 +17,7 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
+AM_LIBTOOLFLAGS = --quiet
 
 AM_CFLAGS = -Wall
 

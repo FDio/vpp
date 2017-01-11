@@ -13,6 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
+AM_LIBTOOLFLAGS = --quiet
 AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir}
 
 BUILT_SOURCES =
@@ -48,6 +49,7 @@ install-exec-local:
 #
 # Test client
 #
+if ENABLE_TESTS
 noinst_PROGRAMS += test_pneum
 test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
 test_pneum_LDADD = \
@@ -56,5 +58,4 @@ test_pneum_LDADD = \
   $(top_builddir)/libvlibapi.la \
   $(top_builddir)/libsvm.la \
   -lpthread -lm -lrt
-
-
+endif
