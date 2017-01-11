@@ -13,6 +13,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
+AM_LIBTOOLFLAGS = --quiet
 
 AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir} \
   -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux \
