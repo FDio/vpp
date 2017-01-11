@@ -83,11 +83,57 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * '<em>netmap</em>' is a framework for very fast packet I/O from userspace.
+ * '<em>VALE</em>' is an equally fast in-kernel software switch using the
+ * netmap API. '<em>netmap</em>' includes '<em>netmap pipes</em>', a shared
+ * memory packet transport channel. Together, they provide a high speed
+ * user-space interface that allows VPP to patch into a linux namespace, a
+ * linux container, or a physical NIC without the use of DPDK. Netmap/VALE
+ * generates the '<em>netmap.ko</em>' kernel module that needs to be loaded
+ * before netmap interfaces can be created.
+ * - https://github.com/luigirizzo/netmap - Netmap/VALE repo.
+ * - https://github.com/vpp-dev/netmap - VPP development package for Netmap/VALE,
+ * which is a snapshot of the Netmap/VALE repo with minor changes to work
+ * with containers and modified kernel drivers to work with NICs.
+ *
+ * Create a netmap interface that will attach to a linux interface.
+ * The interface must already exist. Once created, a new netmap interface
+ * will exist in VPP with the name '<em>netmap-<ifname></em>', where
+ * '<em><ifname></em>' takes one of two forms:
+ * - <b>ifname</b> - Linux interface to bind too.
+ * - <b>valeXXX:YYY</b> -
+ *   - Where '<em>valeXXX</em>' is an arbitrary name for a VALE
+ *     interface that must start with '<em>vale</em>' and is less
+ *     than 16 characters.
+ *   - Where '<em>YYY</em>' is an existing linux namespace.
+ *
+ * This command has the following optional parameters:
+ *
+ * - <b>hw-addr <mac-addr></b> - Optional ethernet address, can be in either
+ * X:X:X:X:X:X unix or X.X.X cisco format.
+ *
+ * - <b>pipe</b> - Optional flag to indicate that a '<em>netmap pipe</em>'
+ * instance should be created.
+ *
+ * - <b>master | slave</b> - Optional flag to indicate whether VPP should
+ * be the master or slave of the '<em>netmap pipe</em>'. Only considered
+ * if '<em>pipe</em>' is entered. Defaults to '<em>slave</em>' if not entered.
+ *
+ * @cliexpar
+ * Example of how to create a netmap interface tied to the linux
+ * namespace '<em>vpp1</em>':
+ * @cliexstart{create netmap name vale00:vpp1 hw-addr 02:FE:3F:34:15:9B pipe master}
+ * netmap-vale00:vpp1
+ * @cliexend
+ * Once the netmap interface is created, enable the interface using:
+ * @cliexcmd{set interface state netmap-vale00:vpp1 up}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (netmap_create_command, static) = {
   .path = "create netmap",
-  .short_help = "create netmap name [<intf name>|valeXXX:YYY] "
-    "[hw-addr <mac>] [pipe] [master|slave]",
+  .short_help = "create netmap name <ifname>|valeXXX:YYY "
+    "[hw-addr <mac-addr>] [pipe] [master|slave]",
   .function = netmap_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -121,10 +167,26 @@ netmap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * Delete a netmap interface. Use the '<em><ifname></em>' to identify
+ * the netmap interface to be deleted. In VPP, netmap interfaces are
+ * named as '<em>netmap-<ifname></em>', where '<em><ifname></em>'
+ * takes one of two forms:
+ * - <b>ifname</b> - Linux interface to bind too.
+ * - <b>valeXXX:YYY</b> -
+ *   - Where '<em>valeXXX</em>' is an arbitrary name for a VALE
+ *     interface that must start with '<em>vale</em>' and is less
+ *     than 16 characters.
+ *   - Where '<em>YYY</em>' is an existing linux namespace.
+ *
+ * @cliexpar
+ * Example of how to delete a netmap interface named '<em>netmap-vale00:vpp1</em>':
+ * @cliexcmd{delete netmap name vale00:vpp1}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (netmap_delete_command, static) = {
   .path = "delete netmap",
-  .short_help = "delete netmap name <interface name>",
+  .short_help = "delete netmap name <ifname>|valeXXX:YYY",
   .function = netmap_delete_command_fn,
 };
 /* *INDENT-ON* */
