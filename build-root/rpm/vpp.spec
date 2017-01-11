@@ -98,10 +98,6 @@ This package contains the python bindings for the vpp api
 %prep
 %setup -q -n %{name}-%{_version}
 
-%build
-make bootstrap
-make build-release
-
 %pre
 # Add the vpp group
 groupadd -f -r vpp
