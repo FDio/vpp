@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_37efa189",
+        "filename": "src/vnet/devices/netmap/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2017-01-11T19:48:01Z",
+      "side": 1,
+      "message": "OK. I\u0027ll add a link to the master netmap repo and vpp-dev netmap repo.",
+      "parentUuid": "5a2585a7_77ad2988",
+      "range": {
+        "startLine": 93,
+        "startChar": 2,
+        "endLine": 94,
+        "endChar": 67
+      },
+      "revId": "adba2f300fc739d1cdd45b204365fceeda5e69a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_b7a3919d",
         "filename": "src/vnet/devices/netmap/cli.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2017-01-11T16:42:15Z",
       "side": 1,
       "message": "Linux namespace or container is not needed. Netmap doesn\u0027t care about that.",
+      "range": {
+        "startLine": 96,
+        "startChar": 3,
+        "endLine": 97,
+        "endChar": 22
+      },
+      "revId": "adba2f300fc739d1cdd45b204365fceeda5e69a6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_17f4a559",
+        "filename": "src/vnet/devices/netmap/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2017-01-11T19:48:01Z",
+      "side": 1,
+      "message": "Updated in next patch.",
+      "parentUuid": "5a2585a7_b7a3919d",
       "range": {
         "startLine": 96,
         "startChar": 3,
