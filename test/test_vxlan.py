@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import socket
+from util import ip4n_range
 import unittest
 from framework import VppTestCase, VppTestRunner
 from template_bd import BridgeDomain
@@ -34,7 +35,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
         Encapsulate the original payload frame by adding VXLAN header with its
         UDP, IP and Ethernet fields
         """
-        return (Ether(src=src_mac, dst=self.mcast_mac4) /
+        return (Ether(src=src_mac, dst=self.mcast_mac) /
                 IP(src=src_ip, dst=self.mcast_ip4) /
                 UDP(sport=self.dport, dport=self.dport, chksum=0) /
                 VXLAN(vni=vni, flags=self.flags) /
@@ -68,24 +69,19 @@ class TestVxlan(BridgeDomain, VppTestCase):
         # Verify VNI
         self.assertEqual(pkt[VXLAN].vni, vni)
 
-    @staticmethod
-    def ip4_range(ip4n, s=10, e=20):
-        base = str(bytearray(ip4n)[:3])
-        return ((base + ip) for ip in str(bytearray(range(s, e))))
-
     @classmethod
-    def create_vxlan_flood_test_bd(cls, vni):
+    def create_vxlan_flood_test_bd(cls, vni, n_ucast_tunnels):
         # Create 10 ucast vxlan tunnels under bd
         ip_range_start = 10
-        ip_range_end = 20
+        ip_range_end = ip_range_start + n_ucast_tunnels
         next_hop_address = cls.pg0.remote_ip4n
-        for dest_addr in cls.ip4_range(next_hop_address, ip_range_start,
-                                       ip_range_end):
-            # add host route so dest_addr will not be resolved
-            cls.vapi.ip_add_del_route(dest_addr, 32, next_hop_address)
+        for dest_ip4n in ip4n_range(next_hop_address, ip_range_start,
+                                    ip_range_end):
+            # add host route so dest_ip4n will not be resolved
+            cls.vapi.ip_add_del_route(dest_ip4n, 32, next_hop_address)
             r = cls.vapi.vxlan_add_del_tunnel(
                 src_addr=cls.pg0.local_ip4n,
-                dst_addr=dest_addr,
+                dst_addr=dest_ip4n,
                 vni=vni)
             cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
 
@@ -93,12 +89,12 @@ class TestVxlan(BridgeDomain, VppTestCase):
     def add_del_mcast_load(cls, is_add):
         ip_range_start = 10
         ip_range_end = 210
-        for dest_addr in cls.ip4_range(cls.mcast_ip4n, ip_range_start,
-                                       ip_range_end):
-            vni = bytearray(dest_addr)[3]
+        for dest_ip4n in ip4n_range(cls.mcast_ip4n, ip_range_start,
+                                    ip_range_end):
+            vni = bytearray(dest_ip4n)[3]
             cls.vapi.vxlan_add_del_tunnel(
                 src_addr=cls.pg0.local_ip4n,
-                dst_addr=dest_addr,
+                dst_addr=dest_ip4n,
                 mcast_sw_if_index=1,
                 vni=vni,
                 is_add=is_add)
@@ -139,7 +135,7 @@ class TestVxlan(BridgeDomain, VppTestCase):
             cls.mcast_ip4 = '239.1.1.1'
             cls.mcast_ip4n = socket.inet_pton(socket.AF_INET, cls.mcast_ip4)
             iplong = atol(cls.mcast_ip4)
-            cls.mcast_mac4 = "01:00:5e:%02x:%02x:%02x" % (
+            cls.mcast_mac = "01:00:5e:%02x:%02x:%02x" % (
                 (iplong >> 16) & 0x7F, (iplong >> 8) & 0xFF, iplong & 0xFF)
 
             # Create VXLAN VTEP on VPP pg0, and put vxlan_tunnel0 and pg1
@@ -155,8 +151,10 @@ class TestVxlan(BridgeDomain, VppTestCase):
                                                 bd_id=cls.single_tunnel_bd)
 
             # Setup vni 2 to test multicast flooding
+            cls.n_ucast_tunnels = 10
             cls.mcast_flood_bd = 2
-            cls.create_vxlan_flood_test_bd(cls.mcast_flood_bd)
+            cls.create_vxlan_flood_test_bd(cls.mcast_flood_bd,
+                                           cls.n_ucast_tunnels)
             r = cls.vapi.vxlan_add_del_tunnel(
                 src_addr=cls.pg0.local_ip4n,
                 dst_addr=cls.mcast_ip4n,
@@ -173,7 +171,8 @@ class TestVxlan(BridgeDomain, VppTestCase):
 
             # Setup vni 3 to test unicast flooding
             cls.ucast_flood_bd = 3
-            cls.create_vxlan_flood_test_bd(cls.ucast_flood_bd)
+            cls.create_vxlan_flood_test_bd(cls.ucast_flood_bd,
+                                           cls.n_ucast_tunnels)
             cls.vapi.sw_interface_set_l2_bridge(cls.pg3.sw_if_index,
                                                 bd_id=cls.ucast_flood_bd)
         except Exception:

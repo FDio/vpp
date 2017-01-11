@@ -5,6 +5,8 @@ from abc import abstractmethod, ABCMeta
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP
 
+from util import ip4_range
+
 
 class BridgeDomain(object):
     """ Bridge domain abstraction """
@@ -110,7 +112,7 @@ class BridgeDomain(object):
         self.pg_start()
 
         # Get packet from each tunnel and assert it's corectly encapsulated.
-        out = self.pg0.get_capture(10)
+        out = self.pg0.get_capture(self.n_ucast_tunnels)
         for pkt in out:
             self.check_encapsulation(pkt, self.ucast_flood_bd, True)
             payload = self.decapsulate(pkt)
@@ -135,10 +137,6 @@ class BridgeDomain(object):
         payload = self.decapsulate(pkt)
         self.assert_eq_pkts(payload, self.frame_reply)
 
-    @staticmethod
-    def ipn_to_ip(ipn):
-        return '.'.join(str(i) for i in bytearray(ipn))
-
     def test_mcast_rcv(self):
         """ Multicast receive test
         Send 20 encapsulated frames from pg0 only 10 match unicast tunnels
@@ -148,10 +146,9 @@ class BridgeDomain(object):
         ip_range_start = 10
         ip_range_end = 30
         mcast_stream = [
-            self.encap_mcast(self.frame_request, self.ipn_to_ip(ip), mac,
-                             self.mcast_flood_bd)
-            for ip in self.ip4_range(self.pg0.remote_ip4n,
-                                     ip_range_start, ip_range_end)]
+            self.encap_mcast(self.frame_request, ip, mac, self.mcast_flood_bd)
+            for ip in ip4_range(self.pg0.remote_ip4,
+                                ip_range_start, ip_range_end)]
         self.pg0.add_stream(mcast_stream)
         self.pg2.enable_capture()
         self.pg_start()
