@@ -16,6 +16,8 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/ip/ip.h>
+#include <vnet/ip/ip4.h>
 #include <vnet/plugin/plugin.h>
 #include <vlibapi/api.h>
 #include <snat/snat.h>
@@ -1146,6 +1148,15 @@ static void plugin_custom_dump_configure (snat_main_t * sm)
 #undef _
 }
 
+static void
+snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
+                                       uword opaque,
+                                       u32 sw_if_index,
+                                       ip4_address_t * address,
+                                       u32 address_length,
+                                       u32 if_address_index,
+                                       u32 is_delete);
+
 static clib_error_t * snat_init (vlib_main_t * vm)
 {
   snat_main_t * sm = &snat_main;
@@ -1158,6 +1169,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword *bitmap = 0;
   u32 i;
+  ip4_add_del_interface_address_callback_t cb4;
 
   name = format (0, "snat_%08x%c", api_version, 0);
 
@@ -1204,6 +1216,12 @@ static clib_error_t * snat_init (vlib_main_t * vm)
 
   plugin_custom_dump_configure (sm);
   vec_free(name);
+
+  /* Set up the interface address add/del callback */
+  cb4.function = snat_ip4_add_del_interface_address_cb;
+  cb4.function_opaque = 0;
+
+  vec_add1 (im->add_del_interface_address_callbacks, cb4);
 
   return error;
 }
@@ -1954,4 +1972,110 @@ VLIB_CLI_COMMAND (show_snat_command, static) = {
     .path = "show snat",
     .short_help = "show snat",
     .function = show_snat_command_fn,
+};
+
+
+static void
+snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
+                                       uword opaque,
+                                       u32 sw_if_index,
+                                       ip4_address_t * address,
+                                       u32 address_length,
+                                       u32 if_address_index,
+                                       u32 is_delete)
+{
+  snat_main_t *sm = &snat_main;
+  int i, j;
+
+  for (i = 0; i < vec_len(sm->auto_add_sw_if_indices); i++)
+    {
+      if (sw_if_index == sm->auto_add_sw_if_indices[i])
+        {
+          if (!is_delete)
+            {
+              /* Don't trip over lease renewal, static config */
+              for (j = 0; j < vec_len(sm->addresses); j++)
+                if (sm->addresses[j].addr.as_u32 == address->as_u32)
+                  return;
+
+              snat_add_address (sm, address);
+              return;
+            }
+          else
+            {
+              (void) snat_del_address(sm, address[0]);
+              return;
+            }
+        }
+    }
+}
+
+
+static int snat_add_interface_address (snat_main_t *sm, u32 sw_if_index)
+{
+  ip4_main_t * ip4_main = sm->ip4_main;
+  ip4_address_t * first_int_addr;
+  int i;
+
+  first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index,
+                                                0 /* just want the address*/);
+
+  for (i = 0; i < vec_len(sm->auto_add_sw_if_indices); i++)
+    {
+      if (sm->auto_add_sw_if_indices[i] == sw_if_index)
+        return 0;
+    }
+  
+  /* add to the auto-address list */
+  vec_add1(sm->auto_add_sw_if_indices, sw_if_index);
+
+  /* If the address is already bound - or static - add it now */
+  if (first_int_addr)
+      snat_add_address (sm, first_int_addr);
+
+  return 0;
+}
+
+static clib_error_t *
+snat_add_interface_address_command_fn (vlib_main_t * vm,
+                                       unformat_input_t * input,
+                                       vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index;
+  int rv;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+                    sm->vnet_main, &sw_if_index))
+        ;
+      else
+        return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  rv = snat_add_interface_address (sm, sw_if_index);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    default:
+      return clib_error_return (0, "snat_add_interface_address returned %d",
+                                rv);
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
+    .path = "snat add interface address",
+    .short_help = "snat add interface address <interface>",
+    .function = snat_add_interface_address_command_fn,
 };

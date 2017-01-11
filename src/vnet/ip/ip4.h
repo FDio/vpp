@@ -190,7 +190,6 @@ ip4_src_address_for_packet (ip_lookup_main_t * lm,
     }
   else
     {
-      ASSERT (0);
       src->as_u32 = 0;
     }
   return (!0);

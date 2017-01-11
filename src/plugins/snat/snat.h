@@ -179,6 +179,9 @@ typedef struct {
   /* Vector of outside addresses */
   snat_address_t * addresses;
 
+  /* sw_if_indices whose intfc addresses should be auto-added */
+  u32 * auto_add_sw_if_indices;
+
   /* Randomize port allocation order */
   u32 random_seed;
 
