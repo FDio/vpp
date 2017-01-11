@@ -96,6 +96,11 @@ af_packet_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
  * is the name of the specified veth pair. Use the
  * '<em>show interfaces</em>' command to display host interface details.
  *
+ * This command has the following optional parameters:
+ *
+ * - <b>hw-addr <mac-addr></b> - Optional ethernet address, can be in either
+ * X:X:X:X:X:X unix or X.X.X cisco format.
+ *
  * @cliexpar
  * Example of how to create a host interface tied to one side of an
  * existing linux veth pair named vpp1:
