@@ -27,7 +27,8 @@
 vnet_api_error_t bfd_udp_add_session (u32 sw_if_index, u32 desired_min_tx_us,
 				      u32 required_min_rx_us, u8 detect_mult,
 				      const ip46_address_t * local_addr,
-				      const ip46_address_t * peer_addr);
+				      const ip46_address_t * peer_addr,
+				      u32 * bs_index);
 
 vnet_api_error_t bfd_udp_del_session (u32 sw_if_index,
 				      const ip46_address_t * local_addr,

@@ -145,8 +145,8 @@ class VppBFDUDPSession(VppObject):
                     session = s
                     break
         if session is None:
-            raise Exception(
-                "Could not find BFD session in VPP response: %s" % repr(result))
+            raise Exception("Could not find BFD session in VPP response: %s" %
+                            repr(result))
         return session.state
 
     @property
@@ -185,6 +185,7 @@ class VppBFDUDPSession(VppObject):
             self.peer_addr_n,
             is_ipv6=is_ipv6)
         self._bs_index = result.bs_index
+        self._test.registry.register(self, self.test.logger)
 
     def query_vpp_config(self):
         result = self.test.vapi.bfd_udp_session_dump()
@@ -202,7 +203,7 @@ class VppBFDUDPSession(VppObject):
         return True
 
     def remove_vpp_config(self):
-        if hasattr(self, '_bs_index'):
+        if self._bs_index is not None:
             is_ipv6 = 1 if AF_INET6 == self._af else 0
             self.test.vapi.bfd_udp_del(
                 self._interface.sw_if_index,
@@ -212,6 +213,9 @@ class VppBFDUDPSession(VppObject):
 
     def object_id(self):
         return "bfd-udp-%d" % self.bs_index
+
+    def __str__(self):
+        return self.object_id()
 
     def admin_up(self):
         self.test.vapi.bfd_session_set_flags(self.bs_index, 1)

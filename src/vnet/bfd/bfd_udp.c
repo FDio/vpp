@@ -95,7 +95,7 @@ static vnet_api_error_t
 bfd_udp_add_session_internal (bfd_udp_main_t *bum, u32 sw_if_index,
                               u32 desired_min_tx_us, u32 required_min_rx_us,
                               u8 detect_mult, const ip46_address_t *local_addr,
-                              const ip46_address_t *peer_addr)
+                              const ip46_address_t *peer_addr, u32 *bs_index)
 {
   vnet_sw_interface_t *sw_if =
       vnet_get_sw_interface (vnet_get_main (), sw_if_index);
@@ -149,6 +149,7 @@ bfd_udp_add_session_internal (bfd_udp_main_t *bum, u32 sw_if_index,
   bs->required_min_echo_rx_us = required_min_rx_us; /* FIXME */
   bs->local_detect_mult = detect_mult;
   bfd_session_start (bum->bfd_main, bs);
+  *bs_index = bs->bs_idx;
   return 0;
 }
 
@@ -224,7 +225,8 @@ bfd_udp_validate_api_input (u32 sw_if_index, const ip46_address_t *local_addr,
 vnet_api_error_t bfd_udp_add_session (u32 sw_if_index, u32 desired_min_tx_us,
                                       u32 required_min_rx_us, u8 detect_mult,
                                       const ip46_address_t *local_addr,
-                                      const ip46_address_t *peer_addr)
+                                      const ip46_address_t *peer_addr,
+                                      u32 *bs_index)
 {
   vnet_api_error_t rv =
       bfd_udp_validate_api_input (sw_if_index, local_addr, peer_addr);
@@ -242,9 +244,9 @@ vnet_api_error_t bfd_udp_add_session (u32 sw_if_index, u32 desired_min_tx_us,
       BFD_ERR ("desired_min_tx_us < 1");
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
-  return bfd_udp_add_session_internal (&bfd_udp_main, sw_if_index,
-                                       desired_min_tx_us, required_min_rx_us,
-                                       detect_mult, local_addr, peer_addr);
+  return bfd_udp_add_session_internal (
+      &bfd_udp_main, sw_if_index, desired_min_tx_us, required_min_rx_us,
+      detect_mult, local_addr, peer_addr, bs_index);
 }
 
 vnet_api_error_t bfd_udp_del_session (u32 sw_if_index,
