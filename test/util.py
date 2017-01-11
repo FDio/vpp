@@ -34,6 +34,16 @@ def ppc(headline, capture, limit=10):
     return "%s\n%s%s" % (headline, body, tail)
 
 
+def ip4_range(ip4, s, e):
+    tmp = ip4.rsplit('.', 1)[0]
+    return ("%s.%d" % (tmp, i) for i in range(s, e))
+
+
+def ip4n_range(ip4n, s, e):
+    ip4 = socket.inet_ntop(socket.AF_INET, ip4n)
+    return (socket.inet_pton(socket.AF_INET, ip) for ip in ip4_range(ip4, s, e))
+
+
 class NumericConstant(object):
     __metaclass__ = ABCMeta
 
