@@ -42,13 +42,13 @@ class VppObjectRegistry(object):
         if not hasattr(self, "_object_dict"):
             self._object_dict = dict()
 
-    def register(self, o):
+    def register(self, o, logger):
         """ Register an object in the registry. """
-        if not o.unique_id() in self._object_dict:
+        if not o.object_id() in self._object_dict:
             self._object_registry.append(o)
-            self._object_dict[o.unique_id()] = o
+            self._object_dict[o.object_id()] = o
         else:
-            print "not adding duplicate %s" % o
+            logger.debug("REG: duplicate add, ignoring (%s)" % o)
 
     def remove_vpp_config(self, logger):
         """
@@ -56,15 +56,18 @@ class VppObjectRegistry(object):
         from the registry.
         """
         if not self._object_registry:
-            logger.info("No objects registered for auto-cleanup.")
+            logger.info("REG: No objects registered for auto-cleanup.")
             return
-        logger.info("Removing VPP configuration for registered objects")
+        logger.info("REG: Removing VPP configuration for registered objects")
+        # remove the config in reverse order as there might be dependencies
         for o in reversed(self._object_registry):
             if o.query_vpp_config():
-                logger.info("Removing %s", o)
+                logger.info("REG: Removing configuration for %s" % o)
                 o.remove_vpp_config()
             else:
-                logger.info("Skipping %s, configuration not present", o)
+                logger.info(
+                    "REG: Skipping removal for %s, configuration not present" %
+                    o)
         failed = []
         for o in self._object_registry:
             if o.query_vpp_config():
@@ -72,7 +75,7 @@ class VppObjectRegistry(object):
         self._object_registry = []
         self._object_dict = dict()
         if failed:
-            logger.error("Couldn't remove configuration for object(s):")
+            logger.error("REG: Couldn't remove configuration for object(s):")
             for x in failed:
                 logger.error(repr(x))
             raise Exception("Couldn't remove configuration for object(s): %s" %

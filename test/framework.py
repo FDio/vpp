@@ -16,6 +16,7 @@ from vpp_papi_provider import VppPapiProvider
 from scapy.packet import Raw
 from logging import FileHandler, DEBUG
 from log import *
+from vpp_object import VppObjectRegistry
 
 """
   Test framework module.
@@ -194,6 +195,7 @@ class VppTestCase(unittest.TestCase):
         cls._zombie_captures = []
         cls.verbose = 0
         cls.vpp_dead = False
+        cls.registry = VppObjectRegistry()
         print(double_line_delim)
         print(colorize(getdoc(cls).splitlines()[0], YELLOW))
         print(double_line_delim)
@@ -290,6 +292,7 @@ class VppTestCase(unittest.TestCase):
             self.logger.info(self.vapi.ppcli("show hardware"))
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show run"))
+            self.registry.remove_vpp_config(self.logger)
 
     def setUp(self):
         """ Clear trace before running each test"""

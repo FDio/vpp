@@ -43,12 +43,12 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(BFD_UDP_ADD, bfd_udp_add)                             \
-_(BFD_UDP_DEL, bfd_udp_del)                             \
-_(BFD_UDP_SESSION_DUMP, bfd_udp_session_dump)           \
-_(BFD_SESSION_SET_FLAGS, bfd_session_set_flags)         \
-_(WANT_BFD_EVENTS, want_bfd_events)
+#define foreach_vpe_api_msg                        \
+  _ (BFD_UDP_ADD, bfd_udp_add)                     \
+  _ (BFD_UDP_DEL, bfd_udp_del)                     \
+  _ (BFD_UDP_SESSION_DUMP, bfd_udp_session_dump)   \
+  _ (BFD_SESSION_SET_FLAGS, bfd_session_set_flags) \
+  _ (WANT_BFD_EVENTS, want_bfd_events)
 
 pub_sub_handler (bfd_events, BFD_EVENTS);
 
@@ -75,13 +75,16 @@ vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
       clib_memcpy (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));
     }
 
+  u32 bs_index = 0;
   rv = bfd_udp_add_session (clib_net_to_host_u32 (mp->sw_if_index),
 			    clib_net_to_host_u32 (mp->desired_min_tx),
 			    clib_net_to_host_u32 (mp->required_min_rx),
-			    mp->detect_mult, &local_addr, &peer_addr);
+			    mp->detect_mult, &local_addr, &peer_addr,
+			    &bs_index);
 
   BAD_SW_IF_INDEX_LABEL;
-  REPLY_MACRO (VL_API_BFD_UDP_ADD_REPLY);
+  REPLY_MACRO2 (VL_API_BFD_UDP_ADD_REPLY,
+		rmp->bs_index = clib_host_to_net_u32 (bs_index));
 }
 
 static void
@@ -107,9 +110,8 @@ vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
       clib_memcpy (&peer_addr.ip4, mp->peer_addr, sizeof (peer_addr.ip4));
     }
 
-  rv =
-    bfd_udp_del_session (clib_net_to_host_u32 (mp->sw_if_index), &local_addr,
-			 &peer_addr);
+  rv = bfd_udp_del_session (clib_net_to_host_u32 (mp->sw_if_index),
+			    &local_addr, &peer_addr);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BFD_UDP_DEL_REPLY);
@@ -201,13 +203,11 @@ vl_api_bfd_session_set_flags_t_handler (vl_api_bfd_session_set_flags_t * mp)
   vl_api_bfd_session_set_flags_reply_t *rmp;
   int rv;
 
-  rv =
-    bfd_session_set_flags (clib_net_to_host_u32 (mp->bs_index),
-			   mp->admin_up_down);
+  rv = bfd_session_set_flags (clib_net_to_host_u32 (mp->bs_index),
+			      mp->admin_up_down);
 
   REPLY_MACRO (VL_API_BFD_SESSION_SET_FLAGS_REPLY);
 }
-
 
 /*
  * bfd_api_hookup
@@ -223,7 +223,7 @@ vl_api_bfd_session_set_flags_t_handler (vl_api_bfd_session_set_flags_t * mp)
 static void
 setup_message_id_table (api_main_t * am)
 {
-#define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+#define _(id, n, crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
   foreach_vl_msg_name_crc_bfd;
 #undef _
 }
@@ -233,13 +233,10 @@ bfd_api_hookup (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N, n)                                                    \
+  vl_msg_api_set_handlers (VL_API_##N, #n, vl_api_##n##_t_handler, \
+                           vl_noop_handler, vl_api_##n##_t_endian, \
+                           vl_api_##n##_t_print, sizeof (vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
 
