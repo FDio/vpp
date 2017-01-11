@@ -116,7 +116,7 @@ define ip_neighbor_dump
 */
 define ip_neighbor_details {
     u32 context;
-    u32 is_static;
+    u8  is_static;
     u8  is_ipv6;
     u8  mac_address[6];
     u8  ip_address[16];
