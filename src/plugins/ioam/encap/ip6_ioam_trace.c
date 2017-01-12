@@ -27,6 +27,7 @@
 #include <vnet/plugin/plugin.h>
 
 #include <ioam/lib-trace/trace_util.h>
+#include <ioam/lib-trace/trace_internal_util.h>
 
 /* Timestamp precision multipliers for seconds, milliseconds, microseconds
  * and nanoseconds respectively.

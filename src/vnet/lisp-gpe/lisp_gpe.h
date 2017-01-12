@@ -246,6 +246,25 @@ typedef enum lgpe_ip6_lookup_next
 
 u8 *format_vnet_lisp_gpe_status (u8 * s, va_list * args);
 
+#define foreach_lgpe_extn_hdr_list    \
+  _(DROP, "error-drop")               \
+  _(IOAM, "ioam")
+
+typedef enum lgpe_tun_extn_hdr_type
+{
+#define _(sym,str) LISP_GPE_EXTN_HDR_TYPE_##sym,
+  foreach_lgpe_extn_hdr_list
+#undef _
+    LISP_GPE_EXTN_HDR_TYPE_NEXT,
+} lgpe_tun_extn_hdr_type_t;
+
+int
+lisp_gpe_tunnel_register_extn_hdr_callback (u32 type,
+					  int (*callback) (ip_address_t local,
+                                                           ip_address_t rmt,
+                                                           u32 outer_fib_index,
+							   u32 * len,
+							   u8 ** extn_hdr));
 #endif /* included_vnet_lisp_gpe_h */
 
 /*

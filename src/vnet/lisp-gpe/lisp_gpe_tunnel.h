@@ -78,6 +78,11 @@ extern u8 *lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
 					  payload_proto);
 extern u8 *format_lisp_gpe_tunnel (u8 * s, va_list * args);
 
+int (*g_lisp_gpe_tunnel_update_extn_hdr[LISP_GPE_EXTN_HDR_TYPE_NEXT]) (ip_address_t local,
+								       ip_address_t remote,
+                                                                       u32 outer_fib_index,
+								       u32 * len,
+								       u8 ** extn_hdr);
 #endif
 
 /*

@@ -62,25 +62,11 @@ typedef struct
   vnet_main_t *vnet_main;
 } trace_main_t;
 
-extern trace_main_t trace_main;
 
 /*
  * Initialize Trace profile
  */
 int trace_util_init (void);
-
-
-/*
- * Find a trace profile
- */
-
-always_inline trace_profile *
-trace_profile_find (void)
-{
-  trace_main_t *sm = &trace_main;
-
-  return (&(sm->profile));
-}
 
 
 /* setup and clean up profile */
