@@ -29,6 +29,12 @@
 static lisp_gpe_tunnel_t *lisp_gpe_tunnel_pool;
 
 /**
+ * @brief Array of all extension header update callback functions
+ */
+static int (*g_lisp_gpe_tunnel_update_extn_hdr[LISP_GPE_EXTN_HDR_TYPE_NEXT])
+  (ip_address_t local, ip_address_t remote, u32 outer_fib_index, u32 * len,
+   u8 ** extn_hdr);
+/**
  * @brief a DB of all tunnels
  */
 static uword *lisp_gpe_tunnel_db;
@@ -50,13 +56,22 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
   lisp_gpe_header_t *lisp0;
   u8 *rw = 0;
   int len;
+  u32 extn_hdr_len = 0;
+  u8 *extn_hdr = NULL;
 
   if (IP4 == ip_addr_version (&lgt->key->lcl))
     {
       ip4_udp_lisp_gpe_header_t *h0;
       ip4_header_t *ip0;
 
-      len = sizeof (*h0);
+      if (g_lisp_gpe_tunnel_update_extn_hdr[LISP_GPE_EXTN_HDR_TYPE_IOAM])
+	{
+	  (*g_lisp_gpe_tunnel_update_extn_hdr[LISP_GPE_EXTN_HDR_TYPE_IOAM])
+	    (lgt->key->lcl, lgt->key->rmt, lgt->key->fib_index, &extn_hdr_len,
+	     &extn_hdr);
+	  payload_proto = LISP_GPE_NEXT_PROTO_NSH;
+	}
+      len = sizeof (*h0) + extn_hdr_len;
 
       vec_validate_aligned (rw, len - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -85,7 +100,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
       ip6_udp_lisp_gpe_header_t *h0;
       ip6_header_t *ip0;
 
-      len = sizeof (*h0);
+      len = sizeof (*h0) + extn_hdr_len;
 
       vec_validate_aligned (rw, len - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -116,6 +131,11 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
   lisp0->next_protocol = payload_proto;
   lisp0->iid = clib_host_to_net_u32 (ladj->vni) >> 8;	/* first 24 bits only */
 
+  if (extn_hdr_len)
+    {
+      u8 *t_extn_hdr = (u8 *) lisp0 + sizeof (lisp_gpe_header_t);
+      clib_memcpy (t_extn_hdr, extn_hdr, extn_hdr_len);
+    }
   return (rw);
 }
 
@@ -177,7 +197,7 @@ lisp_gpe_tunnel_find_or_create_and_lock (const locator_pair_t * pair,
 							  FIB_ENTRY_FLAG_NONE,
 							  ADJ_INDEX_INVALID);
 
-      hash_set_mem (lisp_gpe_tunnel_db, &lgt->key,
+      hash_set_mem (lisp_gpe_tunnel_db, lgt->key,
 		    (lgt - lisp_gpe_tunnel_pool));
     }
 
@@ -257,6 +277,19 @@ show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
       /* *INDENT-ON* */
     }
 
+  return 0;
+}
+
+int
+lisp_gpe_tunnel_register_extn_hdr_callback (u32 type,
+					    lisp_gpe_extn_hdr_callback_t
+					    callback)
+{
+  if (type == LISP_GPE_EXTN_HDR_TYPE_IOAM)
+    {
+      g_lisp_gpe_tunnel_update_extn_hdr[LISP_GPE_EXTN_HDR_TYPE_IOAM] =
+	callback;
+    }
   return 0;
 }
 
