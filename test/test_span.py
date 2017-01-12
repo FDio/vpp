@@ -102,7 +102,7 @@ class TestSpan(VppTestCase):
         for i in self.interfaces:
             last_info[i.sw_if_index] = None
         dst_sw_if_index = dst_if.sw_if_index
-        self.AssertEqual(
+        self.assertEqual(
             len(capture_pg1),
             len(capture_pg2),
             "Different number of outgoing and mirrored packets : %u != %u" %
