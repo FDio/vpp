@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_4d529ade",
+        "filename": "src/Makefile.am",
+        "patchSetId": 3
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-12T16:59:21Z",
+      "side": 1,
+      "message": "We don\u0027t have this directory anymore...",
+      "range": {
+        "startLine": 32,
+        "startChar": 24,
+        "endLine": 32,
+        "endChar": 45
+      },
+      "revId": "a7f2e142dc708fe0d8675d00386f14cfbfa9b99c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
