@@ -34,7 +34,7 @@ CLEANDIRS =
 nobase_include_HEADERS =                \
   jvpp-common/jvpp_common.h
 
-noinst_LTLIBRARIES += libjvpp_common.la
+lib_LTLIBRARIES = libjvpp_common.la
 libjvpp_common_la_SOURCES = jvpp-common/jvpp_common.c
 
 JVPP_LIBS = \
