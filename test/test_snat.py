@@ -26,7 +26,7 @@ class TestSNAT(VppTestCase):
             cls.icmp_id_out = 6305
             cls.snat_addr = '10.0.0.3'
 
-            cls.create_pg_interfaces(range(7))
+            cls.create_pg_interfaces(range(8))
             cls.interfaces = list(cls.pg_interfaces[0:4])
 
             for i in cls.interfaces:
@@ -47,6 +47,8 @@ class TestSNAT(VppTestCase):
                 i.config_ip4()
                 i.admin_up()
                 i.resolve_arp()
+
+            cls.pg7.admin_up()
 
         except Exception:
             super(TestSNAT, cls).tearDownClass()
@@ -178,6 +180,10 @@ class TestSNAT(VppTestCase):
         """
         Clear SNAT configuration.
         """
+        interfaces = self.vapi.snat_interface_addr_dump()
+        for intf in interfaces:
+            self.vapi.snat_add_interface_addr(intf.sw_if_index, is_add=0)
+
         interfaces = self.vapi.snat_interface_dump()
         for intf in interfaces:
             self.vapi.snat_interface_add_del_feature(intf.sw_if_index,
@@ -622,6 +628,24 @@ class TestSNAT(VppTestCase):
 
         # verify number of translated packet
         self.pg1.get_capture(pkts_num)
+
+    def test_interface_addr(self):
+        """ Acquire SNAT addresses from interface """
+        self.vapi.snat_add_interface_addr(self.pg7.sw_if_index)
+
+        # no address in NAT pool
+        adresses = self.vapi.snat_address_dump()
+        self.assertEqual(0, len(adresses))
+
+        # configure interface address and check NAT address pool
+        self.pg7.config_ip4()
+        adresses = self.vapi.snat_address_dump()
+        self.assertEqual(1, len(adresses))
+
+        # remove interface address and check NAT address pool
+        self.pg7.unconfig_ip4()
+        adresses = self.vapi.snat_address_dump()
+        self.assertEqual(0, len(adresses))
 
     def tearDown(self):
         super(TestSNAT, self).tearDown()

@@ -1094,6 +1094,84 @@ static void *vl_api_snat_worker_dump_t_print
   FINISH;
 }
 
+static int snat_add_interface_address(snat_main_t *sm,
+                                      u32 sw_if_index,
+                                      int is_del);
+
+static void
+vl_api_snat_add_del_interface_addr_t_handler
+(vl_api_snat_add_del_interface_addr_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_add_del_interface_addr_reply_t * rmp;
+  u8 is_del = mp->is_add == 0;
+  u32 sw_if_index = ntohl(mp->sw_if_index);
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX(mp);
+
+  rv = snat_add_interface_address (sm, sw_if_index, is_del);
+  
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO(VL_API_SNAT_ADD_DEL_INTERFACE_ADDR_REPLY);
+}
+
+static void *vl_api_snat_add_del_interface_addr_t_print
+(vl_api_snat_add_del_interface_addr_t * mp, void *handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_add_del_interface_addr ");
+  s = format (s, "sw_if_index %d %s",
+              clib_host_to_net_u32(mp->sw_if_index),
+              mp->is_add ? "" : "del");
+
+  FINISH;
+}
+
+static void
+send_snat_interface_addr_details
+(u32 sw_if_index, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_interface_addr_details_t *rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_INTERFACE_ADDR_DETAILS+sm->msg_id_base);
+  rmp->sw_if_index = ntohl (sw_if_index);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_interface_addr_dump_t_handler
+(vl_api_snat_interface_addr_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  u32 * i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  vec_foreach (i, sm->auto_add_sw_if_indices)
+    send_snat_interface_addr_details(*i, q, mp->context);
+}
+
+static void *vl_api_snat_interface_addr_dump_t_print
+(vl_api_snat_interface_addr_dump_t *mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_interface_addr_dump ");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1105,7 +1183,9 @@ _(SNAT_SHOW_CONFIG, snat_show_config)                                   \
 _(SNAT_ADDRESS_DUMP, snat_address_dump)                                 \
 _(SNAT_INTERFACE_DUMP, snat_interface_dump)                             \
 _(SNAT_SET_WORKERS, snat_set_workers)                                   \
-_(SNAT_WORKER_DUMP, snat_worker_dump)
+_(SNAT_WORKER_DUMP, snat_worker_dump)                                   \
+_(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr)             \
+_(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -1840,7 +1920,7 @@ show_snat_command_fn (vlib_main_t * vm,
   snat_address_t * ap;
   vnet_main_t *vnm = vnet_get_main();
   snat_main_per_thread_data_t *tsm;
-  u32 users_num = 0, sessions_num = 0, *worker;
+  u32 users_num = 0, sessions_num = 0, *worker, *sw_if_index;
   uword j = 0;
 
   if (unformat (input, "detail"))
@@ -1869,6 +1949,16 @@ show_snat_command_fn (vlib_main_t * vm,
                          vnet_get_sw_interface (vnm, i->sw_if_index),
                          i->is_inside ? "in" : "out");
       }));
+
+      if (vec_len (sm->auto_add_sw_if_indices))
+        {
+          vlib_cli_output (vm, "SNAT pool addresses interfaces:");
+          vec_foreach (sw_if_index, sm->auto_add_sw_if_indices)
+            {
+              vlib_cli_output (vm, "%U", format_vnet_sw_interface_name, vnm,
+                               vnet_get_sw_interface (vnm, *sw_if_index));
+            }
+        }
 
       vec_foreach (ap, sm->addresses)
         {
@@ -2011,7 +2101,9 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
 }
 
 
-static int snat_add_interface_address (snat_main_t *sm, u32 sw_if_index)
+static int snat_add_interface_address (snat_main_t *sm,
+                                       u32 sw_if_index,
+                                       int is_del)
 {
   ip4_main_t * ip4_main = sm->ip4_main;
   ip4_address_t * first_int_addr;
@@ -2023,9 +2115,24 @@ static int snat_add_interface_address (snat_main_t *sm, u32 sw_if_index)
   for (i = 0; i < vec_len(sm->auto_add_sw_if_indices); i++)
     {
       if (sm->auto_add_sw_if_indices[i] == sw_if_index)
-        return 0;
+        {
+          if (is_del)
+            {
+              /* if have address remove it */
+              if (first_int_addr)
+                  (void) snat_del_address (sm, first_int_addr[0]);
+              vec_del1(sm->auto_add_sw_if_indices, i);
+            }
+          else
+            return VNET_API_ERROR_VALUE_EXIST;
+
+          return 0;
+        }
     }
   
+  if (is_del)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
   /* add to the auto-address list */
   vec_add1(sm->auto_add_sw_if_indices, sw_if_index);
 
@@ -2045,6 +2152,7 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index;
   int rv;
+  int is_del = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2055,12 +2163,14 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
       if (unformat (line_input, "%U", unformat_vnet_sw_interface,
                     sm->vnet_main, &sw_if_index))
         ;
+      else if (unformat (line_input, "del"))
+        is_del = 1;
       else
         return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, line_input);
     }
 
-  rv = snat_add_interface_address (sm, sw_if_index);
+  rv = snat_add_interface_address (sm, sw_if_index, is_del);
 
   switch (rv)
     {
@@ -2076,6 +2186,6 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
     .path = "snat add interface address",
-    .short_help = "snat add interface address <interface>",
+    .short_help = "snat add interface address <interface> [del]",
     .function = snat_add_interface_address_command_fn,
 };

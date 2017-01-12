@@ -24,9 +24,9 @@
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_ip4 - 1 if address type is IPv4
-    @first_ip_address - first IP address
-    @last_ip_address - last IP address
-    @is_add - 1 if add, 0 if delete
+    @param first_ip_address - first IP address
+    @param last_ip_address - last IP address
+    @param is_add - 1 if add, 0 if delete
 */
 define snat_add_address_range {
   u32 client_index;
@@ -38,7 +38,6 @@ define snat_add_address_range {
 };
 
 /** \brief Add S-NAT address range reply
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return code
 */
@@ -83,7 +82,6 @@ define snat_interface_add_del_feature {
 };
 
 /** \brief Enable/disable S-NAT feature on the interface reply
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return code
 */
@@ -138,7 +136,6 @@ define snat_add_static_mapping {
 };
 
 /** \brief Add/delete S-NAT static mapping reply
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return code
 */
@@ -251,7 +248,6 @@ define snat_set_workers {
 };
 
 /** \brief Set S-NAT workers reply
-    @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param retval - return code
 */
@@ -280,4 +276,45 @@ define snat_worker_details {
   u32 worker_index;
   u32 lcore_id;
   u8 name[64];
+};
+
+/** \brief Add/delete S-NAT pool address from specific interfce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param sw_if_index - software index of the interface
+*/
+define snat_add_del_interface_addr {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Add/delete S-NAT pool address from specific interfce reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define snat_add_del_interface_addr_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Dump S-NAT pool addresses interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_interface_addr_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT pool addresses interfaces details response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+*/
+define snat_interface_addr_details {
+  u32 context;
+  u32 sw_if_index;
 };

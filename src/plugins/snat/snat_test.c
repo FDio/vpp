@@ -61,7 +61,8 @@ snat_test_main_t snat_test_main;
 _(snat_add_address_range_reply)                 \
 _(snat_interface_add_del_feature_reply)         \
 _(snat_add_static_mapping_reply)                \
-_(snat_set_workers_reply)
+_(snat_set_workers_reply)                       \
+_(snat_add_del_interface_addr_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -94,7 +95,10 @@ _(SNAT_SHOW_CONFIG_REPLY, snat_show_config_reply)               \
 _(SNAT_ADDRESS_DETAILS, snat_address_details)                   \
 _(SNAT_INTERFACE_DETAILS, snat_interface_details)               \
 _(SNAT_SET_WORKERS_REPLY, snat_set_workers_reply)               \
-_(SNAT_WORKER_DETAILS, snat_worker_details)
+_(SNAT_WORKER_DETAILS, snat_worker_details)                     \
+_(SNAT_ADD_DEL_INTERFACE_ADDR_REPLY,                            \
+  snat_add_del_interface_addr_reply)                            \
+_(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -539,6 +543,80 @@ static int api_snat_worker_dump(vat_main_t * vam)
   return 0;
 }
 
+static int api_snat_add_del_interface_addr (vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  unformat_input_t * i = vam->input;
+  f64 timeout;
+  vl_api_snat_add_del_interface_addr_t * mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  u8 is_add = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+        sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+        sw_if_index_set = 1;
+      else if (unformat (i, "del"))
+        is_add = 0;
+      else
+        {
+          clib_warning("unknown input '%U'", format_unformat_error, i);
+          return -99;
+        }
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("interface / sw_if_index required\n");
+      return -99;
+    }
+
+  M(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr);
+  mp->sw_if_index = ntohl(sw_if_index);
+  mp->is_add = is_add;
+  
+  S; W;
+  /* NOTREACHED */
+  return 0;
+}
+
+static void vl_api_snat_interface_addr_details_t_handler
+  (vl_api_snat_interface_addr_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat (vam->ofp, "sw_if_index %d\n", ntohl (mp->sw_if_index));
+}
+
+static int api_snat_interface_addr_dump(vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  f64 timeout;
+  vl_api_snat_interface_addr_dump_t * mp;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_address_dump");
+      return -99;
+    }
+
+  M(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump);
+  S;
+  /* Use a control ping for synchronization */
+  {
+    vl_api_snat_control_ping_t *mp;
+    M (SNAT_CONTROL_PING, snat_control_ping);
+    S;
+  }
+  W;
+  /* NOTREACHED */
+  return 0;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -554,7 +632,10 @@ _(snat_static_mapping_dump, "")                                  \
 _(snat_show_config, "")                                          \
 _(snat_address_dump, "")                                         \
 _(snat_interface_dump, "")                                       \
-_(snat_worker_dump, "")
+_(snat_worker_dump, "")                                          \
+_(snat_add_del_interface_addr,                                   \
+  "<intfc> | sw_if_index <id> [del]")                            \
+_(snat_interface_addr_dump, "")
 
 void vat_api_hookup (vat_main_t *vam)
 {
