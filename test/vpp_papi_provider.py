@@ -916,6 +916,24 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_show_config, {})
 
+    def snat_add_interface_addr(
+            self,
+            sw_if_index,
+            is_add=1):
+        """Add/del S-NAT address from interface
+
+        :param sw_if_index: Software index of the interface
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(self.papi.snat_add_del_interface_addr,
+                        {'is_add': is_add, 'sw_if_index': sw_if_index})
+
+    def snat_interface_addr_dump(self):
+        """Dump S-NAT addresses interfaces
+        :return: Dictionary of S-NAT addresses interfaces
+        """
+        return self.api(self.papi.snat_interface_addr_dump, {})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
