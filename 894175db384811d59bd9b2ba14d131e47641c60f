@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_a57a36ef",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4495,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-01-13T21:14:24Z",
+      "side": 1,
+      "message": "No need for the 4 since this is generic.",
+      "range": {
+        "startLine": 4495,
+        "startChar": 7,
+        "endLine": 4495,
+        "endChar": 8
+      },
+      "revId": "894175db384811d59bd9b2ba14d131e47641c60f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_c51b02c9",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4498,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-01-13T21:14:24Z",
+      "side": 1,
+      "message": "This was supposed to be an ||, no? Maybe set ip_hdr to 0 to signal that we\u0027ve come away empty handed.",
+      "range": {
+        "startLine": 4498,
+        "startChar": 16,
+        "endLine": 4498,
+        "endChar": 18
+      },
+      "revId": "894175db384811d59bd9b2ba14d131e47641c60f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
