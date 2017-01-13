@@ -5,9 +5,9 @@ import os
 import logging
 
 """ @var formatting delimiter consisting of '=' characters """
-double_line_delim = '=' * 70
+double_line_delim = '=' * 78
 """ @var formatting delimiter consisting of '-' characters """
-single_line_delim = '-' * 70
+single_line_delim = '-' * 78
 
 
 def colorize(msg, color):

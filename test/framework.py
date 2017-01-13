@@ -665,11 +665,11 @@ class VppTestResult(unittest.TestResult):
         unittest.TestResult.stopTest(self, test)
         if self.verbosity > 0:
             self.stream.writeln(single_line_delim)
-            self.stream.writeln("%-60s%s" % (self.getDescription(test),
+            self.stream.writeln("%-73s%s" % (self.getDescription(test),
                                              self.result_string))
             self.stream.writeln(single_line_delim)
         else:
-            self.stream.writeln("%-60s%s" % (self.getDescription(test),
+            self.stream.writeln("%-73s%s" % (self.getDescription(test),
                                              self.result_string))
 
     def printErrors(self):
