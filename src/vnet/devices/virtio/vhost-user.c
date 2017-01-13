@@ -2295,6 +2295,7 @@ vhost_user_process (vlib_main_t * vm,
   vhost_user_intf_t *vui;
   struct sockaddr_un sun;
   int sockfd;
+  int sockError = false;
   unix_file_t template = { 0 };
   f64 timeout = 3153600000.0 /* 100 years */ ;
   uword *event_data = 0;
@@ -2326,27 +2327,61 @@ vhost_user_process (vlib_main_t * vm,
 			   sizeof (sun.sun_path) - 1);
 
 		  /* Avoid hanging VPP if the other end does not accept */
-		  fcntl(sockfd, F_SETFL, O_NONBLOCK);
-		  if (connect (sockfd, (struct sockaddr *) &sun,
-			       sizeof (struct sockaddr_un)) == 0)
+		  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) >= 0)
 		    {
-		      /* Set the socket to blocking as it was before */
-		      fcntl(sockfd, F_SETFL, 0);
-		      vui->sock_errno = 0;
-		      template.file_descriptor = sockfd;
-		      template.private_data =
-			  vui - vhost_user_main.vhost_user_interfaces;
-		      vui->unix_file_index = unix_file_add (&unix_main, &template);
+		      if (connect (sockfd, (struct sockaddr *) &sun,
+				sizeof (struct sockaddr_un)) == 0)
+			{
+			  /* Set the socket to blocking as it was before */
+			  if (fcntl(sockfd, F_SETFL, 0) >= 0)
+			    {
+			      vui->sock_errno = 0;
+			      template.file_descriptor = sockfd;
+			      template.private_data =
+				vui - vhost_user_main.vhost_user_interfaces;
+			      vui->unix_file_index = unix_file_add (&unix_main, &template);
 
-		      //Re-open for next connect
-		      if ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
-			  clib_warning("Critical: Could not open unix socket");
-			  return 0;
-		      }
+			      //Re-open for next connect
+			      if ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
+				  clib_warning("Critical: Could not open unix socket");
+				  return 0;
+				}
+			    }
+			  else
+			    {
+			      vui->sock_errno = errno;
+			      sockError = true;
+			      clib_warning("vHost socket FAILED set back to Blocking: sockfd=%d errno=0x%08x",
+					sockfd, errno);
+			    }
+			}
+		      else
+			{
+			  vui->sock_errno = errno;
+			}
 		    }
 		  else
 		    {
 		      vui->sock_errno = errno;
+		      sockError = true;
+		      clib_warning("vHost socket FAILED set to non-Blocking: sockfd=%d errno=0x%08x",
+				sockfd, errno);
+		    }
+
+		  if (sockError)
+		    {
+		      sockError = false;
+		      if (sockfd > 0)
+			{
+			  close(sockfd);
+			}
+		      sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+		      if (sockfd < 0)
+			{
+			  clib_warning("Unable to reopen vHost socket - sockfd=%d errno=0x%08x",
+				sockfd, errno);
+			  return 0;
+			}
 		    }
 		}
 	      else
