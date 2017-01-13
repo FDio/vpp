@@ -22,6 +22,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/ip4_fib.h>
 #include <snat/snat.h>
+#include <snat/snat_ipfix_logging.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -213,6 +214,14 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 0 /* is_add */))
           clib_warning ("out2in key delete failed");
 
+      /* log NAT event */
+      snat_ipfix_logging_nat44_ses_delete(s->in2out.addr.as_u32,
+                                          s->out2in.addr.as_u32,
+                                          s->in2out.protocol,
+                                          s->in2out.port,
+                                          s->out2in.port,
+                                          s->in2out.fib_index);
+
       snat_free_outside_address_and_port 
         (sm, &s->out2in, s->outside_address_index);
       s->outside_address_index = ~0;
@@ -302,6 +311,14 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   kv0.key = worker_by_out_key.as_u64;
   kv0.value = cpu_index;
   clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv0, 1);
+
+  /* log NAT event */
+  snat_ipfix_logging_nat44_ses_create(s->in2out.addr.as_u32,
+                                      s->out2in.addr.as_u32,
+                                      s->in2out.protocol,
+                                      s->in2out.port,
+                                      s->out2in.port,
+                                      s->in2out.fib_index);
   return next0;
 }
                       

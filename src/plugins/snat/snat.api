@@ -318,3 +318,27 @@ define snat_interface_addr_details {
   u32 context;
   u32 sw_if_index;
 };
+
+/** \brief Enable/disable S-NAT IPFIX logging
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param domain_id - observation domain ID
+    @param src_port - source port number
+    @param enable - 1 if enable, 0 if disable
+*/
+define snat_ipfix_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 domain_id;
+  u16 src_port;
+  u8 enable;
+};
+
+/** \brief Enable/disable S-NAT IPFIX logging reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define snat_ipfix_enable_disable_reply {
+  u32 context;
+  i32 retval;
+};

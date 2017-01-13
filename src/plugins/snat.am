@@ -18,7 +18,8 @@ vppplugins_LTLIBRARIES += snat_plugin.la
 snat_plugin_la_SOURCES = snat/snat.c		\
         snat/in2out.c				\
         snat/out2in.c				\
-	snat/snat_plugin.api.h
+	snat/snat_plugin.api.h			\
+        snat/snat_ipfix_logging.c
 
 API_FILES += snat/snat.api
 
