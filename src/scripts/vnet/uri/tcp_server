@@ -1,0 +1,4 @@
+create host-interface name vpp1
+set int state host-vpp1 up
+set int ip address host-vpp1 6.0.1.1/24
+trace add af-packet-input 10

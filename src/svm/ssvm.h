@@ -38,7 +38,10 @@
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
 
-#define MMAP_PAGESIZE (4<<10)
+#ifndef MMAP_PAGESIZE
+#define MMAP_PAGESIZE (clib_mem_get_page_size())
+#endif
+
 #define SSVM_N_OPAQUE 7
 
 typedef struct
@@ -125,12 +128,12 @@ ssvm_pop_heap (void *oldheap)
 }
 
 #define foreach_ssvm_api_error                  \
-_(NO_NAME, "No shared segment name", -10)       \
-_(NO_SIZE, "Size not set (master)", -11)        \
-_(CREATE_FAILURE, "Create failed", -12)		\
-_(SET_SIZE, "Set size failed", -13)		\
-_(MMAP, "mmap failed", -14)			\
-_(SLAVE_TIMEOUT, "Slave map timeout", -15)
+_(NO_NAME, "No shared segment name", -100)      \
+_(NO_SIZE, "Size not set (master)", -101)       \
+_(CREATE_FAILURE, "Create failed", -102)        \
+_(SET_SIZE, "Set size failed", -103)		\
+_(MMAP, "mmap failed", -104)			\
+_(SLAVE_TIMEOUT, "Slave map timeout", -105)
 
 typedef enum
 {
@@ -143,6 +146,7 @@ typedef enum
 
 int ssvm_master_init (ssvm_private_t * ssvm, u32 master_index);
 int ssvm_slave_init (ssvm_private_t * ssvm, int timeout_in_seconds);
+void ssvm_delete (ssvm_private_t * ssvm);
 
 #endif /* __included_ssvm_h__ */
 

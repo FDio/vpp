@@ -40,7 +40,7 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
-#include <vnet/ip/tcp_packet.h>
+#include <vnet/tcp/tcp_packet.h>
 #include <vnet/ip/ip4_packet.h>
 
 typedef union
@@ -373,10 +373,10 @@ ip6_tcp_reply_x1 (ip6_header_t * ip0, tcp_header_t * tcp0)
   {
     u16 src0, dst0;
 
-    src0 = tcp0->ports.src;
-    dst0 = tcp0->ports.dst;
-    tcp0->ports.src = dst0;
-    tcp0->ports.dst = src0;
+    src0 = tcp0->src;
+    dst0 = tcp0->dst;
+    tcp0->src = dst0;
+    tcp0->dst = src0;
   }
 }
 
@@ -400,14 +400,14 @@ ip6_tcp_reply_x2 (ip6_header_t * ip0, ip6_header_t * ip1,
   {
     u16 src0, dst0, src1, dst1;
 
-    src0 = tcp0->ports.src;
-    src1 = tcp1->ports.src;
-    dst0 = tcp0->ports.dst;
-    dst1 = tcp1->ports.dst;
-    tcp0->ports.src = dst0;
-    tcp1->ports.src = dst1;
-    tcp0->ports.dst = src0;
-    tcp1->ports.dst = src1;
+    src0 = tcp0->src;
+    src1 = tcp1->src;
+    dst0 = tcp0->dst;
+    dst1 = tcp1->dst;
+    tcp0->src = dst0;
+    tcp1->src = dst1;
+    tcp0->dst = src0;
+    tcp1->dst = src1;
   }
 }
 

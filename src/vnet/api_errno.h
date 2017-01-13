@@ -91,8 +91,13 @@ _(INVALID_ADDRESS_FAMILY, -97, "Invalid address family")                \
 _(INVALID_SUB_SW_IF_INDEX, -98, "Invalid sub-interface sw_if_index")    \
 _(TABLE_TOO_BIG, -99, "Table too big")                                  \
 _(CANNOT_ENABLE_DISABLE_FEATURE, -100, "Cannot enable/disable feature") \
-_(BFD_EEXIST, -101, "Duplicate BFD session") \
-_(BFD_NOENT, -102, "No such BFD session")
+_(BFD_EEXIST, -101, "Duplicate BFD session")                            \
+_(BFD_NOENT, -102, "No such BFD session")                               \
+_(ADDRESS_IN_USE, -103, "Address in use")				\
+_(ADDRESS_NOT_IN_USE, -104, "Address not in use")			\
+_(QUEUE_FULL, -105, "Queue full")                                       \
+_(UNKNOWN_URI_TYPE, -106, "Unknown URI type")				\
+_(URI_FIFO_CREATE_FAILED, -107, "URI FIFO segment create failed")
 
 typedef enum
 {

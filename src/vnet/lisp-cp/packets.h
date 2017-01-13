@@ -24,14 +24,33 @@ void *pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
 void *pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp,
 			   u16 dp, ip_address_t * sip, ip_address_t * dip);
 
+void *pkt_push_tcp_net_order (vlib_buffer_t * b, u16 sp, u16 dp, u32 seq,
+			      u32 ack, u8 tcp_hdr_opts_len, u8 flags,
+			      u16 wnd);
+void *pkt_push_tcp (vlib_buffer_t * b, u16 sp_net, u16 dp_net, u32 seq,
+		    u32 ack, u8 tcp_hdr_opts_len, u8 flags, u16 wnd);
+void *pkt_push_ipv4 (vlib_main_t * vm, vlib_buffer_t * b, ip4_address_t * src,
+		     ip4_address_t * dst, int proto);
+void *pkt_push_ipv6 (vlib_main_t * vm, vlib_buffer_t * b, ip6_address_t * src,
+		     ip6_address_t * dst, int proto);
+
 void *pkt_push_ecm_hdr (vlib_buffer_t * b);
 
+/** \brief Get pointer to the end of packet's data
+ * @param b     pointer to the buffer
+ * @return      pointer to tail of packet's data
+ */
 always_inline u8 *
 vlib_buffer_get_tail (vlib_buffer_t * b)
 {
   return b->data + b->current_data + b->current_length;
 }
 
+/** \brief Append uninitialized data to packet
+ * @param b     pointer to the buffer
+ * @param size  number of uninitialized bytes
+ * @return      pointer to beginning of uninitialized data
+ */
 always_inline void *
 vlib_buffer_put_uninit (vlib_buffer_t * b, u8 size)
 {
@@ -41,6 +60,11 @@ vlib_buffer_put_uninit (vlib_buffer_t * b, u8 size)
   return p;
 }
 
+/** \brief Prepend uninitialized data to packet
+ * @param b     pointer to the buffer
+ * @param size  number of uninitialized bytes
+ * @return      pointer to beginning of uninitialized data
+ */
 always_inline void *
 vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
 {
@@ -52,6 +76,11 @@ vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
   return vlib_buffer_get_current (b);
 }
 
+/** \brief Make head room for packet headers
+ * @param b     pointer to the buffer
+ * @param size  number of head room bytes
+ * @return      pointer to start of packet (current data)
+ */
 always_inline void *
 vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
 {

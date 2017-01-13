@@ -1,0 +1,208 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
+ 
+/** \brief vpp->client, please map an additional shared memory segment
+    @param context - sender context, to match reply w/ request
+    @param segment_name - 
+*/
+define map_another_segment {
+    u32 client_index;
+    u32 context;
+    u32 segment_size;
+    u8 segment_name[128];
+};
+
+/** \brief client->vpp
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define map_another_segment_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief vpp->client, accept this connection
+    @param context - sender context, to match reply w/ request
+    @param accept_cookie - tells client which bind flavor just occurred
+    @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
+    @param rx_fifo_size - size of the rx fifo in bytes
+    @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
+    @param tx_fifo_size - size of the tx fifo in bytes
+*/
+define accept_session {
+ /* To shut up the jvpp compiler... */
+  u32 client_index;
+  u32 context;
+  u32 accept_cookie;
+  u64 server_rx_fifo;
+  u64 server_tx_fifo;
+  u32 session_index;
+  u32 session_thread_index;
+  u64 vpp_event_queue_address;
+  u8 session_type;
+  /* v6 size */
+  u8 key [48];
+};
+
+/** \brief client->vpp, reply to an accept message
+    @param context - sender context, to match reply w/ request
+    @param accept_cookie - tells client which bind flavor just occurred
+    @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
+    @param rx_fifo_size - size of the rx fifo in bytes
+    @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
+    @param tx_fifo_size - size of the tx fifo in bytes
+*/
+define accept_session_reply {
+  /** VPP context */
+  u32 context;
+  /* $$$ may mean "I don't want this connection, flush it" */
+  i32 retval;
+  u8 session_type;
+  u8 session_thread_index;
+  u32 session_index;
+};
+
+/** \brief bidirectional disconnect API
+    @param client_index - opaque cookie to identify the sender
+    client to vpp direction only
+    @param context - sender context, to match reply w/ request
+    @param session_index - cookie #1 from accept_session / connect_reply
+    @param session_thread_index - cookie #2
+*/
+define disconnect_session {
+  u32 client_index;
+  u32 context;
+  u32 session_index;
+  u32 session_thread_index;
+};
+
+/** \brief bidirectional disconnect reply API
+    @param client_index - opaque cookie to identify the sender
+    client to vpp direction only
+    @param client_context - sender context, to match reply w/ request
+    @param vpp_context - vpp context, to match reply w/ request
+*/
+define disconnect_session_reply {
+  u32 client_index;
+  u32 context;
+  i32 retval;
+  u32 session_index;
+  u32 session_thread_index;
+};
+ 
+/** \brief Bind to a given URI
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param accept_cookie - sender accept cookie, to identify this bind flavor
+    @param uri - a URI, e.g. "tcp://0.0.0.0/0/80" [ipv4]
+    "tcp://::/0/80" [ipv6], "fifo:/myfifo", etc.
+    @param options - socket options, fifo sizes, etc.
+*/
+define bind_uri {
+  u32 client_index;
+  u32 context;
+  u32 accept_cookie;
+  u32 initial_segment_size;
+  u8 uri[128];
+  /* or some such */
+  u64 options[16];
+};
+
+/** \brief Bind reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param event_queue_address - vpp event queue address or 0
+    @param need_map - 1 if the client needs to attach to the fifo segment
+    @param segment_name - set if the client needs to attach to the segment
+*/
+define bind_uri_reply {
+    u32 context;
+    i32 retval;
+    /** 0 if this connection shouldn't send events */
+    u64 server_event_queue_address;
+    /** length non-zero if binder should map segment */
+    u8 segment_name_length;
+    u32 segment_size;
+    u8 segment_name[128];
+};
+
+/** \brief Connect to a given URI
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param accept_cookie - sender accept cookie, to identify this bind flavor
+    @param uri - a URI, e.g. "tcp4://0.0.0.0/0/80"
+    "tcp6://::/0/80" [ipv6], "fifo:/myfifo", etc.
+    @param options - socket options, fifo sizes, etc.
+*/
+define connect_uri {
+  u32 client_index;
+  u32 context;
+  u8 uri[128];
+  u64 client_queue_address;
+  /* or some such */
+  u64 options[16];
+};
+
+/** \brief vpp->client, connect reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
+    @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
+    @param session_index - session index;
+    @param session_thread_index - session thread index
+    @param session_type - session thread type
+    @param vpp_event_queue_address - vpp's event queue address
+    @param client_event_queue_address - client's event queue address
+    @param segment_name_length - non-zero if the client needs to attach to 
+                                 the fifo segment
+    @param segment_name - set if the client needs to attach to the segment
+*/
+define connect_uri_reply {
+  u32 context;
+  i32 retval;
+  u64 server_rx_fifo;
+  u64 server_tx_fifo;
+  u32 session_index;
+  u32 session_thread_index;
+  u8 session_type;
+  u64 client_event_queue_address;
+  u64 vpp_event_queue_address;
+  u32 segment_size;
+  u8 segment_name_length;
+  u8 segment_name[128];
+};
+
+/** \brief Unind a given URI
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param uri - a URI, e.g. "tcp://0.0.0.0/0/80" [ipv4]
+    "tcp://::/0/80" [ipv6], "fifo:/myfifo", etc.
+    @param options - socket options, fifo sizes, etc.
+*/
+define unbind_uri {
+  u32 client_index;
+  u32 context;
+  u8 uri[128];
+};
+
+/** \brief unbind reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define unbind_uri_reply {
+    u32 context;
+    i32 retval;
+};

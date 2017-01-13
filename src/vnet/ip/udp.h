@@ -121,6 +121,10 @@ void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
 			    u32 node_index, u8 is_ip4);
 
+void
+udp_unregister_dst_port (vlib_main_t * vm,
+			 udp_dst_port_t dst_port, u8 is_ip4);
+
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
 always_inline void

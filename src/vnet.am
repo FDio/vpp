@@ -304,6 +304,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/lookup.c				\
  vnet/ip/ping.c					\
  vnet/ip/punt.c					\
+ vnet/ip/tcp_pg.c				\
  vnet/ip/udp_format.c				\
  vnet/ip/udp_init.c				\
  vnet/ip/udp_local.c				\
@@ -452,6 +453,21 @@ test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
 test_map_LDFLAGS = -static
 endif
 
+########################################
+# Layer 4 protocol: tcp
+########################################
+libvnet_la_SOURCES +=							\
+ vnet/tcp/tcp_format.c							\
+ vnet/tcp/tcp_syn_filter4.c						\
+ vnet/tcp/tcp_timer.c							\
+ vnet/tcp/tcp_output.c							\
+ vnet/tcp/tcp_input.c							\
+ vnet/tcp/tcp.c
+
+nobase_include_HEADERS +=						\
+ vnet/tcp/tcp_packet.h							\
+ vnet/tcp/tcp_timer.c							\
+ vnet/tcp/tcp.h
 
 ########################################
 # Tunnel protocol: gre
@@ -806,6 +822,29 @@ libvnet_la_SOURCES +=				\
 
 nobase_include_HEADERS +=			\
   vnet/devices/ssvm/ssvm_eth.h
+
+########################################
+# URI connection managmeent
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/uri/uri.c				\
+  vnet/uri/uri_hashes.c				\
+  vnet/uri/uri_queue.c				\
+  vnet/uri/uri_udp4_node.c			\
+  vnet/uri/uri_udp_builtin_server.c		\
+  vnet/uri/uri_udp.c				\
+  vnet/uri/transport.c				\
+  vnet/uri/uri_api.c
+
+nobase_include_HEADERS +=			\
+  vnet/uri/uri.h				\
+  vnet/uri/uri_db.h				\
+  vnet/uri/transport.h				\
+  vnet/uri/udp_session.h			\
+  vnet/uri/uri.api.h
+
+API_FILES += vnet/uri/uri.api
 
 ########################################
 # Linux packet interface

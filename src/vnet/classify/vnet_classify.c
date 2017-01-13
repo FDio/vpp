@@ -695,8 +695,8 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
 }
 
 #define foreach_tcp_proto_field                 \
-_(src_port)                                     \
-_(dst_port)
+_(src)                                          \
+_(dst)
 
 #define foreach_udp_proto_field                 \
 _(src_port)                                     \
