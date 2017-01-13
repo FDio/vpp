@@ -38,10 +38,14 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   ip_address_t lloc, rloc;
   clib_error_t *error = 0;
   gid_address_t _reid, *reid = &_reid, _leid, *leid = &_leid;
-  u8 reid_set = 0, leid_set = 0, is_negative = 0, vrf_set = 0, vni_set = 0;
-  u32 vni, vrf, action = ~0, p, w;
+  u8 reid_set = 0, leid_set = 0, is_negative = 0, dp_table_set = 0,
+    vni_set = 0;
+  u32 vni = 0, dp_table = 0, action = ~0, w;
   locator_pair_t pair, *pairs = 0;
   int rv;
+
+  memset (leid, 0, sizeof (*leid));
+  memset (reid, 0, sizeof (*reid));
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -67,46 +71,46 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 	  gid_address_vni (reid) = vni;
 	  vni_set = 1;
 	}
-      else if (unformat (line_input, "vrf %u", &vrf))
+      else if (unformat (line_input, "vrf %u", &dp_table))
 	{
-	  vrf_set = 1;
+	  dp_table_set = 1;
 	}
-      else if (unformat (line_input, "bd %u", &vrf))
+      else if (unformat (line_input, "bd %u", &dp_table))
 	{
-	  vrf_set = 1;
+	  dp_table_set = 1;
 	}
       else if (unformat (line_input, "negative action %U",
 			 unformat_negative_mapping_action, &action))
 	{
 	  is_negative = 1;
 	}
-      else if (unformat (line_input, "loc-pair %U %U p %d w %d",
+      else if (unformat (line_input, "loc-pair %U %U w %d",
 			 unformat_ip_address, &lloc,
-			 unformat_ip_address, &rloc, &p, &w))
+			 unformat_ip_address, &rloc, &w))
 	{
 	  pair.lcl_loc = lloc;
 	  pair.rmt_loc = rloc;
-	  pair.priority = p;
 	  pair.weight = w;
 	  vec_add1 (pairs, pair);
 	}
       else
 	{
 	  error = unformat_parse_error (line_input);
+	  vlib_cli_output (vm, "parse error: '%U'",
+			   format_unformat_error, line_input);
 	  goto done;
 	}
     }
-  unformat_free (line_input);
 
-  if (!vni_set || !vrf_set)
+  if (!vni_set || !dp_table_set)
     {
-      error = clib_error_return (0, "vni and vrf must be set!");
+      vlib_cli_output (vm, "vni and vrf/bd must be set!");
       goto done;
     }
 
   if (!reid_set)
     {
-      error = clib_error_return (0, "remote eid must be set!");
+      vlib_cli_output (vm, "remote eid must be set!");
       goto done;
     }
 
@@ -114,7 +118,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     {
       if (~0 == action)
 	{
-	  error = clib_error_return (0, "no action set for negative tunnel!");
+	  vlib_cli_output (vm, "no action set for negative tunnel!");
 	  goto done;
 	}
     }
@@ -122,7 +126,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
     {
       if (vec_len (pairs) == 0)
 	{
-	  error = clib_error_return (0, "expected ip4/ip6 locators.");
+	  vlib_cli_output (vm, "expected ip4/ip6 locators");
 	  goto done;
 	}
     }
@@ -142,7 +146,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   a->is_add = is_add;
   a->is_negative = is_negative;
   a->vni = vni;
-  a->table_id = vrf;
+  a->table_id = dp_table;
   gid_address_copy (&a->lcl_eid, leid);
   gid_address_copy (&a->rmt_eid, reid);
   a->locator_pairs = pairs;
@@ -150,11 +154,12 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   if (0 != rv)
     {
-      error = clib_error_return (0, "failed to %s gpe tunnel!",
-				 is_add ? "add" : "delete");
+      vlib_cli_output (vm, "failed to %s gpe tunnel!",
+		       is_add ? "add" : "delete");
     }
 
 done:
+  unformat_free (line_input);
   vec_free (pairs);
   return error;
 }
@@ -162,8 +167,8 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
   .path = "lisp gpe entry",
-  .short_help = "lisp gpe entry add/del vni <vni> vrf <vrf> [leid <leid>]"
-      "reid <reid> [loc-pair <lloc> <rloc> p <priority> w <weight>] "
+  .short_help = "lisp gpe entry add/del vni <vni> vrf/bd <id> [leid <leid>]"
+      "reid <reid> [loc-pair <lloc> <rloc> w <weight>] "
       "[negative action <action>]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
 };
