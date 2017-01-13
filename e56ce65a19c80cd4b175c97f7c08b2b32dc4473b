@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_c5fe62ae",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2353,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-01-13T15:53:36Z",
+      "side": 1,
+      "message": "I think we could just ignore the error from the second fctnl (We can certainly trick coverity somehow).\nThe file descriptor is polled using epoll IIRC. And only read from when there is data to be read.\nIf you believe we must check for the error, you have to close and reopen sockfd when the error occurs.",
+      "range": {
+        "startLine": 2335,
+        "startChar": 5,
+        "endLine": 2353,
+        "endChar": 4
+      },
+      "revId": "e56ce65a19c80cd4b175c97f7c08b2b32dc4473b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
