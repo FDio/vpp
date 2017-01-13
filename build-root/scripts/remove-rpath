@@ -18,7 +18,7 @@ execs=$(find $1 -type f -path \*/bin/\* )
 for i in $libs $execs; do
 	chrpath $i 2> /dev/null | grep -q build-root
 	if [ $? -eq 0 ] ; then
-		chrpath $i
+		chrpath -d $i
 	fi
 done
 
