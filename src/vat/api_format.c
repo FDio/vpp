@@ -13265,6 +13265,7 @@ typedef CLIB_PACKED(struct
 static int
 api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 {
+  u32 dp_table = 0, vni = 0;;
   unformat_input_t *input = vam->input;
   vl_api_lisp_gpe_add_del_fwd_entry_t *mp;
   f64 timeout = ~0;
@@ -13272,10 +13273,10 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   lisp_eid_vat_t _rmt_eid, *rmt_eid = &_rmt_eid;
   lisp_eid_vat_t _lcl_eid, *lcl_eid = &_lcl_eid;
   u8 rmt_eid_set = 0, lcl_eid_set = 0;
-  u32 action = ~0, p, w;
+  u32 action = ~0, w;
   ip4_address_t rmt_rloc4, lcl_rloc4;
   ip6_address_t rmt_rloc6, lcl_rloc6;
-  rloc_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc = 0;
+  vl_api_lisp_gpe_locator_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc = 0;
 
   memset (&rloc, 0, sizeof (rloc));
 
@@ -13283,25 +13284,30 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
-	{
-	  is_add = 0;
-	}
-      else if (unformat (input, "rmt_eid %U", unformat_lisp_eid_vat, rmt_eid))
+        is_add = 0;
+      else if (unformat (input, "add"))
+        is_add = 1;
+      else if (unformat (input, "reid %U", unformat_lisp_eid_vat, rmt_eid))
 	{
 	  rmt_eid_set = 1;
 	}
-      else if (unformat (input, "lcl_eid %U", unformat_lisp_eid_vat, lcl_eid))
+      else if (unformat (input, "leid %U", unformat_lisp_eid_vat, lcl_eid))
 	{
 	  lcl_eid_set = 1;
 	}
-      else if (unformat (input, "p %d w %d", &p, &w))
+      else if (unformat (input, "vrf %d", &dp_table))
+        ;
+      else if (unformat (input, "bd %d", &dp_table))
+        ;
+      else if (unformat (input, "vni %d", &vni))
+        ;
+      else if (unformat (input, "w %d", &w))
 	{
 	  if (!curr_rloc)
 	    {
 	      errmsg ("No RLOC configured for setting priority/weight!");
 	      return -99;
 	    }
-	  curr_rloc->priority = p;
 	  curr_rloc->weight = w;
 	}
       else if (unformat (input, "loc-pair %U %U", unformat_ip4_address,
@@ -13310,12 +13316,12 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 	  rloc.is_ip4 = 1;
 
 	  clib_memcpy (&rloc.addr, &lcl_rloc4, sizeof (lcl_rloc4));
-	  rloc.priority = rloc.weight = 0;
+	  rloc.weight = 0;
 	  vec_add1 (lcl_locs, rloc);
 
 	  clib_memcpy (&rloc.addr, &rmt_rloc4, sizeof (rmt_rloc4));
 	  vec_add1 (rmt_locs, rloc);
-	  /* priority and weight saved in rmt loc */
+	  /* weight saved in rmt loc */
 	  curr_rloc = &rmt_locs[vec_len (rmt_locs) - 1];
 	}
       else if (unformat (input, "loc-pair %U %U", unformat_ip6_address,
@@ -13323,12 +13329,12 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 	{
 	  rloc.is_ip4 = 0;
 	  clib_memcpy (&rloc.addr, &lcl_rloc6, sizeof (lcl_rloc6));
-	  rloc.priority = rloc.weight = 0;
+	  rloc.weight = 0;
 	  vec_add1 (lcl_locs, rloc);
 
 	  clib_memcpy (&rloc.addr, &rmt_rloc6, sizeof (rmt_rloc6));
 	  vec_add1 (rmt_locs, rloc);
-	  /* priority and weight saved in rmt loc */
+	  /* weight saved in rmt loc */
 	  curr_rloc = &rmt_locs[vec_len (rmt_locs) - 1];
 	}
       else if (unformat (input, "action %d", &action))
@@ -13361,23 +13367,28 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry);
+  M2 (LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry,
+      sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs) * 2);
 
   mp->is_add = is_add;
   lisp_eid_put_vat (mp->rmt_eid, rmt_eid->addr, rmt_eid->type);
   lisp_eid_put_vat (mp->lcl_eid, lcl_eid->addr, lcl_eid->type);
   mp->eid_type = rmt_eid->type;
+  mp->dp_table = clib_host_to_net_u32 (dp_table);
+  mp->vni = clib_host_to_net_u32 (vni);
   mp->rmt_len = rmt_eid->len;
   mp->lcl_len = lcl_eid->len;
   mp->action = action;
 
   if (0 != rmt_locs && 0 != lcl_locs)
     {
-      mp->loc_num = vec_len (rmt_locs);
-      clib_memcpy (mp->lcl_locs, lcl_locs,
-		   (sizeof (rloc_t) * vec_len (lcl_locs)));
-      clib_memcpy (mp->rmt_locs, rmt_locs,
-		   (sizeof (rloc_t) * vec_len (rmt_locs)));
+      mp->loc_num = clib_host_to_net_u32 (vec_len (rmt_locs) * 2);
+      clib_memcpy (mp->locs, lcl_locs,
+		   (sizeof (vl_api_lisp_gpe_locator_t) * vec_len (lcl_locs)));
+
+      u32 offset = sizeof (vl_api_lisp_gpe_locator_t) * vec_len (lcl_locs);
+      clib_memcpy (((u8 *)mp->locs) + offset, rmt_locs,
+		   (sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs)));
     }
   vec_free (lcl_locs);
   vec_free (rmt_locs);
@@ -17676,8 +17687,8 @@ _(lisp_add_del_local_eid,"vni <vni> eid "                               \
                          "<ipv4|ipv6>/<prefix> | <L2 address> "         \
                          "locator-set <locator_name> [del]"             \
                          "[key-id sha1|sha256 secret-key <secret-key>]") \
-_(lisp_gpe_add_del_fwd_entry, "rmt_eid <eid> [lcl_eid <eid>] vni <vni>" \
-  "dp_table <table> loc-pair <lcl_loc> <rmt_loc> ... [del]")            \
+_(lisp_gpe_add_del_fwd_entry, "reid <eid> [leid <eid>] vni <vni>"       \
+  "vrf/bd <dp_table> loc-pair <lcl_loc> <rmt_loc> w <weight>... [del]") \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_add_del_map_server, "<ip4|6-addr> [del]")                        \
 _(lisp_gpe_enable_disable, "enable|disable")                            \

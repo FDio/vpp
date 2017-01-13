@@ -913,7 +913,7 @@ format_lisp_fwd_path (u8 * s, va_list ap)
 {
   lisp_fwd_path_t *lfp = va_arg (ap, lisp_fwd_path_t *);
 
-  s = format (s, "priority:%d weight:%d ", lfp->priority, lfp->weight);
+  s = format (s, "weight:%d ", lfp->weight);
   s = format (s, "adj:[%U]\n",
 	      format_lisp_gpe_adjacency,
 	      lisp_gpe_adjacency_get (lfp->lisp_adj),
