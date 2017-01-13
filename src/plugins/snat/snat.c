@@ -21,6 +21,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vlibapi/api.h>
 #include <snat/snat.h>
+#include <snat/snat_ipfix_logging.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -278,6 +279,13 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr)
           pool_foreach (ses, tsm->sessions, ({
             if (ses->out2in.addr.as_u32 == addr.as_u32)
               {
+                /* log NAT event */
+                snat_ipfix_logging_nat44_ses_delete(ses->in2out.addr.as_u32,
+                                                    ses->out2in.addr.as_u32,
+                                                    ses->in2out.protocol,
+                                                    ses->in2out.port,
+                                                    ses->out2in.port,
+                                                    ses->in2out.fib_index);
                 vec_add1 (ses_to_be_removed, ses - tsm->sessions);
                 kv.key = ses->in2out.as_u64;
                 clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
@@ -549,6 +557,14 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                               (clib_net_to_host_u16 (s->out2in.port) != e_port))
                             continue;
                         }
+
+                      /* log NAT event */
+                      snat_ipfix_logging_nat44_ses_delete(s->in2out.addr.as_u32,
+                                                          s->out2in.addr.as_u32,
+                                                          s->in2out.protocol,
+                                                          s->in2out.port,
+                                                          s->out2in.port,
+                                                          s->in2out.fib_index);
 
                       value.key = s->in2out.as_u64;
                       clib_bihash_add_del_8_8 (&sm->in2out, &value, 0);
@@ -1172,6 +1188,37 @@ static void *vl_api_snat_interface_addr_dump_t_print
   FINISH;
 }
 
+static void
+vl_api_snat_ipfix_enable_disable_t_handler
+(vl_api_snat_ipfix_enable_disable_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_ipfix_enable_disable_reply_t * rmp;
+  int rv = 0;
+
+  rv = snat_ipfix_logging_enable_disable(mp->enable,
+                                         clib_host_to_net_u32 (mp->domain_id),
+                                         clib_host_to_net_u16 (mp->src_port));
+
+  REPLY_MACRO (VL_API_SNAT_IPFIX_ENABLE_DISABLE_REPLY);
+}
+
+static void *vl_api_snat_ipfix_enable_disable_t_print
+(vl_api_snat_ipfix_enable_disable_t *mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_ipfix_enable_disable ");
+  if (mp->domain_id)
+    s = format (s, "domain %d ", clib_net_to_host_u32 (mp->domain_id));
+  if (mp->src_port)
+    s = format (s, "src_port %d ", clib_net_to_host_u16 (mp->src_port));
+  if (!mp->enable)
+    s = format (s, "disable ");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1185,7 +1232,8 @@ _(SNAT_INTERFACE_DUMP, snat_interface_dump)                             \
 _(SNAT_SET_WORKERS, snat_set_workers)                                   \
 _(SNAT_WORKER_DUMP, snat_worker_dump)                                   \
 _(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr)             \
-_(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)
+_(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)                   \
+_(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -1302,6 +1350,9 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   cb4.function_opaque = 0;
 
   vec_add1 (im->add_del_interface_address_callbacks, cb4);
+
+  /* Init IPFIX logging */
+  snat_ipfix_logging_init(vm);
 
   return error;
 }
@@ -1420,6 +1471,7 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
         }
     }
   /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted(0);
   return 1;
 }
 
@@ -1720,6 +1772,58 @@ VLIB_CLI_COMMAND (set_workers_command, static) = {
 };
 
 static clib_error_t *
+snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
+                                              unformat_input_t * input,
+                                              vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 domain_id = 0;
+  u32 src_port = 0;
+  u8 enable = 1;
+  int rv = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "domain %d", &domain_id))
+        ;
+      else if (unformat (line_input, "src-port %d", &src_port))
+        ;
+      else if (unformat (line_input, "disable"))
+        enable = 0;
+      else
+        return clib_error_return (0, "unknown input '%U'",
+          format_unformat_error, input);
+     }
+  unformat_free (line_input);
+
+  rv = snat_ipfix_logging_enable_disable (enable, domain_id, (u16) src_port);
+
+  if (rv)
+    return clib_error_return (0, "ipfix logging enable failed");
+
+  return 0;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat ipfix logging}
+ * To enable SNAT IPFIX logging use:
+ *  vpp# snat ipfix logging
+ * To set IPFIX exporter use:
+ *  vpp# set ipfix exporter collector 10.10.10.3 src 10.10.10.1
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_ipfix_logging_enable_disable_command, static) = {
+  .path = "snat ipfix logging",
+  .function = snat_ipfix_logging_enable_disable_command_fn,
+  .short_help = "snat ipfix logging [domain <domain-id>] [src-port <port>] [disable]",
+};
+
+static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
   snat_main_t * sm = &snat_main;
@@ -1968,7 +2072,7 @@ show_snat_command_fn (vlib_main_t * vm,
             ({
               s = format (s, " %d", j);
             }));
-          vlib_cli_output (vm, "  %d busy ports:%v", ap->busy_ports, s);
+          vlib_cli_output (vm, "  %d busy ports:%s", ap->busy_ports, s);
         }
     }
 
@@ -1981,7 +2085,7 @@ show_snat_command_fn (vlib_main_t * vm,
             {
               vlib_worker_thread_t *w =
                 vlib_worker_threads + *worker + sm->first_worker_index;
-              vlib_cli_output (vm, "  %v", w->name);
+              vlib_cli_output (vm, "  %s", w->name);
             }
         }
     }
@@ -2032,7 +2136,7 @@ show_snat_command_fn (vlib_main_t * vm,
                 continue;
 
               vlib_worker_thread_t *w = vlib_worker_threads + j;
-              vlib_cli_output (vm, "Thread %d (%v at lcore %u):", j, w->name,
+              vlib_cli_output (vm, "Thread %d (%s at lcore %u):", j, w->name,
                                w->lcore_id);
               vlib_cli_output (vm, "  %d list pool elements",
                                pool_elts (tsm->list_pool));

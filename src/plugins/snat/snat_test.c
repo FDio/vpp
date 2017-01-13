@@ -62,7 +62,8 @@ _(snat_add_address_range_reply)                 \
 _(snat_interface_add_del_feature_reply)         \
 _(snat_add_static_mapping_reply)                \
 _(snat_set_workers_reply)                       \
-_(snat_add_del_interface_addr_reply)
+_(snat_add_del_interface_addr_reply)            \
+_(snat_ipfix_enable_disable_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -98,7 +99,9 @@ _(SNAT_SET_WORKERS_REPLY, snat_set_workers_reply)               \
 _(SNAT_WORKER_DETAILS, snat_worker_details)                     \
 _(SNAT_ADD_DEL_INTERFACE_ADDR_REPLY,                            \
   snat_add_del_interface_addr_reply)                            \
-_(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)
+_(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)     \
+_(SNAT_IPFIX_ENABLE_DISABLE_REPLY,                              \
+  snat_ipfix_enable_disable_reply)
 
 /* M: construct, but don't yet send a message */
 #define M(T,t)                                                  \
@@ -543,7 +546,7 @@ static int api_snat_worker_dump(vat_main_t * vam)
   return 0;
 }
 
-static int api_snat_add_del_interface_addr (vat_main_t * vam)
+static int api_snat_ipfix_enable_disable (vat_main_t * vam)
 {
   snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
@@ -617,6 +620,41 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
   return 0;
 }
 
+static int api_snat_add_del_interface_addr (vat_main_t * vam)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  unformat_input_t * i = vam->input;
+  f64 timeout;
+  vl_api_snat_ipfix_enable_disable_t * mp;
+  u32 domain_id = 0;
+  u32 src_port = 0;
+  u8 enable = 1;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "domain %d", &domain_id))
+        ;
+      else if (unformat (i, "src_port %d", &src_port))
+        ;
+      else if (unformat (i, "disable"))
+        enable = 0;
+      else
+        {
+          clib_warning("unknown input '%U'", format_unformat_error, i);
+          return -99;
+        }
+    }
+
+  M(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable);
+  mp->domain_id = htonl(domain_id);
+  mp->src_port = htons((u16) src_port);
+  mp->enable = enable;
+
+  S; W;
+  /* NOTREACHED */
+  return 0;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -635,7 +673,9 @@ _(snat_interface_dump, "")                                       \
 _(snat_worker_dump, "")                                          \
 _(snat_add_del_interface_addr,                                   \
   "<intfc> | sw_if_index <id> [del]")                            \
-_(snat_interface_addr_dump, "")
+_(snat_interface_addr_dump, "")                                  \
+_(snat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "     \
+  "[disable]")
 
 void vat_api_hookup (vat_main_t *vam)
 {

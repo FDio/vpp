@@ -22,6 +22,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/ip4_fib.h>
 #include <snat/snat.h>
+#include <snat/snat_ipfix_logging.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
@@ -210,7 +211,14 @@ create_session_for_static_mapping (snat_main_t *sm,
   if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 1 /* is_add */))
       clib_warning ("out2in key add failed");
 
-  return s;
+  /* log NAT event */
+  snat_ipfix_logging_nat44_ses_create(s->in2out.addr.as_u32,
+                                      s->out2in.addr.as_u32,
+                                      s->in2out.protocol,
+                                      s->in2out.port,
+                                      s->out2in.port,
+                                      s->in2out.fib_index);
+   return s;
 }
 
 static inline u32 icmp_out2in_slow_path (snat_main_t *sm,

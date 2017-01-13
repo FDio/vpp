@@ -934,6 +934,23 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_interface_addr_dump, {})
 
+    def snat_ipfix(
+            self,
+            domain_id=1,
+            src_port=4739,
+            enable=1):
+        """Enable/disable S-NAT IPFIX logging
+
+        :param domain_id: Observation domain ID (Default value = 1)
+        :param src_port: Source port number (Default value = 4739)
+        :param enable: 1 if enable, 0 if disable (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_ipfix_enable_disable,
+            {'domain_id': domain_id,
+             'src_port': src_port,
+             'enable': enable})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
