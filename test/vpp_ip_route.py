@@ -19,12 +19,16 @@ class RoutePath:
             nh_sw_if_index,
             nh_table_id=0,
             labels=[],
-            nh_via_label=MPLS_LABEL_INVALID):
-        self.nh_addr = socket.inet_pton(socket.AF_INET, nh_addr)
+            nh_via_label=MPLS_LABEL_INVALID,
+            is_ip6=0):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
         self.nh_labels = labels
+        if is_ip6:
+            self.nh_addr = socket.inet_pton(socket.AF_INET6, nh_addr)
+        else:
+            self.nh_addr = socket.inet_pton(socket.AF_INET, nh_addr)
 
 
 class IpRoute:
@@ -33,34 +37,61 @@ class IpRoute:
     """
 
     def __init__(self, test, dest_addr,
-                 dest_addr_len, paths, table_id=0):
+                 dest_addr_len, paths, table_id=0, is_ip6=0, is_local=0):
         self._test = test
         self.paths = paths
-        self.dest_addr = socket.inet_pton(socket.AF_INET, dest_addr)
         self.dest_addr_len = dest_addr_len
         self.table_id = table_id
+        self.is_ip6 = is_ip6
+        self.is_local = is_local
+        if is_ip6:
+            self.dest_addr = socket.inet_pton(socket.AF_INET6, dest_addr)
+        else:
+            self.dest_addr = socket.inet_pton(socket.AF_INET, dest_addr)
 
     def add_vpp_config(self):
-        for path in self.paths:
+        if self.is_local:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
-                path.nh_addr,
-                path.nh_itf,
+                socket.inet_pton(socket.AF_INET6, "::"),
+                0xffffffff,
+                is_local=1,
                 table_id=self.table_id,
-                next_hop_out_label_stack=path.nh_labels,
-                next_hop_n_out_labels=len(
-                    path.nh_labels),
-                next_hop_via_label=path.nh_via_label)
+                is_ipv6=self.is_ip6)
+        else:
+            for path in self.paths:
+                self._test.vapi.ip_add_del_route(
+                    self.dest_addr,
+                    self.dest_addr_len,
+                    path.nh_addr,
+                    path.nh_itf,
+                    table_id=self.table_id,
+                    next_hop_out_label_stack=path.nh_labels,
+                    next_hop_n_out_labels=len(
+                        path.nh_labels),
+                    next_hop_via_label=path.nh_via_label,
+                    is_ipv6=self.is_ip6)
 
     def remove_vpp_config(self):
-        for path in self.paths:
-            self._test.vapi.ip_add_del_route(self.dest_addr,
-                                             self.dest_addr_len,
-                                             path.nh_addr,
-                                             path.nh_itf,
-                                             table_id=self.table_id,
-                                             is_add=0)
+        if self.is_local:
+            self._test.vapi.ip_add_del_route(
+                self.dest_addr,
+                self.dest_addr_len,
+                socket.inet_pton(socket.AF_INET6, "::"),
+                0xffffffff,
+                is_local=1,
+                is_add=0,
+                table_id=self.table_id,
+                is_ipv6=self.is_ip6)
+        else:
+            for path in self.paths:
+                self._test.vapi.ip_add_del_route(self.dest_addr,
+                                                 self.dest_addr_len,
+                                                 path.nh_addr,
+                                                 path.nh_itf,
+                                                 table_id=self.table_id,
+                                                 is_add=0)
 
 
 class MplsIpBind:
