@@ -22,6 +22,30 @@
       "revId": "e56ce65a19c80cd4b175c97f7c08b2b32dc4473b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_65ffae68",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2353,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2017-01-13T19:48:31Z",
+      "side": 1,
+      "message": "OK, which do you prefer? I can do either. I\u0027m not sure how to trick coverity, so let me know if you know how.",
+      "parentUuid": "5a2585a7_c5fe62ae",
+      "range": {
+        "startLine": 2335,
+        "startChar": 5,
+        "endLine": 2353,
+        "endChar": 4
+      },
+      "revId": "e56ce65a19c80cd4b175c97f7c08b2b32dc4473b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
