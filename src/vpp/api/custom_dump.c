@@ -2948,8 +2948,7 @@ _(lisp_map_resolver_dump)                                               \
 _(lisp_map_server_dump)                                                 \
 _(show_lisp_rloc_probe_state)                                           \
 _(show_lisp_map_register_state)                                         \
-_(show_lisp_map_request_mode)                                           \
-_(lisp_gpe_tunnel_dump)
+_(show_lisp_map_request_mode)
 
 #define _(f)                                                            \
 static void * vl_api_ ## f ## _t_print                                  \
@@ -3094,7 +3093,6 @@ _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \
 _(LISP_EID_TABLE_DUMP, lisp_eid_table_dump)                             \
 _(LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump)                     \
 _(LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump)                     \
-_(LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump)                           \
 _(LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump)                       \
 _(LISP_MAP_SERVER_DUMP, lisp_map_server_dump)                           \
 _(LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump)                         \

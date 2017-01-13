@@ -2452,103 +2452,6 @@ static void
   vat_json_object_add_uint (node, "vni", clib_net_to_host_u32 (mp->vni));
 }
 
-static u8 *
-format_decap_next (u8 * s, va_list * args)
-{
-  u32 next_index = va_arg (*args, u32);
-
-  switch (next_index)
-    {
-    case LISP_GPE_INPUT_NEXT_DROP:
-      return format (s, "drop");
-    case LISP_GPE_INPUT_NEXT_IP4_INPUT:
-      return format (s, "ip4");
-    case LISP_GPE_INPUT_NEXT_IP6_INPUT:
-      return format (s, "ip6");
-    default:
-      return format (s, "unknown %d", next_index);
-    }
-  return s;
-}
-
-static void
-vl_api_lisp_gpe_tunnel_details_t_handler (vl_api_lisp_gpe_tunnel_details_t *
-					  mp)
-{
-  vat_main_t *vam = &vat_main;
-  u8 *iid_str;
-  u8 *flag_str = NULL;
-
-  iid_str = format (0, "%d (0x%x)", ntohl (mp->iid), ntohl (mp->iid));
-
-#define _(n,v) if (mp->flags & v) flag_str = format (flag_str, "%s-bit ", #n);
-  foreach_lisp_gpe_flag_bit;
-#undef _
-
-  print (vam->ofp, "%=20d%=30U%=16U%=16d%=16d%=16U"
-	 "%=16d%=16d%=16sd=16d%=16s%=16s",
-	 mp->tunnels,
-	 mp->is_ipv6 ? format_ip6_address : format_ip4_address,
-	 mp->source_ip,
-	 mp->is_ipv6 ? format_ip6_address : format_ip4_address,
-	 mp->destination_ip,
-	 ntohl (mp->encap_fib_id),
-	 ntohl (mp->decap_fib_id),
-	 format_decap_next, ntohl (mp->dcap_next),
-	 mp->ver_res >> 6,
-	 flag_str, mp->next_protocol, mp->ver_res, mp->res, iid_str);
-
-  vec_free (iid_str);
-}
-
-static void
-  vl_api_lisp_gpe_tunnel_details_t_handler_json
-  (vl_api_lisp_gpe_tunnel_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  struct in6_addr ip6;
-  struct in_addr ip4;
-  u8 *next_decap_str;
-
-  next_decap_str = format (0, "%U", format_decap_next, htonl (mp->dcap_next));
-
-  if (VAT_JSON_ARRAY != vam->json_tree.type)
-    {
-      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
-      vat_json_init_array (&vam->json_tree);
-    }
-  node = vat_json_array_add (&vam->json_tree);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "tunel", mp->tunnels);
-  if (mp->is_ipv6)
-    {
-      clib_memcpy (&ip6, mp->source_ip, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "source address", ip6);
-      clib_memcpy (&ip6, mp->destination_ip, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "destination address", ip6);
-    }
-  else
-    {
-      clib_memcpy (&ip4, mp->source_ip, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "source address", ip4);
-      clib_memcpy (&ip4, mp->destination_ip, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "destination address", ip4);
-    }
-  vat_json_object_add_uint (node, "fib encap", ntohl (mp->encap_fib_id));
-  vat_json_object_add_uint (node, "fib decap", ntohl (mp->decap_fib_id));
-  vat_json_object_add_string_copy (node, "decap next", next_decap_str);
-  vat_json_object_add_uint (node, "lisp version", mp->ver_res >> 6);
-  vat_json_object_add_uint (node, "flags", mp->flags);
-  vat_json_object_add_uint (node, "next protocol", mp->next_protocol);
-  vat_json_object_add_uint (node, "ver_res", mp->ver_res);
-  vat_json_object_add_uint (node, "res", mp->res);
-  vat_json_object_add_uint (node, "iid", ntohl (mp->iid));
-
-  vec_free (next_decap_str);
-}
-
 static void
   vl_api_show_lisp_map_register_state_reply_t_handler
   (vl_api_show_lisp_map_register_state_reply_t * mp)
@@ -3895,7 +3798,6 @@ _(LISP_LOCATOR_DETAILS, lisp_locator_details)                           \
 _(LISP_EID_TABLE_DETAILS, lisp_eid_table_details)                       \
 _(LISP_EID_TABLE_MAP_DETAILS, lisp_eid_table_map_details)               \
 _(LISP_EID_TABLE_VNI_DETAILS, lisp_eid_table_vni_details)               \
-_(LISP_GPE_TUNNEL_DETAILS, lisp_gpe_tunnel_details)                     \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_MAP_SERVER_DETAILS, lisp_map_server_details)                     \
 _(LISP_ADJACENCIES_GET_REPLY, lisp_adjacencies_get_reply)               \
@@ -13265,6 +13167,7 @@ typedef CLIB_PACKED(struct
 static int
 api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 {
+  u32 dp_table = 0, vni = 0;;
   unformat_input_t *input = vam->input;
   vl_api_lisp_gpe_add_del_fwd_entry_t *mp;
   f64 timeout = ~0;
@@ -13272,10 +13175,11 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   lisp_eid_vat_t _rmt_eid, *rmt_eid = &_rmt_eid;
   lisp_eid_vat_t _lcl_eid, *lcl_eid = &_lcl_eid;
   u8 rmt_eid_set = 0, lcl_eid_set = 0;
-  u32 action = ~0, p, w;
+  u32 action = ~0, w;
   ip4_address_t rmt_rloc4, lcl_rloc4;
   ip6_address_t rmt_rloc6, lcl_rloc6;
-  rloc_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc = 0;
+  vl_api_lisp_gpe_locator_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc =
+    0;
 
   memset (&rloc, 0, sizeof (rloc));
 
@@ -13283,25 +13187,30 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
-	{
-	  is_add = 0;
-	}
-      else if (unformat (input, "rmt_eid %U", unformat_lisp_eid_vat, rmt_eid))
+	is_add = 0;
+      else if (unformat (input, "add"))
+	is_add = 1;
+      else if (unformat (input, "reid %U", unformat_lisp_eid_vat, rmt_eid))
 	{
 	  rmt_eid_set = 1;
 	}
-      else if (unformat (input, "lcl_eid %U", unformat_lisp_eid_vat, lcl_eid))
+      else if (unformat (input, "leid %U", unformat_lisp_eid_vat, lcl_eid))
 	{
 	  lcl_eid_set = 1;
 	}
-      else if (unformat (input, "p %d w %d", &p, &w))
+      else if (unformat (input, "vrf %d", &dp_table))
+	;
+      else if (unformat (input, "bd %d", &dp_table))
+	;
+      else if (unformat (input, "vni %d", &vni))
+	;
+      else if (unformat (input, "w %d", &w))
 	{
 	  if (!curr_rloc)
 	    {
 	      errmsg ("No RLOC configured for setting priority/weight!");
 	      return -99;
 	    }
-	  curr_rloc->priority = p;
 	  curr_rloc->weight = w;
 	}
       else if (unformat (input, "loc-pair %U %U", unformat_ip4_address,
@@ -13310,12 +13219,12 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 	  rloc.is_ip4 = 1;
 
 	  clib_memcpy (&rloc.addr, &lcl_rloc4, sizeof (lcl_rloc4));
-	  rloc.priority = rloc.weight = 0;
+	  rloc.weight = 0;
 	  vec_add1 (lcl_locs, rloc);
 
 	  clib_memcpy (&rloc.addr, &rmt_rloc4, sizeof (rmt_rloc4));
 	  vec_add1 (rmt_locs, rloc);
-	  /* priority and weight saved in rmt loc */
+	  /* weight saved in rmt loc */
 	  curr_rloc = &rmt_locs[vec_len (rmt_locs) - 1];
 	}
       else if (unformat (input, "loc-pair %U %U", unformat_ip6_address,
@@ -13323,12 +13232,12 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 	{
 	  rloc.is_ip4 = 0;
 	  clib_memcpy (&rloc.addr, &lcl_rloc6, sizeof (lcl_rloc6));
-	  rloc.priority = rloc.weight = 0;
+	  rloc.weight = 0;
 	  vec_add1 (lcl_locs, rloc);
 
 	  clib_memcpy (&rloc.addr, &rmt_rloc6, sizeof (rmt_rloc6));
 	  vec_add1 (rmt_locs, rloc);
-	  /* priority and weight saved in rmt loc */
+	  /* weight saved in rmt loc */
 	  curr_rloc = &rmt_locs[vec_len (rmt_locs) - 1];
 	}
       else if (unformat (input, "action %d", &action))
@@ -13361,23 +13270,28 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry);
+  M2 (LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry,
+      sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs) * 2);
 
   mp->is_add = is_add;
   lisp_eid_put_vat (mp->rmt_eid, rmt_eid->addr, rmt_eid->type);
   lisp_eid_put_vat (mp->lcl_eid, lcl_eid->addr, lcl_eid->type);
   mp->eid_type = rmt_eid->type;
+  mp->dp_table = clib_host_to_net_u32 (dp_table);
+  mp->vni = clib_host_to_net_u32 (vni);
   mp->rmt_len = rmt_eid->len;
   mp->lcl_len = lcl_eid->len;
   mp->action = action;
 
   if (0 != rmt_locs && 0 != lcl_locs)
     {
-      mp->loc_num = vec_len (rmt_locs);
-      clib_memcpy (mp->lcl_locs, lcl_locs,
-		   (sizeof (rloc_t) * vec_len (lcl_locs)));
-      clib_memcpy (mp->rmt_locs, rmt_locs,
-		   (sizeof (rloc_t) * vec_len (rmt_locs)));
+      mp->loc_num = clib_host_to_net_u32 (vec_len (rmt_locs) * 2);
+      clib_memcpy (mp->locs, lcl_locs,
+		   (sizeof (vl_api_lisp_gpe_locator_t) * vec_len (lcl_locs)));
+
+      u32 offset = sizeof (vl_api_lisp_gpe_locator_t) * vec_len (lcl_locs);
+      clib_memcpy (((u8 *) mp->locs) + offset, rmt_locs,
+		   (sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs)));
     }
   vec_free (lcl_locs);
   vec_free (rmt_locs);
@@ -14659,38 +14573,6 @@ api_lisp_eid_table_dump (vat_main_t * vam)
     S;
   }
 
-  /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
-}
-
-static int
-api_lisp_gpe_tunnel_dump (vat_main_t * vam)
-{
-  vl_api_lisp_gpe_tunnel_dump_t *mp;
-  f64 timeout = ~0;
-
-  if (!vam->json_output)
-    {
-      print (vam->ofp, "%=20s%=30s%=16s%=16s%=16s%=16s"
-	     "%=16s%=16s%=16s%=16s%=16s",
-	     "Tunel", "Source", "Destination", "Fib encap", "Fib decap",
-	     "Decap next", "Lisp version", "Flags", "Next protocol",
-	     "ver_res", "res", "iid");
-    }
-
-  M (LISP_GPE_TUNNEL_DUMP, lisp_gpe_tunnel_dump);
-  /* send it... */
-  S;
-
-  /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
-    S;
-  }
   /* Wait for a reply... */
   W;
 
@@ -17676,8 +17558,8 @@ _(lisp_add_del_local_eid,"vni <vni> eid "                               \
                          "<ipv4|ipv6>/<prefix> | <L2 address> "         \
                          "locator-set <locator_name> [del]"             \
                          "[key-id sha1|sha256 secret-key <secret-key>]") \
-_(lisp_gpe_add_del_fwd_entry, "rmt_eid <eid> [lcl_eid <eid>] vni <vni>" \
-  "dp_table <table> loc-pair <lcl_loc> <rmt_loc> ... [del]")            \
+_(lisp_gpe_add_del_fwd_entry, "reid <eid> [leid <eid>] vni <vni>"       \
+  "vrf/bd <dp_table> loc-pair <lcl_loc> <rmt_loc> w <weight>... [del]") \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_add_del_map_server, "<ip4|6-addr> [del]")                        \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
@@ -17702,7 +17584,6 @@ _(lisp_eid_table_dump, "[eid <ipv4|ipv6>/<prefix> | <mac>] [vni] "      \
                        "[local] | [remote]")                            \
 _(lisp_eid_table_vni_dump, "")                                          \
 _(lisp_eid_table_map_dump, "l2|l3")                                     \
-_(lisp_gpe_tunnel_dump, "")                                             \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_map_server_dump, "")                                             \
 _(lisp_adjacencies_get, "vni <vni>")                                    \
