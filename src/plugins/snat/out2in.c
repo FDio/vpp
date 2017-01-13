@@ -255,7 +255,10 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
                 ip4_interface_first_address (sm->ip4_main, sw_if_index0,
                                              0 /* just want the address */);
               rt->cached_sw_if_index = sw_if_index0;
-              rt->cached_ip4_address = first_int_addr->as_u32;
+              if (first_int_addr)
+                rt->cached_ip4_address = first_int_addr->as_u32;
+              else
+                rt->cached_ip4_address = 0;
             }
           
           /* Don't NAT packet aimed at the intfc address */
@@ -1043,7 +1046,10 @@ static inline u32 icmp_out2in_fast (snat_main_t *sm,
             ip4_interface_first_address (sm->ip4_main, sw_if_index0,
                                          0 /* just want the address */);
           rt->cached_sw_if_index = sw_if_index0;
-          rt->cached_ip4_address = first_int_addr->as_u32;
+          if (first_int_addr)
+            rt->cached_ip4_address = first_int_addr->as_u32;
+          else
+            rt->cached_ip4_address = 0;
         }
 
       /* Don't NAT packet aimed at the intfc address */
