@@ -5790,6 +5790,12 @@ api_tap_connect (vat_main_t * vam)
   u8 name_set = 0;
   u8 *tap_name;
   u8 *tag = 0;
+  ip4_address_t ip4_address;
+  u32 ip4_mask_width;
+  int ip4_address_set = 0;
+  ip6_address_t ip6_address;
+  u32 ip6_mask_width;
+  int ip6_address_set = 0;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -5806,6 +5812,12 @@ api_tap_connect (vat_main_t * vam)
 	name_set = 1;
       else if (unformat (i, "tag %s", &tag))
 	;
+      else if (unformat (i, "address %U/%d",
+			 unformat_ip4_address, &ip4_address, &ip4_mask_width))
+	ip4_address_set = 1;
+      else if (unformat (i, "address %U/%d",
+			 unformat_ip6_address, &ip6_address, &ip6_mask_width))
+	ip6_address_set = 1;
       else
 	break;
     }
@@ -5836,6 +5848,19 @@ api_tap_connect (vat_main_t * vam)
   clib_memcpy (mp->tap_name, tap_name, vec_len (tap_name));
   if (tag)
     clib_memcpy (mp->tag, tag, vec_len (tag));
+
+  if (ip4_address_set)
+    {
+      mp->ip4_address_set = 1;
+      clib_memcpy (mp->ip4_address, &ip4_address, sizeof (mp->ip4_address));
+      mp->ip4_mask_width = ip4_mask_width;
+    }
+  if (ip6_address_set)
+    {
+      mp->ip6_address_set = 1;
+      clib_memcpy (mp->ip6_address, &ip6_address, sizeof (mp->ip6_address));
+      mp->ip6_mask_width = ip6_mask_width;
+    }
 
   vec_free (tap_name);
   vec_free (tag);

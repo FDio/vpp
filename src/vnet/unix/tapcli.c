@@ -41,6 +41,7 @@
 
 #include <vnet/feature/feature.h>
 #include <vnet/devices/devices.h>
+#include <vnet/unix/tuntap.h>
 #include <vnet/unix/tapcli.h>
 
 static vnet_device_class_t tapcli_dev_class;
@@ -780,19 +781,23 @@ static tapcli_interface_t *tapcli_get_new_tapif()
   return ti;
 }
 
+typedef struct 
+{
+    ip6_address_t addr;
+    u32 mask_width;
+    unsigned int ifindex;
+} ip6_ifreq_t;
+
 /**
  * @brief Connect a TAP interface
  *
  * @param vm - vlib_main_t
- * @param intfc_name - u8
- * @param hwaddr_arg - u8
- * @param sw_if_indexp - u32
+ * @param ap - vnet_tap_connect_args_t 
  *
  * @return rc - int
  *
  */
-int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
-                      u32 * sw_if_indexp)
+int vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t *ap)
 {
   tapcli_main_t * tm = &tapcli_main;
   tapcli_interface_t * ti = NULL;
@@ -815,7 +820,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
     return VNET_API_ERROR_SYSCALL_ERROR_1;
 
   memset (&ifr, 0, sizeof (ifr));
-  strncpy(ifr.ifr_name, (char *) intfc_name, sizeof (ifr.ifr_name)-1);
+  strncpy(ifr.ifr_name, (char *) ap->intfc_name, sizeof (ifr.ifr_name)-1);
   ifr.ifr_flags = flags;
   if (ioctl (dev_net_tun_fd, TUNSETIFF, (void *)&ifr) < 0)
     {
@@ -837,7 +842,7 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
     struct sockaddr_ll sll;
 
     memset (&ifr, 0, sizeof(ifr));
-    strncpy (ifr.ifr_name, (char *) intfc_name, sizeof (ifr.ifr_name)-1);
+    strncpy (ifr.ifr_name, (char *) ap->intfc_name, sizeof (ifr.ifr_name)-1);
     if (ioctl (dev_tap_fd, SIOCGIFINDEX, &ifr) < 0 )
       {
         rv = VNET_API_ERROR_SYSCALL_ERROR_4;
@@ -888,11 +893,84 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
       goto error;
     }
 
+  if (ap->ip4_address_set)
+    {
+      struct sockaddr_in sin;
+      /* ip4: mask defaults to /24 */
+      u32 mask = clib_host_to_net_u32 (0xFFFFFF00);
+
+      sin.sin_family = AF_INET;
+      sin.sin_port = 0;
+      sin.sin_addr.s_addr = ap->ip4_address->as_u32;
+      memcpy (&ifr.ifr_ifru.ifru_addr, &sin, sizeof (sin));
+
+      if (ioctl (dev_tap_fd, SIOCSIFADDR, &ifr) < 0)
+        {
+          rv = VNET_API_ERROR_SYSCALL_ERROR_10;
+          goto error;
+        }
+
+      if (ap->ip4_mask_width > 0 && ap->ip4_mask_width < 33)
+        {
+          mask = ~0;
+          mask <<= (32 - ap->ip4_mask_width);
+        }
+
+      mask = clib_host_to_net_u32(mask);
+      sin.sin_family = AF_INET;
+      sin.sin_port = 0;
+      sin.sin_addr.s_addr = mask;
+      memcpy (&ifr.ifr_ifru.ifru_addr, &sin, sizeof (sin));
+
+      if (ioctl (dev_tap_fd, SIOCSIFNETMASK, &ifr) < 0)
+        {
+          rv = VNET_API_ERROR_SYSCALL_ERROR_10;
+          goto error;
+        }
+    }
+
+  if (ap->ip6_address_set)
+    {
+      struct ifreq ifr2;
+      ip6_ifreq_t ifr6;
+      int sockfd6;
+
+      sockfd6 = socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);
+      if (sockfd6 < 0)
+        {
+          rv = VNET_API_ERROR_SYSCALL_ERROR_10;
+          goto error;
+        }
+
+      memset (&ifr2, 0, sizeof(ifr));
+      strncpy (ifr2.ifr_name, (char *) ap->intfc_name, 
+               sizeof (ifr2.ifr_name)-1);
+      if (ioctl (sockfd6, SIOCGIFINDEX, &ifr2) < 0 )
+        {
+          close (sockfd6);
+          rv = VNET_API_ERROR_SYSCALL_ERROR_4;
+          goto error;
+        }
+      
+      memcpy (&ifr6.addr, ap->ip6_address, sizeof (ip6_address_t));
+      ifr6.mask_width = ap->ip6_mask_width;
+      ifr6.ifindex = ifr2.ifr_ifindex;
+      
+      if (ioctl (sockfd6, SIOCSIFADDR, &ifr6) < 0)
+        {
+          close (sockfd6);
+          clib_unix_warning ("ifr6");
+          rv = VNET_API_ERROR_SYSCALL_ERROR_10;
+          goto error;
+        }
+      close (sockfd6);
+    }
+
   ti = tapcli_get_new_tapif();
   ti->per_interface_next_index = ~0;
 
-  if (hwaddr_arg != 0)
-    clib_memcpy(hwaddr, hwaddr_arg, 6);
+  if (ap->hwaddr_arg != 0)
+    clib_memcpy(hwaddr, ap->hwaddr_arg, 6);
   else
     {
       f64 now = vlib_time_now(vm);
@@ -937,8 +1015,8 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
     hw->max_supported_packet_bytes = TAP_MTU_MAX;
     hw->max_l3_packet_bytes[VLIB_RX] = hw->max_l3_packet_bytes[VLIB_TX] = hw->max_supported_packet_bytes - sizeof(ethernet_header_t);
     ti->sw_if_index = hw->sw_if_index;
-    if (sw_if_indexp)
-      *sw_if_indexp = hw->sw_if_index;
+    if (ap->sw_if_indexp)
+      *(ap->sw_if_indexp) = hw->sw_if_index;
   }
 
   ti->active = 1;
@@ -972,16 +1050,15 @@ int vnet_tap_connect (vlib_main_t * vm, u8 * intfc_name, u8 *hwaddr_arg,
  * @return rc - int
  *
  */
-int vnet_tap_connect_renumber (vlib_main_t * vm, u8 * intfc_name,
-                               u8 *hwaddr_arg, u32 * sw_if_indexp,
-                               u8 renumber, u32 custom_dev_instance)
+int vnet_tap_connect_renumber (vlib_main_t * vm, 
+                               vnet_tap_connect_args_t *ap)
 {
-    int rv = vnet_tap_connect(vm, intfc_name, hwaddr_arg, sw_if_indexp);
+  int rv = vnet_tap_connect(vm, ap);
 
-    if (!rv && renumber)
-        vnet_interface_name_renumber (*sw_if_indexp, custom_dev_instance);
+  if (!rv && ap->renumber)
+    vnet_interface_name_renumber (*(ap->sw_if_indexp), ap->custom_dev_instance);
 
-    return rv;
+  return rv;
 }
 
 /**
@@ -1118,18 +1195,14 @@ VLIB_CLI_COMMAND (tap_delete_command, static) = {
  * @return rc - int
  *
  */
-int vnet_tap_modify (vlib_main_t * vm, u32 orig_sw_if_index,
-                     u8 * intfc_name, u8 *hwaddr_arg, 
-                     u32 * sw_if_indexp,
-                     u8 renumber, u32 custom_dev_instance)
+int vnet_tap_modify (vlib_main_t * vm, vnet_tap_connect_args_t *ap)
 {
-    int rv = vnet_tap_delete (vm, orig_sw_if_index);
+    int rv = vnet_tap_delete (vm, ap->orig_sw_if_index);
 
     if (rv)
-        return rv;
+      return rv;
 
-    rv = vnet_tap_connect_renumber(vm, intfc_name, hwaddr_arg, sw_if_indexp,
-            renumber, custom_dev_instance);
+    rv = vnet_tap_connect_renumber(vm, ap);
 
     return rv;
 }
@@ -1155,6 +1228,7 @@ tap_modify_command_fn (vlib_main_t * vm,
   u32 new_sw_if_index = ~0;
   int user_hwaddr = 0;
   u8 hwaddr[6];
+  vnet_tap_connect_args_t _a, *ap= &_a;
 
   if (tm->is_disabled)
     {
@@ -1179,14 +1253,19 @@ tap_modify_command_fn (vlib_main_t * vm,
     user_hwaddr = 1;
 
 
-  int rc = vnet_tap_modify (vm, sw_if_index, intfc_name,
-                            (user_hwaddr == 1 ? hwaddr : 0),
-                            &new_sw_if_index, 0, 0);
+  memset (ap, 0, sizeof(*ap));
+  ap->orig_sw_if_index = sw_if_index;
+  ap->intfc_name = intfc_name;
+  ap->sw_if_indexp = &new_sw_if_index;
+  if (user_hwaddr)
+    ap->hwaddr_arg = hwaddr;
+
+  int rc = vnet_tap_modify (vm, ap);
 
   if (!rc) {
     vlib_cli_output (vm, "Modified %U for Linux tap '%s'",
                    format_vnet_sw_if_index_name, tm->vnet_main, 
-                   new_sw_if_index, intfc_name);
+                     *(ap->sw_if_indexp), ap->intfc_name);
   } else {
     vlib_cli_output (vm, "Error during modification of tap interface. (rc: %d)", rc);
   }
@@ -1216,82 +1295,117 @@ tap_connect_command_fn (vlib_main_t * vm,
 		 vlib_cli_command_t * cmd)
 {
   u8 * intfc_name;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_tap_connect_args_t _a, *ap= &_a;
   tapcli_main_t * tm = &tapcli_main;
   u8 hwaddr[6];
   u8 *hwaddr_arg = 0;
   u32 sw_if_index;
+  ip4_address_t ip4_address;
+  int ip4_address_set = 0;
+  ip6_address_t ip6_address;
+  int ip6_address_set = 0;
+  u32 ip4_mask_width = 0;
+  u32 ip6_mask_width = 0;
 
   if (tm->is_disabled)
+    return clib_error_return (0, "device disabled...");
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      return clib_error_return (0, "device disabled...");
+      if (unformat(line_input, "hwaddr %U", unformat_ethernet_address,
+                   &hwaddr))
+        hwaddr_arg = hwaddr;
+      
+      /* It is here for backward compatibility */
+      else if (unformat(line_input, "hwaddr random"))
+        ;
+      
+      else if (unformat (line_input, "address %U/%d",
+                         unformat_ip4_address, &ip4_address, &ip4_mask_width))
+        ip4_address_set = 1;
+      
+      else if (unformat (line_input, "address %U/%d",
+                         unformat_ip6_address, &ip6_address, &ip6_mask_width))
+        ip6_address_set = 1;
+      
+      else if (unformat (line_input, "%s", &intfc_name))
+        ;
+      else
+        return clib_error_return (0, "unknown input `%U'",
+                                  format_unformat_error, line_input);
+    }
+  
+  memset (ap, 0, sizeof (*ap));
+
+  ap->intfc_name = intfc_name;
+  ap->hwaddr_arg = hwaddr_arg;
+  if (ip4_address_set)
+    {
+      ap->ip4_address = &ip4_address;
+      ap->ip4_mask_width = ip4_mask_width;
+      ap->ip4_address_set = 1;
+    }
+  if (ip6_address_set)
+    {
+      ap->ip6_address = &ip6_address;
+      ap->ip6_mask_width = ip6_mask_width;
+      ap->ip6_address_set = 1;
     }
 
-  if (unformat (input, "%s", &intfc_name))
-    ;
-  else
-    return clib_error_return (0, "unknown input `%U'",
-                              format_unformat_error, input);
-  
-  if (unformat(input, "hwaddr %U", unformat_ethernet_address,
-               &hwaddr))
-    hwaddr_arg = hwaddr;
+  ap->sw_if_indexp = &sw_if_index;
 
-  /* It is here for backward compatibility */
-  if (unformat(input, "hwaddr random"))
-    ;
+  int rv = vnet_tap_connect(vm, ap);
 
-  int rv = vnet_tap_connect(vm, intfc_name, hwaddr_arg, &sw_if_index);
-  if (rv) {
-    switch (rv) {
+  switch (rv) 
+    {
     case VNET_API_ERROR_SYSCALL_ERROR_1:
-      vlib_cli_output (vm, "Couldn't open /dev/net/tun");
-      break;
-
+      return clib_error_return (0, "Couldn't open /dev/net/tun");
+      
     case VNET_API_ERROR_SYSCALL_ERROR_2:
-      vlib_cli_output (vm, "Error setting flags on '%s'", intfc_name);
-      break;
+      return clib_error_return (0, "Error setting flags on '%s'", intfc_name);
   
     case VNET_API_ERROR_SYSCALL_ERROR_3:
-      vlib_cli_output (vm, "Couldn't open provisioning socket");
-      break;
+      return clib_error_return (0,  "Couldn't open provisioning socket");
 
     case VNET_API_ERROR_SYSCALL_ERROR_4:
-      vlib_cli_output (vm, "Couldn't get if_index");
-      break;
+      return clib_error_return (0,  "Couldn't get if_index");
     
     case VNET_API_ERROR_SYSCALL_ERROR_5:
-      vlib_cli_output (vm, "Couldn't bind provisioning socket");
-      break;
+      return clib_error_return (0,  "Couldn't bind provisioning socket");
 
     case VNET_API_ERROR_SYSCALL_ERROR_6:
-      vlib_cli_output (0, "Couldn't set device non-blocking flag");
-      break;
+      return clib_error_return (0,  "Couldn't set device non-blocking flag");
 
     case VNET_API_ERROR_SYSCALL_ERROR_7:
-      vlib_cli_output (0, "Couldn't set device MTU");
-      break;
+      return clib_error_return (0,  "Couldn't set device MTU");
 
     case VNET_API_ERROR_SYSCALL_ERROR_8:
-      vlib_cli_output (0, "Couldn't get interface flags");
-      break;
+      return clib_error_return (0,  "Couldn't get interface flags");
 
     case VNET_API_ERROR_SYSCALL_ERROR_9:
-      vlib_cli_output (0, "Couldn't set intfc admin state up");
-      break;
+      return clib_error_return (0,  "Couldn't set intfc admin state up");
+
+    case VNET_API_ERROR_SYSCALL_ERROR_10:
+      return clib_error_return (0,  "Couldn't set intfc address/mask");
 
     case VNET_API_ERROR_INVALID_REGISTRATION:
-      vlib_cli_output (0, "Invalid registration");
-      break;
-    default:
-      vlib_cli_output (0, "Unknown error: %d", rv);
-      break;
-    }
-    return 0;
-  }
+      return clib_error_return (0,  "Invalid registration");
 
-  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
+    case 0:
+      break;
+
+    default:
+      return clib_error_return (0,  "Unknown error: %d", rv);
+    }
+
+  vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, 
+                  vnet_get_main(), sw_if_index);
   return 0;
-  }
+}
 
 VLIB_CLI_COMMAND (tap_connect_command, static) = {
     .path = "tap connect",

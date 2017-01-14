@@ -35,7 +35,7 @@ _(SYSCALL_ERROR_6, -16, "System call error #6")                         \
 _(SYSCALL_ERROR_7, -17, "System call error #7")                         \
 _(SYSCALL_ERROR_8, -18, "System call error #8")                         \
 _(SYSCALL_ERROR_9, -19, "System call error #9")                         \
-_(SYSCALL_ERROR_10, -20, "System call error #9")                        \
+_(SYSCALL_ERROR_10, -20, "System call error #10")                       \
 _(FEATURE_DISABLED, -30, "Feature disabled by configuration")           \
 _(INVALID_REGISTRATION, -31, "Invalid registration")                    \
 _(NEXT_HOP_NOT_IN_FIB, -50, "Next hop not in FIB")                      \

@@ -86,11 +86,30 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp)
   unix_shared_memory_queue_t *q;
   u32 sw_if_index = (u32) ~ 0;
   u8 *tag;
+  vnet_tap_connect_args_t _a, *ap = &_a;
 
-  rv = vnet_tap_connect_renumber (vm, mp->tap_name,
-				  mp->use_random_mac ? 0 : mp->mac_address,
-				  &sw_if_index, mp->renumber,
-				  ntohl (mp->custom_dev_instance));
+  memset (ap, 0, sizeof (*ap));
+
+  ap->intfc_name = mp->tap_name;
+  if (!mp->use_random_mac)
+    ap->hwaddr_arg = mp->mac_address;
+  ap->renumber = mp->renumber;
+  ap->sw_if_indexp = &sw_if_index;
+  ap->custom_dev_instance = ntohl (mp->custom_dev_instance);
+  if (mp->ip4_address_set)
+    {
+      ap->ip4_address = (ip4_address_t *) mp->ip4_address;
+      ap->ip4_mask_width = mp->ip4_mask_width;
+      ap->ip4_address_set = 1;
+    }
+  if (mp->ip6_address_set)
+    {
+      ap->ip6_address = (ip6_address_t *) mp->ip6_address;
+      ap->ip6_mask_width = mp->ip6_mask_width;
+      ap->ip6_address_set = 1;
+    }
+
+  rv = vnet_tap_connect_renumber (vm, ap);
 
   /* Add tag if supplied */
   if (rv == 0 && mp->tag[0])
@@ -121,11 +140,19 @@ vl_api_tap_modify_t_handler (vl_api_tap_modify_t * mp)
   unix_shared_memory_queue_t *q;
   u32 sw_if_index = (u32) ~ 0;
   vlib_main_t *vm = vlib_get_main ();
+  vnet_tap_connect_args_t _a, *ap = &_a;
 
-  rv = vnet_tap_modify (vm, ntohl (mp->sw_if_index), mp->tap_name,
-			mp->use_random_mac ? 0 : mp->mac_address,
-			&sw_if_index, mp->renumber,
-			ntohl (mp->custom_dev_instance));
+  memset (ap, 0, sizeof (*ap));
+
+  ap->orig_sw_if_index = ntohl (mp->sw_if_index);
+  ap->intfc_name = mp->tap_name;
+  if (!mp->use_random_mac)
+    ap->hwaddr_arg = mp->mac_address;
+  ap->sw_if_indexp = &sw_if_index;
+  ap->renumber = mp->renumber;
+  ap->custom_dev_instance = ntohl (mp->custom_dev_instance);
+
+  rv = vnet_tap_modify (vm, ap);
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)

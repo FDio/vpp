@@ -438,7 +438,12 @@ static void *vl_api_tap_connect_t_print
     s = format (s, "tag %s ", mp->tag);
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
-
+  if (mp->ip4_address_set)
+    s = format (s, "address %U/%d ", format_ip4_address, mp->ip4_address,
+		mp->ip4_mask_width);
+  if (mp->ip6_address_set)
+    s = format (s, "address %U/%d ", format_ip6_address, mp->ip6_address,
+		mp->ip6_mask_width);
   FINISH;
 }
 

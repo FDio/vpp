@@ -35,6 +35,12 @@ define tap_connect
   u8 mac_address[6];
   u8 renumber;
   u32 custom_dev_instance;
+  u8 ip4_address_set;
+  u8 ip4_address[4];
+  u8 ip4_mask_width;
+  u8 ip6_address_set;
+  u8 ip6_address[16];
+  u8 ip6_mask_width;
   u8 tag[64];
 };
 
