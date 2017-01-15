@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-WS_ROOT=$(CURDIR)
-BR=$(WS_ROOT)/build-root
+export WS_ROOT=$(CURDIR)
+export BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
@@ -202,18 +202,17 @@ wipe-release: $(BR)/.bootstrap.ok
 
 rebuild-release: wipe-release build-release
 
-VPP_PYTHON_PREFIX=$(BR)/python
+export VPP_PYTHON_PREFIX=$(BR)/python
 
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
 	make -C test \
-	  BR=$(BR) \
 	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
 	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(2)-native/vpp/lib64/vpp_plugins \
 	  VPP_TEST_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(BR)/install-$(2)-native/vpp/lib64/ \
-	  WS_ROOT=$(WS_ROOT) V=$(V) TEST=$(TEST) VPP_PYTHON_PREFIX=$(VPP_PYTHON_PREFIX) $(3)
+	  $(3)
 endef
 
 test: bootstrap
@@ -229,16 +228,16 @@ test-wipe:
 	@make -C test wipe
 
 test-doc:
-	@make -C test WS_ROOT=$(WS_ROOT) BR=$(BR) VPP_PYTHON_PREFIX=$(VPP_PYTHON_PREFIX) doc
+	@make -C test doc
 
 test-wipe-doc:
-	@make -C test wipe-doc BR=$(BR)
+	@make -C test wipe-doc
 
 test-cov: bootstrap
 	$(call test,vpp_lite,vpp_lite_gcov,cov)
 
 test-wipe-cov:
-	@make -C test wipe-cov BR=$(BR)
+	@make -C test wipe-cov
 
 retest:
 	$(call test,vpp_lite,vpp_lite,retest)
@@ -316,7 +315,7 @@ fixstyle:
 export DOXY_DIR ?= $(WS_ROOT)/doxygen
 
 define make-doxy
-	@OS_ID="$(OS_ID)" WS_ROOT="$(WS_ROOT)" BR="$(BR)" make -C $(DOXY_DIR) $@
+	@OS_ID="$(OS_ID)" make -C $(DOXY_DIR) $@
 endef
 
 .PHONY: bootstrap-doxygen doxygen wipe-doxygen
