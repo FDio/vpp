@@ -244,7 +244,11 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           /* Send to DHCPV6 server via the configured FIB */
           rx_sw_if_index = sw_if_index =  vnet_buffer(b0)->sw_if_index[VLIB_RX];
           rx_fib_idx = im->fib_index_by_sw_if_index [rx_sw_if_index];
-          server_idx = dpm->dhcp6_server_index_by_rx_fib_index[rx_fib_idx];
+
+	  if (vec_len(dpm->dhcp6_server_index_by_rx_fib_index) <= rx_fib_idx)
+	    goto no_server;
+
+	  server_idx = dpm->dhcp6_server_index_by_rx_fib_index[rx_fib_idx];
 
           if (PREDICT_FALSE (pool_is_free_index (dpm->dhcp6_servers,
                                                           server_idx)))
