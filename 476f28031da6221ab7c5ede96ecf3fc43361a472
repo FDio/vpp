@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_2b96154d",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-16T17:49:27Z",
+      "side": 1,
+      "message": "could we please improve naming?\n\nbased on this name, I have no idea what the function does...\n\nthe same applies for other functions\n\nalso please write a docstring describing what the function does",
+      "range": {
+        "startLine": 89,
+        "startChar": 8,
+        "endLine": 89,
+        "endChar": 34
+      },
+      "revId": "476f28031da6221ab7c5ede96ecf3fc43361a472",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
