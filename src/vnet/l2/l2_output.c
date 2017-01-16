@@ -48,6 +48,7 @@ typedef struct
   u8 src[6];
   u8 dst[6];
   u32 sw_if_index;
+  u8 raw[12];			/* raw data */
 } l2output_trace_t;
 
 /* packet trace format function */
@@ -58,10 +59,15 @@ format_l2output_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2output_trace_t *t = va_arg (*args, l2output_trace_t *);
 
-  s = format (s, "l2-output: sw_if_index %d dst %U src %U",
+  s = format (s, "l2-output: sw_if_index %d dst %U src %U data "
+	      "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
 	      t->sw_if_index,
 	      format_ethernet_address, t->dst,
-	      format_ethernet_address, t->src);
+	      format_ethernet_address, t->src,
+	      t->raw[0], t->raw[1], t->raw[2], t->raw[3], t->raw[4],
+	      t->raw[5], t->raw[6], t->raw[7], t->raw[8], t->raw[9],
+	      t->raw[10], t->raw[11]);
+
   return s;
 }
 
@@ -214,46 +220,6 @@ l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
 	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
 
-	  if (do_trace)
-	    {
-	      h0 = vlib_buffer_get_current (b0);
-	      h1 = vlib_buffer_get_current (b1);
-	      h2 = vlib_buffer_get_current (b2);
-	      h3 = vlib_buffer_get_current (b3);
-	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  t->sw_if_index = sw_if_index0;
-		  clib_memcpy (t->src, h0->src_address, 6);
-		  clib_memcpy (t->dst, h0->dst_address, 6);
-		}
-	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b1, sizeof (*t));
-		  t->sw_if_index = sw_if_index1;
-		  clib_memcpy (t->src, h1->src_address, 6);
-		  clib_memcpy (t->dst, h1->dst_address, 6);
-		}
-	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b2, sizeof (*t));
-		  t->sw_if_index = sw_if_index2;
-		  clib_memcpy (t->src, h2->src_address, 6);
-		  clib_memcpy (t->dst, h2->dst_address, 6);
-		}
-	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
-		{
-		  l2output_trace_t *t =
-		    vlib_add_trace (vm, node, b3, sizeof (*t));
-		  t->sw_if_index = sw_if_index3;
-		  clib_memcpy (t->src, h3->src_address, 6);
-		  clib_memcpy (t->dst, h3->dst_address, 6);
-		}
-	    }
-
 	  vlib_node_increment_counter (vm, l2output_node.index,
 				       L2OUTPUT_ERROR_L2OUTPUT, 4);
 
@@ -313,6 +279,50 @@ l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  l2output_vtr (node, config1, feature_bitmap1, b1, &next1);
 	  l2output_vtr (node, config2, feature_bitmap2, b2, &next2);
 	  l2output_vtr (node, config3, feature_bitmap3, b3, &next3);
+
+	  if (do_trace)
+	    {
+	      h0 = vlib_buffer_get_current (b0);
+	      h1 = vlib_buffer_get_current (b1);
+	      h2 = vlib_buffer_get_current (b2);
+	      h3 = vlib_buffer_get_current (b3);
+	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2output_trace_t *t =
+		    vlib_add_trace (vm, node, b0, sizeof (*t));
+		  t->sw_if_index = sw_if_index0;
+		  clib_memcpy (t->src, h0->src_address, 6);
+		  clib_memcpy (t->dst, h0->dst_address, 6);
+		  clib_memcpy (t->raw, &h0->type, sizeof (t->raw));
+		}
+	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2output_trace_t *t =
+		    vlib_add_trace (vm, node, b1, sizeof (*t));
+		  t->sw_if_index = sw_if_index1;
+		  clib_memcpy (t->src, h1->src_address, 6);
+		  clib_memcpy (t->dst, h1->dst_address, 6);
+		  clib_memcpy (t->raw, &h1->type, sizeof (t->raw));
+		}
+	      if (b2->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2output_trace_t *t =
+		    vlib_add_trace (vm, node, b2, sizeof (*t));
+		  t->sw_if_index = sw_if_index2;
+		  clib_memcpy (t->src, h2->src_address, 6);
+		  clib_memcpy (t->dst, h2->dst_address, 6);
+		  clib_memcpy (t->raw, &h2->type, sizeof (t->raw));
+		}
+	      if (b3->flags & VLIB_BUFFER_IS_TRACED)
+		{
+		  l2output_trace_t *t =
+		    vlib_add_trace (vm, node, b3, sizeof (*t));
+		  t->sw_if_index = sw_if_index3;
+		  clib_memcpy (t->src, h3->src_address, 6);
+		  clib_memcpy (t->dst, h3->dst_address, 6);
+		  clib_memcpy (t->raw, &h3->type, sizeof (t->raw));
+		}
+	    }
 
 	  /*
 	   * Perform the split horizon check
@@ -378,16 +388,6 @@ l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      l2output_trace_t *t =
-		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      t->sw_if_index = sw_if_index0;
-	      h0 = vlib_buffer_get_current (b0);
-	      clib_memcpy (t->src, h0->src_address, 6);
-	      clib_memcpy (t->dst, h0->dst_address, 6);
-	    }
-
 	  vlib_node_increment_counter (vm, l2output_node.index,
 				       L2OUTPUT_ERROR_L2OUTPUT, 1);
 
@@ -411,6 +411,17 @@ l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			      b0, sw_if_index0, feature_bitmap0, &next0);
 
 	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
+
+	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      l2output_trace_t *t =
+		vlib_add_trace (vm, node, b0, sizeof (*t));
+	      t->sw_if_index = sw_if_index0;
+	      h0 = vlib_buffer_get_current (b0);
+	      clib_memcpy (t->src, h0->src_address, 6);
+	      clib_memcpy (t->dst, h0->dst_address, 6);
+	      clib_memcpy (t->raw, &h0->type, sizeof (t->raw));
+	    }
 
 	  /* Perform the split horizon check */
 	  if (PREDICT_FALSE
