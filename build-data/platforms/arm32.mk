@@ -22,8 +22,8 @@ arm32_root_packages = vpp vlib vlib-api vnet svm vpp-api-test \
 	jvpp gmod
 
 vlib_configure_args_arm32 = --with-pre-data=128
-vnet_configure_args_arm32 = --with-dpdk --without-ipsec --without-ipv6sr
-vpp_configure_args_arm32 = --with-dpdk --without-ipsec --without-ipv6sr
+vnet_configure_args_arm32 = --with-dpdk --without-libssl
+vpp_configure_args_arm32 = --with-dpdk --without-libssl
 
 arm32_dpdk_arch = "armv7a"
 arm32_dpdk_target = "arm-armv7a-linuxapp-gcc"

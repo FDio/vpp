@@ -27,7 +27,7 @@
 #define ESP_NODE "esp-encrypt"
 #endif
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
 
 #define foreach_ipsec_output_next                \
 _(DROP, "error-drop")                            \
