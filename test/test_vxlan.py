@@ -86,7 +86,34 @@ class TestVxlan(BridgeDomain, VppTestCase):
             cls.vapi.sw_interface_set_l2_bridge(r.sw_if_index, bd_id=vni)
 
     @classmethod
-    def add_del_mcast_load(cls, is_add):
+    def add_del_shared_mcast_dst_load(cls, is_add):
+        """
+        add or del 2000 tunnels sharing the same mcast dst
+        to test vxlan ref_count mechanism
+        """
+        vni_start = 10000
+        vni_end = vni_start + 2000
+        for vni in range(vni_start, vni_end):
+            cls.vapi.vxlan_add_del_tunnel(
+                src_addr=cls.pg0.local_ip4n,
+                dst_addr=cls.mcast_ip4n,
+                mcast_sw_if_index=1,
+                vni=vni,
+                is_add=is_add)
+
+    @classmethod
+    def add_shared_mcast_dst_load(cls):
+        cls.add_del_shared_mcast_dst_load(is_add=1)
+
+    @classmethod
+    def del_shared_mcast_dst_load(cls):
+        cls.add_del_shared_mcast_dst_load(is_add=0)
+
+    @classmethod
+    def add_del_mcast_tunnels_load(cls, is_add):
+        """
+        add or del 200 tunnels to test vxlan stability
+        """
         ip_range_start = 10
         ip_range_end = 210
         for dest_ip4n in ip4n_range(cls.mcast_ip4n, ip_range_start,
@@ -100,12 +127,12 @@ class TestVxlan(BridgeDomain, VppTestCase):
                 is_add=is_add)
 
     @classmethod
-    def add_mcast_load(cls):
-        cls.add_del_mcast_load(is_add=1)
+    def add_mcast_tunnels_load(cls):
+        cls.add_del_mcast_tunnels_load(is_add=1)
 
     @classmethod
-    def del_mcast_load(cls):
-        cls.add_del_mcast_load(is_add=0)
+    def del_mcast_tunnels_load(cls):
+        cls.add_del_mcast_tunnels_load(is_add=0)
 
     # Class method to start the VXLAN test case.
     #  Overrides setUpClass method in VppTestCase class.
@@ -166,8 +193,10 @@ class TestVxlan(BridgeDomain, VppTestCase):
                                                 bd_id=cls.mcast_flood_bd)
 
             # Add and delete mcast tunnels to check stability
-            cls.add_mcast_load()
-            cls.del_mcast_load()
+            cls.add_shared_mcast_dst_load()
+            cls.add_mcast_tunnels_load()
+            cls.del_shared_mcast_dst_load()
+            cls.del_mcast_tunnels_load()
 
             # Setup vni 3 to test unicast flooding
             cls.ucast_flood_bd = 3
