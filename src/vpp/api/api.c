@@ -54,7 +54,7 @@
 #include <vnet/ip/ip6_neighbor.h>
 #include <vnet/dhcp/proxy.h>
 #include <vnet/dhcp/client.h>
-#if IPV6SR > 0
+#if WITH_LIBSSL > 0
 #include <vnet/sr/sr.h>
 #endif
 #include <vnet/dhcpv6/proxy.h>

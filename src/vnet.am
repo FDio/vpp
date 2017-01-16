@@ -26,7 +26,7 @@ libvnet_la_DEPENDENCIES = \
 libvnet_la_LIBADD = $(libvnet_la_DEPENDENCIES) -lm -lpthread -ldl -lrt $(DPDK_LD_ADD)
 libvnet_la_LDFLAGS = $(DPDK_LD_FLAGS)
 
-if WITH_IPV6SR
+if WITH_LIBSSL
 libvnet_la_LIBADD += -lcrypto
 endif
 
@@ -372,7 +372,7 @@ API_FILES += vnet/bfd/bfd.api
 ########################################
 # Layer 3 protocol: IPSec
 ########################################
-if WITH_IPSEC
+if WITH_LIBSSL
 libvnet_la_SOURCES +=				\
  vnet/ipsec/ipsec.c				\
  vnet/ipsec/ipsec_cli.c				\
@@ -673,7 +673,7 @@ nobase_include_HEADERS +=			\
 # ipv6 segment routing
 ########################################
 
-if WITH_IPV6SR
+if WITH_LIBSSL
 libvnet_la_SOURCES +=				\
  vnet/sr/sr.c					\
  vnet/sr/sr_replicate.c				\

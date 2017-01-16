@@ -15,10 +15,10 @@ thunder_root_packages = vppinfra vlib-cavium-dpdk vnet-cavium-dpdk cavium-dpdk \
 	vpp-cavium-dpdk vpp-api-test-cavium-dpdk
 
 vnet-cavium-dpdk_configure_args_thunder = \
-	--with-dpdk --without-ipsec --without-ipv6sr
+	--with-dpdk --without-libssl
 
 vpp-cavium-dpdk_configure_args_thunder = \
-	--with-dpdk --without-ipsec --without-ipv6sr
+	--with-dpdk --without-libssl
 
 cavium-dpdk_configure_args_thunder = --with-headroom=256
 
