@@ -356,5 +356,6 @@ ifeq ($(OS_ID),centos)
 	$(call banner,"Building rpm packages")
 	@make pkg-rpm
 endif
+	@make test
 
 
