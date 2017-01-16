@@ -323,6 +323,28 @@ static void increment_v4_address (ip4_address_t * a)
   a->as_u32 = clib_host_to_net_u32(v);
 }
 
+static void 
+snat_add_static_mapping_when_resolved (snat_main_t * sm, 
+                                       ip4_address_t l_addr, 
+                                       u16 l_port, 
+                                       u32 sw_if_index, 
+                                       u16 e_port, 
+                                       u32 vrf_id,
+                                       int addr_only,  
+                                       int is_add)
+{
+  snat_static_map_resolve_t *rp;
+
+  vec_add2 (sm->to_resolve, rp, 1);
+  rp->l_addr.as_u32 = l_addr.as_u32;
+  rp->l_port = l_port;
+  rp->sw_if_index = sw_if_index;
+  rp->e_port = e_port;
+  rp->vrf_id = vrf_id;
+  rp->addr_only = addr_only;
+  rp->is_add = is_add;
+}
+
 /**
  * @brief Add static mapping.
  *
@@ -340,7 +362,7 @@ static void increment_v4_address (ip4_address_t * a)
  */
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
-                            int is_add)
+                            u32 sw_if_index, int is_add)
 {
   snat_main_t * sm = &snat_main;
   snat_static_mapping_t *m;
@@ -358,6 +380,27 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       if (!p)
         return VNET_API_ERROR_NO_SUCH_FIB;
       sm->outside_fib_index = p[0];
+    }
+
+  /* If the external address is a specific interface address */
+  if (sw_if_index != ~0)
+    {
+      ip4_address_t * first_int_addr;
+
+      /* Might be already set... */
+      first_int_addr = ip4_interface_first_address 
+        (sm->ip4_main, sw_if_index, 0 /* just want the address*/);
+
+      /* DHCP resolution required? */
+      if (first_int_addr == 0)
+        {
+          snat_add_static_mapping_when_resolved 
+            (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, 
+             addr_only,  is_add);
+          return 0;
+        }
+        else
+          e_addr.as_u32 = first_int_addr->as_u32;
     }
 
   m_key.addr = e_addr;
@@ -881,6 +924,7 @@ vl_api_snat_add_static_mapping_t_handler
 
   rv = snat_add_static_mapping(local_addr, external_addr, local_port,
                                external_port, vrf_id, mp->addr_only,
+                               ~0 /* sw_if_index */,
                                mp->is_add);
 
  send_reply:
@@ -1276,6 +1320,7 @@ static void plugin_custom_dump_configure (snat_main_t * sm)
 #undef _
 }
 
+
 static void
 snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                        uword opaque,
@@ -1636,6 +1681,8 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   u32 l_port = 0, e_port = 0, vrf_id = ~0;
   int is_add = 1;
   int addr_only = 1;
+  u32 sw_if_index = ~0;
+  vnet_main_t * vnm = vnet_get_main();
   int rv;
 
   /* Get a line of input. */
@@ -1655,6 +1702,14 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "external %U", unformat_ip4_address,
                          &e_addr))
         ;
+      else if (unformat (line_input, "external %U %u",
+                         unformat_vnet_sw_interface, vnm, &sw_if_index,
+                         &e_port))
+        addr_only = 0;
+
+      else if (unformat (line_input, "external %U",
+                         unformat_vnet_sw_interface, vnm, &sw_if_index))
+        ;
       else if (unformat (line_input, "vrf %u", &vrf_id))
         ;
       else if (unformat (line_input, "del"))
@@ -1666,7 +1721,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   unformat_free (line_input);
 
   rv = snat_add_static_mapping(l_addr, e_addr, (u16) l_port, (u16) e_port,
-                               vrf_id, addr_only, is_add);
+                               vrf_id, addr_only, sw_if_index, is_add);
 
   switch (rv)
     {
@@ -2179,7 +2234,10 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                        u32 is_delete)
 {
   snat_main_t *sm = &snat_main;
+  snat_static_map_resolve_t *rp;
+  u32 *indices_to_delete = 0;
   int i, j;
+  int rv;
 
   for (i = 0; i < vec_len(sm->auto_add_sw_if_indices); i++)
     {
@@ -2193,6 +2251,36 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                   return;
 
               snat_add_address (sm, address);
+              /* Scan static map resolution vector */
+              for (j = 0; j < vec_len (sm->to_resolve); j++)
+                {
+                  rp = sm->to_resolve + j;
+                  /* On this interface? */
+                  if (rp->sw_if_index == sw_if_index)
+                    {
+                      /* Add the static mapping */
+                      rv = snat_add_static_mapping (rp->l_addr,
+                                                    address[0],
+                                                    rp->l_port,
+                                                    rp->e_port,
+                                                    rp->vrf_id,
+                                                    rp->addr_only,
+                                                    ~0 /* sw_if_index */,
+                                                    rp->is_add);
+                      if (rv)
+                        clib_warning ("snat_add_static_mapping returned %d", 
+                                      rv);
+                      vec_add1 (indices_to_delete, j);
+                    }
+                }
+              /* If we resolved any of the outstanding static mappings */
+              if (vec_len(indices_to_delete))
+                {
+                  /* Delete them */
+                  for (j = vec_len(indices_to_delete)-1; j >= 0; j--)
+                    vec_delete(sm->to_resolve, 1, j);
+                  vec_free(indices_to_delete);
+                }
               return;
             }
           else

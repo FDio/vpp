@@ -132,6 +132,16 @@ typedef struct {
 } snat_interface_t;
 
 typedef struct {
+  ip4_address_t l_addr;
+  u16 l_port;
+  u16 e_port;
+  u32 sw_if_index;
+  u32 vrf_id;
+  int addr_only;
+  int is_add;
+} snat_static_map_resolve_t;
+
+typedef struct {
   /* User pool */
   snat_user_t * users;
 
@@ -181,6 +191,9 @@ typedef struct {
 
   /* sw_if_indices whose intfc addresses should be auto-added */
   u32 * auto_add_sw_if_indices;
+
+  /* vector of interface address static mappings to resolve. */
+  snat_static_map_resolve_t *to_resolve;
 
   /* Randomize port allocation order */
   u32 random_seed;
