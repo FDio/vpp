@@ -14,9 +14,17 @@
 lib_LTLIBRARIES += libvnet.la
 
 libvnet_la_SOURCES =
+libvnet_la_DEPENDENCIES = \
+	libvppinfra.la		\
+	libvlib.la		\
+	libsvmdb.la		\
+	libsvm.la 		\
+	libvlibapi.la		\
+	libvlibmemory.la	\
+	libvlibmemoryclient.la
 
-libvnet_la_LIBADD = libvppinfra.la libsvm.la
-libvnet_la_DEPENDENCIES = libvppinfra.la libvlib.la libsvmdb.la libsvm.la libvlibapi.la libvlibmemory.la libvlibmemoryclient.la
+libvnet_la_LIBADD = $(libvnet_la_DEPENDENCIES) -lm -lpthread -ldl -lrt $(DPDK_LD_ADD)
+libvnet_la_LDFLAGS = $(DPDK_LD_FLAGS)
 
 if WITH_IPV6SR
 libvnet_la_LIBADD += -lcrypto
@@ -579,7 +587,7 @@ LDS = \
   libsvmdb.la \
   libvlibapi.la \
   libvlibmemory.la \
-  -lpthread -ldl -lrt -lm -lcrypto
+  -lpthread -ldl -lrt -lm
 
 TESTS += test_cp_serdes test_lisp_types
 
@@ -597,10 +605,8 @@ test_lisp_types_SOURCES =			\
 test_cp_serdes_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_lisp_types_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
-test_cp_serdes_LDFLAGS = $(DPDK_LD_FLAGS)
-test_cp_serdes_LDADD = $(LDS) $(DPDK_LD_ADD)
-test_lisp_types_LDFLAGS = $(DPDK_LD_FLAGS)
-test_lisp_types_LDADD = $(LDS) $(DPDK_LD_ADD)
+test_cp_serdes_LDADD = $(LDS)
+test_lisp_types_LDADD = $(LDS)
 endif
 
 ########################################
