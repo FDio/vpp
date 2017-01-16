@@ -772,6 +772,7 @@ libvnet_la_SOURCES +=				\
   vnet/devices/dpdk/device.c		\
   vnet/devices/dpdk/format.c		\
   vnet/devices/dpdk/init.c			\
+  vnet/devices/dpdk/main.c			\
   vnet/devices/dpdk/node.c			\
   vnet/devices/dpdk/thread.c			\
   vnet/devices/dpdk/hqos.c			\
