@@ -26,7 +26,7 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #endif /* IPSEC */
@@ -63,7 +63,7 @@ _(IKEV2_SET_LOCAL_KEY, ikev2_set_local_key)
 static void vl_api_ipsec_spd_add_del_t_handler
   (vl_api_ipsec_spd_add_del_t * mp)
 {
-#if IPSEC == 0
+#if WITH_LIBSSL == 0
   clib_warning ("unimplemented");
 #else
 
@@ -95,7 +95,7 @@ static void vl_api_ipsec_interface_add_del_spd_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   rv = ipsec_set_interface_spd (vm, sw_if_index, spd_id, mp->is_add);
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
@@ -113,7 +113,7 @@ static void vl_api_ipsec_spd_add_del_entry_t_handler
   vl_api_ipsec_spd_add_del_entry_reply_t *rmp;
   int rv;
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   ipsec_policy_t p;
 
   memset (&p, 0, sizeof (p));
@@ -176,7 +176,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_sad_add_del_entry_reply_t *rmp;
   int rv;
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   ipsec_sa_t sa;
 
   memset (&sa, 0, sizeof (sa));
@@ -324,7 +324,7 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   ipsec_spd_t *spd;
   uword *p;
   u32 spd_index;
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
@@ -355,7 +355,7 @@ vl_api_ipsec_sa_set_key_t_handler (vl_api_ipsec_sa_set_key_t * mp)
   vlib_main_t *vm __attribute__ ((unused)) = vlib_get_main ();
   vl_api_ipsec_sa_set_key_reply_t *rmp;
   int rv;
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   ipsec_sa_t sa;
   sa.id = ntohl (mp->sa_id);
   sa.crypto_key_len = mp->crypto_key_length;
@@ -377,7 +377,7 @@ vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
   vl_api_ikev2_profile_add_del_reply_t *rmp;
   int rv = 0;
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
@@ -399,7 +399,7 @@ static void
   vl_api_ikev2_profile_set_auth_reply_t *rmp;
   int rv = 0;
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
@@ -423,7 +423,7 @@ vl_api_ikev2_profile_set_id_t_handler (vl_api_ikev2_profile_set_id_t * mp)
   vl_api_ikev2_profile_add_del_reply_t *rmp;
   int rv = 0;
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
@@ -447,7 +447,7 @@ vl_api_ikev2_profile_set_ts_t_handler (vl_api_ikev2_profile_set_ts_t * mp)
   vl_api_ikev2_profile_set_ts_reply_t *rmp;
   int rv = 0;
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   u8 *tmp = format (0, "%s", mp->name);
@@ -470,7 +470,7 @@ vl_api_ikev2_set_local_key_t_handler (vl_api_ikev2_set_local_key_t * mp)
   vl_api_ikev2_profile_set_ts_reply_t *rmp;
   int rv = 0;
 
-#if IPSEC > 0
+#if WITH_LIBSSL > 0
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
 

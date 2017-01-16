@@ -42,10 +42,10 @@ dpaa2_dpdk_make_extra_args = "CROSS=$(dpaa2_target)- DPDK_PKTMBUF_HEADROOM=256"
 endif
 endif
 
-vpp_configure_args_dpaa2 = --with-dpdk --without-ipsec \
-	--without-ipv6sr --with-sysroot=$(SYSROOT)
-vnet_configure_args_dpaa2 = --with-dpdk --without-ipsec \
-	--without-ipv6sr --with-sysroot=$(SYSROOT)
+vpp_configure_args_dpaa2 = --with-dpdk --without-libssl \
+	--with-sysroot=$(SYSROOT)
+vnet_configure_args_dpaa2 = --with-dpdk --without-libssl \
+	--with-sysroot=$(SYSROOT)
 
 # Set these parameters carefully. The vlib_buffer_t is 256 bytes, i.e.
 vlib_configure_args_dpaa2 = --with-pre-data=256
