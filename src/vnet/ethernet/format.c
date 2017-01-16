@@ -88,30 +88,6 @@ format_ethernet_vlan_tci (u8 * s, va_list * va)
 }
 
 u8 *
-format_ethernet_pbb (u8 * s, va_list * va)
-{
-  u32 b_tag = va_arg (*va, u32);
-  u32 i_tag = va_arg (*va, u32);
-  u32 vid = (b_tag & 0xfff);
-  u32 bdei = (b_tag >> 12) & 1;
-  u32 bpcp = (b_tag >> 13);
-  u32 sid = (i_tag & 0xffffff);
-  u8 ires = (i_tag >> 24) & 3;
-  u8 iuca = (i_tag >> 27) & 1;
-  u8 idei = (i_tag >> 28) & 1;
-  u8 ipcp = (i_tag >> 29);
-
-  s =
-    format (s, "B_tag %04X (vid %d, dei %d, pcp %d), ", b_tag, vid, bdei,
-	    bpcp);
-  s =
-    format (s, "I_tag %08X (sid %d, res %d, dei %d, pcp %d)", i_tag, sid,
-	    ires, iuca, idei, ipcp);
-
-  return s;
-}
-
-u8 *
 format_ethernet_header_with_length (u8 * s, va_list * args)
 {
   ethernet_pbb_header_packed_t *ph =
@@ -177,10 +153,16 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
     }
   else
     {
-      s = format (s, "\n%UPBB header : %U", format_white_space, indent,
-		  format_ethernet_pbb,
-		  clib_net_to_host_u16 (ph->priority_dei_id),
-		  clib_net_to_host_u32 (ph->priority_dei_uca_res_sid));
+      s =
+	format (s, " %s b-tag %04X",
+		(clib_net_to_host_u16 (ph->b_type) ==
+		 ETHERNET_TYPE_DOT1AD) ? "802.1ad" : "",
+		clib_net_to_host_u16 (ph->priority_dei_id));
+      s =
+	format (s, " %s i-tag %08X",
+		(clib_net_to_host_u16 (ph->i_type) ==
+		 ETHERNET_TYPE_DOT1AH) ? "802.1ah" : "",
+		clib_net_to_host_u32 (ph->priority_dei_uca_res_sid));
     }
 
   return s;
