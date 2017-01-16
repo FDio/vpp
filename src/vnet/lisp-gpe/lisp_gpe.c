@@ -91,6 +91,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 	  pair.lcl_loc = lloc;
 	  pair.rmt_loc = rloc;
 	  pair.weight = w;
+	  pair.priority = 0;
 	  vec_add1 (pairs, pair);
 	}
       else
