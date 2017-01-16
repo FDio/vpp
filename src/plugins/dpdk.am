@@ -1,0 +1,33 @@
+# Copyright (c) 2016 Cisco Systems, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+vppplugins_LTLIBRARIES += dpdk_plugin.la
+
+dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive,-lm,-ldl
+
+# To be moved to plugins/dpdk/
+dpdk_plugin_la_SOURCES =			\
+  ../vnet/devices/dpdk/dpdk_priv.h		\
+  ../vnet/devices/dpdk/device.c			\
+  ../vnet/devices/dpdk/format.c			\
+  ../vnet/devices/dpdk/init.c			\
+  ../vnet/devices/dpdk/main.c			\
+  ../vnet/devices/dpdk/node.c			\
+  ../vnet/devices/dpdk/hqos.c			\
+  ../vnet/devices/dpdk/cli.c			\
+  ../vnet/devices/dpdk/buffer.c			\
+  ../vnet/devices/dpdk/thread.c
+
+nobase_include_HEADERS +=			\
+  ../vnet/devices/dpdk/dpdk.h
+# vi:syntax=automake

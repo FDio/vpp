@@ -14,7 +14,19 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/plugin/plugin.h>
 #include <vnet/devices/dpdk/dpdk.h>
+
+
+clib_error_t *
+vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
+                      int from_early_init)
+{
+  clib_error_t * error = 0;
+
+  clib_warning("hello");
+  return error;
+}
 
 
 /*
