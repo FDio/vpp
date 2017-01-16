@@ -682,6 +682,72 @@ VLIB_CLI_COMMAND (int_l2_vtr_cli, static) = {
 /* *INDENT-ON* */
 
 /**
+ * Get pbb tag rewrite on the given interface.
+ * Return 1 if there is an error, 0 if ok
+ */
+u32
+l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
+	   u32 * vtr_op, u16 * outer_tag, u8 * b_dmac, u8 * b_smac,
+	   u16 * b_vlanid, u32 * i_sid)
+{
+  u32 error = 1;
+  ptr_config_t *in_config;
+
+  if (!vtr_op || !outer_tag || !b_vlanid || !i_sid)
+    {
+      clib_warning ("invalid arguments");
+      error = VNET_API_ERROR_INVALID_ARGUMENT;
+      goto done;
+    }
+
+  *vtr_op = L2_VTR_DISABLED;
+  *outer_tag = 0;
+  *b_dmac = 0;
+  *b_smac = 0;
+  *b_vlanid = 0;
+  *i_sid = 0;
+
+  if (sw_if_index >= vec_len (l2output_main.configs))
+    {
+      /* no specific config (return disabled) */
+      goto done;
+    }
+
+  /* Get the config for this interface */
+  in_config =
+    &(vec_elt_at_index (l2output_main.configs, sw_if_index)->input_pbb_vtr);
+
+  if (in_config->push_and_pop_bytes == 0)
+    {
+      /* DISABLED */
+      goto done;
+    }
+  else
+    {
+      if (in_config->pop_bytes && in_config->push_bytes)
+	*vtr_op = L2_VTR_TRANSLATE_2_1;
+      else if (in_config->pop_bytes)
+	*vtr_op = L2_VTR_POP_2;
+      else if (in_config->push_bytes)
+	*vtr_op = L2_VTR_PUSH_2;
+
+      clib_memcpy (b_dmac, in_config->macs_tags.b_dst_address,
+		   sizeof (b_dmac));
+      clib_memcpy (b_smac, in_config->macs_tags.b_src_address,
+		   sizeof (b_smac));
+
+      *b_vlanid =
+	clib_host_to_net_u16 (in_config->macs_tags.priority_dei_id) & 0xFFF;
+      *i_sid =
+	clib_host_to_net_u32 (in_config->
+			      macs_tags.priority_dei_uca_res_sid) & 0xFFFFF;
+      error = 0;
+    }
+done:
+  return error;
+}
+
+/**
  * Set subinterface pbb vtr enable/disable.
  * The CLI format is:
  *    set interface l2 pbb-tag-rewrite <interface> [disable | pop | push | translate_pbb_stag <outer_tag> dmac <address> smac <address> s_id <nn> [b_vlanid <nn>]]

@@ -258,6 +258,17 @@ u32 l2vtr_get (vlib_main_t * vlib_main,
 	       u32 * vtr_op,
 	       u32 * push_dot1q, u32 * vtr_tag1, u32 * vtr_tag2);
 
+/**
+ * Get pbb tag rewrite on the given interface.
+ * Return 1 if there is an error, 0 if ok
+ */
+u32 l2pbb_get (vlib_main_t * vlib_main,
+	       vnet_main_t * vnet_main,
+	       u32 sw_if_index,
+	       u32 * vtr_op,
+	       u16 * outer_tag,
+	       u8 * b_dmac, u8 * b_smac, u16 * b_vlanid, u32 * i_sid);
+
 #endif /* included_vnet_l2_vtr_h */
 
 
