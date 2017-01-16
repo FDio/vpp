@@ -86,6 +86,8 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 {
   clib_error_t * error = 0;
 
+  clib_warning("hello");
+
   if ((error = vlib_call_init_function (vm, dpdk_init)))
     return error;
 

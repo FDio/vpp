@@ -238,7 +238,7 @@ static void *vl_api_sw_interface_set_l2_bridge_t_print
   FINISH;
 }
 
-#if DPDK > 0
+#if DPDK > 2
 static void *vl_api_sw_interface_set_dpdk_hqos_pipe_t_print
   (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp, void *handle)
 {
@@ -3130,7 +3130,7 @@ vl_msg_api_custom_dump_configure (api_main_t * am)
   foreach_custom_print_function;
 #undef _
 
-#if DPDK > 0
+#if DPDK > 2
   /*
    * manually add DPDK hqos print handlers
    */
