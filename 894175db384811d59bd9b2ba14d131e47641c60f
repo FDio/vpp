@@ -45,6 +45,30 @@
       "revId": "894175db384811d59bd9b2ba14d131e47641c60f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_6810a301",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 4498,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2017-01-16T08:37:27Z",
+      "side": 1,
+      "message": "the \u0026\u0026 operator is correct, this is a check if it doesn\u0027t point to area before pre_data",
+      "parentUuid": "5a2585a7_c51b02c9",
+      "range": {
+        "startLine": 4498,
+        "startChar": 16,
+        "endLine": 4498,
+        "endChar": 18
+      },
+      "revId": "894175db384811d59bd9b2ba14d131e47641c60f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
