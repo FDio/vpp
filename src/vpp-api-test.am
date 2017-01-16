@@ -33,7 +33,6 @@ vpp_json_test_SOURCES = \
   vat/json_format.c	\
   vat/json_test.c
 
-vpp_api_test_LDFLAGS = $(DPDK_LD_FLAGS)
 vpp_api_test_LDADD = \
   libvlib.la				\
   libvlibmemoryclient.la		\
@@ -42,8 +41,7 @@ vpp_api_test_LDADD = \
   libvppinfra.la 			\
   libvlibapi.la				\
   libvlibmemory.la			\
-  libvnet.la \
-  $(DPDK_LD_ADD)			\
+  libvnet.la				\
   -lpthread -lm -lrt -ldl -lcrypto
 
 vpp_json_test_LDADD = libvppinfra.la -lm
