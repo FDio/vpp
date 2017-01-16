@@ -16,12 +16,6 @@
 #include <vppinfra/cpu.h>
 #include <vpp/app/version.h>
 
-#if DPDK > 0
-#include <rte_version.h>
-#include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
-#endif /* DPDK */
-
 static char *vpe_version_string =
   "vpp v" VPP_BUILD_VER
   " built by " VPP_BUILD_USER " on " VPP_BUILD_HOST " at " VPP_BUILD_DATE;
@@ -56,10 +50,6 @@ show_vpe_version_command_fn (vlib_main_t * vm,
       _("Compile location", "%s", VPP_BUILD_TOPDIR);
       _("Compiler", "%s", vpe_compiler);
       _("Current PID", "%d", getpid ());
-#if DPDK > 0
-      _("DPDK Version", "%s", rte_version ());
-      _("DPDK EAL init args", "%s", dpdk_config_main.eal_init_args_str);
-#endif
 #undef _
     }
   else
