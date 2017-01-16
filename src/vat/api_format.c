@@ -914,6 +914,19 @@ static void vl_api_sw_interface_details_t_handler_json
 			    ntohl (mp->vtr_push_dot1q));
   vat_json_object_add_uint (node, "vtr_tag1", ntohl (mp->vtr_tag1));
   vat_json_object_add_uint (node, "vtr_tag2", ntohl (mp->vtr_tag2));
+  if (mp->sub_dot1ah)
+    {
+      vat_json_object_add_string_copy (node, "pbb_vtr_dmac",
+				       format (0, "%U",
+					       format_ethernet_address,
+					       &mp->b_dmac));
+      vat_json_object_add_string_copy (node, "pbb_vtr_smac",
+				       format (0, "%U",
+					       format_ethernet_address,
+					       &mp->b_smac));
+      vat_json_object_add_uint (node, "pbb_vtr_b_vlanid", mp->b_vlanid);
+      vat_json_object_add_uint (node, "pbb_vtr_i_sid", mp->i_sid);
+    }
 }
 
 static void vl_api_sw_interface_set_flags_t_handler
