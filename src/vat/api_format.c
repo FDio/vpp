@@ -3571,7 +3571,7 @@ _(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_set_mtu_reply)
 
-#if DPDK > 0
+#if DPDK > 2
 #define foreach_standard_dpdk_reply_retval_handler      \
 _(sw_interface_set_dpdk_hqos_pipe_reply)                \
 _(sw_interface_set_dpdk_hqos_subport_reply)             \
@@ -3609,7 +3609,7 @@ foreach_standard_reply_retval_handler;
 foreach_standard_reply_retval_handler;
 #undef _
 
-#if DPDK > 0
+#if DPDK > 2
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
     (vl_api_##n##_t * mp)                       \
@@ -3857,7 +3857,7 @@ _(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)
 
-#if DPDK > 0
+#if DPDK > 2
 #define foreach_vpe_dpdk_api_reply_msg                                  \
 _(SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY,                                \
   sw_interface_set_dpdk_hqos_pipe_reply)                                \
@@ -4667,7 +4667,7 @@ api_sw_interface_clear_stats (vat_main_t * vam)
   W;
 }
 
-#if DPDK >0
+#if DPDK >2
 static int
 api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
 {
@@ -17677,7 +17677,7 @@ _(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
 _(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")
 
-#if DPDK > 0
+#if DPDK > 2
 #define foreach_vpe_dpdk_api_msg                                        \
 _(sw_interface_set_dpdk_hqos_pipe,                                      \
   "rx <intfc> | sw_if_index <id> subport <subport-id> pipe <pipe-id>\n" \
@@ -17726,7 +17726,7 @@ _(unset, "usage: unset <variable-name>")
 foreach_vpe_api_reply_msg;
 #undef _
 
-#if DPDK > 0
+#if DPDK > 2
 #define _(N,n)                                  \
     static void vl_api_##n##_t_handler_uni      \
     (vl_api_##n##_t * mp)                       \
@@ -17755,7 +17755,7 @@ vat_api_hookup (vat_main_t * vam)
   foreach_vpe_api_reply_msg;
 #undef _
 
-#if DPDK > 0
+#if DPDK > 2
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
                            vl_api_##n##_t_handler_uni,          \
@@ -17781,7 +17781,7 @@ vat_api_hookup (vat_main_t * vam)
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
   foreach_vpe_api_msg;
 #undef _
-#if DPDK >0
+#if DPDK > 2
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
   foreach_vpe_dpdk_api_msg;
 #undef _
@@ -17791,7 +17791,7 @@ vat_api_hookup (vat_main_t * vam)
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_vpe_api_msg;
 #undef _
-#if DPDK >0
+#if DPDK > 2
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_vpe_dpdk_api_msg;
 #undef _
