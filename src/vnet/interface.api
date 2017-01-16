@@ -83,9 +83,10 @@ define want_interface_events_reply
     @param interface_name - name of the interface
     @param link_duplex - 1 if half duplex, 2 if full duplex
     @param link_speed - 1 = 10M, 2 = 100M, 4 = 1G, 8 = 10G, 16 = 40G, 32 = 100G
-    @param link_MTU - max. transmittion unit 
+    @param link_MTU - max. transmittion unit
     @param sub_if_id - A number 0-N to uniquely identify this subif on super if
-    @param sub_dot1ad -  0 = dot1q, 1=dot1ad
+    @param sub_dot1ad - 0 = dot1q, 1 = dot1ad
+    @param sub_dot1ah - 1 = dot1ah, 0 = otherwise
     @param sub_number_of_tags - Number of tags (0 - 2)
     @param sub_outer_vlan_id
     @param sub_inner_vlan_id
@@ -97,6 +98,11 @@ define want_interface_events_reply
     @param vtr_push_dot1q
     @param vtr_tag1
     @param vtr_tag2
+    @param pbb_outer_tag - translate pbb s-tag
+    @param pbb_b_dmac[6] - B-tag remote mac address
+    @param pbb_b_smac[6] - B-tag local mac address
+    @param pbb_b_vlanid - B-tag vlanid
+    @param pbb_i_sid - I-tag service id
 */
 define sw_interface_details
 {
@@ -132,6 +138,8 @@ define sw_interface_details
 
   /* 0 = dot1q, 1=dot1ad */
   u8 sub_dot1ad;
+  /* 1 = dot1h, 1=otherwise */
+  u8 sub_dot1ah;
 
   /* Number of tags 0-2 */
   u8 sub_number_of_tags;
@@ -148,6 +156,13 @@ define sw_interface_details
   u32 vtr_tag1;			// first pushed tag
   u32 vtr_tag2;			// second pushed tag
   u8 tag[64];
+  
+  /* pbb tag rewrite info */
+  u16 outer_tag;
+  u8  b_dmac[6];
+  u8  b_smac[6];
+  u16 b_vlanid;
+  u32 i_sid;
 };
 
 /* works */
