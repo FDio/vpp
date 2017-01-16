@@ -26,6 +26,14 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+u8 *format_lisp_cp_input_trace (u8 * s, va_list * args);
+
+typedef enum
+{
+  LISP_CP_INPUT_NEXT_DROP,
+  LISP_CP_INPUT_N_NEXT,
+} lisp_cp_input_next_t;
+
 typedef struct
 {
   u8 is_resend;
@@ -3521,6 +3529,52 @@ get_egress_map_resolver_ip (lisp_cp_main_t * lcm, ip_address_t * ip)
   return 0;
 }
 
+/* CP output statistics */
+#define foreach_lisp_cp_output_error                  \
+_(MAP_REGISTERS_SENT, "map-registers sent")           \
+_(RLOC_PROBES_SENT, "rloc-probes sent")
+
+static char *lisp_cp_output_error_strings[] = {
+#define _(sym,string) string,
+  foreach_lisp_cp_output_error
+#undef _
+};
+
+typedef enum
+{
+#define _(sym,str) LISP_CP_OUTPUT_ERROR_##sym,
+  foreach_lisp_cp_output_error
+#undef _
+    LISP_CP_OUTPUT_N_ERROR,
+} lisp_cp_output_error_t;
+
+static uword
+lisp_cp_output (vlib_main_t * vm, vlib_node_runtime_t * node,
+		vlib_frame_t * from_frame)
+{
+  return 0;
+}
+
+/* dummy node used only for statistics */
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (lisp_cp_output_node) = {
+  .function = lisp_cp_output,
+  .name = "lisp-cp-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lisp_cp_input_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = LISP_CP_OUTPUT_N_ERROR,
+  .error_strings = lisp_cp_output_error_strings,
+
+  .n_next_nodes = LISP_CP_INPUT_N_NEXT,
+
+  .next_nodes = {
+      [LISP_CP_INPUT_NEXT_DROP] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
+
 static int
 send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
 		 u32 local_locator_set_index, ip_address_t * sloc,
@@ -3566,7 +3620,7 @@ send_rloc_probes (lisp_cp_main_t * lcm)
   mapping_t *lm;
   fwd_entry_t *e;
   locator_pair_t *lp;
-  u32 si;
+  u32 si, rloc_probes_sent = 0;
 
   /* *INDENT-OFF* */
   pool_foreach (e, lcm->fwd_entry_pool,
@@ -3595,17 +3649,21 @@ send_rloc_probes (lisp_cp_main_t * lcm)
         /* get first remote locator */
         send_rloc_probe (lcm, &e->reid, lm->locator_set_index, &lp->lcl_loc,
                          &lp->rmt_loc);
+        rloc_probes_sent++;
       }
   });
   /* *INDENT-ON* */
 
+  vlib_node_increment_counter (vlib_get_main (), lisp_cp_output_node.index,
+			       LISP_CP_OUTPUT_ERROR_RLOC_PROBES_SENT,
+			       rloc_probes_sent);
   return 0;
 }
 
 static int
 send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
 {
-  u32 bi;
+  u32 bi, map_registers_sent = 0;
   vlib_buffer_t *b;
   ip_address_t sloc;
   vlib_frame_t *f;
@@ -3660,10 +3718,15 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
     to_next[0] = bi;
     f->n_vectors = 1;
     vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
+    map_registers_sent++;
 
     hash_set (lcm->map_register_messages_by_nonce, nonce, 0);
   }
   free_map_register_records (records);
+
+  vlib_node_increment_counter (vlib_get_main (), lisp_cp_output_node.index,
+			       LISP_CP_OUTPUT_ERROR_MAP_REGISTERS_SENT,
+			       map_registers_sent);
 
   return 0;
 }
@@ -4098,8 +4161,11 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
 /* *INDENT-ON* */
 
 /* lisp_cp_input statistics */
-#define foreach_lisp_cp_input_error                     \
-_(DROP, "drop")                                         \
+#define foreach_lisp_cp_input_error                               \
+_(DROP, "drop")                                                   \
+_(RLOC_PROBE_REQ_RECEIVED, "rloc-probe requests received")        \
+_(RLOC_PROBE_REP_RECEIVED, "rloc-probe replies received")         \
+_(MAP_NOTIFIES_RECEIVED, "map-notifies received")                 \
 _(MAP_REPLIES_RECEIVED, "map-replies received")
 
 static char *lisp_cp_input_error_strings[] = {
@@ -4115,12 +4181,6 @@ typedef enum
 #undef _
     LISP_CP_INPUT_N_ERROR,
 } lisp_cp_input_error_t;
-
-typedef enum
-{
-  LISP_CP_INPUT_NEXT_DROP,
-  LISP_CP_INPUT_N_NEXT,
-} lisp_cp_input_next_t;
 
 typedef struct
 {
@@ -4507,8 +4567,8 @@ find_ip_header (vlib_buffer_t * b, u8 ** ip_hdr)
 }
 
 void
-process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
-		     vlib_buffer_t * b)
+process_map_request (vlib_main_t * vm, vlib_node_runtime_t * node,
+		     lisp_cp_main_t * lcm, vlib_buffer_t * b)
 {
   u8 *ip_hdr = 0;
   ip_address_t *dst_loc = 0, probed_loc, src_loc;
@@ -4516,7 +4576,7 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
   map_request_hdr_t *mreq_hdr;
   gid_address_t src, dst;
   u64 nonce;
-  u32 i, len = 0;
+  u32 i, len = 0, rloc_probe_recv = 0;
   gid_address_t *itr_rlocs = 0;
 
   mreq_hdr = vlib_buffer_get_current (b);
@@ -4538,7 +4598,7 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
   len = lisp_msg_parse_itr_rlocs (b, &itr_rlocs,
 				  MREQ_ITR_RLOC_COUNT (mreq_hdr) + 1);
   if (len == ~0)
-    return;
+    goto done;
 
   /* parse eid records and send SMR-invoked map-requests */
   for (i = 0; i < MREQ_REC_COUNT (mreq_hdr); i++)
@@ -4562,9 +4622,9 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
 	  if (!ip_hdr)
 	    {
 	      clib_warning ("Cannot find the IP header!");
-	      return;
+	      goto done;
 	    }
-
+	  rloc_probe_recv++;
 	  memset (&m, 0, sizeof (m));
 	  u32 mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
 
@@ -4583,6 +4643,9 @@ process_map_request (vlib_main_t * vm, lisp_cp_main_t * lcm,
     }
 
 done:
+  vlib_node_increment_counter (vm, node->node_index,
+			       LISP_CP_INPUT_ERROR_RLOC_PROBE_REQ_RECEIVED,
+			       rloc_probe_recv);
   vec_free (itr_rlocs);
 }
 
@@ -4645,7 +4708,8 @@ static uword
 lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       vlib_frame_t * from_frame)
 {
-  u32 n_left_from, *from, *to_next_drop;
+  u32 n_left_from, *from, *to_next_drop, rloc_probe_rep_recv = 0,
+    map_notifies_recv = 0;
   lisp_msg_type_e type;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   map_records_arg_t *a;
@@ -4680,15 +4744,22 @@ lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case LISP_MAP_REPLY:
 	      a = parse_map_reply (b0);
 	      if (a)
-		queue_map_reply_for_processing (a);
+		{
+		  if (a->is_rloc_probe)
+		    rloc_probe_rep_recv++;
+		  queue_map_reply_for_processing (a);
+		}
 	      break;
 	    case LISP_MAP_REQUEST:
-	      process_map_request (vm, lcm, b0);
+	      process_map_request (vm, node, lcm, b0);
 	      break;
 	    case LISP_MAP_NOTIFY:
 	      a = parse_map_notify (b0);
 	      if (a)
-		queue_map_notify_for_processing (a);
+		{
+		  map_notifies_recv++;
+		  queue_map_notify_for_processing (a);
+		}
 	      break;
 	    default:
 	      clib_warning ("Unsupported LISP message type %d", type);
@@ -4706,6 +4777,12 @@ lisp_cp_input (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, LISP_CP_INPUT_NEXT_DROP,
 			   n_left_to_next_drop);
     }
+  vlib_node_increment_counter (vm, node->node_index,
+			       LISP_CP_INPUT_ERROR_RLOC_PROBE_REP_RECEIVED,
+			       rloc_probe_rep_recv);
+  vlib_node_increment_counter (vm, node->node_index,
+			       LISP_CP_INPUT_ERROR_MAP_NOTIFIES_RECEIVED,
+			       map_notifies_recv);
   return from_frame->n_vectors;
 }
 
