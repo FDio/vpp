@@ -23,10 +23,21 @@ vpp_march = armv8-a+crc
 vpp_mtune = thunderx
 vpp_dpdk_arch = armv8a
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
-else
+else ifeq ($(TARGET_PLATFORM),armv8)
+vpp_march = armv8-a+crc
+vpp_mtune = generic
+vpp_dpdk_arch = armv8a
+vpp_dpdk_target = arm64-armv8a-linuxapp-gcc
+else ifeq ($(TARGET_PLATFORM),dpaa2)
+vpp_march = cortex-a57+fp+simd
+vpp_mtune = generic
+vpp_dpdk_arch = native
+vpp_dpdk_target = arm64-armv8a-linuxapp-gcc
+else ifeq ($(TARGET_PLATFORM),xgene1)
 vpp_march = native
 vpp_mtune = generic
 vpp_dpdk_arch = native
+vpp_dpdk_target = arm64-armv8a-linuxapp-gcc
 endif
 endif
 vpp_native_tools = vppapigen
