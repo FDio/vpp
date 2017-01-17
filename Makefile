@@ -96,6 +96,7 @@ help:
 	@echo " test-wipe-doc       - wipe documentation for test framework"
 	@echo " test-cov            - generate code coverage report for test framework"
 	@echo " test-wipe-cov       - wipe code coverage report for test framework"
+	@echo " test-checkstyle     - check PEP8 compliance for test framework"
 	@echo ""
 	@echo "Make Arguments:"
 	@echo " V=[0|1]             - set build verbosity level"
@@ -238,6 +239,9 @@ test-cov: bootstrap
 
 test-wipe-cov:
 	@make -C test wipe-cov
+
+test-checkstyle:
+	@make -C test checkstyle
 
 retest:
 	$(call test,vpp_lite,vpp_lite,retest)

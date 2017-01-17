@@ -41,7 +41,8 @@ def ip4_range(ip4, s, e):
 
 def ip4n_range(ip4n, s, e):
     ip4 = socket.inet_ntop(socket.AF_INET, ip4n)
-    return (socket.inet_pton(socket.AF_INET, ip) for ip in ip4_range(ip4, s, e))
+    return (socket.inet_pton(socket.AF_INET, ip)
+            for ip in ip4_range(ip4, s, e))
 
 
 class NumericConstant(object):
