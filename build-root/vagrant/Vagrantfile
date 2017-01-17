@@ -62,25 +62,28 @@ Vagrant.configure(2) do |config|
 
   config.ssh.forward_agent = true
 
-  config.vm.synced_folder "../../", "/vpp", type: "rsync",
-   rsync__auto: false,
-   rsync__exclude: [
-    "build-root/build*/",
-    "build-root/install*/",
-    "build-root/images*/",
-    "build-root/*.deb",
-    "build-root/*.rpm",
-    "build-root/*.changes",
-    "build-root/python",
-    "build-root/deb/debian/*.dkms",
-    "build-root/deb/debian/*.install",
-    "build-root/deb/debian/changes",
-    "build-root/tools"]
-
   config.vm.provider "virtualbox" do |vb|
       vb.customize ["modifyvm", :id, "--ioapic", "on"]
       vb.memory = "#{vmram}"
       vb.cpus = "#{vmcpu}"
+
+      # rsync the vpp directory if provision hasn't happened yet
+      unless File.exist? (".vagrant/machines/default/virtualbox/action_provision")
+        config.vm.synced_folder "../../", "/vpp", type: "rsync",
+         rsync__auto: false,
+         rsync__exclude: [
+          "build-root/build*/",
+          "build-root/install*/",
+          "build-root/images*/",
+          "build-root/*.deb",
+          "build-root/*.rpm",
+          "build-root/*.changes",
+          "build-root/python",
+          "build-root/deb/debian/*.dkms",
+          "build-root/deb/debian/*.install",
+          "build-root/deb/debian/changes",
+          "build-root/tools"]
+      end
 
       #support for the SSE4.x instruction is required in some versions of VB.
       vb.customize ["setextradata", :id, "VBoxInternal/CPUM/SSE4.1", "1"]
