@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_eeb93b2f",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2265,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-01-17T06:36:29Z",
+      "side": 1,
+      "message": "if (rp-\u003esw_if_index \u003d\u003d sw_if_index)",
+      "range": {
+        "startLine": 2256,
+        "startChar": 18,
+        "endLine": 2265,
+        "endChar": 77
+      },
+      "revId": "856f8f20d869065d0d6a6f26c91b0e85ea126b24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
