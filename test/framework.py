@@ -706,6 +706,14 @@ class VppTestRunner(unittest.TextTestRunner):
         """Class maintaining the results of the tests"""
         return VppTestResult
 
+    def __init__(self, stream=sys.stderr, descriptions=True, verbosity=1,
+                 failfast=False, buffer=False, resultclass=None):
+        # ignore stream setting here, use hard-coded stdout to be in sync
+        # with prints from VppTestCase methods ...
+        super(VppTestRunner, self).__init__(sys.stdout, descriptions,
+                                            verbosity, failfast, buffer,
+                                            resultclass)
+
     def run(self, test):
         """
         Run the tests
