@@ -77,6 +77,20 @@ cov: wipe-cov reset verify-python-path $(PAPI_INSTALL_DONE)
 wipe-cov: wipe
 	@rm -rf $(BUILD_COV_DIR)
 
+.PHONY: checkstyle
+checkstyle: verify-python-path
+	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) pep8"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
+		pep8 --show-source -v $(WS_ROOT)/test/*.py ||\
+		(echo \"*******************************************************************\" &&\
+		 echo \"* Test framework PEP8 compliance check FAILED \" &&\
+	         echo \"*******************************************************************\" &&\
+		 false)"
+	@echo "*******************************************************************"
+	@echo "* Test framework PEP8 compliance check passed"
+	@echo "*******************************************************************"
+
 help:
 	@echo "Running tests:"
 	@echo ""
@@ -105,4 +119,7 @@ help:
 	@echo "Creating test code coverage report"
 	@echo " test-cov            - generate code coverage report for test framework"
 	@echo " test-wipe-cov       - wipe code coverage report for test framework"
+	@echo ""
+	@echo "Verifying code-style"
+	@echo " test-checkstyle     - check PEP8 compliance"
 	@echo ""

@@ -27,8 +27,6 @@ class BFDAPITestCase(VppTestCase):
             super(BFDAPITestCase, cls).tearDownClass()
             raise
 
-
-
     def test_add_bfd(self):
         """ create a BFD session """
         session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
