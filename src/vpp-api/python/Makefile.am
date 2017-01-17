@@ -21,41 +21,22 @@ bin_PROGRAMS =
 CLEANFILES =
 lib_LTLIBRARIES =
 noinst_PROGRAMS =
-nobase_include_HEADERS = pneum/pneum.h
 
-#
-# Python / C extension
-#
-lib_LTLIBRARIES += libpneum.la
-libpneum_la_SOURCES = pneum/pneum.c
-libpneum_la_LIBADD = \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
-  $(top_builddir)/libsvm.la \
-  -lpthread -lm -lrt
+#all-local:
+#	(cd $(srcdir); $(PYTHON) setup.py build			\
+#	--build-base $(shell readlink -f $(builddir))/build	\
+#	--verbose)
 
-libpneum_la_LDFLAGS = -module
-libpneum_la_CPPFLAGS =
+#install-exec-local:
+#	cd $(srcdir);							\
+#	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
+#	PYTHONUSERBASE=$(prefix)					\
+#	python setup.py install --user
 
-# TODO: Support both Python 2 and 3.
 install-exec-local:
-	cd $(srcdir);							\
-	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
-	PYTHONUSERBASE=$(prefix)					\
-	python setup.py build_ext -L $(libdir)				\
-	-I $(prefix)/include/ install --user
-
-#
-# Test client
-#
-if ENABLE_TESTS
-noinst_PROGRAMS += test_pneum
-test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
-test_pneum_LDADD = \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
-  $(top_builddir)/libsvm.la \
-  -lpthread -lm -lrt
-endif
+	(cd $(srcdir) ;	$(PYTHON) $(srcdir)/setup.py build			\
+	--build-base $(shell readlink -f $(builddir))/build			\
+	install									\
+	--prefix $(DESTDIR)$(prefix)						\
+	--single-version-externally-managed					\
+	--verbose)
