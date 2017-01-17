@@ -106,12 +106,12 @@ pneum_rx_thread_fn (void *arg)
     pm->rx_thread_jmpbuf_valid = 1;
     while (1)
       while (!unix_shared_memory_queue_sub(q, (u8 *)&msg, 0))
-        pneum_api_handler((void *)msg);
+	pneum_api_handler((void *)msg);
   }
   pthread_exit(0);
 }
 
-uword *
+static uword *
 pneum_msg_table_get_hash (void)
 {
   api_main_t *am = &api_main;
@@ -119,14 +119,14 @@ pneum_msg_table_get_hash (void)
 }
 
 int
-pneum_msg_table_size(void)
+pneum_msg_table_size (void)
 {
   api_main_t *am = &api_main;
   return hash_elts(am->msg_index_by_name_and_crc);
 }
 
 int
-pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb, 
+pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb,
                int rx_qlen)
 {
   int rv = 0;
@@ -186,7 +186,7 @@ pneum_disconnect (void)
 }
 
 int
-pneum_read (char **p, int *l)
+pneum_read (char **p, unsigned int *l, unsigned int timeout)
 {
   unix_shared_memory_queue_t *q;
   api_main_t *am = &api_main;
@@ -217,7 +217,7 @@ pneum_read (char **p, int *l)
 }
 
 /*
- * XXX: Makes the assumption that client_index is the first member
+ * NOTE: Makes the assumption that client_index is the first member
  */
 typedef VL_API_PACKED(struct _vl_api_header {
   u16 _vl_msg_id;
@@ -253,8 +253,30 @@ pneum_write (char *p, int l)
   return (rv);
 }
 
-uint32_t
+int
 pneum_get_msg_index (unsigned char * name)
 {
   return vl_api_get_msg_index (name);
+}
+
+int
+pneum_msg_table_max_index(void)
+{
+  int max = 0;
+  hash_pair_t *hp;
+  uword *h = pneum_msg_table_get_hash();
+  hash_foreach_pair (hp, h,
+  ({
+    if (hp->value[0] > max)
+      max = hp->value[0];
+  }));
+
+  return max;
+}
+static void init() __attribute__((constructor));
+void
+init (void)
+{
+  pneum_main_t *pm = &pneum_main;
+  memset(pm, 0, sizeof(*pm));
 }

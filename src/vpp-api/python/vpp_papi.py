@@ -15,14 +15,42 @@
 #
 
 from __future__ import print_function
+
+from cffi import FFI
+ffi = FFI()
+ffi.cdef("""
+typedef void (*pneum_callback_t)(unsigned char * data, int len);
+int pneum_connect(char * name, char * chroot_prefix, pneum_callback_t cb,
+int rx_len);
+int pneum_disconnect(void);
+int pneum_read(char **data, int *l, unsigned int timeout);
+int pneum_write(char *data, int len);
+int pneum_msg_table_max_index(void);
+int pneum_get_msg_index (unsigned char * name);
+void pneum_free (void * msg);
+ """)
+
+pneum = ffi.dlopen('libpneum.so')
+
 import sys, os, logging, collections, struct, json, threading, glob
+import ctypes, Queue
 logging.basicConfig(level=logging.DEBUG)
-import vpp_api
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+vpp_object = None
+
+@ffi.callback("void(unsigned char *, int)")
+def pneum_callback(data, len):
+    vpp_object.msg_handler_callback(ffi.buffer(data, len))
+
 class VPP():
+    VPP_MODE_BLOCKING = 0
+    VPP_MODE_SYNC = 1
+    VPP_MODE_ASYNC = 2
+
+
     def __init__(self, apifiles = None, testmode = False):
         self.messages = {}
         self.id_names = []
@@ -33,6 +61,7 @@ class VPP():
         self.results = {}
         self.timeout = 5
         self.apifile = []
+        self.message_queue = Queue.Queue()
 
         if not apifiles:
             # Pick up API definitions from default directory
@@ -228,7 +257,7 @@ class VPP():
             return self.messages[name]['return_tuple']
         return None
 
-    def add_message(self, name, msgdef):
+    def add_message(self, name, msgdef, typeonly = False):
         if name in self.messages:
             raise ValueError('Duplicate message name: ' + name)
 
@@ -254,75 +283,97 @@ class VPP():
         self.messages[name] = msg
         self.messages[name]['args'] = args
         self.messages[name]['argtypes'] = argtypes
+        self.messages[name]['typeonly'] = typeonly
+
         return self.messages[name]
 
     def add_type(self, name, typedef):
-        return self.add_message('vl_api_' + name + '_t', typedef)
+        return self.add_message('vl_api_' + name + '_t', typedef, typeonly=True)
 
-    def make_function(self, name, i, msgdef, multipart, async):
-        if (async):
-            f = lambda **kwargs: (self._call_vpp_async(i, msgdef, multipart, **kwargs))
+    def make_function(self, name, i, msgdef, multipart, mode):
+        if mode == self.VPP_MODE_BLOCKING:
+            f = lambda **kwargs: (self._call_vpp(i, msgdef, multipart,
+                                                 **kwargs))
+        elif mode == self.VPP_MODE_SYNC:
+            f = lambda **kwargs: (self._call_vpp_sync(i, name, msgdef, multipart,
+                                                      **kwargs))
+        elif mode == self.VPP_MODE_ASYNC:
+            f = lambda **kwargs: (self._call_vpp_async(i, msgdef, multipart,
+                                                       **kwargs))
         else:
-            f = lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+            raise ValueError('Wrong async/sync mode')
+
         args = self.messages[name]['args']
         argtypes = self.messages[name]['argtypes']
         f.__name__ = str(name)
         f.__doc__ = ", ".join(["%s %s" % (argtypes[k], k) for k in args.keys()])
         return f
 
-    def _register_functions(self, async=False):
+    def _register_functions(self, mode):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
         for name, msgdef in self.messages.iteritems():
-            if name in self.vpp_dictionary:
-                if self.messages[name]['crc'] != self.vpp_dictionary[name]['crc']:
-                    raise ValueError(3, 'Failed CRC checksum ' + name +
-                                     ' ' + self.messages[name]['crc'] +
-                                     ' ' + self.vpp_dictionary[name]['crc'])
-                i = self.vpp_dictionary[name]['id']
+            if self.messages[name]['typeonly']: continue
+            crc = self.messages[name]['crc']
+            n = name + '_' + crc[2:]
+            i = pneum.pneum_get_msg_index(bytes(n))
+            if i > 0:
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
                 multipart = True if name.find('_dump') > 0 else False
-                setattr(self, name, self.make_function(name, i, msgdef, multipart, async))
+                setattr(self, name,
+                        self.make_function(name, i, msgdef, multipart, mode))
+            else:
+                eprint('No such message type or failed CRC checksum ' + n)
 
     def _write (self, buf):
         if not self.connected:
             raise IOError(1, 'Not connected')
-        return vpp_api.write(str(buf))
+        return pneum.pneum_write(str(buf), len(buf))
 
-    def _load_dictionary(self):
-        self.vpp_dictionary = {}
-        self.vpp_dictionary_maxid = 0
-        d = vpp_api.msg_table()
+    def _read (self):
+        if not self.connected:
+            raise IOError(1, 'Not connected')
 
-        if not d:
-            raise IOError(3, 'Cannot get VPP API dictionary')
-        for i,n in d:
-            name, crc =  n.rsplit('_', 1)
-            crc = '0x' + crc
-            self.vpp_dictionary[name] = { 'id' : i, 'crc' : crc }
-            self.vpp_dictionary_maxid = max(self.vpp_dictionary_maxid, i)
+        mem = ffi.new("char **")
+        size = ffi.new("int *")
+        rv = pneum.pneum_read(mem, size, 0)
+        if rv:
+            raise IOError(rv, 'pneum read failed')
+        msg = ffi.buffer(mem[0], size[0])
+        pneum.pneum_free(mem[0])
+        return msg
 
-    def connect(self, name, chroot_prefix = None, async = False, rx_qlen = 32):
-        msg_handler = self.msg_handler if not async else self.msg_handler_async
-        if not chroot_prefix:
-            rv = vpp_api.connect(name, msg_handler, rx_qlen)
+    def connect(self, name, chroot_prefix = ffi.NULL, mode = 0, rx_qlen = 32):
+        global vpp_object
+        vpp_object = self
+        cb = pneum_callback
+
+        if mode == self.VPP_MODE_SYNC:
+            cb = ffi.NULL
+        elif mode == self.VPP_MODE_ASYNC:
+            self.msg_handler_callback = self.msg_handler_async
         else:
-            rv = vpp_api.connect(name, msg_handler, rx_qlen, chroot_prefix)
+            print('Normal blocking mode chosen', mode)
+            self.msg_handler_callback = self.msg_handler
+
+        rv = pneum.pneum_connect(name, chroot_prefix, cb, rx_qlen)
 
         if rv != 0:
             raise IOError(2, 'Connect failed')
         self.connected = True
 
-        self._load_dictionary()
-        self._register_functions(async=async)
+        self.vpp_dictionary_maxid = pneum.pneum_msg_table_max_index()
+        self._register_functions(mode)
 
         # Initialise control ping
-        self.control_ping_index = self.vpp_dictionary['control_ping']['id']
+        crc = self.messages['control_ping']['crc']
+        self.control_ping_index = pneum.pneum_get_msg_index( \
+            bytes('control_ping' + '_' + crc[2:]))
         self.control_ping_msgdef = self.messages['control_ping']
 
     def disconnect(self):
-        rv = vpp_api.disconnect()
+        rv = pneum.pneum_disconnect()
         return rv
 
     def results_wait(self, context):
@@ -339,7 +390,7 @@ class VPP():
 
     def msg_handler(self, msg):
         if not msg:
-            eprint('vpp_api.read failed')
+            eprint('pneum.read failed')
             return
 
         i, ci = self.header.unpack_from(msg, 0)
@@ -390,7 +441,7 @@ class VPP():
 
     def msg_handler_async(self, msg):
         if not msg:
-            eprint('vpp_api.read failed')
+            eprint('pneum.read failed')
             return
 
         i, ci = self.header.unpack_from(msg, 0)
@@ -407,7 +458,9 @@ class VPP():
         r = self.decode(msgdef, msg)
         msgname = type(r).__name__
 
-        self.event_callback(msgname, r)
+        #self.event_callback(msgname, r)
+        # Put copy of tuple on queue
+        self.message_queue.put_nowait(r)
 
     def _control_ping(self, context):
         self._write(self.encode(self.control_ping_msgdef,
@@ -433,6 +486,63 @@ class VPP():
         r = self.results[context]['r']
         self.results_clean(context)
         return r
+
+    def _call_vpp_sync(self, i, name, msgdef, multipart, **kwargs):
+        if not 'context' in kwargs:
+            context = self.get_context()
+            kwargs['context'] = context
+        else:
+            context = kwargs['context']
+        kwargs['_vl_msg_id'] = i
+        ## LOGGINGprint('Calling name', name, context)
+        rv = self._write(self.encode(msgdef, kwargs))
+
+        if multipart:
+            self._control_ping(context)
+        rl = []
+        while (True):
+            msg = self._read()
+            if not msg:
+                raise IOError(2, 'PNEUM read failed')
+
+            i, ci = self.header.unpack_from(msg, 0)
+            msgdef = self.id_msgdef[i]
+            if not msgdef:
+                raise IOError(2, 'Reply message undefined')
+
+            r = self.decode(msgdef, msg)
+
+            msgname = type(r).__name__
+            if r.context == 0 or context != r.context:
+                # Queue packet
+                #eprint('Unexpected packet: ', msgname, r)
+                self.event_callback(msgname, r)
+                continue
+
+            # LOGGINGprint('Received', msgname)
+            if not multipart:
+                rl = r
+                break
+            if msgname == 'control_ping_reply':
+                break
+
+            rl.append(r)
+
+        return rl
+
+    def wait_for_event(self, flt):
+        msg = self._read()
+        if not msg:
+            eprint('vpp_api.read failed')
+            return None
+
+        i, ci = self.header.unpack_from(msg, 0)
+        msgdef = self.id_msgdef[i]
+        if not msgdef:
+            raise IOError(2, 'Reply message undefined')
+        r = self.decode(msgdef, msg)
+        msgname = type(r).__name__
+        return msgname, r
 
     def _call_vpp_async(self, i, msgdef, multipart, **kwargs):
         if not 'context' in kwargs:

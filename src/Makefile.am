@@ -83,6 +83,7 @@ include vpp-api-test.am
 SUBDIRS += plugins
 
 if ENABLE_PAPI
+include vpp-api.am
 SUBDIRS += vpp-api/python
 endif
 
