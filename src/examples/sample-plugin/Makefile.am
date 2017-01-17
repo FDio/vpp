@@ -41,7 +41,7 @@ SUFFIXES = .api.h .api
 	| vppapigen --input - --json $@
 
 apidir = $(prefix)/sample/
-api_DATA = sample.api.json
+api_DATA = sample/sample.api.json
 
 noinst_HEADERS =				\
   sample/sample_all_api_h.h			\
