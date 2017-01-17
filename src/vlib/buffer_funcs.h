@@ -350,6 +350,41 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
 u32 vlib_buffer_get_or_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
 					 char *fmt, ...);
 
+
+/* After free aligned buffers may not contain even sized chunks. */
+void vlib_buffer_free_list_trim_aligned (vlib_buffer_free_list_t * f);
+
+/* Merge two free lists */
+void vlib_buffer_merge_free_lists (vlib_buffer_free_list_t * dst,
+				   vlib_buffer_free_list_t * src);
+
+/* Make sure we have at least given number of unaligned buffers. */
+void vlib_buffer_free_list_fill_unaligned (vlib_main_t * vm,
+					   vlib_buffer_free_list_t *
+					   free_list,
+					   uword n_unaligned_buffers);
+
+always_inline u32
+vlib_buffer_get_free_list_with_size (vlib_main_t * vm, u32 size)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+
+  size = vlib_buffer_round_size (size);
+  uword *p = hash_get (bm->free_list_by_size, size);
+  return p ? p[0] : ~0;
+}
+
+always_inline vlib_buffer_free_list_t *
+vlib_buffer_get_buffer_free_list (vlib_main_t * vm, vlib_buffer_t * b,
+				  u32 * index)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  u32 i;
+
+  *index = i = b->free_list_index;
+  return pool_elt_at_index (bm->buffer_free_list_pool, i);
+}
+
 always_inline vlib_buffer_free_list_t *
 vlib_buffer_get_free_list (vlib_main_t * vm, u32 free_list_index)
 {
@@ -672,6 +707,19 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
   _(free_list_index);
 #undef _
   ASSERT (dst->b.total_length_not_including_first_buffer == 0);
+}
+
+always_inline void
+vlib_buffer_add_to_free_list (vlib_main_t * vm,
+			      vlib_buffer_free_list_t * f,
+			      u32 buffer_index, u8 do_init)
+{
+  vlib_buffer_t *b;
+  b = vlib_get_buffer (vm, buffer_index);
+  if (PREDICT_TRUE (do_init))
+    vlib_buffer_init_for_free_list (b, f);
+  vec_add1_aligned (f->aligned_buffers, buffer_index,
+		    sizeof (vlib_copy_unit_t));
 }
 
 always_inline void

@@ -307,10 +307,10 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 #define BUFFERS_PER_COPY (sizeof (vlib_copy_unit_t) / sizeof (u32))
 
 /* Make sure we have at least given number of unaligned buffers. */
-static void
-fill_unaligned (vlib_main_t * vm,
-		vlib_buffer_free_list_t * free_list,
-		uword n_unaligned_buffers)
+void
+vlib_buffer_free_list_fill_unaligned (vlib_main_t * vm,
+				      vlib_buffer_free_list_t * free_list,
+				      uword n_unaligned_buffers)
 {
   word la = vec_len (free_list->aligned_buffers);
   word lu = vec_len (free_list->unaligned_buffers);
@@ -333,8 +333,8 @@ fill_unaligned (vlib_main_t * vm,
 }
 
 /* After free aligned buffers may not contain even sized chunks. */
-static void
-trim_aligned (vlib_buffer_free_list_t * f)
+void
+vlib_buffer_free_list_trim_aligned (vlib_buffer_free_list_t * f)
 {
   uword l, n_trim;
 
@@ -361,15 +361,15 @@ trim_aligned (vlib_buffer_free_list_t * f)
     }
 }
 
-static void
-merge_free_lists (vlib_buffer_free_list_t * dst,
-		  vlib_buffer_free_list_t * src)
+void
+vlib_buffer_merge_free_lists (vlib_buffer_free_list_t * dst,
+			      vlib_buffer_free_list_t * src)
 {
   uword l;
   u32 *d;
 
-  trim_aligned (src);
-  trim_aligned (dst);
+  vlib_buffer_free_list_trim_aligned (src);
+  vlib_buffer_free_list_trim_aligned (dst);
 
   l = vec_len (src->aligned_buffers);
   if (l > 0)
@@ -386,16 +386,6 @@ merge_free_lists (vlib_buffer_free_list_t * dst,
       vec_add (dst->unaligned_buffers, src->unaligned_buffers, l);
       vec_free (src->unaligned_buffers);
     }
-}
-
-always_inline u32
-vlib_buffer_get_free_list_with_size (vlib_main_t * vm, u32 size)
-{
-  vlib_buffer_main_t *bm = vm->buffer_main;
-
-  size = vlib_buffer_round_size (size);
-  uword *p = hash_get (bm->free_list_by_size, size);
-  return p ? p[0] : ~0;
 }
 
 /* Add buffer free list. */
@@ -537,8 +527,9 @@ vlib_buffer_delete_free_list_internal (vlib_main_t * vm, u32 free_list_index)
   merge_index = vlib_buffer_get_free_list_with_size (vm, f->n_data_bytes);
   if (merge_index != ~0 && merge_index != free_list_index)
     {
-      merge_free_lists (pool_elt_at_index (bm->buffer_free_list_pool,
-					   merge_index), f);
+      vlib_buffer_merge_free_lists (pool_elt_at_index
+				    (bm->buffer_free_list_pool, merge_index),
+				    f);
     }
 
   del_free_list (vm, f);
@@ -567,7 +558,7 @@ fill_free_list (vlib_main_t * vm,
   u32 *bi;
   u32 n_remaining, n_alloc, n_this_chunk;
 
-  trim_aligned (fl);
+  vlib_buffer_free_list_trim_aligned (fl);
 
   /* Already have enough free buffers on free list? */
   n = min_free_buffers - vec_len (fl->aligned_buffers);
@@ -666,7 +657,8 @@ alloc_from_free_list (vlib_main_t * vm,
   else
     n_unaligned_end = copy_alignment (dst + n_alloc_buffers);
 
-  fill_unaligned (vm, free_list, n_unaligned_start + n_unaligned_end);
+  vlib_buffer_free_list_fill_unaligned (vm, free_list,
+					n_unaligned_start + n_unaligned_end);
 
   u_len = vec_len (free_list->unaligned_buffers);
   u_src = free_list->unaligned_buffers + u_len - 1;
@@ -779,29 +771,6 @@ vlib_buffer_alloc_from_free_list_internal (vlib_main_t * vm,
   return alloc_from_free_list (vm, f, buffers, n_buffers);
 }
 
-always_inline void
-add_buffer_to_free_list (vlib_main_t * vm,
-			 vlib_buffer_free_list_t * f,
-			 u32 buffer_index, u8 do_init)
-{
-  vlib_buffer_t *b;
-  b = vlib_get_buffer (vm, buffer_index);
-  if (PREDICT_TRUE (do_init))
-    vlib_buffer_init_for_free_list (b, f);
-  vec_add1_aligned (f->aligned_buffers, buffer_index,
-		    sizeof (vlib_copy_unit_t));
-}
-
-always_inline vlib_buffer_free_list_t *
-buffer_get_free_list (vlib_main_t * vm, vlib_buffer_t * b, u32 * index)
-{
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  u32 i;
-
-  *index = i = b->free_list_index;
-  return pool_elt_at_index (bm->buffer_free_list_pool, i);
-}
-
 void *
 vlib_set_buffer_free_callback (vlib_main_t * vm, void *fp)
 {
@@ -845,7 +814,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
     vlib_buffer_t *b0;
 
     b0 = vlib_get_buffer (vm, bi0);
-    fl = buffer_get_free_list (vm, b0, &fi);
+    fl = vlib_buffer_get_buffer_free_list (vm, b0, &fi);
     if (fl->buffers_added_to_freelist_function)
       vec_add1 (announce_list, fl);
   }
@@ -926,7 +895,7 @@ again:
       fl0 = pool_elt_at_index (bm->buffer_free_list_pool, fi0);
       fl1 = pool_elt_at_index (bm->buffer_free_list_pool, fi1);
 
-      add_buffer_to_free_list (vm, fl0, bi0, free0);
+      vlib_buffer_add_to_free_list (vm, fl0, bi0, free0);
       if (PREDICT_FALSE (fl0->buffers_added_to_freelist_function != 0))
 	{
 	  int i;
@@ -946,7 +915,7 @@ again:
 	}
 
     no_fl1:
-      add_buffer_to_free_list (vm, fl1, bi1, free1);
+      vlib_buffer_add_to_free_list (vm, fl1, bi1, free1);
 
       /* Possibly change current free list. */
       if (fi0 != fi && fi1 != fi)
@@ -1003,7 +972,7 @@ again:
 
       fl0 = pool_elt_at_index (bm->buffer_free_list_pool, fi0);
 
-      add_buffer_to_free_list (vm, fl0, bi0, free0);
+      vlib_buffer_add_to_free_list (vm, fl0, bi0, free0);
       if (PREDICT_FALSE (fl0->buffers_added_to_freelist_function != 0))
 	{
 	  int i;
