@@ -277,7 +277,7 @@ fi
 /usr/share/vpp/vppctl-cmd-list
 
 %files api-lua
-%defattr(644,root,root)
+%defattr(644,root,root,644)
 /usr/share/doc/vpp/examples/lua
 
 %files api-java
