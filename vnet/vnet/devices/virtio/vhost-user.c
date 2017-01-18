@@ -2422,9 +2422,6 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
   // Disable and reset interface
   vhost_user_term_if (vui);
 
-  // Back to pool
-  pool_put (vum->vhost_user_interfaces, vui);
-
   // Reset renumbered iface
   if (hwif->dev_instance <
       vec_len (vum->show_dev_instance_by_real_dev_instance))
@@ -2432,6 +2429,9 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
 
   // Delete ethernet interface
   ethernet_delete_interface (vnm, vui->hw_if_index);
+
+  // Back to pool
+  pool_put (vum->vhost_user_interfaces, vui);
   return rv;
 }
 
