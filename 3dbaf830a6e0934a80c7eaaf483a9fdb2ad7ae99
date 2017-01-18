@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_dfb98b16",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-01-18T16:29:50Z",
+      "side": 1,
+      "message": "Sure, void should be used here. Noted :-)",
+      "parentUuid": "5a2585a7_1f92739f",
+      "range": {
+        "startLine": 185,
+        "startChar": 0,
+        "endLine": 185,
+        "endChar": 11
+      },
+      "revId": "3dbaf830a6e0934a80c7eaaf483a9fdb2ad7ae99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_ff90c796",
         "filename": "src/vnet/devices/af_packet/node.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2017-01-18T16:18:01Z",
       "side": 1,
       "message": "Can this be a doxygen comment? In general since you are making some nice changes, can we also document as we go?",
+      "range": {
+        "startLine": 274,
+        "startChar": 0,
+        "endLine": 274,
+        "endChar": 88
+      },
+      "revId": "3dbaf830a6e0934a80c7eaaf483a9fdb2ad7ae99",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_3fc52f8e",
+        "filename": "src/vnet/devices/af_packet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 274,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-01-18T16:29:50Z",
+      "side": 1,
+      "message": "This is more for reader to give him intuition about INTERRUPT and POLLING mode.\nYes, this can be oxygen comment. I\u0027ll change it into that style.",
+      "parentUuid": "5a2585a7_ff90c796",
       "range": {
         "startLine": 274,
         "startChar": 0,
