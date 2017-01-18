@@ -242,9 +242,9 @@ sr_replicate_node_fn (vlib_main_t * vm,
 
 	  for (i = 0; i < num_replicas; i++)
 	    {
-	      uint8_t nb_seg;
-	      struct rte_mbuf *clone0i;
-	      vlib_buffer_t *clone0_c, *clone_b0;
+	       uint8_t nb_seg;
+	       struct rte_mbuf *clone0i;
+	       vlib_buffer_t *clone0_c, *clone_b0;
 
 	      t0 = vec_elt_at_index (sm->tunnels, pol0->tunnel_indices[i]);
 	      hdr_mb0 = rte_pktmbuf_alloc (dm->pktmbuf_pools[socket_id]);
@@ -259,6 +259,7 @@ sr_replicate_node_fn (vlib_main_t * vm,
 		  nb_seg = 0;
 		  clone0i = clone0;
 		  clone0_c = NULL;
+
 		  while ((clone0->nb_segs >= 1) && (nb_seg < clone0->nb_segs))
 		    {
 
@@ -269,9 +270,7 @@ sr_replicate_node_fn (vlib_main_t * vm,
 			      0);
 		      ASSERT (clone_b0->current_data == 0);
 
-		      clone_b0->current_data =
-			(clone0i->buf_addr + clone0i->data_off) -
-			(void *) clone_b0->data;
+		      clone_b0->current_data = clone0i->data_off - VLIB_BUFFER_PRE_DATA_SIZE;
 
 		      clone_b0->current_length = clone0i->data_len;
 		      if (PREDICT_FALSE (clone0_c != NULL))
