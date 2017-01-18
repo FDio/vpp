@@ -2,6 +2,236 @@
   "comments": [
     {
       "key": {
+        "uuid": "5a2585a7_9fed4328",
+        "filename": "src/plugins/ioam/analyse/ioam_analyse.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "2017",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5ff7dbf5",
+        "filename": "src/plugins/ioam/analyse/ioam_analyse.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "Doxygen. Code-style comment snippet:\n/*\n * fd.io coding-style-patch-verification: ON\n *\n * Local Variables:\n * eval: (c-set-style \"gnu\")\n * End:\n */",
+      "range": {
+        "startLine": 363,
+        "startChar": 0,
+        "endLine": 366,
+        "endChar": 59
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_9fd42348",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "This kind of thing makes one very nervous. Can you explain how this won\u0027t lock up VPP and in the interim, I\u0027ll try and block time to download this patch and walk the code more to determine this myself.",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 150,
+        "endChar": 5
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ffbe87fe",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "Why static?",
+      "range": {
+        "startLine": 257,
+        "startChar": 0,
+        "endLine": 257,
+        "endChar": 6
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_3fde4f6e",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "2017 ... please ensure for net new files that this is reflective of reality for rest of patch.",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_1fd95383",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "doxygen",
+      "range": {
+        "startLine": 52,
+        "startChar": 0,
+        "endLine": 53,
+        "endChar": 29
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_ffe7a73e",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "checkstyle.\n\nPlease make doxygen and checkstyle changes for rest of patch.",
+      "range": {
+        "startLine": 80,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 48
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_7f429711",
+        "filename": "src/plugins/ioam/analyse/ip6/ip6_ioam_analyse.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "if (is_export)\n{\n  rv \u003d ioam_flow_create (!is_add);\n  if (rv)\n     goto ret;\n}\n\nif (is_add)\n{\n....",
+      "range": {
+        "startLine": 36,
+        "startChar": 0,
+        "endLine": 73,
+        "endChar": 5
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_bf38ffa0",
+        "filename": "src/plugins/ioam/analyse/ip6/ip6_ioam_analyse.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "When does this get cleared? How do you stop it eating resources? ie do you have GC for this?",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 77
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_5f459b15",
+        "filename": "src/plugins/ioam/analyse/ip6/node.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 314,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-01-18T16:32:40Z",
+      "side": 1,
+      "message": "checkstyle.",
+      "range": {
+        "startLine": 314,
+        "startChar": 0,
+        "endLine": 314,
+        "endChar": 92
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_f42fce9f",
         "filename": "src/plugins/ioam/lib-trace/trace_util.h",
         "patchSetId": 13
