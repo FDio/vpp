@@ -71,6 +71,9 @@ typedef struct
   /** Indicates that this tunnel is part of a policy comprising
      of multiple tunnels. If == ~0 tunnel is not part of a policy */
   u32 policy_index;
+  /** sets the tunnel to active/inactive. 
+      Useful to control multiple tunnels in mcast */
+  u8  inactive; 
 } ip6_sr_tunnel_t;
 
 /**
@@ -250,7 +253,11 @@ void vnet_register_sr_app_callback (void *cb);
 
 void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 		  ip6_sr_header_t * sr);
-
+int 
+ip6_sr_multicastmap_select_tunnel(ip6_address_t *multicast_address,
+                                 ip6_address_t *next_hop);
+int 
+ip6_sr_multicastmap_reset(ip6_address_t *multicast_address);
 #endif /* included_vnet_sr_h */
 
 /*
