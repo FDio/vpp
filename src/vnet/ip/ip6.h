@@ -474,6 +474,84 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   return (u32) c;
 }
 
+/* ip6_locate_header
+ *
+ * This function is to search for the header specified by the protocol number
+ * in find_hdr_type.
+ * This is used to locate a specific IPv6 extension header
+ * or to find transport layer header.
+ *   1. If the find_hdr_type < 0 then it finds and returns the protocol number and
+ *   offset stored in *offset of the transport or ESP header in the chain if
+ *   found.
+ *   2. If a header with find_hdr_type > 0 protocol number is found then the
+ *      offset is stored in *offset and protocol number of the header is
+ *      returned.
+ *   3. If find_hdr_type is not found or packet is malformed or
+ *      it is a non-first fragment -1 is returned.
+ */
+always_inline int
+ip6_locate_header (vlib_buffer_t * p0,
+		   ip6_header_t * ip0, int find_hdr_type, u32 * offset)
+{
+  u8 next_proto = ip0->protocol;
+  u8 *next_header;
+  u8 done = 0;
+  u32 cur_offset;
+  u8 *temp_nxthdr = 0;
+  u32 exthdr_len = 0;
+
+  next_header = ip6_next_header (ip0);
+  cur_offset = sizeof (ip6_header_t);
+  while (1)
+    {
+      done = (next_proto == find_hdr_type);
+      if (PREDICT_FALSE
+	  (next_header >=
+	   (u8 *) vlib_buffer_get_current (p0) + p0->current_length))
+	{
+	  //A malicious packet could set an extension header with a too big size
+	  return (-1);
+	}
+      if (done)
+	break;
+      if ((!ip6_ext_hdr (next_proto)) || next_proto == IP_PROTOCOL_IP6_NONXT)
+	{
+	  if (find_hdr_type < 0)
+	    break;
+	  return -1;
+	}
+      if (next_proto == IP_PROTOCOL_IPV6_FRAGMENTATION)
+	{
+	  ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) next_header;
+	  u16 frag_off = ip6_frag_hdr_offset (frag_hdr);
+	  /* Non first fragment return -1 */
+	  if (frag_off)
+	    return (-1);
+	  exthdr_len = sizeof (ip6_frag_hdr_t);
+	  temp_nxthdr = next_header + exthdr_len;
+	}
+      else if (next_proto == IP_PROTOCOL_IPSEC_AH)
+	{
+	  exthdr_len =
+	    ip6_ext_authhdr_len (((ip6_ext_header_t *) next_header));
+	  temp_nxthdr = next_header + exthdr_len;
+	}
+      else
+	{
+	  exthdr_len =
+	    ip6_ext_header_len (((ip6_ext_header_t *) next_header));
+	  temp_nxthdr = next_header + exthdr_len;
+	}
+      next_proto = ((ip6_ext_header_t *) next_header)->next_hdr;
+      next_header = temp_nxthdr;
+      cur_offset += exthdr_len;
+    }
+
+  *offset = cur_offset;
+  return (next_proto);
+}
+
+u8 *format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args);
 /*
  * Hop-by-Hop handling
  */
