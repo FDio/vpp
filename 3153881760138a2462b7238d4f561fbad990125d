@@ -72,6 +72,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_746e3e03",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-18T13:34:37Z",
+      "side": 1,
+      "message": "that\u0027s fine.\nplease add text to this effect, describing how the memory needs to be managed by the callee, to the doxygen comments on the callback function typedef.",
+      "parentUuid": "5a2585a7_b4ef0687",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_3440b6a4",
         "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.h",
         "patchSetId": 2
