@@ -1582,6 +1582,59 @@ VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
+int
+ip6_sr_multicastmap_reset (ip6_address_t * multicast_address)
+{
+  uword *p;
+  ip6_sr_tunnel_t *t;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_policy_t *pt;
+  int i = 0;
+
+  p = hash_get_mem (sm->policy_index_by_multicast_address, multicast_address);
+  if (!p)
+    return (-1);
+  pt = pool_elt_at_index (sm->policies, p[0]);
+
+  if (!pt)
+    return (0);
+  for (i = 0; i < vec_len (pt->tunnel_indices); i++)
+    {
+      t = pool_elt_at_index (sm->tunnels, pt->tunnel_indices[i]);
+      t->inactive = 0;
+
+    }
+  return (vec_len (pt->tunnel_indices));
+
+}
+
+int
+ip6_sr_multicastmap_select_tunnel (ip6_address_t * multicast_address,
+				   ip6_address_t * next_hop)
+{
+  uword *p;
+  ip6_sr_tunnel_t *t;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_policy_t *pt;
+  int i;
+
+  p = hash_get_mem (sm->policy_index_by_multicast_address, multicast_address);
+  if (!p)
+    return (-1);
+  pt = pool_elt_at_index (sm->policies, p[0]);
+
+  for (i = 0; pt && i < vec_len (pt->tunnel_indices); i++)
+    {
+      t = pool_elt_at_index (sm->tunnels, pt->tunnel_indices[i]);
+      if (t && ip6_address_is_equal (next_hop, &(t->first_hop)))
+	continue;
+      else
+	t->inactive = 1;
+
+    }
+  return (0);
+}
+
 /**
  * @brief Add or Delete a Segment Routing policy
  *
