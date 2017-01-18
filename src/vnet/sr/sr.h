@@ -83,7 +83,6 @@ typedef struct
   ip6_address_t bsid;			/**< BindingSID (key) */
 
   u8 type;					/**< Type (default is 0) */
-
   /* SR Policy specific DPO                                                                               */
   /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
   /* IF Type = SPRAY then Spray DPO with all SID lists                    */
@@ -289,6 +288,45 @@ int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		    u32 table_id, ip46_address_t * prefix, u32 mask_width,
 		    u32 sw_if_index, u8 traffic_type);
+
+/**
+ * @brief SR rewrite string computation for SRH insertion (inline)
+ *
+ * @param sl is a vector of IPv6 addresses composing the Segment List
+ *
+ * @return precomputed rewrite string for SRH insertion
+ */
+static inline u8 *
+ip6_compute_rewrite_string_insert (ip6_address_t * sl)
+{
+  ip6_sr_header_t *srh;
+  ip6_address_t *addrp, *this_address;
+  u32 header_length = 0;
+  u8 *rs = NULL;
+
+  header_length = 0;
+  header_length += sizeof (ip6_sr_header_t);
+  header_length += (vec_len (sl) + 1) * sizeof (ip6_address_t);
+
+  vec_validate (rs, header_length - 1);
+
+  srh = (ip6_sr_header_t *) rs;
+  srh->type = ROUTING_HEADER_TYPE_SR;
+  srh->segments_left = vec_len (sl);
+  srh->first_segment = vec_len (sl);
+  srh->length = ((sizeof (ip6_sr_header_t) +
+		  ((vec_len (sl) + 1) * sizeof (ip6_address_t))) / 8) - 1;
+  srh->flags = 0x00;
+  srh->reserved = 0x0000;
+  addrp = srh->segments + vec_len (sl);
+  vec_foreach (this_address, sl)
+  {
+    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+    addrp--;
+  }
+  return rs;
+}
+
 
 #endif /* included_vnet_sr_h */
 
