@@ -117,6 +117,47 @@ define lisp_gpe_add_del_iface_reply
   i32 retval;
 };
 
+define lisp_gpe_fwd_entries_get
+{
+  u32 client_index;
+  u32 context;
+  u32 vni;
+};
+
+typeonly manual_print manual_endian define lisp_gpe_fwd_entry
+{
+  u32 fwd_entry_index;
+  u32 dp_table;
+  u8 eid_type;
+  u8 leid_prefix_len;
+  u8 reid_prefix_len;
+  u8 leid[16];
+  u8 reid[16];
+};
+
+manual_print manual_endian define lisp_gpe_fwd_entries_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_lisp_gpe_fwd_entry_t entries[count];
+};
+
+define lisp_gpe_fwd_entry_path_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 fwd_entry_index;
+};
+
+manual_endian manual_print define lisp_gpe_fwd_entry_path_details
+{
+  u32 client_index;
+  u32 context;
+  vl_api_lisp_gpe_locator_t lcl_loc;
+  vl_api_lisp_gpe_locator_t rmt_loc;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

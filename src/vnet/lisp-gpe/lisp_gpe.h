@@ -220,6 +220,15 @@ typedef struct
   };
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
 
+typedef struct
+{
+  u32 fwd_entry_index;
+  u32 dp_table;
+  u32 vni;
+  dp_address_t leid;
+  dp_address_t reid;
+} lisp_api_gpe_fwd_entry_t;
+
 #define foreach_lgpe_ip4_lookup_next    \
   _(DROP, "error-drop")                 \
   _(LISP_CP_LOOKUP, "lisp-cp-lookup")
@@ -245,6 +254,8 @@ typedef enum lgpe_ip6_lookup_next
 } lgpe_ip6_lookup_next_t;
 
 u8 *format_vnet_lisp_gpe_status (u8 * s, va_list * args);
+
+lisp_api_gpe_fwd_entry_t *vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni);
 
 #endif /* included_vnet_lisp_gpe_h */
 

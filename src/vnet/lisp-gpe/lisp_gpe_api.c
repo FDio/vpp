@@ -23,6 +23,8 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
+#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
+#include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
 
@@ -51,6 +53,8 @@
 
 #define foreach_vpe_api_msg                             \
 _(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
+_(LISP_GPE_FWD_ENTRIES_GET, lisp_gpe_fwd_entries_get)                   \
+_(LISP_GPE_FWD_ENTRY_PATH_DUMP, lisp_gpe_fwd_entry_path_dump)           \
 _(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
 _(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)
 
@@ -112,6 +116,172 @@ unformat_lisp_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
   gid_address_vni (dst) = vni;
 
   return 0;
+}
+
+static void
+  lisp_gpe_fwd_entry_path_dump_t_net_to_host
+  (vl_api_lisp_gpe_fwd_entry_path_dump_t * mp)
+{
+  mp->fwd_entry_index = clib_net_to_host_u32 (mp->fwd_entry_index);
+}
+
+static void
+lisp_api_set_locator (vl_api_lisp_gpe_locator_t * loc,
+		      const ip_address_t * addr, u8 weight)
+{
+  loc->weight = weight;
+  if (IP4 == ip_addr_version (addr))
+    {
+      loc->is_ip4 = 1;
+      memcpy (loc->addr, addr, 4);
+    }
+  else
+    {
+      loc->is_ip4 = 0;
+      memcpy (loc->addr, addr, 16);
+    }
+}
+
+static void
+  vl_api_lisp_gpe_fwd_entry_path_dump_t_handler
+  (vl_api_lisp_gpe_fwd_entry_path_dump_t * mp)
+{
+  lisp_fwd_path_t *path;
+  vl_api_lisp_gpe_fwd_entry_path_details_t *rmp = NULL;
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  unix_shared_memory_queue_t *q = NULL;
+  lisp_gpe_fwd_entry_t *lfe;
+
+  lisp_gpe_fwd_entry_path_dump_t_net_to_host (mp);
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  if (pool_is_free_index (lgm->lisp_fwd_entry_pool, mp->fwd_entry_index))
+    return;
+
+  lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, mp->fwd_entry_index);
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
+    return;
+
+  vec_foreach (path, lfe->paths)
+  {
+    rmp = vl_msg_api_alloc (sizeof (*rmp));
+    memset (rmp, 0, sizeof (*rmp));
+    const lisp_gpe_tunnel_t *lgt;
+
+    rmp->_vl_msg_id =
+      clib_host_to_net_u16 (VL_API_LISP_GPE_FWD_ENTRY_PATH_DETAILS);
+
+    const lisp_gpe_adjacency_t *ladj =
+      lisp_gpe_adjacency_get (path->lisp_adj);
+    lisp_api_set_locator (&rmp->rmt_loc, &ladj->remote_rloc, path->weight);
+    lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
+    lisp_api_set_locator (&rmp->lcl_loc, &lgt->key->lcl, path->weight);
+
+    rmp->context = mp->context;
+    vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  }
+}
+
+static void
+lisp_gpe_fwd_entries_copy (vl_api_lisp_gpe_fwd_entry_t * dst,
+			   lisp_api_gpe_fwd_entry_t * src)
+{
+  lisp_api_gpe_fwd_entry_t *e;
+  u32 i = 0;
+
+  vec_foreach (e, src)
+  {
+    memset (dst, 0, sizeof (*dst));
+    dst[i].dp_table = src->dp_table;
+    dst[i].fwd_entry_index = src->fwd_entry_index;
+    switch (fid_addr_type (&e->leid))
+      {
+      case FID_ADDR_IP_PREF:
+	if (IP4 == ip_prefix_version (&fid_addr_ippref (&e->leid)))
+	  {
+	    memcpy (&dst[i].leid, &fid_addr_ippref (&e->leid), 4);
+	    memcpy (&dst[i].reid, &fid_addr_ippref (&e->reid), 4);
+	    dst[i].eid_type = 0;
+	  }
+	else
+	  {
+	    memcpy (&dst[i].leid, &fid_addr_ippref (&e->leid), 16);
+	    memcpy (&dst[i].reid, &fid_addr_ippref (&e->reid), 16);
+	    dst[i].eid_type = 1;
+	  }
+	dst[i].leid_prefix_len = ip_prefix_len (&fid_addr_ippref (&e->leid));
+	dst[i].reid_prefix_len = ip_prefix_len (&fid_addr_ippref (&e->reid));
+	break;
+      case FID_ADDR_MAC:
+	memcpy (&dst[i].leid, fid_addr_mac (&e->leid), 6);
+	memcpy (&dst[i].reid, fid_addr_mac (&e->reid), 6);
+	dst[i].eid_type = 2;
+	break;
+      default:
+	clib_warning ("unknown fid type %d!", fid_addr_type (&e->leid));
+	break;
+      }
+    i++;
+  }
+}
+
+static void
+  lisp_gpe_fwd_entries_get_t_net_to_host
+  (vl_api_lisp_gpe_fwd_entries_get_t * mp)
+{
+  mp->vni = clib_net_to_host_u32 (mp->vni);
+}
+
+static void
+lisp_gpe_entry_t_host_to_net (vl_api_lisp_gpe_fwd_entry_t * e)
+{
+  e->fwd_entry_index = clib_host_to_net_u32 (e->fwd_entry_index);
+  e->dp_table = clib_host_to_net_u32 (e->dp_table);
+}
+
+static void
+  lisp_gpe_fwd_entries_get_reply_t_host_to_net
+  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+{
+  u32 i;
+  vl_api_lisp_gpe_fwd_entry_t *e;
+
+  for (i = 0; i < mp->count; i++)
+    {
+      e = &mp->entries[i];
+      lisp_gpe_entry_t_host_to_net (e);
+    }
+  mp->count = clib_host_to_net_u32 (mp->count);
+}
+
+static void
+  vl_api_lisp_gpe_fwd_entries_get_t_handler
+  (vl_api_lisp_gpe_fwd_entries_get_t * mp)
+{
+  lisp_api_gpe_fwd_entry_t *e;
+  vl_api_lisp_gpe_fwd_entries_get_reply_t *rmp = 0;
+  u32 size = 0;
+  int rv = 0;
+
+  lisp_gpe_fwd_entries_get_t_net_to_host (mp);
+
+  e = vnet_lisp_gpe_fwd_entries_get_by_vni (mp->vni);
+  size = vec_len (e) * sizeof (vl_api_lisp_gpe_fwd_entry_t);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO4 (VL_API_LISP_GPE_FWD_ENTRIES_GET_REPLY, size,
+  {
+    rmp->count = vec_len (e);
+    lisp_gpe_fwd_entries_copy (rmp->entries, e);
+    lisp_gpe_fwd_entries_get_reply_t_host_to_net (rmp);
+  });
+  /* *INDENT-ON* */
+
+  vec_free (e);
 }
 
 static void

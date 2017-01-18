@@ -1092,12 +1092,11 @@ vl_api_lisp_adjacencies_get_t_handler (vl_api_lisp_adjacencies_get_t * mp)
   vl_api_lisp_adjacencies_get_reply_t *rmp = 0;
   lisp_adjacency_t *adjs = 0;
   int rv = 0;
-  vl_api_lisp_adjacency_t a;
   u32 size = ~0;
   u32 vni = clib_net_to_host_u32 (mp->vni);
 
   adjs = vnet_lisp_adjacencies_get_by_vni (vni);
-  size = vec_len (adjs) * sizeof (a);
+  size = vec_len (adjs) * sizeof (vl_api_lisp_adjacency_t);
 
   /* *INDENT-OFF* */
   REPLY_MACRO4 (VL_API_LISP_ADJACENCIES_GET_REPLY, size,
