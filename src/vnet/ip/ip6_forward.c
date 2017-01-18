@@ -1236,80 +1236,6 @@ ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
   return p0->flags;
 }
 
-/* ip6_locate_header
- *
- * This function is to search for the header specified by the find_hdr number.
- *   1. If the find_hdr < 0 then it finds and returns the protocol number and
- *   offset stored in *offset of the transport or ESP header in the chain if
- *   found.
- *   2. If a header with find_hdr > 0 protocol number is found then the
- *      offset is stored in *offset and protocol number of the header is
- *      returned.
- *   3. If find_hdr header is not found or packet is malformed or
- *      it is a non-first fragment -1 is returned.
- */
-always_inline int
-ip6_locate_header (vlib_buffer_t * p0,
-		   ip6_header_t * ip0, int find_hdr, u32 * offset)
-{
-  u8 next_proto = ip0->protocol;
-  u8 *next_header;
-  u8 done = 0;
-  u32 cur_offset;
-  u8 *temp_nxthdr = 0;
-  u32 exthdr_len = 0;
-
-  next_header = ip6_next_header (ip0);
-  cur_offset = sizeof (ip6_header_t);
-  while (1)
-    {
-      done = (next_proto == find_hdr);
-      if (PREDICT_FALSE
-	  (next_header >=
-	   (u8 *) vlib_buffer_get_current (p0) + p0->current_length))
-	{
-	  //A malicious packet could set an extension header with a too big size
-	  return (-1);
-	}
-      if (done)
-	break;
-      if ((!ip6_ext_hdr (next_proto)) || next_proto == IP_PROTOCOL_IP6_NONXT)
-	{
-	  if (find_hdr < 0)
-	    break;
-	  return -1;
-	}
-      if (next_proto == IP_PROTOCOL_IPV6_FRAGMENTATION)
-	{
-	  ip6_frag_hdr_t *frag_hdr = (ip6_frag_hdr_t *) next_header;
-	  u16 frag_off = ip6_frag_hdr_offset (frag_hdr);
-	  /* Non first fragment return -1 */
-	  if (frag_off)
-	    return (-1);
-	  exthdr_len = sizeof (ip6_frag_hdr_t);
-	  temp_nxthdr = next_header + exthdr_len;
-	}
-      else if (next_proto == IP_PROTOCOL_IPSEC_AH)
-	{
-	  exthdr_len =
-	    ip6_ext_authhdr_len (((ip6_ext_header_t *) next_header));
-	  temp_nxthdr = next_header + exthdr_len;
-	}
-      else
-	{
-	  exthdr_len =
-	    ip6_ext_header_len (((ip6_ext_header_t *) next_header));
-	  temp_nxthdr = next_header + exthdr_len;
-	}
-      next_proto = ((ip6_ext_header_t *) next_header)->next_hdr;
-      next_header = temp_nxthdr;
-      cur_offset += exthdr_len;
-    }
-
-  *offset = cur_offset;
-  return (next_proto);
-}
-
 /**
  * @brief returns number of links on which src is reachable.
  */
@@ -2412,6 +2338,50 @@ static char *ip6_hop_by_hop_error_strings[] = {
   foreach_ip6_hop_by_hop_error
 #undef _
 };
+
+u8 *
+format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args)
+{
+  ip6_hop_by_hop_header_t *hbh0 = va_arg (*args, ip6_hop_by_hop_header_t *);
+  int total_len = va_arg (*args, int);
+  ip6_hop_by_hop_option_t *opt0, *limit0;
+  ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
+  u8 type0;
+
+  s = format (s, "IP6_HOP_BY_HOP: next protocol %d len %d total %d",
+	      hbh0->protocol, (hbh0->length + 1) << 3, total_len);
+
+  opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
+  limit0 = (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 + total_len);
+
+  while (opt0 < limit0)
+    {
+      type0 = opt0->type;
+      switch (type0)
+	{
+	case 0:		/* Pad, just stop */
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0 + 1);
+	  break;
+
+	default:
+	  if (hm->trace[type0])
+	    {
+	      s = (*hm->trace[type0]) (s, opt0);
+	    }
+	  else
+	    {
+	      s =
+		format (s, "\n    unrecognized option %d length %d", type0,
+			opt0->length);
+	    }
+	  opt0 =
+	    (ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
+					 sizeof (ip6_hop_by_hop_option_t));
+	  break;
+	}
+    }
+  return s;
+}
 
 static u8 *
 format_ip6_hop_by_hop_trace (u8 * s, va_list * args)

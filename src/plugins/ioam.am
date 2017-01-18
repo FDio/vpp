@@ -75,7 +75,8 @@ IOAM_TRACE_NOINST_HDR =                 \
   ioam/lib-trace/trace_all_api_h.h	\
   ioam/lib-trace/trace_msg_enum.h	\
   ioam/lib-trace/trace.api.h		\
-  ioam/lib-trace/trace_util.h
+  ioam/lib-trace/trace_util.h		\
+  ioam/encap/ip6_ioam_trace.h
 
 IOAM_TRACE_API = ioam/lib-trace/trace.api
 
@@ -164,6 +165,23 @@ IOAM_ANALYSE_SRC = 				\
 	ioam/analyse/ioam_summary_export.h
 
 ########################################
+# iOAM record cache and rewrite
+########################################
+
+IOAM_IP6_MANYCAST_SRC =        \
+ioam/ip6/ioam_cache.c                     \
+ioam/ip6/ioam_cache_node.c                \
+ioam/ip6/ioam_cache_tunnel_select_node.c  \
+ioam/ip6/ioam_cache.api.h
+
+IOAM_IP6_MANYCAST_API = ioam/ip6/ioam_cache.api
+
+IOAM_IP6_MANYCAST_NOINST_HDR =      \
+  ioam/ip6/ioam_cache_all_api_h.h   \
+  ioam/ip6/ioam_cache_msg_enum.h    \
+  ioam/ip6/ioam_cache.api.h
+
+########################################
 # iOAM plugins
 ########################################
 
@@ -174,20 +192,23 @@ ioam_plugin_la_SOURCES =		\
         $(IOAM_VXLAN_GPE_SRC)   	\
         $(IOAM_E2E_SRC)			\
 	$(IPFIX_COLLECTOR_SRC)		\
-	$(IOAM_ANALYSE_SRC)
+	$(IOAM_ANALYSE_SRC)             \
+	$(IOAM_IP6_MANYCAST_SRC)
 
 API_FILES +=				\
         $(IOAM_POT_API)                 \
         $(IOAM_EXPORT_API)              \
         $(IOAM_TRACE_API)               \
-        $(IOAM_VXLAN_GPE_API)
+        $(IOAM_VXLAN_GPE_API)		\
+        $(IOAM_IP6_MANYCAST_API)
 
 noinst_HEADERS +=                               \
         $(IOAM_POT_NOINST_HDR)                  \
         $(IOAM_EXPORT_NOINST_HDR)               \
         $(IOAM_TRACE_NOINST_HDR)                \
         $(IOAM_VXLAN_GPE_NOINST_HDR)            \
-        $(IOAM_E2E_NOINST_HDR)
+        $(IOAM_E2E_NOINST_HDR)			\
+        $(IOAM_IP6_MANYCAST_NOINST_HDR)
 
 vppplugins_LTLIBRARIES += ioam_plugin.la
 
