@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_54390240",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-18T11:17:06Z",
+      "side": 1,
+      "message": "use a typedef for function pointers. it makes the code much easier for humans to parse;\n\ntypedef int (*lisp_gpe_callback_t)(...);\n\nthen you have;\n\nint\nlisp_gpe_tunnel_reigster_extn_hdr_callback(int type,\n                                                                        lisp_gpe_callback_t cb);\n\nand the same at the other locations.",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_143b7a39",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-18T11:17:06Z",
+      "side": 1,
+      "message": "the memory for extn_hdr is not freed by this function, but it is used. So the callee must keep the memory valid after returning, but it cannot free it. Does that mean the callee must make the memory static?\n\nis extn_hdr a char * vector the callee fills and this caller vec_free() on exit?",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_3440b6a4",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-18T11:17:06Z",
+      "side": 1,
+      "message": "this is not part of the public API. make it static in lisp_gpe_tunnel.c",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
