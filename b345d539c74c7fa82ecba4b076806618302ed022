@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_3f552f50",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-01-18T18:59:36Z",
+      "side": 1,
+      "message": "I think it would be better to do either:\n__sync_lock_release(\u0026apif-\u003elockp);\n\nor \n\na CLIB_MEMORY_BARRIER() before setting to 0",
+      "revId": "b345d539c74c7fa82ecba4b076806618302ed022",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
