@@ -1042,6 +1042,32 @@ lisp_gpe_fwd_entry_init (vlib_main_t * vm)
   return (error);
 }
 
+lisp_api_gpe_fwd_entry_t *
+vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  lisp_gpe_fwd_entry_t *lfe;
+  lisp_api_gpe_fwd_entry_t *entries = 0, e;
+
+  /* *INDENT-OFF* */
+  pool_foreach (lfe, lgm->lisp_fwd_entry_pool,
+  ({
+    if (lfe->key->vni == vni)
+      {
+        memset (&e, 0, sizeof (e));
+        e.dp_table = lfe->eid_table_id;
+        e.vni = lfe->key->vni;
+        e.fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
+        memcpy (&e.reid, &lfe->key->rmt, sizeof (e.reid));
+        memcpy (&e.leid, &lfe->key->lcl, sizeof (e.leid));
+        vec_add1 (entries, e);
+      }
+  }));
+  /* *INDENT-ON* */
+
+  return entries;
+}
+
 VLIB_INIT_FUNCTION (lisp_gpe_fwd_entry_init);
 
 /*

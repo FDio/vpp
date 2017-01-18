@@ -2683,6 +2683,161 @@ static void
 }
 
 static void
+api_lisp_gpe_fwd_entry_net_to_host (vl_api_lisp_gpe_fwd_entry_t * e)
+{
+  e->dp_table = clib_net_to_host_u32 (e->dp_table);
+  e->fwd_entry_index = clib_net_to_host_u32 (e->fwd_entry_index);
+}
+
+static void
+  lisp_gpe_fwd_entries_get_reply_t_net_to_host
+  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+{
+  u32 i;
+
+  mp->count = clib_net_to_host_u32 (mp->count);
+  for (i = 0; i < mp->count; i++)
+    {
+      api_lisp_gpe_fwd_entry_net_to_host (&mp->entries[i]);
+    }
+}
+
+static void
+  vl_api_lisp_gpe_fwd_entry_path_details_t_handler
+  (vl_api_lisp_gpe_fwd_entry_path_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u8 *(*format_ip_address_fcn) (u8 *, va_list *) = 0;
+
+  if (mp->lcl_loc.is_ip4)
+    format_ip_address_fcn = format_ip4_address;
+  else
+    format_ip_address_fcn = format_ip6_address;
+
+  print (vam->ofp, "w:%d %30U %30U", mp->rmt_loc.weight,
+	 format_ip_address_fcn, &mp->lcl_loc,
+	 format_ip_address_fcn, &mp->rmt_loc);
+}
+
+static void
+lisp_fill_locator_node (vat_json_node_t * n, vl_api_lisp_gpe_locator_t * loc)
+{
+  struct in6_addr ip6;
+  struct in_addr ip4;
+
+  if (loc->is_ip4)
+    {
+      clib_memcpy (&ip4, loc->addr, sizeof (ip4));
+      vat_json_object_add_ip4 (n, "address", ip4);
+    }
+  else
+    {
+      clib_memcpy (&ip6, loc->addr, sizeof (ip6));
+      vat_json_object_add_ip6 (n, "address", ip6);
+    }
+  vat_json_object_add_uint (n, "weight", loc->weight);
+}
+
+static void
+  vl_api_lisp_gpe_fwd_entry_path_details_t_handler_json
+  (vl_api_lisp_gpe_fwd_entry_path_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  vat_json_node_t *loc_node;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+  vat_json_init_object (node);
+
+  loc_node = vat_json_object_add (node, "local_locator");
+  vat_json_init_object (loc_node);
+  lisp_fill_locator_node (loc_node, &mp->lcl_loc);
+
+  loc_node = vat_json_object_add (node, "remote_locator");
+  vat_json_init_object (loc_node);
+  lisp_fill_locator_node (loc_node, &mp->rmt_loc);
+}
+
+static void
+  vl_api_lisp_gpe_fwd_entries_get_reply_t_handler
+  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 i;
+  int retval = clib_net_to_host_u32 (mp->retval);
+  vl_api_lisp_gpe_fwd_entry_t *e;
+
+  if (retval)
+    goto end;
+
+  lisp_gpe_fwd_entries_get_reply_t_net_to_host (mp);
+
+  for (i = 0; i < mp->count; i++)
+    {
+      e = &mp->entries[i];
+      print (vam->ofp, "%10d %10d %U %40U", e->fwd_entry_index, e->dp_table,
+	     format_lisp_flat_eid, e->eid_type, e->leid, e->leid_prefix_len,
+	     format_lisp_flat_eid, e->eid_type, e->reid, e->reid_prefix_len);
+    }
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_lisp_gpe_fwd_entries_get_reply_t_handler_json
+  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+{
+  u8 *s = 0;
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *e = 0, root;
+  u32 i;
+  int retval = clib_net_to_host_u32 (mp->retval);
+  vl_api_lisp_gpe_fwd_entry_t *fwd;
+
+  if (retval)
+    goto end;
+
+  lisp_gpe_fwd_entries_get_reply_t_net_to_host (mp);
+  vat_json_init_array (&root);
+
+  for (i = 0; i < mp->count; i++)
+    {
+      e = vat_json_array_add (&root);
+      fwd = &mp->entries[i];
+
+      vat_json_init_object (e);
+      vat_json_object_add_int (e, "fwd_entry_index", fwd->fwd_entry_index);
+      vat_json_object_add_int (e, "dp_table", fwd->dp_table);
+
+      s = format (0, "%U", format_lisp_flat_eid, fwd->eid_type, fwd->leid,
+		  fwd->leid_prefix_len);
+      vec_add1 (s, 0);
+      vat_json_object_add_string_copy (e, "leid", s);
+      vec_free (s);
+
+      s = format (0, "%U", format_lisp_flat_eid, fwd->eid_type, fwd->reid,
+		  fwd->reid_prefix_len);
+      vec_add1 (s, 0);
+      vat_json_object_add_string_copy (e, "reid", s);
+      vec_free (s);
+    }
+
+  vat_json_print (vam->ofp, &root);
+  vat_json_free (&root);
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
   vl_api_lisp_adjacencies_get_reply_t_handler
   (vl_api_lisp_adjacencies_get_reply_t * mp)
 {
@@ -3969,6 +4124,9 @@ _(LISP_EID_TABLE_VNI_DETAILS, lisp_eid_table_vni_details)               \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_MAP_SERVER_DETAILS, lisp_map_server_details)                     \
 _(LISP_ADJACENCIES_GET_REPLY, lisp_adjacencies_get_reply)               \
+_(LISP_GPE_FWD_ENTRIES_GET_REPLY, lisp_gpe_fwd_entries_get_reply)       \
+_(LISP_GPE_FWD_ENTRY_PATH_DETAILS,                                      \
+  lisp_gpe_fwd_entry_path_details)                                      \
 _(SHOW_LISP_STATUS_REPLY, show_lisp_status_reply)                       \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                             \
   lisp_add_del_map_request_itr_rlocs_reply)                             \
@@ -14855,6 +15013,58 @@ api_lisp_eid_table_dump (vat_main_t * vam)
 }
 
 static int
+api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_lisp_gpe_fwd_entries_get_t *mp;
+  f64 timeout = ~0;
+  u8 vni_set = 0;
+  u32 vni = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "vni %d", &vni))
+	{
+	  vni_set = 1;
+	}
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vni_set)
+    {
+      errmsg ("vni not set!");
+      return -99;
+    }
+
+  if (!vam->json_output)
+    {
+      print (vam->ofp, "%10s %10s %s %40s", "fwd_index", "dp_table",
+	     "leid", "reid");
+    }
+
+  M (LISP_GPE_FWD_ENTRIES_GET, lisp_gpe_fwd_entries_get);
+  mp->vni = clib_host_to_net_u32 (vni);
+
+  /* send it... */
+  S;
+
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+#define vl_api_lisp_gpe_fwd_entries_get_reply_t_endian vl_noop_handler
+#define vl_api_lisp_gpe_fwd_entries_get_reply_t_print vl_noop_handler
+#define vl_api_lisp_gpe_fwd_entry_path_details_t_endian vl_noop_handler
+#define vl_api_lisp_gpe_fwd_entry_path_details_t_print vl_noop_handler
+
+static int
 api_lisp_adjacencies_get (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -14970,6 +15180,50 @@ api_show_lisp_status (vat_main_t * vam)
   M (SHOW_LISP_STATUS, show_lisp_status);
   /* send it... */
   S;
+  /* Wait for a reply... */
+  W;
+
+  /* NOTREACHED */
+  return 0;
+}
+
+static int
+api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
+{
+  vl_api_lisp_gpe_fwd_entry_path_dump_t *mp;
+  f64 timeout = ~0;
+  unformat_input_t *i = vam->input;
+  u32 fwd_entry_index = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "index %d", &fwd_entry_index))
+	;
+      else
+	break;
+    }
+
+  if (~0 == fwd_entry_index)
+    {
+      errmsg ("no index specified!");
+      return -99;
+    }
+
+  if (!vam->json_output)
+    {
+      print (vam->ofp, "first line");
+    }
+
+  M (LISP_GPE_FWD_ENTRY_PATH_DUMP, lisp_gpe_fwd_entry_path_dump);
+
+  /* send it... */
+  S;
+  /* Use a control ping for synchronization */
+  {
+    vl_api_control_ping_t *mp;
+    M (CONTROL_PING, control_ping);
+    S;
+  }
   /* Wait for a reply... */
   W;
 
@@ -17864,6 +18118,8 @@ _(lisp_eid_table_map_dump, "l2|l3")                                     \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_map_server_dump, "")                                             \
 _(lisp_adjacencies_get, "vni <vni>")                                    \
+_(lisp_gpe_fwd_entries_get, "vni <vni>")                                \
+_(lisp_gpe_fwd_entry_path_dump, "index <fwd_entry_index>")              \
 _(show_lisp_rloc_probe_state, "")                                       \
 _(show_lisp_map_register_state, "")                                     \
 _(show_lisp_status, "")                                                 \
