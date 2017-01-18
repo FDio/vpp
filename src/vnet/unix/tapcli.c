@@ -899,8 +899,9 @@ int vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t *ap)
       /* ip4: mask defaults to /24 */
       u32 mask = clib_host_to_net_u32 (0xFFFFFF00);
 
+      memset(&sin, 0, sizeof(sin));
       sin.sin_family = AF_INET;
-      sin.sin_port = 0;
+      /* sin.sin_port = 0; */
       sin.sin_addr.s_addr = ap->ip4_address->as_u32;
       memcpy (&ifr.ifr_ifru.ifru_addr, &sin, sizeof (sin));
 
@@ -1294,7 +1295,7 @@ tap_connect_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
 		 vlib_cli_command_t * cmd)
 {
-  u8 * intfc_name;
+  u8 * intfc_name = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_tap_connect_args_t _a, *ap= &_a;
   tapcli_main_t * tm = &tapcli_main;

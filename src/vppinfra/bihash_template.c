@@ -199,7 +199,7 @@ BV (split_and_rehash_linear)
       /* Find a free slot in the new linear scan bucket */
       for (; j < new_length; j++)
 	{
-	  /* Old value in use? Forget it. */
+	  /* Old value not in use? Forget it. */
 	  if (BV (clib_bihash_is_free) (&(old_values->kvp[i])))
 	    goto doublebreak;
 
@@ -212,11 +212,12 @@ BV (split_and_rehash_linear)
 	      j++;
 	      goto doublebreak;
 	    }
-	  /* This should never happen... */
-	  clib_warning ("BUG: linear rehash failed!");
-	  BV (value_free) (h, new_values);
-	  return 0;
 	}
+      /* This should never happen... */
+      clib_warning ("BUG: linear rehash failed!");
+      BV (value_free) (h, new_values);
+      return 0;
+
     doublebreak:;
     }
   return new_values;

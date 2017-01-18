@@ -1232,8 +1232,12 @@ snat_in2out_worker_handoff_fn (vlib_main_t * vm,
       if (clib_bihash_search_8_8 (&sm->worker_by_in, &kv0, &value0))
         {
           /* No, assign next available worker (RR) */
-          next_worker_index = sm->first_worker_index +
-            sm->workers[sm->next_worker++ % vec_len (sm->workers)];
+          next_worker_index = sm->first_worker_index;
+          if (vec_len (sm->workers))
+            {
+              next_worker_index += 
+                sm->workers[sm->next_worker++ % _vec_len (sm->workers)];
+            }
 
           /* add non-traslated packets worker lookup */
           kv0.value = next_worker_index;

@@ -2326,7 +2326,9 @@ vhost_user_process (vlib_main_t * vm,
 			   sizeof (sun.sun_path) - 1);
 
 		  /* Avoid hanging VPP if the other end does not accept */
-		  fcntl(sockfd, F_SETFL, O_NONBLOCK);
+		  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0)
+                      clib_unix_warning ("fcntl");
+
 		  if (connect (sockfd, (struct sockaddr *) &sun,
 			       sizeof (struct sockaddr_un)) == 0)
 		    {
