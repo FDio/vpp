@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_3978afc3",
+        "filename": "Makefile",
+        "patchSetId": 16
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-01-18T01:59:30Z",
+      "side": 1,
+      "message": "Was this intended to be here?  I do not object to it, but it seems outside of the theme of the rest of the patch in  way that makes me suspect this is not where the change was intended.",
+      "revId": "e3b1d35a06c2239e4dc712fb639fe65f2e4c7b84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
