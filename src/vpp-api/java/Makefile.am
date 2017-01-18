@@ -36,6 +36,7 @@ nobase_include_HEADERS =                \
 
 lib_LTLIBRARIES = libjvpp_common.la
 libjvpp_common_la_SOURCES = jvpp-common/jvpp_common.c
+libjvpp_common_la_LDFLAGS = shared -rpath /none -no-undefined
 
 JVPP_LIBS = \
   libjvpp_common.la \
