@@ -108,10 +108,9 @@ buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
 
 always_inline uword
 af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame, u32 device_idx)
+			   vlib_frame_t * frame, af_packet_if_t * apif)
 {
   af_packet_main_t *apm = &af_packet_main;
-  af_packet_if_t *apif = pool_elt_at_index (apm->interfaces, device_idx);
   struct tpacket2_hdr *tph;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 block = 0;
@@ -125,10 +124,10 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 frame_num = apif->rx_req->tp_frame_nr;
   u8 *block_start = apif->rx_ring + block * block_size;
   uword n_trace = vlib_get_trace_count (vm, node);
+  u32 cpu_index = os_get_cpu_number ();
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
 							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
-  int cpu_index = node->cpu_index;
 
   if (apif->per_interface_next_index != ~0)
     next_index = apif->per_interface_next_index;
@@ -249,16 +248,18 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   int i;
   u32 n_rx_packets = 0;
-
+  u32 cpu_index = os_get_cpu_number ();
   af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif;
 
-  /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, apm->pending_input_bitmap,
-    ({
-      clib_bitmap_set (apm->pending_input_bitmap, i, 0);
-      n_rx_packets += af_packet_device_input_fn(vm, node, frame, i);
-    }));
-  /* *INDENT-ON* */
+  for (i = 0; i < vec_len (apm->interfaces); i++)
+    {
+      apif = vec_elt_at_index (apm->interfaces, i);
+      if (apif->is_admin_up &&
+	  (i % apm->input_cpu_count) ==
+	  (cpu_index - apm->input_cpu_first_index))
+	n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
+    }
 
   return n_rx_packets;
 }
@@ -270,6 +271,9 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .sibling_of = "device-input",
   .format_trace = format_af_packet_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
+  /**
+   * default state is INTERRUPT mode, switch to POLLING if worker threads are enabled
+   */
   .state = VLIB_NODE_STATE_INTERRUPT,
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
