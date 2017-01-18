@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_d4e05298",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2017-01-18T12:38:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_54390240",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_143b7a39",
         "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.c",
         "patchSetId": 2
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_b4ef0687",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2017-01-18T12:38:15Z",
+      "side": 1,
+      "message": "The extn_hdr buffer returned by the callee is a pointer to an array of bytes allocated at configuration time (not by the callee for a given invocation). This lisp_gpe_tunnel_build_rewrite() makes its own copy of the contents (indicated by extn_hdr_len. The extn_hdr buffer returned by the callee is freed during configuration disable/ delete. The rewrite buffer allocated in this function in line 70 for example is freed as part of the existing logic. Please let me know if this explanation is unclear to you. We can discuss over phone.",
+      "parentUuid": "5a2585a7_143b7a39",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_3440b6a4",
         "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.h",
         "patchSetId": 2
@@ -47,6 +83,24 @@
       "writtenOn": "2017-01-18T11:17:06Z",
       "side": 1,
       "message": "this is not part of the public API. make it static in lisp_gpe_tunnel.c",
+      "revId": "3153881760138a2462b7238d4f561fbad990125d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_f4e58ea8",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 571
+      },
+      "writtenOn": "2017-01-18T12:38:15Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_3440b6a4",
       "revId": "3153881760138a2462b7238d4f561fbad990125d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
