@@ -1582,6 +1582,24 @@ VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
+int
+ip6_sr_multicastmap_get_count (ip6_address_t * multicast_address)
+{
+  uword *p;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_policy_t *pt;
+
+  p = hash_get_mem (sm->policy_index_by_multicast_address, multicast_address);
+  if (!p)
+    return (-1);
+  pt = pool_elt_at_index (sm->policies, p[0]);
+
+  if (!pt)
+    return (0);
+  return (vec_len (pt->tunnel_indices));
+
+}
+
 /**
  * @brief Add or Delete a Segment Routing policy
  *

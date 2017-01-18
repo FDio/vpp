@@ -39,16 +39,6 @@ typedef union
   u32 as_u32[2];
 } time_u64_t;
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  u8 ioam_trace_type;
-  u8 data_list_elts_left;
-  u32 elts[0]; /* Variable type. So keep it generic */
-}) ioam_trace_option_t;
-/* *INDENT-ON* */
-
-
 extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 extern ip6_main_t ip6_main;
 
