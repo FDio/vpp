@@ -41,11 +41,19 @@ class TestSNAT(VppTestCase):
 
             cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
 
+            cls.pg4._local_ip4 = "172.16.255.1"
+            cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
+            cls.pg4.set_table_ip4(10)
+            cls.pg5._local_ip4 = "172.16.255.3"
+            cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg5._remote_hosts[0]._ip4 = "172.16.255.4"
+            cls.pg5.set_table_ip4(10)
+            cls.pg6._local_ip4 = "172.16.255.1"
+            cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
+            cls.pg6.set_table_ip4(20)
             for i in cls.overlapping_interfaces:
-                i._local_ip4 = "172.16.255.1"
-                i._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
-                i._remote_hosts[0]._ip4 = "172.16.255.2"
-                i.set_table_ip4(i.sw_if_index)
                 i.config_ip4()
                 i.admin_up()
                 i.resolve_arp()
@@ -462,9 +470,9 @@ class TestSNAT(VppTestCase):
         self.icmp_id_out = 6305
 
         self.snat_add_static_mapping(self.pg4.remote_ip4, nat_ip1,
-                                     vrf_id=self.pg4.sw_if_index)
+                                     vrf_id=10)
         self.snat_add_static_mapping(self.pg0.remote_ip4, nat_ip2,
-                                     vrf_id=self.pg4.sw_if_index)
+                                     vrf_id=10)
         self.vapi.snat_interface_add_del_feature(self.pg3.sw_if_index,
                                                  is_inside=0)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
@@ -497,6 +505,27 @@ class TestSNAT(VppTestCase):
         self.vapi.snat_interface_add_del_feature(self.pg2.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg3.sw_if_index,
                                                  is_inside=0)
+
+        # 1st to 2nd interface
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, self.pg0.remote_ip4)
+                self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].sport, self.tcp_port_in)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].sport, self.udp_port_in)
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(inside network):", packet))
+                raise
 
         # in2out 1st interface
         pkts = self.create_stream_in(self.pg0, self.pg3)
@@ -555,6 +584,27 @@ class TestSNAT(VppTestCase):
         self.vapi.snat_interface_add_del_feature(self.pg4.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg5.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg6.sw_if_index)
+
+        # 1st to 2nd interface
+        pkts = self.create_stream_in(self.pg4, self.pg5)
+        self.pg4.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg5.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, self.pg4.remote_ip4)
+                self.assertEqual(packet[IP].dst, self.pg5.remote_ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].sport, self.tcp_port_in)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].sport, self.udp_port_in)
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(inside network):", packet))
+                raise
 
         # in2out 1st interface
         pkts = self.create_stream_in(self.pg4, self.pg3)

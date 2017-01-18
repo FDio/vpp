@@ -115,6 +115,31 @@ typedef enum {
   SNAT_IN2OUT_N_NEXT,
 } snat_in2out_next_t;
 
+static inline int
+snat_is_dst_if_inside (snat_main_t *sm, ip4_header_t * ip0, u32 rx_fib_index0)
+{
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr = {
+        .ip4.as_u32 = ip0->dst_address.as_u32,
+    },
+  };
+  fib_node_index_t fei = fib_table_lookup (rx_fib_index0, &pfx);
+  if (FIB_NODE_INDEX_INVALID != fei)
+    {
+      u32 sw_if_index = fib_entry_get_resolving_interface (fei);
+      snat_interface_t *i;
+      pool_foreach (i, sm->interfaces,
+      ({
+        if (i->is_inside && sw_if_index == i->sw_if_index)
+          return 1;
+      }));
+    }
+
+  return 0;
+}
+
 static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                       ip4_header_t * ip0,
                       u32 rx_fib_index0,
@@ -378,6 +403,10 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                 rt->cached_ip4_address))
         return next0;
       
+      /* Don't NAT packet aimed at another inside interface */
+      if (PREDICT_FALSE(snat_is_dst_if_inside(sm, ip0, rx_fib_index0)))
+        return next0;
+
       next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                          &s0, node, next0, cpu_index);
       
@@ -671,6 +700,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                                     rt->cached_ip4_address))
                     goto trace00;
                   
+                  /* Don't NAT packet aimed at another inside interface */
+                  if (PREDICT_FALSE(snat_is_dst_if_inside(sm, ip0, rx_fib_index0)))
+                    goto trace00;
+
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, cpu_index);
                   if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
@@ -822,6 +855,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                                     rt->cached_ip4_address))
                     goto trace01;
                   
+                  /* Don't NAT packet aimed at another inside interface */
+                  if (PREDICT_FALSE(snat_is_dst_if_inside(sm, ip1, rx_fib_index1)))
+                    goto trace01;
+
                   next1 = slow_path (sm, b1, ip1, rx_fib_index1, &key1,
                                      &s1, node, next1, cpu_index);
                   if (PREDICT_FALSE (next1 == SNAT_IN2OUT_NEXT_DROP))
@@ -1008,6 +1045,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                                     rt->cached_ip4_address))
                     goto trace0;
                   
+                  /* Don't NAT packet aimed at another inside interface */
+                  if (PREDICT_FALSE(snat_is_dst_if_inside(sm, ip0, rx_fib_index0)))
+                    goto trace0;
+
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, cpu_index);
                   if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
@@ -1390,6 +1431,10 @@ static inline u32 icmp_in2out_static_map (snat_main_t *sm,
                                 rt->cached_ip4_address))
         return next0;
 
+      /* Don't NAT packet aimed at another inside interface */
+      if (PREDICT_FALSE(snat_is_dst_if_inside(sm, ip0, rx_fib_index0)))
+        return next0;
+
       b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
       return SNAT_IN2OUT_NEXT_DROP;
     }
@@ -1508,6 +1553,10 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
               /* Don't NAT packet aimed at the intfc address */
               if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
                                 rt->cached_ip4_address))
+                goto trace0;
+
+              /* Don't NAT packet aimed at another inside interface */
+              if (PREDICT_FALSE(snat_is_dst_if_inside(sm, ip0, rx_fib_index0)))
                 goto trace0;
 
               next0 = icmp_in2out_static_map
