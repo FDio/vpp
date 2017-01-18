@@ -1,7 +1,5 @@
 /*
  * Copyright (c) 2017 Cisco and/or its affiliates.
- * trace_util.h -- Trace Profile Utility header
- *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,26 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef included_ioam_cache_msg_enum_h
+#define included_ioam_cache_msg_enum_h
 
-#ifndef PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_
-#define PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_
+#include <vppinfra/byte_order.h>
 
-#include <vnet/ip/ip6_hop_by_hop_packet.h>
-#include <ioam/lib-trace/trace_util.h>
+#define vl_msg_id(n,h) n,
+typedef enum {
+#include <ioam/ip6/ioam_cache_all_api_h.h>
+    /* We'll want to know how many messages IDs we need... */
+    VL_MSG_FIRST_AVAILABLE,
+} vl_msg_id_t;
+#undef vl_msg_id
 
-/* *INDENT-OFF* */
-typedef CLIB_PACKED(struct {
-  ip6_hop_by_hop_option_t hdr;
-  ioam_trace_hdr_t trace_hdr;
-}) ioam_trace_option_t;
-/* *INDENT-ON* */
-
-#endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_ */
-
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
- */
+#endif /* included_ioam_cache_msg_enum_h */

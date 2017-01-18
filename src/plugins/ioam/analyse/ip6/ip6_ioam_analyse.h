@@ -18,6 +18,7 @@
 
 #include <ioam/analyse/ioam_analyse.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <ioam/encap/ip6_ioam_trace.h>
 
 /** @brief IP6-iOAM analyser main structure.
     @note cache aligned.
@@ -55,6 +56,64 @@ ioam_analyse_get_data_from_flow_id (u32 flow_id)
     ioam_analyser_main.aggregated_data[flow_id].is_free = 0;
 
   return (ioam_analyser_main.aggregated_data + flow_id);
+}
+
+always_inline void *
+ip6_ioam_find_hbh_option (ip6_hop_by_hop_header_t * hbh0, u8 option)
+{
+  ip6_hop_by_hop_option_t *opt0, *limit0;
+  u8 type0;
+
+  opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
+  limit0 =
+    (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
+
+  while (opt0 < limit0)
+    {
+      type0 = opt0->type;
+      if (type0 == option)
+	return ((void *) opt0);
+
+      if (0 == type0)
+	{
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  continue;
+	}
+      opt0 = (ip6_hop_by_hop_option_t *)
+	(((u8 *) opt0) + opt0->length + sizeof (ip6_hop_by_hop_option_t));
+    }
+
+  return NULL;
+}
+
+always_inline int
+ip6_ioam_analyse_compare_path_delay (ip6_hop_by_hop_header_t * hbh0,
+				     ip6_hop_by_hop_header_t * hbh1,
+				     bool oneway)
+{
+  ioam_trace_option_t *trace0 = NULL, *trace1 = NULL;
+  f64 delay0, delay1;
+
+  trace0 =
+    ip6_ioam_find_hbh_option (hbh0, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+  trace1 =
+    ip6_ioam_find_hbh_option (hbh1, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+
+  if (PREDICT_FALSE ((trace0 == NULL) && (trace1 == NULL)))
+    return 0;
+
+  if (PREDICT_FALSE (trace1 == NULL))
+    return 1;
+
+  if (PREDICT_FALSE (trace0 == NULL))
+    return -1;
+
+  delay0 = ip6_ioam_analyse_calc_delay (&trace0->trace_hdr,
+					trace0->hdr.length - 2, oneway);
+  delay1 = ip6_ioam_analyse_calc_delay (&trace1->trace_hdr,
+					trace1->hdr.length - 2, oneway);
+
+  return (delay0 - delay1);
 }
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ANALYSE_IP6_IOAM_ANALYSE_NODE_H_ */

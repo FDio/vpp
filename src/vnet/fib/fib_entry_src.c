@@ -446,8 +446,9 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
      */
     index_t ui = fib_path_list_get_urpf(esrc->fes_pl);
 
-    if (fib_entry_is_sourced(fib_entry_get_index(fib_entry),
-			     FIB_SOURCE_URPF_EXEMPT) &&
+    if ((fib_entry_is_sourced(fib_entry_get_index(fib_entry),
+			      FIB_SOURCE_URPF_EXEMPT) ||
+	 (esrc->fes_entry_flags & FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT))&&
 	(0 == fib_urpf_check_size(ui)))
     {
 	/*

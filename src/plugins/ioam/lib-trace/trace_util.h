@@ -213,8 +213,6 @@ typedef struct
   u32 app_data;
 } ioam_trace_ts_app_t;
 
-
-
 static inline u8
 fetch_trace_data_size (u8 trace_type)
 {
