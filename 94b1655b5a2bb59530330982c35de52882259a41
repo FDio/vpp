@@ -16,6 +16,24 @@
       "revId": "94b1655b5a2bb59530330982c35de52882259a41",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_7413de66",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-01-18T14:36:44Z",
+      "side": 1,
+      "message": "This is used in ip6_hop_by_hop(). OI_DECAP is used only by this file so moving it here instead of ip6.h.\n\nAlso in previous commit - https://gerrit.fd.io/r/#/c/2282/ I had received comment to move it to ip6_forward.c:\n\n\"Next time you submit an ioam patch, please move OI_DECAP from ip6.h -\u003e ip6_forward.c since it’s not used anywhere else AFAICT...\n \nThanks… Dave\"",
+      "parentUuid": "5a2585a7_54d582b7",
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
