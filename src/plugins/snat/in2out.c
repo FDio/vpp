@@ -115,6 +115,93 @@ typedef enum {
   SNAT_IN2OUT_N_NEXT,
 } snat_in2out_next_t;
 
+/**
+ * @brief Check if packet should be translated
+ *
+ * Packets aimed at outside interface and external addresss with active session
+ * should be translated.
+ *
+ * @param sm            SNAT main
+ * @param rt            SNAT runtime data
+ * @param sw_if_index0  index of the inside interface
+ * @param ip0           IPv4 header
+ * @param proto0        SNAT protocol
+ * @param rx_fib_index0 RX FIB index
+ *
+ * @returns 0 if packet should be translated otherwise 1
+ */
+static inline int
+snat_not_translate (snat_main_t * sm, snat_runtime_t * rt, u32 sw_if_index0,
+                   ip4_header_t * ip0, u32 proto0, u32 rx_fib_index0)
+{
+  ip4_address_t * first_int_addr;
+  udp_header_t * udp0 = ip4_next_header (ip0);
+  snat_session_key_t key0, sm0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr = {
+        .ip4.as_u32 = ip0->dst_address.as_u32,
+    },
+  };
+
+  if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
+    {
+      first_int_addr =
+        ip4_interface_first_address (sm->ip4_main, sw_if_index0,
+                                     0 /* just want the address */);
+      rt->cached_sw_if_index = sw_if_index0;
+      if (first_int_addr)
+        rt->cached_ip4_address = first_int_addr->as_u32;
+      else
+        rt->cached_ip4_address = 0;
+    }
+
+  /* Don't NAT packet aimed at the intfc address */
+  if (PREDICT_FALSE(ip0->dst_address.as_u32 == rt->cached_ip4_address))
+    return 1;
+
+  key0.addr = ip0->dst_address;
+  key0.port = udp0->dst_port;
+  key0.protocol = proto0;
+  key0.fib_index = sm->outside_fib_index;
+  kv0.key = key0.as_u64;
+
+  /* NAT packet aimed at external address if */
+  /* has active sessions */
+  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+    {
+      /* or is static mappings */
+      if (!snat_static_mapping_match(sm, key0, &sm0, 1))
+        return 0;
+    }
+  else
+    return 0;
+
+  fei = fib_table_lookup (rx_fib_index0, &pfx);
+  if (FIB_NODE_INDEX_INVALID != fei)
+    {
+      u32 sw_if_index = fib_entry_get_resolving_interface (fei);
+      if (sw_if_index == ~0)
+        {
+          fei = fib_table_lookup (sm->outside_fib_index, &pfx);
+          if (FIB_NODE_INDEX_INVALID != fei)
+            sw_if_index = fib_entry_get_resolving_interface (fei);
+        }
+      snat_interface_t *i;
+      pool_foreach (i, sm->interfaces,
+      ({
+        /* NAT packet aimed at outside interface */
+        if ((i->is_inside == 0) && (sw_if_index == i->sw_if_index))
+          return 0;
+      }));
+    }
+
+  return 1;
+}
+
 static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                       ip4_header_t * ip0,
                       u32 rx_fib_index0,
@@ -359,25 +446,10 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
   
   if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
     {
-      ip4_address_t * first_int_addr;
-
-      if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
-        {
-          first_int_addr = 
-            ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-                                         0 /* just want the address */);
-          rt->cached_sw_if_index = sw_if_index0;
-          if (first_int_addr)
-            rt->cached_ip4_address = first_int_addr->as_u32;
-          else
-            rt->cached_ip4_address = 0;
-        }
-      
-      /* Don't NAT packet aimed at the intfc address */
-      if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
-                                rt->cached_ip4_address))
+      if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
+          IP_PROTOCOL_ICMP, rx_fib_index0)))
         return next0;
-      
+
       next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                          &s0, node, next0, cpu_index);
       
@@ -652,25 +724,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  ip4_address_t * first_int_addr;
-                  
-                  if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
-                    {
-                      first_int_addr = 
-                        ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-                                                     0 /* just want the address */);
-                      rt->cached_sw_if_index = sw_if_index0;
-                      if (first_int_addr)
-                        rt->cached_ip4_address = first_int_addr->as_u32;
-                      else
-                        rt->cached_ip4_address = 0;
-                    }
-                  
-                  /* Don't NAT packet aimed at the intfc address */
-                  if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
-                                    rt->cached_ip4_address))
+                  if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
+                      proto0, rx_fib_index0)))
                     goto trace00;
-                  
+
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, cpu_index);
                   if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
@@ -803,25 +860,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  ip4_address_t * first_int_addr;
-                  
-                  if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index1))
-                    {
-                      first_int_addr = 
-                        ip4_interface_first_address (sm->ip4_main, sw_if_index1,
-                                                     0 /* just want the address */);
-                      rt->cached_sw_if_index = sw_if_index1;
-                      if (first_int_addr)
-                        rt->cached_ip4_address = first_int_addr->as_u32;
-                      else
-                        rt->cached_ip4_address = 0;
-                    }
-                  
-                  /* Don't NAT packet aimed at the intfc address */
-                  if (PREDICT_FALSE(ip1->dst_address.as_u32 ==
-                                    rt->cached_ip4_address))
+                  if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index1, ip1,
+                      proto1, rx_fib_index1)))
                     goto trace01;
-                  
+
                   next1 = slow_path (sm, b1, ip1, rx_fib_index1, &key1,
                                      &s1, node, next1, cpu_index);
                   if (PREDICT_FALSE (next1 == SNAT_IN2OUT_NEXT_DROP))
@@ -989,25 +1031,10 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  ip4_address_t * first_int_addr;
-                  
-                  if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
-                    {
-                      first_int_addr = 
-                        ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-                                                     0 /* just want the address */);
-                      rt->cached_sw_if_index = sw_if_index0;
-                      if (first_int_addr)
-                        rt->cached_ip4_address = first_int_addr->as_u32;
-                      else
-                        rt->cached_ip4_address = 0;
-                    }
-                  
-                  /* Don't NAT packet aimed at the intfc address */
-                  if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
-                                    rt->cached_ip4_address))
+                  if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
+                      proto0, rx_fib_index0)))
                     goto trace0;
-                  
+
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, cpu_index);
                   if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
@@ -1375,23 +1402,8 @@ static inline u32 icmp_in2out_static_map (snat_main_t *sm,
   
   if (snat_static_mapping_match(sm, key0, &sm0, 0))
     {
-      ip4_address_t * first_int_addr;
-
-      if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
-        {
-          first_int_addr =
-            ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-                                         0 /* just want the address */);
-          rt->cached_sw_if_index = sw_if_index0;
-          if (first_int_addr)
-            rt->cached_ip4_address = first_int_addr->as_u32;
-          else
-            rt->cached_ip4_address = 0;
-        }
-
-      /* Don't NAT packet aimed at the intfc address */
-      if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
-                                rt->cached_ip4_address))
+      if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
+          IP_PROTOCOL_ICMP, rx_fib_index0)))
         return next0;
 
       b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
@@ -1498,20 +1510,8 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
             {
-              ip4_address_t * first_int_addr;
-              
-              if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
-                {
-                  first_int_addr = 
-                    ip4_interface_first_address (sm->ip4_main, sw_if_index0,
-                                                 0 /* just want the address */);
-                  rt->cached_sw_if_index = sw_if_index0;
-                  rt->cached_ip4_address = first_int_addr->as_u32;
-                }
-              
-              /* Don't NAT packet aimed at the intfc address */
-              if (PREDICT_FALSE(ip0->dst_address.as_u32 ==
-                                rt->cached_ip4_address))
+              if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
+                  proto0, rx_fib_index0)))
                 goto trace0;
 
               next0 = icmp_in2out_static_map

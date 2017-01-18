@@ -41,11 +41,19 @@ class TestSNAT(VppTestCase):
 
             cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
 
+            cls.pg4._local_ip4 = "172.16.255.1"
+            cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
+            cls.pg4.set_table_ip4(10)
+            cls.pg5._local_ip4 = "172.16.255.3"
+            cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg5._remote_hosts[0]._ip4 = "172.16.255.4"
+            cls.pg5.set_table_ip4(10)
+            cls.pg6._local_ip4 = "172.16.255.1"
+            cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
+            cls.pg6.set_table_ip4(20)
             for i in cls.overlapping_interfaces:
-                i._local_ip4 = "172.16.255.1"
-                i._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
-                i._remote_hosts[0]._ip4 = "172.16.255.2"
-                i.set_table_ip4(i.sw_if_index)
                 i.config_ip4()
                 i.admin_up()
                 i.resolve_arp()
@@ -171,6 +179,29 @@ class TestSNAT(VppTestCase):
                     self.assertEqual(packet[TCP].dport, self.tcp_port_in)
                 elif packet.haslayer(UDP):
                     self.assertEqual(packet[UDP].dport, self.udp_port_in)
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(inside network):", packet))
+                raise
+
+    def verify_capture_no_translation(self, capture, ingress_if, egress_if):
+        """
+        Verify captured packet that don't have to be translated
+
+        :param capture: Captured packets
+        :param ingress_if: Ingress interface
+        :param egress_if: Egress interface
+        """
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, ingress_if.remote_ip4)
+                self.assertEqual(packet[IP].dst, egress_if.remote_ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].sport, self.tcp_port_in)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].sport, self.udp_port_in)
                 else:
                     self.assertEqual(packet[ICMP].id, self.icmp_id_in)
             except:
@@ -462,9 +493,9 @@ class TestSNAT(VppTestCase):
         self.icmp_id_out = 6305
 
         self.snat_add_static_mapping(self.pg4.remote_ip4, nat_ip1,
-                                     vrf_id=self.pg4.sw_if_index)
+                                     vrf_id=10)
         self.snat_add_static_mapping(self.pg0.remote_ip4, nat_ip2,
-                                     vrf_id=self.pg4.sw_if_index)
+                                     vrf_id=10)
         self.vapi.snat_interface_add_del_feature(self.pg3.sw_if_index,
                                                  is_inside=0)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
@@ -494,9 +525,24 @@ class TestSNAT(VppTestCase):
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index)
-        self.vapi.snat_interface_add_del_feature(self.pg2.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg3.sw_if_index,
                                                  is_inside=0)
+
+        # between two S-NAT inside interfaces (no translation)
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_no_translation(capture, self.pg0, self.pg1)
+
+        # from S-NAT inside to interface without S-NAT feature (no translation)
+        pkts = self.create_stream_in(self.pg0, self.pg2)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg2.get_capture(len(pkts))
+        self.verify_capture_no_translation(capture, self.pg0, self.pg2)
 
         # in2out 1st interface
         pkts = self.create_stream_in(self.pg0, self.pg3)
@@ -530,31 +576,46 @@ class TestSNAT(VppTestCase):
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg1)
 
-        # in2out 3rd interface
-        pkts = self.create_stream_in(self.pg2, self.pg3)
-        self.pg2.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg3.get_capture(len(pkts))
-        self.verify_capture_out(capture)
-
-        # out2in 3rd interface
-        pkts = self.create_stream_out(self.pg3)
-        self.pg3.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        capture = self.pg2.get_capture(len(pkts))
-        self.verify_capture_in(capture, self.pg2)
-
     def test_inside_overlapping_interfaces(self):
         """ SNAT multiple inside interfaces with overlapping address space """
 
+        static_nat_ip = "10.0.0.10"
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg3.sw_if_index,
                                                  is_inside=0)
         self.vapi.snat_interface_add_del_feature(self.pg4.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg5.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg6.sw_if_index)
+        self.snat_add_static_mapping(self.pg6.remote_ip4, static_nat_ip,
+                                     vrf_id=20)
+
+        # between S-NAT inside interfaces with same VRF (no translation)
+        pkts = self.create_stream_in(self.pg4, self.pg5)
+        self.pg4.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg5.get_capture(len(pkts))
+        self.verify_capture_no_translation(capture, self.pg4, self.pg5)
+
+        # between S-NAT inside interfaces with different VRF (hairpinning)
+        p = (Ether(src=self.pg4.remote_mac, dst=self.pg4.local_mac) /
+             IP(src=self.pg4.remote_ip4, dst=static_nat_ip) /
+             TCP(sport=1234, dport=5678))
+        self.pg4.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg6.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.snat_addr)
+            self.assertEqual(ip.dst, self.pg6.remote_ip4)
+            self.assertNotEqual(tcp.sport, 1234)
+            self.assertEqual(tcp.dport, 5678)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
 
         # in2out 1st interface
         pkts = self.create_stream_in(self.pg4, self.pg3)
@@ -594,10 +655,10 @@ class TestSNAT(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg3.get_capture(len(pkts))
-        self.verify_capture_out(capture)
+        self.verify_capture_out(capture, static_nat_ip, True)
 
         # out2in 3rd interface
-        pkts = self.create_stream_out(self.pg3)
+        pkts = self.create_stream_out(self.pg3, static_nat_ip)
         self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
