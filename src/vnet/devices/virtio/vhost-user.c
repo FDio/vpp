@@ -2326,12 +2326,16 @@ vhost_user_process (vlib_main_t * vm,
 			   sizeof (sun.sun_path) - 1);
 
 		  /* Avoid hanging VPP if the other end does not accept */
-		  fcntl(sockfd, F_SETFL, O_NONBLOCK);
+		  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0)
+                      clib_unix_warning ("fcntl");
+
 		  if (connect (sockfd, (struct sockaddr *) &sun,
 			       sizeof (struct sockaddr_un)) == 0)
 		    {
 		      /* Set the socket to blocking as it was before */
-		      fcntl(sockfd, F_SETFL, 0);
+                      if (fcntl(sockfd, F_SETFL, 0) < 0)
+                        clib_unix_warning ("fcntl2");
+
 		      vui->sock_errno = 0;
 		      template.file_descriptor = sockfd;
 		      template.private_data =

@@ -139,11 +139,11 @@ api_command_fn (vlib_main_t * vm,
 				"%s error: %U\n", cmdp,
 				format_api_error, vam, rv);
 
-      if (vam->regenerate_interface_table)
-	{
-	  vam->regenerate_interface_table = 0;
-	  api_sw_interface_dump (vam);
-	}
+    }
+  if (vam->regenerate_interface_table)
+    {
+      vam->regenerate_interface_table = 0;
+      api_sw_interface_dump (vam);
     }
   unformat_free (vam->input);
   return 0;
