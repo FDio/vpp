@@ -1,5 +1,7 @@
 /*
  * Copyright (c) 2017 Cisco and/or its affiliates.
+ * trace_util.h -- Trace Profile Utility header
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -25,7 +27,6 @@ typedef CLIB_PACKED(struct {
   ioam_trace_hdr_t trace_hdr;
 }) ioam_trace_option_t;
 /* *INDENT-ON* */
-
 
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_ */
 

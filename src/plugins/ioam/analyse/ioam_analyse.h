@@ -123,12 +123,14 @@ typedef struct ioam_analyser_data_t_
 } ioam_analyser_data_t;
 
 always_inline f64
-ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len)
+ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
+			     u8 oneway)
 {
   u16 size_of_traceopt_per_node, size_of_all_traceopts;
   u8 num_nodes;
-  u32 *start_elt, *end_elt;
+  u32 *start_elt, *end_elt, *uturn_elt;;
   u32 start_time, end_time;
+  u8 done = 0;
 
   size_of_traceopt_per_node = fetch_trace_data_size (trace->ioam_trace_type);
   // Unknown trace type
@@ -145,6 +147,19 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len)
     trace->elts +
     (u32) (size_of_traceopt_per_node * (num_nodes - 1) / sizeof (u32));
 
+  if (oneway && (trace->ioam_trace_type & BIT_TTL_NODEID))
+    {
+      done = 0;
+      do
+	{
+	  uturn_elt = start_elt - size_of_traceopt_per_node / sizeof (u32);
+
+	  if ((clib_net_to_host_u32 (*start_elt) >> 24) <=
+	      (clib_net_to_host_u32 (*uturn_elt) >> 24))
+	    done = 1;
+	}
+      while (!done && (start_elt = uturn_elt) != end_elt);
+    }
   if (trace->ioam_trace_type & BIT_TTL_NODEID)
     {
       start_elt++;
@@ -155,7 +170,6 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len)
       start_elt++;
       end_elt++;
     }
-
   start_time = clib_net_to_host_u32 (*start_elt);
   end_time = clib_net_to_host_u32 (*end_elt);
 
@@ -273,11 +287,10 @@ ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
 found_match:
   trace_record->pkt_counter++;
   trace_record->bytes_counter += pak_len;
-
   if (trace->ioam_trace_type & BIT_TIMESTAMP)
     {
       /* Calculate time delay */
-      u32 delay = (u32) ip6_ioam_analyse_calc_delay (trace, trace_len);
+      u32 delay = (u32) ip6_ioam_analyse_calc_delay (trace, trace_len, 0);
       if (delay < trace_record->min_delay)
 	trace_record->min_delay = delay;
       else if (delay > trace_record->max_delay)

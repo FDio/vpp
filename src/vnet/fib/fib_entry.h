@@ -188,9 +188,14 @@ typedef enum fib_entry_attribute_t_ {
      */
     FIB_ENTRY_ATTRIBUTE_LOCAL,
     /**
+     * The prefix/address exempted from loose uRPF check
+     * To be used with caution
+     */
+    FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
+    /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_LOCAL,
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
 } fib_entry_attribute_t;
 
 /**
@@ -205,6 +210,7 @@ typedef enum fib_entry_attribute_t_ {
     [FIB_ENTRY_ATTRIBUTE_DROP]      = "drop",		\
     [FIB_ENTRY_ATTRIBUTE_EXCLUSIVE] = "exclusive",      \
     [FIB_ENTRY_ATTRIBUTE_LOCAL]     = "local",		\
+    [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt"   \
 }
 
 #define FOR_EACH_FIB_ATTRIBUTE(_item)			\
@@ -220,6 +226,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_EXCLUSIVE = (1 << FIB_ENTRY_ATTRIBUTE_EXCLUSIVE),
     FIB_ENTRY_FLAG_LOCAL     = (1 << FIB_ENTRY_ATTRIBUTE_LOCAL),
     FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
+    FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
 } __attribute__((packed)) fib_entry_flag_t;
 
 /**

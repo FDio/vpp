@@ -69,7 +69,6 @@ typedef struct
   /** Indicates that this tunnel is part of a policy comprising
      of multiple tunnels. If == ~0 tunnel is not part of a policy */
   u32 policy_index;
-
   /**
    * The FIB node graph linkage
    */
@@ -187,6 +186,9 @@ typedef struct
   /** multicast IP6 address */
   ip6_address_t *multicast_address;
 
+  /** width if it is a prefix */
+  u32 mask_len;
+
   /** name of policy to map to */
   u8 *policy_name;
 
@@ -263,6 +265,72 @@ void vnet_register_sr_app_callback (void *cb);
 void sr_fix_hmac (ip6_sr_main_t * sm, ip6_header_t * ip,
 		  ip6_sr_header_t * sr);
 
+static inline int
+ip6_sr_create_rewrite_string (ip6_sr_add_del_tunnel_args_t * a, u8 ** rewrite)
+{
+  ip6_sr_header_t *h = 0;
+  u32 header_length;
+  ip6_address_t *addrp, *this_address;
+
+  if (!vec_len (a->segments))
+    /* there must be at least one segment... */
+    return -4;
+
+  /*
+   * Create the sr header rewrite string
+   * The list of segments needs an extra slot for the ultimate destination
+   * which is taken from the packet we add the SRH to.
+   */
+  header_length = sizeof (*h) +
+    sizeof (ip6_address_t) * (vec_len (a->segments) + 1 + vec_len (a->tags));
+
+  vec_validate (*rewrite, header_length - 1);
+
+  h = (ip6_sr_header_t *) * rewrite;
+
+  h->protocol = 0xFF;		/* we don't know yet */
+
+  h->length = (header_length / 8) - 1;
+  h->type = ROUTING_HEADER_TYPE_SR;
+
+  /* first_segment and segments_left need to have the index of the last
+   * element in the list; a->segments has one element less than ends up
+   * in the header (it does not have the DA in it), so vec_len(a->segments)
+   * is the value we want.
+   */
+  h->first_segment = h->segments_left = vec_len (a->segments);
+
+  h->flags = a->flags_net_byte_order;
+
+  /* Paint on the segment list, in reverse.
+   * This is offset by one to leave room at the start for the ultimate
+   * destination.
+   */
+  addrp = h->segments + vec_len (a->segments);
+
+  vec_foreach (this_address, a->segments)
+  {
+    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+    addrp--;
+  }
+
+  /*
+   * Since the ultimate destination address is not yet known, set that slot
+   * to a value we will instantly recognize as bogus.
+   */
+  memset (h->segments, 0xfe, sizeof (ip6_address_t));
+
+  /* Paint on the tag list, not reversed */
+  addrp = h->segments + vec_len (a->segments);
+
+  vec_foreach (this_address, a->tags)
+  {
+    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+    addrp++;
+  }
+  return (0);
+
+}
 #endif /* included_vnet_sr_h */
 
 /*

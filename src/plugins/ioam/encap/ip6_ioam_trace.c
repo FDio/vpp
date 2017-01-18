@@ -40,7 +40,6 @@ typedef union
   u32 as_u32[2];
 } time_u64_t;
 
-
 extern ip6_hop_by_hop_ioam_main_t ip6_hop_by_hop_ioam_main;
 extern ip6_main_t ip6_main;
 

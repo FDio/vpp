@@ -1582,6 +1582,24 @@ VLIB_CLI_COMMAND (show_sr_tunnel_command, static) = {
 };
 /* *INDENT-ON* */
 
+int
+ip6_sr_multicastmap_get_count (ip6_address_t * multicast_address)
+{
+  uword *p;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_policy_t *pt;
+
+  p = hash_get_mem (sm->policy_index_by_multicast_address, multicast_address);
+  if (!p)
+    return (-1);
+  pt = pool_elt_at_index (sm->policies, p[0]);
+
+  if (!pt)
+    return (0);
+  return (vec_len (pt->tunnel_indices));
+
+}
+
 /**
  * @brief Add or Delete a Segment Routing policy
  *
@@ -1889,48 +1907,95 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
-
   /*
    * Construct an mFIB entry for the multicast address,
    * using the rx/tx fib from the first tunnel.
    * There is no RPF information for this address (I need to discuss this with
    * Pablo), so for now accept from anywhere...
    */
-  /* *INDENT-OFF* */
-  mfib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = 128,
-    .fp_grp_addr = {
-      .ip6 = *a->multicast_address,
-    }
-  };
-  /* *INDENT-ON* */
+  if (ip6_address_is_multicast (a->multicast_address))
+    {
+      /* *INDENT-OFF* */
+      mfib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_len = a->mask_len,
+	.fp_grp_addr = {
+	  .ip6 = *a->multicast_address,
+	}
+      };
+      /* *INDENT-ON* */
 
-  if (a->is_del)
-    mfib_table_entry_delete (t->rx_fib_index, &pfx, MFIB_SOURCE_SRv6);
+      if (a->is_del)
+	mfib_table_entry_delete (t->rx_fib_index, &pfx, MFIB_SOURCE_SRv6);
+      else
+	{
+	  /*
+	   * Construct a replicate DPO that will replicate received packets over
+	   * each tunnel in the policy
+	   */
+	  dpo_id_t dpo = DPO_INVALID;
+
+	  rep =
+	    replicate_create (vec_len (pt->tunnel_indices), DPO_PROTO_IP6);
+
+	  vec_foreach_index (ii, pt->tunnel_indices)
+	  {
+	    dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6,
+		     pt->tunnel_indices[ii]);
+
+	    replicate_set_bucket (rep, ii, &dpo);
+	  }
+
+	  mfib_table_entry_special_add (t->rx_fib_index,
+					&pfx,
+					MFIB_SOURCE_SRv6,
+					MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, rep);
+
+	  dpo_reset (&dpo);
+	}
+    }
   else
     {
-      /*
-       * Construct a replicate DPO that will replicate received packets over
-       * each tunnel in the policy
-       */
-      dpo_id_t dpo = DPO_INVALID;
+      /* *INDENT-OFF* */
+      fib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_len = a->mask_len,
+	.fp_addr = {
+	  .ip6 = *a->multicast_address,
+	}
+      };
+      /* *INDENT-ON* */
 
-      rep = replicate_create (vec_len (pt->tunnel_indices), DPO_PROTO_IP6);
+      if (a->is_del)
+	fib_table_entry_delete (t->rx_fib_index, &pfx, FIB_SOURCE_SR);
+      else
+	{
+	  /*
+	   * Construct a replicate DPO that will replicate received packets over
+	   * each tunnel in the policy
+	   */
+	  dpo_id_t dpo = DPO_INVALID;
+	  dpo_id_t rep_dpo = DPO_INVALID;
 
-      vec_foreach_index (ii, pt->tunnel_indices)
-      {
-	dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, pt->tunnel_indices[ii]);
+	  rep =
+	    replicate_create (vec_len (pt->tunnel_indices), DPO_PROTO_IP6);
 
-	replicate_set_bucket (rep, ii, &dpo);
-      }
+	  vec_foreach_index (ii, pt->tunnel_indices)
+	  {
+	    dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6,
+		     pt->tunnel_indices[ii]);
 
-      mfib_table_entry_special_add (t->rx_fib_index,
-				    &pfx,
-				    MFIB_SOURCE_SRv6,
-				    MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, rep);
-
-      dpo_reset (&dpo);
+	    replicate_set_bucket (rep, ii, &dpo);
+	  }
+	  dpo_set (&rep_dpo, DPO_REPLICATE, DPO_PROTO_IP6, rep);
+	  fib_table_entry_special_dpo_add (t->rx_fib_index,
+					   &pfx,
+					   FIB_SOURCE_SR,
+					   FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT |
+					   FIB_ENTRY_FLAG_EXCLUSIVE,
+					   &rep_dpo);
+	  dpo_reset (&dpo);
+	}
     }
 
   u8 *mcast_copy = 0;
@@ -1971,6 +2036,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
   u8 *policy_name = 0;
   int multicast_address_set = 0;
   ip6_sr_add_del_multicastmap_args_t _a, *a = &_a;
+  u32 mask_len = 128;
   int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1979,7 +2045,8 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 	is_del = 1;
       else
 	if (unformat
-	    (input, "address %U", unformat_ip6_address, &multicast_address))
+	    (input, "address %U/%d", unformat_ip6_address, &multicast_address,
+	     &mask_len))
 	multicast_address_set = 1;
       else if (unformat (input, "sr-policy %s", &policy_name))
 	;
@@ -1997,6 +2064,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 
   a->is_del = is_del;
   a->multicast_address = &multicast_address;
+  a->mask_len = mask_len;
   a->policy_name = policy_name;
 
   rv = ip6_sr_add_del_multicastmap (a);
@@ -2033,7 +2101,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (sr_multicast_map_command, static) = {
     .path = "sr multicast-map",
     .short_help =
-    "sr multicast-map address <multicast-ip6-address> sr-policy <sr-policy-name> [del]",
+    "sr multicast-map address <multicast-ip6-address>[/<width>] sr-policy <sr-policy-name> [del]",
     .function = sr_add_del_multicast_map_command_fn,
 };
 /* *INDENT-ON* */
