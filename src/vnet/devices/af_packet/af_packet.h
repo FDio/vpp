@@ -20,6 +20,7 @@
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  volatile u32 *lockp;
   u8 *host_if_name;
   int fd;
   struct tpacket_req *rx_req;
@@ -50,6 +51,12 @@ typedef struct
 
   /* hash of host interface names */
   mhash_t if_index_by_host_if_name;
+
+  /* first cpu index */
+  u32 input_cpu_first_index;
+
+  /* total cpu count */
+  u32 input_cpu_count;
 } af_packet_main_t;
 
 af_packet_main_t af_packet_main;

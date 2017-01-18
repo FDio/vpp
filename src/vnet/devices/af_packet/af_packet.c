@@ -171,6 +171,31 @@ error:
   return ret;
 }
 
+static void
+af_packet_worker_thread_enable ()
+{
+  /* If worker threads are enabled, switch to polling mode */
+  foreach_vlib_main ((
+		       {
+		       vlib_node_set_state (this_vlib_main,
+					    af_packet_input_node.index,
+					    VLIB_NODE_STATE_POLLING);
+		       }));
+
+}
+
+static void
+af_packet_worker_thread_disable ()
+{
+  foreach_vlib_main ((
+		       {
+		       vlib_node_set_state (this_vlib_main,
+					    af_packet_input_node.index,
+					    VLIB_NODE_STATE_INTERRUPT);
+		       }));
+
+}
+
 int
 af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 		     u32 * sw_if_index)
@@ -184,6 +209,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   u8 hw_addr[6];
   clib_error_t *error;
   vnet_sw_interface_t *sw;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_main_t *vnm = vnet_get_main ();
   uword *p;
   uword if_index;
@@ -225,6 +251,13 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   apif->per_interface_next_index = ~0;
   apif->next_tx_frame = 0;
   apif->next_rx_frame = 0;
+
+  if (tm->n_vlib_mains > 1)
+    {
+      apif->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
+					    CLIB_CACHE_LINE_BYTES);
+      memset ((void *) apif->lockp, 0, CLIB_CACHE_LINE_BYTES);
+    }
 
   {
     unix_file_t template = { 0 };
@@ -273,6 +306,10 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 		 0);
   if (sw_if_index)
     *sw_if_index = apif->sw_if_index;
+
+  if (tm->n_vlib_mains > 1 && pool_elts (apm->interfaces) == 1)
+    af_packet_worker_thread_enable ();
+
   return 0;
 
 error:
@@ -286,6 +323,7 @@ int
 af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   af_packet_main_t *apm = &af_packet_main;
   af_packet_if_t *apif;
   uword *p;
@@ -335,6 +373,8 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
   ethernet_delete_interface (vnm, apif->hw_if_index);
 
   pool_put (apm->interfaces, apif);
+  if (tm->n_vlib_mains > 1 && pool_elts (apm->interfaces) == 0)
+    af_packet_worker_thread_disable ();
 
   return 0;
 }
@@ -344,8 +384,23 @@ af_packet_init (vlib_main_t * vm)
 {
   af_packet_main_t *apm = &af_packet_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vlib_thread_registration_t *tr;
+  uword *p;
 
   memset (apm, 0, sizeof (af_packet_main_t));
+
+  apm->input_cpu_first_index = 0;
+  apm->input_cpu_count = 1;
+
+  /* find out which cpus will be used for input */
+  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
+  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
+
+  if (tr && tr->count > 0)
+    {
+      apm->input_cpu_first_index = tr->first_index;
+      apm->input_cpu_count = tr->count;
+    }
 
   mhash_init_vec_string (&apm->if_index_by_host_if_name, sizeof (uword));
 

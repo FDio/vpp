@@ -92,6 +92,12 @@ af_packet_interface_tx (vlib_main_t * vm,
   struct tpacket2_hdr *tph;
   u32 frame_not_ready = 0;
 
+  if (PREDICT_FALSE (apif->lockp != 0))
+    {
+      while (__sync_lock_test_and_set (apif->lockp, 1))
+	;
+    }
+
   while (n_left > 0)
     {
       u32 len;
@@ -151,6 +157,9 @@ af_packet_interface_tx (vlib_main_t * vm,
 			    AF_PACKET_TX_ERROR_TXRING_EAGAIN, n_sent);
 	}
     }
+
+  if (PREDICT_FALSE (apif->lockp != 0))
+    *apif->lockp = 0;
 
   if (PREDICT_FALSE (frame_not_ready))
     vlib_error_count (vm, node->node_index,
