@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_2ecdfe5d",
+        "filename": "RELEASE.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-01-19T19:01:01Z",
+      "side": 1,
+      "message": "Substitute with:\n- Map-Register/Map-Notify/RLOC-probing support\n- L2 API improvements, overall code hardening",
+      "range": {
+        "startLine": 51,
+        "startChar": 0,
+        "endLine": 52,
+        "endChar": 28
+      },
+      "revId": "071f82865d571bc41589a24d0bf535bafb3c89a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
