@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_6eb426d1",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-01-19T20:45:55Z",
+      "side": 1,
+      "message": "spelling",
+      "range": {
+        "startLine": 42,
+        "startChar": 4,
+        "endLine": 42,
+        "endChar": 17
+      },
+      "revId": "5da791e92172007ae169a98fb6a9100361dd6c4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_4ecbaa53",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 153,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-01-19T20:45:55Z",
+      "side": 1,
+      "message": "There\u0027s some guesswork here on these comments.",
+      "range": {
+        "startLine": 153,
+        "startChar": 24,
+        "endLine": 153,
+        "endChar": 25
+      },
+      "revId": "5da791e92172007ae169a98fb6a9100361dd6c4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_2ec61e4a",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 301,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-01-19T20:45:55Z",
+      "side": 1,
+      "message": "async \u0027calls\u0027 are really just messages, so multipart holds no meaning.",
+      "revId": "5da791e92172007ae169a98fb6a9100361dd6c4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_0ec5a23b",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-01-19T20:45:55Z",
+      "side": 1,
+      "message": "typo",
+      "range": {
+        "startLine": 372,
+        "startChar": 11,
+        "endLine": 372,
+        "endChar": 17
+      },
+      "revId": "5da791e92172007ae169a98fb6a9100361dd6c4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_8eb192e3",
+        "filename": "src/vpp-api/python/vpp_papi/vpp_papi.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-01-19T20:45:55Z",
+      "side": 1,
+      "message": "needs to go",
+      "range": {
+        "startLine": 555,
+        "startChar": 20,
+        "endLine": 555,
+        "endChar": 27
+      },
+      "revId": "5da791e92172007ae169a98fb6a9100361dd6c4e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
