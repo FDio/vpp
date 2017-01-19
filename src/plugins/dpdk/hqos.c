@@ -27,7 +27,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/dpdk/dpdk.h>
+#include <dpdk/dpdk.h>
 
 #include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>

@@ -14,8 +14,21 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
+#include <vnet/plugin/plugin.h>
+#include <dpdk/dpdk.h>
 
+clib_error_t *
+vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
+                      int from_early_init)
+{
+  dpdk_main_t * dm = &dpdk_main;
+  clib_error_t * error = 0;
+
+  dm->vlib_main = vm;
+  dm->vnet_main = h->vnet_main;
+
+  return error;
+}
 
 /*
  * Called by the dpdk driver's rte_delay_us() function.
