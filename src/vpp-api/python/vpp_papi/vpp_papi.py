@@ -16,11 +16,19 @@
 
 from __future__ import print_function
 import sys, os, logging, collections, struct, json, threading, glob
+import atexit
+from Queue import Queue
+
 logging.basicConfig(level=logging.DEBUG)
 import vpp_api
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+def vpp_atexit(self):
+    if self.connected:
+        eprint ('Cleaning up VPP on exit')
+        self.disconnect()
 
 class VPP():
     def __init__(self, apifiles = None, testmode = False):
@@ -30,16 +38,17 @@ class VPP():
         self.buffersize = 10000
         self.connected = False
         self.header = struct.Struct('>HI')
+        self.results_lock = threading.Lock()
         self.results = {}
         self.timeout = 5
-        self.apifile = []
+        self.apifiles = []
+        self.message_queue = Queue()
 
         if not apifiles:
             # Pick up API definitions from default directory
             apifiles = glob.glob('/usr/share/vpp/api/*.api.json')
 
         for file in apifiles:
-            self.apifile.append(file)
             with open(file) as apidef_file:
                 api = json.load(apidef_file)
                 for t in api['types']:
@@ -47,23 +56,33 @@ class VPP():
 
                 for m in api['messages']:
                     self.add_message(m[0], m[1:])
+	self.apifiles = apifiles
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
             raise ValueError(1, 'Missing JSON message definitions')
 
+        # Make sure we allow VPP to clean up the message rings.
+        atexit.register(vpp_atexit, self)
+
+        # Start event RX thread
+        self.event_thread = threading.Thread(target=self.event_worker)
+        self.event_thread.daemon = True
+        self.event_thread.start()
 
     class ContextId(object):
         def __init__(self):
             self.context = 0
+	    self.lock = threading.Lock()
         def __call__(self):
-            self.context += 1
-            return self.context
+	    with self.lock:
+		self.context += 1
+		return self.context
     get_context = ContextId()
 
     def status(self):
         print('Connected') if self.connected else print('Not Connected')
-        print('Read API definitions from', self.apifile)
+        print('Read API definitions from', ', '.join(self.apifiles))
 
     def __struct (self, t, n = None, e = -1, vl = None):
         base_types = { 'u8' : 'B',
@@ -322,20 +341,37 @@ class VPP():
         self.control_ping_msgdef = self.messages['control_ping']
 
     def disconnect(self):
+        self.message_queue.join()
         rv = vpp_api.disconnect()
+        self.connected = False
         return rv
 
     def results_wait(self, context):
-        return (self.results[context]['e'].wait(self.timeout))
+        with self.results_lock:
+            result = self.results[context]
+            ev = result['e']
 
-    def results_prepare(self, context):
-        self.results[context] = {}
-        self.results[context]['e'] = threading.Event()
-        self.results[context]['e'].clear()
-        self.results[context]['r'] = []
+	timed_out = not ev.wait(self.timeout)
 
-    def results_clean(self, context):
-        del self.results[context]
+        with self.results_lock:
+            del self.results[context]
+	    if timed_out:
+                raise IOError(3, 'Waiting for reply timed out')
+	    else:
+		return result['r']
+
+    def results_prepare(self, context, multi=False):
+        new_result = {
+            'e': threading.Event(),
+        }
+        if multi:
+            new_result['m'] = True
+            new_result['r'] = []
+
+        new_result['e'].clear()
+
+        with self.results_lock:
+            self.results[context] = new_result
 
     def msg_handler(self, msg):
         if not msg:
@@ -354,39 +390,35 @@ class VPP():
             raise IOError(2, 'Reply message undefined')
 
         r = self.decode(msgdef, msg)
-        if 'context' in r._asdict():
-            if r.context > 0:
-                context = r.context
+        context = 0
+        if hasattr(r, 'context') and r.context > 0:
+            context = r.context
 
         msgname = type(r).__name__
 
-        #
-        # XXX: Call provided callback for event
-        # Are we guaranteed to not get an event during processing of other messages?
-        # How to differentiate what's a callback message and what not? Context = 0?
-        #
-        #if not is_waiting_for_reply():
-        if r.context == 0 and self.event_callback:
-            self.event_callback(msgname, r)
-            return
+        if context == 0:
+            self.message_queue.put_nowait(r)
+        else:
+            with self.results_lock:
+                if context not in self.results:
+                    eprint('Not expecting results for this context', context, r)
+                else:
+                    result = self.results[context]
 
-        #
-        # Collect results until control ping
-        #
-        if msgname == 'control_ping_reply':
-            self.results[context]['e'].set()
-            return
+                    #
+                    # Collect results until control ping
+                    #
 
-        if not context in self.results:
-            eprint('Not expecting results for this context', context, r)
-            return
-
-        if 'm' in self.results[context]:
-            self.results[context]['r'].append(r)
-            return
-
-        self.results[context]['r'] = r
-        self.results[context]['e'].set()
+                    if msgname == 'control_ping_reply':
+                        # End of a multipart
+                        result['e'].set()
+                    elif 'm' in self.results[context]:
+                        # One element in a multipart
+                        result['r'].append(r)
+                    else:
+                        # All of a single result
+                        result['r'] = r
+                        result['e'].set()
 
     def msg_handler_async(self, msg):
         if not msg:
@@ -407,7 +439,7 @@ class VPP():
         r = self.decode(msgdef, msg)
         msgname = type(r).__name__
 
-        self.event_callback(msgname, r)
+        self.message_queue.put_nowait(r)
 
     def _control_ping(self, context):
         self._write(self.encode(self.control_ping_msgdef,
@@ -423,15 +455,15 @@ class VPP():
         kwargs['_vl_msg_id'] = i
         b = self.encode(msgdef, kwargs)
 
-        self.results_prepare(context)
+        self.results_prepare(context, multi=multipart)
+
         self._write(b)
 
         if multipart:
-            self.results[context]['m'] = True
             self._control_ping(context)
-        self.results_wait(context)
-        r = self.results[context]['r']
-        self.results_clean(context)
+
+        r = self.results_wait(context)
+
         return r
 
     def _call_vpp_async(self, i, msgdef, multipart, **kwargs):
@@ -448,3 +480,10 @@ class VPP():
     def register_event_callback(self, callback):
         self.event_callback = callback
 
+    def event_worker(self):
+        while True:
+            msg = self.message_queue.get()
+            if self.event_callback:
+                msgname = type(msg).__name__
+                self.event_callback(msgname, msg)
+            self.message_queue.task_done()
