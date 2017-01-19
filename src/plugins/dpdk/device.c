@@ -19,7 +19,7 @@
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/dpdk/dpdk.h>
+#include <dpdk/dpdk.h>
 
 #include "dpdk_priv.h"
 #include <vppinfra/error.h>
