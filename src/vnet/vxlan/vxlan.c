@@ -289,61 +289,70 @@ static int vxlan_check_decap_next(vxlan_main_t * vxm, u32 is_ip6, u32 decap_next
   return 0;
 }
 
+static void
+hash_set_key_copy (uword ** h, void * key, uword v) {
+	size_t ksz = hash_header(*h)->user;
+        void * copy = clib_mem_alloc (ksz);
+	clib_memcpy (copy, key, ksz);
+	hash_set_mem (*h, copy, v);
+}
+
+static void
+hash_unset_key_free (uword ** h, void * key) {
+	hash_pair_t * hp = hash_get_pair_mem (*h, key);
+	ASSERT (hp);
+	key = uword_to_pointer (hp->key, void *);
+	hash_unset_mem (*h, key);
+	clib_mem_free (key);
+}
+
 static uword
 vtep_addr_ref(ip46_address_t *ip)
 {
-	if (!ip46_address_is_ip4(ip))
-		return 1; /* always create */
-	uword *pvtep = hash_get (vxlan_main.vtep4, ip->ip4.as_u32);
-	if (pvtep) 
-		return ++(*pvtep);
-	hash_set (vxlan_main.vtep4, ip->ip4.as_u32, 1);
+	uword *vtep = ip46_address_is_ip4(ip) ?
+	                 hash_get (vxlan_main.vtep4, ip->ip4.as_u32) :
+	                 hash_get_mem (vxlan_main.vtep6, &ip->ip6);
+	if (vtep) 
+		return ++(*vtep);
+	ip46_address_is_ip4(ip) ?
+	                 hash_set (vxlan_main.vtep4, ip->ip4.as_u32, 1) :
+	                 hash_set_key_copy (&vxlan_main.vtep6, &ip->ip6, 1);
 	return 1;
 }
 
 static uword
 vtep_addr_unref(ip46_address_t *ip)
 {
-	if (!ip46_address_is_ip4(ip))
-		return 0; /* alwways destroy */
-	uword *pvtep = hash_get (vxlan_main.vtep4, ip->ip4.as_u32);
-        ASSERT(pvtep);
-	if (--(*pvtep) == 0)
-        {
-		hash_unset (vxlan_main.vtep4, ip->ip4.as_u32);
-                return 0;
-        }
-	return *pvtep;
+	uword *vtep = ip46_address_is_ip4(ip) ?
+	                 hash_get (vxlan_main.vtep4, ip->ip4.as_u32) :
+	                 hash_get_mem (vxlan_main.vtep6, &ip->ip6);
+        ASSERT(vtep);
+	if (--(*vtep) != 0)
+		return *vtep;
+	ip46_address_is_ip4(ip) ?
+		hash_unset (vxlan_main.vtep4, ip->ip4.as_u32) :
+		hash_unset_key_free (&vxlan_main.vtep6, &ip->ip6);
+	return 0;
 }
 
-static
-mcast_remote_t *
-mcast_ep_get(ip46_address_t * ip)
+typedef CLIB_PACKED(union {
+  struct {
+    fib_node_index_t fib_entry_index;
+    adj_index_t mcast_adj_index;
+  };
+  u64 as_u64;
+}) mcast_shared_t;
+
+static inline mcast_shared_t
+mcast_shared_get(ip46_address_t * ip)
 {
         ASSERT(ip46_address_is_multicast(ip));
-	uword * ep_idx = hash_get_mem (vxlan_main.mcast_ep_by_ip, ip);
-        ASSERT(ep_idx);
-	return pool_elt_at_index(vxlan_main.mcast_eps, *ep_idx);
+	uword * p = hash_get_mem (vxlan_main.mcast_shared, ip);
+        ASSERT(p);
+	return (mcast_shared_t) { .as_u64 = *p };
 }
 
-static void
-mcast_ep_add(mcast_remote_t * new_ep)
-{
-	mcast_remote_t * ep;
-
-	pool_get_aligned (vxlan_main.mcast_eps, ep, CLIB_CACHE_LINE_BYTES);
-	*ep = *new_ep;
-	hash_set_mem (vxlan_main.mcast_ep_by_ip, ep->ip, ep - vxlan_main.mcast_eps);
-}
-
-static void
-mcast_ep_remove(mcast_remote_t * ep)
-{
-	hash_unset_mem (vxlan_main.mcast_ep_by_ip, ep->ip);
-	pool_put (vxlan_main.mcast_eps, ep);
-}
-
-static void
+static inline void
 ip46_multicast_ethernet_address(u8 * ethernet_address, ip46_address_t * ip) {
           if (ip46_address_is_ip4(ip))
               ip4_multicast_ethernet_address(ethernet_address, &ip->ip4);
@@ -414,16 +423,9 @@ int vnet_vxlan_add_del_tunnel
 
       /* copy the key */
       if (is_ip6)
-        {
-          t->key6 = clib_mem_alloc (sizeof(vxlan6_tunnel_key_t));
-          clib_memcpy (t->key6, &key6, sizeof(key6));
-          hash_set_mem (vxm->vxlan6_tunnel_by_key, t->key6, t - vxm->tunnels);
-        }
+        hash_set_key_copy (&vxm->vxlan6_tunnel_by_key, &key6, t - vxm->tunnels);
       else
-        {
-          t->key4 = 0; /* not yet used */
-          hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
-        }
+        hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
 
       vnet_hw_interface_t * hi;
       if (vec_len (vxm->free_vxlan_tunnel_hw_if_indices) > 0)
@@ -484,7 +486,7 @@ int vnet_vxlan_add_del_tunnel
            * when the forwarding for the entry updates, and the tunnel can
            * re-stack accordingly
            */
-	  vtep_addr_ref(&t->src);
+          vtep_addr_ref(&t->src);
           t->fib_entry_index = fib_table_entry_special_add
             (t->encap_fib_index, &tun_dst_pfx, FIB_SOURCE_RR,
 	     FIB_ENTRY_FLAG_NONE, ADJ_INDEX_INVALID);
@@ -509,10 +511,7 @@ int vnet_vxlan_add_del_tunnel
 
                ip46_multicast_ethernet_address(mcast_mac, &t->dst);
                receive_dpo_add_or_lock(dproto, ~0, NULL, &dpo);
-	       ip46_address_t * dst_copy = clib_mem_alloc (sizeof(ip46_address_t));
-	       *dst_copy = t->dst;
-	       mcast_remote_t new_ep = {
-	         .ip = dst_copy,
+	       mcast_shared_t new_ep = {
 		 .mcast_adj_index = adj_rewrite_add_and_lock
                    (fp, fib_proto_to_link(fp), a->mcast_sw_if_index, mcast_mac),
                  /* Add VRF local mcast adj. */
@@ -520,12 +519,12 @@ int vnet_vxlan_add_del_tunnel
                    (t->encap_fib_index, &tun_dst_pfx,
                     FIB_SOURCE_SPECIAL, FIB_ENTRY_FLAG_NONE, &dpo)
 		   };
-	       mcast_ep_add(&new_ep);
+	       hash_set_key_copy (&vxm->mcast_shared, &t->dst, new_ep.as_u64);
 	       dpo_reset(&dpo);
 	    }
           /* Stack shared mcast dst mac addr rewrite on encap */
-          dpo_set (&dpo, DPO_ADJACENCY, dproto,
-	    mcast_ep_get(&t->dst)->mcast_adj_index);
+	  mcast_shared_t ep = mcast_shared_get(&t->dst);
+          dpo_set (&dpo, DPO_ADJACENCY, dproto, ep.mcast_adj_index);
           dpo_stack_from_node (encap_index, &t->next_dpo, &dpo);
           dpo_reset (&dpo);
 	  flood_class = VNET_FLOOD_CLASS_TUNNEL_MASTER;
@@ -554,10 +553,7 @@ int vnet_vxlan_add_del_tunnel
       if (!is_ip6)
         hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
       else
-        {
-	  hash_unset_mem (vxm->vxlan6_tunnel_by_key, t->key6);
-	  clib_mem_free (t->key6);
-	}
+	hash_unset_key_free (&vxm->vxlan6_tunnel_by_key, &key6);
 
       if (!ip46_address_is_multicast(&t->dst))
         {
@@ -567,12 +563,10 @@ int vnet_vxlan_add_del_tunnel
         }
       else if (vtep_addr_unref(&t->dst) == 0)
         {
-	  mcast_remote_t * ep = mcast_ep_get(&t->dst);
-          ip46_address_t * ip = ep->ip;
-	  adj_unlock(ep->mcast_adj_index);
-	  fib_table_entry_delete_index(ep->fib_entry_index, FIB_SOURCE_SPECIAL);
-	  mcast_ep_remove(ep);
-          clib_mem_free(ip);
+	  mcast_shared_t ep = mcast_shared_get(&t->dst);
+	  adj_unlock(ep.mcast_adj_index);
+	  fib_table_entry_delete_index(ep.fib_entry_index, FIB_SOURCE_SPECIAL);
+          hash_unset_key_free (&vxm->mcast_shared, &t->dst);
         }
 
       fib_node_deinit(&t->node);
@@ -886,9 +880,12 @@ clib_error_t *vxlan_init (vlib_main_t *vm)
   vxm->vxlan6_tunnel_by_key = hash_create_mem(0,
         sizeof(vxlan6_tunnel_key_t),
         sizeof(uword));
-  vxm->mcast_ep_by_ip = hash_create_mem(0,
-        sizeof(ip46_address_t),
+  vxm->vtep6 = hash_create_mem(0,
+        sizeof(ip6_address_t),
 	sizeof(uword));
+  vxm->mcast_shared = hash_create_mem(0,
+        sizeof(ip46_address_t),
+	sizeof(mcast_shared_t));
 
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan, 
                          vxlan4_input_node.index, /* is_ip4 */ 1);

@@ -72,12 +72,6 @@ typedef struct {
   /* FIB DPO for IP forwarding of VXLAN encap packet */
   dpo_id_t next_dpo;  
 
-  /* storage for the hash key */
-  union {
-    vxlan4_tunnel_key_t *key4; /* unused for now */
-    vxlan6_tunnel_key_t *key6;
-  };
-
   /* vxlan VNI in HOST byte order */
   u32 vni;
 
@@ -138,12 +132,6 @@ typedef enum {
 } vxlan_input_error_t;
 
 typedef struct {
-  ip46_address_t * ip;
-  fib_node_index_t fib_entry_index;
-  adj_index_t mcast_adj_index;
-} mcast_remote_t;
-
-typedef struct {
   /* vector of encap tunnel instances */
   vxlan_tunnel_t * tunnels;
 
@@ -156,9 +144,8 @@ typedef struct {
   uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
   uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
 
-  /* set of active remote mcast VTEP */
-  mcast_remote_t * mcast_eps;
-  uword * mcast_ep_by_ip; /* mcast VTEPs keyed on their ip46 addr */
+  /* mcast shared info */
+  uword * mcast_shared; /* keyed on mcast ip46 addr */
 
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_tunnel_hw_if_indices;
