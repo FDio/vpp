@@ -442,9 +442,8 @@ pg_stream_add (pg_main_t * pg, pg_stream_t * s_init)
     pg_buffer_index_t *bi;
     int n;
 
-#if DPDK > 0
-    s->buffer_bytes = VLIB_BUFFER_DATA_SIZE;
-#endif
+    if (vm->buffer_main->extern_buffer_mgmt)
+      s->buffer_bytes = VLIB_BUFFER_DATA_SIZE;
 
     if (!s->buffer_bytes)
       s->buffer_bytes = s->max_packet_bytes;

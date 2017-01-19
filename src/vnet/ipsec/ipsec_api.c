@@ -79,11 +79,7 @@ static void vl_api_ipsec_spd_add_del_t_handler
   vl_api_ipsec_spd_add_del_reply_t *rmp;
   int rv;
 
-#if DPDK > 0
   rv = ipsec_add_del_spd (vm, ntohl (mp->spd_id), mp->is_add);
-#else
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif
 
   REPLY_MACRO (VL_API_IPSEC_SPD_ADD_DEL_REPLY);
 #endif
