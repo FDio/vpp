@@ -15,7 +15,7 @@
 #ifndef __DPDK_ESP_H__
 #define __DPDK_ESP_H__
 
-#include <vnet/devices/dpdk/ipsec/ipsec.h>
+#include <dpdk/ipsec/ipsec.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 

@@ -1,0 +1,52 @@
+# Copyright (c) 2016 Cisco Systems, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+vppapitestplugins_LTLIBRARIES += dpdk_test_plugin.la
+vppplugins_LTLIBRARIES += dpdk_plugin.la
+
+dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive,-lm,-ldl
+
+dpdk_plugin_la_SOURCES =					\
+  dpdk/dpdk_priv.h						\
+  dpdk/device.c							\
+  dpdk/format.c							\
+  dpdk/init.c							\
+  dpdk/main.c							\
+  dpdk/node.c							\
+  dpdk/hqos.c							\
+  dpdk/cli.c							\
+  dpdk/buffer.c							\
+  dpdk/thread.c							\
+  dpdk/dpdk_plugin.api.h
+
+dpdk_plugin_la_SOURCES +=					\
+ dpdk/ipsec/esp_encrypt.c					\
+ dpdk/ipsec/esp_decrypt.c					\
+ dpdk/ipsec/crypto_node.c					\
+ dpdk/ipsec/cli.c						\
+ dpdk/ipsec/ipsec.c
+
+API_FILES += dpdk/dpdk.api
+
+nobase_include_HEADERS +=					\
+  dpdk/dpdk.h							\
+  dpdk/dpdk_all_api_h.h
+
+nobase_include_HEADERS +=			\
+ dpdk/ipsec/ipsec.h		\
+ dpdk/ipsec/esp.h
+
+dpdk_test_plugin_la_SOURCES = 					\
+  dpdk/dpdk_test.c dpdk/dpdk_plugin.api.h
+
+# vi:syntax=automake
