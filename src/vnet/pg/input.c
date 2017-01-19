@@ -1212,10 +1212,10 @@ pg_stream_fill_helper (pg_main_t * pg,
 
   /*
    * Historically, the pg maintained its own free lists and
-   * device drivers tx paths would return pkts. With the DPDK,
-   * that doesn't happen.
+   * device drivers tx paths would return pkts.
    */
-  if (DPDK == 0 && !(s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
+  if (vm->buffer_main->extern_buffer_mgmt == 0 &&
+      !(s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
     f->buffer_init_function = pg_buffer_init;
   f->buffer_init_function_opaque =
     (s - pg->streams) | ((bi - s->buffer_indices) << 24);
@@ -1238,7 +1238,7 @@ pg_stream_fill_helper (pg_main_t * pg,
   n_alloc = n_allocated;
 
   /* Reinitialize buffers */
-  if (DPDK == 0 || CLIB_DEBUG > 0
+  if (vm->buffer_main->extern_buffer_mgmt == 0 || CLIB_DEBUG > 0
       || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
     init_buffers_inline
       (vm, s,
@@ -1246,7 +1246,8 @@ pg_stream_fill_helper (pg_main_t * pg,
        n_alloc, (bi - s->buffer_indices) * s->buffer_bytes /* data offset */ ,
        s->buffer_bytes,
        /* set_data */
-       DPDK == 1 || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE) != 0);
+       vm->buffer_main->extern_buffer_mgmt != 0
+       || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE) != 0);
 
   if (next_buffers)
     pg_set_next_buffer_pointers (pg, s, buffers, next_buffers, n_alloc);
