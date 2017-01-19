@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_1aca816e",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-19T10:57:46Z",
+      "side": 1,
+      "message": "how will this function when there is more than one type?\nhow will the desired ordering of the imposed headers be ensured?",
+      "revId": "309b4c123f5daf9f5580727f77155ab618440d37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a2585a7_fac8d575",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_tunnel.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-19T10:57:46Z",
+      "side": 1,
+      "message": "the original payload protocol (and packet length, entropy, etc)  is not passed to the client, so how does it build its rewrite header correctly?",
+      "revId": "309b4c123f5daf9f5580727f77155ab618440d37",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
