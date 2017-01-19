@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_0eaec285",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 4750,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-01-19T18:42:03Z",
+      "side": 1,
+      "message": "It would be probably more efficient to just track the number of probes/notifies with local variables and do the increment at the end of the loop",
+      "range": {
+        "startLine": 4747,
+        "startChar": 0,
+        "endLine": 4750,
+        "endChar": 10
+      },
+      "revId": "bc8507709e10cae1d34071efa906beaab4ea0c9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
