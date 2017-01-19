@@ -71,6 +71,30 @@
     },
     {
       "key": {
+        "uuid": "5a2585a7_badecd0f",
+        "filename": "src/plugins/ioam/analyse/ioam_summary_export.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 150,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-01-19T11:25:55Z",
+      "side": 1,
+      "message": "VPP graph nodes - ip6-hbh-analyse-remote/ip6-hbh-analyse-local analyses ioam packet and updates the aggregated data. This aggregated data needs to be exported over IP-FIX which happens in a different Process node context - flow-report-process. Since both nodes maybe running over different worker threads, a Mutex lock is present for each entry under analysed data array.\nThis would block graph nodes - ip6-hbh-analyse-remote/ip6-hbh-analyse-local when IP-Fix process nodes periodically wakes up to export the records. But since lock is at each entry inside the analysed data, it should be for a very short time and happens only if both IP-Fix process thread and  ip6-hbh-analyse-remote/ip6-hbh-analyse-local nodes are accessing exact same record.",
+      "parentUuid": "5a2585a7_9fd42348",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 150,
+        "endChar": 5
+      },
+      "revId": "94b1655b5a2bb59530330982c35de52882259a41",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a2585a7_ffbe87fe",
         "filename": "src/plugins/ioam/analyse/ioam_summary_export.c",
         "patchSetId": 13
