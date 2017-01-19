@@ -18,8 +18,6 @@
 
 #if DPDK == 0
 #include <vnet/devices/pci/ixge.h>
-#else
-#include <vnet/devices/dpdk/dpdk.h>
 #endif
 
 #include <vppinfra/error.h>

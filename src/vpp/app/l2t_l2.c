@@ -20,8 +20,6 @@
 #include <vnet/devices/pci/ixgev.h>
 #include <vnet/devices/pci/ixge.h>
 #include <vnet/devices/pci/ige.h>
-#else
-#include <vnet/devices/dpdk/dpdk.h>
 #endif
 
 #include <vppinfra/error.h>

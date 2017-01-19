@@ -15,7 +15,6 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>
-#include <vnet/devices/dpdk/dpdk.h>
 #include <vnet/devices/dpdk/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/esp.h>
 #include <vnet/ipsec/ipsec.h>
