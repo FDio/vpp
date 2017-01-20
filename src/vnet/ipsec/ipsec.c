@@ -22,23 +22,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
-
-#if DPDK_CRYPTO==1
-#include <vnet/devices/dpdk/ipsec/esp.h>
-#define ESP_NODE "dpdk-esp-encrypt"
-#else
 #include <vnet/ipsec/esp.h>
-#define ESP_NODE "esp-encrypt"
-#endif
-
-#if DPDK_CRYPTO==0
-/* dummy function */
-static int
-add_del_sa_sess (u32 sa_index, u8 is_add)
-{
-  return 0;
-}
-#endif
 
 u32
 ipsec_get_sa_index_by_sa_id (u32 sa_id)
@@ -449,7 +433,9 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 	  return VNET_API_ERROR_SYSCALL_ERROR_1;	/* sa used in policy */
 	}
       hash_unset (im->sa_index_by_sa_id, sa->id);
-      add_del_sa_sess (sa_index, is_add);
+      if (im->cb.add_del_sa_sess_cb &&
+	  im->cb.add_del_sa_sess_cb (sa_index, is_add) < 0)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
       pool_put (im->sad, sa);
     }
   else				/* create new SA */
@@ -458,7 +444,8 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
-      if (add_del_sa_sess (sa_index, is_add) < 0)
+      if (im->cb.add_del_sa_sess_cb &&
+	  im->cb.add_del_sa_sess_cb (sa_index, is_add) < 0)
 	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   return 0;
@@ -497,7 +484,8 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
 
   if (sa->crypto_key_len + sa->integ_key_len > 0)
     {
-      if (add_del_sa_sess (sa_index, 0) < 0)
+      if (im->cb.add_del_sa_sess_cb &&
+	  im->cb.add_del_sa_sess_cb (sa_index, 0) < 0)
 	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
 
@@ -519,6 +507,19 @@ ipsec_rand_seed (void)
   seed_data.p = (void *) &seed_data;
 
   RAND_seed ((const void *) &seed_data, sizeof (seed_data));
+}
+
+static clib_error_t *
+ipsec_check_support (ipsec_sa_t * sa)
+{
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    return clib_error_return (0, "unsupported aes-gcm-128 crypto-alg");
+  if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+    return clib_error_return (0, "unsupported none integ-alg");
+  if (sa->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
+    return clib_error_return (0, "unsupported aes-gcm-128 integ-alg");
+
+  return 0;
 }
 
 static clib_error_t *
@@ -547,14 +548,18 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->error_drop_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) ESP_NODE);
-
+  node = vlib_get_node_by_name (vm, (u8 *) "esp-encrypt");
   ASSERT (node);
   im->esp_encrypt_node_index = node->index;
 
-  node = vlib_get_node_by_name (vm, (u8 *) "ip4-lookup");
+  node = vlib_get_node_by_name (vm, (u8 *) "esp-decrypt");
   ASSERT (node);
-  im->ip4_lookup_node_index = node->index;
+  im->esp_decrypt_node_index = node->index;
+
+  im->esp_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP_ENCRYPT;
+  im->esp_decrypt_next_index = IPSEC_INPUT_NEXT_ESP_DECRYPT;
+
+  im->cb.check_support_cb = ipsec_check_support;
 
   if ((error = vlib_call_init_function (vm, ipsec_cli_init)))
     return error;
