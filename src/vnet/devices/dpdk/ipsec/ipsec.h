@@ -167,7 +167,7 @@ check_algo_is_supported (const struct rte_cryptodev_capabilities *cap,
     .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.cipher =
 	RTE_CRYPTO_CIPHER_3DES_CBC,.name = "3DES-CBC"},
     {
-    .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.auth =
+    .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.cipher =
 	RTE_CRYPTO_CIPHER_AES_GCM,.name = "AES-GCM"},
     {
     .type = RTE_CRYPTO_SYM_XFORM_AUTH,.auth =

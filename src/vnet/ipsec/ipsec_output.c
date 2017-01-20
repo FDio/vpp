@@ -21,26 +21,7 @@
 
 #include <vnet/ipsec/ipsec.h>
 
-#if DPDK_CRYPTO==1
-#define ESP_NODE "dpdk-esp-encrypt"
-#else
-#define ESP_NODE "esp-encrypt"
-#endif
-
 #if WITH_LIBSSL > 0
-
-#define foreach_ipsec_output_next                \
-_(DROP, "error-drop")                            \
-_(ESP_ENCRYPT, ESP_NODE)
-
-#define _(v, s) IPSEC_OUTPUT_NEXT_##v,
-typedef enum
-{
-  foreach_ipsec_output_next
-#undef _
-    IPSEC_OUTPUT_N_NEXT,
-} ipsec_output_next_t;
-
 
 #define foreach_ipsec_output_error                   \
  _(RX_PKTS, "IPSec pkts received")                   \
@@ -49,7 +30,6 @@ typedef enum
  _(POLICY_PROTECT, "IPSec policy protect")           \
  _(POLICY_BYPASS, "IPSec policy bypass")             \
  _(ENCAPS_FAILED, "IPSec encapsulation failed")
-
 
 typedef enum
 {
