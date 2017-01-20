@@ -12199,11 +12199,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 	if (unformat
 	    (i, "integ_alg %U", unformat_ipsec_integ_alg, &integ_alg))
 	{
-#if DPDK_CRYPTO==1
-	  if (integ_alg < IPSEC_INTEG_ALG_NONE ||
-#else
 	  if (integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
-#endif
 	      integ_alg >= IPSEC_INTEG_N_ALG)
 	    {
 	      clib_warning ("unsupported integ-alg: '%U'",
@@ -12220,33 +12216,6 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 	}
 
     }
-
-#if DPDK_CRYPTO==1
-  /*Special cases, aes-gcm-128 encryption */
-  if (crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
-    {
-      if (integ_alg != IPSEC_INTEG_ALG_NONE
-	  && integ_alg != IPSEC_INTEG_ALG_AES_GCM_128)
-	{
-	  clib_warning
-	    ("unsupported: aes-gcm-128 crypto-alg needs none as integ-alg");
-	  return -99;
-	}
-      else			/*set integ-alg internally to aes-gcm-128 */
-	integ_alg = IPSEC_INTEG_ALG_AES_GCM_128;
-    }
-  else if (integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
-    {
-      clib_warning ("unsupported integ-alg: aes-gcm-128");
-      return -99;
-    }
-  else if (integ_alg == IPSEC_INTEG_ALG_NONE)
-    {
-      clib_warning ("unsupported integ-alg: none");
-      return -99;
-    }
-#endif
-
 
   M (IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry);
 

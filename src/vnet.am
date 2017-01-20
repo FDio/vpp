@@ -400,7 +400,7 @@ libvnet_la_SOURCES +=				\
 
 API_FILES += vnet/ipsec/ipsec.api
 
-if WITH_DPDK_CRYPTO
+if WITH_DPDK
 libvnet_la_SOURCES +=				\
  vnet/devices/dpdk/ipsec/esp_encrypt.c		\
  vnet/devices/dpdk/ipsec/esp_decrypt.c		\
@@ -419,7 +419,7 @@ nobase_include_HEADERS +=			\
  vnet/ipsec/ikev2.h				\
  vnet/ipsec/ikev2_priv.h			\
  vnet/ipsec/ipsec.api.h
-if WITH_DPDK_CRYPTO
+if WITH_DPDK
 nobase_include_HEADERS +=			\
  vnet/devices/dpdk/ipsec/ipsec.h		\
  vnet/devices/dpdk/ipsec/esp.h

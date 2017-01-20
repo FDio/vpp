@@ -97,60 +97,11 @@ dpdk_esp_init ()
 }
 
 static_always_inline int
-add_del_sa_sess (u32 sa_index, u8 is_add)
-{
-  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  crypto_worker_main_t *cwm;
-  u8 skip_master = vlib_num_workers () > 0;
-
-  /* *INDENT-OFF* */
-  vec_foreach (cwm, dcm->workers_main)
-    {
-      crypto_sa_session_t *sa_sess;
-      u8 is_outbound;
-
-      if (skip_master)
-	{
-	  skip_master = 0;
-	  continue;
-	}
-
-      for (is_outbound = 0; is_outbound < 2; is_outbound++)
-	{
-	  if (is_add)
-	    {
-	      pool_get (cwm->sa_sess_d[is_outbound], sa_sess);
-	    }
-	  else
-	    {
-	      u8 dev_id;
-
-	      sa_sess = pool_elt_at_index (cwm->sa_sess_d[is_outbound], sa_index);
-	      dev_id = cwm->qp_data[sa_sess->qp_index].dev_id;
-
-	      if (!sa_sess->sess)
-		continue;
-
-	      if (rte_cryptodev_sym_session_free(dev_id, sa_sess->sess))
-		{
-		  clib_warning("failed to free session");
-		  return -1;
-		}
-	      memset(sa_sess, 0, sizeof(sa_sess[0]));
-	    }
-	}
-    }
-  /* *INDENT-OFF* */
-
-  return 0;
-}
-
-static_always_inline int
-translate_crypto_algo(ipsec_crypto_alg_t crypto_algo,
-		      struct rte_crypto_sym_xform *cipher_xform)
+translate_crypto_algo (ipsec_crypto_alg_t crypto_algo,
+		       struct rte_crypto_sym_xform *cipher_xform)
 {
   switch (crypto_algo)
-  {
+    {
     case IPSEC_CRYPTO_ALG_NONE:
       cipher_xform->cipher.algo = RTE_CRYPTO_CIPHER_NULL;
       break;
@@ -164,7 +115,7 @@ translate_crypto_algo(ipsec_crypto_alg_t crypto_algo,
       break;
     default:
       return -1;
-  }
+    }
 
   cipher_xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
@@ -172,10 +123,11 @@ translate_crypto_algo(ipsec_crypto_alg_t crypto_algo,
 }
 
 static_always_inline int
-translate_integ_algo(ipsec_integ_alg_t integ_alg,
-		     struct rte_crypto_sym_xform *auth_xform, int use_esn)
+translate_integ_algo (ipsec_integ_alg_t integ_alg,
+		      struct rte_crypto_sym_xform *auth_xform, int use_esn)
 {
-  switch (integ_alg) {
+  switch (integ_alg)
+    {
     case IPSEC_INTEG_ALG_NONE:
       auth_xform->auth.algo = RTE_CRYPTO_AUTH_NULL;
       auth_xform->auth.digest_length = 0;
@@ -203,11 +155,11 @@ translate_integ_algo(ipsec_integ_alg_t integ_alg,
     case IPSEC_INTEG_ALG_AES_GCM_128:
       auth_xform->auth.algo = RTE_CRYPTO_AUTH_AES_GCM;
       auth_xform->auth.digest_length = 16;
-      auth_xform->auth.add_auth_data_length = use_esn? 12 : 8;
+      auth_xform->auth.add_auth_data_length = use_esn ? 12 : 8;
       break;
     default:
       return -1;
-  }
+    }
 
   auth_xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
 
@@ -215,25 +167,26 @@ translate_integ_algo(ipsec_integ_alg_t integ_alg,
 }
 
 static_always_inline int
-create_sym_sess(ipsec_sa_t *sa, crypto_sa_session_t *sa_sess, u8 is_outbound)
+create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
+		 u8 is_outbound)
 {
-  u32 cpu_index = os_get_cpu_number();
-  dpdk_crypto_main_t * dcm = &dpdk_crypto_main;
+  u32 cpu_index = os_get_cpu_number ();
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_worker_main_t *cwm = &dcm->workers_main[cpu_index];
-  struct rte_crypto_sym_xform cipher_xform = {0};
-  struct rte_crypto_sym_xform auth_xform = {0};
+  struct rte_crypto_sym_xform cipher_xform = { 0 };
+  struct rte_crypto_sym_xform auth_xform = { 0 };
   struct rte_crypto_sym_xform *xfs;
   uword key = 0, *data;
-  crypto_worker_qp_key_t *p_key = (crypto_worker_qp_key_t *)&key;
+  crypto_worker_qp_key_t *p_key = (crypto_worker_qp_key_t *) & key;
 
   if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
     {
       sa->crypto_key_len -= 4;
-      clib_memcpy(&sa->salt, &sa->crypto_key[sa->crypto_key_len], 4);
+      clib_memcpy (&sa->salt, &sa->crypto_key[sa->crypto_key_len], 4);
     }
   else
     {
-      sa->salt = (u32) rand();
+      sa->salt = (u32) rand ();
     }
 
   cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -244,11 +197,11 @@ create_sym_sess(ipsec_sa_t *sa, crypto_sa_session_t *sa_sess, u8 is_outbound)
   auth_xform.auth.key.data = sa->integ_key;
   auth_xform.auth.key.length = sa->integ_key_len;
 
-  if (translate_crypto_algo(sa->crypto_alg, &cipher_xform) < 0)
+  if (translate_crypto_algo (sa->crypto_alg, &cipher_xform) < 0)
     return -1;
   p_key->cipher_algo = cipher_xform.cipher.algo;
 
-  if (translate_integ_algo(sa->integ_alg, &auth_xform, sa->use_esn) < 0)
+  if (translate_integ_algo (sa->integ_alg, &auth_xform, sa->use_esn) < 0)
     return -1;
   p_key->auth_algo = auth_xform.auth.algo;
 
@@ -269,17 +222,17 @@ create_sym_sess(ipsec_sa_t *sa, crypto_sa_session_t *sa_sess, u8 is_outbound)
 
   p_key->is_outbound = is_outbound;
 
-  data = hash_get(cwm->algo_qp_map, key);
+  data = hash_get (cwm->algo_qp_map, key);
   if (!data)
     return -1;
 
   sa_sess->sess =
-    rte_cryptodev_sym_session_create(cwm->qp_data[*data].dev_id, xfs);
+    rte_cryptodev_sym_session_create (cwm->qp_data[*data].dev_id, xfs);
 
   if (!sa_sess->sess)
     return -1;
 
-  sa_sess->qp_index = (u8)*data;
+  sa_sess->qp_index = (u8) * data;
 
   return 0;
 }

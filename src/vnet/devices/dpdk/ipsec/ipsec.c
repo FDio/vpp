@@ -15,24 +15,69 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>
+#include <vnet/ipsec/ipsec.h>
+#include <vlib/node_funcs.h>
+
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vnet/devices/dpdk/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/esp.h>
-#include <vnet/ipsec/ipsec.h>
 
-#define DPDK_CRYPTO_NB_OBJS	  2048
+#define DPDK_CRYPTO_NB_SESS_OBJS  20000
 #define DPDK_CRYPTO_CACHE_SIZE	  512
 #define DPDK_CRYPTO_PRIV_SIZE	  128
-#define DPDK_CRYPTO_N_QUEUE_DESC  512
+#define DPDK_CRYPTO_N_QUEUE_DESC  1024
 #define DPDK_CRYPTO_NB_COPS	  (1024 * 4)
 
-/*
- * return:
- * -1: 	update failed
- * 0:	already exist
- * 1:	mapped
- */
 static int
+add_del_sa_sess (u32 sa_index, u8 is_add)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+  crypto_worker_main_t *cwm;
+  u8 skip_master = vlib_num_workers () > 0;
+
+  /* *INDENT-OFF* */
+  vec_foreach (cwm, dcm->workers_main)
+    {
+      crypto_sa_session_t *sa_sess;
+      u8 is_outbound;
+
+      if (skip_master)
+	{
+	  skip_master = 0;
+	  continue;
+	}
+
+      for (is_outbound = 0; is_outbound < 2; is_outbound++)
+	{
+	  if (is_add)
+	    {
+	      pool_get (cwm->sa_sess_d[is_outbound], sa_sess);
+	    }
+	  else
+	    {
+	      u8 dev_id;
+
+	      sa_sess = pool_elt_at_index (cwm->sa_sess_d[is_outbound], sa_index);
+	      dev_id = cwm->qp_data[sa_sess->qp_index].dev_id;
+
+	      if (!sa_sess->sess)
+		continue;
+
+	      if (rte_cryptodev_sym_session_free(dev_id, sa_sess->sess))
+		{
+		  clib_warning("failed to free session");
+		  return -1;
+		}
+	      memset(sa_sess, 0, sizeof(sa_sess[0]));
+	    }
+	}
+    }
+  /* *INDENT-OFF* */
+
+  return 0;
+}
+
+static void
 update_qp_data (crypto_worker_main_t * cwm,
 		u8 cdev_id, u16 qp_id, u8 is_outbound, u16 * idx)
 {
@@ -45,7 +90,7 @@ update_qp_data (crypto_worker_main_t * cwm,
 
       if (qpd->dev_id == cdev_id && qpd->qp_id == qp_id &&
 	  qpd->is_outbound == is_outbound)
-	  return 0;
+	  return;
     }
   /* *INDENT-ON* */
 
@@ -54,13 +99,10 @@ update_qp_data (crypto_worker_main_t * cwm,
   qpd->dev_id = cdev_id;
   qpd->qp_id = qp_id;
   qpd->is_outbound = is_outbound;
-
-  return 1;
 }
 
 /*
  * return:
- * 	-1: error
  * 	0: already exist
  * 	1: mapped
  */
@@ -70,7 +112,6 @@ add_mapping (crypto_worker_main_t * cwm,
 	     const struct rte_cryptodev_capabilities *cipher_cap,
 	     const struct rte_cryptodev_capabilities *auth_cap)
 {
-  int mapped;
   u16 qp_index;
   uword key = 0, data, *ret;
   crypto_worker_qp_key_t *p_key = (crypto_worker_qp_key_t *) & key;
@@ -83,17 +124,12 @@ add_mapping (crypto_worker_main_t * cwm,
   if (ret)
     return 0;
 
-  mapped = update_qp_data (cwm, cdev_id, qp, is_outbound, &qp_index);
-  if (mapped < 0)
-    return -1;
+  update_qp_data (cwm, cdev_id, qp, is_outbound, &qp_index);
 
   data = (uword) qp_index;
+  hash_set (cwm->algo_qp_map, key, data);
 
-  ret = hash_set (cwm->algo_qp_map, key, data);
-  if (!ret)
-    rte_panic ("Failed to insert hash table\n");
-
-  return mapped;
+  return 1;
 }
 
 /*
@@ -120,19 +156,13 @@ add_cdev_mapping (crypto_worker_main_t * cwm,
       for (j = dev_info->capabilities; j->op != RTE_CRYPTO_OP_TYPE_UNDEFINED;
 	   j++)
 	{
-	  int status = 0;
-
 	  if (j->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH)
 	    continue;
 
 	  if (check_algo_is_supported (j, NULL) != 0)
 	    continue;
 
-	  status = add_mapping (cwm, cdev_id, qp, is_outbound, i, j);
-	  if (status == 1)
-	    mapped += 1;
-	  if (status < 0)
-	    return status;
+	  mapped |= add_mapping (cwm, cdev_id, qp, is_outbound, i, j);
 	}
     }
 
@@ -169,8 +199,33 @@ check_cryptodev_queues ()
 }
 
 static clib_error_t *
-dpdk_ipsec_init (vlib_main_t * vm)
+dpdk_ipsec_check_support (ipsec_sa_t * sa)
 {
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    {
+      if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
+	return clib_error_return (0, "unsupported integ-alg %U with "
+				  "crypto-algo aes-gcm-128",
+				  format_ipsec_integ_alg, sa->integ_alg);
+      sa->integ_alg = IPSEC_INTEG_ALG_AES_GCM_128;
+    }
+  else
+    {
+      if (sa->integ_alg == IPSEC_INTEG_ALG_NONE ||
+	  sa->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
+	return clib_error_return (0, "unsupported integ-alg %U",
+				  format_ipsec_integ_alg, sa->integ_alg);
+    }
+
+  return 0;
+}
+
+static uword
+dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+		    vlib_frame_t * f)
+{
+  dpdk_config_main_t *conf = &dpdk_config_main;
+  ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   struct rte_cryptodev_config dev_conf;
@@ -180,8 +235,19 @@ dpdk_ipsec_init (vlib_main_t * vm)
   i32 dev_id, ret;
   u32 i, skip_master;
 
+  if (!conf->cryptodev)
+    {
+      clib_warning ("DPDK Cryptodev support is disabled, "
+		    "default to OpenSSL IPsec");
+      return 0;
+    }
+
   if (check_cryptodev_queues () < 0)
-    return clib_error_return (0, "not enough cryptodevs for ipsec");
+    {
+      conf->cryptodev = 0;
+      clib_warning ("not enough Cryptodevs, default to OpenSSL IPsec");
+      return 0;
+    }
 
   vec_alloc (dcm->workers_main, tm->n_vlib_mains);
   _vec_len (dcm->workers_main) = tm->n_vlib_mains;
@@ -221,24 +287,17 @@ dpdk_ipsec_init (vlib_main_t * vm)
 	    {
 	      map = hash_create (0, sizeof (crypto_worker_qp_key_t));
 	      if (!map)
-		return clib_error_return (0, "unable to create hash table "
-					  "for worker %u",
-					  vlib_mains[i]->cpu_index);
+		{
+		  clib_warning ("unable to create hash table for worker %u",
+				vlib_mains[i]->cpu_index);
+		  goto error;
+		}
 	      cwm->algo_qp_map = map;
 	    }
 
 	  for (is_outbound = 0; is_outbound < 2 && qp < max_nb_qp;
 	       is_outbound++)
-	    {
-	      int mapped = add_cdev_mapping (cwm, &cdev_info,
-					     dev_id, qp, is_outbound);
-	      if (mapped > 0)
-		qp++;
-
-	      if (mapped < 0)
-		return clib_error_return (0,
-					  "too many queues for one worker");
-	    }
+	    qp += add_cdev_mapping (cwm, &cdev_info, dev_id, qp, is_outbound);
 	}
 
       if (qp == 0)
@@ -246,12 +305,15 @@ dpdk_ipsec_init (vlib_main_t * vm)
 
       dev_conf.socket_id = rte_cryptodev_socket_id (dev_id);
       dev_conf.nb_queue_pairs = cdev_info.max_nb_queue_pairs;
-      dev_conf.session_mp.nb_objs = DPDK_CRYPTO_NB_OBJS;
+      dev_conf.session_mp.nb_objs = DPDK_CRYPTO_NB_SESS_OBJS;
       dev_conf.session_mp.cache_size = DPDK_CRYPTO_CACHE_SIZE;
 
       ret = rte_cryptodev_configure (dev_id, &dev_conf);
       if (ret < 0)
-	return clib_error_return (0, "cryptodev %u config error", dev_id);
+	{
+	  clib_warning ("cryptodev %u config error", dev_id);
+	  goto error;
+	}
 
       qp_conf.nb_descriptors = DPDK_CRYPTO_N_QUEUE_DESC;
       for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
@@ -259,37 +321,64 @@ dpdk_ipsec_init (vlib_main_t * vm)
 	  ret = rte_cryptodev_queue_pair_setup (dev_id, qp, &qp_conf,
 						dev_conf.socket_id);
 	  if (ret < 0)
-	    return clib_error_return (0, "cryptodev %u qp %u setup error",
-				      dev_id, qp);
+	    {
+	      clib_warning ("cryptodev %u qp %u setup error", dev_id, qp);
+	      goto error;
+	    }
 	}
+      vec_validate_aligned (dcm->cop_pools, dev_conf.socket_id,
+			    CLIB_CACHE_LINE_BYTES);
+
+      if (!vec_elt (dcm->cop_pools, dev_conf.socket_id))
+	{
+	  u8 *pool_name = format (0, "crypto_op_pool_socket%u%c",
+				  dev_conf.socket_id, 0);
+
+	  rmp = rte_crypto_op_pool_create ((char *) pool_name,
+					   RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+					   DPDK_CRYPTO_NB_COPS *
+					   (1 + vlib_num_workers ()),
+					   DPDK_CRYPTO_CACHE_SIZE,
+					   DPDK_CRYPTO_PRIV_SIZE,
+					   dev_conf.socket_id);
+	  vec_free (pool_name);
+
+	  if (!rmp)
+	    {
+	      clib_warning ("failed to allocate mempool on socket %u",
+			    dev_conf.socket_id);
+	      goto error;
+	    }
+	  vec_elt (dcm->cop_pools, dev_conf.socket_id) = rmp;
+	}
+
       fprintf (stdout, "%u\t%u\t%u\t%u\n", dev_id, dev_conf.nb_queue_pairs,
-	       DPDK_CRYPTO_NB_OBJS, DPDK_CRYPTO_CACHE_SIZE);
+	       DPDK_CRYPTO_NB_SESS_OBJS, DPDK_CRYPTO_CACHE_SIZE);
     }
 
-  u32 socket_id = rte_socket_id ();
-
-  vec_validate_aligned (dcm->cop_pools, socket_id, CLIB_CACHE_LINE_BYTES);
-
-  /* pool already exists, nothing to do */
-  if (dcm->cop_pools[socket_id])
-    return 0;
-
-  u8 *pool_name = format (0, "crypto_op_pool_socket%u%c", socket_id, 0);
-
-  rmp = rte_crypto_op_pool_create ((char *) pool_name,
-				   RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-				   DPDK_CRYPTO_NB_COPS *
-				   (1 + vlib_num_workers ()),
-				   DPDK_CRYPTO_CACHE_SIZE,
-				   DPDK_CRYPTO_PRIV_SIZE, socket_id);
-  vec_free (pool_name);
-
-  if (!rmp)
-    return clib_error_return (0, "failed to allocate mempool on socket %u",
-			      socket_id);
-  dcm->cop_pools[socket_id] = rmp;
-
   dpdk_esp_init ();
+
+  /* Add new next node and set as default */
+  vlib_node_t *node, *next_node;
+
+  next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-encrypt");
+  ASSERT (next_node);
+  node = vlib_get_node_by_name (vm, (u8 *) "ipsec-output-ip4");
+  ASSERT (node);
+  im->esp_encrypt_node_index = next_node->index;
+  im->esp_encrypt_next_index =
+    vlib_node_add_next (vm, node->index, next_node->index);
+
+  next_node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-decrypt");
+  ASSERT (next_node);
+  node = vlib_get_node_by_name (vm, (u8 *) "ipsec-input-ip4");
+  ASSERT (node);
+  im->esp_decrypt_node_index = next_node->index;
+  im->esp_decrypt_next_index =
+    vlib_node_add_next (vm, node->index, next_node->index);
+
+  im->cb.check_support_cb = dpdk_ipsec_check_support;
+  im->cb.add_del_sa_sess_cb = add_del_sa_sess;
 
   if (vec_len (vlib_mains) == 0)
     vlib_node_set_state (&vlib_global_main, dpdk_crypto_input_node.index,
@@ -299,10 +388,38 @@ dpdk_ipsec_init (vlib_main_t * vm)
       vlib_node_set_state (vlib_mains[i], dpdk_crypto_input_node.index,
 			   VLIB_NODE_STATE_POLLING);
 
+  /* TODO cryptodev counters */
+
+  return 0;
+
+error:
+  ;
+  crypto_worker_main_t *cwm;
+  struct rte_mempool **mp;
+  /* *INDENT-OFF* */
+  vec_foreach (cwm, dcm->workers_main)
+    hash_free (cwm->algo_qp_map);
+
+  vec_foreach (mp, dcm->cop_pools)
+    {
+      if (mp)
+	rte_mempool_free (mp[0]);
+    }
+  /* *INDENT-ON* */
+  vec_free (dcm->workers_main);
+  vec_free (dcm->cop_pools);
+
   return 0;
 }
 
-VLIB_MAIN_LOOP_ENTER_FUNCTION (dpdk_ipsec_init);
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (dpdk_ipsec_process_node,static) = {
+    .function = dpdk_ipsec_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "dpdk-ipsec-process",
+    .process_log2_n_stack_bytes = 17,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
