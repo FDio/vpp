@@ -1340,6 +1340,9 @@ tap_connect_command_fn (vlib_main_t * vm,
                                   format_unformat_error, line_input);
     }
   
+  if (intfc_name == 0)
+      return clib_error_return (0, "interface name must be specified");
+
   memset (ap, 0, sizeof (*ap));
 
   ap->intfc_name = intfc_name;
