@@ -47,7 +47,7 @@ DPDK_LD_FLAGS = -Wl,--whole-archive,-ldpdk,--no-whole-archive
 else
 DPDK_LD_FLAGS = -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive,-lm,-ldl
 endif
-if WITH_DPDK_CRYPTO
+if WITH_DPDK_CRYPTO_SW
 DPDK_LD_ADD = -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 endif
 if WITH_DPDK_MLX5_PMD
