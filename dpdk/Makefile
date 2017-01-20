@@ -252,7 +252,7 @@ endif
 
 RPM_ARCH=$(shell rpm --eval "%{_arch}" 2> /dev/null)
 DEV_RPM=vpp-dpdk-devel-$(DPDK_VERSION)-$(PKG_SUFFIX).$(RPM_ARCH).rpm
-INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-dpdk-devel | grep -v "not inst")
+INSTALLED_RPM_VER=$(shell rpm -q --queryformat '%{VERSION}-%{RELEASE}' vpp-dpdk-devel 2> /dev/null | grep -v "not inst")
 
 .PHONY: build-rpm install-rpm check-rpm
 
