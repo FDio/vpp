@@ -21,17 +21,11 @@
 
 #include <vnet/ipsec/ipsec.h>
 
-#if DPDK_CRYPTO==1
-#define ESP_NODE "dpdk-esp-encrypt"
-#else
-#define ESP_NODE "esp-encrypt"
-#endif
-
 #if WITH_LIBSSL > 0
 
 #define foreach_ipsec_output_next                \
 _(DROP, "error-drop")                            \
-_(ESP_ENCRYPT, ESP_NODE)
+_(ESP_ENCRYPT, "esp-encrypt")
 
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum
@@ -49,7 +43,6 @@ typedef enum
  _(POLICY_PROTECT, "IPSec policy protect")           \
  _(POLICY_BYPASS, "IPSec policy bypass")             \
  _(ENCAPS_FAILED, "IPSec encapsulation failed")
-
 
 typedef enum
 {
