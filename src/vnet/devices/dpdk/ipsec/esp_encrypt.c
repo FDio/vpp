@@ -22,6 +22,8 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/esp.h>
+#include <vnet/devices/dpdk/dpdk.h>
+#include <vnet/devices/dpdk/dpdk_priv.h>
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \

@@ -23,29 +23,9 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
-#if DPDK_CRYPTO==1
-#define ESP_NODE "dpdk-esp-decrypt"
-#else
-#define ESP_NODE "esp-decrypt"
-#endif
-
-#define foreach_ipsec_input_next                \
-_(DROP, "error-drop")                           \
-_(ESP_DECRYPT, ESP_NODE)
-
-#define _(v, s) IPSEC_INPUT_NEXT_##v,
-typedef enum
-{
-  foreach_ipsec_input_next
-#undef _
-    IPSEC_INPUT_N_NEXT,
-} ipsec_input_next_t;
-
-
 #define foreach_ipsec_input_error                   \
  _(RX_PKTS, "IPSEC pkts received")                  \
  _(DECRYPTION_FAILED, "IPSEC decryption failed")
-
 
 typedef enum
 {
@@ -262,7 +242,7 @@ ipsec_input_ip4_node_fn (vlib_main_t * vm,
 		  p0->counter.bytes += clib_net_to_host_u16 (ip0->length);
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = IPSEC_INPUT_NEXT_ESP_DECRYPT;
+		  next0 = im->esp_decrypt_next_index;
 		  vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 		  goto trace0;
 		}
@@ -392,7 +372,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (ipsec_input_ip4_node, ipsec_input_ip4_node_fn)
 		  p0->counter.bytes += header_size;
 		  vnet_buffer (b0)->ipsec.sad_index = p0->sa_index;
 		  vnet_buffer (b0)->ipsec.flags = 0;
-		  next0 = IPSEC_INPUT_NEXT_ESP_DECRYPT;
+		  next0 = im->esp_decrypt_next_index;
 		  vlib_buffer_advance (b0, header_size);
 		  goto trace0;
 		}

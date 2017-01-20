@@ -67,10 +67,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
+  ipsec_main_t *im = &ipsec_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_sa_t sa;
   int is_add = ~0;
   u8 *ck = 0, *ik = 0;
+  clib_error_t *err = 0;
 
   memset (&sa, 0, sizeof (sa));
 
@@ -109,11 +111,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "integ-alg %U", unformat_ipsec_integ_alg,
 			 &sa.integ_alg))
 	{
-#if DPDK_CRYPTO==1
-	  if (sa.integ_alg < IPSEC_INTEG_ALG_NONE ||
-#else
 	  if (sa.integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
-#endif
 	      sa.integ_alg >= IPSEC_INTEG_N_ALG)
 	    return clib_error_return (0, "unsupported integ-alg: '%U'",
 				      format_ipsec_integ_alg, sa.integ_alg);
@@ -141,23 +139,6 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 				  format_unformat_error, line_input);
     }
 
-#if DPDK_CRYPTO==1
-  /*Special cases, aes-gcm-128 encryption */
-  if (sa.crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
-    {
-      if (sa.integ_alg != IPSEC_INTEG_ALG_NONE
-	  && sa.integ_alg != IPSEC_INTEG_ALG_AES_GCM_128)
-	return clib_error_return (0,
-				  "unsupported: aes-gcm-128 crypto-alg needs none as integ-alg");
-      else			/*set integ-alg internally to aes-gcm-128 */
-	sa.integ_alg = IPSEC_INTEG_ALG_AES_GCM_128;
-    }
-  else if (sa.integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
-    return clib_error_return (0, "unsupported integ-alg: aes-gcm-128");
-  else if (sa.integ_alg == IPSEC_INTEG_ALG_NONE)
-    return clib_error_return (0, "unsupported integ-alg: none");
-#endif
-
   unformat_free (line_input);
 
   if (sa.crypto_key_len > sizeof (sa.crypto_key))
@@ -171,6 +152,14 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 
   if (ik)
     strncpy ((char *) sa.integ_key, (char *) ik, sa.integ_key_len);
+
+  if (is_add)
+    {
+      ASSERT (im->cb.check_support_cb);
+      err = im->cb.check_support_cb (&sa);
+      if (err)
+	return err;
+    }
 
   ipsec_add_del_sa (vm, &sa, is_add);
 
