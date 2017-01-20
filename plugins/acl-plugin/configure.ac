@@ -1,4 +1,4 @@
-AC_INIT(acl_plugin, 1.0)
+AC_INIT(acl_plugin, 17.01)
 AC_CONFIG_MACRO_DIR([../../vpp-api/java/m4])
 LT_INIT
 AM_INIT_AUTOMAKE

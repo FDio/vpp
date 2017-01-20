@@ -1,4 +1,4 @@
-AC_INIT(ioam_plugin, 1.0)
+AC_INIT(ioam_plugin, 17.01)
 LT_INIT
 AC_CONFIG_MACRO_DIR([../../vpp-api/java/m4])
 AM_INIT_AUTOMAKE

@@ -1,4 +1,4 @@
-AC_INIT(snat_plugin, 1.0)
+AC_INIT(snat_plugin, 17.01)
 AC_CONFIG_MACRO_DIR([../../vpp-api/java/m4])
 AM_INIT_AUTOMAKE
 AM_SILENT_RULES([yes])
