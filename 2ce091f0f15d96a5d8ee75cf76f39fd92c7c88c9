@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a2585a7_04e8e30e",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 4761,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-01-20T18:06:48Z",
+      "side": 1,
+      "message": "There\u0027s also the notifies.",
+      "range": {
+        "startLine": 4759,
+        "startChar": 0,
+        "endLine": 4761,
+        "endChar": 14
+      },
+      "revId": "2ce091f0f15d96a5d8ee75cf76f39fd92c7c88c9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
