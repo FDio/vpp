@@ -17,6 +17,7 @@
 
 #define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
 
+
 #define foreach_ipsec_policy_action \
   _(0, BYPASS,  "bypass")          \
   _(1, DISCARD, "discard")         \
@@ -31,20 +32,12 @@ typedef enum
     IPSEC_POLICY_N_ACTION,
 } ipsec_policy_action_t;
 
-#if DPDK_CRYPTO==1
 #define foreach_ipsec_crypto_alg \
   _(0, NONE,  "none")               \
   _(1, AES_CBC_128, "aes-cbc-128")  \
   _(2, AES_CBC_192, "aes-cbc-192")  \
   _(3, AES_CBC_256, "aes-cbc-256")  \
   _(4, AES_GCM_128, "aes-gcm-128")
-#else
-#define foreach_ipsec_crypto_alg \
-  _(0, NONE,  "none")               \
-  _(1, AES_CBC_128, "aes-cbc-128")  \
-  _(2, AES_CBC_192, "aes-cbc-192")  \
-  _(3, AES_CBC_256, "aes-cbc-256")
-#endif
 
 typedef enum
 {
@@ -54,7 +47,6 @@ typedef enum
     IPSEC_CRYPTO_N_ALG,
 } ipsec_crypto_alg_t;
 
-#if DPDK_CRYPTO==1
 #define foreach_ipsec_integ_alg \
   _(0, NONE,  "none")                                                     \
   _(1, MD5_96, "md5-96")           /* RFC2403 */                          \
@@ -63,17 +55,7 @@ typedef enum
   _(4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
   _(5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
   _(6, SHA_512_256, "sha-512-256") /* RFC4868 */                          \
-  _(7, AES_GCM_128, "aes-gcm-128")
-#else
-#define foreach_ipsec_integ_alg \
-  _(0, NONE,  "none")                                                     \
-  _(1, MD5_96, "md5-96")           /* RFC2403 */                          \
-  _(2, SHA1_96, "sha1-96")         /* RFC2404 */                          \
-  _(3, SHA_256_96, "sha-256-96")   /* draft-ietf-ipsec-ciph-sha-256-00 */ \
-  _(4, SHA_256_128, "sha-256-128") /* RFC4868 */                          \
-  _(5, SHA_384_192, "sha-384-192") /* RFC4868 */                          \
-  _(6, SHA_512_256, "sha-512-256")	/* RFC4868 */
-#endif
+  _(7, AES_GCM_128, "aes-gcm-128")	/* RFC4106 */
 
 typedef enum
 {
@@ -225,6 +207,12 @@ typedef struct
 
 typedef struct
 {
+  i32 (*add_del_sa_sess_cb) (u32 sa_index, u8 is_add);
+  clib_error_t *(*check_support_cb) (ipsec_sa_t * sa);
+} ipsec_main_callbacks_t;
+
+typedef struct
+{
   /* pool of tunnel instances */
   ipsec_spd_t *spds;
   ipsec_sa_t *sad;
@@ -252,9 +240,11 @@ typedef struct
 
   /* node indexes */
   u32 error_drop_node_index;
-  u32 ip4_lookup_node_index;
   u32 esp_encrypt_node_index;
+  u32 esp_decrypt_node_index;
 
+  /* callbacks */
+  ipsec_main_callbacks_t cb;
 } ipsec_main_t;
 
 ipsec_main_t ipsec_main;

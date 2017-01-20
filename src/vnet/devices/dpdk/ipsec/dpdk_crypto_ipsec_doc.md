@@ -7,43 +7,55 @@ This document is meant to contain all related information about implementation a
 
 DPDK Cryptodev is an asynchronous crypto API that supports both Hardware and Software implementations (for more details refer to [DPDK Cryptography Device Library documentation](http://dpdk.org/doc/guides/prog_guide/cryptodev_lib.html)).
 
-When DPDK Cryptodev support is enabled, the node graph is modified by adding and replacing some of the nodes.
-
-The following nodes are replaced:
-* esp-encrypt -> dpdk-esp-encrypt
-* esp-decrypt -> dpdk-esp-decrypt
+When DPDK support is enabled and there are enough Cryptodev resources for all workers, the node graph is reconfigured by adding and changing default next nodes.
 
 The following nodes are added:
 * dpdk-crypto-input : polling input node, basically dequeuing from crypto devices.
+* dpdk-esp-encrypt : internal node.
+* dpdk-esp-decrypt : internal node.
 * dpdk-esp-encrypt-post : internal node.
 * dpdk-esp-decrypt-post : internal node.
+
+Set new default next nodes:
+* for esp encryption: esp-encrypt -> dpdk-esp-encrypt
+* for esp decryption: esp-decrypt -> dpdk-esp-decrypt
 
 
 ### How to enable VPP IPSec with DPDK Cryptodev support
 
-To enable DPDK Cryptodev support (disabled by default), we need the following env option:
+DPDK Cryptodev is supported in DPDK enabled VPP.
+By default, only HW Cryptodev is supported but needs to be explicetly enabled with the following config option:
 
-    vpp_uses_dpdk_cryptodev=yes
+```
+dpdk {
+    enable-cryptodev
+}
+```
+
+To enable SW Cryptodev support (AESNI-MB-PMD and GCM-PMD), we need the following env option:
+
+    vpp_uses_dpdk_cryptodev_sw=yes
 
 A couple of ways to achive this:
 * uncomment/add it in the platforms config (ie. build-data/platforms/vpp.mk)
-* set the option when building vpp (ie. make vpp_uses_dpdk_cryptodev=yes build-release)
+* set the option when building vpp (ie. make vpp_uses_dpdk_cryptodev_sw=yes build-release)
+
+When enabling SW Cryptodev support, it means that you need to pre-build the required crypto libraries needed by those SW Cryptodev PMDs.
 
 
 ### Crypto Resources allocation
 
 VPP allocates crypto resources based on a best effort approach:
 * first allocate Hardware crypto resources, then Software.
-* if there are not enough crypto resources for all workers, all packets will be dropped if they reach ESP encrypt/decrypt nodes, displaying the warning:
+* if there are not enough crypto resources for all workers, the graph node is not modifed, therefore the default VPP IPsec implementation based in OpenSSL is used. The following message is displayed:
 
       0: dpdk_ipsec_init: not enough cryptodevs for ipsec
 
 
 ### Configuration example
 
-No especial IPsec configuration is required.
-
-Once DPDK Cryptodev is enabled, the user just needs to provide cryptodevs in the startup.conf.
+To enable DPDK Cryptodev the user just need to provide the startup.conf option
+as mentioned previously.
 
 Example startup.conf:
 
@@ -53,6 +65,7 @@ dpdk {
     num-mbufs 131072
     dev 0000:81:00.0
     dev 0000:81:00.1
+    enable-cryptodev
     dev 0000:85:01.0
     dev 0000:85:01.1
     vdev cryptodev_aesni_mb_pmd,socket_id=1

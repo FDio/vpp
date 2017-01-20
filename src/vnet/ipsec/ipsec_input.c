@@ -23,15 +23,9 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
-#if DPDK_CRYPTO==1
-#define ESP_NODE "dpdk-esp-decrypt"
-#else
-#define ESP_NODE "esp-decrypt"
-#endif
-
 #define foreach_ipsec_input_next                \
 _(DROP, "error-drop")                           \
-_(ESP_DECRYPT, ESP_NODE)
+_(ESP_DECRYPT, "esp-decrypt")
 
 #define _(v, s) IPSEC_INPUT_NEXT_##v,
 typedef enum
@@ -45,7 +39,6 @@ typedef enum
 #define foreach_ipsec_input_error                   \
  _(RX_PKTS, "IPSEC pkts received")                  \
  _(DECRYPTION_FAILED, "IPSEC decryption failed")
-
 
 typedef enum
 {
