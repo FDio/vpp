@@ -15,16 +15,67 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/api_errno.h>
+#include <vnet/ipsec/ipsec.h>
+#include <vlib/node_funcs.h>
+
 #include <vnet/devices/dpdk/dpdk.h>
 #include <vnet/devices/dpdk/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/esp.h>
-#include <vnet/ipsec/ipsec.h>
 
 #define DPDK_CRYPTO_NB_OBJS	  2048
 #define DPDK_CRYPTO_CACHE_SIZE	  512
 #define DPDK_CRYPTO_PRIV_SIZE	  128
 #define DPDK_CRYPTO_N_QUEUE_DESC  512
 #define DPDK_CRYPTO_NB_COPS	  (1024 * 4)
+
+static int
+add_del_sa_sess (u32 sa_index, u8 is_add)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+  crypto_worker_main_t *cwm;
+  u8 skip_master = vlib_num_workers () > 0;
+
+  /* *INDENT-OFF* */
+  vec_foreach (cwm, dcm->workers_main)
+    {
+      crypto_sa_session_t *sa_sess;
+      u8 is_outbound;
+
+      if (skip_master)
+	{
+	  skip_master = 0;
+	  continue;
+	}
+
+      for (is_outbound = 0; is_outbound < 2; is_outbound++)
+	{
+	  if (is_add)
+	    {
+	      pool_get (cwm->sa_sess_d[is_outbound], sa_sess);
+	    }
+	  else
+	    {
+	      u8 dev_id;
+
+	      sa_sess = pool_elt_at_index (cwm->sa_sess_d[is_outbound], sa_index);
+	      dev_id = cwm->qp_data[sa_sess->qp_index].dev_id;
+
+	      if (!sa_sess->sess)
+		continue;
+
+	      if (rte_cryptodev_sym_session_free(dev_id, sa_sess->sess))
+		{
+		  clib_warning("failed to free session");
+		  return -1;
+		}
+	      memset(sa_sess, 0, sizeof(sa_sess[0]));
+	    }
+	}
+    }
+  /* *INDENT-OFF* */
+
+  return 0;
+}
 
 /*
  * return:
@@ -169,8 +220,30 @@ check_cryptodev_queues ()
 }
 
 static clib_error_t *
+dpdk_ipsec_check_support(ipsec_sa_t * sa)
+{
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+    {
+      if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
+	return clib_error_return (0, "unsupported integ-alg with aes-gcm-128");
+      sa->integ_alg = IPSEC_INTEG_ALG_AES_GCM_128;
+    }
+  else
+    {
+      if (sa->integ_alg == IPSEC_INTEG_ALG_NONE ||
+	  sa->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
+	return clib_error_return (0, "unsupported integ-alg: %U",
+				  format_ipsec_integ_alg, sa->integ_alg);
+    }
+
+  return 0;
+}
+
+static clib_error_t *
 dpdk_ipsec_init (vlib_main_t * vm)
 {
+  dpdk_config_main_t *conf = &dpdk_config_main;
+  ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   struct rte_cryptodev_config dev_conf;
@@ -180,8 +253,17 @@ dpdk_ipsec_init (vlib_main_t * vm)
   i32 dev_id, ret;
   u32 i, skip_master;
 
+  if (!conf->cryptodev)
+    return clib_error_return (0, "DPDK Cryptodev support is disabled, "
+			      "default to OpenSSL ipsec");
+
   if (check_cryptodev_queues () < 0)
-    return clib_error_return (0, "not enough cryptodevs for ipsec");
+    {
+      conf->cryptodev = 0;
+      return clib_error_return (0, "not enough cryptodevs, "
+				"default to OpenSSL ipsec");
+    }
+
 
   vec_alloc (dcm->workers_main, tm->n_vlib_mains);
   _vec_len (dcm->workers_main) = tm->n_vlib_mains;
@@ -290,6 +372,19 @@ dpdk_ipsec_init (vlib_main_t * vm)
   dcm->cop_pools[socket_id] = rmp;
 
   dpdk_esp_init ();
+
+  /* Add new next node and set as default */
+  vlib_node_t * node;
+  node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-encrypt");
+  ASSERT (node);
+  im->esp_encrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "dpdk-esp-decrypt");
+  ASSERT (node);
+  im->esp_decrypt_node_index = node->index;
+
+  im->cb.check_support_cb = dpdk_ipsec_check_support;
+  im->cb.add_del_sa_sess_cb = add_del_sa_sess;
 
   if (vec_len (vlib_mains) == 0)
     vlib_node_set_state (&vlib_global_main, dpdk_crypto_input_node.index,

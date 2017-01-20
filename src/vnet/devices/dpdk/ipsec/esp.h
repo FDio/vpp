@@ -97,55 +97,6 @@ dpdk_esp_init ()
 }
 
 static_always_inline int
-add_del_sa_sess (u32 sa_index, u8 is_add)
-{
-  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  crypto_worker_main_t *cwm;
-  u8 skip_master = vlib_num_workers () > 0;
-
-  /* *INDENT-OFF* */
-  vec_foreach (cwm, dcm->workers_main)
-    {
-      crypto_sa_session_t *sa_sess;
-      u8 is_outbound;
-
-      if (skip_master)
-	{
-	  skip_master = 0;
-	  continue;
-	}
-
-      for (is_outbound = 0; is_outbound < 2; is_outbound++)
-	{
-	  if (is_add)
-	    {
-	      pool_get (cwm->sa_sess_d[is_outbound], sa_sess);
-	    }
-	  else
-	    {
-	      u8 dev_id;
-
-	      sa_sess = pool_elt_at_index (cwm->sa_sess_d[is_outbound], sa_index);
-	      dev_id = cwm->qp_data[sa_sess->qp_index].dev_id;
-
-	      if (!sa_sess->sess)
-		continue;
-
-	      if (rte_cryptodev_sym_session_free(dev_id, sa_sess->sess))
-		{
-		  clib_warning("failed to free session");
-		  return -1;
-		}
-	      memset(sa_sess, 0, sizeof(sa_sess[0]));
-	    }
-	}
-    }
-  /* *INDENT-OFF* */
-
-  return 0;
-}
-
-static_always_inline int
 translate_crypto_algo(ipsec_crypto_alg_t crypto_algo,
 		      struct rte_crypto_sym_xform *cipher_xform)
 {
