@@ -50,5 +50,5 @@ fi
       echo ${TAG}-${ADD}${CMT:+~${CMT}}${BLD}
     fi
   else
-    echo ${TAG}
+    echo ${TAG}-release
 fi
