@@ -684,6 +684,8 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
   return s;
 }
 
+/* FIXME is this function used? */
+#if 0
 uword
 unformat_socket_mem (unformat_input_t * input, va_list * va)
 {
@@ -710,6 +712,7 @@ unformat_socket_mem (unformat_input_t * input, va_list * va)
 done:
   return 1;
 }
+#endif
 
 clib_error_t *
 unformat_rss_fn (unformat_input_t * input, uword * rss_fn)

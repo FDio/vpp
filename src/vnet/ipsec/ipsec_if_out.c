@@ -21,12 +21,6 @@
 
 #include <vnet/ipsec/ipsec.h>
 
-#if DPDK_CRYPTO==1
-#define ESP_NODE "dpdk-esp-encrypt"
-#else
-#define ESP_NODE "esp-encrypt"
-#endif
-
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_output_error    \
 _(TX, "good packets transmitted")
@@ -45,19 +39,12 @@ typedef enum
     IPSEC_IF_OUTPUT_N_ERROR,
 } ipsec_if_output_error_t;
 
-typedef enum
-{
-  IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT,
-  IPSEC_IF_OUTPUT_NEXT_DROP,
-  IPSEC_IF_OUTPUT_N_NEXT,
-} ipsec_if_output_next_t;
 
 typedef struct
 {
   u32 spi;
   u32 seq;
 } ipsec_if_output_trace_t;
-
 
 u8 *
 format_ipsec_if_output_trace (u8 * s, va_list * args)
@@ -106,7 +93,7 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	  t0 = pool_elt_at_index (im->tunnel_interfaces, hi0->dev_instance);
 	  vnet_buffer (b0)->ipsec.sad_index = t0->output_sa_index;
-	  next0 = IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT;
+	  next0 = im->esp_encrypt_next_index;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -142,12 +129,7 @@ VLIB_REGISTER_NODE (ipsec_if_output_node) = {
   .n_errors = ARRAY_LEN(ipsec_if_output_error_strings),
   .error_strings = ipsec_if_output_error_strings,
 
-  .n_next_nodes = IPSEC_IF_OUTPUT_N_NEXT,
-
-  .next_nodes = {
-        [IPSEC_IF_OUTPUT_NEXT_ESP_ENCRYPT] = ESP_NODE,
-        [IPSEC_IF_OUTPUT_NEXT_DROP] = "error-drop",
-  },
+  .sibling_of = "ipsec-output-ip4",
 };
 /* *INDENT-ON* */
 

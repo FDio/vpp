@@ -22,12 +22,6 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
-#if DPDK_CRYPTO==1
-#define ESP_NODE "dpdk-esp-decrypt"
-#else
-#define ESP_NODE "esp-decrypt"
-#endif
-
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_input_error    \
 _(RX, "good packets received")
@@ -46,19 +40,12 @@ typedef enum
     IPSEC_IF_INPUT_N_ERROR,
 } ipsec_if_input_error_t;
 
-typedef enum
-{
-  IPSEC_IF_INPUT_NEXT_ESP_DECRYPT,
-  IPSEC_IF_INPUT_NEXT_DROP,
-  IPSEC_IF_INPUT_N_NEXT,
-} ipsec_if_input_next_t;
 
 typedef struct
 {
   u32 spi;
   u32 seq;
 } ipsec_if_input_trace_t;
-
 
 u8 *
 format_ipsec_if_input_trace (u8 * s, va_list * args)
@@ -106,7 +93,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0 = vlib_buffer_get_current (b0);
 	  esp0 = (esp_header_t *) ((u8 *) ip0 + ip4_header_bytes (ip0));
 
-	  next0 = IPSEC_IF_INPUT_NEXT_DROP;
+	  next0 = IPSEC_INPUT_NEXT_DROP;
 
 	  u64 key = (u64) ip0->src_address.as_u32 << 32 |
 	    (u64) clib_net_to_host_u32 (esp0->spi);
@@ -121,7 +108,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vnet_buffer (b0)->ipsec.flags =
 		t->hw_if_index == ~0 ? IPSEC_FLAG_IPSEC_GRE_TUNNEL : 0;
 	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
-	      next0 = IPSEC_IF_INPUT_NEXT_ESP_DECRYPT;
+	      next0 = im->esp_decrypt_next_index;
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -156,12 +143,7 @@ VLIB_REGISTER_NODE (ipsec_if_input_node) = {
   .n_errors = ARRAY_LEN(ipsec_if_input_error_strings),
   .error_strings = ipsec_if_input_error_strings,
 
-  .n_next_nodes = IPSEC_IF_INPUT_N_NEXT,
-
-  .next_nodes = {
-	[IPSEC_IF_INPUT_NEXT_ESP_DECRYPT] = ESP_NODE,
-	[IPSEC_IF_INPUT_NEXT_DROP] = "error-drop",
-  },
+  .sibling_of = "ipsec-input-ip4",
 };
 /* *INDENT-ON* */
 
