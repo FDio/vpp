@@ -22,6 +22,8 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ipsec/ipsec.h>
 
+#include <vnet/devices/dpdk/dpdk.h>
+#include <vnet/devices/dpdk/dpdk_priv.h>
 #include <vnet/devices/dpdk/ipsec/ipsec.h>
 
 #define foreach_dpdk_crypto_input_next		\
@@ -183,24 +185,27 @@ dpdk_crypto_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_deq;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_crypto_input_node) =
 {
-  .function = dpdk_crypto_input_fn,.name = "dpdk-crypto-input",.format_trace =
-    format_dpdk_crypto_input_trace,.type = VLIB_NODE_TYPE_INPUT,.state =
-    VLIB_NODE_STATE_DISABLED,.n_errors =
-    DPDK_CRYPTO_INPUT_N_ERROR,.error_strings =
-    dpdk_crypto_input_error_strings,.n_next_nodes =
-    DPDK_CRYPTO_INPUT_N_NEXT,.next_nodes =
+  .function = dpdk_crypto_input_fn,
+  .name = "dpdk-crypto-input",
+  .format_trace = format_dpdk_crypto_input_trace,
+  .type = VLIB_NODE_TYPE_INPUT,
+  .state = VLIB_NODE_STATE_DISABLED,
+  .n_errors = DPDK_CRYPTO_INPUT_N_ERROR,
+  .error_strings = dpdk_crypto_input_error_strings,
+  .n_next_nodes = DPDK_CRYPTO_INPUT_N_NEXT,
+  .next_nodes =
   {
 #define _(s,n) [DPDK_CRYPTO_INPUT_NEXT_##s] = n,
     foreach_dpdk_crypto_input_next
 #undef _
-  }
-,};
+  },
+};
+/* *INDENT-ON* */
 
-#if DPDK_CRYPTO==1
 VLIB_NODE_FUNCTION_MULTIARCH (dpdk_crypto_input_node, dpdk_crypto_input_fn)
-#endif
 /*
  * fd.io coding-style-patch-verification: ON
  *
