@@ -22,6 +22,8 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/ipsec.h>
 #include <vnet/devices/dpdk/ipsec/esp.h>
+#include <vnet/devices/dpdk/dpdk.h>
+#include <vnet/devices/dpdk/dpdk_priv.h>
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \
@@ -179,7 +181,14 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  if (PREDICT_FALSE (!sa_sess->sess))
 	    {
 	      int ret = create_sym_sess (sa0, sa_sess, 1);
-	      ASSERT (ret == 0);
+
+	      if (PREDICT_FALSE (ret))
+		{
+		  to_next[0] = bi0;
+		  to_next += 1;
+		  n_left_to_next -= 1;
+		  goto trace;
+		}
 	    }
 
 	  qp_index = sa_sess->qp_index;

@@ -28,13 +28,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/ipsec/ipsec.h>
 
-#if DPDK_CRYPTO==1
-#include <vnet/devices/dpdk/ipsec/esp.h>
-#define ESP_NODE "dpdk-esp-encrypt"
-#else
 #include <vnet/ipsec/esp.h>
-#define ESP_NODE "esp-encrypt"
-#endif
 
 u8 *
 format_ipsec_gre_tunnel (u8 * s, va_list * args)
@@ -193,7 +187,7 @@ vnet_ipsec_gre_add_del_tunnel (vnet_ipsec_gre_add_del_tunnel_args_t * a,
       hash_set (igm->tunnel_by_key, key, t - igm->tunnels);
 
       slot = vlib_node_add_named_next_with_slot
-	(vnm->vlib_main, hi->tx_node_index, ESP_NODE,
+	(vnm->vlib_main, hi->tx_node_index, "esp-encrypt",
 	 IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT);
 
       ASSERT (slot == IPSEC_GRE_OUTPUT_NEXT_ESP_ENCRYPT);
