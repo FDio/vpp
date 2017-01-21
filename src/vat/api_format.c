@@ -70,6 +70,46 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#include <vlibapi/vat_helper_macros.h>
+
+f64
+vat_time_now (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN
+  return vlib_time_now (vam->vlib_main);
+#else
+  return clib_time_now (&vam->clib_time);
+#endif
+}
+
+void
+errmsg (char *fmt, ...)
+{
+  vat_main_t *vam = &vat_main;
+  va_list va;
+  u8 *s;
+
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  va_end (va);
+
+  vec_add1 (s, 0);
+
+#if VPP_API_TEST_BUILTIN
+  vlib_cli_output (vam->vlib_main, (char *) s);
+#else
+  {
+    if (vam->ifp != stdin)
+      fformat (vam->ofp, "%s(%d): \n", vam->current_file,
+	       vam->input_line_number);
+    fformat (vam->ofp, (char *) s);
+    fflush (vam->ofp);
+  }
+#endif
+
+  vec_free (s);
+}
+
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
@@ -87,8 +127,6 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   *result = p[0];
   return 1;
 }
-
-void vat_suspend (vlib_main_t * vm, f64 interval);
 
 #if VPP_API_TEST_BUILTIN == 0
 /* Parse an IP4 address %d.%d.%d.%d. */
@@ -3866,59 +3904,6 @@ _(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY,                             \
 _(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                               \
   sw_interface_set_dpdk_hqos_tctbl_reply)
 #endif
-
-/* M: construct, but don't yet send a message */
-
-#define M(T,t)                                          \
-do {                                                    \
-    vam->result_ready = 0;                              \
-    mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));    \
-    memset (mp, 0, sizeof (*mp));                       \
-    mp->_vl_msg_id = ntohs (VL_API_##T);                \
-    mp->client_index = vam->my_client_index;            \
-} while(0);
-
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc_as_if_client(sizeof(*mp)+(n));        \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T);                        \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-
-/* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-        vat_suspend (vam->vlib_main, 1e-3);     \
-    }                                           \
-    return -99;                                 \
-} while(0);
-
-/* W2: wait for results, with timeout */
-#define W2(body)                                \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-	  (body);                               \
-	  return (vam->retval);                 \
-        }                                       \
-        vat_suspend (vam->vlib_main, 1e-3);     \
-    }                                           \
-    return -99;                                 \
-} while(0);
 
 typedef struct
 {

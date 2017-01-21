@@ -25,6 +25,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <arpa/inet.h>
+#include <vlibapi/vat_helper_macros.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
@@ -259,42 +260,6 @@ _(MACIP_ACL_INTERFACE_ADD_DEL_REPLY, macip_acl_interface_add_del_reply)  \
 _(MACIP_ACL_INTERFACE_GET_REPLY, macip_acl_interface_get_reply)  \
 _(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)
 
-/* M: construct, but don't yet send a message */
-
-#define M(T,t)                                                  \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-/* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-    }                                           \
-    return -99;                                 \
-} while(0);
-
 static int api_acl_plugin_get_version (vat_main_t * vam)
 {
     acl_test_main_t * sm = &acl_test_main;
@@ -520,7 +485,6 @@ static int api_acl_add_replace (vat_main_t * vam)
 
 static int api_acl_del (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     vl_api_acl_del_t * mp;
@@ -544,7 +508,6 @@ static int api_acl_del (vat_main_t * vam)
 
 static int api_macip_acl_del (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     vl_api_acl_del_t * mp;
@@ -568,7 +531,6 @@ static int api_macip_acl_del (vat_main_t * vam)
 
 static int api_acl_interface_add_del (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     vl_api_acl_interface_add_del_t * mp;
@@ -636,7 +598,6 @@ static int api_acl_interface_add_del (vat_main_t * vam)
 
 static int api_macip_acl_interface_add_del (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     vl_api_macip_acl_interface_add_del_t * mp;
@@ -687,7 +648,6 @@ static int api_macip_acl_interface_add_del (vat_main_t * vam)
 
 static int api_acl_interface_set_acl_list (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     vl_api_acl_interface_set_acl_list_t * mp;
@@ -746,7 +706,6 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
 
 static int api_acl_interface_list_dump (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     u32 sw_if_index = ~0;
@@ -775,7 +734,6 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
 
 static int api_acl_dump (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     u32 acl_index = ~0;
@@ -802,7 +760,6 @@ static int api_acl_dump (vat_main_t * vam)
 
 static int api_macip_acl_dump (vat_main_t * vam)
 {
-    acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
     f64 timeout;
     u32 acl_index = ~0;
@@ -978,8 +935,8 @@ _(macip_acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] acl <ac
 _(macip_acl_interface_get, "")
 
 
-
-void vat_api_hookup (vat_main_t *vam)
+static
+void acl_vat_api_hookup (vat_main_t *vam)
 {
     acl_test_main_t * sm = &acl_test_main;
     /* Hook up handlers for replies from the data plane plug-in */
@@ -1016,7 +973,7 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
-    vat_api_hookup (vam);
+    acl_vat_api_hookup (vam);
 
   vec_free(name);
 

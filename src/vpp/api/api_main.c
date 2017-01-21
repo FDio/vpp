@@ -42,11 +42,17 @@ static clib_error_t *
 api_main_init (vlib_main_t * vm)
 {
   vat_main_t *vam = &vat_main;
+  int rv;
+  int vat_plugin_init (vat_main_t * vam);
 
   vam->vlib_main = vm;
   vam->my_client_index = (u32) ~ 0;
   init_error_string_table (vam);
   vat_api_hookup (vam);
+  clib_warning ("vam %llx", vam);
+  rv = vat_plugin_init (vam);
+  if (rv)
+    clib_warning ("vat_plugin_init returned %d", rv);
   return 0;
 }
 
@@ -181,6 +187,39 @@ api_cli_output (void *notused, const char *fmt, ...)
     cp->output_function (cp->output_function_arg, s, vec_len (s));
 
   vec_free (s);
+}
+
+u16
+vl_client_get_first_plugin_msg_id (char *plugin_name)
+{
+  api_main_t *am = &api_main;
+  vl_api_msg_range_t *rp;
+  uword *p;
+
+  p = hash_get_mem (am->msg_range_by_name, plugin_name);
+  if (p == 0)
+    return ~0;
+
+  rp = vec_elt_at_index (am->msg_ranges, p[0]);
+
+  return (rp->first_msg_id);
+}
+
+uword
+unformat_sw_if_index (unformat_input_t * input, va_list * args)
+{
+  u32 *result = va_arg (*args, u32 *);
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+  u8 *if_name;
+  uword *p;
+
+  if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      *result = sw_if_index;
+      return 1;
+    }
+  return 0;
 }
 
 /*

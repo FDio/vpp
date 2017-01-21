@@ -28,7 +28,9 @@ bin_vpp_SOURCES +=				\
 if WITH_APICLI
   bin_vpp_SOURCES +=				\
   vpp/api/api_format.c				\
-  vpp/api/api_main.c
+  vpp/api/api_main.c				\
+  vpp/api/plugin.c				\
+  vpp/api/plugin.h
 endif
 
 # comment out to disable stats upload to gmond
@@ -77,6 +79,8 @@ bin_vpp_LDADD = \
   libsvmdb.la \
   libvppinfra.la \
   -lrt -lm -lpthread -ldl
+
+bin_vpp_LDFLAGS = -Wl,--export-dynamic
 
 if ENABLE_TESTS
 noinst_PROGRAMS += bin/test_client
