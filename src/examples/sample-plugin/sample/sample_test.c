@@ -23,6 +23,7 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
+#include <vlibapi/vat_helper_macros.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
@@ -86,42 +87,6 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                                       \
 _(SAMPLE_MACSWAP_ENABLE_DISABLE_REPLY, sample_macswap_enable_disable_reply)
 
-
-/* M: construct, but don't yet send a message */
-
-#define M(T,t)                                                  \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-/* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-    }                                           \
-    return -99;                                 \
-} while(0);
 
 static int api_sample_macswap_enable_disable (vat_main_t * vam)
 {

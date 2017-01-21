@@ -21,6 +21,7 @@
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
+#include <vlibapi/vat_helper_macros.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
@@ -103,44 +104,8 @@ _(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)     \
 _(SNAT_IPFIX_ENABLE_DISABLE_REPLY,                              \
   snat_ipfix_enable_disable_reply)
 
-/* M: construct, but don't yet send a message */
-#define M(T,t)                                                  \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-/* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-    }                                           \
-    return -99;                                 \
-} while(0);
-
 static int api_snat_add_address_range (vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
   f64 timeout;
   ip4_address_t start_addr, end_addr;
@@ -200,7 +165,6 @@ static int api_snat_add_address_range (vat_main_t * vam)
 
 static int api_snat_interface_add_del_feature (vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
   f64 timeout;
   vl_api_snat_interface_add_del_feature_t * mp;
@@ -246,7 +210,6 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
 
 static int api_snat_add_static_mapping(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
   f64 timeout;
   vl_api_snat_add_static_mapping_t * mp;
@@ -338,7 +301,6 @@ static void vl_api_snat_static_mapping_details_t_handler
 
 static int api_snat_static_mapping_dump(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   f64 timeout;
   vl_api_snat_static_mapping_dump_t * mp;
 
@@ -398,7 +360,6 @@ static void vl_api_snat_show_config_reply_t_handler
 
 static int api_snat_show_config(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   f64 timeout;
   vl_api_snat_show_config_t * mp;
 
@@ -425,7 +386,6 @@ static void vl_api_snat_address_details_t_handler
 
 static int api_snat_address_dump(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   f64 timeout;
   vl_api_snat_address_dump_t * mp;
 
@@ -460,7 +420,6 @@ static void vl_api_snat_interface_details_t_handler
 
 static int api_snat_interface_dump(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   f64 timeout;
   vl_api_snat_interface_dump_t * mp;
 
@@ -485,7 +444,6 @@ static int api_snat_interface_dump(vat_main_t * vam)
 
 static int api_snat_set_workers (vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
   f64 timeout;
   vl_api_snat_set_workers_t * mp;
@@ -523,7 +481,6 @@ static void vl_api_snat_worker_details_t_handler
 
 static int api_snat_worker_dump(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   f64 timeout;
   vl_api_snat_worker_dump_t * mp;
 
@@ -548,7 +505,6 @@ static int api_snat_worker_dump(vat_main_t * vam)
 
 static int api_snat_ipfix_enable_disable (vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
   f64 timeout;
   vl_api_snat_add_del_interface_addr_t * mp;
@@ -597,7 +553,6 @@ static void vl_api_snat_interface_addr_details_t_handler
 
 static int api_snat_interface_addr_dump(vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   f64 timeout;
   vl_api_snat_interface_addr_dump_t * mp;
 
@@ -622,7 +577,6 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
 
 static int api_snat_add_del_interface_addr (vat_main_t * vam)
 {
-  snat_test_main_t * sm = &snat_test_main;
   unformat_input_t * i = vam->input;
   f64 timeout;
   vl_api_snat_ipfix_enable_disable_t * mp;
@@ -677,7 +631,8 @@ _(snat_interface_addr_dump, "")                                  \
 _(snat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "     \
   "[disable]")
 
-void vat_api_hookup (vat_main_t *vam)
+static void 
+snat_vat_api_hookup (vat_main_t *vam)
 {
   snat_test_main_t * sm __attribute__((unused)) = &snat_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -693,7 +648,9 @@ void vat_api_hookup (vat_main_t *vam)
 #undef _
 
   /* API messages we can send */
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
+#define _(n,h)                                          \
+  hash_set_mem (vam->function_by_name, #n, api_##n);    \
+  clib_warning ("vam %llx add '%s' handler %llx", vam, #n, api_##n);
   foreach_vpe_api_msg;
 #undef _    
     
@@ -715,7 +672,7 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
-    vat_api_hookup (vam);
+    snat_vat_api_hookup (vam);
   
   vec_free(name);
   
