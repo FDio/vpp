@@ -190,36 +190,11 @@ typedef struct
   vlib_main_t *vlib_main;
 } vat_main_t;
 
-vat_main_t vat_main;
+extern vat_main_t vat_main;
 
-static inline f64
-vat_time_now (vat_main_t * vam)
-{
-#if VPP_API_TEST_BUILTIN
-  return vlib_time_now (vam->vlib_main);
-#else
-  return clib_time_now (&vam->clib_time);
-#endif
-}
-
-#if VPP_API_TEST_BUILTIN
-#define errmsg(fmt,args...)                             \
-do {                                                    \
-  vat_main_t *__vam = &vat_main;                        \
-  vlib_cli_output (__vam->vlib_main, fmt, ##args);      \
- } while(0);
-#else
-#define errmsg(fmt,args...)                                     \
-do {                                                            \
-  vat_main_t *__vam = &vat_main;                                \
-    if(__vam->ifp != stdin)                                     \
-        fformat(__vam->ofp,"%s(%d): \n", __vam->current_file,   \
-                __vam->input_line_number);                      \
-    fformat(__vam->ofp, fmt "\n", ##args);                      \
-    fflush(__vam->ofp);                                         \
-} while(0);
-#endif
-
+void vat_suspend (vlib_main_t * vm, f64 interval);
+f64 vat_time_now (vat_main_t * vam);
+void errmsg (char *fmt, ...);
 void vat_api_hookup (vat_main_t * vam);
 int api_sw_interface_dump (vat_main_t * vam);
 void do_one_file (vat_main_t * vam);

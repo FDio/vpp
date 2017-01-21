@@ -23,6 +23,7 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
+#include <vlibapi/vat_helper_macros.h>
 
 
 /* Declare message IDs */
@@ -87,46 +88,9 @@ foreach_standard_reply_retval_handler;
 _(IOAM_EXPORT_IP6_ENABLE_DISABLE_REPLY, ioam_export_ip6_enable_disable_reply)
 
 
-/* M: construct, but don't yet send a message */
-
-#define M(T,t)                                                  \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-#define M2(T,t,n)                                               \
-do {                                                            \
-    vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \
-    memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \
-    mp->client_index = vam->my_client_index;                    \
-} while(0);
-
-/* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \
-do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
-                                                \
-    while (vat_time_now (vam) < timeout) {      \
-        if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
-        }                                       \
-    }                                           \
-    return -99;                                 \
-} while(0);
-
 static int
 api_ioam_export_ip6_enable_disable (vat_main_t * vam)
 {
-  export_test_main_t *sm = &export_test_main;
   unformat_input_t *i = vam->input;
   f64 timeout;
   int is_disable = 0;
@@ -159,8 +123,8 @@ api_ioam_export_ip6_enable_disable (vat_main_t * vam)
 #define foreach_vpe_api_msg \
 _(ioam_export_ip6_enable_disable, "<intfc> [disable]")
 
-void
-vat_api_hookup (vat_main_t * vam)
+static void
+ioam_export_vat_api_hookup (vat_main_t * vam)
 {
   export_test_main_t *sm = &export_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -198,7 +162,7 @@ vat_plugin_register (vat_main_t * vam)
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~ 0)
-    vat_api_hookup (vam);
+    ioam_export_vat_api_hookup (vam);
 
   vec_free (name);
 

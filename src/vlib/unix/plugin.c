@@ -264,10 +264,15 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (plugins_show_cmd, static) =
 {
-.path = "show plugins",.short_help = "show loaded plugins",.function =
-    vlib_plugins_show_cmd_fn,};
+  .path = "show plugins",
+  .short_help = "show loaded plugins",
+  .function = vlib_plugins_show_cmd_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
