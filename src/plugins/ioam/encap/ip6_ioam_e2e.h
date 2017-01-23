@@ -16,7 +16,7 @@
 #ifndef __included_ip6_ioam_e2e_h__
 #define __included_ip6_ioam_e2e_h__
 
-#include "../lib-e2e/e2e_util.h"
+#include <ioam/lib-e2e/e2e_util.h>
 #include "ip6_ioam_seqno.h"
 
 /* *INDENT-OFF* */
