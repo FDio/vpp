@@ -24,6 +24,7 @@
  */
 
 #include <vnet/vnet.h>
+#include <vpp/app/version.h>
 #include <vnet/plugin/plugin.h>
 #include <flowperpkt/flowperpkt.h>
 
@@ -479,30 +480,11 @@ static void *vl_api_flowperpkt_tx_interface_add_del_t_print
 #define foreach_flowperpkt_plugin_api_msg                           \
 _(FLOWPERPKT_TX_INTERFACE_ADD_DEL, flowperpkt_tx_interface_add_del)
 
-/**
- * @brief plugin-api required function
- * @param vm vlib_main_t * vlib main data structure pointer
- * @param h vlib_plugin_handoff_t * handoff structure
- * @param from_early_init int notused
- *
- * <em>Notes:</em>
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  flowperpkt_main_t *fm = &flowperpkt_main;
-  clib_error_t *error = 0;
-
-  fm->vlib_main = vm;
-  fm->vnet_main = h->vnet_main;
-
-  return error;
-}
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
@@ -626,6 +608,8 @@ flowperpkt_init (vlib_main_t * vm)
   clib_error_t *error = 0;
   u32 num_threads;
   u8 *name;
+
+  fm->vnet_main = vnet_get_main ();
 
   /* Construct the API name */
   name = format (0, "flowperpkt_%08x%c", api_version, 0);
