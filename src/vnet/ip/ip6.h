@@ -439,41 +439,6 @@ int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
 extern vlib_node_registration_t ip6_lookup_node;
 
-/* Compute flow hash.  We'll use it to select which Sponge to use for this
-   flow.  And other things. */
-always_inline u32
-ip6_compute_flow_hash (const ip6_header_t * ip,
-		       flow_hash_config_t flow_hash_config)
-{
-  tcp_header_t *tcp = (void *) (ip + 1);
-  u64 a, b, c;
-  u64 t1, t2;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
-		      || ip->protocol == IP_PROTOCOL_UDP);
-
-  t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
-
-  t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
-
-  a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
-  b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
-  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
-
-  t1 = is_tcp_udp ? tcp->src : 0;
-  t2 = is_tcp_udp ? tcp->dst : 0;
-
-  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
-  t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
-
-  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
-    ((t1 << 16) | t2) : ((t2 << 16) | t1);
-
-  hash_mix64 (a, b, c);
-  return (u32) c;
-}
-
 /* ip6_locate_header
  *
  * This function is to search for the header specified by the protocol number
@@ -549,6 +514,88 @@ ip6_locate_header (vlib_buffer_t * p0,
 
   *offset = cur_offset;
   return (next_proto);
+}
+
+always_inline u32
+ip6_compute_flow_hash_for_ext_hdr (vlib_buffer_t * p,
+				   ip6_header_t * ip,
+				   flow_hash_config_t flow_hash_config)
+{
+  tcp_header_t *tcp;
+  u64 a, b, c;
+  u64 t1, t2;
+  uword is_tcp_udp = 0;
+  u32 tcp_udp_offset;
+  int next_hdr;
+  u8 protocol = ip->protocol;
+
+  /* Get the next transport header post extention header.
+   * If header is tcp/udp then use it for hash calculation. */
+  next_hdr = ip6_locate_header (p, ip, -1, &tcp_udp_offset);
+  if (PREDICT_TRUE
+      ((IP_PROTOCOL_TCP == next_hdr) || (IP_PROTOCOL_UDP == next_hdr)))
+    {
+      is_tcp_udp = 1;
+      tcp = (tcp_header_t *) ((u8 *) ip + tcp_udp_offset);
+      protocol = (u8) next_hdr;
+    }
+
+  t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
+
+  t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
+
+  a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
+  b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
+  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? protocol : 0;
+
+  t1 = is_tcp_udp ? tcp->src : 0;
+  t2 = is_tcp_udp ? tcp->dst : 0;
+
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
+
+  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
+    ((t1 << 16) | t2) : ((t2 << 16) | t1);
+
+  hash_mix64 (a, b, c);
+  return (u32) c;
+}
+
+/* Compute flow hash.  We'll use it to select which Sponge to use for this
+   flow.  And other things. */
+always_inline u32
+ip6_compute_flow_hash (const ip6_header_t * ip,
+		       flow_hash_config_t flow_hash_config)
+{
+  tcp_header_t *tcp = (void *) (ip + 1);
+  u64 a, b, c;
+  u64 t1, t2;
+  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
+		      || ip->protocol == IP_PROTOCOL_UDP);
+
+  t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
+
+  t2 = (ip->dst_address.as_u64[0] ^ ip->dst_address.as_u64[1]);
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_ADDR) ? t2 : 0;
+
+  a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
+  b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
+  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
+
+  t1 = is_tcp_udp ? tcp->src : 0;
+  t2 = is_tcp_udp ? tcp->dst : 0;
+
+  t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
+  t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
+
+  c = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ?
+    ((t1 << 16) | t2) : ((t2 << 16) | t1);
+
+  hash_mix64 (a, b, c);
+  return (u32) c;
 }
 
 u8 *format_ip6_hop_by_hop_ext_hdr (u8 * s, va_list * args);
