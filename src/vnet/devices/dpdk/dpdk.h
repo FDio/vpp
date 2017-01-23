@@ -232,6 +232,9 @@ typedef struct
   struct rte_eth_xstat *last_cleared_xstats;
   f64 time_last_stats_update;
   dpdk_port_type_t port_type;
+
+  /* mac address */
+  u8 *default_mac_address;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
