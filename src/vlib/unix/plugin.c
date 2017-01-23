@@ -16,6 +16,7 @@
  */
 
 #include <vlib/unix/plugin.h>
+#include <vppinfra/elf.h>
 #include <dlfcn.h>
 #include <dirent.h>
 
@@ -62,6 +63,29 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   clib_error_t *error;
   void *handoff_structure;
 
+  elf_main_t em = {0};
+  elf_section_t *section;
+  u8 * data;
+  vlib_plugin_info_t *info;
+
+  if (elf_read_file (&em, (char *) pi->filename))
+      return -1;
+
+  error = elf_get_section_by_name (&em, ".vlib_plugin_info", &section);
+  if (error)
+    {
+      clib_error_report (error);
+      return -1;
+    }
+
+  data = elf_get_section_contents (&em, section->index, 1);
+  info = (vlib_plugin_info_t *) data;
+
+  clib_warning ("default_disabled %u", info->default_disabled);
+
+  vec_free (data);
+  elf_main_free (&em);
+
   handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
   /*
@@ -77,6 +101,28 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 
   pi->handle = handle;
 
+  info = dlsym (pi->handle, "vlib_plugin_info");
+
+  if (info && info->version)
+    clib_warning("Plugin version: %s", info->version);
+
+  if (info && info->early_init)
+    {
+      clib_error_t *(*ei) (vlib_main_t *);
+      void *h;
+
+      h = dlsym (pi->handle, info->early_init);
+      if (h)
+	{
+	  ei = h;
+	  error = (*ei) (pm->vlib_main);
+	  if (error)
+	    clib_error_report (error);
+	}
+      else
+	clib_warning ("Plugin %s: early init function %s not found",
+		      (char *) pi->name, info->early_init);
+    }
 
   register_handle = dlsym (pi->handle, "vlib_plugin_register");
   if (register_handle == 0)

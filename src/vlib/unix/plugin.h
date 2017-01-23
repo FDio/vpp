@@ -89,6 +89,16 @@ int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
 void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
 
+typedef CLIB_PACKED(struct {
+  u8 default_disabled;
+  const char *version;
+  const char *early_init;
+}) vlib_plugin_info_t;
+
+#define VLIB_PLUGIN_REGISTER() \
+  vlib_plugin_info_t vlib_plugin_info \
+  __attribute__((__section__(".vlib_plugin_info")))
+
 #endif /* __included_plugin_h__ */
 
 /*

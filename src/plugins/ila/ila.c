@@ -18,6 +18,20 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/fib/fib_table.h>
+#include <vlib/unix/plugin.h>
+
+clib_error_t *
+ila_early_init(vlib_main_t *vm)
+{
+  clib_warning ("hello");
+  return 0;
+}
+
+VLIB_PLUGIN_REGISTER () = {
+  .default_disabled = 1,
+  .version = "v1.0",
+  .early_init = "ila_early_init",
+};
 
 static ila_main_t ila_main;
 
