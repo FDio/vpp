@@ -503,6 +503,14 @@ vlib_unix_main (int argc, char *argv[])
   vm->heap_base = clib_mem_get_heap ();
   ASSERT (vm->heap_base);
 
+  unformat_init_command_line (&input, (char **) vm->argv);
+  if ((e = vlib_plugin_config (vm, &input)))
+    {
+      clib_error_report (e);
+      return 1;
+    }
+  unformat_free (&input);
+
   i = vlib_plugin_early_init (vm);
   if (i)
     return i;

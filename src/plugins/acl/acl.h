@@ -17,7 +17,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_output.h>
 
 
@@ -139,7 +138,6 @@ typedef struct {
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
-  ethernet_main_t * ethernet_main;
 } acl_main_t;
 
 extern acl_main_t acl_main;
