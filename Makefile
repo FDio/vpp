@@ -30,9 +30,9 @@ OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
-ifeq ($(OS_ID),ubuntu)
+ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(OS_ID),centos)
+else ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
