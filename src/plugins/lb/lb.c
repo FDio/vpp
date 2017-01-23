@@ -15,6 +15,7 @@
 
 #include <lb/lb.h>
 #include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
 #include <vnet/api_errno.h>
 
 //GC runs at most once every so many seconds
@@ -730,15 +731,11 @@ int lb_vip_del(u32 vip_index)
   return 0;
 }
 
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm,
-                      vnet_plugin_handoff_t * h,
-                      int from_early_init)
-{
-  clib_error_t *error = 0;
-  return error;
-}
-
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
 
 u8 *format_lb_dpo (u8 * s, va_list * va)
 {
