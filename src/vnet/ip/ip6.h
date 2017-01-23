@@ -415,6 +415,17 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
 		      || ip->protocol == IP_PROTOCOL_UDP);
 
+  if (PREDICT_FALSE (ip->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+    {
+      ip6_hop_by_hop_header_t *hbh = (ip6_hop_by_hop_header_t *) (ip + 1);
+      if ((hbh->protocol == IP_PROTOCOL_TCP) ||
+	  (hbh->protocol == IP_PROTOCOL_UDP))
+	{
+	  is_tcp_udp = 1;
+	  tcp = (tcp_header_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
+	}
+    }
+
   t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
 

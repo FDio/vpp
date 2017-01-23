@@ -113,8 +113,12 @@ ioam_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
   f++;
 
   /* Add ioamPathMap manually */
-  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      ioamPathMap, (1 * sizeof (ioam_path)));
+  f->e_id_length = ipfix_e_id_length(
+                                  0 /* enterprise */,
+                                  ioamPathMap,
+                                  (sizeof(ioam_path) +
+                                      (sizeof(ioam_path_map_t) *
+                                          IOAM_TRACE_MAX_NODES)));
   f++;
 
   /* Back to the template packet... */
@@ -203,45 +207,46 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
       ioam_path *path = (ioam_path *) (b0->data + offset);
 
       if (!trace->is_free)
-	{
-	  num_paths++;
+        {
+          num_paths++;
 
-	  path->num_nodes = trace->num_nodes;
+          path->num_nodes = trace->num_nodes;
 
-	  path->trace_type = trace->trace_type;
-	  if (0 < (trace->pkt_counter - trace_cached->pkt_counter))
-	    {
-	      u64 new_sum = trace->mean_delay * record->seqno_data.rx_packets;
-	      u64 old_sum =
-		trace_cached->mean_delay *
-		record->chached_data_list->seqno_data.rx_packets;
-	      path->mean_delay =
-		(u32) ((new_sum - old_sum) / (trace->pkt_counter -
-					      trace_cached->pkt_counter));
-	      path->mean_delay = clib_host_to_net_u32 (path->mean_delay);
-	    }
-	  else
-	    path->mean_delay = 0;
+          path->trace_type = trace->trace_type;
+          if (0 < (trace->pkt_counter - trace_cached->pkt_counter))
+            {
+              u64 new_sum = trace->mean_delay * record->seqno_data.rx_packets;
+              u64 old_sum = trace_cached->mean_delay * record->chached_data_list->seqno_data.rx_packets;
+              path->mean_delay = (u32) ((new_sum - old_sum) /
+                  (trace->pkt_counter - trace_cached->pkt_counter));
+              path->mean_delay = clib_host_to_net_u32(path->mean_delay);
+            }
+          else
+            path->mean_delay = 0;
 
-	  path->bytes_counter =
-	    trace->bytes_counter - trace_cached->bytes_counter;
-	  path->bytes_counter = clib_host_to_net_u32 (path->bytes_counter);
+          path->bytes_counter =
+              trace->bytes_counter - trace_cached->bytes_counter;
+          path->bytes_counter = clib_host_to_net_u32(path->bytes_counter);
 
-	  path->pkt_counter = trace->pkt_counter - trace_cached->pkt_counter;
-	  path->pkt_counter = clib_host_to_net_u32 (path->pkt_counter);
+          path->pkt_counter =
+              trace->pkt_counter - trace_cached->pkt_counter;
+          path->pkt_counter = clib_host_to_net_u32(path->pkt_counter);
+          offset += sizeof(ioam_path);
 
-	  for (j = 0; j < IOAM_TRACE_MAX_NODES; j++)
-	    {
-	      path->path[j].node_id =
-		clib_host_to_net_u32 (trace->path[j].node_id);
-	      path->path[j].ingress_if =
-		clib_host_to_net_u16 (trace->path[j].ingress_if);
-	      path->path[j].egress_if =
-		clib_host_to_net_u16 (trace->path[j].egress_if);
-	    }
+          for (j = 0; j < trace->num_nodes; j++)
+            {
+              path->path[j].node_id =
+                  clib_host_to_net_u32(trace->path[j].node_id);
+              path->path[j].ingress_if =
+                  clib_host_to_net_u16(trace->path[j].ingress_if);
+              path->path[j].egress_if =
+                  clib_host_to_net_u16(trace->path[j].egress_if);
+              path->path[j].state_up = trace->path[j].state_up;
+            }
 
-	  offset += sizeof (ioam_path);
-	}
+          //offset += (sizeof(ioam_path_map_t) * trace->num_nodes);
+          offset += (sizeof(ioam_path_map_t) * IOAM_TRACE_MAX_NODES);//FIXME
+        }
     }
 
   num_paths = clib_host_to_net_u16 (num_paths);

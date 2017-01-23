@@ -60,7 +60,7 @@ typedef struct
   u32 mean_delay;
   u32 pkt_counter;
   u32 bytes_counter;
-  ioam_path_map_t path[IOAM_TRACE_MAX_NODES];
+  ioam_path_map_t path[0];
 } ioam_path;
 
 clib_error_t *ioam_flow_create (u8 del);

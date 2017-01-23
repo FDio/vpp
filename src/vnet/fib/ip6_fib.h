@@ -77,6 +77,10 @@ ip6_src_lookup_for_packet (ip6_main_t * im,
 
         dpo = load_balance_get_bucket_i(load_balance_get(lbi), 0);
 
+        while (dpo->dpoi_type == DPO_LOAD_BALANCE)
+        {
+            dpo = load_balance_get_bucket_i(load_balance_get(dpo->dpoi_index), 0);
+        }
         if (dpo_is_adj(dpo))
         {
             vnet_buffer (b)->ip.adj_index[VLIB_RX] = dpo->dpoi_index;

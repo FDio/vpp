@@ -230,6 +230,42 @@ ioam_flow_add (u8 encap, u8 * flow_name)
   return (index);
 }
 
+always_inline ip6_hop_by_hop_option_t *
+ip6_hbh_get_option (ip6_hop_by_hop_header_t * hbh0, u8 option_to_search)
+{
+  ip6_hop_by_hop_option_t *opt0, *limit0;
+  u8 type0;
+
+  if (!hbh0)
+    return NULL;
+
+  opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
+  limit0 = (ip6_hop_by_hop_option_t *)
+    ((u8 *) hbh0 + ((hbh0->length + 1) << 3));
+
+  /* Scan the set of h-b-h options, process ones that we understand */
+  while (opt0 < limit0)
+    {
+      type0 = opt0->type;
+      switch (type0)
+	{
+	case 0:		/* Pad1 */
+	  opt0 = (ip6_hop_by_hop_option_t *) ((u8 *) opt0) + 1;
+	  continue;
+	case 1:		/* PadN */
+	  break;
+	default:
+	  if (type0 == option_to_search)
+	    return opt0;
+	  break;
+	}
+      opt0 =
+	(ip6_hop_by_hop_option_t *) (((u8 *) opt0) + opt0->length +
+				     sizeof (ip6_hop_by_hop_option_t));
+    }
+  return NULL;
+}
+
 #endif /* __included_ip6_hop_by_hop_ioam_h__ */
 
 /*
