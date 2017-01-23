@@ -60,6 +60,8 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
     }
   else
     {
+      vec_reset_length (xd->default_mac_address);
+      vec_add (xd->default_mac_address, address, sizeof (address));
       return NULL;
     }
 }
@@ -628,7 +630,13 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       f64 now = vlib_time_now (dm->vlib_main);
 
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
-	rv = rte_eth_dev_start (xd->device_index);
+	{
+	  rv = rte_eth_dev_start (xd->device_index);
+	  if (!rv && xd->default_mac_address)
+	    rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
+						   (struct ether_addr *)
+						   xd->default_mac_address);
+	}
 
       if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
 	rte_eth_promiscuous_enable (xd->device_index);
