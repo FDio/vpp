@@ -233,7 +233,6 @@ typedef struct {
   vnet_main_t * vnet_main;
   ip4_main_t * ip4_main;
   ip_lookup_main_t * ip4_lookup_main;
-  ethernet_main_t * ethernet_main;  
   api_main_t * api_main;
 } snat_main_t;
 

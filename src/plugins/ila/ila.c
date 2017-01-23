@@ -18,6 +18,7 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/fib/fib_table.h>
+#include <vpp/app/version.h>
 
 static ila_main_t ila_main;
 
@@ -821,14 +822,11 @@ ila_interface (u32 sw_if_index, u8 disable)
   return 0;
 }
 
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  clib_error_t *error = 0;
-
-  return error;
-}
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
 
 u8 *format_ila_dpo (u8 * s, va_list * va)
 {
