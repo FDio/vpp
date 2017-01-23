@@ -122,6 +122,10 @@ format_ip_adjacency (u8 * s, va_list * args)
 
     if (fiaf & FORMAT_IP_ADJACENCY_DETAIL)
     {
+        vlib_counter_t counts;
+
+        vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
+        s = format (s, "\n counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n locks:%d", adj->ia_node.fn_locks);
 	s = format (s, " node:[%d]:%U",
 		    adj->rewrite_header.node_index,
