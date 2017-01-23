@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_0c1177ac",
+        "filename": "src/vnet/devices/dpdk/ipsec/ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-01-23T12:44:59Z",
+      "side": 1,
+      "message": "we shouldn\u0027t return error here, just display warning",
+      "revId": "157ea3e4736fda4582f55a189727103ca2a979dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ec250b0b",
+        "filename": "src/vnet/devices/dpdk/ipsec/ipsec.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-01-23T12:44:59Z",
+      "side": 1,
+      "message": "we shouldn\u0027t return error here, just display warning",
+      "revId": "157ea3e4736fda4582f55a189727103ca2a979dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
