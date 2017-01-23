@@ -56,7 +56,14 @@
  * vlib_load_new_plugins().
  */
 
-
+/* *INDENT-OFF* */
+typedef CLIB_PACKED(struct {
+  u8 default_disabled;
+  const char version[32];
+  const char version_required[32];
+  const char *early_init;
+}) vlib_plugin_registration_t;
+/* *INDENT-ON* */
 
 typedef struct
 {
@@ -64,7 +71,19 @@ typedef struct
   u8 *filename;
   struct stat file_info;
   void *handle;
+
+  /* plugin registration */
+  vlib_plugin_registration_t *reg;
+  char *version;
 } plugin_info_t;
+
+typedef struct
+{
+  char *name;
+  u8 is_disabled;
+  u8 is_enabled;
+  u8 skip_version_check;
+} plugin_config_t;
 
 typedef struct
 {
@@ -76,8 +95,9 @@ typedef struct
   u8 *plugin_path;
   u8 *plugin_name_filter;
 
-  /* handoff structure get callback */
-  void *handoff_structure_get_cb;
+  /* plugin configs and hash by name */
+  plugin_config_t *configs;
+  uword *config_index_by_name;
 
   /* usual */
   vlib_main_t *vlib_main;
@@ -85,9 +105,14 @@ typedef struct
 
 extern plugin_main_t vlib_plugin_main;
 
+clib_error_t *vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input);
 int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
 void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
+
+#define VLIB_PLUGIN_REGISTER() \
+  vlib_plugin_registration_t vlib_plugin_registration \
+  __attribute__((__section__(".vlib_plugin_registration")))
 
 #endif /* __included_plugin_h__ */
 

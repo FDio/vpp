@@ -16,29 +16,16 @@
  */
 
 #include <vlib/unix/plugin.h>
+#include <vppinfra/elf.h>
 #include <dlfcn.h>
 #include <dirent.h>
 
 plugin_main_t vlib_plugin_main;
 
-void
-vlib_set_get_handoff_structure_cb (void *cb)
-{
-  plugin_main_t *pm = &vlib_plugin_main;
-  pm->handoff_structure_get_cb = cb;
-}
-
-static void *
-vnet_get_handoff_structure (void)
-{
-  void *(*fp) (void);
-
-  fp = vlib_plugin_main.handoff_structure_get_cb;
-  if (fp == 0)
-    return 0;
-  else
-    return (*fp) ();
-}
+char *vlib_plugin_path __attribute__ ((weak));
+char *vlib_plugin_path = "";
+char *vlib_plugin_app_version __attribute__ ((weak));
+char *vlib_plugin_app_version = "";
 
 void *
 vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
@@ -54,13 +41,99 @@ vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
   return dlsym (pi->handle, symbol_name);
 }
 
+static char *
+str_array_to_vec (char *array, int len)
+{
+  char c, *r = 0;
+  int n = 0;
+
+  do
+    {
+      c = array[n];
+      vec_add1 (r, c);
+    }
+  while (c && ++n < len);
+
+  if (c)
+    vec_add1 (r, 0);
+
+  return r;
+}
+
 static int
 load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 {
-  void *handle, *register_handle;
-  clib_error_t *(*fp) (vlib_main_t *, void *, int);
+  void *handle;
   clib_error_t *error;
-  void *handoff_structure;
+  elf_main_t em = { 0 };
+  elf_section_t *section;
+  u8 *data;
+  char *version_required;
+  vlib_plugin_registration_t *reg;
+  plugin_config_t *pc = 0;
+  uword *p;
+
+  if (elf_read_file (&em, (char *) pi->filename))
+    return -1;
+
+  error = elf_get_section_by_name (&em, ".vlib_plugin_registration",
+				   &section);
+  if (error)
+    {
+      clib_warning ("Not a plugin: %s\n", (char *) pi->name);
+      return -1;
+    }
+
+  data = elf_get_section_contents (&em, section->index, 1);
+  reg = (vlib_plugin_registration_t *) data;
+
+  if (vec_len (data) != sizeof (*reg))
+    {
+      clib_warning ("vlib_plugin_registration size mismatch in plugin %s\n",
+		    (char *) pi->name);
+      goto error;
+    }
+
+  p = hash_get_mem (pm->config_index_by_name, pi->name);
+  if (p)
+    {
+      pc = vec_elt_at_index (pm->configs, p[0]);
+      if (pc->is_disabled)
+	{
+	  clib_warning ("Plugin disabled: %s", pi->name);
+	  goto error;
+	}
+      if (reg->default_disabled && pc->is_enabled == 0)
+	{
+	  clib_warning ("Plugin disabled: %s (default)", pi->name);
+	  goto error;
+	}
+    }
+  else if (reg->default_disabled)
+    {
+      clib_warning ("Plugin disabled: %s (default)", pi->name);
+      goto error;
+    }
+
+  version_required = str_array_to_vec ((char *) &reg->version_required,
+				       sizeof (reg->version_required));
+
+  if ((strlen (version_required) > 0) &&
+      (strncmp (vlib_plugin_app_version, version_required,
+		strlen (version_required))))
+    {
+      clib_warning ("Plugin %s version mismatch: %s != %s",
+		    pi->name, vlib_plugin_app_version, reg->version_required);
+      if (!(pc && pc->skip_version_check == 1))
+	{
+	  vec_free (version_required);
+	  goto error;
+	}
+    }
+
+  vec_free (version_required);
+  vec_free (data);
+  elf_main_free (&em);
 
   handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
@@ -77,35 +150,47 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 
   pi->handle = handle;
 
+  reg = dlsym (pi->handle, "vlib_plugin_registration");
 
-  register_handle = dlsym (pi->handle, "vlib_plugin_register");
-  if (register_handle == 0)
+  if (reg == 0)
     {
-      dlclose (handle);
-      clib_warning ("Plugin missing vlib_plugin_register: %s\n",
-		    (char *) pi->name);
-      return 1;
+      /* This should never happen unless somebody chagnes registration macro */
+      clib_warning ("Missing plugin registration in plugin '%s'", pi->name);
+      os_exit (1);
     }
 
-  fp = register_handle;
+  pi->reg = reg;
+  pi->version = str_array_to_vec ((char *) &reg->version,
+				  sizeof (reg->version));
 
-  handoff_structure = vnet_get_handoff_structure ();
-
-  if (handoff_structure == 0)
-    error = clib_error_return (0, "handoff structure callback returned 0");
-  else
-    error = (*fp) (pm->vlib_main, handoff_structure, from_early_init);
-
-  if (error)
+  if (reg && reg->early_init)
     {
-      clib_error_report (error);
-      dlclose (handle);
-      return 1;
+      clib_error_t *(*ei) (vlib_main_t *);
+      void *h;
+
+      h = dlsym (pi->handle, reg->early_init);
+      if (h)
+	{
+	  ei = h;
+	  error = (*ei) (pm->vlib_main);
+	  if (error)
+	    {
+	      clib_error_report (error);
+	      os_exit (1);
+	    }
+	}
+      else
+	clib_warning ("Plugin %s: early init function %s set but not found",
+		      (char *) pi->name, reg->early_init);
     }
 
   clib_warning ("Loaded plugin: %s", pi->name);
 
   return 0;
+error:
+  vec_free (data);
+  elf_main_free (&em);
+  return -1;
 }
 
 static u8 **
@@ -215,22 +300,15 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
   return 0;
 }
 
-char *vlib_plugin_path __attribute__ ((weak));
-char *vlib_plugin_path = "";
-char *vlib_plugin_name_filter __attribute__ ((weak));
-char *vlib_plugin_name_filter = 0;
-
 int
 vlib_plugin_early_init (vlib_main_t * vm)
 {
   plugin_main_t *pm = &vlib_plugin_main;
 
-  pm->plugin_path = format (0, "%s%c", vlib_plugin_path, 0);
+  if (pm->plugin_path == 0)
+    pm->plugin_path = format (0, "%s%c", vlib_plugin_path, 0);
 
   clib_warning ("plugin path %s", pm->plugin_path);
-
-  if (vlib_plugin_name_filter)
-    pm->plugin_name_filter = format (0, "%s%c", vlib_plugin_name_filter, 0);
 
   pm->plugin_by_name_hash = hash_create_string (0, sizeof (uword));
   pm->vlib_main = vm;
@@ -245,19 +323,24 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
   plugin_main_t *pm = &vlib_plugin_main;
   u8 *s = 0;
   u8 *key = 0;
-  uword *value = 0;
+  uword value = 0;
   int index = 1;
+  plugin_info_t *pi;
 
-  s = format (s, " Plugin path is: %s\n", pm->plugin_path);
-  if (vlib_plugin_name_filter)
-    s = format (s, " Plugin filter: %s\n", vlib_plugin_name_filter);
+  s = format (s, " Plugin path is: %s\n\n", pm->plugin_path);
+  s = format (s, "     %-41s%s\n", "Plugin", "Version");
 
-  s = format (s, " Plugins loaded: \n");
+  /* *INDENT-OFF* */
   hash_foreach_mem (key, value, pm->plugin_by_name_hash,
-		    {
-		    if (key != 0)
-		    s = format (s, "  %d.%s\n", index, key); index++;}
-  );
+    {
+      if (key != 0)
+        {
+          pi = vec_elt_at_index (pm->plugin_info, value);
+          s = format (s, "%3d. %-40s %s\n", index, key, pi->version);
+	  index++;
+        }
+    });
+  /* *INDENT-ON* */
 
   vlib_cli_output (vm, "%v", s);
   vec_free (s);
@@ -272,6 +355,148 @@ VLIB_CLI_COMMAND (plugins_show_cmd, static) =
   .function = vlib_plugins_show_cmd_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+config_one_plugin (vlib_main_t * vm, char *name, unformat_input_t * input)
+{
+  plugin_main_t *pm = &vlib_plugin_main;
+  plugin_config_t *pc;
+  clib_error_t *error = 0;
+  uword *p;
+  int is_enable = 0;
+  int is_disable = 0;
+  int skip_version_check = 0;
+
+  if (pm->config_index_by_name == 0)
+    pm->config_index_by_name = hash_create_string (0, sizeof (uword));
+
+  p = hash_get_mem (pm->config_index_by_name, name);
+
+  if (p)
+    {
+      error = clib_error_return (0, "plugin '%s' already configured", name);
+      goto done;
+    }
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	is_enable = 1;
+      else if (unformat (input, "disable"))
+	is_disable = 1;
+      else if (unformat (input, "skip-version-check"))
+	skip_version_check = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (is_enable && is_disable)
+    {
+      error = clib_error_return (0, "please specify either enable or disable"
+				 " for plugin '%s'", name);
+      goto done;
+    }
+
+  vec_add2 (pm->configs, pc, 1);
+  hash_set_mem (pm->config_index_by_name, name, pc - pm->configs);
+  pc->is_enabled = is_enable;
+  pc->is_disabled = is_disable;
+  pc->skip_version_check = skip_version_check;
+  pc->name = name;
+
+done:
+  return error;
+}
+
+clib_error_t *
+vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  plugin_main_t *pm = &vlib_plugin_main;
+  clib_error_t *error = 0;
+  unformat_input_t in;
+
+  unformat_init (&in, 0, 0);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      u8 *s, *v;
+      if (unformat (input, "%s %v", &s, &v))
+	{
+	  if (strncmp ((const char *) s, "plugins", 8) == 0)
+	    {
+	      if (vec_len (in.buffer) > 0)
+		vec_add1 (in.buffer, ' ');
+	      vec_add (in.buffer, v, vec_len (v));
+	    }
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+
+      vec_free (v);
+      vec_free (s);
+    }
+done:
+  input = &in;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      unformat_input_t sub_input;
+      u8 *s = 0;
+      if (unformat (input, "path %s", &s))
+	pm->plugin_path = s;
+      else if (unformat (input, "plugin %s %U", &s,
+			 unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  error = config_one_plugin (vm, (char *) s, &sub_input);
+	  unformat_free (&sub_input);
+	  if (error)
+	    goto done2;
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, input);
+	  {
+	    vec_free (s);
+	    goto done2;
+	  }
+	}
+    }
+
+done2:
+  unformat_free (&in);
+  return error;
+}
+
+/* discard whole 'plugins' section, as it is already consumed prior to
+   plugin load */
+static clib_error_t *
+plugins_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  u8 *junk;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%s", &junk))
+	{
+	  vec_free (junk);
+	  return 0;
+	}
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (plugins_config, "plugins");
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -28,6 +28,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
+#include <vpp/app/version.h>
 
 snat_main_t snat_main;
 
@@ -129,27 +130,11 @@ VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
-
-/* 
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t * 
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-                      int from_early_init)
-{
-  snat_main_t * sm = &snat_main;
-  clib_error_t * error = 0;
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  sm->ethernet_main = h->ethernet_main;
-
-  return error;
-}
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
 
 /*$$$$$ move to an installed header file */
 #if (1 || CLIB_DEBUG > 0)       /* "trust, but verify" */
