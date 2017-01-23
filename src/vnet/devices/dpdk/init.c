@@ -124,7 +124,12 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
       int rv;
-      rv = rte_eth_dev_start (xd->device_index);
+      if (xd->default_mac_address)
+	rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
+					       (struct ether_addr *)
+					       xd->default_mac_address);
+      if (!rv)
+	rv = rte_eth_dev_start (xd->device_index);
       if (rv < 0)
 	clib_warning ("rte_eth_dev_start %d returned %d",
 		      xd->device_index, rv);
@@ -198,7 +203,13 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 
 	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	    {
-	      int rv = rte_eth_dev_start (xd->device_index);
+	      int rv;
+	      if (xd->default_mac_address)
+		rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
+						       (struct ether_addr *)
+						       xd->default_mac_address);
+	      if (!rv)
+		rv = rte_eth_dev_start (xd->device_index);
 	      if (rv < 0)
 		clib_warning ("rte_eth_dev_start %d returned %d",
 			      xd->device_index, rv);
