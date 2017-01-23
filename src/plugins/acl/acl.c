@@ -22,6 +22,7 @@
 
 #include <vnet/l2/l2_classify.h>
 #include <vnet/classify/input_acl.h>
+#include <vpp/app/version.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -128,29 +129,11 @@ _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
 _(MACIP_ACL_DUMP, macip_acl_dump) \
 _(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get)
 
-/*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-		      int from_early_init)
-{
-  acl_main_t *am = &acl_main;
-  clib_error_t *error = 0;
-
-  am->vlib_main = vm;
-  am->vnet_main = h->vnet_main;
-  am->ethernet_main = h->ethernet_main;
-
-  l2sess_vlib_plugin_register(vm, h, from_early_init);
-
-  return error;
-}
-
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
 
 static void
 vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
