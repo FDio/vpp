@@ -20,13 +20,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vppinfra/error.h>
-
-/* Pointers to Genuine Vnet data structures handed to plugin .dll's */
-typedef struct {
-  vnet_main_t * vnet_main;
-  ethernet_main_t * ethernet_main;
-} vnet_plugin_handoff_t;
-
-void * vnet_get_handoff_structure (void);
+#include <vlib/unix/plugin.h>
 
 #endif /* included_vnet_plugin_h */

@@ -40,16 +40,6 @@ vpe_main_init (vlib_main_t * vm)
  */
 char *vlib_plugin_path = "/usr/lib/vpp_plugins";
 
-void *
-vnet_get_handoff_structure (void)
-{
-  static vnet_plugin_handoff_t _rv, *rv = &_rv;
-
-  rv->vnet_main = vnet_get_main ();
-  rv->ethernet_main = &ethernet_main;
-  return (void *) rv;
-}
-
 int
 main (int argc, char *argv[])
 {
@@ -59,7 +49,6 @@ main (int argc, char *argv[])
   uword main_heap_size = (1ULL << 30);
   u8 *sizep;
   u32 size;
-  void vlib_set_get_handoff_structure_cb (void *cb);
 
 #if __x86_64__
   CLIB_UNUSED (const char *msg)
@@ -206,7 +195,6 @@ defaulted:
 #if DPDK == 0
       unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
 #endif
-      vlib_set_get_handoff_structure_cb (&vnet_get_handoff_structure);
       return vlib_unix_main (argc, argv);
     }
   else

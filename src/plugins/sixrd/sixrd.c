@@ -19,6 +19,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
+#include <vpp/app/version.h>
 
 /*
  * This code supports the following sixrd modes:
@@ -340,27 +341,19 @@ VLIB_CLI_COMMAND(show_sixrd_stats_command, static) = {
   .function = show_sixrd_stats_command_fn,
 };
 
-/* 
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-clib_error_t * 
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-                      int from_early_init)
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
+
+static clib_error_t * sixrd_init (vlib_main_t * vm)
 {
-  clib_error_t * error = 0;
   sixrd_main_t *mm = &sixrd_main;
 
   mm->vnet_main = vnet_get_main();
   mm->vlib_main = vm;
 
-  return error;
-}
-
-static clib_error_t * sixrd_init (vlib_main_t * vm)
-{
   sixrd_dpo_module_init ();
 
   return (NULL);

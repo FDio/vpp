@@ -16,29 +16,11 @@
  */
 
 #include <vlib/unix/plugin.h>
+#include <vppinfra/elf.h>
 #include <dlfcn.h>
 #include <dirent.h>
 
 plugin_main_t vlib_plugin_main;
-
-void
-vlib_set_get_handoff_structure_cb (void *cb)
-{
-  plugin_main_t *pm = &vlib_plugin_main;
-  pm->handoff_structure_get_cb = cb;
-}
-
-static void *
-vnet_get_handoff_structure (void)
-{
-  void *(*fp) (void);
-
-  fp = vlib_plugin_main.handoff_structure_get_cb;
-  if (fp == 0)
-    return 0;
-  else
-    return (*fp) ();
-}
 
 void *
 vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
@@ -57,10 +39,58 @@ vlib_get_plugin_symbol (char *plugin_name, char *symbol_name)
 static int
 load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 {
-  void *handle, *register_handle;
-  clib_error_t *(*fp) (vlib_main_t *, void *, int);
+  void *handle;
   clib_error_t *error;
-  void *handoff_structure;
+  elf_main_t em = { 0 };
+  elf_section_t *section;
+  u8 *data;
+  vlib_plugin_info_t *info;
+  uword *p;
+
+  if (elf_read_file (&em, (char *) pi->filename))
+    return -1;
+
+  error = elf_get_section_by_name (&em, ".vlib_plugin_info", &section);
+  if (error)
+    {
+      clib_error_report (error);
+      clib_warning ("Not a plugin: %s\n", (char *) pi->name);
+      return -1;
+    }
+
+  data = elf_get_section_contents (&em, section->index, 1);
+  info = (vlib_plugin_info_t *) data;
+
+  if (vec_len (data) != sizeof (*info))
+    {
+      clib_warning ("vlib_plugin_info size mismatch in plugin %s\n",
+		    (char *) pi->name);
+      return -1;
+    }
+
+  p = hash_get_mem (pm->config_index_by_name, pi->name);
+  if (p)
+    {
+      plugin_config_t *pc = vec_elt_at_index (pm->configs, p[0]);
+      if (pc->is_disabled)
+	{
+	  clib_warning ("Plugin disabled: %s", pi->name);
+	  return -1;
+	}
+      if (info->default_disabled && pc->is_enabled == 0)
+	{
+	  clib_warning ("Plugin disabled: %s (default)", pi->name);
+	  return -1;
+	}
+    }
+  else if (info->default_disabled)
+    {
+      clib_warning ("Plugin disabled: %s (default)", pi->name);
+      return -1;
+    }
+
+  vec_free (data);
+  elf_main_free (&em);
 
   handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
@@ -77,33 +107,36 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 
   pi->handle = handle;
 
+  info = dlsym (pi->handle, "vlib_plugin_info");
 
-  register_handle = dlsym (pi->handle, "vlib_plugin_register");
-  if (register_handle == 0)
+  if (info == 0)
     {
-      dlclose (handle);
-      clib_warning ("Plugin missing vlib_plugin_register: %s\n",
-		    (char *) pi->name);
-      return 1;
+      clib_warning ("Missing vlib_plugin_info in plugin '%s'", pi->name);
+      os_exit (1);
     }
 
-  fp = register_handle;
-
-  handoff_structure = vnet_get_handoff_structure ();
-
-  if (handoff_structure == 0)
-    error = clib_error_return (0, "handoff structure callback returned 0");
-  else
-    error = (*fp) (pm->vlib_main, handoff_structure, from_early_init);
-
-  if (error)
+  if (info && info->early_init)
     {
-      clib_error_report (error);
-      dlclose (handle);
-      return 1;
+      clib_error_t *(*ei) (vlib_main_t *);
+      void *h;
+
+      h = dlsym (pi->handle, info->early_init);
+      if (h)
+	{
+	  ei = h;
+	  error = (*ei) (pm->vlib_main);
+	  if (error)
+	    {
+	      clib_error_report (error);
+	      os_exit (1);
+	    }
+	}
+      else
+	clib_warning ("Plugin %s: early init function %s not found",
+		      (char *) pi->name, info->early_init);
     }
 
-  clib_warning ("Loaded plugin: %s", pi->name);
+  clib_warning ("Loaded plugin: %s, version %s ", pi->name, info->version);
 
   return 0;
 }
@@ -272,6 +305,138 @@ VLIB_CLI_COMMAND (plugins_show_cmd, static) =
   .function = vlib_plugins_show_cmd_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+config_one_plugin (vlib_main_t * vm, char *name, unformat_input_t * input)
+{
+  plugin_main_t *pm = &vlib_plugin_main;
+  plugin_config_t *pc;
+  clib_error_t *error = 0;
+  uword *p;
+  int is_enable = 0;
+  int is_disable = 0;
+
+  if (pm->config_index_by_name == 0)
+    pm->config_index_by_name = hash_create_string (0, sizeof (uword));
+
+  p = hash_get_mem (pm->config_index_by_name, name);
+
+  if (p)
+    {
+      error = clib_error_return (0, "plugin '%s' already configured", name);
+      goto done;
+    }
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	is_enable = 1;
+      else if (unformat (input, "disable"))
+	is_disable = 1;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (is_enable && is_disable)
+    {
+      error = clib_error_return (0, "please specify either enable or disable"
+				 " for plugin '%s'", name);
+      goto done;
+    }
+
+  vec_add2 (pm->configs, pc, 1);
+  hash_set_mem (pm->config_index_by_name, name, pc - pm->configs);
+  pc->is_enabled = is_enable;
+  pc->is_disabled = is_disable;
+  pc->name = name;
+
+done:
+  return error;
+}
+
+clib_error_t *
+vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  clib_error_t *error = 0;
+  unformat_input_t in;
+
+  unformat_init (&in, 0, 0);
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      u8 *s, *v;
+      if (unformat (input, "%s %v", &s, &v))
+	{
+	  if (strncmp ((const char *) s, "plugins", 8) == 0)
+	    {
+	      if (vec_len (in.buffer) > 0)
+		vec_add1 (in.buffer, ' ');
+	      vec_add (in.buffer, v, vec_len (v));
+	    }
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+
+      vec_free (v);
+      vec_free (s);
+    }
+done:
+  input = &in;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      unformat_input_t sub_input;
+      u8 *s;
+      if (unformat (input, "plugin %s %U", &s,
+		    unformat_vlib_cli_sub_input, &sub_input))
+	{
+	  error = config_one_plugin (vm, (char *) s, &sub_input);
+	  unformat_free (&sub_input);
+	  if (error)
+	    goto done2;
+	}
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, input);
+	  goto done2;
+	}
+    }
+
+done2:
+  unformat_free (&in);
+  return error;
+}
+
+/* discard whole 'plugins' section, as it is already consumed prior to
+   plugin load */
+static clib_error_t *
+plugins_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  u8 *junk;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%s", &junk))
+	{
+	  vec_free (junk);
+	  return 0;
+	}
+      else
+	return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (plugins_config, "plugins");
 
 /*
  * fd.io coding-style-patch-verification: ON
