@@ -114,7 +114,10 @@ ioam_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,
 
   /* Add ioamPathMap manually */
   f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
-				      ioamPathMap, (1 * sizeof (ioam_path)));
+				      ioamPathMap,
+				      (sizeof (ioam_path) +
+				       (sizeof (ioam_path_map_t) *
+					IOAM_TRACE_MAX_NODES)));
   f++;
 
   /* Back to the template packet... */
@@ -229,8 +232,9 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
 
 	  path->pkt_counter = trace->pkt_counter - trace_cached->pkt_counter;
 	  path->pkt_counter = clib_host_to_net_u32 (path->pkt_counter);
+	  offset += sizeof (ioam_path);
 
-	  for (j = 0; j < IOAM_TRACE_MAX_NODES; j++)
+	  for (j = 0; j < trace->num_nodes; j++)
 	    {
 	      path->path[j].node_id =
 		clib_host_to_net_u32 (trace->path[j].node_id);
@@ -238,9 +242,11 @@ ioam_analyse_add_ipfix_record (flow_report_t * fr,
 		clib_host_to_net_u16 (trace->path[j].ingress_if);
 	      path->path[j].egress_if =
 		clib_host_to_net_u16 (trace->path[j].egress_if);
+	      path->path[j].state_up = trace->path[j].state_up;
 	    }
 
-	  offset += sizeof (ioam_path);
+	  //offset += (sizeof(ioam_path_map_t) * trace->num_nodes);
+	  offset += (sizeof (ioam_path_map_t) * IOAM_TRACE_MAX_NODES);	//FIXME
 	}
     }
 
@@ -312,6 +318,7 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 
 	    tp = vlib_buffer_get_current (b0);
 	    ip = &tp->ip4;
+	    udp = &tp->udp;
 	    h = &tp->ipfix.h;
 	    s = &tp->ipfix.s;
 
