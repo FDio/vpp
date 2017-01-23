@@ -32,7 +32,7 @@ endif
 
 ifeq ($(OS_ID),ubuntu)
 PKG=deb
-else ifeq ($(OS_ID),centos)
+else ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
