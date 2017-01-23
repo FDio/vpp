@@ -44,6 +44,10 @@ ioam_seqno_encap_handler (vlib_buffer_t *b, ip6_header_t *ip,
   int rv = 0;
   ioam_seqno_data *data;
 
+  /* Bypass seqno processing */
+  if (PREDICT_FALSE(opaque_index == 0x7FFFFFFF))
+    return rv;
+
   data = ioam_e2ec_get_seqno_data_from_flow_ctx(opaque_index);
   e2e = (ioam_e2e_option_t *) opt;
   e2e->e2e_hdr.e2e_data = clib_host_to_net_u32(++data->seq_num);
