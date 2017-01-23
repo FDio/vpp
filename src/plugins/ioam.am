@@ -181,34 +181,62 @@ IOAM_IP6_MANYCAST_NOINST_HDR =      \
   ioam/ip6/ioam_cache_msg_enum.h    \
   ioam/ip6/ioam_cache.api.h
 
+# udp ping
+########################################
+
+UDP_PING_SRC = 					        \
+	ioam/udp-ping/udp_ping_node.c	    \
+	ioam/udp-ping/udp_ping_util.c		\
+	ioam/udp-ping/udp_ping_export.c		\
+	ioam/udp-ping/udp_ping_api.c
+
+UDP_PING_NOINST_HDR = 				    \
+	ioam/udp-ping/udp_ping_packet.h		\
+	ioam/udp-ping/udp_ping.h		    \
+	ioam/udp-ping/udp_ping_util.h		\
+	ioam/udp-ping/udp_ping_all_api_h.h	\
+	ioam/udp-ping/udp_ping_msg_enum.h	\
+	ioam/udp-ping/udp_ping.api.h
+
+UDP_PING_API = ioam/udp-ping/udp_ping.api
+
+udp_ping_test_plugin_la_SOURCES =          	\
+	ioam/udp-ping/udp_ping_test.c			\
+	ioam/udp-ping/udp_ping_plugin.api.h  
+
+vppapitestplugins_LTLIBRARIES += udp_ping_test_plugin.la
+ 
 ########################################
 # iOAM plugins
 ########################################
 
-ioam_plugin_la_SOURCES =		\
-        $(IOAM_POT_SRC)                 \
-        $(IOAM_EXPORT_SRC)              \
-        $(IOAM_TRACE_SRC)               \
+ioam_plugin_la_SOURCES =		    \
+        $(IOAM_POT_SRC)             \
+        $(IOAM_EXPORT_SRC)          \
+        $(IOAM_TRACE_SRC)           \
         $(IOAM_VXLAN_GPE_SRC)   	\
-        $(IOAM_E2E_SRC)			\
-	$(IPFIX_COLLECTOR_SRC)		\
-	$(IOAM_ANALYSE_SRC)             \
-	$(IOAM_IP6_MANYCAST_SRC)
+        $(IOAM_E2E_SRC)			    \
+		$(IPFIX_COLLECTOR_SRC)		\
+		$(IOAM_ANALYSE_SRC)		    \
+        $(IOAM_IP6_MANYCAST_SRC)    \
+		$(UDP_PING_SRC)
 
-API_FILES +=				\
+API_FILES +=				            \
         $(IOAM_POT_API)                 \
         $(IOAM_EXPORT_API)              \
         $(IOAM_TRACE_API)               \
-        $(IOAM_VXLAN_GPE_API)		\
-        $(IOAM_IP6_MANYCAST_API)
+        $(IOAM_VXLAN_GPE_API)		    \
+        $(IOAM_IP6_MANYCAST_API)        \
+		$(UDP_PING_API)
 
 noinst_HEADERS +=                               \
         $(IOAM_POT_NOINST_HDR)                  \
         $(IOAM_EXPORT_NOINST_HDR)               \
         $(IOAM_TRACE_NOINST_HDR)                \
         $(IOAM_VXLAN_GPE_NOINST_HDR)            \
-        $(IOAM_E2E_NOINST_HDR)			\
-        $(IOAM_IP6_MANYCAST_NOINST_HDR)
+        $(IOAM_E2E_NOINST_HDR)			        \
+        $(IOAM_IP6_MANYCAST_NOINST_HDR)         \
+		$(UDP_PING_NOINST_HDR)
 
 vppplugins_LTLIBRARIES += ioam_plugin.la
 

@@ -28,6 +28,9 @@
 #include <vnet/plugin/plugin.h>
 
 #include <ioam/encap/ip6_ioam_trace.h>
+#include <ioam/udp-ping/udp_ping.h>
+#include <ioam/udp-ping/udp_ping_packet.h>
+#include <ioam/udp-ping/udp_ping_util.h>
 
 /* Timestamp precision multipliers for seconds, milliseconds, microseconds
  * and nanoseconds respectively.
@@ -47,7 +50,9 @@ extern ip6_main_t ip6_main;
   _(PROCESSED, "Pkts with ip6 hop-by-hop trace options")                        \
   _(PROFILE_MISS, "Pkts with ip6 hop-by-hop trace options but no profile set") \
   _(UPDATED, "Pkts with trace updated")                                        \
-  _(FULL, "Pkts with trace options but no space")
+  _(FULL, "Pkts with trace options but no space")                              \
+  _(LOOPBACK, "Pkts with trace options Loopback")                              \
+  _(LOOPBACK_REPLY, "Pkts with trace options Loopback Reply")
 
 static char *ip6_hop_by_hop_ioam_trace_stats_strings[] = {
 #define _(sym,string) string,
@@ -200,6 +205,63 @@ ip6_hop_by_hop_ioam_trace_rewrite_handler (u8 * rewrite_string,
   return 0;
 }
 
+always_inline void
+ip6_hbh_ioam_loopback_handler (vlib_buffer_t * b, ip6_header_t * ip,
+			       ioam_trace_option_t * trace)
+{
+  u32 buffers;
+  ip6_hop_by_hop_ioam_main_t *hm = &ip6_hop_by_hop_ioam_main;
+  vlib_buffer_t *b0;
+  vlib_frame_t *nf = 0;
+  u32 *to_next;
+  vlib_node_t *next_node;
+  ip6_header_t *ip6;
+  ip6_hop_by_hop_header_t *hbh;
+  ioam_trace_option_t *opt;
+  u16 ip6_len;
+  udp_ping_t *udp;
+
+  next_node = vlib_get_node_by_name (hm->vlib_main, (u8 *) "ip6-lookup");
+  nf = vlib_get_frame_to_node (hm->vlib_main, next_node->index);
+  nf->n_vectors = 0;
+  to_next = vlib_frame_vector_args (nf);
+
+  if (vlib_buffer_alloc (hm->vlib_main, &buffers, 1) != 1)
+    return;
+
+  b0 = vlib_get_buffer (hm->vlib_main, buffers);
+  ip6_len = clib_net_to_host_u16 (ip->payload_length);
+  clib_memcpy (b0->data, ip, (ip6_len + sizeof (ip6_header_t)));
+  b0->current_data = 0;
+  b0->current_length = ip6_len + sizeof (ip6_header_t);
+  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+
+  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
+
+  /* Change destination address */
+  ip6 = vlib_buffer_get_current (b0);
+  //ip6->src_address = ip->dst_address;
+  //ip6->dst_address = ip->src_address;
+
+  hbh = (ip6_hop_by_hop_header_t *) (ip6 + 1);
+  opt = (ioam_trace_option_t *)
+    ip6_hbh_get_option (hbh, HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+
+  udp = (udp_ping_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
+  udp_ping_create_reply_from_probe_ip6 (ip6, hbh, udp);
+  //ip6_hbh_ioam_trace_reset_bit (opt, BIT_LOOPBACK);
+  ip6_hbh_ioam_trace_set_bit (opt, BIT_LOOPBACK_REPLY);
+  /* No need to trace loopback packet */
+  //opt->trace_hdr.data_list_elts_left = 0;
+
+  *to_next = buffers;
+  nf->n_vectors++;
+  to_next++;
+
+  vlib_put_frame_to_node (hm->vlib_main, next_node->index, nf);
+  ip6_ioam_trace_stats_increment_counter (IP6_IOAM_TRACE_LOOPBACK, 1);
+}
 
 int
 ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
@@ -226,6 +288,13 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
       return (-1);
     }
 
+  /* Don't trace loopback reply packets */
+  if (trace->trace_hdr.ioam_trace_type & BIT_LOOPBACK_REPLY)
+    {
+      ip6_ioam_trace_stats_increment_counter (IP6_IOAM_TRACE_LOOPBACK_REPLY,
+					      1);
+      return rv;
+    }
 
   time_u64.as_u64 = 0;
 
@@ -273,6 +342,15 @@ ip6_hbh_ioam_trace_data_list_handler (vlib_buffer_t * b, ip6_header_t * ip,
 	  *elt = clib_host_to_net_u32 (profile->app_data);
 	  elt++;
 	}
+
+
+      if (PREDICT_FALSE (trace->trace_hdr.ioam_trace_type & BIT_LOOPBACK))
+	{
+	  /* if loopback flag set then copy the packet
+	   * and send it back to source */
+	  ip6_hbh_ioam_loopback_handler (b, ip, trace);
+	}
+
       ip6_ioam_trace_stats_increment_counter (IP6_IOAM_TRACE_UPDATED, 1);
     }
   else

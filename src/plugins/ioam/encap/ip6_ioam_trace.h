@@ -28,6 +28,18 @@ typedef CLIB_PACKED(struct {
 }) ioam_trace_option_t;
 /* *INDENT-ON* */
 
+always_inline void
+ip6_hbh_ioam_trace_set_bit (ioam_trace_option_t * trace, u8 trace_bit)
+{
+  ioam_trace_set_bit (&trace->trace_hdr, trace_bit);
+}
+
+always_inline void
+ip6_hbh_ioam_trace_reset_bit (ioam_trace_option_t * trace, u8 trace_bit)
+{
+  ioam_trace_reset_bit (&trace->trace_hdr, trace_bit);
+}
+
 #endif /* PLUGINS_IOAM_PLUGIN_IOAM_ENCAP_IP6_IOAM_TRACE_H_ */
 
 /*

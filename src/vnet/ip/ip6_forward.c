@@ -1161,7 +1161,8 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 						uword));
     }
 
-  /* some icmp packets may come with a "router alert" hop-by-hop extension header (e.g., mldv2 packets) */
+  /* some icmp packets may come with a "router alert" hop-by-hop extension header (e.g., mldv2 packets)
+   * or UDP-Ping packets */
   if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
     {
       u32 skip_bytes;
@@ -1169,7 +1170,8 @@ ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 	(ip6_hop_by_hop_ext_t *) data_this_buffer;
 
       /* validate really icmp6 next */
-      ASSERT (ext_hdr->next_hdr == IP_PROTOCOL_ICMP6);
+      ASSERT ((ext_hdr->next_hdr == IP_PROTOCOL_ICMP6)
+	      || (ext_hdr->next_hdr == IP_PROTOCOL_UDP));
 
       skip_bytes = 8 * (1 + ext_hdr->n_data_u64s);
       data_this_buffer = (void *) ((u8 *) data_this_buffer + skip_bytes);
@@ -1317,23 +1319,6 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  len_diff0 = 0;
 	  len_diff1 = 0;
 
-	  /* Skip HBH local processing */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      ip6_hop_by_hop_ext_t *ext_hdr =
-		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
-	      next0 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
-	      type0 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
-	    }
-	  if (PREDICT_FALSE
-	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      ip6_hop_by_hop_ext_t *ext_hdr =
-		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip1);
-	      next1 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
-	      type1 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
-	    }
 	  if (PREDICT_TRUE (IP_PROTOCOL_UDP == ip6_locate_header (p0, ip0,
 								  IP_PROTOCOL_UDP,
 								  &udp_offset0)))
@@ -1458,15 +1443,6 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  good_l4_checksum0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
 	  len_diff0 = 0;
 
-	  /* Skip HBH local processing */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      ip6_hop_by_hop_ext_t *ext_hdr =
-		(ip6_hop_by_hop_ext_t *) ip6_next_header (ip0);
-	      next0 = lm->local_next_by_ip_protocol[ext_hdr->next_hdr];
-	      type0 = lm->builtin_protocol_by_ip_protocol[ext_hdr->next_hdr];
-	    }
 	  if (PREDICT_TRUE (IP_PROTOCOL_UDP == ip6_locate_header (p0, ip0,
 								  IP_PROTOCOL_UDP,
 								  &udp_offset0)))

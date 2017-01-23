@@ -445,11 +445,30 @@ always_inline u32
 ip6_compute_flow_hash (const ip6_header_t * ip,
 		       flow_hash_config_t flow_hash_config)
 {
-  tcp_header_t *tcp = (void *) (ip + 1);
+  tcp_header_t *tcp;
   u64 a, b, c;
   u64 t1, t2;
-  uword is_tcp_udp = (ip->protocol == IP_PROTOCOL_TCP
-		      || ip->protocol == IP_PROTOCOL_UDP);
+  uword is_tcp_udp = 0;
+  u8 protocol = ip->protocol;
+
+  if (PREDICT_TRUE
+      ((ip->protocol == IP_PROTOCOL_TCP)
+       || (ip->protocol == IP_PROTOCOL_UDP)))
+    {
+      is_tcp_udp = 1;
+      tcp = (void *) (ip + 1);
+    }
+  else if (ip->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS)
+    {
+      ip6_hop_by_hop_header_t *hbh = (ip6_hop_by_hop_header_t *) (ip + 1);
+      if ((hbh->protocol == IP_PROTOCOL_TCP) ||
+	  (hbh->protocol == IP_PROTOCOL_UDP))
+	{
+	  is_tcp_udp = 1;
+	  tcp = (tcp_header_t *) ((u8 *) hbh + ((hbh->length + 1) << 3));
+	}
+      protocol = hbh->protocol;
+    }
 
   t1 = (ip->src_address.as_u64[0] ^ ip->src_address.as_u64[1]);
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_ADDR) ? t1 : 0;
@@ -459,7 +478,7 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
 
   a = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t2 : t1;
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
-  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
+  b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? protocol : 0;
 
   t1 = is_tcp_udp ? tcp->src : 0;
   t2 = is_tcp_udp ? tcp->dst : 0;
