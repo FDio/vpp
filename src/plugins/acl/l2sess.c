@@ -31,19 +31,6 @@
 #include <vnet/l2/l2_input.h>
 
 void
-l2sess_vlib_plugin_register (vlib_main_t * vm, void* hh,
-		      int from_early_init)
-{
-  l2sess_main_t *sm = &l2sess_main;
-  vnet_plugin_handoff_t * h = hh;
-  memset (sm, 0, sizeof (*sm));
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  sm->ethernet_main = h->ethernet_main;
-}
-
-void
 l2sess_init_next_features_input (vlib_main_t * vm, l2sess_main_t * sm)
 {
 #define _(node_name, node_var, is_out, is_ip6, is_track) \
