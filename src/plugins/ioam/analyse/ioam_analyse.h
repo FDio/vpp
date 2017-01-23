@@ -31,6 +31,7 @@ typedef struct
   u16 ingress_if;
   u16 egress_if;
   u32 node_id;
+  u32 state_up;
 } ioam_path_map_t;
 
 /** @brief Analysed iOAM trace data.
@@ -176,6 +177,100 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
   return (f64) (end_time - start_time);
 }
 
+always_inline void
+ip6_ioam_analyse_set_paths_down (ioam_analyser_data_t * data)
+{
+  ioam_analyse_trace_data *trace_data;
+  ioam_analyse_trace_record *trace_record;
+  ioam_path_map_t *path;
+  u8 k, i;
+
+  while (__sync_lock_test_and_set (data->writer_lock, 1))
+    ;
+
+  trace_data = &data->trace_data;
+
+  for (i = 0; i < IOAM_MAX_PATHS_PER_FLOW; i++)
+    {
+      trace_record = trace_data->path_data + i;
+
+      if (trace_record->is_free)
+	continue;
+
+      path = trace_record->path;
+
+      for (k = 0; k < trace_record->num_nodes; k++)
+	path[k].state_up = 0;
+    }
+  *(data->writer_lock) = 0;
+}
+
+always_inline void
+ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
+				     ioam_trace_hdr_t * trace, u16 trace_len)
+{
+  ioam_analyse_trace_data *trace_data;
+  ioam_analyse_trace_record *trace_record;
+  ioam_path_map_t *path;
+  u8 i, j, k, num_nodes, max_nodes;
+  u8 *ptr;
+  u32 nodeid;
+  u16 ingress_if, egress_if;
+  u16 size_of_traceopt_per_node;
+  u16 size_of_all_traceopts;
+
+  while (__sync_lock_test_and_set (data->writer_lock, 1))
+    ;
+
+  trace_data = &data->trace_data;
+
+  size_of_traceopt_per_node = fetch_trace_data_size (trace->ioam_trace_type);
+  size_of_all_traceopts = trace_len;
+
+  ptr = (u8 *) trace->elts;
+  max_nodes = (u8) (size_of_all_traceopts / size_of_traceopt_per_node);
+  num_nodes = max_nodes - trace->data_list_elts_left;
+
+  for (i = 0; i < IOAM_MAX_PATHS_PER_FLOW; i++)
+    {
+      trace_record = trace_data->path_data + i;
+      path = trace_record->path;
+
+      if (trace_record->is_free)
+	continue;
+
+      for (j = max_nodes, k = 0; k < num_nodes; j--, k++)
+	{
+	  ptr =
+	    (u8 *) ((u8 *) trace->elts +
+		    (size_of_traceopt_per_node * (j - 1)));
+
+	  nodeid = clib_net_to_host_u32 (*((u32 *) ptr)) & 0x00ffffff;
+	  ptr += 4;
+
+	  if (nodeid != path[k].node_id)
+	    goto end;
+
+	  if ((trace->ioam_trace_type == TRACE_TYPE_IF_TS_APP) ||
+	      (trace->ioam_trace_type == TRACE_TYPE_IF))
+	    {
+	      ingress_if = clib_net_to_host_u16 (*((u16 *) ptr));
+	      ptr += 2;
+	      egress_if = clib_net_to_host_u16 (*((u16 *) ptr));
+	      if ((ingress_if != path[k].ingress_if) ||
+		  (egress_if != path[k].egress_if))
+		{
+		  goto end;
+		}
+	    }
+	  /* Found Match - set path hop state to up */
+	  path[k].state_up = 1;
+	}
+    }
+end:
+  *(data->writer_lock) = 0;
+}
+
 always_inline int
 ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
 			    ioam_trace_hdr_t * trace, u16 pak_len,
@@ -285,6 +380,10 @@ ip6_ioam_analyse_hbh_trace (ioam_analyser_data_t * data,
     }
 
 found_match:
+  /* Set path state to UP */
+  for (k = 0; k < num_nodes; k++)
+    path[k].state_up = 1;
+
   trace_record->pkt_counter++;
   trace_record->bytes_counter += pak_len;
   if (trace->ioam_trace_type & BIT_TIMESTAMP)
@@ -328,8 +427,11 @@ format_path_map (u8 * s, va_list * args)
 
   for (i = 0; i < num_of_elts; i++)
     {
-      s = format (s, "node_id: 0x%x, ingress_if: 0x%x, egress_if:0x%x\n",
-		  pm->node_id, pm->ingress_if, pm->egress_if);
+      s =
+	format (s,
+		"node_id: 0x%x, ingress_if: 0x%x, egress_if:0x%x, state:%s\n",
+		pm->node_id, pm->ingress_if, pm->egress_if,
+		pm->state_up ? "UP" : "DOWN");
       pm++;
     }
 

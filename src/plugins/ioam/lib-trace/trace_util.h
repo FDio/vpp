@@ -103,7 +103,11 @@ typedef CLIB_PACKED (struct
 #define    BIT_EGR_INTERFACE    (1<<2)
 #define    BIT_TIMESTAMP        (1<<3)
 #define    BIT_APPDATA          (1<<4)
-#define    TRACE_TYPE_MASK      0x1F	/* Mask of all above bits */
+#define    BIT_LOOPBACK         (1<<5)
+#define    BIT_LOOPBACK_REPLY   (1<<6)
+#define    TRACE_TYPE_MASK      0x7F	/* Mask of all above bits */
+
+#define    TRACE_TYPE_IF_TS_APP_LOOP    0x3F
 
 /*
      0x00011111  iOAM-trace-type is 0x00011111 then the format of node
@@ -218,18 +222,30 @@ fetch_trace_data_size (u8 trace_type)
 {
   u8 trace_data_size = 0;
 
-  if (trace_type == TRACE_TYPE_IF_TS_APP)
+  if ((trace_type & TRACE_TYPE_IF_TS_APP) == TRACE_TYPE_IF_TS_APP)
     trace_data_size = sizeof (ioam_trace_if_ts_app_t);
-  else if (trace_type == TRACE_TYPE_IF)
+  else if ((trace_type & TRACE_TYPE_IF) == TRACE_TYPE_IF)
     trace_data_size = sizeof (ioam_trace_if_t);
-  else if (trace_type == TRACE_TYPE_TS)
+  else if ((trace_type & TRACE_TYPE_TS) == TRACE_TYPE_TS)
     trace_data_size = sizeof (ioam_trace_ts_t);
-  else if (trace_type == TRACE_TYPE_APP)
+  else if ((trace_type & TRACE_TYPE_APP) == TRACE_TYPE_APP)
     trace_data_size = sizeof (ioam_trace_app_t);
-  else if (trace_type == TRACE_TYPE_TS_APP)
+  else if ((trace_type & TRACE_TYPE_TS_APP) == TRACE_TYPE_TS_APP)
     trace_data_size = sizeof (ioam_trace_ts_app_t);
 
   return trace_data_size;
+}
+
+always_inline void
+ioam_trace_set_bit (ioam_trace_hdr_t * trace_hdr, u8 trace_bit)
+{
+  trace_hdr->ioam_trace_type |= trace_bit;
+}
+
+always_inline void
+ioam_trace_reset_bit (ioam_trace_hdr_t * trace_hdr, u8 trace_bit)
+{
+  trace_hdr->ioam_trace_type &= (~trace_bit);
 }
 
 int ioam_trace_get_sizeof_handler (u32 * result);
