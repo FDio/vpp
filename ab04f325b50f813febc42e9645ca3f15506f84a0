@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_4f63f1b1",
+        "filename": "src/vlib/unix/plugin.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-23T23:49:54Z",
+      "side": 1,
+      "message": "Eventually, some checking of default_disabled vs. config parameter...",
+      "revId": "ab04f325b50f813febc42e9645ca3f15506f84a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ef4a9d26",
+        "filename": "src/vlib/unix/plugin.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-23T23:49:54Z",
+      "side": 1,
+      "message": "Any special reason for ()?",
+      "revId": "ab04f325b50f813febc42e9645ca3f15506f84a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
