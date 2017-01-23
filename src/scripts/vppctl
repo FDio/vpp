@@ -20,6 +20,8 @@ import os
 import subprocess
 import re
 import sys
+from optparse import OptionParser
+
 try:
         import readline
 except ImportError:
@@ -32,6 +34,10 @@ if not persishist:
 
 class Vppctl(Cmd):
 
+        def __init__(self,api_prefix=None):
+                Cmd.__init__(self)
+                self.api_prefix = api_prefix
+
         def historyWrite(self):
                 if readline:
                         readline.set_history_length(persishist_size)
@@ -42,10 +48,13 @@ class Vppctl(Cmd):
                 input_command = input_prefix + line
                 line_remove = '^load_one_plugin:'
                 s = '\n'
-                command = ['vpp_api_test']
+                if ( self.api_prefix is None):
+                        command = ['vpp_api_test']
+                else:
+                        command = ['vpp_api_test',"chroot prefix %s " % self.api_prefix]
 
                 if os.geteuid() != 0:
-                    command = ['sudo', 'vpp_api_test']
+                    command = ['sudo'] + command
 
                 vpp_process = subprocess.Popen(command,
                         stderr=subprocess.PIPE,
@@ -90,15 +99,19 @@ class Vppctl(Cmd):
                 self.historyWrite()
 
 if __name__ == '__main__':
-        command_args = sys.argv
-
+        parser = OptionParser()
+        parser.add_option("-p","--prefix",action="store",type="string",dest="prefix")
+        (options,command_args) = parser.parse_args(sys.argv)
 
         if not len(command_args) > 1:
-                prompt = Vppctl()
+                prompt = Vppctl(options.prefix)
                 red_set = '\033[31m'
                 norm_set = '\033[0m'
                 if sys.stdout.isatty():
-                        prompt.prompt = 'vpp# '
+                        if(options.prefix is None):
+                                prompt.prompt = 'vpp# '
+                        else:
+                                prompt.prompt = '%s# ' % options.prefix
                         try:
                                 prompt.cmdloop(red_set + "    _______    _       " + norm_set + " _   _____  ___ \n" +
                                         red_set + " __/ __/ _ \  (_)__   " + norm_set + " | | / / _ \/ _ \\\n" +
@@ -114,7 +127,7 @@ if __name__ == '__main__':
         else:
                 del command_args[0]
                 stdout_value = " ".join(command_args)
-                VatAddress = Vppctl()
+                VatAddress = Vppctl(options.prefix)
                 VatAddress.runVat(stdout_value)
 
 
