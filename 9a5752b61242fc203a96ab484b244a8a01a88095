@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_52a034f4",
+        "filename": "src/vnet/devices/dpdk/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 635,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-24T13:39:15Z",
+      "side": 1,
+      "message": "This should happen after rte_eth_dev_start",
+      "range": {
+        "startLine": 635,
+        "startChar": 10,
+        "endLine": 635,
+        "endChar": 42
+      },
+      "revId": "9a5752b61242fc203a96ab484b244a8a01a88095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_32a5a804",
+        "filename": "src/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-24T13:39:15Z",
+      "side": 1,
+      "message": "same",
+      "range": {
+        "startLine": 128,
+        "startChar": 6,
+        "endLine": 128,
+        "endChar": 38
+      },
+      "revId": "9a5752b61242fc203a96ab484b244a8a01a88095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_12aaacd4",
+        "filename": "src/vnet/devices/dpdk/init.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-24T13:39:15Z",
+      "side": 1,
+      "message": "same",
+      "range": {
+        "startLine": 208,
+        "startChar": 7,
+        "endLine": 208,
+        "endChar": 39
+      },
+      "revId": "9a5752b61242fc203a96ab484b244a8a01a88095",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
