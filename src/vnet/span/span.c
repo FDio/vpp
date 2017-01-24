@@ -61,11 +61,11 @@ span_add_delete_entry (vlib_main_t * vm,
 				 src_sw_if_index, 0, 0, 0);
 
   if (new_num_rx_mirror_ports == 1 && si->num_rx_mirror_ports == 0)
-    vnet_feature_enable_disable ("device-input", "span-output",
+    vnet_feature_enable_disable ("interface-output", "span-output",
 				 src_sw_if_index, 1, 0, 0);
 
   if (new_num_rx_mirror_ports == 0 && si->num_rx_mirror_ports == 1)
-    vnet_feature_enable_disable ("device-input", "span-output",
+    vnet_feature_enable_disable ("interface-output", "span-output",
 				 src_sw_if_index, 0, 0, 0);
 
   si->num_rx_mirror_ports = new_num_rx_mirror_ports;
