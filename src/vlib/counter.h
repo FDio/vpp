@@ -273,6 +273,20 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
     }
 }
 
+#define vlib_prefetch_combined_counter(_cm, _cpu_index, _index)  \
+{                                                                \
+    vlib_mini_counter_t *_cpu_minis;                             \
+                                                                 \
+    /*                                                           \
+     * This CPU's mini index is assumed to already be in cache   \
+     */                                                          \
+    _cpu_minis = (_cm)->minis[(_cpu_index)];                     \
+    CLIB_PREFETCH(_cpu_minis + (_index),                         \
+                  sizeof(*_cpu_minis),                           \
+                  STORE);                                        \
+}
+
+
 /** Get the value of a combined counter, never called in the speed path
     Scrapes the entire set of mini counters. Innacurate unless
     worker threads which might increment the counter are
