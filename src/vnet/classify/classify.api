@@ -1,0 +1,356 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief Add/Delete classification table request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add- if non-zero add the table, else delete it
+    @param del_chain - if non-zero delete the whole chain of tables
+    @param table_index - if add, reuturns index of the created table, else specifies the table to delete  
+    @param nbuckets - number of buckets when adding a table
+    @param memory_size - memory size when adding a table
+    @param match_n_vectors - number of match vectors
+    @param next_table_index - index of next table
+    @param miss_next_index - index of miss table
+    @param current_data_flag - option to use current node's packet payload
+            as the starting point from where packets are classified,
+            This option is only valid for L2/L3 input ACL for now.
+            0: by default, classify data from the buffer's start location
+            1: classify packets from VPP node’s current data pointer
+    @param current_data_offset - a signed value to shift the start location of
+            the packet to be classified
+            For example, if input IP ACL node is used, L2 header’s first byte
+            can be accessible by configuring current_data_offset to -14
+            if there is no vlan tag.
+            This is valid only if current_data_flag is set to 1.
+    @param mask[] - match mask
+*/
+define classify_add_del_table
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 del_chain;
+  u32 table_index;
+  u32 nbuckets;
+  u32 memory_size;
+  u32 skip_n_vectors;
+  u32 match_n_vectors;
+  u32 next_table_index;
+  u32 miss_next_index;
+  u32 current_data_flag;
+  i32 current_data_offset;
+  u8 mask[0];
+};
+
+/** \brief Add/Delete classification table response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the table add/del requst
+    @param new_table_index - for add, returned index of the new table
+    @param skip_n_vectors - for add, returned value of skip_n_vectors in table
+    @param match_n_vectors -for add, returned value of match_n_vectors in table
+*/
+define classify_add_del_table_reply
+{
+  u32 context;
+  i32 retval;
+  u32 new_table_index;
+  u32 skip_n_vectors;
+  u32 match_n_vectors;
+};
+
+/** \brief Classify add / del session request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add session if non-zero, else delete
+    @param table_index - index of the table to add/del the session, required
+    @param hit_next_index - for add, hit_next_index of new session, required
+    @param opaque_index - for add, opaque_index of new session
+    @param advance -for add, advance value for session
+    @param action -
+           0: no action (by default)
+              metadata is not used.
+           1: Classified IP packets will be looked up from the
+              specified ipv4 fib table (configured by metadata as VRF id).
+              Only valid for L3 input ACL node
+           2: Classified IP packets will be looked up from the
+              specified ipv6 fib table (configured by metadata as VRF id).
+              Only valid for L3 input ACL node
+    @param metadata - valid only if action != 0
+           VRF id if action is 1 or 2.
+    @param match[] - for add, match value for session, required
+*/
+define classify_add_del_session
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u32 table_index;
+  u32 hit_next_index;
+  u32 opaque_index;
+  i32 advance;
+  u8 action;
+  u32 metadata;
+  u8 match[0];
+};
+
+/** \brief Classify add / del session response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the add/del session request
+*/
+define classify_add_del_session_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Set/unset policer classify interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset policer classify
+    @param ip4_table_index - ip4 classify table index (~0 for skip)
+    @param ip6_table_index - ip6 classify table index (~0 for skip)
+    @param l2_table_index  -  l2 classify table index (~0 for skip)
+    @param is_add - Set if non-zero, else unset
+    Note: User is recommeneded to use just one valid table_index per call.
+          (ip4_table_index, ip6_table_index, or l2_table_index)
+*/
+define policer_classify_set_interface
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 ip4_table_index;
+  u32 ip6_table_index;
+  u32 l2_table_index;
+  u8 is_add;
+};
+
+/** \brief Set/unset policer classify interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define policer_classify_set_interface_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Get list of policer classify interfaces and tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param type - classify table type
+*/
+define policer_classify_dump
+{
+  u32 client_index;
+  u32 context;
+  u8 type;
+};
+
+/** \brief Policer iclassify operational state response.
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software interface index
+    @param table_index - classify table index
+*/
+define policer_classify_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u32 table_index;
+};
+
+/** \brief Classify get table IDs request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define classify_table_ids
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for classify get table IDs request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param ids - array of classify table ids
+*/
+define classify_table_ids_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 ids[count];
+};
+
+/** \brief Classify table ids by interface index request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+*/
+define classify_table_by_interface
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Reply for classify table id by interface index request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param sw_if_index - index of the interface
+    @param l2_table_id - l2 classify table index
+    @param ip4_table_id - ip4 classify table index
+    @param ip6_table_id - ip6 classify table index
+*/
+define classify_table_by_interface_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+  u32 l2_table_id;
+  u32 ip4_table_id;
+  u32 ip6_table_id;
+};
+
+/** \brief Classify table info
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - classify table index
+*/
+define classify_table_info
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+};
+
+/** \brief Reply for classify table info request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param table_id - classify table index
+    @param nbuckets - number of buckets when adding a table
+    @param match_n_vectors - number of match vectors
+    @param skip_n_vectors - number of skip_n_vectors
+    @param active_sessions - number of sessions (active entries)
+    @param next_table_index - index of next table
+    @param miss_next_index - index of miss table
+    @param mask[] - match mask
+*/
+define classify_table_info_reply
+{
+  u32 context;
+  i32 retval;
+  u32 table_id;
+  u32 nbuckets;
+  u32 match_n_vectors;
+  u32 skip_n_vectors;
+  u32 active_sessions;
+  u32 next_table_index;
+  u32 miss_next_index;
+  u32 mask_length;
+  u8 mask[mask_length];
+};
+
+/** \brief Classify sessions dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - classify table index
+*/
+define classify_session_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+};
+
+/** \brief Reply for classify table session dump request
+    @param context - sender context which was passed in the request
+    @param count - number of ids returned in response
+    @param table_id - classify table index
+    @param hit_next_index - hit_next_index of session
+    @param opaque_index - for add, opaque_index of session
+    @param advance - advance value of session
+    @param match[] - match value for session
+*/
+define classify_session_details
+{
+  u32 context;
+  i32 retval;
+  u32 table_id;
+  u32 hit_next_index;
+  i32 advance;
+  u32 opaque_index;
+  u32 match_length;
+  u8 match[match_length];
+};
+
+/** \brief Set/unset flow classify interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset flow classify
+    @param ip4_table_index - ip4 classify table index (~0 for skip)
+    @param ip6_table_index - ip6 classify table index (~0 for skip)
+    @param l2_table_index  -  l2 classify table index (~0 for skip)
+    @param is_add - Set if non-zero, else unset
+    Note: User is recommeneded to use just one valid table_index per call.
+          (ip4_table_index, ip6_table_index, or l2_table_index)
+*/
+define flow_classify_set_interface {
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u32 ip4_table_index;
+    u32 ip6_table_index;
+    u8  is_add;
+};
+
+/** \brief Set/unset flow classify interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define flow_classify_set_interface_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief Get list of flow classify interfaces and tables
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param type - classify table type
+*/
+define flow_classify_dump {
+    u32 client_index;
+    u32 context;
+    u8 type;
+};
+
+/** \brief Flow classify operational state response.
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software interface index
+    @param table_index - classify table index
+*/
+define flow_classify_details {
+    u32 context;
+    u32 sw_if_index;
+    u32 table_index;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
+ 
