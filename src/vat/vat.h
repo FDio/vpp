@@ -97,6 +97,22 @@ typedef struct
 
 typedef struct
 {
+  struct in_addr address;
+  vnet_link_t linkt;
+  u64 packets;
+  u64 bytes;
+} ip4_nbr_counter_t;
+
+typedef struct
+{
+  struct in6_addr address;
+  vnet_link_t linkt;
+  u64 packets;
+  u64 bytes;
+} ip6_nbr_counter_t;
+
+typedef struct
+{
   /* vpe input queue */
   unix_shared_memory_queue_t *vl_input_queue;
 
@@ -185,6 +201,8 @@ typedef struct
   u32 *ip4_fib_counters_vrf_id_by_index;
   ip6_fib_counter_t **ip6_fib_counters;
   u32 *ip6_fib_counters_vrf_id_by_index;
+  ip4_nbr_counter_t **ip4_nbr_counters;
+  ip6_nbr_counter_t **ip6_nbr_counters;
 
   /* Convenience */
   vlib_main_t *vlib_main;
