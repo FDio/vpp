@@ -108,7 +108,8 @@ class PollHook(Hook):
             msg = "VPP subprocess died unexpectedly with returncode %d [%s]" %\
                 (self.testcase.vpp.returncode, s)
             self.logger.critical(msg)
-            core_path = self.testcase.tempdir + '/core'
+            #core_path = self.testcase.tempdir + '/core'
+            core_path = '/vpp/core'
             if os.path.isfile(core_path):
                 self.on_crash(core_path)
             self.testcase.vpp_dead = True
