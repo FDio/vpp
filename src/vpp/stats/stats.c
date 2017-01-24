@@ -49,7 +49,9 @@ _(WANT_STATS, want_stats)                               \
 _(WANT_STATS_REPLY, want_stats_reply)                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)         \
-_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)
+_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)         \
+_(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)         \
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
 
 /* These constants ensure msg sizes <= 1024, aka ring allocation */
 #define SIMPLE_COUNTER_BATCH_SIZE	126
@@ -258,6 +260,313 @@ ip46_fib_stats_delay (stats_main_t * sm, u32 sec, u32 nsec)
     }
 }
 
+/**
+ * @brief The context passed when collecting adjacency counters
+ */
+typedef struct ip4_nbr_stats_ctx_t_
+{
+  /**
+   * The SW IF index all these adjs belong to
+   */
+  u32 sw_if_index;
+
+  /**
+   * A vector of ip4 nbr counters
+   */
+  vl_api_ip4_nbr_counter_t *counters;
+} ip4_nbr_stats_ctx_t;
+
+static adj_walk_rc_t
+ip4_nbr_stats_cb (adj_index_t ai, void *arg)
+{
+  vl_api_ip4_nbr_counter_t *vl_counter;
+  vlib_counter_t adj_counter;
+  ip4_nbr_stats_ctx_t *ctx;
+  ip_adjacency_t *adj;
+
+  ctx = arg;
+  vlib_get_combined_counter (&adjacency_counters, ai, &adj_counter);
+
+  if (0 != adj_counter.packets)
+    {
+      vec_add2 (ctx->counters, vl_counter, 1);
+      adj = adj_get (ai);
+
+      vl_counter->packets = clib_host_to_net_u64 (adj_counter.packets);
+      vl_counter->bytes = clib_host_to_net_u64 (adj_counter.bytes);
+      vl_counter->address = adj->sub_type.nbr.next_hop.ip4.as_u32;
+      vl_counter->link_type = adj->ia_link;
+    }
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+#define MIN(x,y) (((x)<(y))?(x):(y))
+
+static void
+ip4_nbr_ship (stats_main_t * sm, ip4_nbr_stats_ctx_t * ctx)
+{
+  api_main_t *am = sm->api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  vl_api_vnet_ip4_nbr_counters_t *mp = 0;
+  int first = 0;
+
+  /*
+   * If the walk context has counters, which may be left over from the last
+   * suspend, then we continue from there.
+   */
+  while (0 != vec_len (ctx->counters))
+    {
+      u32 n_items = MIN (vec_len (ctx->counters),
+			 IP4_FIB_COUNTER_BATCH_SIZE);
+      u8 pause = 0;
+
+      dslock (sm, 0 /* release hint */ , 1 /* tag */ );
+
+      mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) +
+					  (n_items *
+					   sizeof
+					   (vl_api_ip4_nbr_counter_t)));
+      mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_NBR_COUNTERS);
+      mp->count = ntohl (n_items);
+      mp->sw_if_index = ntohl (ctx->sw_if_index);
+      mp->begin = first;
+      first = 0;
+
+      /*
+       * copy the counters from the back of the context, then we can easily
+       * 'erase' them by resetting the vector length.
+       * The order we push the stats to the caller is not important.
+       */
+      clib_memcpy (mp->c,
+		   &ctx->counters[vec_len (ctx->counters) - n_items],
+		   n_items * sizeof (*ctx->counters));
+
+      _vec_len (ctx->counters) = vec_len (ctx->counters) - n_items;
+
+      /*
+       * send to the shm q
+       */
+      unix_shared_memory_queue_lock (q);
+      pause = unix_shared_memory_queue_is_full (q);
+
+      vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+      unix_shared_memory_queue_unlock (q);
+      dsunlock (sm);
+
+      if (pause)
+	ip46_fib_stats_delay (sm, 0 /* sec */ ,
+			      STATS_RELEASE_DELAY_NS);
+    }
+}
+
+static void
+do_ip4_nbrs (stats_main_t * sm)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_sw_interface_t *si;
+
+  ip4_nbr_stats_ctx_t ctx = {
+    .sw_if_index = 0,
+    .counters = NULL,
+  };
+
+  /* *INDENT-OFF* */
+  pool_foreach (si, im->sw_interfaces,
+  ({
+    /*
+     * update the interface we are now concerned with
+     */
+    ctx.sw_if_index = si->sw_if_index;
+
+    /*
+     * we are about to walk another interface, so we shouldn't have any pending
+     * stats to export.
+     */
+    ASSERT(ctx.counters == NULL);
+
+    /*
+     * visit each neighbour adjacency on the interface and collect
+     * its current stats.
+     * Because we hold the lock the walk is synchronous, so safe to routing
+     * updates. It's limited in work by the number of adjacenies on an
+     * interface, which is typically not huge.
+     */
+    dslock (sm, 0 /* release hint */ , 1 /* tag */ );
+    adj_nbr_walk (si->sw_if_index,
+                  FIB_PROTOCOL_IP4,
+                  ip4_nbr_stats_cb,
+                  &ctx);
+    dsunlock (sm);
+
+    /*
+     * if this interface has some adjacencies with counters then ship them,
+     * else continue to the next interface.
+     */
+    if (NULL != ctx.counters)
+      {
+        ip4_nbr_ship(sm, &ctx);
+      }
+  }));
+  /* *INDENT-OFF* */
+}
+
+/**
+ * @brief The context passed when collecting adjacency counters
+ */
+typedef struct ip6_nbr_stats_ctx_t_
+{
+  /**
+   * The SW IF index all these adjs belong to
+   */
+  u32 sw_if_index;
+
+  /**
+   * A vector of ip6 nbr counters
+   */
+  vl_api_ip6_nbr_counter_t *counters;
+} ip6_nbr_stats_ctx_t;
+
+static adj_walk_rc_t
+ip6_nbr_stats_cb (adj_index_t ai,
+                  void *arg)
+{
+  vl_api_ip6_nbr_counter_t *vl_counter;
+  vlib_counter_t adj_counter;
+  ip6_nbr_stats_ctx_t *ctx;
+  ip_adjacency_t *adj;
+
+  ctx = arg;
+  vlib_get_combined_counter(&adjacency_counters, ai, &adj_counter);
+
+  if (0 != adj_counter.packets)
+    {
+      vec_add2(ctx->counters, vl_counter, 1);
+      adj = adj_get(ai);
+
+      vl_counter->packets = clib_host_to_net_u64(adj_counter.packets);
+      vl_counter->bytes   = clib_host_to_net_u64(adj_counter.bytes);
+      vl_counter->address[0] = adj->sub_type.nbr.next_hop.ip6.as_u64[0];
+      vl_counter->address[1] = adj->sub_type.nbr.next_hop.ip6.as_u64[1];
+      vl_counter->link_type = adj->ia_link;
+    }
+  return (ADJ_WALK_RC_CONTINUE);
+}
+
+#define MIN(x,y) (((x)<(y))?(x):(y))
+
+static void
+ip6_nbr_ship (stats_main_t * sm,
+              ip6_nbr_stats_ctx_t *ctx)
+{
+  api_main_t *am = sm->api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  vl_api_vnet_ip6_nbr_counters_t *mp = 0;
+  int first = 0;
+
+  /*
+   * If the walk context has counters, which may be left over from the last
+   * suspend, then we continue from there.
+   */
+  while (0 != vec_len(ctx->counters))
+    {
+      u32 n_items = MIN (vec_len (ctx->counters),
+			 IP6_FIB_COUNTER_BATCH_SIZE);
+      u8 pause = 0;
+
+      dslock (sm, 0 /* release hint */ , 1 /* tag */ );
+
+      mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) +
+					  (n_items *
+					   sizeof
+					   (vl_api_ip6_nbr_counter_t)));
+      mp->_vl_msg_id = ntohs (VL_API_VNET_IP6_NBR_COUNTERS);
+      mp->count = ntohl (n_items);
+      mp->sw_if_index = ntohl (ctx->sw_if_index);
+      mp->begin = first;
+      first = 0;
+
+      /*
+       * copy the counters from the back of the context, then we can easily
+       * 'erase' them by resetting the vector length.
+       * The order we push the stats to the caller is not important.
+       */
+      clib_memcpy (mp->c,
+		   &ctx->counters[vec_len (ctx->counters) - n_items],
+		   n_items * sizeof (*ctx->counters));
+
+      _vec_len (ctx->counters) = vec_len (ctx->counters) - n_items;
+
+      /*
+       * send to the shm q
+       */
+      unix_shared_memory_queue_lock (q);
+      pause = unix_shared_memory_queue_is_full (q);
+
+      vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+      unix_shared_memory_queue_unlock (q);
+      dsunlock (sm);
+
+      if (pause)
+        ip46_fib_stats_delay (sm, 0 /* sec */ ,
+                              STATS_RELEASE_DELAY_NS);
+    }
+}
+
+static void
+do_ip6_nbrs (stats_main_t * sm)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  vnet_sw_interface_t *si;
+
+  ip6_nbr_stats_ctx_t ctx = {
+    .sw_if_index = 0,
+    .counters = NULL,
+  };
+
+  /* *INDENT-OFF* */
+  pool_foreach (si, im->sw_interfaces,
+  ({
+    /*
+     * update the interface we are now concerned with
+     */
+    ctx.sw_if_index = si->sw_if_index;
+
+    /*
+     * we are about to walk another interface, so we shouldn't have any pending
+     * stats to export.
+     */
+    ASSERT(ctx.counters == NULL);
+
+    /*
+     * visit each neighbour adjacency on the interface and collect
+     * its current stats.
+     * Because we hold the lock the walk is synchronous, so safe to routing
+     * updates. It's limited in work by the number of adjacenies on an
+     * interface, which is typically not huge.
+     */
+    dslock (sm, 0 /* release hint */ , 1 /* tag */ );
+    adj_nbr_walk (si->sw_if_index,
+                  FIB_PROTOCOL_IP6,
+                  ip6_nbr_stats_cb,
+                  &ctx);
+    dsunlock (sm);
+
+    /*
+     * if this interface has some adjacencies with counters then ship them,
+     * else continue to the next interface.
+     */
+    if (NULL != ctx.counters)
+      {
+        ip6_nbr_ship(sm, &ctx);
+      }
+  }));
+  /* *INDENT-OFF* */
+}
+
 static void
 do_ip4_fibs (stats_main_t * sm)
 {
@@ -318,13 +627,7 @@ again:
         hash_foreach_pair (p, hash,
         ({
           x.address.data_u32 = p->key;
-          if (lm->fib_result_n_words > 1)
-            {
-              x.index = vec_len (results);
-              vec_add (results, p->value, lm->fib_result_n_words);
-            }
-          else
-            x.index = p->value[0];
+          x.index = p->value[0];
 
           vec_add1 (routes, x);
           if (sm->data_structure_lock->release_hint)
@@ -631,6 +934,8 @@ stats_thread_fn (void *arg)
       do_combined_interface_counters (sm);
       do_ip4_fibs (sm);
       do_ip6_fibs (sm);
+      do_ip4_nbrs (sm);
+      do_ip6_nbrs (sm);
     }
 }
 
@@ -805,6 +1110,45 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 }
 
 static void
+vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
+{
+  vpe_client_registration_t *reg;
+  stats_main_t *sm = &stats_main;
+  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  vl_api_vnet_ip4_nbr_counters_t *mp_copy = NULL;
+  u32 mp_size;
+
+  mp_size = sizeof (*mp_copy) +
+    ntohl (mp->count) * sizeof (vl_api_ip4_nbr_counter_t);
+
+  /* *INDENT-OFF* */
+  pool_foreach(reg, sm->stats_registrations,
+  ({
+    q = vl_api_client_index_to_input_queue (reg->client_index);
+    if (q)
+      {
+        if (q_prev && (q_prev->cursize < q_prev->maxsize))
+          {
+            mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+            clib_memcpy(mp_copy, mp, mp_size);
+            vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+            mp = mp_copy;
+          }
+        q_prev = q;
+      }
+  }));
+  /* *INDENT-ON* */
+  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+    {
+      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+    }
+  else
+    {
+      vl_msg_api_free (mp);
+    }
+}
+
+static void
 vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 {
   vpe_client_registration_t *reg;
@@ -815,6 +1159,45 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 
   mp_size = sizeof (*mp_copy) +
     ntohl (mp->count) * sizeof (vl_api_ip6_fib_counter_t);
+
+  /* *INDENT-OFF* */
+  pool_foreach(reg, sm->stats_registrations,
+  ({
+    q = vl_api_client_index_to_input_queue (reg->client_index);
+    if (q)
+      {
+        if (q_prev && (q_prev->cursize < q_prev->maxsize))
+          {
+            mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+            clib_memcpy(mp_copy, mp, mp_size);
+            vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+            mp = mp_copy;
+          }
+        q_prev = q;
+      }
+  }));
+  /* *INDENT-ON* */
+  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+    {
+      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+    }
+  else
+    {
+      vl_msg_api_free (mp);
+    }
+}
+
+static void
+vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
+{
+  vpe_client_registration_t *reg;
+  stats_main_t *sm = &stats_main;
+  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  vl_api_vnet_ip6_nbr_counters_t *mp_copy = NULL;
+  u32 mp_size;
+
+  mp_size = sizeof (*mp_copy) +
+    ntohl (mp->count) * sizeof (vl_api_ip6_nbr_counter_t);
 
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
@@ -929,6 +1312,10 @@ stats_memclnt_delete_callback (u32 client_index)
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_print vl_noop_handler
+#define vl_api_vnet_ip4_nbr_counters_t_endian vl_noop_handler
+#define vl_api_vnet_ip4_nbr_counters_t_print vl_noop_handler
+#define vl_api_vnet_ip6_nbr_counters_t_endian vl_noop_handler
+#define vl_api_vnet_ip6_nbr_counters_t_print vl_noop_handler
 
 static clib_error_t *
 stats_init (vlib_main_t * vm)
@@ -961,6 +1348,8 @@ stats_init (vlib_main_t * vm)
   am->message_bounce[VL_API_VNET_INTERFACE_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP4_FIB_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP6_FIB_COUNTERS] = 1;
+  am->message_bounce[VL_API_VNET_IP4_NBR_COUNTERS] = 1;
+  am->message_bounce[VL_API_VNET_IP6_NBR_COUNTERS] = 1;
 
   return 0;
 }

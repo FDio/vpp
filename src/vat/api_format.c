@@ -2042,6 +2042,42 @@ static void vl_api_vnet_ip4_fib_counters_t_handler_json
     }
 }
 
+static void vl_api_vnet_ip4_nbr_counters_t_handler
+  (vl_api_vnet_ip4_nbr_counters_t * mp)
+{
+  /* not supported */
+}
+
+static void vl_api_vnet_ip4_nbr_counters_t_handler_json
+  (vl_api_vnet_ip4_nbr_counters_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vl_api_ip4_nbr_counter_t *v;
+  ip4_nbr_counter_t *counter;
+  u32 sw_if_index;
+  u32 count;
+  int i;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  count = ntohl (mp->count);
+  vec_validate (vam->ip4_nbr_counters, sw_if_index);
+
+  if (mp->begin)
+    vec_free (vam->ip4_nbr_counters[sw_if_index]);
+
+  v = (vl_api_ip4_nbr_counter_t *) & mp->c;
+  for (i = 0; i < count; i++)
+    {
+      vec_validate (vam->ip4_nbr_counters[sw_if_index], i);
+      counter = &vam->ip4_nbr_counters[sw_if_index][i];
+      counter->address.s_addr = v->address;
+      counter->packets = clib_net_to_host_u64 (v->packets);
+      counter->bytes = clib_net_to_host_u64 (v->bytes);
+      counter->linkt = v->link_type;
+      v++;
+    }
+}
+
 static void vl_api_vnet_ip6_fib_counters_t_handler
   (vl_api_vnet_ip6_fib_counters_t * mp)
 {
@@ -2081,6 +2117,43 @@ static void vl_api_vnet_ip6_fib_counters_t_handler_json
       clib_memcpy (&ip6, &v->address, sizeof (ip6));
       counter->address = ip6;
       counter->address_length = v->address_length;
+      counter->packets = clib_net_to_host_u64 (v->packets);
+      counter->bytes = clib_net_to_host_u64 (v->bytes);
+      v++;
+    }
+}
+
+static void vl_api_vnet_ip6_nbr_counters_t_handler
+  (vl_api_vnet_ip6_nbr_counters_t * mp)
+{
+  /* not supported */
+}
+
+static void vl_api_vnet_ip6_nbr_counters_t_handler_json
+  (vl_api_vnet_ip6_nbr_counters_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vl_api_ip6_nbr_counter_t *v;
+  ip6_nbr_counter_t *counter;
+  struct in6_addr ip6;
+  u32 sw_if_index;
+  u32 count;
+  int i;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  count = ntohl (mp->count);
+  vec_validate (vam->ip6_nbr_counters, sw_if_index);
+
+  if (mp->begin)
+    vec_free (vam->ip6_nbr_counters[sw_if_index]);
+
+  v = (vl_api_ip6_nbr_counter_t *) & mp->c;
+  for (i = 0; i < count; i++)
+    {
+      vec_validate (vam->ip6_nbr_counters[sw_if_index], i);
+      counter = &vam->ip6_nbr_counters[sw_if_index][i];
+      clib_memcpy (&ip6, &v->address, sizeof (ip6));
+      counter->address = ip6;
       counter->packets = clib_net_to_host_u64 (v->packets);
       counter->bytes = clib_net_to_host_u64 (v->bytes);
       v++;
@@ -3490,6 +3563,10 @@ static void vl_api_flow_classify_details_t_handler_json
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_print vl_noop_handler
+#define vl_api_vnet_ip4_nbr_counters_t_endian vl_noop_handler
+#define vl_api_vnet_ip4_nbr_counters_t_print vl_noop_handler
+#define vl_api_vnet_ip6_nbr_counters_t_endian vl_noop_handler
+#define vl_api_vnet_ip6_nbr_counters_t_print vl_noop_handler
 #define vl_api_lisp_adjacencies_get_reply_t_endian vl_noop_handler
 #define vl_api_lisp_adjacencies_get_reply_t_print vl_noop_handler
 
@@ -3799,6 +3876,8 @@ _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
+_(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)                         \
 _(MAP_ADD_DOMAIN_REPLY, map_add_domain_reply)                           \
 _(MAP_DEL_DOMAIN_REPLY, map_del_domain_reply)                           \
 _(MAP_ADD_DEL_RULE_REPLY, map_add_del_rule_reply)	                \
@@ -4131,6 +4210,8 @@ dump_stats_table (vat_main_t * vam)
   u64 packets;
   ip4_fib_counter_t *c4;
   ip6_fib_counter_t *c6;
+  ip4_nbr_counter_t *n4;
+  ip6_nbr_counter_t *n6;
   int i, j;
 
   if (!vam->json_output)
@@ -4223,6 +4304,49 @@ dump_stats_table (vat_main_t * vam)
 				    c6->address_length);
 	  vat_json_object_add_uint (counter, "packets", c6->packets);
 	  vat_json_object_add_uint (counter, "bytes", c6->bytes);
+	}
+    }
+
+  /* ip4 nbr counters */
+  msg_array = vat_json_object_add (&node, "ip4_nbr_counters");
+  vat_json_init_array (msg_array);
+  for (i = 0; i < vec_len (vam->ip4_nbr_counters); i++)
+    {
+      msg = vat_json_array_add (msg_array);
+      vat_json_init_object (msg);
+      vat_json_object_add_uint (msg, "sw_if_index", i);
+      counter_array = vat_json_object_add (msg, "c");
+      vat_json_init_array (counter_array);
+      for (j = 0; j < vec_len (vam->ip4_nbr_counters[i]); j++)
+	{
+	  counter = vat_json_array_add (counter_array);
+	  vat_json_init_object (counter);
+	  n4 = &vam->ip4_nbr_counters[i][j];
+	  vat_json_object_add_ip4 (counter, "address", n4->address);
+	  vat_json_object_add_uint (counter, "link-type", n4->linkt);
+	  vat_json_object_add_uint (counter, "packets", n4->packets);
+	  vat_json_object_add_uint (counter, "bytes", n4->bytes);
+	}
+    }
+
+  /* ip6 nbr counters */
+  msg_array = vat_json_object_add (&node, "ip6_nbr_counters");
+  vat_json_init_array (msg_array);
+  for (i = 0; i < vec_len (vam->ip6_nbr_counters); i++)
+    {
+      msg = vat_json_array_add (msg_array);
+      vat_json_init_object (msg);
+      vat_json_object_add_uint (msg, "sw_if_index", i);
+      counter_array = vat_json_object_add (msg, "c");
+      vat_json_init_array (counter_array);
+      for (j = 0; j < vec_len (vam->ip6_nbr_counters[i]); j++)
+	{
+	  counter = vat_json_array_add (counter_array);
+	  vat_json_init_object (counter);
+	  n6 = &vam->ip6_nbr_counters[i][j];
+	  vat_json_object_add_ip6 (counter, "address", n6->address);
+	  vat_json_object_add_uint (counter, "packets", n6->packets);
+	  vat_json_object_add_uint (counter, "bytes", n6->bytes);
 	}
     }
 

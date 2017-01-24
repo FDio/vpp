@@ -230,6 +230,31 @@ manual_print manual_endian define vnet_ip4_fib_counters
   vl_api_ip4_fib_counter_t c[count];
 };
 
+typeonly manual_print manual_endian define ip4_nbr_counter
+{
+  u32 address;
+  u8  link_type;
+  u64 packets;
+  u64 bytes;
+};
+
+/**
+ * @brief Per-neighbour (i.e. per-adjacency) coutners
+ * @param count The size of the array of counters
+ * @param sw_if_index The interface the adjacency is on
+ * @param begin Flag to indicate this is the first set of stats for this
+ *        interface. If this flag is not set the it is a continuation of
+ *        stats for this interface
+ * @param  c counters
+ */
+manual_print manual_endian define vnet_ip4_nbr_counters
+{
+  u32 count;
+  u32 sw_if_index;
+  u8 begin;
+  vl_api_ip4_nbr_counter_t c[count];
+};
+
 typeonly manual_print manual_endian define ip6_fib_counter
 {
   u64 address[2];
@@ -243,6 +268,22 @@ manual_print manual_endian define vnet_ip6_fib_counters
   u32 vrf_id;
   u32 count;
   vl_api_ip6_fib_counter_t c[count];
+};
+
+typeonly manual_print manual_endian define ip6_nbr_counter
+{
+  u64 address[2];
+  u8  link_type;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_ip6_nbr_counters
+{
+  u32 count;
+  u32 sw_if_index;
+  u8 begin;
+  vl_api_ip6_nbr_counter_t c[count];
 };
 
 /** \brief Request for a single block of summary stats
