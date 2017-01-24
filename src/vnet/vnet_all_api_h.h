@@ -53,6 +53,7 @@
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/sr/sr.api.h>
 #include <vnet/classify/classify.api.h>
+#include <vnet/flow/flow.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
