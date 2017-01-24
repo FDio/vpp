@@ -1,7 +1,7 @@
 /*
- * node.c - ipv4 ipfix-per-packet graph node
+ * ip6_node.c - ip6 ipfix-per-packet graph node
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2017 cisco
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -20,8 +20,11 @@
 #include <vppinfra/error.h>
 #include <flowperpkt/flowperpkt.h>
 
+#define IN6ADDR_ANY_INIT { { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } }
+ip6_address_t in6addr_any = IN6ADDR_ANY_INIT;
+
 /**
- * @file ipv4 flow record generator graph node
+ * @file ip6 flow record generator graph node
  */
 
 typedef struct
@@ -29,76 +32,66 @@ typedef struct
   /** interface handle */
   u32 rx_sw_if_index;
   u32 tx_sw_if_index;
-  u32 src_address;
-  u32 dst_address;
+  ip6_address_t src_address;
+  ip6_address_t dst_address;
   /** ToS bits */
   u8 tos;
   /** packet timestamp */
   u64 timestamp;
   /** size of the buffer */
   u16 buffer_size;
-} flowperpkt_ipv4_trace_t;
+} flowperpkt_ipv6_trace_t;
 
 /* packet trace format function */
 static u8 *
-format_flowperpkt_ipv4_trace (u8 * s, va_list * args)
+format_flowperpkt_ipv6_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  flowperpkt_ipv4_trace_t *t = va_arg (*args, flowperpkt_ipv4_trace_t *);
+  flowperpkt_ipv6_trace_t *t = va_arg (*args, flowperpkt_ipv6_trace_t *);
 
   s = format (s,
-	      "FLOWPERPKT-V4: rx_sw_if_index %d, tx_sw_if_index %d, src %U dst %U tos %0x2, timestamp %lld, size %d",
+	      "FLOWPERPKT-V6: rx_sw_if_index %d, tx_sw_if_index %d, src %U"
+	      "dst %U tos %0x2, timestamp %lld, size %d",
 	      t->rx_sw_if_index, t->tx_sw_if_index,
-	      format_ip4_address, &t->src_address,
-	      format_ip4_address, &t->dst_address,
+	      format_ip6_address, &t->src_address,
+	      format_ip6_address, &t->dst_address,
 	      t->tos, t->timestamp, t->buffer_size);
   return s;
 }
 
-vlib_node_registration_t flowperpkt_ipv4_node;
+vlib_node_registration_t flowperpkt_ipv6_node;
 
 /* No counters at the moment */
-#define foreach_flowperpkt_ipv4_error
+#define foreach_flowperpkt_ipv6_error
 
 typedef enum
 {
-#define _(sym,str) FLOWPERPKT_ERROR_##sym,
-  foreach_flowperpkt_ipv4_error
+#define _(sym,str) FLOWPERPKT_ERROR_IPV6_##sym,
+  foreach_flowperpkt_ipv6_error
 #undef _
-    FLOWPERPKT_N_ERROR,
-} flowperpkt_ipv4_error_t;
+    FLOWPERPKT_IPV6_N_ERROR,
+} flowperpkt_ipv6_error_t;
 
-static char *flowperpkt_ipv4_error_strings[] = {
+static char *flowperpkt_ipv6_error_strings[] = {
 #define _(sym,string) string,
-  foreach_flowperpkt_ipv4_error
+  foreach_flowperpkt_ipv6_error
 #undef _
 };
 
 typedef enum
 {
-  FLOWPERPKT_IPV4_NEXT_DROP,
-  FLOWPERPKT_IPV4_NEXT_LOOKUP,
-  FLOWPERPKT_IPV4_N_NEXT,
-} flowperpkt_ipv4_next_t;
-
-/**
- * @brief add an entry to the flow record under construction
- * @param vm vlib_main_t * current worker thread main structure pointer
- * @param fm flowperpkt_main_t * flow-per-packet main structure pointer
- * @param sw_if_index u32 interface handle
- * @param tos u8 ToS bits from the packet
- * @param timestamp u64 timestamp, nanoseconds since 1/1/70
- * @param length u16 ip length of the packet
- * @param do_flush int 1 = flush all cached records, 0 = construct a record
- */
+  FLOWPERPKT_IPV6_NEXT_DROP,
+  FLOWPERPKT_IPV6_NEXT_IP4_LOOKUP,
+  FLOWPERPKT_IPV6_N_NEXT,
+} flowperpkt_ipv6_next_t;
 
 static inline void
-add_to_flow_record_ipv4 (vlib_main_t * vm,
+add_to_flow_record_ipv6 (vlib_main_t * vm,
 			 vlib_node_runtime_t * node,
 			 flowperpkt_main_t * fm,
 			 u32 rx_sw_if_index, u32 tx_sw_if_index,
-			 u32 src_address, u32 dst_address,
+			 ip6_address_t src_address, ip6_address_t dst_address,
 			 u8 tos, u64 timestamp, u16 length, int do_flush)
 {
   u32 my_cpu_number = vm->cpu_index;
@@ -115,7 +108,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
   vlib_buffer_free_list_t *fl;
 
   /* Find or allocate a buffer */
-  b0 = fm->ipv4_buffers_per_worker[my_cpu_number];
+  b0 = fm->ipv6_buffers_per_worker[my_cpu_number];
 
   /* Need to allocate a buffer? */
   if (PREDICT_FALSE (b0 == 0))
@@ -129,7 +122,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
 	return;
 
       /* Initialize the buffer */
-      b0 = fm->ipv4_buffers_per_worker[my_cpu_number] =
+      b0 = fm->ipv6_buffers_per_worker[my_cpu_number] =
 	vlib_get_buffer (vm, bi0);
       fl =
 	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
@@ -141,16 +134,16 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
     {
       /* use the current buffer */
       bi0 = vlib_get_buffer_index (vm, b0);
-      offset = fm->ipv4_next_record_offset_per_worker[my_cpu_number];
+      offset = fm->ipv6_next_record_offset_per_worker[my_cpu_number];
     }
 
   /* Find or allocate a frame */
-  f = fm->ipv4_frames_per_worker[my_cpu_number];
+  f = fm->ipv6_frames_per_worker[my_cpu_number];
   if (PREDICT_FALSE (f == 0))
     {
       u32 *to_next;
       f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-      fm->ipv4_frames_per_worker[my_cpu_number] = f;
+      fm->ipv6_frames_per_worker[my_cpu_number] = f;
 
       /* Enqueue the buffer */
       to_next = vlib_frame_vector_args (f);
@@ -221,12 +214,12 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
 		     sizeof (egress_interface));
 	offset += sizeof (egress_interface);
       }
-      /* ip4 src address */
+      /* ip6 src address */
       {
 	clib_memcpy (b0->data + offset, &src_address, sizeof (src_address));
 	offset += sizeof (src_address);
       }
-      /* ip4 dst address */
+      /* ip6 dst address */
       {
 	clib_memcpy (b0->data + offset, &dst_address, sizeof (dst_address));
 	offset += sizeof (dst_address);
@@ -247,13 +240,13 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
       }
 
       b0->current_length +=
-	/* sw_if_index + tos + timestamp + length = 15 */
-	4 * sizeof (u32) + sizeof (u8) + sizeof (f64) + sizeof (u16);
+	/* 2*sw_if_index + 2*addr + tos + timestamp + length = 15 */
+	2 * sizeof (u32) + 32 + sizeof (u8) + sizeof (f64) + sizeof (u16);
 
     }
   /* Time to flush the buffer? */
   if (PREDICT_FALSE
-      (do_flush || (offset + 4 * sizeof (u32) + sizeof (u8)
+      (do_flush || (offset + 2 * sizeof (u32) + 32 + sizeof (u8)
 		    + sizeof (f64) + sizeof (u16)) > frm->path_mtu))
     {
       tp = vlib_buffer_get_current (b0);
@@ -262,7 +255,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
       h = (ipfix_message_header_t *) (udp + 1);
       s = (ipfix_set_header_t *) (h + 1);
 
-      s->set_id_length = ipfix_set_id_length (fm->ipv4_report_id,
+      s->set_id_length = ipfix_set_id_length (fm->ipv6_report_id,
 					      b0->current_length -
 					      (sizeof (*ip) + sizeof (*udp) +
 					       sizeof (*h)));
@@ -286,54 +279,53 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
 
       if (PREDICT_FALSE (vlib_get_trace_count (vm, node) > 0))
 	{
-	  vlib_trace_buffer (vm, node, FLOWPERPKT_IPV4_NEXT_LOOKUP, b0,
+	  vlib_trace_buffer (vm, node, FLOWPERPKT_IPV6_NEXT_IP4_LOOKUP, b0,
 			     0 /* follow chain */ );
-	  flowperpkt_ipv4_trace_t *t =
+	  flowperpkt_ipv6_trace_t *t =
 	    vlib_add_trace (vm, node, b0, sizeof (*t));
 	  t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  t->src_address = 0;
-	  t->dst_address = 0;
+	  t->src_address = in6addr_any;
+	  t->dst_address = in6addr_any;
 	  t->tos = 0;
 	  t->timestamp = 0;
 	  t->buffer_size = b0->current_length;
 	}
 
       vlib_put_frame_to_node (vm, ip4_lookup_node.index,
-			      fm->ipv4_frames_per_worker[my_cpu_number]);
-      fm->ipv4_frames_per_worker[my_cpu_number] = 0;
-      fm->ipv4_buffers_per_worker[my_cpu_number] = 0;
+			      fm->ipv6_frames_per_worker[my_cpu_number]);
+      fm->ipv6_frames_per_worker[my_cpu_number] = 0;
+      fm->ipv6_buffers_per_worker[my_cpu_number] = 0;
       offset = 0;
     }
 
-  fm->ipv4_next_record_offset_per_worker[my_cpu_number] = offset;
+  fm->ipv6_next_record_offset_per_worker[my_cpu_number] = offset;
 }
 
 void
-flowperpkt_flush_callback_ipv4 (void)
+flowperpkt_flush_callback_ipv6 (void)
 {
   vlib_main_t *vm = vlib_get_main ();
   flowperpkt_main_t *fm = &flowperpkt_main;
   vlib_node_runtime_t *node;
-  node = vlib_node_get_runtime (vm, flowperpkt_ipv4_node.index);
+  node = vlib_node_get_runtime (vm, flowperpkt_ipv6_node.index);
 
-  add_to_flow_record_ipv4 (vm, node, fm, 0 /* rx_sw_if_index */ ,
+  add_to_flow_record_ipv6 (vm, node, fm, 0 /* rx_sw_if_index */ ,
 			   0 /* tx_sw_if_index */ ,
-			   0 /* src_address */ ,
-			   0 /* dst_address */ ,
+			   in6addr_any /* src_address */ ,
+			   in6addr_any /* dst_address */ ,
 			   0 /* ToS */ ,
 			   0ULL /* timestamp */ ,
 			   0 /* length */ ,
 			   1 /* do_flush */ );
 }
 
-
 static uword
-flowperpkt_ipv4_node_fn (vlib_main_t * vm,
+flowperpkt_ipv6_node_fn (vlib_main_t * vm,
 			 vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   u32 n_left_from, *from, *to_next;
-  flowperpkt_ipv4_next_t next_index;
+  flowperpkt_ipv6_next_t next_index;
   flowperpkt_main_t *fm = &flowperpkt_main;
   u64 now;
 
@@ -352,9 +344,9 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  u32 next0 = FLOWPERPKT_IPV4_NEXT_DROP;
-	  u32 next1 = FLOWPERPKT_IPV4_NEXT_DROP;
-	  ip4_header_t *ip0, *ip1;
+	  u32 next0 = FLOWPERPKT_IPV6_NEXT_DROP;
+	  u32 next1 = FLOWPERPKT_IPV6_NEXT_DROP;
+	  ip6_header_t *ip0, *ip1;
 	  u16 len0, len1;
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
@@ -389,54 +381,54 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	  vnet_feature_next (vnet_buffer (b1)->sw_if_index[VLIB_TX],
 			     &next1, b1);
 
-	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+	  ip0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				  vnet_buffer (b0)->ip.save_rewrite_length);
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_ipv4 (vm, node, fm,
+	    add_to_flow_record_ipv6 (vm, node, fm,
 				     vnet_buffer (b0)->sw_if_index[VLIB_RX],
 				     vnet_buffer (b0)->sw_if_index[VLIB_TX],
-				     ip0->src_address.as_u32,
-				     ip0->dst_address.as_u32,
-				     ip0->tos, now, len0, 0 /* flush */ );
+				     ip0->src_address,
+				     ip0->dst_address,
+				     0 /*OLE ip0->tos*/, now, len0, 0 /* flush */ );
 
-	  ip1 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
+	  ip1 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
 				  vnet_buffer (b1)->ip.save_rewrite_length);
 	  len1 = vlib_buffer_length_in_chain (vm, b1);
 
 	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_ipv4 (vm, node, fm,
+	    add_to_flow_record_ipv6 (vm, node, fm,
 				     vnet_buffer (b1)->sw_if_index[VLIB_RX],
 				     vnet_buffer (b1)->sw_if_index[VLIB_TX],
-				     ip1->src_address.as_u32,
-				     ip1->dst_address.as_u32,
-				     ip1->tos, now, len1, 0 /* flush */ );
+				     ip1->src_address,
+				     ip1->dst_address,
+				     0 /* OLE ip1->tos*/, now, len1, 0 /* flush */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  flowperpkt_ipv4_trace_t *t =
+		  flowperpkt_ipv6_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
 		  t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 		  t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-		  t->src_address = ip0->src_address.as_u32;
-		  t->dst_address = ip0->dst_address.as_u32;
-		  t->tos = ip0->tos;
+		  t->src_address = ip0->src_address;
+		  t->dst_address = ip0->dst_address;
+		  t->tos = 0; /* OLE ip0->tos; */
 		  t->timestamp = now;
 		  t->buffer_size = len0;
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
-		  flowperpkt_ipv4_trace_t *t =
+		  flowperpkt_ipv6_trace_t *t =
 		    vlib_add_trace (vm, node, b1, sizeof (*t));
 		  t->rx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 		  t->tx_sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
-		  t->src_address = ip1->src_address.as_u32;
-		  t->dst_address = ip1->dst_address.as_u32;
-		  t->tos = ip1->tos;
+		  t->src_address = ip1->src_address;
+		  t->dst_address = ip1->dst_address;
+		  t->tos = 0; /* OLE ip1->tos; */
 		  t->timestamp = now;
 		  t->buffer_size = len1;
 		}
@@ -452,8 +444,8 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  u32 next0 = FLOWPERPKT_IPV4_NEXT_DROP;
-	  ip4_header_t *ip0;
+	  u32 next0 = FLOWPERPKT_IPV6_NEXT_DROP;
+	  ip6_header_t *ip0;
 	  u16 len0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -469,7 +461,7 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	  vnet_feature_next (vnet_buffer (b0)->sw_if_index[VLIB_TX],
 			     &next0, b0);
 
-	  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+	  ip0 = (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				  vnet_buffer (b0)->ip.save_rewrite_length);
 	  /*
 	   * egressInterface, TLV type 14, u32
@@ -481,23 +473,23 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_ipv4 (vm, node, fm,
+	    add_to_flow_record_ipv6 (vm, node, fm,
 				     vnet_buffer (b0)->sw_if_index[VLIB_RX],
 				     vnet_buffer (b0)->sw_if_index[VLIB_TX],
-				     ip0->src_address.as_u32,
-				     ip0->dst_address.as_u32,
-				     ip0->tos, now, len0, 0 /* flush */ );
+				     ip0->src_address,
+				     ip0->dst_address,
+				     0 /* OLE ip0->tos*/, now, len0, 0 /* flush */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      flowperpkt_ipv4_trace_t *t =
+	      flowperpkt_ipv6_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->rx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->tx_sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	      t->src_address = ip0->src_address.as_u32;
-	      t->dst_address = ip0->dst_address.as_u32;
-	      t->tos = ip0->tos;
+	      t->src_address = ip0->src_address;
+	      t->dst_address = ip0->dst_address;
+	      t->tos = 0; /* OLE ip0->ip_version_traffic_class_and_flow_label */
 	      t->timestamp = now;
 	      t->buffer_size = len0;
 	    }
@@ -514,8 +506,8 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
 }
 
 /**
- * @brief IPFIX ipv4 flow-per-packet graph node
- * @node flowperpkt-ipv4
+ * @brief IPFIX ipv6 flow-per-packet graph node
+ * @node flowperpkt-ipv6
  *
  * This is the IPFIX flow-record-per-packet node.
  *
@@ -528,7 +520,7 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
  * <em>Uses:</em>
  * - <code>vnet_buffer(b)->ip.save_rewrite_length</code>
  *     - tells the node the length of the rewrite which was applied in
- *       ip4/6_rewrite_inline, allows the code to find the IP header without
+ *       ip6_rewrite_inline, allows the code to find the IP header without
  *       having to parse L2 headers, or make stupid assumptions about their
  *       length.
  * - <code>vnet_buffer(b)->flags & VLIB_BUFFER_FLOW_REPORT</code>
@@ -541,26 +533,27 @@ flowperpkt_ipv4_node_fn (vlib_main_t * vm,
  * <em>Next Index:</em>
  * - Next configured output feature on the interface, usually
  *   "interface-output." Generated flow records head for ip4-lookup
+ *   (until the Exporting Process supports more transports).
  */
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (flowperpkt_ipv4_node) = {
-  .function = flowperpkt_ipv4_node_fn,
-  .name = "flowperpkt-ipv4",
+VLIB_REGISTER_NODE (flowperpkt_ipv6_node) = {
+  .function = flowperpkt_ipv6_node_fn,
+  .name = "flowperpkt-ipv6",
   .vector_size = sizeof (u32),
-  .format_trace = format_flowperpkt_ipv4_trace,
+  .format_trace = format_flowperpkt_ipv6_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
 
-  .n_errors = ARRAY_LEN(flowperpkt_ipv4_error_strings),
-  .error_strings = flowperpkt_ipv4_error_strings,
+  .n_errors = ARRAY_LEN(flowperpkt_ipv6_error_strings),
+  .error_strings = flowperpkt_ipv6_error_strings,
 
-  .n_next_nodes = FLOWPERPKT_IPV4_N_NEXT,
+  .n_next_nodes = FLOWPERPKT_IPV6_N_NEXT,
 
   /* edit / add dispositions here */
   .next_nodes = {
-    [FLOWPERPKT_IPV4_NEXT_DROP] = "error-drop",
+    [FLOWPERPKT_IPV6_NEXT_DROP] = "error-drop",
     /* Used only to trace ipfix data packets */
-    [FLOWPERPKT_IPV4_NEXT_LOOKUP] = "ip4-lookup",
+    [FLOWPERPKT_IPV6_NEXT_IP4_LOOKUP] = "ip4-lookup",
   },
 };
 /* *INDENT-ON* */
