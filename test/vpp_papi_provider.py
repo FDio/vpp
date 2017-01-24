@@ -1274,3 +1274,17 @@ class VppPapiProvider(object):
 
     def mfib_signal_dump(self):
         return self.api(self.papi.mfib_signal_dump, {})
+
+    def flowperpkt_tx_interface_add_del(self, is_add, which, sw_if_index,
+                                        record_l2=False, record_l3=False,
+                                        record_l4=False):
+        return self.api(
+            self.papi.flowperpkt_tx_interface_add_del,
+            {
+                'is_add': is_add,
+                'which': which,
+                'sw_if_index': sw_if_index,
+                'record_l2': record_l2,
+                'record_l3': record_l3,
+                'record_l4': record_l4,
+            })
