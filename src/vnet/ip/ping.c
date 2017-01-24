@@ -601,7 +601,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 		int i;
 		for (i = 0; i < vec_len (event_data); i++)
 		  {
-		    u32 bi0 = event_data[0];
+		    u32 bi0 = event_data[i];
 		    print_ip6_icmp_reply (vm, bi0);
 		    n_replies++;
 		    if (0 != bi0)
@@ -616,7 +616,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 		int i;
 		for (i = 0; i < vec_len (event_data); i++)
 		  {
-		    u32 bi0 = event_data[0];
+		    u32 bi0 = event_data[i];
 		    print_ip4_icmp_reply (vm, bi0);
 		    n_replies++;
 		    if (0 != bi0)
