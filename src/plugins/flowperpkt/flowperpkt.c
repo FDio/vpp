@@ -1,7 +1,7 @@
 /*
  * flowperpkt.c - per-packet data capture flow report plugin
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -63,6 +63,13 @@ VNET_FEATURE_INIT (flow_perpacket_ipv4, static) =
 {
   .arc_name = "ip4-output",
   .node_name = "flowperpkt-ipv4",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+VNET_FEATURE_INIT (flow_perpacket_ipv6, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "flowperpkt-ipv6",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
@@ -177,6 +184,33 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
 	 + field_count * sizeof (ipfix_field_specifier_t) - 1,
 	 CLIB_CACHE_LINE_BYTES);
     }
+  else if (variant == FLOW_VARIANT_IPV6)
+    {
+      /*
+       * ip6 Supported Fields:
+       *
+       * ingressInterface, TLV type 10, u32
+       * egressInterface, TLV type 14, u32
+       * sourceIpv6Address, TLV type 27, 16 octets
+       * destinationIPv6Address, TLV type 28, 16 octets
+       * ipClassOfService, TLV type 5, u8
+       * flowStartNanoseconds, TLV type 156, dateTimeNanoseconds (f64)
+       *   Implementation: f64 nanoseconds since VPP started
+       *   warning: wireshark doesn't really understand this TLV
+       * dataLinkFrameSize, TLV type 312, u16
+       *   warning: wireshark doesn't understand this TLV at all
+       */
+
+      /* Currently 7 fields */
+      field_count += 7;
+
+      /* allocate rewrite space */
+      vec_validate_aligned
+	(rewrite,
+	 sizeof (ip4_ipfix_template_packet_t)
+	 + field_count * sizeof (ipfix_field_specifier_t) - 1,
+	 CLIB_CACHE_LINE_BYTES);
+    }
   else if (variant == FLOW_VARIANT_L2)
     {
       /*
@@ -257,6 +291,30 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
 			   2);
       f++;
     }
+  else if (variant == FLOW_VARIANT_IPV6)
+    {
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , ingressInterface, 4);
+      f++;
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , egressInterface, 4);
+      f++;
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , sourceIPv6Address, 16);
+      f++;
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , destinationIPv6Address, 16);
+      f++;
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , ipClassOfService, 1);
+      f++;
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , flowStartNanoseconds, 8);
+      f++;
+      f->e_id_length =
+	ipfix_e_id_length (0 /* enterprise */ , dataLinkFrameSize, 2);
+      f++;
+    }
   else if (variant == FLOW_VARIANT_L2)
     {
       f->e_id_length =
@@ -299,6 +357,8 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
 
   if (variant == FLOW_VARIANT_IPV4)
     fm->ipv4_report_id = fr->template_id;
+  else if (variant == FLOW_VARIANT_IPV6)
+    fm->ipv6_report_id = fr->template_id;
   else if (variant == FLOW_VARIANT_L2)
     fm->l2_report_id = fr->template_id;
 
@@ -325,6 +385,18 @@ flowperpkt_template_rewrite_ipv4 (flow_report_main_t * frm,
   return flowperpkt_template_rewrite_inline
     (frm, fr, collector_address, src_address, collector_port,
      FLOW_VARIANT_IPV4);
+}
+
+u8 *
+flowperpkt_template_rewrite_ipv6 (flow_report_main_t * frm,
+				  flow_report_t * fr,
+				  ip4_address_t * collector_address,
+				  ip4_address_t * src_address,
+				  u16 collector_port)
+{
+  return flowperpkt_template_rewrite_inline
+    (frm, fr, collector_address, src_address, collector_port,
+     FLOW_VARIANT_IPV6);
 }
 
 u8 *
@@ -357,6 +429,16 @@ flowperpkt_data_callback_ipv4 (flow_report_main_t * frm,
 			       u32 node_index)
 {
   flowperpkt_flush_callback_ipv4 ();
+  return f;
+}
+
+vlib_frame_t *
+flowperpkt_data_callback_ipv6 (flow_report_main_t * frm,
+			       flow_report_t * fr,
+			       vlib_frame_t * f, u32 * to_next,
+			       u32 node_index)
+{
+  flowperpkt_flush_callback_ipv6 ();
   return f;
 }
 
@@ -401,6 +483,23 @@ static int flowperpkt_tx_interface_add_del_feature
 	  return -1;
 	}
     }
+  else if (which == FLOW_VARIANT_IPV6 && !fm->ipv6_report_created)
+    {
+      memset (a, 0, sizeof (*a));
+      a->rewrite_callback = flowperpkt_template_rewrite_ipv6;
+      a->flow_data_callback = flowperpkt_data_callback_ipv6;
+      a->is_add = 1;
+      a->domain_id = 1;		/*$$$$ config parameter */
+      a->src_port = 4739;	/*$$$$ config parameter */
+      fm->ipv6_report_created = 1;
+
+      rv = vnet_flow_report_add_del (frm, a);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+    }
   else if (which == FLOW_VARIANT_L2 && !fm->l2_report_created)
     {
       memset (a, 0, sizeof (*a));
@@ -421,6 +520,9 @@ static int flowperpkt_tx_interface_add_del_feature
 
   if (which == FLOW_VARIANT_IPV4)
     vnet_feature_enable_disable ("ip4-output", "flowperpkt-ipv4",
+				 sw_if_index, is_add, 0, 0);
+  else if (which == FLOW_VARIANT_IPV6)
+    vnet_feature_enable_disable ("ip6-output", "flowperpkt-ipv6",
 				 sw_if_index, is_add, 0, 0);
   else if (which == FLOW_VARIANT_L2)
     vnet_feature_enable_disable ("interface-output", "flowperpkt-l2",
@@ -443,7 +545,8 @@ void vl_api_flowperpkt_tx_interface_add_del_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (mp->which != FLOW_VARIANT_IPV4 && mp->which != FLOW_VARIANT_L2)
+  if (mp->which != FLOW_VARIANT_IPV4 && mp->which != FLOW_VARIANT_L2
+      && mp->which != FLOW_VARIANT_IPV6)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;
       goto out;
@@ -522,6 +625,8 @@ flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 fm->vnet_main, &sw_if_index));
+      else if (unformat (input, "ip6"))
+	which = FLOW_VARIANT_IPV6;
       else if (unformat (input, "l2"))
 	which = FLOW_VARIANT_L2;
       else
@@ -572,7 +677,7 @@ flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (flowperpkt_enable_disable_command, static) = {
     .path = "flowperpkt feature add-del",
     .short_help =
-    "flowperpkt feature add-del <interface-name> [disable]",
+    "flowperpkt feature add-del <interface-name> [l2|ip6] [disable]",
     .function = flowperpkt_tx_interface_add_del_feature_command_fn,
 };
 /* *INDENT-ON* */
@@ -647,10 +752,13 @@ flowperpkt_init (vlib_main_t * vm)
 
   /* Allocate per worker thread vectors */
   vec_validate (fm->ipv4_buffers_per_worker, num_threads - 1);
+  vec_validate (fm->ipv6_buffers_per_worker, num_threads - 1);
   vec_validate (fm->l2_buffers_per_worker, num_threads - 1);
   vec_validate (fm->ipv4_frames_per_worker, num_threads - 1);
+  vec_validate (fm->ipv6_frames_per_worker, num_threads - 1);
   vec_validate (fm->l2_frames_per_worker, num_threads - 1);
   vec_validate (fm->ipv4_next_record_offset_per_worker, num_threads - 1);
+  vec_validate (fm->ipv6_next_record_offset_per_worker, num_threads - 1);
   vec_validate (fm->l2_next_record_offset_per_worker, num_threads - 1);
 
   /* Set up time reference pair */

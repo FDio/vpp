@@ -1,7 +1,7 @@
 /*
- * node.c - ipv4 ipfix-per-packet graph node
+ * ip4_node.c - ipv4 ipfix-per-packet graph node
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -563,6 +563,7 @@ VLIB_REGISTER_NODE (flowperpkt_ipv4_node) = {
     [FLOWPERPKT_IPV4_NEXT_LOOKUP] = "ip4-lookup",
   },
 };
+
 /* *INDENT-ON* */
 
 /*
