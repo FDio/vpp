@@ -240,81 +240,6 @@ static int is_snat_address_used_in_static_mapping (snat_main_t *sm,
   return 0;
 }
 
-int snat_del_address (snat_main_t *sm, ip4_address_t addr)
-{
-  snat_address_t *a = 0;
-  snat_session_t *ses;
-  u32 *ses_to_be_removed = 0, *ses_index;
-  clib_bihash_kv_8_8_t kv, value;
-  snat_user_key_t user_key;
-  snat_user_t *u;
-  snat_main_per_thread_data_t *tsm;
-
-  int i;
-
-  /* Find SNAT address */
-  for (i=0; i < vec_len (sm->addresses); i++)
-    {
-      if (sm->addresses[i].addr.as_u32 == addr.as_u32)
-        {
-          a = sm->addresses + i;
-          break;
-        }
-    }
-  if (!a)
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-  /* Check if address is used in some static mapping */
-  if (is_snat_address_used_in_static_mapping(sm, addr))
-    {
-      clib_warning ("address used in static mapping");
-      return VNET_API_ERROR_UNSPECIFIED;
-    }
-
-  /* Delete sessions using address */
-  if (a->busy_ports)
-    {
-      vec_foreach (tsm, sm->per_thread_data)
-        {
-          pool_foreach (ses, tsm->sessions, ({
-            if (ses->out2in.addr.as_u32 == addr.as_u32)
-              {
-                /* log NAT event */
-                snat_ipfix_logging_nat44_ses_delete(ses->in2out.addr.as_u32,
-                                                    ses->out2in.addr.as_u32,
-                                                    ses->in2out.protocol,
-                                                    ses->in2out.port,
-                                                    ses->out2in.port,
-                                                    ses->in2out.fib_index);
-                vec_add1 (ses_to_be_removed, ses - tsm->sessions);
-                kv.key = ses->in2out.as_u64;
-                clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
-                kv.key = ses->out2in.as_u64;
-                clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
-                clib_dlist_remove (tsm->list_pool, ses->per_user_index);
-                user_key.addr = ses->in2out.addr;
-                user_key.fib_index = ses->in2out.fib_index;
-                kv.key = user_key.as_u64;
-                if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
-                  {
-                    u = pool_elt_at_index (tsm->users, value.value);
-                    u->nsessions--;
-                  }
-              }
-          }));
-
-          vec_foreach (ses_index, ses_to_be_removed)
-            pool_put_index (tsm->sessions, ses_index[0]);
-
-          vec_free (ses_to_be_removed);
-       }
-    }
-
-  vec_del1 (sm->addresses, i);
-
-  return 0;
-}
-
 static void increment_v4_address (ip4_address_t * a)
 {
   u32 v;
@@ -356,6 +281,7 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
  * @param e_port External port number.
  * @param vrf_id VRF ID.
  * @param addr_only If 0 address port and pair mapping, otherwise address only.
+ * @param sw_if_index External port instead of specific IP address.
  * @param is_add If 0 delete static mapping, otherwise add.
  *
  * @returns
@@ -638,6 +564,94 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   return 0;
 }
 
+int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
+{
+  snat_address_t *a = 0;
+  snat_session_t *ses;
+  u32 *ses_to_be_removed = 0, *ses_index;
+  clib_bihash_kv_8_8_t kv, value;
+  snat_user_key_t user_key;
+  snat_user_t *u;
+  snat_main_per_thread_data_t *tsm;
+  snat_static_mapping_t *m;
+  int i;
+
+  /* Find SNAT address */
+  for (i=0; i < vec_len (sm->addresses); i++)
+    {
+      if (sm->addresses[i].addr.as_u32 == addr.as_u32)
+        {
+          a = sm->addresses + i;
+          break;
+        }
+    }
+  if (!a)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  if (delete_sm)
+    {
+      pool_foreach (m, sm->static_mappings,
+      ({
+          if (m->external_addr.as_u32 == addr.as_u32)
+            (void) snat_add_static_mapping (m->local_addr, m->external_addr,
+                                            m->local_port, m->external_port,
+                                            m->vrf_id, m->addr_only, ~0, 0);
+      }));
+    }
+  else
+    {
+      /* Check if address is used in some static mapping */
+      if (is_snat_address_used_in_static_mapping(sm, addr))
+        {
+          clib_warning ("address used in static mapping");
+          return VNET_API_ERROR_UNSPECIFIED;
+        }
+    }
+
+  /* Delete sessions using address */
+  if (a->busy_ports)
+    {
+      vec_foreach (tsm, sm->per_thread_data)
+        {
+          pool_foreach (ses, tsm->sessions, ({
+            if (ses->out2in.addr.as_u32 == addr.as_u32)
+              {
+                /* log NAT event */
+                snat_ipfix_logging_nat44_ses_delete(ses->in2out.addr.as_u32,
+                                                    ses->out2in.addr.as_u32,
+                                                    ses->in2out.protocol,
+                                                    ses->in2out.port,
+                                                    ses->out2in.port,
+                                                    ses->in2out.fib_index);
+                vec_add1 (ses_to_be_removed, ses - tsm->sessions);
+                kv.key = ses->in2out.as_u64;
+                clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
+                kv.key = ses->out2in.as_u64;
+                clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
+                clib_dlist_remove (tsm->list_pool, ses->per_user_index);
+                user_key.addr = ses->in2out.addr;
+                user_key.fib_index = ses->in2out.fib_index;
+                kv.key = user_key.as_u64;
+                if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+                  {
+                    u = pool_elt_at_index (tsm->users, value.value);
+                    u->nsessions--;
+                  }
+              }
+          }));
+
+          vec_foreach (ses_index, ses_to_be_removed)
+            pool_put_index (tsm->sessions, ses_index[0]);
+
+          vec_free (ses_to_be_removed);
+       }
+    }
+
+  vec_del1 (sm->addresses, i);
+
+  return 0;
+}
+
 static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 {
   snat_main_t *sm = &snat_main;
@@ -750,7 +764,7 @@ vl_api_snat_add_address_range_t_handler
       if (mp->is_add)
         snat_add_address (sm, &this_addr);
       else
-        rv = snat_del_address (sm, this_addr);
+        rv = snat_del_address (sm, this_addr, 0);
 
       if (rv)
         goto send_reply;
@@ -904,7 +918,7 @@ vl_api_snat_add_static_mapping_t_handler
   vl_api_snat_add_static_mapping_reply_t * rmp;
   ip4_address_t local_addr, external_addr;
   u16 local_port = 0, external_port = 0;
-  u32 vrf_id;
+  u32 vrf_id, external_sw_if_index;
   int rv = 0;
 
   if (mp->is_ip4 != 1)
@@ -921,10 +935,11 @@ vl_api_snat_add_static_mapping_t_handler
       external_port = clib_net_to_host_u16 (mp->external_port);
     }
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+  external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
 
   rv = snat_add_static_mapping(local_addr, external_addr, local_port,
                                external_port, vrf_id, mp->addr_only,
-                               ~0 /* sw_if_index */,
+                               external_sw_if_index,
                                mp->is_add);
 
  send_reply:
@@ -949,6 +964,9 @@ static void *vl_api_snat_add_static_mapping_t_print
   if (mp->vrf_id != ~0)
     s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
 
+  if (mp->external_sw_if_index != ~0)
+    s = format (s, "external_sw_if_index %d",
+                clib_net_to_host_u32 (mp->external_sw_if_index));
   FINISH;
 }
 
@@ -1578,7 +1596,7 @@ add_address_command_fn (vlib_main_t * vm,
       if (is_add)
         snat_add_address (sm, &this_addr);
       else
-        rv = snat_del_address (sm, this_addr);
+        rv = snat_del_address (sm, this_addr, 0);
 
       switch (rv)
         {
@@ -2285,7 +2303,7 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
             }
           else
             {
-              (void) snat_del_address(sm, address[0]);
+              (void) snat_del_address(sm, address[0], 1);
               return;
             }
         }
@@ -2299,7 +2317,9 @@ static int snat_add_interface_address (snat_main_t *sm,
 {
   ip4_main_t * ip4_main = sm->ip4_main;
   ip4_address_t * first_int_addr;
-  int i;
+  snat_static_map_resolve_t *rp;
+  u32 *indices_to_delete = 0;
+  int i, j;
 
   first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index,
                                                 0 /* just want the address*/);
@@ -2312,7 +2332,22 @@ static int snat_add_interface_address (snat_main_t *sm,
             {
               /* if have address remove it */
               if (first_int_addr)
-                  (void) snat_del_address (sm, first_int_addr[0]);
+                  (void) snat_del_address (sm, first_int_addr[0], 1);
+              else
+                {
+                  for (j = 0; j < vec_len (sm->to_resolve); j++)
+                    {
+                      rp = sm->to_resolve + j;
+                      if (rp->sw_if_index == sw_if_index)
+                        vec_add1 (indices_to_delete, j);
+                    }
+                  if (vec_len(indices_to_delete))
+                    {
+                      for (j = vec_len(indices_to_delete)-1; j >= 0; j--)
+                        vec_del1(sm->to_resolve, j);
+                      vec_free(indices_to_delete);
+                    }
+                }
               vec_del1(sm->auto_add_sw_if_indices, i);
             }
           else

@@ -843,7 +843,8 @@ class VppPapiProvider(object):
     def snat_add_static_mapping(
             self,
             local_ip,
-            external_ip,
+            external_ip=0,
+            external_sw_if_index=0xFFFFFFFF,
             local_port=0,
             external_port=0,
             addr_only=1,
@@ -854,6 +855,7 @@ class VppPapiProvider(object):
 
         :param local_ip: Local IP address
         :param external_ip: External IP address
+        :param external_sw_if_index: External interface instead of IP address
         :param local_port: Local port number (Default value = 0)
         :param external_port: External port number (Default value = 0)
         :param addr_only: 1 if address only mapping, 0 if address and port
@@ -870,6 +872,7 @@ class VppPapiProvider(object):
              'external_ip_address': external_ip,
              'local_port': local_port,
              'external_port': external_port,
+             'external_sw_if_index': external_sw_if_index,
              'vrf_id': vrf_id})
 
     def snat_add_address_range(

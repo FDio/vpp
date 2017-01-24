@@ -213,24 +213,32 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
   unformat_input_t * i = vam->input;
   f64 timeout;
   vl_api_snat_add_static_mapping_t * mp;
-  u8 addr_set_n = 0;
+  u8 external_addr_set = 0;
+  u8 local_addr_set;
   u8 is_add = 1;
   u8 addr_only = 1;
   ip4_address_t local_addr, external_addr;
   u32 local_port = 0, external_port = 0, vrf_id = ~0;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "local_addr %U", unformat_ip4_address, &local_addr))
-        addr_set_n++;
+        local_addr_set = 1;
       else if (unformat (i, "external_addr %U", unformat_ip4_address,
                          &external_addr))
-        addr_set_n++;
+        external_addr_set = 1;
       else if (unformat (i, "local_port %u", &local_port))
         addr_only = 0;
       else if (unformat (i, "external_port %u", &external_port))
         addr_only = 0;
-      else if (unformat (i, "vrf %u", &vrf_id))
+      else if (unformat (i, "external_if %U", unformat_sw_if_index, vam,
+                         &sw_if_index))
+        sw_if_index_set = 1;
+      else if (unformat (i, "external_sw_if_index %d", &sw_if_index))
+        sw_if_index_set = 1;
+       else if (unformat (i, "vrf %u", &vrf_id))
         ;
       else if (unformat (i, "del"))
         is_add = 0;
@@ -241,9 +249,14 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
         }
     }
 
-  if (addr_set_n != 2)
+  if (!local_addr_set)
     {
-      errmsg ("local_addr and remote_addr required\n");
+      errmsg ("local addr required\n");
+      return -99;
+    }
+  if (!external_addr_set && !sw_if_index_set)
+    {
+      errmsg ("external addr or interface required\n");
       return -99;
     }
 
@@ -253,6 +266,7 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
   mp->addr_only = addr_only;
   mp->local_port = ntohs ((u16) local_port);
   mp->external_port = ntohs ((u16) external_port);
+  mp->external_sw_if_index = ntohl (sw_if_index);
   mp->vrf_id = ntohl (vrf_id);
   memcpy (mp->local_ip_address, &local_addr, 4);
   memcpy (mp->external_ip_address, &external_addr, 4);
@@ -618,6 +632,7 @@ _(snat_add_address_range, "<start-addr> [- <end-addr] [del]")    \
 _(snat_interface_add_del_feature,                                \
   "<intfc> | sw_if_index <id> [in] [out] [del]")                 \
 _(snat_add_static_mapping, "local_addr <ip> external_addr <ip> " \
+  "| external_if <intfc> | external_sw_if_ndex <id>) "           \
   "[local_port <n>] [external_port <n>] [vrf <table-id>] [del]") \
 _(snat_set_workers, "<wokrers_bitmap>")                          \
 _(snat_static_mapping_dump, "")                                  \

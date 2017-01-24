@@ -269,6 +269,9 @@ class TestSNAT(VppTestCase):
         """
         Clear SNAT configuration.
         """
+        if self.pg7.has_ip4_config:
+            self.pg7.unconfig_ip4()
+
         interfaces = self.vapi.snat_interface_addr_dump()
         for intf in interfaces:
             self.vapi.snat_add_interface_addr(intf.sw_if_index, is_add=0)
@@ -297,8 +300,9 @@ class TestSNAT(VppTestCase):
                                              addr.ip_address,
                                              is_add=0)
 
-    def snat_add_static_mapping(self, local_ip, external_ip, local_port=0,
-                                external_port=0, vrf_id=0, is_add=1):
+    def snat_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
+                                local_port=0, external_port=0, vrf_id=0,
+                                is_add=1, external_sw_if_index=0xFFFFFFFF):
         """
         Add/delete S-NAT static mapping
 
@@ -308,6 +312,7 @@ class TestSNAT(VppTestCase):
         :param external_port: External port number (Optional)
         :param vrf_id: VRF ID (Default 0)
         :param is_add: 1 if add, 0 if delete (Default add)
+        :param external_sw_if_index: External interface instead of IP address
         """
         addr_only = 1
         if local_port and external_port:
@@ -317,6 +322,7 @@ class TestSNAT(VppTestCase):
         self.vapi.snat_add_static_mapping(
             l_ip,
             e_ip,
+            external_sw_if_index,
             local_port,
             external_port,
             addr_only,
@@ -762,11 +768,34 @@ class TestSNAT(VppTestCase):
         self.pg7.config_ip4()
         adresses = self.vapi.snat_address_dump()
         self.assertEqual(1, len(adresses))
+        self.assertEqual(adresses[0].ip_address[0:4], self.pg7.local_ip4n)
 
         # remove interface address and check NAT address pool
         self.pg7.unconfig_ip4()
         adresses = self.vapi.snat_address_dump()
         self.assertEqual(0, len(adresses))
+
+    def test_interface_addr_static_mapping(self):
+        """ Static mapping with addresses from interface """
+        self.vapi.snat_add_interface_addr(self.pg7.sw_if_index)
+        self.snat_add_static_mapping('1.2.3.4',
+                                     external_sw_if_index=self.pg7.sw_if_index)
+
+        # no static mappings
+        static_mappings = self.vapi.snat_static_mapping_dump()
+        self.assertEqual(0, len(static_mappings))
+
+        # configure interface address and check static mappings
+        self.pg7.config_ip4()
+        static_mappings = self.vapi.snat_static_mapping_dump()
+        self.assertEqual(1, len(static_mappings))
+        self.assertEqual(static_mappings[0].external_ip_address[0:4],
+                         self.pg7.local_ip4n)
+
+        # remove interface address and check static mappings
+        self.pg7.unconfig_ip4()
+        static_mappings = self.vapi.snat_static_mapping_dump()
+        self.assertEqual(0, len(static_mappings))
 
     def test_ipfix_nat44_sess(self):
         """ S-NAT IPFIX logging NAT44 session created/delted """
