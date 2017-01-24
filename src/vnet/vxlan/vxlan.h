@@ -30,6 +30,120 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
 
+//utils
+typedef struct {} false_;
+
+#define conditional(V, T, F) _Generic((1 ? (false_*)0 : (void*)(V)), false_*: (F), default: (T))
+#define static_assert_type(v, T) _Static_assert(_Generic((v), T: 1, default: 0), #v " Expected type:" #T)
+
+//access
+//hash_xxx_mem + key allocator
+typedef struct {} mem;
+//hash_xxx - small key optimization
+typedef struct {} raw;
+
+typedef struct {} key_uword_pad;
+typedef struct {} key_dont_pad;
+
+//key alloc
+typedef struct {} key_mem;
+
+//storage
+typedef union { void * hash; } storage_t;
+
+//aspect calcs
+//small key optimization upto sizeof uword
+//sizeof(K) < sizeof(uword) adds copy + zero padding
+#define key_access(K) conditional(sizeof(K) <= sizeof(uword), (raw){}, (mem){})
+#define key_access_t(K) typeof( key_access(K) )
+#define key_pad(K) conditional(sizeof(K) < sizeof(uword), (key_uword_pad){}, (key_dont_pad){})
+#define key_pad_t(K) typeof( key_pad(K) )
+
+//tests
+static_assert_type(key_access(char), raw);
+static_assert_type(key_pad(char), key_uword_pad);
+static_assert_type(key_access(uword), raw);
+static_assert_type(key_pad(uword), key_dont_pad);
+typedef struct { int a,b,c; } abc;
+static_assert_type(key_access(abc), mem);
+
+//aspects
+#define hashmap_(K, V, KA) \
+  union { storage_t s; K * key_ptr; V * value_ptr; key_access_t(K) * access; KA * key_alloc; key_pad_t(K) * pad; }
+
+#define hashmap(K, V) hashmap_(K, V, key_mem)
+
+//key allocator
+static size_t
+hash_key_size(void * h) { return hash_header(h)->user; }
+
+static void * __attribute__((used))
+hash_key_mem_clone (void * h, void * key) {
+        size_t ksz = hash_key_size (h);
+        void * copy = clib_mem_alloc (ksz);
+	clib_memcpy (copy, key, ksz);
+	return copy;
+}
+
+#define hashmap_key_clone(hm, k) \
+  _Generic( (*(hm)->key_alloc), \
+    key_mem: hash_key_mem_clone((hm)->s.hash, k) )
+
+#define hashmap_key_free(hm, k) \
+  _Generic( (*(hm)->key_alloc), \
+    key_mem: clib_mem_free(k) )
+
+//key pad
+#define hashmap_key_pad(hm, k) \
+  _Generic( (*(hm)->pad), \
+    key_uword_pad: ({ union { uword u; typeof(*(hm)->key_ptr) key; } x = { .u = 0 }; x.key = *(k); x.u; }),  \
+    key_dont_pad: ({ *(uword*)(k); }) )
+
+//init
+#define hashmap_init(hm) \
+  _Generic( (*(hm)->access), \
+    mem: (hm)->s.hash = hash_create_mem(0, sizeof *(hm)->key_ptr, sizeof *(hm)->value_ptr), \
+    raw: (hm)->s.hash = 0 )
+
+//get
+#define hashmap_get(hm, k) \
+  _Generic( (*(hm)->access), \
+    mem: hash_get_mem((hm)->s.hash, k), \
+    raw: hash_get((hm)->s.hash, hashmap_key_pad(hm, k)) )
+
+//set
+#define hashmap_set(hm, k, v) \
+  _Generic( (*(hm)->access), \
+    mem: hash_set_mem((hm)->s.hash, hashmap_key_clone(hm, k), v), \
+    raw: hash_set((hm)->s.hash, hashmap_key_pad(hm, k), v))
+
+    //mem: ({ typeof((hm)->key_ptr) c = hashmap_key_clone(hm, k); clib_warning("k:%p c:%p", k, c); ASSERT(hash_key_size((hm)->s.hash) == sizeof *(hm)->key_ptr); ASSERT(c != k && memcmp(c, k, sizeof *(hm)->key_ptr) == 0); hash_set_mem((hm)->s.hash, c, v); }),
+
+//unset
+static void * __attribute__((used))
+hash_stored_key (void * h, void * key) {
+	hash_pair_t * hp = hash_get_pair_mem (h, key);
+	ASSERT (hp);
+	return uword_to_pointer (hp->key, void *);
+}
+
+#define hashmap_stored_key(hm, k) \
+    (typeof((hm)->key_ptr)) hash_stored_key((hm)->s.hash, k)
+
+#define hashmap_unset_mem(hm, k) ({ \
+           typeof((hm)->key_ptr) s = hashmap_stored_key(hm, k);  \
+	   hash_unset_mem((hm)->s.hash, (void *)s); \
+	   hashmap_key_free(hm, s); \
+	   })
+
+#define hashmap_unset(hm, k) ({ do {  \
+  _Generic( (*(hm)->access), \
+    mem: hashmap_unset_mem(hm, k), \
+    raw: hash_unset((hm)->s.hash, hashmap_key_pad(hm, k)) ); \
+} while(0); })
+
+//hashmap ends
+
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;            /* 20 bytes */
   udp_header_t udp;            /* 8 bytes */
@@ -136,16 +250,16 @@ typedef struct {
   vxlan_tunnel_t * tunnels;
 
   /* lookup tunnel by key */
-  uword * vxlan4_tunnel_by_key; /* keyed on ipv4.dst + vni */
-  uword * vxlan6_tunnel_by_key; /* keyed on ipv6.dst + vni */
+  hashmap(vxlan4_tunnel_key_t, uword) vxlan4_tunnel_by_key; /* keyed on ipv4.dst + vni */
+  hashmap(vxlan6_tunnel_key_t, uword) vxlan6_tunnel_by_key; /* keyed on ipv6.dst + vni */
 
   /* local VTEP IPs ref count used by vxlan-bypass node to check if
      received VXLAN packet DIP matches any local VTEP address */
-  uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
-  uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
+  hashmap(ip4_address_t, uword) vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
+  hashmap(ip6_address_t, uword) vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
 
   /* mcast shared info */
-  uword * mcast_shared; /* keyed on mcast ip46 addr */
+  hashmap(ip46_address_t, uword) mcast_shared; /* keyed on mcast ip46 addr */
 
   /* Free vlib hw_if_indices */
   u32 * free_vxlan_tunnel_hw_if_indices;
@@ -159,6 +273,9 @@ typedef struct {
 } vxlan_main_t;
 
 vxlan_main_t vxlan_main;
+
+static_assert_type(*vxlan_main.vxlan4_tunnel_by_key.access, raw);
+static_assert_type(*vxlan_main.vxlan6_tunnel_by_key.access, mem);
 
 extern vlib_node_registration_t vxlan4_input_node;
 extern vlib_node_registration_t vxlan6_input_node;

@@ -289,34 +289,20 @@ static int vxlan_check_decap_next(vxlan_main_t * vxm, u32 is_ip6, u32 decap_next
   return 0;
 }
 
-static void
-hash_set_key_copy (uword ** h, void * key, uword v) {
-	size_t ksz = hash_header(*h)->user;
-        void * copy = clib_mem_alloc (ksz);
-	clib_memcpy (copy, key, ksz);
-	hash_set_mem (*h, copy, v);
-}
-
-static void
-hash_unset_key_free (uword ** h, void * key) {
-	hash_pair_t * hp = hash_get_pair_mem (*h, key);
-	ASSERT (hp);
-	key = uword_to_pointer (hp->key, void *);
-	hash_unset_mem (*h, key);
-	clib_mem_free (key);
-}
+static_assert_type(vxlan_main.vtep4.access, raw*);
+static_assert_type(vxlan_main.vtep6.access, mem*);
 
 static uword
 vtep_addr_ref(ip46_address_t *ip)
 {
 	uword *vtep = ip46_address_is_ip4(ip) ?
-	                 hash_get (vxlan_main.vtep4, ip->ip4.as_u32) :
-	                 hash_get_mem (vxlan_main.vtep6, &ip->ip6);
+	                 hashmap_get (&vxlan_main.vtep4, &ip->ip4) :
+	                 hashmap_get (&vxlan_main.vtep6, &ip->ip6);
 	if (vtep) 
 		return ++(*vtep);
 	ip46_address_is_ip4(ip) ?
-	                 hash_set (vxlan_main.vtep4, ip->ip4.as_u32, 1) :
-	                 hash_set_key_copy (&vxlan_main.vtep6, &ip->ip6, 1);
+	                 hashmap_set (&vxlan_main.vtep4, &ip->ip4, 1) :
+	                 hashmap_set (&vxlan_main.vtep6, &ip->ip6, 1);
 	return 1;
 }
 
@@ -324,14 +310,14 @@ static uword
 vtep_addr_unref(ip46_address_t *ip)
 {
 	uword *vtep = ip46_address_is_ip4(ip) ?
-	                 hash_get (vxlan_main.vtep4, ip->ip4.as_u32) :
-	                 hash_get_mem (vxlan_main.vtep6, &ip->ip6);
+	                 hashmap_get (&vxlan_main.vtep4, &ip->ip4) :
+	                 hashmap_get (&vxlan_main.vtep6, &ip->ip6);
         ASSERT(vtep);
 	if (--(*vtep) != 0)
 		return *vtep;
 	ip46_address_is_ip4(ip) ?
-		hash_unset (vxlan_main.vtep4, ip->ip4.as_u32) :
-		hash_unset_key_free (&vxlan_main.vtep6, &ip->ip6);
+		hashmap_unset (&vxlan_main.vtep4, &ip->ip4) :
+		hashmap_unset (&vxlan_main.vtep6, &ip->ip6);
 	return 0;
 }
 
@@ -347,7 +333,7 @@ static inline mcast_shared_t
 mcast_shared_get(ip46_address_t * ip)
 {
         ASSERT(ip46_address_is_multicast(ip));
-	uword * p = hash_get_mem (vxlan_main.mcast_shared, ip);
+	uword * p = hashmap_get (&vxlan_main.mcast_shared, ip);
         ASSERT(p);
 	return (mcast_shared_t) { .as_u64 = *p };
 }
@@ -378,14 +364,14 @@ int vnet_vxlan_add_del_tunnel
     {
       key4.src = a->dst.ip4.as_u32; /* decap src in key is encap dst in config */
       key4.vni = clib_host_to_net_u32 (a->vni << 8);
-      p = hash_get (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+      p = hashmap_get (&vxm->vxlan4_tunnel_by_key, &key4);
     } 
   else 
     {
       key6.src.as_u64[0] = a->dst.ip6.as_u64[0];
       key6.src.as_u64[1] = a->dst.ip6.as_u64[1];
       key6.vni = clib_host_to_net_u32 (a->vni << 8);
-      p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
+      p = hashmap_get (&vxm->vxlan6_tunnel_by_key, &key6);
     }
   
   if (a->is_add)
@@ -423,9 +409,9 @@ int vnet_vxlan_add_del_tunnel
 
       /* copy the key */
       if (is_ip6)
-        hash_set_key_copy (&vxm->vxlan6_tunnel_by_key, &key6, t - vxm->tunnels);
+	hashmap_set(&vxm->vxlan6_tunnel_by_key, &key6, t - vxm->tunnels);
       else
-        hash_set (vxm->vxlan4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
+        hashmap_set (&vxm->vxlan4_tunnel_by_key, &key4, t - vxm->tunnels);
 
       vnet_hw_interface_t * hi;
       if (vec_len (vxm->free_vxlan_tunnel_hw_if_indices) > 0)
@@ -519,7 +505,7 @@ int vnet_vxlan_add_del_tunnel
                    (t->encap_fib_index, &tun_dst_pfx,
                     FIB_SOURCE_SPECIAL, FIB_ENTRY_FLAG_NONE, &dpo)
 		   };
-	       hash_set_key_copy (&vxm->mcast_shared, &t->dst, new_ep.as_u64);
+	       hashmap_set (&vxm->mcast_shared, &t->dst, new_ep.as_u64);
 	       dpo_reset(&dpo);
 	    }
           /* Stack shared mcast dst mac addr rewrite on encap */
@@ -551,9 +537,9 @@ int vnet_vxlan_add_del_tunnel
       vxm->tunnel_index_by_sw_if_index[t->sw_if_index] = ~0;
 
       if (!is_ip6)
-        hash_unset (vxm->vxlan4_tunnel_by_key, key4.as_u64);
+        hashmap_unset (&vxm->vxlan4_tunnel_by_key, &key4);
       else
-	hash_unset_key_free (&vxm->vxlan6_tunnel_by_key, &key6);
+	hashmap_unset (&vxm->vxlan6_tunnel_by_key, &key6);
 
       if (!ip46_address_is_multicast(&t->dst))
         {
@@ -566,7 +552,7 @@ int vnet_vxlan_add_del_tunnel
 	  mcast_shared_t ep = mcast_shared_get(&t->dst);
 	  adj_unlock(ep.mcast_adj_index);
 	  fib_table_entry_delete_index(ep.fib_entry_index, FIB_SOURCE_SPECIAL);
-          hash_unset_key_free (&vxm->mcast_shared, &t->dst);
+          hashmap_unset (&vxm->mcast_shared, &t->dst);
         }
 
       fib_node_deinit(&t->node);
@@ -877,15 +863,11 @@ clib_error_t *vxlan_init (vlib_main_t *vm)
   vxm->vlib_main = vm;
 
   /* initialize the ip6 hash */
-  vxm->vxlan6_tunnel_by_key = hash_create_mem(0,
-        sizeof(vxlan6_tunnel_key_t),
-        sizeof(uword));
-  vxm->vtep6 = hash_create_mem(0,
-        sizeof(ip6_address_t),
-	sizeof(uword));
-  vxm->mcast_shared = hash_create_mem(0,
-        sizeof(ip46_address_t),
-	sizeof(mcast_shared_t));
+  hashmap_init (&vxm->vxlan4_tunnel_by_key);
+  hashmap_init (&vxm->vxlan6_tunnel_by_key);
+  hashmap_init (&vxm->vtep4);
+  hashmap_init (&vxm->vtep6);
+  hashmap_init (&vxm->mcast_shared);
 
   udp_register_dst_port (vm, UDP_DST_PORT_vxlan, 
                          vxlan4_input_node.index, /* is_ip4 */ 1);
