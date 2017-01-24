@@ -22,6 +22,30 @@
       "revId": "1e424e5358b84fdf18e92331b9232eb5c362bc4d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_32f3680c",
+        "filename": "test/test_vxlan.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-01-24T13:57:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a2585a7_df9aab6d",
+      "range": {
+        "startLine": 91,
+        "startChar": 19,
+        "endLine": 91,
+        "endChar": 23
+      },
+      "revId": "1e424e5358b84fdf18e92331b9232eb5c362bc4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
