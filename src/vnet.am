@@ -569,6 +569,7 @@ libvnet_la_SOURCES +=				\
  vnet/lisp-cp/gid_dictionary.c			\
  vnet/lisp-cp/lisp_msg_serdes.c			\
  vnet/lisp-cp/packets.c				\
+ vnet/lisp-cp/lisp_cli.c			\
  vnet/lisp-cp/lisp_api.c
 
 nobase_include_HEADERS +=			\
