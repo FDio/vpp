@@ -1,7 +1,7 @@
 /*
  * flowperpkt.c - per-packet data capture flow report plugin
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -60,10 +60,17 @@ flowperpkt_main_t flowperpkt_main;
 
 /* Define the per-interface configurable features */
 /* *INDENT-OFF* */
-VNET_FEATURE_INIT (flow_perpacket_ipv4, static) =
+VNET_FEATURE_INIT (flow_perpacket_ip4, static) =
 {
   .arc_name = "ip4-output",
-  .node_name = "flowperpkt-ipv4",
+  .node_name = "flowperpkt-ip4",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+VNET_FEATURE_INIT (flow_perpacket_ip6, static) =
+{
+  .arc_name = "ip6-output",
+  .node_name = "flowperpkt-ip6",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
@@ -120,6 +127,108 @@ bad_sw_if_index:                                \
     ;                                           \
 } while (0);
 
+
+static inline ipfix_field_specifier_t *
+flowperpkt_template_ip4_fields (ipfix_field_specifier_t * f)
+{
+#define flowperpkt_template_ip4_field_count() 5
+  /* sourceIpv4Address, TLV type 8, u32 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      sourceIPv4Address, 4);
+  f++;
+  /* destinationIPv4Address, TLV type 12, u32 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      destinationIPv4Address, 4);
+  f++;
+  /* protocolIdentifier, TLV type 4, u8 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      protocolIdentifier, 1);
+  f++;
+  /* ipClassOfService, TLV type 5, u8 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      ipClassOfService, 1);
+  f++;
+  /* octetDeltaCount, TLV type 1, u64 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      octetDeltaCount, 8);
+  f++;
+  return f;
+}
+
+static inline ipfix_field_specifier_t *
+flowperpkt_template_ip6_fields (ipfix_field_specifier_t * f)
+{
+#define flowperpkt_template_ip6_field_count() 5
+  /* sourceIpv6Address, TLV type 27, 16 octets */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      sourceIPv6Address, 16);
+  f++;
+  /* destinationIPv6Address, TLV type 28, 16 octets */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      destinationIPv6Address, 16);
+  f++;
+  /* protocolIdentifier, TLV type 4, u8 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      protocolIdentifier, 1);
+  f++;
+  /* ipClassOfService, TLV type 5, u8 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      ipClassOfService, 1);
+  f++;
+  /* octetDeltaCount, TLV type 1, u64 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      octetDeltaCount, 8);
+  f++;
+  return f;
+}
+
+static inline ipfix_field_specifier_t *
+flowperpkt_template_l2_fields (ipfix_field_specifier_t * f)
+{
+#define flowperpkt_template_l2_field_count() 3
+  /* sourceMacAddress, TLV type 56, u8[6] we hope */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      sourceMacAddress, 6);
+  f++;
+  /* destinationMacAddress, TLV type 80, u8[6] we hope */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      destinationMacAddress, 6);
+  f++;
+  /* ethernetType, TLV type 256, u16 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      ethernetType, 2);
+  f++;
+  return f;
+}
+
+static inline ipfix_field_specifier_t *
+flowperpkt_template_common_fields (ipfix_field_specifier_t * f)
+{
+#define flowperpkt_template_common_field_count() 5
+  /* ingressInterface, TLV type 10, u32 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      ingressInterface, 4);
+  f++;
+  /* egressInterface, TLV type 14, u32 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      egressInterface, 4);
+  f++;
+
+  /* observationTimeMilliseconds, TLV type 323, dateTimeMilliseconds (u64) */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      observationTimeMilliseconds, 8);
+  f++;
+  /* dataLinkFrameSize, TLV type 312, u16 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      dataLinkFrameSize, 2);
+  f++;
+  /* packetDeltaCount, TLV type 2, u64 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      packetDeltaCount, 8);
+  f++;
+  return f;
+}
+
 /**
  * @brief Create an IPFIX template packet rewrite string
  * @param frm flow_report_main_t *
@@ -134,7 +243,8 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
 				    flow_report_t * fr,
 				    ip4_address_t * collector_address,
 				    ip4_address_t * src_address,
-				    u16 collector_port, int variant)
+				    u16 collector_port,
+				    flowperpkt_variant_t which)
 {
   ip4_header_t *ip;
   udp_header_t *udp;
@@ -148,63 +258,34 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
   u32 field_count = 0;
   flow_report_stream_t *stream;
   flowperpkt_main_t *fm = &flowperpkt_main;
+  flowperpkt_record_t flags = fr->opaque.as_uword;
+  bool collect_ip4 = false, collect_ip6 = false;
 
   stream = &frm->streams[fr->stream_index];
 
-  if (variant == FLOW_VARIANT_IPV4)
+  if (flags & FLOW_RECORD_L3)
     {
-      /*
-       * ip4 Supported Fields:
-       *
-       * ingressInterface, TLV type 10, u32
-       * egressInterface, TLV type 14, u32
-       * sourceIpv4Address, TLV type 8, u32
-       * destinationIPv4Address, TLV type 12, u32
-       * ipClassOfService, TLV type 5, u8
-       * flowStartNanoseconds, TLV type 156, dateTimeNanoseconds (f64)
-       *   Implementation: f64 nanoseconds since VPP started
-       *   warning: wireshark doesn't really understand this TLV
-       * dataLinkFrameSize, TLV type 312, u16
-       *   warning: wireshark doesn't understand this TLV at all
-       */
-
-      /* Currently 7 fields */
-      field_count += 7;
-
-      /* allocate rewrite space */
-      vec_validate_aligned
-	(rewrite,
-	 sizeof (ip4_ipfix_template_packet_t)
-	 + field_count * sizeof (ipfix_field_specifier_t) - 1,
-	 CLIB_CACHE_LINE_BYTES);
+      collect_ip4 = which == FLOW_VARIANT_L2_IP4 || which == FLOW_VARIANT_IP4;
+      collect_ip6 = which == FLOW_VARIANT_L2_IP6 || which == FLOW_VARIANT_IP6;
+      if (which == FLOW_VARIANT_L2_IP4)
+	flags |= FLOW_RECORD_L2_IP4;
+      if (which == FLOW_VARIANT_L2_IP6)
+	flags |= FLOW_RECORD_L2_IP6;
     }
-  else if (variant == FLOW_VARIANT_L2)
-    {
-      /*
-       * L2 Supported Fields:
-       *
-       * ingressInterface, TLV type 10, u32
-       * egressInterface, TLV type 14, u32
-       * sourceMacAddress, TLV type 56, u8[6] we hope
-       * destinationMacAddress, TLV type 57, u8[6] we hope
-       * ethernetType, TLV type 256, u16
-       * flowStartNanoseconds, TLV type 156, dateTimeNanoseconds (f64)
-       *   Implementation: f64 nanoseconds since VPP started
-       *   warning: wireshark doesn't really understand this TLV
-       * dataLinkFrameSize, TLV type 312, u16
-       *   warning: wireshark doesn't understand this TLV at all
-       */
 
-      /* Currently 7 fields */
-      field_count += 7;
+  field_count += flowperpkt_template_common_field_count ();
+  if (flags & FLOW_RECORD_L2)
+    field_count += flowperpkt_template_l2_field_count ();
+  if (collect_ip4)
+    field_count += flowperpkt_template_ip4_field_count ();
+  if (collect_ip6)
+    field_count += flowperpkt_template_ip6_field_count ();
 
-      /* allocate rewrite space */
-      vec_validate_aligned
-	(rewrite,
-	 sizeof (ip4_ipfix_template_packet_t)
-	 + field_count * sizeof (ipfix_field_specifier_t) - 1,
-	 CLIB_CACHE_LINE_BYTES);
-    }
+  /* allocate rewrite space */
+  vec_validate_aligned
+    (rewrite, sizeof (ip4_ipfix_template_packet_t)
+     + field_count * sizeof (ipfix_field_specifier_t) - 1,
+     CLIB_CACHE_LINE_BYTES);
 
   tp = (ip4_ipfix_template_packet_t *) rewrite;
   ip = (ip4_header_t *) & tp->ip4;
@@ -228,67 +309,14 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
   h->domain_id = clib_host_to_net_u32 (stream->domain_id);
 
   /* Add TLVs to the template */
-  if (variant == FLOW_VARIANT_IPV4)
-    {
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , ingressInterface,
-			   4);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , egressInterface,
-			   4);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , sourceIPv4Address,
-			   4);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , destinationIPv4Address, 4);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , ipClassOfService,
-			   1);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , flowStartNanoseconds,
-			   8);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , dataLinkFrameSize,
-			   2);
-      f++;
-    }
-  else if (variant == FLOW_VARIANT_L2)
-    {
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , ingressInterface,
-			   4);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , egressInterface,
-			   4);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , sourceMacAddress,
-			   6);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , destinationMacAddress, 6);
-      f++;
-      f->e_id_length = ipfix_e_id_length (0 /* enterprise */ , ethernetType,
-					  2);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , flowStartNanoseconds,
-			   8);
-      f++;
-      f->e_id_length =
-	ipfix_e_id_length (0 /* enterprise */ , dataLinkFrameSize,
-			   2);
-      f++;
-    }
+  f = flowperpkt_template_common_fields (f);
 
-  /* Extend in the obvious way, right here... */
+  if (flags & FLOW_RECORD_L2)
+    f = flowperpkt_template_l2_fields (f);
+  if (collect_ip4)
+    f = flowperpkt_template_ip4_fields (f);
+  if (collect_ip6)
+    f = flowperpkt_template_ip6_fields (f);
 
   /* Back to the template packet... */
   ip = (ip4_header_t *) & tp->ip4;
@@ -298,10 +326,7 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
   /* Field count in this template */
   t->id_count = ipfix_id_count (fr->template_id, f - first_field);
 
-  if (variant == FLOW_VARIANT_IPV4)
-    fm->ipv4_report_id = fr->template_id;
-  else if (variant == FLOW_VARIANT_L2)
-    fm->l2_report_id = fr->template_id;
+  fm->template_size[flags] = (u8 *) f - (u8 *) s;
 
   /* set length in octets */
   s->set_id_length =
@@ -316,19 +341,31 @@ flowperpkt_template_rewrite_inline (flow_report_main_t * frm,
   return rewrite;
 }
 
-u8 *
-flowperpkt_template_rewrite_ipv4 (flow_report_main_t * frm,
-				  flow_report_t * fr,
-				  ip4_address_t * collector_address,
-				  ip4_address_t * src_address,
-				  u16 collector_port)
+static u8 *
+flowperpkt_template_rewrite_ip6 (flow_report_main_t * frm,
+				 flow_report_t * fr,
+				 ip4_address_t * collector_address,
+				 ip4_address_t * src_address,
+				 u16 collector_port)
 {
   return flowperpkt_template_rewrite_inline
     (frm, fr, collector_address, src_address, collector_port,
-     FLOW_VARIANT_IPV4);
+     FLOW_VARIANT_IP6);
 }
 
-u8 *
+static u8 *
+flowperpkt_template_rewrite_ip4 (flow_report_main_t * frm,
+				 flow_report_t * fr,
+				 ip4_address_t * collector_address,
+				 ip4_address_t * src_address,
+				 u16 collector_port)
+{
+  return flowperpkt_template_rewrite_inline
+    (frm, fr, collector_address, src_address, collector_port,
+     FLOW_VARIANT_IP4);
+}
+
+static u8 *
 flowperpkt_template_rewrite_l2 (flow_report_main_t * frm,
 				flow_report_t * fr,
 				ip4_address_t * collector_address,
@@ -340,6 +377,29 @@ flowperpkt_template_rewrite_l2 (flow_report_main_t * frm,
      FLOW_VARIANT_L2);
 }
 
+static u8 *
+flowperpkt_template_rewrite_l2_ip4 (flow_report_main_t * frm,
+				    flow_report_t * fr,
+				    ip4_address_t * collector_address,
+				    ip4_address_t * src_address,
+				    u16 collector_port)
+{
+  return flowperpkt_template_rewrite_inline
+    (frm, fr, collector_address, src_address, collector_port,
+     FLOW_VARIANT_L2_IP4);
+}
+
+static u8 *
+flowperpkt_template_rewrite_l2_ip6 (flow_report_main_t * frm,
+				    flow_report_t * fr,
+				    ip4_address_t * collector_address,
+				    ip4_address_t * src_address,
+				    u16 collector_port)
+{
+  return flowperpkt_template_rewrite_inline
+    (frm, fr, collector_address, src_address, collector_port,
+     FLOW_VARIANT_L2_IP6);
+}
 
 /**
  * @brief Flush accumulated data
@@ -352,12 +412,20 @@ flowperpkt_template_rewrite_l2 (flow_report_main_t * frm,
  * will be sent.
  */
 vlib_frame_t *
-flowperpkt_data_callback_ipv4 (flow_report_main_t * frm,
-			       flow_report_t * fr,
-			       vlib_frame_t * f, u32 * to_next,
-			       u32 node_index)
+flowperpkt_data_callback_ip4 (flow_report_main_t * frm,
+			      flow_report_t * fr,
+			      vlib_frame_t * f, u32 * to_next, u32 node_index)
 {
-  flowperpkt_flush_callback_ipv4 ();
+  flowperpkt_flush_callback_ip4 ();
+  return f;
+}
+
+vlib_frame_t *
+flowperpkt_data_callback_ip6 (flow_report_main_t * frm,
+			      flow_report_t * fr,
+			      vlib_frame_t * f, u32 * to_next, u32 node_index)
+{
+  flowperpkt_flush_callback_ip6 ();
   return f;
 }
 
@@ -370,6 +438,25 @@ flowperpkt_data_callback_l2 (flow_report_main_t * frm,
   return f;
 }
 
+static int
+flowperpkt_template_add_del (u32 domain_id, u16 src_port,
+			     flowperpkt_record_t flags,
+			     vnet_flow_data_callback_t * flow_data_callback,
+			     vnet_flow_rewrite_callback_t * rewrite_callback,
+			     bool is_add, u16 * template_id)
+{
+  flow_report_main_t *frm = &flow_report_main;
+  vnet_flow_report_add_del_args_t a = {
+    .rewrite_callback = rewrite_callback,
+    .flow_data_callback = flow_data_callback,
+    .is_add = is_add,
+    .domain_id = domain_id,
+    .src_port = src_port,
+    .opaque.as_uword = flags,
+  };
+  return vnet_flow_report_add_del (frm, &a, template_id);
+}
+
 /**
  * @brief configure / deconfigure the IPFIX flow-per-packet
  * @param fm flowperpkt_main_t * fm
@@ -378,50 +465,74 @@ flowperpkt_data_callback_l2 (flow_report_main_t * frm,
  * @returns 0 if successful, non-zero otherwise
  */
 
-static int flowperpkt_tx_interface_add_del_feature
-  (flowperpkt_main_t * fm, u32 sw_if_index, int which, int is_add)
+static int
+flowperpkt_tx_interface_add_del_feature (flowperpkt_main_t * fm,
+					 u32 sw_if_index,
+					 int which, bool record_l2,
+					 bool record_l3, bool record_l4,
+					 int is_add)
 {
-  flow_report_main_t *frm = &flow_report_main;
-  vnet_flow_report_add_del_args_t _a, *a = &_a;
-  int rv;
+  int rv = 0;
+  flowperpkt_record_t flags = 0;
+  u16 template_id = 0;
 
-  if (which == FLOW_VARIANT_IPV4 && !fm->ipv4_report_created)
+  if (record_l2)
+    flags |= FLOW_RECORD_L2;
+  if (record_l3)
+    flags |= FLOW_RECORD_L3;
+  if (record_l4)
+    flags |= FLOW_RECORD_L4;
+  if (which == FLOW_VARIANT_L2)
     {
-      memset (a, 0, sizeof (*a));
-      a->rewrite_callback = flowperpkt_template_rewrite_ipv4;
-      a->flow_data_callback = flowperpkt_data_callback_ipv4;
-      a->is_add = 1;
-      a->domain_id = 1;		/*$$$$ config parameter */
-      a->src_port = 4739;	/*$$$$ config parameter */
-      fm->ipv4_report_created = 1;
-
-      rv = vnet_flow_report_add_del (frm, a);
-      if (rv)
+      if (record_l3)
 	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
-	  return -1;
+	  rv = flowperpkt_template_add_del (1, UDP_DST_PORT_ipfix, flags,
+					    flowperpkt_data_callback_l2,
+					    flowperpkt_template_rewrite_l2_ip4,
+					    is_add, &template_id);
+	  fm->template_reports[flags | FLOW_RECORD_L2_IP4] = template_id;
+	  rv = flowperpkt_template_add_del (1, UDP_DST_PORT_ipfix, flags,
+					    flowperpkt_data_callback_l2,
+					    flowperpkt_template_rewrite_l2_ip6,
+					    is_add, &template_id);
+	  fm->template_reports[flags | FLOW_RECORD_L2_IP6] = template_id;
+
+	  /* Special case L2 */
+	  fm->context[FLOW_VARIANT_L2_IP4].flags = flags | FLOW_RECORD_L2_IP4;
+	  fm->context[FLOW_VARIANT_L2_IP6].flags = flags | FLOW_RECORD_L2_IP6;
+
+	  fm->template_reports[flags] = template_id;
 	}
+      if (record_l2)
+	rv = flowperpkt_template_add_del (1, UDP_DST_PORT_ipfix, flags,
+					  flowperpkt_data_callback_l2,
+					  flowperpkt_template_rewrite_l2,
+					  is_add, &template_id);
     }
-  else if (which == FLOW_VARIANT_L2 && !fm->l2_report_created)
+  else if (which == FLOW_VARIANT_IP4)
+    rv = flowperpkt_template_add_del (1, UDP_DST_PORT_ipfix, flags,
+				      flowperpkt_data_callback_ip4,
+				      flowperpkt_template_rewrite_ip4,
+				      is_add, &template_id);
+  else if (which == FLOW_VARIANT_IP6)
+    rv = flowperpkt_template_add_del (1, UDP_DST_PORT_ipfix, flags,
+				      flowperpkt_data_callback_ip6,
+				      flowperpkt_template_rewrite_ip6,
+				      is_add, &template_id);
+  if (rv)
     {
-      memset (a, 0, sizeof (*a));
-      a->rewrite_callback = flowperpkt_template_rewrite_l2;
-      a->flow_data_callback = flowperpkt_data_callback_l2;
-      a->is_add = 1;
-      a->domain_id = 1;		/*$$$$ config parameter */
-      a->src_port = 4739;	/*$$$$ config parameter */
-      fm->l2_report_created = 1;
-
-      rv = vnet_flow_report_add_del (frm, a);
-      if (rv)
-	{
-	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
-	  return -1;
-	}
+      clib_warning ("vnet_flow_report_add_del returned %d", rv);
+      return -1;
     }
 
-  if (which == FLOW_VARIANT_IPV4)
-    vnet_feature_enable_disable ("ip4-output", "flowperpkt-ipv4",
+  fm->context[which].flags = flags;
+  fm->template_reports[flags] = template_id;
+
+  if (which == FLOW_VARIANT_IP4)
+    vnet_feature_enable_disable ("ip4-output", "flowperpkt-ip4",
+				 sw_if_index, is_add, 0, 0);
+  else if (which == FLOW_VARIANT_IP6)
+    vnet_feature_enable_disable ("ip6-output", "flowperpkt-ip6",
 				 sw_if_index, is_add, 0, 0);
   else if (which == FLOW_VARIANT_L2)
     vnet_feature_enable_disable ("interface-output", "flowperpkt-l2",
@@ -444,14 +555,16 @@ void vl_api_flowperpkt_tx_interface_add_del_t_handler
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (mp->which != FLOW_VARIANT_IPV4 && mp->which != FLOW_VARIANT_L2)
+  if (mp->which != FLOW_VARIANT_IP4 && mp->which != FLOW_VARIANT_L2
+      && mp->which != FLOW_VARIANT_IP6)
     {
       rv = VNET_API_ERROR_UNIMPLEMENTED;
       goto out;
     }
 
   rv = flowperpkt_tx_interface_add_del_feature (fm, sw_if_index, mp->which,
-						mp->is_add);
+						mp->record_l2, mp->record_l3,
+						mp->record_l4, mp->is_add);
 out:
   BAD_SW_IF_INDEX_LABEL;
 
@@ -494,9 +607,9 @@ flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
   flowperpkt_main_t *fm = &flowperpkt_main;
   u32 sw_if_index = ~0;
   int is_add = 1;
-  u8 which = FLOW_VARIANT_IPV4;
-
+  u8 which = ~0;
   int rv;
+  bool record_l2 = false, record_l3 = false, record_l4 = false;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -504,8 +617,24 @@ flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (input, "%U", unformat_vnet_sw_interface,
 			 fm->vnet_main, &sw_if_index));
+      else if (unformat (input, "ip4"))
+	which = FLOW_VARIANT_IP4;
+      else if (unformat (input, "ip6"))
+	which = FLOW_VARIANT_IP6;
       else if (unformat (input, "l2"))
 	which = FLOW_VARIANT_L2;
+      else if (unformat (input, "record"))
+	while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+	  {
+	    if (unformat (input, "l2"))
+	      record_l2 = true;
+	    else if (unformat (input, "l3"))
+	      record_l3 = true;
+	    else if (unformat (input, "l4"))
+	      record_l4 = true;
+	    else
+	      break;
+	  }
       else
 	break;
     }
@@ -513,8 +642,9 @@ flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
   if (sw_if_index == ~0)
     return clib_error_return (0, "Please specify an interface...");
 
-  rv =
-    flowperpkt_tx_interface_add_del_feature (fm, sw_if_index, which, is_add);
+  rv = flowperpkt_tx_interface_add_del_feature (fm, sw_if_index, which,
+						record_l2, record_l3,
+						record_l4, is_add);
   switch (rv)
     {
     case 0:
@@ -554,7 +684,8 @@ flowperpkt_tx_interface_add_del_feature_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (flowperpkt_enable_disable_command, static) = {
     .path = "flowperpkt feature add-del",
     .short_help =
-    "flowperpkt feature add-del <interface-name> [disable]",
+    "flowperpkt feature add-del <interface-name> <l2|ip4|ip6> "
+    "record [l2,l3_ip4|l3_ip6,l4] [disable]",
     .function = flowperpkt_tx_interface_add_del_feature_command_fn,
 };
 /* *INDENT-ON* */
@@ -608,6 +739,7 @@ flowperpkt_init (vlib_main_t * vm)
   clib_error_t *error = 0;
   u32 num_threads;
   u8 *name;
+  int i;
 
   fm->vnet_main = vnet_get_main ();
 
@@ -630,16 +762,20 @@ flowperpkt_init (vlib_main_t * vm)
   num_threads = 1 /* main thread */  + tm->n_threads;
 
   /* Allocate per worker thread vectors */
-  vec_validate (fm->ipv4_buffers_per_worker, num_threads - 1);
-  vec_validate (fm->l2_buffers_per_worker, num_threads - 1);
-  vec_validate (fm->ipv4_frames_per_worker, num_threads - 1);
-  vec_validate (fm->l2_frames_per_worker, num_threads - 1);
-  vec_validate (fm->ipv4_next_record_offset_per_worker, num_threads - 1);
-  vec_validate (fm->l2_next_record_offset_per_worker, num_threads - 1);
+  for (i = 0; i < FLOW_N_VARIANTS; i++)
+    {
+      vec_validate (fm->context[i].buffers_per_worker, num_threads - 1);
+      vec_validate (fm->context[i].frames_per_worker, num_threads - 1);
+      vec_validate (fm->context[i].next_record_offset_per_worker,
+		    num_threads - 1);
+    }
 
   /* Set up time reference pair */
   fm->vlib_time_0 = vlib_time_now (vm);
-  fm->nanosecond_time_0 = unix_time_now_nsec ();
+  fm->millisecond_time_0 = unix_time_now_nsec () * 1e-6;
+
+  memset (fm->template_reports, 0, sizeof (fm->template_reports));
+  memset (fm->template_size, 0, sizeof (fm->template_size));
 
   return error;
 }
