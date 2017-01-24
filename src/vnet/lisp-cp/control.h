@@ -94,8 +94,27 @@ typedef enum
   _MR_MODE_MAX
 } map_request_mode_t;
 
+#define foreach_lisp_flag_bit       \
+  _(USE_PETR, "Use Proxy-ETR")
+
+typedef enum lisp_flag_bits
+{
+#define _(sym, str) LISP_FLAG_BIT_##sym,
+  foreach_lisp_flag_bit
+#undef _
+} lisp_flag_bits_e;
+
+typedef enum lisp_flags
+{
+#define _(sym, str) LISP_FLAG_##sym = 1 << LISP_FLAG_BIT_##sym,
+  foreach_lisp_flag_bit
+#undef _
+} lisp_flags_e;
+
 typedef struct
 {
+  u32 flags;
+
   /* LISP feature status */
   u8 is_enabled;
 
@@ -170,8 +189,11 @@ typedef struct
   /* track l2 and l3 interfaces that have been created for vni */
   uword *l2_dp_intf_by_vni;
 
-  /* Proxy ETR map index */
+  /* Proxy ITR map index */
   u32 pitr_map_index;
+
+  /** Proxy ETR map index */
+  u32 petr_map_index;
 
   /* LISP PITR mode */
   u8 lisp_pitr;
@@ -280,6 +302,7 @@ clib_error_t *vnet_lisp_enable_disable (u8 is_enabled);
 u8 vnet_lisp_enable_disable_status (void);
 
 int vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add);
+int vnet_lisp_use_petr (ip_address_t * ip, u8 is_add);
 
 typedef struct
 {
@@ -302,6 +325,12 @@ int vnet_lisp_rloc_probe_enable_disable (u8 is_enable);
 int vnet_lisp_map_register_enable_disable (u8 is_enable);
 u8 vnet_lisp_map_register_state_get (void);
 u8 vnet_lisp_rloc_probe_state_get (void);
+
+always_inline mapping_t *
+lisp_get_petr_mapping (lisp_cp_main_t * lcm)
+{
+  return pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
+}
 
 #endif /* VNET_CONTROL_H_ */
 

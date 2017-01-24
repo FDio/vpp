@@ -432,11 +432,13 @@ static void
 dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
 {
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
-  mapping_t *src_map, *dst_map;
+  gid_address_t *rmt_eid, *lcl_eid;
+  mapping_t *lcl_map, *rmt_map;
   u32 sw_if_index;
   uword *feip = 0, *dpid;
   fwd_entry_t *fe;
   u8 type, is_src_dst = 0;
+  int rv;
 
   memset (a, 0, sizeof (*a));
 
@@ -445,33 +447,44 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   if (feip)
     dp_del_fwd_entry (lcm, src_map_index, dst_map_index);
 
+  /*
+   * Determine local mapping and eid
+   */
   if (lcm->lisp_pitr)
-    src_map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+    lcl_map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
   else
-    src_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
-  dst_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
+    lcl_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
+  lcl_eid = &lcl_map->eid;
 
-  /* insert data plane forwarding entry */
+  /*
+   * Determine remote mapping and eid
+   */
+  rmt_map = pool_elt_at_index (lcm->mapping_pool, dst_map_index);
+  rmt_eid = &rmt_map->eid;
+
+  /*
+   * Build and insert data plane forwarding entry
+   */
   a->is_add = 1;
 
   if (MR_MODE_SRC_DST == lcm->map_request_mode)
     {
-      if (GID_ADDR_SRC_DST == gid_address_type (&dst_map->eid))
+      if (GID_ADDR_SRC_DST == gid_address_type (rmt_eid))
 	{
-	  gid_address_sd_to_flat (&a->rmt_eid, &dst_map->eid,
-				  &gid_address_sd_dst (&dst_map->eid));
-	  gid_address_sd_to_flat (&a->lcl_eid, &dst_map->eid,
-				  &gid_address_sd_src (&dst_map->eid));
+	  gid_address_sd_to_flat (&a->rmt_eid, rmt_eid,
+				  &gid_address_sd_dst (rmt_eid));
+	  gid_address_sd_to_flat (&a->lcl_eid, rmt_eid,
+				  &gid_address_sd_src (rmt_eid));
 	}
       else
 	{
-	  gid_address_copy (&a->rmt_eid, &dst_map->eid);
-	  gid_address_copy (&a->lcl_eid, &src_map->eid);
+	  gid_address_copy (&a->rmt_eid, rmt_eid);
+	  gid_address_copy (&a->lcl_eid, lcl_eid);
 	}
       is_src_dst = 1;
     }
   else
-    gid_address_copy (&a->rmt_eid, &dst_map->eid);
+    gid_address_copy (&a->rmt_eid, rmt_eid);
 
   a->vni = gid_address_vni (&a->rmt_eid);
 
@@ -499,17 +512,22 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
     }
 
   /* find best locator pair that 1) verifies LISP policy 2) are connected */
-  if (0 == get_locator_pairs (lcm, src_map, dst_map, &a->locator_pairs))
+  rv = get_locator_pairs (lcm, lcl_map, rmt_map, &a->locator_pairs);
+
+  /* Either rmt mapping is negative or we can't find underlay path.
+   * Try again with petr if configured */
+  if (rv == 0 && (lcm->flags & LISP_FLAG_USE_PETR))
     {
-      /* negative entry */
-      a->is_negative = 1;
-      a->action = dst_map->action;
+      rmt_map = lisp_get_petr_mapping (lcm);
+      rv = get_locator_pairs (lcm, lcl_map, rmt_map, &a->locator_pairs);
     }
 
-  /* TODO remove */
-  u8 ipver = ip_prefix_version (&gid_address_ippref (&a->rmt_eid));
-  a->decap_next_index = (ipver == IP4) ?
-    LISP_GPE_INPUT_NEXT_IP4_INPUT : LISP_GPE_INPUT_NEXT_IP6_INPUT;
+  /* negative entry */
+  if (rv == 0)
+    {
+      a->is_negative = 1;
+      a->action = rmt_map->action;
+    }
 
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
 
@@ -521,7 +539,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   if (is_src_dst)
     gid_address_copy (&fe->leid, &a->lcl_eid);
   else
-    gid_address_copy (&fe->leid, &src_map->eid);
+    gid_address_copy (&fe->leid, lcl_eid);
 
   fe->is_src_dst = is_src_dst;
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
@@ -1191,7 +1209,6 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
       local_mi = lcm->lisp_pitr ? lcm->pitr_map_index :
 	gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->leid);
 
-
       if (GID_LOOKUP_MISS == local_mi)
 	{
 	  clib_warning ("Local eid %U not found. Cannot add adjacency!",
@@ -1269,6 +1286,69 @@ vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
 
       /* disable pitr mode */
       lcm->lisp_pitr = 0;
+    }
+  return 0;
+}
+
+/**
+ * Configure Proxy-ETR
+ *
+ * @param ip PETR's IP address
+ * @param is_add Flag that indicates if this is an addition or removal
+ *
+ * return 0 on success
+ */
+int
+vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u32 ls_index = ~0;
+  mapping_t *m;
+  vnet_lisp_add_del_locator_set_args_t _ls_args, *ls_args = &_ls_args;
+  locator_t loc;
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
+  memset (ls_args, 0, sizeof (*ls_args));
+
+  if (is_add)
+    {
+      /* Create dummy petr locator-set */
+      gid_address_from_ip (&loc.address, ip);
+      loc.priority = 1;
+      loc.state = loc.weight = 1;
+
+      ls_args->is_add = 1;
+      ls_args->index = ~0;
+      vec_add1 (ls_args->locators, loc);
+      vnet_lisp_add_del_locator_set (ls_args, &ls_index);
+
+      /* Add petr mapping */
+      pool_get (lcm->mapping_pool, m);
+      m->locator_set_index = ls_index;
+      lcm->petr_map_index = m - lcm->mapping_pool;
+
+      /* Enable use-petr */
+      lcm->flags |= LISP_FLAG_USE_PETR;
+    }
+  else
+    {
+      m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
+
+      /* Remove petr locator */
+      ls_args->is_add = 0;
+      ls_args->index = m->locator_set_index;
+      vnet_lisp_add_del_locator_set (ls_args, 0);
+
+      /* Remove petr mapping */
+      pool_put_index (lcm->mapping_pool, lcm->petr_map_index);
+
+      /* Disable use-petr */
+      lcm->flags &= ~LISP_FLAG_USE_PETR;
     }
   return 0;
 }
@@ -2883,21 +2963,21 @@ process_map_reply (map_records_arg_t * a)
 			       m->authoritative, m->ttl,
 			       1, 0 /* is_static */ , &dst_map_index);
 
+    if (dst_map_index == (u32) ~ 0)
+      continue;
+
     /* try to program forwarding only if mapping saved or updated */
-    if ((u32) ~ 0 != dst_map_index)
-      {
-	vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
-	memset (adj_args, 0, sizeof (adj_args[0]));
+    vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
+    memset (adj_args, 0, sizeof (adj_args[0]));
 
-	gid_address_copy (&adj_args->leid, &pmr->src);
-	gid_address_copy (&adj_args->reid, &m->eid);
-	adj_args->is_add = 1;
-	if (vnet_lisp_add_del_adjacency (adj_args))
-	  clib_warning ("failed to add adjacency!");
+    gid_address_copy (&adj_args->leid, &pmr->src);
+    gid_address_copy (&adj_args->reid, &m->eid);
+    adj_args->is_add = 1;
+    if (vnet_lisp_add_del_adjacency (adj_args))
+      clib_warning ("failed to add adjacency!");
 
-	if ((u32) ~ 0 != m->ttl)
-	  mapping_start_expiration_timer (lcm, dst_map_index, m->ttl * 60);
-      }
+    if ((u32) ~ 0 != m->ttl)
+      mapping_start_expiration_timer (lcm, dst_map_index, m->ttl * 60);
   }
 
   /* remove pending map request entry */
@@ -3442,6 +3522,7 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->vnet_main = vnet_get_main ();
   lcm->mreq_itr_rlocs = ~0;
   lcm->lisp_pitr = 0;
+  lcm->flags = 0;
   memset (&lcm->active_map_resolver, 0, sizeof (lcm->active_map_resolver));
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
