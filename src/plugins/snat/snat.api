@@ -120,6 +120,8 @@ define snat_interface_details {
     @param external_ip_address - external IP address
     @param local_port - local port number
     @param external_port - external port number
+    @param external_sw_if_index - external interface (if set
+                                  external_ip_address is ignored)
     @param vfr_id - VRF ID
 */
 define snat_add_static_mapping {
@@ -132,6 +134,7 @@ define snat_add_static_mapping {
   u8 external_ip_address[16];
   u16 local_port;
   u16 external_port;
+  u32 external_sw_if_index;
   u32 vrf_id;
 };
 
