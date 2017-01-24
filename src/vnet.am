@@ -707,12 +707,16 @@ nobase_include_HEADERS +=			\
 # IPFIX / netflow v10
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/flow/flow_report.c
+ vnet/flow/flow_report.c			\
+ vnet/flow/flow_api.c
 
 nobase_include_HEADERS +=			\
  vnet/flow/flow_report.h			\
  vnet/flow/ipfix_info_elements.h		\
- vnet/flow/ipfix_packet.h
+ vnet/flow/ipfix_packet.h			\
+ vnet/flow/flow.api.h
+
+API_FILES += vnet/flow/flow.api
 
 ########################################
 # IPFIX classify code

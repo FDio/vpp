@@ -1,0 +1,173 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief Configure IPFIX exporter process request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param collector_address - address of IPFIX collector
+    @param collector_port - port of IPFIX collector
+    @param src_address - address of IPFIX exporter
+    @param vrf_id - VRF / fib table ID
+    @param path_mtu - Path MTU between exporter and collector
+    @param template_interval - number of seconds after which to resend template
+    @param udp_checksum - UDP checksum calculation enable flag
+*/
+define set_ipfix_exporter
+{
+  u32 client_index;
+  u32 context;
+  u8 collector_address[16];
+  u16 collector_port;
+  u8 src_address[16];
+  u32 vrf_id;
+  u32 path_mtu;
+  u32 template_interval;
+  u8 udp_checksum;
+};
+
+/** \brief Reply to IPFIX exporter configure request
+    @param context - sender context which was passed in the request
+*/
+define set_ipfix_exporter_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPFIX exporter dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipfix_exporter_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to IPFIX exporter dump request
+    @param context - sender context which was passed in the request
+    @param collector_address - address of IPFIX collector
+    @param collector_port - port of IPFIX collector
+    @param src_address - address of IPFIX exporter
+    @param fib_index - fib table index
+    @param path_mtu - Path MTU between exporter and collector
+    @param template_interval - number of seconds after which to resend template
+    @param udp_checksum - UDP checksum calculation enable flag
+*/
+define ipfix_exporter_details
+{
+  u32 context;
+  u8 collector_address[16];
+  u16 collector_port;
+  u8 src_address[16];
+  u32 vrf_id;
+  u32 path_mtu;
+  u32 template_interval;
+  u8 udp_checksum;
+};
+
+/** \brief IPFIX classify stream configure request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param domain_id - domain ID reported in IPFIX messages for classify stream
+    @param src_port - source port of UDP session for classify stream
+*/
+define set_ipfix_classify_stream {
+    u32 client_index;
+    u32 context;
+    u32 domain_id;
+    u16 src_port;
+};
+
+/** \brief IPFIX classify stream configure response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define set_ipfix_classify_stream_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IPFIX classify stream dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipfix_classify_stream_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to IPFIX classify stream dump request
+    @param context - sender context, to match reply w/ request
+    @param domain_id - domain ID reported in IPFIX messages for classify stream
+    @param src_port - source port of UDP session for classify stream
+*/
+define ipfix_classify_stream_details {
+    u32 context;
+    u32 domain_id;
+    u16 src_port;
+};
+
+/** \brief IPFIX add or delete classifier table request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param table_id - classifier table ID
+    @param ip_version - version of IP used in the classifier table
+    @param transport_protocol - transport protocol used in the classifier table or 255 for unspecified
+*/
+define ipfix_classify_table_add_del {
+    u32 client_index;
+    u32 context;
+    u32 table_id;
+    u8 ip_version;
+    u8 transport_protocol;
+    u8 is_add;
+};
+
+/** \brief IPFIX add classifier table response
+    @param context - sender context which was passed in the request
+*/
+define ipfix_classify_table_add_del_reply {
+    u32 context;
+    i32 retval;
+};
+
+/** \brief IPFIX classify tables dump request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define ipfix_classify_table_dump {
+    u32 client_index;
+    u32 context;
+};
+
+/** \brief Reply to IPFIX classify tables dump request
+    @param context - sender context, to match reply w/ request
+    @param table_id - classifier table ID
+    @param ip_version - version of IP used in the classifier table
+    @param transport_protocol - transport protocol used in the classifier table or 255 for unspecified
+*/
+define ipfix_classify_table_details {
+    u32 context;
+    u32 table_id;
+    u8 ip_version;
+    u8 transport_protocol;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
