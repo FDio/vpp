@@ -37,22 +37,27 @@ typedef struct
 
   /** Have the reports [templates] been created? */
   int ipv4_report_created;
+  int ipv6_report_created;
   int l2_report_created;
 
   /** stream/template IDs */
   u16 ipv4_report_id;
+  u16 ipv6_report_id;
   u16 l2_report_id;
 
   /** ipfix buffers under construction, per-worker thread */
   vlib_buffer_t **ipv4_buffers_per_worker;
+  vlib_buffer_t **ipv6_buffers_per_worker;
   vlib_buffer_t **l2_buffers_per_worker;
 
   /** frames containing ipfix buffers, per-worker thread */
   vlib_frame_t **ipv4_frames_per_worker;
+  vlib_frame_t **ipv6_frames_per_worker;
   vlib_frame_t **l2_frames_per_worker;
 
   /** next record offset, per worker thread */
   u16 *ipv4_next_record_offset_per_worker;
+  u16 *ipv6_next_record_offset_per_worker;
   u16 *l2_next_record_offset_per_worker;
 
   /** Time reference pair */
@@ -68,6 +73,7 @@ typedef struct
 typedef enum
 {
   FLOW_VARIANT_IPV4,
+  FLOW_VARIANT_IPV6,
   FLOW_VARIANT_L2,
   FLOW_N_VARIANTS,
 } flowperpkt_variant_t;
@@ -77,6 +83,7 @@ extern flowperpkt_main_t flowperpkt_main;
 extern vlib_node_registration_t flowperpkt_ipv4_node;
 
 void flowperpkt_flush_callback_ipv4 (void);
+void flowperpkt_flush_callback_ipv6 (void);
 void flowperpkt_flush_callback_l2 (void);
 
 #endif /* __included_flowperpkt_h__ */
