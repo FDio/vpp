@@ -1414,6 +1414,108 @@ VLIB_CLI_COMMAND (lisp_show_map_request_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
+					  unformat_input_t * input,
+					  vlib_cli_command_t * cmd)
+{
+  u8 is_add = 1, ip_set = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  ip_address_t ip;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_ip_address, &ip))
+	ip_set = 1;
+      else if (unformat (line_input, "disable"))
+	is_add = 0;
+      else
+	return clib_error_return (0, "parse error");
+    }
+
+  if (!ip_set)
+    {
+      clib_warning ("No petr IP specified!");
+      goto done;
+    }
+
+  if (vnet_lisp_use_petr (&ip, is_add))
+    {
+      error = clib_error_return (0, "failed to %s petr!",
+				 is_add ? "add" : "delete");
+    }
+
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_use_petr_set_locator_set_command) = {
+    .path = "lisp use-petr",
+    .short_help = "lisp use-petr [disable] <petr-ip>",
+    .function = lisp_use_petr_set_locator_set_command_fn,
+};
+
+static clib_error_t *
+lisp_show_petr_command_fn (vlib_main_t * vm,
+                           unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  mapping_t *m;
+  locator_set_t *ls;
+  locator_t *loc;
+  u8 *tmp_str = 0;
+  u8 use_petr = lcm->flags & LISP_FLAG_USE_PETR;
+  vlib_cli_output (vm, "%=20s%=16s", "petr", use_petr ? "ip" : "");
+
+  if (!use_petr)
+    {
+      vlib_cli_output (vm, "%=20s", "disable");
+      return 0;
+    }
+
+  if (~0 == lcm->petr_map_index)
+    {
+      tmp_str = format (0, "N/A");
+    }
+  else
+    {
+      m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
+      if (~0 != m->locator_set_index)
+        {
+          ls = pool_elt_at_index(lcm->locator_set_pool, m->locator_set_index);
+          loc = pool_elt_at_index (lcm->locator_pool, ls->locator_indices[0]);
+          tmp_str = format (0, "%U", format_ip_address, &loc->address);
+        }
+      else
+        {
+          tmp_str = format (0, "N/A");
+        }
+    }
+  vec_add1 (tmp_str, 0);
+
+  vlib_cli_output (vm, "%=20s%=16s", "enable", tmp_str);
+
+  vec_free (tmp_str);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_show_petr_command) = {
+    .path = "show lisp petr",
+    .short_help = "Show petr",
+    .function = lisp_show_petr_command_fn,
+};
+
+/* *INDENT-ON* */
+
+/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *
