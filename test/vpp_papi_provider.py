@@ -1107,3 +1107,12 @@ class VppPapiProvider(object):
                 'template_interval': template_interval,
                 'udp_checksum': udp_checksum,
             })
+
+    def flowperpkt_tx_interface_add_del(self, is_add, which, sw_if_index):
+        return self.api(
+            self.papi.flowperpkt_tx_interface_add_del,
+            {
+                'is_add': is_add,
+                'which': which,
+                'sw_if_index': sw_if_index,
+            })
