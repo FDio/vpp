@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_5265d443",
+        "filename": "src/vnet/devices/dpdk/device.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-24T16:20:36Z",
+      "side": 1,
+      "message": "vec_reset_length(xd-\u003edefault_mac_address);\nvec_add (xd-\u003edefault_mac_address, address, sizeof (address));",
+      "range": {
+        "startLine": 64,
+        "startChar": 1,
+        "endLine": 65,
+        "endChar": 71
+      },
+      "revId": "4050fd8450a7601ca11089a417cf89b0919de3f1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
