@@ -196,7 +196,7 @@ typedef struct
 } lisp_cp_main_t;
 
 /* lisp-gpe control plane */
-lisp_cp_main_t lisp_control_main;
+extern lisp_cp_main_t lisp_control_main;
 
 extern vlib_node_registration_t lisp_cp_input_node;
 extern vlib_node_registration_t lisp_cp_lookup_ip4_node;
