@@ -2108,14 +2108,14 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
-	  vlib_increment_combined_counter (&adjacency_counters,
-					   cpu_index, adj_index0,
-					   /* packet increment */ 0,
-					   /* byte increment */ rw_len0);
-	  vlib_increment_combined_counter (&adjacency_counters,
-					   cpu_index, adj_index1,
-					   /* packet increment */ 0,
-					   /* byte increment */ rw_len1);
+	  vlib_increment_combined_counter
+	    (&adjacency_counters,
+	     cpu_index,
+	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	  vlib_increment_combined_counter
+	    (&adjacency_counters,
+	     cpu_index, adj_index1,
+	     1, vlib_buffer_length_in_chain (vm, p1) + rw_len1);
 
 	  /* Check MTU of outgoing interface. */
 	  error0 =
@@ -2233,10 +2233,10 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
-	  vlib_increment_combined_counter (&adjacency_counters,
-					   cpu_index, adj_index0,
-					   /* packet increment */ 0,
-					   /* byte increment */ rw_len0);
+	  vlib_increment_combined_counter
+	    (&adjacency_counters,
+	     cpu_index,
+	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */
 	  error0 =

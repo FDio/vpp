@@ -2402,19 +2402,12 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	     error1);
 
 	  /*
-	   * We've already accounted for an ethernet_header_t elsewhere
+	   * pre-fetch the per-adjacency counters
 	   */
-	  if (PREDICT_FALSE (rw_len0 > sizeof (ethernet_header_t)))
-	    vlib_increment_combined_counter
-	      (&adjacency_counters, cpu_index, adj_index0,
-	       /* packet increment */ 0,
-	       /* byte increment */ rw_len0 - sizeof (ethernet_header_t));
-
-	  if (PREDICT_FALSE (rw_len1 > sizeof (ethernet_header_t)))
-	    vlib_increment_combined_counter
-	      (&adjacency_counters, cpu_index, adj_index1,
-	       /* packet increment */ 0,
-	       /* byte increment */ rw_len1 - sizeof (ethernet_header_t));
+	  vlib_prefetch_combined_counter (&adjacency_counters,
+					  cpu_index, adj_index0);
+	  vlib_prefetch_combined_counter (&adjacency_counters,
+					  cpu_index, adj_index1);
 
 	  /* Don't adjust the buffer for ttl issue; icmp-error node wants
 	   * to see the IP headerr */
@@ -2445,6 +2438,19 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
 				    ip0, ip1, sizeof (ethernet_header_t));
+
+	  /*
+	   * Bump the per-adjacency counters
+	   */
+	  vlib_increment_combined_counter
+	    (&adjacency_counters,
+	     cpu_index,
+	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+
+	  vlib_increment_combined_counter
+	    (&adjacency_counters,
+	     cpu_index,
+	     adj_index1, 1, vlib_buffer_length_in_chain (vm, p1) + rw_len1);
 
 	  if (is_midchain)
 	    {
@@ -2519,6 +2525,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
 	    }
 
+	  vlib_prefetch_combined_counter (&adjacency_counters,
+					  cpu_index, adj_index0);
+
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
 
@@ -2526,11 +2535,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
-	  if (PREDICT_FALSE (rw_len0 > sizeof (ethernet_header_t)))
-	    vlib_increment_combined_counter
-	      (&adjacency_counters, cpu_index, adj_index0,
-	       /* packet increment */ 0,
-	       /* byte increment */ rw_len0 - sizeof (ethernet_header_t));
+	  vlib_increment_combined_counter
+	    (&adjacency_counters,
+	     cpu_index,
+	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */
 	  error0 = (vlib_buffer_length_in_chain (vm, p0)
