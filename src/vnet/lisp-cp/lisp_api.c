@@ -73,6 +73,8 @@ _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
 _(LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs)       \
 _(SHOW_LISP_PITR, show_lisp_pitr)                                       \
 _(SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode)               \
+_(LISP_USE_PETR, lisp_use_petr)                                         \
+_(SHOW_LISP_USE_PETR, show_lisp_use_petr)                               \
 
 /** Used for transferring locators via VPP API */
 /* *INDENT-OFF* */
@@ -396,6 +398,53 @@ vl_api_lisp_pitr_set_locator_set_t_handler (vl_api_lisp_pitr_set_locator_set_t
   vec_free (ls_name);
 
   REPLY_MACRO (VL_API_LISP_PITR_SET_LOCATOR_SET_REPLY);
+}
+
+static void
+vl_api_lisp_use_petr_t_handler (vl_api_lisp_use_petr_t * mp)
+{
+  vl_api_lisp_use_petr_reply_t *rmp;
+  int rv = 0;
+  ip_address_t addr;
+
+  ip_address_set (&addr, &mp->address, mp->is_ip4 ? IP4 : IP6);
+  rv = vnet_lisp_use_petr (&addr, mp->is_add);
+
+  REPLY_MACRO (VL_API_LISP_USE_PETR_REPLY);
+}
+
+static void
+vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
+{
+  unix_shared_memory_queue_t *q = NULL;
+  vl_api_show_lisp_use_petr_reply_t *rmp = NULL;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  mapping_t *m;
+  locator_set_t *ls = 0;
+  int rv = 0;
+  locator_t *loc;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  rmp->status = lcm->flags & LISP_FLAG_USE_PETR;
+  if (rmp->status)
+    {
+      m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
+      if (~0 != m->locator_set_index)
+	{
+	  ls =
+	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+	  loc = pool_elt_at_index (lcm->locator_pool, ls->locator_indices[0]);
+	  gid_address_put (rmp->address, &loc->address);
+	  rmp->is_ip4 = (gid_address_ip_version (&loc->address) == IP4);
+	}
+    }
+
+  REPLY_MACRO (VL_API_SHOW_LISP_USE_PETR_REPLY);
 }
 
 static void
