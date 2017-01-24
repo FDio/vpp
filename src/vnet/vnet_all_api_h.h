@@ -52,6 +52,7 @@
 #include <vnet/lisp-gpe/lisp_gpe.api.h>
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/sr/sr.api.h>
+#include <vnet/classify/classify.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
