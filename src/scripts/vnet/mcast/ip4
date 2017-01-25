@@ -14,9 +14,12 @@ packet-generator new {
 trace add pg-input 100
 loop create
 loop create
+loop create
 set int state loop0 up
 set int state loop1 up
+set int state loop2 up
 
 ip mroute add 232.1.1.1 via pg0 Accept
 ip mroute add 232.1.1.1 via loop0 Forward
 ip mroute add 232.1.1.1 via loop1 Forward
+ip mroute add 232.1.1.1 via loop2 Forward
