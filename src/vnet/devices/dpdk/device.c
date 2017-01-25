@@ -168,13 +168,11 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 	{
 	  b2 = vlib_get_buffer (vm, b2->next_buffer);
 	  mb = rte_mbuf_from_vlib_buffer (b2);
-	  last_mb->next = mb;
-	  last_mb = mb;
 	  rte_pktmbuf_reset (mb);
 	}
     }
 
-  first_mb = mb = rte_mbuf_from_vlib_buffer (b);
+  last_mb = first_mb = mb = rte_mbuf_from_vlib_buffer (b);
   first_mb->nb_segs = 1;
   mb->data_len = b->current_length;
   mb->pkt_len = maybe_multiseg ? vlib_buffer_length_in_chain (vm, b) :
@@ -185,10 +183,17 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       mb = rte_mbuf_from_vlib_buffer (b);
+      last_mb->next = mb;
+      last_mb = mb;
       mb->data_len = b->current_length;
       mb->pkt_len = b->current_length;
       mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
       first_mb->nb_segs++;
+      if (PREDICT_FALSE (b->n_add_refs))
+	{
+	  rte_mbuf_refcnt_update (mb, b->n_add_refs);
+	  b->n_add_refs = 0;
+	}
     }
 }
 

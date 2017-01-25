@@ -119,7 +119,9 @@ typedef struct
                            feature node
                         */
 
-  u8 dont_waste_me[3]; /**< Available space in the (precious)
+  u8 n_add_refs; /**< Number of additional references to this buffer. */
+
+  u8 dont_waste_me[2]; /**< Available space in the (precious)
                           first 32 octets of buffer metadata
                           Before allocating any of it, discussion required!
                        */
