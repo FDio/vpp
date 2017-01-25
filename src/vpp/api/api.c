@@ -66,7 +66,6 @@
 #include <vnet/map/map.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
-#include <vnet/policer/policer.h>
 #include <vnet/ip/punt.h>
 #include <vnet/feature/feature.h>
 
@@ -144,8 +143,6 @@ _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                                 \
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
-_(POLICER_ADD_DEL, policer_add_del)                                     \
-_(POLICER_DUMP, policer_dump)                                           \
 _(GET_NEXT_INDEX, get_next_index)                                       \
 _(PG_CREATE_INTERFACE, pg_create_interface)                             \
 _(PG_CAPTURE, pg_capture)                                               \
@@ -2026,141 +2023,6 @@ vl_api_ioam_disable_t_handler (vl_api_ioam_disable_t * mp)
 
   REPLY_MACRO (VL_API_IOAM_DISABLE_REPLY);
 }
-
-static void
-vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_policer_add_del_reply_t *rmp;
-  int rv = 0;
-  u8 *name = NULL;
-  sse2_qos_pol_cfg_params_st cfg;
-  clib_error_t *error;
-  u32 policer_index;
-
-  name = format (0, "%s", mp->name);
-
-  memset (&cfg, 0, sizeof (cfg));
-  cfg.rfc = mp->type;
-  cfg.rnd_type = mp->round_type;
-  cfg.rate_type = mp->rate_type;
-  cfg.rb.kbps.cir_kbps = mp->cir;
-  cfg.rb.kbps.eir_kbps = mp->eir;
-  cfg.rb.kbps.cb_bytes = mp->cb;
-  cfg.rb.kbps.eb_bytes = mp->eb;
-  cfg.conform_action.action_type = mp->conform_action_type;
-  cfg.conform_action.dscp = mp->conform_dscp;
-  cfg.exceed_action.action_type = mp->exceed_action_type;
-  cfg.exceed_action.dscp = mp->exceed_dscp;
-  cfg.violate_action.action_type = mp->violate_action_type;
-  cfg.violate_action.dscp = mp->violate_dscp;
-  cfg.color_aware = mp->color_aware;
-
-  error = policer_add_del (vm, name, &cfg, &policer_index, mp->is_add);
-
-  if (error)
-    rv = VNET_API_ERROR_UNSPECIFIED;
-
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_POLICER_ADD_DEL_REPLY,
-  ({
-    if (rv == 0 &&  mp->is_add)
-      rmp->policer_index = ntohl(policer_index);
-    else
-      rmp->policer_index = ~0;
-  }));
-  /* *INDENT-ON* */
-}
-
-static void
-send_policer_details (u8 * name,
-		      sse2_qos_pol_cfg_params_st * config,
-		      policer_read_response_type_st * templ,
-		      unix_shared_memory_queue_t * q, u32 context)
-{
-  vl_api_policer_details_t *mp;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_POLICER_DETAILS);
-  mp->context = context;
-  mp->cir = htonl (config->rb.kbps.cir_kbps);
-  mp->eir = htonl (config->rb.kbps.eir_kbps);
-  mp->cb = htonl (config->rb.kbps.cb_bytes);
-  mp->eb = htonl (config->rb.kbps.eb_bytes);
-  mp->rate_type = config->rate_type;
-  mp->round_type = config->rnd_type;
-  mp->type = config->rfc;
-  mp->conform_action_type = config->conform_action.action_type;
-  mp->conform_dscp = config->conform_action.dscp;
-  mp->exceed_action_type = config->exceed_action.action_type;
-  mp->exceed_dscp = config->exceed_action.dscp;
-  mp->violate_action_type = config->violate_action.action_type;
-  mp->violate_dscp = config->violate_action.dscp;
-  mp->single_rate = templ->single_rate ? 1 : 0;
-  mp->color_aware = templ->color_aware ? 1 : 0;
-  mp->scale = htonl (templ->scale);
-  mp->cir_tokens_per_period = htonl (templ->cir_tokens_per_period);
-  mp->pir_tokens_per_period = htonl (templ->pir_tokens_per_period);
-  mp->current_limit = htonl (templ->current_limit);
-  mp->current_bucket = htonl (templ->current_bucket);
-  mp->extended_limit = htonl (templ->extended_limit);
-  mp->extended_bucket = htonl (templ->extended_bucket);
-  mp->last_update_time = clib_host_to_net_u64 (templ->last_update_time);
-
-  strncpy ((char *) mp->name, (char *) name, ARRAY_LEN (mp->name) - 1);
-
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
-{
-  unix_shared_memory_queue_t *q;
-  vnet_policer_main_t *pm = &vnet_policer_main;
-  hash_pair_t *hp;
-  uword *p;
-  u32 pool_index;
-  u8 *match_name = 0;
-  u8 *name;
-  sse2_qos_pol_cfg_params_st *config;
-  policer_read_response_type_st *templ;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    return;
-
-  if (mp->match_name_valid)
-    {
-      match_name = format (0, "%s%c", mp->match_name, 0);
-    }
-
-  if (mp->match_name_valid)
-    {
-      p = hash_get_mem (pm->policer_config_by_name, match_name);
-      if (p)
-	{
-	  pool_index = p[0];
-	  config = pool_elt_at_index (pm->configs, pool_index);
-	  templ = pool_elt_at_index (pm->policer_templates, pool_index);
-	  send_policer_details (match_name, config, templ, q, mp->context);
-	}
-    }
-  else
-    {
-      /* *INDENT-OFF* */
-      hash_foreach_pair (hp, pm->policer_config_by_name,
-      ({
-        name = (u8 *) hp->key;
-        pool_index = hp->value[0];
-        config = pool_elt_at_index (pm->configs, pool_index);
-        templ = pool_elt_at_index (pm->policer_templates, pool_index);
-        send_policer_details(name, config, templ, q, mp->context);
-      }));
-      /* *INDENT-ON* */
-    }
-}
-
 
 static void
 vl_api_pg_create_interface_t_handler (vl_api_pg_create_interface_t * mp)
