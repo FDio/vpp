@@ -1,0 +1,366 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_c0544ecc",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "make test-checkstyle",
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_40585efa",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "don\u0027t need this method at all if not doing any extra work as it\u0027s inherited from VppTestCase",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 31,
+        "endChar": 41
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_60635ab2",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "configured",
+      "range": {
+        "startLine": 40,
+        "startChar": 31,
+        "endLine": 40,
+        "endChar": 40
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_205d52ea",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "as above - not needed",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 40
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0072567c",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "option",
+      "range": {
+        "startLine": 78,
+        "startChar": 32,
+        "endLine": 78,
+        "endChar": 37
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c06b2e84",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "could we avoid magic numbers please? ideally extract as constant",
+      "range": {
+        "startLine": 82,
+        "startChar": 48,
+        "endLine": 82,
+        "endChar": 50
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_800526c4",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "magic numbers..\n\nalso why should [2]...[4] be 0?",
+      "range": {
+        "startLine": 83,
+        "startChar": 0,
+        "endLine": 85,
+        "endChar": 53
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e06e2a96",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "client",
+      "range": {
+        "startLine": 92,
+        "startChar": 63,
+        "endLine": 92,
+        "endChar": 69
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a0682288",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "magic numbers..\n\nalso a lot more in the rest of the file\n\ne.g. the port numbers ... please use named constants for them",
+      "range": {
+        "startLine": 96,
+        "startChar": 50,
+        "endLine": 97,
+        "endChar": 53
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_400f3ee2",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "how hard is it to implement this TODO?",
+      "range": {
+        "startLine": 121,
+        "startChar": 9,
+        "endLine": 121,
+        "endChar": 32
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_201432f4",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "looking at scapy sources, it seems that msgtype needs to be 2 - is it so?",
+      "range": {
+        "startLine": 204,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 35
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_00f936c8",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "this is self.pg0.remote_ip4n",
+      "range": {
+        "startLine": 234,
+        "startChar": 8,
+        "endLine": 234,
+        "endChar": 68
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e0f50acc",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "this is self.pg0.local_ip4n",
+      "range": {
+        "startLine": 235,
+        "startChar": 19,
+        "endLine": 235,
+        "endChar": 64
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c0020eb4",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "-\u003e self.pgX.YYYYY_ipXn",
+      "range": {
+        "startLine": 450,
+        "startChar": 10,
+        "endLine": 453,
+        "endChar": 70
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_603c7a94",
+        "filename": "test/vpp_ip_route.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "the same as below comment",
+      "range": {
+        "startLine": 23,
+        "startChar": 12,
+        "endLine": 23,
+        "endChar": 18
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_803766b0",
+        "filename": "test/vpp_ip_route.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-01-25T12:20:12Z",
+      "side": 1,
+      "message": "instead of is_ip6, I would save address family\n\nself.af \u003d AF_INET6 if is_ip6 else AF_INET (or take af as argument in __init__, making it even more obvious what type of IP addresses we\u0027re working with)\n\ncompare:\n\nroute \u003d IpRoute(self, dest_addr, dest_addr_len, paths, 0, 1)\n\nvs\n\nroute \u003d IpRoute(self, dest_addr, dest_addr_len, paths, 0, AF_INET6)\n\nalso you don\u0027t need any\n\nif is_ip6 branches, instead\n\nif is_ip6:\n            self.dest_addr \u003d socket.inet_pton(socket.AF_INET6, dest_addr)\n        else:\n            self.dest_addr \u003d socket.inet_pton(socket.AF_INET, dest_addr)\n\nyou get much simpler:\n\nself.dest_addr \u003d socket.inet_pton(self.af, dest_addr)",
+      "range": {
+        "startLine": 45,
+        "startChar": 13,
+        "endLine": 45,
+        "endChar": 19
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
