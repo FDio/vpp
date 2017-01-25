@@ -41,7 +41,7 @@ libpneum_la_CPPFLAGS =
 # TODO: Support both Python 2 and 3.
 install-exec-local:
 	cd $(srcdir);							\
-	mkdir -p $(prefix)/lib/python2.7/site-packages; 		\
+	mkdir -p $(pyexecdir); 						\
 	PYTHONUSERBASE=$(prefix)					\
 	python setup.py build_ext -L $(libdir)				\
 	-I $(prefix)/include/ install --user
