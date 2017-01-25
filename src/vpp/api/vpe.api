@@ -44,6 +44,7 @@
  * CLASSIFY APIs: see ... /src/vnet/classify/{classify.api, classify_api.c}
  * FLOW APIs: see ... /src/vnet/flow/{flow.api, flow_api.c}
  * DHCP APIs: see ... /src/vnet/dhcp/{dhcpk.api, dhcp_api.c}
+ * COP APIs: see ... /src/vnet/cop/{cop.api, cop_api.c}
  */
 
 /** \brief Create a new subinterface with the given vlan id
@@ -989,73 +990,6 @@ define input_acl_set_interface_reply
   u32 context;
   i32 retval;
 };
-
-/** \brief cop: enable/disable junk filtration features on an interface
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_inded - desired interface
-    @param enable_disable - 1 => enable, 0 => disable
-*/
-
-define cop_interface_enable_disable
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 enable_disable;
-};
-
-/** \brief cop: interface enable/disable junk filtration reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define cop_interface_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief cop: enable/disable whitelist filtration features on an interface
-    Note: the supplied fib_id must match in order to remove the feature!
-    
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface handle, physical interfaces only
-    @param fib_id - fib identifier for the whitelist / blacklist fib
-    @param ip4 - 1 => enable ip4 filtration, 0=> disable ip4 filtration
-    @param ip6 - 1 => enable ip6 filtration, 0=> disable ip6 filtration
-    @param default_cop -  1 => enable non-ip4, non-ip6 filtration 0=> disable it
-*/
-
-define cop_whitelist_enable_disable
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u32 fib_id;
-  u8 ip4;
-  u8 ip6;
-  u8 default_cop;
-};
-
-/** \brief cop: interface enable/disable junk filtration reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define cop_whitelist_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief get_node_graph - get a copy of the vpp node graph
-    including the current set of graph arcs.
-
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
 
 define get_node_graph
 {

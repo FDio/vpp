@@ -64,7 +64,6 @@
 #include <vnet/vxlan/vxlan.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/map/map.h>
-#include <vnet/cop/cop.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
 #include <vnet/policer/policer.h>
@@ -142,8 +141,6 @@ _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(DELETE_LOOPBACK, delete_loopback)                                     \
 _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                                 \
-_(COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable)		\
-_(COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable)		\
 _(GET_NODE_GRAPH, get_node_graph)                                       \
 _(IOAM_ENABLE, ioam_enable)                                             \
 _(IOAM_DISABLE, ioam_disable)                                           \
@@ -1955,48 +1952,6 @@ static void vl_api_input_acl_set_interface_t_handler
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_INPUT_ACL_SET_INTERFACE_REPLY);
-}
-
-static void vl_api_cop_interface_enable_disable_t_handler
-  (vl_api_cop_interface_enable_disable_t * mp)
-{
-  vl_api_cop_interface_enable_disable_reply_t *rmp;
-  int rv;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-  int enable_disable;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  enable_disable = (int) mp->enable_disable;
-
-  rv = cop_interface_enable_disable (sw_if_index, enable_disable);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_COP_INTERFACE_ENABLE_DISABLE_REPLY);
-}
-
-static void vl_api_cop_whitelist_enable_disable_t_handler
-  (vl_api_cop_whitelist_enable_disable_t * mp)
-{
-  vl_api_cop_whitelist_enable_disable_reply_t *rmp;
-  cop_whitelist_enable_disable_args_t _a, *a = &_a;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-  int rv;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  a->sw_if_index = sw_if_index;
-  a->ip4 = mp->ip4;
-  a->ip6 = mp->ip6;
-  a->default_cop = mp->default_cop;
-  a->fib_id = ntohl (mp->fib_id);
-
-  rv = cop_whitelist_enable_disable (a);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_COP_WHITELIST_ENABLE_DISABLE_REPLY);
 }
 
 static void
