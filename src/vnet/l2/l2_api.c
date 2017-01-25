@@ -24,6 +24,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_fib.h>
+#include <vnet/l2/l2_vtr.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -54,7 +55,9 @@ _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)             \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                   \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)             \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details) \
-_(BRIDGE_FLAGS, bridge_flags)
+_(BRIDGE_FLAGS, bridge_flags)                               \
+_(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite) \
+_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)
 
 static void
 send_l2_xconnect_details (unix_shared_memory_queue_t * q, u32 context,
@@ -452,6 +455,84 @@ out:
     rmp->resulting_feature_bitmap = ntohl(flags);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+  vl_api_l2_interface_vlan_tag_rewrite_t_handler
+  (vl_api_l2_interface_vlan_tag_rewrite_t * mp)
+{
+  int rv = 0;
+  vl_api_l2_interface_vlan_tag_rewrite_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u32 vtr_op;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  vtr_op = ntohl (mp->vtr_op);
+
+  /* The L2 code is unsuspicious */
+  switch (vtr_op)
+    {
+    case L2_VTR_DISABLED:
+    case L2_VTR_PUSH_1:
+    case L2_VTR_PUSH_2:
+    case L2_VTR_POP_1:
+    case L2_VTR_POP_2:
+    case L2_VTR_TRANSLATE_1_1:
+    case L2_VTR_TRANSLATE_1_2:
+    case L2_VTR_TRANSLATE_2_1:
+    case L2_VTR_TRANSLATE_2_2:
+      break;
+
+    default:
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  rv = l2vtr_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
+			ntohl (mp->push_dot1q), ntohl (mp->tag1),
+			ntohl (mp->tag2));
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_L2_INTERFACE_VLAN_TAG_REWRITE_REPLY);
+}
+
+static void
+  vl_api_l2_interface_pbb_tag_rewrite_t_handler
+  (vl_api_l2_interface_pbb_tag_rewrite_t * mp)
+{
+  vl_api_l2_interface_pbb_tag_rewrite_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u32 vtr_op;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  vtr_op = ntohl (mp->vtr_op);
+
+  switch (vtr_op)
+    {
+    case L2_VTR_DISABLED:
+    case L2_VTR_PUSH_2:
+    case L2_VTR_POP_2:
+    case L2_VTR_TRANSLATE_2_1:
+      break;
+
+    default:
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  rv = l2pbb_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
+			mp->b_dmac, mp->b_smac, ntohs (mp->b_vlanid),
+			ntohl (mp->i_sid), ntohs (mp->outer_tag));
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_L2_INTERFACE_PBB_TAG_REWRITE_REPLY);
 }
 
 /*
