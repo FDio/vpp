@@ -17,7 +17,11 @@ CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
 
+ifneq ($(VPP_EXEC),)
+MINIMAL_STARTUP_CONF="unix { interactive exec $(VPP_EXEC) }"
+else
 MINIMAL_STARTUP_CONF="unix { interactive }"
+endif
 
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
