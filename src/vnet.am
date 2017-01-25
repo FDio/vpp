@@ -88,10 +88,14 @@ libvnet_la_SOURCES +=				\
   vnet/cop/cop.c				\
   vnet/cop/node1.c				\
   vnet/cop/ip4_whitelist.c			\
-  vnet/cop/ip6_whitelist.c
+  vnet/cop/ip6_whitelist.c			\
+  vnet/cop/cop_api.c
 
 nobase_include_HEADERS +=			\
-  vnet/cop/cop.h
+  vnet/cop/cop.h					\
+  vnet/cop/cop.api.h
+
+API_FILES += vnet/cop/cop.api
 
 ########################################
 # Layer 2 protocols go here
