@@ -159,7 +159,7 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 
   /* buffer is coming from non-dpdk source so we need to init
      rte_mbuf header */
-  if (PREDICT_FALSE ((b->flags & VNET_BUFFER_RTE_MBUF_VALID) == 0))
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_EXT_HDR_VALID) == 0))
     {
       vlib_buffer_t *b2 = b;
       last_mb = mb = rte_mbuf_from_vlib_buffer (b2);
@@ -168,13 +168,11 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 	{
 	  b2 = vlib_get_buffer (vm, b2->next_buffer);
 	  mb = rte_mbuf_from_vlib_buffer (b2);
-	  last_mb->next = mb;
-	  last_mb = mb;
 	  rte_pktmbuf_reset (mb);
 	}
     }
 
-  first_mb = mb = rte_mbuf_from_vlib_buffer (b);
+  last_mb = first_mb = mb = rte_mbuf_from_vlib_buffer (b);
   first_mb->nb_segs = 1;
   mb->data_len = b->current_length;
   mb->pkt_len = maybe_multiseg ? vlib_buffer_length_in_chain (vm, b) :
@@ -185,10 +183,17 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
     {
       b = vlib_get_buffer (vm, b->next_buffer);
       mb = rte_mbuf_from_vlib_buffer (b);
+      last_mb->next = mb;
+      last_mb = mb;
       mb->data_len = b->current_length;
       mb->pkt_len = b->current_length;
       mb->data_off = VLIB_BUFFER_PRE_DATA_SIZE + b->current_data;
       first_mb->nb_segs++;
+      if (b->clone_count)
+	{
+	  rte_mbuf_refcnt_update (mb, b->clone_count);
+	  b->clone_count = 0;
+	}
     }
 }
 
