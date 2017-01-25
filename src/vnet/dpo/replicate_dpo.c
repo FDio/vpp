@@ -625,6 +625,7 @@ replicate_inline (vlib_main_t * vm,
                   vlib_frame_t * frame)
 {
     vlib_combined_counter_main_t * cm = &replicate_main.repm_counters;
+    replicate_main_t * rm = &replicate_main;
     u32 n_left_from, * from, * to_next, next_index;
     u32 cpu_index = os_get_cpu_number();
 
@@ -645,13 +646,11 @@ replicate_inline (vlib_main_t * vm,
             const replicate_t *rep0;
             vlib_buffer_t * b0, *c0;
             const dpo_id_t *dpo0;
+	    u8 num_cloned;
 
             bi0 = from[0];
-            to_next[0] = bi0;
             from += 1;
-            to_next += 1;
             n_left_from -= 1;
-            n_left_to_next -= 1;
 
             b0 = vlib_get_buffer (vm, bi0);
             repi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
@@ -661,50 +660,21 @@ replicate_inline (vlib_main_t * vm,
                 cm, cpu_index, repi0, 1,
                 vlib_buffer_length_in_chain(vm, b0));
 
-            /* ship the original to the first bucket */
-            dpo0 = replicate_get_bucket_i(rep0, 0);
-            next0 = dpo0->dpoi_next_node;
-            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	    vec_validate (rm->clones[cpu_index], rep0->rep_n_buckets - 1);
 
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+	    num_cloned = vlib_buffer_clone (vm, bi0, rm->clones[cpu_index], rep0->rep_n_buckets, 128);
+
+	    if (num_cloned != rep0->rep_n_buckets)
+	      {
+		vlib_node_increment_counter
+		  (vm, node->node_index,
+		   REPLICATE_DPO_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
+	      }
+
+            for (bucket = 0; bucket < num_cloned; bucket++)
             {
-                replicate_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-                t->rep_index = repi0;
-                t->dpo = *dpo0;
-            }
-            vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-                                             to_next, n_left_to_next,
-                                             bi0, next0);
-
-            /* ship copies to the rest of the buckets */
-            for (bucket = 1; bucket < rep0->rep_n_buckets; bucket++)
-            {
-                /*
-                 * After the enqueue of the first buffer, and of all subsequent
-                 * buffers in this loop, it is possible that we over-flow the
-                 * frame of the to-next node. When this happens we need to 'put'
-                 * that full frame to the node and get a fresh empty one.
-                 * Note that these are macros with side effects that change
-                 * to_next & n_left_to_next
-                 */
-                if (PREDICT_FALSE(0 == n_left_to_next))
-                {
-                    vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-                    vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
-                }
-
-                /* Make a copy. This can fail, so deal with it. */
-                c0 = vlib_buffer_copy(vm, b0);
-                if (PREDICT_FALSE (c0 == 0))
-                  {
-                    vlib_node_increment_counter 
-                      (vm, node->node_index, 
-                       REPLICATE_DPO_ERROR_BUFFER_ALLOCATION_FAILURE,
-                       1);
-                    continue;
-                  }
-                
-                ci0 = vlib_get_buffer_index(vm, c0);
+                ci0 = rm->clones[cpu_index][bucket];
+                c0 = vlib_get_buffer(vm, ci0);
 
                 to_next[0] = ci0;
                 to_next += 1;
@@ -724,7 +694,13 @@ replicate_inline (vlib_main_t * vm,
                 vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
                                                  to_next, n_left_to_next,
                                                  ci0, next0);
+		if (PREDICT_FALSE (n_left_to_next == 0))
+		  {
+		    vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+		    vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+		  }
             }
+	    vec_reset_length (rm->clones[cpu_index]);
         }
 
         vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -797,3 +773,15 @@ VLIB_REGISTER_NODE (ip6_replicate_node) = {
       [0] = "error-drop",
   },
 };
+
+clib_error_t *
+replicate_dpo_init (vlib_main_t * vm)
+{
+  replicate_main_t * rm = &replicate_main;
+
+  vec_validate (rm->clones, vlib_num_workers());
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (replicate_dpo_init);

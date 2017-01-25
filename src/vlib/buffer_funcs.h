@@ -530,6 +530,110 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   return fd;
 }
 
+/** \brief Create multiple clones of buffer and store them in the supplied array
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param src_buffer - (u32) source buffer index
+    @param buffers - (u32 * ) buffer index array
+    @param n_buffers - (u8) number of buffer clones requested
+    @param head_end_offset - (u16) offset relative to current position
+           where packet head ends
+    @return - (u8) number of buffers actually cloned, may be
+    less than the number requested or zero
+*/
+
+always_inline u8
+vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
+		   u8 n_buffers, u16 head_end_offset)
+{
+  u8 i;
+  vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
+
+  ASSERT (s->n_add_refs == 0);
+  ASSERT (n_buffers);
+
+  if (s->current_length <= head_end_offset + CLIB_CACHE_LINE_BYTES * 2)
+    {
+      buffers[0] = src_buffer;
+      for (i = 1; i < n_buffers; i++)
+	{
+	  vlib_buffer_t *d;
+	  d = vlib_buffer_copy (vm, s);
+	  if (d == 0)
+	    return i;
+	  buffers[i] = vlib_get_buffer_index (vm, d);
+
+	}
+      return n_buffers;
+    }
+
+  n_buffers = vlib_buffer_alloc_from_free_list (vm, buffers, n_buffers,
+						s->free_list_index);
+  if (PREDICT_FALSE (n_buffers == 0))
+    {
+      buffers[0] = src_buffer;
+      return 1;
+    }
+
+  for (i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *d = vlib_get_buffer (vm, buffers[i]);
+      d->current_data = s->current_data;
+      d->current_length = head_end_offset;
+      d->free_list_index = s->free_list_index;
+      d->total_length_not_including_first_buffer =
+	s->total_length_not_including_first_buffer + s->current_length -
+	head_end_offset;
+      d->flags = s->flags | VLIB_BUFFER_NEXT_PRESENT;
+      d->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
+      clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+      clib_memcpy (vlib_buffer_get_current (d), vlib_buffer_get_current (s),
+		   head_end_offset);
+      d->next_buffer = src_buffer;
+    }
+  vlib_buffer_advance (s, head_end_offset);
+  s->n_add_refs = n_buffers - 1;
+  while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      s = vlib_get_buffer (vm, s->next_buffer);
+      s->n_add_refs = n_buffers - 1;
+    }
+
+  return n_buffers;
+}
+
+/** \brief Attach cloned tail to the buffer
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param head - (vlib_buffer_t *) head buffer
+    @param tail - (Vlib buffer_t *) tail buffer to clone and attach to head
+*/
+
+always_inline void
+vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
+			  vlib_buffer_t * tail)
+{
+  ASSERT ((head->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  ASSERT (head->free_list_index == tail->free_list_index);
+
+  head->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  head->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  head->flags &= ~VLIB_BUFFER_EXT_HDR_VALID;
+  head->flags |= (tail->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID);
+  head->next_buffer = vlib_get_buffer_index (vm, tail);
+  head->total_length_not_including_first_buffer = tail->current_length +
+    tail->total_length_not_including_first_buffer;
+
+next_segment:
+  __sync_add_and_fetch (&tail->n_add_refs, 1);
+
+  if (tail->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      tail = vlib_get_buffer (vm, tail->next_buffer);
+      goto next_segment;
+    }
+}
+
 /* Initializes the buffer as an empty packet with no chained buffers. */
 always_inline void
 vlib_buffer_chain_init (vlib_buffer_t * first)
@@ -695,7 +799,8 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   _(flags);
   _(free_list_index);
 #undef _
-  ASSERT (dst->total_length_not_including_first_buffer == 0);
+  dst->total_length_not_including_first_buffer = 0;
+  ASSERT (dst->n_add_refs == 0);
 }
 
 always_inline void
@@ -727,8 +832,10 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * dst0,
   _(flags);
   _(free_list_index);
 #undef _
-  ASSERT (dst0->total_length_not_including_first_buffer == 0);
-  ASSERT (dst1->total_length_not_including_first_buffer == 0);
+  dst0->total_length_not_including_first_buffer = 0;
+  dst1->total_length_not_including_first_buffer = 0;
+  ASSERT (dst0->n_add_refs == 0);
+  ASSERT (dst1->n_add_refs == 0);
 }
 
 #if CLIB_DEBUG > 0
