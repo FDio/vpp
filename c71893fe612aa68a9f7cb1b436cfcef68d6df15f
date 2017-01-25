@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_bb6bb384",
+        "filename": "src/scripts/vppctl",
+        "patchSetId": 3
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-01-25T17:06:34Z",
+      "side": 1,
+      "message": "Tenary operator would be marginally less verbose. \n\nprompt.prompt \u003d \u0027vpp# \u0027 if (options.prefix) is None else \u0027%s# \u0027 % options.prefix",
+      "revId": "c71893fe612aa68a9f7cb1b436cfcef68d6df15f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
