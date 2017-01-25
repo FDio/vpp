@@ -32,6 +32,9 @@
 typedef struct replicate_main_t_
 {
     vlib_combined_counter_main_t repm_counters;
+
+    /* per-cpu vector of cloned packets */
+    u32 **clones;
 } replicate_main_t;
 
 extern replicate_main_t replicate_main;

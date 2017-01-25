@@ -68,8 +68,9 @@ format_vlib_buffer (u8 * s, va_list * args)
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   uword indent = format_get_indent (s);
 
-  s = format (s, "current data %d, length %d, free-list %d",
-	      b->current_data, b->current_length, b->free_list_index);
+  s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
+	      b->current_data, b->current_length, b->free_list_index,
+	      b->n_add_refs);
 
   if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
     s = format (s, ", totlen-nifb %d",
@@ -84,8 +85,10 @@ format_vlib_buffer (u8 * s, va_list * args)
       u32 next_buffer = b->next_buffer;
       b = vlib_get_buffer (vm, next_buffer);
 
-      s = format (s, "\n%Unext-buffer 0x%x, segment length %d",
-		  format_white_space, indent, next_buffer, b->current_length);
+      s =
+	format (s, "\n%Unext-buffer 0x%x, segment length %d, clone-count %u",
+		format_white_space, indent, next_buffer, b->current_length,
+		b->n_add_refs);
     }
 
   return s;
@@ -262,7 +265,7 @@ vlib_main_t **vlib_mains;
 
 /* When dubugging validate that given buffers are either known allocated
    or known free. */
-static void __attribute__ ((unused))
+static void
 vlib_buffer_validate_alloc_free (vlib_main_t * vm,
 				 u32 * buffers,
 				 uword n_buffers,
@@ -362,6 +365,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 
   /* Setup free buffer template. */
   f->buffer_init_template.free_list_index = f->index;
+  f->buffer_init_template.n_add_refs = 0;
 
   if (is_public)
     {
@@ -620,18 +624,10 @@ vlib_buffer_free_inline (vlib_main_t * vm,
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *fl;
-  static u32 *next_to_free[2];	/* smp bad */
-  u32 i_next_to_free, *b, *n, *f, fi;
-  uword n_left;
+  u32 fi;
   int i;
-  static vlib_buffer_free_list_t **announce_list;
-  vlib_buffer_free_list_t *fl0 = 0, *fl1 = 0;
-  u32 bi0 = (u32) ~ 0, bi1 = (u32) ~ 0, fi0, fi1 = (u32) ~ 0;
-  u8 free0, free1 = 0, free_next0, free_next1;
   u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	     u32 follow_buffer_next);
-
-  ASSERT (os_get_cpu_number () == 0);
 
   cb = bm->buffer_free_callback;
 
@@ -641,203 +637,68 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   if (!n_buffers)
     return;
 
-  /* Use first buffer to get default free list. */
-  {
-    u32 bi0 = buffers[0];
-    vlib_buffer_t *b0;
-
-    b0 = vlib_get_buffer (vm, bi0);
-    fl = vlib_buffer_get_buffer_free_list (vm, b0, &fi);
-    if (fl->buffers_added_to_freelist_function)
-      vec_add1 (announce_list, fl);
-  }
-
-  vec_validate (next_to_free[0], n_buffers - 1);
-  vec_validate (next_to_free[1], n_buffers - 1);
-
-  i_next_to_free = 0;
-  n_left = n_buffers;
-  b = buffers;
-
-again:
-  /* Verify that buffers are known allocated. */
-  vlib_buffer_validate_alloc_free (vm, b,
-				   n_left, VLIB_BUFFER_KNOWN_ALLOCATED);
-
-  vec_add2_aligned (fl->buffers, f, n_left, CLIB_CACHE_LINE_BYTES);
-
-  n = next_to_free[i_next_to_free];
-  while (n_left >= 4)
+  for (i = 0; i < n_buffers; i++)
     {
-      vlib_buffer_t *b0, *b1, *binit0, *binit1, dummy_buffers[2];
+      vlib_buffer_t *b;
+      u32 bi = buffers[i];
 
-      bi0 = b[0];
-      bi1 = b[1];
+      b = vlib_get_buffer (vm, bi);
 
-      f[0] = bi0;
-      f[1] = bi1;
-      f += 2;
-      b += 2;
-      n_left -= 2;
+      fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
-      /* Prefetch buffers for next iteration. */
-      vlib_prefetch_buffer_with_index (vm, b[0], WRITE);
-      vlib_prefetch_buffer_with_index (vm, b[1], WRITE);
-
-      b0 = vlib_get_buffer (vm, bi0);
-      b1 = vlib_get_buffer (vm, bi1);
-
-      free0 = (b0->flags & VLIB_BUFFER_RECYCLE) == 0;
-      free1 = (b1->flags & VLIB_BUFFER_RECYCLE) == 0;
-
-      /* Must be before init which will over-write buffer flags. */
-      if (follow_buffer_next)
+      /* The only current use of this callback: multicast recycle */
+      if (PREDICT_FALSE (fl->buffers_added_to_freelist_function != 0))
 	{
-	  n[0] = b0->next_buffer;
-	  free_next0 = free0 && (b0->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
-	  n += free_next0;
+	  int j;
 
-	  n[0] = b1->next_buffer;
-	  free_next1 = free1 && (b1->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
-	  n += free_next1;
+	  vlib_buffer_add_to_free_list
+	    (vm, fl, buffers[i], (b->flags & VLIB_BUFFER_RECYCLE) == 0);
+
+	  for (j = 0; j < vec_len (bm->announce_list); j++)
+	    {
+	      if (fl == bm->announce_list[j])
+		goto already_announced;
+	    }
+	  vec_add1 (bm->announce_list, fl);
+	already_announced:
+	  ;
 	}
       else
-	free_next0 = free_next1 = 0;
-
-      /* Must be before init which will over-write buffer free list. */
-      fi0 = b0->free_list_index;
-      fi1 = b1->free_list_index;
-
-      if (PREDICT_FALSE (fi0 != fi || fi1 != fi))
-	goto slow_path_x2;
-
-      binit0 = free0 ? b0 : &dummy_buffers[0];
-      binit1 = free1 ? b1 : &dummy_buffers[1];
-
-      vlib_buffer_init_two_for_free_list (binit0, binit1, fl);
-      continue;
-
-    slow_path_x2:
-      /* Backup speculation. */
-      f -= 2;
-      n -= free_next0 + free_next1;
-
-      _vec_len (fl->buffers) = f - fl->buffers;
-
-      fl0 = pool_elt_at_index (bm->buffer_free_list_pool, fi0);
-      fl1 = pool_elt_at_index (bm->buffer_free_list_pool, fi1);
-
-      vlib_buffer_add_to_free_list (vm, fl0, bi0, free0);
-      if (PREDICT_FALSE (fl0->buffers_added_to_freelist_function != 0))
 	{
-	  int i;
-	  for (i = 0; i < vec_len (announce_list); i++)
-	    if (fl0 == announce_list[i])
-	      goto no_fl0;
-	  vec_add1 (announce_list, fl0);
-	}
-    no_fl0:
-      if (PREDICT_FALSE (fl1->buffers_added_to_freelist_function != 0))
-	{
-	  int i;
-	  for (i = 0; i < vec_len (announce_list); i++)
-	    if (fl1 == announce_list[i])
-	      goto no_fl1;
-	  vec_add1 (announce_list, fl1);
-	}
+	  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
+	    {
+	      u32 flags, next;
 
-    no_fl1:
-      vlib_buffer_add_to_free_list (vm, fl1, bi1, free1);
+	      do
+		{
+		  vlib_buffer_t *nb = vlib_get_buffer (vm, bi);
+		  flags = nb->flags;
+		  next = nb->next_buffer;
+		  if (nb->n_add_refs)
+		    nb->n_add_refs--;
+		  else
+		    {
+		      vlib_buffer_validate_alloc_free (vm, &bi, 1,
+						       VLIB_BUFFER_KNOWN_ALLOCATED);
+		      vlib_buffer_add_to_free_list (vm, fl, bi, 1);
+		    }
+		  bi = next;
+		}
+	      while (follow_buffer_next
+		     && (flags & VLIB_BUFFER_NEXT_PRESENT));
 
-      /* Possibly change current free list. */
-      if (fi0 != fi && fi1 != fi)
-	{
-	  fi = fi1;
-	  fl = pool_elt_at_index (bm->buffer_free_list_pool, fi);
+	    }
 	}
-
-      vec_add2_aligned (fl->buffers, f, n_left, CLIB_CACHE_LINE_BYTES);
     }
-
-  while (n_left >= 1)
-    {
-      vlib_buffer_t *b0, *binit0, dummy_buffers[1];
-
-      bi0 = b[0];
-      f[0] = bi0;
-      f += 1;
-      b += 1;
-      n_left -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-
-      free0 = (b0->flags & VLIB_BUFFER_RECYCLE) == 0;
-
-      /* Must be before init which will over-write buffer flags. */
-      if (follow_buffer_next)
-	{
-	  n[0] = b0->next_buffer;
-	  free_next0 = free0 && (b0->flags & VLIB_BUFFER_NEXT_PRESENT) != 0;
-	  n += free_next0;
-	}
-      else
-	free_next0 = 0;
-
-      /* Must be before init which will over-write buffer free list. */
-      fi0 = b0->free_list_index;
-
-      if (PREDICT_FALSE (fi0 != fi))
-	goto slow_path_x1;
-
-      binit0 = free0 ? b0 : &dummy_buffers[0];
-
-      vlib_buffer_init_for_free_list (binit0, fl);
-      continue;
-
-    slow_path_x1:
-      /* Backup speculation. */
-      f -= 1;
-      n -= free_next0;
-
-      _vec_len (fl->buffers) = f - fl->buffers;
-
-      fl0 = pool_elt_at_index (bm->buffer_free_list_pool, fi0);
-
-      vlib_buffer_add_to_free_list (vm, fl0, bi0, free0);
-      if (PREDICT_FALSE (fl0->buffers_added_to_freelist_function != 0))
-	{
-	  int i;
-	  for (i = 0; i < vec_len (announce_list); i++)
-	    if (fl0 == announce_list[i])
-	      goto no_fl00;
-	  vec_add1 (announce_list, fl0);
-	}
-
-    no_fl00:
-      fi = fi0;
-      fl = pool_elt_at_index (bm->buffer_free_list_pool, fi);
-
-      vec_add2_aligned (fl->buffers, f, n_left, CLIB_CACHE_LINE_BYTES);
-    }
-
-  if (follow_buffer_next && ((n_left = n - next_to_free[i_next_to_free]) > 0))
-    {
-      b = next_to_free[i_next_to_free];
-      i_next_to_free ^= 1;
-      goto again;
-    }
-
-  _vec_len (fl->buffers) = f - fl->buffers;
-
-  if (vec_len (announce_list))
+  if (vec_len (bm->announce_list))
     {
       vlib_buffer_free_list_t *fl;
-      for (i = 0; i < vec_len (announce_list); i++)
+      for (i = 0; i < vec_len (bm->announce_list); i++)
 	{
-	  fl = announce_list[i];
+	  fl = bm->announce_list[i];
 	  fl->buffers_added_to_freelist_function (vm, fl);
 	}
-      _vec_len (announce_list) = 0;
+      _vec_len (bm->announce_list) = 0;
     }
 }
 
@@ -922,6 +783,7 @@ vlib_packet_template_init (vlib_main_t * vm,
   fl->buffer_init_template.current_data = 0;
   fl->buffer_init_template.current_length = n_packet_data_bytes;
   fl->buffer_init_template.flags = 0;
+  fl->buffer_init_template.n_add_refs = 0;
   vlib_worker_thread_barrier_release (vm);
 }
 
