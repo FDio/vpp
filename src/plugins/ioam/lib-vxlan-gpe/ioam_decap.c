@@ -55,7 +55,7 @@ vxlan_gpe_decap_ioam_v4_two_inline (vlib_main_t * vm,
   vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b0, &next0[0],
 					    VXLAN_GPE_DECAP_IOAM_V4_NEXT_DROP,
 					    0 /* use_adj */ );
-  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b1, &next0[1],
+  vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b1, &next1[0],
 					    VXLAN_GPE_DECAP_IOAM_V4_NEXT_DROP,
 					    0 /* use_adj */ );
 }
