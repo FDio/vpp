@@ -23,6 +23,8 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
+
+#define __plugin_msg_base vxlan_gpe_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
 /* Declare message IDs */

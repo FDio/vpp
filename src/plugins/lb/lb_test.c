@@ -19,6 +19,8 @@
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
 #include <lb/lb.h>
+
+#define __plugin_msg_base lb_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
 //TODO: Move that to vat/plugin_api.c

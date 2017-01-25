@@ -70,6 +70,7 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#define __plugin_msg_base 0
 #include <vlibapi/vat_helper_macros.h>
 
 f64

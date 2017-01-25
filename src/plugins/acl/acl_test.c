@@ -25,6 +25,8 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <arpa/inet.h>
+
+#define __plugin_msg_base acl_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);

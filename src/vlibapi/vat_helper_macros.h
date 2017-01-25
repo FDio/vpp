@@ -20,14 +20,13 @@
 #define __vat_helper_macros_h__
 
 /* M: construct, but don't yet send a message */
-
-#define M(T,t)                                          \
-do {                                                    \
-    vam->result_ready = 0;                              \
-    mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));    \
-    memset (mp, 0, sizeof (*mp));                       \
-    mp->_vl_msg_id = ntohs (VL_API_##T);                \
-    mp->client_index = vam->my_client_index;            \
+#define M(T,t)                                                  \
+do {                                                            \
+    vam->result_ready = 0;                                      \
+    mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));            \
+    memset (mp, 0, sizeof (*mp));                               \
+    mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
+    mp->client_index = vam->my_client_index;                    \
 } while(0);
 
 #define M2(T,t,n)                                               \
@@ -35,10 +34,9 @@ do {                                                            \
     vam->result_ready = 0;                                      \
     mp = vl_msg_api_alloc_as_if_client(sizeof(*mp)+(n));        \
     memset (mp, 0, sizeof (*mp));                               \
-    mp->_vl_msg_id = ntohs (VL_API_##T);                        \
+    mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
 } while(0);
-
 
 /* S: send a message */
 #define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))

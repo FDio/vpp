@@ -21,6 +21,8 @@
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
+
+#define __plugin_msg_base snat_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
