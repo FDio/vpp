@@ -68,8 +68,9 @@ format_vlib_buffer (u8 * s, va_list * args)
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
   uword indent = format_get_indent (s);
 
-  s = format (s, "current data %d, length %d, free-list %d",
-	      b->current_data, b->current_length, b->free_list_index);
+  s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
+	      b->current_data, b->current_length, b->free_list_index,
+	      b->clone_count);
 
   if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
     s = format (s, ", totlen-nifb %d",
@@ -84,8 +85,10 @@ format_vlib_buffer (u8 * s, va_list * args)
       u32 next_buffer = b->next_buffer;
       b = vlib_get_buffer (vm, next_buffer);
 
-      s = format (s, "\n%Unext-buffer 0x%x, segment length %d",
-		  format_white_space, indent, next_buffer, b->current_length);
+      s =
+	format (s, "\n%Unext-buffer 0x%x, segment length %d, clone-count %u",
+		format_white_space, indent, next_buffer, b->current_length,
+		b->clone_count);
     }
 
   return s;
@@ -430,6 +433,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 
   /* Setup free buffer template. */
   f->buffer_init_template.free_list_index = f->index;
+  f->buffer_init_template.clone_count = 0;
 
   if (is_public)
     {
@@ -1092,6 +1096,7 @@ vlib_packet_template_init (vlib_main_t * vm,
   fl->buffer_init_template.current_data = 0;
   fl->buffer_init_template.current_length = n_packet_data_bytes;
   fl->buffer_init_template.flags = 0;
+  fl->buffer_init_template.clone_count = 0;
   vlib_worker_thread_barrier_release (vm);
 }
 
