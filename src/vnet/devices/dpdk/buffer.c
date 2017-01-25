@@ -81,26 +81,36 @@ STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
 
 #define BUFFERS_PER_COPY (sizeof (vlib_copy_unit_t) / sizeof (u32))
 
+static_always_inline void
+dpdk_rte_pktmbuf_free (vlib_buffer_t * b)
+{
+  struct rte_mbuf *mb;
+  mb = rte_mbuf_from_vlib_buffer (b);
+
+  if (PREDICT_FALSE (b->clone_count))
+    {
+      rte_mbuf_refcnt_update (mb, b->clone_count);
+      b->clone_count = 0;
+    }
+
+  rte_pktmbuf_free (mb);
+}
+
 static void
 del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 {
   u32 i;
-  struct rte_mbuf *mb;
   vlib_buffer_t *b;
 
   for (i = 0; i < vec_len (f->unaligned_buffers); i++)
     {
       b = vlib_get_buffer (vm, f->unaligned_buffers[i]);
-      mb = rte_mbuf_from_vlib_buffer (b);
-      ASSERT (rte_mbuf_refcnt_read (mb) == 1);
-      rte_pktmbuf_free (mb);
+      dpdk_rte_pktmbuf_free (b);
     }
   for (i = 0; i < vec_len (f->aligned_buffers); i++)
     {
       b = vlib_get_buffer (vm, f->aligned_buffers[i]);
-      mb = rte_mbuf_from_vlib_buffer (b);
-      ASSERT (rte_mbuf_refcnt_read (mb) == 1);
-      rte_pktmbuf_free (mb);
+      dpdk_rte_pktmbuf_free (b);
     }
   vec_free (f->name);
   vec_free (f->unaligned_buffers);
@@ -374,7 +384,6 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   for (i = 0; i < n_buffers; i++)
     {
       vlib_buffer_t *b;
-      struct rte_mbuf *mb;
 
       b = vlib_get_buffer (vm, buffers[i]);
 
@@ -400,11 +409,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       else
 	{
 	  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
-	    {
-	      mb = rte_mbuf_from_vlib_buffer (b);
-	      ASSERT (rte_mbuf_refcnt_read (mb) == 1);
-	      rte_pktmbuf_free (mb);
-	    }
+	    dpdk_rte_pktmbuf_free (b);
 	}
     }
   if (vec_len (bm->announce_list))

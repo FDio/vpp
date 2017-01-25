@@ -525,6 +525,101 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
   return fd;
 }
 
+/** \brief Create multiple clones of buffer and store them in the supplied array
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param src_buffer - (u32) source buffer index
+    @param buffers - (u32 * ) buffer index array
+    @param n_buffers - (u8) number of buffer clones requested
+    @param head_end_offset - (u16) offset relative to current position
+           where packet head ends
+    @return - (u8) number of buffers actually cloned, may be
+    less than the number requested or zero
+*/
+
+always_inline u8
+vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
+		   u8 n_buffers, const u16 head_end_offset)
+{
+  u8 i;
+  vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
+
+  ASSERT (s->clone_count == 0);
+
+  if (s->current_length <= head_end_offset + CLIB_CACHE_LINE_BYTES)
+    {
+      for (i = 0; i < n_buffers - 1; i++)
+	{
+	  vlib_buffer_t *d;
+	  d = vlib_buffer_copy (vm, s);
+	  if (d == 0)
+	    return i;
+	  buffers[i] = vlib_get_buffer_index (vm, d);
+
+	}
+      buffers[n_buffers - 1] = src_buffer;
+      return n_buffers;
+    }
+
+  n_buffers = vlib_buffer_alloc_from_free_list (vm, buffers, n_buffers,
+						s->free_list_index);
+
+  for (i = 0; i < n_buffers; i++)
+    {
+      vlib_buffer_t *d = vlib_get_buffer (vm, buffers[i]);
+      d->current_data = s->current_data;
+      d->current_length = head_end_offset;
+      d->free_list_index = s->free_list_index;
+      d->total_length_not_including_first_buffer =
+	s->total_length_not_including_first_buffer + s->current_length -
+	head_end_offset;
+      d->flags = s->flags | VLIB_BUFFER_NEXT_PRESENT;
+      clib_memcpy (d->opaque, s->opaque, sizeof (s->opaque));
+      clib_memcpy (vlib_buffer_get_current (d), vlib_buffer_get_current (s),
+		   head_end_offset);
+      d->next_buffer = src_buffer;
+    }
+  if (n_buffers)
+    {
+      vlib_buffer_advance (s, head_end_offset);
+      while (s->flags & VLIB_BUFFER_NEXT_PRESENT)
+	{
+	  s->clone_count = n_buffers - 1;
+	  s = vlib_get_buffer (vm, s->next_buffer);
+	}
+    }
+
+  return n_buffers;
+}
+
+/** \brief Attach cloned tail to the buffer
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param head - (vlib_buffer_t *) head buffer
+    @param tail - (Vlib buffer_t *) tail buffer to clone and attach to head
+*/
+
+always_inline void
+vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
+			  vlib_buffer_t * tail)
+{
+  ASSERT ((head->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  ASSERT (head->free_list_index == tail->free_list_index);
+
+  head->flags |= VLIB_BUFFER_NEXT_PRESENT;
+  head->flags &= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  head->flags |= (tail->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID);
+  head->next_buffer = vlib_get_buffer_index (vm, tail);
+  head->total_length_not_including_first_buffer = tail->current_length +
+    tail->total_length_not_including_first_buffer;
+
+  while (tail->flags & VLIB_BUFFER_NEXT_PRESENT)
+    {
+      __sync_add_and_fetch (&tail->clone_count, 1);
+      tail = vlib_get_buffer (vm, tail->next_buffer);
+    }
+}
+
 /* Initializes the buffer as an empty packet with no chained buffers. */
 always_inline void
 vlib_buffer_chain_init (vlib_buffer_t * first)
@@ -707,6 +802,7 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
   _(free_list_index);
 #undef _
   ASSERT (dst->b.total_length_not_including_first_buffer == 0);
+  ASSERT (dst->b.clone_count == 0);
 }
 
 always_inline void
