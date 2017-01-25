@@ -258,20 +258,12 @@ format_ip6_sr_header_with_length (u8 * s, va_list * args)
 
 /**
  * @brief Defined valid next nodes
- * @note Cannot call replicate yet without DPDK
 */
-#if DPDK > 0
 #define foreach_sr_rewrite_next                 \
 _(ERROR, "error-drop")                          \
 _(IP6_LOOKUP, "ip6-lookup")                     \
 _(SR_LOCAL, "sr-local")                         \
 _(SR_REPLICATE,"sr-replicate")
-#else
-#define foreach_sr_rewrite_next                 \
-_(ERROR, "error-drop")                          \
-_(IP6_LOOKUP, "ip6-lookup")                     \
-_(SR_LOCAL, "sr-local")
-#endif /* DPDK */
 
 /**
  * @brief Struct for defined valid next nodes
@@ -433,7 +425,6 @@ sr_rewrite (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
-#if DPDK > 0			/* Cannot call replication node yet without DPDK */
 	  /* add a replication node */
 	  if (PREDICT_FALSE (t0->policy_index != ~0))
 	    {
@@ -442,7 +433,6 @@ sr_rewrite (vlib_main_t * vm,
 	      sr0 = (ip6_sr_header_t *) (t0->rewrite);
 	      goto processnext;
 	    }
-#endif /* DPDK */
 
 	  /*
 	   * SR-unaware service chaining case: pkt coming back from
@@ -519,7 +509,6 @@ sr_rewrite (vlib_main_t * vm,
 		    b0->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-#if DPDK > 0			/* Cannot call replication node yet without DPDK */
 	processnext:
 	  /* add a replication node */
 	  if (PREDICT_FALSE (t1->policy_index != ~0))
@@ -529,7 +518,6 @@ sr_rewrite (vlib_main_t * vm,
 	      sr1 = (ip6_sr_header_t *) (t1->rewrite);
 	      goto trace00;
 	    }
-#endif /* DPDK */
 	  if (PREDICT_FALSE (ip1->protocol == IPPROTO_IPV6_ROUTE))
 	    {
 	      vlib_buffer_advance (b1, sizeof (ip1));
@@ -597,9 +585,7 @@ sr_rewrite (vlib_main_t * vm,
 		    b1->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-#if DPDK > 0			/* Cannot run replicate without DPDK and only replicate uses this label */
 	trace00:
-#endif /* DPDK */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -661,7 +647,6 @@ sr_rewrite (vlib_main_t * vm,
 	  t0 =
 	    pool_elt_at_index (sm->tunnels,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-#if DPDK > 0			/* Cannot call replication node yet without DPDK */
 	  /* add a replication node */
 	  if (PREDICT_FALSE (t0->policy_index != ~0))
 	    {
@@ -670,7 +655,6 @@ sr_rewrite (vlib_main_t * vm,
 	      sr0 = (ip6_sr_header_t *) (t0->rewrite);
 	      goto trace0;
 	    }
-#endif /* DPDK */
 
 	  ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
 		  >= ((word) vec_len (t0->rewrite)) + b0->current_data);
@@ -753,9 +737,7 @@ sr_rewrite (vlib_main_t * vm,
 		    b0->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-#if DPDK > 0			/* Cannot run replicate without DPDK and only replicate uses this label */
 	trace0:
-#endif /* DPDK */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1888,12 +1870,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
   a->multicast_address = &multicast_address;
   a->policy_name = policy_name;
 
-#if DPDK > 0			/*Cannot call replicate or configure multicast map yet without DPDK */
   rv = ip6_sr_add_del_multicastmap (a);
-#else
-  return clib_error_return (0,
-			    "cannot use multicast replicate spray case without DPDK installed");
-#endif /* DPDK */
 
   switch (rv)
     {
@@ -2295,11 +2272,9 @@ sr_init (vlib_main_t * vm)
   ip6_rewrite_node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
   ASSERT (ip6_rewrite_node);
 
-#if DPDK > 0			/* Cannot run replicate without DPDK */
   /* Add a disposition to sr_replicate for the sr multicast replicate node */
   sm->ip6_lookup_sr_replicate_index =
     vlib_node_add_next (vm, ip6_lookup_node->index, sr_replicate_node.index);
-#endif /* DPDK */
 
   /* Add a disposition to ip6_rewrite for the sr dst address hack node */
   sm->ip6_rewrite_sr_next_index =
