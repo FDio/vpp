@@ -55,6 +55,7 @@
 #include <vnet/classify/classify.api.h>
 #include <vnet/flow/flow.api.h>
 #include <vnet/dhcp/dhcp.api.h>
+#include <vnet/cop/cop.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
