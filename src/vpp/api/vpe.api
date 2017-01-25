@@ -43,6 +43,7 @@
  * DPDK APIs: see ... /src/vnet/devices/dpdk/{dpdk.api, dpdk_api.c}
  * CLASSIFY APIs: see ... /src/vnet/classify/{classify.api, classify_api.c}
  * FLOW APIs: see ... /src/vnet/flow/{flow.api, flow_api.c}
+ * DHCP APIs: see ... /src/vnet/dhcp/{dhcpk.api, dhcp_api.c}
  */
 
 /** \brief Create a new subinterface with the given vlan id
@@ -393,68 +394,6 @@ define reset_fib
     @param retval - return code for the reset bfib request
 */
 define reset_fib_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief DHCP Proxy config add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param vrf_id - vrf id
-    @param if_ipv6 - ipv6 if non-zero, else ipv4
-    @param is_add - add the config if non-zero, else delete
-    @param insert_circuit_id - option82 suboption 1 fib number
-    @param dhcp_server[] - server address
-    @param dhcp_src_address[] - <fix this, need details>
-*/
-define dhcp_proxy_config
-{
-  u32 client_index;
-  u32 context;
-  u32 vrf_id;
-  u8 is_ipv6;
-  u8 is_add;
-  u8 insert_circuit_id;
-  u8 dhcp_server[16];
-  u8 dhcp_src_address[16];
-};
-
-/** \brief DHCP Proxy config response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define dhcp_proxy_config_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief DHCP Proxy set / unset vss request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param tbl_id - table id
-    @param oui - first part of vpn id
-    @param fib_id - second part of vpn id
-    @param is_ipv6 - ip6 if non-zero, else ip4
-    @param is_add - set vss if non-zero, else delete
-*/
-define dhcp_proxy_set_vss
-{
-  u32 client_index;
-  u32 context;
-  u32 tbl_id;
-  u32 oui;
-  u32 fib_id;
-  u8 is_ipv6;
-  u8 is_add;
-};
-
-/** \brief DHCP proxy set / unset vss response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define dhcp_proxy_set_vss_reply
 {
   u32 context;
   i32 retval;
@@ -834,40 +773,6 @@ define add_node_next_reply
   u32 next_index;
 };
 
-/** \brief DHCP Proxy config 2 add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param rx_vrf_id - receive vrf id
-    @param server_vrf_id - server vrf id
-    @param if_ipv6 - ipv6 if non-zero, else ipv4
-    @param is_add - add the config if non-zero, else delete
-    @param insert_circuit_id - option82 suboption 1 fib number
-    @param dhcp_server[] - server address
-    @param dhcp_src_address[] - <fix this, need details>
-*/
-define dhcp_proxy_config_2
-{
-  u32 client_index;
-  u32 context;
-  u32 rx_vrf_id;
-  u32 server_vrf_id;
-  u8 is_ipv6;
-  u8 is_add;
-  u8 insert_circuit_id;
-  u8 dhcp_server[16];
-  u8 dhcp_src_address[16];
-};
-
-/** \brief DHCP Proxy config 2 add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for request
-*/
-define dhcp_proxy_config_2_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief L2 interface ethernet flow point filtering enable/disable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -1083,37 +988,6 @@ define ip6_nd_event
   u8 mac_ip;
 };
     
-/** \brief DHCP Client config add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param sw_if_index - index of the interface for DHCP client
-    @param hostname - hostname
-    @param is_add - add the config if non-zero, else delete
-    @param want_dhcp_event - DHCP event sent to the sender
-           via dhcp_compl_event API message if non-zero
-    @param pid - sender's pid
-*/
-define dhcp_client_config
-{
-  u32 client_index;
-  u32 context;
-  u32 sw_if_index;
-  u8 hostname[64];
-  u8 is_add;
-  u8 want_dhcp_event;
-  u32 pid;
-};
-
-/** \brief DHCP Client config response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define dhcp_client_config_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Set/unset input ACL interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -1144,25 +1018,6 @@ define input_acl_set_interface_reply
 {
   u32 context;
   i32 retval;
-};
-
-/** \brief Tell client about a DHCP completion event
-    @param client_index - opaque cookie to identify the sender
-    @param pid - client pid registered to receive notification
-    @param is_ipv6 - if non-zero the address is ipv6, else ipv4
-    @param host_address - Host IP address
-    @param router_address - Router IP address
-    @param host_mac - Host MAC address
-*/
-define dhcp_compl_event
-{
-  u32 client_index;
-  u32 pid;
-  u8 hostname[64];
-  u8 is_ipv6;
-  u8 host_address[16];
-  u8 router_address[16];
-  u8 host_mac[6];
 };
 
 /** \brief cop: enable/disable junk filtration features on an interface

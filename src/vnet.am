@@ -657,10 +657,14 @@ endif
 ########################################
 libvnet_la_SOURCES +=				\
  vnet/dhcp/client.c				\
- vnet/dhcp/client.h
+ vnet/dhcp/client.h				\
+ vnet/dhcp/dhcp_api.c
 
 nobase_include_HEADERS +=			\
- vnet/dhcp/client.h
+ vnet/dhcp/client.h					\
+ vnet/dhcp/dhcp.api.h
+
+API_FILES += vnet/dhcp/dhcp.api
 
 ########################################
 # DHCP proxy
