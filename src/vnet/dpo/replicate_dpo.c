@@ -612,6 +612,7 @@ replicate_inline (vlib_main_t * vm,
     vlib_combined_counter_main_t * cm = &replicate_main.repm_counters;
     u32 n_left_from, * from, * to_next, next_index;
     u32 cpu_index = os_get_cpu_number();
+    static u32 *clones;
 
     from = vlib_frame_vector_args (frame);
     n_left_from = frame->n_vectors;
@@ -630,13 +631,11 @@ replicate_inline (vlib_main_t * vm,
             const replicate_t *rep0;
             vlib_buffer_t * b0, *c0;
             const dpo_id_t *dpo0;
+	    u8 num_cloned;
 
             bi0 = from[0];
-            to_next[0] = bi0;
             from += 1;
-            to_next += 1;
             n_left_from -= 1;
-            n_left_to_next -= 1;
 
             b0 = vlib_get_buffer (vm, bi0);
             repi0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
@@ -646,27 +645,14 @@ replicate_inline (vlib_main_t * vm,
                 cm, cpu_index, repi0, 1,
                 vlib_buffer_length_in_chain(vm, b0));
 
-            /* ship the original to the first bucket */
-            dpo0 = replicate_get_bucket_i(rep0, 0);
-            next0 = dpo0->dpoi_next_node;
-            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+	    vec_validate (clones, rep0->rep_n_buckets - 1);
 
-            if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-                replicate_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
-                t->rep_index = repi0;
-                t->dpo = *dpo0;
-            }
-            vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-                                             to_next, n_left_to_next,
-                                             bi0, next0);
+	    num_cloned = vlib_buffer_clone (vm, bi0, clones, rep0->rep_n_buckets, 128);
 
-            /* ship copies to the rest of the buckets */
-            for (bucket = 1; bucket < rep0->rep_n_buckets; bucket++)
+            for (bucket = 0; bucket < num_cloned; bucket++)
             {
-                /* Make a copy */
-                c0 = vlib_buffer_copy(vm, b0);
-                ci0 = vlib_get_buffer_index(vm, c0);
+                ci0 = clones[bucket];
+                c0 = vlib_get_buffer(vm, ci0);
 
                 to_next[0] = ci0;
                 to_next += 1;
@@ -676,9 +662,9 @@ replicate_inline (vlib_main_t * vm,
                 next0 = dpo0->dpoi_next_node;
                 vnet_buffer (c0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
-                if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+                if (PREDICT_FALSE(c0->flags & VLIB_BUFFER_IS_TRACED))
                 {
-                    replicate_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
+                    replicate_trace_t *t = vlib_add_trace (vm, node, c0, sizeof (*t));
                     t->rep_index = repi0;
                     t->dpo = *dpo0;
                 }
@@ -686,7 +672,13 @@ replicate_inline (vlib_main_t * vm,
                 vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
                                                  to_next, n_left_to_next,
                                                  ci0, next0);
+		if (PREDICT_FALSE (n_left_to_next == 0))
+		  {
+		    vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+		    vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+		  }
             }
+	    vec_reset_length (clones);
         }
 
         vlib_put_next_frame (vm, node, next_index, n_left_to_next);

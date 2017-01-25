@@ -2,7 +2,7 @@ packet-generator new {
   name x
   limit 1
   node ip4-input
-  size 64-64
+  size 512-512
   no-recycle
   data {
     ICMP: 1.0.0.2 -> 232.1.1.1
@@ -11,12 +11,15 @@ packet-generator new {
   }
 }
 
-trace add pg-input 100
-loop create
-loop create
-set int state loop0 up
-set int state loop1 up
+create packet-generator interface pg1
+create packet-generator interface pg2
+create packet-generator interface pg3
+
+set int state pg1 up
+set int state pg2 up
+set int state pg3 up
 
 ip mroute add 232.1.1.1 via pg0 Accept
-ip mroute add 232.1.1.1 via loop0 Forward
-ip mroute add 232.1.1.1 via loop1 Forward
+ip mroute add 232.1.1.1 via pg1 Forward
+ip mroute add 232.1.1.1 via pg2 Forward
+ip mroute add 232.1.1.1 via pg3 Forward
