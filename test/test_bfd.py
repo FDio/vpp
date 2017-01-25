@@ -42,14 +42,11 @@ class BFDAPITestCase(VppTestCase):
         """ create the same BFD session twice (negative case) """
         session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
         session.add_vpp_config()
-        try:
+
+        with self.vapi.expect_negative_api_retval():
             session.add_vpp_config()
-        except:
-            session.remove_vpp_config()
-            return
+
         session.remove_vpp_config()
-        raise Exception("Expected failure while adding duplicate "
-                        "configuration")
 
     def test_add_two(self):
         """ create two BFD sessions """
