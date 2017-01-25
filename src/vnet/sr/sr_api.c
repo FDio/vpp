@@ -190,12 +190,7 @@ static void vl_api_sr_multicast_map_add_del_t_handler
       goto out;
     }
 
-#if DPDK > 0			/* Cannot call replicate without DPDK */
   rv = ip6_sr_add_del_multicastmap (a);
-#else
-  clib_warning ("multicast replication without DPDK not implemented");
-  rv = VNET_API_ERROR_UNIMPLEMENTED;
-#endif /* DPDK */
 
 out:
 

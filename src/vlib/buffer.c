@@ -430,6 +430,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 
   /* Setup free buffer template. */
   f->buffer_init_template.free_list_index = f->index;
+  f->buffer_init_template.clone_count = 0;
 
   if (is_public)
     {
@@ -1092,6 +1093,7 @@ vlib_packet_template_init (vlib_main_t * vm,
   fl->buffer_init_template.current_data = 0;
   fl->buffer_init_template.current_length = n_packet_data_bytes;
   fl->buffer_init_template.flags = 0;
+  fl->buffer_init_template.clone_count = 0;
   vlib_worker_thread_barrier_release (vm);
 }
 
