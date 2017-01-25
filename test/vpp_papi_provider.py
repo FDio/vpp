@@ -32,15 +32,17 @@ class VppPapiProvider(object):
     """VPP-api provider using vpp-papi
 
     @property hook: hook object providing before and after api/cli hooks
-
-
     """
+
+    _zero, _negative = range(2)
 
     def __init__(self, name, shm_prefix, test_class):
         self.hook = Hook("vpp-papi-provider")
         self.name = name
         self.shm_prefix = shm_prefix
         self.test_class = test_class
+        self._expect_api_retval = self._zero
+        self._expect_stack = []
         jsonfiles = []
 
         install_dir = os.getenv('VPP_TEST_INSTALL_PATH')
@@ -50,6 +52,24 @@ class VppPapiProvider(object):
 
         self.papi = VPP(jsonfiles)
         self._events = deque()
+
+    def __enter__(self):
+        return self
+
+    def expect_negative_api_retval(self):
+        """ Expect API failure """
+        self._expect_stack.append(self._expect_api_retval)
+        self._expect_api_retval = self._negative
+        return self
+
+    def expect_zero_api_retval(self):
+        """ Expect API success """
+        self._expect_stack.append(self._expect_api_retval)
+        self._expect_api_retval = self._zero
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._expect_api_retval = self._expect_stack.pop()
 
     def register_hook(self, hook):
         """Replace hook registration with new hook
@@ -113,11 +133,23 @@ class VppPapiProvider(object):
         """
         self.hook.before_api(api_fn.__name__, api_args)
         reply = api_fn(**api_args)
-        if hasattr(reply, 'retval') and reply.retval != expected_retval:
-            msg = "API call failed, expected retval == %d, got %s" % (
-                expected_retval, repr(reply))
-            self.test_class.logger.info(msg)
-            raise Exception(msg)
+        if self._expect_api_retval == self._negative:
+            if hasattr(reply, 'retval') and reply.retval >= 0:
+                msg = "API call passed unexpectedly: expected negative "\
+                    "return value instead of %d in %s" % \
+                    (reply.retval, repr(reply))
+                self.test_class.logger.info(msg)
+                raise Exception(msg)
+        elif self._expect_api_retval == self._zero:
+            if hasattr(reply, 'retval') and reply.retval != expected_retval:
+                msg = "API call failed, expected zero return value instead "\
+                    "of %d in %s" % (expected_retval, repr(reply))
+                self.test_class.logger.info(msg)
+                raise Exception(msg)
+        else:
+            raise Exception("Internal error, unexpected value for "
+                            "self._expect_api_retval %s" %
+                            self._expect_api_retval)
         self.hook.after_api(api_fn.__name__, api_args)
         return reply
 
