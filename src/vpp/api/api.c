@@ -62,7 +62,6 @@
 #include <vnet/classify/input_acl.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/vxlan/vxlan.h>
-#include <vnet/l2/l2_vtr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/map/map.h>
 #include <vnet/cop/cop.h>
@@ -134,7 +133,6 @@ _(ADD_NODE_NEXT, add_node_next)						\
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
-_(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)         \
 _(SHOW_VERSION, show_version)						\
 _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
@@ -160,7 +158,6 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(DELETE_SUBIF, delete_subif)                                           \
-_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)           \
 _(PUNT, punt)                                                           \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)
 
@@ -1317,48 +1314,6 @@ vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *
 }
 
 static void
-  vl_api_l2_interface_vlan_tag_rewrite_t_handler
-  (vl_api_l2_interface_vlan_tag_rewrite_t * mp)
-{
-  int rv = 0;
-  vl_api_l2_interface_vlan_tag_rewrite_reply_t *rmp;
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
-  u32 vtr_op;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  vtr_op = ntohl (mp->vtr_op);
-
-  /* The L2 code is unsuspicious */
-  switch (vtr_op)
-    {
-    case L2_VTR_DISABLED:
-    case L2_VTR_PUSH_1:
-    case L2_VTR_PUSH_2:
-    case L2_VTR_POP_1:
-    case L2_VTR_POP_2:
-    case L2_VTR_TRANSLATE_1_1:
-    case L2_VTR_TRANSLATE_1_2:
-    case L2_VTR_TRANSLATE_2_1:
-    case L2_VTR_TRANSLATE_2_2:
-      break;
-
-    default:
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto bad_sw_if_index;
-    }
-
-  rv = l2vtr_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
-			ntohl (mp->push_dot1q), ntohl (mp->tag1),
-			ntohl (mp->tag2));
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_L2_INTERFACE_VLAN_TAG_REWRITE_REPLY);
-}
-
-static void
 vl_api_show_version_t_handler (vl_api_show_version_t * mp)
 {
   vl_api_show_version_reply_t *rmp;
@@ -2495,43 +2450,6 @@ vl_api_delete_subif_t_handler (vl_api_delete_subif_t * mp)
   rv = vnet_delete_sub_interface (ntohl (mp->sw_if_index));
 
   REPLY_MACRO (VL_API_DELETE_SUBIF_REPLY);
-}
-
-static void
-  vl_api_l2_interface_pbb_tag_rewrite_t_handler
-  (vl_api_l2_interface_pbb_tag_rewrite_t * mp)
-{
-  vl_api_l2_interface_pbb_tag_rewrite_reply_t *rmp;
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_main_t *vm = vlib_get_main ();
-  u32 vtr_op;
-  int rv = 0;
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  vtr_op = ntohl (mp->vtr_op);
-
-  switch (vtr_op)
-    {
-    case L2_VTR_DISABLED:
-    case L2_VTR_PUSH_2:
-    case L2_VTR_POP_2:
-    case L2_VTR_TRANSLATE_2_1:
-      break;
-
-    default:
-      rv = VNET_API_ERROR_INVALID_VALUE;
-      goto bad_sw_if_index;
-    }
-
-  rv = l2pbb_configure (vm, vnm, ntohl (mp->sw_if_index), vtr_op,
-			mp->b_dmac, mp->b_smac, ntohs (mp->b_vlanid),
-			ntohl (mp->i_sid), ntohs (mp->outer_tag));
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_L2_INTERFACE_PBB_TAG_REWRITE_REPLY);
-
 }
 
 static void
