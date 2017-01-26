@@ -122,6 +122,8 @@ fib_entry_chain_type_to_delegate_type (fib_forward_chain_type_t fct)
     case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
     case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
         break;
+    case FIB_FORW_CHAIN_TYPE_NSH:
+        return (FIB_ENTRY_DELEGATE_CHAIN_NSH);
     }
     ASSERT(0);
     return (FIB_ENTRY_DELEGATE_CHAIN_UNICAST_IP4);
@@ -142,6 +144,8 @@ fib_entry_delegate_type_to_chain_type (fib_entry_delegate_type_t fdt)
         return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
     case FIB_ENTRY_DELEGATE_CHAIN_ETHERNET:
         return (FIB_FORW_CHAIN_TYPE_ETHERNET);
+    case FIB_ENTRY_DELEGATE_CHAIN_NSH:
+        return (FIB_FORW_CHAIN_TYPE_NSH);
     case FIB_ENTRY_DELEGATE_COVERED:
     case FIB_ENTRY_DELEGATE_ATTACHED_IMPORT:
     case FIB_ENTRY_DELEGATE_ATTACHED_EXPORT:

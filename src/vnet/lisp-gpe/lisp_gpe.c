@@ -283,6 +283,23 @@ VLIB_CLI_COMMAND (lisp_show_iface_command) = {
 };
 /* *INDENT-ON* */
 
+/* Built-in tx feature path definition */
+/* *INDENT-OFF* */
+VNET_FEATURE_ARC_INIT (gpe_output, static) =
+{
+  .arc_name  = "gpe-output",
+  .start_nodes = VNET_FEATURES ("adj-gpe-midchain"),
+  .arc_index_ptr = &lisp_gpe_main.output_feature_arc_index,
+};
+
+VNET_FEATURE_INIT (gpe_tx_drop, static) =
+{
+  .arc_name = "gpe-output",
+  .node_name = "error-drop",
+  .runs_before = 0,     /* not before any other features */
+};
+/* *INDENT-ON* */
+
 /** Format LISP-GPE status. */
 u8 *
 format_vnet_lisp_gpe_status (u8 * s, va_list * args)
@@ -290,7 +307,6 @@ format_vnet_lisp_gpe_status (u8 * s, va_list * args)
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
 }
-
 
 /** LISP-GPE init function. */
 clib_error_t *
