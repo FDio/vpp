@@ -177,6 +177,9 @@ gre_proto_from_vnet_link (vnet_link_t link)
         return (GRE_PROTOCOL_teb);
     case VNET_LINK_ARP:
         return (GRE_PROTOCOL_arp);
+    case VNET_LINK_NSH:
+        ASSERT(0);
+        break;
     }
     ASSERT(0);
     return (GRE_PROTOCOL_ip4);

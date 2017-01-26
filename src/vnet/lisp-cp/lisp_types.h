@@ -89,6 +89,7 @@ typedef enum
   GID_ADDR_LCAF,
   GID_ADDR_MAC,
   GID_ADDR_SRC_DST,
+  GID_ADDR_NSH,
   GID_ADDR_NO_ADDRESS,
   GID_ADDR_TYPES
 } gid_address_type_t;
@@ -106,7 +107,8 @@ typedef enum
 typedef enum fid_addr_type_t_
 {
   FID_ADDR_IP_PREF,
-  FID_ADDR_MAC
+  FID_ADDR_MAC,
+  FID_ADDR_NSH
 } __attribute__ ((packed)) fid_addr_type_t;
 
 /* flat address type */
@@ -116,6 +118,7 @@ typedef struct
   {
     ip_prefix_t ippref;
     u8 mac[6];
+    u32 nsh;
   };
   fid_addr_type_t type;
 } fid_address_t;
@@ -124,6 +127,7 @@ typedef fid_address_t dp_address_t;
 
 #define fid_addr_ippref(_a) (_a)->ippref
 #define fid_addr_mac(_a) (_a)->mac
+#define fid_addr_nsh(_a) (_a)->nsh
 #define fid_addr_type(_a) (_a)->type
 u8 *format_fid_address (u8 * s, va_list * args);
 
@@ -155,6 +159,12 @@ typedef struct
 
 typedef struct
 {
+  u32 spi;
+  u8 si;
+} nsh_t;
+
+typedef struct
+{
   /* the union needs to be at the beginning! */
   union
   {
@@ -177,6 +187,7 @@ typedef struct _gid_address_t
     lcaf_t lcaf;
     u8 mac[6];
     source_dest_t sd;
+    nsh_t nsh;
   };
   u8 type;
   u32 vni;
@@ -232,6 +243,7 @@ void gid_address_ip_set (gid_address_t * dst, void *src, u8 version);
 #define gid_address_ip_version(_a) ip_addr_version(&gid_address_ip(_a))
 #define gid_address_lcaf(_a) (_a)->lcaf
 #define gid_address_mac(_a) (_a)->mac
+#define gid_address_nsh(_a) (_a)->nsh
 #define gid_address_vni(_a) (_a)->vni
 #define gid_address_vni_mask(_a) (_a)->vni_mask
 #define gid_address_sd_dst_ippref(_a) sd_dst_ippref(&(_a)->sd)
@@ -249,6 +261,7 @@ void gid_address_ip_set (gid_address_t * dst, void *src, u8 version);
   _(ip_prefix)                    \
   _(lcaf)                         \
   _(mac)                          \
+  _(nsh)                          \
   _(sd)
 
 /* *INDENT-OFF* */
