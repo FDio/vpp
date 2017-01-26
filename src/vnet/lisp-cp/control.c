@@ -2672,6 +2672,11 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
       gid_address_vni (dst) = vni;
       gid_address_vni (src) = vni;
     }
+  else if (LISP_AFI_LCAF == type)
+    {
+      /* Eventually extend this to support NSH and other */
+      ASSERT (0);
+    }
 }
 
 static uword
@@ -2790,6 +2795,13 @@ lisp_cp_lookup_l2 (vlib_main_t * vm,
   return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_MAC));
 }
 
+static uword
+lisp_cp_lookup_gpe (vlib_main_t * vm,
+                   vlib_node_runtime_t * node, vlib_frame_t * from_frame)
+{
+  return (lisp_cp_lookup_inline (vm, node, from_frame, LISP_AFI_LCAF));
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
   .function = lisp_cp_lookup_ip4,
@@ -2832,6 +2844,25 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
 VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
   .function = lisp_cp_lookup_l2,
   .name = "lisp-cp-lookup-l2",
+  .vector_size = sizeof (u32),
+  .format_trace = format_lisp_cp_lookup_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = LISP_CP_LOOKUP_N_ERROR,
+  .error_strings = lisp_cp_lookup_error_strings,
+
+  .n_next_nodes = LISP_CP_LOOKUP_N_NEXT,
+
+  .next_nodes = {
+      [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (lisp_cp_lookup_gpe_node) = {
+  .function = lisp_cp_lookup_gpe,
+  .name = "lisp-cp-lookup-gpe",
   .vector_size = sizeof (u32),
   .format_trace = format_lisp_cp_lookup_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,

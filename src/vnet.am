@@ -958,12 +958,14 @@ libvnet_la_SOURCES +=				\
   vnet/adj/adj_midchain.c   			\
   vnet/adj/adj_mcast.c   			\
   vnet/adj/adj_l2.c      			\
+  vnet/adj/adj_nsh.c      			\
   vnet/adj/adj.c
 
 nobase_include_HEADERS +=			\
   vnet/adj/adj.h				\
   vnet/adj/adj_types.h				\
   vnet/adj/adj_glean.h  			\
+  vnet/adj/adj_nsh.h  				\
   vnet/adj/adj_nbr.h
 
 ########################################
