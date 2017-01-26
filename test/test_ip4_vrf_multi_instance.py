@@ -142,7 +142,7 @@ class TestIp4VrfMultiInst(VppTestCase):
             raise
 
     def setUp(self):
-        """ip_add_del_route
+        """
         Clear trace and packet infos before running each test.
         """
         super(TestIp4VrfMultiInst, self).setUp()
@@ -158,7 +158,7 @@ class TestIp4VrfMultiInst(VppTestCase):
             self.logger.info(self.vapi.ppcli("show ip arp"))
 
     def create_vrf_and_assign_interfaces(self, count, start=1):
-        """"
+        """
         Create required number of FIB tables / VRFs, put 3 l2-pg interfaces
         to every FIB table / VRF.
 
@@ -195,7 +195,7 @@ class TestIp4VrfMultiInst(VppTestCase):
         self.logger.debug(self.vapi.ppcli("show ip arp"))
 
     def delete_vrf(self, vrf_id):
-        """"
+        """
         Delete required FIB table / VRF.
 
         :param int vrf_id: The FIB table / VRF ID to be deleted.
@@ -307,12 +307,12 @@ class TestIp4VrfMultiInst(VppTestCase):
 
     def run_verify_test(self):
         """
-        Create packet streams for all configured l2-pg interfaces, send all
+        Create packet streams for all configured l2-pg interfaces, send all \
         prepared packet streams and verify that:
             - all packets received correctly on all pg-l2 interfaces assigned
-                to bridge domains
+              to bridge domains
             - no packet received on all pg-l2 interfaces not assigned to bridge
-                domains
+              domains
 
         :raise RuntimeError: If no packet captured on l2-pg interface assigned
             to the bridge domain or if any packet is captured on l2-pg
