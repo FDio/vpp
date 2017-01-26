@@ -79,12 +79,17 @@ const static char *const lisp_cp_ethernet_nodes[] = {
   NULL,
 };
 
+const static char *const lisp_cp_nsh_nodes[] = {
+  "lisp-cp-lookup-nsh",
+  NULL,
+};
 
 const static char *const *const lisp_cp_nodes[DPO_PROTO_NUM] = {
   [DPO_PROTO_IP4] = lisp_cp_ip4_nodes,
   [DPO_PROTO_IP6] = lisp_cp_ip6_nodes,
   [DPO_PROTO_ETHERNET] = lisp_cp_ethernet_nodes,
   [DPO_PROTO_MPLS] = NULL,
+  [DPO_PROTO_NSH] = lisp_cp_nsh_nodes,
 };
 
 clib_error_t *

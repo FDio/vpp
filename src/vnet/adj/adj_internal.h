@@ -20,7 +20,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/adj/adj_l2.h>
-
+#include <vnet/adj/adj_nsh.h>
 
 /**
  * big switch to turn on Adjacency debugging
@@ -53,6 +53,8 @@ adj_get_rewrite_node (vnet_link_t linkt)
 	return (mpls_output_node.index);
     case VNET_LINK_ETHERNET:
 	return (adj_l2_rewrite_node.index);
+    case VNET_LINK_NSH:
+        return (adj_nsh_rewrite_node.index);
     case VNET_LINK_ARP:
 	break;
     }

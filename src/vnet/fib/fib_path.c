@@ -1755,6 +1755,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	    case FIB_FORW_CHAIN_TYPE_NSH:
 	    {
 		adj_index_t ai;
 
@@ -1787,6 +1788,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	    case FIB_FORW_CHAIN_TYPE_NSH:
 		ASSERT(0);
 		break;
 	    }
@@ -1809,6 +1811,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	    case FIB_FORW_CHAIN_TYPE_NSH:
 		ASSERT(0);
 		break;
             }
@@ -1824,6 +1827,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	    case FIB_FORW_CHAIN_TYPE_NSH:
                 break;
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
