@@ -1364,6 +1364,7 @@ vnet_link_to_l3_proto (vnet_link_t link)
     case VNET_LINK_ARP:
       return (VNET_L3_PACKET_TYPE_ARP);
     case VNET_LINK_ETHERNET:
+    case VNET_LINK_NSH:
       ASSERT (0);
       break;
     }

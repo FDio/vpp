@@ -355,6 +355,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
             break;
         }
         case FIB_FORW_CHAIN_TYPE_ETHERNET:
+        case FIB_FORW_CHAIN_TYPE_NSH:
 	    ASSERT(0);
 	    break;
         }

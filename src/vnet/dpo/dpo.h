@@ -67,9 +67,10 @@ typedef enum dpo_proto_t_
     DPO_PROTO_IP6,
     DPO_PROTO_ETHERNET,
     DPO_PROTO_MPLS,
+    DPO_PROTO_NSH,
 } __attribute__((packed)) dpo_proto_t;
 
-#define DPO_PROTO_NUM ((dpo_proto_t)(DPO_PROTO_MPLS+1))
+#define DPO_PROTO_NUM ((dpo_proto_t)(DPO_PROTO_NSH+1))
 #define DPO_PROTO_NONE ((dpo_proto_t)(DPO_PROTO_NUM+1))
 
 #define DPO_PROTOS {		\
@@ -77,11 +78,12 @@ typedef enum dpo_proto_t_
     [DPO_PROTO_IP6]  = "ip6",	\
     [DPO_PROTO_ETHERNET]  = "ethernet", \
     [DPO_PROTO_MPLS] = "mpls",	\
+    [DPO_PROTO_NSH] = "nsh",    \
 }
 
 #define FOR_EACH_DPO_PROTO(_proto)    \
     for (_proto = DPO_PROTO_IP4;      \
-	 _proto <= DPO_PROTO_MPLS;    \
+	 _proto <= DPO_PROTO_NSH;    \
 	 _proto++)
 
 /**
