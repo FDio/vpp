@@ -35,6 +35,7 @@ typedef enum fib_entry_delegate_type_t_ {
     FIB_ENTRY_DELEGATE_CHAIN_MPLS_EOS = FIB_FORW_CHAIN_TYPE_MPLS_EOS,
     FIB_ENTRY_DELEGATE_CHAIN_MPLS_NON_EOS = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
     FIB_ENTRY_DELEGATE_CHAIN_ETHERNET = FIB_FORW_CHAIN_TYPE_ETHERNET,
+    FIB_ENTRY_DELEGATE_CHAIN_NSH = FIB_FORW_CHAIN_TYPE_NSH,
     /**
      * Dependency list of covered entries.
      * these are more specific entries that are interested in changes
@@ -51,7 +52,7 @@ typedef enum fib_entry_delegate_type_t_ {
 #define FOR_EACH_DELEGATE_CHAIN(_entry, _fdt, _fed, _body)    \
 {                                                             \
     for (_fdt = FIB_ENTRY_DELEGATE_CHAIN_UNICAST_IP4;         \
-         _fdt <= FIB_ENTRY_DELEGATE_CHAIN_ETHERNET;           \
+         _fdt <= FIB_ENTRY_DELEGATE_CHAIN_NSH;                \
          _fdt++)                                              \
     {                                                         \
         _fed = fib_entry_delegate_get(_entry, _fdt);          \
