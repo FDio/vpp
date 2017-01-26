@@ -16,7 +16,6 @@ PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d $(BUILD_DOC_DIR)/.sphinx-cache $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(API_DOC_GEN_DIR) -c $(SRC_DOC_DIR)
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
-INDEX_REL_PATH:=$(shell realpath --relative-to=$(API_DOC_GEN_DIR) $(SRC_DOC_DIR)/index.rst)
 IN_VENV:=$(shell if pip -V | grep "virtualenv" 2>&1 > /dev/null; then echo 1; else echo 0; fi)
 
 .PHONY: verify-virtualenv
@@ -28,9 +27,10 @@ endif
 .PHONY: regen-api-doc
 regen-api-doc: verify-virtualenv
 	@mkdir -p $(API_DOC_GEN_DIR)
-	#@echo ".. include:: $(INDEX_REL_PATH)" > $(API_DOC_GEN_DIR)/index.rst
 	@cp $(SRC_DOC_DIR)/index.rst $(API_DOC_GEN_DIR)
-	sphinx-apidoc -o $(API_DOC_GEN_DIR) ..
+	@cp $(SRC_DOC_DIR)/indices.rst $(API_DOC_GEN_DIR)
+	@cp $(SRC_DOC_DIR)/overview.rst $(API_DOC_GEN_DIR)
+	sphinx-apidoc -o $(API_DOC_GEN_DIR) -H "Module documentation" ..
 
 .PHONY: help
 help:
