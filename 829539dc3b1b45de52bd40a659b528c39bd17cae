@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_26256aab",
+        "filename": "src/vpp-api/python/Makefile.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2017-01-26T07:51:27Z",
+      "side": 1,
+      "message": "This target installs the Python package into a staging area under build-root/install*.\nWith this proposed change, isn\u0027t pythondir/pyexecdir in the system directories instead?",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 31
+      },
+      "revId": "829539dc3b1b45de52bd40a659b528c39bd17cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
