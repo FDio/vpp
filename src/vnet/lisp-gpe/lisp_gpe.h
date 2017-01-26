@@ -119,6 +119,15 @@ typedef struct lisp_gpe_main
   /** Load-balance for a miss in the table */
   dpo_id_t l2_lb_cp_lkup;
 
+  /* NSH data structures
+   * ================== */
+
+    BVT (clib_bihash) nsh_fib;
+
+  tunnel_lookup_t nsh_ifaces;
+
+  const dpo_id_t *nsh_cp_lkup;
+
   /** convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
