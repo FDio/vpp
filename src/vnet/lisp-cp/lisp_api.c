@@ -714,6 +714,8 @@ fid_type_to_api_type (fid_address_t * fid)
 
     case FID_ADDR_MAC:
       return 2;
+    case FID_ADDR_NSH:
+      return 3;
     }
 
   return ~0;

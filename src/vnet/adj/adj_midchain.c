@@ -16,6 +16,7 @@
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/adj/adj_l2.h>
+#include <vnet/adj/adj_nsh.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/dpo/drop_dpo.h>
@@ -308,6 +309,18 @@ VNET_FEATURE_INIT (adj_midchain_tx_no_count_ethernet, static) = {
     .runs_before = VNET_FEATURES ("error-drop"),
     .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_ETHERNET],
 };
+VNET_FEATURE_INIT (adj_midchain_tx_nsh, static) = {
+    .arc_name = "nsh-output",
+    .node_name = "adj-midchain-tx",
+    .runs_before = VNET_FEATURES ("error-drop"),
+    .feature_index_ptr = &adj_midchain_tx_feature_node[VNET_LINK_NSH],
+};
+VNET_FEATURE_INIT (adj_midchain_tx_no_count_nsh, static) = {
+    .arc_name = "nsh-output",
+    .node_name = "adj-midchain-tx-no-count",
+    .runs_before = VNET_FEATURES ("error-drop"),
+    .feature_index_ptr = &adj_midchain_tx_no_count_feature_node[VNET_LINK_NSH],
+};
 
 static inline u32
 adj_get_midchain_node (vnet_link_t link)
@@ -321,6 +334,8 @@ adj_get_midchain_node (vnet_link_t link)
 	return (mpls_midchain_node.index);
     case VNET_LINK_ETHERNET:
 	return (adj_l2_midchain_node.index);
+    case VNET_LINK_NSH:
+        return (adj_nsh_midchain_node.index);
     case VNET_LINK_ARP:
 	break;
     }
@@ -354,6 +369,11 @@ adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
 	    arc = ethernet_main.output_feature_arc_index;
 	    break;
 	}
+    case VNET_LINK_NSH:
+        {
+          arc = nsh_main_dummy.output_feature_arc_index;
+          break;
+        }
     case VNET_LINK_ARP:
 	ASSERT(0);
 	break;

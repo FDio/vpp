@@ -291,7 +291,6 @@ format_vnet_lisp_gpe_status (u8 * s, va_list * args)
   return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
 }
 
-
 /** LISP-GPE init function. */
 clib_error_t *
 lisp_gpe_init (vlib_main_t * vm)
