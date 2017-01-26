@@ -1043,6 +1043,7 @@ fib_table_destroy (fib_table_t *fib_table)
 	break;
     }
 }
+
 void
 fib_table_walk (u32 fib_index,
                 fib_protocol_t proto,
@@ -1062,7 +1063,6 @@ fib_table_walk (u32 fib_index,
 	break;
     }
 }
-
 
 void
 fib_table_unlock (u32 fib_index,

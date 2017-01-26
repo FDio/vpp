@@ -105,5 +105,16 @@ extern fib_node_index_t ip6_mfib_table_lookup2(const ip6_mfib_t *mfib,
                                                const ip6_address_t *src,
                                                const ip6_address_t *grp);
 
+/**
+ * @brief Walk the IP6 mfib table.
+ *
+ * @param mfib the table to walk
+ * @param fn The function to invoke on each entry visited
+ * @param ctx A context passed in the visit function
+ */
+extern void ip6_mfib_table_walk (ip6_mfib_t *mfib,
+                                 mfib_table_walk_fn_t fn,
+                                 void *ctx);
+
 #endif
 

@@ -130,6 +130,9 @@ extern void mfib_entry_contribute_forwarding(
     fib_forward_chain_type_t type,
     dpo_id_t *dpo);
 
+extern void mfib_entry_encode(fib_node_index_t fib_entry_index,
+                              fib_route_path_encode_t **api_rpaths);
+
 extern void mfib_entry_module_init(void);
 
 

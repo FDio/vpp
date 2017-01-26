@@ -1050,8 +1050,14 @@ mfib_entry_encode (fib_node_index_t mfib_entry_index,
     mfib_entry_t *mfib_entry;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
-    fib_path_list_walk(mfib_entry->mfe_parent, fib_path_encode, api_rpaths);
+    if (FIB_NODE_INDEX_INVALID != mfib_entry->mfe_parent)
+    {
+        fib_path_list_walk(mfib_entry->mfe_parent,
+                           fib_path_encode,
+                           api_rpaths);
+    }
 }
+
 
 void
 mfib_entry_get_prefix (fib_node_index_t mfib_entry_index,

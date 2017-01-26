@@ -489,6 +489,25 @@ mfib_table_lock (u32 fib_index,
     mfib_table->mft_locks++;
 }
 
+void
+mfib_table_walk (u32 fib_index,
+                 fib_protocol_t proto,
+                 mfib_table_walk_fn_t fn,
+                 void *ctx)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	ip4_mfib_table_walk(ip4_mfib_get(fib_index), fn, ctx);
+	break;
+    case FIB_PROTOCOL_IP6:
+	ip6_mfib_table_walk(ip6_mfib_get(fib_index), fn, ctx);
+	break;
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+}
+
 u8*
 format_mfib_table_name (u8* s, va_list ap)
 {

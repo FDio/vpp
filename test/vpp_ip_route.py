@@ -5,13 +5,14 @@
 """
 
 import socket
+from vpp_object import *
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
-class RoutePath(object):
+class VppRoutePath(object):
 
     def __init__(
             self,
@@ -31,15 +32,15 @@ class RoutePath(object):
             self.nh_addr = socket.inet_pton(socket.AF_INET, nh_addr)
 
 
-class MRoutePath(RoutePath):
+class VppMRoutePath(VppRoutePath):
 
     def __init__(self, nh_sw_if_index, flags):
-        super(MRoutePath, self).__init__("0.0.0.0",
-                                         nh_sw_if_index)
+        super(VppMRoutePath, self).__init__("0.0.0.0",
+                                            nh_sw_if_index)
         self.nh_i_flags = flags
 
 
-class IpRoute:
+class VppIpRoute(VppObject):
     """
     IP Route
     """
@@ -80,6 +81,7 @@ class IpRoute:
                         path.nh_labels),
                     next_hop_via_label=path.nh_via_label,
                     is_ipv6=self.is_ip6)
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         if self.is_local:
@@ -101,8 +103,26 @@ class IpRoute:
                                                  table_id=self.table_id,
                                                  is_add=0)
 
+    def query_vpp_config(self):
+        dump = self._test.vapi.ip_fib_dump()
+        for e in dump:
+            if self.dest_addr == e.address \
+               and self.dest_addr_len == e.address_length \
+               and self.table_id == e.table_id:
+                return True
+        return False
 
-class IpMRoute:
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return ("%d:%s/%d"
+                % (self.table_id,
+                   socket.inet_ntop(socket.AF_INET, self.dest_addr),
+                   self.dest_addr_len))
+
+
+class VppIpMRoute(VppObject):
     """
     IP Multicast Route
     """
@@ -133,6 +153,7 @@ class IpMRoute:
                                               path.nh_i_flags,
                                               table_id=self.table_id,
                                               is_ipv6=self.is_ip6)
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         for path in self.paths:
@@ -171,8 +192,34 @@ class IpMRoute:
                                           table_id=self.table_id,
                                           is_ipv6=self.is_ip6)
 
+    def query_vpp_config(self):
+        dump = self._test.vapi.ip_fib_dump()
+        for e in dump:
+            if self.grp_addr == e.address \
+               and self.grp_addr_len == e.address_length \
+               and self.table_id == e.table_id:
+                return True
+        return False
 
-class MFibSignal:
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        if self.is_ip6:
+            return ("%d:(%s,%s/%d)"
+                    % (self.table_id,
+                       socket.inet_ntop(socket.AF_INET6, self.src_addr),
+                       socket.inet_ntop(socket.AF_INET6, self.grp_addr),
+                       self.grp_addr_len))
+        else:
+            return ("%d:(%s,%s/%d)"
+                    % (self.table_id,
+                       socket.inet_ntop(socket.AF_INET, self.src_addr),
+                       socket.inet_ntop(socket.AF_INET, self.grp_addr),
+                       self.grp_addr_len))
+
+
+class VppMFibSignal(object):
     def __init__(self, test, route, interface, packet):
         self.route = route
         self.interface = interface
@@ -193,21 +240,27 @@ class MFibSignal:
                                       signal.src_address[i])
 
 
-class MplsIpBind:
+class VppMplsIpBind(VppObject):
     """
     MPLS to IP Binding
     """
 
-    def __init__(self, test, local_label, dest_addr, dest_addr_len):
+    def __init__(self, test, local_label, dest_addr, dest_addr_len,
+                 table_id=0, ip_table_id=0):
         self._test = test
         self.dest_addr = socket.inet_pton(socket.AF_INET, dest_addr)
         self.dest_addr_len = dest_addr_len
         self.local_label = local_label
+        self.table_id = table_id
+        self.ip_table_id = ip_table_id
 
     def add_vpp_config(self):
         self._test.vapi.mpls_ip_bind_unbind(self.local_label,
                                             self.dest_addr,
-                                            self.dest_addr_len)
+                                            self.dest_addr_len,
+                                            table_id=self.table_id,
+                                            ip_table_id=self.ip_table_id)
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         self._test.vapi.mpls_ip_bind_unbind(self.local_label,
@@ -215,10 +268,30 @@ class MplsIpBind:
                                             self.dest_addr_len,
                                             is_bind=0)
 
+    def query_vpp_config(self):
+        dump = self._test.vapi.mpls_fib_dump()
+        for e in dump:
+            if self.local_label == e.label \
+               and self.eos_bit == e.eos_bit \
+               and self.table_id == e.table_id:
+                return True
+        return False
 
-class MplsRoute:
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return ("%d:%s binds %d:%s/%d"
+                % (self.table_id,
+                   self.local_label,
+                   self.ip_table_id,
+                   socket.inet_ntop(socket.AF_INET, self.dest_addr),
+                   self.dest_addr_len))
+
+
+class VppMplsRoute(VppObject):
     """
-    MPLS Route
+    MPLS Route/LSP
     """
 
     def __init__(self, test, local_label, eos_bit, paths, table_id=0):
@@ -242,6 +315,7 @@ class MplsRoute:
                     path.nh_labels),
                 next_hop_via_label=path.nh_via_label,
                 next_hop_table_id=path.nh_table_id)
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         for path in self.paths:
@@ -252,3 +326,21 @@ class MplsRoute:
                                                path.nh_itf,
                                                table_id=self.table_id,
                                                is_add=0)
+
+    def query_vpp_config(self):
+        dump = self._test.vapi.mpls_fib_dump()
+        for e in dump:
+            if self.local_label == e.label \
+               and self.eos_bit == e.eos_bit \
+               and self.table_id == e.table_id:
+                return True
+        return False
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return ("%d:%s/%d"
+                % (self.table_id,
+                   self.local_label,
+                   20+self.eos_bit))

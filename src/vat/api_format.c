@@ -16161,6 +16161,24 @@ api_ip_fib_dump (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_ip_mfib_dump (vat_main_t * vam)
+{
+  vl_api_ip_mfib_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  M (IP_MFIB_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 static void vl_api_ip_neighbor_details_t_handler
   (vl_api_ip_neighbor_details_t * mp)
 {
@@ -16343,6 +16361,24 @@ api_ip6_fib_dump (vat_main_t * vam)
   int ret;
 
   M (IP6_FIB_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static int
+api_ip6_mfib_dump (vat_main_t * vam)
+{
+  vl_api_ip6_mfib_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  M (IP6_MFIB_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -18385,7 +18421,9 @@ _(flow_classify_set_interface,                                          \
   "<intfc> | sw_if_index <nn> [ip4-table <nn>] [ip6-table <nn>] [del]") \
 _(flow_classify_dump, "type [ip4|ip6]")                                 \
 _(ip_fib_dump, "")                                                      \
+_(ip_mfib_dump, "")                                                     \
 _(ip6_fib_dump, "")                                                     \
+_(ip6_mfib_dump, "")                                                    \
 _(feature_enable_disable, "arc_name <arc_name> "                        \
   "feature_name <feature_name> <intfc> | sw_if_index <nn> [disable]")	\
 _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
