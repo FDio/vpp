@@ -107,7 +107,7 @@ groupadd -f -r vpp
 #
 mkdir -p -m755 %{buildroot}%{_bindir}
 mkdir -p -m755 %{buildroot}%{_unitdir}
-install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/*/bin/* %{buildroot}%{_bindir}
+install -p -m 755 %{_mu_build_dir}/%{_vpp_install_dir}/vpp/bin/* %{buildroot}%{_bindir}
 
 # api
 mkdir -p -m755 %{buildroot}/usr/share/vpp/api
