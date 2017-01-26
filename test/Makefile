@@ -55,7 +55,7 @@ wipe: reset
 
 doc: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) sphinx"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) sphinx sphinx-rtd-theme"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
 .PHONY: wipe-doc
