@@ -279,6 +279,29 @@ ip4_mfib_table_entry_remove (ip4_mfib_t *mfib,
     mfib->fib_entry_by_dst_address[len] = hash;
 }
 
+void
+ip4_mfib_table_walk (ip4_mfib_t *mfib,
+                     mfib_table_walk_fn_t fn,
+                     void *ctx)
+{
+    int i;
+
+    for (i = 0; i < ARRAY_LEN (mfib->fib_entry_by_dst_address); i++)
+    {
+	uword * hash = mfib->fib_entry_by_dst_address[i];
+
+	if (NULL != hash)
+	{
+	    hash_pair_t * p;
+
+	    hash_foreach_pair (p, hash,
+	    ({
+		fn(p->value[0], ctx);
+	    }));
+	}
+    }
+}
+
 static void
 ip4_mfib_table_show_all (ip4_mfib_t *mfib,
                          vlib_main_t * vm)

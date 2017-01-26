@@ -4,7 +4,8 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import IpRoute, RoutePath, MplsRoute, MplsIpBind
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
+    VppMplsIpBind
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -258,10 +259,10 @@ class TestMPLS(VppTestCase):
         #
         # A simple MPLS xconnect - eos label in label out
         #
-        route_32_eos = MplsRoute(self, 32, 1,
-                                 [RoutePath(self.pg0.remote_ip4,
-                                            self.pg0.sw_if_index,
-                                            labels=[33])])
+        route_32_eos = VppMplsRoute(self, 32, 1,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[33])])
         route_32_eos.add_vpp_config()
 
         #
@@ -281,10 +282,10 @@ class TestMPLS(VppTestCase):
         #
         # A simple MPLS xconnect - non-eos label in label out
         #
-        route_32_neos = MplsRoute(self, 32, 0,
-                                  [RoutePath(self.pg0.remote_ip4,
-                                             self.pg0.sw_if_index,
-                                             labels=[33])])
+        route_32_neos = VppMplsRoute(self, 32, 0,
+                                     [VppRoutePath(self.pg0.remote_ip4,
+                                                   self.pg0.sw_if_index,
+                                                   labels=[33])])
         route_32_neos.add_vpp_config()
 
         #
@@ -304,10 +305,10 @@ class TestMPLS(VppTestCase):
         #
         # An MPLS xconnect - EOS label in IP out
         #
-        route_33_eos = MplsRoute(self, 33, 1,
-                                 [RoutePath(self.pg0.remote_ip4,
-                                            self.pg0.sw_if_index,
-                                            labels=[])])
+        route_33_eos = VppMplsRoute(self, 33, 1,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[])])
         route_33_eos.add_vpp_config()
 
         self.vapi.cli("clear trace")
@@ -324,10 +325,10 @@ class TestMPLS(VppTestCase):
         # An MPLS xconnect - non-EOS label in IP out - an invalid configuration
         # so this traffic should be dropped.
         #
-        route_33_neos = MplsRoute(self, 33, 0,
-                                  [RoutePath(self.pg0.remote_ip4,
-                                             self.pg0.sw_if_index,
-                                             labels=[])])
+        route_33_neos = VppMplsRoute(self, 33, 0,
+                                     [VppRoutePath(self.pg0.remote_ip4,
+                                                   self.pg0.sw_if_index,
+                                                   labels=[])])
         route_33_neos.add_vpp_config()
 
         self.vapi.cli("clear trace")
@@ -342,11 +343,11 @@ class TestMPLS(VppTestCase):
         #
         # A recursive EOS x-connect, which resolves through another x-connect
         #
-        route_34_eos = MplsRoute(self, 34, 1,
-                                 [RoutePath("0.0.0.0",
-                                            0xffffffff,
-                                            nh_via_label=32,
-                                            labels=[44, 45])])
+        route_34_eos = VppMplsRoute(self, 34, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_via_label=32,
+                                                  labels=[44, 45])])
         route_34_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip4(self.pg0, [34])
@@ -362,11 +363,11 @@ class TestMPLS(VppTestCase):
         # A recursive non-EOS x-connect, which resolves through another
         # x-connect
         #
-        route_34_neos = MplsRoute(self, 34, 0,
-                                  [RoutePath("0.0.0.0",
-                                             0xffffffff,
-                                             nh_via_label=32,
-                                             labels=[44, 46])])
+        route_34_neos = VppMplsRoute(self, 34, 0,
+                                     [VppRoutePath("0.0.0.0",
+                                                   0xffffffff,
+                                                   nh_via_label=32,
+                                                   labels=[44, 46])])
         route_34_neos.add_vpp_config()
 
         self.vapi.cli("clear trace")
@@ -384,11 +385,11 @@ class TestMPLS(VppTestCase):
         # an recursive IP route that resolves through the recursive non-eos
         # x-connect
         #
-        ip_10_0_0_1 = IpRoute(self, "10.0.0.1", 32,
-                              [RoutePath("0.0.0.0",
-                                         0xffffffff,
-                                         nh_via_label=34,
-                                         labels=[55])])
+        ip_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                 [VppRoutePath("0.0.0.0",
+                                               0xffffffff,
+                                               nh_via_label=34,
+                                               labels=[55])])
         ip_10_0_0_1.add_vpp_config()
 
         self.vapi.cli("clear trace")
@@ -415,14 +416,14 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a single out label
         #
-        route_10_0_0_1 = IpRoute(self, "10.0.0.1", 32,
-                                 [RoutePath(self.pg0.remote_ip4,
-                                            self.pg0.sw_if_index,
-                                            labels=[45])])
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[45])])
         route_10_0_0_1.add_vpp_config()
 
         # bind a local label to the route
-        binding = MplsIpBind(self, 44, "10.0.0.1", 32)
+        binding = VppMplsIpBind(self, 44, "10.0.0.1", 32)
         binding.add_vpp_config()
 
         # non-EOS stream
@@ -470,10 +471,10 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a single out label
         #
-        route_10_0_0_1 = IpRoute(self, "10.0.0.1", 32,
-                                 [RoutePath(self.pg0.remote_ip4,
-                                            self.pg0.sw_if_index,
-                                            labels=[32])])
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[32])])
         route_10_0_0_1.add_vpp_config()
 
         #
@@ -493,10 +494,10 @@ class TestMPLS(VppTestCase):
         #
         # Add a non-recursive route with a 3 out labels
         #
-        route_10_0_0_2 = IpRoute(self, "10.0.0.2", 32,
-                                 [RoutePath(self.pg0.remote_ip4,
-                                            self.pg0.sw_if_index,
-                                            labels=[32, 33, 34])])
+        route_10_0_0_2 = VppIpRoute(self, "10.0.0.2", 32,
+                                    [VppRoutePath(self.pg0.remote_ip4,
+                                                  self.pg0.sw_if_index,
+                                                  labels=[32, 33, 34])])
         route_10_0_0_2.add_vpp_config()
 
         #
@@ -516,10 +517,10 @@ class TestMPLS(VppTestCase):
         #
         # add a recursive path, with output label, via the 1 label route
         #
-        route_11_0_0_1 = IpRoute(self, "11.0.0.1", 32,
-                                 [RoutePath("10.0.0.1",
-                                            0xffffffff,
-                                            labels=[44])])
+        route_11_0_0_1 = VppIpRoute(self, "11.0.0.1", 32,
+                                    [VppRoutePath("10.0.0.1",
+                                                  0xffffffff,
+                                                  labels=[44])])
         route_11_0_0_1.add_vpp_config()
 
         #
@@ -539,10 +540,10 @@ class TestMPLS(VppTestCase):
         #
         # add a recursive path, with 2 labels, via the 3 label route
         #
-        route_11_0_0_2 = IpRoute(self, "11.0.0.2", 32,
-                                 [RoutePath("10.0.0.2",
-                                            0xffffffff,
-                                            labels=[44, 45])])
+        route_11_0_0_2 = VppIpRoute(self, "11.0.0.2", 32,
+                                    [VppRoutePath("10.0.0.2",
+                                                  0xffffffff,
+                                                  labels=[44, 45])])
         route_11_0_0_2.add_vpp_config()
 
         #
@@ -590,20 +591,10 @@ class TestMPLS(VppTestCase):
         #
         # add an unlabelled route through the new tunnel
         #
-        dest_addr = socket.inet_pton(socket.AF_INET, "10.0.0.3")
-        nh_addr = socket.inet_pton(socket.AF_INET, "0.0.0.0")
-        dest_addr_len = 32
-
-        self.vapi.ip_add_del_route(
-            dest_addr,
-            dest_addr_len,
-            nh_addr,  # all zeros next-hop - tunnel is p2p
-            reply.sw_if_index,  # sw_if_index of the new tunnel
-            0,  # table-id
-            0,  # next-hop-table-id
-            1,  # next-hop-weight
-            0,  # num-out-labels,
-            [])  # out-label
+        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  reply.sw_if_index)])
+        route_10_0_0_3.add_vpp_config()
 
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
@@ -696,10 +687,10 @@ class TestMPLS(VppTestCase):
         #
         # A de-agg route - next-hop lookup in default table
         #
-        route_34_eos = MplsRoute(self, 34, 1,
-                                 [RoutePath("0.0.0.0",
-                                            0xffffffff,
-                                            nh_table_id=0)])
+        route_34_eos = VppMplsRoute(self, 34, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_table_id=0)])
         route_34_eos.add_vpp_config()
 
         #
@@ -720,10 +711,10 @@ class TestMPLS(VppTestCase):
         #
         # A de-agg route - next-hop lookup in non-default table
         #
-        route_35_eos = MplsRoute(self, 35, 1,
-                                 [RoutePath("0.0.0.0",
-                                            0xffffffff,
-                                            nh_table_id=1)])
+        route_35_eos = VppMplsRoute(self, 35, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_table_id=1)])
         route_35_eos.add_vpp_config()
 
         #

@@ -430,6 +430,62 @@ define ip_mroute_add_del_reply
   i32 retval;
 };
 
+/** \brief Dump IP multicast fib table
+    @param client_index - opaque cookie to identify the sender
+*/
+define ip_mfib_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IP Multicast FIB table response
+    @param table_id - IP fib table id
+    @address_length - mask length
+    @grp_address - Group address/prefix
+    @src_address - Source address
+    @param count - the number of fib_path in path
+    @param path  - array of of fib_path structures
+*/
+manual_endian manual_print define ip_mfib_details
+{
+  u32 context;
+  u32 table_id;
+  u8  address_length;
+  u8  grp_address[4];
+  u8  src_address[4];
+  u32 count;
+  vl_api_fib_path_t path[count];
+};
+
+/** \brief Dump IP6 multicast fib table
+    @param client_index - opaque cookie to identify the sender
+*/
+define ip6_mfib_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief IP6 Multicast FIB table response
+    @param table_id - IP fib table id
+    @address_length - mask length
+    @grp_address - Group address/prefix
+    @src_address - Source address
+    @param count - the number of fib_path in path
+    @param path  - array of of fib_path structures
+*/
+manual_endian manual_print define ip6_mfib_details
+{
+  u32 context;
+  u32 table_id;
+  u8  address_length;
+  u8  grp_address[16];
+  u8  src_address[16];
+  u32 count;
+  vl_api_fib_path_t path[count];
+};
+
 define ip_address_details
 {
   u32 client_index;

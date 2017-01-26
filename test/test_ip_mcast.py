@@ -4,7 +4,7 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_ip_route import IpMRoute, MRoutePath, MFibSignal
+from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -36,6 +36,21 @@ class MRouteEntryFlags:
 # correctness handling this over-flow
 #
 N_PKTS_IN_STREAM = 90
+
+
+class TestMFIB(VppTestCase):
+    """ MFIB Test Case """
+
+    def setUp(self):
+        super(TestMFIB, self).setUp()
+
+    def test_mfib(self):
+        """ MFIB Unit Tests """
+        error = self.vapi.cli("test mfib")
+
+        if error:
+            self.logger.critical(error)
+        self.assertEqual(error.find("Failed"), -1)
 
 
 class TestIPMcast(VppTestCase):
@@ -163,51 +178,51 @@ class TestIPMcast(VppTestCase):
         # A (*,G).
         # one accepting interface, pg0, 3 forwarding interfaces
         #
-        route_232_1_1_1 = IpMRoute(
+        route_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
-             MRoutePath(self.pg2.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
-             MRoutePath(self.pg3.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg2.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg3.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
         #
         # An (S,G).
         # one accepting interface, pg0, 2 forwarding interfaces
         #
-        route_1_1_1_1_232_1_1_1 = IpMRoute(
+        route_1_1_1_1_232_1_1_1 = VppIpMRoute(
             self,
             "1.1.1.1",
             "232.1.1.1", 64,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
-             MRoutePath(self.pg2.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg2.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
         route_1_1_1_1_232_1_1_1.add_vpp_config()
 
         #
         # An (*,G/m).
         # one accepting interface, pg0, 1 forwarding interfaces
         #
-        route_232 = IpMRoute(
+        route_232 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.0.0.0", 8,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
         route_232.add_vpp_config()
 
         #
@@ -296,19 +311,19 @@ class TestIPMcast(VppTestCase):
         # A (*,G).
         # one accepting interface, pg0, 3 forwarding interfaces
         #
-        route_ff01_1 = IpMRoute(
+        route_ff01_1 = VppIpMRoute(
             self,
             "::",
             "ff01::1", 128,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
-             MRoutePath(self.pg2.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
-             MRoutePath(self.pg3.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg2.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg3.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
             is_ip6=1)
         route_ff01_1.add_vpp_config()
 
@@ -316,17 +331,17 @@ class TestIPMcast(VppTestCase):
         # An (S,G).
         # one accepting interface, pg0, 2 forwarding interfaces
         #
-        route_2001_ff01_1 = IpMRoute(
+        route_2001_ff01_1 = VppIpMRoute(
             self,
             "2001::1",
             "ff01::1", 256,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
-             MRoutePath(self.pg2.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg2.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
             is_ip6=1)
         route_2001_ff01_1.add_vpp_config()
 
@@ -334,15 +349,15 @@ class TestIPMcast(VppTestCase):
         # An (*,G/m).
         # one accepting interface, pg0, 1 forwarding interface
         #
-        route_ff01 = IpMRoute(
+        route_ff01 = VppIpMRoute(
             self,
             "::",
             "ff01::", 16,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
             is_ip6=1)
         route_ff01.add_vpp_config()
 
@@ -432,15 +447,15 @@ class TestIPMcast(VppTestCase):
         # A (*,G).
         # one accepting interface, pg0, 1 forwarding interfaces
         #
-        route_232_1_1_1 = IpMRoute(
+        route_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
 
         route_232_1_1_1.add_vpp_config()
         route_232_1_1_1.update_entry_flags(
@@ -454,10 +469,10 @@ class TestIPMcast(VppTestCase):
         #
         # Constrct a representation of the signal we expect on pg0
         #
-        signal_232_1_1_1_itf_0 = MFibSignal(self,
-                                            route_232_1_1_1,
-                                            self.pg0.sw_if_index,
-                                            tx[0])
+        signal_232_1_1_1_itf_0 = VppMFibSignal(self,
+                                               route_232_1_1_1,
+                                               self.pg0.sw_if_index,
+                                               tx[0])
 
         #
         # read the only expected signal
@@ -482,15 +497,15 @@ class TestIPMcast(VppTestCase):
         # A Second entry with connected check
         # one accepting interface, pg0, 1 forwarding interfaces
         #
-        route_232_1_1_2 = IpMRoute(
+        route_232_1_1_2 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.2", 32,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
 
         route_232_1_1_2.add_vpp_config()
         route_232_1_1_2.update_entry_flags(
@@ -499,10 +514,10 @@ class TestIPMcast(VppTestCase):
         #
         # Send traffic to both entries. One read should net us two signals
         #
-        signal_232_1_1_2_itf_0 = MFibSignal(self,
-                                            route_232_1_1_2,
-                                            self.pg0.sw_if_index,
-                                            tx[0])
+        signal_232_1_1_2_itf_0 = VppMFibSignal(self,
+                                               route_232_1_1_2,
+                                               self.pg0.sw_if_index,
+                                               tx[0])
         tx = self._mcast_connected_send_stream("232.1.1.1")
         tx2 = self._mcast_connected_send_stream("232.1.1.2")
 
@@ -526,15 +541,15 @@ class TestIPMcast(VppTestCase):
         # A (*,G).
         # one accepting interface, pg0, 1 forwarding interfaces
         #
-        route_232_1_1_1 = IpMRoute(
+        route_232_1_1_1 = VppIpMRoute(
             self,
             "0.0.0.0",
             "232.1.1.1", 32,
             MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
-            [MRoutePath(self.pg0.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
-             MRoutePath(self.pg1.sw_if_index,
-                        MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
 
         route_232_1_1_1.add_vpp_config()
         route_232_1_1_1.update_entry_flags(
@@ -548,10 +563,10 @@ class TestIPMcast(VppTestCase):
         #
         # Constrct a representation of the signal we expect on pg0
         #
-        signal_232_1_1_1_itf_0 = MFibSignal(self,
-                                            route_232_1_1_1,
-                                            self.pg0.sw_if_index,
-                                            tx[0])
+        signal_232_1_1_1_itf_0 = VppMFibSignal(self,
+                                               route_232_1_1_1,
+                                               self.pg0.sw_if_index,
+                                               tx[0])
 
         #
         # read the only expected signal

@@ -360,4 +360,20 @@ extern u32 mfib_table_get_num_entries(u32 fib_index,
 extern mfib_table_t *mfib_table_get(fib_node_index_t index,
                                     fib_protocol_t proto);
 
+/**
+ * @brief Call back function when walking entries in a FIB table
+ */
+typedef int (*mfib_table_walk_fn_t)(fib_node_index_t fei,
+                                    void *ctx);
+
+/**
+ * @brief Walk all entries in a FIB table
+ * N.B: This is NOT safe to deletes. If you need to delete, walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void mfib_table_walk(u32 fib_index,
+                            fib_protocol_t proto,
+                            mfib_table_walk_fn_t fn,
+                            void *ctx);
+
 #endif

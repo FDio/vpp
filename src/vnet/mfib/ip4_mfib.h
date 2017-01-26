@@ -90,6 +90,15 @@ u32 ip4_mfib_index_from_table_id (u32 table_id)
 
 extern u32 ip4_mfib_table_get_index_for_sw_if_index(u32 sw_if_index);
 
+/**
+ * @brief Walk the IP4 mfib table.
+ *
+ * @param mfib the table to walk
+ * @param fn The function to invoke on each entry visited
+ * @param ctx A context passed in the visit function
+ */
+extern void ip4_mfib_table_walk (ip4_mfib_t *mfib,
+                                 mfib_table_walk_fn_t fn,
+                                 void *ctx);
 
 #endif
-

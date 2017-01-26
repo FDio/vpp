@@ -33,9 +33,10 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/ethernet/arp_packet.h>
-//#include <vnet/mfib/ip6_mfib.h>
+#include <vnet/mfib/ip6_mfib.h>
 #include <vnet/mfib/ip4_mfib.h>
 #include <vnet/mfib/mfib_signal.h>
+#include <vnet/mfib/mfib_entry.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -55,14 +56,19 @@
 
 #include <vlibapi/api_helper_macros.h>
 
+
 #define foreach_ip_api_msg                                              \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
 _(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
 _(IP6_FIB_DETAILS, ip6_fib_details)                                     \
+_(IP_MFIB_DUMP, ip_mfib_dump)                                           \
+_(IP_MFIB_DETAILS, ip_mfib_details)                                     \
+_(IP6_MFIB_DUMP, ip6_mfib_dump)                                         \
+_(IP6_MFIB_DETAILS, ip6_mfib_details)                                   \
 _(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
 _(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
-_(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                    \
+_(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                   \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
@@ -461,6 +467,250 @@ vl_api_ip6_fib_dump_t_handler (vl_api_ip6_fib_dump_t * mp)
     api_ip6_fib_table_get_all(q, mp, fib_table);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_ip_mfib_details_t_handler (vl_api_ip_mfib_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+vl_api_ip_mfib_details_t_endian (vl_api_ip_mfib_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+vl_api_ip_mfib_details_t_print (vl_api_ip_mfib_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+send_ip_mfib_details (vpe_api_main_t * am,
+		      unix_shared_memory_queue_t * q,
+		      u32 table_id,
+		      mfib_prefix_t * pfx,
+		      fib_route_path_encode_t * api_rpaths, u32 context)
+{
+  vl_api_ip_mfib_details_t *mp;
+  fib_route_path_encode_t *api_rpath;
+  vl_api_fib_path_t *fp;
+  int path_count;
+
+  path_count = vec_len (api_rpaths);
+  mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
+  if (!mp)
+    return;
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP_FIB_DETAILS);
+  mp->context = context;
+
+  mp->table_id = htonl (table_id);
+  mp->address_length = pfx->fp_len;
+  memcpy (mp->grp_address, &pfx->fp_grp_addr.ip4,
+	  sizeof (pfx->fp_grp_addr.ip4));
+  memcpy (mp->src_address, &pfx->fp_src_addr.ip4,
+	  sizeof (pfx->fp_src_addr.ip4));
+
+  mp->count = htonl (path_count);
+  fp = mp->path;
+  vec_foreach (api_rpath, api_rpaths)
+  {
+    memset (fp, 0, sizeof (*fp));
+
+    fp->weight = 0;
+    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
+    copy_fib_next_hop (api_rpath, fp);
+    fp++;
+  }
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+typedef struct vl_api_ip_mfib_dump_ctc_t_
+{
+  fib_node_index_t *entries;
+} vl_api_ip_mfib_dump_ctc_t;
+
+static int
+vl_api_ip_mfib_table_dump_walk (fib_node_index_t fei, void *arg)
+{
+  vl_api_ip_mfib_dump_ctc_t *ctx = arg;
+
+  vec_add1 (ctx->entries, fei);
+
+  return (0);
+}
+
+static void
+vl_api_ip_mfib_dump_t_handler (vl_api_ip_mfib_dump_t * mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  unix_shared_memory_queue_t *q;
+  ip4_main_t *im = &ip4_main;
+  mfib_table_t *mfib_table;
+  fib_node_index_t *mfeip;
+  mfib_prefix_t pfx;
+  fib_route_path_encode_t *api_rpaths = NULL;
+  vl_api_ip_mfib_dump_ctc_t ctx = {
+    .entries = NULL,
+  };
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+
+  /* *INDENT-OFF* */
+  pool_foreach (mfib_table, im->mfibs,
+  ({
+    ip4_mfib_table_walk(&mfib_table->v4,
+                        vl_api_ip_mfib_table_dump_walk,
+                        &ctx);
+
+    vec_sort_with_function (ctx.entries, mfib_entry_cmp_for_sort);
+
+    vec_foreach (mfeip, ctx.entries)
+    {
+      mfib_entry_get_prefix (*mfeip, &pfx);
+      mfib_entry_encode (*mfeip, &api_rpaths);
+      send_ip_mfib_details (am, q,
+                            mfib_table->mft_table_id,
+                            &pfx, api_rpaths,
+                            mp->context);
+    }
+    vec_reset_length (api_rpaths);
+    vec_reset_length (ctx.entries);
+
+  }));
+  /* *INDENT-ON* */
+
+  vec_free (ctx.entries);
+  vec_free (api_rpaths);
+}
+
+static void
+vl_api_ip6_mfib_details_t_handler (vl_api_ip6_mfib_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+vl_api_ip6_mfib_details_t_endian (vl_api_ip6_mfib_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+vl_api_ip6_mfib_details_t_print (vl_api_ip6_mfib_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+static void
+send_ip6_mfib_details (vpe_api_main_t * am,
+		       unix_shared_memory_queue_t * q,
+		       u32 table_id,
+		       mfib_prefix_t * pfx,
+		       fib_route_path_encode_t * api_rpaths, u32 context)
+{
+  vl_api_ip6_mfib_details_t *mp;
+  fib_route_path_encode_t *api_rpath;
+  vl_api_fib_path_t *fp;
+  int path_count;
+
+  path_count = vec_len (api_rpaths);
+  mp = vl_msg_api_alloc (sizeof (*mp) + path_count * sizeof (*fp));
+  if (!mp)
+    return;
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP6_FIB_DETAILS);
+  mp->context = context;
+
+  mp->table_id = htonl (table_id);
+  mp->address_length = pfx->fp_len;
+  memcpy (mp->grp_address, &pfx->fp_grp_addr.ip6,
+	  sizeof (pfx->fp_grp_addr.ip6));
+  memcpy (mp->src_address, &pfx->fp_src_addr.ip6,
+	  sizeof (pfx->fp_src_addr.ip6));
+
+  mp->count = htonl (path_count);
+  fp = mp->path;
+  vec_foreach (api_rpath, api_rpaths)
+  {
+    memset (fp, 0, sizeof (*fp));
+
+    fp->weight = 0;
+    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
+    copy_fib_next_hop (api_rpath, fp);
+    fp++;
+  }
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+typedef struct vl_api_ip6_mfib_dump_ctc_t_
+{
+  fib_node_index_t *entries;
+} vl_api_ip6_mfib_dump_ctc_t;
+
+static int
+vl_api_ip6_mfib_table_dump_walk (fib_node_index_t fei, void *arg)
+{
+  vl_api_ip6_mfib_dump_ctc_t *ctx = arg;
+
+  vec_add1 (ctx->entries, fei);
+
+  return (0);
+}
+
+static void
+vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
+{
+  vpe_api_main_t *am = &vpe_api_main;
+  unix_shared_memory_queue_t *q;
+  ip6_main_t *im = &ip6_main;
+  mfib_table_t *mfib_table;
+  fib_node_index_t *mfeip;
+  mfib_prefix_t pfx;
+  fib_route_path_encode_t *api_rpaths = NULL;
+  vl_api_ip6_mfib_dump_ctc_t ctx = {
+    .entries = NULL,
+  };
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+
+  /* *INDENT-OFF* */
+  pool_foreach (mfib_table, im->mfibs,
+  ({
+    ip6_mfib_table_walk(&mfib_table->v6,
+                        vl_api_ip6_mfib_table_dump_walk,
+                        &ctx);
+
+    vec_sort_with_function (ctx.entries, mfib_entry_cmp_for_sort);
+
+    vec_foreach(mfeip, ctx.entries)
+    {
+      mfib_entry_get_prefix (*mfeip, &pfx);
+      mfib_entry_encode (*mfeip, &api_rpaths);
+      send_ip6_mfib_details (am, q,
+                             mfib_table->mft_table_id,
+                             &pfx, api_rpaths,
+                             mp->context);
+    }
+    vec_reset_length (api_rpaths);
+    vec_reset_length (ctx.entries);
+
+  }));
+  /* *INDENT-ON* */
+
+  vec_free (ctx.entries);
+  vec_free (api_rpaths);
 }
 
 static void

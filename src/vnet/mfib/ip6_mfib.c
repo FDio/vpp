@@ -483,20 +483,16 @@ ip6_mfib_table_show_one (ip6_mfib_t *mfib,
 }
 
 typedef struct ip6_mfib_show_ctx_t_ {
-    u32 fib_index;
     fib_node_index_t *entries;
 } ip6_mfib_show_ctx_t;
 
 
 static int
-ip6_mfib_table_collect_entries (struct radix_node *rn, void *arg)
+ip6_mfib_table_collect_entries (fib_node_index_t mfei, void *arg)
 {
     ip6_mfib_show_ctx_t *ctx = arg;
-    ip6_mfib_node_t *i6mn;
 
-    i6mn = (ip6_mfib_node_t*) rn;
-
-    vec_add1(ctx->entries, i6mn->i6mn_entry);
+    vec_add1(ctx->entries, mfei);
 
     return (0);
 }
@@ -507,13 +503,12 @@ ip6_mfib_table_show_all (ip6_mfib_t *mfib,
 {
     fib_node_index_t *mfib_entry_index;
     ip6_mfib_show_ctx_t ctx = {
-        .fib_index = mfib->index,
         .entries = NULL,
     };
 
-    rn_walktree(mfib->rhead,
-                ip6_mfib_table_collect_entries,
-                &ctx);
+    ip6_mfib_table_walk(mfib,
+                        ip6_mfib_table_collect_entries,
+                        &ctx);
 
     vec_sort_with_function(ctx.entries, mfib_entry_cmp_for_sort);
 
@@ -526,6 +521,41 @@ ip6_mfib_table_show_all (ip6_mfib_t *mfib,
     }
 
     vec_free(ctx.entries);
+}
+
+typedef struct ip6_mfib_radix_walk_ctx_t_
+{
+    mfib_table_walk_fn_t user_fn;
+    void *user_ctx;
+} ip6_mfib_radix_walk_ctx_t;
+
+static int
+ip6_mfib_table_radix_walk (struct radix_node *rn,
+                           void *arg)
+{
+    ip6_mfib_radix_walk_ctx_t *ctx = arg;
+    ip6_mfib_node_t *i6mn;
+
+    i6mn = (ip6_mfib_node_t*) rn;
+
+    ctx->user_fn(i6mn->i6mn_entry, ctx->user_ctx);
+
+    return (0);
+}
+
+void
+ip6_mfib_table_walk (ip6_mfib_t *mfib,
+                     mfib_table_walk_fn_t fn,
+                     void *ctx)
+{
+    ip6_mfib_radix_walk_ctx_t rn_ctx = {
+        .user_fn = fn,
+        .user_ctx = ctx,
+    };
+
+    rn_walktree(mfib->rhead,
+                ip6_mfib_table_radix_walk,
+                &rn_ctx);
 }
 
 static clib_error_t *

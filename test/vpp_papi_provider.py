@@ -721,6 +721,9 @@ class VppPapiProvider(object):
              'outer_fib_id': outer_fib_id}
         )
 
+    def mpls_fib_dump(self):
+        return self.api(self.papi.mpls_fib_dump, {})
+
     def mpls_route_add_del(
             self,
             label,
@@ -1291,3 +1294,6 @@ class VppPapiProvider(object):
 
     def mfib_signal_dump(self):
         return self.api(self.papi.mfib_signal_dump, {})
+
+    def ip_mfib_dump(self):
+        return self.api(self.papi.ip_mfib_dump, {})
