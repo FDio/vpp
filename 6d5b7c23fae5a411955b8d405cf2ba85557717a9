@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_063f0e27",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_c0544ecc",
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_40585efa",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -30,6 +48,30 @@
       "writtenOn": "2017-01-25T12:20:12Z",
       "side": 1,
       "message": "don\u0027t need this method at all if not doing any extra work as it\u0027s inherited from VppTestCase",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 31,
+        "endChar": 41
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_26b9eae9",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_40585efa",
       "range": {
         "startLine": 29,
         "startChar": 0,
@@ -65,6 +107,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_06ceee83",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_60635ab2",
+      "range": {
+        "startLine": 40,
+        "startChar": 31,
+        "endLine": 40,
+        "endChar": 40
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_205d52ea",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -76,6 +142,30 @@
       "writtenOn": "2017-01-25T12:20:12Z",
       "side": 1,
       "message": "as above - not needed",
+      "range": {
+        "startLine": 59,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 40
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_862bfeea",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_205d52ea",
       "range": {
         "startLine": 59,
         "startChar": 0,
@@ -111,6 +201,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_e6cac26d",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_0072567c",
+      "range": {
+        "startLine": 78,
+        "startChar": 32,
+        "endLine": 78,
+        "endChar": 37
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_c06b2e84",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -122,6 +236,30 @@
       "writtenOn": "2017-01-25T12:20:12Z",
       "side": 1,
       "message": "could we avoid magic numbers please? ideally extract as constant",
+      "range": {
+        "startLine": 82,
+        "startChar": 48,
+        "endLine": 82,
+        "endChar": 50
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a6c4ba5f",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "I could avoid magic numbers. but IMO it\u0027s a bit pointless to do\n EXP_LEN\u003d12\n self.assertEqual(len(data), EXP_LEN)\n\nand then never use EXP_LEN again.\nSame goes for the other magic numbers in this block.\nI\u0027ve added commentary to explain where the number originate.",
+      "parentUuid": "3a3291f1_c06b2e84",
       "range": {
         "startLine": 82,
         "startChar": 48,
@@ -180,6 +318,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_86a1beab",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_e06e2a96",
+      "range": {
+        "startLine": 92,
+        "startChar": 63,
+        "endLine": 92,
+        "endChar": 69
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_a0682288",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -191,6 +353,30 @@
       "writtenOn": "2017-01-25T12:20:12Z",
       "side": 1,
       "message": "magic numbers..\n\nalso a lot more in the rest of the file\n\ne.g. the port numbers ... please use named constants for them",
+      "range": {
+        "startLine": 96,
+        "startChar": 50,
+        "endLine": 97,
+        "endChar": 53
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_66a6d2c3",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "port numbers i will make constants",
+      "parentUuid": "3a3291f1_a0682288",
       "range": {
         "startLine": 96,
         "startChar": 50,
@@ -226,6 +412,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_c6da2617",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "not too hard. done.",
+      "parentUuid": "3a3291f1_400f3ee2",
+      "range": {
+        "startLine": 121,
+        "startChar": 9,
+        "endLine": 121,
+        "endChar": 32
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_201432f4",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -237,6 +447,30 @@
       "writtenOn": "2017-01-25T12:20:12Z",
       "side": 1,
       "message": "looking at scapy sources, it seems that msgtype needs to be 2 - is it so?",
+      "range": {
+        "startLine": 204,
+        "startChar": 0,
+        "endLine": 205,
+        "endChar": 35
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_46351645",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "it is;\n\n###[ Ethernet ]### \n  dst       \u003d ff:ff:ff:ff:ff:ff\n  src       \u003d 02:fe:bd:4a:bb:d9\n  type      \u003d 0x86dd\n###[ IPv6 ]### \n     version   \u003d 6L\n     tc        \u003d 0L\n     fl        \u003d 0L\n     plen      \u003d 8\n     nh        \u003d UDP\n     hlim      \u003d 32\n     src       \u003d fd01:3::1\n     dst       \u003d ::\n###[ UDP ]### \n        sport     \u003d dhcpv6_server\n        dport     \u003d dhcpv6_client\n        len       \u003d 8\n        chksum    \u003d 0xfe93\n###[ Padding ]### \n           load      \u003d \u0027\\x02\\x00\\x00\\x01\\x00\\r\\x00\\x02\\x00\\x00\u0027\n\nlooks to me like scapy is not decoding DHCP based on the port dhcpv6_client. But I can\u0027t see why that would be - that number is registered.",
+      "parentUuid": "3a3291f1_201432f4",
       "range": {
         "startLine": 204,
         "startChar": 0,
@@ -272,6 +506,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_06f82e7b",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "did not know that. thanks.",
+      "parentUuid": "3a3291f1_00f936c8",
+      "range": {
+        "startLine": 234,
+        "startChar": 8,
+        "endLine": 234,
+        "endChar": 68
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_e0f50acc",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -295,6 +553,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_e6f40289",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_e0f50acc",
+      "range": {
+        "startLine": 235,
+        "startChar": 19,
+        "endLine": 235,
+        "endChar": 64
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_c0020eb4",
         "filename": "test/test_dhcp.py",
         "patchSetId": 4
@@ -306,6 +588,30 @@
       "writtenOn": "2017-01-25T12:20:12Z",
       "side": 1,
       "message": "-\u003e self.pgX.YYYYY_ipXn",
+      "range": {
+        "startLine": 450,
+        "startChar": 10,
+        "endLine": 453,
+        "endChar": 70
+      },
+      "revId": "6d5b7c23fae5a411955b8d405cf2ba85557717a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a6eefab2",
+        "filename": "test/test_dhcp.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-26T11:27:30Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_c0020eb4",
       "range": {
         "startLine": 450,
         "startChar": 10,
