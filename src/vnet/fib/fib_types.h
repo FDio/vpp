@@ -105,10 +105,14 @@ typedef enum fib_forward_chain_type_t_ {
     FIB_FORW_CHAIN_TYPE_MCAST_IP6,
     /**
      * Contribute an object that is to be used to forward Ethernet packets.
+     */
+    FIB_FORW_CHAIN_TYPE_ETHERNET,
+    /**
+     * Contribute an object that is to be used to forward NSH packets.
      * This is last in the list since it is not valid for many FIB objects,
      * and thus their array of per-chain-type DPOs can be sized smaller.
      */
-    FIB_FORW_CHAIN_TYPE_ETHERNET,
+    FIB_FORW_CHAIN_TYPE_NSH,
 }  __attribute__ ((packed)) fib_forward_chain_type_t;
 
 #define FIB_FORW_CHAINS {					\
@@ -119,14 +123,15 @@ typedef enum fib_forward_chain_type_t_ {
     [FIB_FORW_CHAIN_TYPE_MCAST_IP6]     = "multicast-ip6",	\
     [FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS]  = "mpls-neos",	        \
     [FIB_FORW_CHAIN_TYPE_MPLS_EOS]      = "mpls-eos",	        \
+    [FIB_FORW_CHAIN_TYPE_NSH]           = "nsh",                \
 }
 
-#define FIB_FORW_CHAIN_NUM (FIB_FORW_CHAIN_TYPE_MPLS_ETHERNET+1)
+#define FIB_FORW_CHAIN_NUM (FIB_FORW_CHAIN_TYPE_NSH+1)
 #define FIB_FORW_CHAIN_MPLS_NUM (FIB_FORW_CHAIN_TYPE_MPLS_EOS+1)
 
 #define FOR_EACH_FIB_FORW_CHAIN(_item)			  \
     for (_item = FIB_FORW_CHAIN_TYPE_UNICAST_IP4;   	  \
-	 _item <= FIB_FORW_CHAIN_TYPE_ETHERNET;		  \
+	 _item <= FIB_FORW_CHAIN_TYPE_NSH;		  \
 	 _item++)
 
 #define FOR_EACH_FIB_FORW_MPLS_CHAIN(_item)		  \

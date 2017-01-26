@@ -340,9 +340,13 @@ gid_to_dp_address (gid_address_t * g, dp_address_t * d)
       d->type = FID_ADDR_IP_PREF;
       break;
     case GID_ADDR_MAC:
-    default:
       mac_copy (&d->mac, &gid_address_mac (g));
       d->type = FID_ADDR_MAC;
+      break;
+    case GID_ADDR_NSH:
+    default:
+      d->nsh = gid_address_nsh (g).spi << 8 | gid_address_nsh (g).si;
+      d->type = FID_ADDR_NSH;
       break;
     }
 }
@@ -671,7 +675,7 @@ del_l2_fwd_entry (lisp_gpe_main_t * lgm,
 }
 
 /**
- * @brief Construct and insert the forwarding information used by a L2 entry
+ * @brief Construct and insert the forwarding information used by an L2 entry
  */
 static void
 lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t * lfe)
@@ -688,7 +692,16 @@ lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t * lfe)
     }
   else
     {
-      dpo_copy (&dpo, &lgm->l2_lb_cp_lkup);
+      switch (lfe->action)
+	{
+	case SEND_MAP_REQUEST:
+	  dpo_copy (&dpo, &lgm->l2_lb_cp_lkup);
+	  break;
+	case NO_ACTION:
+	case FORWARD_NATIVE:
+	case DROP:
+	  dpo_copy (&dpo, drop_dpo_get (DPO_PROTO_ETHERNET));
+	}
     }
 
   /* add entry to l2 lisp fib */
@@ -785,6 +798,276 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
 }
 
 /**
+ * @brief Lookup NSH SD FIB entry
+ *
+ * Does an SPI+SI lookup in the NSH LISP FIB.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[in]   spi_si          SPI + SI.
+ *
+ * @return next node index.
+ */
+const dpo_id_t *
+lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm, u32 spi_si)
+{
+  int rv;
+  BVT (clib_bihash_kv) kv, value;
+
+  memset (&kv, 0, sizeof (kv));
+  kv.key[0] = spi_si;
+  rv = BV (clib_bihash_search_inline_2) (&lgm->nsh_fib, &kv, &value);
+
+  if (rv != 0)
+    {
+      return lgm->nsh_cp_lkup;
+    }
+  else
+    {
+      lisp_gpe_fwd_entry_t *lfe;
+      lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, value.value);
+      return &lfe->nsh.choice;
+    }
+}
+
+/**
+ * @brief Add/del NSH FIB entry
+ *
+ * Inserts value in NSH FIB keyed by SPI+SI. If entry is
+ * overwritten the associated value is returned.
+ *
+ * @param[in]   lgm             Reference to @ref lisp_gpe_main_t.
+ * @param[in]   spi_si          SPI + SI.
+ * @param[in]   dpo             Load balanced mapped to SPI + SI
+ *
+ * @return ~0 or value of overwritten entry.
+ */
+static u32
+lisp_nsh_fib_add_del_entry (u32 spi_si, u32 lfei, u8 is_add)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  BVT (clib_bihash_kv) kv, value;
+  u32 old_val = ~0;
+
+  memset (&kv, 0, sizeof (kv));
+  kv.key[0] = spi_si;
+  kv.value = 0ULL;
+
+  if (BV (clib_bihash_search) (&lgm->nsh_fib, &kv, &value) == 0)
+    old_val = value.value;
+
+  if (!is_add)
+    BV (clib_bihash_add_del) (&lgm->nsh_fib, &kv, 0 /* is_add */ );
+  else
+    {
+      kv.value = lfei;
+      BV (clib_bihash_add_del) (&lgm->nsh_fib, &kv, 1 /* is_add */ );
+    }
+  return old_val;
+}
+
+#define NSH_FIB_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define NSH_FIB_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+static void
+nsh_fib_init (lisp_gpe_main_t * lgm)
+{
+  BV (clib_bihash_init) (&lgm->nsh_fib, "nsh fib",
+			 1 << max_log2 (NSH_FIB_DEFAULT_HASH_NUM_BUCKETS),
+			 NSH_FIB_DEFAULT_HASH_MEMORY_SIZE);
+
+  /*
+   * the result from a 'miss' in a NSH Table
+   */
+  lgm->nsh_cp_lkup = lisp_cp_dpo_get (DPO_PROTO_NSH);
+}
+
+static void
+del_nsh_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
+{
+  lisp_fwd_path_t *path;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
+    {
+      vec_foreach (path, lfe->paths)
+      {
+	lisp_gpe_adjacency_unlock (path->lisp_adj);
+      }
+      fib_path_list_child_remove (lfe->nsh.path_list_index,
+				  lfe->nsh.child_index);
+      dpo_reset (&lfe->nsh.choice);
+    }
+
+  lisp_nsh_fib_add_del_entry (fid_addr_nsh (&lfe->key->rmt), (u32) ~ 0, 0);
+
+  hash_unset_mem (lgm->lisp_gpe_fwd_entries, lfe->key);
+  clib_mem_free (lfe->key);
+  pool_put (lgm->lisp_fwd_entry_pool, lfe);
+}
+
+/**
+ * @brief Delete LISP NSH forwarding entry.
+ *
+ * Coordinates the removal of forwarding entries for NSH LISP overlay:
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters for building the forwarding entry.
+ *
+ * @return 0 on success.
+ */
+static int
+del_nsh_fwd_entry (lisp_gpe_main_t * lgm,
+		   vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+{
+  lisp_gpe_fwd_entry_key_t key;
+  lisp_gpe_fwd_entry_t *lfe;
+
+  lfe = find_fwd_entry (lgm, a, &key);
+
+  if (NULL == lfe)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  del_nsh_fwd_entry_i (lgm, lfe);
+
+  return (0);
+}
+
+/**
+ * @brief Construct and insert the forwarding information used by an NSH entry
+ */
+static void
+lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t * lfe)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  dpo_id_t dpo = DPO_INVALID;
+  vnet_hw_interface_t *hi;
+  uword *hip;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
+    {
+      fib_path_list_contribute_forwarding (lfe->nsh.path_list_index,
+					   FIB_FORW_CHAIN_TYPE_NSH,
+					   &lfe->nsh.dpo);
+
+      /*
+       * LISP encap is always the same for this SPI+SI so we do that hash now
+       * and stack on the choice.
+       */
+      if (DPO_LOAD_BALANCE == lfe->nsh.dpo.dpoi_type)
+	{
+	  const dpo_id_t *tmp;
+	  const load_balance_t *lb;
+	  int hash;
+
+	  lb = load_balance_get (lfe->nsh.dpo.dpoi_index);
+	  hash = fid_addr_nsh (&lfe->key->rmt) % lb->lb_n_buckets;
+	  tmp =
+	    load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
+
+	  dpo_copy (&dpo, tmp);
+	}
+    }
+  else
+    {
+      switch (lfe->action)
+	{
+	case SEND_MAP_REQUEST:
+	  dpo_copy (&dpo, lgm->nsh_cp_lkup);
+	  break;
+	case NO_ACTION:
+	case FORWARD_NATIVE:
+	case DROP:
+	  dpo_copy (&dpo, drop_dpo_get (DPO_PROTO_NSH));
+	}
+    }
+
+  /* We have only one nsh-lisp interface (no NSH virtualization) */
+  hip = hash_get (lgm->nsh_ifaces.hw_if_index_by_dp_table, 0);
+  hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
+
+  dpo_stack_from_node (hi->tx_node_index, &lfe->nsh.choice, &dpo);
+
+  /* add entry to nsh lisp fib */
+  lisp_nsh_fib_add_del_entry (fid_addr_nsh (&lfe->key->rmt),
+			      lfe - lgm->lisp_fwd_entry_pool, 1);
+
+  dpo_reset (&dpo);
+}
+
+/**
+ * @brief Add LISP NSH forwarding entry.
+ *
+ * Coordinates the creation of forwarding entries for L2 LISP overlay:
+ * creates lisp-gpe tunnel and injects new entry in Source/Dest L2 FIB.
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters for building the forwarding entry.
+ *
+ * @return 0 on success.
+ */
+static int
+add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
+		   vnet_lisp_gpe_add_del_fwd_entry_args_t * a)
+{
+  lisp_gpe_fwd_entry_key_t key;
+  lisp_gpe_fwd_entry_t *lfe;
+
+  lfe = find_fwd_entry (lgm, a, &key);
+
+  if (NULL != lfe)
+    /* don't support updates */
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  pool_get (lgm->lisp_fwd_entry_pool, lfe);
+  memset (lfe, 0, sizeof (*lfe));
+  lfe->key = clib_mem_alloc (sizeof (key));
+  memcpy (lfe->key, &key, sizeof (key));
+
+  hash_set_mem (lgm->lisp_gpe_fwd_entries, lfe->key,
+		lfe - lgm->lisp_fwd_entry_pool);
+
+  lfe->type = (a->is_negative ?
+	       LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
+	       LISP_GPE_FWD_ENTRY_TYPE_NORMAL);
+  lfe->tenant = 0;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
+    {
+      fib_route_path_t *rpaths;
+
+      /*
+       * Make the sorted array of LISP paths with their resp. adjacency
+       */
+      lisp_gpe_fwd_entry_mk_paths (lfe, a);
+
+      /*
+       * From the LISP paths, construct a FIB path list that will
+       * contribute a load-balance.
+       */
+      rpaths = lisp_gpe_mk_fib_paths (lfe->paths);
+
+      lfe->nsh.path_list_index =
+	fib_path_list_create (FIB_PATH_LIST_FLAG_NONE, rpaths);
+
+      /*
+       * become a child of the path-list so we receive updates when
+       * its forwarding state changes. this includes an implicit lock.
+       */
+      lfe->nsh.child_index =
+	fib_path_list_child_add (lfe->nsh.path_list_index,
+				 FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY,
+				 lfe - lgm->lisp_fwd_entry_pool);
+    }
+  else
+    {
+      lfe->action = a->action;
+    }
+
+  lisp_gpe_nsh_update_fwding (lfe);
+
+  return 0;
+}
+
+/**
  * @brief conver from the embedded fib_node_t struct to the LSIP entry
  */
 static lisp_gpe_fwd_entry_t *
@@ -802,7 +1085,12 @@ static fib_node_back_walk_rc_t
 lisp_gpe_fib_node_back_walk (fib_node_t * node,
 			     fib_node_back_walk_ctx_t * ctx)
 {
-  lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_from_fib_node (node));
+  lisp_gpe_fwd_entry_t *lfe = lisp_gpe_fwd_entry_from_fib_node (node);
+
+  if (fid_addr_type (&lfe->key->rmt) == FID_ADDR_MAC)
+    lisp_gpe_l2_update_fwding (lfe);
+  else if (fid_addr_type (&lfe->key->rmt) == FID_ADDR_NSH)
+    lisp_gpe_nsh_update_fwding (lfe);
 
   return (FIB_NODE_BACK_WALK_CONTINUE);
 }
@@ -877,6 +1165,11 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 	return add_l2_fwd_entry (lgm, a);
       else
 	return del_l2_fwd_entry (lgm, a);
+    case GID_ADDR_NSH:
+      if (a->is_add)
+	return add_nsh_fwd_entry (lgm, a);
+      else
+	return del_nsh_fwd_entry (lgm, a);
     default:
       clib_warning ("Forwarding entries for type %d not supported!", type);
       return -1;
@@ -903,6 +1196,9 @@ vnet_lisp_gpe_fwd_entry_flush (void)
       case FID_ADDR_IP_PREF:
 	del_ip_fwd_entry_i (lgm, lfe);
 	break;
+      case FID_ADDR_NSH:
+        del_nsh_fwd_entry_i (lgm, lfe);
+        break;
       }
   }));
   /* *INDENT-ON* */
@@ -966,6 +1262,10 @@ format_lisp_gpe_fwd_entry (u8 * s, va_list ap)
 	case FID_ADDR_MAC:
 	  s = format (s, " fib-path-list:%d\n", lfe->l2.path_list_index);
 	  s = format (s, " dpo:%U\n", format_dpo_id, &lfe->l2.dpo, 0);
+	  break;
+	case FID_ADDR_NSH:
+	  s = format (s, " fib-path-list:%d\n", lfe->nsh.path_list_index);
+	  s = format (s, " dpo:%U\n", format_dpo_id, &lfe->nsh.dpo, 0);
 	  break;
 	case FID_ADDR_IP_PREF:
 	  break;
@@ -1036,6 +1336,7 @@ lisp_gpe_fwd_entry_init (vlib_main_t * vm)
     return (error);
 
   l2_fib_init (lgm);
+  nsh_fib_init (lgm);
 
   fib_node_register_type (FIB_NODE_TYPE_LISP_GPE_FWD_ENTRY, &lisp_fwd_vft);
 

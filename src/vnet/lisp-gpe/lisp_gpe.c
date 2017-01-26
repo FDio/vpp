@@ -151,6 +151,7 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
   gid_address_copy (&a->lcl_eid, leid);
   gid_address_copy (&a->rmt_eid, reid);
   a->locator_pairs = pairs;
+  a->action = action;
 
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   if (0 != rv)
@@ -290,7 +291,6 @@ format_vnet_lisp_gpe_status (u8 * s, va_list * args)
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
 }
-
 
 /** LISP-GPE init function. */
 clib_error_t *
