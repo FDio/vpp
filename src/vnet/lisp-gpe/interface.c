@@ -201,7 +201,7 @@ VNET_HW_INTERFACE_CLASS (lisp_gpe_hw_class) = {
 
 typedef struct
 {
-  u32 lb_index;
+  u32 dpo_index;
 } l2_lisp_gpe_tx_trace_t;
 
 static u8 *
@@ -211,7 +211,7 @@ format_l2_lisp_gpe_tx_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   l2_lisp_gpe_tx_trace_t *t = va_arg (*args, l2_lisp_gpe_tx_trace_t *);
 
-  s = format (s, "L2-LISP-GPE-TX: load-balance %d", t->lb_index);
+  s = format (s, "L2-LISP-GPE-TX: load-balance %d", t->dpo_index);
   return s;
 }
 
@@ -278,7 +278,7 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      l2_lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
 							   sizeof (*tr));
-	      tr->lb_index = lbi0;
+	      tr->dpo_index = lbi0;
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, l2_arc_to_lb);
@@ -303,6 +303,110 @@ VNET_DEVICE_CLASS (l2_lisp_gpe_device_class,static) = {
   .format_device_name = format_l2_lisp_gpe_name,
   .format_tx_trace = format_l2_lisp_gpe_tx_trace,
   .tx_function = l2_lisp_gpe_interface_tx,
+};
+/* *INDENT-ON* */
+
+typedef struct
+{
+  u32 dpo_index;
+} nsh_lisp_gpe_tx_trace_t;
+
+u8 *
+format_nsh_lisp_gpe_tx_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nsh_lisp_gpe_tx_trace_t *t = va_arg (*args, nsh_lisp_gpe_tx_trace_t *);
+
+  s = format (s, "NSH-GPE-TX: tunnel %d", t->dpo_index);
+  return s;
+}
+
+/**
+ * @brief LISP-GPE interface TX for NSH overlays.
+ * @node nsh_lisp_gpe_interface_tx
+ *
+ * The NSH LISP-GPE interface TX function.
+ *
+ * @param[in]   vm        vlib_main_t corresponding to the current thread.
+ * @param[in]   node      vlib_node_runtime_t data for this node.
+ * @param[in]   frame     vlib_frame_t whose contents should be dispatched.
+ *
+ * @return number of vectors in frame.
+ */
+static uword
+nsh_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
+			   vlib_frame_t * from_frame)
+{
+  u32 n_left_from, next_index, *from, *to_next;
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+
+  from = vlib_frame_vector_args (from_frame);
+  n_left_from = from_frame->n_vectors;
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+	  vlib_buffer_t *b0;
+	  u32 bi0;
+	  u32 *nsh0, next0;
+	  const dpo_id_t *dpo0;
+
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+	  nsh0 = vlib_buffer_get_current (b0);
+
+	  vnet_buffer (b0)->lisp.overlay_afi = LISP_AFI_LCAF;
+
+	  /* lookup SPI + SI (second word of the NSH header).
+	   * NB: Load balancing was done by the control plane */
+	  dpo0 = lisp_nsh_fib_lookup (lgm, nsh0[1]);
+
+	  next0 = dpo0->dpoi_next_node;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      nsh_lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
+							    sizeof (*tr));
+	      tr->dpo_index = dpo0->dpoi_index;
+	    }
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, bi0, next0);
+	}
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return from_frame->n_vectors;
+}
+
+static u8 *
+format_nsh_lisp_gpe_name (u8 * s, va_list * args)
+{
+  u32 dev_instance = va_arg (*args, u32);
+  return format (s, "nsh_lisp_gpe%d", dev_instance);
+}
+
+/* *INDENT-OFF* */
+VNET_DEVICE_CLASS (nsh_lisp_gpe_device_class,static) = {
+  .name = "NSH_LISP_GPE",
+  .format_device_name = format_nsh_lisp_gpe_name,
+  .format_tx_trace = format_nsh_lisp_gpe_tx_trace,
+  .tx_function = nsh_lisp_gpe_interface_tx,
 };
 /* *INDENT-ON* */
 
@@ -615,6 +719,72 @@ lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
   lisp_gpe_remove_iface (lgm, hip[0], bd_index, &lgm->l2_ifaces);
 }
 
+/**
+ * @brief Add LISP-GPE NSH interface.
+ *
+ * Creates LISP-GPE interface, sets it in L3 mode.
+ *
+ * @param[in]   lgm     Reference to @ref lisp_gpe_main_t.
+ * @param[in]   a       Parameters to create interface.
+ *
+ * @return sw_if_index.
+ */
+u32
+lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
+{
+  vnet_main_t *vnm = lgm->vnet_main;
+  tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
+  vnet_hw_interface_t *hi;
+  uword *hip, *si;
+
+  hip = hash_get (nsh_ifaces->hw_if_index_by_dp_table, 0);
+
+  if (hip)
+    {
+      clib_warning ("NSH interface 0 already exists");
+      return ~0;
+    }
+
+  si = hash_get (nsh_ifaces->sw_if_index_by_vni, 0);
+  if (si)
+    {
+      clib_warning ("NSH interface already exists");
+      return ~0;
+    }
+
+  /* create lisp iface and populate tunnel tables */
+  hi = lisp_gpe_create_iface (lgm, 0, 0,
+			      &nsh_lisp_gpe_device_class, &lgm->nsh_ifaces);
+
+  /* enable interface */
+  vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
+			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+  vnet_hw_interface_set_flags (vnm, hi->hw_if_index,
+			       VNET_HW_INTERFACE_FLAG_LINK_UP);
+
+  return (hi->sw_if_index);
+}
+
+/**
+ * @brief Del LISP-GPE NSH interface.
+ *
+ */
+void
+lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm)
+{
+  tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
+  uword *hip;
+
+  hip = hash_get (nsh_ifaces->hw_if_index_by_dp_table, 0);
+
+  if (hip == 0)
+    {
+      clib_warning ("The NSH 0 interface doesn't exist");
+      return;
+    }
+  lisp_gpe_remove_iface (lgm, hip[0], 0, &lgm->nsh_ifaces);
+}
+
 static clib_error_t *
 lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				   vlib_cli_command_t * cmd)
@@ -623,6 +793,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 is_add = 1;
   u32 table_id, vni, bd_id;
   u8 vni_is_set = 0, vrf_is_set = 0, bd_index_is_set = 0;
+  u8 nsh_iface = 0;
 
   if (vnet_lisp_gpe_enable_disable_status () == 0)
     {
@@ -650,6 +821,10 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "bd %d", &bd_id))
 	{
 	  bd_index_is_set = 1;
+	}
+      else if (unformat (line_input, "nsh"))
+	{
+	  nsh_iface = 1;
 	}
       else
 	{
@@ -687,6 +862,21 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	lisp_gpe_tenant_l3_iface_unlock (vni);
+    }
+
+  if (nsh_iface)
+    {
+      if (is_add)
+	{
+	  if (~0 == lisp_gpe_add_nsh_iface (&lisp_gpe_main))
+	    {
+	      return clib_error_return (0, "NSH interface not created");
+	    }
+	  else
+	    {
+	      lisp_gpe_del_nsh_iface (&lisp_gpe_main);
+	    }
+	}
     }
 
   return (NULL);
