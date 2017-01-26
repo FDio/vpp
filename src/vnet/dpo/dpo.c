@@ -98,6 +98,8 @@ vnet_link_to_dpo_proto (vnet_link_t linkt)
         return (DPO_PROTO_MPLS);
     case VNET_LINK_ETHERNET:
         return (DPO_PROTO_ETHERNET);
+    case VNET_LINK_NSH:
+        return (DPO_PROTO_NSH);
     case VNET_LINK_ARP:
 	break;
     }

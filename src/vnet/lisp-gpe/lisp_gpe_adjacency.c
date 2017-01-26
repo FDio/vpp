@@ -211,6 +211,8 @@ lisp_gpe_adj_proto_from_vnet_link_type (vnet_link_t linkt)
       return (LISP_GPE_NEXT_PROTO_IP6);
     case VNET_LINK_ETHERNET:
       return (LISP_GPE_NEXT_PROTO_ETHERNET);
+    case VNET_LINK_NSH:
+      return (LISP_GPE_NEXT_PROTO_NSH);
     default:
       ASSERT (0);
     }
@@ -254,14 +256,14 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   ladj = pool_elt_at_index (lisp_adj_pool, lai);
   lgt = lisp_gpe_tunnel_get (ladj->tunnel_index);
   linkt = adj_get_link_type (ai);
-
   adj_nbr_midchain_update_rewrite
     (ai, lisp_gpe_fixup,
      (VNET_LINK_ETHERNET == linkt ?
       ADJ_MIDCHAIN_FLAG_NO_COUNT :
       ADJ_MIDCHAIN_FLAG_NONE),
-     lisp_gpe_tunnel_build_rewrite
-     (lgt, ladj, lisp_gpe_adj_proto_from_vnet_link_type (linkt)));
+     lisp_gpe_tunnel_build_rewrite (lgt, ladj,
+				    lisp_gpe_adj_proto_from_vnet_link_type
+				    (linkt)));
 
   lisp_gpe_adj_stack_one (ladj, ai);
 }
