@@ -22,6 +22,30 @@
       "revId": "829539dc3b1b45de52bd40a659b528c39bd17cae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_864d3e75",
+        "filename": "src/vpp-api/python/Makefile.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 163
+      },
+      "writtenOn": "2017-01-26T07:58:52Z",
+      "side": 1,
+      "message": "This \u0027mkdir\u0027 is only required for staging because there is no directory. In system, \u0027site-packages\u0027 should be created by installing python.",
+      "parentUuid": "3a3291f1_26256aab",
+      "range": {
+        "startLine": 44,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 31
+      },
+      "revId": "829539dc3b1b45de52bd40a659b528c39bd17cae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
