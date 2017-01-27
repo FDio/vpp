@@ -3,21 +3,29 @@
 
 Vagrant.configure(2) do |config|
 
-  # Pick the right distro and bootstrap, default is ubuntu1404
-  distro = ( ENV['VPP_VAGRANT_DISTRO'] || "ubuntu1404")
+  # Pick the right distro and bootstrap, default is ubuntu1604
+  distro = ( ENV['VPP_VAGRANT_DISTRO'] || "ubuntu1604")
   if distro == 'centos7'
     config.vm.box = "puppetlabs/centos-7.2-64-nocm"
     config.ssh.insert_key = false
-  else
+  elsif distro == 'ubuntu1404'
     config.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
+  else
+    config.vm.box = "puppetlabs/ubuntu-16.04-64-nocm"
   end
   config.vm.box_check_update = false
 
   config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"update.sh")
   config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"build.sh"), :args => "/vpp vagrant"
-  config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"install.sh"), :args => "/vpp"
-  config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"clearinterfaces.sh")
-  config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"run.sh")
+
+  post_build = ( ENV['VPP_VAGRANT_POST_BUILD'] )
+  if post_build == "test"
+    config.vm.provision "shell", inline: "echo Testing VPP; cd /vpp; make test"
+  elsif post_build == "install"
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"install.sh"), :args => "/vpp"
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"clearinterfaces.sh")
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"run.sh")
+  end
 
   # Add .gnupg dir in so folks can sign patches
   # Note, as gnupg puts socket files in that dir, we have
@@ -61,6 +69,7 @@ Vagrant.configure(2) do |config|
   vmram=(ENV['VPP_VAGRANT_VMRAM'] || 4096)
 
   config.ssh.forward_agent = true
+  config.ssh.forward_x11 = true
 
   config.vm.provider "virtualbox" do |vb|
       vb.customize ["modifyvm", :id, "--ioapic", "on"]
