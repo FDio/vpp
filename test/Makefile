@@ -23,6 +23,7 @@ $(PIP_INSTALL_DONE):
 
 $(PIP_PATCH_DONE): $(PIP_INSTALL_DONE)
 	@echo --- patching ---
+	@sleep 1 # Ensure python recompiles patched *.py files -> *.pyc
 	for f in $(CURDIR)/patches/scapy-2.3.3/*.patch ; do \
 		echo Applying patch: $$(basename $$f) ; \
 		patch -p1 -d $(SCAPY_SOURCE) < $$f ; \
