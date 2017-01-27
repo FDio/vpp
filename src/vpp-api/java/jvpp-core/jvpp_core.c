@@ -67,8 +67,14 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_init0
     plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
     plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
 
+    // verify API has not changed since jar generation
+    #define _(N)             \
+        get_message_id(env, #N);  \
+        foreach_supported_api_message;
+    #undef _
+
     #define _(N,n)                                  \
-        vl_msg_api_set_handlers(VL_API_##N, #n,     \
+        vl_msg_api_set_handlers(get_message_id(env, #N), #n,     \
                 vl_api_##n##_t_handler,             \
                 vl_noop_handler,                    \
                 vl_noop_handler,              \

@@ -37,6 +37,7 @@ typedef struct {
     /* Convenience */
     unix_shared_memory_queue_t * vl_input_queue;
     u32 my_client_index;
+    uword *messages_hash;
 } jvpp_main_t;
 
 extern jvpp_main_t jvpp_main __attribute__((aligned (64)));
@@ -63,5 +64,11 @@ static_always_inline void vppjni_unlock(jvpp_main_t * jm) {
 void call_on_error(const char* callName, int contextId, int retval,
         jclass callbackClass, jobject callbackObject,
         jclass callbackExceptionClass);
+
+/**
+ * Retrieves message id based on message name and crc (key format: name_crc).
+ * Throws java/lang/IllegalStateException on failure.
+ */
+u32 get_message_id(JNIEnv *env, const char* key);
 
 #endif /* __included_jvpp_common_h__ */

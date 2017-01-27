@@ -130,7 +130,7 @@ JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_${plugin_name}_JVpp${java_plugin_name
     // create message:
     mp = vl_msg_api_alloc(sizeof(*mp));
     memset (mp, 0, sizeof (*mp));
-    mp->_vl_msg_id = ntohs (VL_API_${c_name_uppercase} + plugin_main->msg_id_base);
+    mp->_vl_msg_id = ntohs (get_message_id(env, "${c_name}_${crc}"));
     mp->client_index = plugin_main->my_client_index;
     mp->context = clib_host_to_net_u32 (my_context_id);
 
@@ -181,6 +181,7 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                 field_name=camel_case_function_name,
                 c_name_uppercase=f_name_uppercase,
                 c_name=f_name,
+                crc=f['crc'],
                 plugin_name=plugin_name,
                 java_plugin_name=plugin_name.title(),
                 request_class=request_class,
@@ -282,7 +283,7 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
     return "\n".join(handlers)
 
 
-handler_registration_template = Template("""_(${upercase_name}, ${name}) \\
+handler_registration_template = Template("""_(${name}_${crc}, ${name}) \\
 """)
 
 
@@ -298,9 +299,28 @@ def generate_handler_registration(func_list):
 
         handler_registration.append(handler_registration_template.substitute(
             name=name,
-            upercase_name=name.upper()))
+            crc=f['crc']))
 
     return "".join(handler_registration)
+
+
+api_verification_template = Template("""_(${name}_${crc}) \\
+""")
+
+
+def generate_api_verification(func_list):
+    api_verification = ["#define foreach_supported_api_message \\\n"]
+    for f in func_list:
+        name = f['name']
+
+        if util.is_ignored(name):
+            continue
+
+        api_verification.append(api_verification_template.substitute(
+            name=name,
+            crc=f['crc']))
+
+    return "".join(api_verification)
 
 
 jvpp_c_template = Template("""/**
@@ -311,6 +331,9 @@ jvpp_c_template = Template("""/**
 
 // JAVA class reference cache
 $class_cache
+
+// List of supported API messages used for verification
+$api_verification
 
 // JNI bindings
 $jni_implementations
@@ -330,11 +353,13 @@ def generate_jvpp(func_list, plugin_name, inputfile, path):
     jni_impl = generate_jni_impl(func_list, plugin_name, inputfile)
     msg_handlers = generate_msg_handlers(func_list, plugin_name, inputfile)
     handler_registration = generate_handler_registration(func_list)
+    api_verification = generate_api_verification(func_list)
 
     jvpp_c_file = open("%s/jvpp_%s_gen.h" % (path, plugin_name), 'w')
     jvpp_c_file.write(jvpp_c_template.substitute(
             inputfile=inputfile,
             class_cache=class_cache,
+            api_verification=api_verification,
             jni_implementations=jni_impl,
             msg_handlers=msg_handlers,
             handler_registration=handler_registration))
