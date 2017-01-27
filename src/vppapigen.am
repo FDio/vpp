@@ -27,4 +27,6 @@ vppapigen_SOURCES = tools/vppapigen/gram.y tools/vppapigen/lex_e.c tools/vppapig
 vppapigen_LDADD = libvppinfra.la
 vppapigen_LDFLAGS = -static
 
+CLEANFILES += tools/vppapigen/gram.c tools/vppapigen/gram.h
+CLEANFILES += tools/vppapigen/lex_e.c
 # vi:syntax=automake
