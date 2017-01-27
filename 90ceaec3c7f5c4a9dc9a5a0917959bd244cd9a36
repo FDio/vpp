@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_53ab9389",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 623,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-27T10:06:10Z",
+      "side": 1,
+      "message": "do we need to collect the stats here ....",
+      "revId": "90ceaec3c7f5c4a9dc9a5a0917959bd244cd9a36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f3cddf5e",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 1984,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-27T10:06:10Z",
+      "side": 1,
+      "message": "the pool can be very large. can we instead nest two loops; the outer for each interface, the inner for each entry in the interface\u0027s ARP table - and do the to_check loop for each interface.\nthis way we minimise the amount of work done before we encounter the first suspend possibility.\nuse can also use vec_validate(to_check, hash_elts((ethernet_arp_interface_t)-\u003earp_entries)) to prevent the vector realloc\u0027ing as you walk.\nethernet_main-\u003eethernet_arp_by_sw_if_index will never shrink, so it is safe to walk and suspend.",
+      "revId": "90ceaec3c7f5c4a9dc9a5a0917959bd244cd9a36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_33ec87c7",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 2000,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-27T10:06:10Z",
+      "side": 1,
+      "message": "it\u0027s not safe to collect the ARP entry indices, then sleep, then use the indices, since the ARP entry could have been deleted while you were sleeping.\nInstead, collect the sw_if_index,address pair during the pool_foreach and then use arp_entry_find() (which may return NULL) once you awake.",
+      "revId": "90ceaec3c7f5c4a9dc9a5a0917959bd244cd9a36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_13950b40",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 2006,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-27T10:06:10Z",
+      "side": 1,
+      "message": ".... given that the state are reset here.",
+      "revId": "90ceaec3c7f5c4a9dc9a5a0917959bd244cd9a36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
