@@ -54,3 +54,5 @@ sample_test_plugin_la_SOURCES = sample/sample_test.c sample/sample_plugin.api.h
 install-data-hook:
 	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
 	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
+
+CLEANFILES = $(BUILT_SOURCES)

@@ -132,4 +132,6 @@ bin_vpp_get_metrics_LDADD = \
   libvppinfra.la \
   -lpthread -lm -lrt
 
+CLEANFILES += vpp/app/version.h
+
 # vi:syntax=automake

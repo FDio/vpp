@@ -28,6 +28,7 @@ noinst_HEADERS =
 dist_bin_SCRIPTS =
 lib_LTLIBRARIES =
 BUILT_SOURCES =
+CLEANFILES =
 install-data-local:
 	@echo "Building vppctl command list..."
 	@DIR_SEARCH="$(srcdir)" ; \
@@ -115,3 +116,5 @@ BUILT_SOURCES += \
 
 endif # if ENABLE_VLIB
 endif # if ENABLE_SVM
+
+CLEANFILES += $(BUILT_SOURCES) $(api_DATA)

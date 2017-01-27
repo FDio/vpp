@@ -76,3 +76,4 @@ api_DATA = \
 BUILT_SOURCES += \
 	$(patsubst %.api,%.api.h,$(API_FILES))
 
+CLEANFILES = $(BUILT_SOURCES) $(api_DATA)

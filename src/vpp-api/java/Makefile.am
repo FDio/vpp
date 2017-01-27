@@ -218,7 +218,7 @@ all-local: $(JAR_FILES)
 #
 # Cleanup
 #
-CLEANFILES = jvpp-registry.ok $(JAR_FILES) $(BUILT_SOURCES)
+CLEANFILES = jvpp-registry.ok $(JAR_FILES) $(BUILT_SOURCES) *.files */*.h
 
 clean-local:
 	rm -rf $(CLEANDIRS)
