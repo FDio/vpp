@@ -151,7 +151,7 @@ vxlan_gpe_pop_ioam_v4_one_inline (vlib_main_t * vm,
    */
   if (gpe_ioam0->length > clib_net_to_host_u16 (ip0->length))
     {
-      next0[0] = VXLAN_GPE_INPUT_NEXT_DROP;
+      *next0 = VXLAN_GPE_INPUT_NEXT_DROP;
       goto trace00;
     }
 
@@ -172,7 +172,7 @@ vxlan_gpe_pop_ioam_v4_one_inline (vlib_main_t * vm,
 	    {
 	      if ((*hm->pop_options[type0]) (ip0, opt0) < 0)
 		{
-		  next0[0] = VXLAN_GPE_INPUT_NEXT_DROP;
+		  *next0 = VXLAN_GPE_INPUT_NEXT_DROP;
 		  goto trace00;
 		}
 	    }
@@ -184,7 +184,7 @@ vxlan_gpe_pop_ioam_v4_one_inline (vlib_main_t * vm,
     }
 
 
-  next0[0] =
+  *next0 =
     (gpe_ioam0->protocol < VXLAN_GPE_PROTOCOL_MAX) ?
     ngm->
     decap_next_node_list[gpe_ioam0->protocol] : VXLAN_GPE_INPUT_NEXT_DROP;
@@ -195,7 +195,7 @@ trace00:
       vxlan_gpe_pop_ioam_v4_trace_t *t =
 	vlib_add_trace (vm, node, b0, sizeof (*t));
       u32 trace_len = gpe_ioam0->length;
-      t->fmt_trace.next_index = next0[0];
+      t->fmt_trace.next_index = *next0;
       /* Capture the h-b-h option verbatim */
       trace_len =
 	trace_len <

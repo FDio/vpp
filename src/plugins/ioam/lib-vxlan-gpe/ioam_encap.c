@@ -55,7 +55,7 @@ vxlan_gpe_encap_ioam_v4_two_inline (vlib_main_t * vm,
 				    vlib_buffer_t * b0, vlib_buffer_t * b1,
 				    u32 * next0, u32 * next1)
 {
-  next0[0] = next1[0] = VXLAN_GPE_ENCAP_IOAM_V4_NEXT_IP4_LOOKUP;
+  *next0 = *next1 = VXLAN_GPE_ENCAP_IOAM_V4_NEXT_IP4_LOOKUP;
   vxlan_gpe_encap_decap_ioam_v4_one_inline (vm, node, b0, next0,
 					    VXLAN_GPE_ENCAP_IOAM_V4_NEXT_DROP,
 					    0 /* use_adj */ );
