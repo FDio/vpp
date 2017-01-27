@@ -63,12 +63,5 @@ if [ $DISTRIB_ID == "CentOS" ]; then
     if [ $? != 0 ]; then sudo yum reinstall -y libconfuse-devel;fi
 fi
 
-# Build and install packaging
-$SUDOCMD make bootstrap
-if [ $DISTRIB_ID == "Ubuntu" ]; then
-    $SUDOCMD make pkg-deb
-elif [ $DISTRIB_ID == "CentOS" ]; then
-    (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
-    $SUDOCMD make pkg-rpm
-fi
-
+# Build and test vpp-lite
+$SUDOCMD make test
