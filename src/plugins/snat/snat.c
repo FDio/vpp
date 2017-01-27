@@ -22,6 +22,8 @@
 #include <vlibapi/api.h>
 #include <snat/snat.h>
 #include <snat/snat_ipfix_logging.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/ip4_fib.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -211,9 +213,66 @@ bad_tx_sw_if_index:				\
 
 #endif  /* CLIB_DEBUG > 0 */
 
+/**
+ * @brief Add/del NAT address to FIB.
+ *
+ * Add the external NAT address to the FIB as receive entries. This ensures
+ * that VPP will reply to ARP for this address and we don't need to enable
+ * proxy ARP on the outside interface.
+ *
+ * @param sm SNAT main
+ * @param addr IPv4 address.
+ * @param sw_if_index Interface.
+ * @param is_add If 0 delete, otherwise add.
+ */
+static void
+snat_add_del_addr_to_fib (snat_main_t *sm,
+                          ip4_address_t * addr,
+                          u32 sw_if_index,
+                          int is_add)
+{
+  ip4_main_t * ip4_main = sm->ip4_main;
+  ip4_address_t * first_int_addr;
+  fib_prefix_t prefix = {
+    .fp_len = 32,
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_addr = {
+        .ip4.as_u32 = addr->as_u32,
+    },
+  };
+  u32 fib_index = ip4_fib_table_get_index_for_sw_if_index(sw_if_index);
+
+  first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0);
+  if (first_int_addr)
+    {
+      if (first_int_addr->as_u32 == addr->as_u32)
+        return;
+    }
+
+  if (is_add)
+    fib_table_entry_update_one_path(fib_index,
+                                    &prefix,
+                                    FIB_SOURCE_INTERFACE,
+                                    (FIB_ENTRY_FLAG_CONNECTED |
+                                     FIB_ENTRY_FLAG_LOCAL |
+                                     FIB_ENTRY_FLAG_EXCLUSIVE),
+                                    FIB_PROTOCOL_IP4,
+                                    NULL,
+                                    sw_if_index,
+                                    ~0,
+                                    1,
+                                    NULL,
+                                    FIB_ROUTE_PATH_FLAG_NONE);
+  else
+    fib_table_entry_delete(fib_index,
+                           &prefix,
+                           FIB_SOURCE_INTERFACE);
+}
+
 void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
 {
   snat_address_t * ap;
+  snat_interface_t *i;
 
   /* Check if address already exists */
   vec_foreach (ap, sm->addresses)
@@ -225,6 +284,15 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
   vec_add2 (sm->addresses, ap, 1);
   ap->addr = *addr;
   clib_bitmap_alloc (ap->busy_port_bitmap, 65535);
+
+  /* Add external address to FIB */
+  pool_foreach (i, sm->interfaces,
+  ({
+    if (i->is_inside)
+      continue;
+
+    snat_add_del_addr_to_fib(sm, addr, i->sw_if_index, 1);
+  }));
 }
 
 static int is_snat_address_used_in_static_mapping (snat_main_t *sm,
@@ -297,6 +365,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   snat_address_t *a = 0;
   u32 fib_index = ~0;
   uword * p;
+  snat_interface_t *interface;
   int i;
 
   /* If outside FIB index is not resolved yet */
@@ -561,6 +630,18 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       pool_put (sm->static_mappings, m);
     }
 
+  if (!addr_only)
+    return 0;
+
+  /* Add/delete external address to FIB */
+  pool_foreach (interface, sm->interfaces,
+  ({
+    if (interface->is_inside)
+      continue;
+
+    snat_add_del_addr_to_fib(sm, &e_addr, interface->sw_if_index, is_add);
+  }));
+
   return 0;
 }
 
@@ -574,6 +655,7 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
   snat_user_t *u;
   snat_main_per_thread_data_t *tsm;
   snat_static_mapping_t *m;
+  snat_interface_t *interface;
   int i;
 
   /* Find SNAT address */
@@ -649,6 +731,15 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
 
   vec_del1 (sm->addresses, i);
 
+  /* Delete external address from FIB */
+  pool_foreach (interface, sm->interfaces,
+  ({
+    if (interface->is_inside)
+      continue;
+
+    snat_add_del_addr_to_fib(sm, &addr, interface->sw_if_index, 0);
+  }));
+
   return 0;
 }
 
@@ -657,6 +748,8 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
   const char * feature_name;
+  snat_address_t * ap;
+  snat_static_mapping_t * m;
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     feature_name = is_inside ?  "snat-in2out-fast" : "snat-out2in-fast";
@@ -686,7 +779,7 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
         else
           return VNET_API_ERROR_VALUE_EXIST;
 
-        return 0;
+        goto fib;
       }
   }));
 
@@ -696,6 +789,22 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   pool_get (sm->interfaces, i);
   i->sw_if_index = sw_if_index;
   i->is_inside = is_inside;
+
+  /* Add/delete external addresses to FIB */
+fib:
+  if (is_inside)
+    return 0;
+
+  vec_foreach (ap, sm->addresses)
+    snat_add_del_addr_to_fib(sm, &ap->addr, sw_if_index, !is_del);
+
+  pool_foreach (m, sm->static_mappings,
+  ({
+    if (!(m->addr_only))
+      continue;
+
+    snat_add_del_addr_to_fib(sm, &m->external_addr, sw_if_index, !is_del);
+  }));
 
   return 0;
 }
