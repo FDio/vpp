@@ -6,7 +6,7 @@ import struct
 
 from framework import VppTestCase, VppTestRunner
 from scapy.layers.inet import IP, TCP, UDP, ICMP
-from scapy.layers.l2 import Ether
+from scapy.layers.l2 import Ether, ARP
 from scapy.data import IP_PROTOS
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
@@ -524,9 +524,7 @@ class TestSNAT(VppTestCase):
         self.pg3.assert_nothing_captured()
 
     def test_multiple_inside_interfaces(self):
-        """
-        SNAT multiple inside interfaces with non-overlapping address space
-        """
+        """ SNAT multiple inside interfaces (non-overlapping address space) """
 
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
@@ -861,6 +859,67 @@ class TestSNAT(VppTestCase):
             if p.haslayer(Data):
                 data = ipfix.decode_data_set(p.getlayer(Set))
                 self.verify_ipfix_addr_exhausted(data)
+
+    def test_pool_addr_fib(self):
+        """ S-NAT add pool addresses to FIB """
+        static_addr = '10.0.0.10'
+        self.snat_add_address(self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+        self.snat_add_static_mapping(self.pg0.remote_ip4, static_addr)
+
+        # SNAT address
+        p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
+             ARP(op=ARP.who_has, pdst=self.snat_addr,
+                 psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.assertTrue(capture[0].haslayer(ARP))
+        self.assertTrue(capture[0][ARP].op, ARP.is_at)
+
+        # 1:1 NAT address
+        p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
+             ARP(op=ARP.who_has, pdst=static_addr,
+                 psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.assertTrue(capture[0].haslayer(ARP))
+        self.assertTrue(capture[0][ARP].op, ARP.is_at)
+
+        # send ARP to non-SNAT interface
+        p = (Ether(src=self.pg2.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
+             ARP(op=ARP.who_has, pdst=self.snat_addr,
+                 psrc=self.pg2.remote_ip4, hwsrc=self.pg2.remote_mac))
+        self.pg2.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(0)
+
+        # remove addresses and verify
+        self.snat_add_address(self.snat_addr, is_add=0)
+        self.snat_add_static_mapping(self.pg0.remote_ip4, static_addr,
+                                     is_add=0)
+
+        p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
+             ARP(op=ARP.who_has, pdst=self.snat_addr,
+                 psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(0)
+
+        p = (Ether(src=self.pg1.remote_mac, dst='ff:ff:ff:ff:ff:ff') /
+             ARP(op=ARP.who_has, pdst=static_addr,
+                 psrc=self.pg1.remote_ip4, hwsrc=self.pg1.remote_mac))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(0)
 
     def tearDown(self):
         super(TestSNAT, self).tearDown()
