@@ -63,3 +63,19 @@ void call_on_error(const char* callName, int contextId, int retval,
     (*env)->CallVoidMethod(env, callbackObject, callbackExcMethod, excObject);
     DEBUG_LOG("CallOnError : Response sent\n");
 }
+
+u32 get_message_id(JNIEnv *env, const char *key) {
+    uword *p = hash_get(jvpp_main.messages_hash, key);
+    if (!p) {
+        jclass exClass = (*env)->FindClass(env, "java/lang/IllegalStateException");
+        char *msgBuf  = clib_mem_alloc(strlen(key) + 40);
+        strcpy(msgBuf, "API mismatch detected: ");
+        strcat(msgBuf, key);
+        strcat(msgBuf, " is missing");
+        DEBUG_LOG("get_message_id : %s\n", msgBuf);
+        (*env)->ThrowNew(env, exClass, msgBuf);
+        clib_mem_free(msgBuf);
+        return 0;
+    }
+    return (u32) p[0];
+}

@@ -52,16 +52,21 @@ void __stack_chk_guard(void) __attribute__((weak));
 void __stack_chk_guard(void) {
 }
 
+#define CONTROL_PING_MESSAGE "control_ping"
+#define CONTROL_PING_REPLY_MESSAGE "control_ping_reply"
+
 typedef struct {
     /* UThread attachment */
     volatile u32 control_ping_result_ready;
     volatile i32 control_ping_retval;
 
-    /* Control poing callback */
+    /* Control ping callback */
     jobject registryObject;
     jclass registryClass;
     jclass controlPingReplyClass;
     jclass callbackExceptionClass;
+    int control_ping_msg_id;
+    int control_ping_reply_msg_id;
 
     /* Thread cleanup */
     pthread_key_t cleanup_rx_thread_key;
@@ -168,6 +173,41 @@ static void vl_api_control_ping_reply_t_handler(
     out: rm->control_ping_result_ready = 1;
 }
 
+static int find_ping_id() {
+    int rv = 0;
+    jvpp_main_t * jm = &jvpp_main;
+    jvpp_registry_main_t * rm = &jvpp_registry_main;
+    api_main_t *am = &api_main;
+    hash_pair_t *hp;
+    jm->messages_hash = am->msg_index_by_name_and_crc;
+
+    rm->control_ping_msg_id = -1;
+    rm->control_ping_reply_msg_id = -1;
+
+    hash_foreach_pair (hp, jm->messages_hash,
+    ({
+        char *key = (char *)hp->key; // key format: name_crc
+        int msg_name_len = strlen(key) - 9; // ignore crc
+        if (strlen(CONTROL_PING_MESSAGE) == msg_name_len &&
+                strncmp(CONTROL_PING_MESSAGE, (char *)hp->key, msg_name_len) == 0) {
+            rm->control_ping_msg_id = (u32)hp->value[0];
+        }
+        if (strlen(CONTROL_PING_REPLY_MESSAGE) == msg_name_len &&
+                strncmp(CONTROL_PING_REPLY_MESSAGE, (char *)hp->key, msg_name_len) == 0) {
+            rm->control_ping_reply_msg_id  = (u32)hp->value[0];
+        }
+    }));
+    if (rm->control_ping_msg_id == -1) {
+        clib_warning("failed to find id for %s", CONTROL_PING_MESSAGE);
+        rv = -1;
+    }
+    if (rm->control_ping_reply_msg_id == -1) {
+        clib_warning("failed to find id for %s", CONTROL_PING_REPLY_MESSAGE);
+        rv = -1;
+    }
+    return rv;
+}
+
 static int send_initial_control_ping() {
     f64 timeout;
     clib_time_t clib_time;
@@ -180,7 +220,7 @@ static int send_initial_control_ping() {
     rm->control_ping_result_ready = 0;
     mp = vl_msg_api_alloc(sizeof(*mp));
     memset(mp, 0, sizeof(*mp));
-    mp->_vl_msg_id = ntohs(VL_API_CONTROL_PING);
+    mp->_vl_msg_id = ntohs(rm->control_ping_msg_id);
     mp->client_index = jm->my_client_index;
 
     // send message:
@@ -197,7 +237,7 @@ static int send_initial_control_ping() {
     }
 
     if (rv != 0) {
-        clib_warning("common: first control ping failed: %d", rv);
+        clib_warning("first control ping failed: %d", rv);
     }
 
     return rv;
@@ -206,6 +246,7 @@ static int send_initial_control_ping() {
 static int connect_to_vpe(char *name) {
     jvpp_main_t * jm = &jvpp_main;
     api_main_t * am = &api_main;
+    jvpp_registry_main_t * rm = &jvpp_registry_main;
 
     if (vl_client_connect_to_vlib("/vpe-api", name, 32) < 0)
         return -1;
@@ -214,7 +255,10 @@ static int connect_to_vpe(char *name) {
 
     jm->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
-    vl_msg_api_set_handlers(VL_API_CONTROL_PING_REPLY, "control_ping_reply",
+    if (find_ping_id() < 0)
+        return -1;
+
+    vl_msg_api_set_handlers(rm->control_ping_reply_msg_id, CONTROL_PING_REPLY_MESSAGE,
             vl_api_control_ping_reply_t_handler, vl_noop_handler,
             vl_api_control_ping_reply_t_endian,
             vl_api_control_ping_reply_t_print,
@@ -286,7 +330,7 @@ JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_JVppRegistryImpl_controlPing0(
 
     mp = vl_msg_api_alloc(sizeof(*mp));
     memset(mp, 0, sizeof(*mp));
-    mp->_vl_msg_id = ntohs(VL_API_CONTROL_PING);
+    mp->_vl_msg_id = ntohs(rm->control_ping_msg_id);
     mp->client_index = jm->my_client_index;
     mp->context = clib_host_to_net_u32(my_context_id);
 
