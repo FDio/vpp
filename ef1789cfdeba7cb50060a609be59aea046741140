@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_d3c78363",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-27T09:23:20Z",
+      "side": 1,
+      "message": "Can you add one line of explanation here, why this is needed",
+      "revId": "ef1789cfdeba7cb50060a609be59aea046741140",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
