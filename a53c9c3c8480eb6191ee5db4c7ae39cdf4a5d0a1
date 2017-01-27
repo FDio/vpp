@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_53127363",
+        "filename": "src/plugins/ioam/lib-vxlan-gpe/ioam_decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-27T12:43:06Z",
+      "side": 1,
+      "message": "This is the important change for legibility. Next0 is a scalar pointer (u32 *), not a vector pointer (u32 **).",
+      "revId": "a53c9c3c8480eb6191ee5db4c7ae39cdf4a5d0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_d32e63a5",
+        "filename": "src/plugins/ioam/lib-vxlan-gpe/ioam_encap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-27T12:43:06Z",
+      "side": 1,
+      "message": "This is optional. Either form makes sense.",
+      "revId": "a53c9c3c8480eb6191ee5db4c7ae39cdf4a5d0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_b32bd793",
+        "filename": "src/plugins/ioam/lib-vxlan-gpe/ioam_pop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 154,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-27T12:43:06Z",
+      "side": 1,
+      "message": "Again, this is optional. I would write it this way because * is easier to type than []. (;-)...",
+      "revId": "a53c9c3c8480eb6191ee5db4c7ae39cdf4a5d0a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
