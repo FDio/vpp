@@ -176,7 +176,7 @@ mfib_show_route_flags (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mfib_route_flags_command, static) =
 {
-  .path = "sh mfib route flags",
+  .path = "show mfib route flags",
   .short_help = "Flags applicable to an MFIB route",
   .function = mfib_show_route_flags,
   .is_mp_safe = 1,
@@ -205,7 +205,7 @@ mfib_show_itf_flags (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mfib_itf_flags_command, static) =
 {
-  .path = "sh mfib itf flags",
+  .path = "show mfib itf flags",
   .short_help = "Flags applicable to an MFIB interfaces",
   .function = mfib_show_itf_flags,
   .is_mp_safe = 1,
