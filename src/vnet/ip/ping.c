@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <stddef.h>
 #include <vnet/ip/ping.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
@@ -243,15 +244,10 @@ init_icmp46_echo_request (icmp46_echo_request_t * icmp46_echo,
   icmp46_echo->seq = clib_host_to_net_u16 (seq_host);
   icmp46_echo->id = clib_host_to_net_u16 (id_host);
 
-  for (i = 0; i < sizeof (icmp46_echo->data); i++)
-    {
-      icmp46_echo->data[i] = i % 256;
-    }
-
-  if (data_len > sizeof (icmp46_echo_request_t))
-    {
-      data_len = sizeof (icmp46_echo_request_t);
-    }
+  if (data_len > PING_MAXIMUM_DATA_SIZE)
+    data_len = PING_MAXIMUM_DATA_SIZE;
+  for (i = 0; i < data_len; i++)
+    icmp46_echo->data[i] = i % 256;
   return data_len;
 }
 
@@ -267,11 +263,15 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
   vlib_buffer_t *p0;
   vlib_frame_t *f;
   u32 *to_next;
+  vlib_buffer_free_list_t *fl;
 
   if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
     return SEND_PING_ALLOC_FAIL;
 
   p0 = vlib_get_buffer (vm, bi0);
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list (p0, fl);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
 
   /*
    * if the user did not provide a source interface, use the any interface
@@ -376,11 +376,15 @@ send_ip4_ping (vlib_main_t * vm,
   vlib_frame_t *f;
   u32 *to_next;
   u32 if_add_index0;
+  vlib_buffer_free_list_t *fl;
 
   if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
     return SEND_PING_ALLOC_FAIL;
 
   p0 = vlib_get_buffer (vm, bi0);
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list (p0, fl);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
 
   /*
    * if the user did not provide a source interface, use the any interface
@@ -757,6 +761,14 @@ ping_ip_address (vlib_main_t * vm,
 		clib_error_return (0,
 				   "expecting size but got `%U'",
 				   format_unformat_error, input);
+	      goto done;
+	    }
+	  if (data_len > PING_MAXIMUM_DATA_SIZE)
+	    {
+	      error =
+		clib_error_return (0,
+				   "%d is bigger than maximum allowed payload size %d",
+				   data_len, PING_MAXIMUM_DATA_SIZE);
 	      goto done;
 	    }
 	}
