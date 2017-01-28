@@ -59,26 +59,31 @@ ping_main_t ping_main;
 #define PING_DEFAULT_DATA_LEN 60
 #define PING_DEFAULT_INTERVAL 1.0
 
-#define PING_MAXIMUM_DATA_SIZE 2000
+#define PING_MAXIMUM_DATA_SIZE (VLIB_BUFFER_DATA_SIZE - sizeof(ip6_header_t) - sizeof(icmp46_header_t) - offsetof(icmp46_echo_request_t, data))
 
-typedef CLIB_PACKED (struct
-		     {
-		     u16 id;
-		     u16 seq; f64 time_sent; u8 data[PING_MAXIMUM_DATA_SIZE];
-		     }) icmp46_echo_request_t;
+/* *INDENT-OFF* */
+
+typedef CLIB_PACKED (struct {
+  u16 id;
+  u16 seq;
+  f64 time_sent;
+  u8 data[0];
+}) icmp46_echo_request_t;
 
 
-typedef CLIB_PACKED (struct
-		     {
-		     ip6_header_t ip6;
-		     icmp46_header_t icmp; icmp46_echo_request_t icmp_echo;
-		     }) icmp6_echo_request_header_t;
+typedef CLIB_PACKED (struct {
+  ip6_header_t ip6;
+  icmp46_header_t icmp;
+  icmp46_echo_request_t icmp_echo;
+}) icmp6_echo_request_header_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     ip4_header_t ip4;
-		     icmp46_header_t icmp; icmp46_echo_request_t icmp_echo;
-		     }) icmp4_echo_request_header_t;
+typedef CLIB_PACKED (struct {
+  ip4_header_t ip4;
+  icmp46_header_t icmp;
+  icmp46_echo_request_t icmp_echo;
+}) icmp4_echo_request_header_t;
+
+/* *INDENT-ON* */
 
 
 typedef struct
