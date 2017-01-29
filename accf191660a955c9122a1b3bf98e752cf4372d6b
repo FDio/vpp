@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_d62e51a5",
+        "filename": "src/vnet/ip/ping.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 765,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-29T10:22:01Z",
+      "side": 1,
+      "message": "if (data_len \u003e MAX) return \"no can do\"\nor at least a warning.\n\nIf an operator wants large packet sizes to test fragmentation, then reducing the length silently would give a false positive.",
+      "revId": "accf191660a955c9122a1b3bf98e752cf4372d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f6214db5",
+        "filename": "src/vnet/ip/ping.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-29T10:22:01Z",
+      "side": 1,
+      "message": "/* *INDENT-OFF* */",
+      "revId": "accf191660a955c9122a1b3bf98e752cf4372d6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
