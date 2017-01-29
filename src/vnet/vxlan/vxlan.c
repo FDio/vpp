@@ -253,10 +253,8 @@ static int vxlan6_rewrite (vxlan_tunnel_t * t)
   ip0->hop_limit = 255;
   ip0->protocol = IP_PROTOCOL_UDP;
 
-  ip0->src_address.as_u64[0] = t->src.ip6.as_u64[0];
-  ip0->src_address.as_u64[1] = t->src.ip6.as_u64[1];
-  ip0->dst_address.as_u64[0] = t->dst.ip6.as_u64[0];
-  ip0->dst_address.as_u64[1] = t->dst.ip6.as_u64[1];
+  ip0->src_address = t->src.ip6;
+  ip0->dst_address = t->dst.ip6;
 
   /* UDP header, randomize src port on something, maybe? */
   h0->udp.src_port = clib_host_to_net_u16 (4789);
@@ -378,6 +376,12 @@ mcast_shared_remove(ip46_address_t *dst)
     hash_unset_key_free (&vxlan_main.mcast_shared, dst);
 }
 
+static inline fib_protocol_t
+fib_ip_proto(bool is_ip6)
+{
+  return (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
+}
+
 int vnet_vxlan_add_del_tunnel 
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp)
 {
@@ -400,8 +404,7 @@ int vnet_vxlan_add_del_tunnel
     } 
   else 
     {
-      key6.src.as_u64[0] = a->dst.ip6.as_u64[0];
-      key6.src.as_u64[1] = a->dst.ip6.as_u64[1];
+      key6.src = a->dst.ip6;
       key6.vni = clib_host_to_net_u32 (a->vni << 8);
       p = hash_get_mem (vxm->vxlan6_tunnel_by_key, &key6);
     }
@@ -519,9 +522,7 @@ int vnet_vxlan_add_del_tunnel
 	   * with different VNIs, create the output fib adjecency only if
 	   * it does not already exist
 	   */
-          fib_protocol_t fp = (is_ip6) ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4;
-          dpo_id_t dpo = DPO_INVALID;
-          mcast_shared_t ep;
+          fib_protocol_t fp = fib_ip_proto(is_ip6);
 
 	  if (vtep_addr_ref(&t->dst) == 1)
           {
@@ -573,7 +574,8 @@ int vnet_vxlan_add_del_tunnel
               mcast_shared_add(&t->dst, mfei, ai);
           }
 
-          ep = mcast_shared_get(&t->dst);
+          dpo_id_t dpo = DPO_INVALID;
+          mcast_shared_t ep = mcast_shared_get(&t->dst);
 
           /* Stack shared mcast dst mac addr rewrite on encap */
           dpo_set (&dpo, DPO_ADJACENCY,
@@ -632,46 +634,14 @@ int vnet_vxlan_add_del_tunnel
   return 0;
 }
 
-static u32 fib4_index_from_fib_id (u32 fib_id)
-{
-  ip4_main_t * im = &ip4_main;
-  uword * p;
-
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (!p)
-    return ~0;
-
-  return p[0];
-}
-
-static u32 fib6_index_from_fib_id (u32 fib_id)
-{
-  ip6_main_t * im = &ip6_main;
-  uword * p;
-
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (!p)
-    return ~0;
-
-  return p[0];
-}
-
 static uword get_decap_next_for_node(u32 node_index, u32 ipv4_set)
 {
   vxlan_main_t * vxm = &vxlan_main;
   vlib_main_t * vm = vxm->vlib_main;
-  uword next_index = ~0;
+  uword input_node = (ipv4_set) ? vxlan4_input_node.index :
+    vxlan6_input_node.index;
 
-  if (ipv4_set)
-    {
-      next_index = vlib_node_add_next (vm, vxlan4_input_node.index, node_index);
-    }
-  else
-    {
-      next_index = vlib_node_add_next (vm, vxlan6_input_node.index, node_index);
-    }
-
-  return next_index;
+  return vlib_node_add_next (vm, input_node, node_index);
 }
 
 static uword unformat_decap_next (unformat_input_t * input, va_list * args)
@@ -771,10 +741,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       }
     else if (unformat (line_input, "encap-vrf-id %d", &tmp))
       {
-        if (ipv6_set)
-          encap_fib_index = fib6_index_from_fib_id (tmp);
-        else
-          encap_fib_index = fib4_index_from_fib_id (tmp);
+        encap_fib_index = fib_table_find (fib_ip_proto (ipv6_set), tmp);
         if (encap_fib_index == ~0)
           return clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
       }
