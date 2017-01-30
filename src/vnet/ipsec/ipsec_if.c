@@ -63,11 +63,11 @@ ipsec_admin_up_down_function (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       if (err)
 	return err;
 
-      vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
+      vnet_hw_interface_set_flags (vnm, hw_if_index,
 				   VNET_HW_INTERFACE_FLAG_LINK_UP);
     }
   else
-    vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0 /* down */ );
+    vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */ );
 
   return /* no error */ 0;
 }
