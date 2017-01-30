@@ -62,7 +62,8 @@ nobase_include_HEADERS +=			\
   vnet/rewrite.h				\
   vnet/vnet.h					\
   vnet/vnet_all_api_h.h				\
-  vnet/vnet_msg_enum.h
+  vnet/vnet_msg_enum.h				\
+  vnet/util/radix.h
 
 API_FILES += vnet/interface.api
 
