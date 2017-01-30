@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_2c72e8e5",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-30T18:43:11Z",
+      "side": 1,
+      "message": "you can rearrange this so that if the buffer\u0027s TX FIB is non ~0 we don\u0027t need to calculate fib_index.",
+      "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ec73c0e5",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 938,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-30T18:43:11Z",
+      "side": 1,
+      "message": "do you need to validate the UDP checksum for IPv6 tunnel traffic? see RFC6935.",
+      "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
