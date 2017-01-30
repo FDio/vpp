@@ -129,7 +129,35 @@ VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
+static int snat_drop_redirect_enable_disable (snat_main_t *sm, 
+                                              u32 sw_if_index, 
+                                              int is_del)
+{
+  vnet_hw_interface_t *hw;
+  if (is_del)
+    {
+      if (sm->drop_redirect_sw_if_index == sw_if_index)
+        {
+          /* OK to use zero, redirect to the local interface is insane... */
+          sm->drop_redirect_sw_if_index = 0;
+          /* aka, SNAT_OUT2IN_NEXT_DROP */
+          sm->drop_redirect_next_index = 0;
+        }
+      else
+        return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+      return 0;
+    }
 
+  hw = vnet_get_sup_hw_interface (sm->vnet_main, sw_if_index);
+
+  sm->drop_redirect_next_index = 
+    vlib_node_add_next (sm->vlib_main, snat_out2in_node.index,
+                        hw->output_node_index);
+  
+  sm->drop_redirect_sw_if_index = hw->sw_if_index;
+  return 0;
+}
+    
 /* 
  * This routine exists to convince the vlib plugin framework that
  * we haven't accidentally copied a random .dll into the plugin directory.
@@ -1390,6 +1418,38 @@ static void *vl_api_snat_ipfix_enable_disable_t_print
   FINISH;
 }
 
+static void
+vl_api_snat_drop_redirect_enable_disable_t_handler
+(vl_api_snat_drop_redirect_enable_disable_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_drop_redirect_enable_disable_reply_t * rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX(mp);
+
+  rv = snat_drop_redirect_enable_disable
+    (sm, clib_host_to_net_u32 (mp->sw_if_index), (int) mp->enable);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SNAT_DROP_REDIRECT_ENABLE_DISABLE_REPLY);
+}
+
+static void *vl_api_snat_drop_redirect_enable_disable_t_print
+(vl_api_snat_drop_redirect_enable_disable_t *mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_ipfix_drop_redirect_enable_disable ");
+  s = format (s, "sw_if_index %d ", clib_net_to_host_u32 (mp->sw_if_index));
+
+  if (!mp->enable)
+    s = format (s, "disable ");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1404,7 +1464,8 @@ _(SNAT_SET_WORKERS, snat_set_workers)                                   \
 _(SNAT_WORKER_DUMP, snat_worker_dump)                                   \
 _(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr)             \
 _(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)                   \
-_(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)
+_(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)			\
+_(SNAT_DROP_REDIRECT_ENABLE_DISABLE, snat_drop_redirect_enable_disable)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -2524,4 +2585,52 @@ VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
     .path = "snat add interface address",
     .short_help = "snat add interface address <interface> [del]",
     .function = snat_add_interface_address_command_fn,
+};
+
+
+static clib_error_t *
+snat_drop_redirect_command_fn (vlib_main_t * vm,
+                               unformat_input_t * input,
+                               vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index;
+  int rv;
+  int is_del = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+                    sm->vnet_main, &sw_if_index))
+        ;
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else
+        return clib_error_return (0, "unknown input '%U'",
+				  format_unformat_error, line_input);
+    }
+
+  rv = snat_drop_redirect_enable_disable (sm, sw_if_index, is_del);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    default:
+      return clib_error_return 
+          (0, "snat_drop_redirect_enable_disable returned %d", rv);
+    }
+  return 0;
+}
+
+VLIB_CLI_COMMAND (snat_drop_redirect_command, static) = {
+    .path = "snat drop redirect",
+    .short_help = "snat drop redirect <interface> [del]",
+    .function = snat_drop_redirect_command_fn,
 };

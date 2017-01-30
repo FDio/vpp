@@ -101,7 +101,7 @@ static char * snat_out2in_error_strings[] = {
 };
 
 typedef enum {
-  SNAT_OUT2IN_NEXT_DROP,
+  SNAT_OUT2IN_NEXT_DROP,        /* must be zero, see drop redirect code */
   SNAT_OUT2IN_NEXT_LOOKUP,
   SNAT_OUT2IN_N_NEXT,
 } snat_out2in_next_t;
@@ -276,7 +276,14 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
             return next0;
 
           b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-          return SNAT_OUT2IN_NEXT_DROP;
+          if (PREDICT_FALSE (sm->drop_redirect_next_index != 0))
+            {
+              vnet_buffer(b0)->sw_if_index[VLIB_TX] 
+                = sm->drop_redirect_sw_if_index;
+              /* Any old junk MAC header will do... */
+              vlib_buffer_advance (b0, -14);
+            }
+          return sm->drop_redirect_next_index;
         }
 
       /* Create session initiated by host from external network */
@@ -445,7 +452,16 @@ snat_out2in_node_fn (vlib_main_t * vm,
                   if (proto0 != SNAT_PROTOCOL_UDP 
                       || (udp0->dst_port 
                           != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-                    next0 = SNAT_OUT2IN_NEXT_DROP;
+                    {
+                      next0 = sm->drop_redirect_next_index;
+                      if (PREDICT_FALSE (sm->drop_redirect_next_index != 0))
+                        {
+                          vlib_buffer_advance (b0, -14);
+                          vnet_buffer(b0)->sw_if_index[VLIB_TX] = 
+                            sm->drop_redirect_sw_if_index;
+                        }
+                    }
+
                   goto trace0;
                 }
 
@@ -524,8 +540,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                 t->session_index = s0 - sm->per_thread_data[cpu_index].sessions;
             }
 
-          pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
-
+          pkts_processed += next0 != sm->drop_redirect_next_index;
 
           ip1 = vlib_buffer_get_current (b1);
           udp1 = ip4_next_header (ip1);
@@ -576,7 +591,15 @@ snat_out2in_node_fn (vlib_main_t * vm,
                   if (proto1 != SNAT_PROTOCOL_UDP 
                       || (udp1->dst_port 
                           != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-                    next1 = SNAT_OUT2IN_NEXT_DROP;
+                    {
+                      next1 = sm->drop_redirect_next_index;
+                      if (PREDICT_FALSE (sm->drop_redirect_next_index != 0))
+                        {
+                          vlib_buffer_advance (b1, -14);
+                          vnet_buffer(b1)->sw_if_index[VLIB_TX] = 
+                            sm->drop_redirect_sw_if_index;
+                        }
+                    }
                   goto trace1;
                 }
 
@@ -655,7 +678,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                 t->session_index = s1 - sm->per_thread_data[cpu_index].sessions;
             }
 
-          pkts_processed += next1 != SNAT_OUT2IN_NEXT_DROP;
+          pkts_processed += next1 != sm->drop_redirect_next_index;
 
           /* verify speculative enqueues, maybe switch current next frame */
           vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -741,8 +764,15 @@ snat_out2in_node_fn (vlib_main_t * vm,
                   if (proto0 != SNAT_PROTOCOL_UDP 
                       || (udp0->dst_port 
                           != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-
-                    next0 = SNAT_OUT2IN_NEXT_DROP;
+                    {
+                      next0 = sm->drop_redirect_next_index;
+                      if (PREDICT_FALSE (sm->drop_redirect_next_index != 0))
+                        {
+                          vlib_buffer_advance (b0, -14);
+                          vnet_buffer(b0)->sw_if_index[VLIB_TX] = 
+                            sm->drop_redirect_sw_if_index;
+                        }
+                    }
                   goto trace00;
                 }
 
@@ -821,7 +851,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                 t->session_index = s0 - sm->per_thread_data[cpu_index].sessions;
             }
 
-          pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
+          pkts_processed += next0 != sm->drop_redirect_next_index;
 
           /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -1108,7 +1138,12 @@ static inline u32 icmp_out2in_fast (snat_main_t *sm,
         return next0;
 
       b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-      return SNAT_OUT2IN_NEXT_DROP;
+      if (PREDICT_FALSE (sm->drop_redirect_next_index != 0))
+        {
+          vlib_buffer_advance (b0, -14);
+          vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm->drop_redirect_sw_if_index;
+        }
+      return sm->drop_redirect_next_index;
     }
 
   new_addr0 = sm0.addr.as_u32;
@@ -1163,7 +1198,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
 	{
           u32 bi0;
 	  vlib_buffer_t * b0;
-          u32 next0 = SNAT_OUT2IN_NEXT_DROP;
+          u32 next0 = sm->drop_redirect_next_index;
           u32 sw_if_index0;
           ip4_header_t * ip0;
           ip_csum_t sum0;
@@ -1284,7 +1319,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
               t->next_index = next0;
             }
 
-          pkts_processed += next0 != SNAT_OUT2IN_NEXT_DROP;
+          pkts_processed += next0 != sm->drop_redirect_next_index;
 
           /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
