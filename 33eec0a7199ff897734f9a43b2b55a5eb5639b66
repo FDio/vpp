@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_ec08602f",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-01-30T19:20:27Z",
+      "side": 1,
+      "message": "I would expect the ~0 case to hardly ever happen. But OK, I can still optimize for it. :)",
+      "parentUuid": "3a3291f1_2c72e8e5",
+      "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_ec73c0e5",
         "filename": "src/vnet/vxlan/decap.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2017-01-30T18:43:11Z",
       "side": 1,
       "message": "do you need to validate the UDP checksum for IPv6 tunnel traffic? see RFC6935.",
+      "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4c12d463",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 938,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-01-30T19:20:27Z",
+      "side": 1,
+      "message": "This is already handled above when good_udp0 will be set if the checksum value is 0. You do bring up a good point on encap path if udp_checksum should be generated or set to 0. It is now always generated for IP6 and left as 0 for IP4. I suppose it is safer to always generate it in case the receive device does not allow 0 udp checksum for IP6.",
+      "parentUuid": "3a3291f1_ec73c0e5",
       "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
