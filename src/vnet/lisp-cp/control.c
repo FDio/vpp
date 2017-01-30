@@ -1321,6 +1321,7 @@ vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
       gid_address_from_ip (&loc.address, ip);
       loc.priority = 1;
       loc.state = loc.weight = 1;
+      loc.local = 0;
 
       ls_args->is_add = 1;
       ls_args->index = ~0;

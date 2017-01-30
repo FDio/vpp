@@ -422,7 +422,9 @@ vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
   mapping_t *m;
   locator_set_t *ls = 0;
   int rv = 0;
-  locator_t *loc;
+  locator_t *loc = 0;
+  u8 status = 0;
+  gid_address_t addr;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -430,8 +432,9 @@ vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
       return;
     }
 
-  rmp->status = lcm->flags & LISP_FLAG_USE_PETR;
-  if (rmp->status)
+  memset (&addr, 0, sizeof (addr));
+  status = lcm->flags & LISP_FLAG_USE_PETR;
+  if (status)
     {
       m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
       if (~0 != m->locator_set_index)
@@ -439,12 +442,18 @@ vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
 	  ls =
 	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
 	  loc = pool_elt_at_index (lcm->locator_pool, ls->locator_indices[0]);
-	  gid_address_put (rmp->address, &loc->address);
-	  rmp->is_ip4 = (gid_address_ip_version (&loc->address) == IP4);
+	  gid_address_copy (&addr, &loc->address);
 	}
     }
 
-  REPLY_MACRO (VL_API_SHOW_LISP_USE_PETR_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SHOW_LISP_USE_PETR_REPLY,
+  {
+      rmp->status = status;
+      gid_address_put (rmp->address, &addr);
+      rmp->is_ip4 = (gid_address_ip_version (&addr) == IP4);
+  });
+  /* *INDENT-ON* */
 }
 
 static void
