@@ -1,0 +1,83 @@
+From fb7c10892b057533931553f9367acd5541a0537c Mon Sep 17 00:00:00 2001
+From: Steve Shin <jonshin@cisco.com>
+Date: Mon, 30 Jan 2017 09:12:25 -0800
+Subject: [PATCH] This patch fixes a bug in replaying MAC address to the
+ hardware in rte_eth_dev_config_restore() routine. Added default MAC replay as
+ well.
+
+Fixes: 4bdefaade6d1 ("ethdev: VMDQ enhancements")
+
+Signed-off-by: Steve Shin <jonshin@cisco.com>
+---
+ lib/librte_ether/rte_ethdev.c | 48 ++++++++++++++++++++++++-------------------
+ 1 file changed, 27 insertions(+), 21 deletions(-)
+
+diff --git a/lib/librte_ether/rte_ethdev.c b/lib/librte_ether/rte_ethdev.c
+index fde8112..2c07dfe 100644
+--- a/lib/librte_ether/rte_ethdev.c
++++ b/lib/librte_ether/rte_ethdev.c
+@@ -857,34 +857,40 @@ struct rte_eth_dev *
+ {
+ 	struct rte_eth_dev *dev;
+ 	struct rte_eth_dev_info dev_info;
+-	struct ether_addr addr;
++	struct ether_addr *addr;
+ 	uint16_t i;
+ 	uint32_t pool = 0;
++	uint64_t pool_mask;
+ 
+ 	dev = &rte_eth_devices[port_id];
+ 
+ 	rte_eth_dev_info_get(port_id, &dev_info);
+ 
+-	if (RTE_ETH_DEV_SRIOV(dev).active)
+-		pool = RTE_ETH_DEV_SRIOV(dev).def_vmdq_idx;
+-
+-	/* replay MAC address configuration */
+-	for (i = 0; i < dev_info.max_mac_addrs; i++) {
+-		addr = dev->data->mac_addrs[i];
+-
+-		/* skip zero address */
+-		if (is_zero_ether_addr(&addr))
+-			continue;
+-
+-		/* add address to the hardware */
+-		if  (*dev->dev_ops->mac_addr_add &&
+-			(dev->data->mac_pool_sel[i] & (1ULL << pool)))
+-			(*dev->dev_ops->mac_addr_add)(dev, &addr, i, pool);
+-		else {
+-			RTE_PMD_DEBUG_TRACE("port %d: MAC address array not supported\n",
+-					port_id);
+-			/* exit the loop but not return an error */
+-			break;
++	/* replay MAC address configuration including default MAC */
++	addr = &dev->data->mac_addrs[0];
++	if (*dev->dev_ops->mac_addr_set != NULL)
++		(*dev->dev_ops->mac_addr_set)(dev, addr);
++	else if (*dev->dev_ops->mac_addr_add != NULL)
++		(*dev->dev_ops->mac_addr_add)(dev, addr, 0, pool);
++
++	if (*dev->dev_ops->mac_addr_add != NULL) {
++		for (i = 1; i < dev_info.max_mac_addrs; i++) {
++			addr = &dev->data->mac_addrs[i];
++
++			/* skip zero address */
++			if (is_zero_ether_addr(addr))
++				continue;
++
++			pool = 0;
++			pool_mask = dev->data->mac_pool_sel[i];
++
++			do {
++				if (pool_mask & 1ULL)
++					(*dev->dev_ops->mac_addr_add)(dev,
++						addr, i, pool);
++				pool_mask >>= 1;
++				pool++;
++			} while (pool_mask);
+ 		}
+ 	}
+ 
+-- 
+1.9.1
+
