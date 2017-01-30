@@ -183,4 +183,6 @@ typedef struct {
 int vnet_vxlan_add_del_tunnel 
 (vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
 
+void vnet_int_vxlan_bypass_mode
+(u32 sw_if_index, u8 is_ip6, u8 is_enable);
 #endif /* included_vnet_vxlan_h */

@@ -59,14 +59,7 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  if (mp->is_ipv6)
-    {
-      /* not yet implemented */
-    }
-  else
-    vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
-				 sw_if_index, mp->enable, 0, 0);
-
+  vnet_int_vxlan_bypass_mode (sw_if_index, mp->is_ipv6, mp->enable);
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_VXLAN_BYPASS_REPLY);
