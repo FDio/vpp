@@ -214,6 +214,8 @@ typedef struct {
   u32 outside_fib_index;
   u32 inside_vrf_id;
   u32 inside_fib_index;
+  u32 drop_redirect_sw_if_index;
+  u32 drop_redirect_next_index;
 
   /* API message ID base */
   u16 msg_id_base;
