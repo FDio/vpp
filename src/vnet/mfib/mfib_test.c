@@ -235,6 +235,7 @@ mfib_test_entry (fib_node_index_t fei,
     const replicate_t *rep;
     mfib_prefix_t pfx;
     va_list ap;
+    int res;
 
     va_start(ap, n_buckets);
 
@@ -253,12 +254,11 @@ mfib_test_entry (fib_node_index_t fei,
                       "%U links to %U",
                       format_mfib_prefix, &pfx,
                       format_dpo_id, &mfe->mfe_rep, 0);
-        return (!0);
+        res = !0;
     }
     else
     {
         dpo_id_t tmp = DPO_INVALID;
-        int res;
 
         mfib_entry_contribute_forwarding(
             fei,
@@ -274,9 +274,11 @@ mfib_test_entry (fib_node_index_t fei,
         res = mfib_test_validate_rep_v(rep, n_buckets, ap);
 
         dpo_reset(&tmp);
-
-        return (res);
     }
+
+    va_end(ap);
+
+    return (res);
 }
 
 static int

@@ -68,6 +68,28 @@ mfib_signal_module_init (void)
     mfib_signal_list_init();
 }
 
+static inline void
+mfib_signal_lock_aquire (void)
+{
+    while (__sync_lock_test_and_set (&mfib_signal_pending.mip_lock, 1))
+        ;
+}
+
+static inline void
+mfib_signal_lock_release (void)
+{
+    mfib_signal_pending.mip_lock = 0;
+}
+
+#define MFIB_SIGNAL_CRITICAL_SECTION(_body) \
+{                                           \
+    mfib_signal_lock_aquire();              \
+    do {                                    \
+        _body;                              \
+    } while (0);                            \
+    mfib_signal_lock_release();             \
+}
+
 int
 mfib_signal_send_one (struct _unix_shared_memory_queue *q,
                       u32 context)
@@ -77,13 +99,11 @@ mfib_signal_send_one (struct _unix_shared_memory_queue *q,
     /*
      * with the lock held, pop a signal from the q.
      */
-    while (__sync_lock_test_and_set (&mfib_signal_pending.mip_lock, 1))
-        ;
-    {
+    MFIB_SIGNAL_CRITICAL_SECTION(
+    ({
         li = clib_dlist_remove_head(mfib_signal_dlist_pool,
                                     mfib_signal_pending.mip_head);
-    }
-    mfib_signal_pending.mip_lock = 0;
+    }));
 
     if (~0 != li)
     {
@@ -106,13 +126,11 @@ mfib_signal_send_one (struct _unix_shared_memory_queue *q,
         /*
          * with the lock held, return the resoruces of the signals posted
          */
-        while (__sync_lock_test_and_set(&mfib_signal_pending.mip_lock, 1))
-            ;
-        {
+        MFIB_SIGNAL_CRITICAL_SECTION(
+        ({
             pool_put_index(mfib_signal_pool, si);
             pool_put_index(mfib_signal_dlist_pool, li);
-        }
-        mfib_signal_pending.mip_lock = 0;
+        }));
 
         return (1);
     }
@@ -128,9 +146,8 @@ mfib_signal_push (const mfib_entry_t *mfe,
     dlist_elt_t *elt;
     u32 si, li;
 
-    while (__sync_lock_test_and_set (&mfib_signal_pending.mip_lock, 1))
-        ;
-    {
+    MFIB_SIGNAL_CRITICAL_SECTION(
+    ({
         pool_get(mfib_signal_pool, mfs);
         pool_get(mfib_signal_dlist_pool, elt);
 
@@ -143,8 +160,7 @@ mfib_signal_push (const mfib_entry_t *mfe,
         clib_dlist_addhead(mfib_signal_dlist_pool,
                            mfib_signal_pending.mip_head,
                            li);
-    }
-    mfib_signal_pending.mip_lock = 0;
+    }));
 
     mfs->mfs_entry = mfib_entry_get_index(mfe);
     mfs->mfs_itf = mfib_itf_get_index(mfi);
@@ -179,9 +195,8 @@ mfib_signal_remove_itf (const mfib_itf_t *mfi)
         /*
          * it's in the pending q
          */
-        while (__sync_lock_test_and_set (&mfib_signal_pending.mip_lock, 1))
-            ;
-        {
+        MFIB_SIGNAL_CRITICAL_SECTION(
+        ({
             dlist_elt_t *elt;
 
             /*
@@ -194,8 +209,6 @@ mfib_signal_remove_itf (const mfib_itf_t *mfi)
             elt = pool_elt_at_index(mfib_signal_dlist_pool, li);
             pool_put_index(mfib_signal_pool, elt->value);
             pool_put(mfib_signal_dlist_pool, elt);
-        }
-
-        mfib_signal_pending.mip_lock = 0;
+        }));
     }
 }

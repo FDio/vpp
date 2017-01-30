@@ -6706,9 +6706,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
   S;
   /* Wait for a reply... */
   W;
-
-  /* Return the good/bad news */
-  return (vam->retval);
 }
 
 static int
@@ -16546,7 +16543,10 @@ static void
   vat_json_object_add_uint (node, "src-if-index", sw_if_index_from);
   vat_json_object_add_string_copy (node, "src-if-name", sw_if_from_name);
   vat_json_object_add_uint (node, "dst-if-index", sw_if_index_to);
-  vat_json_object_add_string_copy (node, "dst-if-name", sw_if_to_name);
+  if (0 != sw_if_to_name)
+    {
+      vat_json_object_add_string_copy (node, "dst-if-name", sw_if_to_name);
+    }
   vat_json_object_add_uint (node, "state", mp->state);
 }
 
