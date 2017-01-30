@@ -588,6 +588,13 @@ VNET_FEATURE_INIT (ip6_vpath, static) =
 {
   .arc_name = "ip6-unicast",
   .node_name = "vpath-input-ip6",
+  .runs_before = VNET_FEATURES ("ip6-vxlan-bypass"),
+};
+
+VNET_FEATURE_INIT (ip6_vxlan_bypass, static) =
+{
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-vxlan-bypass",
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
 
@@ -921,7 +928,7 @@ typedef struct
 }
 ip6_forward_next_trace_t;
 
-static u8 *
+u8 *
 format_ip6_forward_next_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);

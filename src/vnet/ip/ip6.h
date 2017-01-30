@@ -426,6 +426,10 @@ int vnet_ip6_nd_term (vlib_main_t * vm,
 		      ip6_header_t * ip,
 		      u32 sw_if_index, u16 bd_index, u8 shg);
 
+u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
+
+u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
+
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);
 extern vlib_node_registration_t ip6_lookup_node;
