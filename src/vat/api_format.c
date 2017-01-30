@@ -5491,7 +5491,7 @@ api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
   f64 timeout;
   u32 sw_if_index = 0;
   u8 sw_if_index_set = 0;
-  u8 is_enable = 0;
+  u8 is_enable = 1;
   u8 is_ipv6 = 0;
 
   /* Parse args required to build the message */
@@ -17876,7 +17876,7 @@ _(sw_interface_set_mpls_enable,                                         \
 _(sw_interface_set_vpath,                                               \
   "<intfc> | sw_if_index <id> enable | disable")                        \
 _(sw_interface_set_vxlan_bypass,                                        \
-  "<intfc> | sw_if_index <id> [ip4 | ip6] enable | disable")            \
+  "<intfc> | sw_if_index <id> [ip4 | ip6] [enable | disable]")          \
 _(sw_interface_set_l2_xconnect,                                         \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \
