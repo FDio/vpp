@@ -109,7 +109,7 @@ _(" PLUGIN-NAME "_ENABLE_DISABLE_REPLY, " plugin-name "_enable_disable_reply)
 
 /* M: construct, but don't yet send a message */
 
-#define M(T,t)                                                  \\
+#define M(T, mp)                                                \\
 do {                                                            \\
     vam->result_ready = 0;                                      \\
     mp = vl_msg_api_alloc(sizeof(*mp));                         \\
@@ -118,7 +118,7 @@ do {                                                            \\
     mp->client_index = vam->my_client_index;                    \\
 } while(0);
 
-#define M2(T,t,n)                                               \\
+#define M2(T, mp, n)                                            \\
 do {                                                            \\
     vam->result_ready = 0;                                      \\
     mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \\
