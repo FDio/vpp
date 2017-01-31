@@ -132,7 +132,6 @@ static int api_pot_profile_add (vat_main_t *vam)
     u64 secret_key = 0;
     u32  bits = MAX_BITS;
     u64 lpc = 0, poly2 = 0;
-    f64 timeout;
     u8 id = 0;
     int rv = 0;
 
@@ -204,7 +203,6 @@ static int api_pot_profile_activate (vat_main_t *vam)
     u8 *name = NULL;
     u8 id = 0;
     int rv = 0;
-    f64 timeout;
     
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
       {
@@ -241,7 +239,6 @@ OUT:
 static int api_pot_profile_del (vat_main_t *vam)
 {
     vl_api_pot_profile_del_t *mp;
-    f64 timeout;
    
     M(POT_PROFILE_DEL, mp);
     mp->list_name_len = 0;
@@ -254,7 +251,6 @@ static int api_pot_profile_show_config_dump (vat_main_t *vam)
 {
     unformat_input_t *input = vam->input;
     vl_api_pot_profile_show_config_dump_t *mp;
-    f64 timeout;
     u8 id = 0;
 
     while(unformat_check_input(input) != UNFORMAT_END_OF_INPUT)

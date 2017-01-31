@@ -44,7 +44,7 @@ do {                                                            \
 /* W: wait for results, with timeout */
 #define W                                       \
 do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
+    f64 timeout = vat_time_now (vam) + 1.0;     \
                                                 \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \
@@ -58,7 +58,7 @@ do {                                            \
 /* W2: wait for results, with timeout */
 #define W2(body)                                \
 do {                                            \
-    timeout = vat_time_now (vam) + 1.0;         \
+    f64 timeout = vat_time_now (vam) + 1.0;     \
                                                 \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \

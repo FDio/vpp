@@ -109,7 +109,6 @@ _(SNAT_IPFIX_ENABLE_DISABLE_REPLY,                              \
 static int api_snat_add_address_range (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   ip4_address_t start_addr, end_addr;
   u32 start_host_order, end_host_order;
   vl_api_snat_add_address_range_t * mp;
@@ -169,7 +168,6 @@ static int api_snat_add_address_range (vat_main_t * vam)
 static int api_snat_interface_add_del_feature (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_snat_interface_add_del_feature_t * mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
@@ -215,7 +213,6 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
 static int api_snat_add_static_mapping(vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_snat_add_static_mapping_t * mp;
   u8 external_addr_set = 0;
   u8 local_addr_set;
@@ -320,7 +317,6 @@ static void vl_api_snat_static_mapping_details_t_handler
 
 static int api_snat_static_mapping_dump(vat_main_t * vam)
 {
-  f64 timeout;
   vl_api_snat_static_mapping_dump_t * mp;
 
   if (vam->json_output)
@@ -379,7 +375,6 @@ static void vl_api_snat_show_config_reply_t_handler
 
 static int api_snat_show_config(vat_main_t * vam)
 {
-  f64 timeout;
   vl_api_snat_show_config_t * mp;
 
   if (vam->json_output)
@@ -406,7 +401,6 @@ static void vl_api_snat_address_details_t_handler
 
 static int api_snat_address_dump(vat_main_t * vam)
 {
-  f64 timeout;
   vl_api_snat_address_dump_t * mp;
 
   if (vam->json_output)
@@ -440,7 +434,6 @@ static void vl_api_snat_interface_details_t_handler
 
 static int api_snat_interface_dump(vat_main_t * vam)
 {
-  f64 timeout;
   vl_api_snat_interface_dump_t * mp;
 
   if (vam->json_output)
@@ -465,7 +458,6 @@ static int api_snat_interface_dump(vat_main_t * vam)
 static int api_snat_set_workers (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_snat_set_workers_t * mp;
   uword *bitmap;
 
@@ -502,7 +494,6 @@ static void vl_api_snat_worker_details_t_handler
 
 static int api_snat_worker_dump(vat_main_t * vam)
 {
-  f64 timeout;
   vl_api_snat_worker_dump_t * mp;
 
   if (vam->json_output)
@@ -527,7 +518,6 @@ static int api_snat_worker_dump(vat_main_t * vam)
 static int api_snat_ipfix_enable_disable (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_snat_add_del_interface_addr_t * mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
@@ -575,7 +565,6 @@ static void vl_api_snat_interface_addr_details_t_handler
 
 static int api_snat_interface_addr_dump(vat_main_t * vam)
 {
-  f64 timeout;
   vl_api_snat_interface_addr_dump_t * mp;
 
   if (vam->json_output)
@@ -600,7 +589,6 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
 static int api_snat_add_del_interface_addr (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_snat_ipfix_enable_disable_t * mp;
   u32 domain_id = 0;
   u32 src_port = 0;
