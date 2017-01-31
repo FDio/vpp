@@ -108,7 +108,7 @@ api_ioam_export_ip6_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (IOAM_EXPORT_IP6_ENABLE_DISABLE, ioam_export_ip6_enable_disable);
+  M(IOAM_EXPORT_IP6_ENABLE_DISABLE, mp);
   mp->is_disable = is_disable;
 
   /* send it... */

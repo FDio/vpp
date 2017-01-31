@@ -498,7 +498,7 @@ static int api_acl_del (vat_main_t * vam)
     }
 
     /* Construct the API message */
-    M(ACL_DEL, acl_del);
+    M(ACL_DEL, mp);
     mp->acl_index = ntohl(acl_index);
 
     /* send it... */
@@ -521,7 +521,7 @@ static int api_macip_acl_del (vat_main_t * vam)
     }
 
     /* Construct the API message */
-    M(MACIP_ACL_DEL, acl_del);
+    M(MACIP_ACL_DEL, mp);
     mp->acl_index = ntohl(acl_index);
 
     /* send it... */
@@ -585,7 +585,7 @@ static int api_acl_interface_add_del (vat_main_t * vam)
 
 
     /* Construct the API message */
-    M(ACL_INTERFACE_ADD_DEL, acl_interface_add_del);
+    M(ACL_INTERFACE_ADD_DEL, mp);
     mp->acl_index = ntohl(acl_index);
     mp->sw_if_index = ntohl(sw_if_index);
     mp->is_add = is_add;
@@ -636,7 +636,7 @@ static int api_macip_acl_interface_add_del (vat_main_t * vam)
 
 
     /* Construct the API message */
-    M(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del);
+    M(MACIP_ACL_INTERFACE_ADD_DEL, mp);
     mp->acl_index = ntohl(acl_index);
     mp->sw_if_index = ntohl(sw_if_index);
     mp->is_add = is_add;
@@ -690,7 +690,7 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
     }
 
     /* Construct the API message */
-    M2(ACL_INTERFACE_SET_ACL_LIST, acl_interface_set_acl_list, sizeof(u32) * (vec_len(inacls) + vec_len(outacls)));
+    M2(ACL_INTERFACE_SET_ACL_LIST, mp, sizeof(u32) * (vec_len(inacls) + vec_len(outacls)));
     mp->sw_if_index = ntohl(sw_if_index);
     mp->n_input = vec_len(inacls);
     mp->count = vec_len(inacls) + vec_len(outacls);
@@ -724,7 +724,7 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
     }
 
     /* Construct the API message */
-    M(ACL_INTERFACE_LIST_DUMP, acl_interface_list_dump);
+    M(ACL_INTERFACE_LIST_DUMP, mp);
     mp->sw_if_index = ntohl (sw_if_index);
 
     /* send it... */
@@ -750,7 +750,7 @@ static int api_acl_dump (vat_main_t * vam)
     }
 
     /* Construct the API message */
-    M(ACL_DUMP, acl_dump);
+    M(ACL_DUMP, mp);
     mp->acl_index = ntohl (acl_index);
 
     /* send it... */
@@ -776,7 +776,7 @@ static int api_macip_acl_dump (vat_main_t * vam)
     }
 
     /* Construct the API message */
-    M(MACIP_ACL_DUMP, macip_acl_dump);
+    M(MACIP_ACL_DUMP, mp);
     mp->acl_index = ntohl (acl_index);
 
     /* send it... */

@@ -168,7 +168,7 @@ static int api_pot_profile_add (vat_main_t *vam)
         goto OUT;
       }
     
-    M2(POT_PROFILE_ADD, pot_profile_add, vec_len(name));
+    M2(POT_PROFILE_ADD, mp, vec_len(name));
 
     mp->list_name_len = vec_len(name);
     clib_memcpy(mp->list_name, name, mp->list_name_len);
@@ -222,7 +222,7 @@ static int api_pot_profile_activate (vat_main_t *vam)
         goto OUT;
       }
     
-    M2(POT_PROFILE_ACTIVATE, pot_profile_activate, vec_len(name));
+    M2(POT_PROFILE_ACTIVATE, mp, vec_len(name));
 
     mp->list_name_len = vec_len(name);
     clib_memcpy(mp->list_name, name, mp->list_name_len);
@@ -241,7 +241,7 @@ static int api_pot_profile_del (vat_main_t *vam)
     vl_api_pot_profile_del_t *mp;
     f64 timeout;
    
-    M(POT_PROFILE_DEL, pot_profile_del);
+    M(POT_PROFILE_DEL, mp);
     mp->list_name_len = 0;
     S; W;
     return 0;
@@ -260,7 +260,7 @@ static int api_pot_profile_show_config_dump (vat_main_t *vam)
       else
         break;
     }
-    M(POT_PROFILE_SHOW_CONFIG_DUMP, pot_profile_show_config_dump);
+    M(POT_PROFILE_SHOW_CONFIG_DUMP, mp);
 
     mp->id = id;
 
