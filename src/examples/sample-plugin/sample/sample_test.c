@@ -117,7 +117,7 @@ static int api_sample_macswap_enable_disable (vat_main_t * vam)
     }
     
     /* Construct the API message */
-    M(SAMPLE_MACSWAP_ENABLE_DISABLE, sample_macswap_enable_disable);
+    M(SAMPLE_MACSWAP_ENABLE_DISABLE, mp);
     mp->sw_if_index = ntohl (sw_if_index);
     mp->enable_disable = enable_disable;
 
