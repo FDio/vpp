@@ -104,7 +104,6 @@ api_vxlan_gpe_ioam_enable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_vxlan_gpe_ioam_enable_t *mp;
-  f64 timeout;
   u32 id = 0;
   int has_trace_option = 0;
   int has_pow_option = 0;
@@ -143,7 +142,6 @@ static int
 api_vxlan_gpe_ioam_disable (vat_main_t * vam)
 {
   vl_api_vxlan_gpe_ioam_disable_t *mp;
-  f64 timeout;
 
   M (VXLAN_GPE_IOAM_DISABLE, mp);
   S (mp);
@@ -163,7 +161,6 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
   u8 remote_set = 0;
   u32 vni;
   u8 vni_set = 0;
-  f64 timeout;
 
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -258,7 +255,6 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
   u8 remote_set = 0;
   u32 vni;
   u8 vni_set = 0;
-  f64 timeout;
 
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -351,7 +347,6 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
   u8 ipv4_set = 0, ipv6_set = 0;
   u8 local_set = 0;
   u32 outer_fib_index = 0;
-  f64 timeout;
 
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -421,7 +416,6 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
   u8 ipv4_set = 0, ipv6_set = 0;
   u8 local_set = 0;
   u32 outer_fib_index = 0;
-  f64 timeout;
 
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)

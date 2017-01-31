@@ -267,7 +267,6 @@ static int api_acl_plugin_get_version (vat_main_t * vam)
     acl_test_main_t * sm = &acl_test_main;
     vl_api_acl_plugin_get_version_t * mp;
     u32 msg_size = sizeof(*mp);
-    f64 timeout;
 
     vam->result_ready = 0;
     mp = vl_msg_api_alloc_as_if_client(msg_size);
@@ -289,7 +288,6 @@ static int api_macip_acl_interface_get (vat_main_t * vam)
     acl_test_main_t * sm = &acl_test_main;
     vl_api_acl_plugin_get_version_t * mp;
     u32 msg_size = sizeof(*mp);
-    f64 timeout;
 
     vam->result_ready = 0;
     mp = vl_msg_api_alloc_as_if_client(msg_size);
@@ -321,7 +319,6 @@ static int api_acl_add_replace (vat_main_t * vam)
 {
     acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_acl_add_replace_t * mp;
     u32 acl_index = ~0;
     u32 msg_size = sizeof (*mp); /* without the rules */
@@ -488,7 +485,6 @@ static int api_acl_add_replace (vat_main_t * vam)
 static int api_acl_del (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_acl_del_t * mp;
     u32 acl_index = ~0;
 
@@ -511,7 +507,6 @@ static int api_acl_del (vat_main_t * vam)
 static int api_macip_acl_del (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_acl_del_t * mp;
     u32 acl_index = ~0;
 
@@ -534,7 +529,6 @@ static int api_macip_acl_del (vat_main_t * vam)
 static int api_acl_interface_add_del (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_acl_interface_add_del_t * mp;
     u32 sw_if_index = ~0;
     u32 acl_index = ~0;
@@ -601,7 +595,6 @@ static int api_acl_interface_add_del (vat_main_t * vam)
 static int api_macip_acl_interface_add_del (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_macip_acl_interface_add_del_t * mp;
     u32 sw_if_index = ~0;
     u32 acl_index = ~0;
@@ -651,7 +644,6 @@ static int api_macip_acl_interface_add_del (vat_main_t * vam)
 static int api_acl_interface_set_acl_list (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_acl_interface_set_acl_list_t * mp;
     u32 sw_if_index = ~0;
     u32 acl_index = ~0;
@@ -709,7 +701,6 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
 static int api_acl_interface_list_dump (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     u32 sw_if_index = ~0;
     vl_api_acl_interface_list_dump_t * mp;
 
@@ -737,7 +728,6 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
 static int api_acl_dump (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     u32 acl_index = ~0;
     vl_api_acl_dump_t * mp;
 
@@ -763,7 +753,6 @@ static int api_acl_dump (vat_main_t * vam)
 static int api_macip_acl_dump (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
-    f64 timeout;
     u32 acl_index = ~0;
     vl_api_acl_dump_t * mp;
 
@@ -799,7 +788,6 @@ static int api_macip_acl_add (vat_main_t * vam)
 {
     acl_test_main_t * sm = &acl_test_main;
     unformat_input_t * i = vam->input;
-    f64 timeout;
     vl_api_macip_acl_add_t * mp;
     u32 msg_size = sizeof (*mp); /* without the rules */
 

@@ -4640,7 +4640,6 @@ static int
 exec_inband (vat_main_t * vam)
 {
   vl_api_cli_inband_t *mp;
-  f64 timeout;
   unformat_input_t *i = vam->input;
 
   if (vec_len (i->buffer) == 0)
@@ -4676,7 +4675,6 @@ api_create_loopback (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_create_loopback_t *mp;
-  f64 timeout;
   u8 mac_address[6];
   u8 mac_set = 0;
 
@@ -4704,7 +4702,6 @@ api_delete_loopback (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_delete_loopback_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -4734,7 +4731,6 @@ api_want_stats (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_want_stats_t *mp;
-  f64 timeout;
   int enable = -1;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -4765,7 +4761,6 @@ api_want_interface_events (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_want_interface_events_t *mp;
-  f64 timeout;
   int enable = -1;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -4799,7 +4794,6 @@ int
 api_sw_interface_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_dump_t *mp;
-  f64 timeout;
   hash_pair_t *p;
   name_sort_t *nses = 0, *ns;
   sw_interface_subif_t *sub = NULL;
@@ -4906,7 +4900,6 @@ api_sw_interface_set_flags (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_flags_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 admin_up = 0, link_up = 0;
@@ -4955,7 +4948,6 @@ api_sw_interface_clear_stats (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_clear_stats_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
 
@@ -4991,7 +4983,6 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 subport;
@@ -5064,7 +5055,6 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_subport_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 subport;
@@ -5145,7 +5135,6 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 entry_set = 0;
@@ -5213,7 +5202,6 @@ api_sw_interface_add_del_address (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_add_del_address_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1, del_all = 0;
@@ -5290,7 +5278,6 @@ api_sw_interface_set_mpls_enable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_mpls_enable_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 enable = 1;
@@ -5334,7 +5321,6 @@ api_sw_interface_set_table (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_table_t *mp;
-  f64 timeout;
   u32 sw_if_index, vrf_id = 0;
   u8 sw_if_index_set = 0;
   u8 is_ipv6 = 0;
@@ -5411,7 +5397,6 @@ api_sw_interface_get_table (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_ipv6 = 0;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -5444,7 +5429,6 @@ api_sw_interface_set_vpath (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_vpath_t *mp;
-  f64 timeout;
   u32 sw_if_index = 0;
   u8 sw_if_index_set = 0;
   u8 is_enable = 0;
@@ -5488,7 +5472,6 @@ api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_vxlan_bypass_t *mp;
-  f64 timeout;
   u32 sw_if_index = 0;
   u8 sw_if_index_set = 0;
   u8 is_enable = 1;
@@ -5538,7 +5521,6 @@ api_sw_interface_set_l2_xconnect (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_l2_xconnect_t *mp;
-  f64 timeout;
   u32 rx_sw_if_index;
   u8 rx_sw_if_index_set = 0;
   u32 tx_sw_if_index;
@@ -5611,7 +5593,6 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_l2_bridge_t *mp;
-  f64 timeout;
   u32 rx_sw_if_index;
   u8 rx_sw_if_index_set = 0;
   u32 bd_id;
@@ -5674,7 +5655,6 @@ api_bridge_domain_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_bridge_domain_dump_t *mp;
-  f64 timeout;
   u32 bd_id = ~0;
 
   /* Parse args required to build the message */
@@ -5707,7 +5687,6 @@ api_bridge_domain_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_bridge_domain_add_del_t *mp;
-  f64 timeout;
   u32 bd_id = ~0;
   u8 is_add = 1;
   u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
@@ -5920,7 +5899,6 @@ api_l2_flags (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_flags_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u32 feature_bitmap = 0;
   u8 sw_if_index_set = 0;
@@ -5975,7 +5953,6 @@ api_bridge_flags (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_bridge_flags_t *mp;
-  f64 timeout;
   u32 bd_id;
   u8 bd_id_set = 0;
   u8 is_set = 1;
@@ -6027,7 +6004,6 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_bd_ip_mac_add_del_t *mp;
-  f64 timeout;
   u32 bd_id;
   u8 is_ipv6 = 0;
   u8 is_add = 1;
@@ -6102,7 +6078,6 @@ api_tap_connect (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_tap_connect_t *mp;
-  f64 timeout;
   u8 mac_address[6];
   u8 random_mac = 1;
   u8 name_set = 0;
@@ -6195,7 +6170,6 @@ api_tap_modify (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_tap_modify_t *mp;
-  f64 timeout;
   u8 mac_address[6];
   u8 random_mac = 1;
   u8 name_set = 0;
@@ -6261,7 +6235,6 @@ api_tap_delete (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_tap_delete_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
 
@@ -6299,7 +6272,6 @@ api_ip_add_del_route (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_add_del_route_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0, vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 is_local = 0, is_drop = 0;
@@ -6549,6 +6521,7 @@ api_ip_add_del_route (vat_main_t * vam)
     {
       vl_api_control_ping_t *mp;
       f64 after;
+      f64 timeout;
 
       /* Shut off async mode */
       vam->async_mode = 0;
@@ -6596,7 +6569,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_mroute_add_del_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0, vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 is_local = 0;
@@ -6713,7 +6685,6 @@ api_mpls_route_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_mpls_route_add_del_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0, table_id = 0;
   u8 create_table_if_needed = 0;
   u8 is_add = 1;
@@ -6887,6 +6858,7 @@ api_mpls_route_add_del (vat_main_t * vam)
     {
       vl_api_control_ping_t *mp;
       f64 after;
+      f64 timeout;
 
       /* Shut off async mode */
       vam->async_mode = 0;
@@ -6934,7 +6906,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_mpls_ip_bind_unbind_t *mp;
-  f64 timeout;
   u32 ip_table_id = 0;
   u8 create_table_if_needed = 0;
   u8 is_bind = 1;
@@ -7017,7 +6988,6 @@ api_proxy_arp_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_proxy_arp_add_del_t *mp;
-  f64 timeout;
   u32 vrf_id = 0;
   u8 is_add = 1;
   ip4_address_t lo, hi;
@@ -7063,7 +7033,6 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_proxy_arp_intfc_enable_disable_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 enable = 1;
   u8 sw_if_index_set = 0;
@@ -7107,7 +7076,6 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_mpls_tunnel_add_del_t *mp;
-  f64 timeout;
 
   u8 is_add = 1;
   u8 l2_only = 0;
@@ -7193,7 +7161,6 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_unnumbered_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u32 unnum_sw_index = ~0;
   u8 is_add = 1;
@@ -7239,7 +7206,6 @@ api_ip_neighbor_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_neighbor_add_del_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 vrf_id = 0;
@@ -7334,7 +7300,6 @@ api_reset_vrf (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_reset_vrf_t *mp;
-  f64 timeout;
   u32 vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 vrf_id_set = 0;
@@ -7374,7 +7339,6 @@ api_create_vlan_subif (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_create_vlan_subif_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 vlan_id;
@@ -7433,7 +7397,6 @@ api_create_subif (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_create_subif_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 sub_id;
@@ -7508,7 +7471,6 @@ api_oam_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_oam_add_del_t *mp;
-  f64 timeout;
   u32 vrf_id = 0;
   u8 is_add = 1;
   ip4_address_t src, dst;
@@ -7562,7 +7524,6 @@ api_reset_fib (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_reset_fib_t *mp;
-  f64 timeout;
   u32 vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 vrf_id_set = 0;
@@ -7602,7 +7563,6 @@ api_dhcp_proxy_config (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_proxy_config_t *mp;
-  f64 timeout;
   u32 vrf_id = 0;
   u8 is_add = 1;
   u8 insert_cid = 1;
@@ -7697,7 +7657,6 @@ api_dhcp_proxy_config_2 (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_proxy_config_2_t *mp;
-  f64 timeout;
   u32 rx_vrf_id = 0;
   u32 server_vrf_id = 0;
   u8 is_add = 1;
@@ -7796,7 +7755,6 @@ api_dhcp_proxy_set_vss (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_proxy_set_vss_t *mp;
-  f64 timeout;
   u8 is_ipv6 = 0;
   u8 is_add = 1;
   u32 tbl_id;
@@ -7860,7 +7818,6 @@ api_dhcp_client_config (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_client_config_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
@@ -7921,7 +7878,6 @@ api_set_ip_flow_hash (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_set_ip_flow_hash_t *mp;
-  f64 timeout;
   u32 vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 vrf_id_set = 0;
@@ -7985,7 +7941,6 @@ api_sw_interface_ip6_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_ip6_enable_disable_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 enable = 0;
@@ -8029,7 +7984,6 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_ip6_set_link_local_address_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 v6_address_set = 0;
@@ -8081,7 +8035,6 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_ip6nd_ra_prefix_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 address_length = 0;
@@ -8170,7 +8123,6 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_ip6nd_ra_config_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 suppress = 0;
@@ -8267,7 +8219,6 @@ api_set_arp_neighbor_limit (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_set_arp_neighbor_limit_t *mp;
-  f64 timeout;
   u32 arp_nbr_limit;
   u8 limit_set = 0;
   u8 is_ipv6 = 0;
@@ -8307,7 +8258,6 @@ api_l2_patch_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_patch_add_del_t *mp;
-  f64 timeout;
   u32 rx_sw_if_index;
   u8 rx_sw_if_index_set = 0;
   u32 tx_sw_if_index;
@@ -8378,7 +8328,6 @@ api_ioam_enable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_ioam_enable_t *mp;
-  f64 timeout;
   u32 id = 0;
   int has_trace_option = 0;
   int has_pot_option = 0;
@@ -8417,7 +8366,6 @@ static int
 api_ioam_disable (vat_main_t * vam)
 {
   vl_api_ioam_disable_t *mp;
-  f64 timeout;
 
   M (IOAM_DISABLE, mp);
   S (mp);
@@ -8430,7 +8378,6 @@ api_sr_tunnel_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sr_tunnel_add_del_t *mp;
-  f64 timeout;
   int is_del = 0;
   int pl_index;
   ip6_address_t src_address;
@@ -8563,7 +8510,6 @@ api_sr_policy_add_del (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_sr_policy_add_del_t *mp;
-  f64 timeout;
   int is_del = 0;
   u8 *name = 0;
   u8 *tunnel_name = 0;
@@ -8647,7 +8593,6 @@ api_sr_multicast_map_add_del (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_sr_multicast_map_add_del_t *mp;
-  f64 timeout;
   int is_del = 0;
   ip6_address_t multicast_address;
   u8 *policy_name = 0;
@@ -9320,7 +9265,6 @@ api_classify_add_del_table (vat_main_t * vam)
   u32 miss_next_index = ~0;
   u32 memory_size = 32 << 20;
   u8 *mask = 0;
-  f64 timeout;
   u32 current_data_flag = 0;
   int current_data_offset = 0;
 
@@ -9858,7 +9802,6 @@ api_classify_add_del_session (vat_main_t * vam)
   u32 opaque_index = ~0;
   u8 *match = 0;
   i32 advance = 0;
-  f64 timeout;
   u32 skip_n_vectors = 0;
   u32 match_n_vectors = 0;
   u32 action = 0;
@@ -9946,7 +9889,6 @@ api_classify_set_interface_ip_table (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_classify_set_interface_ip_table_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   int sw_if_index_set;
   u32 table_index = ~0;
@@ -9991,7 +9933,6 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_classify_set_interface_l2_tables_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   int sw_if_index_set;
   u32 ip4_table_index = ~0;
@@ -10055,7 +9996,6 @@ api_set_ipfix_exporter (vat_main_t * vam)
   u32 path_mtu = ~0;
   u32 template_interval = ~0;
   u8 udp_checksum = 0;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10114,7 +10054,6 @@ api_set_ipfix_classify_stream (vat_main_t * vam)
   vl_api_set_ipfix_classify_stream_t *mp;
   u32 domain_id = 0;
   u32 src_port = UDP_DST_PORT_ipfix;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10148,7 +10087,6 @@ api_ipfix_classify_table_add_del (vat_main_t * vam)
   u32 classify_table_index = ~0;
   u8 ip_version = 0;
   u8 transport_protocol = 255;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10206,7 +10144,6 @@ api_get_node_index (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_get_node_index_t *mp;
-  f64 timeout;
   u8 *name = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -10242,7 +10179,6 @@ api_get_next_index (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_get_next_index_t *mp;
-  f64 timeout;
   u8 *node_name = 0, *next_node_name = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -10292,7 +10228,6 @@ api_add_node_next (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_add_node_next_t *mp;
-  f64 timeout;
   u8 *name = 0;
   u8 *next = 0;
 
@@ -10351,7 +10286,6 @@ api_l2tpv3_create_tunnel (vat_main_t * vam)
   u64 remote_cookie = 0;
   u8 l2_sublayer_present = 0;
   vl_api_l2tpv3_create_tunnel_t *mp;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10416,7 +10350,6 @@ api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
   u64 new_local_cookie = 0;
   u64 new_remote_cookie = 0;
   vl_api_l2tpv3_set_tunnel_cookies_t *mp;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10455,7 +10388,6 @@ api_l2tpv3_interface_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2tpv3_interface_enable_disable_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 enable_disable = 1;
@@ -10496,7 +10428,6 @@ api_l2tpv3_set_lookup_key (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2tpv3_set_lookup_key_t *mp;
-  f64 timeout;
   u8 key = ~0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -10594,7 +10525,6 @@ static int
 api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
 {
   vl_api_sw_if_l2tpv3_tunnel_dump_t *mp;
-  f64 timeout;
 
   /* Get list of l2tpv3-tunnel interfaces */
   M (SW_IF_L2TPV3_TUNNEL_DUMP, mp);
@@ -10641,7 +10571,6 @@ static int
 api_sw_interface_tap_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_tap_dump_t *mp;
-  f64 timeout;
 
   print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
   /* Get list of tap interfaces */
@@ -10677,7 +10606,6 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_add_del_tunnel_t *mp;
-  f64 timeout;
   ip46_address_t src, dst;
   u8 is_add = 1;
   u8 ipv4_set = 0, ipv6_set = 0;
@@ -10894,7 +10822,6 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_vxlan_tunnel_dump_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
 
@@ -10940,7 +10867,6 @@ api_gre_add_del_tunnel (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_gre_add_del_tunnel_t *mp;
-  f64 timeout;
   ip4_address_t src4, dst4;
   u8 is_add = 1;
   u8 teb = 0;
@@ -11034,7 +10960,6 @@ api_gre_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_gre_tunnel_dump_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
 
@@ -11080,7 +11005,6 @@ api_l2_fib_clear_table (vat_main_t * vam)
 {
 //  unformat_input_t * i = vam->input;
   vl_api_l2_fib_clear_table_t *mp;
-  f64 timeout;
 
   M (L2_FIB_CLEAR_TABLE, mp);
 
@@ -11095,7 +11019,6 @@ api_l2_interface_efp_filter (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_interface_efp_filter_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 enable = 1;
   u8 sw_if_index_set = 0;
@@ -11150,7 +11073,6 @@ api_l2_interface_vlan_tag_rewrite (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_interface_vlan_tag_rewrite_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 vtr_op_set = 0;
@@ -11207,7 +11129,6 @@ api_create_vhost_user_if (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_create_vhost_user_if_t *mp;
-  f64 timeout;
   u8 *file_name;
   u8 is_server = 0;
   u8 file_name_set = 0;
@@ -11277,7 +11198,6 @@ api_modify_vhost_user_if (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_modify_vhost_user_if_t *mp;
-  f64 timeout;
   u8 *file_name;
   u8 is_server = 0;
   u8 file_name_set = 0;
@@ -11345,7 +11265,6 @@ api_delete_vhost_user_if (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_delete_vhost_user_if_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
 
@@ -11420,7 +11339,6 @@ static int
 api_sw_interface_vhost_user_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_vhost_user_dump_t *mp;
-  f64 timeout;
   print (vam->ofp,
 	 "Interface name           idx hdr_sz features server regions filename");
 
@@ -11441,7 +11359,6 @@ static int
 api_show_version (vat_main_t * vam)
 {
   vl_api_show_version_t *mp;
-  f64 timeout;
 
   M (SHOW_VERSION, mp);
 
@@ -11457,7 +11374,6 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_vxlan_gpe_add_del_tunnel_t *mp;
-  f64 timeout;
   ip4_address_t local4, remote4;
   ip6_address_t local6, remote6;
   u8 is_add = 1;
@@ -11625,7 +11541,6 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_vxlan_gpe_tunnel_dump_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
 
@@ -11714,7 +11629,6 @@ api_l2_fib_table_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_fib_table_dump_t *mp;
-  f64 timeout;
   u32 bd_id;
   u8 bd_id_set = 0;
 
@@ -11757,7 +11671,6 @@ api_interface_name_renumber (vat_main_t * vam)
   unformat_input_t *line_input = vam->input;
   vl_api_interface_name_renumber_t *mp;
   u32 sw_if_index = ~0;
-  f64 timeout;
   u32 new_show_dev_instance = ~0;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
@@ -11800,7 +11713,6 @@ api_want_ip4_arp_events (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_want_ip4_arp_events_t *mp;
-  f64 timeout;
   ip4_address_t address;
   int address_set = 0;
   u32 enable_disable = 1;
@@ -11835,7 +11747,6 @@ api_want_ip6_nd_events (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_want_ip6_nd_events_t *mp;
-  f64 timeout;
   ip6_address_t address;
   int address_set = 0;
   u32 enable_disable = 1;
@@ -11870,7 +11781,6 @@ api_input_acl_set_interface (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_input_acl_set_interface_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   int sw_if_index_set;
   u32 ip4_table_index = ~0;
@@ -11928,7 +11838,6 @@ api_ip_address_dump (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
-  f64 timeout;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11988,7 +11897,6 @@ api_ip_dump (vat_main_t * vam)
   int ipv4_set = 0;
   int ipv6_set = 0;
   int is_ipv6;
-  f64 timeout;
   int i;
 
   while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
@@ -12041,7 +11949,6 @@ api_ipsec_spd_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_spd_add_del_t *mp;
-  f64 timeout;
   u32 spd_id = ~0;
   u8 is_add = 1;
 
@@ -12079,7 +11986,6 @@ api_ipsec_interface_add_del_spd (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_interface_add_del_spd_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u32 spd_id = (u32) ~ 0;
@@ -12133,7 +12039,6 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_spd_add_del_entry_t *mp;
-  f64 timeout;
   u8 is_add = 1, is_outbound = 0, is_ipv6 = 0, is_ip_any = 1;
   u32 spd_id = 0, sa_id = 0, protocol = 0, policy = 0;
   i32 priority = 0;
@@ -12291,7 +12196,6 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_sad_add_del_entry_t *mp;
-  f64 timeout;
   u32 sad_id = 0, spi = 0;
   u8 *ck = 0, *ik = 0;
   u8 is_add = 1;
@@ -12423,7 +12327,6 @@ api_ipsec_sa_set_key (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_sa_set_key_t *mp;
-  f64 timeout;
   u32 sa_id;
   u8 *ck = 0, *ik = 0;
 
@@ -12470,7 +12373,6 @@ api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_add_del_t *mp;
-  f64 timeout;
   u8 is_add = 1;
   u8 *name = 0;
 
@@ -12518,7 +12420,6 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_auth_t *mp;
-  f64 timeout;
   u8 *name = 0;
   u8 *data = 0;
   u32 auth_method = 0;
@@ -12589,7 +12490,6 @@ api_ikev2_profile_set_id (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_id_t *mp;
-  f64 timeout;
   u8 *name = 0;
   u8 *data = 0;
   u8 is_local = 0;
@@ -12669,7 +12569,6 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_profile_set_ts_t *mp;
-  f64 timeout;
   u8 *name = 0;
   u8 is_local = 0;
   u32 proto = 0, start_port = 0, end_port = (u32) ~ 0;
@@ -12740,7 +12639,6 @@ api_ikev2_set_local_key (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_local_key_t *mp;
-  f64 timeout;
   u8 *file = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -12785,7 +12683,6 @@ api_map_add_domain (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_map_add_domain_t *mp;
-  f64 timeout;
 
   ip4_address_t ip4_prefix;
   ip6_address_t ip6_prefix;
@@ -12865,7 +12762,6 @@ api_map_del_domain (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_map_del_domain_t *mp;
-  f64 timeout;
 
   u32 num_m_args = 0;
   u32 index;
@@ -12904,7 +12800,6 @@ api_map_add_del_rule (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_map_add_del_rule_t *mp;
-  f64 timeout;
   u8 is_add = 1;
   ip6_address_t ip6_dst;
   u32 num_m_args = 0, index, psid = 0;
@@ -12947,7 +12842,6 @@ static int
 api_map_domain_dump (vat_main_t * vam)
 {
   vl_api_map_domain_dump_t *mp;
-  f64 timeout;
 
   /* Construct the API message */
   M (MAP_DOMAIN_DUMP, mp);
@@ -12969,7 +12863,6 @@ api_map_rule_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_map_rule_dump_t *mp;
-  f64 timeout;
   u32 domain_index = ~0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -13041,7 +12934,6 @@ static int
 api_get_first_msg_id (vat_main_t * vam)
 {
   vl_api_get_first_msg_id_t *mp;
-  f64 timeout;
   unformat_input_t *i = vam->input;
   u8 *name;
   u8 name_set = 0;
@@ -13080,7 +12972,6 @@ api_cop_interface_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_cop_interface_enable_disable_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   u8 enable_disable = 1;
 
@@ -13121,7 +13012,6 @@ api_cop_whitelist_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
   vl_api_cop_whitelist_enable_disable_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   u8 ip4 = 0, ip6 = 0, default_cop = 0;
   u32 fib_id = 0;
@@ -13169,7 +13059,6 @@ static int
 api_get_node_graph (vat_main_t * vam)
 {
   vl_api_get_node_graph_t *mp;
-  f64 timeout;
 
   M (GET_NODE_GRAPH, mp);
 
@@ -13256,7 +13145,6 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_locator_set_t *mp;
-  f64 timeout = ~0;
   u8 is_add = 1;
   u8 *locator_set_name = NULL;
   u8 locator_set_name_set = 0;
@@ -13343,7 +13231,6 @@ api_lisp_add_del_locator (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_locator_t *mp;
-  f64 timeout = ~0;
   u32 tmp_if_index = ~0;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
@@ -13483,7 +13370,6 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_local_eid_t *mp;
-  f64 timeout = ~0;
   u8 is_add = 1;
   u8 eid_set = 0;
   lisp_eid_vat_t _eid, *eid = &_eid;
@@ -13597,7 +13483,6 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   u32 dp_table = 0, vni = 0;;
   unformat_input_t *input = vam->input;
   vl_api_lisp_gpe_add_del_fwd_entry_t *mp;
-  f64 timeout = ~0;
   u8 is_add = 1;
   lisp_eid_vat_t _rmt_eid, *rmt_eid = &_rmt_eid;
   lisp_eid_vat_t _lcl_eid, *lcl_eid = &_lcl_eid;
@@ -13738,7 +13623,6 @@ api_lisp_add_del_map_server (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_map_server_t *mp;
-  f64 timeout = ~0;
   u8 is_add = 1;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
@@ -13806,7 +13690,6 @@ api_lisp_add_del_map_resolver (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_map_resolver_t *mp;
-  f64 timeout = ~0;
   u8 is_add = 1;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
@@ -13874,7 +13757,6 @@ api_lisp_gpe_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_gpe_enable_disable_t *mp;
-  f64 timeout = ~0;
   u8 is_set = 0;
   u8 is_en = 1;
 
@@ -13921,7 +13803,6 @@ api_lisp_rloc_probe_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_rloc_probe_enable_disable_t *mp;
-  f64 timeout = ~0;
   u8 is_set = 0;
   u8 is_en = 0;
 
@@ -13965,7 +13846,6 @@ api_lisp_map_register_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_map_register_enable_disable_t *mp;
-  f64 timeout = ~0;
   u8 is_set = 0;
   u8 is_en = 0;
 
@@ -14009,7 +13889,6 @@ api_lisp_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_enable_disable_t *mp;
-  f64 timeout = ~0;
   u8 is_set = 0;
   u8 is_en = 0;
 
@@ -14053,7 +13932,6 @@ api_lisp_enable_disable (vat_main_t * vam)
 static int
 api_show_lisp_map_register_state (vat_main_t * vam)
 {
-  f64 timeout = ~0;
   vl_api_show_lisp_map_register_state_t *mp;
 
   M (SHOW_LISP_MAP_REGISTER_STATE, mp);
@@ -14070,7 +13948,6 @@ api_show_lisp_map_register_state (vat_main_t * vam)
 static int
 api_show_lisp_rloc_probe_state (vat_main_t * vam)
 {
-  f64 timeout = ~0;
   vl_api_show_lisp_rloc_probe_state_t *mp;
 
   M (SHOW_LISP_RLOC_PROBE_STATE, mp);
@@ -14087,7 +13964,6 @@ api_show_lisp_rloc_probe_state (vat_main_t * vam)
 static int
 api_show_lisp_map_request_mode (vat_main_t * vam)
 {
-  f64 timeout = ~0;
   vl_api_show_lisp_map_request_mode_t *mp;
 
   M (SHOW_LISP_MAP_REQUEST_MODE, mp);
@@ -14104,7 +13980,6 @@ api_show_lisp_map_request_mode (vat_main_t * vam)
 static int
 api_lisp_map_request_mode (vat_main_t * vam)
 {
-  f64 timeout = ~0;
   unformat_input_t *input = vam->input;
   vl_api_lisp_map_request_mode_t *mp;
   u8 mode = 0;
@@ -14146,7 +14021,6 @@ api_lisp_map_request_mode (vat_main_t * vam)
 static int
 api_lisp_pitr_set_locator_set (vat_main_t * vam)
 {
-  f64 timeout = ~0;
   u8 ls_name_set = 0;
   unformat_input_t *input = vam->input;
   vl_api_lisp_pitr_set_locator_set_t *mp;
@@ -14193,7 +14067,6 @@ static int
 api_show_lisp_pitr (vat_main_t * vam)
 {
   vl_api_show_lisp_pitr_t *mp;
-  f64 timeout = ~0;
 
   if (!vam->json_output)
     {
@@ -14217,7 +14090,6 @@ api_show_lisp_pitr (vat_main_t * vam)
 static int
 api_lisp_eid_table_add_del_map (vat_main_t * vam)
 {
-  f64 timeout = ~0;
   unformat_input_t *input = vam->input;
   vl_api_lisp_eid_table_add_del_map_t *mp;
   u8 is_add = 1, vni_set = 0, vrf_set = 0, bd_index_set = 0;
@@ -14307,7 +14179,6 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_remote_mapping_t *mp;
-  f64 timeout = ~0;
   u32 vni = 0;
   lisp_eid_vat_t _eid, *eid = &_eid;
   lisp_eid_vat_t _seid, *seid = &_seid;
@@ -14434,7 +14305,6 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_adjacency_t *mp;
-  f64 timeout = ~0;
   u32 vni = 0;
   ip4_address_t leid4, reid4;
   ip6_address_t leid6, reid6;
@@ -14555,7 +14425,6 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_gpe_add_del_iface_t *mp;
-  f64 timeout = ~0;
   u8 action_set = 0, is_add = 1, is_l2 = 0, dp_table_set = 0, vni_set = 0;
   u32 dp_table = 0, vni = 0;
 
@@ -14629,7 +14498,6 @@ api_lisp_add_del_map_request_itr_rlocs (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_add_del_map_request_itr_rlocs_t *mp;
-  f64 timeout = ~0;
   u8 *locator_set_name = 0;
   u8 locator_set_name_set = 0;
   u8 is_add = 1;
@@ -14693,7 +14561,6 @@ api_lisp_locator_dump (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_locator_dump_t *mp;
-  f64 timeout = ~0;
   u8 is_index_set = 0, is_name_set = 0;
   u8 *ls_name = 0;
   u32 ls_index = ~0;
@@ -14772,7 +14639,6 @@ api_lisp_locator_set_dump (vat_main_t * vam)
 {
   vl_api_lisp_locator_set_dump_t *mp;
   unformat_input_t *input = vam->input;
-  f64 timeout = ~0;
   u8 filter = 0;
 
   /* Parse args required to build the message */
@@ -14825,7 +14691,6 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
   u8 mode_set = 0;
   unformat_input_t *input = vam->input;
   vl_api_lisp_eid_table_map_dump_t *mp;
-  f64 timeout = ~0;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14881,7 +14746,6 @@ static int
 api_lisp_eid_table_vni_dump (vat_main_t * vam)
 {
   vl_api_lisp_eid_table_vni_dump_t *mp;
-  f64 timeout = ~0;
 
   if (!vam->json_output)
     {
@@ -14911,7 +14775,6 @@ api_lisp_eid_table_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_lisp_eid_table_dump_t *mp;
-  f64 timeout = ~0;
   struct in_addr ip4;
   struct in6_addr ip6;
   u8 mac[6];
@@ -15012,7 +14875,6 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_lisp_gpe_fwd_entries_get_t *mp;
-  f64 timeout = ~0;
   u8 vni_set = 0;
   u32 vni = ~0;
 
@@ -15064,7 +14926,6 @@ api_lisp_adjacencies_get (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_lisp_adjacencies_get_t *mp;
-  f64 timeout = ~0;
   u8 vni_set = 0;
   u32 vni = ~0;
 
@@ -15109,7 +14970,6 @@ static int
 api_lisp_map_server_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_server_dump_t *mp;
-  f64 timeout = ~0;
 
   if (!vam->json_output)
     {
@@ -15137,7 +14997,6 @@ static int
 api_lisp_map_resolver_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_resolver_dump_t *mp;
-  f64 timeout = ~0;
 
   if (!vam->json_output)
     {
@@ -15165,7 +15024,6 @@ static int
 api_show_lisp_status (vat_main_t * vam)
 {
   vl_api_show_lisp_status_t *mp;
-  f64 timeout = ~0;
 
   if (!vam->json_output)
     {
@@ -15186,7 +15044,6 @@ static int
 api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
 {
   vl_api_lisp_gpe_fwd_entry_path_dump_t *mp;
-  f64 timeout = ~0;
   unformat_input_t *i = vam->input;
   u32 fwd_entry_index = ~0;
 
@@ -15230,7 +15087,6 @@ static int
 api_lisp_get_map_request_itr_rlocs (vat_main_t * vam)
 {
   vl_api_lisp_get_map_request_itr_rlocs_t *mp;
-  f64 timeout = ~0;
 
   if (!vam->json_output)
     {
@@ -15252,7 +15108,6 @@ api_af_packet_create (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_af_packet_create_t *mp;
-  f64 timeout;
   u8 *host_if_name = 0;
   u8 hw_addr[6];
   u8 random_hw_addr = 1;
@@ -15299,7 +15154,6 @@ api_af_packet_delete (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_af_packet_delete_t *mp;
-  f64 timeout;
   u8 *host_if_name = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -15338,7 +15192,6 @@ api_policer_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_policer_add_del_t *mp;
-  f64 timeout;
   u8 is_add = 1;
   u8 *name = 0;
   u32 cir = 0;
@@ -15438,7 +15291,6 @@ api_policer_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_policer_dump_t *mp;
-  f64 timeout = ~0;
   u8 *match_name = 0;
   u8 match_name_valid = 0;
 
@@ -15478,7 +15330,6 @@ api_policer_classify_set_interface (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_policer_classify_set_interface_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   int sw_if_index_set;
   u32 ip4_table_index = ~0;
@@ -15532,7 +15383,6 @@ api_policer_classify_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_policer_classify_dump_t *mp;
-  f64 timeout = ~0;
   u8 type = POLICER_CLASSIFY_N_TABLES;
 
   if (unformat (i, "type %U", unformat_policer_classify_table_type, &type))
@@ -15571,7 +15421,6 @@ api_netmap_create (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_netmap_create_t *mp;
-  f64 timeout;
   u8 *if_name = 0;
   u8 hw_addr[6];
   u8 random_hw_addr = 1;
@@ -15628,7 +15477,6 @@ api_netmap_delete (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_netmap_delete_t *mp;
-  f64 timeout;
   u8 *if_name = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -15715,7 +15563,6 @@ static int
 api_mpls_tunnel_dump (vat_main_t * vam)
 {
   vl_api_mpls_tunnel_dump_t *mp;
-  f64 timeout;
   i32 index = -1;
 
   /* Parse args required to build the message */
@@ -15828,7 +15675,6 @@ static int
 api_mpls_fib_dump (vat_main_t * vam)
 {
   vl_api_mpls_fib_dump_t *mp;
-  f64 timeout;
 
   M (MPLS_FIB_DUMP, mp);
   S (mp);
@@ -15929,7 +15775,6 @@ static int
 api_ip_fib_dump (vat_main_t * vam)
 {
   vl_api_ip_fib_dump_t *mp;
-  f64 timeout;
 
   M (IP_FIB_DUMP, mp);
   S (mp);
@@ -15997,7 +15842,6 @@ api_ip_neighbor_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_neighbor_dump_t *mp;
-  f64 timeout;
   u8 is_ipv6 = 0;
   u32 sw_if_index = ~0;
 
@@ -16121,7 +15965,6 @@ static int
 api_ip6_fib_dump (vat_main_t * vam)
 {
   vl_api_ip6_fib_dump_t *mp;
-  f64 timeout;
 
   M (IP6_FIB_DUMP, mp);
   S (mp);
@@ -16139,7 +15982,6 @@ int
 api_classify_table_ids (vat_main_t * vam)
 {
   vl_api_classify_table_ids_t *mp;
-  f64 timeout;
 
   /* Construct the API message */
   M (CLASSIFY_TABLE_IDS, mp);
@@ -16156,7 +15998,6 @@ api_classify_table_by_interface (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_classify_table_by_interface_t *mp;
-  f64 timeout;
 
   u32 sw_if_index = ~0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -16190,7 +16031,6 @@ api_classify_table_info (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_classify_table_info_t *mp;
-  f64 timeout;
 
   u32 table_id = ~0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -16222,7 +16062,6 @@ api_classify_session_dump (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_classify_session_dump_t *mp;
-  f64 timeout;
 
   u32 table_id = ~0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -16306,7 +16145,6 @@ int
 api_ipfix_exporter_dump (vat_main_t * vam)
 {
   vl_api_ipfix_exporter_dump_t *mp;
-  f64 timeout;
 
   /* Construct the API message */
   M (IPFIX_EXPORTER_DUMP, mp);
@@ -16322,7 +16160,6 @@ static int
 api_ipfix_classify_stream_dump (vat_main_t * vam)
 {
   vl_api_ipfix_classify_stream_dump_t *mp;
-  f64 timeout;
 
   /* Construct the API message */
   M (IPFIX_CLASSIFY_STREAM_DUMP, mp);
@@ -16366,7 +16203,6 @@ static int
 api_ipfix_classify_table_dump (vat_main_t * vam)
 {
   vl_api_ipfix_classify_table_dump_t *mp;
-  f64 timeout;
 
   if (!vam->json_output)
     {
@@ -16425,7 +16261,6 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_span_enable_disable_t *mp;
-  f64 timeout;
   u32 src_sw_if_index = ~0;
   u32 dst_sw_if_index = ~0;
   u8 state = 3;
@@ -16552,7 +16387,6 @@ static int
 api_sw_interface_span_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_span_dump_t *mp;
-  f64 timeout;
 
   M (SW_INTERFACE_SPAN_DUMP, mp);
   S (mp);
@@ -16571,7 +16405,6 @@ api_pg_create_interface (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_pg_create_interface_t *mp;
-  f64 timeout;
 
   u32 if_id = ~0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -16603,7 +16436,6 @@ api_pg_capture (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_pg_capture_t *mp;
-  f64 timeout;
 
   u32 if_id = ~0;
   u8 enable = 1;
@@ -16662,7 +16494,6 @@ api_pg_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_pg_enable_disable_t *mp;
-  f64 timeout;
 
   u8 enable = 1;
   u8 stream_name_set = 0;
@@ -16709,7 +16540,6 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_ip_source_and_port_range_check_add_del_t *mp;
-  f64 timeout;
 
   u16 *low_ports = 0;
   u16 *high_ports = 0;
@@ -16840,7 +16670,6 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_ip_source_and_port_range_check_interface_add_del_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   int vrf_set = 0;
   u32 tcp_out_vrf_id = ~0, udp_out_vrf_id = ~0;
@@ -16909,7 +16738,6 @@ api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_gre_add_del_tunnel_t *mp;
-  f64 timeout;
   u32 local_sa_id = 0;
   u32 remote_sa_id = 0;
   ip4_address_t src_address;
@@ -16954,7 +16782,6 @@ api_punt (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_punt_t *mp;
-  f64 timeout;
   u32 ipv = ~0;
   u32 protocol = ~0;
   u32 port = ~0;
@@ -17031,7 +16858,6 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_gre_tunnel_dump_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
 
@@ -17077,7 +16903,6 @@ api_delete_subif (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_delete_subif_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -17114,7 +16939,6 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_interface_pbb_tag_rewrite_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0, vtr_op = ~0;
   u16 outer_tag = ~0;
   u8 dmac[6], smac[6];
@@ -17200,7 +17024,6 @@ api_flow_classify_set_interface (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_flow_classify_set_interface_t *mp;
-  f64 timeout;
   u32 sw_if_index;
   int sw_if_index_set;
   u32 ip4_table_index = ~0;
@@ -17250,7 +17073,6 @@ api_flow_classify_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_flow_classify_dump_t *mp;
-  f64 timeout = ~0;
   u8 type = FLOW_CLASSIFY_N_TABLES;
 
   if (unformat (i, "type %U", unformat_flow_classify_table_type, &type))
@@ -17289,7 +17111,6 @@ api_feature_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_feature_enable_disable_t *mp;
-  f64 timeout;
   u8 *arc_name = 0;
   u8 *feature_name = 0;
   u32 sw_if_index = ~0;
@@ -17356,7 +17177,6 @@ api_sw_interface_tag_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_tag_add_del_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   u8 *tag = 0;
   u8 enable = 1;
@@ -17432,7 +17252,6 @@ static int
 api_l2_xconnect_dump (vat_main_t * vam)
 {
   vl_api_l2_xconnect_dump_t *mp;
-  f64 timeout;
 
   if (!vam->json_output)
     {
@@ -17457,7 +17276,6 @@ api_sw_interface_set_mtu (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_sw_interface_set_mtu_t *mp;
-  f64 timeout;
   u32 sw_if_index = ~0;
   u32 mtu = 0;
 

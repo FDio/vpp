@@ -94,7 +94,6 @@ static int
 api_ioam_export_ip6_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  f64 timeout;
   int is_disable = 0;
   vl_api_ioam_export_ip6_enable_disable_t *mp;
 
