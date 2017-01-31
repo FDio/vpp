@@ -146,7 +146,7 @@ static int api_lb_conf (vat_main_t * vam)
   }
 
   M(LB_CONF, mp);
-  S;
+  S(mp);
   W;
 
   /* NOTREACHED */
@@ -186,7 +186,7 @@ static int api_lb_add_del_vip (vat_main_t * vam)
   }
 
   M(LB_ADD_DEL_VIP, mp);
-  S;
+  S(mp);
   W;
   /* NOTREACHED */
   return 0;
@@ -211,7 +211,7 @@ static int api_lb_add_del_as (vat_main_t * vam)
   }
 
   M(LB_ADD_DEL_AS, mp);
-  S;
+  S(mp);
   W;
   /* NOTREACHED */
   return 0;
