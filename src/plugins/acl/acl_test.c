@@ -276,7 +276,7 @@ static int api_acl_plugin_get_version (vat_main_t * vam)
     mp->client_index = vam->my_client_index;
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -298,7 +298,7 @@ static int api_macip_acl_interface_get (vat_main_t * vam)
     mp->client_index = vam->my_client_index;
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -479,7 +479,7 @@ static int api_acl_add_replace (vat_main_t * vam)
     mp->count = htonl(n_rules);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -502,7 +502,7 @@ static int api_acl_del (vat_main_t * vam)
     mp->acl_index = ntohl(acl_index);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -525,7 +525,7 @@ static int api_macip_acl_del (vat_main_t * vam)
     mp->acl_index = ntohl(acl_index);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -592,7 +592,7 @@ static int api_acl_interface_add_del (vat_main_t * vam)
     mp->is_input = is_input;
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -642,7 +642,7 @@ static int api_macip_acl_interface_add_del (vat_main_t * vam)
     mp->is_add = is_add;
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -699,7 +699,7 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
       clib_memcpy(mp->acls, inacls, vec_len(inacls)*sizeof(u32));
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -728,7 +728,7 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
     mp->sw_if_index = ntohl (sw_if_index);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -754,7 +754,7 @@ static int api_acl_dump (vat_main_t * vam)
     mp->acl_index = ntohl (acl_index);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -780,7 +780,7 @@ static int api_macip_acl_dump (vat_main_t * vam)
     mp->acl_index = ntohl (acl_index);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;
@@ -912,7 +912,7 @@ static int api_macip_acl_add (vat_main_t * vam)
     mp->count = htonl(n_rules);
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;

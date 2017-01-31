@@ -188,7 +188,8 @@ static int api_pot_profile_add (vat_main_t *vam)
     mp->id = id;
     mp->max_bits = bits;
       
-    S; W;
+    S(mp);
+    W;
   
 OUT:
     vec_free(name);
@@ -228,7 +229,8 @@ static int api_pot_profile_activate (vat_main_t *vam)
     clib_memcpy(mp->list_name, name, mp->list_name_len);
     mp->id = id;
       
-    S; W;
+    S(mp);
+    W;
   
 OUT:
     vec_free(name);
@@ -243,7 +245,8 @@ static int api_pot_profile_del (vat_main_t *vam)
    
     M(POT_PROFILE_DEL, mp);
     mp->list_name_len = 0;
-    S; W;
+    S(mp);
+    W;
     return 0;
 }
 
@@ -264,7 +267,8 @@ static int api_pot_profile_show_config_dump (vat_main_t *vam)
 
     mp->id = id;
 
-    S; W;
+    S(mp);
+    W;
     return 0;
 }
 
