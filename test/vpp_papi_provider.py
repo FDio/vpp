@@ -1271,3 +1271,99 @@ class VppPapiProvider(object):
 
     def mfib_signal_dump(self):
         return self.api(self.papi.mfib_signal_dump, {})
+
+    def lisp_enable_disable(self, is_enabled):
+        return self.api(
+            self.papi.lisp_enable_disable,
+            {
+                'is_en': is_enabled,
+            })
+
+    def lisp_locator_set(self,
+                         ls_name,
+                         is_add=True):
+        return self.api(
+            self.papi.lisp_add_del_locator_set,
+            {
+                'is_add': is_add,
+                'locator_set_name': ls_name
+            })
+
+    def lisp_locator(self,
+                     ls_name,
+                     sw_if_index,
+                     priority=1,
+                     weight=1,
+                     is_add=True):
+        return self.api(
+            self.papi.lisp_add_del_locator,
+            {
+                'is_add': is_add,
+                'locator_set_name': ls_name,
+                'sw_if_index': sw_if_index,
+                'priority': priority,
+                'weight': weight
+            })
+
+    def lisp_local_mapping(self,
+                          locator_set_name,
+                          eid_type,
+                          eid,
+                          prefix_len,
+                          vni=0,
+                          key_id=0,
+                          key="",
+                          is_add=True):
+        return self.api(
+            self.papi.lisp_add_del_local_eid,
+            {
+                'locator_set_name':locator_set_name,
+                'is_add': is_add,
+                'eid_type': eid_type,
+                'eid': eid,
+                'prefix_len': prefix_len,
+                'vni': vni,
+                'key_id': key_id,
+                'key': key
+            })
+
+    def lisp_remote_mapping(self,
+                            eid_type,
+                            eid,
+                            eid_prefix_len,
+                            rloc_num,
+                            rloc,
+                            vni=0,
+                            rlocs='',
+                            is_add=True):
+        return self.api(
+            self.papi.lisp_add_del_remote_mapping,
+                {
+                    'is_add': is_add,
+                    'eid_type': eid_type,
+                    'eid': eid,
+                    'eid_len': eid_prefix_len,
+                    'rloc_num': rloc_num,
+                    'rlocs': rlocs,
+                    'vni': vni,
+                })
+
+    def lisp_adjacency(self,
+                       leid,
+                       reid,
+                       leid_len,
+                       reid_len,
+                       eid_type,
+                       is_add=True,
+                       vni=0):
+        return self.api(
+            self.papi.lisp_add_del_adjacency,
+                {
+                    'is_add': is_add,
+                    'vni': vni,
+                    'eid_type': eid_type,
+                    'leid': leid,
+                    'reid': reid,
+                    'leid_len': leid_len,
+                    'reid_len': reid_len,
+                })
