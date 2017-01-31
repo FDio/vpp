@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_072265b9",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 248,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-31T14:22:20Z",
+      "side": 1,
+      "message": "i understand that you added this check to prevent a double addition of the same prefix, but;\n1) it only compares against the 1st address on the interface, there could be more\n2) the condition will need to be re-evaluated if/when the address on the interface is changed.\n\nthe double addition is only a problem because you are adding the routes with the same source, FIB_SOURCE_INTERFACE. If you use a different source, FIB_SOURCE_PLUGIN_HI, this is not an issue since FIB wil only install the highest priority - which will be the interface source when present.\nBut to make this work for ARP, we\u0027ll need to change;\narp_input(...)\n{\n...\n\t  dst_flags \u003d fib_entry_get_flags_for_source (dst_fei,\n\t\t\t\t\t\t      FIB_SOURCE_INTERFACE);\n\n\t  conn_sw_if_index0 \u003d\n\t    fib_entry_get_resolving_interface_for_source (dst_fei,\n\t\t\t\t\t\t\t  FIB_SOURCE_INTERFACE);\n...\n}\n\nto use the non-source specific variants.\nI can\u0027t think of a good reason why this checks the interface source specifically. until now only the interface source adds CONNECTED routes and it\u0027s the highest priority source, so by checking against the best source we would not mistake the entry for something else.\n\nI;d also prefer it if you didn\u0027t use the INTERFACE source, since this is not a prefix that is configured on an interface, but instead a prefix a plugin is sourcing.",
+      "revId": "02e6bee6e27dd3810dae8223b1051f5bc2f0921a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e72e39a5",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-31T14:22:20Z",
+      "side": 1,
+      "message": "this is not a reference counted add. meaning if you add the same prefix multiple times, you only need to delete it once. Is that OK based on the foreach loops you have?",
+      "revId": "02e6bee6e27dd3810dae8223b1051f5bc2f0921a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
