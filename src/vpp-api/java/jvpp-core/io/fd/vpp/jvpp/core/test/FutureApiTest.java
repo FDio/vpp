@@ -29,6 +29,7 @@ import io.fd.vpp.jvpp.core.dto.SwInterfaceDetails;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDetailsReplyDump;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -46,8 +47,10 @@ public class FutureApiTest {
         LOG.info(
             String.format(
                 "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s%n",
-                reply.context, new String(reply.program), new String(reply.version), new String(reply.buildDate),
-                new String(reply.buildDirectory)));
+                reply.context, new String(reply.program, StandardCharsets.UTF_8),
+                new String(reply.version, StandardCharsets.UTF_8),
+                new String(reply.buildDate, StandardCharsets.UTF_8),
+                new String(reply.buildDirectory, StandardCharsets.UTF_8)));
     }
 
     private static void testEmptyBridgeDomainDump(final FutureJVppCoreFacade jvpp) throws Exception {
@@ -72,7 +75,7 @@ public class FutureApiTest {
     private static void testGetNodeIndex(final FutureJVppCoreFacade jvpp) {
         LOG.info("Sending GetNodeIndex request...");
         final GetNodeIndex request = new GetNodeIndex();
-        request.nodeName = "non-existing-node".getBytes();
+        request.nodeName = "non-existing-node".getBytes(StandardCharsets.UTF_8);
         final Future<GetNodeIndexReply> replyFuture = jvpp.getNodeIndex(request).toCompletableFuture();
         try {
             final GetNodeIndexReply reply = replyFuture.get();
@@ -88,7 +91,7 @@ public class FutureApiTest {
         LOG.info("Sending SwInterfaceDump request...");
         final SwInterfaceDump request = new SwInterfaceDump();
         request.nameFilterValid = 0;
-        request.nameFilter = "".getBytes();
+        request.nameFilter = "".getBytes(StandardCharsets.UTF_8);
 
         final Future<SwInterfaceDetailsReplyDump> replyFuture = jvpp.swInterfaceDump(request).toCompletableFuture();
         final SwInterfaceDetailsReplyDump reply = replyFuture.get();
@@ -97,7 +100,8 @@ public class FutureApiTest {
             LOG.info(
                 String.format("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
                         + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                    new String(details.interfaceName), details.l2AddressLength, details.adminUpDown,
+                    new String(details.interfaceName, StandardCharsets.UTF_8),
+                    details.l2AddressLength, details.adminUpDown,
                     details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
         }
     }

@@ -26,6 +26,7 @@ import io.fd.vpp.jvpp.core.dto.CreateSubifReply;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDetailsReplyDump;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
+import java.nio.charset.StandardCharsets;
 
 /**
  * <p>Tests sub-interface creation.<br> Equivalent to:<br>
@@ -45,7 +46,7 @@ public class CreateSubInterfaceTest {
 
     private static SwInterfaceDump createSwInterfaceDumpRequest(final String ifaceName) {
         SwInterfaceDump request = new SwInterfaceDump();
-        request.nameFilter = ifaceName.getBytes();
+        request.nameFilter = ifaceName.getBytes(StandardCharsets.UTF_8);
         request.nameFilterValid = 1;
         return request;
     }

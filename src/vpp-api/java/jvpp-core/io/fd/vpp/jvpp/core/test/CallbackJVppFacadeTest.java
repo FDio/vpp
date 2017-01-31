@@ -26,6 +26,7 @@ import io.fd.vpp.jvpp.core.callfacade.CallbackJVppCoreFacade;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndex;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndexReply;
 import io.fd.vpp.jvpp.core.dto.ShowVersionReply;
+import java.nio.charset.StandardCharsets;
 
 /**
  * CallbackJVppFacade together with CallbackJVppFacadeCallback allow for setting different callback for each request.
@@ -37,8 +38,11 @@ public class CallbackJVppFacadeTest {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, program=%s,"
-                    + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context, new String(msg.program),
-                new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
+                    + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context,
+                new String(msg.program, StandardCharsets.UTF_8),
+                new String(msg.version, StandardCharsets.UTF_8),
+                new String(msg.buildDate, StandardCharsets.UTF_8),
+                new String(msg.buildDirectory, StandardCharsets.UTF_8));
         }
 
         @Override
@@ -52,8 +56,11 @@ public class CallbackJVppFacadeTest {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback2 received ShowVersionReply: context=%d, program=%s,"
-                    + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context, new String(msg.program),
-                new String(msg.version), new String(msg.buildDate), new String(msg.buildDirectory));
+                    + "version=%s, buildDate=%s, buildDirectory=%s%n", msg.context,
+                new String(msg.program, StandardCharsets.UTF_8),
+                new String(msg.version, StandardCharsets.UTF_8),
+                new String(msg.buildDate, StandardCharsets.UTF_8),
+                new String(msg.buildDirectory, StandardCharsets.UTF_8));
         }
 
         @Override
@@ -88,7 +95,7 @@ public class CallbackJVppFacadeTest {
             callbackFacade.showVersion(showVersionCallback2);
 
             GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-            getNodeIndexRequest.nodeName = "dummyNode".getBytes();
+            getNodeIndexRequest.nodeName = "dummyNode".getBytes(StandardCharsets.UTF_8);
             callbackFacade.getNodeIndex(getNodeIndexRequest, getNodeIndexCallback);
 
             Thread.sleep(2000);
