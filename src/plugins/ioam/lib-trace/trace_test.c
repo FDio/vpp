@@ -149,7 +149,7 @@ api_trace_profile_add (vat_main_t * vam)
     }
 
 
-  M (TRACE_PROFILE_ADD, trace_profile_add);
+  M (TRACE_PROFILE_ADD, mp);
 
   mp->trace_type = trace_type;
   mp->trace_tsp = trace_tsp;
@@ -171,7 +171,7 @@ api_trace_profile_del (vat_main_t * vam)
   vl_api_trace_profile_del_t *mp;
   f64 timeout;
 
-  M (TRACE_PROFILE_DEL, trace_profile_del);
+  M (TRACE_PROFILE_DEL, mp);
   S;
   W;
   return 0;
@@ -182,7 +182,7 @@ api_trace_profile_show_config (vat_main_t * vam)
 {
   vl_api_trace_profile_show_config_t *mp;
   f64 timeout;
-  M (TRACE_PROFILE_SHOW_CONFIG, trace_profile_show_config);
+  M (TRACE_PROFILE_SHOW_CONFIG, mp);
   S;
   W;
   return 0;

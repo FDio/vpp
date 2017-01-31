@@ -125,7 +125,7 @@ api_vxlan_gpe_ioam_enable (vat_main_t * vam)
       else
 	break;
     }
-  M (VXLAN_GPE_IOAM_ENABLE, vxlan_gpe_ioam_enable);
+  M (VXLAN_GPE_IOAM_ENABLE, mp);
   mp->id = htons (id);
   mp->trace_ppc = has_ppc_option;
   mp->pow_enable = has_pow_option;
@@ -145,7 +145,7 @@ api_vxlan_gpe_ioam_disable (vat_main_t * vam)
   vl_api_vxlan_gpe_ioam_disable_t *mp;
   f64 timeout;
 
-  M (VXLAN_GPE_IOAM_DISABLE, vxlan_gpe_ioam_disable);
+  M (VXLAN_GPE_IOAM_DISABLE, mp);
   S;
   W;
   return 0;
@@ -223,7 +223,7 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
       return -99;
     }
 
-  M (VXLAN_GPE_IOAM_VNI_ENABLE, vxlan_gpe_ioam_vni_enable);
+  M (VXLAN_GPE_IOAM_VNI_ENABLE, mp);
 
 
   if (ipv6_set)
@@ -318,7 +318,7 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
       return -99;
     }
 
-  M (VXLAN_GPE_IOAM_VNI_DISABLE, vxlan_gpe_ioam_vni_disable);
+  M (VXLAN_GPE_IOAM_VNI_DISABLE, mp);
 
 
   if (ipv6_set)
@@ -389,7 +389,7 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
     }
 
 
-  M (VXLAN_GPE_IOAM_TRANSIT_ENABLE, vxlan_gpe_ioam_transit_enable);
+  M (VXLAN_GPE_IOAM_TRANSIT_ENABLE, mp);
 
 
   if (ipv6_set)
@@ -459,7 +459,7 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
     }
 
 
-  M (VXLAN_GPE_IOAM_TRANSIT_DISABLE, vxlan_gpe_ioam_transit_disable);
+  M (VXLAN_GPE_IOAM_TRANSIT_DISABLE, mp);
 
 
   if (ipv6_set)
