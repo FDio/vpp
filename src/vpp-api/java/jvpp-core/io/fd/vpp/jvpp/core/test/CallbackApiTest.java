@@ -30,6 +30,7 @@ import io.fd.vpp.jvpp.core.dto.ShowVersion;
 import io.fd.vpp.jvpp.core.dto.ShowVersionReply;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDetails;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
+import java.nio.charset.StandardCharsets;
 
 public class CallbackApiTest {
 
@@ -49,13 +50,13 @@ public class CallbackApiTest {
 
             System.out.println("Sending GetNodeIndex request...");
             GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-            getNodeIndexRequest.nodeName = "non-existing-node".getBytes();
+            getNodeIndexRequest.nodeName = "non-existing-node".getBytes(StandardCharsets.UTF_8);
             jvpp.send(getNodeIndexRequest);
 
             System.out.println("Sending SwInterfaceDump request...");
             SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
             swInterfaceDumpRequest.nameFilterValid = 0;
-            swInterfaceDumpRequest.nameFilter = "".getBytes();
+            swInterfaceDumpRequest.nameFilter = "".getBytes(StandardCharsets.UTF_8);
             jvpp.send(swInterfaceDumpRequest);
 
             Thread.sleep(1000);
@@ -75,15 +76,18 @@ public class CallbackApiTest {
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
                     + "buildDate=%s, buildDirectory=%s%n",
-                msg.context, new String(msg.program), new String(msg.version),
-                new String(msg.buildDate), new String(msg.buildDirectory));
+                msg.context,
+                new String(msg.program, StandardCharsets.UTF_8),
+                new String(msg.version, StandardCharsets.UTF_8),
+                new String(msg.buildDate, StandardCharsets.UTF_8),
+                new String(msg.buildDirectory, StandardCharsets.UTF_8));
         }
 
         @Override
         public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
                     + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                new String(msg.interfaceName), msg.l2AddressLength, msg.adminUpDown,
+                new String(msg.interfaceName, StandardCharsets.UTF_8), msg.l2AddressLength, msg.adminUpDown,
                 msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
         }
 

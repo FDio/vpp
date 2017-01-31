@@ -24,6 +24,7 @@ import io.fd.vpp.jvpp.ioampot.JVppIoampotImpl;
 import io.fd.vpp.jvpp.ioampot.callback.PotProfileAddCallback;
 import io.fd.vpp.jvpp.ioampot.dto.PotProfileAdd;
 import io.fd.vpp.jvpp.ioampot.dto.PotProfileAddReply;
+import java.nio.charset.StandardCharsets;
 
 public class IoamPotApiTest {
 
@@ -62,8 +63,8 @@ public class IoamPotApiTest {
             request.maxBits = 53;
             request.lpc = 1234;
             request.polynomialPublic = 1234;
-            request.listNameLen = (byte)"test pot profile".getBytes().length;
-            request.listName = "test pot profile".getBytes();
+            request.listNameLen = (byte)"test pot profile".getBytes(StandardCharsets.UTF_8).length;
+            request.listName = "test pot profile".getBytes(StandardCharsets.UTF_8);
             final int result = jvpp.send(request);
             System.out.printf("PotProfileAdd send result = %d%n", result);
 
