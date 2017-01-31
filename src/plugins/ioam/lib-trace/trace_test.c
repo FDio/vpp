@@ -157,7 +157,7 @@ api_trace_profile_add (vat_main_t * vam)
   mp->app_data = htonl (app_data);
   mp->num_elts = num_elts;
 
-  S;
+  S (mp);
   W;
 
   return (rv);
@@ -172,7 +172,7 @@ api_trace_profile_del (vat_main_t * vam)
   f64 timeout;
 
   M (TRACE_PROFILE_DEL, mp);
-  S;
+  S (mp);
   W;
   return 0;
 }
@@ -183,7 +183,7 @@ api_trace_profile_show_config (vat_main_t * vam)
   vl_api_trace_profile_show_config_t *mp;
   f64 timeout;
   M (TRACE_PROFILE_SHOW_CONFIG, mp);
-  S;
+  S (mp);
   W;
   return 0;
 }

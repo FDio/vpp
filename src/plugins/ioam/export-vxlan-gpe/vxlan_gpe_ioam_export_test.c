@@ -110,7 +110,7 @@ api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
   mp->is_disable = is_disable;
 
   /* send it... */
-  S;
+  S (mp);
 
   /* Wait for a reply... */
   W;
