@@ -20,7 +20,7 @@
 #define __vat_helper_macros_h__
 
 /* M: construct, but don't yet send a message */
-#define M(T,t)                                                  \
+#define M(T, mp)                                                \
 do {                                                            \
     vam->result_ready = 0;                                      \
     mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));            \
@@ -29,7 +29,7 @@ do {                                                            \
     mp->client_index = vam->my_client_index;                    \
 } while(0);
 
-#define M2(T,t,n)                                               \
+#define M2(T, mp, n)                                            \
 do {                                                            \
     vam->result_ready = 0;                                      \
     mp = vl_msg_api_alloc_as_if_client(sizeof(*mp)+(n));        \
