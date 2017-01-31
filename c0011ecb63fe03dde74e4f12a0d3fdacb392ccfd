@@ -87,6 +87,63 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_e2daa716",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 766
+      },
+      "writtenOn": "2017-01-31T22:32:00Z",
+      "side": 1,
+      "message": "If the buffer gets cloned again, would that overwrite the clone_count established first time? So that a given src_bufffer should only be cloned once? (This call does a straight write of the field which is different from the vlib_buffer_attach_clone() call below that a) does an add rather than a set, and b) uses an __sync call to do it.)",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_02f5b382",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 766
+      },
+      "writtenOn": "2017-01-31T22:32:00Z",
+      "side": 1,
+      "message": "I initially misunderstood the usage pattern for this routine to involve first a vlib_buffer_clone(), then a vlib_buffer_attach_clone() to attach the cloned buffer to a head. Looking at how clone_count reference count is handled, that would lead to a memory leak.\n\nIn general, looking further, seems that a) the intent is that cloning can\u0027t be nested (can\u0027t clone if the buffer chain already contains a clone) and that error isn\u0027t checked for (silent buffer leak vs. adding a new flag that records that next_buffer was filled in by a cloning operation).\n\nThat\u0027s fine if so -- just making sure I understand the properties of the two APIs.",
+      "range": {
+        "startLine": 603,
+        "startChar": 0,
+        "endLine": 603,
+        "endChar": 24
+      },
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_02ced35a",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 766
+      },
+      "writtenOn": "2017-01-31T22:32:00Z",
+      "side": 1,
+      "message": "Looks like missing ~ above. The line as written clears all flags _except_ TOTAL_LENGTH_VALID when the intent is probably to clear _just_ TOTAL_LENGTH_VALID.",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_e2f18796",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
