@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_87a095f5",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-01-31T08:38:53Z",
+      "side": 1,
+      "message": "I\u0027d expect the ~0 case it almost always happen :). You\u0027re running this feature on the physical input interface. TX FIB is only set when  a feature/node wants to perform the lookup in a FIB different to the one attached to the interface.",
+      "parentUuid": "3a3291f1_ec08602f",
+      "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_ec73c0e5",
         "filename": "src/vnet/vxlan/decap.c",
         "patchSetId": 1
