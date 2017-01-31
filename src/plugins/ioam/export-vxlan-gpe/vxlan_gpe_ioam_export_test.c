@@ -106,8 +106,7 @@ api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE,
-     vxlan_gpe_ioam_export_enable_disable);
+  M (VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE, mp);
   mp->is_disable = is_disable;
 
   /* send it... */

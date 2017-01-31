@@ -152,7 +152,7 @@ static int api_snat_add_address_range (vat_main_t * vam)
            count);
     }
   
-  M(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range);
+  M(SNAT_ADD_ADDRESS_RANGE, mp);
 
   memcpy (mp->first_ip_address, &start_addr, 4);
   memcpy (mp->last_ip_address, &end_addr, 4);
@@ -200,7 +200,7 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_INTERFACE_ADD_DEL_FEATURE, snat_interface_add_del_feature);
+  M(SNAT_INTERFACE_ADD_DEL_FEATURE, mp);
   mp->sw_if_index = ntohl(sw_if_index);
   mp->is_add = is_add;
   mp->is_inside = is_inside;
@@ -262,7 +262,7 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_ADD_STATIC_MAPPING, snat_add_static_mapping);
+  M(SNAT_ADD_STATIC_MAPPING, mp);
   mp->is_add = is_add;
   mp->is_ip4 = 1;
   mp->addr_only = addr_only;
@@ -330,12 +330,12 @@ static int api_snat_static_mapping_dump(vat_main_t * vam)
   fformat (vam->ofp, "%15s%6s%15s%6s%11s\n", "address", "port", "address",
            "port", "vrf");
 
-  M(SNAT_STATIC_MAPPING_DUMP, snat_static_mapping_dump);
+  M(SNAT_STATIC_MAPPING_DUMP, mp);
   S;
   /* Use a control ping for synchronization */
   {
     vl_api_snat_control_ping_t *mp;
-    M (SNAT_CONTROL_PING, snat_control_ping);
+    M(SNAT_CONTROL_PING, mp);
     S;
   }
   W;
@@ -385,7 +385,7 @@ static int api_snat_show_config(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_SHOW_CONFIG, snat_show_config);
+  M(SNAT_SHOW_CONFIG, mp);
   S; W;
   /* NOTREACHED */
   return 0;
@@ -411,12 +411,12 @@ static int api_snat_address_dump(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_ADDRESS_DUMP, snat_address_dump);
+  M(SNAT_ADDRESS_DUMP, mp);
   S;
   /* Use a control ping for synchronization */
   {
     vl_api_snat_control_ping_t *mp;
-    M (SNAT_CONTROL_PING, snat_control_ping);
+    M(SNAT_CONTROL_PING, mp);
     S;
   }
   W;
@@ -445,12 +445,12 @@ static int api_snat_interface_dump(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_INTERFACE_DUMP, snat_interface_dump);
+  M(SNAT_INTERFACE_DUMP, mp);
   S;
   /* Use a control ping for synchronization */
   {
     vl_api_snat_control_ping_t *mp;
-    M (SNAT_CONTROL_PING, snat_control_ping);
+    M(SNAT_CONTROL_PING, mp);
     S;
   }
   W;
@@ -476,7 +476,7 @@ static int api_snat_set_workers (vat_main_t * vam)
         }
     }
 
-  M(SNAT_SET_WORKERS, snat_set_workers);
+  M(SNAT_SET_WORKERS, mp);
   mp->worker_mask = clib_host_to_net_u64 (bitmap[0]);
 
   S; W;
@@ -506,12 +506,12 @@ static int api_snat_worker_dump(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_WORKER_DUMP, snat_worker_dump);
+  M(SNAT_WORKER_DUMP, mp);
   S;
   /* Use a control ping for synchronization */
   {
     vl_api_snat_control_ping_t *mp;
-    M (SNAT_CONTROL_PING, snat_control_ping);
+    M(SNAT_CONTROL_PING, mp);
     S;
   }
   W;
@@ -549,7 +549,7 @@ static int api_snat_ipfix_enable_disable (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr);
+  M(SNAT_ADD_DEL_INTERFACE_ADDR, mp);
   mp->sw_if_index = ntohl(sw_if_index);
   mp->is_add = is_add;
   
@@ -578,12 +578,12 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump);
+  M(SNAT_INTERFACE_ADDR_DUMP, mp);
   S;
   /* Use a control ping for synchronization */
   {
     vl_api_snat_control_ping_t *mp;
-    M (SNAT_CONTROL_PING, snat_control_ping);
+    M(SNAT_CONTROL_PING, mp);
     S;
   }
   W;
@@ -615,7 +615,7 @@ static int api_snat_add_del_interface_addr (vat_main_t * vam)
         }
     }
 
-  M(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable);
+  M(SNAT_IPFIX_ENABLE_DISABLE, mp);
   mp->domain_id = htonl(domain_id);
   mp->src_port = htons((u16) src_port);
   mp->enable = enable;

@@ -170,7 +170,7 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
     }
     
     /* Construct the API message */
-    M(" PLUGIN-NAME "_ENABLE_DISABLE, " plugin-name "_enable_disable);
+    M(" PLUGIN-NAME "_ENABLE_DISABLE, mp);
     mp->sw_if_index = ntohl (sw_if_index);
     mp->enable_disable = enable_disable;
 

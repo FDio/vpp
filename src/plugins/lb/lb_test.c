@@ -145,7 +145,9 @@ static int api_lb_conf (vat_main_t * vam)
     return -99;
   }
 
-  M(LB_CONF, lb_conf); S; W;
+  M(LB_CONF, mp);
+  S;
+  W;
 
   /* NOTREACHED */
   return 0;
@@ -183,7 +185,9 @@ static int api_lb_add_del_vip (vat_main_t * vam)
     mps.is_del = 1;
   }
 
-  M(LB_ADD_DEL_VIP, lb_add_del_vip); S; W;
+  M(LB_ADD_DEL_VIP, mp);
+  S;
+  W;
   /* NOTREACHED */
   return 0;
 }
@@ -206,7 +210,9 @@ static int api_lb_add_del_as (vat_main_t * vam)
     mps.is_del = 1;
   }
 
-  M(LB_ADD_DEL_AS, lb_add_del_as); S; W;
+  M(LB_ADD_DEL_AS, mp);
+  S;
+  W;
   /* NOTREACHED */
   return 0;
 }

@@ -123,7 +123,7 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (FLOWPERPKT_TX_INTERFACE_ADD_DEL, flowperpkt_tx_interface_add_del);
+  M (FLOWPERPKT_TX_INTERFACE_ADD_DEL, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = enable_disable;
   mp->which = which;

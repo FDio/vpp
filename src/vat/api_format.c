@@ -4590,7 +4590,7 @@ exec (vat_main_t * vam)
     }
 
 
-  M (CLI_REQUEST, cli_request);
+  M (CLI_REQUEST, mp);
 
   /*
    * Copy cmd into shared memory.
@@ -4663,7 +4663,7 @@ exec_inband (vat_main_t * vam)
    * in \n\0.
    */
   u32 len = vec_len (vam->input->buffer);
-  M2 (CLI_INBAND, cli_inband, len);
+  M2 (CLI_INBAND, mp, len);
   clib_memcpy (mp->cmd, vam->input->buffer, len);
   mp->length = htonl (len);
 
@@ -4691,7 +4691,7 @@ api_create_loopback (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (CREATE_LOOPBACK, create_loopback);
+  M (CREATE_LOOPBACK, mp);
   if (mac_set)
     clib_memcpy (mp->mac_address, mac_address, sizeof (mac_address));
 
@@ -4722,7 +4722,7 @@ api_delete_loopback (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (DELETE_LOOPBACK, delete_loopback);
+  M (DELETE_LOOPBACK, mp);
   mp->sw_if_index = ntohl (sw_if_index);
 
   S;
@@ -4753,7 +4753,7 @@ api_want_stats (vat_main_t * vam)
       return -99;
     }
 
-  M (WANT_STATS, want_stats);
+  M (WANT_STATS, mp);
   mp->enable_disable = enable;
 
   S;
@@ -4784,7 +4784,7 @@ api_want_interface_events (vat_main_t * vam)
       return -99;
     }
 
-  M (WANT_INTERFACE_EVENTS, want_interface_events);
+  M (WANT_INTERFACE_EVENTS, mp);
   mp->enable_disable = enable;
 
   vam->interface_event_display = enable;
@@ -4830,64 +4830,64 @@ api_sw_interface_dump (vat_main_t * vam)
   vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
 
   /* Get list of ethernets */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "Ether", sizeof (mp->name_filter) - 1);
   S;
 
   /* and local / loopback interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "lo", sizeof (mp->name_filter) - 1);
   S;
 
   /* and packet-generator interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "pg", sizeof (mp->name_filter) - 1);
   S;
 
   /* and vxlan-gpe tunnel interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "vxlan_gpe",
 	   sizeof (mp->name_filter) - 1);
   S;
 
   /* and vxlan tunnel interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "vxlan", sizeof (mp->name_filter) - 1);
   S;
 
   /* and host (af_packet) interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "host", sizeof (mp->name_filter) - 1);
   S;
 
   /* and l2tpv3 tunnel interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "l2tpv3_tunnel",
 	   sizeof (mp->name_filter) - 1);
   S;
 
   /* and GRE tunnel interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "gre", sizeof (mp->name_filter) - 1);
   S;
 
   /* and LISP-GPE interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "lisp_gpe",
 	   sizeof (mp->name_filter) - 1);
   S;
 
   /* and IPSEC tunnel interfaces */
-  M (SW_INTERFACE_DUMP, sw_interface_dump);
+  M (SW_INTERFACE_DUMP, mp);
   mp->name_filter_valid = 1;
   strncpy ((char *) mp->name_filter, "ipsec", sizeof (mp->name_filter) - 1);
   S;
@@ -4895,7 +4895,7 @@ api_sw_interface_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -4938,7 +4938,7 @@ api_sw_interface_set_flags (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_FLAGS, sw_interface_set_flags);
+  M (SW_INTERFACE_SET_FLAGS, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->admin_up_down = admin_up;
   mp->link_up_down = link_up;
@@ -4971,7 +4971,7 @@ api_sw_interface_clear_stats (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats);
+  M (SW_INTERFACE_CLEAR_STATS, mp);
 
   if (sw_if_index_set == 1)
     mp->sw_if_index = ntohl (sw_if_index);
@@ -5045,7 +5045,7 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_DPDK_HQOS_PIPE, sw_interface_set_dpdk_hqos_pipe);
+  M (SW_INTERFACE_SET_DPDK_HQOS_PIPE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->subport = ntohl (subport);
@@ -5122,7 +5122,7 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, sw_interface_set_dpdk_hqos_subport);
+  M (SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->subport = ntohl (subport);
@@ -5194,7 +5194,7 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_DPDK_HQOS_TCTBL, sw_interface_set_dpdk_hqos_tctbl);
+  M (SW_INTERFACE_SET_DPDK_HQOS_TCTBL, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->entry = ntohl (entry);
@@ -5262,7 +5262,7 @@ api_sw_interface_add_del_address (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address);
+  M (SW_INTERFACE_ADD_DEL_ADDRESS, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
@@ -5317,7 +5317,7 @@ api_sw_interface_set_mpls_enable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable);
+  M (SW_INTERFACE_SET_MPLS_ENABLE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = enable;
@@ -5361,7 +5361,7 @@ api_sw_interface_set_table (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_TABLE, sw_interface_set_table);
+  M (SW_INTERFACE_SET_TABLE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_ipv6 = is_ipv6;
@@ -5431,7 +5431,7 @@ api_sw_interface_get_table (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_GET_TABLE, sw_interface_get_table);
+  M (SW_INTERFACE_GET_TABLE, mp);
   mp->sw_if_index = htonl (sw_if_index);
   mp->is_ipv6 = is_ipv6;
 
@@ -5471,7 +5471,7 @@ api_sw_interface_set_vpath (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_VPATH, sw_interface_set_vpath);
+  M (SW_INTERFACE_SET_VPATH, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = is_enable;
@@ -5520,7 +5520,7 @@ api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass);
+  M (SW_INTERFACE_SET_VXLAN_BYPASS, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = is_enable;
@@ -5594,7 +5594,7 @@ api_sw_interface_set_l2_xconnect (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect);
+  M (SW_INTERFACE_SET_L2_XCONNECT, mp);
 
   mp->rx_sw_if_index = ntohl (rx_sw_if_index);
   mp->tx_sw_if_index = ntohl (tx_sw_if_index);
@@ -5655,7 +5655,7 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge);
+  M (SW_INTERFACE_SET_L2_BRIDGE, mp);
 
   mp->rx_sw_if_index = ntohl (rx_sw_if_index);
   mp->bd_id = ntohl (bd_id);
@@ -5686,14 +5686,14 @@ api_bridge_domain_dump (vat_main_t * vam)
 	break;
     }
 
-  M (BRIDGE_DOMAIN_DUMP, bridge_domain_dump);
+  M (BRIDGE_DOMAIN_DUMP, mp);
   mp->bd_id = ntohl (bd_id);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
 
@@ -5751,7 +5751,7 @@ api_bridge_domain_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del);
+  M (BRIDGE_DOMAIN_ADD_DEL, mp);
 
   mp->bd_id = ntohl (bd_id);
   mp->flood = flood;
@@ -5856,7 +5856,7 @@ api_l2fib_add_del (vat_main_t * vam)
 
   for (j = 0; j < count; j++)
     {
-      M (L2FIB_ADD_DEL, l2fib_add_del);
+      M (L2FIB_ADD_DEL, mp);
 
       mp->mac = mac;
       mp->bd_id = ntohl (bd_id);
@@ -5882,7 +5882,7 @@ api_l2fib_add_del (vat_main_t * vam)
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, control_ping);
+      M (CONTROL_PING, mp);
       S;
 
       timeout = vat_time_now (vam) + 1.0;
@@ -5959,7 +5959,7 @@ api_l2_flags (vat_main_t * vam)
       return -99;
     }
 
-  M (L2_FLAGS, l2_flags);
+  M (L2_FLAGS, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->feature_bitmap = ntohl (feature_bitmap);
@@ -6010,7 +6010,7 @@ api_bridge_flags (vat_main_t * vam)
       return -99;
     }
 
-  M (BRIDGE_FLAGS, bridge_flags);
+  M (BRIDGE_FLAGS, mp);
 
   mp->bd_id = ntohl (bd_id);
   mp->feature_bitmap = ntohl (flags);
@@ -6081,7 +6081,7 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del);
+  M (BD_IP_MAC_ADD_DEL, mp);
 
   mp->bd_id = ntohl (bd_id);
   mp->is_ipv6 = is_ipv6;
@@ -6159,7 +6159,7 @@ api_tap_connect (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (TAP_CONNECT, tap_connect);
+  M (TAP_CONNECT, mp);
 
   mp->use_random_mac = random_mac;
   clib_memcpy (mp->mac_address, mac_address, 6);
@@ -6241,7 +6241,7 @@ api_tap_modify (vat_main_t * vam)
   vec_add1 (tap_name, 0);
 
   /* Construct the API message */
-  M (TAP_MODIFY, tap_modify);
+  M (TAP_MODIFY, mp);
 
   mp->use_random_mac = random_mac;
   mp->sw_if_index = ntohl (sw_if_index);
@@ -6283,7 +6283,7 @@ api_tap_delete (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (TAP_DELETE, tap_delete);
+  M (TAP_DELETE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -6484,7 +6484,7 @@ api_ip_add_del_route (vat_main_t * vam)
   for (j = 0; j < count; j++)
     {
       /* Construct the API message */
-      M2 (IP_ADD_DEL_ROUTE, ip_add_del_route,
+      M2 (IP_ADD_DEL_ROUTE, mp,
 	  sizeof (mpls_label_t) * vec_len (next_hop_out_label_stack));
 
       mp->next_hop_sw_if_index = ntohl (sw_if_index);
@@ -6553,7 +6553,7 @@ api_ip_add_del_route (vat_main_t * vam)
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, control_ping);
+      M (CONTROL_PING, mp);
       S;
 
       timeout = vat_time_now (vam) + 1.0;
@@ -6676,7 +6676,7 @@ api_ip_mroute_add_del (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (IP_MROUTE_ADD_DEL, ip_mroute_add_del);
+  M (IP_MROUTE_ADD_DEL, mp);
 
   mp->next_hop_sw_if_index = ntohl (sw_if_index);
   mp->table_id = ntohl (vrf_id);
@@ -6829,7 +6829,7 @@ api_mpls_route_add_del (vat_main_t * vam)
   for (j = 0; j < count; j++)
     {
       /* Construct the API message */
-      M2 (MPLS_ROUTE_ADD_DEL, mpls_route_add_del,
+      M2 (MPLS_ROUTE_ADD_DEL, mp,
 	  sizeof (mpls_label_t) * vec_len (next_hop_out_label_stack));
 
       mp->mr_next_hop_sw_if_index = ntohl (sw_if_index);
@@ -6891,7 +6891,7 @@ api_mpls_route_add_del (vat_main_t * vam)
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, control_ping);
+      M (CONTROL_PING, mp);
       S;
 
       timeout = vat_time_now (vam) + 1.0;
@@ -6990,7 +6990,7 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (MPLS_IP_BIND_UNBIND, mpls_ip_bind_unbind);
+  M (MPLS_IP_BIND_UNBIND, mp);
 
   mp->mb_create_table_if_needed = create_table_if_needed;
   mp->mb_is_bind = is_bind;
@@ -7045,7 +7045,7 @@ api_proxy_arp_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (PROXY_ARP_ADD_DEL, proxy_arp_add_del);
+  M (PROXY_ARP_ADD_DEL, mp);
 
   mp->vrf_id = ntohl (vrf_id);
   mp->is_add = is_add;
@@ -7091,7 +7091,7 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
       return -99;
     }
 
-  M (PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable);
+  M (PROXY_ARP_INTFC_ENABLE_DISABLE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable_disable = enable;
@@ -7153,8 +7153,7 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
 	}
     }
 
-  M2 (MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del,
-      sizeof (mpls_label_t) * vec_len (labels));
+  M2 (MPLS_TUNNEL_ADD_DEL, mp, sizeof (mpls_label_t) * vec_len (labels));
 
   mp->mt_next_hop_sw_if_index = ntohl (next_hop_sw_if_index);
   mp->mt_sw_if_index = ntohl (sw_if_index);
@@ -7223,7 +7222,7 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered);
+  M (SW_INTERFACE_SET_UNNUMBERED, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->unnumbered_sw_if_index = ntohl (unnum_sw_index);
@@ -7301,7 +7300,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del);
+  M (IP_NEIGHBOR_ADD_DEL, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
@@ -7359,7 +7358,7 @@ api_reset_vrf (vat_main_t * vam)
       return -99;
     }
 
-  M (RESET_VRF, reset_vrf);
+  M (RESET_VRF, mp);
 
   mp->vrf_id = ntohl (vrf_id);
   mp->is_ipv6 = is_ipv6;
@@ -7408,7 +7407,7 @@ api_create_vlan_subif (vat_main_t * vam)
       errmsg ("missing vlan_id");
       return -99;
     }
-  M (CREATE_VLAN_SUBIF, create_vlan_subif);
+  M (CREATE_VLAN_SUBIF, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->vlan_id = ntohl (vlan_id);
@@ -7486,7 +7485,7 @@ api_create_subif (vat_main_t * vam)
       errmsg ("missing sub_id");
       return -99;
     }
-  M (CREATE_SUBIF, create_subif);
+  M (CREATE_SUBIF, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->sub_id = ntohl (sub_id);
@@ -7545,7 +7544,7 @@ api_oam_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (OAM_ADD_DEL, oam_add_del);
+  M (OAM_ADD_DEL, mp);
 
   mp->vrf_id = ntohl (vrf_id);
   mp->is_add = is_add;
@@ -7587,7 +7586,7 @@ api_reset_fib (vat_main_t * vam)
       return -99;
     }
 
-  M (RESET_FIB, reset_fib);
+  M (RESET_FIB, mp);
 
   mp->vrf_id = ntohl (vrf_id);
   mp->is_ipv6 = is_ipv6;
@@ -7667,7 +7666,7 @@ api_dhcp_proxy_config (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (DHCP_PROXY_CONFIG, dhcp_proxy_config);
+  M (DHCP_PROXY_CONFIG, mp);
 
   mp->insert_circuit_id = insert_cid;
   mp->is_add = is_add;
@@ -7765,7 +7764,7 @@ api_dhcp_proxy_config_2 (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (DHCP_PROXY_CONFIG_2, dhcp_proxy_config_2);
+  M (DHCP_PROXY_CONFIG_2, mp);
 
   mp->insert_circuit_id = insert_cid;
   mp->is_add = is_add;
@@ -7843,7 +7842,7 @@ api_dhcp_proxy_set_vss (vat_main_t * vam)
       return -99;
     }
 
-  M (DHCP_PROXY_SET_VSS, dhcp_proxy_set_vss);
+  M (DHCP_PROXY_SET_VSS, mp);
   mp->tbl_id = ntohl (tbl_id);
   mp->fib_id = ntohl (fib_id);
   mp->oui = ntohl (oui);
@@ -7899,7 +7898,7 @@ api_dhcp_client_config (vat_main_t * vam)
   vec_add1 (hostname, 0);
 
   /* Construct the API message */
-  M (DHCP_CLIENT_CONFIG, dhcp_client_config);
+  M (DHCP_CLIENT_CONFIG, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   clib_memcpy (mp->hostname, hostname, vec_len (hostname));
@@ -7965,7 +7964,7 @@ api_set_ip_flow_hash (vat_main_t * vam)
       return -99;
     }
 
-  M (SET_IP_FLOW_HASH, set_ip_flow_hash);
+  M (SET_IP_FLOW_HASH, mp);
   mp->src = src;
   mp->dst = dst;
   mp->sport = sport;
@@ -8014,7 +8013,7 @@ api_sw_interface_ip6_enable_disable (vat_main_t * vam)
       return -99;
     }
 
-  M (SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable);
+  M (SW_INTERFACE_IP6_ENABLE_DISABLE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = enable;
@@ -8061,8 +8060,7 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS,
-     sw_interface_ip6_set_link_local_address);
+  M (SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   clib_memcpy (mp->address, &v6address, sizeof (v6address));
@@ -8143,7 +8141,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix);
+  M (SW_INTERFACE_IP6ND_RA_PREFIX, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   clib_memcpy (mp->address, &v6address, sizeof (v6address));
@@ -8237,7 +8235,7 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config);
+  M (SW_INTERFACE_IP6ND_RA_CONFIG, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->max_interval = ntohl (max_interval);
@@ -8293,7 +8291,7 @@ api_set_arp_neighbor_limit (vat_main_t * vam)
       return -99;
     }
 
-  M (SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit);
+  M (SET_ARP_NEIGHBOR_LIMIT, mp);
 
   mp->arp_neighbor_limit = ntohl (arp_nbr_limit);
   mp->is_ipv6 = is_ipv6;
@@ -8363,7 +8361,7 @@ api_l2_patch_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (L2_PATCH_ADD_DEL, l2_patch_add_del);
+  M (L2_PATCH_ADD_DEL, mp);
 
   mp->rx_sw_if_index = ntohl (rx_sw_if_index);
   mp->tx_sw_if_index = ntohl (tx_sw_if_index);
@@ -8400,7 +8398,7 @@ api_ioam_enable (vat_main_t * vam)
       else
 	break;
     }
-  M (IOAM_ENABLE, ioam_enable);
+  M (IOAM_ENABLE, mp);
   mp->id = htons (id);
   mp->seqno = has_seqno_option;
   mp->analyse = has_analyse_option;
@@ -8421,7 +8419,7 @@ api_ioam_disable (vat_main_t * vam)
   vl_api_ioam_disable_t *mp;
   f64 timeout;
 
-  M (IOAM_DISABLE, ioam_disable);
+  M (IOAM_DISABLE, mp);
   S;
   W;
   return 0;
@@ -8530,7 +8528,7 @@ api_sr_tunnel_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M2 (SR_TUNNEL_ADD_DEL, sr_tunnel_add_del,
+  M2 (SR_TUNNEL_ADD_DEL, mp,
       vec_len (segments) * sizeof (ip6_address_t)
       + vec_len (tags) * sizeof (ip6_address_t));
 
@@ -8613,7 +8611,7 @@ api_sr_policy_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M2 (SR_POLICY_ADD_DEL, sr_policy_add_del, tunnel_names_length);
+  M2 (SR_POLICY_ADD_DEL, mp, tunnel_names_length);
 
 
 
@@ -8682,7 +8680,7 @@ api_sr_multicast_map_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del);
+  M (SR_MULTICAST_MAP_ADD_DEL, mp);
 
   mp->is_add = !is_del;
   memcpy (mp->policy_name, policy_name, vec_len (policy_name));
@@ -9391,7 +9389,7 @@ api_classify_add_del_table (vat_main_t * vam)
       return -99;
     }
 
-  M2 (CLASSIFY_ADD_DEL_TABLE, classify_add_del_table, vec_len (mask));
+  M2 (CLASSIFY_ADD_DEL_TABLE, mp, vec_len (mask));
 
   mp->is_add = is_add;
   mp->del_chain = del_chain;
@@ -9926,7 +9924,7 @@ api_classify_add_del_session (vat_main_t * vam)
       return -99;
     }
 
-  M2 (CLASSIFY_ADD_DEL_SESSION, classify_add_del_session, vec_len (match));
+  M2 (CLASSIFY_ADD_DEL_SESSION, mp, vec_len (match));
 
   mp->is_add = is_add;
   mp->table_index = ntohl (table_index);
@@ -9976,7 +9974,7 @@ api_classify_set_interface_ip_table (vat_main_t * vam)
     }
 
 
-  M (CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table);
+  M (CLASSIFY_SET_INTERFACE_IP_TABLE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->table_index = ntohl (table_index);
@@ -10029,7 +10027,7 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
     }
 
 
-  M (CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables);
+  M (CLASSIFY_SET_INTERFACE_L2_TABLES, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->ip4_table_index = ntohl (ip4_table_index);
@@ -10093,7 +10091,7 @@ api_set_ipfix_exporter (vat_main_t * vam)
       return -99;
     }
 
-  M (SET_IPFIX_EXPORTER, set_ipfix_exporter);
+  M (SET_IPFIX_EXPORTER, mp);
 
   memcpy (mp->collector_address, collector_address.data,
 	  sizeof (collector_address.data));
@@ -10131,7 +10129,7 @@ api_set_ipfix_classify_stream (vat_main_t * vam)
 	}
     }
 
-  M (SET_IPFIX_CLASSIFY_STREAM, set_ipfix_classify_stream);
+  M (SET_IPFIX_CLASSIFY_STREAM, mp);
 
   mp->domain_id = htonl (domain_id);
   mp->src_port = htons ((u16) src_port);
@@ -10191,7 +10189,7 @@ api_ipfix_classify_table_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (IPFIX_CLASSIFY_TABLE_ADD_DEL, ipfix_classify_table_add_del);
+  M (IPFIX_CLASSIFY_TABLE_ADD_DEL, mp);
 
   mp->is_add = is_add;
   mp->table_id = htonl (classify_table_index);
@@ -10229,7 +10227,7 @@ api_get_node_index (vat_main_t * vam)
       return -99;
     }
 
-  M (GET_NODE_INDEX, get_node_index);
+  M (GET_NODE_INDEX, mp);
   clib_memcpy (mp->node_name, name, vec_len (name));
   vec_free (name);
 
@@ -10277,7 +10275,7 @@ api_get_next_index (vat_main_t * vam)
       return -99;
     }
 
-  M (GET_NEXT_INDEX, get_next_index);
+  M (GET_NEXT_INDEX, mp);
   clib_memcpy (mp->node_name, node_name, vec_len (node_name));
   clib_memcpy (mp->next_name, next_node_name, vec_len (next_node_name));
   vec_free (node_name);
@@ -10328,7 +10326,7 @@ api_add_node_next (vat_main_t * vam)
       return -99;
     }
 
-  M (ADD_NODE_NEXT, add_node_next);
+  M (ADD_NODE_NEXT, mp);
   clib_memcpy (mp->node_name, name, vec_len (name));
   clib_memcpy (mp->next_name, next, vec_len (next));
   vec_free (name);
@@ -10389,7 +10387,7 @@ api_l2tpv3_create_tunnel (vat_main_t * vam)
       return -99;
     }
 
-  M (L2TPV3_CREATE_TUNNEL, l2tpv3_create_tunnel);
+  M (L2TPV3_CREATE_TUNNEL, mp);
 
   clib_memcpy (mp->client_address, client_address.as_u8,
 	       sizeof (mp->client_address));
@@ -10440,7 +10438,7 @@ api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
       return -99;
     }
 
-  M (L2TPV3_SET_TUNNEL_COOKIES, l2tpv3_set_tunnel_cookies);
+  M (L2TPV3_SET_TUNNEL_COOKIES, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->new_local_cookie = clib_host_to_net_u64 (new_local_cookie);
@@ -10482,7 +10480,7 @@ api_l2tpv3_interface_enable_disable (vat_main_t * vam)
       return -99;
     }
 
-  M (L2TPV3_INTERFACE_ENABLE_DISABLE, l2tpv3_interface_enable_disable);
+  M (L2TPV3_INTERFACE_ENABLE_DISABLE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable_disable = enable_disable;
@@ -10519,7 +10517,7 @@ api_l2tpv3_set_lookup_key (vat_main_t * vam)
       return -99;
     }
 
-  M (L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key);
+  M (L2TPV3_SET_LOOKUP_KEY, mp);
 
   mp->key = key;
 
@@ -10599,13 +10597,13 @@ api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
   f64 timeout;
 
   /* Get list of l2tpv3-tunnel interfaces */
-  M (SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump);
+  M (SW_IF_L2TPV3_TUNNEL_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -10647,13 +10645,13 @@ api_sw_interface_tap_dump (vat_main_t * vam)
 
   print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
   /* Get list of tap interfaces */
-  M (SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump);
+  M (SW_INTERFACE_TAP_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -10806,7 +10804,7 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
       return -99;
     }
 
-  M (VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel);
+  M (VXLAN_ADD_DEL_TUNNEL, mp);
 
   if (ipv6_set)
     {
@@ -10922,7 +10920,7 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
     }
 
   /* Get list of vxlan-tunnel interfaces */
-  M (VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump);
+  M (VXLAN_TUNNEL_DUMP, mp);
 
   mp->sw_if_index = htonl (sw_if_index);
 
@@ -10931,7 +10929,7 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -10981,7 +10979,7 @@ api_gre_add_del_tunnel (vat_main_t * vam)
     }
 
 
-  M (GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel);
+  M (GRE_ADD_DEL_TUNNEL, mp);
 
   clib_memcpy (&mp->src_address, &src4, sizeof (src4));
   clib_memcpy (&mp->dst_address, &dst4, sizeof (dst4));
@@ -11062,7 +11060,7 @@ api_gre_tunnel_dump (vat_main_t * vam)
     }
 
   /* Get list of gre-tunnel interfaces */
-  M (GRE_TUNNEL_DUMP, gre_tunnel_dump);
+  M (GRE_TUNNEL_DUMP, mp);
 
   mp->sw_if_index = htonl (sw_if_index);
 
@@ -11071,7 +11069,7 @@ api_gre_tunnel_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -11084,7 +11082,7 @@ api_l2_fib_clear_table (vat_main_t * vam)
   vl_api_l2_fib_clear_table_t *mp;
   f64 timeout;
 
-  M (L2_FIB_CLEAR_TABLE, l2_fib_clear_table);
+  M (L2_FIB_CLEAR_TABLE, mp);
 
   S;
   W;
@@ -11125,7 +11123,7 @@ api_l2_interface_efp_filter (vat_main_t * vam)
       return -99;
     }
 
-  M (L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter);
+  M (L2_INTERFACE_EFP_FILTER, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable_disable = enable;
@@ -11191,8 +11189,8 @@ api_l2_interface_vlan_tag_rewrite (vat_main_t * vam)
       return -99;
     }
 
-  M (L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite)
-    mp->sw_if_index = ntohl (sw_if_index);
+  M (L2_INTERFACE_VLAN_TAG_REWRITE, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
   mp->vtr_op = ntohl (vtr_op);
   mp->push_dot1q = ntohl (push_dot1q);
   mp->tag1 = ntohl (tag1);
@@ -11252,7 +11250,7 @@ api_create_vhost_user_if (vat_main_t * vam)
     }
   vec_add1 (file_name, 0);
 
-  M (CREATE_VHOST_USER_IF, create_vhost_user_if);
+  M (CREATE_VHOST_USER_IF, mp);
 
   mp->is_server = is_server;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
@@ -11324,7 +11322,7 @@ api_modify_vhost_user_if (vat_main_t * vam)
     }
   vec_add1 (file_name, 0);
 
-  M (MODIFY_VHOST_USER_IF, modify_vhost_user_if);
+  M (MODIFY_VHOST_USER_IF, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_server = is_server;
@@ -11368,7 +11366,7 @@ api_delete_vhost_user_if (vat_main_t * vam)
     }
 
 
-  M (DELETE_VHOST_USER_IF, delete_vhost_user_if);
+  M (DELETE_VHOST_USER_IF, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -11427,13 +11425,13 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
 	 "Interface name           idx hdr_sz features server regions filename");
 
   /* Get list of vhost-user interfaces */
-  M (SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump);
+  M (SW_INTERFACE_VHOST_USER_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -11445,7 +11443,7 @@ api_show_version (vat_main_t * vam)
   vl_api_show_version_t *mp;
   f64 timeout;
 
-  M (SHOW_VERSION, show_version);
+  M (SHOW_VERSION, mp);
 
   S;
   W;
@@ -11543,7 +11541,7 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
       return -99;
     }
 
-  M (VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel);
+  M (VXLAN_GPE_ADD_DEL_TUNNEL, mp);
 
 
   if (ipv6_set)
@@ -11653,7 +11651,7 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
     }
 
   /* Get list of vxlan-tunnel interfaces */
-  M (VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump);
+  M (VXLAN_GPE_TUNNEL_DUMP, mp);
 
   mp->sw_if_index = htonl (sw_if_index);
 
@@ -11662,7 +11660,7 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -11738,7 +11736,7 @@ api_l2_fib_table_dump (vat_main_t * vam)
   print (vam->ofp, "BD-ID     Mac Address      sw-ndx  Static  Filter  BVI");
 
   /* Get list of l2 fib entries */
-  M (L2_FIB_TABLE_DUMP, l2_fib_table_dump);
+  M (L2_FIB_TABLE_DUMP, mp);
 
   mp->bd_id = ntohl (bd_id);
   S;
@@ -11746,7 +11744,7 @@ api_l2_fib_table_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -11788,7 +11786,7 @@ api_interface_name_renumber (vat_main_t * vam)
       return -99;
     }
 
-  M (INTERFACE_NAME_RENUMBER, interface_name_renumber);
+  M (INTERFACE_NAME_RENUMBER, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->new_show_dev_instance = ntohl (new_show_dev_instance);
@@ -11823,7 +11821,7 @@ api_want_ip4_arp_events (vat_main_t * vam)
       return -99;
     }
 
-  M (WANT_IP4_ARP_EVENTS, want_ip4_arp_events);
+  M (WANT_IP4_ARP_EVENTS, mp);
   mp->enable_disable = enable_disable;
   mp->pid = getpid ();
   mp->address = address.as_u32;
@@ -11858,7 +11856,7 @@ api_want_ip6_nd_events (vat_main_t * vam)
       return -99;
     }
 
-  M (WANT_IP6_ND_EVENTS, want_ip6_nd_events);
+  M (WANT_IP6_ND_EVENTS, mp);
   mp->enable_disable = enable_disable;
   mp->pid = getpid ();
   clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
@@ -11907,7 +11905,7 @@ api_input_acl_set_interface (vat_main_t * vam)
       return -99;
     }
 
-  M (INPUT_ACL_SET_INTERFACE, input_acl_set_interface);
+  M (INPUT_ACL_SET_INTERFACE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->ip4_table_index = ntohl (ip4_table_index);
@@ -11968,7 +11966,7 @@ api_ip_address_dump (vat_main_t * vam)
   vam->current_sw_if_index = sw_if_index;
   vam->is_ipv6 = ipv6_set;
 
-  M (IP_ADDRESS_DUMP, ip_address_dump);
+  M (IP_ADDRESS_DUMP, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_ipv6 = ipv6_set;
   S;
@@ -11976,7 +11974,7 @@ api_ip_address_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -12025,14 +12023,14 @@ api_ip_dump (vat_main_t * vam)
     }
   vec_free (vam->ip_details_by_sw_if_index[is_ipv6]);
 
-  M (IP_DUMP, ip_dump);
+  M (IP_DUMP, mp);
   mp->is_ipv6 = ipv6_set;
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -12065,7 +12063,7 @@ api_ipsec_spd_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (IPSEC_SPD_ADD_DEL, ipsec_spd_add_del);
+  M (IPSEC_SPD_ADD_DEL, mp);
 
   mp->spd_id = ntohl (spd_id);
   mp->is_add = is_add;
@@ -12118,7 +12116,7 @@ api_ipsec_interface_add_del_spd (vat_main_t * vam)
       return -99;
     }
 
-  M (IPSEC_INTERFACE_ADD_DEL_SPD, ipsec_interface_add_del_spd);
+  M (IPSEC_INTERFACE_ADD_DEL_SPD, mp);
 
   mp->spd_id = ntohl (spd_id);
   mp->sw_if_index = ntohl (sw_if_index);
@@ -12244,7 +12242,7 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
 
     }
 
-  M (IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry);
+  M (IPSEC_SPD_ADD_DEL_ENTRY, mp);
 
   mp->spd_id = ntohl (spd_id);
   mp->priority = ntohl (priority);
@@ -12372,7 +12370,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
 
     }
 
-  M (IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry);
+  M (IPSEC_SAD_ADD_DEL_ENTRY, mp);
 
   mp->sad_id = ntohl (sad_id);
   mp->is_add = is_add;
@@ -12444,7 +12442,7 @@ api_ipsec_sa_set_key (vat_main_t * vam)
 	}
     }
 
-  M (IPSEC_SA_SET_KEY, ipsec_set_sa_key);
+  M (IPSEC_SA_SET_KEY, mp);
 
   mp->sa_id = ntohl (sa_id);
   mp->crypto_key_length = vec_len (ck);
@@ -12503,7 +12501,7 @@ api_ikev2_profile_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del);
+  M (IKEV2_PROFILE_ADD_DEL, mp);
 
   clib_memcpy (mp->name, name, vec_len (name));
   mp->is_add = is_add;
@@ -12570,7 +12568,7 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
       return -99;
     }
 
-  M (IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth);
+  M (IKEV2_PROFILE_SET_AUTH, mp);
 
   mp->is_hex = is_hex;
   mp->auth_method = (u8) auth_method;
@@ -12650,7 +12648,7 @@ api_ikev2_profile_set_id (vat_main_t * vam)
       return -99;
     }
 
-  M (IKEV2_PROFILE_SET_ID, ikev2_profile_set_id);
+  M (IKEV2_PROFILE_SET_ID, mp);
 
   mp->is_local = is_local;
   mp->id_type = (u8) id_type;
@@ -12720,7 +12718,7 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
       return -99;
     }
 
-  M (IKEV2_PROFILE_SET_TS, ikev2_profile_set_ts);
+  M (IKEV2_PROFILE_SET_TS, mp);
 
   mp->is_local = is_local;
   mp->proto = (u8) proto;
@@ -12768,7 +12766,7 @@ api_ikev2_set_local_key (vat_main_t * vam)
       return -99;
     }
 
-  M (IKEV2_SET_LOCAL_KEY, ikev2_set_local_key);
+  M (IKEV2_SET_LOCAL_KEY, mp);
 
   clib_memcpy (mp->key_file, file, vec_len (file));
   vec_free (file);
@@ -12838,7 +12836,7 @@ api_map_add_domain (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (MAP_ADD_DOMAIN, map_add_domain);
+  M (MAP_ADD_DOMAIN, mp);
 
   clib_memcpy (mp->ip4_prefix, &ip4_prefix, sizeof (ip4_prefix));
   mp->ip4_prefix_len = ip4_prefix_len;
@@ -12890,7 +12888,7 @@ api_map_del_domain (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (MAP_DEL_DOMAIN, map_del_domain);
+  M (MAP_DEL_DOMAIN, mp);
 
   mp->index = ntohl (index);
 
@@ -12931,7 +12929,7 @@ api_map_add_del_rule (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (MAP_ADD_DEL_RULE, map_add_del_rule);
+  M (MAP_ADD_DEL_RULE, mp);
 
   mp->index = ntohl (index);
   mp->is_add = is_add;
@@ -12952,7 +12950,7 @@ api_map_domain_dump (vat_main_t * vam)
   f64 timeout;
 
   /* Construct the API message */
-  M (MAP_DOMAIN_DUMP, map_domain_dump);
+  M (MAP_DOMAIN_DUMP, mp);
 
   /* send it... */
   S;
@@ -12960,7 +12958,7 @@ api_map_domain_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -12989,7 +12987,7 @@ api_map_rule_dump (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (MAP_RULE_DUMP, map_rule_dump);
+  M (MAP_RULE_DUMP, mp);
 
   mp->domain_index = htonl (domain_index);
 
@@ -12999,7 +12997,7 @@ api_map_rule_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -13069,7 +13067,7 @@ api_get_first_msg_id (vat_main_t * vam)
       return -99;
     }
 
-  M (GET_FIRST_MSG_ID, get_first_msg_id);
+  M (GET_FIRST_MSG_ID, mp);
   clib_memcpy (mp->name, name, vec_len (name));
   S;
   W;
@@ -13108,7 +13106,7 @@ api_cop_interface_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (COP_INTERFACE_ENABLE_DISABLE, cop_interface_enable_disable);
+  M (COP_INTERFACE_ENABLE_DISABLE, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable_disable = enable_disable;
 
@@ -13154,7 +13152,7 @@ api_cop_whitelist_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (COP_WHITELIST_ENABLE_DISABLE, cop_whitelist_enable_disable);
+  M (COP_WHITELIST_ENABLE_DISABLE, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->fib_id = ntohl (fib_id);
   mp->ip4 = ip4;
@@ -13173,7 +13171,7 @@ api_get_node_graph (vat_main_t * vam)
   vl_api_get_node_graph_t *mp;
   f64 timeout;
 
-  M (GET_NODE_GRAPH, get_node_graph);
+  M (GET_NODE_GRAPH, mp);
 
   /* send it... */
   S;
@@ -13308,7 +13306,7 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   data_len = sizeof (vl_api_local_locator_t) * vec_len (locators);
 
   /* Construct the API message */
-  M2 (LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set, data_len);
+  M2 (LISP_ADD_DEL_LOCATOR_SET, mp, data_len);
 
   mp->is_add = is_add;
   clib_memcpy (mp->locator_set_name, locator_set_name,
@@ -13425,7 +13423,7 @@ api_lisp_add_del_locator (vat_main_t * vam)
   vec_add1 (locator_set_name, 0);
 
   /* Construct the API message */
-  M (LISP_ADD_DEL_LOCATOR, lisp_add_del_locator);
+  M (LISP_ADD_DEL_LOCATOR, mp);
 
   mp->is_add = is_add;
   mp->sw_if_index = ntohl (sw_if_index);
@@ -13547,7 +13545,7 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
   vec_add1 (locator_set_name, 0);
 
   /* Construct the API message */
-  M (LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid);
+  M (LISP_ADD_DEL_LOCAL_EID, mp);
 
   mp->is_add = is_add;
   lisp_eid_put_vat (mp->eid, eid->addr, eid->type);
@@ -13689,7 +13687,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M2 (LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry,
+  M2 (LISP_GPE_ADD_DEL_FWD_ENTRY, mp,
       sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs) * 2);
 
   mp->is_add = is_add;
@@ -13769,7 +13767,7 @@ api_lisp_add_del_map_server (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_ADD_DEL_MAP_SERVER, lisp_add_del_map_server);
+  M (LISP_ADD_DEL_MAP_SERVER, mp);
 
   mp->is_add = is_add;
   if (ipv6_set)
@@ -13837,7 +13835,7 @@ api_lisp_add_del_map_resolver (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver);
+  M (LISP_ADD_DEL_MAP_RESOLVER, mp);
 
   mp->is_add = is_add;
   if (ipv6_set)
@@ -13894,7 +13892,7 @@ api_lisp_gpe_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable);
+  M (LISP_GPE_ENABLE_DISABLE, mp);
 
   mp->is_en = is_en;
 
@@ -13938,7 +13936,7 @@ api_lisp_rloc_probe_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_RLOC_PROBE_ENABLE_DISABLE, lisp_rloc_probe_enable_disable);
+  M (LISP_RLOC_PROBE_ENABLE_DISABLE, mp);
 
   mp->is_enabled = is_en;
 
@@ -13982,7 +13980,7 @@ api_lisp_map_register_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_MAP_REGISTER_ENABLE_DISABLE, lisp_map_register_enable_disable);
+  M (LISP_MAP_REGISTER_ENABLE_DISABLE, mp);
 
   mp->is_enabled = is_en;
 
@@ -14028,7 +14026,7 @@ api_lisp_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_ENABLE_DISABLE, lisp_enable_disable);
+  M (LISP_ENABLE_DISABLE, mp);
 
   mp->is_en = is_en;
 
@@ -14048,7 +14046,7 @@ api_show_lisp_map_register_state (vat_main_t * vam)
   f64 timeout = ~0;
   vl_api_show_lisp_map_register_state_t *mp;
 
-  M (SHOW_LISP_MAP_REGISTER_STATE, show_lisp_map_register_state);
+  M (SHOW_LISP_MAP_REGISTER_STATE, mp);
 
   /* send */
   S;
@@ -14065,7 +14063,7 @@ api_show_lisp_rloc_probe_state (vat_main_t * vam)
   f64 timeout = ~0;
   vl_api_show_lisp_rloc_probe_state_t *mp;
 
-  M (SHOW_LISP_RLOC_PROBE_STATE, show_lisp_rloc_probe_state);
+  M (SHOW_LISP_RLOC_PROBE_STATE, mp);
 
   /* send */
   S;
@@ -14082,7 +14080,7 @@ api_show_lisp_map_request_mode (vat_main_t * vam)
   f64 timeout = ~0;
   vl_api_show_lisp_map_request_mode_t *mp;
 
-  M (SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode);
+  M (SHOW_LISP_MAP_REQUEST_MODE, mp);
 
   /* send */
   S;
@@ -14115,7 +14113,7 @@ api_lisp_map_request_mode (vat_main_t * vam)
 	}
     }
 
-  M (LISP_MAP_REQUEST_MODE, lisp_map_request_mode);
+  M (LISP_MAP_REQUEST_MODE, mp);
 
   mp->mode = mode;
 
@@ -14165,7 +14163,7 @@ api_lisp_pitr_set_locator_set (vat_main_t * vam)
       return -99;
     }
 
-  M (LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set);
+  M (LISP_PITR_SET_LOCATOR_SET, mp);
 
   mp->is_add = is_add;
   clib_memcpy (mp->ls_name, ls_name, vec_len (ls_name));
@@ -14192,7 +14190,7 @@ api_show_lisp_pitr (vat_main_t * vam)
       print (vam->ofp, "%=20s", "lisp status:");
     }
 
-  M (SHOW_LISP_PITR, show_lisp_pitr);
+  M (SHOW_LISP_PITR, mp);
   /* send it... */
   S;
 
@@ -14242,7 +14240,7 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
       return -99;
     }
 
-  M (LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map);
+  M (LISP_EID_TABLE_ADD_DEL_MAP, mp);
 
   mp->is_add = is_add;
   mp->vni = htonl (vni);
@@ -14388,7 +14386,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
 
   data_len = vec_len (rlocs) * sizeof (vl_api_remote_locator_t);
 
-  M2 (LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping, data_len);
+  M2 (LISP_ADD_DEL_REMOTE_MAPPING, mp, data_len);
   mp->is_add = is_add;
   mp->vni = htonl (vni);
   mp->action = (u8) action;
@@ -14506,7 +14504,7 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
       return -99;
     }
 
-  M (LISP_ADD_DEL_ADJACENCY, lisp_add_del_adjacency);
+  M (LISP_ADD_DEL_ADJACENCY, mp);
   mp->is_add = is_add;
   mp->vni = htonl (vni);
   mp->leid_len = leid_len;
@@ -14593,7 +14591,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface);
+  M (LISP_GPE_ADD_DEL_IFACE, mp);
 
   mp->is_add = is_add;
   mp->dp_table = dp_table;
@@ -14657,7 +14655,7 @@ api_lisp_add_del_map_request_itr_rlocs (vat_main_t * vam)
       return -99;
     }
 
-  M (LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS, lisp_add_del_map_request_itr_rlocs);
+  M (LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS, mp);
   mp->is_add = is_add;
   if (is_add)
     {
@@ -14731,7 +14729,7 @@ api_lisp_locator_dump (vat_main_t * vam)
       print (vam->ofp, "%=16s%=16s%=16s", "locator", "priority", "weight");
     }
 
-  M (LISP_LOCATOR_DUMP, lisp_locator_dump);
+  M (LISP_LOCATOR_DUMP, mp);
   mp->is_index_set = is_index_set;
 
   if (is_index_set)
@@ -14749,7 +14747,7 @@ api_lisp_locator_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -14790,7 +14788,7 @@ api_lisp_locator_set_dump (vat_main_t * vam)
       print (vam->ofp, "%=10s%=15s", "ls_index", "ls_name");
     }
 
-  M (LISP_LOCATOR_SET_DUMP, lisp_locator_set_dump);
+  M (LISP_LOCATOR_SET_DUMP, mp);
 
   mp->filter = filter;
 
@@ -14800,7 +14798,7 @@ api_lisp_locator_set_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -14850,7 +14848,7 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
       print (vam->ofp, "%=10s%=10s", "VNI", is_l2 ? "BD" : "VRF");
     }
 
-  M (LISP_EID_TABLE_MAP_DUMP, lisp_eid_table_map_dump);
+  M (LISP_EID_TABLE_MAP_DUMP, mp);
   mp->is_l2 = is_l2;
 
   /* send it... */
@@ -14859,7 +14857,7 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -14880,7 +14878,7 @@ api_lisp_eid_table_vni_dump (vat_main_t * vam)
       print (vam->ofp, "VNI");
     }
 
-  M (LISP_EID_TABLE_VNI_DUMP, lisp_eid_table_vni_dump);
+  M (LISP_EID_TABLE_VNI_DUMP, mp);
 
   /* send it... */
   S;
@@ -14888,7 +14886,7 @@ api_lisp_eid_table_vni_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -14955,7 +14953,7 @@ api_lisp_eid_table_dump (vat_main_t * vam)
 	     "type", "ls_index", "ttl", "authoritative", "key_id", "key");
     }
 
-  M (LISP_EID_TABLE_DUMP, lisp_eid_table_dump);
+  M (LISP_EID_TABLE_DUMP, mp);
 
   mp->filter = filter;
   if (eid_set)
@@ -14988,7 +14986,7 @@ api_lisp_eid_table_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
 
@@ -15033,7 +15031,7 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
 	     "leid", "reid");
     }
 
-  M (LISP_GPE_FWD_ENTRIES_GET, lisp_gpe_fwd_entries_get);
+  M (LISP_GPE_FWD_ENTRIES_GET, mp);
   mp->vni = clib_host_to_net_u32 (vni);
 
   /* send it... */
@@ -15084,7 +15082,7 @@ api_lisp_adjacencies_get (vat_main_t * vam)
       print (vam->ofp, "%s %40s", "leid", "reid");
     }
 
-  M (LISP_ADJACENCIES_GET, lisp_adjacencies_get);
+  M (LISP_ADJACENCIES_GET, mp);
   mp->vni = clib_host_to_net_u32 (vni);
 
   /* send it... */
@@ -15108,14 +15106,14 @@ api_lisp_map_server_dump (vat_main_t * vam)
       print (vam->ofp, "%=20s", "Map server");
     }
 
-  M (LISP_MAP_SERVER_DUMP, lisp_map_server_dump);
+  M (LISP_MAP_SERVER_DUMP, mp);
   /* send it... */
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -15136,14 +15134,14 @@ api_lisp_map_resolver_dump (vat_main_t * vam)
       print (vam->ofp, "%=20s", "Map resolver");
     }
 
-  M (LISP_MAP_RESOLVER_DUMP, lisp_map_resolver_dump);
+  M (LISP_MAP_RESOLVER_DUMP, mp);
   /* send it... */
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -15164,7 +15162,7 @@ api_show_lisp_status (vat_main_t * vam)
       print (vam->ofp, "%-20s%-16s", "lisp status", "locator-set");
     }
 
-  M (SHOW_LISP_STATUS, show_lisp_status);
+  M (SHOW_LISP_STATUS, mp);
   /* send it... */
   S;
   /* Wait for a reply... */
@@ -15201,14 +15199,14 @@ api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
       print (vam->ofp, "first line");
     }
 
-  M (LISP_GPE_FWD_ENTRY_PATH_DUMP, lisp_gpe_fwd_entry_path_dump);
+  M (LISP_GPE_FWD_ENTRY_PATH_DUMP, mp);
 
   /* send it... */
   S;
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -15229,7 +15227,7 @@ api_lisp_get_map_request_itr_rlocs (vat_main_t * vam)
       print (vam->ofp, "%=20s", "itr-rlocs:");
     }
 
-  M (LISP_GET_MAP_REQUEST_ITR_RLOCS, lisp_get_map_request_itr_rlocs);
+  M (LISP_GET_MAP_REQUEST_ITR_RLOCS, mp);
   /* send it... */
   S;
   /* Wait for a reply... */
@@ -15273,7 +15271,7 @@ api_af_packet_create (vat_main_t * vam)
       return -99;
     }
 
-  M (AF_PACKET_CREATE, af_packet_create);
+  M (AF_PACKET_CREATE, mp);
 
   clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
   clib_memcpy (mp->hw_addr, hw_addr, 6);
@@ -15314,7 +15312,7 @@ api_af_packet_delete (vat_main_t * vam)
       return -99;
     }
 
-  M (AF_PACKET_DELETE, af_packet_delete);
+  M (AF_PACKET_DELETE, mp);
 
   clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
   vec_free (host_if_name);
@@ -15399,7 +15397,7 @@ api_policer_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (POLICER_ADD_DEL, policer_add_del);
+  M (POLICER_ADD_DEL, mp);
 
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
@@ -15445,7 +15443,7 @@ api_policer_dump (vat_main_t * vam)
 	break;
     }
 
-  M (POLICER_DUMP, policer_dump);
+  M (POLICER_DUMP, mp);
   mp->match_name_valid = match_name_valid;
   clib_memcpy (mp->match_name, match_name, vec_len (match_name));
   vec_free (match_name);
@@ -15455,7 +15453,7 @@ api_policer_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -15505,7 +15503,7 @@ api_policer_classify_set_interface (vat_main_t * vam)
       return -99;
     }
 
-  M (POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface);
+  M (POLICER_CLASSIFY_SET_INTERFACE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->ip4_table_index = ntohl (ip4_table_index);
@@ -15540,7 +15538,7 @@ api_policer_classify_dump (vat_main_t * vam)
       print (vam->ofp, "%10s%20s", "Intfc idx", "Classify table");
     }
 
-  M (POLICER_CLASSIFY_DUMP, policer_classify_dump);
+  M (POLICER_CLASSIFY_DUMP, mp);
   mp->type = type;
   /* send it... */
   S;
@@ -15548,7 +15546,7 @@ api_policer_classify_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -15600,7 +15598,7 @@ api_netmap_create (vat_main_t * vam)
       return -99;
     }
 
-  M (NETMAP_CREATE, netmap_create);
+  M (NETMAP_CREATE, mp);
 
   clib_memcpy (mp->netmap_if_name, if_name, vec_len (if_name));
   clib_memcpy (mp->hw_addr, hw_addr, 6);
@@ -15643,7 +15641,7 @@ api_netmap_delete (vat_main_t * vam)
       return -99;
     }
 
-  M (NETMAP_DELETE, netmap_delete);
+  M (NETMAP_DELETE, mp);
 
   clib_memcpy (mp->netmap_if_name, if_name, vec_len (if_name));
   vec_free (if_name);
@@ -15722,14 +15720,14 @@ api_mpls_tunnel_dump (vat_main_t * vam)
 
   print (vam->ofp, "  tunnel_index %d", index);
 
-  M (MPLS_TUNNEL_DUMP, mpls_tunnel_dump);
+  M (MPLS_TUNNEL_DUMP, mp);
   mp->tunnel_index = htonl (index);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -15822,13 +15820,13 @@ api_mpls_fib_dump (vat_main_t * vam)
   vl_api_mpls_fib_dump_t *mp;
   f64 timeout;
 
-  M (MPLS_FIB_DUMP, mpls_fib_dump);
+  M (MPLS_FIB_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -15923,13 +15921,13 @@ api_ip_fib_dump (vat_main_t * vam)
   vl_api_ip_fib_dump_t *mp;
   f64 timeout;
 
-  M (IP_FIB_DUMP, ip_fib_dump);
+  M (IP_FIB_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -16012,7 +16010,7 @@ api_ip_neighbor_dump (vat_main_t * vam)
       return -99;
     }
 
-  M (IP_NEIGHBOR_DUMP, ip_neighbor_dump);
+  M (IP_NEIGHBOR_DUMP, mp);
   mp->is_ipv6 = (u8) is_ipv6;
   mp->sw_if_index = ntohl (sw_if_index);
   S;
@@ -16020,7 +16018,7 @@ api_ip_neighbor_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -16115,13 +16113,13 @@ api_ip6_fib_dump (vat_main_t * vam)
   vl_api_ip6_fib_dump_t *mp;
   f64 timeout;
 
-  M (IP6_FIB_DUMP, ip6_fib_dump);
+  M (IP6_FIB_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -16134,7 +16132,7 @@ api_classify_table_ids (vat_main_t * vam)
   f64 timeout;
 
   /* Construct the API message */
-  M (CLASSIFY_TABLE_IDS, classify_table_ids);
+  M (CLASSIFY_TABLE_IDS, mp);
   mp->context = 0;
 
   S;
@@ -16167,7 +16165,7 @@ api_classify_table_by_interface (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface);
+  M (CLASSIFY_TABLE_BY_INTERFACE, mp);
   mp->context = 0;
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -16199,7 +16197,7 @@ api_classify_table_info (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (CLASSIFY_TABLE_INFO, classify_table_info);
+  M (CLASSIFY_TABLE_INFO, mp);
   mp->context = 0;
   mp->table_id = ntohl (table_id);
 
@@ -16231,7 +16229,7 @@ api_classify_session_dump (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (CLASSIFY_SESSION_DUMP, classify_session_dump);
+  M (CLASSIFY_SESSION_DUMP, mp);
   mp->context = 0;
   mp->table_id = ntohl (table_id);
   S;
@@ -16239,7 +16237,7 @@ api_classify_session_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -16301,7 +16299,7 @@ api_ipfix_exporter_dump (vat_main_t * vam)
   f64 timeout;
 
   /* Construct the API message */
-  M (IPFIX_EXPORTER_DUMP, ipfix_exporter_dump);
+  M (IPFIX_EXPORTER_DUMP, mp);
   mp->context = 0;
 
   S;
@@ -16317,7 +16315,7 @@ api_ipfix_classify_stream_dump (vat_main_t * vam)
   f64 timeout;
 
   /* Construct the API message */
-  M (IPFIX_CLASSIFY_STREAM_DUMP, ipfix_classify_stream_dump);
+  M (IPFIX_CLASSIFY_STREAM_DUMP, mp);
   mp->context = 0;
 
   S;
@@ -16367,7 +16365,7 @@ api_ipfix_classify_table_dump (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (IPFIX_CLASSIFY_TABLE_DUMP, ipfix_classify_table_dump);
+  M (IPFIX_CLASSIFY_TABLE_DUMP, mp);
 
   /* send it... */
   S;
@@ -16375,7 +16373,7 @@ api_ipfix_classify_table_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -16447,7 +16445,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
 	break;
     }
 
-  M (SW_INTERFACE_SPAN_ENABLE_DISABLE, sw_interface_span_enable_disable);
+  M (SW_INTERFACE_SPAN_ENABLE_DISABLE, mp);
 
   mp->sw_if_index_from = htonl (src_sw_if_index);
   mp->sw_if_index_to = htonl (dst_sw_if_index);
@@ -16546,13 +16544,13 @@ api_sw_interface_span_dump (vat_main_t * vam)
   vl_api_sw_interface_span_dump_t *mp;
   f64 timeout;
 
-  M (SW_INTERFACE_SPAN_DUMP, sw_interface_span_dump);
+  M (SW_INTERFACE_SPAN_DUMP, mp);
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -16580,7 +16578,7 @@ api_pg_create_interface (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (PG_CREATE_INTERFACE, pg_create_interface);
+  M (PG_CREATE_INTERFACE, mp);
   mp->context = 0;
   mp->interface_id = ntohl (if_id);
 
@@ -16631,7 +16629,7 @@ api_pg_capture (vat_main_t * vam)
 
   u32 name_len = vec_len (pcap_file);
   /* Construct the API message */
-  M (PG_CAPTURE, pg_capture);
+  M (PG_CAPTURE, mp);
   mp->context = 0;
   mp->interface_id = ntohl (if_id);
   mp->is_enabled = enable;
@@ -16680,7 +16678,7 @@ api_pg_enable_disable (vat_main_t * vam)
 
   u32 name_len = vec_len (stream_name);
   /* Construct the API message */
-  M (PG_ENABLE_DISABLE, pg_enable_disable);
+  M (PG_ENABLE_DISABLE, mp);
   mp->context = 0;
   mp->is_enabled = enable;
   if (stream_name_set != 0)
@@ -16795,8 +16793,7 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
       return -99;
     }
 
-  M (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,
-     ip_source_and_port_range_check_add_del);
+  M (IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL, mp);
 
   mp->is_add = is_add;
 
@@ -16881,8 +16878,7 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,
-     ip_source_and_port_range_check_interface_add_del);
+  M (IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
@@ -16929,7 +16925,7 @@ api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
 	}
     }
 
-  M (IPSEC_GRE_ADD_DEL_TUNNEL, ipsec_gre_add_del_tunnel);
+  M (IPSEC_GRE_ADD_DEL_TUNNEL, mp);
 
   mp->local_sa_id = ntohl (local_sa_id);
   mp->remote_sa_id = ntohl (remote_sa_id);
@@ -16971,7 +16967,7 @@ api_punt (vat_main_t * vam)
 	}
     }
 
-  M (PUNT, punt);
+  M (PUNT, mp);
 
   mp->is_add = (u8) is_add;
   mp->ipv = (u8) ipv;
@@ -17051,7 +17047,7 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
     }
 
   /* Get list of gre-tunnel interfaces */
-  M (IPSEC_GRE_TUNNEL_DUMP, ipsec_gre_tunnel_dump);
+  M (IPSEC_GRE_TUNNEL_DUMP, mp);
 
   mp->sw_if_index = htonl (sw_if_index);
 
@@ -17060,7 +17056,7 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -17091,7 +17087,7 @@ api_delete_subif (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (DELETE_SUBIF, delete_subif);
+  M (DELETE_SUBIF, mp);
   mp->sw_if_index = ntohl (sw_if_index);
 
   S;
@@ -17174,7 +17170,7 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
       return -99;
     }
 
-  M (L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite);
+  M (L2_INTERFACE_PBB_TAG_REWRITE, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->vtr_op = ntohl (vtr_op);
   mp->outer_tag = ntohs (outer_tag);
@@ -17226,7 +17222,7 @@ api_flow_classify_set_interface (vat_main_t * vam)
       return -99;
     }
 
-  M (FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface);
+  M (FLOW_CLASSIFY_SET_INTERFACE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
   mp->ip4_table_index = ntohl (ip4_table_index);
@@ -17260,7 +17256,7 @@ api_flow_classify_dump (vat_main_t * vam)
       print (vam->ofp, "%10s%20s", "Intfc idx", "Classify table");
     }
 
-  M (FLOW_CLASSIFY_DUMP, flow_classify_dump);
+  M (FLOW_CLASSIFY_DUMP, mp);
   mp->type = type;
   /* send it... */
   S;
@@ -17268,7 +17264,7 @@ api_flow_classify_dump (vat_main_t * vam)
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   /* Wait for a reply... */
@@ -17333,7 +17329,7 @@ api_feature_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (FEATURE_ENABLE_DISABLE, feature_enable_disable);
+  M (FEATURE_ENABLE_DISABLE, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = enable;
   clib_memcpy (mp->arc_name, arc_name, vec_len (arc_name));
@@ -17382,7 +17378,7 @@ api_sw_interface_tag_add_del (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del);
+  M (SW_INTERFACE_TAG_ADD_DEL, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = enable;
   if (enable)
@@ -17433,14 +17429,14 @@ api_l2_xconnect_dump (vat_main_t * vam)
       print (vam->ofp, "%15s%15s", "rx_sw_if_index", "tx_sw_if_index");
     }
 
-  M (L2_XCONNECT_DUMP, l2_xconnect_dump);
+  M (L2_XCONNECT_DUMP, mp);
 
   S;
 
   /* Use a control ping for synchronization */
   {
     vl_api_control_ping_t *mp;
-    M (CONTROL_PING, control_ping);
+    M (CONTROL_PING, mp);
     S;
   }
   W;
@@ -17480,7 +17476,7 @@ api_sw_interface_set_mtu (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (SW_INTERFACE_SET_MTU, sw_interface_set_mtu);
+  M (SW_INTERFACE_SET_MTU, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->mtu = ntohs ((u16) mtu);
 
