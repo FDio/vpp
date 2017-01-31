@@ -92,7 +92,6 @@ static int
 api_vxlan_gpe_ioam_export_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  f64 timeout;
   int is_disable = 0;
   vl_api_vxlan_gpe_ioam_export_enable_disable_t *mp;
 

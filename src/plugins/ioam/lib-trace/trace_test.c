@@ -129,7 +129,6 @@ api_trace_profile_add (vat_main_t * vam)
   u32 node_id = 0;
   u32 app_data = 0;
   u8 trace_tsp = 0;
-  f64 timeout;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -169,7 +168,6 @@ static int
 api_trace_profile_del (vat_main_t * vam)
 {
   vl_api_trace_profile_del_t *mp;
-  f64 timeout;
 
   M (TRACE_PROFILE_DEL, mp);
   S (mp);
@@ -181,7 +179,7 @@ static int
 api_trace_profile_show_config (vat_main_t * vam)
 {
   vl_api_trace_profile_show_config_t *mp;
-  f64 timeout;
+
   M (TRACE_PROFILE_SHOW_CONFIG, mp);
   S (mp);
   W;

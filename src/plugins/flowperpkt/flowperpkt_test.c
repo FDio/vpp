@@ -95,7 +95,6 @@ static int
 api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  f64 timeout;
   int enable_disable = 1;
   u8 which = 0;			/* ipv4 by default */
   u32 sw_if_index = ~0;
