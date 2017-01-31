@@ -55,6 +55,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_420e1b36",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-01-31T15:02:37Z",
+      "side": 1,
+      "message": "Yes, you are right. I expressed it opposite to what I wanted to say. My bad. Thanks for merging my patch.",
+      "parentUuid": "3a3291f1_87a095f5",
+      "revId": "33eec0a7199ff897734f9a43b2b55a5eb5639b66",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_ec73c0e5",
         "filename": "src/vnet/vxlan/decap.c",
         "patchSetId": 1
