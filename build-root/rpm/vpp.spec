@@ -118,7 +118,7 @@ mkdir -p -m755 %{buildroot}/usr/share/vpp/api
 mkdir -p -m755 %{buildroot}/etc/vpp
 mkdir -p -m755 %{buildroot}/etc/sysctl.d
 install -p -m 644 %{_mu_build_dir}/rpm/vpp.service %{buildroot}%{_unitdir}
-install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/startup.uiopcigeneric.conf %{buildroot}/etc/vpp/startup.conf
+install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/startup.conf %{buildroot}/etc/vpp/startup.conf
 install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/80-vpp.conf %{buildroot}/etc/sysctl.d
 #
 # libraries
