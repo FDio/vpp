@@ -129,7 +129,7 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
   mp->which = which;
 
   /* send it... */
-  S;
+  S (mp);
 
   /* Wait for a reply... */
   W;

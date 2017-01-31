@@ -132,7 +132,7 @@ api_vxlan_gpe_ioam_enable (vat_main_t * vam)
   mp->trace_enable = has_trace_option;
 
 
-  S;
+  S (mp);
   W;
 
   return (0);
@@ -146,7 +146,7 @@ api_vxlan_gpe_ioam_disable (vat_main_t * vam)
   f64 timeout;
 
   M (VXLAN_GPE_IOAM_DISABLE, mp);
-  S;
+  S (mp);
   W;
   return 0;
 }
@@ -240,7 +240,7 @@ api_vxlan_gpe_ioam_vni_enable (vat_main_t * vam)
   mp->vni = ntohl (vni);
   mp->is_ipv6 = ipv6_set;
 
-  S;
+  S (mp);
   W;
 
   return (0);
@@ -335,7 +335,7 @@ api_vxlan_gpe_ioam_vni_disable (vat_main_t * vam)
   mp->vni = ntohl (vni);
   mp->is_ipv6 = ipv6_set;
 
-  S;
+  S (mp);
   W;
 
   return 0;
@@ -405,7 +405,7 @@ api_vxlan_gpe_ioam_transit_enable (vat_main_t * vam)
   mp->outer_fib_index = htonl (outer_fib_index);
   mp->is_ipv6 = ipv6_set;
 
-  S;
+  S (mp);
   W;
 
   return (0);
@@ -474,7 +474,7 @@ api_vxlan_gpe_ioam_transit_disable (vat_main_t * vam)
   mp->outer_fib_index = htonl (outer_fib_index);
   mp->is_ipv6 = ipv6_set;
 
-  S;
+  S (mp);
   W;
 
 

@@ -122,7 +122,7 @@ static int api_sample_macswap_enable_disable (vat_main_t * vam)
     mp->enable_disable = enable_disable;
 
     /* send it... */
-    S;
+    S(mp);
 
     /* Wait for a reply... */
     W;

@@ -39,7 +39,7 @@ do {                                                            \
 } while(0);
 
 /* S: send a message */
-#define S (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
+#define S(mp) (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
 
 /* W: wait for results, with timeout */
 #define W                                       \
