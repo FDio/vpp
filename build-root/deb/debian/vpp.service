@@ -4,10 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStartPre=-/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api 
-ExecStartPre=-/sbin/modprobe igb_uio
+ExecStartPre=-/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
+ExecStartPre=-/sbin/modprobe uio_pci_generic
 ExecStart=/usr/bin/vpp -c /etc/vpp/startup.conf
-ExecStopPost=/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api 
+ExecStopPost=/bin/rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api
 Restart=always
 
 [Install]

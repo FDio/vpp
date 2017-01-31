@@ -8,7 +8,7 @@ respawn
 pre-start script
    rm -f /dev/shm/db /dev/shm/global_vm /dev/shm/vpe-api || true
    # should be there via dkms, but if not, start anyway
-   modprobe igb_uio || true
+   modprobe uio_pci_generic || true
 end script
 
 
