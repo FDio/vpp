@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_223f8f27",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "ack",
+      "parentUuid": "3a3291f1_22f8af7b",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_a2049f7e",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
@@ -47,6 +65,24 @@
       "writtenOn": "2017-01-31T22:25:48Z",
       "side": 1,
       "message": "ASSERT(n_buffers \u003e 0) // trust me, it will happen",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_82308357",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "ack",
+      "parentUuid": "3a3291f1_a2049f7e",
       "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -70,6 +106,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_423a9b37",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "agree",
+      "parentUuid": "3a3291f1_4203bb73",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_8209a397",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
@@ -87,6 +141,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_62359745",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "No preference on this, I did it as SR code was using last slot.",
+      "parentUuid": "3a3291f1_8209a397",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_e2daa716",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
@@ -98,6 +170,24 @@
       "writtenOn": "2017-01-31T22:32:00Z",
       "side": 1,
       "message": "If the buffer gets cloned again, would that overwrite the clone_count established first time? So that a given src_bufffer should only be cloned once? (This call does a straight write of the field which is different from the vlib_buffer_attach_clone() call below that a) does an add rather than a set, and b) uses an __sync call to do it.)",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_023c932e",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "this function should support only cloning once. Will add assert ...",
+      "parentUuid": "3a3291f1_e2daa716",
       "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -127,6 +217,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_e24867ce",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "Sorry, I don\u0027t understand this comment...",
+      "parentUuid": "3a3291f1_02f5b382",
+      "range": {
+        "startLine": 603,
+        "startChar": 0,
+        "endLine": 603,
+        "endChar": 24
+      },
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_02ced35a",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
@@ -144,6 +258,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_c2456bb4",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "yes, thanks, I will fix it...",
+      "parentUuid": "3a3291f1_02ced35a",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_e2f18796",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
@@ -155,6 +287,24 @@
       "writtenOn": "2017-01-31T22:25:48Z",
       "side": 1,
       "message": "Why is this an atomic op? Is there any danger that the buffer will have been freed before the clone_count increment takes effect?",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a2125fb2",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-01-31T22:53:49Z",
+      "side": 1,
+      "message": "yes, it can happen that multiple threads are dealing with clones of the same buffer.",
+      "parentUuid": "3a3291f1_e2f18796",
       "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
