@@ -1165,7 +1165,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   if (!conf->uio_driver_name)
-    conf->uio_driver_name = format (0, "igb_uio%c", 0);
+    conf->uio_driver_name = format (0, "uio_pci_generic%c", 0);
 
   /*
    * Use 1G huge pages if available.
