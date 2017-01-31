@@ -133,7 +133,7 @@ do {                                                            \\
 /* W: wait for results, with timeout */
 #define W                                       \\
 do {                                            \\
-    timeout = vat_time_now (vam) + 1.0;         \\
+    f64 timeout = vat_time_now (vam) + 1.0;     \\
                                                 \\
     while (vat_time_now (vam) < timeout) {      \\
         if (vam->result_ready == 1) {           \\
@@ -147,7 +147,6 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
 {
     " plugin-name "_test_main_t * sm = &" plugin-name "_test_main;
     unformat_input_t * i = vam->input;
-    f64 timeout;
     int enable_disable = 1;
     u32 sw_if_index = ~0;
     vl_api_" plugin-name "_enable_disable_t * mp;

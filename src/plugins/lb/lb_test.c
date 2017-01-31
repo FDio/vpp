@@ -133,7 +133,6 @@ foreach_standard_reply_retval_handler;
 static int api_lb_conf (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  f64 timeout;
   vl_api_lb_conf_t mps, *mp;
 
   if (!unformat(i, "%U %U %u %u",
@@ -156,7 +155,6 @@ static int api_lb_conf (vat_main_t * vam)
 static int api_lb_add_del_vip (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_lb_add_del_vip_t mps, *mp;
   mps.is_del = 0;
   mps.is_gre4 = 0;
@@ -195,7 +193,6 @@ static int api_lb_add_del_vip (vat_main_t * vam)
 static int api_lb_add_del_as (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  f64 timeout;
   vl_api_lb_add_del_as_t mps, *mp;
   mps.is_del = 0;
 
