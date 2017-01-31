@@ -1,0 +1,106 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_c2d7abec",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-31T22:25:48Z",
+      "side": 1,
+      "message": "This is a good reason to spend one of these bytes...",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_22f8af7b",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 534,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-31T22:25:48Z",
+      "side": 1,
+      "message": "Head_end_offset \u003d end of per-clone variable portion of the packet. The split-point between replicated / editable octets, and \"read-only, do not disturb\" octets.",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a2049f7e",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 547,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-31T22:25:48Z",
+      "side": 1,
+      "message": "ASSERT(n_buffers \u003e 0) // trust me, it will happen",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4203bb73",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 549,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-31T22:25:48Z",
+      "side": 1,
+      "message": "Is one cache line the right \"just effing copy the buffer\" threshold? I would have guessed that maybe 2 or 3 lines was the crossover point...",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8209a397",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-31T22:25:48Z",
+      "side": 1,
+      "message": "Might consider returning src_buffer in buffers[0], to make loop more obvious for (i \u003d 1; i \u003c n_buffers; i++) or some such",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e2f18796",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-01-31T22:25:48Z",
+      "side": 1,
+      "message": "Why is this an atomic op? Is there any danger that the buffer will have been freed before the clone_count increment takes effect?",
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
