@@ -186,7 +186,8 @@ create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
     }
   else
     {
-      sa->salt = (u32) rand ();
+      u32 seed = (u32) clib_cpu_time_now ();
+      sa->salt = random_u32 (&seed);
     }
 
   cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
