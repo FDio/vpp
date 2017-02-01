@@ -241,6 +241,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_620c7795",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 766
+      },
+      "writtenOn": "2017-02-01T00:08:08Z",
+      "side": 1,
+      "message": "Trying to make my point more clearly: As an example, it seemingly would not work to either a) vlib_buffer_attach_clone() or b) vlib_buffer_clone() a buffer a) returned by vlib_buffer_clone() or b) passed as head to vlib_buffer_attach_clone(). Again, not a complaint, just making sure I understand the intent.",
+      "parentUuid": "3a3291f1_02f5b382",
+      "range": {
+        "startLine": 603,
+        "startChar": 0,
+        "endLine": 603,
+        "endChar": 24
+      },
+      "revId": "c0011ecb63fe03dde74e4f12a0d3fdacb392ccfd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_02ced35a",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 3
