@@ -2377,34 +2377,6 @@ format_lisp_flat_eid (u8 * s, va_list * args)
   return 0;
 }
 
-/** Used for transferring locators via VPP API */
-typedef CLIB_PACKED (struct
-		     {
-		     u8 is_ip4;
-	     /**< is locator an IPv4 address */
-		     u8 priority;
-	       /**< locator priority */
-		     u8 weight;
-	       /**< locator weight */
-		     u8 addr[16];
-	       /**< IPv4/IPv6 address */
-		     }) rloc_t;
-
-static u8 *
-format_rloc (u8 * s, va_list * args)
-{
-  rloc_t *rloc = va_arg (*args, rloc_t *);
-
-  if (rloc->is_ip4)
-    s = format (s, "%U ", format_ip4_address, rloc->addr);
-  else
-    s = format (s, "%U ", format_ip6_address, rloc->addr);
-
-  s = format (s, "p %d w %d", rloc->priority, rloc->weight);
-
-  return s;
-}
-
 static void *vl_api_lisp_add_del_remote_mapping_t_print
   (vl_api_lisp_add_del_remote_mapping_t * mp, void *handle)
 {
@@ -2432,12 +2404,6 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
 
   if (0 == rloc_num)
     s = format (s, "action %d", mp->action);
-  else
-    {
-      rloc_t *rloc = (rloc_t *) mp->rlocs;
-      for (i = 0; i < rloc_num; i++)
-	s = format (s, "%U ", format_rloc, &rloc[i]);
-    }
 
   FINISH;
 }
@@ -2553,31 +2519,11 @@ static void *vl_api_lisp_gpe_enable_disable_t_print
   FINISH;
 }
 
-typedef CLIB_PACKED (struct
-		     {
-		     u32 sw_if_index;
-		   /**< locator sw_if_index */
-		     u8 priority;
-	       /**< locator priority */
-		     u8 weight;
-	       /**< locator weight */
-		     }) ls_locator_t;
-
-static u8 *
-format_locator (u8 * s, va_list * args)
-{
-  ls_locator_t *l = va_arg (*args, ls_locator_t *);
-
-  return format (s, "sw_if_index %d p %d w %d",
-		 l->sw_if_index, l->priority, l->weight);
-}
-
 static void *vl_api_lisp_add_del_locator_set_t_print
   (vl_api_lisp_add_del_locator_set_t * mp, void *handle)
 {
   u8 *s;
   u32 loc_num = 0, i;
-  ls_locator_t *locs;
 
   s = format (0, "SCRIPT: lisp_add_del_locator_set ");
 
@@ -2587,10 +2533,6 @@ static void *vl_api_lisp_add_del_locator_set_t_print
   s = format (s, "locator-set %s ", mp->locator_set_name);
 
   loc_num = clib_net_to_host_u32 (mp->locator_num);
-  locs = (ls_locator_t *) mp->locators;
-
-  for (i = 0; i < loc_num; i++)
-    s = format (s, "%U ", format_locator, &locs[i]);
 
   FINISH;
 }
