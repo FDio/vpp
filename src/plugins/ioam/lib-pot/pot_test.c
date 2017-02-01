@@ -134,6 +134,7 @@ static int api_pot_profile_add (vat_main_t *vam)
     u64 lpc = 0, poly2 = 0;
     u8 id = 0;
     int rv = 0;
+    int ret;
 
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
       {
@@ -188,7 +189,8 @@ static int api_pot_profile_add (vat_main_t *vam)
     mp->max_bits = bits;
       
     S(mp);
-    W;
+    W (ret);
+    return ret;
   
 OUT:
     vec_free(name);
@@ -203,6 +205,7 @@ static int api_pot_profile_activate (vat_main_t *vam)
     u8 *name = NULL;
     u8 id = 0;
     int rv = 0;
+    int ret;
     
     while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
       {
@@ -228,7 +231,8 @@ static int api_pot_profile_activate (vat_main_t *vam)
     mp->id = id;
       
     S(mp);
-    W;
+    W (ret);
+    return ret;
   
 OUT:
     vec_free(name);
@@ -239,12 +243,13 @@ OUT:
 static int api_pot_profile_del (vat_main_t *vam)
 {
     vl_api_pot_profile_del_t *mp;
+    int ret;
    
     M(POT_PROFILE_DEL, mp);
     mp->list_name_len = 0;
     S(mp);
-    W;
-    return 0;
+    W (ret);
+    return ret;
 }
 
 static int api_pot_profile_show_config_dump (vat_main_t *vam)
@@ -252,6 +257,7 @@ static int api_pot_profile_show_config_dump (vat_main_t *vam)
     unformat_input_t *input = vam->input;
     vl_api_pot_profile_show_config_dump_t *mp;
     u8 id = 0;
+    int ret;
 
     while(unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
@@ -264,8 +270,8 @@ static int api_pot_profile_show_config_dump (vat_main_t *vam)
     mp->id = id;
 
     S(mp);
-    W;
-    return 0;
+    W (ret);
+    return ret;
 }
 
 /* 

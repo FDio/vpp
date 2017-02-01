@@ -4641,6 +4641,7 @@ exec_inband (vat_main_t * vam)
 {
   vl_api_cli_inband_t *mp;
   unformat_input_t *i = vam->input;
+  int ret;
 
   if (vec_len (i->buffer) == 0)
     return -1;
@@ -4667,7 +4668,8 @@ exec_inband (vat_main_t * vam)
   mp->length = htonl (len);
 
   S (mp);
-  W2 (print (vam->ofp, "%s", vam->cmd_reply));
+  W2 (ret, print (vam->ofp, "%s", vam->cmd_reply));
+  return ret;
 }
 
 static int
@@ -4677,6 +4679,7 @@ api_create_loopback (vat_main_t * vam)
   vl_api_create_loopback_t *mp;
   u8 mac_address[6];
   u8 mac_set = 0;
+  int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -4694,7 +4697,8 @@ api_create_loopback (vat_main_t * vam)
     clib_memcpy (mp->mac_address, mac_address, sizeof (mac_address));
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -4703,6 +4707,7 @@ api_delete_loopback (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_delete_loopback_t *mp;
   u32 sw_if_index = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -4723,7 +4728,8 @@ api_delete_loopback (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -4732,6 +4738,7 @@ api_want_stats (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_want_stats_t *mp;
   int enable = -1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -4753,7 +4760,8 @@ api_want_stats (vat_main_t * vam)
   mp->enable_disable = enable;
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -4762,6 +4770,7 @@ api_want_interface_events (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_want_interface_events_t *mp;
   int enable = -1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -4785,7 +4794,8 @@ api_want_interface_events (vat_main_t * vam)
   vam->interface_event_display = enable;
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 
@@ -4797,6 +4807,7 @@ api_sw_interface_dump (vat_main_t * vam)
   hash_pair_t *p;
   name_sort_t *nses = 0, *ns;
   sw_interface_subif_t *sub = NULL;
+  int ret;
 
   /* Toss the old name table */
   /* *INDENT-OFF* */
@@ -4892,7 +4903,8 @@ api_sw_interface_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -4903,6 +4915,7 @@ api_sw_interface_set_flags (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 admin_up = 0, link_up = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -4940,7 +4953,8 @@ api_sw_interface_set_flags (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return the good/bad news... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -4950,6 +4964,7 @@ api_sw_interface_clear_stats (vat_main_t * vam)
   vl_api_sw_interface_clear_stats_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -4974,7 +4989,8 @@ api_sw_interface_clear_stats (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return the good/bad news... */
-  W;
+  W (ret);
+  return ret;
 }
 
 #if DPDK >0
@@ -4991,6 +5007,7 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
   u8 pipe_set = 0;
   u32 profile;
   u8 profile_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5045,9 +5062,8 @@ api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
 
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5063,6 +5079,7 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
   u32 tb_size = 1000000;
   u32 tc_rate[] = { 1250000000, 1250000000, 1250000000, 1250000000 };
   u32 tc_period = 10;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5125,9 +5142,8 @@ api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
   mp->tc_period = ntohl (tc_period);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5141,6 +5157,7 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
   u8 tc_set = 0;
   u8 queue_set = 0;
   u32 entry, tc, queue;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5191,9 +5208,8 @@ api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
   mp->queue = ntohl (queue);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 #endif
 
@@ -5210,6 +5226,7 @@ api_sw_interface_add_del_address (vat_main_t * vam)
   u8 v6_address_set = 0;
   ip4_address_t v4address;
   ip6_address_t v6address;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5270,7 +5287,8 @@ api_sw_interface_add_del_address (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5281,6 +5299,7 @@ api_sw_interface_set_mpls_enable (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 enable = 1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5313,7 +5332,8 @@ api_sw_interface_set_mpls_enable (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5324,6 +5344,7 @@ api_sw_interface_set_table (vat_main_t * vam)
   u32 sw_if_index, vrf_id = 0;
   u8 sw_if_index_set = 0;
   u8 is_ipv6 = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5357,7 +5378,8 @@ api_sw_interface_set_table (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_sw_interface_get_table_reply_t_handler
@@ -5397,6 +5419,7 @@ api_sw_interface_get_table (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_ipv6 = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -5421,7 +5444,8 @@ api_sw_interface_get_table (vat_main_t * vam)
   mp->is_ipv6 = is_ipv6;
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5432,6 +5456,7 @@ api_sw_interface_set_vpath (vat_main_t * vam)
   u32 sw_if_index = 0;
   u8 sw_if_index_set = 0;
   u8 is_enable = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5464,7 +5489,8 @@ api_sw_interface_set_vpath (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5476,6 +5502,7 @@ api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 is_enable = 1;
   u8 is_ipv6 = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5513,7 +5540,8 @@ api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5526,6 +5554,7 @@ api_sw_interface_set_l2_xconnect (vat_main_t * vam)
   u32 tx_sw_if_index;
   u8 tx_sw_if_index_set = 0;
   u8 enable = 1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5583,9 +5612,8 @@ api_sw_interface_set_l2_xconnect (vat_main_t * vam)
   mp->enable = enable;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5600,6 +5628,7 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
   u8 bvi = 0;
   u32 shg = 0;
   u8 enable = 1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5645,9 +5674,8 @@ api_sw_interface_set_l2_bridge (vat_main_t * vam)
   mp->enable = enable;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5656,6 +5684,7 @@ api_bridge_domain_dump (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_bridge_domain_dump_t *mp;
   u32 bd_id = ~0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5677,9 +5706,8 @@ api_bridge_domain_dump (vat_main_t * vam)
     S (mp);
   }
 
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5691,6 +5719,7 @@ api_bridge_domain_add_del (vat_main_t * vam)
   u8 is_add = 1;
   u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
   u32 mac_age = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5742,9 +5771,8 @@ api_bridge_domain_add_del (vat_main_t * vam)
   mp->mac_age = (u8) mac_age;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5887,8 +5915,11 @@ api_l2fib_add_del (vat_main_t * vam)
     }
   else
     {
+      int ret;
+
       /* Wait for a reply... */
-      W;
+      W (ret);
+      return ret;
     }
   /* Return the good/bad news */
   return (vam->retval);
@@ -5902,6 +5933,7 @@ api_l2_flags (vat_main_t * vam)
   u32 sw_if_index;
   u32 feature_bitmap = 0;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5943,9 +5975,8 @@ api_l2_flags (vat_main_t * vam)
   mp->feature_bitmap = ntohl (feature_bitmap);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -5957,6 +5988,7 @@ api_bridge_flags (vat_main_t * vam)
   u8 bd_id_set = 0;
   u8 is_set = 1;
   u32 flags = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -5994,9 +6026,8 @@ api_bridge_flags (vat_main_t * vam)
   mp->is_set = is_set;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6013,6 +6044,7 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
   ip4_address_t v4addr;
   ip6_address_t v6addr;
   u8 macaddr[6];
+  int ret;
 
 
   /* Parse args required to build the message */
@@ -6068,9 +6100,8 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
     clib_memcpy (mp->ip_address, &v4addr, sizeof (v4addr));
   clib_memcpy (mp->mac_address, macaddr, 6);
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6089,6 +6120,7 @@ api_tap_connect (vat_main_t * vam)
   ip6_address_t ip6_address;
   u32 ip6_mask_width;
   int ip6_address_set = 0;
+  int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -6162,7 +6194,8 @@ api_tap_connect (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6176,6 +6209,7 @@ api_tap_modify (vat_main_t * vam)
   u8 *tap_name;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
+  int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -6227,7 +6261,8 @@ api_tap_modify (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6237,6 +6272,7 @@ api_tap_delete (vat_main_t * vam)
   vl_api_tap_delete_t *mp;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -6264,7 +6300,8 @@ api_tap_delete (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6556,8 +6593,11 @@ api_ip_add_del_route (vat_main_t * vam)
     }
   else
     {
+      int ret;
+
       /* Wait for a reply... */
-      W;
+      W (ret);
+      return ret;
     }
 
   /* Return the good/bad news */
@@ -6580,6 +6620,7 @@ api_ip_mroute_add_del (vat_main_t * vam)
   ip6_address_t v6_grp_address, v6_src_address;
   mfib_itf_flags_t iflags = 0;
   mfib_entry_flags_t eflags = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -6677,7 +6718,8 @@ api_ip_mroute_add_del (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6893,8 +6935,11 @@ api_mpls_route_add_del (vat_main_t * vam)
     }
   else
     {
+      int ret;
+
       /* Wait for a reply... */
-      W;
+      W (ret);
+      return ret;
     }
 
   /* Return the good/bad news */
@@ -6915,6 +6960,7 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
   u32 address_length;
   u8 address_set = 0;
   mpls_label_t local_label = MPLS_LABEL_INVALID;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -6980,7 +7026,8 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -6992,6 +7039,7 @@ api_proxy_arp_add_del (vat_main_t * vam)
   u8 is_add = 1;
   ip4_address_t lo, hi;
   u8 range_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7023,9 +7071,8 @@ api_proxy_arp_add_del (vat_main_t * vam)
   clib_memcpy (mp->hi_address, &hi, sizeof (mp->hi_address));
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7036,6 +7083,7 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
   u32 sw_if_index;
   u8 enable = 1;
   u8 sw_if_index_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7066,9 +7114,8 @@ api_proxy_arp_intfc_enable_disable (vat_main_t * vam)
   mp->enable_disable = enable;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7089,6 +7136,7 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
   };
   ip6_address_t v6_next_hop_address = { {0} };
   mpls_label_t next_hop_out_label = MPLS_LABEL_INVALID, *labels = NULL;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7151,9 +7199,8 @@ api_mpls_tunnel_add_del (vat_main_t * vam)
     }
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7165,6 +7212,7 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
   u32 unnum_sw_index = ~0;
   u8 is_add = 1;
   u8 sw_if_index_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7196,9 +7244,8 @@ api_sw_interface_set_unnumbered (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7217,6 +7264,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   u8 v6_address_set = 0;
   ip4_address_t v4address;
   ip6_address_t v6address;
+  int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -7289,10 +7337,8 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7303,6 +7349,7 @@ api_reset_vrf (vat_main_t * vam)
   u32 vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 vrf_id_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7329,9 +7376,8 @@ api_reset_vrf (vat_main_t * vam)
   mp->is_ipv6 = is_ipv6;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7343,6 +7389,7 @@ api_create_vlan_subif (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 vlan_id;
   u8 vlan_id_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7377,9 +7424,8 @@ api_create_vlan_subif (vat_main_t * vam)
   mp->vlan_id = ntohl (vlan_id);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 #define foreach_create_subif_bit                \
@@ -7412,6 +7458,7 @@ api_create_subif (vat_main_t * vam)
   u32 tmp;
   u16 outer_vlan_id = 0;
   u16 inner_vlan_id = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7461,9 +7508,8 @@ api_create_subif (vat_main_t * vam)
   mp->inner_vlan_id = ntohs (inner_vlan_id);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7476,6 +7522,7 @@ api_oam_add_del (vat_main_t * vam)
   ip4_address_t src, dst;
   u8 src_set = 0;
   u8 dst_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7514,9 +7561,8 @@ api_oam_add_del (vat_main_t * vam)
   clib_memcpy (mp->dst_address, &dst, sizeof (mp->dst_address));
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7528,6 +7574,7 @@ api_reset_fib (vat_main_t * vam)
   u8 is_ipv6 = 0;
   u8 vrf_id_set = 0;
 
+  int ret;
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "vrf %d", &vrf_id))
@@ -7553,9 +7600,8 @@ api_reset_fib (vat_main_t * vam)
   mp->is_ipv6 = is_ipv6;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7574,6 +7620,7 @@ api_dhcp_proxy_config (vat_main_t * vam)
   u8 v6_src_address_set = 0;
   ip4_address_t v4srcaddress;
   ip6_address_t v6srcaddress;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -7647,9 +7694,8 @@ api_dhcp_proxy_config (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7669,6 +7715,7 @@ api_dhcp_proxy_config_2 (vat_main_t * vam)
   u8 v6_src_address_set = 0;
   ip4_address_t v4srcaddress;
   ip6_address_t v6srcaddress;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -7745,9 +7792,8 @@ api_dhcp_proxy_config_2 (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7763,6 +7809,7 @@ api_dhcp_proxy_set_vss (vat_main_t * vam)
   u8 oui_set = 0;
   u32 fib_id;
   u8 fib_id_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7808,9 +7855,8 @@ api_dhcp_proxy_set_vss (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7823,6 +7869,7 @@ api_dhcp_client_config (vat_main_t * vam)
   u8 is_add = 1;
   u8 *hostname = 0;
   u8 disable_event = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -7868,9 +7915,8 @@ api_dhcp_client_config (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7887,6 +7933,7 @@ api_set_ip_flow_hash (vat_main_t * vam)
   u8 dport = 0;
   u8 proto = 0;
   u8 reverse = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7931,9 +7978,8 @@ api_set_ip_flow_hash (vat_main_t * vam)
   mp->is_ipv6 = is_ipv6;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7944,6 +7990,7 @@ api_sw_interface_ip6_enable_disable (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 enable = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -7974,9 +8021,8 @@ api_sw_interface_ip6_enable_disable (vat_main_t * vam)
   mp->enable = enable;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -7988,6 +8034,7 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 v6_address_set = 0;
   ip6_address_t v6address;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -8023,10 +8070,8 @@ api_sw_interface_ip6_set_link_local_address (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 
@@ -8048,6 +8093,7 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   u8 is_no = 0;
   u32 val_lifetime = 0;
   u32 pref_lifetime = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -8112,10 +8158,8 @@ api_sw_interface_ip6nd_ra_prefix (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8138,6 +8182,7 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   u32 lifetime = 0;
   u32 initial_count = 0;
   u32 initial_interval = 0;
+  int ret;
 
 
   /* Parse args required to build the message */
@@ -8208,10 +8253,8 @@ api_sw_interface_ip6nd_ra_config (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8222,6 +8265,7 @@ api_set_arp_neighbor_limit (vat_main_t * vam)
   u32 arp_nbr_limit;
   u8 limit_set = 0;
   u8 is_ipv6 = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -8248,9 +8292,8 @@ api_set_arp_neighbor_limit (vat_main_t * vam)
   mp->is_ipv6 = is_ipv6;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8263,6 +8306,7 @@ api_l2_patch_add_del (vat_main_t * vam)
   u32 tx_sw_if_index;
   u8 tx_sw_if_index_set = 0;
   u8 is_add = 1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -8318,9 +8362,8 @@ api_l2_patch_add_del (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8333,6 +8376,7 @@ api_ioam_enable (vat_main_t * vam)
   int has_pot_option = 0;
   int has_seqno_option = 0;
   int has_analyse_option = 0;
+  int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -8355,10 +8399,8 @@ api_ioam_enable (vat_main_t * vam)
   mp->trace_enable = has_trace_option;
 
   S (mp);
-  W;
-
-  return (0);
-
+  W (ret);
+  return ret;
 }
 
 
@@ -8366,11 +8408,12 @@ static int
 api_ioam_disable (vat_main_t * vam)
 {
   vl_api_ioam_disable_t *mp;
+  int ret;
 
   M (IOAM_DISABLE, mp);
   S (mp);
-  W;
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8395,6 +8438,7 @@ api_sr_tunnel_add_del (vat_main_t * vam)
   ip6_address_t next_address, tag;
   u8 *name = 0;
   u8 *policy_name = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -8501,8 +8545,8 @@ api_sr_tunnel_add_del (vat_main_t * vam)
   vec_free (tags);
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8520,6 +8564,7 @@ api_sr_policy_add_del (vat_main_t * vam)
   int j = 0;
   int tunnel_names_length = 1;	// Init to 1 to offset the #tunnel_names counter byte
   int tun_name_len = 0;		// Different naming convention used as confusing these would be "bad" (TM)
+  int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -8584,8 +8629,8 @@ api_sr_policy_add_del (vat_main_t * vam)
   vec_free (tunnel_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 static int
@@ -8597,6 +8642,7 @@ api_sr_multicast_map_add_del (vat_main_t * vam)
   ip6_address_t multicast_address;
   u8 *policy_name = 0;
   int multicast_address_set = 0;
+  int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -8636,8 +8682,8 @@ api_sr_multicast_map_add_del (vat_main_t * vam)
   vec_free (policy_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 
@@ -9267,6 +9313,7 @@ api_classify_add_del_table (vat_main_t * vam)
   u8 *mask = 0;
   u32 current_data_flag = 0;
   int current_data_offset = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -9351,8 +9398,8 @@ api_classify_add_del_table (vat_main_t * vam)
   vec_free (mask);
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 uword
@@ -9806,6 +9853,7 @@ api_classify_add_del_session (vat_main_t * vam)
   u32 match_n_vectors = 0;
   u32 action = 0;
   u32 metadata = 0;
+  int ret;
 
   /*
    * Warning: you have to supply skip_n and match_n
@@ -9880,8 +9928,8 @@ api_classify_add_del_session (vat_main_t * vam)
   vec_free (match);
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 static int
@@ -9893,6 +9941,7 @@ api_classify_set_interface_ip_table (vat_main_t * vam)
   int sw_if_index_set;
   u32 table_index = ~0;
   u8 is_ipv6 = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -9923,9 +9972,8 @@ api_classify_set_interface_ip_table (vat_main_t * vam)
   mp->is_ipv6 = is_ipv6;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -9939,6 +9987,7 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
   u32 ip6_table_index = ~0;
   u32 other_table_index = ~0;
   u32 is_input = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -9977,9 +10026,8 @@ api_classify_set_interface_l2_tables (vat_main_t * vam)
   mp->is_input = (u8) is_input;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -9996,6 +10044,7 @@ api_set_ipfix_exporter (vat_main_t * vam)
   u32 path_mtu = ~0;
   u32 template_interval = ~0;
   u8 udp_checksum = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10043,8 +10092,8 @@ api_set_ipfix_exporter (vat_main_t * vam)
   mp->udp_checksum = udp_checksum;
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10054,6 +10103,7 @@ api_set_ipfix_classify_stream (vat_main_t * vam)
   vl_api_set_ipfix_classify_stream_t *mp;
   u32 domain_id = 0;
   u32 src_port = UDP_DST_PORT_ipfix;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10074,8 +10124,8 @@ api_set_ipfix_classify_stream (vat_main_t * vam)
   mp->src_port = htons ((u16) src_port);
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10087,6 +10137,7 @@ api_ipfix_classify_table_add_del (vat_main_t * vam)
   u32 classify_table_index = ~0;
   u8 ip_version = 0;
   u8 transport_protocol = 255;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10135,8 +10186,8 @@ api_ipfix_classify_table_add_del (vat_main_t * vam)
   mp->transport_protocol = transport_protocol;
 
   S (mp);
-  W;
-  /* NOTREACHED */
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10145,6 +10196,7 @@ api_get_node_index (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_get_node_index_t *mp;
   u8 *name = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10169,9 +10221,8 @@ api_get_node_index (vat_main_t * vam)
   vec_free (name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10180,6 +10231,7 @@ api_get_next_index (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_get_next_index_t *mp;
   u8 *node_name = 0, *next_node_name = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10218,9 +10270,8 @@ api_get_next_index (vat_main_t * vam)
   vec_free (next_node_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10230,6 +10281,7 @@ api_add_node_next (vat_main_t * vam)
   vl_api_add_node_next_t *mp;
   u8 *name = 0;
   u8 *next = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10268,9 +10320,8 @@ api_add_node_next (vat_main_t * vam)
   vec_free (next);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10286,6 +10337,7 @@ api_l2tpv3_create_tunnel (vat_main_t * vam)
   u64 remote_cookie = 0;
   u8 l2_sublayer_present = 0;
   vl_api_l2tpv3_create_tunnel_t *mp;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10336,9 +10388,8 @@ api_l2tpv3_create_tunnel (vat_main_t * vam)
   mp->is_ipv6 = 1;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10350,6 +10401,7 @@ api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
   u64 new_local_cookie = 0;
   u64 new_remote_cookie = 0;
   vl_api_l2tpv3_set_tunnel_cookies_t *mp;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10378,9 +10430,8 @@ api_l2tpv3_set_tunnel_cookies (vat_main_t * vam)
   mp->new_remote_cookie = clib_host_to_net_u64 (new_remote_cookie);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10391,6 +10442,7 @@ api_l2tpv3_interface_enable_disable (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 enable_disable = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10418,9 +10470,8 @@ api_l2tpv3_interface_enable_disable (vat_main_t * vam)
   mp->enable_disable = enable_disable;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10429,6 +10480,7 @@ api_l2tpv3_set_lookup_key (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_l2tpv3_set_lookup_key_t *mp;
   u8 key = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -10453,9 +10505,8 @@ api_l2tpv3_set_lookup_key (vat_main_t * vam)
   mp->key = key;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_sw_if_l2tpv3_tunnel_details_t_handler
@@ -10525,6 +10576,7 @@ static int
 api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
 {
   vl_api_sw_if_l2tpv3_tunnel_dump_t *mp;
+  int ret;
 
   /* Get list of l2tpv3-tunnel interfaces */
   M (SW_IF_L2TPV3_TUNNEL_DUMP, mp);
@@ -10536,7 +10588,8 @@ api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 
@@ -10571,6 +10624,7 @@ static int
 api_sw_interface_tap_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_tap_dump_t *mp;
+  int ret;
 
   print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
   /* Get list of tap interfaces */
@@ -10583,7 +10637,8 @@ api_sw_interface_tap_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static uword unformat_vxlan_decap_next
@@ -10616,6 +10671,7 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
   u32 encap_vrf_id = 0;
   u32 decap_next_index = ~0;
   u32 vni = 0;
+  int ret;
 
   /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
   memset (&src, 0, sizeof src);
@@ -10752,9 +10808,8 @@ api_vxlan_add_del_tunnel (vat_main_t * vam)
   mp->is_ipv6 = ipv6_set;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_vxlan_tunnel_details_t_handler
@@ -10824,6 +10879,7 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
   vl_api_vxlan_tunnel_dump_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -10859,7 +10915,8 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -10873,6 +10930,7 @@ api_gre_add_del_tunnel (vat_main_t * vam)
   u8 src_set = 0;
   u8 dst_set = 0;
   u32 outer_fib_id = 0;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -10914,9 +10972,8 @@ api_gre_add_del_tunnel (vat_main_t * vam)
   mp->teb = teb;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_gre_tunnel_details_t_handler
@@ -10962,6 +11019,7 @@ api_gre_tunnel_dump (vat_main_t * vam)
   vl_api_gre_tunnel_dump_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -10997,7 +11055,8 @@ api_gre_tunnel_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11005,13 +11064,13 @@ api_l2_fib_clear_table (vat_main_t * vam)
 {
 //  unformat_input_t * i = vam->input;
   vl_api_l2_fib_clear_table_t *mp;
+  int ret;
 
   M (L2_FIB_CLEAR_TABLE, mp);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11022,6 +11081,7 @@ api_l2_interface_efp_filter (vat_main_t * vam)
   u32 sw_if_index;
   u8 enable = 1;
   u8 sw_if_index_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11052,9 +11112,8 @@ api_l2_interface_efp_filter (vat_main_t * vam)
   mp->enable_disable = enable;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 #define foreach_vtr_op                          \
@@ -11080,6 +11139,7 @@ api_l2_interface_vlan_tag_rewrite (vat_main_t * vam)
   u32 push_dot1q = 1;
   u32 tag1 = ~0;
   u32 tag2 = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11119,9 +11179,8 @@ api_l2_interface_vlan_tag_rewrite (vat_main_t * vam)
   mp->tag2 = ntohl (tag2);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11136,6 +11195,7 @@ api_create_vhost_user_if (vat_main_t * vam)
   u8 hwaddr[6];
   u8 use_custom_mac = 0;
   u8 *tag = 0;
+  int ret;
 
   /* Shut up coverity */
   memset (hwaddr, 0, sizeof (hwaddr));
@@ -11188,9 +11248,8 @@ api_create_vhost_user_if (vat_main_t * vam)
   vec_free (tag);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11204,6 +11263,7 @@ api_modify_vhost_user_if (vat_main_t * vam)
   u32 custom_dev_instance = ~0;
   u8 sw_if_index_set = 0;
   u32 sw_if_index = (u32) ~ 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11255,9 +11315,8 @@ api_modify_vhost_user_if (vat_main_t * vam)
     }
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11267,6 +11326,7 @@ api_delete_vhost_user_if (vat_main_t * vam)
   vl_api_delete_vhost_user_if_t *mp;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11290,9 +11350,8 @@ api_delete_vhost_user_if (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_sw_interface_vhost_user_details_t_handler
@@ -11339,6 +11398,7 @@ static int
 api_sw_interface_vhost_user_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_vhost_user_dump_t *mp;
+  int ret;
   print (vam->ofp,
 	 "Interface name           idx hdr_sz features server regions filename");
 
@@ -11352,20 +11412,21 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
 api_show_version (vat_main_t * vam)
 {
   vl_api_show_version_t *mp;
+  int ret;
 
   M (SHOW_VERSION, mp);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 
@@ -11385,6 +11446,7 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
   u8 protocol = ~0;
   u32 vni;
   u8 vni_set = 0;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -11479,9 +11541,8 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
   mp->is_ipv6 = ipv6_set;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_vxlan_gpe_tunnel_details_t_handler
@@ -11543,6 +11604,7 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
   vl_api_vxlan_gpe_tunnel_dump_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -11578,7 +11640,8 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 u8 *
@@ -11631,6 +11694,7 @@ api_l2_fib_table_dump (vat_main_t * vam)
   vl_api_l2_fib_table_dump_t *mp;
   u32 bd_id;
   u8 bd_id_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -11661,7 +11725,8 @@ api_l2_fib_table_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 
@@ -11672,6 +11737,7 @@ api_interface_name_renumber (vat_main_t * vam)
   vl_api_interface_name_renumber_t *mp;
   u32 sw_if_index = ~0;
   u32 new_show_dev_instance = ~0;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -11705,7 +11771,8 @@ api_interface_name_renumber (vat_main_t * vam)
   mp->new_show_dev_instance = ntohl (new_show_dev_instance);
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11716,6 +11783,7 @@ api_want_ip4_arp_events (vat_main_t * vam)
   ip4_address_t address;
   int address_set = 0;
   u32 enable_disable = 1;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -11739,7 +11807,8 @@ api_want_ip4_arp_events (vat_main_t * vam)
   mp->address = address.as_u32;
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11750,6 +11819,7 @@ api_want_ip6_nd_events (vat_main_t * vam)
   ip6_address_t address;
   int address_set = 0;
   u32 enable_disable = 1;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -11773,7 +11843,8 @@ api_want_ip6_nd_events (vat_main_t * vam)
   clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11787,6 +11858,7 @@ api_input_acl_set_interface (vat_main_t * vam)
   u32 ip6_table_index = ~0;
   u32 l2_table_index = ~0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11824,9 +11896,8 @@ api_input_acl_set_interface (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11838,6 +11909,7 @@ api_ip_address_dump (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 ipv4_set = 0;
   u8 ipv6_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11886,7 +11958,8 @@ api_ip_address_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11898,6 +11971,7 @@ api_ip_dump (vat_main_t * vam)
   int ipv6_set = 0;
   int is_ipv6;
   int i;
+  int ret;
 
   while (unformat_check_input (in) != UNFORMAT_END_OF_INPUT)
     {
@@ -11941,7 +12015,8 @@ api_ip_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11951,6 +12026,7 @@ api_ipsec_spd_add_del (vat_main_t * vam)
   vl_api_ipsec_spd_add_del_t *mp;
   u32 spd_id = ~0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11976,9 +12052,8 @@ api_ipsec_spd_add_del (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -11990,6 +12065,7 @@ api_ipsec_interface_add_del_spd (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 spd_id = (u32) ~ 0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12029,9 +12105,8 @@ api_ipsec_interface_add_del_spd (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12046,6 +12121,7 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
   u32 lport_start = 0, lport_stop = (u32) ~ 0;
   ip4_address_t laddr4_start, laddr4_stop, raddr4_start, raddr4_stop;
   ip6_address_t laddr6_start, laddr6_stop, raddr6_start, raddr6_stop;
+  int ret;
 
   laddr4_start.as_u32 = raddr4_start.as_u32 = 0;
   laddr4_stop.as_u32 = raddr4_stop.as_u32 = (u32) ~ 0;
@@ -12186,9 +12262,8 @@ api_ipsec_spd_add_del_entry (vat_main_t * vam)
   mp->is_add = is_add;
   mp->is_ip_any = is_ip_any;
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12207,6 +12282,7 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
   ip4_address_t tun_dst4;
   ip6_address_t tun_src6;
   ip6_address_t tun_dst6;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12317,9 +12393,8 @@ api_ipsec_sad_add_del_entry (vat_main_t * vam)
     }
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12329,6 +12404,7 @@ api_ipsec_sa_set_key (vat_main_t * vam)
   vl_api_ipsec_sa_set_key_t *mp;
   u32 sa_id;
   u8 *ck = 0, *ik = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12363,9 +12439,8 @@ api_ipsec_sa_set_key (vat_main_t * vam)
     clib_memcpy (mp->integrity_key, ik, mp->integrity_key_length);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12375,6 +12450,7 @@ api_ikev2_profile_add_del (vat_main_t * vam)
   vl_api_ikev2_profile_add_del_t *mp;
   u8 is_add = 1;
   u8 *name = 0;
+  int ret;
 
   const char *valid_chars = "a-zA-Z0-9_";
 
@@ -12410,9 +12486,8 @@ api_ikev2_profile_add_del (vat_main_t * vam)
   vec_free (name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12424,6 +12499,7 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
   u8 *data = 0;
   u32 auth_method = 0;
   u8 is_hex = 0;
+  int ret;
 
   const char *valid_chars = "a-zA-Z0-9_";
 
@@ -12480,9 +12556,8 @@ api_ikev2_profile_set_auth (vat_main_t * vam)
   vec_free (data);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12495,6 +12570,7 @@ api_ikev2_profile_set_id (vat_main_t * vam)
   u8 is_local = 0;
   u32 id_type = 0;
   ip4_address_t ip4;
+  int ret;
 
   const char *valid_chars = "a-zA-Z0-9_";
 
@@ -12559,9 +12635,8 @@ api_ikev2_profile_set_id (vat_main_t * vam)
   vec_free (data);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12575,6 +12650,7 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
   ip4_address_t start_addr, end_addr;
 
   const char *valid_chars = "a-zA-Z0-9_";
+  int ret;
 
   start_addr.as_u32 = 0;
   end_addr.as_u32 = (u32) ~ 0;
@@ -12629,9 +12705,8 @@ api_ikev2_profile_set_ts (vat_main_t * vam)
   vec_free (name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12640,6 +12715,7 @@ api_ikev2_set_local_key (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_ikev2_set_local_key_t *mp;
   u8 *file = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12670,9 +12746,8 @@ api_ikev2_set_local_key (vat_main_t * vam)
   vec_free (file);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /*
@@ -12693,6 +12768,7 @@ api_map_add_domain (vat_main_t * vam)
   u8 is_translation = 0;
   u32 mtu = 0;
   u32 ip6_src_len = 128;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12754,7 +12830,8 @@ api_map_add_domain (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12765,6 +12842,7 @@ api_map_del_domain (vat_main_t * vam)
 
   u32 num_m_args = 0;
   u32 index;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12792,7 +12870,8 @@ api_map_del_domain (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12803,6 +12882,7 @@ api_map_add_del_rule (vat_main_t * vam)
   u8 is_add = 1;
   ip6_address_t ip6_dst;
   u32 num_m_args = 0, index, psid = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12835,13 +12915,15 @@ api_map_add_del_rule (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
 api_map_domain_dump (vat_main_t * vam)
 {
   vl_api_map_domain_dump_t *mp;
+  int ret;
 
   /* Construct the API message */
   M (MAP_DOMAIN_DUMP, mp);
@@ -12855,7 +12937,8 @@ api_map_domain_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12864,6 +12947,7 @@ api_map_rule_dump (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_map_rule_dump_t *mp;
   u32 domain_index = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12893,7 +12977,8 @@ api_map_rule_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_map_add_domain_reply_t_handler
@@ -12937,6 +13022,7 @@ api_get_first_msg_id (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   u8 *name;
   u8 name_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -12962,9 +13048,8 @@ api_get_first_msg_id (vat_main_t * vam)
   M (GET_FIRST_MSG_ID, mp);
   clib_memcpy (mp->name, name, vec_len (name));
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -12974,6 +13059,7 @@ api_cop_interface_enable_disable (vat_main_t * vam)
   vl_api_cop_interface_enable_disable_t *mp;
   u32 sw_if_index = ~0;
   u8 enable_disable = 1;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -13004,7 +13090,8 @@ api_cop_interface_enable_disable (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for the reply */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13015,6 +13102,7 @@ api_cop_whitelist_enable_disable (vat_main_t * vam)
   u32 sw_if_index = ~0;
   u8 ip4 = 0, ip6 = 0, default_cop = 0;
   u32 fib_id = 0;
+  int ret;
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -13052,20 +13140,23 @@ api_cop_whitelist_enable_disable (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for the reply */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
 api_get_node_graph (vat_main_t * vam)
 {
   vl_api_get_node_graph_t *mp;
+  int ret;
 
   M (GET_NODE_GRAPH, mp);
 
   /* send it... */
   S (mp);
   /* Wait for the reply */
-  W;
+  W (ret);
+  return ret;
 }
 
 /* *INDENT-OFF* */
@@ -13142,6 +13233,7 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   u32 sw_if_index, priority, weight;
   u32 data_len = 0;
 
+  int ret;
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -13210,10 +13302,8 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13232,6 +13322,7 @@ api_lisp_add_del_locator (vat_main_t * vam)
   u8 is_add = 1;
   u8 *locator_set_name = NULL;
   u8 locator_set_name_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13324,10 +13415,8 @@ api_lisp_add_del_locator (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 uword
@@ -13368,6 +13457,7 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
   u32 vni = 0;
   u16 key_id = 0;
   u8 *key = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13450,10 +13540,8 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /* *INDENT-OFF* */
@@ -13482,6 +13570,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   ip6_address_t rmt_rloc6, lcl_rloc6;
   vl_api_lisp_gpe_locator_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc =
     0;
+  int ret;
 
   memset (&rloc, 0, sizeof (rloc));
 
@@ -13602,10 +13691,8 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13618,6 +13705,7 @@ api_lisp_add_del_map_server (vat_main_t * vam)
   u8 ipv6_set = 0;
   ip4_address_t ipv4;
   ip6_address_t ipv6;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13669,10 +13757,8 @@ api_lisp_add_del_map_server (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13685,6 +13771,7 @@ api_lisp_add_del_map_resolver (vat_main_t * vam)
   u8 ipv6_set = 0;
   ip4_address_t ipv4;
   ip6_address_t ipv6;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13736,10 +13823,8 @@ api_lisp_add_del_map_resolver (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13749,6 +13834,7 @@ api_lisp_gpe_enable_disable (vat_main_t * vam)
   vl_api_lisp_gpe_enable_disable_t *mp;
   u8 is_set = 0;
   u8 is_en = 1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13782,10 +13868,8 @@ api_lisp_gpe_enable_disable (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13795,6 +13879,7 @@ api_lisp_rloc_probe_enable_disable (vat_main_t * vam)
   vl_api_lisp_rloc_probe_enable_disable_t *mp;
   u8 is_set = 0;
   u8 is_en = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13825,10 +13910,8 @@ api_lisp_rloc_probe_enable_disable (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13838,6 +13921,7 @@ api_lisp_map_register_enable_disable (vat_main_t * vam)
   vl_api_lisp_map_register_enable_disable_t *mp;
   u8 is_set = 0;
   u8 is_en = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13868,10 +13952,8 @@ api_lisp_map_register_enable_disable (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13881,6 +13963,7 @@ api_lisp_enable_disable (vat_main_t * vam)
   vl_api_lisp_enable_disable_t *mp;
   u8 is_set = 0;
   u8 is_en = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13913,16 +13996,15 @@ api_lisp_enable_disable (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_show_lisp_map_register_state (vat_main_t * vam)
 {
   vl_api_show_lisp_map_register_state_t *mp;
+  int ret;
 
   M (SHOW_LISP_MAP_REGISTER_STATE, mp);
 
@@ -13930,15 +14012,15 @@ api_show_lisp_map_register_state (vat_main_t * vam)
   S (mp);
 
   /* wait for reply */
-  W;
-
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_show_lisp_rloc_probe_state (vat_main_t * vam)
 {
   vl_api_show_lisp_rloc_probe_state_t *mp;
+  int ret;
 
   M (SHOW_LISP_RLOC_PROBE_STATE, mp);
 
@@ -13946,15 +14028,15 @@ api_show_lisp_rloc_probe_state (vat_main_t * vam)
   S (mp);
 
   /* wait for reply */
-  W;
-
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_show_lisp_map_request_mode (vat_main_t * vam)
 {
   vl_api_show_lisp_map_request_mode_t *mp;
+  int ret;
 
   M (SHOW_LISP_MAP_REQUEST_MODE, mp);
 
@@ -13962,9 +14044,8 @@ api_show_lisp_map_request_mode (vat_main_t * vam)
   S (mp);
 
   /* wait for reply */
-  W;
-
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -13973,6 +14054,7 @@ api_lisp_map_request_mode (vat_main_t * vam)
   unformat_input_t *input = vam->input;
   vl_api_lisp_map_request_mode_t *mp;
   u8 mode = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -13996,10 +14078,8 @@ api_lisp_map_request_mode (vat_main_t * vam)
   S (mp);
 
   /* wait for reply */
-  W;
-
-  /* notreached */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /**
@@ -14016,6 +14096,7 @@ api_lisp_pitr_set_locator_set (vat_main_t * vam)
   vl_api_lisp_pitr_set_locator_set_t *mp;
   u8 is_add = 1;
   u8 *ls_name = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14047,16 +14128,15 @@ api_lisp_pitr_set_locator_set (vat_main_t * vam)
   S (mp);
 
   /* wait for reply */
-  W;
-
-  /* notreached */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_show_lisp_pitr (vat_main_t * vam)
 {
   vl_api_show_lisp_pitr_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -14068,10 +14148,8 @@ api_show_lisp_pitr (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /**
@@ -14084,6 +14162,7 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
   vl_api_lisp_eid_table_add_del_map_t *mp;
   u8 is_add = 1, vni_set = 0, vrf_set = 0, bd_index_set = 0;
   u32 vni, vrf, bd_index;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14123,10 +14202,8 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
   S (mp);
 
   /* wait for reply */
-  W;
-
-  /* notreached */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 uword
@@ -14177,6 +14254,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   ip4_address_t rloc4;
   ip6_address_t rloc6;
   vl_api_remote_locator_t *rlocs = 0, rloc, *curr_rloc = 0;
+  int ret;
 
   memset (&rloc, 0, sizeof (rloc));
 
@@ -14277,10 +14355,8 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /**
@@ -14303,6 +14379,7 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
   u8 reid_type, leid_type;
   u32 leid_len = 0, reid_len = 0, len;
   u8 is_add = 1;
+  int ret;
 
   leid_type = reid_type = (u8) ~ 0;
 
@@ -14404,10 +14481,8 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -14417,6 +14492,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
   vl_api_lisp_gpe_add_del_iface_t *mp;
   u8 action_set = 0, is_add = 1, is_l2 = 0, dp_table_set = 0, vni_set = 0;
   u32 dp_table = 0, vni = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14471,10 +14547,8 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /**
@@ -14491,6 +14565,7 @@ api_lisp_add_del_map_request_itr_rlocs (vat_main_t * vam)
   u8 *locator_set_name = 0;
   u8 locator_set_name_set = 0;
   u8 is_add = 1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14540,10 +14615,8 @@ api_lisp_add_del_map_request_itr_rlocs (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -14554,6 +14627,7 @@ api_lisp_locator_dump (vat_main_t * vam)
   u8 is_index_set = 0, is_name_set = 0;
   u8 *ls_name = 0;
   u32 ls_index = ~0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14618,10 +14692,8 @@ api_lisp_locator_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -14630,6 +14702,7 @@ api_lisp_locator_set_dump (vat_main_t * vam)
   vl_api_lisp_locator_set_dump_t *mp;
   unformat_input_t *input = vam->input;
   u8 filter = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14668,10 +14741,8 @@ api_lisp_locator_set_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -14681,6 +14752,7 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
   u8 mode_set = 0;
   unformat_input_t *input = vam->input;
   vl_api_lisp_eid_table_map_dump_t *mp;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -14726,16 +14798,15 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_lisp_eid_table_vni_dump (vat_main_t * vam)
 {
   vl_api_lisp_eid_table_vni_dump_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -14754,10 +14825,8 @@ api_lisp_eid_table_vni_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -14771,6 +14840,7 @@ api_lisp_eid_table_dump (vat_main_t * vam)
   u8 eid_type = ~0, eid_set = 0;
   u32 prefix_length = ~0, t, vni = 0;
   u8 filter = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -14854,10 +14924,8 @@ api_lisp_eid_table_dump (vat_main_t * vam)
   }
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -14867,6 +14935,7 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
   vl_api_lisp_gpe_fwd_entries_get_t *mp;
   u8 vni_set = 0;
   u32 vni = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -14900,10 +14969,8 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 #define vl_api_lisp_gpe_fwd_entries_get_reply_t_endian vl_noop_handler
@@ -14918,6 +14985,7 @@ api_lisp_adjacencies_get (vat_main_t * vam)
   vl_api_lisp_adjacencies_get_t *mp;
   u8 vni_set = 0;
   u32 vni = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -14950,16 +15018,15 @@ api_lisp_adjacencies_get (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_lisp_map_server_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_server_dump_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -14977,16 +15044,15 @@ api_lisp_map_server_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_lisp_map_resolver_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_resolver_dump_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -15004,16 +15070,15 @@ api_lisp_map_resolver_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_show_lisp_status (vat_main_t * vam)
 {
   vl_api_show_lisp_status_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -15024,10 +15089,8 @@ api_show_lisp_status (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15036,6 +15099,7 @@ api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
   vl_api_lisp_gpe_fwd_entry_path_dump_t *mp;
   unformat_input_t *i = vam->input;
   u32 fwd_entry_index = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15067,16 +15131,15 @@ api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_lisp_get_map_request_itr_rlocs (vat_main_t * vam)
 {
   vl_api_lisp_get_map_request_itr_rlocs_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -15087,10 +15150,8 @@ api_lisp_get_map_request_itr_rlocs (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15101,6 +15162,7 @@ api_af_packet_create (vat_main_t * vam)
   u8 *host_if_name = 0;
   u8 hw_addr[6];
   u8 random_hw_addr = 1;
+  int ret;
 
   memset (hw_addr, 0, sizeof (hw_addr));
 
@@ -15134,9 +15196,8 @@ api_af_packet_create (vat_main_t * vam)
   vec_free (host_if_name);
 
   S (mp);
-  W2 (fprintf (vam->ofp, " new sw_if_index = %d ", vam->sw_if_index));
-  /* NOTREACHED */
-  return 0;
+  W2 (ret, fprintf (vam->ofp, " new sw_if_index = %d ", vam->sw_if_index));
+  return ret;
 }
 
 static int
@@ -15145,6 +15206,7 @@ api_af_packet_delete (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_af_packet_delete_t *mp;
   u8 *host_if_name = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15172,9 +15234,8 @@ api_af_packet_delete (vat_main_t * vam)
   vec_free (host_if_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15193,6 +15254,7 @@ api_policer_add_del (vat_main_t * vam)
   u8 type = 0;
   u8 color_aware = 0;
   sse2_qos_pol_action_params_st conform_action, exceed_action, violate_action;
+  int ret;
 
   conform_action.action_type = SSE2_QOS_ACTION_TRANSMIT;
   conform_action.dscp = 0;
@@ -15271,9 +15333,8 @@ api_policer_add_del (vat_main_t * vam)
   mp->color_aware = color_aware;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15283,6 +15344,7 @@ api_policer_dump (vat_main_t * vam)
   vl_api_policer_dump_t *mp;
   u8 *match_name = 0;
   u8 match_name_valid = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15309,10 +15371,8 @@ api_policer_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15326,6 +15386,7 @@ api_policer_classify_set_interface (vat_main_t * vam)
   u32 ip6_table_index = ~0;
   u32 l2_table_index = ~0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15363,9 +15424,8 @@ api_policer_classify_set_interface (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15374,6 +15434,7 @@ api_policer_classify_dump (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_policer_classify_dump_t *mp;
   u8 type = POLICER_CLASSIFY_N_TABLES;
+  int ret;
 
   if (unformat (i, "type %U", unformat_policer_classify_table_type, &type))
     ;
@@ -15400,10 +15461,8 @@ api_policer_classify_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15416,6 +15475,7 @@ api_netmap_create (vat_main_t * vam)
   u8 random_hw_addr = 1;
   u8 is_pipe = 0;
   u8 is_master = 0;
+  int ret;
 
   memset (hw_addr, 0, sizeof (hw_addr));
 
@@ -15457,9 +15517,8 @@ api_netmap_create (vat_main_t * vam)
   vec_free (if_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -15468,6 +15527,7 @@ api_netmap_delete (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_netmap_delete_t *mp;
   u8 *if_name = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -15495,9 +15555,8 @@ api_netmap_delete (vat_main_t * vam)
   vec_free (if_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_mpls_tunnel_details_t_handler
@@ -15554,6 +15613,7 @@ api_mpls_tunnel_dump (vat_main_t * vam)
 {
   vl_api_mpls_tunnel_dump_t *mp;
   i32 index = -1;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (vam->input) != UNFORMAT_END_OF_INPUT)
@@ -15577,7 +15637,8 @@ api_mpls_tunnel_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 #define vl_api_mpls_fib_details_t_endian vl_noop_handler
@@ -15665,6 +15726,7 @@ static int
 api_mpls_fib_dump (vat_main_t * vam)
 {
   vl_api_mpls_fib_dump_t *mp;
+  int ret;
 
   M (MPLS_FIB_DUMP, mp);
   S (mp);
@@ -15675,7 +15737,8 @@ api_mpls_fib_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 #define vl_api_ip_fib_details_t_endian vl_noop_handler
@@ -15765,6 +15828,7 @@ static int
 api_ip_fib_dump (vat_main_t * vam)
 {
   vl_api_ip_fib_dump_t *mp;
+  int ret;
 
   M (IP_FIB_DUMP, mp);
   S (mp);
@@ -15775,7 +15839,8 @@ api_ip_fib_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_ip_neighbor_details_t_handler
@@ -15834,6 +15899,7 @@ api_ip_neighbor_dump (vat_main_t * vam)
   vl_api_ip_neighbor_dump_t *mp;
   u8 is_ipv6 = 0;
   u32 sw_if_index = ~0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -15865,7 +15931,8 @@ api_ip_neighbor_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 #define vl_api_ip6_fib_details_t_endian vl_noop_handler
@@ -15955,6 +16022,7 @@ static int
 api_ip6_fib_dump (vat_main_t * vam)
 {
   vl_api_ip6_fib_dump_t *mp;
+  int ret;
 
   M (IP6_FIB_DUMP, mp);
   S (mp);
@@ -15965,22 +16033,23 @@ api_ip6_fib_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 int
 api_classify_table_ids (vat_main_t * vam)
 {
   vl_api_classify_table_ids_t *mp;
+  int ret;
 
   /* Construct the API message */
   M (CLASSIFY_TABLE_IDS, mp);
   mp->context = 0;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -15990,6 +16059,7 @@ api_classify_table_by_interface (vat_main_t * vam)
   vl_api_classify_table_by_interface_t *mp;
 
   u32 sw_if_index = ~0;
+  int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
@@ -16011,9 +16081,8 @@ api_classify_table_by_interface (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16023,6 +16092,7 @@ api_classify_table_info (vat_main_t * vam)
   vl_api_classify_table_info_t *mp;
 
   u32 table_id = ~0;
+  int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "table_id %d", &table_id))
@@ -16042,9 +16112,8 @@ api_classify_table_info (vat_main_t * vam)
   mp->table_id = ntohl (table_id);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16054,6 +16123,7 @@ api_classify_session_dump (vat_main_t * vam)
   vl_api_classify_session_dump_t *mp;
 
   u32 table_id = ~0;
+  int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "table_id %d", &table_id))
@@ -16079,9 +16149,8 @@ api_classify_session_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void
@@ -16135,28 +16204,30 @@ int
 api_ipfix_exporter_dump (vat_main_t * vam)
 {
   vl_api_ipfix_exporter_dump_t *mp;
+  int ret;
 
   /* Construct the API message */
   M (IPFIX_EXPORTER_DUMP, mp);
   mp->context = 0;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_ipfix_classify_stream_dump (vat_main_t * vam)
 {
   vl_api_ipfix_classify_stream_dump_t *mp;
+  int ret;
 
   /* Construct the API message */
   M (IPFIX_CLASSIFY_STREAM_DUMP, mp);
   mp->context = 0;
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
   /* NOTREACHED */
   return 0;
 }
@@ -16193,6 +16264,7 @@ static int
 api_ipfix_classify_table_dump (vat_main_t * vam)
 {
   vl_api_ipfix_classify_table_dump_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -16212,7 +16284,8 @@ api_ipfix_classify_table_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static void
@@ -16254,6 +16327,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
   u32 src_sw_if_index = ~0;
   u32 dst_sw_if_index = ~0;
   u8 state = 3;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -16287,9 +16361,8 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
   mp->state = state;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void
@@ -16377,6 +16450,7 @@ static int
 api_sw_interface_span_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_span_dump_t *mp;
+  int ret;
 
   M (SW_INTERFACE_SPAN_DUMP, mp);
   S (mp);
@@ -16387,7 +16461,8 @@ api_sw_interface_span_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16397,6 +16472,7 @@ api_pg_create_interface (vat_main_t * vam)
   vl_api_pg_create_interface_t *mp;
 
   u32 if_id = ~0;
+  int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "if_id %d", &if_id))
@@ -16416,9 +16492,8 @@ api_pg_create_interface (vat_main_t * vam)
   mp->interface_id = ntohl (if_id);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16432,6 +16507,7 @@ api_pg_capture (vat_main_t * vam)
   u32 count = 1;
   u8 pcap_file_set = 0;
   u8 *pcap_file = 0;
+  int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "if_id %d", &if_id))
@@ -16474,9 +16550,8 @@ api_pg_capture (vat_main_t * vam)
   vec_free (pcap_file);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16488,6 +16563,7 @@ api_pg_enable_disable (vat_main_t * vam)
   u8 enable = 1;
   u8 stream_name_set = 0;
   u8 *stream_name = 0;
+  int ret;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "stream %s", &stream_name))
@@ -16520,9 +16596,8 @@ api_pg_enable_disable (vat_main_t * vam)
   vec_free (stream_name);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16543,6 +16618,7 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
   u32 vrf_id = ~0;
   u8 is_add = 1;
   u8 is_ipv6 = 0;
+  int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -16650,9 +16726,8 @@ api_ip_source_and_port_range_check_add_del (vat_main_t * vam)
   mp->vrf_id = ntohl (vrf_id);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 int
@@ -16665,6 +16740,7 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
   u32 tcp_out_vrf_id = ~0, udp_out_vrf_id = ~0;
   u32 tcp_in_vrf_id = ~0, udp_in_vrf_id = ~0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -16720,7 +16796,8 @@ api_ip_source_and_port_range_check_interface_add_del (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply... */
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -16733,6 +16810,7 @@ api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
   ip4_address_t src_address;
   ip4_address_t dst_address;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -16762,9 +16840,8 @@ api_ipsec_gre_add_del_tunnel (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -16776,6 +16853,7 @@ api_punt (vat_main_t * vam)
   u32 protocol = ~0;
   u32 port = ~0;
   int is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -16802,9 +16880,8 @@ api_punt (vat_main_t * vam)
   mp->l4_port = htons ((u16) port);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_ipsec_gre_tunnel_details_t_handler
@@ -16850,6 +16927,7 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
   vl_api_ipsec_gre_tunnel_dump_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
+  int ret;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -16885,7 +16963,8 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -16894,6 +16973,7 @@ api_delete_subif (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_delete_subif_t *mp;
   u32 sw_if_index = ~0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -16916,7 +16996,8 @@ api_delete_subif (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 #define foreach_pbb_vtr_op      \
@@ -16936,6 +17017,7 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
   u16 vlanid = 0;
   u32 sid = ~0;
   u32 tmp;
+  int ret;
 
   /* Shut up coverity */
   memset (dmac, 0, sizeof (dmac));
@@ -17004,9 +17086,8 @@ api_l2_interface_pbb_tag_rewrite (vat_main_t * vam)
   mp->i_sid = ntohl (sid);
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -17019,6 +17100,7 @@ api_flow_classify_set_interface (vat_main_t * vam)
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -17053,9 +17135,8 @@ api_flow_classify_set_interface (vat_main_t * vam)
   mp->is_add = is_add;
 
   S (mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -17064,6 +17145,7 @@ api_flow_classify_dump (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_flow_classify_dump_t *mp;
   u8 type = FLOW_CLASSIFY_N_TABLES;
+  int ret;
 
   if (unformat (i, "type %U", unformat_flow_classify_table_type, &type))
     ;
@@ -17090,10 +17172,8 @@ api_flow_classify_dump (vat_main_t * vam)
     S (mp);
   }
   /* Wait for a reply... */
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -17105,6 +17185,7 @@ api_feature_enable_disable (vat_main_t * vam)
   u8 *feature_name = 0;
   u32 sw_if_index = ~0;
   u8 enable = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -17159,7 +17240,8 @@ api_feature_enable_disable (vat_main_t * vam)
   vec_free (feature_name);
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -17170,6 +17252,7 @@ api_sw_interface_tag_add_del (vat_main_t * vam)
   u32 sw_if_index = ~0;
   u8 *tag = 0;
   u8 enable = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -17206,7 +17289,8 @@ api_sw_interface_tag_add_del (vat_main_t * vam)
   vec_free (tag);
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_l2_xconnect_details_t_handler
@@ -17242,6 +17326,7 @@ static int
 api_l2_xconnect_dump (vat_main_t * vam)
 {
   vl_api_l2_xconnect_dump_t *mp;
+  int ret;
 
   if (!vam->json_output)
     {
@@ -17258,7 +17343,8 @@ api_l2_xconnect_dump (vat_main_t * vam)
     M (CONTROL_PING, mp);
     S (mp);
   }
-  W;
+  W (ret);
+  return ret;
 }
 
 static int
@@ -17268,6 +17354,7 @@ api_sw_interface_set_mtu (vat_main_t * vam)
   vl_api_sw_interface_set_mtu_t *mp;
   u32 sw_if_index = ~0;
   u32 mtu = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -17299,7 +17386,8 @@ api_sw_interface_set_mtu (vat_main_t * vam)
   mp->mtu = ntohs ((u16) mtu);
 
   S (mp);
-  W;
+  W (ret);
+  return ret;
 }
 
 
