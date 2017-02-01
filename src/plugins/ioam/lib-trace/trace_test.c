@@ -125,10 +125,10 @@ api_trace_profile_add (vat_main_t * vam)
   vl_api_trace_profile_add_t *mp;
   u8 trace_type = 0;
   u8 num_elts = 0;
-  int rv = 0;
   u32 node_id = 0;
   u32 app_data = 0;
   u8 trace_tsp = 0;
+  int ret;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -157,9 +157,8 @@ api_trace_profile_add (vat_main_t * vam)
   mp->num_elts = num_elts;
 
   S (mp);
-  W;
-
-  return (rv);
+  W (ret);
+  return ret;
 }
 
 
@@ -168,22 +167,24 @@ static int
 api_trace_profile_del (vat_main_t * vam)
 {
   vl_api_trace_profile_del_t *mp;
+  int ret;
 
   M (TRACE_PROFILE_DEL, mp);
   S (mp);
-  W;
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int
 api_trace_profile_show_config (vat_main_t * vam)
 {
   vl_api_trace_profile_show_config_t *mp;
+  int ret;
 
   M (TRACE_PROFILE_SHOW_CONFIG, mp);
   S (mp);
-  W;
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /*

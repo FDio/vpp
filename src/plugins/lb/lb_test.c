@@ -134,6 +134,7 @@ static int api_lb_conf (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_lb_conf_t mps, *mp;
+  int ret;
 
   if (!unformat(i, "%U %U %u %u",
                unformat_ip4_address, &mps.ip4_src_address,
@@ -146,16 +147,15 @@ static int api_lb_conf (vat_main_t * vam)
 
   M(LB_CONF, mp);
   S(mp);
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_lb_add_del_vip (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
   vl_api_lb_add_del_vip_t mps, *mp;
+  int ret;
   mps.is_del = 0;
   mps.is_gre4 = 0;
 
@@ -185,15 +185,15 @@ static int api_lb_add_del_vip (vat_main_t * vam)
 
   M(LB_ADD_DEL_VIP, mp);
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_lb_add_del_as (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
   vl_api_lb_add_del_as_t mps, *mp;
+  int ret;
   mps.is_del = 0;
 
   if (!unformat(i, "%U %U",
@@ -209,9 +209,8 @@ static int api_lb_add_del_as (vat_main_t * vam)
 
   M(LB_ADD_DEL_AS, mp);
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /*
