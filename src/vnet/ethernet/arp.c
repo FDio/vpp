@@ -1062,12 +1062,9 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  dst_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
 					  &arp0->ip4_over_ethernet[1].ip4,
 					  32);
-	  dst_flags = fib_entry_get_flags_for_source (dst_fei,
-						      FIB_SOURCE_INTERFACE);
+	  dst_flags = fib_entry_get_flags (dst_fei);
 
-	  conn_sw_if_index0 =
-	    fib_entry_get_resolving_interface_for_source (dst_fei,
-							  FIB_SOURCE_INTERFACE);
+	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
 
 	  if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
 	    {
