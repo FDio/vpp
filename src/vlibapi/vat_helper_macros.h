@@ -42,32 +42,32 @@ do {                                                            \
 #define S(mp) (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
 
 /* W: wait for results, with timeout */
-#define W                                       \
+#define W(ret)					\
 do {                                            \
     f64 timeout = vat_time_now (vam) + 1.0;     \
                                                 \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \
-            return (vam->retval);               \
+            ret = vam->retval;                  \
         }                                       \
         vat_suspend (vam->vlib_main, 1e-5);     \
     }                                           \
-    return -99;                                 \
+    ret = -99;                                  \
 } while(0);
 
 /* W2: wait for results, with timeout */
-#define W2(body)                                \
+#define W2(ret, body)				\
 do {                                            \
     f64 timeout = vat_time_now (vam) + 1.0;     \
                                                 \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \
 	  (body);                               \
-	  return (vam->retval);                 \
+	  ret = vam->retval;                    \
         }                                       \
         vat_suspend (vam->vlib_main, 1e-5);     \
     }                                           \
-    return -99;                                 \
+    ret = -99;                                 \
 } while(0);
 
 
