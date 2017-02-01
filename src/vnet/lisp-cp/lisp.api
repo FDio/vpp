@@ -13,6 +13,13 @@
  * limitations under the License.
  */
 
+typeonly manual_print manual_endian define local_locator
+{
+  u32 sw_if_index;
+  u8 priority;
+  u8 weight;
+};
+
 /** \brief add or delete locator_set
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -20,22 +27,15 @@
     @param locator_set_name - locator name
     @param locator_num - number of locators
     @param locators - LISP locator records
-        Structure of one locator record is as follows:
-
-        define locator_t {
-          u32 sw_if_index;
-          u8 priority;
-          u8 weight;
-        }
 */
-define lisp_add_del_locator_set
+manual_endian manual_print define lisp_add_del_locator_set
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 locator_set_name[64];
   u32 locator_num;
-  u8 locators[0];
+  vl_api_local_locator_t locators[locator_num];
 };
 
 /** \brief Reply for locator_set add/del
@@ -405,6 +405,14 @@ define show_lisp_map_request_mode_reply
   u8 mode;
 };
 
+typeonly manual_endian manual_print define remote_locator
+{
+  u8 is_ip4;
+  u8 priority;
+  u8 weight;
+  u8 addr[16];
+};
+
 /** \brief add or delete remote static mapping
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -421,16 +429,8 @@ define show_lisp_map_request_mode_reply
     @param seid - src EID, valid only if is_src_dst is enabled
     @param rloc_num - number of remote locators
     @param rlocs - remote locator records
-        Structure of remote locator:
-
-        define rloc_t {
-          u8 is_ip4;
-          u8 priority;
-          u8 weight;
-          u8 addr[16];
-        }
 */
-define lisp_add_del_remote_mapping
+manual_print manual_endian define lisp_add_del_remote_mapping
 {
   u32 client_index;
   u32 context;
@@ -445,7 +445,7 @@ define lisp_add_del_remote_mapping
   u8 seid[16];
   u8 seid_len;
   u32 rloc_num;
-  u8 rlocs[0];
+  vl_api_remote_locator_t rlocs[rloc_num];
 };
 
 /** \brief Reply for lisp_add_del_remote_mapping

@@ -13243,16 +13243,6 @@ lisp_eid_put_vat (u8 * dst, u8 eid[16], u8 type)
   clib_memcpy (dst, eid, lisp_eid_size_vat (type));
 }
 
-/* *INDENT-OFF* */
-/** Used for transferring locators via VPP API */
-typedef CLIB_PACKED(struct
-{
-  u32 sw_if_index; /**< locator sw_if_index */
-  u8 priority; /**< locator priority */
-  u8 weight;   /**< locator weight */
-}) ls_locator_t;
-/* *INDENT-ON* */
-
 static int
 api_lisp_add_del_locator_set (vat_main_t * vam)
 {
@@ -13262,7 +13252,7 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   u8 is_add = 1;
   u8 *locator_set_name = NULL;
   u8 locator_set_name_set = 0;
-  ls_locator_t locator, *locators = 0;
+  vl_api_local_locator_t locator, *locators = 0;
   u32 sw_if_index, priority, weight;
   u32 data_len = 0;
 
@@ -13315,7 +13305,7 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
     }
   vec_add1 (locator_set_name, 0);
 
-  data_len = sizeof (ls_locator_t) * vec_len (locators);
+  data_len = sizeof (vl_api_local_locator_t) * vec_len (locators);
 
   /* Construct the API message */
   M2 (LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set, data_len);
@@ -14317,7 +14307,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   u32 action = ~0, p, w, data_len;
   ip4_address_t rloc4;
   ip6_address_t rloc6;
-  rloc_t *rlocs = 0, rloc, *curr_rloc = 0;
+  vl_api_remote_locator_t *rlocs = 0, rloc, *curr_rloc = 0;
 
   memset (&rloc, 0, sizeof (rloc));
 
@@ -14396,7 +14386,7 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
       return -99;
     }
 
-  data_len = vec_len (rlocs) * sizeof (rloc_t);
+  data_len = vec_len (rlocs) * sizeof (vl_api_remote_locator_t);
 
   M2 (LISP_ADD_DEL_REMOTE_MAPPING, lisp_add_del_remote_mapping, data_len);
   mp->is_add = is_add;

@@ -73,7 +73,8 @@ public class LispAdjacencyTest {
         request.eid = new byte[] {1, 2, 1, 20};
         request.eidLen = 32;
         request.rlocNum = 1;
-        request.rlocs = new byte[] {1, 1, 1, 1, 2, 1, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        // FIXME!!!!
+        //request.rlocs = new byte[] {1, 1, 1, 1, 2, 1, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         jvpp.lispAddDelRemoteMapping(request).toCompletableFuture().get();
         LOG.info("Remote mapping created successfully:" + request.toString());
     }
