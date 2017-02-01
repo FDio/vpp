@@ -150,6 +150,7 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
     int enable_disable = 1;
     u32 sw_if_index = ~0;
     vl_api_" plugin-name "_enable_disable_t * mp;
+    int ret;
 
     /* Parse args required to build the message */
     while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
@@ -177,7 +178,8 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
     S(mp);
 
     /* Wait for a reply... */
-    W;
+    W (ret);
+    return ret;
 }
 
 /* 

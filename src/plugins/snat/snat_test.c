@@ -114,6 +114,7 @@ static int api_snat_add_address_range (vat_main_t * vam)
   vl_api_snat_add_address_range_t * mp;
   u8 is_add = 1;
   int count;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -159,10 +160,8 @@ static int api_snat_add_address_range (vat_main_t * vam)
   mp->is_add = is_add;
 
   S(mp);
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_snat_interface_add_del_feature (vat_main_t * vam)
@@ -173,6 +172,7 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 is_inside = 1; 
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -205,9 +205,8 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
   mp->is_inside = is_inside;
   
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_snat_add_static_mapping(vat_main_t * vam)
@@ -222,6 +221,7 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
   u32 local_port = 0, external_port = 0, vrf_id = ~0;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -273,9 +273,8 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
   memcpy (mp->external_ip_address, &external_addr, 4);
 
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_snat_control_ping_reply_t_handler
@@ -318,6 +317,7 @@ static void vl_api_snat_static_mapping_details_t_handler
 static int api_snat_static_mapping_dump(vat_main_t * vam)
 {
   vl_api_snat_static_mapping_dump_t * mp;
+  int ret;
 
   if (vam->json_output)
     {
@@ -337,9 +337,8 @@ static int api_snat_static_mapping_dump(vat_main_t * vam)
     M(SNAT_CONTROL_PING, mp);
     S(mp);
   }
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_snat_show_config_reply_t_handler
@@ -376,6 +375,7 @@ static void vl_api_snat_show_config_reply_t_handler
 static int api_snat_show_config(vat_main_t * vam)
 {
   vl_api_snat_show_config_t * mp;
+  int ret;
 
   if (vam->json_output)
     {
@@ -385,9 +385,8 @@ static int api_snat_show_config(vat_main_t * vam)
 
   M(SNAT_SHOW_CONFIG, mp);
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_snat_address_details_t_handler
@@ -402,6 +401,7 @@ static void vl_api_snat_address_details_t_handler
 static int api_snat_address_dump(vat_main_t * vam)
 {
   vl_api_snat_address_dump_t * mp;
+  int ret;
 
   if (vam->json_output)
     {
@@ -417,9 +417,8 @@ static int api_snat_address_dump(vat_main_t * vam)
     M(SNAT_CONTROL_PING, mp);
     S(mp);
   }
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_snat_interface_details_t_handler
@@ -435,6 +434,7 @@ static void vl_api_snat_interface_details_t_handler
 static int api_snat_interface_dump(vat_main_t * vam)
 {
   vl_api_snat_interface_dump_t * mp;
+  int ret;
 
   if (vam->json_output)
     {
@@ -450,9 +450,8 @@ static int api_snat_interface_dump(vat_main_t * vam)
     M(SNAT_CONTROL_PING, mp);
     S(mp);
   }
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_snat_set_workers (vat_main_t * vam)
@@ -460,6 +459,7 @@ static int api_snat_set_workers (vat_main_t * vam)
   unformat_input_t * i = vam->input;
   vl_api_snat_set_workers_t * mp;
   uword *bitmap;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -476,10 +476,8 @@ static int api_snat_set_workers (vat_main_t * vam)
   mp->worker_mask = clib_host_to_net_u64 (bitmap[0]);
 
   S(mp);
-  W;
-
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_snat_worker_details_t_handler
@@ -495,6 +493,7 @@ static void vl_api_snat_worker_details_t_handler
 static int api_snat_worker_dump(vat_main_t * vam)
 {
   vl_api_snat_worker_dump_t * mp;
+  int ret;
 
   if (vam->json_output)
     {
@@ -510,9 +509,8 @@ static int api_snat_worker_dump(vat_main_t * vam)
     M(SNAT_CONTROL_PING, mp);
     S(mp);
   }
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_snat_ipfix_enable_disable (vat_main_t * vam)
@@ -522,6 +520,7 @@ static int api_snat_ipfix_enable_disable (vat_main_t * vam)
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -549,9 +548,8 @@ static int api_snat_ipfix_enable_disable (vat_main_t * vam)
   mp->is_add = is_add;
   
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static void vl_api_snat_interface_addr_details_t_handler
@@ -566,6 +564,7 @@ static void vl_api_snat_interface_addr_details_t_handler
 static int api_snat_interface_addr_dump(vat_main_t * vam)
 {
   vl_api_snat_interface_addr_dump_t * mp;
+  int ret;
 
   if (vam->json_output)
     {
@@ -581,9 +580,8 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
     M(SNAT_CONTROL_PING, mp);
     S(mp);
   }
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 static int api_snat_add_del_interface_addr (vat_main_t * vam)
@@ -593,6 +591,7 @@ static int api_snat_add_del_interface_addr (vat_main_t * vam)
   u32 domain_id = 0;
   u32 src_port = 0;
   u8 enable = 1;
+  int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -615,9 +614,8 @@ static int api_snat_add_del_interface_addr (vat_main_t * vam)
   mp->enable = enable;
 
   S(mp);
-  W;
-  /* NOTREACHED */
-  return 0;
+  W (ret);
+  return ret;
 }
 
 /* 
