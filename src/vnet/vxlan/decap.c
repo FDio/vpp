@@ -1032,8 +1032,8 @@ ip_vxlan_bypass_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      error1 = good_udp1 ? 0 : IP4_ERROR_UDP_CHECKSUM;
-	      error1 = (len_diff1 >= 0) ? error1 : IP4_ERROR_UDP_LENGTH;
+	      error1 = good_udp1 ? 0 : IP6_ERROR_UDP_CHECKSUM;
+	      error1 = (len_diff1 >= 0) ? error1 : IP6_ERROR_UDP_LENGTH;
 	    }
 
 	  next1 = error1 ? 

@@ -92,10 +92,9 @@ static uword dummy_interface_tx (vlib_main_t * vm,
 static clib_error_t *
 vxlan_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
-  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-    vnet_hw_interface_set_flags (vnm, hw_if_index, VNET_HW_INTERFACE_FLAG_LINK_UP);
-  else
-    vnet_hw_interface_set_flags (vnm, hw_if_index, 0);
+  u32 hw_flags = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ?
+    VNET_HW_INTERFACE_FLAG_LINK_UP : 0;
+  vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
   return /* no error */ 0;
 }
@@ -203,89 +202,66 @@ _(decap_next_index)                             \
 _(src)                                          \
 _(dst)
 
-static int vxlan4_rewrite (vxlan_tunnel_t * t)
+static int
+vxlan_rewrite (vxlan_tunnel_t * t, bool is_ip6)
 {
-  u8 *rw = 0;
-  ip4_header_t * ip0;
-  ip4_vxlan_header_t * h0;
-  int len = sizeof (*h0);
+  union {
+    ip4_vxlan_header_t * h4;
+    ip6_vxlan_header_t * h6;
+    u8 *rw;
+  } r = { .rw = 0 };
+  int len = is_ip6 ? sizeof *r.h6 : sizeof *r.h4;
 
-  vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
+  vec_validate_aligned (r.rw, len-1, CLIB_CACHE_LINE_BYTES);
 
-  h0 = (ip4_vxlan_header_t *) rw;
-
-  /* Fixed portion of the (outer) ip4 header */
-  ip0 = &h0->ip4;
-  ip0->ip_version_and_header_length = 0x45;
-  ip0->ttl = 254;
-  ip0->protocol = IP_PROTOCOL_UDP;
-
-  /* we fix up the ip4 header length and checksum after-the-fact */
-  ip0->src_address.as_u32 = t->src.ip4.as_u32;
-  ip0->dst_address.as_u32 = t->dst.ip4.as_u32;
-  ip0->checksum = ip4_header_checksum (ip0);
-
-  /* UDP header, randomize src port on something, maybe? */
-  h0->udp.src_port = clib_host_to_net_u16 (4789);
-  h0->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_vxlan);
-
-  /* VXLAN header */
-  vnet_set_vni_and_flags(&h0->vxlan, t->vni);
-
-  t->rewrite = rw;
-  return (0);
-}
-
-static int vxlan6_rewrite (vxlan_tunnel_t * t)
-{
-  u8 *rw = 0;
-  ip6_header_t * ip0;
-  ip6_vxlan_header_t * h0;
-  int len = sizeof (*h0);
-
-  vec_validate_aligned (rw, len-1, CLIB_CACHE_LINE_BYTES);
-
-  h0 = (ip6_vxlan_header_t *) rw;
-
-  /* Fixed portion of the (outer) ip6 header */
-  ip0 = &h0->ip6;
-  ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(6 << 28);
-  ip0->hop_limit = 255;
-  ip0->protocol = IP_PROTOCOL_UDP;
-
-  ip0->src_address = t->src.ip6;
-  ip0->dst_address = t->dst.ip6;
-
-  /* UDP header, randomize src port on something, maybe? */
-  h0->udp.src_port = clib_host_to_net_u16 (4789);
-  h0->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_vxlan);
-
-  /* VXLAN header */
-  vnet_set_vni_and_flags(&h0->vxlan, t->vni);
-
-  t->rewrite = rw;
-  return (0);
-}
-
-static int vxlan_check_decap_next(vxlan_main_t * vxm, u32 is_ip6, u32 decap_next_index)
-{
-  vlib_main_t * vm = vxm->vlib_main;
-  vlib_node_runtime_t *r;
-
-  if(!is_ip6)
+  udp_header_t * udp;
+  vxlan_header_t * vxlan;
+  /* Fixed portion of the (outer) ip header */
+  if (!is_ip6) 
     {
-      r = vlib_node_get_runtime (vm, vxlan4_input_node.index);
-      if(decap_next_index >= r->n_next_nodes)
-	return 1;
+      ip4_header_t * ip = &r.h4->ip4;
+      udp = &r.h4->udp, vxlan = &r.h4->vxlan;
+      ip->ip_version_and_header_length = 0x45;
+      ip->ttl = 254;
+      ip->protocol = IP_PROTOCOL_UDP;
+    
+      ip->src_address = t->src.ip4;
+      ip->dst_address = t->dst.ip4;
+
+      /* we fix up the ip4 header length and checksum after-the-fact */
+      ip->checksum = ip4_header_checksum (ip);
     }
   else
     {
-      r = vlib_node_get_runtime (vm, vxlan6_input_node.index);
-      if(decap_next_index >= r->n_next_nodes)
-	return 1;
+      ip6_header_t * ip = &r.h6->ip6;
+      udp = &r.h6->udp, vxlan = &r.h6->vxlan;
+      ip->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(6 << 28);
+      ip->hop_limit = 255;
+      ip->protocol = IP_PROTOCOL_UDP;
+    
+      ip->src_address = t->src.ip6;
+      ip->dst_address = t->dst.ip6;
     }
 
-  return 0;
+  /* UDP header, randomize src port on something, maybe? */
+  udp->src_port = clib_host_to_net_u16 (4789);
+  udp->dst_port = clib_host_to_net_u16 (UDP_DST_PORT_vxlan);
+
+  /* VXLAN header */
+  vnet_set_vni_and_flags(vxlan, t->vni);
+
+  t->rewrite = r.rw;
+  return (0);
+}
+
+static bool
+vxlan_decap_next_is_valid (vxlan_main_t * vxm, u32 is_ip6, u32 decap_next_index)
+{
+  vlib_main_t * vm = vxm->vlib_main;
+  u32 input_idx = (!is_ip6) ? vxlan4_input_node.index : vxlan6_input_node.index;
+  vlib_node_runtime_t *r = vlib_node_get_runtime (vm, input_idx);
+
+  return decap_next_index < r->n_next_nodes;
 }
 
 static void
@@ -420,7 +396,7 @@ int vnet_vxlan_add_del_tunnel
       /*if not set explicitly, default to l2 */
       if(a->decap_next_index == ~0)
 	a->decap_next_index = VXLAN_INPUT_NEXT_L2_INPUT;
-      if (vxlan_check_decap_next(vxm, is_ip6, a->decap_next_index))
+      if (!vxlan_decap_next_is_valid(vxm, is_ip6, a->decap_next_index))
 	  return VNET_API_ERROR_INVALID_DECAP_NEXT;
 
       pool_get_aligned (vxm->tunnels, t, CLIB_CACHE_LINE_BYTES);
@@ -431,11 +407,7 @@ int vnet_vxlan_add_del_tunnel
       foreach_copy_field;
 #undef _
 
-      if (!is_ip6) 
-        rv = vxlan4_rewrite (t);
-      else
-	rv = vxlan6_rewrite (t);
-
+      rv = vxlan_rewrite (t, is_ip6);
       if (rv)
         {
           pool_put (vxm->tunnels, t);
