@@ -4804,6 +4804,7 @@ int
 api_sw_interface_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   hash_pair_t *p;
   name_sort_t *nses = 0, *ns;
   sw_interface_subif_t *sub = NULL;
@@ -4898,11 +4899,9 @@ api_sw_interface_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -5683,6 +5682,7 @@ api_bridge_domain_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_bridge_domain_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 bd_id = ~0;
   int ret;
 
@@ -5700,11 +5700,8 @@ api_bridge_domain_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
 
   W (ret);
   return ret;
@@ -5883,14 +5880,14 @@ api_l2fib_add_del (vat_main_t * vam)
 
   if (count > 1)
     {
-      vl_api_control_ping_t *mp;
+      vl_api_control_ping_t *mp_ping;
       f64 after;
 
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, mp);
-      S (mp);
+      M (CONTROL_PING, mp_ping);
+      S (mp_ping);
 
       timeout = vat_time_now (vam) + 1.0;
       while (vat_time_now (vam) < timeout)
@@ -6556,15 +6553,15 @@ api_ip_add_del_route (vat_main_t * vam)
   /* When testing multiple add/del ops, use a control-ping to sync */
   if (count > 1)
     {
-      vl_api_control_ping_t *mp;
+      vl_api_control_ping_t *mp_ping;
       f64 after;
       f64 timeout;
 
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, mp);
-      S (mp);
+      M (CONTROL_PING, mp_ping);
+      S (mp_ping);
 
       timeout = vat_time_now (vam) + 1.0;
       while (vat_time_now (vam) < timeout)
@@ -6898,15 +6895,15 @@ api_mpls_route_add_del (vat_main_t * vam)
   /* When testing multiple add/del ops, use a control-ping to sync */
   if (count > 1)
     {
-      vl_api_control_ping_t *mp;
+      vl_api_control_ping_t *mp_ping;
       f64 after;
       f64 timeout;
 
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, mp);
-      S (mp);
+      M (CONTROL_PING, mp_ping);
+      S (mp_ping);
 
       timeout = vat_time_now (vam) + 1.0;
       while (vat_time_now (vam) < timeout)
@@ -10576,6 +10573,7 @@ static int
 api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
 {
   vl_api_sw_if_l2tpv3_tunnel_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   /* Get list of l2tpv3-tunnel interfaces */
@@ -10583,11 +10581,9 @@ api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -10624,6 +10620,7 @@ static int
 api_sw_interface_tap_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_tap_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
@@ -10632,11 +10629,9 @@ api_sw_interface_tap_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -10877,6 +10872,7 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_vxlan_tunnel_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   int ret;
@@ -10910,11 +10906,9 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -11017,6 +11011,7 @@ api_gre_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_gre_tunnel_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   int ret;
@@ -11050,11 +11045,9 @@ api_gre_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -11398,6 +11391,7 @@ static int
 api_sw_interface_vhost_user_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_vhost_user_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
   print (vam->ofp,
 	 "Interface name           idx hdr_sz features server regions filename");
@@ -11407,11 +11401,9 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -11602,6 +11594,7 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_vxlan_gpe_tunnel_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   int ret;
@@ -11635,11 +11628,9 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -11692,6 +11683,7 @@ api_l2_fib_table_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_l2_fib_table_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 bd_id;
   u8 bd_id_set = 0;
   int ret;
@@ -11720,11 +11712,9 @@ api_l2_fib_table_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -11905,6 +11895,7 @@ api_ip_address_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_address_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
   u8 ipv4_set = 0;
@@ -11953,11 +11944,9 @@ api_ip_address_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -11966,6 +11955,7 @@ static int
 api_ip_dump (vat_main_t * vam)
 {
   vl_api_ip_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   unformat_input_t *in = vam->input;
   int ipv4_set = 0;
   int ipv6_set = 0;
@@ -12010,11 +12000,9 @@ api_ip_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -12923,6 +12911,7 @@ static int
 api_map_domain_dump (vat_main_t * vam)
 {
   vl_api_map_domain_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   /* Construct the API message */
@@ -12932,11 +12921,9 @@ api_map_domain_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -12946,6 +12933,7 @@ api_map_rule_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_map_rule_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 domain_index = ~0;
   int ret;
 
@@ -12972,11 +12960,9 @@ api_map_rule_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -14624,6 +14610,7 @@ api_lisp_locator_dump (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_lisp_locator_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u8 is_index_set = 0, is_name_set = 0;
   u8 *ls_name = 0;
   u32 ls_index = ~0;
@@ -14686,11 +14673,9 @@ api_lisp_locator_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -14700,6 +14685,7 @@ static int
 api_lisp_locator_set_dump (vat_main_t * vam)
 {
   vl_api_lisp_locator_set_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   unformat_input_t *input = vam->input;
   u8 filter = 0;
   int ret;
@@ -14735,11 +14721,9 @@ api_lisp_locator_set_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -14752,6 +14736,7 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
   u8 mode_set = 0;
   unformat_input_t *input = vam->input;
   vl_api_lisp_eid_table_map_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   /* Parse args required to build the message */
@@ -14792,11 +14777,9 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -14806,6 +14789,7 @@ static int
 api_lisp_eid_table_vni_dump (vat_main_t * vam)
 {
   vl_api_lisp_eid_table_vni_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   if (!vam->json_output)
@@ -14819,11 +14803,9 @@ api_lisp_eid_table_vni_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -14834,6 +14816,7 @@ api_lisp_eid_table_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_lisp_eid_table_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   struct in_addr ip4;
   struct in6_addr ip6;
   u8 mac[6];
@@ -14917,11 +14900,8 @@ api_lisp_eid_table_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
 
   /* Wait for a reply... */
   W (ret);
@@ -15026,6 +15006,7 @@ static int
 api_lisp_map_server_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_server_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   if (!vam->json_output)
@@ -15038,11 +15019,9 @@ api_lisp_map_server_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -15052,6 +15031,7 @@ static int
 api_lisp_map_resolver_dump (vat_main_t * vam)
 {
   vl_api_lisp_map_resolver_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   if (!vam->json_output)
@@ -15064,11 +15044,9 @@ api_lisp_map_resolver_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -15097,6 +15075,7 @@ static int
 api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
 {
   vl_api_lisp_gpe_fwd_entry_path_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   unformat_input_t *i = vam->input;
   u32 fwd_entry_index = ~0;
   int ret;
@@ -15125,11 +15104,9 @@ api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -15342,6 +15319,7 @@ api_policer_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_policer_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u8 *match_name = 0;
   u8 match_name_valid = 0;
   int ret;
@@ -15365,11 +15343,9 @@ api_policer_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -15433,6 +15409,7 @@ api_policer_classify_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_policer_classify_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u8 type = POLICER_CLASSIFY_N_TABLES;
   int ret;
 
@@ -15455,11 +15432,9 @@ api_policer_classify_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -15612,6 +15587,7 @@ static int
 api_mpls_tunnel_dump (vat_main_t * vam)
 {
   vl_api_mpls_tunnel_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   i32 index = -1;
   int ret;
 
@@ -15632,11 +15608,9 @@ api_mpls_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -15726,17 +15700,16 @@ static int
 api_mpls_fib_dump (vat_main_t * vam)
 {
   vl_api_mpls_fib_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   M (MPLS_FIB_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -15828,17 +15801,16 @@ static int
 api_ip_fib_dump (vat_main_t * vam)
 {
   vl_api_ip_fib_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   M (IP_FIB_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -15897,6 +15869,7 @@ api_ip_neighbor_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ip_neighbor_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u8 is_ipv6 = 0;
   u32 sw_if_index = ~0;
   int ret;
@@ -15926,11 +15899,9 @@ api_ip_neighbor_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -16022,17 +15993,16 @@ static int
 api_ip6_fib_dump (vat_main_t * vam)
 {
   vl_api_ip6_fib_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   M (IP6_FIB_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -16121,6 +16091,7 @@ api_classify_session_dump (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
   vl_api_classify_session_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
 
   u32 table_id = ~0;
   int ret;
@@ -16144,11 +16115,9 @@ api_classify_session_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -16264,6 +16233,7 @@ static int
 api_ipfix_classify_table_dump (vat_main_t * vam)
 {
   vl_api_ipfix_classify_table_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   if (!vam->json_output)
@@ -16279,11 +16249,9 @@ api_ipfix_classify_table_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -16450,17 +16418,16 @@ static int
 api_sw_interface_span_dump (vat_main_t * vam)
 {
   vl_api_sw_interface_span_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   M (SW_INTERFACE_SPAN_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -16925,6 +16892,7 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_ipsec_gre_tunnel_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   int ret;
@@ -16958,11 +16926,9 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -17144,6 +17110,7 @@ api_flow_classify_dump (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_flow_classify_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   u8 type = FLOW_CLASSIFY_N_TABLES;
   int ret;
 
@@ -17166,11 +17133,9 @@ api_flow_classify_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   /* Wait for a reply... */
   W (ret);
   return ret;
@@ -17326,6 +17291,7 @@ static int
 api_l2_xconnect_dump (vat_main_t * vam)
 {
   vl_api_l2_xconnect_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
   int ret;
 
   if (!vam->json_output)
@@ -17338,11 +17304,9 @@ api_l2_xconnect_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  {
-    vl_api_control_ping_t *mp;
-    M (CONTROL_PING, mp);
-    S (mp);
-  }
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }

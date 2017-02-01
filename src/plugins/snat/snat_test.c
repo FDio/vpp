@@ -317,6 +317,7 @@ static void vl_api_snat_static_mapping_details_t_handler
 static int api_snat_static_mapping_dump(vat_main_t * vam)
 {
   vl_api_snat_static_mapping_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
@@ -331,12 +332,11 @@ static int api_snat_static_mapping_dump(vat_main_t * vam)
 
   M(SNAT_STATIC_MAPPING_DUMP, mp);
   S(mp);
+
   /* Use a control ping for synchronization */
-  {
-    vl_api_snat_control_ping_t *mp;
-    M(SNAT_CONTROL_PING, mp);
-    S(mp);
-  }
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
   W (ret);
   return ret;
 }
@@ -401,6 +401,7 @@ static void vl_api_snat_address_details_t_handler
 static int api_snat_address_dump(vat_main_t * vam)
 {
   vl_api_snat_address_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
@@ -411,12 +412,11 @@ static int api_snat_address_dump(vat_main_t * vam)
 
   M(SNAT_ADDRESS_DUMP, mp);
   S(mp);
+
   /* Use a control ping for synchronization */
-  {
-    vl_api_snat_control_ping_t *mp;
-    M(SNAT_CONTROL_PING, mp);
-    S(mp);
-  }
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
   W (ret);
   return ret;
 }
@@ -434,6 +434,7 @@ static void vl_api_snat_interface_details_t_handler
 static int api_snat_interface_dump(vat_main_t * vam)
 {
   vl_api_snat_interface_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
@@ -444,12 +445,11 @@ static int api_snat_interface_dump(vat_main_t * vam)
 
   M(SNAT_INTERFACE_DUMP, mp);
   S(mp);
+
   /* Use a control ping for synchronization */
-  {
-    vl_api_snat_control_ping_t *mp;
-    M(SNAT_CONTROL_PING, mp);
-    S(mp);
-  }
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
   W (ret);
   return ret;
 }
@@ -493,6 +493,7 @@ static void vl_api_snat_worker_details_t_handler
 static int api_snat_worker_dump(vat_main_t * vam)
 {
   vl_api_snat_worker_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
@@ -503,12 +504,11 @@ static int api_snat_worker_dump(vat_main_t * vam)
 
   M(SNAT_WORKER_DUMP, mp);
   S(mp);
+
   /* Use a control ping for synchronization */
-  {
-    vl_api_snat_control_ping_t *mp;
-    M(SNAT_CONTROL_PING, mp);
-    S(mp);
-  }
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
   W (ret);
   return ret;
 }
@@ -564,6 +564,7 @@ static void vl_api_snat_interface_addr_details_t_handler
 static int api_snat_interface_addr_dump(vat_main_t * vam)
 {
   vl_api_snat_interface_addr_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
@@ -574,12 +575,11 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
 
   M(SNAT_INTERFACE_ADDR_DUMP, mp);
   S(mp);
+
   /* Use a control ping for synchronization */
-  {
-    vl_api_snat_control_ping_t *mp;
-    M(SNAT_CONTROL_PING, mp);
-    S(mp);
-  }
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
   W (ret);
   return ret;
 }
