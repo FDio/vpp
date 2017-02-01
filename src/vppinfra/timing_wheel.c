@@ -239,6 +239,8 @@ timing_wheel_insert_helper (timing_wheel_t * w, u64 insert_cpu_time,
       e = insert_helper (w, level_index, rtime);
       e->user_data = user_data;
       e->cpu_time_relative_to_base = dt;
+      if (insert_cpu_time < w->cached_min_cpu_time_on_wheel)
+	w->cached_min_cpu_time_on_wheel = insert_cpu_time;
     }
   else
     {
@@ -488,7 +490,8 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
 	vec_foreach (e, l->elts[wi])
 	  {
 	    /* This should always be true since otherwise we would have already expired
-	       this element. */
+	       this element. Note that in the second half of this function we need
+               to take care not to place the expired elements ourselves. */
 	    ASSERT (e->cpu_time_relative_to_base >= delta);
 	    e->cpu_time_relative_to_base -= delta;
 	  }
@@ -505,10 +508,11 @@ advance_cpu_time_base (timing_wheel_t * w, u32 * expired_user_data)
       if (0 == ((oe->cpu_time - w->cpu_time_base) >> BITS (e->cpu_time_relative_to_base)))
 	{
 	  u64 ti = oe->cpu_time >> w->log2_clocks_per_bin;
-	  if (ti < w->current_time_index)
+	  if (ti <= w->current_time_index)
 	    {
 	      /* This can happen when timing wheel is not advanced for a long time
 		 (for example when at a gdb breakpoint for a while). */
+              /* Note: the ti == w->current_time_index means it is also an expired timer */
 	      if (! elt_is_deleted (w, oe->user_data))
 		vec_add1 (expired_user_data, oe->user_data);
 	    }
@@ -664,6 +668,8 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
 		expire_bin (w, advance_level_index, wi, advance_cpu_time,
 			    expired_user_data);
 
+	    /* When we jump out, we have already just expired the bin,
+	       corresponding to advance_wheel_index */
 	    if (wi == advance_wheel_index)
 	      break;
 
@@ -682,6 +688,9 @@ timing_wheel_advance (timing_wheel_t * w, u64 advance_cpu_time,
     }
 
   /* Don't advance until necessary. */
+  /* However, if the timing_wheel_advance() hasn't been called for some time,
+     the while() loop will ensure multiple calls to advance_cpu_time_base()
+     in a row until the w->cpu_time_base is fresh enough. */
   while (PREDICT_FALSE
 	 (advance_time_index >= w->time_index_next_cpu_time_base_update))
     expired_user_data = advance_cpu_time_base (w, expired_user_data);
