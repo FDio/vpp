@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import division
 import unittest
 import hashlib
 import binascii
@@ -80,6 +81,33 @@ class BFDAPITestCase(VppTestCase):
         session.add_vpp_config()
         self.logger.debug("Session state is %s" % str(session.state))
         session.remove_vpp_config()
+
+    def test_mod_bfd(self):
+        """ modify BFD session parameters """
+        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4,
+                                   desired_min_tx=50000,
+                                   required_min_rx=10000,
+                                   detect_mult=1)
+        session.add_vpp_config()
+        e = session.get_bfd_udp_session_dump_entry()
+        self.assert_equal(session.desired_min_tx,
+                          e.desired_min_tx,
+                          "desired min transmit interval")
+        self.assert_equal(session.required_min_rx,
+                          e.required_min_rx,
+                          "required min receive interval")
+        self.assert_equal(session.detect_mult, e.detect_mult, "detect mult")
+        session.modify_parameters(desired_min_tx=session.desired_min_tx * 2,
+                                  required_min_rx=session.required_min_rx * 2,
+                                  detect_mult=session.detect_mult * 2)
+        e = session.get_bfd_udp_session_dump_entry()
+        self.assert_equal(session.desired_min_tx,
+                          e.desired_min_tx,
+                          "desired min transmit interval")
+        self.assert_equal(session.required_min_rx,
+                          e.required_min_rx,
+                          "required min receive interval")
+        self.assert_equal(session.detect_mult, e.detect_mult, "detect mult")
 
     def test_add_sha1_keys(self):
         """ add SHA1 keys """
@@ -194,6 +222,7 @@ class BFDAPITestCase(VppTestCase):
         session.deactivate_auth()
 
     def test_change_key(self):
+        """ change SHA1 key """
         key1 = self.factory.create_random_key(self)
         key2 = self.factory.create_random_key(self)
         while key2.conf_key_id == key1.conf_key_id:
@@ -273,10 +302,11 @@ class BFDTestSession(object):
             packet[BFD].auth_key_hash = hashlib.sha1(hash_material).digest()
         return packet
 
-    def send_packet(self):
-        p = self.create_packet()
-        self.test.logger.debug(ppp("Sending packet:", p))
-        self.test.pg0.add_stream([p])
+    def send_packet(self, packet=None):
+        if packet is None:
+            packet = self.create_packet()
+        self.test.logger.debug(ppp("Sending packet:", packet))
+        self.test.pg0.add_stream([packet])
         self.test.pg_start()
 
     def verify_sha1_auth(self, packet):
@@ -521,11 +551,25 @@ class BFD4TestCase(VppTestCase, BFDCommonCode):
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         self.verify_event(e, expected_state=BFDState.up)
 
-        try:
-            p = self.pg0.wait_for_packet(timeout=1)
-        except:
-            return
-        raise Exception(ppp("Received unexpected BFD packet:", p))
+        cap = 2 * self.vpp_session.desired_min_tx *\
+            self.vpp_session.detect_mult
+        now = time.time()
+        count = 0
+        # busy wait here, trying to collect a packet or event, vpp is not
+        # allowed to send packets and the session will timeout first - so the
+        # Up->Down event must arrive before any packets do
+        while time.time() < now + cap / us_in_sec:
+            try:
+                p, ttp = self.wait_for_bfd_packet(timeout=0)
+                self.logger.error(ppp("Received unexpected packet:", p))
+                count += 1
+            except:
+                pass
+            events = self.vapi.collect_events()
+            if len(events) > 0:
+                self.verify_event(events[0], BFDState.down)
+                break
+        self.assert_equal(count, 0, "number of packets received")
 
     def test_conn_down(self):
         """ verify session goes down after inactivity """
@@ -542,20 +586,27 @@ class BFD4TestCase(VppTestCase, BFDCommonCode):
     def test_large_required_min_rx(self):
         """ large remote RequiredMinRxInterval """
         self.bfd_session_up()
+        self.wait_for_bfd_packet()
         interval = 3000000
         self.test_session.update(required_min_rx_interval=interval)
         self.test_session.send_packet()
         now = time.time()
         count = 0
+        # busy wait here, trying to collect a packet or event, vpp is not
+        # allowed to send packets and the session will timeout first - so the
+        # Up->Down event must arrive before any packets do
         while time.time() < now + interval / us_in_sec:
             try:
-                p = self.wait_for_bfd_packet()
-                if count > 1:
-                    self.logger.error(ppp("Received unexpected packet:", p))
+                p, ttp = self.wait_for_bfd_packet(timeout=0)
+                self.logger.error(ppp("Received unexpected packet:", p))
                 count += 1
             except:
                 pass
-        self.assert_in_range(count, 0, 1, "number of packets received")
+            events = self.vapi.collect_events()
+            if len(events) > 0:
+                self.verify_event(events[0], BFDState.down)
+                break
+        self.assert_equal(count, 0, "number of packets received")
 
     def test_immediate_remote_min_rx_reduce(self):
         """ immediately honor remote min rx reduction """
@@ -582,6 +633,93 @@ class BFD4TestCase(VppTestCase, BFDCommonCode):
         self.assert_in_range(ttp, .9 * .75 * interval / us_in_sec,
                              1.10 * interval / us_in_sec,
                              "time between BFD packets")
+
+    def test_modify_req_min_rx_double(self):
+        """ modify session - double required min rx """
+        self.bfd_session_up()
+        self.wait_for_bfd_packet()
+        self.test_session.update(desired_min_tx_interval=10000,
+                                 required_min_rx_interval=10000)
+        self.test_session.send_packet()
+        # first double required min rx
+        self.vpp_session.modify_parameters(
+            required_min_rx=2 * self.vpp_session.required_min_rx)
+        p, ttp = self.wait_for_bfd_packet()
+        # poll bit needs to be set
+        self.assertIn("P", p.sprintf("%BFD.flags%"),
+                      "Poll bit not set in BFD packet")
+        # finish poll sequence with final packet
+        final = self.test_session.create_packet()
+        final[BFD].flags = "F"
+        self.test_session.send_packet(final)
+        # now we can wait 0.9*3*req-min-rx and the session should still be up
+        self.sleep(0.9 * self.vpp_session.detect_mult *
+                   self.vpp_session.required_min_rx / us_in_sec)
+        self.assert_equal(len(self.vapi.collect_events()), 0,
+                          "number of bfd events")
+
+    def test_modify_req_min_rx_halve(self):
+        """ modify session - halve required min rx """
+        self.vpp_session.modify_parameters(
+            required_min_rx=2 * self.vpp_session.required_min_rx)
+        self.bfd_session_up()
+        self.wait_for_bfd_packet()
+        self.test_session.update(desired_min_tx_interval=10000,
+                                 required_min_rx_interval=10000)
+        self.test_session.send_packet()
+        p, ttp = self.wait_for_bfd_packet()
+        # halve required min rx
+        old_required_min_rx = self.vpp_session.required_min_rx
+        self.vpp_session.modify_parameters(
+            required_min_rx=0.5 * self.vpp_session.required_min_rx)
+        # now we wait 0.8*3*old-req-min-rx and the session should still be up
+        self.sleep(0.8 * self.vpp_session.detect_mult *
+                   old_required_min_rx / us_in_sec)
+        self.assert_equal(len(self.vapi.collect_events()), 0,
+                          "number of bfd events")
+        p, ttp = self.wait_for_bfd_packet()
+        # poll bit needs to be set
+        self.assertIn("P", p.sprintf("%BFD.flags%"),
+                      "Poll bit not set in BFD packet")
+        # finish poll sequence with final packet
+        final = self.test_session.create_packet()
+        final[BFD].flags = "F"
+        self.test_session.send_packet(final)
+        # now the session should time out under new conditions
+        before = time.time()
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        after = time.time()
+        detection_time = self.vpp_session.detect_mult *\
+            self.vpp_session.required_min_rx / us_in_sec
+        self.assert_in_range(after - before,
+                             0.9 * detection_time,
+                             1.1 * detection_time,
+                             "time before bfd session goes down")
+        self.verify_event(e, expected_state=BFDState.down)
+
+    def test_modify_des_min_tx(self):
+        """ modify desired min tx interval """
+        pass
+
+    def test_modify_detect_mult(self):
+        """ modify detect multiplier """
+        self.bfd_session_up()
+        self.vpp_session.modify_parameters(detect_mult=1)
+        p, ttp = self.wait_for_bfd_packet()
+        self.assert_equal(self.vpp_session.detect_mult,
+                          p[BFD].detect_mult,
+                          "detect mult")
+        # poll bit must not be set
+        self.assertNotIn("P", p.sprintf("%BFD.flags%"),
+                         "Poll bit not set in BFD packet")
+        self.vpp_session.modify_parameters(detect_mult=10)
+        p, ttp = self.wait_for_bfd_packet()
+        self.assert_equal(self.vpp_session.detect_mult,
+                          p[BFD].detect_mult,
+                          "detect mult")
+        # poll bit must not be set
+        self.assertNotIn("P", p.sprintf("%BFD.flags%"),
+                         "Poll bit not set in BFD packet")
 
 
 class BFD6TestCase(VppTestCase, BFDCommonCode):

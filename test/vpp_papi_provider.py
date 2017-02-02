@@ -1023,6 +1023,19 @@ class VppPapiProvider(object):
                                 'conf_key_id': conf_key_id,
                             })
 
+    def bfd_udp_mod(self, sw_if_index, desired_min_tx, required_min_rx,
+                    detect_mult, local_addr, peer_addr, is_ipv6=0):
+        return self.api(self.papi.bfd_udp_mod,
+                        {
+                            'sw_if_index': sw_if_index,
+                            'desired_min_tx': desired_min_tx,
+                            'required_min_rx': required_min_rx,
+                            'local_addr': local_addr,
+                            'peer_addr': peer_addr,
+                            'is_ipv6': is_ipv6,
+                            'detect_mult': detect_mult,
+                        })
+
     def bfd_udp_auth_activate(self, sw_if_index, local_addr, peer_addr,
                               is_ipv6=0, bfd_key_id=None, conf_key_id=None,
                               is_delayed=False):

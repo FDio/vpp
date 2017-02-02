@@ -107,6 +107,40 @@ define bfd_udp_add_reply
   i32 retval;
 };
 
+/** \brief Modify UDP BFD session on interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface
+    @param desired_min_tx - desired min transmit interval (microseconds)
+    @param required_min_rx - required min receive interval (microseconds)
+    @param local_addr - local address
+    @param peer_addr - peer address
+    @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
+    @param detect_mult - detect multiplier (# of packets missed before connection goes down)
+*/
+define bfd_udp_mod
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 desired_min_tx;
+  u32 required_min_rx;
+  u8 local_addr[16];
+  u8 peer_addr[16];
+  u8 is_ipv6;
+  u8 detect_mult;
+};
+
+/** \brief Modify UDP BFD session response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define bfd_udp_mod_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief Delete UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -155,6 +189,9 @@ define bfd_udp_session_dump
     @param is_authenticated - non-zero if authentication in-use, zero otherwise
     @param bfd_key_id - ID of key currently in-use if auth is on
     @param conf_key_id - configured key ID for this session
+    @param required_min_rx - required min receive interval (microseconds)
+    @param desired_min_tx - desired min transmit interval (microseconds)
+    @param detect_mult - detect multiplier (# of packets missed before connection goes down)
 */
 define bfd_udp_session_details
 {
@@ -167,6 +204,9 @@ define bfd_udp_session_details
   u8 is_authenticated;
   u8 bfd_key_id;
   u32 conf_key_id;
+  u32 required_min_rx;
+  u32 desired_min_tx;
+  u8 detect_mult;
 };
 
 /** \brief Set flags of BFD UDP session

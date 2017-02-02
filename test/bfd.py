@@ -334,6 +334,25 @@ class VppBFDUDPSession(VppObject):
                                                is_ipv6=is_ipv6,
                                                is_delayed=is_delayed)
 
+    def modify_parameters(self,
+                          detect_mult=None,
+                          desired_min_tx=None,
+                          required_min_rx=None):
+        if detect_mult:
+            self._detect_mult = detect_mult
+        if desired_min_tx:
+            self._desired_min_tx = desired_min_tx
+        if required_min_rx:
+            self._required_min_rx = required_min_rx
+        is_ipv6 = 1 if AF_INET6 == self.af else 0
+        self.test.vapi.bfd_udp_mod(self._interface.sw_if_index,
+                                   self.desired_min_tx,
+                                   self.required_min_rx,
+                                   self.detect_mult,
+                                   self.local_addr_n,
+                                   self.peer_addr_n,
+                                   is_ipv6=is_ipv6)
+
     def add_vpp_config(self):
         is_ipv6 = 1 if AF_INET6 == self.af else 0
         bfd_key_id = self._bfd_key_id if self._sha1_key else None

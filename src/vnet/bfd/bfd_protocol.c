@@ -150,6 +150,32 @@ bfd_auth_type_str (bfd_auth_type_e auth_type)
   return "UNKNOWN";
 }
 
+const char *
+bfd_diag_code_string (bfd_diag_code_e diag)
+{
+#define F(n, t, s)             \
+  case BFD_DIAG_CODE_NAME (t): \
+    return s;
+  switch (diag)
+    {
+    foreach_bfd_diag_code (F)}
+  return "UNKNOWN";
+#undef F
+}
+
+const char *
+bfd_state_string (bfd_state_e state)
+{
+#define F(n, t, s)         \
+  case BFD_STATE_NAME (t): \
+    return s;
+  switch (state)
+    {
+    foreach_bfd_state (F)}
+  return "UNKNOWN";
+#undef F
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
