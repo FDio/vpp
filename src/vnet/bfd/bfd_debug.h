@@ -63,6 +63,13 @@
     }                                                                    \
   while (0);
 
+#define BFD_CLK_FMT "%luus/%lu clocks/%.2fs"
+#define BFD_CLK_PRN(clocks)                                                \
+  (u64) ((((f64)clocks) / vlib_get_main ()->clib_time.clocks_per_second) * \
+         USEC_PER_SECOND),                                                 \
+      (clocks),                                                            \
+      (((f64)clocks) / vlib_get_main ()->clib_time.clocks_per_second)
+
 #else
 #define BFD_DBG(...)
 #define BFD_ERR(...)

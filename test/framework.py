@@ -545,6 +545,10 @@ class VppTestCase(unittest.TestCase):
                 name, real_value, expected_min, expected_max)
         self.assertTrue(expected_min <= real_value <= expected_max, msg)
 
+    def sleep(self, timeout):
+        self.logger.debug("Sleeping for %ss" % timeout)
+        time.sleep(timeout)
+
 
 class VppTestResult(unittest.TestResult):
     """

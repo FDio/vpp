@@ -64,6 +64,18 @@ typedef struct
   bfd_auth_type_e auth_type;
 } bfd_auth_key_t;
 
+#define foreach_bfd_poll_state(F)\
+  F(NOT_NEEDED)\
+F(NEEDED)\
+F(IN_PROGRESS)
+
+typedef enum
+{
+#define F(x) POLL_##x,
+  foreach_bfd_poll_state (F)
+#undef F
+} bfd_poll_state_e;
+
 typedef struct
 {
   /* index in bfd_main.sessions pool */
@@ -85,37 +97,40 @@ typedef struct
   u32 remote_discr;
 
   /* configured desired min tx interval (microseconds) */
-  u32 config_desired_min_tx_us;
+  u32 config_desired_min_tx_usec;
 
-  /* desired min tx interval (microseconds) */
-  u32 desired_min_tx_us;
+  /* configured desired min tx interval (clocks) */
+  u64 config_desired_min_tx_clocks;
 
-  /* desired min tx interval (clocks) */
-  u64 desired_min_tx_clocks;
+  /* effective desired min tx interval (clocks) */
+  u64 effective_desired_min_tx_clocks;
 
-  /* required min rx interval (microseconds) */
-  u32 required_min_rx_us;
+  /* configured required min rx interval (microseconds) */
+  u32 config_required_min_rx_usec;
 
-  /* required min echo rx interval (microseconds) */
-  u32 required_min_echo_rx_us;
+  /* configured required min rx interval (clocks) */
+  u64 config_required_min_rx_clocks;
+
+  /* effective required min rx interval (clocks) */
+  u64 effective_required_min_rx_clocks;
 
   /* remote min rx interval (microseconds) */
-  u32 remote_min_rx_us;
+  u64 remote_min_rx_usec;
 
   /* remote min rx interval (clocks) */
   u64 remote_min_rx_clocks;
 
-  /* remote desired min tx interval (microseconds) */
-  u32 remote_desired_min_tx_us;
+  /* remote desired min tx interval (clocks) */
+  u64 remote_desired_min_tx_clocks;
+
+  /* configured detect multiplier */
+  u8 local_detect_mult;
 
   /* 1 if in demand mode, 0 otherwise */
   u8 local_demand;
 
   /* 1 if remote system sets demand mode, 0 otherwise */
   u8 remote_demand;
-
-  /* local detect multiplier */
-  u8 local_detect_mult;
 
   /* remote detect multiplier */
   u8 remote_detect_mult;
@@ -137,6 +152,9 @@ typedef struct
 
   /* detection time */
   u64 detection_time_clocks;
+
+  /* state info regarding poll sequence */
+  bfd_poll_state_e poll_state;
 
   /* authentication information */
   struct
@@ -175,6 +193,7 @@ typedef struct
   /* transport type for this session */
   bfd_transport_t transport;
 
+  /* union of transport-specific data */
   union
   {
     bfd_udp_session_t udp;
@@ -204,6 +223,9 @@ typedef struct
 
   /* cpu clocks per second */
   f64 cpu_cps;
+
+  /* default desired min tx in clocks */
+  u64 default_desired_min_tx_clocks;
 
   /* for generating random numbers */
   u32 random_seed;
@@ -243,6 +265,7 @@ enum
 {
   BFD_EVENT_RESCHEDULE = 1,
   BFD_EVENT_NEW_SESSION,
+  BFD_EVENT_CONFIG_CHANGED,
 } bfd_process_event_e;
 
 u8 *bfd_input_format_trace (u8 * s, va_list * args);
@@ -265,6 +288,10 @@ unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
 vnet_api_error_t bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
 				    u8 bfd_key_id, u8 is_delayed);
 vnet_api_error_t bfd_auth_deactivate (bfd_session_t * bs, u8 is_delayed);
+vnet_api_error_t
+bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
+			u32 desired_min_tx_usec,
+			u32 required_min_rx_usec, u8 detect_mult);
 
 #define USEC_PER_MS 1000LL
 #define USEC_PER_SECOND (1000 * USEC_PER_MS)

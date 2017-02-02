@@ -141,8 +141,8 @@ bfd_udp_key_init (bfd_udp_key_t * key, u32 sw_if_index,
 
 static vnet_api_error_t
 bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
-			      u32 desired_min_tx_us, u32 required_min_rx_us,
-			      u8 detect_mult,
+			      u32 desired_min_tx_usec,
+			      u32 required_min_rx_usec, u8 detect_mult,
 			      const ip46_address_t * local_addr,
 			      const ip46_address_t * peer_addr,
 			      bfd_session_t ** bs_out)
@@ -189,12 +189,9 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
     }
-  bs->config_desired_min_tx_us = desired_min_tx_us;
-  bs->required_min_rx_us = required_min_rx_us;
-  bs->required_min_echo_rx_us = required_min_rx_us;	/* FIXME */
-  bs->local_detect_mult = detect_mult;
   *bs_out = bs;
-  return 0;
+  return bfd_session_set_params (bum->bfd_main, bs, desired_min_tx_usec,
+				 required_min_rx_usec, detect_mult);
 }
 
 static vnet_api_error_t
@@ -298,8 +295,8 @@ bfd_udp_find_session_by_api_input (u32 sw_if_index,
 }
 
 static vnet_api_error_t
-bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_us,
-		       u32 required_min_rx_us, u8 detect_mult,
+bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_usec,
+		       u32 required_min_rx_usec, u8 detect_mult,
 		       const ip46_address_t * local_addr,
 		       const ip46_address_t * peer_addr)
 {
@@ -314,9 +311,9 @@ bfd_api_verify_common (u32 sw_if_index, u32 desired_min_tx_us,
       clib_warning ("detect_mult < 1");
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
-  if (desired_min_tx_us < 1)
+  if (desired_min_tx_usec < 1)
     {
-      clib_warning ("desired_min_tx_us < 1");
+      clib_warning ("desired_min_tx_usec < 1");
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
   return 0;
@@ -334,22 +331,23 @@ bfd_udp_del_session_internal (bfd_session_t * bs)
 
 vnet_api_error_t
 bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
-		     const ip46_address_t * peer_addr, u32 desired_min_tx_us,
-		     u32 required_min_rx_us, u8 detect_mult,
-		     u8 is_authenticated, u32 conf_key_id, u8 bfd_key_id)
+		     const ip46_address_t * peer_addr,
+		     u32 desired_min_tx_usec, u32 required_min_rx_usec,
+		     u8 detect_mult, u8 is_authenticated, u32 conf_key_id,
+		     u8 bfd_key_id)
 {
-  vnet_api_error_t rv = bfd_api_verify_common (sw_if_index, desired_min_tx_us,
-					       required_min_rx_us,
-					       detect_mult,
-					       local_addr, peer_addr);
+  vnet_api_error_t rv =
+    bfd_api_verify_common (sw_if_index, desired_min_tx_usec,
+			   required_min_rx_usec, detect_mult,
+			   local_addr, peer_addr);
   bfd_session_t *bs = NULL;
   if (!rv)
     {
       rv =
 	bfd_udp_add_session_internal (&bfd_udp_main, sw_if_index,
-				      desired_min_tx_us, required_min_rx_us,
-				      detect_mult, local_addr, peer_addr,
-				      &bs);
+				      desired_min_tx_usec,
+				      required_min_rx_usec, detect_mult,
+				      local_addr, peer_addr, &bs);
     }
   if (!rv && is_authenticated)
     {
@@ -371,6 +369,27 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
     }
 
   return rv;
+}
+
+vnet_api_error_t
+bfd_udp_mod_session (u32 sw_if_index,
+		     const ip46_address_t * local_addr,
+		     const ip46_address_t * peer_addr,
+		     u32 desired_min_tx_usec,
+		     u32 required_min_rx_usec, u8 detect_mult)
+{
+  bfd_session_t *bs = NULL;
+  vnet_api_error_t rv =
+    bfd_udp_find_session_by_api_input (sw_if_index, local_addr, peer_addr,
+				       &bs);
+  if (rv)
+    {
+      return rv;
+    }
+
+  return bfd_session_set_params (bfd_udp_main.bfd_main, bs,
+				 desired_min_tx_usec, required_min_rx_usec,
+				 detect_mult);
 }
 
 vnet_api_error_t

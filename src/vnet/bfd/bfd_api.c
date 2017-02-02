@@ -45,6 +45,7 @@
 
 #define foreach_vpe_api_msg                                \
   _ (BFD_UDP_ADD, bfd_udp_add)                             \
+  _ (BFD_UDP_MOD, bfd_udp_mod)                             \
   _ (BFD_UDP_DEL, bfd_udp_del)                             \
   _ (BFD_UDP_SESSION_DUMP, bfd_udp_session_dump)           \
   _ (BFD_UDP_SESSION_SET_FLAGS, bfd_udp_session_set_flags) \
@@ -98,6 +99,25 @@ vl_api_bfd_udp_add_t_handler (vl_api_bfd_udp_add_t * mp)
 }
 
 static void
+vl_api_bfd_udp_mod_t_handler (vl_api_bfd_udp_mod_t * mp)
+{
+  vl_api_bfd_udp_mod_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  BFD_UDP_API_PARAM_COMMON_CODE;
+
+  rv = bfd_udp_mod_session (BFD_UDP_API_PARAM_FROM_MP (mp),
+			    clib_net_to_host_u32 (mp->desired_min_tx),
+			    clib_net_to_host_u32 (mp->required_min_rx),
+			    mp->detect_mult);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_MOD_REPLY);
+}
+
+static void
 vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
 {
   vl_api_bfd_udp_del_reply_t *rmp;
@@ -146,6 +166,10 @@ send_bfd_udp_session_details (unix_shared_memory_queue_t * q, u32 context,
 		   sizeof (key->peer_addr.ip4.data));
     }
 
+  mp->required_min_rx =
+    clib_host_to_net_u32 (bs->config_required_min_rx_usec);
+  mp->desired_min_tx = clib_host_to_net_u32 (bs->config_desired_min_tx_usec);
+  mp->detect_mult = bs->local_detect_mult;
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
