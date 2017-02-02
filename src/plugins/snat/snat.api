@@ -118,6 +118,7 @@ define snat_interface_details {
     @param addr_only - 1 if address only mapping
     @param local_ip_address - local IP address
     @param external_ip_address - external IP address
+    @param protocol - IP protocol
     @param local_port - local port number
     @param external_port - external port number
     @param external_sw_if_index - external interface (if set
@@ -132,6 +133,7 @@ define snat_add_static_mapping {
   u8 addr_only;
   u8 local_ip_address[16];
   u8 external_ip_address[16];
+  u8 protocol;
   u16 local_port;
   u16 external_port;
   u32 external_sw_if_index;
@@ -162,6 +164,7 @@ define snat_static_mapping_dump {
     @param addr_only - 1 if address only mapping
     @param local_ip_address - local IP address
     @param external_ip_address - external IP address
+    @param protocol - IP protocol
     @param local_port - local port number
     @param external_port - external port number
     @param vfr_id - VRF ID
@@ -172,6 +175,7 @@ define snat_static_mapping_details {
   u8 addr_only;
   u8 local_ip_address[16];
   u8 external_ip_address[16];
+  u8 protocol;
   u16 local_port;
   u16 external_port;
   u32 vrf_id;
