@@ -66,13 +66,18 @@ typedef struct {
     };
     u64 as_u64;
   };
-} snat_static_mapping_key_t;
+} snat_worker_key_t;
 
+
+#define foreach_snat_protocol \
+  _(UDP, 0, udp, "udp")       \
+  _(TCP, 1, tcp, "tcp")       \
+  _(ICMP, 2, icmp, "icmp")
 
 typedef enum {
-  SNAT_PROTOCOL_UDP = 0,
-  SNAT_PROTOCOL_TCP,
-  SNAT_PROTOCOL_ICMP,
+#define _(N, i, n, s) SNAT_PROTOCOL_##N = i,
+  foreach_snat_protocol
+#undef _
 } snat_protocol_t;
 
 
@@ -112,8 +117,11 @@ typedef struct {
 
 typedef struct {
   ip4_address_t addr;
-  u32 busy_ports;
-  uword * busy_port_bitmap;
+#define _(N, i, n, s) \
+  u32 busy_##n##_ports; \
+  uword * busy_##n##_port_bitmap;
+  foreach_snat_protocol
+#undef _
 } snat_address_t;
 
 typedef struct {
@@ -124,6 +132,7 @@ typedef struct {
   u8 addr_only;
   u32 vrf_id;
   u32 fib_index;
+  snat_protocol_t proto;
 } snat_static_mapping_t;
 
 typedef struct {
@@ -137,6 +146,7 @@ typedef struct {
   u16 e_port;
   u32 sw_if_index;
   u32 vrf_id;
+  snat_protocol_t proto;
   int addr_only;
   int is_add;
 } snat_static_map_resolve_t;
@@ -271,5 +281,29 @@ typedef struct {
   u16 identifier;
   u16 sequence;
 } icmp_echo_header_t;
+
+always_inline snat_protocol_t
+ip_proto_to_snat_proto (u8 ip_proto)
+{
+  snat_protocol_t snat_proto = ~0;
+
+  snat_proto = (ip_proto == IP_PROTOCOL_UDP) ? SNAT_PROTOCOL_UDP : snat_proto;
+  snat_proto = (ip_proto == IP_PROTOCOL_TCP) ? SNAT_PROTOCOL_TCP : snat_proto;
+  snat_proto = (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
+
+  return snat_proto;
+}
+
+always_inline u8
+snat_proto_to_ip_proto (snat_protocol_t snat_proto)
+{
+  u8 ip_proto = ~0;
+
+  ip_proto = (snat_proto == SNAT_PROTOCOL_UDP) ? IP_PROTOCOL_UDP : ip_proto;
+  ip_proto = (snat_proto == SNAT_PROTOCOL_TCP) ? IP_PROTOCOL_TCP : ip_proto;
+  ip_proto = (snat_proto == SNAT_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP : ip_proto;
+
+  return ip_proto;
+}
 
 #endif /* __included_snat_h__ */
