@@ -68,6 +68,13 @@ typedef enum mfib_entry_attribute_t_
      *        Use with extreme caution
      */
     MFIB_ENTRY_ACCEPT_ALL_ITF,
+    /**
+     * Exclusive - like its unicast counterpart. the source has provided
+     * the forwarding DPO directly. The entry therefore does not resolve
+     * paths via a path-list
+     */
+    MFIB_ENTRY_EXCLUSIVE,
+
     MFIB_ENTRY_INHERIT_ACCEPT,
     MFIB_ENTRY_ATTRIBUTE_LAST = MFIB_ENTRY_INHERIT_ACCEPT,
 } mfib_entry_attribute_t;
@@ -83,6 +90,7 @@ typedef enum mfib_entry_attribute_t_
     [MFIB_ENTRY_DROP]           = "D",     \
     [MFIB_ENTRY_ACCEPT_ALL_ITF] = "AA",    \
     [MFIB_ENTRY_INHERIT_ACCEPT] = "IA",    \
+    [MFIB_ENTRY_EXCLUSIVE]      = "E",     \
 }
 
 #define MFIB_ENTRY_NAMES_LONG  {                    \
@@ -91,6 +99,7 @@ typedef enum mfib_entry_attribute_t_
     [MFIB_ENTRY_DROP]           = "Drop",           \
     [MFIB_ENTRY_ACCEPT_ALL_ITF] = "Accept-all-itf", \
     [MFIB_ENTRY_INHERIT_ACCEPT] = "Inherit-Accept", \
+    [MFIB_ENTRY_EXCLUSIVE]      = "Exclusive",      \
 }
 
 typedef enum mfib_entry_flags_t_
@@ -99,8 +108,9 @@ typedef enum mfib_entry_flags_t_
     MFIB_ENTRY_FLAG_SIGNAL = (1 << MFIB_ENTRY_SIGNAL),
     MFIB_ENTRY_FLAG_DROP = (1 << MFIB_ENTRY_DROP),
     MFIB_ENTRY_FLAG_CONNECTED = (1 << MFIB_ENTRY_CONNECTED),
-    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = (1 << MFIB_ENTRY_INHERIT_ACCEPT),
     MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF = (1 << MFIB_ENTRY_ACCEPT_ALL_ITF),
+    MFIB_ENTRY_FLAG_EXCLUSIVE = (1 << MFIB_ENTRY_EXCLUSIVE),
+    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = (1 << MFIB_ENTRY_INHERIT_ACCEPT),
 } mfib_entry_flags_t;
 
 typedef enum mfib_itf_attribute_t_
@@ -155,6 +165,7 @@ typedef enum mfib_source_t_
     MFIB_SOURCE_CLI,
     MFIB_SOURCE_VXLAN,
     MFIB_SOURCE_DHCP,
+    MFIB_SOURCE_SRv6,
     MFIB_SOURCE_DEFAULT_ROUTE,
 } mfib_source_t;
 
@@ -164,6 +175,7 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_CLI] = "CLI",                     \
     [MFIB_SOURCE_DHCP] = "DHCP",                   \
     [MFIB_SOURCE_VXLAN] = "VXLAN",                 \
+    [MFIB_SOURCE_SRv6] = "SRv6",                   \
     [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
 }
 

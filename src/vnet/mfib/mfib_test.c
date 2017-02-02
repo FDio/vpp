@@ -19,6 +19,7 @@
 #include <vnet/mfib/mfib_entry.h>
 #include <vnet/mfib/mfib_signal.h>
 #include <vnet/mfib/ip6_mfib.h>
+#include <vnet/fib/fib_path_list.h>
 
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/adj/adj_mcast.h>
@@ -337,7 +338,7 @@ mfib_test_i (fib_protocol_t PROTO,
              const mfib_prefix_t *pfx_star_g_slash_m)
 {
     fib_node_index_t mfei, mfei_dflt, mfei_no_f, mfei_s_g, mfei_g_1, mfei_g_2, mfei_g_3, mfei_g_m;
-    u32 fib_index, n_entries, n_itfs, n_reps;
+    u32 fib_index, n_entries, n_itfs, n_reps, n_pls;
     fib_node_index_t ai_1, ai_2, ai_3;
     test_main_t *tm;
 
@@ -347,6 +348,7 @@ mfib_test_i (fib_protocol_t PROTO,
     n_entries = pool_elts(mfib_entry_pool);
     n_itfs = pool_elts(mfib_itf_pool);
     n_reps = pool_elts(replicate_pool);
+    n_pls = fib_path_list_pool_size();
     tm = &test_main;
 
     ai_1 = adj_mcast_add_or_lock(PROTO,
@@ -1024,6 +1026,54 @@ mfib_test_i (fib_protocol_t PROTO,
               format_mfib_prefix, pfx_star_g_slash_m);
 
     /*
+     * Add a prefix as a special/exclusive route
+     */
+    dpo_id_t td = DPO_INVALID;
+    index_t repi = replicate_create(1, fib_proto_to_dpo(PROTO));
+
+    dpo_set(&td, DPO_ADJACENCY_MCAST, fib_proto_to_dpo(PROTO), ai_2);
+    replicate_set_bucket(repi, 0, &td);
+
+    mfei = mfib_table_entry_special_add(fib_index,
+                                        pfx_star_g_3,
+                                        MFIB_SOURCE_SRv6,
+                                        MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF,
+                                        repi);
+    MFIB_TEST(mfib_test_entry(mfei,
+                              (MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF |
+                               MFIB_ENTRY_FLAG_EXCLUSIVE),
+                              1,
+                              DPO_ADJACENCY_MCAST, ai_2),
+              "%U exclusive replicate OK",
+              format_mfib_prefix, pfx_star_g_3);
+
+    /*
+     * update a special/exclusive route
+     */
+    index_t repi2 = replicate_create(1, fib_proto_to_dpo(PROTO));
+
+    dpo_set(&td, DPO_ADJACENCY_MCAST, fib_proto_to_dpo(PROTO), ai_1);
+    replicate_set_bucket(repi2, 0, &td);
+
+    mfei = mfib_table_entry_special_add(fib_index,
+                                        pfx_star_g_3,
+                                        MFIB_SOURCE_SRv6,
+                                        MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF,
+                                        repi2);
+    MFIB_TEST(mfib_test_entry(mfei,
+                              (MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF |
+                               MFIB_ENTRY_FLAG_EXCLUSIVE),
+                              1,
+                              DPO_ADJACENCY_MCAST, ai_1),
+              "%U exclusive update replicate OK",
+              format_mfib_prefix, pfx_star_g_3);
+
+    mfib_table_entry_delete(fib_index,
+                            pfx_star_g_3,
+                            MFIB_SOURCE_SRv6);
+    dpo_reset(&td);
+
+    /*
      * Unlock the table - it's the last lock so should be gone thereafter
      */
     mfib_table_unlock(fib_index, PROTO);
@@ -1040,6 +1090,8 @@ mfib_test_i (fib_protocol_t PROTO,
      * test we've leaked no resources
      */
     MFIB_TEST(0 == adj_mcast_db_size(), "%d MCAST adjs", adj_mcast_db_size());
+    MFIB_TEST(n_pls == fib_path_list_pool_size(), "%d=%d path-lists",
+              n_pls, fib_path_list_pool_size());
     MFIB_TEST(n_reps == pool_elts(replicate_pool), "%d=%d replicates",
               n_reps, pool_elts(replicate_pool));
     MFIB_TEST(n_entries == pool_elts(mfib_entry_pool),
@@ -1214,7 +1266,7 @@ mfib_test (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (test_fib_command, static) = {
     .path = "test mfib",
-    .short_help = "fib unit tests - DO NOT RUN ON A LIVE SYSTEM",
+    .short_help = "mfib unit tests - DO NOT RUN ON A LIVE SYSTEM",
     .function = mfib_test,
 };
 
