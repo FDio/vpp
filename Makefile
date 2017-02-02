@@ -162,8 +162,8 @@ ifeq ($(OS_ID),ubuntu)
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
 	@sudo -E add-apt-repository ppa:openjdk-r/ppa $(CONFIRM)
-	@sudo -E apt-get update
 endif
+	@sudo -E apt-get update
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
