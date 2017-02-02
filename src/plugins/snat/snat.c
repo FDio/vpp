@@ -270,7 +270,10 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
 
   vec_add2 (sm->addresses, ap, 1);
   ap->addr = *addr;
-  clib_bitmap_alloc (ap->busy_port_bitmap, 65535);
+#define _(N, i, n, s) \
+  clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535);
+  foreach_snat_protocol
+#undef _
 
   /* Add external address to FIB */
   pool_foreach (i, sm->interfaces,
@@ -311,6 +314,7 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
                                        u32 sw_if_index, 
                                        u16 e_port, 
                                        u32 vrf_id,
+                                       snat_protocol_t proto,
                                        int addr_only,  
                                        int is_add)
 {
@@ -322,6 +326,7 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
   rp->sw_if_index = sw_if_index;
   rp->e_port = e_port;
   rp->vrf_id = vrf_id;
+  rp->proto = proto;
   rp->addr_only = addr_only;
   rp->is_add = is_add;
 }
@@ -344,11 +349,11 @@ snat_add_static_mapping_when_resolved (snat_main_t * sm,
  */
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
-                            u32 sw_if_index, int is_add)
+                            u32 sw_if_index, snat_protocol_t proto, int is_add)
 {
   snat_main_t * sm = &snat_main;
   snat_static_mapping_t *m;
-  snat_static_mapping_key_t m_key;
+  snat_session_key_t m_key;
   clib_bihash_kv_8_8_t kv, value;
   snat_address_t *a = 0;
   u32 fib_index = ~0;
@@ -378,7 +383,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       if (first_int_addr == 0)
         {
           snat_add_static_mapping_when_resolved 
-            (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, 
+            (sm, l_addr, l_port, sw_if_index, e_port, vrf_id, proto,
              addr_only,  is_add);
           return 0;
         }
@@ -388,6 +393,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 
   m_key.addr = e_addr;
   m_key.port = addr_only ? 0 : e_port;
+  m_key.protocol = addr_only ? 0 : proto;
   m_key.fib_index = sm->outside_fib_index;
   kv.key = m_key.as_u64;
   if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
@@ -435,12 +441,22 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                 {
                   a = sm->addresses + i;
                   /* External port must be unused */
-                  if (clib_bitmap_get_no_check (a->busy_port_bitmap, e_port))
-                    return VNET_API_ERROR_INVALID_VALUE;
-                  clib_bitmap_set_no_check (a->busy_port_bitmap, e_port, 1);
-                  if (e_port > 1024)
-                    a->busy_ports++;
-
+                  switch (proto)
+                    {
+#define _(N, j, n, s) \
+                    case SNAT_PROTOCOL_##N: \
+                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, e_port)) \
+                        return VNET_API_ERROR_INVALID_VALUE; \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
+                      if (e_port > 1024) \
+                        a->busy_##n##_ports++; \
+                      break;
+                      foreach_snat_protocol
+#undef _
+                    default:
+                      clib_warning("unknown_protocol");
+                      return VNET_API_ERROR_INVALID_VALUE_2;
+                    }
                   break;
                 }
             }
@@ -460,10 +476,12 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
         {
           m->local_port = l_port;
           m->external_port = e_port;
+          m->proto = proto;
         }
 
       m_key.addr = m->local_addr;
       m_key.port = m->local_port;
+      m_key.protocol = m->proto;
       m_key.fib_index = m->fib_index;
       kv.key = m_key.as_u64;
       kv.value = m - sm->static_mappings;
@@ -480,7 +498,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       if (sm->workers)
         {
           snat_user_key_t w_key0;
-          snat_static_mapping_key_t w_key1;
+          snat_worker_key_t w_key1;
 
           w_key0.addr = m->local_addr;
           w_key0.fib_index = m->fib_index;
@@ -518,9 +536,20 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
               if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
                 {
                   a = sm->addresses + i;
-                  clib_bitmap_set_no_check (a->busy_port_bitmap, e_port, 0);
-                  a->busy_ports--;
-
+                  switch (proto)
+                    {
+#define _(N, j, n, s) \
+                    case SNAT_PROTOCOL_##N: \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
+                      if (e_port > 1024) \
+                        a->busy_##n##_ports--; \
+                      break;
+                      foreach_snat_protocol
+#undef _
+                    default:
+                      clib_warning("unknown_protocol");
+                      return VNET_API_ERROR_INVALID_VALUE_2;
+                    }
                   break;
                 }
             }
@@ -528,6 +557,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 
       m_key.addr = m->local_addr;
       m_key.port = m->local_port;
+      m_key.protocol = m->proto;
       m_key.fib_index = m->fib_index;
       kv.key = m_key.as_u64;
       clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 0);
@@ -666,7 +696,8 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
           if (m->external_addr.as_u32 == addr.as_u32)
             (void) snat_add_static_mapping (m->local_addr, m->external_addr,
                                             m->local_port, m->external_port,
-                                            m->vrf_id, m->addr_only, ~0, 0);
+                                            m->vrf_id, m->addr_only, ~0,
+                                            m->proto, 0);
       }));
     }
   else
@@ -680,7 +711,7 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
     }
 
   /* Delete sessions using address */
-  if (a->busy_ports)
+  if (a->busy_tcp_ports || a->busy_udp_ports || a->busy_icmp_ports)
     {
       vec_foreach (tsm, sm->per_thread_data)
         {
@@ -1019,6 +1050,7 @@ vl_api_snat_add_static_mapping_t_handler
   u16 local_port = 0, external_port = 0;
   u32 vrf_id, external_sw_if_index;
   int rv = 0;
+  snat_protocol_t proto;
 
   if (mp->is_ip4 != 1)
     {
@@ -1035,11 +1067,11 @@ vl_api_snat_add_static_mapping_t_handler
     }
   vrf_id = clib_net_to_host_u32 (mp->vrf_id);
   external_sw_if_index = clib_net_to_host_u32 (mp->external_sw_if_index);
+  proto = ip_proto_to_snat_proto (mp->protocol);
 
   rv = snat_add_static_mapping(local_addr, external_addr, local_port,
                                external_port, vrf_id, mp->addr_only,
-                               external_sw_if_index,
-                               mp->is_add);
+                               external_sw_if_index, proto, mp->is_add);
 
  send_reply:
   REPLY_MACRO (VL_API_SNAT_ADD_ADDRESS_RANGE_REPLY);
@@ -1051,7 +1083,8 @@ static void *vl_api_snat_add_static_mapping_t_print
   u8 * s;
 
   s = format (0, "SCRIPT: snat_add_static_mapping ");
-  s = format (s, "local_addr %U external_addr %U ",
+  s = format (s, "protocol %d local_addr %U external_addr %U ",
+              mp->protocol,
               format_ip4_address, mp->local_ip_address,
               format_ip4_address, mp->external_ip_address);
 
@@ -1086,6 +1119,7 @@ send_snat_static_mapping_details
   rmp->local_port = htons (m->local_port);
   rmp->external_port = htons (m->external_port);
   rmp->vrf_id = htonl (m->vrf_id);
+  rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
@@ -1532,11 +1566,22 @@ void snat_free_outside_address_and_port (snat_main_t * sm,
 
   a = sm->addresses + address_index;
 
-  ASSERT (clib_bitmap_get_no_check (a->busy_port_bitmap,
-    port_host_byte_order) == 1);
-
-  clib_bitmap_set_no_check (a->busy_port_bitmap, port_host_byte_order, 0);
-  a->busy_ports--;
+  switch (k->protocol)
+    {
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
+        port_host_byte_order) == 1); \
+      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
+        port_host_byte_order, 0); \
+      a->busy_##n##_ports--; \
+      break;
+      foreach_snat_protocol
+#undef _
+    default:
+      clib_warning("unknown_protocol");
+      return;
+    }
 }  
 
 /**
@@ -1557,7 +1602,7 @@ int snat_static_mapping_match (snat_main_t * sm,
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
-  snat_static_mapping_key_t m_key;
+  snat_session_key_t m_key;
   clib_bihash_8_8_t *mapping_hash = &sm->static_mapping_by_local;
 
   if (by_external)
@@ -1565,6 +1610,7 @@ int snat_static_mapping_match (snat_main_t * sm,
 
   m_key.addr = match.addr;
   m_key.port = clib_net_to_host_u16 (match.port);
+  m_key.protocol = match.protocol;
   m_key.fib_index = match.fib_index;
 
   kv.key = m_key.as_u64;
@@ -1573,6 +1619,7 @@ int snat_static_mapping_match (snat_main_t * sm,
     {
       /* Try address only mapping */
       m_key.port = 0;
+      m_key.protocol = 0;
       kv.key = m_key.as_u64;
       if (clib_bihash_search_8_8 (mapping_hash, &kv, &value))
         return 1;
@@ -1610,27 +1657,37 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
 
   for (i = 0; i < vec_len (sm->addresses); i++)
     {
-      if (sm->addresses[i].busy_ports < (65535-1024))
+      a = sm->addresses + i;
+      switch (k->protocol)
         {
-          a = sm->addresses + i;
-
-          while (1)
-            {
-              portnum = random_u32 (&sm->random_seed);
-              portnum &= 0xFFFF;
-              if (portnum < 1024)
-                continue;
-              if (clib_bitmap_get_no_check (a->busy_port_bitmap, portnum))
-                continue;
-              clib_bitmap_set_no_check (a->busy_port_bitmap, portnum, 1);
-              a->busy_ports++;
-              /* Caller sets protocol and fib index */
-              k->addr = a->addr;
-              k->port = clib_host_to_net_u16(portnum);
-              *address_indexp = i;
-              return 0;
-            }
+#define _(N, j, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          if (a->busy_##n##_ports < (65535-1024)) \
+            { \
+              while (1) \
+                { \
+                  portnum = random_u32 (&sm->random_seed); \
+                  portnum &= 0xFFFF; \
+                  if (portnum < 1024) \
+                    continue; \
+                  if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                    continue; \
+                  clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+                  a->busy_##n##_ports++; \
+                  k->addr = a->addr; \
+                  k->port = clib_host_to_net_u16(portnum); \
+                  *address_indexp = i; \
+                  return 0; \
+                } \
+            } \
+          break;
+          foreach_snat_protocol
+#undef _
+        default:
+          clib_warning("unknown protocol");
+          return 1;
         }
+
     }
   /* Totally out of translations to use... */
   snat_ipfix_logging_addresses_exhausted(0);
@@ -1787,6 +1844,38 @@ VLIB_CLI_COMMAND (set_interface_snat_command, static) = {
   .short_help = "set interface snat in <intfc> out <intfc> [del]",
 };
 
+uword
+unformat_snat_protocol (unformat_input_t * input, va_list * args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0);
+#define _(N, i, n, s) else if (unformat (input, s)) *r = SNAT_PROTOCOL_##N;
+  foreach_snat_protocol
+#undef _
+  else
+    return 0;
+  return 1;
+}
+
+u8 *
+format_snat_protocol (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  u8 *t = 0;
+
+  switch (i)
+    {
+#define _(N, j, n, str) case SNAT_PROTOCOL_##N: t = (u8 *) str; break;
+      foreach_snat_protocol
+#undef _
+    default:
+      s = format (s, "unknown");
+    }
+  s = format (s, "%s", t);
+  return s;
+}
+
 static clib_error_t *
 add_static_mapping_command_fn (vlib_main_t * vm,
                                unformat_input_t * input,
@@ -1801,6 +1890,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   vnet_main_t * vnm = vnet_get_main();
   int rv;
+  snat_protocol_t proto;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1829,6 +1919,8 @@ add_static_mapping_command_fn (vlib_main_t * vm,
         ;
       else if (unformat (line_input, "vrf %u", &vrf_id))
         ;
+      else if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
+        ;
       else if (unformat (line_input, "del"))
         is_add = 0;
       else
@@ -1838,7 +1930,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   unformat_free (line_input);
 
   rv = snat_add_static_mapping(l_addr, e_addr, (u16) l_port, (u16) e_port,
-                               vrf_id, addr_only, sw_if_index, is_add);
+                               vrf_id, addr_only, sw_if_index, proto, is_add);
 
   switch (rv)
     {
@@ -2175,7 +2267,8 @@ u8 * format_snat_static_mapping (u8 * s, va_list * args)
                   format_ip4_address, &m->external_addr,
                   m->vrf_id);
   else
-      s = format (s, "local %U:%d external %U:%d vrf %d",
+      s = format (s, "%U local %U:%d external %U:%d vrf %d",
+                  format_snat_protocol, m->proto,
                   format_ip4_address, &m->local_addr, m->local_port,
                   format_ip4_address, &m->external_addr, m->external_port,
                   m->vrf_id);
@@ -2238,13 +2331,11 @@ show_snat_command_fn (vlib_main_t * vm,
 
       vec_foreach (ap, sm->addresses)
         {
-          u8 * s = format (0, "");
           vlib_cli_output (vm, "%U", format_ip4_address, &ap->addr);
-          clib_bitmap_foreach (j, ap->busy_port_bitmap,
-            ({
-              s = format (s, " %d", j);
-            }));
-          vlib_cli_output (vm, "  %d busy ports:%s", ap->busy_ports, s);
+#define _(N, i, n, s) \
+          vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
+          foreach_snat_protocol
+#undef _
         }
     }
 
@@ -2383,6 +2474,7 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                                     rp->vrf_id,
                                                     rp->addr_only,
                                                     ~0 /* sw_if_index */,
+                                                    rp->proto,
                                                     rp->is_add);
                       if (rv)
                         clib_warning ("snat_add_static_mapping returned %d", 

@@ -883,6 +883,7 @@ class VppPapiProvider(object):
             external_port=0,
             addr_only=1,
             vrf_id=0,
+            protocol=0,
             is_add=1,
             is_ip4=1):
         """Add/delete S-NAT static mapping
@@ -894,6 +895,7 @@ class VppPapiProvider(object):
         :param external_port: External port number (Default value = 0)
         :param addr_only: 1 if address only mapping, 0 if address and port
         :param vrf_id: VRF ID
+        :param protocol: IP protocol (Default value = 0)
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         :param is_ip4: 1 if address type is IPv4 (Default value = 1)
         """
@@ -907,7 +909,8 @@ class VppPapiProvider(object):
              'local_port': local_port,
              'external_port': external_port,
              'external_sw_if_index': external_sw_if_index,
-             'vrf_id': vrf_id})
+             'vrf_id': vrf_id,
+             'protocol': protocol})
 
     def snat_add_address_range(
             self,

@@ -292,6 +292,7 @@ class TestSNAT(VppTestCase):
                                               external_port=sm.external_port,
                                               addr_only=sm.addr_only,
                                               vrf_id=sm.vrf_id,
+                                              protocol=sm.protocol,
                                               is_add=0)
 
         adresses = self.vapi.snat_address_dump()
@@ -302,7 +303,8 @@ class TestSNAT(VppTestCase):
 
     def snat_add_static_mapping(self, local_ip, external_ip='0.0.0.0',
                                 local_port=0, external_port=0, vrf_id=0,
-                                is_add=1, external_sw_if_index=0xFFFFFFFF):
+                                is_add=1, external_sw_if_index=0xFFFFFFFF,
+                                proto=0):
         """
         Add/delete S-NAT static mapping
 
@@ -313,6 +315,7 @@ class TestSNAT(VppTestCase):
         :param vrf_id: VRF ID (Default 0)
         :param is_add: 1 if add, 0 if delete (Default add)
         :param external_sw_if_index: External interface instead of IP address
+        :param proto: IP protocol (Mandatory if port specified)
         """
         addr_only = 1
         if local_port and external_port:
@@ -327,6 +330,7 @@ class TestSNAT(VppTestCase):
             external_port,
             addr_only,
             vrf_id,
+            proto,
             is_add)
 
     def snat_add_address(self, ip, is_add=1):
@@ -430,11 +434,14 @@ class TestSNAT(VppTestCase):
 
         self.snat_add_address(self.snat_addr)
         self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr,
-                                     self.tcp_port_in, self.tcp_port_out)
+                                     self.tcp_port_in, self.tcp_port_out,
+                                     proto=IP_PROTOS.tcp)
         self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr,
-                                     self.udp_port_in, self.udp_port_out)
+                                     self.udp_port_in, self.udp_port_out,
+                                     proto=IP_PROTOS.udp)
         self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr,
-                                     self.icmp_id_in, self.icmp_id_out)
+                                     self.icmp_id_in, self.icmp_id_out,
+                                     proto=IP_PROTOS.icmp)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
                                                  is_inside=0)
@@ -464,11 +471,14 @@ class TestSNAT(VppTestCase):
 
         self.snat_add_address(self.snat_addr)
         self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr,
-                                     self.tcp_port_in, self.tcp_port_out)
+                                     self.tcp_port_in, self.tcp_port_out,
+                                     proto=IP_PROTOS.tcp)
         self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr,
-                                     self.udp_port_in, self.udp_port_out)
+                                     self.udp_port_in, self.udp_port_out,
+                                     proto=IP_PROTOS.udp)
         self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr,
-                                     self.icmp_id_in, self.icmp_id_out)
+                                     self.icmp_id_in, self.icmp_id_out,
+                                     proto=IP_PROTOS.icmp)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
                                                  is_inside=0)
@@ -685,7 +695,8 @@ class TestSNAT(VppTestCase):
                                                  is_inside=0)
         # add static mapping for server
         self.snat_add_static_mapping(server.ip4, self.snat_addr,
-                                     server_in_port, server_out_port)
+                                     server_in_port, server_out_port,
+                                     proto=IP_PROTOS.tcp)
 
         # send packet from host to server
         p = (Ether(src=host.mac, dst=self.pg0.local_mac) /

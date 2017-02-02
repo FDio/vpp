@@ -405,13 +405,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index0);
 
-          proto0 = ~0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_UDP) 
-            ? SNAT_PROTOCOL_UDP : proto0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_TCP) 
-            ? SNAT_PROTOCOL_TCP : proto0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_ICMP) 
-            ? SNAT_PROTOCOL_ICMP : proto0;
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           if (PREDICT_FALSE (proto0 == ~0))
               goto trace0;
@@ -536,13 +530,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index1);
 
-          proto1 = ~0;
-          proto1 = (ip1->protocol == IP_PROTOCOL_UDP) 
-            ? SNAT_PROTOCOL_UDP : proto1;
-          proto1 = (ip1->protocol == IP_PROTOCOL_TCP) 
-            ? SNAT_PROTOCOL_TCP : proto1;
-          proto1 = (ip1->protocol == IP_PROTOCOL_ICMP) 
-            ? SNAT_PROTOCOL_ICMP : proto1;
+          proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
           if (PREDICT_FALSE (proto1 == ~0))
               goto trace1;
@@ -701,13 +689,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index0);
 
-          proto0 = ~0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_UDP) 
-            ? SNAT_PROTOCOL_UDP : proto0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_TCP) 
-            ? SNAT_PROTOCOL_TCP : proto0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_ICMP) 
-            ? SNAT_PROTOCOL_ICMP : proto0;
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           if (PREDICT_FALSE (proto0 == ~0))
               goto trace00;
@@ -901,7 +883,7 @@ snat_out2in_worker_handoff_fn (vlib_main_t * vm,
       u32 rx_fib_index0;
       ip4_header_t * ip0;
       udp_header_t * udp0;
-      snat_static_mapping_key_t key0;
+      snat_worker_key_t key0;
       clib_bihash_kv_8_8_t kv0, value0;
       u8 do_handoff;
 
@@ -1196,13 +1178,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
 
 	  vnet_feature_next (sw_if_index0, &next0, b0);
 
-          proto0 = ~0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_UDP)
-            ? SNAT_PROTOCOL_UDP : proto0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_TCP)
-            ? SNAT_PROTOCOL_TCP : proto0;
-          proto0 = (ip0->protocol == IP_PROTOCOL_ICMP)
-            ? SNAT_PROTOCOL_ICMP : proto0;
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           if (PREDICT_FALSE (proto0 == ~0))
               goto trace00;

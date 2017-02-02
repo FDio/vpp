@@ -295,9 +295,7 @@ snat_ipfix_logging_nat44_ses (u8 nat_event, u32 src_ip, u32 nat_src_ip,
   if (!silm->enabled)
     return;
 
-  proto = (snat_proto == SNAT_PROTOCOL_UDP) ? IP_PROTOCOL_UDP : proto;
-  proto = (snat_proto == SNAT_PROTOCOL_TCP) ? IP_PROTOCOL_TCP : proto;
-  proto = (snat_proto == SNAT_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP : proto;
+  proto = snat_proto_to_ip_proto (snat_proto);
 
   now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
   now += silm->milisecond_time_0;
