@@ -694,7 +694,6 @@ nobase_include_HEADERS +=			\
 if WITH_LIBSSL
 libvnet_la_SOURCES +=				\
  vnet/sr/sr.c					\
- vnet/sr/sr_replicate.c				\
  vnet/sr/sr_api.c
 endif
 

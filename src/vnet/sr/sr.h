@@ -15,8 +15,6 @@
 /**
  * @file
  * @brief Segment Routing header
- *
- * @note sr_replicate only works using DPDK today
  */
 #ifndef included_vnet_sr_h
 #define included_vnet_sr_h
@@ -71,6 +69,27 @@ typedef struct
   /** Indicates that this tunnel is part of a policy comprising
      of multiple tunnels. If == ~0 tunnel is not part of a policy */
   u32 policy_index;
+
+  /**
+   * The FIB node graph linkage
+   */
+  fib_node_t node;
+
+  /**
+   * The FIB entry index for the first hop. We track this so we
+   * don't need an extra lookup for it in the data plane
+   */
+  fib_node_index_t fib_entry_index;
+
+  /**
+   * This tunnel's sibling index in the children of the FIB entry
+   */
+  u32 sibling_index;
+
+  /**
+   * The DPO contributed by the first-hop FIB entry.
+   */
+  dpo_id_t first_hop_dpo;
 } ip6_sr_tunnel_t;
 
 /**
@@ -205,9 +224,6 @@ typedef struct
   /** ip6-rewrite next index for reinstalling the original dst address */
   u32 ip6_rewrite_sr_next_index;
 
-  /** ip6-replicate next index for multicast tunnel */
-  u32 ip6_lookup_sr_replicate_index;
-
   /** application API callback */
   void *sr_local_cb;
 
@@ -237,10 +253,6 @@ format_function_t format_ip6_sr_header;
 format_function_t format_ip6_sr_header_with_length;
 
 vlib_node_registration_t ip6_sr_input_node;
-
-#if DPDK > 0
-extern vlib_node_registration_t sr_replicate_node;
-#endif /* DPDK */
 
 int ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a);
 int ip6_sr_add_del_policy (ip6_sr_add_del_policy_args_t * a);
