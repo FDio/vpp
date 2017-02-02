@@ -65,7 +65,7 @@ typedef struct mfib_entry_t_ {
     CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
     /**
-     * The Replicate used for forwarding.
+     * The Replicate DPO used for forwarding.
      */
     dpo_id_t mfe_rep;
 
@@ -94,7 +94,8 @@ extern fib_node_index_t mfib_entry_create(u32 fib_index,
 
 extern int mfib_entry_update(fib_node_index_t fib_entry_index,
                              mfib_source_t source,
-                             mfib_entry_flags_t entry_flags);
+                             mfib_entry_flags_t entry_flags,
+                             index_t rep_dpo);
 
 extern void mfib_entry_path_update(fib_node_index_t fib_entry_index,
                                    mfib_source_t source,

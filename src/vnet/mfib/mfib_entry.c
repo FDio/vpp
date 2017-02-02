@@ -292,6 +292,7 @@ mfib_entry_src_flush (mfib_entry_src_t *msrc)
     ({
         mfib_itf_delete(mfib_itf_get(mfii));
     }));
+    fib_path_list_unlock(msrc->mfes_pl);
 }
 
 static void
@@ -474,37 +475,60 @@ mfib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 static void
 mfib_entry_stack (mfib_entry_t *mfib_entry)
 {
-    mfib_entry_collect_forwarding_ctx_t ctx = {
-        .next_hops = NULL,
-        .fct = mfib_entry_get_default_chain_type(mfib_entry),
-    };
     dpo_proto_t dp;
 
     dp = fib_proto_to_dpo(mfib_entry_get_proto(mfib_entry));
 
     if (FIB_NODE_INDEX_INVALID != mfib_entry->mfe_parent)
     {
+        mfib_entry_collect_forwarding_ctx_t ctx = {
+            .next_hops = NULL,
+            .fct = mfib_entry_get_default_chain_type(mfib_entry),
+        };
+
         fib_path_list_walk(mfib_entry->mfe_parent,
                            mfib_entry_src_collect_forwarding,
                            &ctx);
 
-        if (!dpo_id_is_valid(&mfib_entry->mfe_rep) ||
-            dpo_is_drop(&mfib_entry->mfe_rep))
+        if (!(MFIB_ENTRY_FLAG_EXCLUSIVE & mfib_entry->mfe_flags))
         {
-            dpo_id_t tmp_dpo = DPO_INVALID;
+            /*
+             * each path contirbutes a next-hop. form a replicate
+             * from those choices.
+             */
+            if (!dpo_id_is_valid(&mfib_entry->mfe_rep) ||
+                dpo_is_drop(&mfib_entry->mfe_rep))
+            {
+                dpo_id_t tmp_dpo = DPO_INVALID;
 
-            dpo_set(&tmp_dpo,
-                    DPO_REPLICATE, dp,
-                    replicate_create(0, dp));
+                dpo_set(&tmp_dpo,
+                        DPO_REPLICATE, dp,
+                        replicate_create(0, dp));
+
+                dpo_stack(DPO_MFIB_ENTRY, dp,
+                          &mfib_entry->mfe_rep,
+                          &tmp_dpo);
+
+                dpo_reset(&tmp_dpo);
+            }
+            replicate_multipath_update(&mfib_entry->mfe_rep,
+                                       ctx.next_hops);
+        }
+        else
+        {
+            /*
+             * for exclusive routes the source provided a replicate DPO
+             * we we stashed inthe special path list with one path
+             * so we can stack directly on that.
+             */
+            ASSERT(1 == vec_len(ctx.next_hops));
 
             dpo_stack(DPO_MFIB_ENTRY, dp,
                       &mfib_entry->mfe_rep,
-                      &tmp_dpo);
-
-            dpo_reset(&tmp_dpo);
+                      &ctx.next_hops[0].path_dpo);
+            dpo_reset(&ctx.next_hops[0].path_dpo);
+            vec_free(ctx.next_hops);
         }
-        replicate_multipath_update(&mfib_entry->mfe_rep,
-                                   ctx.next_hops);
     }
     else
     {
@@ -520,6 +544,8 @@ mfib_entry_forwarding_path_add (mfib_entry_src_t *msrc,
 {
     fib_node_index_t old_pl_index;
     fib_route_path_t *rpaths;
+
+    ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_flags));
 
     /*
      * path-lists require a vector of paths
@@ -554,6 +580,8 @@ mfib_entry_forwarding_path_remove (mfib_entry_src_t *msrc,
 {
     fib_node_index_t old_pl_index;
     fib_route_path_t *rpaths;
+
+    ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_flags));
 
     /*
      * path-lists require a vector of paths
@@ -650,7 +678,8 @@ mfib_entry_src_ok_for_delete (const mfib_entry_src_t *msrc)
 int
 mfib_entry_update (fib_node_index_t mfib_entry_index,
                    mfib_source_t source,
-                   mfib_entry_flags_t entry_flags)
+                   mfib_entry_flags_t entry_flags,
+                   index_t repi)
 {
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
@@ -658,6 +687,35 @@ mfib_entry_update (fib_node_index_t mfib_entry_index,
     mfib_entry = mfib_entry_get(mfib_entry_index);
     msrc = mfib_entry_src_find_or_create(mfib_entry, source);
     msrc->mfes_flags = entry_flags;
+
+    if (INDEX_INVALID != repi)
+    {
+        /*
+         * The source is providing its own replicate DPO.
+         * Create a sepcial path-list to manage it, that way
+         * this entry and the source are equivalent to a normal
+         * entry
+         */
+        fib_node_index_t old_pl_index;
+        fib_protocol_t fp;
+        dpo_id_t dpo = DPO_INVALID;
+
+        fp = mfib_entry_get_proto(mfib_entry);
+        old_pl_index = msrc->mfes_pl;
+
+        dpo_set(&dpo, DPO_REPLICATE,
+                fib_proto_to_dpo(fp),
+                repi);
+
+        msrc->mfes_pl =
+            fib_path_list_create_special(fp,
+                                         FIB_PATH_LIST_FLAG_EXCLUSIVE,
+                                         &dpo);
+
+        dpo_reset(&dpo);
+        fib_path_list_lock(msrc->mfes_pl);
+        fib_path_list_unlock(old_pl_index);
+    }
 
     if (mfib_entry_src_ok_for_delete(msrc))
     {

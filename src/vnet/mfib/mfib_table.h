@@ -18,6 +18,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/adj/adj.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 #include <vnet/mfib/mfib_types.h>
 
@@ -211,6 +212,37 @@ extern void mfib_table_entry_delete(u32 fib_index,
  */
 extern void mfib_table_entry_delete_index(fib_node_index_t entry_index,
                                           mfib_source_t source);
+
+/**
+ * @brief
+ *  Add a 'special' entry to the mFIB that links to the DPO passed
+ *  A special entry is an entry that the FIB is not expect to resolve
+ *  via the usual mechanisms (i.e. recurisve or neighbour adj DB lookup).
+ *  Instead the client/source provides the index of a replicate DPO to link to.
+ *
+  * @param fib_index
+ *  The index of the FIB
+ *
+ * @param prefix
+ *  The prefix to add
+ *
+ * @param source
+ *  The ID of the client/source adding the entry.
+ *
+ * @param flags
+ *  Flags for the entry.
+ *
+ * @param rep_dpo
+ *  The replicate DPO index to link to.
+ *
+ * @return
+ *  the index of the fib_entry_t that is created (or existed already).
+ */
+extern fib_node_index_t mfib_table_entry_special_add(u32 fib_index,
+                                                     const mfib_prefix_t *prefix,
+                                                     mfib_source_t source,
+                                                     mfib_entry_flags_t flags,
+                                                     index_t rep_dpo);
 
 /**
  * @brief

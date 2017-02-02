@@ -23,7 +23,9 @@
 #include <vnet/vnet.h>
 #include <vnet/sr/sr.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vnet/dpo/dpo.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 #include <openssl/hmac.h>
 
@@ -34,6 +36,11 @@ static vlib_node_registration_t sr_local_node;
  * @brief Dynamically added SR DPO type
  */
 static dpo_type_t sr_dpo_type;
+
+/**
+ * @brief Dynamically added SR FIB Node type
+ */
+static fib_node_type_t sr_fib_node_type;
 
 /**
  * @brief Use passed HMAC key in ip6_sr_header_t in OpenSSL HMAC routines
@@ -258,20 +265,10 @@ format_ip6_sr_header_with_length (u8 * s, va_list * args)
 
 /**
  * @brief Defined valid next nodes
- * @note Cannot call replicate yet without DPDK
 */
-#if DPDK > 0
 #define foreach_sr_rewrite_next                 \
 _(ERROR, "error-drop")                          \
-_(IP6_LOOKUP, "ip6-lookup")                     \
-_(SR_LOCAL, "sr-local")                         \
-_(SR_REPLICATE,"sr-replicate")
-#else
-#define foreach_sr_rewrite_next                 \
-_(ERROR, "error-drop")                          \
-_(IP6_LOOKUP, "ip6-lookup")                     \
 _(SR_LOCAL, "sr-local")
-#endif /* DPDK */
 
 /**
  * @brief Struct for defined valid next nodes
@@ -384,8 +381,8 @@ sr_rewrite (vlib_main_t * vm,
 	  ip6_header_t *ip0, *ip1;
 	  ip6_sr_header_t *sr0, *sr1;
 	  ip6_sr_tunnel_t *t0, *t1;
-	  u32 next0 = SR_REWRITE_NEXT_IP6_LOOKUP;
-	  u32 next1 = SR_REWRITE_NEXT_IP6_LOOKUP;
+	  u32 next0;
+	  u32 next1;
 	  u16 new_l0 = 0;
 	  u16 new_l1 = 0;
 
@@ -433,16 +430,6 @@ sr_rewrite (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  ip1 = vlib_buffer_get_current (b1);
-#if DPDK > 0			/* Cannot call replication node yet without DPDK */
-	  /* add a replication node */
-	  if (PREDICT_FALSE (t0->policy_index != ~0))
-	    {
-	      vnet_buffer (b0)->ip.save_protocol = t0->policy_index;
-	      next0 = SR_REWRITE_NEXT_SR_REPLICATE;
-	      sr0 = (ip6_sr_header_t *) (t0->rewrite);
-	      goto processnext;
-	    }
-#endif /* DPDK */
 
 	  /*
 	   * SR-unaware service chaining case: pkt coming back from
@@ -506,8 +493,11 @@ sr_rewrite (vlib_main_t * vm,
 
 	      sr_fix_hmac (sm, ip0, sr0);
 
-	      next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
-		next0;
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+		t0->first_hop_dpo.dpoi_index;
+	      next0 = t0->first_hop_dpo.dpoi_next_node;
+	      next0 = (sr_local_cb ?
+		       sr_local_cb (vm, node, b0, ip0, sr0) : next0);
 
 	      /*
 	       * Ignore "do not rewrite" shtik in this path
@@ -519,17 +509,7 @@ sr_rewrite (vlib_main_t * vm,
 		    b0->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-#if DPDK > 0			/* Cannot call replication node yet without DPDK */
-	processnext:
-	  /* add a replication node */
-	  if (PREDICT_FALSE (t1->policy_index != ~0))
-	    {
-	      vnet_buffer (b1)->ip.save_protocol = t1->policy_index;
-	      next1 = SR_REWRITE_NEXT_SR_REPLICATE;
-	      sr1 = (ip6_sr_header_t *) (t1->rewrite);
-	      goto trace00;
-	    }
-#endif /* DPDK */
+
 	  if (PREDICT_FALSE (ip1->protocol == IPPROTO_IPV6_ROUTE))
 	    {
 	      vlib_buffer_advance (b1, sizeof (ip1));
@@ -584,8 +564,11 @@ sr_rewrite (vlib_main_t * vm,
 
 	      sr_fix_hmac (sm, ip1, sr1);
 
-	      next1 = sr_local_cb ? sr_local_cb (vm, node, b1, ip1, sr1) :
-		next1;
+	      vnet_buffer (b1)->ip.adj_index[VLIB_TX] =
+		t1->first_hop_dpo.dpoi_index;
+	      next1 = t1->first_hop_dpo.dpoi_next_node;
+	      next1 = (sr_local_cb ?
+		       sr_local_cb (vm, node, b1, ip1, sr1) : next1);
 
 	      /*
 	       * Ignore "do not rewrite" shtik in this path
@@ -597,9 +580,6 @@ sr_rewrite (vlib_main_t * vm,
 		    b1->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-#if DPDK > 0			/* Cannot run replicate without DPDK and only replicate uses this label */
-	trace00:
-#endif /* DPDK */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -641,7 +621,7 @@ sr_rewrite (vlib_main_t * vm,
 	  ip6_header_t *ip0 = 0;
 	  ip6_sr_header_t *sr0 = 0;
 	  ip6_sr_tunnel_t *t0;
-	  u32 next0 = SR_REWRITE_NEXT_IP6_LOOKUP;
+	  u32 next0;
 	  u16 new_l0 = 0;
 
 	  bi0 = from[0];
@@ -661,16 +641,6 @@ sr_rewrite (vlib_main_t * vm,
 	  t0 =
 	    pool_elt_at_index (sm->tunnels,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
-#if DPDK > 0			/* Cannot call replication node yet without DPDK */
-	  /* add a replication node */
-	  if (PREDICT_FALSE (t0->policy_index != ~0))
-	    {
-	      vnet_buffer (b0)->ip.save_protocol = t0->policy_index;
-	      next0 = SR_REWRITE_NEXT_SR_REPLICATE;
-	      sr0 = (ip6_sr_header_t *) (t0->rewrite);
-	      goto trace0;
-	    }
-#endif /* DPDK */
 
 	  ASSERT (VLIB_BUFFER_PRE_DATA_SIZE
 		  >= ((word) vec_len (t0->rewrite)) + b0->current_data);
@@ -740,8 +710,11 @@ sr_rewrite (vlib_main_t * vm,
 
 	      sr_fix_hmac (sm, ip0, sr0);
 
-	      next0 = sr_local_cb ? sr_local_cb (vm, node, b0, ip0, sr0) :
-		next0;
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+		t0->first_hop_dpo.dpoi_index;
+	      next0 = t0->first_hop_dpo.dpoi_next_node;
+	      next0 = (sr_local_cb ?
+		       sr_local_cb (vm, node, b0, ip0, sr0) : next0);
 
 	      /*
 	       * Ignore "do not rewrite" shtik in this path
@@ -753,9 +726,6 @@ sr_rewrite (vlib_main_t * vm,
 		    b0->error = node->errors[SR_REWRITE_ERROR_APP_CALLBACK];
 		}
 	    }
-#if DPDK > 0			/* Cannot run replicate without DPDK and only replicate uses this label */
-	trace0:
-#endif /* DPDK */
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -809,20 +779,69 @@ VLIB_NODE_FUNCTION_MULTIARCH (sr_rewrite_node, sr_rewrite)
 /* *INDENT-ON* */
 
 static int
-ip6_delete_route_no_next_hop (ip6_address_t * dst_address_arg,
-			      u32 dst_address_length, u32 rx_table_id)
+ip6_routes_add_del (ip6_sr_tunnel_t * t, int is_del)
 {
+  ip6_sr_main_t *sm = &sr_main;
+
+  /*
+   * the prefix for the tunnel's destination
+   */
+  /* *INDENT-OFF* */
   fib_prefix_t pfx = {
-    .fp_len = dst_address_length,
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = t->dst_mask_width,
+    .fp_addr = {
+      .ip6 = t->key.dst,
+    }
+  };
+  /* *INDENT-ON* */
+
+  if (is_del)
+    {
+      fib_table_entry_delete (t->rx_fib_index, &pfx, FIB_SOURCE_SR);
+    }
+  else
+    {
+      dpo_id_t dpo = DPO_INVALID;
+
+      dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, t - sm->tunnels);
+      fib_table_entry_special_dpo_add (t->rx_fib_index,
+				       &pfx,
+				       FIB_SOURCE_SR,
+				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+      dpo_reset (&dpo);
+    }
+
+  /*
+   * Track the first hop address so we don't need to perform an extra
+   * lookup in the data-path
+   */
+  /* *INDENT-OFF* */
+  const fib_prefix_t first_hop_pfx = {
+    .fp_len = 128,
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_addr = {
-		.ip6 = *dst_address_arg,
-		}
+      .ip6 = t->first_hop,
+    }
   };
+  /* *INDENT-ON* */
 
-  fib_table_entry_delete (fib_table_id_find_fib_index (FIB_PROTOCOL_IP6,
-						       rx_table_id),
-			  &pfx, FIB_SOURCE_SR);
+  if (is_del)
+    {
+      fib_entry_child_remove (t->fib_entry_index, t->sibling_index);
+      fib_table_entry_delete_index (t->fib_entry_index, FIB_SOURCE_RR);
+    }
+  else
+    {
+      t->fib_entry_index =
+	fib_table_entry_special_add (t->rx_fib_index,
+				     &first_hop_pfx,
+				     FIB_SOURCE_RR,
+				     FIB_ENTRY_FLAG_NONE, ADJ_INDEX_INVALID);
+      t->sibling_index =
+	fib_entry_child_add (t->fib_entry_index,
+			     sr_fib_node_type, t - sm->tunnels);
+    }
 
   return 0;
 }
@@ -886,6 +905,18 @@ find_or_add_shared_secret (ip6_sr_main_t * sm, u8 * secret, u32 * indexp)
 }
 
 /**
+ * @brief Stack a tunnel on the forwarding chain of the first-hop
+ */
+static void
+sr_tunnel_stack (ip6_sr_tunnel_t * st)
+{
+  dpo_stack (sr_dpo_type,
+	     DPO_PROTO_IP6,
+	     &st->first_hop_dpo,
+	     fib_entry_contribute_ip_forwarding (st->fib_entry_index));
+}
+
+/**
  * @brief Add or Delete a Segment Routing tunnel.
  *
  * @param a ip6_sr_add_del_tunnel_args_t *
@@ -909,7 +940,6 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   u8 hmac_key_index = 0;
   ip6_sr_policy_t *pt;
   int i;
-  dpo_id_t dpo = DPO_INVALID;
 
   /* Make sure that the rx FIB exists */
   p = hash_get (im->fib_index_by_table_id, a->rx_table_id);
@@ -981,8 +1011,8 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
       /* Delete existing tunnel */
       t = pool_elt_at_index (sm->tunnels, p[0]);
 
-      ip6_delete_route_no_next_hop (&t->key.dst, t->dst_mask_width,
-				    a->rx_table_id);
+      ip6_routes_add_del (t, 1);
+
       vec_free (t->rewrite);
       /* Remove tunnel from any policy if associated */
       if (t->policy_index != ~0)
@@ -1014,6 +1044,7 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
 	  hash_unset_mem (sm->tunnel_index_by_name, t->name);
 	  vec_free (t->name);
 	}
+      dpo_reset (&t->first_hop_dpo);
       pool_put (sm->tunnels, t);
       hp = hash_get_pair (sm->tunnel_index_by_key, &key);
       key_copy = (void *) (hp->key);
@@ -1026,6 +1057,7 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
   pool_get (sm->tunnels, t);
   memset (t, 0, sizeof (*t));
   t->policy_index = ~0;
+  fib_node_init (&t->node, sr_fib_node_type);
 
   clib_memcpy (&t->key, &key, sizeof (t->key));
   t->dst_mask_width = a->dst_mask_width;
@@ -1124,20 +1156,13 @@ ip6_sr_add_del_tunnel (ip6_sr_add_del_tunnel_args_t * a)
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
-  dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, t - sm->tunnels);
 
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = a->dst_mask_width,
-    .fp_addr = {
-		.ip6 = *a->dst_address,
-		}
-  };
-  fib_table_entry_special_dpo_add (rx_fib_index,
-				   &pfx,
-				   FIB_SOURCE_SR,
-				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
-  dpo_reset (&dpo);
+  /*
+   * Add the routes for the tunnel destination and first-hop, then stack
+   * the tunnel on the appropriate forwarding DPOs.
+   */
+  ip6_routes_add_del (t, 0);
+  sr_tunnel_stack (t);
 
   if (a->policy_name)
     {
@@ -1197,7 +1222,7 @@ format_sr_dpo (u8 * s, va_list * args)
   return (format (s, "SR: tunnel:[%d]", index));
 }
 
-const static dpo_vft_t sr_vft = {
+const static dpo_vft_t sr_dpo_vft = {
   .dv_lock = sr_dpo_lock,
   .dv_unlock = sr_dpo_unlock,
   .dv_format = format_sr_dpo,
@@ -1210,6 +1235,65 @@ const static char *const sr_ip6_nodes[] = {
 
 const static char *const *const sr_nodes[DPO_PROTO_NUM] = {
   [DPO_PROTO_IP6] = sr_ip6_nodes,
+};
+
+static ip6_sr_tunnel_t *
+sr_tunnel_from_fib_node (fib_node_t * node)
+{
+#if (CLIB_DEBUG > 0)
+  ASSERT (sr_fib_node_type == node->fn_type);
+#endif
+  return ((ip6_sr_tunnel_t *) (((char *) node) -
+			       STRUCT_OFFSET_OF (ip6_sr_tunnel_t, node)));
+}
+
+/**
+ * Function definition to backwalk a FIB node
+ */
+static fib_node_back_walk_rc_t
+sr_tunnel_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+{
+  sr_tunnel_stack (sr_tunnel_from_fib_node (node));
+
+  return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
+/**
+ * Function definition to get a FIB node from its index
+ */
+static fib_node_t *
+sr_tunnel_fib_node_get (fib_node_index_t index)
+{
+  ip6_sr_tunnel_t *st;
+  ip6_sr_main_t *sm;
+
+  sm = &sr_main;
+  st = pool_elt_at_index (sm->tunnels, index);
+
+  return (&st->node);
+}
+
+/**
+ * Function definition to inform the FIB node that its last lock has gone.
+ */
+static void
+sr_tunnel_last_lock_gone (fib_node_t * node)
+{
+  /*
+   * The SR tunnel is a root of the graph. As such
+   * it never has children and thus is never locked.
+   */
+  ASSERT (0);
+}
+
+/*
+ * Virtual function table registered by SR tunnels
+ * for participation in the FIB object graph.
+ */
+const static fib_node_vft_t sr_fib_vft = {
+  .fnv_get = sr_tunnel_fib_node_get,
+  .fnv_last_lock = sr_tunnel_last_lock_gone,
+  .fnv_back_walk = sr_tunnel_back_walk,
 };
 
 /**
@@ -1764,6 +1848,8 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
   ip6_sr_tunnel_t *t;
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *pt;
+  index_t rep;
+  u32 ii;
 
   if (a->is_del)
     {
@@ -1803,23 +1889,49 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
    * We don't handle ugly RFC-related cases yet, but I'm sure PL will complain
    * at some point...
    */
-  dpo_id_t dpo = DPO_INVALID;
 
-  dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, t - sm->tunnels);
-
-  /* Construct a FIB entry for multicast using the rx/tx fib from the first tunnel */
-  fib_prefix_t pfx = {
+  /*
+   * Construct an mFIB entry for the multicast address,
+   * using the rx/tx fib from the first tunnel.
+   * There is no RPF information for this address (I need to discuss this with
+   * Pablo), so for now accept from anywhere...
+   */
+  /* *INDENT-OFF* */
+  mfib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP6,
     .fp_len = 128,
-    .fp_addr = {
-		.ip6 = *a->multicast_address,
-		}
+    .fp_grp_addr = {
+      .ip6 = *a->multicast_address,
+    }
   };
-  fib_table_entry_special_dpo_add (t->rx_fib_index,
-				   &pfx,
-				   FIB_SOURCE_SR,
-				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
-  dpo_reset (&dpo);
+  /* *INDENT-ON* */
+
+  if (a->is_del)
+    mfib_table_entry_delete (t->rx_fib_index, &pfx, MFIB_SOURCE_SRv6);
+  else
+    {
+      /*
+       * Construct a replicate DPO that will replicate received packets over
+       * each tunnel in the policy
+       */
+      dpo_id_t dpo = DPO_INVALID;
+
+      rep = replicate_create (vec_len (pt->tunnel_indices), DPO_PROTO_IP6);
+
+      vec_foreach_index (ii, pt->tunnel_indices)
+      {
+	dpo_set (&dpo, sr_dpo_type, DPO_PROTO_IP6, pt->tunnel_indices[ii]);
+
+	replicate_set_bucket (rep, ii, &dpo);
+      }
+
+      mfib_table_entry_special_add (t->rx_fib_index,
+				    &pfx,
+				    MFIB_SOURCE_SRv6,
+				    MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF, rep);
+
+      dpo_reset (&dpo);
+    }
 
   u8 *mcast_copy = 0;
   mcast_copy = vec_new (ip6_address_t, 1);
@@ -1829,13 +1941,12 @@ ip6_sr_add_del_multicastmap (ip6_sr_add_del_multicastmap_args_t * a)
     {
       hash_unset_mem (sm->policy_index_by_multicast_address, mcast_copy);
       vec_free (mcast_copy);
-      return 0;
     }
-  /* else */
-
-  hash_set_mem (sm->policy_index_by_multicast_address, mcast_copy,
-		pt - sm->policies);
-
+  else
+    {
+      hash_set_mem (sm->policy_index_by_multicast_address, mcast_copy,
+		    pt - sm->policies);
+    }
 
   return 0;
 }
@@ -1888,12 +1999,7 @@ sr_add_del_multicast_map_command_fn (vlib_main_t * vm,
   a->multicast_address = &multicast_address;
   a->policy_name = policy_name;
 
-#if DPDK > 0			/*Cannot call replicate or configure multicast map yet without DPDK */
   rv = ip6_sr_add_del_multicastmap (a);
-#else
-  return clib_error_return (0,
-			    "cannot use multicast replicate spray case without DPDK installed");
-#endif /* DPDK */
 
   switch (rv)
     {
@@ -2295,12 +2401,6 @@ sr_init (vlib_main_t * vm)
   ip6_rewrite_node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
   ASSERT (ip6_rewrite_node);
 
-#if DPDK > 0			/* Cannot run replicate without DPDK */
-  /* Add a disposition to sr_replicate for the sr multicast replicate node */
-  sm->ip6_lookup_sr_replicate_index =
-    vlib_node_add_next (vm, ip6_lookup_node->index, sr_replicate_node.index);
-#endif /* DPDK */
-
   /* Add a disposition to ip6_rewrite for the sr dst address hack node */
   sm->ip6_rewrite_sr_next_index =
     vlib_node_add_next (vm, ip6_rewrite_node->index,
@@ -2311,7 +2411,8 @@ sr_init (vlib_main_t * vm)
   sm->md = (void *) EVP_get_digestbyname ("sha1");
   sm->hmac_ctx = clib_mem_alloc (sizeof (HMAC_CTX));
 
-  sr_dpo_type = dpo_register_new_type (&sr_vft, sr_nodes);
+  sr_dpo_type = dpo_register_new_type (&sr_dpo_vft, sr_nodes);
+  sr_fib_node_type = fib_node_register_new_type (&sr_fib_vft);
 
   return error;
 }
@@ -3087,7 +3188,7 @@ set_ip6_sr_rewrite_fn (vlib_main_t * vm,
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
   adj->rewrite_header.node_index = sr_fix_dst_addr_node.index;
 
-  /* $$$$$ hack... steal the mcast group index */
+  /* $$$$$ hack... steal the interface address index */
   adj->if_address_index =
     vlib_node_add_next (vm, sr_fix_dst_addr_node.index,
 			hi->output_node_index);

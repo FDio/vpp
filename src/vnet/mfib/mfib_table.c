@@ -195,7 +195,10 @@ mfib_table_entry_update (u32 fib_index,
     {
         mfib_entry_lock(mfib_entry_index);
 
-        if (mfib_entry_update(mfib_entry_index, source, entry_flags))
+        if (mfib_entry_update(mfib_entry_index,
+                              source,
+                              entry_flags,
+                              INDEX_INVALID))
         {
             /*
              * this update means we can now remove the entry.
@@ -281,6 +284,36 @@ mfib_table_entry_path_remove (u32 fib_index,
 
         mfib_entry_unlock(mfib_entry_index);
     }
+}
+
+fib_node_index_t
+mfib_table_entry_special_add (u32 fib_index,
+                              const mfib_prefix_t *prefix,
+                              mfib_source_t source,
+                              mfib_entry_flags_t entry_flags,
+                              index_t rep_dpo)
+{
+    fib_node_index_t mfib_entry_index;
+    mfib_table_t *mfib_table;
+
+    mfib_table = mfib_table_get(fib_index, prefix->fp_proto);
+    mfib_entry_index = mfib_table_lookup_exact_match_i(mfib_table, prefix);
+
+    if (FIB_NODE_INDEX_INVALID == mfib_entry_index)
+    {
+        mfib_entry_index = mfib_entry_create(fib_index,
+                                             source,
+                                             prefix,
+                                             MFIB_ENTRY_FLAG_NONE);
+
+        mfib_table_entry_insert(mfib_table, prefix, mfib_entry_index);
+    }
+
+    mfib_entry_update(mfib_entry_index, source,
+                      (MFIB_ENTRY_FLAG_EXCLUSIVE | entry_flags),
+                      rep_dpo);
+
+    return (mfib_entry_index);
 }
 
 static void

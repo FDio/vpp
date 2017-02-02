@@ -601,8 +601,7 @@ VLIB_CLI_COMMAND (replicate_show_command, static) = {
 typedef struct replicate_trace_t_
 {
     index_t rep_index;
-    index_t dpo_index;
-    dpo_type_t dpo_type;
+    dpo_id_t dpo;
 } replicate_trace_t;
 
 static uword
@@ -656,8 +655,7 @@ replicate_inline (vlib_main_t * vm,
             {
                 replicate_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
                 t->rep_index = repi0;
-                t->dpo_index = dpo0->dpoi_index;
-                t->dpo_type = dpo0->dpoi_type;
+                t->dpo = *dpo0;
             }
             vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
                                              to_next, n_left_to_next,
@@ -682,8 +680,7 @@ replicate_inline (vlib_main_t * vm,
                 {
                     replicate_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
                     t->rep_index = repi0;
-                    t->dpo_index = dpo0->dpoi_index;
-                    t->dpo_type = dpo0->dpoi_type;
+                    t->dpo = *dpo0;
                 }
 
                 vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -705,10 +702,9 @@ format_replicate_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   replicate_trace_t *t = va_arg (*args, replicate_trace_t *);
 
-  s = format (s, "replicate: %d via %U:%d",
+  s = format (s, "replicate: %d via %U",
               t->rep_index,
-              format_dpo_type, t->dpo_type,
-              t->dpo_index);
+              format_dpo_id, &t->dpo);
   return s;
 }
 
