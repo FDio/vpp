@@ -698,7 +698,7 @@ class VppTestResult(unittest.TestResult):
 
 class VppTestRunner(unittest.TextTestRunner):
     """
-    A basic test runner implementation which prints results on standard error.
+    A basic test runner implementation which prints results to standard error.
     """
     @property
     def resultclass(self):
@@ -713,6 +713,67 @@ class VppTestRunner(unittest.TextTestRunner):
                                             verbosity, failfast, buffer,
                                             resultclass)
 
+    test_option = "TEST"
+
+    def parse_test_option(self):
+        try:
+            f = os.getenv(self.test_option)
+        except:
+            f = None
+        filter_file_name = None
+        filter_class_name = None
+        filter_func_name = None
+        if f:
+            if '.' in f:
+                parts = f.split('.')
+                if len(parts) > 3:
+                    raise Exception("Unrecognized %s option: %s" %
+                                    (self.test_option, f))
+                if len(parts) > 2:
+                    if parts[2] not in ('*', ''):
+                        filter_func_name = parts[2]
+                if parts[1] not in ('*', ''):
+                    filter_class_name = parts[1]
+                if parts[0] not in ('*', ''):
+                    if parts[0].startswith('test_'):
+                        filter_file_name = parts[0]
+                    else:
+                        filter_file_name = 'test_%s' % parts[0]
+            else:
+                if f.startswith('test_'):
+                    filter_file_name = f
+                else:
+                    filter_file_name = 'test_%s' % f
+        return filter_file_name, filter_class_name, filter_func_name
+
+    def filter_tests(self, tests, filter_file, filter_class, filter_func):
+        result = unittest.suite.TestSuite()
+        for t in tests:
+            if isinstance(t, unittest.suite.TestSuite):
+                # this is a bunch of tests, recursively filter...
+                x = self.filter_tests(t, filter_file, filter_class,
+                                      filter_func)
+                if x.countTestCases() > 0:
+                    result.addTest(x)
+            elif isinstance(t, unittest.TestCase):
+                # this is a single test
+                parts = t.id().split('.')
+                # t.id() for common cases like this:
+                # test_classifier.TestClassifier.test_acl_ip
+                # apply filtering only if it is so
+                if len(parts) == 3:
+                    if filter_file and filter_file != parts[0]:
+                        continue
+                    if filter_class and filter_class != parts[1]:
+                        continue
+                    if filter_func and filter_func != parts[2]:
+                        continue
+                result.addTest(t)
+            else:
+                # unexpected object, don't touch it
+                result.addTest(t)
+        return result
+
     def run(self, test):
         """
         Run the tests
@@ -721,4 +782,11 @@ class VppTestRunner(unittest.TextTestRunner):
 
         """
         print("Running tests using custom test runner")  # debug message
-        return super(VppTestRunner, self).run(test)
+        filter_file, filter_class, filter_func = self.parse_test_option()
+        print("Active filters: file=%s, class=%s, function=%s" % (
+            filter_file, filter_class, filter_func))
+        filtered = self.filter_tests(test, filter_file, filter_class,
+                                     filter_func)
+        print("%s out of %s tests match specified filters" % (
+            filtered.countTestCases(), test.countTestCases()))
+        return super(VppTestRunner, self).run(filtered)

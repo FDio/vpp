@@ -35,7 +35,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_$(TEST)\"*.py\""
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover -p test_\"*.py\""
 endef
 
 test: reset verify-python-path $(PAPI_INSTALL_DONE)
@@ -111,7 +111,15 @@ help:
 	@echo "    DEBUG=gdbserver   - run gdb inside a gdb server, otherwise "
 	@echo "                        same as above"
 	@echo " STEP=[yes|no]        - ease debugging by stepping through a testcase "
-	@echo " TEST=<name>          - only run specific test"
+	@echo " TEST=<filter>        - filter the set of tests:"
+	@echo "    by file-name      - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py"
+	@echo "    by file-suffix    - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py"
+	@echo "    by wildcard       - wildcard filter is <file>.<class>.<test function>, each can be replaced by '*'"
+	@echo "                        e.g. TEST='test_bfd.*.*' is equivalent to above example of filter by file-name"
+	@echo "                             TEST='bfd.*.*' is equivalent to above example of filter by file-suffix"
+	@echo "                             TEST='bfd.BFDAPITestCase.*' selects all tests from test_bfd.py which are part of BFDAPITestCase class"
+	@echo "                             TEST='bfd.BFDAPITestCase.test_add_bfd' selects a single test named test_add_bfd from test_bfd.py/BFDAPITestCase"
+	@echo "                             TEST='*.*.test_add_bfd' selects all test functions named test_add_bfd from all files/classes"
 	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"
