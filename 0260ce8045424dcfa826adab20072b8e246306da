@@ -95,6 +95,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_b20506c4",
+        "filename": "src/vlib/unix/plugin.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-02-03T14:08:44Z",
+      "side": 1,
+      "message": "My bad, you are correct.",
+      "parentUuid": "3a3291f1_c760d637",
+      "range": {
+        "startLine": 407,
+        "startChar": 0,
+        "endLine": 407,
+        "endChar": 13
+      },
+      "revId": "0260ce8045424dcfa826adab20072b8e246306da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_47f986c7",
         "filename": "src/vlib/unix/plugin.c",
         "patchSetId": 10
@@ -176,6 +200,30 @@
       "side": 1,
       "message": "As I cannot have pointer here due to elf parsing, i had to put fixed size array. I put 32 as a reasonable array size but it can be bigger.\nCompiler will report error if string is bigger than array, still you are right about null termination, it will not be there if string is 32 bytes long. I fill fix that in the plugin.c",
       "parentUuid": "3a3291f1_07037eb9",
+      "range": {
+        "startLine": 62,
+        "startChar": 0,
+        "endLine": 63,
+        "endChar": 34
+      },
+      "revId": "0260ce8045424dcfa826adab20072b8e246306da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_720f9ee2",
+        "filename": "src/vlib/unix/plugin.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-02-03T14:08:44Z",
+      "side": 1,
+      "message": "Your solution looks good to me.",
+      "parentUuid": "3a3291f1_47d186fa",
       "range": {
         "startLine": 62,
         "startChar": 0,
