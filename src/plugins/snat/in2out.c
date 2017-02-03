@@ -139,6 +139,7 @@ snat_not_translate (snat_main_t * sm, snat_runtime_t * rt, u32 sw_if_index0,
   snat_session_key_t key0, sm0;
   clib_bihash_kv_8_8_t kv0, value0;
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
+  uword * p;
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_len = 32,
@@ -162,6 +163,15 @@ snat_not_translate (snat_main_t * sm, snat_runtime_t * rt, u32 sw_if_index0,
   /* Don't NAT packet aimed at the intfc address */
   if (PREDICT_FALSE(ip0->dst_address.as_u32 == rt->cached_ip4_address))
     return 1;
+
+  /* If outside FIB index is not resolved yet */
+  if (sm->outside_fib_index == ~0)
+    {
+      p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
+      if (!p)
+        sm->outside_fib_index = 0;
+      sm->outside_fib_index = p[0];
+    }
 
   key0.addr = ip0->dst_address;
   key0.port = udp0->dst_port;
@@ -526,6 +536,16 @@ snat_hairpinning (snat_main_t *sm,
   ip_csum_t sum0;
   u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si;
   u16 new_dst_port0, old_dst_port0;
+  uword * p;
+
+  /* If outside FIB index is not resolved yet */
+  if (sm->outside_fib_index == ~0)
+    {
+      p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
+      if (!p)
+        sm->outside_fib_index = 0;
+      sm->outside_fib_index = p[0];
+    }
 
   key0.addr = ip0->dst_address;
   key0.port = udp0->dst_port;
