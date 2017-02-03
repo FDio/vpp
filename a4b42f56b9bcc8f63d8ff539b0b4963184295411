@@ -16,6 +16,24 @@
       "revId": "a4b42f56b9bcc8f63d8ff539b0b4963184295411",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c718d686",
+        "filename": "src/plugins/snat/in2out.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-03T11:25:24Z",
+      "side": 1,
+      "message": "check avoid to call find_or_create each time, outside FIB index is same whole time\noutside VRF is configured in startup config and never changed/deleted, so don\u0027t need to unlock",
+      "parentUuid": "3a3291f1_072ffea2",
+      "revId": "a4b42f56b9bcc8f63d8ff539b0b4963184295411",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
