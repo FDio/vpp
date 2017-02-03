@@ -214,7 +214,7 @@ done:
 VLIB_CLI_COMMAND (set_interface_ip_address_command, static) = {
   .path = "set interface ip address",
   .function = add_del_ip_address,
-  .short_help = "set interface ip address <interface> [<ip-addr>/<mask> [del]] | [del all]",
+  .short_help = "set interface ip address [del] <interface> <ip-addr>/<mask> | [all]",
 };
 /* *INDENT-ON* */
 
