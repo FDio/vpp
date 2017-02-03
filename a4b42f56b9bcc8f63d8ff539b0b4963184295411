@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_072ffea2",
+        "filename": "src/plugins/snat/in2out.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-03T11:10:22Z",
+      "side": 1,
+      "message": "you don\u0027t need the check for index\u003d\u003d~0. just set the index with find_or_create...\n\nthe unlock needs to happen when you no longer need to reference the VRF, .i.e. when the config gets removed.\nthink of the lock/unlock the same as malloc/free.",
+      "revId": "a4b42f56b9bcc8f63d8ff539b0b4963184295411",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
