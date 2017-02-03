@@ -94,7 +94,8 @@ _(CANNOT_ENABLE_DISABLE_FEATURE, -100, "Cannot enable/disable feature") \
 _(BFD_EEXIST, -101, "Duplicate BFD object") \
 _(BFD_ENOENT, -102, "No such BFD object") \
 _(BFD_EINUSE, -103, "BFD object in use") \
-_(BFD_NOTSUPP, -104, "BFD feature not supported")
+_(BFD_NOTSUPP, -104, "BFD feature not supported") \
+_(LISP_RLOC_LOCAL, -105, "RLOC address is local")
 
 typedef enum
 {
