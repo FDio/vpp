@@ -71,6 +71,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_c760d637",
+        "filename": "src/vlib/unix/plugin.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-03T09:37:49Z",
+      "side": 1,
+      "message": "v and s after the first pass will not be allocated, as I already have vec_free() for both at the end of while loop.",
+      "parentUuid": "3a3291f1_c70576c3",
+      "range": {
+        "startLine": 407,
+        "startChar": 0,
+        "endLine": 407,
+        "endChar": 13
+      },
+      "revId": "0260ce8045424dcfa826adab20072b8e246306da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_47f986c7",
         "filename": "src/vlib/unix/plugin.c",
         "patchSetId": 10
