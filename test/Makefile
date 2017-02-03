@@ -54,9 +54,9 @@ wipe: reset
 	@rm -rf $(PYTHON_VENV_PATH)
 	@rm -f $(PAPI_INSTALL_FLAGS)
 
-doc: verify-python-path
+doc: verify-python-path $(PIP_PATCH_DONE)
 	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) sphinx sphinx-rtd-theme"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
 .PHONY: wipe-doc
