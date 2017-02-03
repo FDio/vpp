@@ -16,6 +16,7 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
 
+
 def mk_ll_addr(mac):
     euid = in6_mactoifaceid(mac)
     addr = "fe80::" + euid
@@ -291,7 +292,7 @@ class TestIPv6(VppTestCase):
         if not dst_ip:
             dst_ip = intf.remote_ip6
 
-        # unicasted packets must come to the unicast mac 
+        # unicasted packets must come to the unicast mac
         self.assertEqual(rx[Ether].dst, intf.remote_mac)
 
         # and from the router's MAC
@@ -306,7 +307,6 @@ class TestIPv6(VppTestCase):
         self.assertTrue(in6_islladdr(rx[IPv6].src))
         self.assertEqual(in6_ptop(rx[IPv6].src),
                          in6_ptop(mk_ll_addr(intf.local_mac)))
-
 
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
                            filter_out_fn=is_ipv6_misc):
@@ -416,7 +416,7 @@ class TestIPv6(VppTestCase):
                                 filter_out_fn=None)
 
         #
-        # Reset the periodic advertisements back to default values 
+        # Reset the periodic advertisements back to default values
         #
         self.pg0.ip6_ra_config(no=1, suppress=1, send_unicast=0)
 
