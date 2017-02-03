@@ -29,6 +29,14 @@ class MRouteEntryFlags:
     MFIB_ENTRY_FLAG_CONNECTED = 4
     MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
 
+#
+# The number of packets sent is set to 90 so that when we replicate more than 3
+# times, which we do for some entries, we will generate more than 256 packets
+# to the next node in the VLIB graph. Thus we are testing the code's correctness
+# handling this over-flow
+#
+N_PKTS_IN_STREAM = 90
+
 
 class TestIPMcast(VppTestCase):
     """ IP Multicast Test Case """
@@ -49,7 +57,7 @@ class TestIPMcast(VppTestCase):
 
     def create_stream_ip4(self, src_if, src_ip, dst_ip):
         pkts = []
-        for i in range(0, 65):
+        for i in range(0, N_PKTS_IN_STREAM):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -62,7 +70,7 @@ class TestIPMcast(VppTestCase):
 
     def create_stream_ip6(self, src_if, src_ip, dst_ip):
         pkts = []
-        for i in range(0, 65):
+        for i in range(0, N_PKTS_IN_STREAM):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
@@ -82,7 +90,7 @@ class TestIPMcast(VppTestCase):
         return capture
 
     def verify_capture_ip4(self, src_if, sent):
-        rxd = self.pg1.get_capture(65)
+        rxd = self.pg1.get_capture(N_PKTS_IN_STREAM)
 
         try:
             capture = self.verify_filter(rxd, sent)
@@ -112,7 +120,7 @@ class TestIPMcast(VppTestCase):
             raise
 
     def verify_capture_ip6(self, src_if, sent):
-        capture = self.pg1.get_capture(65)
+        capture = self.pg1.get_capture(N_PKTS_IN_STREAM)
 
         self.assertEqual(len(capture), len(sent))
 
