@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_67bb6273",
+        "filename": "src/plugins/snat/in2out.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 171,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-03T10:23:51Z",
+      "side": 1,
+      "message": "are you sure this is the behaviour you want?\nif the VRF you\u0027re looking for does not exist, stick everything in the default table?\nI\u0027d suggest you either reject the config, or create the VRF on the fly;\n ip4_fib_table_find_or_create_and_lock()\nif you do create the VRF/table, make sure you unlock it when you\u0027re done",
+      "revId": "eb6164606b73cf3cd6b929fa72a4dc8f243adde5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
