@@ -993,6 +993,51 @@ mapping_delete_timer (lisp_cp_main_t * lcm, u32 mi)
   timing_wheel_delete (&lcm->wheel, mi);
 }
 
+static int
+is_local_ip (lisp_cp_main_t * lcm, ip_address_t * addr)
+{
+  u32 si;
+  u8 ipver;
+
+  ipver = ip_addr_version (addr);
+  si = ip_fib_get_egress_iface_for_dst (lcm, addr);
+
+  if ((u32) ~ 0 == si)
+    return 0;
+
+  if (IP4 == ipver)
+    {
+      ip_interface_address_t *ia;
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (&lcm->im4->lookup_main, ia, si, 0,
+         ({
+           ip4_address_t * x =
+             ip_interface_address_get_address
+             (&lcm->im4->lookup_main, ia);
+           if (ip4_destination_matches_route (lcm->im4, x,
+                                              &ip_addr_v4 (addr), 32))
+             return 1;
+         }));
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      ip_interface_address_t *ia;
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (&lcm->im6->lookup_main, ia, si, 0,
+         ({
+           ip6_address_t * x =
+             ip_interface_address_get_address
+             (&lcm->im6->lookup_main, ia);
+           if (ip6_destination_matches_route (lcm->im6, x,
+                                              &ip_addr_v6 (addr), 128))
+             return 1;
+         }));
+      /* *INDENT-ON* */
+    }
+  return 0;
+}
+
 /**
  * Adds/removes/updates mapping. Does not program forwarding.
  *
@@ -1016,12 +1061,25 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 mi, ls_index = 0, dst_map_index;
   mapping_t *old_map;
+  locator_t *loc;
 
   if (vnet_lisp_enable_disable_status () == 0)
     {
       clib_warning ("LISP is disabled!");
       return VNET_API_ERROR_LISP_DISABLED;
     }
+
+  /* check if none of the locators match localy configured address */
+  vec_foreach (loc, rlocs)
+  {
+    ip_prefix_t *p = &gid_address_ippref (&loc->address);
+    if (is_local_ip (lcm, &ip_prefix_addr (p)))
+      {
+	clib_warning ("RLOC %U matches a local address!",
+		      format_gid_address, &loc->address);
+	return VNET_API_ERROR_LISP_RLOC_LOCAL;
+      }
+  }
 
   if (res_map_index)
     res_map_index[0] = ~0;
