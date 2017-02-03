@@ -1677,6 +1677,10 @@ vhost_user_if_input (vlib_main_t * vm,
 		  if (PREDICT_FALSE
 		      (vum->cpus[cpu_index].rx_buffers_len == 0))
 		    {
+		      /* Cancel speculation */
+		      to_next--;
+		      n_left_to_next++;
+
 		      /*
 		       * Checking if there are some left buffers.
 		       * If not, just rewind the used buffers and stop.
