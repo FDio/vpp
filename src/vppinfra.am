@@ -37,6 +37,7 @@ TESTS  +=  test_bihash_template \
 	   test_socket \
 	   test_time \
 	   test_timing_wheel \
+	   test_tw_timer \
 	   test_vec \
 	   test_zvec
 endif
@@ -65,6 +66,7 @@ test_slist_SOURCES = vppinfra/test_slist.c
 test_socket_SOURCES = vppinfra/test_socket.c
 test_time_SOURCES = vppinfra/test_time.c
 test_timing_wheel_SOURCES = vppinfra/test_timing_wheel.c
+test_tw_timer_SOURCES = vppinfra/test_tw_timer.c
 test_vec_SOURCES = vppinfra/test_vec.c
 test_zvec_SOURCES = vppinfra/test_zvec.c
 
@@ -91,6 +93,7 @@ test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_slist_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_tw_timer_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
@@ -115,6 +118,7 @@ test_slist_LDADD =	libvppinfra.la
 test_socket_LDADD =	libvppinfra.la
 test_time_LDADD =	libvppinfra.la -lm
 test_timing_wheel_LDADD =	libvppinfra.la -lm
+test_tw_timer_LDADD =	libvppinfra.la
 test_vec_LDADD =	libvppinfra.la
 test_zvec_LDADD =	libvppinfra.la
 
@@ -139,6 +143,7 @@ test_slist_LDFLAGS = -static
 test_socket_LDFLAGS = -static
 test_time_LDFLAGS = -static
 test_timing_wheel_LDFLAGS = -static
+test_tw_timer_LDFLAGS = -static
 test_vec_LDFLAGS = -static
 test_zvec_LDFLAGS = -static
 
@@ -199,6 +204,9 @@ nobase_include_HEADERS = \
   vppinfra/time.h \
   vppinfra/timing_wheel.h \
   vppinfra/timer.h \
+  vppinfra/tw_timer_2t_1w_2048sl.h \
+  vppinfra/tw_timer_16t_2w_512sl.h \
+  vppinfra/tw_timer_template.h \
   vppinfra/types.h \
   vppinfra/unix.h \
   vppinfra/vec.h \
@@ -247,6 +255,11 @@ CLIB_CORE = \
   vppinfra/string.c \
   vppinfra/time.c \
   vppinfra/timing_wheel.c \
+  vppinfra/tw_timer_template.h \
+  vppinfra/tw_timer_2t_1w_2048sl.h \
+  vppinfra/tw_timer_2t_1w_2048sl.c \
+  vppinfra/tw_timer_16t_2w_512sl.h \
+  vppinfra/tw_timer_16t_2w_512sl.c \
   vppinfra/unformat.c \
   vppinfra/vec.c \
   vppinfra/vector.c \
