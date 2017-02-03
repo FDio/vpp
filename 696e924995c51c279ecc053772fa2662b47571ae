@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_6d20e39b",
+        "filename": "src/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-03T20:05:11Z",
+      "side": 1,
+      "message": "What is the point of making plugin, if it requires part of the code in the main lib.\nCan you create generic api which can be used by other folks...",
+      "range": {
+        "startLine": 208,
+        "startChar": 0,
+        "endLine": 231,
+        "endChar": 1
+      },
+      "revId": "696e924995c51c279ecc053772fa2662b47571ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
