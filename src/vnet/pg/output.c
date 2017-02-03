@@ -37,6 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <vppinfra/string.h>
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
@@ -56,19 +57,28 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     while (__sync_lock_test_and_set (pif->lockp, 1))
       ;
 
-  if (pif->pcap_file_name != 0)
+  while (n_left > 0)
     {
-      while (n_left > 0)
-	{
-	  n_left--;
-	  u32 bi0 = buffers[0];
-	  buffers++;
+      n_left--;
+      u32 bi0 = buffers[0];
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi0);
+      buffers++;
 
-	  pcap_add_buffer (&pif->pcap_main, vm, bi0,
-			   ETHERNET_MAX_PACKET_BYTES);
+      if (b->flags & VLIB_BUFFER_IS_TRACED)
+	{
+	  pg_output_trace_t *t = vlib_add_trace (vm, node, b, sizeof (*t));
+	  t->buffer_index = bi0;
+	  clib_memcpy (&t->buffer, b, sizeof (b[0]) - sizeof (b->pre_data));
+	  clib_memcpy (t->buffer.pre_data, b->data + b->current_data,
+		       sizeof (t->buffer.pre_data));
 	}
-      pcap_write (&pif->pcap_main);
+
+      if (pif->pcap_file_name != 0)
+	pcap_add_buffer (&pif->pcap_main, vm, bi0, ETHERNET_MAX_PACKET_BYTES);
     }
+  if (pif->pcap_file_name != 0)
+    pcap_write (&pif->pcap_main);
+
 
   vlib_buffer_free (vm, vlib_frame_args (frame), n_buffers);
   if (PREDICT_FALSE (pif->lockp != 0))

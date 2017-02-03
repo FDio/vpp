@@ -95,6 +95,25 @@ pg_stream_enable_disable (pg_main_t * pg, pg_stream_t * s, int want_enabled)
 }
 
 static u8 *
+format_pg_output_trace (u8 * s, va_list * va)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
+  pg_output_trace_t *t = va_arg (*va, pg_output_trace_t *);
+  uword indent = format_get_indent (s);
+
+  s = format (s, "%Ubuffer 0x%x: %U",
+	      format_white_space, indent,
+	      t->buffer_index, format_vlib_buffer, &t->buffer);
+
+  s = format (s, "\n%U%U", format_white_space, indent,
+	      format_ethernet_header_with_length, t->buffer.pre_data,
+	      sizeof (t->buffer.pre_data));
+
+  return s;
+}
+
+static u8 *
 format_pg_interface_name (u8 * s, va_list * args)
 {
   pg_main_t *pg = &pg_main;
@@ -125,6 +144,7 @@ VNET_DEVICE_CLASS (pg_dev_class) = {
   .name = "pg",
   .tx_function = pg_output,
   .format_device_name = format_pg_interface_name,
+  .format_tx_trace = format_pg_output_trace,
   .admin_up_down_function = pg_interface_admin_up_down,
 };
 /* *INDENT-ON* */
