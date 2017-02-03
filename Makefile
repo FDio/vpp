@@ -115,7 +115,7 @@ help:
 	@echo "                       startup.conf file is present"
 	@echo " GDB=<path>          - gdb binary to use for debugging"
 	@echo " PLATFORM=<name>     - target platform. default is vpp"
-	@echo " TEST=<name>         - only run specific test"
+	@echo " TEST=<filter>       - apply filter to test set, see test-help"
 	@echo ""
 	@echo "Current Argument Values:"
 	@echo " V            = $(V)"
