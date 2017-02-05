@@ -350,10 +350,6 @@ vlib_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
 u32 vlib_buffer_get_or_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
 					 char *fmt, ...);
 
-
-/* After free aligned buffers may not contain even sized chunks. */
-void vlib_buffer_free_list_trim_aligned (vlib_buffer_free_list_t * f);
-
 /* Merge two free lists */
 void vlib_buffer_merge_free_lists (vlib_buffer_free_list_t * dst,
 				   vlib_buffer_free_list_t * src);
@@ -664,23 +660,14 @@ unserialize_vlib_buffer_n_bytes (serialize_main_t * m)
   return n;
 }
 
-typedef union
-{
-  vlib_buffer_t b;
-  vlib_copy_unit_t i[sizeof (vlib_buffer_t) / sizeof (vlib_copy_unit_t)];
-}
-vlib_buffer_union_t;
-
 /* Set a buffer quickly into "uninitialized" state.  We want this to
    be extremely cheap and arrange for all fields that need to be
    initialized to be in the first 128 bits of the buffer. */
 always_inline void
-vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
+vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
 				vlib_buffer_free_list_t * fl)
 {
-  vlib_buffer_union_t *dst = (vlib_buffer_union_t *) _dst;
-  vlib_buffer_union_t *src =
-    (vlib_buffer_union_t *) & fl->buffer_init_template;
+  vlib_buffer_t *src = &fl->buffer_init_template;
 
   /* Make sure vlib_buffer_t is cacheline aligned and sized */
   ASSERT (STRUCT_OFFSET_OF (vlib_buffer_t, cacheline0) == 0);
@@ -692,21 +679,14 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * _dst,
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);
 
-  /* Copy template from src->current_data thru src->free_list_index */
-  dst->i[0] = src->i[0];
-  if (1 * sizeof (dst->i[0]) < 16)
-    dst->i[1] = src->i[1];
-  if (2 * sizeof (dst->i[0]) < 16)
-    dst->i[2] = src->i[2];
-
   /* Make sure it really worked. */
-#define _(f) ASSERT (dst->b.f == src->b.f)
+#define _(f) dst->f = src->f
   _(current_data);
   _(current_length);
   _(flags);
   _(free_list_index);
 #undef _
-  ASSERT (dst->b.total_length_not_including_first_buffer == 0);
+  ASSERT (dst->total_length_not_including_first_buffer == 0);
 }
 
 always_inline void
@@ -718,39 +698,28 @@ vlib_buffer_add_to_free_list (vlib_main_t * vm,
   b = vlib_get_buffer (vm, buffer_index);
   if (PREDICT_TRUE (do_init))
     vlib_buffer_init_for_free_list (b, f);
-  vec_add1_aligned (f->aligned_buffers, buffer_index,
-		    sizeof (vlib_copy_unit_t));
+  vec_add1_aligned (f->buffers, buffer_index, CLIB_CACHE_LINE_BYTES);
 }
 
 always_inline void
-vlib_buffer_init_two_for_free_list (vlib_buffer_t * _dst0,
-				    vlib_buffer_t * _dst1,
+vlib_buffer_init_two_for_free_list (vlib_buffer_t * dst0,
+				    vlib_buffer_t * dst1,
 				    vlib_buffer_free_list_t * fl)
 {
-  vlib_buffer_union_t *dst0 = (vlib_buffer_union_t *) _dst0;
-  vlib_buffer_union_t *dst1 = (vlib_buffer_union_t *) _dst1;
-  vlib_buffer_union_t *src =
-    (vlib_buffer_union_t *) & fl->buffer_init_template;
+  vlib_buffer_t *src = &fl->buffer_init_template;
 
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);
 
-  /* Copy template from src->current_data thru src->free_list_index */
-  dst0->i[0] = dst1->i[0] = src->i[0];
-  if (1 * sizeof (dst0->i[0]) < 16)
-    dst0->i[1] = dst1->i[1] = src->i[1];
-  if (2 * sizeof (dst0->i[0]) < 16)
-    dst0->i[2] = dst1->i[2] = src->i[2];
-
   /* Make sure it really worked. */
-#define _(f) ASSERT (dst0->b.f == src->b.f && dst1->b.f == src->b.f)
+#define _(f) dst0->f = src->f;  dst1->f = src->f
   _(current_data);
   _(current_length);
   _(flags);
   _(free_list_index);
 #undef _
-  ASSERT (dst0->b.total_length_not_including_first_buffer == 0);
-  ASSERT (dst1->b.total_length_not_including_first_buffer == 0);
+  ASSERT (dst0->total_length_not_including_first_buffer == 0);
+  ASSERT (dst1->total_length_not_including_first_buffer == 0);
 }
 
 #if CLIB_DEBUG > 0

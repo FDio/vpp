@@ -50,12 +50,6 @@
 #define VLIB_BUFFER_DATA_SIZE		(2048)
 #define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
 
-#if defined (CLIB_HAVE_VEC128) || defined (__aarch64__)
-typedef u8x16 vlib_copy_unit_t;
-#else
-typedef u64 vlib_copy_unit_t;
-#endif
-
 /** \file
     vlib buffer structure definition and a few select
     access methods. This structure and the buffer allocation
@@ -262,11 +256,8 @@ typedef struct vlib_buffer_free_list_t
   /* Total number of buffers allocated from this free list. */
   u32 n_alloc;
 
-  /* Vector of free buffers.  Each element is a byte offset into I/O heap.
-     Aligned vectors always has naturally aligned vlib_copy_unit_t sized chunks
-     of buffer indices.  Unaligned vector has any left over.  This is meant to
-     speed up copy routines. */
-  u32 *aligned_buffers, *unaligned_buffers;
+  /* Vector of free buffers.  Each element is a byte offset into I/O heap. */
+  u32 *buffers;
 
   /* Memory chunks allocated for this free list
      recorded here so they can be freed when free list

@@ -304,63 +304,6 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
     }
 }
 
-#define BUFFERS_PER_COPY (sizeof (vlib_copy_unit_t) / sizeof (u32))
-
-/* Make sure we have at least given number of unaligned buffers. */
-void
-vlib_buffer_free_list_fill_unaligned (vlib_main_t * vm,
-				      vlib_buffer_free_list_t * free_list,
-				      uword n_unaligned_buffers)
-{
-  word la = vec_len (free_list->aligned_buffers);
-  word lu = vec_len (free_list->unaligned_buffers);
-
-  /* Aligned come in aligned copy-sized chunks. */
-  ASSERT (la % BUFFERS_PER_COPY == 0);
-
-  ASSERT (la >= n_unaligned_buffers);
-
-  while (lu < n_unaligned_buffers)
-    {
-      /* Copy 4 buffers from end of aligned vector to unaligned vector. */
-      vec_add (free_list->unaligned_buffers,
-	       free_list->aligned_buffers + la - BUFFERS_PER_COPY,
-	       BUFFERS_PER_COPY);
-      la -= BUFFERS_PER_COPY;
-      lu += BUFFERS_PER_COPY;
-    }
-  _vec_len (free_list->aligned_buffers) = la;
-}
-
-/* After free aligned buffers may not contain even sized chunks. */
-void
-vlib_buffer_free_list_trim_aligned (vlib_buffer_free_list_t * f)
-{
-  uword l, n_trim;
-
-  /* Add unaligned to aligned before trim. */
-  l = vec_len (f->unaligned_buffers);
-  if (l > 0)
-    {
-      vec_add_aligned (f->aligned_buffers, f->unaligned_buffers, l,
-		       /* align */ sizeof (vlib_copy_unit_t));
-
-      _vec_len (f->unaligned_buffers) = 0;
-    }
-
-  /* Remove unaligned buffers from end of aligned vector and save for next trim. */
-  l = vec_len (f->aligned_buffers);
-  n_trim = l % BUFFERS_PER_COPY;
-  if (n_trim)
-    {
-      /* Trim aligned -> unaligned. */
-      vec_add (f->unaligned_buffers, f->aligned_buffers + l - n_trim, n_trim);
-
-      /* Remove from aligned. */
-      _vec_len (f->aligned_buffers) = l - n_trim;
-    }
-}
-
 void
 vlib_buffer_merge_free_lists (vlib_buffer_free_list_t * dst,
 			      vlib_buffer_free_list_t * src)
@@ -368,23 +311,12 @@ vlib_buffer_merge_free_lists (vlib_buffer_free_list_t * dst,
   uword l;
   u32 *d;
 
-  vlib_buffer_free_list_trim_aligned (src);
-  vlib_buffer_free_list_trim_aligned (dst);
-
-  l = vec_len (src->aligned_buffers);
+  l = vec_len (src->buffers);
   if (l > 0)
     {
-      vec_add2_aligned (dst->aligned_buffers, d, l,
-			/* align */ sizeof (vlib_copy_unit_t));
-      clib_memcpy (d, src->aligned_buffers, l * sizeof (d[0]));
-      vec_free (src->aligned_buffers);
-    }
-
-  l = vec_len (src->unaligned_buffers);
-  if (l > 0)
-    {
-      vec_add (dst->unaligned_buffers, src->unaligned_buffers, l);
-      vec_free (src->unaligned_buffers);
+      vec_add2_aligned (dst->buffers, d, l, CLIB_CACHE_LINE_BYTES);
+      clib_memcpy (d, src->buffers, l * sizeof (d[0]));
+      vec_free (src->buffers);
     }
 }
 
@@ -447,8 +379,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
       ASSERT (f - bm->buffer_free_list_pool ==
 	      wf - wbm->buffer_free_list_pool);
       wf[0] = f[0];
-      wf->aligned_buffers = 0;
-      wf->unaligned_buffers = 0;
+      wf->buffers = 0;
       wf->n_alloc = 0;
     }
 
@@ -505,8 +436,7 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
     vm->os_physmem_free (f->buffer_memory_allocated[i]);
   vec_free (f->name);
   vec_free (f->buffer_memory_allocated);
-  vec_free (f->unaligned_buffers);
-  vec_free (f->aligned_buffers);
+  vec_free (f->buffers);
 }
 
 /* Add buffer free list. */
@@ -522,8 +452,7 @@ vlib_buffer_delete_free_list_internal (vlib_main_t * vm, u32 free_list_index)
 
   f = vlib_buffer_get_free_list (vm, free_list_index);
 
-  ASSERT (vec_len (f->unaligned_buffers) + vec_len (f->aligned_buffers) ==
-	  f->n_alloc);
+  ASSERT (vec_len (f->buffers) == f->n_alloc);
   merge_index = vlib_buffer_get_free_list_with_size (vm, f->n_data_bytes);
   if (merge_index != ~0 && merge_index != free_list_index)
     {
@@ -558,15 +487,13 @@ fill_free_list (vlib_main_t * vm,
   u32 *bi;
   u32 n_remaining, n_alloc, n_this_chunk;
 
-  vlib_buffer_free_list_trim_aligned (fl);
-
   /* Already have enough free buffers on free list? */
-  n = min_free_buffers - vec_len (fl->aligned_buffers);
+  n = min_free_buffers - vec_len (fl->buffers);
   if (n <= 0)
     return min_free_buffers;
 
   /* Always allocate round number of buffers. */
-  n = round_pow2 (n, BUFFERS_PER_COPY);
+  n = round_pow2 (n, CLIB_CACHE_LINE_BYTES / sizeof (u32));
 
   /* Always allocate new buffers in reasonably large sized chunks. */
   n = clib_max (n, fl->min_n_buffers_each_physmem_alloc);
@@ -594,8 +521,7 @@ fill_free_list (vlib_main_t * vm,
       n_remaining -= n_this_chunk;
 
       b = buffers;
-      vec_add2_aligned (fl->aligned_buffers, bi, n_this_chunk,
-			sizeof (vlib_copy_unit_t));
+      vec_add2_aligned (fl->buffers, bi, n_this_chunk, CLIB_CACHE_LINE_BYTES);
       for (i = 0; i < n_this_chunk; i++)
 	{
 	  bi[i] = vlib_get_buffer_index (vm, b);
@@ -621,121 +547,28 @@ fill_free_list (vlib_main_t * vm,
   return n_alloc;
 }
 
-always_inline uword
-copy_alignment (u32 * x)
-{
-  return (pointer_to_uword (x) / sizeof (x[0])) % BUFFERS_PER_COPY;
-}
-
-
 static u32
 alloc_from_free_list (vlib_main_t * vm,
 		      vlib_buffer_free_list_t * free_list,
 		      u32 * alloc_buffers, u32 n_alloc_buffers)
 {
-  u32 *dst, *u_src;
-  uword u_len, n_left;
-  uword n_unaligned_start, n_unaligned_end, n_filled;
+  u32 *dst, *src;
+  uword len;
+  uword n_filled;
 
-  n_left = n_alloc_buffers;
   dst = alloc_buffers;
-  n_unaligned_start = ((BUFFERS_PER_COPY - copy_alignment (dst))
-		       & (BUFFERS_PER_COPY - 1));
 
   n_filled = fill_free_list (vm, free_list, n_alloc_buffers);
   if (n_filled == 0)
     return 0;
 
-  n_left = n_filled < n_left ? n_filled : n_left;
-  n_alloc_buffers = n_left;
+  len = vec_len (free_list->buffers);
+  ASSERT (len >= n_alloc_buffers);
 
-  if (n_unaligned_start >= n_left)
-    {
-      n_unaligned_start = n_left;
-      n_unaligned_end = 0;
-    }
-  else
-    n_unaligned_end = copy_alignment (dst + n_alloc_buffers);
+  src = free_list->buffers + len - n_alloc_buffers;
+  clib_memcpy (dst, src, n_alloc_buffers * sizeof (u32));
 
-  vlib_buffer_free_list_fill_unaligned (vm, free_list,
-					n_unaligned_start + n_unaligned_end);
-
-  u_len = vec_len (free_list->unaligned_buffers);
-  u_src = free_list->unaligned_buffers + u_len - 1;
-
-  if (n_unaligned_start)
-    {
-      uword n_copy = n_unaligned_start;
-      if (n_copy > n_left)
-	n_copy = n_left;
-      n_left -= n_copy;
-
-      while (n_copy > 0)
-	{
-	  *dst++ = *u_src--;
-	  n_copy--;
-	  u_len--;
-	}
-
-      /* Now dst should be aligned. */
-      if (n_left > 0)
-	ASSERT (pointer_to_uword (dst) % sizeof (vlib_copy_unit_t) == 0);
-    }
-
-  /* Aligned copy. */
-  {
-    vlib_copy_unit_t *d, *s;
-    uword n_copy;
-
-    if (vec_len (free_list->aligned_buffers) <
-	((n_left / BUFFERS_PER_COPY) * BUFFERS_PER_COPY))
-      abort ();
-
-    n_copy = n_left / BUFFERS_PER_COPY;
-    n_left = n_left % BUFFERS_PER_COPY;
-
-    /* Remove buffers from aligned free list. */
-    _vec_len (free_list->aligned_buffers) -= n_copy * BUFFERS_PER_COPY;
-
-    s = (vlib_copy_unit_t *) vec_end (free_list->aligned_buffers);
-    d = (vlib_copy_unit_t *) dst;
-
-    /* Fast path loop. */
-    while (n_copy >= 4)
-      {
-	d[0] = s[0];
-	d[1] = s[1];
-	d[2] = s[2];
-	d[3] = s[3];
-	n_copy -= 4;
-	s += 4;
-	d += 4;
-      }
-
-    while (n_copy >= 1)
-      {
-	d[0] = s[0];
-	n_copy -= 1;
-	s += 1;
-	d += 1;
-      }
-
-    dst = (void *) d;
-  }
-
-  /* Unaligned copy. */
-  ASSERT (n_unaligned_end == n_left);
-  while (n_left > 0)
-    {
-      *dst++ = *u_src--;
-      n_left--;
-      u_len--;
-    }
-
-  if (!free_list->unaligned_buffers)
-    ASSERT (u_len == 0);
-  else
-    _vec_len (free_list->unaligned_buffers) = u_len;
+  _vec_len (free_list->buffers) -= n_alloc_buffers;
 
   /* Verify that buffers are known free. */
   vlib_buffer_validate_alloc_free (vm, alloc_buffers,
@@ -831,8 +664,7 @@ again:
   vlib_buffer_validate_alloc_free (vm, b,
 				   n_left, VLIB_BUFFER_KNOWN_ALLOCATED);
 
-  vec_add2_aligned (fl->aligned_buffers, f, n_left,
-		    /* align */ sizeof (vlib_copy_unit_t));
+  vec_add2_aligned (fl->buffers, f, n_left, CLIB_CACHE_LINE_BYTES);
 
   n = next_to_free[i_next_to_free];
   while (n_left >= 4)
@@ -890,7 +722,7 @@ again:
       f -= 2;
       n -= free_next0 + free_next1;
 
-      _vec_len (fl->aligned_buffers) = f - fl->aligned_buffers;
+      _vec_len (fl->buffers) = f - fl->buffers;
 
       fl0 = pool_elt_at_index (bm->buffer_free_list_pool, fi0);
       fl1 = pool_elt_at_index (bm->buffer_free_list_pool, fi1);
@@ -924,8 +756,7 @@ again:
 	  fl = pool_elt_at_index (bm->buffer_free_list_pool, fi);
 	}
 
-      vec_add2_aligned (fl->aligned_buffers, f, n_left,
-			/* align */ sizeof (vlib_copy_unit_t));
+      vec_add2_aligned (fl->buffers, f, n_left, CLIB_CACHE_LINE_BYTES);
     }
 
   while (n_left >= 1)
@@ -968,7 +799,7 @@ again:
       f -= 1;
       n -= free_next0;
 
-      _vec_len (fl->aligned_buffers) = f - fl->aligned_buffers;
+      _vec_len (fl->buffers) = f - fl->buffers;
 
       fl0 = pool_elt_at_index (bm->buffer_free_list_pool, fi0);
 
@@ -986,8 +817,7 @@ again:
       fi = fi0;
       fl = pool_elt_at_index (bm->buffer_free_list_pool, fi);
 
-      vec_add2_aligned (fl->aligned_buffers, f, n_left,
-			/* align */ sizeof (vlib_copy_unit_t));
+      vec_add2_aligned (fl->buffers, f, n_left, CLIB_CACHE_LINE_BYTES);
     }
 
   if (follow_buffer_next && ((n_left = n - next_to_free[i_next_to_free]) > 0))
@@ -997,7 +827,7 @@ again:
       goto again;
     }
 
-  _vec_len (fl->aligned_buffers) = f - fl->aligned_buffers;
+  _vec_len (fl->buffers) = f - fl->buffers;
 
   if (vec_len (announce_list))
     {
@@ -1239,7 +1069,7 @@ format_vlib_buffer_free_list (u8 * s, va_list * va)
 		   "#Alloc", "#Free");
 
   size = sizeof (vlib_buffer_t) + f->n_data_bytes;
-  n_free = vec_len (f->aligned_buffers) + vec_len (f->unaligned_buffers);
+  n_free = vec_len (f->buffers);
   bytes_alloc = size * f->n_alloc;
   bytes_free = size * n_free;
 
