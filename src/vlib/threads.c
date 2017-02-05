@@ -708,8 +708,7 @@ start_workers (vlib_main_t * vm)
                                     == fl_clone - bm_clone->buffer_free_list_pool);
 
                             fl_clone[0] = fl_orig[0];
-                            fl_clone->aligned_buffers = 0;
-                            fl_clone->unaligned_buffers = 0;
+                            fl_clone->buffers = 0;
                             fl_clone->n_alloc = 0;
                           }));
 /* *INDENT-ON* */

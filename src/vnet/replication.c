@@ -168,32 +168,20 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
    * Note: this could be sped up if the node index were stuffed into
    * the freelist itself.
    */
-  if (vec_len (fl->aligned_buffers) > 0)
+  if (vec_len (fl->buffers) > 0)
     {
-      bi0 = fl->aligned_buffers[0];
-      b0 = vlib_get_buffer (vm, bi0);
-      ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->recycle_count);
-      feature_node_index = ctx->recycle_node_index;
-    }
-  else if (vec_len (fl->unaligned_buffers) > 0)
-    {
-      bi0 = fl->unaligned_buffers[0];
+      bi0 = fl->buffers[0];
       b0 = vlib_get_buffer (vm, bi0);
       ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->recycle_count);
       feature_node_index = ctx->recycle_node_index;
     }
 
-  /* aligned, unaligned buffers */
+  /* buffers */
   for (i = 0; i < 2; i++)
     {
       if (i == 0)
 	{
-	  from = fl->aligned_buffers;
-	  n_left_from = vec_len (from);
-	}
-      else
-	{
-	  from = fl->unaligned_buffers;
+	  from = fl->buffers;
 	  n_left_from = vec_len (from);
 	}
 
@@ -245,8 +233,7 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
 	}
     }
 
-  vec_reset_length (fl->aligned_buffers);
-  vec_reset_length (fl->unaligned_buffers);
+  vec_reset_length (fl->buffers);
 
   if (f)
     {
