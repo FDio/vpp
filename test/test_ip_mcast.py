@@ -32,8 +32,8 @@ class MRouteEntryFlags:
 #
 # The number of packets sent is set to 90 so that when we replicate more than 3
 # times, which we do for some entries, we will generate more than 256 packets
-# to the next node in the VLIB graph. Thus we are testing the code's correctness
-# handling this over-flow
+# to the next node in the VLIB graph. Thus we are testing the code's
+# correctness handling this over-flow
 #
 N_PKTS_IN_STREAM = 90
 
