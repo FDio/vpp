@@ -81,7 +81,7 @@ wipe-cov: wipe
 .PHONY: checkstyle
 checkstyle: verify-python-path
 	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS) pep8"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pep8"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
 		pep8 --show-source -v $(WS_ROOT)/test/*.py ||\
 		(echo \"*******************************************************************\" &&\
