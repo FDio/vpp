@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_98e22bd4",
+        "filename": "test/test_lisp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-06T08:31:54Z",
+      "side": 1,
+      "message": "do we need to use CLIs for these actions? are there no APIs available? If so, please replace the hardcoded addresses with the corresponding addresses from interfaces (e.g. self.pg1.local_ip4)",
+      "range": {
+        "startLine": 29,
+        "startChar": 0,
+        "endLine": 33,
+        "endChar": 77
+      },
+      "revId": "08b3959e31eba9c99077c4699988b7bafbb5489a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_58ecc3c7",
+        "filename": "test/test_lisp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-06T08:31:54Z",
+      "side": 1,
+      "message": "why exactly 8?",
+      "range": {
+        "startLine": 47,
+        "startChar": 45,
+        "endLine": 47,
+        "endChar": 47
+      },
+      "revId": "08b3959e31eba9c99077c4699988b7bafbb5489a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_38d1f7fb",
+        "filename": "test/test_lisp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-06T08:31:54Z",
+      "side": 1,
+      "message": "why is this the correct value? could we decode it instead?",
+      "range": {
+        "startLine": 49,
+        "startChar": 46,
+        "endLine": 49,
+        "endChar": 80
+      },
+      "revId": "08b3959e31eba9c99077c4699988b7bafbb5489a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_78e77fe5",
+        "filename": "test/test_lisp.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-06T08:31:54Z",
+      "side": 1,
+      "message": "please move this assert to the very bottom of the test case (as it is only a \u0027poll\u0027 assert - we want to do it as late as possible)",
+      "range": {
+        "startLine": 77,
+        "startChar": 8,
+        "endLine": 77,
+        "endChar": 42
+      },
+      "revId": "08b3959e31eba9c99077c4699988b7bafbb5489a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
