@@ -18,8 +18,6 @@ DPDK_BUILD_DIR        ?= $(CURDIR)/_build
 DPDK_INSTALL_DIR      ?= $(CURDIR)/_install
 DPDK_PKTMBUF_HEADROOM ?= 128
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
-DPDK_MARCH            ?= native
-DPDK_TUNE             ?= generic
 DPDK_DEBUG            ?= n
 DPDK_CRYPTO_SW_PMD    ?= n
 DPDK_MLX5_PMD         ?= n
@@ -27,7 +25,7 @@ DPDK_MLX5_PMD         ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 16.11
-PKG_SUFFIX ?= vpp4
+PKG_SUFFIX ?= vpp5
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -37,45 +35,46 @@ DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 
 ifneq (,$(findstring clang,$(CC)))
 DPDK_CC=clang
+else ifneq (,$(findstring icc,$(CC)))
+DPDK_CC=icc
 else
 DPDK_CC=gcc
 endif
 
+##############################################################################
+# Intel x86_64
+##############################################################################
+ifeq ($(shell uname -m),x86_64)
+DPDK_TARGET           ?= x86_64-native-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          ?= nhm
+DPDK_TUNE             ?= core-avx2
 
-ifeq (,$(DPDK_TARGET))
-DPDK_TARGET := x86_64-native-linuxapp-$(DPDK_CC)
+##############################################################################
+# Cavium ThunderX
+##############################################################################
+else ifneq (,$(findstring thunder,$(shell cat /sys/bus/pci/devices/0000:00:01.0/uevent | grep cavium)))
+export CROSS=""
+DPDK_TARGET           ?= arm64-thunderx-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          ?= thunderx
+DPDK_TUNE             ?= generic
+
+##############################################################################
+# Unknown platofrm
+##############################################################################
+else
+$(error unknown platform)
 endif
 
 JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
 
 # compiler/linker custom arguments
 DPDK_CPU_CFLAGS := -pie -fPIC
-DPDK_CPU_LDFLAGS :=
 DPDK_EXTRA_LDFLAGS := -g
 
 ifeq ($(DPDK_DEBUG),n)
 DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
 else
 DPDK_EXTRA_CFLAGS := -g -O0
-endif
-
-# translate gcc march values to DPDK arch
-ifeq ($(DPDK_MARCH),native)
-DPDK_MACHINE:=native                     # autodetect host CPU
-else ifeq ($(DPDK_MARCH),corei7)
-DPDK_MACHINE:=nhm                        # Nehalem / Westmere
-else ifeq ($(DPDK_MARCH),corei7-avx)
-DPDK_MACHINE:=snb                        # Sandy Bridge
-else ifeq ($(DPDK_MARCH),core-avx-i)
-DPDK_MACHINE:=ivb                        # Ivy Bridge
-else ifeq ($(DPDK_MARCH),core-avx2)
-DPDK_MACHINE:=hsw                        # Haswell
-else ifeq ($(DPDK_MARCH),armv7a)
-DPDK_MACHINE:=armv7a                     # ARMv7
-else ifeq ($(DPDK_MARCH),armv8a)
-DPDK_MACHINE:=armv8a                     # ARMv8
-else
-$(error Unknown DPDK_MARCH)
 endif
 
 # assemble DPDK make arguments
@@ -85,11 +84,10 @@ DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	EXTRA_CFLAGS="$(DPDK_EXTRA_CFLAGS)" \
 	EXTRA_LDFLAGS="$(DPDK_EXTRA_LDFLAGS)" \
 	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
-	CPU_LDFLAGS="$(DPDK_CPU_LDFLAGS)" \
 	DESTDIR=$(I) \
         $(DPDK_MAKE_EXTRA_ARGS)
 
-DPDK_SOURCE_FILES := $(shell  [ -e $(DPDK_SOURCE) ] && find $(DPDK_SOURCE) -name "*.[chS]")  
+DPDK_SOURCE_FILES := $(shell  [ -e $(DPDK_SOURCE) ] && find $(DPDK_SOURCE) -name "*.[chS]")
 
 define set
 @if grep -q CONFIG_$1 $@ ; \
