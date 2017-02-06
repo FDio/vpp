@@ -16,17 +16,14 @@ vpp_arch = native
 ifeq ($(shell uname -m),x86_64)
 vpp_march = corei7			# Nehalem Instruction set
 vpp_mtune = corei7-avx			# Optimize for Sandy Bridge
-vpp_dpdk_arch = corei7
 else ifeq ($(shell uname -m),aarch64)
 ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_march = armv8-a+crc
 vpp_mtune = thunderx
-vpp_dpdk_arch = armv8a
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
 else
 vpp_march = native
 vpp_mtune = generic
-vpp_dpdk_arch = native
 endif
 endif
 vpp_native_tools = vppapigen
