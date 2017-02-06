@@ -222,6 +222,7 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
   u32 sw_if_index = ~0;
   u8 sw_if_index_set = 0;
   u32 proto = ~0;
+  u8 proto_set = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -243,7 +244,7 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
       else if (unformat (i, "vrf %u", &vrf_id))
         ;
       else if (unformat (i, "protocol %u", &proto))
-        ;
+        proto_set = 1;
       else if (unformat (i, "del"))
         is_add = 0;
       else
@@ -251,6 +252,12 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
           clib_warning("unknown input '%U'", format_unformat_error, i);
           return -99;
         }
+    }
+
+  if (!addr_only && !proto_set)
+    {
+      errmsg ("protocol required\n");
+      return -99;
     }
 
   if (!local_addr_set)
