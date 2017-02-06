@@ -22,6 +22,30 @@
       "revId": "696e924995c51c279ecc053772fa2662b47571ae",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_58cf23b1",
+        "filename": "src/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 15
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-06T06:16:00Z",
+      "side": 1,
+      "message": "We still have a bunch of iOAM code in ip6_hop_by_hop.h/c. Shwetha is already working on this to move all of the code to plugin. We will post the changes for review after this patch.\nEven this function here is moved from .c to .h, not a newly added function.",
+      "parentUuid": "3a3291f1_6d20e39b",
+      "range": {
+        "startLine": 208,
+        "startChar": 0,
+        "endLine": 231,
+        "endChar": 1
+      },
+      "revId": "696e924995c51c279ecc053772fa2662b47571ae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
