@@ -65,6 +65,9 @@ typedef struct
   f64 last_verify_reference_time;
 
   u32 log2_clocks_per_second, log2_clocks_per_frequency_verify;
+
+  /* Time delta between master and slave thread */
+  i64 delta;
 } clib_time_t;
 
 /* Return CPU time stamp as 64bit number. */
@@ -201,7 +204,7 @@ clib_time_now_internal (clib_time_t * c, u64 n)
 always_inline f64
 clib_time_now (clib_time_t * c)
 {
-  return clib_time_now_internal (c, clib_cpu_time_now ());
+  return clib_time_now_internal (c, clib_cpu_time_now () + c->delta);
 }
 
 always_inline void
