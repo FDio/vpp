@@ -346,15 +346,6 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   snat_interface_t *interface;
   int i;
 
-  /* If outside FIB index is not resolved yet */
-  if (sm->outside_fib_index == ~0)
-    {
-      p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
-      if (!p)
-        return VNET_API_ERROR_NO_SUCH_FIB;
-      sm->outside_fib_index = p[0];
-    }
-
   /* If the external address is a specific interface address */
   if (sw_if_index != ~0)
     {
@@ -402,17 +393,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       /* If not specified use inside VRF id from SNAT plugin startup config */
       else
         {
-          if (sm->inside_fib_index == ~0)
-            {
-              p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->inside_vrf_id);
-              if (!p)
-                return VNET_API_ERROR_NO_SUCH_FIB;
-              fib_index = p[0];
-              sm->inside_fib_index = fib_index;
-            }
-          else
-            fib_index = sm->inside_fib_index;
-
+          fib_index = sm->inside_fib_index;
           vrf_id = sm->inside_vrf_id;
         }
 
@@ -2127,9 +2108,11 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->user_memory_size = user_memory_size;
   sm->max_translations_per_user = max_translations_per_user;
   sm->outside_vrf_id = outside_vrf_id;
-  sm->outside_fib_index = ~0;
+  sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+                                                             outside_vrf_id);
   sm->inside_vrf_id = inside_vrf_id;
-  sm->inside_fib_index = ~0;
+  sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+                                                            inside_vrf_id);
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
 

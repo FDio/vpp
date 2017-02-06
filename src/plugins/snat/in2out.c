@@ -163,13 +163,6 @@ snat_not_translate (snat_main_t * sm, snat_runtime_t * rt, u32 sw_if_index0,
   if (PREDICT_FALSE(ip0->dst_address.as_u32 == rt->cached_ip4_address))
     return 1;
 
-  /* If outside FIB index is not resolved yet */
-  if (sm->outside_fib_index == ~0)
-    {
-      sm->outside_fib_index =
-        ip4_fib_table_find_or_create_and_lock (sm->outside_vrf_id);
-    }
-
   key0.addr = ip0->dst_address;
   key0.port = udp0->dst_port;
   key0.protocol = proto0;
@@ -534,13 +527,6 @@ snat_hairpinning (snat_main_t *sm,
   ip_csum_t sum0;
   u32 new_dst_addr0 = 0, old_dst_addr0, ti = 0, si;
   u16 new_dst_port0, old_dst_port0;
-
-  /* If outside FIB index is not resolved yet */
-  if (sm->outside_fib_index == ~0)
-    {
-      sm->outside_fib_index =
-        ip4_fib_table_find_or_create_and_lock (sm->outside_vrf_id);
-    }
 
   key0.addr = ip0->dst_address;
   key0.port = udp0->dst_port;
