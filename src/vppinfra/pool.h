@@ -199,6 +199,33 @@ do {									\
 /** Allocate an object E from a pool P (unspecified alignment). */
 #define pool_get(P,E) pool_get_aligned(P,E,0)
 
+/** See if pool_get will expand the pool or not */
+#define pool_get_aligned_will_expand (P,YESNO,A)                        \
+do {                                                                    \
+  pool_header_t * _pool_var (p) = pool_header (P);                      \
+  uword _pool_var (l);                                                  \
+                                                                        \
+  _pool_var (l) = 0;                                                    \
+  if (P)                                                                \
+    _pool_var (l) = vec_len (_pool_var (p)->free_indices);              \
+                                                                        \
+  /* Free elements, certainly won't expand */                           \
+  if (_pool_var (l) > 0)                                                \
+      YESNO=0;                                                          \
+  else                                                                  \
+    {                                                                   \
+      /* Nothing on free list, make a new element and return it. */     \
+      YESNO = _vec_resize_will_expand                                   \
+        (P,                                                             \
+         /* length_increment */ 1,                                      \
+         /* new size */ (vec_len (P) + 1) * sizeof (P[0]),              \
+         pool_aligned_header_bytes,                                     \
+         /* align */ (A));                                              \
+    }                                                                   \
+} while (0)
+
+#define pool_get_will_expand(P,YESNO) pool_get_aligned_will_expand(P,YESNO,0)
+
 /** Use free bitmap to query whether given element is free. */
 #define pool_is_free(P,E)						\
 ({									\

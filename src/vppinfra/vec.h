@@ -145,6 +145,46 @@ _vec_resize (void *v,
 					       data_align));
 }
 
+/** \brief Low-level vector resize predicate
+
+    @param v pointer to a vector
+    @param length_increment length increment in elements
+    @param data_bytes requested size in bytes
+    @param header_bytes header size in bytes (may be zero)
+    @param data_align alignment (may be zero)
+    @return v_prime pointer to resized vector, may or may not equal v
+*/
+
+always_inline int
+_vec_resize_will_expand (void *v,
+			 word length_increment,
+			 uword data_bytes, uword header_bytes,
+			 uword data_align)
+{
+  vec_header_t *vh = _vec_find (v);
+  uword new_data_bytes, aligned_header_bytes;
+
+  aligned_header_bytes = vec_header_bytes (header_bytes);
+
+  new_data_bytes = data_bytes + aligned_header_bytes;
+
+  if (PREDICT_TRUE (v != 0))
+    {
+      void *p = v - aligned_header_bytes;
+
+      /* Vector header must start heap object. */
+      ASSERT (clib_mem_is_heap_object (p));
+
+      /* Typically we'll not need to resize. */
+      if (new_data_bytes <= clib_mem_size (p))
+	{
+	  vh->len += length_increment;
+	  return 0;
+	}
+    }
+  return 1;
+}
+
 /** \brief Predicate function, says whether the supplied vector is a clib heap
     object (general version).
 
