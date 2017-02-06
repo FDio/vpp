@@ -89,6 +89,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   volatile u32 *wait_at_barrier;
   volatile u32 *workers_at_barrier;
+  volatile u64 last_release_cpu_time;
 
   /* Second Cache Line */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -242,6 +243,21 @@ do {                                                    \
     }                                                   \
   vec_free (__vlib_mains);                              \
 } while (0);
+
+static inline void
+vlib_worker_thread_barrier_check_and_update_cpu_time_delta (vlib_main_t * vm)
+{
+  if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
+    {
+      u64 time;
+      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
+      while (*vlib_worker_threads->wait_at_barrier)
+	;
+      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
+      time = clib_cpu_time_now ();
+      vm->clib_time.delta = vlib_worker_threads->last_release_cpu_time - time;
+    }
+}
 
 #define foreach_sched_policy \
   _(SCHED_OTHER, OTHER, "other") \

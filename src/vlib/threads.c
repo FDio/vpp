@@ -1240,6 +1240,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
 
+  vlib_worker_threads->last_release_cpu_time = clib_cpu_time_now ();
   *vlib_worker_threads->wait_at_barrier = 0;
 
   while (*vlib_worker_threads->workers_at_barrier > 0)

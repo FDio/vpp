@@ -1474,7 +1474,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
       if (!is_main)
 	{
-	  vlib_worker_thread_barrier_check ();
+	  vlib_worker_thread_barrier_check_and_update_cpu_time_delta (vm);
 	  vec_foreach (fqm, tm->frame_queue_mains)
 	    vlib_frame_queue_dequeue (vm, fqm);
 	}
