@@ -18,8 +18,13 @@ DPDK_BUILD_DIR        ?= $(CURDIR)/_build
 DPDK_INSTALL_DIR      ?= $(CURDIR)/_install
 DPDK_PKTMBUF_HEADROOM ?= 128
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
+ifeq ($(shell uname -m),x86_64)
+DPDK_MARCH            ?= corei7
+DPDK_TUNE             ?= core-avx2
+else
 DPDK_MARCH            ?= native
 DPDK_TUNE             ?= generic
+endif
 DPDK_DEBUG            ?= n
 DPDK_CRYPTO_SW_PMD    ?= n
 DPDK_MLX5_PMD         ?= n
@@ -27,7 +32,7 @@ DPDK_MLX5_PMD         ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 16.11
-PKG_SUFFIX ?= vpp4
+PKG_SUFFIX ?= vpp5
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
