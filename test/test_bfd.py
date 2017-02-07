@@ -375,7 +375,6 @@ class BFDCommonCode:
 
     def bfd_session_up(self):
         """ Bring BFD session up """
-        self.pg_enable_capture([self.pg0])
         self.logger.info("BFD: Waiting for slow hello")
         p, timeout = self.wait_for_bfd_packet(2)
         self.logger.info("BFD: Sending Init")
@@ -491,6 +490,7 @@ class BFD4TestCase(VppTestCase, BFDCommonCode):
         super(BFD4TestCase, self).setUp()
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
+        self.pg_enable_capture([self.pg0])
         try:
             self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                                 self.pg0.remote_ip4)
@@ -525,7 +525,6 @@ class BFD4TestCase(VppTestCase, BFDCommonCode):
 
     def test_slow_timer(self):
         """ verify slow periodic control frames while session down """
-        self.pg_enable_capture([self.pg0])
         expected_packets = 3
         self.logger.info("BFD: Waiting for %d BFD packets" % expected_packets)
         self.wait_for_bfd_packet(2)
@@ -613,6 +612,7 @@ class BFD4TestCase(VppTestCase, BFDCommonCode):
         self.vpp_session.remove_vpp_config()
         self.vpp_session = VppBFDUDPSession(
             self, self.pg0, self.pg0.remote_ip4, desired_min_tx=10000)
+        self.pg_enable_capture([self.pg0])
         self.vpp_session.add_vpp_config()
         self.test_session.update(desired_min_tx_interval=1000000,
                                  required_min_rx_interval=1000000)
@@ -743,6 +743,7 @@ class BFD6TestCase(VppTestCase, BFDCommonCode):
         super(BFD6TestCase, self).setUp()
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
+        self.pg_enable_capture([self.pg0])
         try:
             self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                                 self.pg0.remote_ip6,
@@ -794,6 +795,7 @@ class BFDSHA1TestCase(VppTestCase, BFDCommonCode):
         super(BFDSHA1TestCase, self).setUp()
         self.factory = AuthKeyFactory()
         self.vapi.want_bfd_events()
+        self.pg_enable_capture([self.pg0])
 
     def tearDown(self):
         BFDCommonCode.tearDown(self)
