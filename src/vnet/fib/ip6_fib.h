@@ -20,6 +20,7 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_urpf_list.h>
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/load_balance.h>
 
@@ -65,6 +66,27 @@ u32 ip6_fib_table_fwding_lookup(ip6_main_t * im,
 extern void ip6_fib_table_walk(u32 fib_index,
                                fib_table_walk_fn_t fn,
                                void *ctx);
+
+/**
+ * @biref returns number of links on which src is reachable.
+ */
+always_inline int
+ip6_src_check_for_packet (ip6_main_t * im,
+		       vlib_buffer_t * b,
+		       ip6_header_t * i)
+{
+  const load_balance_t *lb0;
+  index_t lbi;
+
+  lbi = ip6_fib_table_fwding_lookup_with_if_index(
+      im,
+      vnet_buffer (b)->sw_if_index[VLIB_RX],
+      &i->src_address);
+
+  lb0 = load_balance_get(lbi);
+
+  return (fib_urpf_check_size (lb0->lb_urpf));
+}
 
 /**
  * @biref return the DPO that the LB stacks on.
