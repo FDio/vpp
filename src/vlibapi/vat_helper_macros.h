@@ -45,29 +45,31 @@ do {                                                            \
 #define W(ret)					\
 do {                                            \
     f64 timeout = vat_time_now (vam) + 1.0;     \
+    ret = -99;                                  \
                                                 \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \
             ret = vam->retval;                  \
+            break;                              \
         }                                       \
         vat_suspend (vam->vlib_main, 1e-5);     \
     }                                           \
-    ret = -99;                                  \
 } while(0);
 
 /* W2: wait for results, with timeout */
 #define W2(ret, body)				\
 do {                                            \
     f64 timeout = vat_time_now (vam) + 1.0;     \
+    ret = -99;                                  \
                                                 \
     while (vat_time_now (vam) < timeout) {      \
         if (vam->result_ready == 1) {           \
 	  (body);                               \
 	  ret = vam->retval;                    \
+          break;                                \
         }                                       \
         vat_suspend (vam->vlib_main, 1e-5);     \
     }                                           \
-    ret = -99;                                 \
 } while(0);
 
 
