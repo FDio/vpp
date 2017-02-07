@@ -52,7 +52,7 @@ SUFFIXES = .api.h .api .api.json
 apidir = $(prefix)/acl
 api_DATA = acl/acl.api.json
 
-noinst_HEADERS =				\
+nobase_include_HEADERS =				\
   acl/acl_all_api_h.h				\
   acl/acl_msg_enum.h				\
   acl/acl.api.h
