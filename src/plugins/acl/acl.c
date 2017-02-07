@@ -866,9 +866,9 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
 	{
 	  *trace_bitmap |= 0x00000001;
 	  /* type */
-	  src_port = *(u8 *) get_ptr_to_offset (b0, 34);
+	  src_port = htons((u16) (*(u8 *) get_ptr_to_offset (b0, 34)));
 	  /* code */
-	  dst_port = *(u8 *) get_ptr_to_offset (b0, 35);
+	  dst_port = htons((u16) (*(u8 *) get_ptr_to_offset (b0, 35)));
 	}
       else
 	{
@@ -888,9 +888,9 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
 	{
 	  *trace_bitmap |= 0x00000002;
 	  /* type */
-	  src_port = *(u8 *) get_ptr_to_offset (b0, 54);
+	  src_port = htons((u16) (*(u8 *) get_ptr_to_offset (b0, 54)));
 	  /* code */
-	  dst_port = *(u8 *) get_ptr_to_offset (b0, 55);
+	  dst_port = htons((u16) (*(u8 *) get_ptr_to_offset (b0, 55)));
 	}
       else
 	{
