@@ -22,7 +22,7 @@ vppplugins_LTLIBRARIES = ila_plugin.la
 
 ila_plugin_la_SOURCES = ila/ila.c
 
-noinst_HEADERS = ila/ila.h
+nobase_include_HEADERS = ila/ila.h
 
 # Remove *.la files
 install-data-hook:

@@ -22,7 +22,7 @@ libsixrd_plugin_la_SOURCES =			\
 	sixrd/ip4_sixrd.c			\
 	sixrd/ip6_sixrd.c
 
-noinst_HEADERS =				\
+nobase_include_HEADERS =				\
 	sixrd/sixrd.h                           \
 	sixrd/sixrd_dpo.h
 

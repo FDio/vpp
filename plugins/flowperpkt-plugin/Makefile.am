@@ -48,7 +48,7 @@ SUFFIXES = .api.h .api .api.json
 apidir = $(prefix)/flowperpkt/
 api_DATA = flowperpkt/flowperpkt.api.json
 
-noinst_HEADERS =			\
+nobase_include_HEADERS =			\
   flowperpkt/flowperpkt_all_api_h.h			\
   flowperpkt/flowperpkt_msg_enum.h			\
   flowperpkt/flowperpkt.api.h

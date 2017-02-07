@@ -43,7 +43,7 @@ SUFFIXES = .api.h .api
 apidir = $(prefix)/sample/
 api_DATA = sample.api.json
 
-noinst_HEADERS =				\
+nobase_include_HEADERS =				\
   sample/sample_all_api_h.h			\
   sample/sample_msg_enum.h			\
   sample/sample.api.h

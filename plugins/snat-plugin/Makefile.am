@@ -46,7 +46,7 @@ SUFFIXES = .api.h .api
 apidir = $(prefix)/snat/
 api_DATA = snat.api.json
 
-noinst_HEADERS =			\
+nobase_include_HEADERS =			\
   snat/snat_all_api_h.h			\
   snat/snat_msg_enum.h			\
   snat/snat.api.h

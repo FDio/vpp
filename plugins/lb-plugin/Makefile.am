@@ -44,7 +44,7 @@ SUFFIXES = .api.h .api .api.json
 apidir = $(prefix)/lb/
 api_DATA = lb/lb.api.json
 
-noinst_HEADERS = lb/lb.h lb/util.h lb/refcount.h  lb/lbhash.h lb/lb.api.h
+nobase_include_HEADERS = lb/lb.h lb/util.h lb/refcount.h  lb/lbhash.h lb/lb.api.h
 
 lb_test_plugin_la_SOURCES = \
   lb/lb_test.c lb/lb_plugin.api.h

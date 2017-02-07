@@ -53,7 +53,7 @@ IOAM_POT_BUILT_SRC =				\
 	ioam/lib-pot/pot.api.h			\
 	ioam/lib-pot/pot.api.json
 
-IOAM_POT_NOINST_HDR =				\
+IOAM_POT_NOBASE_INCLUDE_HDR =				\
 	ioam/lib-pot/pot_all_api_h.h	\
 	ioam/lib-pot/pot_msg_enum.h		\
 	ioam/lib-pot/pot.api.h			\
@@ -80,7 +80,7 @@ IOAM_EXPORT_BUILT_SRC =					\
 	ioam/export/ioam_export.api.h		\
 	ioam/export/ioam_export.api.json
 
-IOAM_EXPORT_NOINST_HDR =				\
+IOAM_EXPORT_NOBASE_INCLUDE_HDR =				\
 	ioam/export/ioam_export_all_api_h.h \
 	ioam/export/ioam_export_msg_enum.h  \
 	ioam/export/ioam_export.api.h
@@ -104,7 +104,7 @@ IOAM_TRACE_BUILT_SRC =				\
 	ioam/lib-trace/trace.api.h		\
 	ioam/lib-trace/trace.api.json
 
-IOAM_TRACE_NOINST_HDR =		            \
+IOAM_TRACE_NOBASE_INCLUDE_HDR =		            \
   ioam/export/ioam_export_all_api_h.h   \
   ioam/lib-trace/trace_all_api_h.h		\
   ioam/lib-trace/trace_msg_enum.h		\
@@ -139,7 +139,7 @@ IOAM_VXLAN_GPE_BUILT_SRC =									\
 	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.h		\
 	ioam/export-vxlan-gpe/vxlan_gpe_ioam_export.api.json
 
-IOAM_VXLAN_GPE_NOINST_HDR =		                       		\
+IOAM_VXLAN_GPE_NOBASE_INCLUDE_HDR =		                       		\
   ioam/export/ioam_export_all_api_h.h   					\
   ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h					\
   ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h					\
@@ -197,12 +197,12 @@ BUILT_SOURCES = 				\
 	$(IOAM_VXLAN_GPE_BUILT_SRC)	\
 	$(IOAM_E2E_BUILT_SRC)
 
-noinst_HEADERS = 					\
-	$(IOAM_POT_NOINST_HDR)			\
-	$(IOAM_EXPORT_NOINST_HDR)		\
-	$(IOAM_TRACE_NOINST_HDR)		\
-	$(IOAM_VXLAN_GPE_NOINST_HDR)	\
-	$(IOAM_E2E_NOINST_HDR)
+nobase_include_HEADERS = 					\
+	$(IOAM_POT_NOBASE_INCLUDE_HDR)			\
+	$(IOAM_EXPORT_NOBASE_INCLUDE_HDR)		\
+	$(IOAM_TRACE_NOBASE_INCLUDE_HDR)		\
+	$(IOAM_VXLAN_GPE_NOBASE_INCLUDE_HDR)	\
+	$(IOAM_E2E_NOBASE_INCLUDE_HDR)
 
 vppplugins_LTLIBRARIES = ioam_plugin.la
 
