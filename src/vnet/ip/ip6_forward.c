@@ -1463,16 +1463,14 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      type0 != IP_BUILTIN_PROTOCOL_ICMP &&
 	      !ip6_address_is_link_local_unicast (&ip0->src_address))
 	    {
-	      u32 src_adj_index0 = ip6_src_lookup_for_packet (im, p0, ip0);
-	      error0 = (ADJ_INDEX_INVALID == src_adj_index0
+	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
 			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
 	    }
 	  if (error1 == IP6_ERROR_UNKNOWN_PROTOCOL &&
 	      type1 != IP_BUILTIN_PROTOCOL_ICMP &&
 	      !ip6_address_is_link_local_unicast (&ip1->src_address))
 	    {
-	      u32 src_adj_index1 = ip6_src_lookup_for_packet (im, p1, ip1);
-	      error1 = (ADJ_INDEX_INVALID == src_adj_index1
+	      error1 = (!ip6_urpf_loose_check (im, p1, ip1)
 			? IP6_ERROR_SRC_LOOKUP_MISS : error1);
 	    }
 
@@ -1570,8 +1568,7 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      type0 != IP_BUILTIN_PROTOCOL_ICMP &&
 	      !ip6_address_is_link_local_unicast (&ip0->src_address))
 	    {
-	      u32 src_adj_index0 = ip6_src_lookup_for_packet (im, p0, ip0);
-	      error0 = (ADJ_INDEX_INVALID == src_adj_index0
+	      error0 = (!ip6_urpf_loose_check (im, p0, ip0)
 			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
 	    }
 
