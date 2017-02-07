@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_686d6e32",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 869,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-02-07T14:54:44Z",
+      "side": 1,
+      "message": "What about ICMPv6 match a few lines below ? Seems like it is would be the same problem there...",
+      "range": {
+        "startLine": 869,
+        "startChar": 0,
+        "endLine": 869,
+        "endChar": 64
+      },
+      "revId": "31618c044bd3e86050746fcb5046d6bc8dc7d0be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
