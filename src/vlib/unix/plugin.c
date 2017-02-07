@@ -163,7 +163,7 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
   pi->version = str_array_to_vec ((char *) &reg->version,
 				  sizeof (reg->version));
 
-  if (reg && reg->early_init)
+  if (reg->early_init)
     {
       clib_error_t *(*ei) (vlib_main_t *);
       void *h;
