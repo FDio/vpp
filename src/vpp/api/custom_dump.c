@@ -43,6 +43,9 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_vtr.h>
 
+#include <vnet/sr/sr_packet.h>
+#include <vnet/sr/sr.h>
+
 #include <vpp/api/vpe_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
@@ -1036,143 +1039,119 @@ static void *vl_api_l2_patch_add_del_t_print
   FINISH;
 }
 
-static void *vl_api_sr_tunnel_add_del_t_print
-  (vl_api_sr_tunnel_add_del_t * mp, void *handle)
+static void *vl_api_sr_localsid_add_del_t_print
+  (vl_api_sr_localsid_add_del_t * mp, void *handle)
 {
   u8 *s;
-  ip6_address_t *this_address;
-  int i;
-  u16 flags_host_byte_order;
-  u8 pl_flag;
 
-  s = format (0, "SCRIPT: sr_tunnel_add_del ");
+  s = format (0, "SCRIPT: sr_localsid_add_del ");
 
-  if (mp->name[0])
-    s = format (s, "name %s ", mp->name);
+  s = format (s, "LocalSID: %U", format_ip6_address,
+        (ip6_address_t *) mp->localsid_addr);
+  s = format (s, "FIB_table: %d", ntohl(mp->fib_table));
 
-  s = format (s, "src %U dst %U/%d ", format_ip6_address,
-	      (ip6_address_t *) mp->src_address,
-	      format_ip6_address,
-	      (ip6_address_t *) mp->dst_address, mp->dst_mask_width);
+  s = format (s, (mp->is_decap?"Decaps: True":"Decaps: False"));
 
-  this_address = (ip6_address_t *) mp->segs_and_tags;
-  for (i = 0; i < mp->n_segments; i++)
-    {
-      s = format (s, "next %U ", format_ip6_address, this_address);
-      this_address++;
-    }
-  for (i = 0; i < mp->n_tags; i++)
-    {
-      s = format (s, "tag %U ", format_ip6_address, this_address);
-      this_address++;
-    }
-
-  flags_host_byte_order = clib_net_to_host_u16 (mp->flags_net_byte_order);
-
-  if (flags_host_byte_order & IP6_SR_HEADER_FLAG_CLEANUP)
-    s = format (s, " clean ");
-
-  if (flags_host_byte_order & IP6_SR_HEADER_FLAG_PROTECTED)
-    s = format (s, "protected ");
-
-  for (i = 1; i <= 4; i++)
-    {
-      pl_flag = ip6_sr_policy_list_flags (flags_host_byte_order, i);
-
-      switch (pl_flag)
-	{
-	case IP6_SR_HEADER_FLAG_PL_ELT_NOT_PRESENT:
-	  continue;
-
-	case IP6_SR_HEADER_FLAG_PL_ELT_INGRESS_PE:
-	  s = format (s, "InPE %d ", i);
-	  break;
-
-	case IP6_SR_HEADER_FLAG_PL_ELT_EGRESS_PE:
-	  s = format (s, "EgPE %d ", i);
-	  break;
-
-	case IP6_SR_HEADER_FLAG_PL_ELT_ORIG_SRC_ADDR:
-	  s = format (s, "OrgSrc %d ", i);
-	  break;
-
-	default:
-	  clib_warning ("BUG: pl elt %d value %d", i, pl_flag);
-	  break;
-	}
-    }
-
-  if (mp->policy_name[0])
-    s = format (s, "policy_name %s ", mp->policy_name);
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
+  switch (mp->behavior)
+  {
+    case SR_BEHAVIOR_END:
+      s = format (s, "Behavior: End");
+      break;
+    case SR_BEHAVIOR_DX6:
+      s = format (s, "Behavior: IPv6 X-Connect");
+      s = format (s, "  Next-hop addr: %U", format_ip6_address,
+          (ip6_address_t *) mp->nh_addr);
+      break;
+    case SR_BEHAVIOR_DX4:
+      s = format (s, "Behavior: IPv4 X-Connect");
+      s = format (s, "  Next-hop addr: %U", format_ip4_address,
+          (ip4_address_t *) mp->nh_addr);
+      break;
+    case SR_BEHAVIOR_DT6:
+      s = format (s, "Behavior: Table");
+      s = format (s, "  FIB table: %d", ntohl(mp->sw_if_index));
+      break;
+    case SR_BEHAVIOR_DX2:
+      s = format (s, "Behavior: L2 X-Connect");
+      s = format (s, "  SW IF index: %d", ntohl(mp->sw_if_index));
+      break;
+    default:
+      s = format (s, "Plugin behavior id: %d", mp->behavior);
+      break;
+  }
   FINISH;
 }
 
-static void *vl_api_sr_policy_add_del_t_print
-  (vl_api_sr_policy_add_del_t * mp, void *handle)
+static void *vl_api_sr_steering_add_del_t_print
+  (vl_api_sr_steering_add_del_t * mp, void *handle)
 {
   u8 *s;
-  int i;
 
-  s = format (0, "SCRIPT: sr_policy_add_del ");
+  s = format (0, "SCRIPT: sr_steering_add_del ");
 
-  if (mp->name[0])
-    s = format (s, "name %s ", mp->name);
+  s = format (s, "BindingSID: %U", format_ip6_address,
+        (ip6_address_t *) mp->bsid_addr);
+  s = format (s, "SR Policy Index: %d", ntohl(mp->sr_policy_index));
 
+  s = format (s, "FIB_table: %d", ntohl(mp->table_id));
 
-  if (mp->tunnel_names[0])
-    {
-      // start deserializing tunnel_names
-      int num_tunnels = mp->tunnel_names[0];	//number of tunnels
-      u8 *deser_tun_names = mp->tunnel_names;
-      deser_tun_names += 1;	//moving along
+  s = format (s, (mp->is_del?"Del: True":"Del: False"));
 
-      u8 *tun_name = 0;
-      int tun_name_len = 0;
+  s = format (s, "Prefix: %U/%d", format_ip6_address,
+        (ip6_address_t *) mp->prefix_addr, ntohl(mp->mask_width));
 
-      for (i = 0; i < num_tunnels; i++)
-	{
-	  tun_name_len = *deser_tun_names;
-	  deser_tun_names += 1;
-	  vec_resize (tun_name, tun_name_len);
-	  memcpy (tun_name, deser_tun_names, tun_name_len);
-	  s = format (s, "tunnel %s ", tun_name);
-	  deser_tun_names += tun_name_len;
-	  tun_name = 0;
-	}
-    }
+  s = format (s, "SF IF index: %d", ntohl(mp->sw_if_index));
 
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
+  switch (mp->traffic_type)
+  {
+    case SR_STEER_L2:
+      s = format (s, "Traffic type: L2");
+      break;
+    case SR_STEER_IPV4:
+      s = format (s, "Traffic type: IPv4");
+      break;
+    case SR_STEER_IPV6:
+      s = format (s, "Traffic type: IPv6");
+      break;
+    default:
+      s = format (s, "Traffic type: Unknown(%d)", mp->traffic_type);
+      break;
+  }
   FINISH;
 }
 
-static void *vl_api_sr_multicast_map_add_del_t_print
-  (vl_api_sr_multicast_map_add_del_t * mp, void *handle)
+static void *vl_api_sr_policy_add_t_print
+  (vl_api_sr_policy_add_t * mp, void *handle)
 {
+  u8 *s;
 
-  u8 *s = 0;
-  /* int i; */
+  s = format (0, "SCRIPT: sr_policy_add ");
 
-  s = format (0, "SCRIPT: sr_multicast_map_add_del ");
-
-  if (mp->multicast_address[0])
-    s = format (s, "address %U ", format_ip6_address, &mp->multicast_address);
-
-  if (mp->policy_name[0])
-    s = format (s, "sr-policy %s ", &mp->policy_name);
-
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
+  s = format (s, "To be delivered. Good luck.");
   FINISH;
 }
 
+static void *vl_api_sr_policy_mod_t_print
+  (vl_api_sr_policy_mod_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sr_policy_mod ");
+
+  s = format (s, "To be delivered. Good luck.");
+  FINISH;
+}
+
+static void *vl_api_sr_policy_del_t_print
+  (vl_api_sr_policy_del_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sr_policy_del ");
+
+  s = format (s, "To be delivered. Good luck.");
+  FINISH;
+}
 
 static void *vl_api_classify_add_del_table_t_print
   (vl_api_classify_add_del_table_t * mp, void *handle)
@@ -2939,9 +2918,11 @@ _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)                       \
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)                                   \
-_(SR_TUNNEL_ADD_DEL, sr_tunnel_add_del)					\
-_(SR_POLICY_ADD_DEL, sr_policy_add_del)					\
-_(SR_MULTICAST_MAP_ADD_DEL, sr_multicast_map_add_del)                   \
+_(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)                             \
+_(SR_STEERING_ADD_DEL, sr_steering_add_del)                             \
+_(SR_POLICY_ADD, sr_policy_add)                                         \
+_(SR_POLICY_MOD, sr_policy_mod)                                         \
+_(SR_POLICY_DEL, sr_policy_del)                                         \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
 _(L2_FLAGS, l2_flags)                                                   \
