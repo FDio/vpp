@@ -457,9 +457,9 @@ ip4_show_mfib (vlib_main_t * vm,
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
+VLIB_CLI_COMMAND (ip4_show_mfib_command, static) = {
     .path = "show ip mfib",
-    .short_help = "show ip mfib [summary] [table <table-id>] [index <fib-id>] [<gre-addr>[/<mask>]] [<gre-addr>] [<src-addr> <gre-addr>]",
+    .short_help = "show ip mfib [summary] [table <table-id>] [index <fib-id>] [<grp-addr>[/<mask>]] [<grp-addr>] [<src-addr> <grp-addr>]",
     .function = ip4_show_mfib,
 };
 /* *INDENT-ON* */

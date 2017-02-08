@@ -1147,6 +1147,10 @@ show_mfib_entry_command (vlib_main_t * vm,
     return (NULL);
 }
 
+/*?
+ * This commnad displays an entry, or all entries, in the mfib tables indexed by their unique
+ * numerical indentifier.
+ ?*/
 VLIB_CLI_COMMAND (show_mfib_entry, static) = {
   .path = "show mfib entry",
   .function = show_mfib_entry_command,
