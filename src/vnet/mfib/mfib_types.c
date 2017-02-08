@@ -171,7 +171,7 @@ mfib_show_route_flags (vlib_main_t * vm,
 }
 
 /*?
- * This command display the set of support flags applicable to the MFIB route
+ * This command displays the set of supported flags applicable to an MFIB route
  */
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mfib_route_flags_command, static) =
@@ -200,7 +200,7 @@ mfib_show_itf_flags (vlib_main_t * vm,
 }
 
 /*?
- * This command display the set of support flags applicable to the MFIB route
+ * This command displays the set of supported flags applicable to an MFIB interface
  */
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (mfib_itf_flags_command, static) =
