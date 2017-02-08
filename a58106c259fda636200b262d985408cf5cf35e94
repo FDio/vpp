@@ -117,6 +117,30 @@
       "revId": "a58106c259fda636200b262d985408cf5cf35e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1b4992d0",
+        "filename": "src/vnet/fib/ip6_fib.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-08T08:43:43Z",
+      "side": 1,
+      "message": "Changed to ip6_urpf_loose_check(). I had set my IDE to GNU style for code formatting, so indentation was different. Fixed it as well.",
+      "parentUuid": "3a3291f1_3bce8e5b",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 24
+      },
+      "revId": "a58106c259fda636200b262d985408cf5cf35e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
