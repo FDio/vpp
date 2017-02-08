@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_7e2be430",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 776,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-08T15:44:00Z",
+      "side": 1,
+      "message": "I smell fish. We need to have a careful discussion about the cache lookup method; specifically, on the topic of thread safety.",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9e269067",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_thread.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-08T15:44:00Z",
+      "side": 1,
+      "message": "How can this loop be thread-safe?",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1e03c0b9",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-08T15:44:00Z",
+      "side": 1,
+      "message": "The find_hdr argument is terminally confusing. Please find some way of expressing what it actually means. Changing the name might help. I can see what it does, but not why one would want it.",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
