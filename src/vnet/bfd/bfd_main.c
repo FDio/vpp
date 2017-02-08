@@ -526,8 +526,8 @@ bfd_add_sha1_auth_section (vlib_buffer_t * b, bfd_session_t * bs)
   SHA1 ((unsigned char *) pkt, sizeof (*pkt), hash);
   BFD_DBG ("hashing: %U", format_hex_bytes, pkt, sizeof (*pkt));
   clib_memcpy (auth->hash, hash, sizeof (hash));
-#endif
 }
+#endif
 
 static void
 bfd_add_auth_section (vlib_buffer_t * b, bfd_session_t * bs)

@@ -637,8 +637,7 @@ bfd_udp4_verify_transport (const ip4_header_t * ip4,
 	       expected_ttl);
       return BFD_UDP_ERROR_BAD;
     }
-  if (clib_net_to_host_u16 (udp->src_port) < 49152 ||
-      clib_net_to_host_u16 (udp->src_port) > 65535)
+  if (clib_net_to_host_u16 (udp->src_port) < 49152)
     {
       BFD_ERR ("Invalid UDP src port %u, out of range <49152,65535>",
 	       udp->src_port);
@@ -805,8 +804,7 @@ bfd_udp6_verify_transport (const ip6_header_t * ip6,
 	       ip6->hop_limit, expected_hop_limit);
       return BFD_UDP_ERROR_BAD;
     }
-  if (clib_net_to_host_u16 (udp->src_port) < 49152 ||
-      clib_net_to_host_u16 (udp->src_port) > 65535)
+  if (clib_net_to_host_u16 (udp->src_port) < 49152)
     {
       BFD_ERR ("Invalid UDP src port %u, out of range <49152,65535>",
 	       udp->src_port);
