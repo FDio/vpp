@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_5be71a13",
+        "filename": "src/vnet/fib/ip6_fib.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-08T05:39:43Z",
+      "side": 1,
+      "message": "s/biref/brief/",
+      "range": {
+        "startLine": 71,
+        "startChar": 4,
+        "endLine": 71,
+        "endChar": 9
+      },
+      "revId": "a58106c259fda636200b262d985408cf5cf35e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_dbbaeae0",
+        "filename": "src/vnet/fib/ip6_fib.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-08T05:39:43Z",
+      "side": 1,
+      "message": "Maybe it\u0027s just me but the name is too generic. I\u0027m thinking something along the lines of ip6_src_has_reverse_path(), but no strong opinion about it.",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 24
+      },
+      "revId": "a58106c259fda636200b262d985408cf5cf35e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
