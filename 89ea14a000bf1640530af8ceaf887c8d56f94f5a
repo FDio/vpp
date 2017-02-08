@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a3291f1_be682cf6",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-08T19:34:33Z",
+      "side": 1,
+      "message": "Its better to return here if we dont find e2e header.",
+      "range": {
+        "startLine": 398,
+        "startChar": 6,
+        "endLine": 398,
+        "endChar": 9
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_7e2be430",
         "filename": "src/plugins/ioam/ip6/ioam_cache.h",
         "patchSetId": 9
@@ -13,6 +36,52 @@
       "writtenOn": "2017-02-08T15:44:00Z",
       "side": 1,
       "message": "I smell fish. We need to have a careful discussion about the cache lookup method; specifically, on the topic of thread safety.",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fe2b5492",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-08T19:34:33Z",
+      "side": 1,
+      "message": "ip checksum fixup - ip_csum_update()",
+      "range": {
+        "startLine": 357,
+        "startChar": 8,
+        "endLine": 357,
+        "endChar": 16
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_de189886",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-08T19:34:33Z",
+      "side": 1,
+      "message": "ip checksum fixup - ip_csum_update()",
+      "range": {
+        "startLine": 361,
+        "startChar": 8,
+        "endLine": 361,
+        "endChar": 22
+      },
       "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
