@@ -436,6 +436,8 @@ define ip_address_details
   u32 context;
   u8 ip[16];
   u8 prefix_length;
+  u32 sw_if_index;
+  u8 is_ipv6;
 };
 
 define ip_address_dump
@@ -450,6 +452,7 @@ define ip_details
 {
   u32 sw_if_index;
   u32 context;
+  u8 is_ipv6;
 };
 
 define ip_dump

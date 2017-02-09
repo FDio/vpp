@@ -990,7 +990,8 @@ vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 
 static void
 send_ip_details (vpe_api_main_t * am,
-		 unix_shared_memory_queue_t * q, u32 sw_if_index, u32 context)
+		 unix_shared_memory_queue_t * q, u32 sw_if_index,
+		 u8 is_ipv6, u32 context)
 {
   vl_api_ip_details_t *mp;
 
@@ -999,6 +1000,7 @@ send_ip_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_IP_DETAILS);
 
   mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_ipv6 = is_ipv6;
   mp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
@@ -1007,7 +1009,8 @@ send_ip_details (vpe_api_main_t * am,
 static void
 send_ip_address_details (vpe_api_main_t * am,
 			 unix_shared_memory_queue_t * q,
-			 u8 * ip, u16 prefix_length, u8 is_ipv6, u32 context)
+			 u8 * ip, u16 prefix_length,
+			 u32 sw_if_index, u8 is_ipv6, u32 context)
 {
   vl_api_ip_address_details_t *mp;
 
@@ -1026,6 +1029,8 @@ send_ip_address_details (vpe_api_main_t * am,
     }
   mp->prefix_length = prefix_length;
   mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->is_ipv6 = is_ipv6;
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
@@ -1061,7 +1066,8 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
       ({
         r6 = ip_interface_address_get_address (lm6, ia);
         u16 prefix_length = ia->address_length;
-        send_ip_address_details(am, q, (u8*)r6, prefix_length, 1, mp->context);
+        send_ip_address_details(am, q, (u8*)r6, prefix_length,
+				sw_if_index, 1, mp->context);
       }));
       /* *INDENT-ON* */
     }
@@ -1073,7 +1079,8 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
       ({
         r4 = ip_interface_address_get_address (lm4, ia);
         u16 prefix_length = ia->address_length;
-        send_ip_address_details(am, q, (u8*)r4, prefix_length, 0, mp->context);
+        send_ip_address_details(am, q, (u8*)r4, prefix_length,
+				sw_if_index, 0, mp->context);
       }));
       /* *INDENT-ON* */
     }
@@ -1116,7 +1123,7 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
 	    continue;
 	  }
 	sw_if_index = si->sw_if_index;
-	send_ip_details (am, q, sw_if_index, mp->context);
+	send_ip_details (am, q, sw_if_index, mp->is_ipv6, mp->context);
       }
   }
 }
