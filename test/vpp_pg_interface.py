@@ -1,6 +1,7 @@
 import os
 import time
 import socket
+import struct
 from traceback import format_exc, format_stack
 from scapy.utils import wrpcap, rdpcap, PcapReader
 from scapy.plist import PacketList
@@ -283,6 +284,37 @@ class VppPGInterface(VppInterface):
             return False
         return True
 
+    def wait_for_packet_data(self, deadline):
+        """
+        Wait until enough data is available in the file handled by internal
+        pcap reader so that a whole packet can be read.
+
+        :param deadline: timestamp by which the data must arrive
+        :raises Exception: if not enough data by deadline
+        """
+        orig_pos = self._pcap_reader.f.tell()  # save file position
+        enough_data = False
+        while time.time() < deadline:
+            # read packet header from pcap
+            hdr = self._pcap_reader.f.read(16)
+            if len(hdr) < 16:
+                time.sleep(0)  # yield
+                continue  # cannot read full header, continue looping
+            # find the capture length - caplen
+            sec, usec, caplen, wirelen = struct.unpack(
+                self._pcap_reader.endian + "IIII", hdr)
+            self._pcap_reader.f.seek(0, 2)  # seek to end of file
+            end_pos = self._pcap_reader.f.tell()  # get position at end
+            if end_pos >= orig_pos + len(hdr) + caplen:
+                enough_data = True  # yay, we have enough data
+                break
+            self.test.logger.debug("Partial packet data in pcap")
+            time.sleep(0)  # yield
+        self._pcap_reader.f.seek(orig_pos, 0)  # restore original position
+        if not enough_data:
+            raise Exception(
+                "Not enough data to read a full packet within deadline")
+
     def wait_for_packet(self, timeout, filter_out_fn=is_ipv6_misc):
         """
         Wait for next packet captured with a timeout
@@ -311,6 +343,7 @@ class VppPGInterface(VppInterface):
 
         self.test.logger.debug("Waiting for packet")
         while time.time() < deadline:
+            self.wait_for_packet_data(deadline)
             p = self._pcap_reader.recv()
             if p is not None:
                 if filter_out_fn is not None and filter_out_fn(p):

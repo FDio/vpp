@@ -8,6 +8,7 @@ import resource
 from collections import deque
 from threading import Thread
 from inspect import getdoc
+from traceback import format_exception
 from hook import StepHook, PollHook
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
@@ -287,6 +288,9 @@ class VppTestCase(unittest.TestCase):
 
     def tearDown(self):
         """ Show various debug prints after each test """
+        self.logger.debug("--- tearDown() for %s.%s(%s) called ---" %
+                          (self.__class__.__name__, self._testMethodName,
+                           self._testMethodDoc))
         if not self.vpp_dead:
             self.logger.debug(self.vapi.cli("show trace"))
             self.logger.info(self.vapi.ppcli("show int"))
@@ -297,6 +301,9 @@ class VppTestCase(unittest.TestCase):
 
     def setUp(self):
         """ Clear trace before running each test"""
+        self.logger.debug("--- setUp() for %s.%s(%s) called ---" %
+                          (self.__class__.__name__, self._testMethodName,
+                           self._testMethodDoc))
         if self.vpp_dead:
             raise Exception("VPP is dead when setting up the test")
         time.sleep(.1)
@@ -586,6 +593,11 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
+        if hasattr(test, 'logger'):
+            test.logger.debug("--- addSuccess() %s.%s(%s) called"
+                              % (test.__class__.__name__,
+                                 test._testMethodName,
+                                 test._testMethodDoc))
         unittest.TestResult.addSuccess(self, test)
         self.result_string = colorize("OK", GREEN)
 
@@ -597,6 +609,12 @@ class VppTestResult(unittest.TestResult):
         :param reason:
 
         """
+        if hasattr(test, 'logger'):
+            test.logger.debug("--- addSkip() %s.%s(%s) called, reason is %s"
+                              % (test.__class__.__name__,
+                                 test._testMethodName,
+                                 test._testMethodDoc,
+                                 reason))
         unittest.TestResult.addSkip(self, test, reason)
         self.result_string = colorize("SKIP", YELLOW)
 
@@ -608,6 +626,13 @@ class VppTestResult(unittest.TestResult):
         :param err: error message
 
         """
+        if hasattr(test, 'logger'):
+            test.logger.debug("--- addFailure() %s.%s(%s) called, err is %s"
+                              % (test.__class__.__name__,
+                                 test._testMethodName,
+                                 test._testMethodDoc, err))
+            test.logger.debug("formatted exception is:\n%s" %
+                              "".join(format_exception(*err)))
         unittest.TestResult.addFailure(self, test, err)
         if hasattr(test, 'tempdir'):
             self.result_string = colorize("FAIL", RED) + \
@@ -623,6 +648,13 @@ class VppTestResult(unittest.TestResult):
         :param err: error message
 
         """
+        if hasattr(test, 'logger'):
+            test.logger.debug("--- addError() %s.%s(%s) called, err is %s"
+                              % (test.__class__.__name__,
+                                 test._testMethodName,
+                                 test._testMethodDoc, err))
+            test.logger.debug("formatted exception is:\n%s" %
+                              "".join(format_exception(*err)))
         unittest.TestResult.addError(self, test, err)
         if hasattr(test, 'tempdir'):
             self.result_string = colorize("ERROR", RED) + \
