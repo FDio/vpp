@@ -76,7 +76,7 @@ typedef enum
 #undef F
 } bfd_poll_state_e;
 
-typedef struct
+typedef struct bfd_session_s
 {
   /* index in bfd_main.sessions pool */
   u32 bs_idx;

@@ -23,8 +23,6 @@
 #include <vnet/adj/adj_types.h>
 #include <vnet/ip/ip6_packet.h>
 
-#define BFD_UDP_KEY_BODY
-
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
 
@@ -42,10 +40,12 @@ typedef struct
   adj_index_t adj_index;
 } bfd_udp_session_t;
 
+struct bfd_session_s;
+
 void bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			     bfd_udp_session_t * bs);
+			     const struct bfd_session_s *bs);
 void bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			     bfd_udp_session_t * bs);
+			     const struct bfd_session_s *bs);
 
 #endif /* __included_bfd_udp_h__ */
 
