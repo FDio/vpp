@@ -25,6 +25,29 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_79e2de04",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-09T11:16:54Z",
+      "side": 1,
+      "message": "Instead of having locks at thread level, what we can do is\n1. Allocate a fixed size vector for storing cache entries. This will not change.\n2. Also allocate a fixed size vector for locks for having locks at per cache entry level.\nWith this we can get rid of thread level locking and have only entry level locking. Also we may not need per worker thread pool, one global pool should be fine.",
+      "range": {
+        "startLine": 523,
+        "startChar": 27,
+        "endLine": 523,
+        "endChar": 39
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_7e2be430",
         "filename": "src/plugins/ioam/ip6/ioam_cache.h",
         "patchSetId": 9
@@ -99,6 +122,52 @@
       "writtenOn": "2017-02-08T15:44:00Z",
       "side": 1,
       "message": "How can this loop be thread-safe?",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_79b53ecc",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_tunnel_select_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-09T11:16:54Z",
+      "side": 1,
+      "message": "IP checksum fix",
+      "range": {
+        "startLine": 437,
+        "startChar": 7,
+        "endLine": 440,
+        "endChar": 59
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_59ca8250",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_tunnel_select_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 627,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-09T11:16:54Z",
+      "side": 1,
+      "message": "Not incremented anywhere. We can remove this.",
+      "range": {
+        "startLine": 627,
+        "startChar": 42,
+        "endLine": 627,
+        "endChar": 58
+      },
       "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
