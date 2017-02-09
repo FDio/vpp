@@ -104,7 +104,9 @@ _(SNAT_ADD_DEL_INTERFACE_ADDR_REPLY,                            \
   snat_add_del_interface_addr_reply)                            \
 _(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)     \
 _(SNAT_IPFIX_ENABLE_DISABLE_REPLY,                              \
-  snat_ipfix_enable_disable_reply)
+  snat_ipfix_enable_disable_reply)                              \
+_(SNAT_USER_DETAILS, snat_user_details)                         \
+_(SNAT_USER_SESSION_DETAILS, snat_user_session_details)
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -645,6 +647,78 @@ static int api_snat_ipfix_enable_disable (vat_main_t * vam)
   return ret;
 }
 
+static void vl_api_snat_user_session_details_t_handler
+  (vl_api_snat_user_session_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat(vam->ofp, "%s session %U:%d to %U:%d protocol id %d "
+                    "total packets %d total bytes %d\n",
+          mp->is_static ? "static" : "dynamic",
+          format_ip4_address, mp->inside_ip_address, ntohl(mp->inside_port),
+          format_ip4_address, mp->outside_ip_address, ntohl(mp->outside_port),
+          ntohl(mp->protocol), ntohl(mp->total_pkts), ntohl(mp->total_bytes));
+}
+
+static int api_snat_user_session_dump(vat_main_t * vam)
+{
+  vl_api_snat_user_session_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_address_dump");
+      return -99;
+    }
+
+  M(SNAT_USER_SESSION_DUMP, mp);
+  S(mp);
+
+  /* Use a control ping for synchronization */
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static void vl_api_snat_user_details_t_handler
+  (vl_api_snat_user_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat(vam->ofp, "user with ip %U with vrf_id %d "
+                    "with %d sessions and %d static sessions\n",
+          format_ip4_address, mp->ip_address, ntohl(mp->vrf_id),
+          ntohl(mp->nsessions), ntohl(mp->nstaticsessions));
+}
+
+static int api_snat_user_dump(vat_main_t * vam)
+{
+  vl_api_snat_user_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_address_dump");
+      return -99;
+    }
+
+  M(SNAT_USER_DUMP, mp);
+  S(mp);
+
+  /* Use a control ping for synchronization */
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -667,7 +741,9 @@ _(snat_add_del_interface_addr,                                   \
   "<intfc> | sw_if_index <id> [del]")                            \
 _(snat_interface_addr_dump, "")                                  \
 _(snat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "     \
-  "[disable]")
+  "[disable]")                                                   \
+_(snat_user_dump, "")                                            \
+_(snat_user_session_dump, "ip_address <ip> vrf_id <table-id>")
 
 static void 
 snat_vat_api_hookup (vat_main_t *vam)

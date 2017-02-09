@@ -870,6 +870,27 @@ class TestSNAT(VppTestCase):
         capture = self.pg5.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg5)
 
+        # pg5 session dump
+        addresses = self.vapi.snat_address_dump()
+        self.assertEqual(len(addresses), 1)
+        sessions = self.vapi.snat_user_session_dump(self.pg5.remote_ip4n, 10)
+        self.assertEqual(len(sessions), 3)
+        for session in sessions:
+            self.assertFalse(session.is_static)
+            self.assertEqual(session.inside_ip_address[0:4],
+                             self.pg5.remote_ip4n)
+            self.assertEqual(session.outside_ip_address,
+                             addresses[0].ip_address)
+        self.assertEqual(sessions[0].protocol, IP_PROTOS.tcp)
+        self.assertEqual(sessions[1].protocol, IP_PROTOS.udp)
+        self.assertEqual(sessions[2].protocol, IP_PROTOS.icmp)
+        self.assertEqual(sessions[0].inside_port, self.tcp_port_in)
+        self.assertEqual(sessions[1].inside_port, self.udp_port_in)
+        self.assertEqual(sessions[2].inside_port, self.icmp_id_in)
+        self.assertEqual(sessions[0].outside_port, self.tcp_port_out)
+        self.assertEqual(sessions[1].outside_port, self.udp_port_out)
+        self.assertEqual(sessions[2].outside_port, self.icmp_id_out)
+
         # in2out 3rd interface
         pkts = self.create_stream_in(self.pg6, self.pg3)
         self.pg6.add_stream(pkts)
@@ -885,6 +906,44 @@ class TestSNAT(VppTestCase):
         self.pg_start()
         capture = self.pg6.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg6)
+
+        # general user and session dump verifications
+        users = self.vapi.snat_user_dump()
+        self.assertTrue(len(users) >= 3)
+        addresses = self.vapi.snat_address_dump()
+        self.assertEqual(len(addresses), 1)
+        for user in users:
+            sessions = self.vapi.snat_user_session_dump(user.ip_address,
+                                                        user.vrf_id)
+            for session in sessions:
+                self.assertEqual(user.ip_address, session.inside_ip_address)
+                self.assertTrue(session.total_bytes > session.total_pkts > 0)
+                self.assertTrue(session.protocol in
+                                [IP_PROTOS.tcp, IP_PROTOS.udp,
+                                 IP_PROTOS.icmp])
+
+        # pg4 session dump
+        sessions = self.vapi.snat_user_session_dump(self.pg4.remote_ip4n, 10)
+        self.assertTrue(len(sessions) >= 4)
+        for session in sessions:
+            self.assertFalse(session.is_static)
+            self.assertEqual(session.inside_ip_address[0:4],
+                             self.pg4.remote_ip4n)
+            self.assertEqual(session.outside_ip_address,
+                             addresses[0].ip_address)
+
+        # pg6 session dump
+        sessions = self.vapi.snat_user_session_dump(self.pg6.remote_ip4n, 20)
+        self.assertTrue(len(sessions) >= 3)
+        for session in sessions:
+            self.assertTrue(session.is_static)
+            self.assertEqual(session.inside_ip_address[0:4],
+                             self.pg6.remote_ip4n)
+            self.assertEqual(map(ord, session.outside_ip_address[0:4]),
+                             map(int, static_nat_ip.split('.')))
+            self.assertTrue(session.inside_port in
+                            [self.tcp_port_in, self.udp_port_in,
+                             self.icmp_id_in])
 
     def test_hairpinning(self):
         """ SNAT hairpinning """

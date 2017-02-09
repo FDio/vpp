@@ -351,3 +351,69 @@ define snat_ipfix_enable_disable_reply {
   u32 context;
   i32 retval;
 };
+
+/** \brief Dump S-NAT users
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_user_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT users response
+    @param context - sender context, to match reply w/ request
+    @vrf_id - VRF ID
+    @param is_ip4 - 1 if address type is IPv4
+    @param ip_adress - IP address
+    @param nsessions - number of dynamic sessions
+    @param nstaticsessions - number of static sessions
+*/
+define snat_user_details {
+  u32 context;
+  u32 vrf_id;
+  u8 is_ip4;
+  u8 ip_address[16];
+  u32 nsessions;
+  u32 nstaticsessions;
+};
+
+/** \brief S-NAT user's sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param user_ip - IP address of the user to dump
+    @param vrf_id - VRF_ID
+*/
+define snat_user_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 ip_address[16];
+  u32 vrf_id;
+};
+
+/** \brief S-NAT user's sessions response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param outside_ip_address - outside IP address
+    @param outside_port - outside port
+    @param inside_ip_address - inside IP address
+    @param inside_port - inside port
+    @param protocol - protocol
+    @param is_static - 1 if session is static
+    @param last_heard - last heard timer
+    @param total_bytes - count of bytes sent through session
+    @param total_pkts - count of pakets sent through session
+*/
+define snat_user_session_details {
+  u32 context;
+  u8 is_ip4;
+  u8 outside_ip_address[16];
+  u16 outside_port;
+  u8 inside_ip_address[16];
+  u16 inside_port;
+  u16 protocol;
+  u8 is_static;
+  f64 last_heard;
+  u64 total_bytes;
+  u32 total_pkts;
+};

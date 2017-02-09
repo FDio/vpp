@@ -110,6 +110,7 @@ typedef CLIB_PACKED(struct {
 
 typedef struct {
   ip4_address_t addr;
+  u32 fib_index;
   u32 sessions_per_user_list_head_index;
   u32 nsessions;
   u32 nstaticsessions;
