@@ -112,6 +112,7 @@ typedef enum {
   SNAT_IN2OUT_NEXT_LOOKUP,
   SNAT_IN2OUT_NEXT_DROP,
   SNAT_IN2OUT_NEXT_SLOW_PATH,
+  SNAT_IN2OUT_NEXT_ICMP_ERROR,
   SNAT_IN2OUT_N_NEXT,
 } snat_in2out_next_t;
 
@@ -410,6 +411,10 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   return next0;
 }
                       
+typedef struct {
+  u16 src_port, dst_port;
+} tcp_udp_header_t;
+
 static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                          vlib_buffer_t * b0,
                                          ip4_header_t * ip0,
@@ -419,67 +424,171 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                          vlib_node_runtime_t * node,
                                          u32 next0,
                                          f64 now,
-                                         u32 cpu_index)
+                                         u32 cpu_index,
+                                         snat_session_t ** p_s0)
 {
   snat_session_key_t key0;
-  icmp_echo_header_t *echo0;
+  icmp_echo_header_t *echo0, *inner_echo0 = 0;
+  ip4_header_t *inner_ip0;
+  void *l4_header = 0;
+  icmp46_header_t *inner_icmp0;
   clib_bihash_kv_8_8_t kv0, value0;
-  snat_session_t * s0;
+  snat_session_t * s0 = 0;
   u32 new_addr0, old_addr0;
   u16 old_id0, new_id0;
   ip_csum_t sum0;
+  u16 checksum0;
   snat_runtime_t * rt = (snat_runtime_t *)node->runtime_data;
+  u8 is_error_message = 0;
 
-  if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
-    {
-      b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
-      return SNAT_IN2OUT_NEXT_DROP;
-    }
-  
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
   key0.addr = ip0->src_address;
-  key0.port = echo0->identifier;
-  key0.protocol = SNAT_PROTOCOL_ICMP;
   key0.fib_index = rx_fib_index0;
   
+  switch(icmp0->type)
+    {
+    case ICMP4_destination_unreachable:
+    case ICMP4_time_exceeded:
+    case ICMP4_parameter_problem:
+    case ICMP4_source_quench:
+    case ICMP4_redirect:
+    case ICMP4_alternate_host_address:
+      is_error_message = 1;
+    }
+
+  if (!is_error_message)
+    {
+      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
+        {
+          b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
+          next0 = SNAT_IN2OUT_NEXT_DROP;
+          goto out;
+        }
+      key0.protocol = SNAT_PROTOCOL_ICMP;
+      key0.port = echo0->identifier;
+    }
+  else
+    {
+      inner_ip0 = (ip4_header_t *)(echo0+1);
+      l4_header = ip4_next_header (inner_ip0);
+      key0.protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      switch (key0.protocol)
+        {
+        case SNAT_PROTOCOL_ICMP:
+          inner_icmp0 = (icmp46_header_t*)l4_header;
+          inner_echo0 = (icmp_echo_header_t *)(inner_icmp0+1);
+          key0.port = inner_echo0->identifier;
+          break;
+        case SNAT_PROTOCOL_UDP:
+        case SNAT_PROTOCOL_TCP:
+          key0.port = ((tcp_udp_header_t*)l4_header)->dst_port;
+          break;
+        default:
+          b0->error = node->errors[SNAT_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL];
+          next0 = SNAT_IN2OUT_NEXT_DROP;
+          goto out;
+        }
+    }
+
   kv0.key = key0.as_u64;
   
   if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
     {
       if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
-        return next0;
+        goto out;
+
+      if (is_error_message)
+        {
+          next0 = SNAT_IN2OUT_NEXT_DROP;
+          goto out;
+        }
 
       next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                          &s0, node, next0, cpu_index);
       
       if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
-        return next0;
+        goto out;
     }
   else
     s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
                             value0.value);
 
+  sum0 = ip_incremental_checksum (0, icmp0,
+                                  ntohs(ip0->length) - ip4_header_bytes (ip0));
+  checksum0 = ~ip_csum_fold (sum0);
+  if (PREDICT_FALSE(checksum0 != 0 && checksum0 != 0xffff))
+    {
+      next0 = SNAT_IN2OUT_NEXT_DROP;
+      goto out;
+    }
+
   old_addr0 = ip0->src_address.as_u32;
   ip0->src_address = s0->out2in.addr;
   new_addr0 = ip0->src_address.as_u32;
   vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
-  
+
   sum0 = ip0->checksum;
-  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-                         ip4_header_t,
+  sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
                          src_address /* changed member */);
   ip0->checksum = ip_csum_fold (sum0);
   
-  old_id0 = echo0->identifier;
-  new_id0 = s0->out2in.port;
-  echo0->identifier = new_id0;
+  if (!is_error_message)
+    {
+      old_id0 = echo0->identifier;
+      new_id0 = s0->out2in.port;
+      echo0->identifier = new_id0;
 
-  sum0 = icmp0->checksum;
-  sum0 = ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
-                         identifier);
-  icmp0->checksum = ip_csum_fold (sum0);
+      sum0 = icmp0->checksum;
+      sum0 = ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
+                             identifier);
+      icmp0->checksum = ip_csum_fold (sum0);
+    }
+  else
+    {
+      if (!ip4_header_checksum_is_valid (inner_ip0))
+        {
+          next0 = SNAT_IN2OUT_NEXT_DROP;
+          goto out;
+        }
+
+      old_addr0 = inner_ip0->dst_address.as_u32;
+      inner_ip0->dst_address = s0->out2in.addr;
+      new_addr0 = inner_ip0->src_address.as_u32;
+
+      sum0 = icmp0->checksum;
+      sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
+                             dst_address /* changed member */);
+      icmp0->checksum = ip_csum_fold (sum0);
+
+      switch (key0.protocol)
+        {
+          case SNAT_PROTOCOL_ICMP:
+            old_id0 = inner_echo0->identifier;
+            new_id0 = s0->out2in.port;
+            inner_echo0->identifier = new_id0;
+
+            sum0 = icmp0->checksum;
+            sum0 = ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
+                                   identifier);
+            icmp0->checksum = ip_csum_fold (sum0);
+            break;
+          case SNAT_PROTOCOL_UDP:
+          case SNAT_PROTOCOL_TCP:
+            old_id0 = ((tcp_udp_header_t*)l4_header)->dst_port;
+            new_id0 = s0->out2in.port;
+            ((tcp_udp_header_t*)l4_header)->dst_port = new_id0;
+
+            sum0 = icmp0->checksum;
+            sum0 = ip_csum_update (sum0, old_id0, new_id0, tcp_udp_header_t,
+                                   dst_port);
+            icmp0->checksum = ip_csum_fold (sum0);
+            break;
+          default:
+            ASSERT(0);
+        }
+    }
 
   /* Accounting */
   s0->last_heard = now;
@@ -495,6 +604,8 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                           s0->per_user_index);
     }
 
+out:
+  *p_s0 = s0;
   return next0;
 }
 
@@ -685,6 +796,16 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
+          if (PREDICT_FALSE(ip0->ttl == 1))
+            {
+              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
+              goto trace00;
+            }
+
           /* Next configured feature, probably ip4-lookup */
           if (is_slow_path)
             {
@@ -695,7 +816,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   next0 = icmp_in2out_slow_path 
                     (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, 
-                     node, next0, now, cpu_index);
+                     node, next0, now, cpu_index, &s0);
                   goto trace00;
                 }
             }
@@ -815,6 +936,16 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
+          if (PREDICT_FALSE(ip0->ttl == 1))
+            {
+              vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
+              goto trace01;
+            }
+
           /* Next configured feature, probably ip4-lookup */
           if (is_slow_path)
             {
@@ -825,7 +956,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   next1 = icmp_in2out_slow_path 
                     (sm, b1, ip1, icmp1, sw_if_index1, rx_fib_index1, node,
-                     next1, now, cpu_index);
+                     next1, now, cpu_index, &s1);
                   goto trace01;
                 }
             }
@@ -980,6 +1111,16 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
+          if (PREDICT_FALSE(ip0->ttl == 1))
+            {
+              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
+              goto trace0;
+            }
+
           /* Next configured feature, probably ip4-lookup */
           if (is_slow_path)
             {
@@ -990,7 +1131,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   next0 = icmp_in2out_slow_path 
                     (sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
-                     next0, now, cpu_index);
+                     next0, now, cpu_index, &s0);
                   goto trace0;
                 }
             }
@@ -1020,6 +1161,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                                      &s0, node, next0, cpu_index);
+
                   if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
                     goto trace0;
                 }
@@ -1141,6 +1283,7 @@ VLIB_REGISTER_NODE (snat_in2out_node) = {
     [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
     [SNAT_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
     [SNAT_IN2OUT_NEXT_SLOW_PATH] = "snat-in2out-slowpath",
+    [SNAT_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
 
@@ -1173,6 +1316,7 @@ VLIB_REGISTER_NODE (snat_in2out_slowpath_node) = {
     [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
     [SNAT_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
     [SNAT_IN2OUT_NEXT_SLOW_PATH] = "snat-in2out-slowpath",
+    [SNAT_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
 
@@ -1604,6 +1748,7 @@ VLIB_REGISTER_NODE (snat_in2out_fast_node) = {
     [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
     [SNAT_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
     [SNAT_IN2OUT_NEXT_SLOW_PATH] = "snat-in2out-slowpath",
+    [SNAT_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
 
