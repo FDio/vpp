@@ -35,11 +35,6 @@ bfd_usec_to_clocks (const bfd_main_t * bm, u64 us)
   return bm->cpu_cps * ((f64) us / USEC_PER_SECOND);
 }
 
-// static u64 bfd_clocks_to_usec (const bfd_main_t *bm, u64 clocks)
-//{
-//  return (clocks / bm->cpu_cps) * USEC_PER_SECOND;
-//}
-
 static vlib_node_registration_t bfd_process_node;
 
 /* set to 0 here, real values filled at startup */
@@ -464,11 +459,11 @@ bfd_add_transport_layer (vlib_main_t * vm, vlib_buffer_t * b,
     {
     case BFD_TRANSPORT_UDP4:
       BFD_DBG ("Transport bfd via udp4, bs_idx=%u", bs->bs_idx);
-      bfd_add_udp4_transport (vm, b, &bs->udp);
+      bfd_add_udp4_transport (vm, b, bs);
       break;
     case BFD_TRANSPORT_UDP6:
       BFD_DBG ("Transport bfd via udp6, bs_idx=%u", bs->bs_idx);
-      bfd_add_udp6_transport (vm, b, &bs->udp);
+      bfd_add_udp6_transport (vm, b, bs);
       break;
     }
 }
