@@ -886,6 +886,15 @@ class TestSNAT(VppTestCase):
         capture = self.pg6.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg6)
 
+        users = self.vapi.snat_user_dump()
+        for user in users:
+            sessions = self.vapi.snat_user_session_dump(
+                    user.ip_address,
+                    user.cpu_index,
+                    user.fib_index)
+            for session in sessions:
+                self.assertTrue(session.total_pkts in [1, 2])
+
     def test_hairpinning(self):
         """ SNAT hairpinning """
 

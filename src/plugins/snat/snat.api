@@ -351,3 +351,78 @@ define snat_ipfix_enable_disable_reply {
   u32 context;
   i32 retval;
 };
+
+/** \brief S-NAT pool users
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_user_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT pool users response
+    @param context - sender context, to match reply w/ request
+    @param cpu_index - thread index, where user can be found
+    @fib_index - index to find user sessions
+    @param is_ip4 - 1 if address type is IPv4
+    @param ip_adress - IP address;
+    @param nsessions - number of dynamic sessions
+    @param nstaticsessions - number of static sessions
+*/
+define snat_user_details {
+  u32 context;
+  u32 cpu_index;
+  u32 fib_index;
+  u8 is_ip4;
+  u8 ip_address[16];
+  u32 nsessions;
+  u32 nstaticsessions;
+};
+
+/** \brief S-NAT pool user's sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param user_ip - IP address of the user to dump
+    @param cpu_index - thread index, where to look for user
+    @param fib_index - fib index of the user to dump
+*/
+define snat_user_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 ip_address[16];
+  u32 cpu_index;
+  u32 fib_index;
+};
+
+/** \brief S-NAT pool user's sessions response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param out2in_ip_address - out2in IP address
+    @param out2in_port - out2in port
+    @param out2in_protocol - out2in protocol
+    @param in2out_ip_address - in2out IP address
+    @param in2out_port - in2out port
+    @param in2out_protocol - in2out protocol
+    @param flags - flags of the session
+    @param last_heard - last heard timer
+    @param total_bytes - count of bytes sent through session
+    @param total_pkts - count of pakets sent through session
+    @param outside_address_index - index of outside address
+*/
+define snat_user_session_details {
+  u32 context;
+  u8 is_ip4;
+  u8 out2in_ip_address[16];
+  u16 out2in_port;
+  u16 out2in_protocol; 
+  u8 in2out_ip_address[16];
+  u16 in2out_port;
+  u16 in2out_protocol; 
+  u32 flags;
+  f64 last_heard;
+  u64 total_bytes;
+  u32 total_pkts;
+  u32 outside_address_index;
+};
+    

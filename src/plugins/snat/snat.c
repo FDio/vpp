@@ -1412,6 +1412,146 @@ static void *vl_api_snat_ipfix_enable_disable_t_print
   FINISH;
 }
 
+static void
+send_snat_user_details
+(snat_user_t * u, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_user_details_t * rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_USER_DETAILS+sm->msg_id_base);
+  rmp->cpu_index = ntohl (u->cpu_index);
+  rmp->fib_index = ntohl (u->fib_index);
+  rmp->is_ip4 = 1;
+  clib_memcpy(rmp->ip_address, &(u->addr), 4);
+  rmp->nsessions = ntohl (u->nsessions);
+  rmp->nstaticsessions = ntohl (u->nstaticsessions);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_user_dump_t_handler
+(vl_api_snat_user_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  snat_main_per_thread_data_t * tsm;
+  snat_user_t * u;
+  
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  vec_foreach (tsm, sm->per_thread_data) 
+    vec_foreach (u, tsm->users) 
+      send_snat_user_details (u, q, mp->context);
+}
+
+static void *vl_api_snat_user_dump_t_print
+(vl_api_snat_user_dump_t *mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_user_dump ");
+
+  FINISH;
+}
+
+static void
+send_snat_user_session_details
+(snat_session_t * s, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_user_session_details_t * rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof(*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_USER_SESSION_DETAILS+sm->msg_id_base);
+  rmp->is_ip4 = 1;
+  clib_memcpy(rmp->out2in_ip_address, (&s->out2in.addr), 4);
+  rmp->out2in_port = ntohs(s->out2in.port);
+  rmp->out2in_protocol = ntohs(s->out2in.protocol);
+  clib_memcpy(rmp->in2out_ip_address, (&s->in2out.addr), 4);
+  rmp->in2out_port = ntohs(s->in2out.port);
+  rmp->in2out_protocol = ntohs(s->in2out.protocol);
+  rmp->flags = ntohl(s->flags);
+  rmp->last_heard = ntohl(s->last_heard);
+  rmp->total_bytes = ntohl(s->total_bytes);
+  rmp->total_pkts = ntohl(s->total_pkts);
+  rmp->outside_address_index = ntohl(s->outside_address_index);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_user_session_dump_t_handler
+(vl_api_snat_user_session_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  snat_session_t * s; 
+  clib_bihash_kv_8_8_t kv0, kv1;
+  snat_user_key_t ukey;
+  snat_user_t * u;
+  u32 cpu_index, session_index, head_index, elt_index;
+  dlist_elt_t * head, * elt;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+  
+  cpu_index = ntohl (mp->cpu_index);
+
+  clib_memcpy (&ukey.addr, mp->ip_address, 4);
+  ukey.fib_index = ntohl (mp->fib_index);
+  kv0.key = ukey.as_u64;
+
+  if (clib_bihash_search_8_8 (&sm->user_hash, &kv0, &kv1))
+    return;
+
+  u = pool_elt_at_index (sm->per_thread_data[cpu_index].users, kv1.value);
+
+  if (!u->nsessions && !u->nstaticsessions)
+    return;
+
+  head_index = u->sessions_per_user_list_head_index;
+  head = pool_elt_at_index (sm->per_thread_data[cpu_index].list_pool,
+                            head_index);
+
+  elt_index = head->next;
+  elt = pool_elt_at_index (sm->per_thread_data[cpu_index].list_pool,
+                           elt_index);
+  session_index = elt->value;
+
+  while (session_index != ~0)
+    {
+      s = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
+                             session_index);
+
+      send_snat_user_session_details (s, q, mp->context);
+
+      elt_index = elt->next;
+      elt = pool_elt_at_index (sm->per_thread_data[cpu_index].list_pool,
+                               elt_index);
+      session_index = elt->value;
+    }
+}
+
+static void *vl_api_snat_user_session_dump_t_print
+(vl_api_snat_user_session_dump_t *mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_user_session_dump ");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1426,7 +1566,9 @@ _(SNAT_SET_WORKERS, snat_set_workers)                                   \
 _(SNAT_WORKER_DUMP, snat_worker_dump)                                   \
 _(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr)             \
 _(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)                   \
-_(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)
+_(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)                 \
+_(SNAT_USER_DUMP, snat_user_dump)                                       \
+_(SNAT_USER_SESSION_DUMP, snat_user_session_dump) 
 
 /* Set up the API message handling tables */
 static clib_error_t *
