@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2011-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <vppinfra/types.h>
 #include <vlibmemory/api.h>
 #include <vlib/vlib.h>
@@ -31,10 +45,25 @@ static vlib_node_registration_t bfd_udp6_input_node;
 
 bfd_udp_main_t bfd_udp_main;
 
+static u16
+bfd_udp_bs_idx_to_sport (u32 bs_idx)
+{
+  /* The source port MUST be in the range 49152 through 65535. The same UDP
+   * source port number MUST be used for all BFD Control packets associated
+   * with a particular session.  The source port number SHOULD be unique among
+   * all BFD sessions on the system. If more than 16384 BFD sessions are
+   * simultaneously active, UDP source port numbers MAY be reused on
+   * multiple sessions, but the number of distinct uses of the same UDP
+   * source port number SHOULD be minimized.
+   */
+  return 49152 + bs_idx % (65535 - 49152 + 1);
+}
+
 void
 bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			bfd_udp_session_t * bus)
+			const bfd_session_t * bs)
 {
+  const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
 
   b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
@@ -55,7 +84,8 @@ bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
   headers->ip4.src_address.as_u32 = key->local_addr.ip4.as_u32;
   headers->ip4.dst_address.as_u32 = key->peer_addr.ip4.as_u32;
 
-  headers->udp.src_port = clib_host_to_net_u16 (50000);	/* FIXME */
+  headers->udp.src_port =
+    clib_host_to_net_u16 (bfd_udp_bs_idx_to_sport (bs->bs_idx));
   headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
 
   /* fix ip length, checksum and udp length */
@@ -70,8 +100,9 @@ bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
 
 void
 bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			bfd_udp_session_t * bus)
+			const bfd_session_t * bs)
 {
+  const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
 
   b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
@@ -95,7 +126,8 @@ bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
   clib_memcpy (&headers->ip6.dst_address, &key->peer_addr.ip6,
 	       sizeof (headers->ip6.dst_address));
 
-  headers->udp.src_port = clib_host_to_net_u16 (50000);	/* FIXME */
+  headers->udp.src_port =
+    clib_host_to_net_u16 (bfd_udp_bs_idx_to_sport (bs->bs_idx));
   headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
 
   /* fix ip payload length and udp length */
