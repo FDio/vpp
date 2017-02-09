@@ -147,6 +147,7 @@ create_session_for_static_mapping (snat_main_t *sm,
       pool_get (sm->per_thread_data[cpu_index].users, u);
       memset (u, 0, sizeof (*u));
       u->addr = in2out.addr;
+      u->fib_index = in2out.fib_index;
 
       pool_get (sm->per_thread_data[cpu_index].list_pool,
                 per_user_list_head_elt);

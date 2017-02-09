@@ -247,6 +247,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       pool_get (sm->per_thread_data[cpu_index].users, u);
       memset (u, 0, sizeof (*u));
       u->addr = ip0->src_address;
+      u->fib_index = rx_fib_index0;
 
       pool_get (sm->per_thread_data[cpu_index].list_pool, per_user_list_head_elt);
 

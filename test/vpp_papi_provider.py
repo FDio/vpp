@@ -1072,6 +1072,29 @@ class VppPapiProvider(object):
              'src_port': src_port,
              'enable': enable})
 
+    def snat_user_session_dump(
+            self,
+            ip_address,
+            vrf_id):
+        """Dump S-NAT user's sessions
+
+        :param ip_address: ip adress of the user to be dumped
+        :param cpu_index: cpu_index on which the user is
+        :param vrf_id: VRF ID
+        :return: Dictionary of S-NAT sessions
+        """
+        return self.api(
+            self.papi.snat_user_session_dump,
+            {'ip_address': ip_address,
+             'vrf_id': vrf_id})
+
+    def snat_user_dump(self):
+        """Dump S-NAT users
+
+        :return: Dictionary of S-NAT users
+        """
+        return self.api(self.papi.snat_user_dump, {})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
