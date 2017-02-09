@@ -237,7 +237,8 @@ map_guest_mem (vhost_user_intf_t * vui, uword addr, u32 * hint)
   r = _mm_blend_epi16 (r, _mm_and_si128 (rl, rh), 0x88);
 
   r = _mm_shuffle_epi8 (r, _mm_set_epi64x (0, 0x0e060c040a020800));
-  i = __builtin_ctzll (_mm_movemask_epi8 (r));
+  i = __builtin_ctzll (_mm_movemask_epi8 (r) |
+		       (1 << VHOST_MEMORY_MAX_NREGIONS));
 
   if (i < vui->nregions)
     {
