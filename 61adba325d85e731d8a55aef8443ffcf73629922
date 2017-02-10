@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_ef9ba070",
+        "filename": "src/vnet/dpo/replicate_dpo.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 615,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-10T08:14:10Z",
+      "side": 1,
+      "message": "static variable is not thread safe.",
+      "revId": "61adba325d85e731d8a55aef8443ffcf73629922",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
