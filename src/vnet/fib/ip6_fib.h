@@ -20,7 +20,6 @@
 #include <vnet/ip/format.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_urpf_list.h>
 #include <vnet/ip/lookup.h>
 #include <vnet/dpo/load_balance.h>
 
