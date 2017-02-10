@@ -66,7 +66,8 @@ _(snat_interface_add_del_feature_reply)         \
 _(snat_add_static_mapping_reply)                \
 _(snat_set_workers_reply)                       \
 _(snat_add_del_interface_addr_reply)            \
-_(snat_ipfix_enable_disable_reply)
+_(snat_ipfix_enable_disable_reply)              \
+_(snat_add_det_map_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -106,7 +107,10 @@ _(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)     \
 _(SNAT_IPFIX_ENABLE_DISABLE_REPLY,                              \
   snat_ipfix_enable_disable_reply)                              \
 _(SNAT_USER_DETAILS, snat_user_details)                         \
-_(SNAT_USER_SESSION_DETAILS, snat_user_session_details)
+_(SNAT_USER_SESSION_DETAILS, snat_user_session_details)         \
+_(SNAT_ADD_DET_MAP_REPLY, snat_add_det_map_reply)               \
+_(SNAT_DET_FORWARD_REPLY, snat_det_forward_reply)               \
+_(SNAT_DET_REVERSE_REPLY, snat_det_reverse_reply)
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -719,6 +723,121 @@ static int api_snat_user_dump(vat_main_t * vam)
   return ret;
 }
 
+static int api_snat_add_det_map (vat_main_t * vam)
+{
+  unformat_input_t * i = vam->input;
+  vl_api_snat_add_det_map_t * mp;
+  ip4_address_t in_addr, out_addr;
+  u32 in_plen, out_plen;
+  u8 is_add = 1;
+  int ret;
+
+  if (unformat (i, "in %U/%d out %U/%d",
+                unformat_ip4_address, &in_addr, &in_plen,
+                unformat_ip4_address, &out_addr, &out_plen))
+    ;
+  else if (unformat (i, "del"))
+    is_add = 0;
+  else
+    {
+      clib_warning("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
+
+  M(SNAT_ADD_DET_MAP, mp);
+  clib_memcpy(mp->in_addr, &in_addr, 4);
+  mp->in_plen = in_plen;
+  clib_memcpy(mp->out_addr, &out_addr, 4);
+  mp->out_plen = out_plen;
+  mp->is_add = is_add;
+
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+static void vl_api_snat_det_forward_reply_t_handler
+  (vl_api_snat_det_forward_reply_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+  i32 retval = ntohl(mp->retval);
+
+  if (retval >= 0)
+  {
+    fformat (vam->ofp, "outside address %U", format_ip4_address, &mp->out_addr);
+    fformat (vam->ofp, " outside port range start %d", ntohs(mp->out_port_lo));
+    fformat (vam->ofp, " outside port range end %d\n", ntohs(mp->out_port_hi));
+  }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static int api_snat_det_forward (vat_main_t * vam)
+{
+  unformat_input_t * i = vam->input;
+  vl_api_snat_det_forward_t * mp;
+  ip4_address_t in_addr;
+  int ret;
+
+  if (unformat (i, "%U", unformat_ip4_address, &in_addr))
+    ;
+  else
+    {
+      clib_warning("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
+
+  M(SNAT_DET_FORWARD, mp);
+  clib_memcpy(mp->in_addr, &in_addr, 4);
+
+  S(mp);
+  W(ret);
+  return ret;
+}
+
+static void vl_api_snat_det_reverse_reply_t_handler
+  (vl_api_snat_det_reverse_reply_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+  i32 retval = ntohl(mp->retval);
+
+  if (retval >= 0)
+  {
+    fformat (vam->ofp, "inside address %U\n", format_ip4_address, &mp->in_addr);
+  }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static int api_snat_det_reverse (vat_main_t * vam)
+{
+  unformat_input_t * i = vam->input;
+  vl_api_snat_det_reverse_t * mp;
+  ip4_address_t out_addr;
+  u16 out_port;
+  int ret;
+
+  if (unformat (i, "%U %d", unformat_ip4_address, &out_addr, &out_port))
+    ;
+  else
+    {
+      clib_warning("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
+
+  M(SNAT_DET_REVERSE, mp);
+  clib_memcpy(mp->out_addr, &out_addr, 4);
+  mp->out_port = htons(out_port);
+
+  S(mp);
+  W(ret);
+  return ret;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -743,7 +862,11 @@ _(snat_interface_addr_dump, "")                                  \
 _(snat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "     \
   "[disable]")                                                   \
 _(snat_user_dump, "")                                            \
-_(snat_user_session_dump, "ip_address <ip> vrf_id <table-id>")
+_(snat_user_session_dump, "ip_address <ip> vrf_id <table-id>")   \
+_(snat_add_det_map, "in <in_addr>/<in_plen> out "                \
+  "<out_addr>/<out_plen> [del]")                                 \
+_(snat_det_forward, "<in_addr>")                                 \
+_(snat_det_reverse, "<out_addr> <out_port>")
 
 static void 
 snat_vat_api_hookup (vat_main_t *vam)
