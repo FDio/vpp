@@ -42,6 +42,7 @@
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
+#include <vnet/fib/fib_urpf_list.h>  /* for FIB uRPF check */
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/dpo/load_balance.h>
