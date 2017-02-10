@@ -222,6 +222,7 @@ define snat_show_config
     @param retval - return code for the request
     @param static_mapping_only - if 1 dynamic translations disabled
     @param static_mapping_connection_tracking - if 1 create session data
+    @param deterministic - if 1 deterministic mapping
     @param translation_buckets - number of translation hash buckets
     @param translation_memory_size - translation hash memory size
     @param user_buckets - number of user hash buckets
@@ -236,6 +237,7 @@ define snat_show_config_reply
   i32 retval;
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
+  u8 deterministic;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 user_buckets;
