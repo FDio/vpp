@@ -21,8 +21,8 @@ nil
 '(if (not (boundp 'plugin-name))
      (setq plugin-name (read-string "Plugin name: ")))
 '(setq PLUGIN-NAME (upcase plugin-name))
-"
-/*
+'(setq capital-oh-en "ON")
+"/*
  * " plugin-name ".c - skeleton vpp engine plug-in
  *
  * Copyright (c) <current-year> <your-organization>
@@ -46,6 +46,7 @@ nil
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
+#include <vpp/app/version.h>
 
 /* define message IDs */
 #include <" plugin-name "/" plugin-name "_msg_enum.h>
@@ -100,27 +101,6 @@ do {                                                            \\
 #define foreach_" plugin-name "_plugin_api_msg                           \\
 _(" PLUGIN-NAME "_ENABLE_DISABLE, " plugin-name "_enable_disable)
 
-/*
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t *
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-                      int from_early_init)
-{
-  " plugin-name "_main_t * sm = &" plugin-name "_main;
-  clib_error_t * error = 0;
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  sm->ethernet_main = h->ethernet_main;
-
-  return error;
-}
-
 /* Action function shared between message handler and debug CLI */
 
 int " plugin-name "_enable_disable (" plugin-name "_main_t * sm, u32 sw_if_index,
@@ -156,14 +136,15 @@ static clib_error_t *
 
   int rv;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, \"disable\"))
-      enable_disable = 0;
-    else if (unformat (input, \"%U\", unformat_vnet_sw_interface,
-                       sm->vnet_main, &sw_if_index))
-      ;
-    else
-      break;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) 
+    {
+      if (unformat (input, \"disable\"))
+        enable_disable = 0;
+      else if (unformat (input, \"%U\", unformat_vnet_sw_interface,
+                         sm->vnet_main, &sw_if_index))
+        ;
+      else
+        break;
   }
 
   if (sw_if_index == ~0)
@@ -171,7 +152,8 @@ static clib_error_t *
 
   rv = " plugin-name "_enable_disable (sm, sw_if_index, enable_disable);
 
-  switch(rv) {
+  switch(rv) 
+    {
   case 0:
     break;
 
@@ -187,16 +169,19 @@ static clib_error_t *
   default:
     return clib_error_return (0, \"" plugin-name "_enable_disable returned %d\",
                               rv);
-  }
+    }
   return 0;
 }
 
-VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) = {
-    .path = \"" plugin-name " enable-disable\",
-    .short_help =
-    \"" plugin-name " enable-disable <interface-name> [disable]\",
-    .function = " plugin-name "_enable_disable_command_fn,
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (" plugin-name "_enable_disable_command, static) = 
+{
+  .path = \"" plugin-name " enable-disable\",
+  .short_help =
+  \"" plugin-name " enable-disable <interface-name> [disable]\",
+  .function = " plugin-name "_enable_disable_command_fn,
 };
+/* *INDENT-ON* */
 
 /* API message handler */
 static void vl_api_" plugin-name "_enable_disable_t_handler
@@ -268,11 +253,28 @@ static clib_error_t * " plugin-name "_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (" plugin-name "_init);
 
+/* *INDENT-OFF* */
 VNET_FEATURE_INIT (" plugin-name ", static) =
 {
   .arc_name = \"device-input\",
   .node_name = \"" plugin-name "\",
   .runs_before = VNET_FEATURES (\"ethernet-input\"),
 };
+/* *INDENT-ON */
+
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = 
+{
+  .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: " capital-oh-en "
+ *
+ * Local Variables:
+ * eval: (c-set-style \"gnu\")
+ * End:
+ */
 ")
 

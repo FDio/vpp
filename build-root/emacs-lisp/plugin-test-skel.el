@@ -21,8 +21,8 @@ nil
 '(if (not (boundp 'plugin-name))
      (setq plugin-name (read-string "Plugin name: ")))
 '(setq PLUGIN-NAME (upcase plugin-name))
-"
-/*
+'(setq capital-oh-en "ON")
+"/*
  * " plugin-name ".c - skeleton vpp-api-test plug-in 
  *
  * Copyright (c) <current-year> <your-organization>
@@ -72,13 +72,17 @@ uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 #undef vl_api_version
 
 
-typedef struct {
-    /* API message ID base */
-    u16 msg_id_base;
-    vat_main_t *vat_main;
+typedef struct 
+{
+  /* API message ID base */
+  u16 msg_id_base;
+  vat_main_t *vat_main;
 } " plugin-name "_test_main_t;
 
 " plugin-name "_test_main_t " plugin-name "_test_main;
+
+#define __plugin_msg_base " plugin-name"_test_main.msg_id_base
+#include <vlibapi/vat_helper_macros.h>
 
 #define foreach_standard_reply_retval_handler   \\
 _(" plugin-name "_enable_disable_reply)
@@ -107,79 +111,44 @@ foreach_standard_reply_retval_handler;
 _(" PLUGIN-NAME "_ENABLE_DISABLE_REPLY, " plugin-name "_enable_disable_reply)
 
 
-/* M: construct, but don't yet send a message */
-
-#define M(T, mp)                                                \\
-do {                                                            \\
-    vam->result_ready = 0;                                      \\
-    mp = vl_msg_api_alloc(sizeof(*mp));                         \\
-    memset (mp, 0, sizeof (*mp));                               \\
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \\
-    mp->client_index = vam->my_client_index;                    \\
-} while(0);
-
-#define M2(T, mp, n)                                            \\
-do {                                                            \\
-    vam->result_ready = 0;                                      \\
-    mp = vl_msg_api_alloc(sizeof(*mp)+(n));                     \\
-    memset (mp, 0, sizeof (*mp));                               \\
-    mp->_vl_msg_id = ntohs (VL_API_##T + sm->msg_id_base);      \\
-    mp->client_index = vam->my_client_index;                    \\
-} while(0);
-
-/* S: send a message */
-#define S(mp) (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
-
-/* W: wait for results, with timeout */
-#define W                                       \\
-do {                                            \\
-    f64 timeout = vat_time_now (vam) + 1.0;     \\
-                                                \\
-    while (vat_time_now (vam) < timeout) {      \\
-        if (vam->result_ready == 1) {           \\
-            return (vam->retval);               \\
-        }                                       \\
-    }                                           \\
-    return -99;                                 \\
-} while(0);
-
 static int api_" plugin-name "_enable_disable (vat_main_t * vam)
 {
-    " plugin-name "_test_main_t * sm = &" plugin-name "_test_main;
-    unformat_input_t * i = vam->input;
-    int enable_disable = 1;
-    u32 sw_if_index = ~0;
-    vl_api_" plugin-name "_enable_disable_t * mp;
-    int ret;
+  unformat_input_t * i = vam->input;
+  int enable_disable = 1;
+  u32 sw_if_index = ~0;
+  vl_api_" plugin-name "_enable_disable_t * mp;
+  int ret;
 
-    /* Parse args required to build the message */
-    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
-        if (unformat (i, \"%U\", unformat_sw_if_index, vam, &sw_if_index))
-            ;
-	else if (unformat (i, \"sw_if_index %d\", &sw_if_index))
-	    ;
-        else if (unformat (i, \"disable\"))
-            enable_disable = 0;
-        else
-            break;
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) 
+    {
+      if (unformat (i, \"%U\", unformat_sw_if_index, vam, &sw_if_index))
+          ;
+        else if (unformat (i, \"sw_if_index %d\", &sw_if_index))
+          ;
+      else if (unformat (i, \"disable\"))
+          enable_disable = 0;
+      else
+          break;
     }
-    
-    if (sw_if_index == ~0) {
-        errmsg (\"missing interface name / explicit sw_if_index number \\n\");
-        return -99;
+  
+  if (sw_if_index == ~0) 
+    {
+      errmsg (\"missing interface name / explicit sw_if_index number \\n\");
+      return -99;
     }
-    
-    /* Construct the API message */
-    M(" PLUGIN-NAME "_ENABLE_DISABLE, mp);
-    mp->sw_if_index = ntohl (sw_if_index);
-    mp->enable_disable = enable_disable;
+  
+  /* Construct the API message */
+  M(" PLUGIN-NAME "_ENABLE_DISABLE, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable_disable = enable_disable;
 
-    /* send it... */
-    S(mp);
+  /* send it... */
+  S(mp);
 
-    /* Wait for a reply... */
-    W (ret);
-    return ret;
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
 }
 
 /* 
@@ -233,4 +202,11 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   
   return 0;
 }
+/*
+ * fd.io coding-style-patch-verification: " capital-oh-en "
+ *
+ * Local Variables:
+ * eval: (c-set-style \"gnu\")
+ * End:
+ */
 ")

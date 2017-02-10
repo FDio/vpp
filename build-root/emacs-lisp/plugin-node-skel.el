@@ -21,8 +21,8 @@ nil
 '(if (not (boundp 'plugin-name))
      (setq plugin-name (read-string "Plugin name: ")))
 '(setq PLUGIN-NAME (upcase plugin-name))
-"
-/*
+'(setq capital-oh-en "ON")
+"/*
  * node.c - skeleton vpp engine plug-in dual-loop node skeleton
  *
  * Copyright (c) <current-year> <your-organization>
@@ -44,7 +44,8 @@ nil
 #include <vppinfra/error.h>
 #include <" plugin-name "/" plugin-name ".h>
 
-typedef struct {
+typedef struct 
+{
   u32 next_index;
   u32 sw_if_index;
   u8 new_src_mac[6];
@@ -92,7 +93,8 @@ static char * " plugin-name "_error_strings[] = {
 #undef _
 };
 
-typedef enum {
+typedef enum 
+{
   " PLUGIN-NAME "_NEXT_INTERFACE_OUTPUT,
   " PLUGIN-NAME "_N_NEXT,
 } " plugin-name "_next_t;
@@ -186,8 +188,6 @@ static uword
 #define _(a) en1->dst_address[a] = tmp1[a];
           foreach_mac_address_offset;
 #undef _
-
-
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
@@ -300,7 +300,9 @@ static uword
   return frame->n_vectors;
 }
 
-VLIB_REGISTER_NODE (" plugin-name "_node) = {
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (" plugin-name "_node) = 
+{
   .function = " plugin-name "_node_fn,
   .name = \"" plugin-name "\",
   .vector_size = sizeof (u32),
@@ -317,4 +319,12 @@ VLIB_REGISTER_NODE (" plugin-name "_node) = {
         [" PLUGIN-NAME "_NEXT_INTERFACE_OUTPUT] = \"interface-output\",
   },
 };
+/* *INDENT-ON* */
+/*
+ * fd.io coding-style-patch-verification: " capital-oh-en "
+ *
+ * Local Variables:
+ * eval: (c-set-style \"gnu\")
+ * End:
+ */
 ")
