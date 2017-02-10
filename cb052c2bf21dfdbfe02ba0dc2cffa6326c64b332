@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_aa090697",
+        "filename": "src/vnet/adj/adj_nsh.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-10T18:49:00Z",
+      "side": 1,
+      "message": "Switched to ip4_header_t",
+      "parentUuid": "3a3291f1_afbb58c3",
+      "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_0fc4ac3e",
         "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
         "patchSetId": 11
@@ -30,6 +48,24 @@
       "writtenOn": "2017-02-10T09:01:02Z",
       "side": 1,
       "message": "this should be outside the if clause, assuming the negative entries are stacked on the lookup.",
+      "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8afe4a6a",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 888,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-10T18:49:00Z",
+      "side": 1,
+      "message": "Thanks for this set of comments, it made me realize we were missing proper handling of negative actions.",
+      "parentUuid": "3a3291f1_0fc4ac3e",
       "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
