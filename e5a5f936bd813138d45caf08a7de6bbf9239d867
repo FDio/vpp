@@ -22,6 +22,30 @@
       "revId": "e5a5f936bd813138d45caf08a7de6bbf9239d867",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8a82cafe",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1320,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-10T16:42:46Z",
+      "side": 1,
+      "message": "always_inline macro takes care of this -\n\nclib.h:\n\n#if CLIB_DEBUG \u003e 0\n#define always_inline static inline\n#define static_always_inline static inline\n#else\n#define always_inline static inline __attribute__ ((__always_inline__))\n#define static_always_inline static inline __attribute__ ((__always_inline__))\n#endif",
+      "parentUuid": "3a3291f1_ca88d224",
+      "range": {
+        "startLine": 1320,
+        "startChar": 0,
+        "endLine": 1320,
+        "endChar": 17
+      },
+      "revId": "e5a5f936bd813138d45caf08a7de6bbf9239d867",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
