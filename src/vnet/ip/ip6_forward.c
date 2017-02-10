@@ -42,6 +42,7 @@
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
+#include <vnet/fib/fib_urpf_list.h>	/* for FIB uRPF check */
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/dpo/load_balance.h>
@@ -1314,6 +1315,25 @@ ip6_locate_header (vlib_buffer_t * p0,
 
   *offset = cur_offset;
   return (next_proto);
+}
+
+/**
+ * @brief returns number of links on which src is reachable.
+ */
+always_inline int
+ip6_urpf_loose_check (ip6_main_t * im, vlib_buffer_t * b, ip6_header_t * i)
+{
+  const load_balance_t *lb0;
+  index_t lbi;
+
+  lbi = ip6_fib_table_fwding_lookup_with_if_index (im,
+						   vnet_buffer
+						   (b)->sw_if_index[VLIB_RX],
+						   &i->src_address);
+
+  lb0 = load_balance_get (lbi);
+
+  return (fib_urpf_check_size (lb0->lb_urpf));
 }
 
 static uword
