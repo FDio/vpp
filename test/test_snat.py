@@ -1208,5 +1208,42 @@ class TestSNAT(VppTestCase):
             self.clear_snat()
 
 
+class TestDeterministicNAT(VppTestCase):
+    """ Deterministic NAT Test Cases """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestDeterministicNAT, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["snat", "{", "deterministic", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDeterministicNAT, cls).setUpClass()
+
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.interfaces = list(cls.pg_interfaces)
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+
+        except Exception:
+            super(TestDeterministicNAT, cls).tearDownClass()
+            raise
+
+    def test_deterministic_mode(self):
+        """ S-NAT run deterministic mode """
+
+        snat_config = self.vapi.snat_show_config()
+        self.assertEqual(1, snat_config.deterministic)
+
+    def tearDown(self):
+        super(TestDeterministicNAT, self).tearDown()
+        if not self.vpp_dead:
+            self.logger.info(self.vapi.cli("show snat detail"))
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
