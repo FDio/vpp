@@ -16,6 +16,24 @@
       "revId": "b91017a30b3a2034c47008e7bcfe7bda49fe7c57",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cad0d255",
+        "filename": "src/vnet/fib/ip6_fib.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-02-10T13:40:36Z",
+      "side": 0,
+      "message": "I have moved this to ip6_forward.c but its still inline. \nI have checked using objdump and see that function is inlined when image is build without debug tag. With debug tag all function will not be inlined:\n\n[virl@ virl-130::~/akshay/vpp_review/build-root/build-vpp-native/vpp/vnet/ip]$objdump -d  ip6_forward.o | grep call | grep ip6_urpf_loose_check\n[virl@ virl-130::~/akshay/vpp_review/build-root/build-vpp-native/vpp/vnet/ip]$\n[virl@ virl-130::~/akshay/vpp_review/build-root/build-vpp-native/vpp/vnet/ip]$\n\n[virl@ virl-130::~/akshay/vpp_review/build-root/build-vpp-native/vpp/vnet/ip]$cd ~/akshay/vpp_review/build-root/build-vpp_debug-native/vpp/vnet/ip\n[virl@ virl-130::~/akshay/vpp_review/build-root/build-vpp_debug-native/vpp/vnet/ip]$objdump -d  ip6_forward.o | grep call | grep ip6_urpf_loose_check\n   107bf:       e8 00 00 00 00          callq  107c4 \u003cip6_urpf_loose_check+0x44\u003e\n   107f2:       e8 00 00 00 00          callq  107f7 \u003cip6_urpf_loose_check+0x77\u003e\n   10fc8:       e8 b3 f7 ff ff          callq  10780 \u003cip6_urpf_loose_check\u003e\n   11021:       e8 5a f7 ff ff          callq  10780 \u003cip6_urpf_loose_check\u003e\n   11608:       e8 73 f1 ff ff          callq  10780 \u003cip6_urpf_loose_check\u003e\n[virl@ virl-130::~/akshay/vpp_review/build-root/build-vpp_debug-native/vpp/vnet/ip]$ \n\nFurther i checked objdump and it shows jmpq instead of callq, which confirms that function is inlined:\n\n\t  /* If this is a neighbor solicitation (ICMP), skip source RPF check */\n\t  if (error0 \u003d\u003d IP6_ERROR_UNKNOWN_PROTOCOL \u0026\u0026\n\t      type0 !\u003d IP_BUILTIN_PROTOCOL_ICMP \u0026\u0026\n\t      !ip6_address_is_link_local_unicast (\u0026ip0-\u003esrc_address))\n\t    {\n\t      error0 \u003d (!ip6_urpf_loose_check (im, p0, ip0)\n   11a04:\t83 78 fc 01          \tcmpl   $0x1,-0x4(%rax)\n   11a08:\t4d 19 ff             \tsbb    %r15,%r15\n   11a0b:\t49 83 e7 f4          \tand    $0xfffffffffffffff4,%r15\n   11a0f:\t49 83 c7 28          \tadd    $0x28,%r15\n   11a13:\t83 78 fc 01          \tcmpl   $0x1,-0x4(%rax)\n   11a17:\t19 db                \tsbb    %ebx,%ebx\n   11a19:\t83 e3 fd             \tand    $0xfffffffd,%ebx\n   11a1c:\t83 c3 0a             \tadd    $0xa,%ebx\n   11a1f:\te9 3f fc ff ff       \tjmpq   11663 \u003cip6_local+0x3c3\u003e\n   11a24:\t0f 1f 40 00          \tnopl   0x0(%rax)\n   11a28:\t41 80 7e 08 fe       \tcmpb   $0xfe,0x8(%r14)\n   11a2d:\t0f 84 f7 00 00 00    \tje     11b2a \u003cip6_local+0x88a\u003e",
+      "parentUuid": "3a3291f1_6f11f0ab",
+      "revId": "b91017a30b3a2034c47008e7bcfe7bda49fe7c57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
