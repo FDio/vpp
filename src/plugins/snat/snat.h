@@ -28,6 +28,11 @@
 #include <vppinfra/error.h>
 #include <vlibapi/api.h>
 
+
+#define SNAT_UDP_TIMEOUT 300
+#define SNAT_TCP_TRANSITORY_TIMEOUT 240
+#define SNAT_TCP_ESTABLISHED_TIMEOUT 7440
+
 /* Key */
 typedef struct {
   union 
@@ -42,6 +47,19 @@ typedef struct {
     u64 as_u64;
   };
 } snat_session_key_t;
+
+typedef struct {
+  union
+  {
+    struct
+    {
+      ip4_address_t ext_host_addr;
+      u16 ext_host_port;
+      u16 out_port;
+    };
+    u64 as_u64;
+  };
+} snat_det_out_key_t;
 
 typedef struct {
   union
@@ -79,6 +97,22 @@ typedef enum {
   foreach_snat_protocol
 #undef _
 } snat_protocol_t;
+
+
+#define foreach_snat_session_state          \
+  _(0, UNKNOWN, "unknown")                 \
+  _(1, UDP_ACTIVE, "udp-active")           \
+  _(2, TCP_SYN_SENT, "tcp-syn-sent")       \
+  _(3, TCP_ESTABLISHED, "tcp-established") \
+  _(4, TCP_FIN_WAIT, "tcp-fin-wait")       \
+  _(5, TCP_CLOSE_WAIT, "tcp-close-wait")   \
+  _(6, TCP_LAST_ACK, "tcp-last-ack")
+
+typedef enum {
+#define _(v, N, s) SNAT_SESSION_##N = v,
+  foreach_snat_session_state
+#undef _
+} snat_session_state_t;
 
 
 #define SNAT_SESSION_FLAG_STATIC_MAPPING 1
@@ -127,6 +161,25 @@ typedef struct {
 } snat_address_t;
 
 typedef struct {
+  u16 in_port;
+  snat_det_out_key_t out;
+  u8 state;
+  u32 expire;
+} snat_det_session_t;
+
+typedef struct {
+  ip4_address_t in_addr;
+  u8 in_plen;
+  ip4_address_t out_addr;
+  u8 out_plen;
+  u32 sharing_ratio;
+  u16 ports_per_host;
+  u32 ses_num;
+  /* vector of sessions */
+  snat_det_session_t * sessions;
+} snat_det_map_t;
+
+typedef struct {
   ip4_address_t local_addr;
   ip4_address_t external_addr;
   u16 local_port;
@@ -164,6 +217,8 @@ typedef struct {
   dlist_elt_t * list_pool;
 } snat_main_per_thread_data_t;
 
+typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip, u32 rx_fib_index);
+
 typedef struct {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
@@ -182,6 +237,8 @@ typedef struct {
   u32 first_worker_index;
   u32 next_worker;
   u32 * workers;
+  snat_get_worker_function_t * worker_in2out_cb;
+  snat_get_worker_function_t * worker_out2in_cb;
 
   /* Per thread data */
   snat_main_per_thread_data_t * per_thread_data;
@@ -214,9 +271,17 @@ typedef struct {
   u32 fq_in2out_index;
   u32 fq_out2in_index;
 
+  /* in2out and out2in node index */
+  u32 in2out_node_index;
+  u32 out2in_node_index;
+
+  /* Deterministic NAT */
+  snat_det_map_t * det_maps;
+
   /* Config parameters */
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
+  u8 deterministic;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 user_buckets;
@@ -248,6 +313,8 @@ extern vlib_node_registration_t snat_in2out_fast_node;
 extern vlib_node_registration_t snat_out2in_fast_node;
 extern vlib_node_registration_t snat_in2out_worker_handoff_node;
 extern vlib_node_registration_t snat_out2in_worker_handoff_node;
+extern vlib_node_registration_t snat_det_in2out_node;
+extern vlib_node_registration_t snat_det_out2in_node;
 
 void snat_free_outside_address_and_port (snat_main_t * sm, 
                                          snat_session_key_t * k, 
@@ -262,6 +329,11 @@ int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t match,
                                snat_session_key_t * mapping,
                                u8 by_external);
+
+void snat_add_del_addr_to_fib (ip4_address_t * addr,
+                               u8 p_len,
+                               u32 sw_if_index,
+                               int is_add);
 
 format_function_t format_snat_user;
 

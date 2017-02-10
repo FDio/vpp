@@ -226,6 +226,7 @@ define snat_show_config
     @param retval - return code for the request
     @param static_mapping_only - if 1 dynamic translations disabled
     @param static_mapping_connection_tracking - if 1 create session data
+    @param deterministic - if 1 deterministic mapping
     @param translation_buckets - number of translation hash buckets
     @param translation_memory_size - translation hash memory size
     @param user_buckets - number of user hash buckets
@@ -240,6 +241,7 @@ define snat_show_config_reply
   i32 retval;
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
+  u8 deterministic;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 user_buckets;
@@ -420,4 +422,93 @@ define snat_user_session_details {
   u64 last_heard;
   u64 total_bytes;
   u32 total_pkts;
+};
+
+/** \brief Add/delete S-NAT deterministic mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+    @param in_plen - inside IP address prefix length
+    @param out_addr - outside IP address
+    @param out_addr - outside IP address prefix length
+*/
+define snat_add_det_map {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_ip4;
+  u8 addr_only;
+  u8 in_addr[16];
+  u8 in_plen;
+  u8 out_addr[16];
+  u8 out_plen;
+};
+
+/** \brief Add/delete S-NAT deterministic mapping reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define snat_add_det_map_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Get outside address and port range from inside address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+*/
+define snat_det_forward {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 in_addr[16];
+};
+
+/** \brief Get outside address and port range from inside address
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param out_port_lo - outside port range start
+    @param out_port_hi - outside port range end
+    @param is_ip4 - 1 if address type is IPv4
+    @param out_addr - outside IP address
+*/
+define snat_det_forward_reply {
+  u32 context;
+  i32 retval;
+  u16 out_port_lo;
+  u16 out_port_hi;
+  u8 is_ip4;
+  u8 out_addr[16];
+};
+
+/** \brief Get inside address from outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_port - outside port
+    @param is_ip4 - 1 if address type is IPv4
+    @param out_addr - outside IP address
+*/
+define snat_det_reverse {
+  u32 client_index;
+  u32 context;
+  u16 out_port;
+  u8 is_ip4;
+  u8 out_addr[16];
+};
+
+/** \brief Get inside address from outside address and port reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+*/
+define snat_det_reverse_reply {
+  u32 context;
+  i32 retval;
+  u8 is_ip4;
+  u8 in_addr[16];
 };

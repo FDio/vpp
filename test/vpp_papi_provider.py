@@ -1123,6 +1123,54 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_user_dump, {})
 
+    def snat_add_det_map(
+            self,
+            in_addr,
+            in_plen,
+            out_addr,
+            out_plen,
+            is_add=1):
+        """Add/delete S-NAT deterministic mapping
+
+        :param is_add - 1 if add, 0 if delete
+        :param in_addr - inside IP address
+        :param in_plen - inside IP address prefix length
+        :param out_addr - outside IP address
+        :param out_plen - outside IP address prefix length
+        """
+        return self.api(
+            self.papi.snat_add_det_map,
+            {'is_add': is_add,
+             'in_addr': in_addr,
+             'in_plen': in_plen,
+             'out_addr': out_addr,
+             'out_plen': out_plen})
+
+    def snat_det_forward(
+            self,
+            in_addr):
+        """Get outside address and port range from inside address
+
+        :param in_addr - inside IP address
+        """
+        return self.api(
+            self.papi.snat_det_forward,
+            {'in_addr': in_addr})
+
+    def snat_det_reverse(
+            self,
+            out_addr,
+            out_port):
+        """Get inside address from outside address and port
+
+        :param out_addr - outside IP address
+        :param out_port - outside port
+        """
+        return self.api(
+            self.papi.snat_det_reverse,
+            {'out_addr': out_addr,
+             'out_port': out_port})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 

@@ -1276,5 +1276,57 @@ class TestSNAT(VppTestCase):
             self.clear_snat()
 
 
+class TestDeterministicNAT(VppTestCase):
+    """ Deterministic NAT Test Cases """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestDeterministicNAT, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["snat", "{", "deterministic", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDeterministicNAT, cls).setUpClass()
+
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.interfaces = list(cls.pg_interfaces)
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+
+        except Exception:
+            super(TestDeterministicNAT, cls).tearDownClass()
+            raise
+
+    def test_deterministic_mode(self):
+        """ S-NAT run deterministic mode """
+        in_addr = '172.16.255.0'
+        out_addr = '172.17.255.50'
+        in_addr_t = '172.16.255.20'
+        in_addr_n = socket.inet_aton(in_addr)
+        out_addr_n = socket.inet_aton(out_addr)
+        in_addr_t_n = socket.inet_aton(in_addr_t)
+        in_plen = 24
+        out_plen = 32
+
+        snat_config = self.vapi.snat_show_config()
+        self.assertEqual(1, snat_config.deterministic)
+
+        self.vapi.snat_add_det_map(in_addr_n, in_plen, out_addr_n, out_plen)
+
+        rep1 = self.vapi.snat_det_forward(in_addr_t_n)
+        self.assertEqual(rep1.out_addr[:4], out_addr_n)
+        rep2 = self.vapi.snat_det_reverse(out_addr_n, rep1.out_port_hi)
+        self.assertEqual(rep2.in_addr[:4], in_addr_t_n)
+
+    def tearDown(self):
+        super(TestDeterministicNAT, self).tearDown()
+        if not self.vpp_dead:
+            self.logger.info(self.vapi.cli("show snat detail"))
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

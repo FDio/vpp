@@ -22,6 +22,7 @@
 #include <vlibapi/api.h>
 #include <snat/snat.h>
 #include <snat/snat_ipfix_logging.h>
+#include <snat/snat_det.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 
@@ -107,6 +108,16 @@ VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
 VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "snat-out2in",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+VNET_FEATURE_INIT (ip4_snat_det_in2out, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "snat-det-in2out",
+  .runs_before = VNET_FEATURES ("snat-det-out2in"),
+};
+VNET_FEATURE_INIT (ip4_snat_det_out2in, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "snat-det-out2in",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_worker_handoff, static) = {
@@ -206,14 +217,16 @@ bad_tx_sw_if_index:				\
  * proxy ARP on the outside interface.
  *
  * @param addr IPv4 address.
+ * @param plen address prefix length
  * @param sw_if_index Interface.
  * @param is_add If 0 delete, otherwise add.
  */
-static void
-snat_add_del_addr_to_fib (ip4_address_t * addr, u32 sw_if_index, int is_add)
+void
+snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
+                          int is_add)
 {
   fib_prefix_t prefix = {
-    .fp_len = 32,
+    .fp_len = p_len,
     .fp_proto = FIB_PROTOCOL_IP4,
     .fp_addr = {
         .ip4.as_u32 = addr->as_u32,
@@ -270,7 +283,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
     if (i->is_inside)
       continue;
 
-    snat_add_del_addr_to_fib(addr, i->sw_if_index, 1);
+    snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
     break;
   }));
 }
@@ -627,7 +640,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
     if (interface->is_inside)
       continue;
 
-    snat_add_del_addr_to_fib(&e_addr, interface->sw_if_index, is_add);
+    snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
     break;
   }));
 
@@ -727,7 +740,7 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
     if (interface->is_inside)
       continue;
 
-    snat_add_del_addr_to_fib(&addr, interface->sw_if_index, 0);
+    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
     break;
   }));
 
@@ -741,13 +754,16 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   const char * feature_name;
   snat_address_t * ap;
   snat_static_mapping_t * m;
+  snat_det_map_t * dm;
 
   if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
     feature_name = is_inside ?  "snat-in2out-fast" : "snat-out2in-fast";
   else
     {
-      if (sm->num_workers > 1)
+      if (sm->num_workers > 1 && !sm->deterministic)
         feature_name = is_inside ?  "snat-in2out-worker-handoff" : "snat-out2in-worker-handoff";
+      else if (sm->deterministic)
+        feature_name = is_inside ?  "snat-det-in2out" : "snat-det-out2in";
       else
         feature_name = is_inside ?  "snat-in2out" : "snat-out2in";
     }
@@ -755,11 +771,11 @@ static int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
 			       !is_del, 0, 0);
 
-  if (sm->fq_in2out_index == ~0)
-    sm->fq_in2out_index = vlib_frame_queue_main_init (snat_in2out_node.index, 0);
+  if (sm->fq_in2out_index == ~0 && !sm->deterministic && sm->num_workers > 1)
+    sm->fq_in2out_index = vlib_frame_queue_main_init (sm->in2out_node_index, 0);
 
-  if (sm->fq_out2in_index == ~0)
-    sm->fq_out2in_index = vlib_frame_queue_main_init (snat_out2in_node.index, 0);
+  if (sm->fq_out2in_index == ~0 && !sm->deterministic && sm->num_workers > 1)
+    sm->fq_out2in_index = vlib_frame_queue_main_init (sm->out2in_node_index, 0);
 
   pool_foreach (i, sm->interfaces,
   ({
@@ -787,14 +803,19 @@ fib:
     return 0;
 
   vec_foreach (ap, sm->addresses)
-    snat_add_del_addr_to_fib(&ap->addr, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
 
   pool_foreach (m, sm->static_mappings,
   ({
     if (!(m->addr_only))
       continue;
 
-    snat_add_del_addr_to_fib(&m->external_addr, sw_if_index, !is_del);
+    snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
+  }));
+
+  pool_foreach (dm, sm->det_maps,
+  ({
+    snat_add_del_addr_to_fib(&dm->out_addr, dm->out_plen, sw_if_index, !is_del);
   }));
 
   return 0;
@@ -1206,6 +1227,7 @@ vl_api_snat_show_config_t_handler
     rmp->static_mapping_only = sm->static_mapping_only;
     rmp->static_mapping_connection_tracking =
       sm->static_mapping_connection_tracking;
+    rmp->deterministic = sm->deterministic;
   }));
 }
 
@@ -1561,6 +1583,123 @@ static void *vl_api_snat_user_session_dump_t_print
   FINISH;
 }
 
+static void
+vl_api_snat_add_det_map_t_handler
+(vl_api_snat_add_det_map_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_add_det_map_reply_t * rmp;
+  int rv = 0;
+  ip4_address_t in_addr, out_addr;
+
+  clib_memcpy(&in_addr, mp->in_addr, 4);
+  clib_memcpy(&out_addr, mp->out_addr, 4);
+  rv = snat_det_add_map(sm, &in_addr, mp->in_plen, &out_addr,
+                        mp->out_plen, mp->is_add);
+
+  REPLY_MACRO (VL_API_SNAT_ADD_DET_MAP_REPLY);
+}
+
+static void *vl_api_snat_add_det_map_t_print
+(vl_api_snat_add_det_map_t *mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_add_det_map ");
+  s = format (s, "inside address %U/%d outside address %U/%d\n",
+              format_ip4_address, mp->in_addr, mp->in_plen,
+              format_ip4_address, mp->out_addr, mp->out_plen);
+
+  FINISH;
+}
+
+static void
+vl_api_snat_det_forward_t_handler
+(vl_api_snat_det_forward_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_det_forward_reply_t * rmp;
+  int rv = 0;
+  u16 lo_port = 0;
+  snat_det_map_t * dm;
+  ip4_address_t in_addr, out_addr;
+
+  out_addr.as_u32 = 0;
+  clib_memcpy(&in_addr, mp->in_addr, 4);
+  dm = snat_det_map_by_user(sm, &in_addr);
+  if (!dm)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto send_reply;
+    }
+
+  snat_det_forward(dm, &in_addr, &out_addr, &lo_port);
+
+send_reply:
+  REPLY_MACRO2(VL_API_SNAT_DET_FORWARD_REPLY,
+  ({
+    rmp->out_port_lo = ntohs(lo_port);
+    rmp->out_port_hi = ntohs(lo_port + dm->ports_per_host - 1);
+    rmp->is_ip4 = 1;
+    memset(rmp->out_addr, 0, 16);
+    clib_memcpy(rmp->out_addr, &out_addr, 4);
+  }))
+}
+
+static void *vl_api_snat_det_forward_t_print
+(vl_api_snat_det_forward_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: smat_det_forward_t");
+  s = format (s, "inside ip address %U\n",
+              format_ip4_address, mp->in_addr);
+
+  FINISH;
+}
+
+static void
+vl_api_snat_det_reverse_t_handler
+(vl_api_snat_det_reverse_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_det_reverse_reply_t * rmp;
+  int rv = 0;
+  ip4_address_t out_addr, in_addr;
+  snat_det_map_t * dm;
+
+  in_addr.as_u32 = 0;
+  clib_memcpy(&out_addr, mp->out_addr, 4);
+  dm = snat_det_map_by_out(sm, &out_addr);
+  if (!dm)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto send_reply;
+    }
+
+  snat_det_reverse(dm, &out_addr, htons(mp->out_port), &in_addr);
+
+ send_reply:
+  REPLY_MACRO2(VL_API_SNAT_DET_REVERSE_REPLY,
+  ({
+    rmp->is_ip4 = 1;
+    memset(rmp->in_addr, 0, 16);
+    clib_memcpy(rmp->in_addr, &in_addr, 4);
+  }))
+}
+
+static void *vl_api_snat_det_reverse_t_print
+(vl_api_snat_det_reverse_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format(0, "SCRIPT: smat_det_reverse_t");
+  s = format(s, "outside ip address %U outside port %d",
+             format_ip4_address, mp->out_addr, ntohs(mp->out_port));
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1577,7 +1716,10 @@ _(SNAT_ADD_DEL_INTERFACE_ADDR, snat_add_del_interface_addr)             \
 _(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)                   \
 _(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)                 \
 _(SNAT_USER_DUMP, snat_user_dump)                                       \
-_(SNAT_USER_SESSION_DUMP, snat_user_session_dump)
+_(SNAT_USER_SESSION_DUMP, snat_user_session_dump)                       \
+_(SNAT_ADD_DET_MAP, snat_add_det_map)                                   \
+_(SNAT_DET_FORWARD, snat_det_forward)                                   \
+_(SNAT_DET_REVERSE, snat_det_reverse)
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -2291,6 +2433,96 @@ VLIB_CLI_COMMAND (snat_ipfix_logging_enable_disable_command, static) = {
   .short_help = "snat ipfix logging [domain <domain-id>] [src-port <port>] [disable]",
 };
 
+static u32
+snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0)
+{
+  snat_main_t *sm = &snat_main;
+  snat_user_key_t key0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  u32 next_worker_index = 0;
+
+  key0.addr = ip0->src_address;
+  key0.fib_index = rx_fib_index0;
+
+  kv0.key = key0.as_u64;
+
+  /* Ever heard of of the "user" before? */
+  if (clib_bihash_search_8_8 (&sm->worker_by_in, &kv0, &value0))
+    {
+      /* No, assign next available worker (RR) */
+      next_worker_index = sm->first_worker_index;
+      if (vec_len (sm->workers))
+        {
+          next_worker_index +=
+            sm->workers[sm->next_worker++ % _vec_len (sm->workers)];
+        }
+
+      /* add non-traslated packets worker lookup */
+      kv0.value = next_worker_index;
+      clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv0, 1);
+    }
+  else
+    next_worker_index = value0.value;
+
+  return next_worker_index;
+}
+
+static u32
+snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
+{
+  snat_main_t *sm = &snat_main;
+  snat_worker_key_t key0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  udp_header_t * udp0;
+  u32 next_worker_index = 0;
+
+  udp0 = ip4_next_header (ip0);
+
+  key0.addr = ip0->dst_address;
+  key0.port = udp0->dst_port;
+  key0.fib_index = rx_fib_index0;
+
+  if (PREDICT_FALSE(ip0->protocol == IP_PROTOCOL_ICMP))
+    {
+      icmp46_header_t * icmp0 = (icmp46_header_t *) udp0;
+      icmp_echo_header_t *echo0 = (icmp_echo_header_t *)(icmp0+1);
+      key0.port = echo0->identifier;
+    }
+
+  kv0.key = key0.as_u64;
+
+  /* Ever heard of of the "user" before? */
+  if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+    {
+      key0.port = 0;
+      kv0.key = key0.as_u64;
+
+      if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+        {
+          /* No, assign next available worker (RR) */
+          next_worker_index = sm->first_worker_index;
+          if (vec_len (sm->workers))
+            {
+              next_worker_index +=
+                sm->workers[sm->next_worker++ % _vec_len (sm->workers)];
+            }
+        }
+      else
+        {
+          /* Static mapping without port */
+          next_worker_index = value0.value;
+        }
+
+      /* Add to translated packets worker lookup */
+      kv0.value = next_worker_index;
+      clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv0, 1);
+    }
+  else
+    next_worker_index = value0.value;
+
+  return next_worker_index;
+}
+
 static clib_error_t *
 snat_config (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -2307,6 +2539,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  sm->deterministic = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2334,7 +2568,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           if (unformat (input, "connection tracking"))
             static_mapping_connection_tracking = 1;
         }
-      else 
+      else if (unformat (input, "deterministic"))
+        sm->deterministic = 1;
+      else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
     }
@@ -2354,37 +2590,67 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
 
-  if (!static_mapping_only ||
-      (static_mapping_only && static_mapping_connection_tracking))
+  if (sm->deterministic)
     {
-      clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
-                            user_memory_size);
-
-      clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out", user_buckets,
-                            user_memory_size);
-
-      vec_validate (sm->per_thread_data, tm->n_vlib_mains - 1);
-
-      clib_bihash_init_8_8 (&sm->in2out, "in2out", translation_buckets,
-                            translation_memory_size);
-
-      clib_bihash_init_8_8 (&sm->out2in, "out2in", translation_buckets,
-                            translation_memory_size);
-
-      clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
-                            user_memory_size);
+      sm->in2out_node_index = snat_det_in2out_node.index;
+      sm->out2in_node_index = snat_det_out2in_node.index;
     }
-  clib_bihash_init_8_8 (&sm->static_mapping_by_local,
-                        "static_mapping_by_local", static_mapping_buckets,
-                        static_mapping_memory_size);
+  else
+    {
+      sm->worker_in2out_cb = snat_get_worker_in2out_cb;
+      sm->worker_out2in_cb = snat_get_worker_out2in_cb;
+      sm->in2out_node_index = snat_in2out_node.index;
+      sm->out2in_node_index = snat_out2in_node.index;
+      if (!static_mapping_only ||
+          (static_mapping_only && static_mapping_connection_tracking))
+        {
+          clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
+                                user_memory_size);
 
-  clib_bihash_init_8_8 (&sm->static_mapping_by_external,
-                        "static_mapping_by_external", static_mapping_buckets,
-                        static_mapping_memory_size);
+          clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out", user_buckets,
+                                user_memory_size);
+
+          vec_validate (sm->per_thread_data, tm->n_vlib_mains - 1);
+
+          clib_bihash_init_8_8 (&sm->in2out, "in2out", translation_buckets,
+                                translation_memory_size);
+
+          clib_bihash_init_8_8 (&sm->out2in, "out2in", translation_buckets,
+                                translation_memory_size);
+
+          clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
+                                user_memory_size);
+        }
+      clib_bihash_init_8_8 (&sm->static_mapping_by_local,
+                            "static_mapping_by_local", static_mapping_buckets,
+                            static_mapping_memory_size);
+
+      clib_bihash_init_8_8 (&sm->static_mapping_by_external,
+                            "static_mapping_by_external", static_mapping_buckets,
+                            static_mapping_memory_size);
+    }
+
   return 0;
 }
 
 VLIB_CONFIG_FUNCTION (snat_config, "snat");
+
+u8 * format_snat_session_state (u8 * s, va_list * args)
+{
+  u32 i = va_arg (*args, u32);
+  u8 *t = 0;
+
+  switch (i)
+    {
+#define _(v, N, str) case SNAT_SESSION_##N: t = (u8 *) str; break;
+    foreach_snat_session_state
+#undef _
+    default:
+      t = format (t, "unknown");
+    }
+  s = format (s, "%s", t);
+  return s;
+}
 
 u8 * format_snat_key (u8 * s, va_list * args)
 {
@@ -2504,6 +2770,35 @@ u8 * format_snat_static_map_to_resolve (u8 * s, va_list * args)
   return s;
 }
 
+u8 * format_det_map_ses (u8 * s, va_list * args)
+{
+  snat_det_map_t * det_map = va_arg (*args, snat_det_map_t *);
+  ip4_address_t in_addr, out_addr;
+  u32 in_offset, out_offset;
+  snat_det_session_t * ses = va_arg (*args, snat_det_session_t *);
+  u32 * i = va_arg (*args, u32 *);
+
+  u32 user_index = *i / SNAT_DET_SES_PER_USER;
+  in_addr.as_u32 = clib_host_to_net_u32 (
+    clib_net_to_host_u32(det_map->in_addr.as_u32) + user_index);
+  in_offset = clib_net_to_host_u32(in_addr.as_u32) -
+    clib_net_to_host_u32(det_map->in_addr.as_u32);
+  out_offset = in_offset / det_map->sharing_ratio;
+  out_addr.as_u32 = clib_host_to_net_u32(
+    clib_net_to_host_u32(det_map->out_addr.as_u32) + out_offset);
+  s = format (s, "in %U:%d out %U:%d external host %U:%d state: %U expire: %d\n",
+              format_ip4_address, &in_addr,
+              clib_net_to_host_u16 (ses->in_port),
+              format_ip4_address, &out_addr,
+              clib_net_to_host_u16 (ses->out.out_port),
+              format_ip4_address, &ses->out.ext_host_addr,
+              clib_net_to_host_u16 (ses->out.ext_host_port),
+              format_snat_session_state, ses->state,
+              ses->expire);
+
+  return s;
+}
+
 static clib_error_t *
 show_snat_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
@@ -2520,6 +2815,8 @@ show_snat_command_fn (vlib_main_t * vm,
   u32 users_num = 0, sessions_num = 0, *worker, *sw_if_index;
   uword j = 0;
   snat_static_map_resolve_t *rp;
+  snat_det_map_t * dm;
+  snat_det_session_t * ses;
 
   if (unformat (input, "detail"))
     verbose = 1;
@@ -2533,6 +2830,10 @@ show_snat_command_fn (vlib_main_t * vm,
                          "tracking");
       else
         vlib_cli_output (vm, "SNAT mode: static mapping only");
+    }
+  else if (sm->deterministic)
+    {
+      vlib_cli_output (vm, "SNAT mode: deterministic mapping");
     }
   else
     {
@@ -2587,81 +2888,112 @@ show_snat_command_fn (vlib_main_t * vm,
         }
     }
 
-  if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
+  if (sm->deterministic)
     {
-      vlib_cli_output (vm, "%d static mappings",
-                       pool_elts (sm->static_mappings));
-
+      vlib_cli_output (vm, "%d deterministic mappings",
+                       pool_elts (sm->det_maps));
       if (verbose > 0)
         {
-          pool_foreach (m, sm->static_mappings,
+          pool_foreach (dm, sm->det_maps,
           ({
-            vlib_cli_output (vm, "%U", format_snat_static_mapping, m);
+            vlib_cli_output (vm, "in %U/%d out %U/%d\n",
+                             format_ip4_address, &dm->in_addr, dm->in_plen,
+                             format_ip4_address, &dm->out_addr, dm->out_plen);
+            vlib_cli_output (vm, " outside address sharing ratio: %d\n",
+                             dm->sharing_ratio);
+            vlib_cli_output (vm, " number of ports per inside host: %d\n",
+                             dm->ports_per_host);
+            vlib_cli_output (vm, " sessions number: %d\n", dm->ses_num);
+            if (verbose > 1)
+              {
+                vec_foreach_index (j, dm->sessions)
+                  {
+                    ses = vec_elt_at_index (dm->sessions, j);
+                    if (ses->in_port)
+                      vlib_cli_output (vm, "  %U", format_det_map_ses, dm, ses,
+                                       &j);
+                  }
+              }
           }));
         }
     }
   else
     {
-      vec_foreach (tsm, sm->per_thread_data)
+      if (sm->static_mapping_only && !(sm->static_mapping_connection_tracking))
         {
-          users_num += pool_elts (tsm->users);
-          sessions_num += pool_elts (tsm->sessions);
-        }
+          vlib_cli_output (vm, "%d static mappings",
+                           pool_elts (sm->static_mappings));
 
-      vlib_cli_output (vm, "%d users, %d outside addresses, %d active sessions,"
-                       " %d static mappings",
-                       users_num,
-                       vec_len (sm->addresses),
-                       sessions_num,
-                       pool_elts (sm->static_mappings));
-
-      if (verbose > 0)
-        {
-          vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->in2out,
-                           verbose - 1);
-          vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->out2in,
-                           verbose - 1);
-          vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_in,
-                           verbose - 1);
-          vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_out,
-                           verbose - 1);
-          vec_foreach_index (j, sm->per_thread_data)
+          if (verbose > 0)
             {
-              tsm = vec_elt_at_index (sm->per_thread_data, j);
-
-              if (pool_elts (tsm->users) == 0)
-                continue;
-
-              vlib_worker_thread_t *w = vlib_worker_threads + j;
-              vlib_cli_output (vm, "Thread %d (%s at lcore %u):", j, w->name,
-                               w->lcore_id);
-              vlib_cli_output (vm, "  %d list pool elements",
-                               pool_elts (tsm->list_pool));
-
-              pool_foreach (u, tsm->users,
-              ({
-                vlib_cli_output (vm, "  %U", format_snat_user, tsm, u,
-                                 verbose - 1);
-              }));
-            }
-
-          if (pool_elts (sm->static_mappings) || vec_len (sm->to_resolve))
-            {
-              vlib_cli_output (vm, "static mappings:");
               pool_foreach (m, sm->static_mappings,
               ({
                 vlib_cli_output (vm, "%U", format_snat_static_mapping, m);
               }));
-              for (j = 0; j < vec_len (sm->to_resolve); j++)
+            }
+        }
+      else
+        {
+          vec_foreach (tsm, sm->per_thread_data)
+            {
+              users_num += pool_elts (tsm->users);
+              sessions_num += pool_elts (tsm->sessions);
+            }
+
+          vlib_cli_output (vm, "%d users, %d outside addresses, %d active sessions,"
+                           " %d static mappings",
+                           users_num,
+                           vec_len (sm->addresses),
+                           sessions_num,
+                           pool_elts (sm->static_mappings));
+
+          if (verbose > 0)
+            {
+              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->in2out,
+                               verbose - 1);
+              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->out2in,
+                               verbose - 1);
+              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_in,
+                               verbose - 1);
+              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_out,
+                               verbose - 1);
+              vec_foreach_index (j, sm->per_thread_data)
                 {
-                  rp = sm->to_resolve + j;
-                  vlib_cli_output (vm, "%U", format_snat_static_map_to_resolve,
-                                   rp);
+                  tsm = vec_elt_at_index (sm->per_thread_data, j);
+
+                  if (pool_elts (tsm->users) == 0)
+                    continue;
+
+                  vlib_worker_thread_t *w = vlib_worker_threads + j;
+                  vlib_cli_output (vm, "Thread %d (%s at lcore %u):", j, w->name,
+                                   w->lcore_id);
+                  vlib_cli_output (vm, "  %d list pool elements",
+                                   pool_elts (tsm->list_pool));
+
+                  pool_foreach (u, tsm->users,
+                  ({
+                    vlib_cli_output (vm, "  %U", format_snat_user, tsm, u,
+                                     verbose - 1);
+                  }));
+                }
+
+              if (pool_elts (sm->static_mappings))
+                {
+                  vlib_cli_output (vm, "static mappings:");
+                  pool_foreach (m, sm->static_mappings,
+                  ({
+                    vlib_cli_output (vm, "%U", format_snat_static_mapping, m);
+                  }));
+                  for (j = 0; j < vec_len (sm->to_resolve); j++)
+                    {
+                      rp = sm->to_resolve + j;
+                      vlib_cli_output (vm, "%U",
+                                       format_snat_static_map_to_resolve, rp);
+                    }
                 }
             }
         }
     }
-
   return 0;
 }
 
@@ -2855,4 +3187,197 @@ VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
     .path = "snat add interface address",
     .short_help = "snat add interface address <interface> [del]",
     .function = snat_add_interface_address_command_fn,
+};
+
+static clib_error_t *
+snat_det_map_command_fn (vlib_main_t * vm,
+                         unformat_input_t * input,
+                         vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t in_addr, out_addr;
+  u32 in_plen, out_plen;
+  int is_add = 1, rv;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "in %U/%u", unformat_ip4_address, &in_addr, &in_plen))
+        ;
+      else if (unformat (line_input, "out %U/%u", unformat_ip4_address, &out_addr, &out_plen))
+        ;
+      else if (unformat (line_input, "del"))
+        is_add = 0;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  unformat_free (line_input);
+
+  rv = snat_det_add_map(sm, &in_addr, (u8) in_plen, &out_addr, (u8)out_plen,
+                        is_add);
+
+  if (rv)
+    {
+      error = clib_error_return (0, "snat_det_add_map return %d", rv);
+      goto done;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat deterministic add}
+ * Create bijective mapping of inside address to outside address and port range
+ * pairs, with the purpose of enabling deterministic NAT to reduce logging in
+ * CGN deployments.
+ * To create deterministic mapping between inside network 10.0.0.0/18 and
+ * outside network 1.1.1.0/30 use:
+ * # vpp# snat deterministic add in 10.0.0.0/18 out 1.1.1.0/30
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_det_map_command, static) = {
+    .path = "snat deterministic add",
+    .short_help = "snat deterministic add in <addr>/<plen> out <addr>/<plen> [del]",
+    .function = snat_det_map_command_fn,
+};
+
+static clib_error_t *
+snat_det_forward_command_fn (vlib_main_t * vm,
+                             unformat_input_t * input,
+                             vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t in_addr, out_addr;
+  u16 lo_port;
+  snat_det_map_t * dm;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_ip4_address, &in_addr))
+        ;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  unformat_free (line_input);
+
+  dm = snat_det_map_by_user(sm, &in_addr);
+  if (!dm)
+    vlib_cli_output (vm, "no match");
+  else
+    {
+      snat_det_forward (dm, &in_addr, &out_addr, &lo_port);
+      vlib_cli_output (vm, "%U:<%d-%d>", format_ip4_address, &out_addr,
+                       lo_port, lo_port + dm->ports_per_host - 1);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat deterministic forward}
+ * Return outside address and port range from inside address for deterministic
+ * NAT.
+ * To obtain outside address and port of inside host use:
+ *  vpp# snat deterministic forward 10.0.0.2
+ *  1.1.1.0:<1054-1068>
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_det_forward_command, static) = {
+    .path = "snat deterministic forward",
+    .short_help = "snat deterministic forward <addr>",
+    .function = snat_det_forward_command_fn,
+};
+
+static clib_error_t *
+snat_det_reverse_command_fn (vlib_main_t * vm,
+                             unformat_input_t * input,
+                             vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t in_addr, out_addr;
+  u32 out_port;
+  snat_det_map_t * dm;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U:%d", unformat_ip4_address, &out_addr, &out_port))
+        ;
+      else
+        {
+          error =  clib_error_return (0, "unknown input '%U'",
+                                      format_unformat_error, line_input);
+        }
+    }
+
+  unformat_free (line_input);
+
+  if (out_port < 1024 || out_port > 65535)
+    {
+      error = clib_error_return (0, "wrong port, must be <1024-65535>");
+      goto done;
+    }
+
+  dm = snat_det_map_by_out(sm, &out_addr);
+  if (!dm)
+    vlib_cli_output (vm, "no match");
+  else
+    {
+      snat_det_reverse (dm, &out_addr, (u16) out_port, &in_addr);
+      vlib_cli_output (vm, "%U", format_ip4_address, &in_addr);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat deterministic reverse}
+ * Return inside address from outside address and port for deterministic NAT.
+ * To obtain inside host address from outside address and port use:
+ *  #vpp snat deterministic reverse 1.1.1.1:1276
+ *  10.0.16.16
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_det_reverse_command, static) = {
+    .path = "snat deterministic reverse",
+    .short_help = "snat deterministic reverse <addr>:<port>",
+    .function = snat_det_reverse_command_fn,
 };
