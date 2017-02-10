@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_afbb58c3",
+        "filename": "src/vnet/adj/adj_nsh.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-10T09:01:02Z",
+      "side": 1,
+      "message": "you could update this to something more likely.",
+      "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0fc4ac3e",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 888,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-10T09:01:02Z",
+      "side": 1,
+      "message": "this should be outside the if clause, assuming the negative entries are stacked on the lookup.",
+      "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2fc76847",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 964,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-10T09:01:02Z",
+      "side": 1,
+      "message": "do you need the equivalent of this line in the else clause? To stack the negative entry on the lookup",
+      "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4fcab450",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 978,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-10T09:01:02Z",
+      "side": 1,
+      "message": "the variable \u0027dpo\u0027 is effectively unused in this function.",
+      "revId": "cb052c2bf21dfdbfe02ba0dc2cffa6326c64b332",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
