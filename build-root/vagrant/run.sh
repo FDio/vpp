@@ -11,12 +11,13 @@ elif [ -f /etc/redhat-release ];then
     DISTRIB_DESCRIPTION=`lsb_release -sd`
 fi
 
-if [ $DISTRIB_ID == "Ubuntu" ]; then
-    start vpp
-elif [ $DISTRIB_ID == "CentOS" ]; then
+if [ $DISTRIB_ID == "CentOS" ]; then
     # Install uio-pci-generic
     modprobe uio_pci_generic
-
-    # Start vpp
+fi
+echo "Starting VPP..."
+if [ $DISTRIB_ID == "Ubuntu" ] && [ $DISTRIB_CODENAME = "trusty" ] ; then
+    start vpp
+else
     service vpp start
 fi
