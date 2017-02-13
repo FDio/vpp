@@ -40,7 +40,7 @@ if [ $DISTRIB_ID == "Ubuntu" ]; then
     update-alternatives --install /bin/sh sh /bin/bash 100
 
     # Install useful but non-mandatory tools
-    apt-get install -y emacs git-review gdb gdbserver
+    apt-get install -y emacs x11-utils git-review gdb gdbserver
 elif [ $DISTRIB_ID == "CentOS" ]; then
     # Standard update + upgrade dance
     yum check-update
