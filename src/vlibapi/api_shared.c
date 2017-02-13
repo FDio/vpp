@@ -513,7 +513,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
     }
   else
     {
-      clib_warning ("no hander for msg id %d", id);
+      clib_warning ("no handler for msg id %d", id);
     }
 
   /*
