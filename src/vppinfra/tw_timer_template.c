@@ -144,11 +144,8 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 /**
  * @brief Stop a tw timer
  * @param tw_timer_wheel_t * tw timer wheel object pointer
- * @param u32 pool_index user pool index, passed for consistency checking only
- * @param u32 timer_id 4 bit timer ID, passed for consistency checking only
  * @param u32 handle timer cancellation returned by tw_timer_start
  */
-
 void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
 {
   TWT (tw_timer) * t;
@@ -238,30 +235,32 @@ void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw)
  * @param tw_timer_wheel_t * tw timer wheel template instance pointer
  * @param f64 now the current time, e.g. from vlib_time_now(vm)
  */
-void TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
+u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 {
   u32 nticks, i;
   tw_timer_wheel_slot_t *ts;
   TWT (tw_timer) * t, *head;
   u32 fast_wheel_index;
   u32 next_index;
+  u32 nexpirations, total_nexpirations;
 #if TW_TIMER_WHEELS > 1
   u32 slow_wheel_index;
 #endif
 
   /* Shouldn't happen */
   if (PREDICT_FALSE (now < tw->next_run_time))
-    return;
+    return 0;
 
   /* Number of ticks which have occurred */
   nticks = tw->ticks_per_second * (now - tw->last_run_time);
   if (nticks == 0)
-    return;
+    return 0;
 
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
   tw->last_run_time = now;
 
+  total_nexpirations = 0;
   for (i = 0; i < nticks; i++)
     {
       fast_wheel_index = tw->current_index[TW_TIMER_RING_FAST];
@@ -325,11 +324,17 @@ void TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 	}
 
       /* If any timers expired, tell the user */
-      if (vec_len (tw->expired_timer_handles))
-	tw->expired_timer_callback (tw->expired_timer_handles);
+      nexpirations = vec_len (tw->expired_timer_handles);
+      if (nexpirations)
+	{
+	  tw->expired_timer_callback (tw->expired_timer_handles);
+	  total_nexpirations += nexpirations;
+	}
       tw->current_index[TW_TIMER_RING_FAST]++;
       tw->current_tick++;
     }
+
+  return total_nexpirations;
 }
 
 /*

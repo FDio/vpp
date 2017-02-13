@@ -188,7 +188,7 @@ void TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 
 void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw);
 
-void TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now);
+u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now);
 
 /*
  * fd.io coding-style-patch-verification: ON
