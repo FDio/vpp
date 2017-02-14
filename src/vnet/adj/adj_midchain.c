@@ -563,6 +563,11 @@ const static char* const midchain_ethernet_nodes[] =
     "adj-l2-midchain",
     NULL,
 };
+const static char* const midchain_nsh_nodes[] =
+{
+    "adj-nsh-midchain",
+    NULL,
+};
 
 const static char* const * const midchain_nodes[DPO_PROTO_NUM] =
 {
@@ -570,6 +575,7 @@ const static char* const * const midchain_nodes[DPO_PROTO_NUM] =
     [DPO_PROTO_IP6]  = midchain_ip6_nodes,
     [DPO_PROTO_MPLS] = midchain_mpls_nodes,
     [DPO_PROTO_ETHERNET] = midchain_ethernet_nodes,
+    [DPO_PROTO_NSH] = midchain_nsh_nodes,
 };
 
 void

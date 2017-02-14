@@ -810,12 +810,18 @@ const static char* const load_balance_l2_nodes[] =
     "l2-load-balance",
     NULL,
 };
+const static char* const load_balance_nsh_nodes[] =
+{
+    "nsh-load-balance",
+    NULL,
+};
 const static char* const * const load_balance_nodes[DPO_PROTO_NUM] =
 {
     [DPO_PROTO_IP4]  = load_balance_ip4_nodes,
     [DPO_PROTO_IP6]  = load_balance_ip6_nodes,
     [DPO_PROTO_MPLS] = load_balance_mpls_nodes,
     [DPO_PROTO_ETHERNET] = load_balance_l2_nodes,
+    [DPO_PROTO_NSH] = load_balance_nsh_nodes,
 };
 
 void
@@ -981,7 +987,7 @@ l2_load_balance (vlib_main_t * vm,
 }
 
 static u8 *
-format_load_balance_trace (u8 * s, va_list * args)
+format_l2_load_balance_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -999,7 +1005,97 @@ VLIB_REGISTER_NODE (l2_load_balance_node) = {
   .name = "l2-load-balance",
   .vector_size = sizeof (u32),
 
-  .format_trace = format_load_balance_trace,
+  .format_trace = format_l2_load_balance_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+      [0] = "error-drop",
+  },
+};
+
+static uword
+nsh_load_balance (vlib_main_t * vm,
+                 vlib_node_runtime_t * node,
+                 vlib_frame_t * frame)
+{
+  u32 n_left_from, next_index, *from, *to_next;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+        {
+          vlib_buffer_t *b0;
+          u32 bi0, lbi0, next0, *nsh0;
+          const dpo_id_t *dpo0;
+          const load_balance_t *lb0;
+
+          bi0 = from[0];
+          to_next[0] = bi0;
+          from += 1;
+          to_next += 1;
+          n_left_from -= 1;
+          n_left_to_next -= 1;
+
+          b0 = vlib_get_buffer (vm, bi0);
+
+          lbi0 =  vnet_buffer (b0)->ip.adj_index[VLIB_TX];
+          lb0 = load_balance_get(lbi0);
+
+          /* SPI + SI are the second word of the NSH header */
+          nsh0 = vlib_buffer_get_current (b0);
+          vnet_buffer(b0)->ip.flow_hash = nsh0[1] % lb0->lb_n_buckets;
+
+          dpo0 = load_balance_get_bucket_i(lb0,
+                                           vnet_buffer(b0)->ip.flow_hash &
+                                           (lb0->lb_n_buckets_minus_1));
+
+          next0 = dpo0->dpoi_next_node;
+          vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+          if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              load_balance_trace_t *tr = vlib_add_trace (vm, node, b0,
+                                                         sizeof (*tr));
+              tr->lb_index = lbi0;
+            }
+          vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+                                           n_left_to_next, bi0, next0);
+        }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+static u8 *
+format_nsh_load_balance_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  load_balance_trace_t *t = va_arg (*args, load_balance_trace_t *);
+
+  s = format (s, "NSH-load-balance: index %d", t->lb_index);
+  return s;
+}
+
+/**
+ * @brief
+ */
+VLIB_REGISTER_NODE (nsh_load_balance_node) = {
+  .function = nsh_load_balance,
+  .name = "nsh-load-balance",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_nsh_load_balance_trace,
   .n_next_nodes = 1,
   .next_nodes = {
       [0] = "error-drop",
