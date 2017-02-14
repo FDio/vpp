@@ -48,9 +48,7 @@ typedef union {
 typedef struct {
   ip6_address_t dhcp6_server;
   ip6_address_t dhcp6_src_address;
-  u32 insert_vss;
   u32 server_fib6_index;
-  u32 valid;
 } dhcpv6_server_t;
 
 typedef struct {
@@ -70,7 +68,7 @@ typedef struct {
   dhcpv6_vss_info *vss;
 
   /* hash lookup specific vrf_id -> VSS vector index*/
-  uword  *vss_index_by_vrf_id;
+  u32 *vss_index_by_rx_fib_index;
    
   /* convenience */
   vlib_main_t * vlib_main;
@@ -79,17 +77,18 @@ typedef struct {
 
 dhcpv6_proxy_main_t dhcpv6_proxy_main;
 
-int dhcpv6_proxy_set_server (ip6_address_t *addr, ip6_address_t *src_address,
-                             u32 fib_id, int insert_vss, int is_del);
-
 int dhcpv6_proxy_set_vss(u32 tbl_id,
                          u32 oui,
                          u32 fib_id, 
                          int is_del);
 
-int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
-                             u32 rx_fib_id,
-                             u32 server_fib_id,
-                             int insert_vss, int is_del);
+int dhcpv6_proxy_set_server(ip6_address_t *addr,
+                            ip6_address_t *src_address,
+                            u32 rx_fib_id,
+                            u32 server_fib_id,
+                            int is_del);
+
+void dhcpv6_proxy_dump(void *opaque,
+                       u32 context);
 
 #endif /* included_dhcpv6_proxy_h */

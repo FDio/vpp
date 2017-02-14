@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <vlib/vlib.h>
+#include <vnet/dhcp/client.h>
 #include <vnet/dhcp/proxy.h>
 #include <vnet/fib/fib_table.h>
 
