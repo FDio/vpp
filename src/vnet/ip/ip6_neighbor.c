@@ -24,6 +24,7 @@
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/mfib/ip6_mfib.h>
 
 /**
  * @file
@@ -3283,6 +3284,7 @@ disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 
 	  ip6_neighbor_sw_interface_add_del (vnm, sw_if_index,
 					     0 /* is_add */ );
+	  ip6_mfib_interface_enable_disable (sw_if_index, 0);
 	}
     }
   return error;
@@ -3368,6 +3370,8 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 		      /* clear u bit */
 		      link_local_address.as_u8[8] &= 0xfd;
 		    }
+
+		  ip6_mfib_interface_enable_disable (sw_if_index, 1);
 
 		  /* essentially "enables" ipv6 on this interface */
 		  error = ip6_add_del_interface_address (vm, sw_if_index,

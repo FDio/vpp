@@ -2781,6 +2781,7 @@ add_del_interface_table (vlib_main_t * vm,
 			 unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  ip_interface_address_t *ia;
   clib_error_t *error = 0;
   u32 sw_if_index, table_id;
 
@@ -2802,29 +2803,44 @@ add_del_interface_table (vlib_main_t * vm,
       goto done;
     }
 
-  {
-    ip4_main_t *im = &ip4_main;
-    u32 fib_index;
+  /*
+   * If the interface already has in IP address, then a change int
+   * VRF is not allowed. The IP address applied must first be removed.
+   * We do not do that automatically here, since VPP has no knowledge
+   * of whether thoses subnets are valid in the destination VRF.
+   */
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (&ip4_main.lookup_main,
+                                ia, sw_if_index,
+                                1 /* honor unnumbered */,
+  ({
+      ip4_address_t * a;
 
-    fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-						   table_id);
+      a = ip_interface_address_get_address (&ip4_main.lookup_main, ia);
+      error = clib_error_return (0, "interface %U has address %U",
+                                 format_vnet_sw_if_index_name, vnm,
+                                 sw_if_index,
+                                 format_ip4_address, a);
+      goto done;
+   }));
+   /* *INDENT-ON* */
 
-    //
-    // FIXME-LATER
-    //  changing an interface's table has consequences for any connecteds
-    //  and adj-fibs already installed.
-    //
-    vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-    im->fib_index_by_sw_if_index[sw_if_index] = fib_index;
+{
+  ip4_main_t *im = &ip4_main;
+  u32 fib_index;
 
-    fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-                                                   table_id);
-    vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
-    im->mfib_index_by_sw_if_index[sw_if_index] = fib_index;
-  }
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
+
+  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+  im->fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+  fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
+  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
+  im->mfib_index_by_sw_if_index[sw_if_index] = fib_index;
+}
 
 done:
-  return error;
+return error;
 }
 
 /*?
@@ -2835,13 +2851,12 @@ done:
  * an IP Address is assigned to an interface in the table (which adds a route
  * automatically).
  *
- * @note IP addresses added after setting the interface IP table end up in
- * the indicated FIB table. If the IP address is added prior to adding the
- * interface to the FIB table, it will NOT be part of the FIB table. Predictable
- * but potentially counter-intuitive results occur if you provision interface
- * addresses in multiple FIBs. Upon RX, packets will be processed in the last
- * IP table ID provisioned. It might be marginally useful to evade source RPF
- * drops to put an interface address into multiple FIBs.
+ * @note IP addresses added after setting the interface IP table are added to
+ * the indicated FIB table. If an IP address is added prior to changing the
+ * table then this is an error. The control plane must remove these addresses
+ * first and then change the table. VPP will not automatically move the
+ * addresses from the old to the new table as it does not know the validity
+ * of such a change.
  *
  * @cliexpar
  * Example of how to add an interface to an IPv4 FIB table (where 2 is the table-id):

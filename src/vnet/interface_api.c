@@ -25,6 +25,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/vnet_msg_enum.h>
 #include <vnet/fib/fib_api.h>
@@ -318,6 +319,7 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
   u32 table_id = ntohl (mp->vrf_id);
   u32 sw_if_index = ntohl (mp->sw_if_index);
   vl_api_sw_interface_set_table_reply_t *rmp;
+  CLIB_UNUSED (ip_interface_address_t * ia);
   u32 fib_index;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -326,21 +328,51 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
   if (mp->is_ipv6)
     {
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (&ip6_main.lookup_main,
+				    ia, sw_if_index,
+				    1 /* honor unnumbered */ ,
+      ({
+        rv = VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE;
+        goto done;
+      }));
+      /* *INDENT-ON* */
+
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
 						     table_id);
 
       vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
       ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+      fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+						      table_id);
+      vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
+      ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
     }
   else
     {
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (&ip4_main.lookup_main,
+				    ia, sw_if_index,
+				    1 /* honor unnumbered */ ,
+      ({
+        rv = VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE;
+        goto done;
+      }));
+      /* *INDENT-ON* */
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						     table_id);
 
       vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
       ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+      fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+						      table_id);
+      vec_validate (ip4_main.mfib_index_by_sw_if_index, sw_if_index);
+      ip4_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
     }
+
+done:
   stats_dsunlock ();
 
   BAD_SW_IF_INDEX_LABEL;

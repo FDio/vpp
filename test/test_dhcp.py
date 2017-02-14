@@ -58,6 +58,13 @@ class TestDHCP(VppTestCase):
             i.set_table_ip6(table_id)
             table_id += 1
 
+    def tearDown(self):
+        super(TestDHCP, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+
     def send_and_assert_no_replies(self, intf, pkts, remark):
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)

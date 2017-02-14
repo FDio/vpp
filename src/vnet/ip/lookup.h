@@ -389,11 +389,6 @@ do {								\
   CLIB_PREFETCH (_adj, sizeof (_adj[0]), type);			\
 } while (0)
 
-/* Create new block of given number of contiguous adjacencies. */
-ip_adjacency_t *ip_add_adjacency (ip_lookup_main_t * lm,
-				  ip_adjacency_t * adj,
-				  u32 n_adj, u32 * adj_index_result);
-
 clib_error_t *ip_interface_address_add_del (ip_lookup_main_t * lm,
 					    u32 sw_if_index,
 					    void *address,
