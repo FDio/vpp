@@ -40,6 +40,13 @@ typedef struct
   adj_index_t adj_index;
 } bfd_udp_session_t;
 
+/* bfd udp echo packet trace capture */
+typedef struct
+{
+  u32 len;
+  u8 data[400];
+} bfd_udp_echo_input_trace_t;
+
 struct bfd_session_s;
 
 void bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,

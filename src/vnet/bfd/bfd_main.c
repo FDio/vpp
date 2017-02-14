@@ -264,8 +264,7 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 static void
 bfd_set_effective_desired_min_tx (bfd_main_t * bm,
 				  bfd_session_t * bs, u64 now,
-				  u64 desired_min_tx_clocks,
-				  int handling_wakeup)
+				  u64 desired_min_tx_clocks)
 {
   bs->effective_desired_min_tx_clocks = desired_min_tx_clocks;
   BFD_DBG ("Set effective desired min tx to " BFD_CLK_FMT,
@@ -273,20 +272,17 @@ bfd_set_effective_desired_min_tx (bfd_main_t * bm,
   bfd_recalc_detection_time (bm, bs);
   bfd_recalc_tx_interval (bm, bs);
   bfd_calc_next_tx (bm, bs, now);
-  bfd_set_timer (bm, bs, now, handling_wakeup);
 }
 
 static void
 bfd_set_effective_required_min_rx (bfd_main_t * bm,
 				   bfd_session_t * bs, u64 now,
-				   u64 required_min_rx_clocks,
-				   int handling_wakeup)
+				   u64 required_min_rx_clocks)
 {
   bs->effective_required_min_rx_clocks = required_min_rx_clocks;
   BFD_DBG ("Set effective required min rx to " BFD_CLK_FMT,
 	   BFD_CLK_PRN (bs->effective_required_min_rx_clocks));
   bfd_recalc_detection_time (bm, bs);
-  bfd_set_timer (bm, bs, now, handling_wakeup);
 }
 
 static void
@@ -424,42 +420,39 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
   switch (bs->local_state)
     {
     case BFD_STATE_admin_down:
-      bfd_set_effective_required_min_rx (bm, bs, now,
-					 bs->config_required_min_rx_clocks,
-					 handling_wakeup);
       bfd_set_effective_desired_min_tx (bm, bs, now,
 					clib_max
 					(bs->config_desired_min_tx_clocks,
-					 bm->default_desired_min_tx_clocks),
-					handling_wakeup);
+					 bm->default_desired_min_tx_clocks));
+      bfd_set_effective_required_min_rx (bm, bs, now,
+					 bs->config_required_min_rx_clocks);
+      bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_down:
-      bfd_set_effective_required_min_rx (bm, bs, now,
-					 bs->config_required_min_rx_clocks,
-					 handling_wakeup);
       bfd_set_effective_desired_min_tx (bm, bs, now,
 					clib_max
 					(bs->config_desired_min_tx_clocks,
-					 bm->default_desired_min_tx_clocks),
-					handling_wakeup);
+					 bm->default_desired_min_tx_clocks));
+      bfd_set_effective_required_min_rx (bm, bs, now,
+					 bs->config_required_min_rx_clocks);
+      bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_init:
       bfd_set_effective_desired_min_tx (bm, bs, now,
 					clib_max
 					(bs->config_desired_min_tx_clocks,
-					 bm->default_desired_min_tx_clocks),
-					handling_wakeup);
+					 bm->default_desired_min_tx_clocks));
+      bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_up:
+      bfd_set_effective_desired_min_tx (bm, bs, now,
+					bs->config_desired_min_tx_clocks);
       if (POLL_NOT_NEEDED == bs->poll_state)
 	{
 	  bfd_set_effective_required_min_rx (bm, bs, now,
-					     bs->config_required_min_rx_clocks,
-					     handling_wakeup);
+					     bs->config_required_min_rx_clocks);
 	}
-      bfd_set_effective_desired_min_tx (bm, bs, now,
-					bs->config_desired_min_tx_clocks,
-					handling_wakeup);
+      bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     }
 }
@@ -1401,9 +1394,9 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
       if (BFD_STATE_up == bs->local_state)
 	{
 	  bfd_set_effective_required_min_rx (bm, bs, now,
-					     bs->config_required_min_rx_clocks,
-					     0);
+					     bs->config_required_min_rx_clocks);
 	  bfd_recalc_detection_time (bm, bs);
+	  bfd_set_timer (bm, bs, now, 0);
 	}
     }
   if (BFD_STATE_admin_down == bs->local_state)
