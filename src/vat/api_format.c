@@ -3819,7 +3819,6 @@ _(reset_vrf_reply)                                      \
 _(oam_add_del_reply)                                    \
 _(reset_fib_reply)                                      \
 _(dhcp_proxy_config_reply)                              \
-_(dhcp_proxy_config_2_reply)                            \
 _(dhcp_proxy_set_vss_reply)                             \
 _(dhcp_client_config_reply)                             \
 _(set_ip_flow_hash_reply)                               \
@@ -4033,8 +4032,8 @@ _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
 _(OAM_ADD_DEL_REPLY, oam_add_del_reply)                                 \
 _(RESET_FIB_REPLY, reset_fib_reply)                                     \
 _(DHCP_PROXY_CONFIG_REPLY, dhcp_proxy_config_reply)                     \
-_(DHCP_PROXY_CONFIG_2_REPLY, dhcp_proxy_config_2_reply)                 \
 _(DHCP_PROXY_SET_VSS_REPLY, dhcp_proxy_set_vss_reply)                   \
+_(DHCP_PROXY_DETAILS, dhcp_proxy_details)                               \
 _(DHCP_CLIENT_CONFIG_REPLY, dhcp_client_config_reply)                   \
 _(SET_IP_FLOW_HASH_REPLY, set_ip_flow_hash_reply)                       \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE_REPLY,                                \
@@ -7635,9 +7634,9 @@ api_dhcp_proxy_config (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_dhcp_proxy_config_t *mp;
-  u32 vrf_id = 0;
+  u32 rx_vrf_id = 0;
+  u32 server_vrf_id = 0;
   u8 is_add = 1;
-  u8 insert_cid = 1;
   u8 v4_address_set = 0;
   u8 v6_address_set = 0;
   ip4_address_t v4address;
@@ -7653,9 +7652,9 @@ api_dhcp_proxy_config (vat_main_t * vam)
     {
       if (unformat (i, "del"))
 	is_add = 0;
-      else if (unformat (i, "vrf %d", &vrf_id))
+      else if (unformat (i, "rx_vrf_id %d", &rx_vrf_id))
 	;
-      else if (unformat (i, "insert-cid %d", &insert_cid))
+      else if (unformat (i, "server_vrf_id %d", &server_vrf_id))
 	;
       else if (unformat (i, "svr %U", unformat_ip4_address, &v4address))
 	v4_address_set = 1;
@@ -7701,9 +7700,9 @@ api_dhcp_proxy_config (vat_main_t * vam)
   /* Construct the API message */
   M (DHCP_PROXY_CONFIG, mp);
 
-  mp->insert_circuit_id = insert_cid;
   mp->is_add = is_add;
-  mp->vrf_id = ntohl (vrf_id);
+  mp->rx_vrf_id = ntohl (rx_vrf_id);
+  mp->server_vrf_id = ntohl (server_vrf_id);
   if (v6_address_set)
     {
       mp->is_ipv6 = 1;
@@ -7724,100 +7723,98 @@ api_dhcp_proxy_config (vat_main_t * vam)
   return ret;
 }
 
-static int
-api_dhcp_proxy_config_2 (vat_main_t * vam)
+#define vl_api_dhcp_proxy_details_t_endian vl_noop_handler
+#define vl_api_dhcp_proxy_details_t_print vl_noop_handler
+
+static void
+vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
 {
-  unformat_input_t *i = vam->input;
-  vl_api_dhcp_proxy_config_2_t *mp;
-  u32 rx_vrf_id = 0;
-  u32 server_vrf_id = 0;
-  u8 is_add = 1;
-  u8 insert_cid = 1;
-  u8 v4_address_set = 0;
-  u8 v6_address_set = 0;
-  ip4_address_t v4address;
-  ip6_address_t v6address;
-  u8 v4_src_address_set = 0;
-  u8 v6_src_address_set = 0;
-  ip4_address_t v4srcaddress;
-  ip6_address_t v6srcaddress;
-  int ret;
+  vat_main_t *vam = &vat_main;
 
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "del"))
-	is_add = 0;
-      else if (unformat (i, "rx_vrf_id %d", &rx_vrf_id))
-	;
-      else if (unformat (i, "server_vrf_id %d", &server_vrf_id))
-	;
-      else if (unformat (i, "insert-cid %d", &insert_cid))
-	;
-      else if (unformat (i, "svr %U", unformat_ip4_address, &v4address))
-	v4_address_set = 1;
-      else if (unformat (i, "svr %U", unformat_ip6_address, &v6address))
-	v6_address_set = 1;
-      else if (unformat (i, "src %U", unformat_ip4_address, &v4srcaddress))
-	v4_src_address_set = 1;
-      else if (unformat (i, "src %U", unformat_ip6_address, &v6srcaddress))
-	v6_src_address_set = 1;
-      else
-	break;
-    }
+  if (mp->is_ipv6)
+    print (vam->ofp,
+	   "RX Table-ID %d, Server Table-ID %d, Server Address %U, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
+	   ntohl (mp->rx_vrf_id),
+	   ntohl (mp->server_vrf_id),
+	   format_ip6_address, mp->dhcp_server,
+	   format_ip6_address, mp->dhcp_src_address,
+	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
+  else
+    print (vam->ofp,
+	   "RX Table-ID %d, Server Table-ID %d, Server Address %U, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
+	   ntohl (mp->rx_vrf_id),
+	   ntohl (mp->server_vrf_id),
+	   format_ip4_address, mp->dhcp_server,
+	   format_ip4_address, mp->dhcp_src_address,
+	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
+}
 
-  if (v4_address_set && v6_address_set)
-    {
-      errmsg ("both v4 and v6 server addresses set");
-      return -99;
-    }
-  if (!v4_address_set && !v6_address_set)
-    {
-      errmsg ("no server addresses set");
-      return -99;
-    }
+static void vl_api_dhcp_proxy_details_t_handler_json
+  (vl_api_dhcp_proxy_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  struct in_addr ip4;
+  struct in6_addr ip6;
 
-  if (v4_src_address_set && v6_src_address_set)
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
-      errmsg ("both v4 and v6  src addresses set");
-      return -99;
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
     }
-  if (!v4_src_address_set && !v6_src_address_set)
-    {
-      errmsg ("no src addresses set");
-      return -99;
-    }
+  node = vat_json_array_add (&vam->json_tree);
 
-  if (!(v4_src_address_set && v4_address_set) &&
-      !(v6_src_address_set && v6_address_set))
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "rx-table-id", ntohl (mp->rx_vrf_id));
+  vat_json_object_add_uint (node, "server-table-id",
+			    ntohl (mp->server_vrf_id));
+  if (mp->is_ipv6)
     {
-      errmsg ("no matching server and src addresses set");
-      return -99;
-    }
-
-  /* Construct the API message */
-  M (DHCP_PROXY_CONFIG_2, mp);
-
-  mp->insert_circuit_id = insert_cid;
-  mp->is_add = is_add;
-  mp->rx_vrf_id = ntohl (rx_vrf_id);
-  mp->server_vrf_id = ntohl (server_vrf_id);
-  if (v6_address_set)
-    {
-      mp->is_ipv6 = 1;
-      clib_memcpy (mp->dhcp_server, &v6address, sizeof (v6address));
-      clib_memcpy (mp->dhcp_src_address, &v6srcaddress, sizeof (v6address));
+      clib_memcpy (&ip6, &mp->dhcp_server, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "server_address", ip6);
+      clib_memcpy (&ip6, &mp->dhcp_src_address, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "src_address", ip6);
     }
   else
     {
-      clib_memcpy (mp->dhcp_server, &v4address, sizeof (v4address));
-      clib_memcpy (mp->dhcp_src_address, &v4srcaddress, sizeof (v4address));
+      clib_memcpy (&ip4, &mp->dhcp_server, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "server_address", ip4);
+      clib_memcpy (&ip4, &mp->dhcp_src_address, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "src_address", ip4);
+    }
+  vat_json_object_add_uint (node, "vss-fib-id", ntohl (mp->vss_fib_id));
+  vat_json_object_add_uint (node, "vss-oui", ntohl (mp->vss_oui));
+}
+
+static int
+api_dhcp_proxy_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_control_ping_t *mp_ping;
+  vl_api_dhcp_proxy_dump_t *mp;
+  u8 is_ipv6 = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "ipv6"))
+	is_ipv6 = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
     }
 
-  /* send it... */
+  M (DHCP_PROXY_DUMP, mp);
+
+  mp->is_ip6 = is_ipv6;
   S (mp);
 
-  /* Wait for a reply, return good/bad news  */
+  /* Use a control ping for synchronization */
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
   W (ret);
   return ret;
 }
@@ -18187,12 +18184,10 @@ _(oam_add_del, "src <ip4-address> dst <ip4-address> [vrf <n>] [del]")   \
 _(reset_fib, "vrf <n> [ipv6]")                                          \
 _(dhcp_proxy_config,                                                    \
   "svr <v46-address> src <v46-address>\n"                               \
-   "insert-cid <n> [del]")                                              \
-_(dhcp_proxy_config_2,                                                  \
-  "svr <v46-address> src <v46-address>\n"                               \
-   "rx_vrf_id <nn> server_vrf_id <nn> insert-cid <n> [del]")            \
+   "rx_vrf_id <nn> server_vrf_id <nn>  [del]")                          \
 _(dhcp_proxy_set_vss,                                                   \
   "tbl_id <n> fib_id <n> oui <n> [ipv6] [del]")                         \
+_(dhcp_proxy_dump, "ip6")                                               \
 _(dhcp_client_config,                                                   \
   "<intfc> | sw_if_index <id> [hostname <name>] [disable_event] [del]") \
 _(set_ip_flow_hash,                                                     \

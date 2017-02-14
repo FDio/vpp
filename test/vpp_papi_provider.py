@@ -1240,16 +1240,14 @@ class VppPapiProvider(object):
                           rx_table_id=0,
                           server_table_id=0,
                           is_add=1,
-                          is_ipv6=0,
-                          insert_circuit_id=0):
+                          is_ipv6=0):
         return self.api(
-            self.papi.dhcp_proxy_config_2,
+            self.papi.dhcp_proxy_config,
             {
                 'rx_vrf_id': rx_table_id,
                 'server_vrf_id': server_table_id,
                 'is_ipv6': is_ipv6,
                 'is_add': is_add,
-                'insert_circuit_id': insert_circuit_id,
                 'dhcp_server': dhcp_server,
                 'dhcp_src_address': dhcp_src_address,
             })

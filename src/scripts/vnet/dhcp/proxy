@@ -1,0 +1,21 @@
+loop create
+loop create
+
+set int state loop0 up
+set int state loop1 up
+
+set int ip  table loop1 1
+set int ip6 table loop1 1
+
+set int ip addr loop0 10.0.0.1/24
+set int ip addr loop0 10.0.1.1/24
+
+set int ip addr loop0 2001::1/64
+set int ip addr loop0 2001:1::1/64
+
+set dhcp proxy server 10.255.0.1 src-address 10.0.0.1 server-fib-id 0 rx-fib-id 0
+set dhcp proxy server 10.255.0.2 src-address 10.0.1.1 server-fib-id 1 rx-fib-id 1
+
+set dhcpv6 proxy server 3001::1 src-address 2001::1 server-fib-id 0 rx-fib-id 0
+set dhcpv6 proxy server 3002::1 src-address 2001:1::1 server-fib-id 1 rx-fib-id 1
+

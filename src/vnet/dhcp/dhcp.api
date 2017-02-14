@@ -16,7 +16,8 @@
 /** \brief DHCP Proxy config add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param vrf_id - vrf id
+    @param rx_vrf_id - Rx/interface vrf id
+    @param server_vrf_id - server vrf id
     @param if_ipv6 - ipv6 if non-zero, else ipv4
     @param is_add - add the config if non-zero, else delete
     @param insert_circuit_id - option82 suboption 1 fib number
@@ -27,10 +28,10 @@ define dhcp_proxy_config
 {
   u32 client_index;
   u32 context;
-  u32 vrf_id;
+  u32 rx_vrf_id;
+  u32 server_vrf_id;
   u8 is_ipv6;
   u8 is_add;
-  u8 insert_circuit_id;
   u8 dhcp_server[16];
   u8 dhcp_src_address[16];
 };
@@ -40,40 +41,6 @@ define dhcp_proxy_config
     @param retval - return code for the request
 */
 define dhcp_proxy_config_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-/** \brief DHCP Proxy config 2 add / del request
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param rx_vrf_id - receive vrf id
-    @param server_vrf_id - server vrf id
-    @param if_ipv6 - ipv6 if non-zero, else ipv4
-    @param is_add - add the config if non-zero, else delete
-    @param insert_circuit_id - option82 suboption 1 fib number
-    @param dhcp_server[] - server address
-    @param dhcp_src_address[] - <fix this, need details>
-*/
-define dhcp_proxy_config_2
-{
-  u32 client_index;
-  u32 context;
-  u32 rx_vrf_id;
-  u32 server_vrf_id;
-  u8 is_ipv6;
-  u8 is_add;
-  u8 insert_circuit_id;
-  u8 dhcp_server[16];
-  u8 dhcp_src_address[16];
-};
-
-/** \brief DHCP Proxy config 2 add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for request
-*/
-define dhcp_proxy_config_2_reply
 {
   u32 context;
   i32 retval;
@@ -157,6 +124,32 @@ define dhcp_compl_event
   u8 host_address[16];
   u8 router_address[16];
   u8 host_mac[6];
+};
+
+/** \brief Dump DHCP proxy table
+    @param client_index - opaque cookie to identify the sender
+    @param True for IPv6 proxy table
+*/
+define dhcp_proxy_dump
+{
+  u32 client_index;
+  u32 context;
+  u8  is_ip6;
+};
+
+/** \brief Tell client about a DHCP completion event
+    @param client_index - opaque cookie to identify the sender
+*/
+define dhcp_proxy_details
+{
+  u32 context;
+  u32 rx_vrf_id;
+  u32 server_vrf_id;
+  u32 vss_oui;
+  u32 vss_fib_id;
+  u8 is_ipv6;
+  u8 dhcp_server[16];
+  u8 dhcp_src_address[16];
 };
 
 /*

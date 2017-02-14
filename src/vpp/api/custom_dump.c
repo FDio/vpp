@@ -772,37 +772,6 @@ static void *vl_api_dhcp_proxy_config_t_print
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: dhcp_proxy_config ");
-
-  s = format (s, "vrf_id %d ", ntohl (mp->vrf_id));
-
-  if (mp->is_ipv6)
-    {
-      s = format (s, "svr %U ", format_ip6_address,
-		  (ip6_address_t *) mp->dhcp_server);
-      s = format (s, "src %U ", format_ip6_address,
-		  (ip6_address_t *) mp->dhcp_src_address);
-    }
-  else
-    {
-      s = format (s, "svr %U ", format_ip4_address,
-		  (ip4_address_t *) mp->dhcp_server);
-      s = format (s, "src %U ", format_ip4_address,
-		  (ip4_address_t *) mp->dhcp_src_address);
-    }
-  if (mp->is_add == 0)
-    s = format (s, "del ");
-
-  s = format (s, "insert-cid %d ", mp->insert_circuit_id);
-
-  FINISH;
-}
-
-static void *vl_api_dhcp_proxy_config_2_t_print
-  (vl_api_dhcp_proxy_config_2_t * mp, void *handle)
-{
-  u8 *s;
-
   s = format (0, "SCRIPT: dhcp_proxy_config_2 ");
 
   s = format (s, "rx_vrf_id %d ", ntohl (mp->rx_vrf_id));
@@ -824,8 +793,6 @@ static void *vl_api_dhcp_proxy_config_2_t_print
     }
   if (mp->is_add == 0)
     s = format (s, "del ");
-
-  s = format (s, "insert-cid %d ", mp->insert_circuit_id);
 
   FINISH;
 }
@@ -2954,7 +2921,6 @@ _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)	\
 _(ADD_NODE_NEXT, add_node_next)						\
-_(DHCP_PROXY_CONFIG_2, dhcp_proxy_config_2)	                        \
 _(DHCP_CLIENT_CONFIG, dhcp_client_config)	                        \
 _(L2TPV3_CREATE_TUNNEL, l2tpv3_create_tunnel)                           \
 _(L2TPV3_SET_TUNNEL_COOKIES, l2tpv3_set_tunnel_cookies)                 \
