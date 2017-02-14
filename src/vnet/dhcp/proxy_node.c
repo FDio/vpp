@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/dhcp/proxy.h>
+#include <vnet/dhcp/client.h>
 #include <vnet/fib/ip4_fib.h>
 
 static char * dhcp_proxy_error_strings[] = {
@@ -57,6 +58,8 @@ typedef struct {
 vlib_node_registration_t dhcp_proxy_to_server_node;
 vlib_node_registration_t dhcp_proxy_to_client_node;
 
+dhcp_proxy_main_t dhcp_proxy_main;
+
 u8 * format_dhcp_proxy_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -92,6 +95,42 @@ u8 * format_dhcp_proxy_header_with_length (u8 * s, va_list * args)
   s = format (s, "DHCP Proxy");
 
   return s;
+}
+
+static inline vss_info *
+dhcp_get_vss_info (dhcp_proxy_main_t *dm,
+                   u32 rx_fib_index)
+{
+  vss_info *v;
+
+  if (vec_len(dm->vss_index_by_rx_fib_index) <= rx_fib_index ||
+      dm->vss_index_by_rx_fib_index[rx_fib_index] == ~0)
+  {
+      v = NULL;
+  }
+  else
+  {
+      v = pool_elt_at_index (dm->vss,
+                             dm->vss_index_by_rx_fib_index[rx_fib_index]);
+  }
+
+  return (v);
+}
+
+static inline dhcp_server_t *
+dhcp_get_server (dhcp_proxy_main_t *dm,
+                 u32 rx_fib_index)
+{
+  dhcp_server_t *s = NULL;
+
+  if (vec_len(dm->dhcp_server_index_by_rx_fib_index) > rx_fib_index &&
+      dm->dhcp_server_index_by_rx_fib_index[rx_fib_index] != ~0)
+  {
+      s = pool_elt_at_index (dm->dhcp_servers,
+                             dm->dhcp_server_index_by_rx_fib_index[rx_fib_index]);
+  }
+
+  return (s);
 }
 
 static uword
@@ -131,9 +170,12 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           u32 sw_if_index = 0;
           u32 original_sw_if_index = 0;
           u8  *end = NULL;
-          u32 fib_index, server_index;
+          u32 fib_index;
           dhcp_server_t * server;
           u32 rx_sw_if_index;
+          dhcp_option_t *o;
+          u32 len = 0;
+          vlib_buffer_free_list_t *fl;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -166,26 +208,16 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           rx_sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
           fib_index = im->fib_index_by_sw_if_index [rx_sw_if_index];
-
-          if (fib_index < vec_len(dpm->dhcp_server_index_by_rx_fib_index))
-            server_index = dpm->dhcp_server_index_by_rx_fib_index[fib_index];
-          else
-            server_index = 0;
+          server = dhcp_get_server(dpm, fib_index);
           
-          if (PREDICT_FALSE (pool_is_free_index (dpm->dhcp_servers, 
-                                                 server_index)))
+          if (PREDICT_FALSE (NULL == server))
             {
-            no_server:
               error0 = DHCP_PROXY_ERROR_NO_SERVER;
               next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
               pkts_no_server++;
               goto do_trace;
             }
           
-          server = pool_elt_at_index (dpm->dhcp_servers, server_index);
-          if (server->valid == 0)
-            goto no_server;
-
           vlib_buffer_advance (b0, -(sizeof(*ip0)));
           ip0 = vlib_buffer_get_current (b0);
 
@@ -216,142 +248,131 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           h0->gateway_ip_address.as_u32 = server->dhcp_src_address.as_u32;
           pkts_to_server++;
 
-          if (server->insert_option_82) 
-            {
-              u32 fib_index, fib_id, opt82_fib_id=0, opt82_oui=0;
-	      ip4_fib_t * fib;
-              dhcp_option_t *o = (dhcp_option_t *) h0->options;
-              u32 len = 0;
-              vlib_buffer_free_list_t *fl;
+          o = (dhcp_option_t *) h0->options;
               
-              fib_index = im->fib_index_by_sw_if_index 
-                [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
-	      fib = ip4_fib_get (fib_index);
-	      fib_id = fib->table_id;
+          fib_index = im->fib_index_by_sw_if_index 
+              [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
 
-              end = b0->data + b0->current_data + b0->current_length;
-              /* TLVs are not performance-friendly... */
-              while  (o->option != 0xFF /* end of options */ && (u8 *)o < end) 
-                  o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
+          end = b0->data + b0->current_data + b0->current_length;
+          /* TLVs are not performance-friendly... */
+          while  (o->option != 0xFF /* end of options */ && (u8 *)o < end) 
+              o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
 
-              fl = vlib_buffer_get_free_list (vm, b0->free_list_index);
-              // start write at (option*)o, some packets have padding
-              if (((u8 *)o - (u8 *)b0->data + VPP_DHCP_OPTION82_SIZE) > fl->n_data_bytes)
-                {
+          fl = vlib_buffer_get_free_list (vm, b0->free_list_index);
+          // start write at (option*)o, some packets have padding
+          if (((u8 *)o - (u8 *)b0->data + VPP_DHCP_OPTION82_SIZE) > fl->n_data_bytes)
+          {
+              next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
+              pkts_too_big++;
+              goto do_trace;
+          }
+
+          if ((o->option == 0xFF)  && ((u8 *)o <= end))
+          {  
+              vnet_main_t *vnm = vnet_get_main();   
+              u16 old_l0, new_l0;
+              ip4_address_t _ia0, * ia0 = &_ia0;
+              vss_info *vss;
+              vnet_sw_interface_t *swif;
+              sw_if_index = 0;
+              original_sw_if_index = 0;
+                  
+              original_sw_if_index = sw_if_index = 
+                  vnet_buffer(b0)->sw_if_index[VLIB_RX];
+              swif = vnet_get_sw_interface (vnm, sw_if_index);
+              if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
+                  sw_if_index = swif->unnumbered_sw_if_index;
+                  
+              /* 
+               * Get the first ip4 address on the [client-side] 
+               * RX interface, if not unnumbered. otherwise use
+               * the loopback interface's ip address.
+               */
+              ia0 = ip4_interface_first_address(&ip4_main, sw_if_index, 0);
+                  
+              if (ia0 == 0)
+              {
+                  error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
                   next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
-                  pkts_too_big++;
+                  pkts_no_interface_address++;
                   goto do_trace;
-                }
+              }
 
-              if ((o->option == 0xFF)  && ((u8 *)o <= end))
-                {  
-                  vnet_main_t *vnm = vnet_get_main();   
-                  u16 old_l0, new_l0;
-                  ip4_address_t _ia0, * ia0 = &_ia0;
-                  uword  *p_vss;
-                  vss_info *vss;
-                  vnet_sw_interface_t *swif;
-                  sw_if_index = 0;
-                  original_sw_if_index = 0;
-                  
-                  original_sw_if_index = sw_if_index = 
-                      vnet_buffer(b0)->sw_if_index[VLIB_RX];
-                  swif = vnet_get_sw_interface (vnm, sw_if_index);
-                  if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
-                      sw_if_index = swif->unnumbered_sw_if_index;
-                  
-                  p_vss = hash_get (dpm->opt82vss_index_by_vrf_id,
-                                    fib_id);
-                  if (p_vss) 
-                    {
-                      vss = pool_elt_at_index (dpm->opt82vss, p_vss[0]);
-                      opt82_oui =  vss->vpn_id.oui;
-                      opt82_fib_id =  vss->vpn_id.fib_id;
-                    }
-                  /* 
-                   * Get the first ip4 address on the [client-side] 
-                   * RX interface, if not unnumbered. otherwise use
-                   * the loopback interface's ip address.
-                   */
-                  ia0 = ip4_interface_first_address(&ip4_main, sw_if_index, 0);
-                  
-                  if (ia0 == 0)
-                    {
-                      error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
-                      next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
-                      pkts_no_interface_address++;
-                      goto do_trace;
-                    }
+              /* Add option 82 */
+              o->option = 82;   /* option 82 */
+              o->length = 12;   /* 12 octets to follow */
+              o->data[0] = 1;   /* suboption 1, circuit ID (=FIB id) */
+              o->data[1] = 4;   /* length of suboption */
+              o->data[2] = (original_sw_if_index >> 24) & 0xFF;
+              o->data[3] = (original_sw_if_index >> 16) & 0xFF;
+              o->data[4] = (original_sw_if_index >> 8)  & 0xFF;
+              o->data[5] = (original_sw_if_index >> 0)  & 0xFF;
+              o->data[6] = 5; /* suboption 5 (client RX intfc address) */
+              o->data[7] = 4; /* length 4 */
+              o->data[8] = ia0->as_u8[0];
+              o->data[9] = ia0->as_u8[1];
+              o->data[10] = ia0->as_u8[2];
+              o->data[11] = ia0->as_u8[3];
+              o->data[12] = 0xFF;
 
-                  /* Add option 82 */
-                  o->option = 82;   /* option 82 */
-                  o->length = 12;   /* 12 octets to follow */
-                  o->data[0] = 1;   /* suboption 1, circuit ID (=FIB id) */
-                  o->data[1] = 4;   /* length of suboption */
-                  o->data[2] = (original_sw_if_index >> 24) & 0xFF;
-                  o->data[3] = (original_sw_if_index >> 16) & 0xFF;
-                  o->data[4] = (original_sw_if_index >> 8)  & 0xFF;
-                  o->data[5] = (original_sw_if_index >> 0)  & 0xFF;
-		  o->data[6] = 5; /* suboption 5 (client RX intfc address) */
-		  o->data[7] = 4; /* length 4 */
-		  o->data[8] = ia0->as_u8[0];
-		  o->data[9] = ia0->as_u8[1];
-		  o->data[10] = ia0->as_u8[2];
-		  o->data[11] = ia0->as_u8[3];
-                  o->data[12] = 0xFF;
-                  if (opt82_oui !=0 || opt82_fib_id != 0)
-                    {
-                      o->data[12] = 151; /* vss suboption */
-                      if (255 == opt82_fib_id) {
-                          o->data[13] = 1;   /* length */
-                          o->data[14] = 255;   /* vss option type */
-                          o->data[15] = 152; /* vss control suboption */
-                          o->data[16] = 0;   /* length */
-                          /* and a new "end-of-options" option (0xff) */
-                          o->data[17] = 0xFF;
-                          o->length += 5;
-                      } else {
-                          o->data[13] = 8;   /* length */
-                          o->data[14] = 1;   /* vss option type */
-                          o->data[15] = (opt82_oui >> 16) & 0xff;
-                          o->data[16] = (opt82_oui >> 8) & 0xff;
-                          o->data[17] = (opt82_oui ) & 0xff;
-                          o->data[18] = (opt82_fib_id >> 24) & 0xff;
-                          o->data[19] = (opt82_fib_id >> 16) & 0xff;
-                          o->data[20] = (opt82_fib_id >> 8) & 0xff;
-                          o->data[21] = (opt82_fib_id) & 0xff;
-                          o->data[22] = 152; /* vss control suboption */
-                          o->data[23] = 0;   /* length */
+              vss = dhcp_get_vss_info (dpm, fib_index);
+              if (NULL != vss)
+              {
+                  u32 opt82_fib_id=0, opt82_oui=0;
+
+                  opt82_oui =  vss->vpn_id.oui;
+                  opt82_fib_id =  vss->vpn_id.fib_id;
+
+                  o->data[12] = 151; /* vss suboption */
+                  if (255 == opt82_fib_id) {
+                      o->data[13] = 1;   /* length */
+                      o->data[14] = 255;   /* vss option type */
+                      o->data[15] = 152; /* vss control suboption */
+                      o->data[16] = 0;   /* length */
+                      /* and a new "end-of-options" option (0xff) */
+                      o->data[17] = 0xFF;
+                      o->length += 5;
+                  } else {
+                      o->data[13] = 8;   /* length */
+                      o->data[14] = 1;   /* vss option type */
+                      o->data[15] = (opt82_oui >> 16) & 0xff;
+                      o->data[16] = (opt82_oui >> 8) & 0xff;
+                      o->data[17] = (opt82_oui ) & 0xff;
+                      o->data[18] = (opt82_fib_id >> 24) & 0xff;
+                      o->data[19] = (opt82_fib_id >> 16) & 0xff;
+                      o->data[20] = (opt82_fib_id >> 8) & 0xff;
+                      o->data[21] = (opt82_fib_id) & 0xff;
+                      o->data[22] = 152; /* vss control suboption */
+                      o->data[23] = 0;   /* length */
                           
-                          /* and a new "end-of-options" option (0xff) */
-                          o->data[24] = 0xFF;
-                          o->length += 12;
-                      }
+                      /* and a new "end-of-options" option (0xff) */
+                      o->data[24] = 0xFF;
+                      o->length += 12;
                   }
+              }
 
-                  len = o->length + 3;
-                  b0->current_length += len;
-                  /* Fix IP header length and checksum */
-                  old_l0 = ip0->length;
-                  new_l0 = clib_net_to_host_u16 (old_l0);
-                  new_l0 += len;
-                  new_l0 = clib_host_to_net_u16 (new_l0);
-                  ip0->length = new_l0;
-                  sum0 = ip0->checksum;
-                  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-                                         length /* changed member */);
-                  ip0->checksum = ip_csum_fold (sum0);
+              len = o->length + 3;
+              b0->current_length += len;
+              /* Fix IP header length and checksum */
+              old_l0 = ip0->length;
+              new_l0 = clib_net_to_host_u16 (old_l0);
+              new_l0 += len;
+              new_l0 = clib_host_to_net_u16 (new_l0);
+              ip0->length = new_l0;
+              sum0 = ip0->checksum;
+              sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+                                     length /* changed member */);
+              ip0->checksum = ip_csum_fold (sum0);
 
-                  /* Fix UDP length */
-                  new_l0 = clib_net_to_host_u16 (u0->length);
-                  new_l0 += len;
-                  u0->length = clib_host_to_net_u16 (new_l0);
-                } else {
-                  vlib_node_increment_counter 
-                      (vm, dhcp_proxy_to_server_node.index,
-                       DHCP_PROXY_ERROR_OPTION_82_ERROR, 1);
-                }
-            }
+              /* Fix UDP length */
+              new_l0 = clib_net_to_host_u16 (u0->length);
+              new_l0 += len;
+              u0->length = clib_host_to_net_u16 (new_l0);
+          } else {
+              vlib_node_increment_counter 
+                  (vm, dhcp_proxy_to_server_node.index,
+                   DHCP_PROXY_ERROR_OPTION_82_ERROR, 1);
+          }
           
           next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP;
 
@@ -451,11 +472,13 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
       vnet_sw_interface_t *si0;
       u32 error0 = (u32)~0;
       vnet_sw_interface_t *swif;
-      u32 server_index;
       u32 fib_index;
       dhcp_server_t * server;
       u32 original_sw_if_index = (u32) ~0;
-          
+      ip4_address_t relay_addr = {
+          .as_u32 = 0,
+      };
+
       bi0 = from[0];
       from += 1;
       n_left_from -= 1;
@@ -501,13 +524,21 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
                            and the sw_if_index */
                         if (sub->option == 1 && sub->length == 4)
                           {
-                            sw_if_index = (o->data[2] << 24)
-                                | (o->data[3] << 16)
-                                | (o->data[4] << 8)
-                                | (o->data[5]);
-                          } else if (sub->option == 151 &&
-                                     sub->length == 7 &&
-                                     sub->data[0] == 1)
+                            sw_if_index = ((sub->data[0] << 24) |
+                                           (sub->data[1] << 16) |
+                                           (sub->data[2] << 8)  |
+                                           (sub->data[3]));
+                          }
+                        else if (sub->option == 5 && sub->length == 4)
+                          {
+                              relay_addr.as_u8[0] = sub->data[0];
+                              relay_addr.as_u8[1] = sub->data[1];
+                              relay_addr.as_u8[2] = sub->data[2];
+                              relay_addr.as_u8[3] = sub->data[3];
+                          }
+                        else if (sub->option == 151 &&
+                                 sub->length == 7 &&
+                                 sub->data[0] == 1)
                             vss_exist = 1;
                         else if (sub->option == 152 && sub->length == 0)
                             vss_ctrl = 1;
@@ -539,34 +570,27 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
           goto do_trace;
         }
       
+      if (relay_addr.as_u32 == 0)
+        {
+          error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ADDR;
+          goto drop_packet;
+        }
 
       if (sw_if_index >= vec_len (im->fib_index_by_sw_if_index))
         {
-          error0 = DHCP_PROXY_ERROR_BAD_OPTION_82;
+          error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ITF;
           goto drop_packet;
         }
 
       fib_index = im->fib_index_by_sw_if_index [sw_if_index];
+      server = dhcp_get_server(dpm, fib_index);
 
-      if (fib_index < vec_len(dpm->dhcp_server_index_by_rx_fib_index))
-        server_index = dpm->dhcp_server_index_by_rx_fib_index[fib_index];
-      else
-        server_index = 0;
-
-      if (PREDICT_FALSE (pool_is_free_index (dpm->dhcp_servers, 
-                                             server_index)))
-        {
-          error0 = DHCP_PROXY_ERROR_BAD_OPTION_82;
-          goto drop_packet;
-        }
-      
-      server = pool_elt_at_index (dpm->dhcp_servers, server_index);
-      if (server->valid == 0)
+      if (PREDICT_FALSE (NULL == server))
         {
           error0 = DHCP_PROXY_ERROR_NO_SERVER;
           goto drop_packet;
         }
-
+      
       if (ip0->src_address.as_u32 != server->dhcp_server.as_u32)
         {             
           error0 = DHCP_PROXY_ERROR_BAD_SVR_FIB_OR_ADDRESS;
@@ -584,6 +608,12 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
       if (ia0 == 0)
         {
           error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
+          goto drop_packet;
+        }
+
+      if (relay_addr.as_u32 != ia0->as_u32)
+        {             
+          error0 = DHCP_PROXY_ERROR_BAD_YIADDR;
           goto drop_packet;
         }
 
@@ -677,7 +707,7 @@ clib_error_t * dhcp_proxy_init (vlib_main_t * vm)
   error_drop_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   dm->error_drop_node_index = error_drop_node->index;
 
-  dm->opt82vss_index_by_vrf_id = hash_create (0, sizeof (uword));
+  dm->vss_index_by_rx_fib_index = NULL;
 
   udp_register_dst_port (vm, UDP_DST_PORT_dhcp_to_client, 
                          dhcp_proxy_to_client_node.index, 1 /* is_ip4 */);
@@ -694,15 +724,17 @@ clib_error_t * dhcp_proxy_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dhcp_proxy_init);
 
-int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
-                             u32 rx_fib_id,
-                             u32 server_fib_id, 
-                             int insert_option_82, int is_del)
+int dhcp_proxy_set_server (ip4_address_t *addr,
+                           ip4_address_t *src_address,
+                           u32 rx_fib_id,
+                           u32 server_fib_id, 
+                           int is_del)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
   dhcp_server_t * server = 0;
   u32 server_index = 0;
   u32 rx_fib_index = 0;
+
   const fib_prefix_t all_1s =
   {
       .fp_len = 32,
@@ -719,96 +751,67 @@ int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
   rx_fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
                                                    rx_fib_id);
 
-  if (rx_fib_id == 0)
-    {
-      server = pool_elt_at_index (dpm->dhcp_servers, 0);
-      
-      if (is_del)
-        {
-          memset (server, 0, sizeof (*server));
-          fib_table_entry_special_remove(rx_fib_index,
-                                         &all_1s,
-                                         FIB_SOURCE_DHCP);
-         return 0;
-        }
-      if (!server->valid)
-          fib_table_entry_special_add(rx_fib_index,
-                                      &all_1s,
-                                      FIB_SOURCE_DHCP,
-                                      FIB_ENTRY_FLAG_LOCAL,
-                                      ADJ_INDEX_INVALID);
-
-      goto initialize_it;
-    }
-
   if (is_del)
     {
       if (rx_fib_index >= vec_len(dpm->dhcp_server_index_by_rx_fib_index))
         return VNET_API_ERROR_NO_SUCH_ENTRY;
       
       server_index = dpm->dhcp_server_index_by_rx_fib_index[rx_fib_index];
-      ASSERT(server_index > 0);
+
+      if (server_index == ~0)
+        return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       /* Use the default server again.  */
-      dpm->dhcp_server_index_by_rx_fib_index[rx_fib_index] = 0;
+      dpm->dhcp_server_index_by_rx_fib_index[rx_fib_index] = ~0;
       server = pool_elt_at_index (dpm->dhcp_servers, server_index);
-      memset (server, 0, sizeof (*server));
-      pool_put (dpm->dhcp_servers, server);
 
       fib_table_entry_special_remove(rx_fib_index,
                                      &all_1s,
                                      FIB_SOURCE_DHCP);
+      fib_table_unlock (rx_fib_index,
+                        FIB_PROTOCOL_IP4);
+      fib_table_unlock (server->server_fib_index,
+                        FIB_PROTOCOL_IP4);
 
+      memset (server, 0, sizeof (*server));
+      pool_put (dpm->dhcp_servers, server);
       return 0;
     }
+  else
+  {
+      vec_validate_init_empty(dpm->dhcp_server_index_by_rx_fib_index,
+                              rx_fib_index,
+                              ~0);
 
-  if (rx_fib_index < vec_len(dpm->dhcp_server_index_by_rx_fib_index))
-    {
-      server_index = dpm->dhcp_server_index_by_rx_fib_index[rx_fib_index];
-      if (server_index != 0)
-        {
-          server = pool_elt_at_index (dpm->dhcp_servers, server_index);
-          goto initialize_it;
-        }
-    }
+      pool_get (dpm->dhcp_servers, server);
 
-  pool_get (dpm->dhcp_servers, server);
+      server->dhcp_server.as_u32 = addr->as_u32;
+      server->dhcp_src_address.as_u32 = src_address->as_u32;
 
-  fib_table_entry_special_add(rx_fib_index,
-                              &all_1s,
-                              FIB_SOURCE_DHCP,
-                              FIB_ENTRY_FLAG_LOCAL,
-                              ADJ_INDEX_INVALID);
-  
- initialize_it:
+      fib_table_entry_special_add(rx_fib_index,
+                                  &all_1s,
+                                  FIB_SOURCE_DHCP,
+                                  FIB_ENTRY_FLAG_LOCAL,
+                                  ADJ_INDEX_INVALID);
+      fib_table_lock (rx_fib_index,
+                      FIB_PROTOCOL_IP4);
 
+      server->server_fib_index = 
+          fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+                                            server_fib_id);
 
-  server->dhcp_server.as_u32 = addr->as_u32;
-  server->server_fib_index = 
-      fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
-	  				server_fib_id);
-  server->dhcp_src_address.as_u32 = src_address->as_u32;
-  server->insert_option_82 = insert_option_82;
-  server->valid = 1;
-  if (rx_fib_index)
-    {
-      vec_validate (dpm->dhcp_server_index_by_rx_fib_index, rx_fib_index);
+      vec_validate_init_empty (dpm->dhcp_server_index_by_rx_fib_index,
+                               rx_fib_index,
+                               ~0);
       dpm->dhcp_server_index_by_rx_fib_index[rx_fib_index] = 
-        server - dpm->dhcp_servers;
-    }
+          server - dpm->dhcp_servers;
+  }
+
+  fib_table_unlock (rx_fib_index,
+                    FIB_PROTOCOL_IP4);
 
   return 0;
 }
-
-/* Old API, manipulates the default server (only) */
-int dhcp_proxy_set_server (ip4_address_t *addr, ip4_address_t *src_address,
-                           u32 fib_id, int insert_option_82, int is_del)
-{
-  return dhcp_proxy_set_server_2 (addr, src_address, 0 /* rx_fib_id */,
-                                  fib_id /* server_fib_id */, 
-                                  insert_option_82, is_del);
-}
-
 
 static clib_error_t *
 dhcp_proxy_set_command_fn (vlib_main_t * vm,
@@ -818,7 +821,6 @@ dhcp_proxy_set_command_fn (vlib_main_t * vm,
   ip4_address_t server_addr, src_addr;
   u32 server_fib_id = 0, rx_fib_id = 0;
   int is_del = 0;
-  int add_option_82 = 0;
   int set_src = 0, set_server = 0;
   
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT) 
@@ -833,9 +835,6 @@ dhcp_proxy_set_command_fn (vlib_main_t * vm,
       else if (unformat(input, "src-address %U", 
 			unformat_ip4_address, &src_addr))
         set_src = 1;
-      else if (unformat (input, "add-option-82")
-               || unformat (input, "insert-option-82"))
-        add_option_82 = 1;
       else if (unformat (input, "delete") ||
                unformat (input, "del"))
         is_del = 1;
@@ -847,8 +846,8 @@ dhcp_proxy_set_command_fn (vlib_main_t * vm,
     {
       int rv;
 
-      rv = dhcp_proxy_set_server_2 (&server_addr, &src_addr, rx_fib_id, 
-                                    server_fib_id, add_option_82, is_del);
+      rv = dhcp_proxy_set_server (&server_addr, &src_addr, rx_fib_id, 
+                                  server_fib_id, is_del);
       switch (rv)
         {
         case 0:
@@ -882,7 +881,7 @@ dhcp_proxy_set_command_fn (vlib_main_t * vm,
 
 VLIB_CLI_COMMAND (dhcp_proxy_set_command, static) = {
   .path = "set dhcp proxy",
-  .short_help = "set dhcp proxy [del] server <ip-addr> src-address <ip-addr> [add-option-82] [server-fib-id <n>] [rx-fib-id <n>]",
+  .short_help = "set dhcp proxy [del] server <ip-addr> src-address <ip-addr> [server-fib-id <n>] [rx-fib-id <n>]",
   .function = dhcp_proxy_set_command_fn,
 };
 
@@ -896,8 +895,8 @@ u8 * format_dhcp_proxy_server (u8 * s, va_list * args)
 
   if (dm == 0)
     {
-      s = format (s, "%=16s%=16s%=14s%=14s%=20s", "Server", "Src Address", 
-                  "Server FIB", "RX FIB", "Insert Option 82");
+      s = format (s, "%=16s%=16s%=14s%=14s", "Server", "Src Address", 
+                  "Server FIB", "RX FIB");
       return s;
     }
 
@@ -911,11 +910,10 @@ u8 * format_dhcp_proxy_server (u8 * s, va_list * args)
   if (rx_fib)
     rx_fib_id = rx_fib->table_id;
 
-  s = format (s, "%=16U%=16U%=14u%=14u%=20s",
+  s = format (s, "%=16U%=16U%=14u%=14u",
               format_ip4_address, &server->dhcp_server,
               format_ip4_address, &server->dhcp_src_address,
-              server_fib_id, rx_fib_id,
-              server->insert_option_82 ? "yes" : "no");
+              server_fib_id, rx_fib_id);
   return s;
 }
 
@@ -925,24 +923,22 @@ dhcp_proxy_show_command_fn (vlib_main_t * vm,
                             vlib_cli_command_t * cmd)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
-  ip4_main_t * im = &ip4_main;
   dhcp_server_t * server;
-  u32 server_index;
-  int i;
+  u32 server_index, i;
 
   vlib_cli_output (vm, "%U", format_dhcp_proxy_server, 0 /* header line */,
                    0, 0);
 
-  for (i = 0; i < vec_len (im->fibs); i++)
-    {
-      if (i < vec_len(dpm->dhcp_server_index_by_rx_fib_index))
-        server_index = dpm->dhcp_server_index_by_rx_fib_index[i];
-      else
-        server_index = 0;
+  vec_foreach_index (i, dpm->dhcp_server_index_by_rx_fib_index)
+  {
+      server_index = dpm->dhcp_server_index_by_rx_fib_index[i];
+      if (~0 == server_index)
+          continue;
+
       server = pool_elt_at_index (dpm->dhcp_servers, server_index);
-      if (server->valid)
-        vlib_cli_output (vm, "%U", format_dhcp_proxy_server, dpm, 
-                         server, i);
+
+      vlib_cli_output (vm, "%U", format_dhcp_proxy_server, dpm, 
+                       server, i);
     }
 
   return 0;
@@ -954,50 +950,104 @@ VLIB_CLI_COMMAND (dhcp_proxy_show_command, static) = {
   .function = dhcp_proxy_show_command_fn,
 };
 
+void
+dhcp_proxy_dump (void *opaque,
+                 u32 context)
+{
+  dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
+  ip4_fib_t *s_fib, *r_fib;
+  dhcp_server_t * server;
+  u32 server_index, i;
+  vss_info *v;
 
-int dhcp_proxy_set_option82_vss(  u32 vrf_id,
-                                  u32 oui,
-                                  u32 fib_id, 
-                                  int is_del)
+  vec_foreach_index (i, dpm->dhcp_server_index_by_rx_fib_index)
+  {
+      server_index = dpm->dhcp_server_index_by_rx_fib_index[i];
+      if (~0 == server_index)
+          continue;
+
+      server = pool_elt_at_index (dpm->dhcp_servers, server_index);
+      v = dhcp_get_vss_info(dpm, i);
+
+      ip46_address_t src_addr = {
+          .ip4 = server->dhcp_src_address,
+      };
+      ip46_address_t server_addr = {
+          .ip4 = server->dhcp_server,
+      };
+
+      s_fib = ip4_fib_get(server->server_fib_index);
+      r_fib = ip4_fib_get(i);
+
+      dhcp_send_details(opaque,
+                        context,
+                        &server_addr,
+                        &src_addr,
+                        s_fib->table_id,
+                        r_fib->table_id,
+                        (v ? v->vpn_id.fib_id : 0),
+                        (v ? v->vpn_id.oui : 0));
+  }
+}
+
+int dhcp_proxy_set_option82_vss(u32 tbl_id,
+                                u32 oui,
+                                u32 fib_id, 
+                                int is_del)
 {
   dhcp_proxy_main_t *dm = &dhcp_proxy_main;
-  uword *p;
-  vss_info *a;
-  u32 old_oui=0, old_fib_id=0;
+  vss_info *v = NULL;
+  u32  rx_fib_index;
+  int rc = 0;
   
-  p = hash_get (dm->opt82vss_index_by_vrf_id, vrf_id);
+  rx_fib_index = ip4_fib_table_find_or_create_and_lock(tbl_id);
+  v = dhcp_get_vss_info(dm, rx_fib_index);
 
-  if (p) 
-    {
-      a = pool_elt_at_index (dm->opt82vss, p[0]);
-      if (!a) 
-        return VNET_API_ERROR_NO_SUCH_FIB;
-      old_oui = a->vpn_id.oui;
-      old_fib_id = a->vpn_id.fib_id;
-          
+  if (NULL != v)
+  {
       if (is_del)
-        {
-          if (old_oui == oui &&
-              old_fib_id == fib_id)
-            {
-              pool_put(dm->opt82vss, a);
-              hash_unset (dm->opt82vss_index_by_vrf_id, vrf_id);
-              return 0;
-            }
-          else
-            return VNET_API_ERROR_NO_SUCH_ENTRY;
-        }
-      pool_put(dm->opt82vss, a);
-      hash_unset (dm->opt82vss_index_by_vrf_id, vrf_id);
-  } else if (is_del)
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
-  pool_get (dm->opt82vss, a);
-  memset (a, ~0, sizeof (a[0]));
-  a->vpn_id.oui = oui;
-  a->vpn_id.fib_id = fib_id;
-  hash_set (dm->opt82vss_index_by_vrf_id, vrf_id, a - dm->opt82vss);
+      {
+          /* release the lock held on the table when the VSS
+           * info was created */
+          fib_table_unlock (rx_fib_index,
+                            FIB_PROTOCOL_IP4);
+
+          pool_put (dm->vss, v);
+          dm->vss_index_by_rx_fib_index[rx_fib_index] = ~0;
+      }
+      else
+      {
+          /* this is a modify */
+          v->vpn_id.fib_id = fib_id;
+          v->vpn_id.oui = oui;
+      }
+  }
+  else
+  {
+      if (is_del)
+          rc = VNET_API_ERROR_NO_SUCH_ENTRY;
+      else
+      {
+          /* create a new entry */
+          vec_validate_init_empty(dm->vss_index_by_rx_fib_index,
+                                  rx_fib_index, ~0);
+
+          /* hold a lock on the table whilst the VSS info exist */
+          fib_table_lock (rx_fib_index,
+                          FIB_PROTOCOL_IP4);
+
+          pool_get (dm->vss, v);
+          v->vpn_id.fib_id = fib_id;
+          v->vpn_id.oui = oui;
+          dm->vss_index_by_rx_fib_index[rx_fib_index] = v - dm->vss;
+      }
+  }
+
+  /* Release the lock taken during the create_or_lock at the start */
+  fib_table_unlock (rx_fib_index,
+                    FIB_PROTOCOL_IP4);
   
-  return 0;
+  return (rc);
 }
 
 static clib_error_t *
@@ -1065,20 +1115,20 @@ dhcp_vss_show_command_fn (vlib_main_t * vm,
   
 {
   dhcp_proxy_main_t * dm = &dhcp_proxy_main;
+  ip4_fib_t *fib;
+  u32 *fib_index;
   vss_info *v;
-  u32 oui;
-  u32 fib_id;
-  u32 tbl_id;
-  uword index;
   
   vlib_cli_output (vm, "%=9s%=11s%=12s","Table", "OUI", "VPN-ID");
-  hash_foreach (tbl_id, index, dm->opt82vss_index_by_vrf_id,
+  pool_foreach (fib_index, dm->vss_index_by_rx_fib_index,
   ({
-     v = pool_elt_at_index (dm->opt82vss, index);
-     oui = v->vpn_id.oui;
-     fib_id = v->vpn_id.fib_id;
-     vlib_cli_output (vm, "%=9d 0x%08x%=12d",
-                      tbl_id, oui, fib_id);
+      fib = ip4_fib_get (*fib_index);
+      v = pool_elt_at_index (dm->vss, *fib_index);
+
+      vlib_cli_output (vm, "%=6d%=6d%=12d",
+                       fib->table_id,
+                       v->vpn_id.oui,
+                       v->vpn_id.fib_id);
   }));
   
   return 0;

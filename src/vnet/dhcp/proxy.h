@@ -27,7 +27,6 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
 #include <vnet/ip/udp.h>
-#include <vnet/dhcp/client.h>
 
 typedef enum {
 #define dhcp_proxy_error(n,s) DHCP_PROXY_ERROR_##n,
@@ -49,9 +48,7 @@ typedef union {
 typedef struct {
   ip4_address_t dhcp_server;
   ip4_address_t dhcp_src_address;
-  u32 insert_option_82;
   u32 server_fib_index;
-  u32 valid;
 } dhcp_server_t;
 
 typedef struct {
@@ -64,29 +61,39 @@ typedef struct {
   /* to drop pkts in server-to-client direction */
   u32 error_drop_node_index;
 
-  vss_info *opt82vss;
+  vss_info *vss;
 
   /* hash lookup specific vrf_id -> option 82 vss suboption  */
-  uword * opt82vss_index_by_vrf_id;
+  u32 *vss_index_by_rx_fib_index;
 
   /* convenience */
-  dhcp_client_main_t * dhcp_client_main;
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
 } dhcp_proxy_main_t;
 
-dhcp_proxy_main_t dhcp_proxy_main;
+extern dhcp_proxy_main_t dhcp_proxy_main;
 
-int dhcp_proxy_set_server (ip4_address_t *addr, ip4_address_t *src_address,
-                           u32 fib_id, int insert_option_82, int is_del);
+void dhcp_send_details (void *opaque,
+                        u32 context,
+                        const ip46_address_t *server,
+                        const ip46_address_t *src,
+                        u32 server_fib_id,
+                        u32 rx_fib_id,
+                        u32 vss_fib_id,
+                        u32 vss_oui);
 
-int dhcp_proxy_set_server_2 (ip4_address_t *addr, ip4_address_t *src_address,
-                             u32 rx_fib_id,
-                             u32 server_fib_id, 
-                             int insert_option_82, int is_del);
+int dhcp_proxy_set_server (ip4_address_t *addr,
+                           ip4_address_t *src_address,
+                           u32 fib_id,
+                           u32 server_fib_id, 
+                           int is_del);
 
 int dhcp_proxy_set_option82_vss(u32 vrf_id,
                                 u32 oui,
                                 u32 fib_id, 
                                 int is_del);
+
+void dhcp_proxy_dump(void *opaque,
+                     u32 context);
+
 #endif /* included_dhcp_proxy_h */

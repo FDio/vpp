@@ -102,6 +102,11 @@ format_receive_dpo (u8 *s, va_list *ap)
     vnet_main_t * vnm = vnet_get_main();
     receive_dpo_t *rd;
 
+    if (pool_is_free_index(receive_dpo_pool, index))
+    {
+        return (format(s, "dpo-receive DELETED"));
+    }
+
     rd = receive_dpo_get(index);
 
     if (~0 != rd->rd_sw_if_index)

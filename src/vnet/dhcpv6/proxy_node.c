@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/dhcpv6/proxy.h>
+#include <vnet/dhcp/proxy.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/mfib/ip6_mfib.h>
@@ -117,6 +118,42 @@ static inline void copy_ip6_address (ip6_address_t *dst, ip6_address_t *src)
   dst->as_u64[1] = src->as_u64[1];
 } 
 
+static inline dhcpv6_vss_info *
+dhcpv6_get_vss_info (dhcpv6_proxy_main_t *dm,
+                     u32 rx_fib_index)
+{
+  dhcpv6_vss_info *v;
+
+  if (vec_len(dm->vss_index_by_rx_fib_index) <= rx_fib_index ||
+      dm->vss_index_by_rx_fib_index[rx_fib_index] == ~0)
+  {
+      v = NULL;
+  }
+  else
+  {
+      v = pool_elt_at_index (dm->vss,
+                             dm->vss_index_by_rx_fib_index[rx_fib_index]);
+  }
+
+  return (v);
+}
+
+static inline dhcpv6_server_t *
+dhcpv6_get_server (dhcpv6_proxy_main_t *dm,
+                   u32 rx_fib_index)
+{
+  dhcpv6_server_t *s = NULL;
+
+  if (vec_len(dm->dhcp6_server_index_by_rx_fib_index) > rx_fib_index &&
+      dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index] != ~0)
+  {
+      s = pool_elt_at_index (dm->dhcp6_servers,
+                             dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index]);
+  }
+
+  return (s);
+}
+
 static uword
 dhcpv6_proxy_to_server_input (vlib_main_t * vm,
                             vlib_node_runtime_t * node,
@@ -132,13 +169,10 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
   u32 pkts_wrong_msg_type=0;
   u32 pkts_too_big=0;
   ip6_main_t * im = &ip6_main;
-  ip6_fib_t * fib;
   ip6_address_t * src;
   int bogus_length;
   dhcpv6_server_t * server;
   u32  rx_fib_idx = 0, server_fib_idx = 0;
-  u32 server_idx;
-  u32 fib_id1 = 0;
 
   next_index = node->cached_next_index;
 
@@ -172,11 +206,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           ethernet_header_t * e_h0;
           u8 client_src_mac[6];
           vlib_buffer_free_list_t *fl;
-
-          uword *p_vss;
-          u32  oui1=0;
           dhcpv6_vss_info *vss;
-
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -228,25 +258,15 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           /* Send to DHCPV6 server via the configured FIB */
           rx_sw_if_index = sw_if_index =  vnet_buffer(b0)->sw_if_index[VLIB_RX];
           rx_fib_idx = im->fib_index_by_sw_if_index [rx_sw_if_index];
+          server = dhcpv6_get_server(dpm, rx_fib_idx);
 
-	  if (vec_len(dpm->dhcp6_server_index_by_rx_fib_index) <= rx_fib_idx)
-	    goto no_server;
-
-	  server_idx = dpm->dhcp6_server_index_by_rx_fib_index[rx_fib_idx];
-
-          if (PREDICT_FALSE (pool_is_free_index (dpm->dhcp6_servers,
-                                                          server_idx)))
-                     {
-                     no_server:
-                       error0 = DHCPV6_PROXY_ERROR_NO_SERVER;
-                       next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_DROP;
-                       pkts_no_server++;
-                       goto do_trace;
-                     }
-
-          server = pool_elt_at_index(dpm->dhcp6_servers, server_idx);
-          if (server->valid == 0)
-            goto no_server;
+          if (PREDICT_FALSE (NULL == server))
+          {
+              error0 = DHCPV6_PROXY_ERROR_NO_SERVER;
+              next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_DROP;
+              pkts_no_server++;
+              goto do_trace;
+          }
 
           server_fib_idx = server->server_fib6_index;
           vnet_buffer(b0)->sw_if_index[VLIB_TX] = server_fib_idx;
@@ -331,19 +351,6 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           id1 = (dhcpv6_int_id_t *) (((uword) ip1) + b0->current_length);
           b0->current_length += (sizeof (*id1));
 
-
-          fib = ip6_fib_get (rx_fib_idx);
-
-          //TODO: Revisit if hash makes sense here
-          p_vss = hash_get (dpm->vss_index_by_vrf_id,
-                            fib->table_id);
-          if (p_vss)
-            {
-              vss = pool_elt_at_index (dpm->vss, p_vss[0]);
-              oui1 =  vss->vpn_id.oui;
-              fib_id1 =  vss->vpn_id.fib_id;
-            }
-
           id1->opt.option = clib_host_to_net_u16(DHCPV6_OPTION_INTERFACE_ID);
           id1->opt.length = clib_host_to_net_u16(sizeof(rx_sw_if_index));
           id1->int_idx = clib_host_to_net_u32(rx_sw_if_index);
@@ -360,20 +367,24 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
                clib_memcpy(cmac->data, client_src_mac, 6);
                u1->length += sizeof(*cmac);
             }
-          if (server->insert_vss !=0 ) {
+
+          //TODO: Revisit if hash makes sense here
+          vss = dhcpv6_get_vss_info(dpm, rx_fib_idx);
+
+          if (NULL != vss) {
               vss1 = (dhcpv6_vss_t *) (((uword) ip1) + b0->current_length);
               b0->current_length += (sizeof (*vss1));
               vss1->opt.length =clib_host_to_net_u16(sizeof(*vss1) -
 						     sizeof(vss1->opt));
               vss1->opt.option = clib_host_to_net_u16(DHCPV6_OPTION_VSS);
               vss1->data[0] = 1;   // type
-              vss1->data[1] = oui1>>16 & 0xff;
-              vss1->data[2] = oui1>>8  & 0xff;
-              vss1->data[3] = oui1 & 0xff;
-              vss1->data[4] = fib_id1>>24 & 0xff;
-              vss1->data[5] = fib_id1>>16 & 0xff;
-              vss1->data[6] = fib_id1>>8 & 0xff;
-              vss1->data[7] = fib_id1 & 0xff;
+              vss1->data[1] = vss->vpn_id.oui >>16 & 0xff;
+              vss1->data[2] = vss->vpn_id.oui >>8  & 0xff;
+              vss1->data[3] = vss->vpn_id.oui & 0xff;
+              vss1->data[4] = vss->vpn_id.fib_id >> 24 & 0xff;
+              vss1->data[5] = vss->vpn_id.fib_id >> 16 & 0xff;
+              vss1->data[6] = vss->vpn_id.fib_id >> 8 & 0xff;
+              vss1->data[7] = vss->vpn_id.fib_id & 0xff;
               u1->length += sizeof(*vss1);
           }
 
@@ -524,9 +535,8 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       u16 len = 0;
       u8 interface_opt_flag = 0;
       u8 relay_msg_opt_flag = 0;
-      ip6_fib_t * svr_fib;
       ip6_main_t * im = &ip6_main;
-      u32 server_fib_idx, svr_fib_id, client_fib_idx, server_idx;
+      u32 server_fib_idx, client_fib_idx;
 
       bi0 = from[0];
       from += 1;
@@ -608,31 +618,18 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       vlib_buffer_advance (b0, sizeof(*r0));
 
       client_fib_idx = im->fib_index_by_sw_if_index[sw_if_index];
-      if (client_fib_idx < vec_len(dm->dhcp6_server_index_by_rx_fib_index))
-    	  server_idx = dm->dhcp6_server_index_by_rx_fib_index[client_fib_idx];
-      else
-    	  server_idx = 0;
+      server = dhcpv6_get_server(dm, client_fib_idx);
 
-      if (PREDICT_FALSE (pool_is_free_index (dm->dhcp6_servers, server_idx)))
-        {
-          error0 = DHCPV6_PROXY_ERROR_WRONG_INTERFACE_ID_OPTION;
-          goto drop_packet;
-        }
-
-      server = pool_elt_at_index (dm->dhcp6_servers, server_idx);
-      if (server->valid == 0)
+      if (NULL == server)
       {
     	  error0 = DHCPV6_PROXY_ERROR_NO_SERVER;
           goto drop_packet;
       }
 
-
       server_fib_idx = im->fib_index_by_sw_if_index
           [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
-      svr_fib = ip6_fib_get (server_fib_idx);
-      svr_fib_id = svr_fib->table_id;
 
-      if (svr_fib_id != server->server_fib6_index ||
+      if (server_fib_idx != server->server_fib6_index ||
           ip0->src_address.as_u64[0] != server->dhcp6_server.as_u64[0] ||
           ip0->src_address.as_u64[1] != server->dhcp6_server.as_u64[1])
         {
@@ -760,7 +757,7 @@ clib_error_t * dhcpv6_proxy_init (vlib_main_t * vm)
   error_drop_node = vlib_get_node_by_name (vm, (u8 *) "error-drop");
   dm->error_drop_node_index = error_drop_node->index;
 
-  dm->vss_index_by_vrf_id = hash_create (0, sizeof (uword));
+  dm->vss_index_by_rx_fib_index = NULL;
 
   /* RFC says this is the dhcpv6 server address  */
   dm->all_dhcpv6_server_address.as_u64[0] = clib_host_to_net_u64 (0xFF05000000000000);
@@ -785,121 +782,138 @@ clib_error_t * dhcpv6_proxy_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dhcpv6_proxy_init);
 
-/* Old API, manipulates a single server (only) shared by all Rx VRFs */
-int dhcpv6_proxy_set_server (ip6_address_t *addr, ip6_address_t *src_address,
-                             u32 fib_id, int insert_vss, int is_del)
-{
-	return dhcpv6_proxy_set_server_2 (addr, src_address,
-			0, fib_id,
-			insert_vss, is_del);
-}
-
-int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
-                               u32 rx_fib_id, u32 server_fib_id,
-                               int insert_vss, int is_del)
+int dhcpv6_proxy_set_server (ip6_address_t *addr,
+                             ip6_address_t *src_address,
+                             u32 rx_fib_id,
+                             u32 server_fib_id,
+                             int is_del)
 {
   dhcpv6_proxy_main_t * dm = &dhcpv6_proxy_main;
   dhcpv6_server_t * server = 0;
-  u32 server_fib_index = 0;
   u32 rx_fib_index = 0;
+  int rc = 0;
 
   rx_fib_index = ip6_mfib_table_find_or_create_and_lock(rx_fib_id);
-  server_fib_index = ip6_fib_table_find_or_create_and_lock(server_fib_id);
+
+  const mfib_prefix_t all_dhcp_servers = {
+      .fp_len = 128,
+      .fp_proto = FIB_PROTOCOL_IP6,
+      .fp_grp_addr = {
+          .ip6 = dm->all_dhcpv6_server_relay_agent_address,
+      }
+  };
 
   if (is_del)
+    {
+      server = dhcpv6_get_server(dm, rx_fib_index);
+
+      if (NULL == server)
+        {
+          rc = VNET_API_ERROR_NO_SUCH_ENTRY;
+          goto out;
+        }
+
+      /*
+       * release the locks held on the server fib and rx mfib
+       */
+      mfib_table_entry_delete(rx_fib_index,
+                              &all_dhcp_servers,
+                              MFIB_SOURCE_DHCP);
+      mfib_table_unlock(rx_fib_index, FIB_PROTOCOL_IP6);
+      fib_table_unlock(server->server_fib6_index, FIB_PROTOCOL_IP6);
+
+      dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index] = ~0;
+
+      memset (server, 0, sizeof (*server));
+      pool_put (dm->dhcp6_servers, server);
+    }
+  else
+    {
+      if (addr->as_u64[0] == 0 &&
+          addr->as_u64[1] == 0 )
       {
-
-	  if (rx_fib_index >= vec_len(dm->dhcp6_server_index_by_rx_fib_index))
-		  return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-	  server_fib_index = dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index];
-
-	  dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index] = 0;
-	  server = pool_elt_at_index (dm->dhcp6_servers, server_fib_index);
-	  memset (server, 0, sizeof (*server));
-	  pool_put (dm->dhcp6_servers, server);
-	  return 0;
+          rc = VNET_API_ERROR_INVALID_DST_ADDRESS;
+          goto out;
+      }
+      if (src_address->as_u64[0] == 0 &&
+          src_address->as_u64[1] == 0)
+      {
+          rc = VNET_API_ERROR_INVALID_SRC_ADDRESS;
+          goto out;
       }
 
-  if (addr->as_u64[0] == 0 &&
-        addr->as_u64[1] == 0 )
-      return VNET_API_ERROR_INVALID_DST_ADDRESS;
+      server = dhcpv6_get_server(dm, rx_fib_index);
 
-    if (src_address->as_u64[0] == 0 &&
-        src_address->as_u64[1] == 0)
-      return VNET_API_ERROR_INVALID_SRC_ADDRESS;
-
-  if (rx_fib_id == 0)
-    {
-      server = pool_elt_at_index (dm->dhcp6_servers, 0);
-      if (server->valid)
-          goto reconfigure_it;
-      else
-          goto initialize_it;
-    }
-
-  if (rx_fib_index < vec_len(dm->dhcp6_server_index_by_rx_fib_index))
-    {
-      server_fib_index = dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index];
-      if (server_fib_index != 0)
+      if (NULL != server)
         {
-          server = pool_elt_at_index (dm->dhcp6_servers, server_fib_index);
-          goto initialize_it;
+          /* modify of an existing entry */
+          ip6_fib_t *fib;
+
+          fib = ip6_fib_get(server->server_fib6_index);
+
+          if (fib->table_id != server_fib_id)
+            {
+              /* swap tables */
+              fib_table_unlock(server->server_fib6_index, FIB_PROTOCOL_IP6);
+              server->server_fib6_index =
+                  ip6_fib_table_find_or_create_and_lock(server_fib_id);
+            }
         }
-    }
+      else
+        {
+          /* Allocate a new server */
+          pool_get (dm->dhcp6_servers, server);
 
-  /*Allocate a new server*/
-  pool_get (dm->dhcp6_servers, server);
+          vec_validate_init_empty (dm->dhcp6_server_index_by_rx_fib_index,
+                                   rx_fib_index, ~0);
+          dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index] =
+              server - dm->dhcp6_servers;
 
-  initialize_it:
-  {
-      const mfib_prefix_t all_dhcp_servers = {
-          .fp_len = 128,
-          .fp_proto = FIB_PROTOCOL_IP6,
-          .fp_grp_addr = {
-              .ip6 = dm->all_dhcpv6_server_relay_agent_address,
-          }
-      };
-      const fib_route_path_t path_for_us = {
-          .frp_proto = FIB_PROTOCOL_IP6,
-          .frp_addr = zero_addr,
-          .frp_sw_if_index = 0xffffffff,
-          .frp_fib_index = ~0,
-          .frp_weight = 0,
-          .frp_flags = FIB_ROUTE_PATH_LOCAL,
-      };
-      mfib_table_entry_path_update(rx_fib_index,
-                                   &all_dhcp_servers,
-                                   MFIB_SOURCE_DHCP,
-                                   &path_for_us,
-                                   MFIB_ITF_FLAG_FORWARD);
-      /*
-       * Each interface that is enabled in this table, needs to be added
-       * as an accepting interface, but this is not easily doable in VPP.
-       * So we cheat. Add a flag to the entry that indicates accept form
-       * any interface.
-       * We will still only accept on v6 enabled interfaces, since the input
-       * feature ensures this.
-       */
-      mfib_table_entry_update(rx_fib_index,
-                              &all_dhcp_servers,
-                              MFIB_SOURCE_DHCP,
-                              MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
+          server->server_fib6_index =
+              ip6_fib_table_find_or_create_and_lock(server_fib_id);
+          mfib_table_lock(rx_fib_index, FIB_PROTOCOL_IP6);
+
+          const mfib_prefix_t all_dhcp_servers = {
+              .fp_len = 128,
+              .fp_proto = FIB_PROTOCOL_IP6,
+              .fp_grp_addr = {
+                  .ip6 = dm->all_dhcpv6_server_relay_agent_address,
+              }
+            };
+          const fib_route_path_t path_for_us = {
+              .frp_proto = FIB_PROTOCOL_IP6,
+              .frp_addr = zero_addr,
+              .frp_sw_if_index = 0xffffffff,
+              .frp_fib_index = ~0,
+              .frp_weight = 0,
+              .frp_flags = FIB_ROUTE_PATH_LOCAL,
+          };
+          mfib_table_entry_path_update(rx_fib_index,
+                                       &all_dhcp_servers,
+                                       MFIB_SOURCE_DHCP,
+                                       &path_for_us,
+                                       MFIB_ITF_FLAG_FORWARD);
+          /*
+           * Each interface that is enabled in this table, needs to be added
+           * as an accepting interface, but this is not easily doable in VPP.
+           * So we cheat. Add a flag to the entry that indicates accept form
+           * any interface.
+           * We will still only accept on v6 enabled interfaces, since the
+           * input feature ensures this.
+           */
+          mfib_table_entry_update(rx_fib_index,
+                                  &all_dhcp_servers,
+                                  MFIB_SOURCE_DHCP,
+                                  MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
+        }
+      copy_ip6_address(&server->dhcp6_server, addr);
+      copy_ip6_address(&server->dhcp6_src_address, src_address);
   }
 
-reconfigure_it:
+out:
+  mfib_table_unlock(rx_fib_index, FIB_PROTOCOL_IP6);
 
-  copy_ip6_address(&server->dhcp6_server, addr);
-  copy_ip6_address(&server->dhcp6_src_address, src_address);
-  server->server_fib6_index = server_fib_index;
-  server->valid = 1;
-  server->insert_vss = insert_vss;
-
-  vec_validate (dm->dhcp6_server_index_by_rx_fib_index, rx_fib_index);
-  dm->dhcp6_server_index_by_rx_fib_index[rx_fib_index] =
-		  server - dm->dhcp6_servers;
-
-  return 0;
+  return (rc);
 }
 
 static clib_error_t *
@@ -910,7 +924,7 @@ dhcpv6_proxy_set_command_fn (vlib_main_t * vm,
   ip6_address_t addr, src_addr;
   int set_server = 0, set_src_address = 0;
   u32 rx_fib_id = 0, server_fib_id = 0;
-  int is_del = 0, add_vss = 0;
+  int is_del = 0;
 
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
@@ -924,9 +938,6 @@ dhcpv6_proxy_set_command_fn (vlib_main_t * vm,
         ;
        else if (unformat (input, "rx-fib-id %d", &rx_fib_id))
          ;
-       else if (unformat (input, "add-vss-option")
-               || unformat (input, "insert-option"))
-          add_vss = 1;
        else if (unformat (input, "delete") ||
                 unformat (input, "del"))
            is_del = 1;
@@ -938,8 +949,8 @@ dhcpv6_proxy_set_command_fn (vlib_main_t * vm,
   {
       int rv;
 
-      rv = dhcpv6_proxy_set_server_2 (&addr, &src_addr, rx_fib_id,
-    		  server_fib_id, add_vss, is_del);
+      rv = dhcpv6_proxy_set_server (&addr, &src_addr, rx_fib_id,
+                                    server_fib_id, is_del);
 
       //TODO: Complete the errors
       switch (rv)
@@ -962,7 +973,7 @@ dhcpv6_proxy_set_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (dhcpv6_proxy_set_command, static) = {
   .path = "set dhcpv6 proxy",
   .short_help = "set dhcpv6 proxy [del] server <ipv6-addr> src-address <ipv6-addr> "
-		  "[add-vss-option] [server-fib-id <fib-id>] [rx-fib-id <fib-id>] ",
+		  "[server-fib-id <fib-id>] [rx-fib-id <fib-id>] ",
   .function = dhcpv6_proxy_set_command_fn,
 };
 
@@ -976,8 +987,8 @@ u8 * format_dhcpv6_proxy_server (u8 * s, va_list * args)
 
   if (dm == 0)
     {
-      s = format (s, "%=40s%=40s%=14s%=14s%=20s", "Server Address", "Source Address",
-                  "Server FIB", "RX FIB", "Insert VSS Option");
+      s = format (s, "%=40s%=40s%=14s%=14s", "Server Address", "Source Address",
+                  "Server FIB", "RX FIB");
       return s;
     }
 
@@ -990,11 +1001,10 @@ u8 * format_dhcpv6_proxy_server (u8 * s, va_list * args)
   if (rx_fib)
 	  rx_fib_id = rx_fib->table_id;
 
-  s = format (s, "%=40U%=40U%=14u%=14u%=20s",
+  s = format (s, "%=40U%=40U%=14u%=14u",
               format_ip6_address, &server->dhcp6_server,
               format_ip6_address, &server->dhcp6_src_address,
-			  server_fib_id, rx_fib_id,
-			                server->insert_vss ? "yes" : "no");
+			  server_fib_id, rx_fib_id);
   return s;
 }
 
@@ -1003,25 +1013,25 @@ dhcpv6_proxy_show_command_fn (vlib_main_t * vm,
                             unformat_input_t * input,
                             vlib_cli_command_t * cmd)
 {
-  dhcpv6_proxy_main_t * dm = &dhcpv6_proxy_main;
-  ip6_main_t * im = &ip6_main;
+  dhcpv6_proxy_main_t * dpm = &dhcpv6_proxy_main;
   int i;
   u32 server_index;
   dhcpv6_server_t * server;
 
   vlib_cli_output (vm, "%U", format_dhcpv6_proxy_server, 0 /* header line */,
 		  0, 0);
-  for (i = 0; i < vec_len (im->fibs); i++)
-      {
-        if (i < vec_len(dm->dhcp6_server_index_by_rx_fib_index))
-          server_index = dm->dhcp6_server_index_by_rx_fib_index[i];
-        else
-          server_index = 0;
-        server = pool_elt_at_index (dm->dhcp6_servers, server_index);
-        if (server->valid)
-          vlib_cli_output (vm, "%U", format_dhcpv6_proxy_server, dm,
-		  server, i);
-      }
+  vec_foreach_index (i, dpm->dhcp6_server_index_by_rx_fib_index)
+  {
+      server_index = dpm->dhcp6_server_index_by_rx_fib_index[i];
+      if (~0 == server_index)
+          continue;
+
+      server = pool_elt_at_index (dpm->dhcp6_servers, server_index);
+
+      vlib_cli_output (vm, "%U", format_dhcpv6_proxy_server, dpm, 
+                       server, i);
+    }
+
   return 0;
 }
 
@@ -1031,51 +1041,104 @@ VLIB_CLI_COMMAND (dhcpv6_proxy_show_command, static) = {
   .function = dhcpv6_proxy_show_command_fn,
 };
 
+void
+dhcpv6_proxy_dump (void *opaque,
+                   u32 context)
+{
+  dhcpv6_proxy_main_t * dpm = &dhcpv6_proxy_main;
+  ip6_fib_t *s_fib, *r_fib;
+  dhcpv6_server_t * server;
+  u32 server_index, i;
+  dhcpv6_vss_info *v;
+
+  vec_foreach_index (i, dpm->dhcp6_server_index_by_rx_fib_index)
+  {
+      server_index = dpm->dhcp6_server_index_by_rx_fib_index[i];
+      if (~0 == server_index)
+          continue;
+
+      server = pool_elt_at_index (dpm->dhcp6_servers, server_index);
+      v = dhcpv6_get_vss_info(dpm, i);
+
+      ip46_address_t src_addr = {
+          .ip6 = server->dhcp6_src_address,
+      };
+      ip46_address_t server_addr = {
+          .ip6 = server->dhcp6_server,
+      };
+
+      s_fib = ip6_fib_get(server->server_fib6_index);
+      r_fib = ip6_fib_get(i);
+
+      dhcp_send_details(opaque,
+                        context,
+                        &server_addr,
+                        &src_addr,
+                        s_fib->table_id,
+                        r_fib->table_id,
+                        (v ? v->vpn_id.fib_id : 0),
+                        (v ? v->vpn_id.oui : 0));
+  }
+}
+
 int dhcpv6_proxy_set_vss(u32 tbl_id,
                          u32 oui,
                          u32 fib_id,
                          int is_del)
 {
   dhcpv6_proxy_main_t *dm = &dhcpv6_proxy_main;
-  u32 old_oui, old_fib_id;
-  uword *p;
-  dhcpv6_vss_info *v;
+  dhcpv6_vss_info *v = NULL;
+  u32  rx_fib_index;
+  int rc = 0;
 
-  p = hash_get (dm->vss_index_by_vrf_id, tbl_id);
+  rx_fib_index = ip6_fib_table_find_or_create_and_lock(tbl_id);
+  v = dhcpv6_get_vss_info(dm, rx_fib_index);
 
-  if (p) {
-      v = pool_elt_at_index (dm->vss, p[0]);
-      if (!v)
-        return VNET_API_ERROR_NO_SUCH_FIB;
-
-      old_oui = v->vpn_id.oui;
-      old_fib_id = v->vpn_id.fib_id;
-
+  if (NULL != v)
+  {
       if (is_del)
       {
-          if (old_oui == oui &&
-              old_fib_id == fib_id )
-          {
-              pool_put(dm->vss, v);
-              hash_unset (dm->vss_index_by_vrf_id, tbl_id);
-              return 0;
-          }
-          else
-            return VNET_API_ERROR_NO_SUCH_ENTRY;
+          /* release the lock held on the table when the VSS
+           * info was created */
+          fib_table_unlock (rx_fib_index,
+                            FIB_PROTOCOL_IP6);
+
+          pool_put (dm->vss, v);
+          dm->vss_index_by_rx_fib_index[rx_fib_index] = ~0;
       }
+      else
+      {
+          /* this is a modify */
+          v->vpn_id.fib_id = fib_id;
+          v->vpn_id.oui = oui;
+      }
+  }
+  else
+  {
+      if (is_del)
+          rc = VNET_API_ERROR_NO_SUCH_ENTRY;
+      else
+      {
+          /* create a new entry */
+          vec_validate_init_empty(dm->vss_index_by_rx_fib_index,
+                                  rx_fib_index, ~0);
 
-      pool_put(dm->vss, v);
-      hash_unset (dm->vss_index_by_vrf_id, tbl_id);
-  } else if (is_del)
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
+          /* hold a lock on the table whilst the VSS info exist */
+          fib_table_lock (rx_fib_index,
+                          FIB_PROTOCOL_IP6);
 
-  pool_get (dm->vss, v);
-  memset (v, ~0, sizeof (*v));
-  v->vpn_id.fib_id = fib_id;
-  v->vpn_id.oui = oui;
-  hash_set (dm->vss_index_by_vrf_id, tbl_id, v - dm->vss);
+          pool_get (dm->vss, v);
+          v->vpn_id.fib_id = fib_id;
+          v->vpn_id.oui = oui;
+          dm->vss_index_by_rx_fib_index[rx_fib_index] = v - dm->vss;
+      }
+  }
 
-  return 0;
+  /* Release the lock taken during the create_or_lock at the start */
+  fib_table_unlock (rx_fib_index,
+                    FIB_PROTOCOL_IP6);
+
+  return (rc);
 }
 
 
@@ -1147,19 +1210,19 @@ dhcpv6_vss_show_command_fn (vlib_main_t * vm,
 {
   dhcpv6_proxy_main_t * dm = &dhcpv6_proxy_main;
   dhcpv6_vss_info *v;
-  u32 oui;
-  u32 fib_id;
-  u32 tbl_id;
-  uword index;
+  ip6_fib_t *fib;
+  u32 *fib_index;
 
   vlib_cli_output (vm, "%=6s%=6s%=12s","Table", "OUI", "VPN ID");
-  hash_foreach (tbl_id, index, dm->vss_index_by_vrf_id,
+  pool_foreach (fib_index, dm->vss_index_by_rx_fib_index,
   ({
-     v = pool_elt_at_index (dm->vss, index);
-     oui = v->vpn_id.oui;
-     fib_id = v->vpn_id.fib_id;
-     vlib_cli_output (vm, "%=6d%=6d%=12d",
-                      tbl_id, oui, fib_id);
+      fib = ip6_fib_get (*fib_index);
+      v = pool_elt_at_index (dm->vss, *fib_index);
+
+      vlib_cli_output (vm, "%=6d%=6d%=12d",
+                       fib->table_id,
+                       v->vpn_id.oui,
+                       v->vpn_id.fib_id);
   }));
 
   return 0;
