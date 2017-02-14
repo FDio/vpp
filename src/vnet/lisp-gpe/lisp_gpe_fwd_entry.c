@@ -982,15 +982,16 @@ lisp_gpe_nsh_update_fwding (lisp_gpe_fwd_entry_t * lfe)
 
   /* We have only one nsh-lisp interface (no NSH virtualization) */
   hip = hash_get (lgm->nsh_ifaces.hw_if_index_by_dp_table, 0);
-  hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
-
-  dpo_stack_from_node (hi->tx_node_index, &lfe->nsh.choice, &dpo);
-
+  if (hip)
+    {
+      hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
+      dpo_stack_from_node (hi->tx_node_index, &lfe->nsh.choice, &dpo);
+    }
   /* add entry to nsh lisp fib */
   lisp_nsh_fib_add_del_entry (fid_addr_nsh (&lfe->key->rmt),
 			      lfe - lgm->lisp_fwd_entry_pool, 1);
-
   dpo_reset (&dpo);
+
 }
 
 /**
