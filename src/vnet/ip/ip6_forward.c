@@ -428,9 +428,7 @@ ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 
 /* get first interface address */
 ip6_address_t *
-ip6_interface_first_address (ip6_main_t * im,
-			     u32 sw_if_index,
-			     ip_interface_address_t ** result_ia)
+ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index)
 {
   ip_lookup_main_t *lm = &im->lookup_main;
   ip_interface_address_t *ia = 0;
@@ -445,8 +443,6 @@ ip6_interface_first_address (ip6_main_t * im,
     break;
   }));
   /* *INDENT-ON* */
-  if (result_ia)
-    *result_ia = result ? ia : 0;
   return result;
 }
 
@@ -3318,7 +3314,7 @@ vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
   vec_validate (lm->classify_table_index_by_sw_if_index, sw_if_index);
   lm->classify_table_index_by_sw_if_index[sw_if_index] = table_index;
 
-  if_addr = ip6_interface_first_address (ipm, sw_if_index, NULL);
+  if_addr = ip6_interface_first_address (ipm, sw_if_index);
 
   if (NULL != if_addr)
     {
