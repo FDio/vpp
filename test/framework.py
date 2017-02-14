@@ -1,23 +1,33 @@
 #!/usr/bin/env python
 
-import subprocess
+from __future__ import print_function
+import gc
+import sys
+import os
+import select
 import unittest
 import tempfile
 import time
 import resource
 from collections import deque
-from threading import Thread
+from threading import Thread, Event
 from inspect import getdoc
 from traceback import format_exception
+from logging import FileHandler, DEBUG, Formatter
+from scapy.packet import Raw
 from hook import StepHook, PollHook
 from vpp_pg_interface import VppPGInterface
 from vpp_sub_interface import VppSubInterface
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
-from scapy.packet import Raw
-from logging import FileHandler, DEBUG
 from log import *
 from vpp_object import VppObjectRegistry
+if os.name == 'posix' and sys.version_info[0] < 3:
+    # using subprocess32 is recommended by python official documentation
+    # @ https://docs.python.org/2/library/subprocess.html
+    import subprocess32 as subprocess
+else:
+    import subprocess
 
 """
   Test framework module.
@@ -51,9 +61,21 @@ class _PacketInfo(object):
         return index and src and dst and data
 
 
-def pump_output(out, deque):
-    for line in iter(out.readline, b''):
-        deque.append(line)
+def pump_output(testclass):
+    """ pump output from vpp stdout/stderr to proper queues """
+    while not testclass.pump_thread_stop_flag.wait(0):
+        readable = select.select([testclass.vpp.stdout.fileno(),
+                                  testclass.vpp.stderr.fileno(),
+                                  testclass.pump_thread_wakeup_pipe[0]],
+                                 [], [])[0]
+        if testclass.vpp.stdout.fileno() in readable:
+            read = os.read(testclass.vpp.stdout.fileno(), 1024)
+            testclass.vpp_stdout_deque.append(read)
+        if testclass.vpp.stderr.fileno() in readable:
+            read = os.read(testclass.vpp.stderr.fileno(), 1024)
+            testclass.vpp_stderr_deque.append(read)
+        # ignoring the dummy pipe here intentionally - the flag will take care
+        # of properly terminating the loop
 
 
 class VppTestCase(unittest.TestCase):
@@ -181,10 +203,14 @@ class VppTestCase(unittest.TestCase):
         Perform class setup before running the testcase
         Remove shared memory files, start vpp and connect the vpp-api
         """
+        gc.collect()  # run garbage collection first
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-' + cls.__name__ + '-')
         file_handler = FileHandler("%s/log.txt" % cls.tempdir)
+        file_handler.setFormatter(
+            Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
+                      datefmt="%H:%M:%S"))
         file_handler.setLevel(DEBUG)
         cls.logger.addHandler(file_handler)
         cls.shm_prefix = cls.tempdir.split("/")[-1]
@@ -206,20 +232,18 @@ class VppTestCase(unittest.TestCase):
         try:
             cls.run_vpp()
             cls.vpp_stdout_deque = deque()
-            cls.vpp_stdout_reader_thread = Thread(target=pump_output, args=(
-                cls.vpp.stdout, cls.vpp_stdout_deque))
-            cls.vpp_stdout_reader_thread.start()
             cls.vpp_stderr_deque = deque()
-            cls.vpp_stderr_reader_thread = Thread(target=pump_output, args=(
-                cls.vpp.stderr, cls.vpp_stderr_deque))
-            cls.vpp_stderr_reader_thread.start()
+            cls.pump_thread_stop_flag = Event()
+            cls.pump_thread_wakeup_pipe = os.pipe()
+            cls.pump_thread = Thread(target=pump_output, args=(cls,))
+            cls.pump_thread.start()
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls)
             if cls.step:
                 hook = StepHook(cls)
             else:
                 hook = PollHook(cls)
             cls.vapi.register_hook(hook)
-            time.sleep(0.1)
+            cls.sleep(0.1, "after vpp startup, before initial poll")
             hook.poll_vpp()
             try:
                 cls.vapi.connect()
@@ -251,12 +275,25 @@ class VppTestCase(unittest.TestCase):
                 raw_input("When done debugging, press ENTER to kill the "
                           "process and finish running the testcase...")
 
+        os.write(cls.pump_thread_wakeup_pipe[1], 'ding dong wake up')
+        cls.pump_thread_stop_flag.set()
+        if hasattr(cls, 'pump_thread'):
+            cls.logger.debug("Waiting for pump thread to stop")
+            cls.pump_thread.join()
+        if hasattr(cls, 'vpp_stderr_reader_thread'):
+            cls.logger.debug("Waiting for stdderr pump to stop")
+            cls.vpp_stderr_reader_thread.join()
+
         if hasattr(cls, 'vpp'):
             if hasattr(cls, 'vapi'):
                 cls.vapi.disconnect()
+                del cls.vapi
             cls.vpp.poll()
             if cls.vpp.returncode is None:
+                cls.logger.debug("Sending TERM to vpp")
                 cls.vpp.terminate()
+                cls.logger.debug("Waiting for vpp to die")
+                cls.vpp.communicate()
             del cls.vpp
 
         if hasattr(cls, 'vpp_stdout_deque'):
@@ -306,7 +343,7 @@ class VppTestCase(unittest.TestCase):
                            self._testMethodDoc))
         if self.vpp_dead:
             raise Exception("VPP is dead when setting up the test")
-        time.sleep(.1)
+        self.sleep(.1, "during setUp")
         self.vpp_stdout_deque.append(
             "--- test setUp() for %s.%s(%s) starts here ---\n" %
             (self.__class__.__name__, self._testMethodName,
@@ -351,9 +388,7 @@ class VppTestCase(unittest.TestCase):
         for stamp, cap_name in cls._zombie_captures:
             wait = stamp + capture_ttl - now
             if wait > 0:
-                cls.logger.debug("Waiting for %ss before deleting capture %s",
-                                 wait, cap_name)
-                time.sleep(wait)
+                cls.sleep(wait, "before deleting capture %s" % cap_name)
                 now = time.time()
             cls.logger.debug("Removing zombie capture %s" % cap_name)
             cls.vapi.cli('packet-generator delete %s' % cap_name)
@@ -552,8 +587,10 @@ class VppTestCase(unittest.TestCase):
                 name, real_value, expected_min, expected_max)
         self.assertTrue(expected_min <= real_value <= expected_max, msg)
 
-    def sleep(self, timeout):
-        self.logger.debug("Sleeping for %ss" % timeout)
+    @classmethod
+    def sleep(cls, timeout, remark=None):
+        if hasattr(cls, 'logger'):
+            cls.logger.debug("Sleeping for %ss (%s)" % (timeout, remark))
         time.sleep(timeout)
 
 
@@ -817,6 +854,7 @@ class VppTestRunner(unittest.TextTestRunner):
         :param test:
 
         """
+        gc.disable()  # disable garbage collection, we'll do that manually
         print("Running tests using custom test runner")  # debug message
         filter_file, filter_class, filter_func = self.parse_test_option()
         print("Active filters: file=%s, class=%s, function=%s" % (
