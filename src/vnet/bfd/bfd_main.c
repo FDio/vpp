@@ -372,14 +372,43 @@ bfd_input_format_trace (u8 * s, va_list * args)
       if (t->len >= sizeof (bfd_pkt_t) &&
 	  pkt->head.length >= sizeof (bfd_pkt_t))
 	{
-	  s = format (s, "    my discriminator: %u\n", pkt->my_disc);
-	  s = format (s, "    your discriminator: %u\n", pkt->your_disc);
+	  s = format (s, "    my discriminator: %u\n",
+		      clib_net_to_host_u32 (pkt->my_disc));
+	  s = format (s, "    your discriminator: %u\n",
+		      clib_net_to_host_u32 (pkt->your_disc));
 	  s = format (s, "    desired min tx interval: %u\n",
 		      clib_net_to_host_u32 (pkt->des_min_tx));
 	  s = format (s, "    required min rx interval: %u\n",
 		      clib_net_to_host_u32 (pkt->req_min_rx));
 	  s = format (s, "    required min echo rx interval: %u",
 		      clib_net_to_host_u32 (pkt->req_min_echo_rx));
+	}
+      if (t->len >= sizeof (bfd_pkt_with_common_auth_t) &&
+	  pkt->head.length >= sizeof (bfd_pkt_with_common_auth_t) &&
+	  bfd_pkt_get_auth_present (pkt))
+	{
+	  const bfd_pkt_with_common_auth_t *with_auth = (void *) pkt;
+	  const bfd_auth_common_t *common = &with_auth->common_auth;
+	  s = format (s, "\n    auth len: %u\n", common->len);
+	  s = format (s, "    auth type: %u:%s\n", common->type,
+		      bfd_auth_type_str (common->type));
+	  if (t->len >= sizeof (bfd_pkt_with_sha1_auth_t) &&
+	      pkt->head.length >= sizeof (bfd_pkt_with_sha1_auth_t) &&
+	      (BFD_AUTH_TYPE_keyed_sha1 == common->type ||
+	       BFD_AUTH_TYPE_meticulous_keyed_sha1 == common->type))
+	    {
+	      const bfd_pkt_with_sha1_auth_t *with_sha1 = (void *) pkt;
+	      const bfd_auth_sha1_t *sha1 = &with_sha1->sha1_auth;
+	      s = format (s, "    seq num: %u\n",
+			  clib_net_to_host_u32 (sha1->seq_num));
+	      s = format (s, "    key id: %u\n", sha1->key_id);
+	      s = format (s, "    hash: %U", format_hex_bytes, sha1->hash,
+			  sizeof (sha1->hash));
+	    }
+	}
+      else
+	{
+	  s = format (s, "\n");
 	}
     }
 
@@ -598,17 +627,25 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	 "frame");
       return;
     }
-  /* FIXME
-     A system MUST NOT periodically transmit BFD Control packets if Demand
-     mode is active on the remote system (bfd.RemoteDemandMode is 1,
-     bfd.SessionState is Up, and bfd.RemoteSessionState is Up) and a Poll
-     Sequence is not being transmitted.
-   */
+  if (POLL_NOT_NEEDED == bs->poll_state && bs->remote_demand &&
+      BFD_STATE_up == bs->local_state && BFD_STATE_up == bs->remote_state)
+    {
+      /*
+       * A system MUST NOT periodically transmit BFD Control packets if Demand
+       * mode is active on the remote system (bfd.RemoteDemandMode is 1,
+       * bfd.SessionState is Up, and bfd.RemoteSessionState is Up) and a Poll
+       * Sequence is not being transmitted.
+       */
+      BFD_DBG ("bfd.RemoteDemand is non-zero, not sending periodic control "
+	       "frame");
+      return;
+    }
   /* sometimes the wheel expires an event a bit sooner than requested, account
      for that here */
   if (now + bm->wheel_inaccuracy >= bs->tx_timeout_clocks)
     {
-      BFD_DBG ("Send periodic control frame for bs_idx=%lu", bs->bs_idx);
+      BFD_DBG ("Send periodic control frame for bs_idx=%lu: %U", bs->bs_idx,
+	       format_bfd_session, bs);
       vlib_buffer_t *b = bfd_create_frame_to_next_node (vm, bs);
       if (!b)
 	{

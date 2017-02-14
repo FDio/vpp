@@ -1,10 +1,13 @@
+""" BFD protocol implementation """
+
 from random import randint
-from socket import AF_INET, AF_INET6
-from scapy.all import *
-from scapy.packet import *
-from scapy.fields import *
-from framework import *
-from vpp_object import *
+from socket import AF_INET, AF_INET6, inet_pton
+from scapy.all import bind_layers
+from scapy.layers.inet import UDP
+from scapy.packet import Packet
+from scapy.fields import BitField, BitEnumField, XByteField, FlagsField,\
+        ConditionalField, StrField
+from vpp_object import VppObject
 from util import NumericConstant
 
 
@@ -77,28 +80,34 @@ class BFDAuthType(NumericConstant):
 
 
 def bfd_is_auth_used(pkt):
+    """ is packet authenticated? """
     return "A" in pkt.sprintf("%BFD.flags%")
 
 
 def bfd_is_simple_pwd_used(pkt):
+    """ is simple password authentication used? """
     return bfd_is_auth_used(pkt) and pkt.auth_type == BFDAuthType.simple_pwd
 
 
 def bfd_is_sha1_used(pkt):
+    """ is sha1 authentication used? """
     return bfd_is_auth_used(pkt) and pkt.auth_type in \
         (BFDAuthType.keyed_sha1, BFDAuthType.meticulous_keyed_sha1)
 
 
 def bfd_is_md5_used(pkt):
+    """ is md5 authentication used? """
     return bfd_is_auth_used(pkt) and pkt.auth_type in \
         (BFDAuthType.keyed_md5, BFDAuthType.meticulous_keyed_md5)
 
 
 def bfd_is_md5_or_sha1_used(pkt):
+    """ is md5 or sha1 used? """
     return bfd_is_md5_used(pkt) or bfd_is_sha1_used(pkt)
 
 
 class BFD(Packet):
+    """ BFD protocol layer for scapy """
 
     udp_dport = 3784  #: BFD destination port per RFC 5881
     udp_sport_min = 49152  #: BFD source port min value per RFC 5881
@@ -164,10 +173,12 @@ class VppBFDAuthKey(VppObject):
 
     @property
     def key(self):
+        """ key data """
         return self._key
 
     @property
     def conf_key_id(self):
+        """ configuration key ID """
         return self._conf_key_id
 
     def add_vpp_config(self):
@@ -206,8 +217,12 @@ class VppBFDUDPSession(VppObject):
         self._interface = interface
         self._af = af
         self._local_addr = local_addr
+        if local_addr is not None:
+            self._local_addr_n = inet_pton(af, local_addr)
+        else:
+            self._local_addr_n = None
         self._peer_addr = peer_addr
-        self._peer_addr_n = socket.inet_pton(af, peer_addr)
+        self._peer_addr_n = inet_pton(af, peer_addr)
         self._desired_min_tx = desired_min_tx
         self._required_min_rx = required_min_rx
         self._detect_mult = detect_mult
@@ -238,7 +253,7 @@ class VppBFDUDPSession(VppObject):
             elif self.af == AF_INET6:
                 return self._interface.local_ip6
             else:
-                raise Exception("Unexpected af %s' % af" % self.af)
+                raise Exception("Unexpected af '%s'" % self.af)
         return self._local_addr
 
     @property
@@ -250,7 +265,7 @@ class VppBFDUDPSession(VppObject):
             elif self.af == AF_INET6:
                 return self._interface.local_ip6n
             else:
-                raise Exception("Unexpected af %s' % af" % self.af)
+                raise Exception("Unexpected af '%s'" % self.af)
         return self._local_addr_n
 
     @property
@@ -264,6 +279,7 @@ class VppBFDUDPSession(VppObject):
         return self._peer_addr_n
 
     def get_bfd_udp_session_dump_entry(self):
+        """ get the namedtuple entry from bfd udp session dump """
         result = self.test.vapi.bfd_udp_session_dump()
         for s in result:
             self.test.logger.debug("session entry: %s" % str(s))
@@ -285,31 +301,36 @@ class VppBFDUDPSession(VppObject):
         """ BFD session state """
         session = self.get_bfd_udp_session_dump_entry()
         if session is None:
-            raise Exception("Could not find BFD session in VPP response: %s" %
-                            repr(result))
+            raise Exception("Could not find BFD session in VPP response")
         return session.state
 
     @property
     def desired_min_tx(self):
+        """ desired minimum tx interval """
         return self._desired_min_tx
 
     @property
     def required_min_rx(self):
+        """ required minimum rx interval """
         return self._required_min_rx
 
     @property
     def detect_mult(self):
+        """ detect multiplier """
         return self._detect_mult
 
     @property
     def sha1_key(self):
+        """ sha1 key """
         return self._sha1_key
 
     @property
     def bfd_key_id(self):
+        """ bfd key id in use """
         return self._bfd_key_id
 
     def activate_auth(self, key, bfd_key_id=None, delayed=False):
+        """ activate authentication for this session """
         self._bfd_key_id = bfd_key_id if bfd_key_id else randint(0, 255)
         self._sha1_key = key
         is_ipv6 = 1 if AF_INET6 == self.af else 0
@@ -324,6 +345,7 @@ class VppBFDUDPSession(VppObject):
                                              is_delayed=is_delayed)
 
     def deactivate_auth(self, delayed=False):
+        """ deactivate authentication """
         self._bfd_key_id = None
         self._sha1_key = None
         is_delayed = 1 if delayed else 0
@@ -338,6 +360,7 @@ class VppBFDUDPSession(VppObject):
                           detect_mult=None,
                           desired_min_tx=None,
                           required_min_rx=None):
+        """ modify session parameters """
         if detect_mult:
             self._detect_mult = detect_mult
         if desired_min_tx:
@@ -389,6 +412,7 @@ class VppBFDUDPSession(VppObject):
         return self.object_id()
 
     def admin_up(self):
+        """ set bfd session admin-up """
         is_ipv6 = 1 if AF_INET6 == self._af else 0
         self.test.vapi.bfd_udp_session_set_flags(1,
                                                  self._interface.sw_if_index,
