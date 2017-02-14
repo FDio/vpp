@@ -17,10 +17,6 @@ from scapy.contrib.mpls import MPLS
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestMPLS, cls).setUpClass()
-
     def setUp(self):
         super(TestMPLS, self).setUp()
 
@@ -44,6 +40,11 @@ class TestMPLS(VppTestCase):
 
     def tearDown(self):
         super(TestMPLS, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.ip6_disable()
+            i.admin_down()
 
     # the default of 64 matches the IP packet TTL default
     def create_stream_labelled_ip4(

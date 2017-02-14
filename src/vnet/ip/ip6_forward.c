@@ -415,9 +415,6 @@ ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 	return;
     }
 
-  if (sw_if_index != 0)
-    ip6_mfib_interface_enable_disable (sw_if_index, is_enable);
-
   vnet_feature_enable_disable ("ip6-unicast", "ip6-lookup", sw_if_index,
 			       is_enable, 0, 0);
 
@@ -2972,6 +2969,7 @@ add_del_ip6_interface_table (vlib_main_t * vm,
 			     vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  ip_interface_address_t *ia;
   clib_error_t *error = 0;
   u32 sw_if_index, table_id;
 
@@ -2992,6 +2990,28 @@ add_del_ip6_interface_table (vlib_main_t * vm,
 				 format_unformat_error, input);
       goto done;
     }
+
+  /*
+   * If the interface already has in IP address, then a change int
+   * VRF is not allowed. The IP address applied must first be removed.
+   * We do not do that automatically here, since VPP has no knowledge
+   * of whether thoses subnets are valid in the destination VRF.
+   */
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (&ip6_main.lookup_main,
+                                ia, sw_if_index,
+                                1 /* honor unnumbered */,
+  ({
+      ip4_address_t * a;
+
+      a = ip_interface_address_get_address (&ip6_main.lookup_main, ia);
+      error = clib_error_return (0, "interface %U has address %U",
+                                 format_vnet_sw_if_index_name, vnm,
+                                 sw_if_index,
+                                 format_ip6_address, a);
+      goto done;
+  }));
+  /* *INDENT-ON* */
 
   {
     u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
@@ -3020,13 +3040,12 @@ done:
  * an IP Address is assigned to an interface in the table (which adds a route
  * automatically).
  *
- * @note IP addresses added after setting the interface IP table end up in
- * the indicated FIB table. If the IP address is added prior to adding the
- * interface to the FIB table, it will NOT be part of the FIB table. Predictable
- * but potentially counter-intuitive results occur if you provision interface
- * addresses in multiple FIBs. Upon RX, packets will be processed in the last
- * IP table ID provisioned. It might be marginally useful to evade source RPF
- * drops to put an interface address into multiple FIBs.
+ * @note IP addresses added after setting the interface IP table are added to
+ * the indicated FIB table. If an IP address is added prior to changing the
+ * table then this is an error. The control plane must remove these addresses
+ * first and then change the table. VPP will not automatically move the
+ * addresses from the old to the new table as it does not know the validity
+ * of such a change.
  *
  * @cliexpar
  * Example of how to add an interface to an IPv6 FIB table (where 2 is the table-id):

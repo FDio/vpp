@@ -40,6 +40,13 @@ class ARPTestCase(VppTestCase):
         self.pg3.set_table_ip4(1)
         self.pg3.config_ip4()
 
+    def tearDown(self):
+        super(ARPTestCase, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
+
     def verify_arp_req(self, rx, smac, sip, dip):
         ether = rx[Ether]
         self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")

@@ -39,6 +39,10 @@ class TestGRE(VppTestCase):
 
     def tearDown(self):
         super(TestGRE, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.unconfig_ip6()
+            i.admin_down()
 
     def create_stream_ip4(self, src_if, src_ip, dst_ip):
         pkts = []

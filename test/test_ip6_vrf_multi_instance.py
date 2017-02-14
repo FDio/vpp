@@ -224,6 +224,7 @@ class TestIP6VrfMultiInst(VppTestCase):
             self.vrf_reset_list.append(vrf_id)
         for j in range(self.pg_ifs_per_vrf):
             pg_if = self.pg_if_by_vrf_id[vrf_id][j]
+            pg_if.unconfig_ip6()
             if pg_if in self.pg_in_vrf:
                 self.pg_in_vrf.remove(pg_if)
             if pg_if not in self.pg_not_in_vrf:
