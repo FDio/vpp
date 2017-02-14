@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_59addb87",
+        "filename": "src/vnet/ip/ip6_neighbor.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3778,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-02-14T16:00:52Z",
+      "side": 1,
+      "message": "Perhaps should add a comment like \"Remove interface from radv_info if ref_count is 0\", to match the comment above when calling enable_p6_interface()?",
+      "range": {
+        "startLine": 3778,
+        "startChar": 6,
+        "endLine": 3778,
+        "endChar": 27
+      },
+      "revId": "140f3f78acd768b6610a5eb9c826f30c2134bbd3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
