@@ -420,3 +420,12 @@ class VppBFDUDPSession(VppObject):
                                                  self.local_addr_n,
                                                  self.peer_addr_n,
                                                  is_ipv6=is_ipv6)
+
+    def admin_down(self):
+        """ set bfd session admin-down """
+        is_ipv6 = 1 if AF_INET6 == self._af else 0
+        self.test.vapi.bfd_udp_session_set_flags(0,
+                                                 self._interface.sw_if_index,
+                                                 self.local_addr_n,
+                                                 self.peer_addr_n,
+                                                 is_ipv6=is_ipv6)

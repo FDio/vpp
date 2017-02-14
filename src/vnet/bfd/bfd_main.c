@@ -335,11 +335,14 @@ bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
   bfd_main_t *bm = &bfd_main;
   if (admin_up_down)
     {
+      BFD_DBG ("Session set admin-up, bs-idx=%u", bs->bs_idx);
       bfd_set_state (bm, bs, BFD_STATE_down, 0);
+      bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
     }
   else
     {
-      bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
+      BFD_DBG ("Session set admin-down, bs-idx=%u", bs->bs_idx);
+      bfd_set_diag (bs, BFD_DIAG_CODE_admin_down);
       bfd_set_state (bm, bs, BFD_STATE_admin_down, 0);
     }
 }
@@ -439,9 +442,7 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
       break;
     case BFD_STATE_init:
       bfd_set_effective_desired_min_tx (bm, bs, now,
-					clib_max
-					(bs->config_desired_min_tx_clocks,
-					 bm->default_desired_min_tx_clocks));
+					bs->config_desired_min_tx_clocks);
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     case BFD_STATE_up:
@@ -714,18 +715,13 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
   switch (bs->local_state)
     {
     case BFD_STATE_admin_down:
-      BFD_ERR ("Unexpected timeout when in %s state",
-	       bfd_state_string (bs->local_state));
-      abort ();
+      bfd_send_periodic (vm, rt, bm, bs, now, 1);
       break;
     case BFD_STATE_down:
       bfd_send_periodic (vm, rt, bm, bs, now, 1);
       break;
     case BFD_STATE_init:
-      BFD_ERR ("Unexpected timeout when in %s state",
-	       bfd_state_string (bs->local_state));
-      abort ();
-      break;
+      /* fallthrough */
     case BFD_STATE_up:
       bfd_check_rx_timeout (bm, bs, now, 1);
       bfd_send_periodic (vm, rt, bm, bs, now, 1);
@@ -1400,7 +1396,11 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	}
     }
   if (BFD_STATE_admin_down == bs->local_state)
-    return;
+    {
+      BFD_DBG ("Session is admin-down, ignoring packet, bs_idx=%u",
+	       bs->bs_idx);
+      return;
+    }
   if (BFD_STATE_admin_down == bs->remote_state)
     {
       bfd_set_diag (bs, BFD_DIAG_CODE_neighbor_sig_down);
