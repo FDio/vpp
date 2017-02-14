@@ -102,7 +102,8 @@ _(URI_FIFO_CREATE_FAILED, -109, "URI FIFO segment create failed")       \
 _(LISP_RLOC_LOCAL, -110, "RLOC address is local")                       \
 _(BFD_EAGAIN, -111, "BFD object cannot be manipulated at this time")	\
 _(INVALID_GPE_MODE, -112, "Invalid GPE mode")                           \
-_(LISP_GPE_ENTRIES_PRESENT, -113, "LISP GPE entries are present")
+_(LISP_GPE_ENTRIES_PRESENT, -113, "LISP GPE entries are present")       \
+_(ADDRESS_FOUND_FOR_INTERFACE, -114, "Address found for interface")
 
 typedef enum
 {
