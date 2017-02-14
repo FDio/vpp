@@ -441,25 +441,3 @@ VLIB_CLI_COMMAND (adj_show_command, static) = {
     .short_help = "show adj [<adj_index>] [interface]",
     .function = adj_show,
 };
-
-/* 
- * DEPRECATED: DO NOT USE
- */
-ip_adjacency_t *
-ip_add_adjacency (ip_lookup_main_t * lm,
-		  ip_adjacency_t * copy_adj,
-		  u32 n_adj,
-		  u32 * adj_index_return)
-{
-  ip_adjacency_t * adj;
-
-  ASSERT(1==n_adj);
-
-  adj = adj_alloc(FIB_PROTOCOL_IP4);
-
-  if (copy_adj)
-      *adj = *copy_adj;
-
-  *adj_index_return = adj_get_index(adj);
-  return adj;
-}
