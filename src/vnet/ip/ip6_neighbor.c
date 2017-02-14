@@ -3257,6 +3257,7 @@ disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
       radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
 
       /* check radv_info ref count for other ip6 addresses on this interface */
+      /* This implicitly excludes the link local address */
       if (radv_info->ref_count == 0)
 	{
 	  /* essentially "disables" ipv6 on this interface */
@@ -3749,6 +3750,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
       vec_validate_init_empty (nm->if_radv_pool_index_by_sw_if_index,
 			       sw_if_index, ~0);
       ri = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
+
       if (ri != ~0)
 	{
 	  /* get radv_info */
@@ -3773,6 +3775,8 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
 	  if (!ip6_address_is_link_local_unicast (address))
 	    radv_info->ref_count--;
 	}
+      /* Ensure that IPv6 is disabled, and LL removed after ref_count reaches 0 */
+      disable_ip6_interface (vm, sw_if_index);
     }
 }
 
