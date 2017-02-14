@@ -110,24 +110,6 @@ ip6_interface_first_global_or_site_address (ip6_main_t * im, u32 sw_if_index)
   return result;
 }
 
-/* get first interface address */
-static ip6_address_t *
-ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index)
-{
-  ip_lookup_main_t * lm = &im->lookup_main;
-  ip_interface_address_t * ia = 0;
-  ip6_address_t * result = 0;
-
-  foreach_ip_interface_address (lm, ia, sw_if_index,
-                                1 /* honor unnumbered */,
-  ({
-    ip6_address_t * a = ip_interface_address_get_address (lm, ia);
-    result = a;
-    break;
-  }));
-  return result;
-}
-
 static inline void copy_ip6_address (ip6_address_t *dst, ip6_address_t *src) 
 {
 
@@ -813,8 +795,8 @@ int dhcpv6_proxy_set_server (ip6_address_t *addr, ip6_address_t *src_address,
 }
 
 int dhcpv6_proxy_set_server_2 (ip6_address_t *addr, ip6_address_t *src_address,
-                             u32 rx_fib_id, u32 server_fib_id,
-							 int insert_vss, int is_del)
+                               u32 rx_fib_id, u32 server_fib_id,
+                               int insert_vss, int is_del)
 {
   dhcpv6_proxy_main_t * dm = &dhcpv6_proxy_main;
   dhcpv6_server_t * server = 0;

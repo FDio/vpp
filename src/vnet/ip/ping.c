@@ -214,27 +214,6 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
 char *ip6_lookup_next_nodes[] = IP6_LOOKUP_NEXT_NODES;
 char *ip4_lookup_next_nodes[] = IP4_LOOKUP_NEXT_NODES;
 
-/* get first interface address */
-static ip6_address_t *
-ip6_interface_first_address (ip6_main_t * im, u32 sw_if_index)
-{
-  ip_lookup_main_t *lm = &im->lookup_main;
-  ip_interface_address_t *ia = 0;
-  ip6_address_t *result = 0;
-
-  /* *INDENT-OFF* */
-  foreach_ip_interface_address (lm, ia, sw_if_index,
-                                1 /* honor unnumbered */ ,
-  ({
-    ip6_address_t * a =
-      ip_interface_address_get_address (lm, ia);
-    result = a;
-    break;
-  }));
-  /* *INDENT-ON* */
-  return result;
-}
-
 /* Fill in the ICMP ECHO structure, return the safety-checked and possibly shrunk data_len */
 static u16
 init_icmp46_echo_request (icmp46_echo_request_t * icmp46_echo,
