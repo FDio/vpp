@@ -671,10 +671,9 @@ class BFD4TestCase(VppTestCase):
     def test_conn_down(self):
         """ verify session goes down after inactivity """
         bfd_session_up(self)
-        for dummy in range(self.test_session.detect_mult):
-            wait_for_bfd_packet(self)
-            self.assert_equal(len(self.vapi.collect_events()), 0,
-                              "number of bfd events")
+        detection_time = self.vpp_session.detect_mult *\
+            self.vpp_session.required_min_rx / USEC_IN_SEC
+        self.sleep(detection_time, "waiting for BFD session time-out")
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.down)
 
@@ -808,10 +807,6 @@ class BFD4TestCase(VppTestCase):
                              "time before bfd session goes down")
         verify_event(self, e, expected_state=BFDState.down)
 
-    def test_modify_des_min_tx(self):
-        """ modify desired min tx interval """
-        pass
-
     def test_modify_detect_mult(self):
         """ modify detect multiplier """
         bfd_session_up(self)
@@ -902,6 +897,39 @@ class BFD4TestCase(VppTestCase):
                             "Received packet is not the echo packet sent")
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
+
+    def test_admin_up_down(self):
+        bfd_session_up(self)
+        self.vpp_session.admin_down()
+        self.pg0.enable_capture()
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.admin_down)
+        for dummy in range(2):
+            p = wait_for_bfd_packet(self)
+            self.assert_equal(BFDState.admin_down, p[BFD].state, BFDState)
+        # try to bring session up - shouldn't be possible
+        self.test_session.update(state=BFDState.init)
+        self.test_session.send_packet()
+        for dummy in range(2):
+            p = wait_for_bfd_packet(self)
+            self.assert_equal(BFDState.admin_down, p[BFD].state, BFDState)
+        self.vpp_session.admin_up()
+        self.test_session.update(state=BFDState.down)
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.down)
+        p = wait_for_bfd_packet(self)
+        self.assert_equal(BFDState.down, p[BFD].state, BFDState)
+        self.test_session.send_packet()
+        p = wait_for_bfd_packet(self)
+        self.assert_equal(BFDState.init, p[BFD].state, BFDState)
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.init)
+        self.test_session.update(state=BFDState.up)
+        self.test_session.send_packet()
+        p = wait_for_bfd_packet(self)
+        self.assert_equal(BFDState.up, p[BFD].state, BFDState)
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.up)
 
 
 class BFD6TestCase(VppTestCase):
