@@ -6,7 +6,7 @@ from scapy.all import bind_layers
 from scapy.layers.inet import UDP
 from scapy.packet import Packet
 from scapy.fields import BitField, BitEnumField, XByteField, FlagsField,\
-        ConditionalField, StrField
+    ConditionalField, StrField
 from vpp_object import VppObject
 from util import NumericConstant
 
@@ -110,6 +110,7 @@ class BFD(Packet):
     """ BFD protocol layer for scapy """
 
     udp_dport = 3784  #: BFD destination port per RFC 5881
+    udp_dport_echo = 3785  # : BFD destination port for ECHO per RFC 5881
     udp_sport_min = 49152  #: BFD source port min value per RFC 5881
     udp_sport_max = 65535  #: BFD source port max value per RFC 5881
     bfd_pkt_len = 24  # : length of BFD pkt without authentication section

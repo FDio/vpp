@@ -236,6 +236,7 @@ class VppTestCase(unittest.TestCase):
             cls.pump_thread_stop_flag = Event()
             cls.pump_thread_wakeup_pipe = os.pipe()
             cls.pump_thread = Thread(target=pump_output, args=(cls,))
+            cls.pump_thread.daemon = True
             cls.pump_thread.start()
             cls.vapi = VppPapiProvider(cls.shm_prefix, cls.shm_prefix, cls)
             if cls.step:
