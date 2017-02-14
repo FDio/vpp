@@ -16,6 +16,11 @@ from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
 
 
+class CaptureTimeoutError(Exception):
+    """ Exception raised if capture or packet doesn't appear within timeout """
+    pass
+
+
 def is_ipv6_misc(p):
     """ Is packet one of uninteresting IPv6 broadcasts? """
     if p.haslayer(ICMPv6ND_RA):
@@ -103,13 +108,15 @@ class VppPGInterface(VppInterface):
         """ Enable capture on this packet-generator interface"""
         try:
             if os.path.isfile(self.out_path):
-                os.rename(self.out_path,
-                          "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %
-                          (self.test.tempdir,
-                           time.time(),
-                           self.name,
-                           self.out_history_counter,
-                           self._out_file))
+                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" % \
+                    (self.test.tempdir,
+                     time.time(),
+                     self.name,
+                     self.out_history_counter,
+                     self._out_file)
+                self.test.logger.debug("Renaming %s->%s" %
+                                       (self.out_path, name))
+                os.rename(self.out_path, name)
         except:
             pass
         # FIXME this should be an API, but no such exists atm
@@ -125,13 +132,15 @@ class VppPGInterface(VppInterface):
         """
         try:
             if os.path.isfile(self.in_path):
-                os.rename(self.in_path,
-                          "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %
-                          (self.test.tempdir,
-                           time.time(),
-                           self.name,
-                           self.in_history_counter,
-                           self._in_file))
+                name = "%s/history.[timestamp:%f].[%s-counter:%04d].%s" %\
+                    (self.test.tempdir,
+                     time.time(),
+                     self.name,
+                     self.in_history_counter,
+                     self._in_file)
+                self.test.logger.debug("Renaming %s->%s" %
+                                       (self.in_path, name))
+                os.rename(self.in_path, name)
         except:
             pass
         wrpcap(self.in_path, pkts)
@@ -263,57 +272,50 @@ class VppPGInterface(VppInterface):
 
         :returns: True/False if the file is present or appears within timeout
         """
-        limit = time.time() + timeout
+        deadline = time.time() + timeout
         if not os.path.isfile(self.out_path):
             self.test.logger.debug("Waiting for capture file %s to appear, "
                                    "timeout is %ss" % (self.out_path, timeout))
         else:
-            self.test.logger.debug(
-                "Capture file %s already exists" %
-                self.out_path)
+            self.test.logger.debug("Capture file %s already exists" %
+                                   self.out_path)
             return True
-        while time.time() < limit:
+        while time.time() < deadline:
             if os.path.isfile(self.out_path):
                 break
             time.sleep(0)  # yield
         if os.path.isfile(self.out_path):
             self.test.logger.debug("Capture file appeared after %fs" %
-                                   (time.time() - (limit - timeout)))
+                                   (time.time() - (deadline - timeout)))
         else:
             self.test.logger.debug("Timeout - capture file still nowhere")
             return False
         return True
 
-    def wait_for_packet_data(self, deadline):
+    def verify_enough_packet_data_in_pcap(self):
         """
-        Wait until enough data is available in the file handled by internal
-        pcap reader so that a whole packet can be read.
+        Check if enough data is available in file handled by internal pcap
+        reader so that a whole packet can be read.
 
-        :param deadline: timestamp by which the data must arrive
-        :raises Exception: if not enough data by deadline
+        :returns: True if enough data present, else False
         """
         orig_pos = self._pcap_reader.f.tell()  # save file position
         enough_data = False
-        while time.time() < deadline:
-            # read packet header from pcap
-            hdr = self._pcap_reader.f.read(16)
-            if len(hdr) < 16:
-                time.sleep(0)  # yield
-                continue  # cannot read full header, continue looping
-            # find the capture length - caplen
+        # read packet header from pcap
+        packet_header_size = 16
+        caplen = None
+        end_pos = None
+        hdr = self._pcap_reader.f.read(packet_header_size)
+        if len(hdr) == packet_header_size:
+            # parse the capture length - caplen
             sec, usec, caplen, wirelen = struct.unpack(
                 self._pcap_reader.endian + "IIII", hdr)
             self._pcap_reader.f.seek(0, 2)  # seek to end of file
             end_pos = self._pcap_reader.f.tell()  # get position at end
             if end_pos >= orig_pos + len(hdr) + caplen:
                 enough_data = True  # yay, we have enough data
-                break
-            self.test.logger.debug("Partial packet data in pcap")
-            time.sleep(0)  # yield
         self._pcap_reader.f.seek(orig_pos, 0)  # restore original position
-        if not enough_data:
-            raise Exception(
-                "Not enough data to read a full packet within deadline")
+        return enough_data
 
     def wait_for_packet(self, timeout, filter_out_fn=is_ipv6_misc):
         """
@@ -327,8 +329,8 @@ class VppPGInterface(VppInterface):
         deadline = time.time() + timeout
         if self._pcap_reader is None:
             if not self.wait_for_capture_file(timeout):
-                raise Exception("Capture file %s did not appear within "
-                                "timeout" % self.out_path)
+                raise CaptureTimeoutError("Capture file %s did not appear "
+                                          "within timeout" % self.out_path)
             while time.time() < deadline:
                 try:
                     self._pcap_reader = PcapReader(self.out_path)
@@ -338,12 +340,20 @@ class VppPGInterface(VppInterface):
                         "Exception in scapy.PcapReader(%s): %s" %
                         (self.out_path, format_exc()))
         if not self._pcap_reader:
-            raise Exception("Capture file %s did not appear within "
-                            "timeout" % self.out_path)
+            raise CaptureTimeoutError("Capture file %s did not appear within "
+                                      "timeout" % self.out_path)
 
-        self.test.logger.debug("Waiting for packet")
-        while time.time() < deadline:
-            self.wait_for_packet_data(deadline)
+        poll = False
+        if timeout > 0:
+            self.test.logger.debug("Waiting for packet")
+        else:
+            poll = True
+            self.test.logger.debug("Polling for packet")
+        while time.time() < deadline or poll:
+            if not self.verify_enough_packet_data_in_pcap():
+                time.sleep(0)  # yield
+                poll = False
+                continue
             p = self._pcap_reader.recv()
             if p is not None:
                 if filter_out_fn is not None and filter_out_fn(p):
@@ -356,8 +366,9 @@ class VppPGInterface(VppInterface):
                         (time.time() - (deadline - timeout)))
                     return p
             time.sleep(0)  # yield
+            poll = False
         self.test.logger.debug("Timeout - no packets received")
-        raise Exception("Packet didn't arrive within timeout")
+        raise CaptureTimeoutError("Packet didn't arrive within timeout")
 
     def create_arp_req(self):
         """Create ARP request applicable for this interface"""

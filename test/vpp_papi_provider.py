@@ -87,6 +87,12 @@ class VppPapiProvider(object):
 
     def wait_for_event(self, timeout, name=None):
         """ Wait for and return next event. """
+        if name:
+            self.test_class.logger.debug("Expecting event within %ss",
+                                         timeout)
+        else:
+            self.test_class.logger.debug("Expecting event '%s' within %ss",
+                                         name, timeout)
         if self._events:
             self.test_class.logger.debug("Not waiting, event already queued")
         limit = time.time() + timeout
@@ -101,8 +107,6 @@ class VppPapiProvider(object):
                                              (name, e))
                 return e
             time.sleep(0)  # yield
-        if name is not None:
-            raise Exception("Event %s did not occur within timeout" % name)
         raise Exception("Event did not occur within timeout")
 
     def __call__(self, name, event):

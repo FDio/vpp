@@ -1,3 +1,5 @@
+""" test framework utilities """
+
 import socket
 import sys
 from abc import abstractmethod, ABCMeta
