@@ -103,15 +103,15 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (!vni_set || !dp_table_set)
-    {
-      vlib_cli_output (vm, "vni and vrf/bd must be set!");
-      goto done;
-    }
-
   if (!reid_set)
     {
       vlib_cli_output (vm, "remote eid must be set!");
+      goto done;
+    }
+
+  if (gid_address_type (reid) != GID_ADDR_NSH && (!vni_set || !dp_table_set))
+    {
+      vlib_cli_output (vm, "vni and vrf/bd must be set!");
       goto done;
     }
 

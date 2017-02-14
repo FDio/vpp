@@ -31,16 +31,16 @@ typedef int (*cmp_fct) (void *, void *);
 
 size_to_write_fct size_to_write_fcts[GID_ADDR_TYPES] =
   { ip_prefix_size_to_write, lcaf_size_to_write, mac_size_to_write,
-  sd_size_to_write
+  sd_size_to_write, nsh_size_to_write
 };
 serdes_fct write_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_write, lcaf_write, mac_write, sd_write };
+  { ip_prefix_write, lcaf_write, mac_write, sd_write, nsh_write };
 cast_fct cast_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_cast, lcaf_cast, mac_cast, sd_cast };
+  { ip_prefix_cast, lcaf_cast, mac_cast, sd_cast, nsh_cast };
 addr_len_fct addr_len_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_length, lcaf_length, mac_length, sd_length };
+  { ip_prefix_length, lcaf_length, mac_length, sd_length, nsh_length };
 copy_fct copy_fcts[GID_ADDR_TYPES] =
-  { ip_prefix_copy, lcaf_copy, mac_copy, sd_copy };
+  { ip_prefix_copy, lcaf_copy, mac_copy, sd_copy, nsh_copy };
 
 #define foreach_lcaf_type \
   _(1, no_addr)      \
@@ -951,15 +951,15 @@ mac_copy (void *dst, void *src)
 }
 
 void
-nsh_copy (void *dst, void *src)
-{
-  clib_memcpy (dst, src, sizeof (nsh_t));
-}
-
-void
 sd_copy (void *dst, void *src)
 {
   clib_memcpy (dst, src, sizeof (source_dest_t));
+}
+
+void
+nsh_copy (void *dst, void *src)
+{
+  clib_memcpy (dst, src, sizeof (nsh_t));
 }
 
 int
@@ -1031,6 +1031,12 @@ sd_length (void *a)
   return 0;
 }
 
+u8
+nsh_length (void *a)
+{
+  return 0;
+}
+
 void *
 lcaf_cast (gid_address_t * a)
 {
@@ -1047,6 +1053,12 @@ void *
 sd_cast (gid_address_t * a)
 {
   return &gid_address_sd (a);
+}
+
+void *
+nsh_cast (gid_address_t * a)
+{
+  return &gid_address_nsh (a);
 }
 
 u8
@@ -1168,6 +1180,13 @@ sd_write (u8 * p, void *a)
 }
 
 u16
+nsh_write (u8 * p, void *a)
+{
+  clib_warning ("not done");
+  return 0;
+}
+
+u16
 vni_write (u8 * p, void *a)
 {
   lcaf_hdr_t _h, *h = &_h;
@@ -1285,6 +1304,12 @@ u16
 mac_size_to_write (void *a)
 {
   return sizeof (u16) + 6;
+}
+
+u16
+nsh_size_to_write (void *a)
+{
+  return sizeof (u16) + 4;
 }
 
 u8
