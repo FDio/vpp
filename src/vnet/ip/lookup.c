@@ -784,7 +784,10 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
   u32 fib_index;
   mfib_itf_flags_t iflags = 0;
   mfib_entry_flags_t eflags = 0;
+  u32 gcount, scount, ss, gg, incr;
+  f64 timet[2];
 
+  gcount = scount = 1;
   vnm = vnet_get_main ();
   is_del = 0;
   table_id = 0;
@@ -804,6 +807,10 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	is_del = 1;
       else if (unformat (line_input, "add"))
 	is_del = 0;
+      else if (unformat (line_input, "scount %d", &scount))
+	;
+      else if (unformat (line_input, "gcount %d", &gcount))
+	;
       else if (unformat (line_input, "%U %U",
 			 unformat_ip4_address,
 			 &pfx.fp_src_addr.ip4,
@@ -885,23 +892,82 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	}
     }
 
-  if (is_del && 0 == rpath.frp_weight)
+  timet[0] = vlib_time_now (vm);
+
+  if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
     {
-      mfib_table_entry_delete (fib_index, &pfx, MFIB_SOURCE_CLI);
-    }
-  else if (eflags)
-    {
-      mfib_table_entry_update (fib_index, &pfx, MFIB_SOURCE_CLI, eflags);
+      incr = 1 << (32 - (pfx.fp_len % 32));
     }
   else
     {
-      if (is_del)
-	mfib_table_entry_path_remove (fib_index,
-				      &pfx, MFIB_SOURCE_CLI, &rpath);
-      else
-	mfib_table_entry_path_update (fib_index,
-				      &pfx, MFIB_SOURCE_CLI, &rpath, iflags);
+      incr = 1 << (128 - (pfx.fp_len % 128));
     }
+
+  for (ss = 0; ss < scount; ss++)
+    {
+      for (gg = 0; gg < gcount; gg++)
+	{
+	  if (is_del && 0 == rpath.frp_weight)
+	    {
+	      /* no path provided => route delete */
+	      mfib_table_entry_delete (fib_index, &pfx, MFIB_SOURCE_CLI);
+	    }
+	  else if (eflags)
+	    {
+	      mfib_table_entry_update (fib_index, &pfx, MFIB_SOURCE_CLI,
+				       eflags);
+	    }
+	  else
+	    {
+	      if (is_del)
+		mfib_table_entry_path_remove (fib_index,
+					      &pfx, MFIB_SOURCE_CLI, &rpath);
+	      else
+		mfib_table_entry_path_update (fib_index,
+					      &pfx, MFIB_SOURCE_CLI, &rpath,
+					      iflags);
+	    }
+
+	  if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
+	    {
+	      pfx.fp_grp_addr.ip4.as_u32 =
+		clib_host_to_net_u32 (incr +
+				      clib_net_to_host_u32 (pfx.
+							    fp_grp_addr.ip4.
+							    as_u32));
+	    }
+	  else
+	    {
+	      int bucket = (incr < 64 ? 0 : 1);
+	      pfx.fp_grp_addr.ip6.as_u64[bucket] =
+		clib_host_to_net_u64 (incr +
+				      clib_net_to_host_u64 (pfx.
+							    fp_grp_addr.ip6.as_u64
+							    [bucket]));
+
+	    }
+	}
+      if (FIB_PROTOCOL_IP4 == pfx.fp_proto)
+	{
+	  pfx.fp_src_addr.ip4.as_u32 =
+	    clib_host_to_net_u32 (1 +
+				  clib_net_to_host_u32 (pfx.fp_src_addr.
+							ip4.as_u32));
+	}
+      else
+	{
+	  pfx.fp_src_addr.ip6.as_u64[1] =
+	    clib_host_to_net_u64 (1 +
+				  clib_net_to_host_u64 (pfx.fp_src_addr.
+							ip6.as_u64[1]));
+	}
+    }
+
+  timet[1] = vlib_time_now (vm);
+
+  if (scount > 1 || gcount > 1)
+    vlib_cli_output (vm, "%.6e routes/sec",
+		     (scount * gcount) / (timet[1] - timet[0]));
 
 done:
   return error;
