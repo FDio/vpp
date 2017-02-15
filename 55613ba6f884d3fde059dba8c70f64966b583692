@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_e4261e68",
+        "filename": "src/examples/sample-plugin/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-15T09:38:49Z",
+      "side": 1,
+      "message": "we cannot assume that include files are in ../... Sample plugin assumes that vpp-dev package is installed and that all needed include files are in /usr/include.\n\nIf vpp-dev is not installed, then user needs to specify CFLAGS env variable.",
+      "range": {
+        "startLine": 16,
+        "startChar": 0,
+        "endLine": 18,
+        "endChar": 38
+      },
+      "revId": "55613ba6f884d3fde059dba8c70f64966b583692",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
