@@ -1084,6 +1084,30 @@ send_snat_static_mapping_details
   clib_memcpy (rmp->external_ip_address, &(m->external_addr), 4);
   rmp->local_port = htons (m->local_port);
   rmp->external_port = htons (m->external_port);
+  rmp->external_sw_if_index = ~0; 
+  rmp->vrf_id = htonl (m->vrf_id);
+  rmp->protocol = snat_proto_to_ip_proto (m->proto);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+send_snat_static_map_resolve_details
+(snat_static_map_resolve_t * m, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_static_mapping_details_t *rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_STATIC_MAPPING_DETAILS+sm->msg_id_base);
+  rmp->is_ip4 = 1;
+  rmp->addr_only = m->addr_only;
+  clib_memcpy (rmp->local_ip_address, &(m->l_addr), 4);
+  rmp->local_port = htons (m->l_port);
+  rmp->external_port = htons (m->e_port);
+  rmp->external_sw_if_index = htonl (m->sw_if_index); 
   rmp->vrf_id = htonl (m->vrf_id);
   rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
@@ -1098,6 +1122,8 @@ vl_api_snat_static_mapping_dump_t_handler
   unix_shared_memory_queue_t *q;
   snat_main_t * sm = &snat_main;
   snat_static_mapping_t * m;
+  snat_static_map_resolve_t *rp;
+  int j;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -1107,6 +1133,12 @@ vl_api_snat_static_mapping_dump_t_handler
   ({
       send_snat_static_mapping_details (m, q, mp->context);
   }));
+
+  for (j = 0; j < vec_len (sm->to_resolve); j++)
+   {
+     rp = sm->to_resolve + j;
+     send_snat_static_map_resolve_details (rp, q, mp->context);
+   }
 }
 
 static void *vl_api_snat_static_mapping_dump_t_print
@@ -2248,6 +2280,28 @@ u8 * format_snat_static_mapping (u8 * s, va_list * args)
   return s;
 }
 
+u8 * format_snat_static_map_to_resolve (u8 * s, va_list * args)
+{
+  snat_static_map_resolve_t *m = va_arg (*args, snat_static_map_resolve_t *);
+  vnet_main_t *vnm = vnet_get_main();
+
+  if (m->addr_only)
+      s = format (s, "local %U external %U vrf %d",
+                  format_ip4_address, &m->l_addr,
+                  format_vnet_sw_interface_name, vnm,
+                  vnet_get_sw_interface (vnm, m->sw_if_index),
+                  m->vrf_id);
+  else
+      s = format (s, "%U local %U:%d external %U:%d vrf %d",
+                  format_snat_protocol, m->proto,
+                  format_ip4_address, &m->l_addr, m->l_port,
+                  format_vnet_sw_interface_name, vnm,
+                  vnet_get_sw_interface (vnm, m->sw_if_index), m->e_port,
+                  m->vrf_id);
+
+  return s;
+}
+
 static clib_error_t *
 show_snat_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,
@@ -2263,6 +2317,7 @@ show_snat_command_fn (vlib_main_t * vm,
   snat_main_per_thread_data_t *tsm;
   u32 users_num = 0, sessions_num = 0, *worker, *sw_if_index;
   uword j = 0;
+  snat_static_map_resolve_t *rp;
 
   if (unformat (input, "detail"))
     verbose = 1;
@@ -2383,13 +2438,19 @@ show_snat_command_fn (vlib_main_t * vm,
               }));
             }
 
-          if (pool_elts (sm->static_mappings))
+          if (pool_elts (sm->static_mappings) || vec_len (sm->to_resolve))
             {
               vlib_cli_output (vm, "static mappings:");
               pool_foreach (m, sm->static_mappings,
               ({
                 vlib_cli_output (vm, "%U", format_snat_static_mapping, m);
               }));
+              for (j = 0; j < vec_len (sm->to_resolve); j++)
+                {
+                  rp = sm->to_resolve + j;
+                  vlib_cli_output (vm, "%U", format_snat_static_map_to_resolve,
+                                   rp);
+                }
             }
         }
     }

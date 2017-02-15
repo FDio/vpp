@@ -310,10 +310,24 @@ static void vl_api_snat_static_mapping_details_t_handler
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
 
-  if (mp->addr_only)
+  if (mp->addr_only && mp->external_sw_if_index != ~0)
+      fformat (vam->ofp, "%15U%6s%15d%6s%11d%6d\n",
+               format_ip4_address, &mp->local_ip_address, "",
+               ntohl (mp->external_sw_if_index), "",
+               ntohl (mp->vrf_id),
+               mp->protocol);
+  else if (mp->addr_only && mp->external_sw_if_index == ~0)
       fformat (vam->ofp, "%15U%6s%15U%6s%11d%6d\n",
                format_ip4_address, &mp->local_ip_address, "",
                format_ip4_address, &mp->external_ip_address, "",
+               ntohl (mp->vrf_id),
+               mp->protocol);
+  else if (!mp->addr_only && mp->external_sw_if_index != ~0)
+      fformat (vam->ofp, "%15U%6d%15d%6d%11d%6d\n",
+               format_ip4_address, &mp->local_ip_address,
+               ntohs (mp->local_port),
+               ntohl (mp->external_sw_if_index),
+               ntohs (mp->external_port),
                ntohl (mp->vrf_id),
                mp->protocol);
   else
@@ -340,8 +354,8 @@ static int api_snat_static_mapping_dump(vat_main_t * vam)
     }
 
   fformat (vam->ofp, "%21s%21s\n", "local", "external");
-  fformat (vam->ofp, "%15s%6s%15s%6s%11s%6s\n", "address", "port", "address",
-           "port", "vrf", "proto");
+  fformat (vam->ofp, "%15s%6s%15s%6s%11s%6s\n", "address", "port",
+           "address/if_idx", "port", "vrf", "proto");
 
   M(SNAT_STATIC_MAPPING_DUMP, mp);
   S(mp);
