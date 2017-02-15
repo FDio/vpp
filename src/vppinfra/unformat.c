@@ -306,6 +306,11 @@ unformat_hex_string (unformat_input_t * input, va_list * va)
       vec_free (s);
       return 0;
     }
+  /* Make sure something was processed. */
+  else if (s == 0)
+    {
+      return 0;
+    }
 
   *hexstring_return = s;
   return 1;
