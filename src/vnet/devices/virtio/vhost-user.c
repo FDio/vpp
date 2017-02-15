@@ -2682,6 +2682,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   u32 custom_dev_instance = ~0;
   u8 hwaddr[6];
   u8 *hw = NULL;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2704,10 +2705,12 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	  renumber = 1;
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -2716,14 +2719,18 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 				  is_server, &sw_if_index, feature_mask,
 				  renumber, custom_dev_instance, hw)))
     {
-      vec_free (sock_filename);
-      return clib_error_return (0, "vhost_user_create_if returned %d", rv);
+      error = clib_error_return (0, "vhost_user_create_if returned %d", rv);
+      goto done;
     }
 
-  vec_free (sock_filename);
   vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index);
-  return 0;
+
+done:
+  vec_free (sock_filename);
+  unformat_free (line_input);
+
+  return error;
 }
 
 clib_error_t *
@@ -2734,6 +2741,7 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index = ~0;
   vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2751,15 +2759,25 @@ vhost_user_delete_command_fn (vlib_main_t * vm,
 	    vnet_get_sup_hw_interface (vnm, sw_if_index);
 	  if (hwif == NULL ||
 	      vhost_user_dev_class.index != hwif->dev_class_index)
-	    return clib_error_return (0, "Not a vhost interface");
+	    {
+	      error = clib_error_return (0, "Not a vhost interface");
+	      goto done;
+	    }
 	}
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
+
   vhost_user_delete_if (vnm, vm, sw_if_index);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 int
@@ -3286,6 +3304,7 @@ vhost_thread_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u8 del = 0;
   int rv;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -3295,9 +3314,9 @@ vhost_thread_command_fn (vlib_main_t * vm,
       (line_input, "%U %d", unformat_vnet_sw_interface, vnet_get_main (),
        &sw_if_index, &worker_thread_index))
     {
-      unformat_free (line_input);
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
+      error = clib_error_return (0, "unknown input `%U'",
+				 format_unformat_error, line_input);
+      goto done;
     }
 
   if (unformat (line_input, "del"))
@@ -3305,9 +3324,16 @@ vhost_thread_command_fn (vlib_main_t * vm,
 
   if ((rv =
        vhost_user_thread_placement (sw_if_index, worker_thread_index, del)))
-    return clib_error_return (0, "vhost_user_thread_placement returned %d",
-			      rv);
-  return 0;
+    {
+      error = clib_error_return (0, "vhost_user_thread_placement returned %d",
+				 rv);
+      goto done;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 

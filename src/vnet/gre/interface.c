@@ -491,6 +491,7 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
   u32 num_m_args = 0;
   u8 is_add = 1;
   u32 sw_if_index;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -508,16 +509,24 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "teb"))
       teb = 1;
     else
-      return clib_error_return (0, "unknown input `%U'",
-                                format_unformat_error, input);
+      {
+        error = clib_error_return (0, "unknown input `%U'",
+                                   format_unformat_error, line_input);
+        goto done;
+      }
   }
-  unformat_free (line_input);
 
   if (num_m_args < 2)
-      return clib_error_return (0, "mandatory argument(s) missing");
+    {
+      error = clib_error_return (0, "mandatory argument(s) missing");
+      goto done;
+    }
 
   if (memcmp (&src, &dst, sizeof(src)) == 0)
-      return clib_error_return (0, "src and dst are identical");
+    {
+      error = clib_error_return (0, "src and dst are identical");
+      goto done;
+    }
 
   memset (a, 0, sizeof (*a));
   a->outer_fib_id = outer_fib_id;
@@ -536,15 +545,21 @@ create_gre_tunnel_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_VALUE:
-      return clib_error_return (0, "GRE tunnel already exists...");
+      error = clib_error_return (0, "GRE tunnel already exists...");
+      goto done;
     case VNET_API_ERROR_NO_SUCH_FIB:
-      return clib_error_return (0, "outer fib ID %d doesn't exist\n",
-                                outer_fib_id);
+      error = clib_error_return (0, "outer fib ID %d doesn't exist\n",
+                                 outer_fib_id);
+      goto done;
     default:
-      return clib_error_return (0, "vnet_gre_add_del_tunnel returned %d", rv);
+      error = clib_error_return (0, "vnet_gre_add_del_tunnel returned %d", rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (create_gre_tunnel_command, static) = {

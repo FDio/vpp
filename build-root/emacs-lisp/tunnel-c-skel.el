@@ -288,6 +288,7 @@ static clib_error_t *
                                    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
+  clib_error_t *error = 0;
   ip4_address_t src, dst;
   u8 is_add = 1;
   u8 src_set = 0;
@@ -322,13 +323,19 @@ static clib_error_t *
       {
         encap_fib_index = fib_index_from_fib_id (tmp);
         if (encap_fib_index == ~0)
-          return clib_error_return (0, \"nonexistent encap fib id %d\", tmp);
+          {
+            unformat_free (line_input);
+            return clib_error_return (0, \"nonexistent encap fib id %d\", tmp);
+          }
       }
     else if (unformat (line_input, \"decap-vrf-id %d\", &tmp))
       {
         decap_fib_index = fib_index_from_fib_id (tmp);
         if (decap_fib_index == ~0)
-          return clib_error_return (0, \"nonexistent decap fib id %d\", tmp);
+          {
+            unformat_free (line_input);
+            return clib_error_return (0, \"nonexistent decap fib id %d\", tmp);
+          }
       }
     else if (unformat (line_input, \"decap-next %U\", unformat_decap_next, 
                        &decap_next_index))
@@ -346,8 +353,12 @@ static clib_error_t *
      * in the " ENCAP_STACK " header
      */
     else 
-      return clib_error_return (0, \"parse error: '%U'\", 
-                                format_unformat_error, line_input);
+      {
+        error = clib_error_return (0, \"parse error: '%U'\",
+                                   format_unformat_error, line_input);
+        unformat_free (line_input);
+        return error;
+      }
   }
 
   unformat_free (line_input);

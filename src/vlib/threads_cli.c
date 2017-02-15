@@ -163,21 +163,31 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "index %u", &index))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (enable > 1)
-    return clib_error_return (0, "expecting on or off");
+    {
+      error = clib_error_return (0, "expecting on or off");
+      goto done;
+    }
 
   if (vec_len (tm->frame_queue_mains) == 0)
-    return clib_error_return (0, "no worker handoffs exist");
+    {
+      error = clib_error_return (0, "no worker handoffs exist");
+      goto done;
+    }
 
   if (index > vec_len (tm->frame_queue_mains) - 1)
-    return clib_error_return (0,
-			      "expecting valid worker handoff queue index");
+    {
+      error = clib_error_return (0,
+				 "expecting valid worker handoff queue index");
+      goto done;
+    }
 
   fqm = vec_elt_at_index (tm->frame_queue_mains, index);
 
@@ -185,7 +195,7 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
   if (num_fq == 0)
     {
       vlib_cli_output (vm, "No frame queues exist\n");
-      return error;
+      goto done;
     }
 
   // Allocate storage for trace if necessary
@@ -204,6 +214,10 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
       memset (fqh, 0, sizeof (*fqh));
       fqm->vlib_frame_queues[fqix]->trace = enable;
     }
+
+done:
+  unformat_free (line_input);
+
   return error;
 }
 
@@ -432,34 +446,42 @@ test_frame_queue_nelts (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "index %u", &index))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (index > vec_len (tm->frame_queue_mains) - 1)
-    return clib_error_return (0,
-			      "expecting valid worker handoff queue index");
+    {
+      error = clib_error_return (0,
+				 "expecting valid worker handoff queue index");
+      goto done;
+    }
 
   fqm = vec_elt_at_index (tm->frame_queue_mains, index);
 
   if ((nelts != 4) && (nelts != 8) && (nelts != 16) && (nelts != 32))
     {
-      return clib_error_return (0, "expecting 4,8,16,32");
+      error = clib_error_return (0, "expecting 4,8,16,32");
+      goto done;
     }
 
   num_fq = vec_len (fqm->vlib_frame_queues);
   if (num_fq == 0)
     {
       vlib_cli_output (vm, "No frame queues exist\n");
-      return error;
+      goto done;
     }
 
   for (fqix = 0; fqix < num_fq; fqix++)
     {
       fqm->vlib_frame_queues[fqix]->nelts = nelts;
     }
+
+done:
+  unformat_free (line_input);
 
   return error;
 }
@@ -499,15 +521,19 @@ test_frame_queue_threshold (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "index %u", &index))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (index > vec_len (tm->frame_queue_mains) - 1)
-    return clib_error_return (0,
-			      "expecting valid worker handoff queue index");
+    {
+      error = clib_error_return (0,
+				 "expecting valid worker handoff queue index");
+      goto done;
+    }
 
   fqm = vec_elt_at_index (tm->frame_queue_mains, index);
 
@@ -515,7 +541,7 @@ test_frame_queue_threshold (vlib_main_t * vm, unformat_input_t * input,
   if (threshold == ~(u32) 0)
     {
       vlib_cli_output (vm, "expecting threshold value\n");
-      return error;
+      goto done;
     }
 
   if (threshold == 0)
@@ -525,13 +551,16 @@ test_frame_queue_threshold (vlib_main_t * vm, unformat_input_t * input,
   if (num_fq == 0)
     {
       vlib_cli_output (vm, "No frame queues exist\n");
-      return error;
+      goto done;
     }
 
   for (fqix = 0; fqix < num_fq; fqix++)
     {
       fqm->vlib_frame_queues[fqix]->vector_threshold = threshold;
     }
+
+done:
+  unformat_free (line_input);
 
   return error;
 }

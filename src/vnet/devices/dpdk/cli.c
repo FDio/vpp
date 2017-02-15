@@ -398,7 +398,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
   u32 hw_if_index = (u32) ~ 0;
   u32 nb_rx_desc = (u32) ~ 0;
   u32 nb_tx_desc = (u32) ~ 0;
-  clib_error_t *rv;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -414,25 +414,37 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "rx %d", &nb_rx_desc))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   if ((xd->flags & DPDK_DEVICE_FLAG_PMD) == 0)
-    return clib_error_return (0, "number of descriptors can be set only for "
-			      "physical devices");
+    {
+      error =
+	clib_error_return (0,
+			   "number of descriptors can be set only for "
+			   "physical devices");
+      goto done;
+    }
 
   if ((nb_rx_desc == (u32) ~ 0 || nb_rx_desc == xd->nb_rx_desc) &&
       (nb_tx_desc == (u32) ~ 0 || nb_tx_desc == xd->nb_tx_desc))
-    return clib_error_return (0, "nothing changed");
+    {
+      error = clib_error_return (0, "nothing changed");
+      goto done;
+    }
 
   if (nb_rx_desc != (u32) ~ 0)
     xd->nb_rx_desc = nb_rx_desc;
@@ -440,9 +452,12 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
   if (nb_tx_desc != (u32) ~ 0)
     xd->nb_tx_desc = nb_tx_desc;
 
-  rv = dpdk_port_setup (dm, xd);
+  error = dpdk_port_setup (dm, xd);
 
-  return rv;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -523,6 +538,7 @@ set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
   u32 queue = (u32) 0;
   u32 cpu = (u32) ~ 0;
   int i;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -538,18 +554,25 @@ set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "thread %d", &cpu))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
 
   if (cpu < dm->input_cpu_first_index ||
       cpu >= (dm->input_cpu_first_index + dm->input_cpu_count))
-    return clib_error_return (0, "please specify valid thread id");
+    {
+      error = clib_error_return (0, "please specify valid thread id");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -563,7 +586,7 @@ set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
               queue == dq->queue_id)
             {
               if (cpu == i) /* nothing to do */
-                return 0;
+                goto done;
 
               vec_del1(dm->devices_by_cpu[i], dq - dm->devices_by_cpu[i]);
               vec_add2(dm->devices_by_cpu[cpu], dq, 1);
@@ -586,13 +609,18 @@ set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
                 vlib_node_set_state (vlib_mains[cpu], dpdk_input_node.index,
                                      VLIB_NODE_STATE_POLLING);
 
-              return 0;
+              goto done;
             }
         }
       /* *INDENT-ON* */
     }
 
-  return clib_error_return (0, "not found");
+  error = clib_error_return (0, "not found");
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -653,6 +681,7 @@ set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
   u32 hw_if_index = (u32) ~ 0;
   u32 cpu = (u32) ~ 0;
   int i;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -666,18 +695,22 @@ set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "thread %d", &cpu))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   if (hw_if_index == (u32) ~ 0)
     return clib_error_return (0, "please specify valid interface name");
 
   if (cpu < dm->hqos_cpu_first_index ||
       cpu >= (dm->hqos_cpu_first_index + dm->hqos_cpu_count))
-    return clib_error_return (0, "please specify valid thread id");
+    {
+      error = clib_error_return (0, "please specify valid thread id");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -689,7 +722,7 @@ set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
 	if (hw_if_index == dm->devices[dq->device].vlib_hw_if_index)
 	  {
 	    if (cpu == i)	/* nothing to do */
-	      return 0;
+	      goto done;
 
 	    vec_del1 (dm->devices_by_hqos_cpu[i],
 		      dq - dm->devices_by_hqos_cpu[i]);
@@ -703,12 +736,17 @@ set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
 	    vec_sort_with_function (dm->devices_by_hqos_cpu[cpu],
 				    dpdk_device_queue_sort);
 
-	    return 0;
+	    goto done;
 	  }
       }
     }
 
-  return clib_error_return (0, "not found");
+  error = clib_error_return (0, "not found");
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -732,6 +770,7 @@ set_dpdk_if_hqos_pipe (vlib_main_t * vm, unformat_input_t * input,
   u32 pipe_id = (u32) ~ 0;
   u32 profile_id = (u32) ~ 0;
   int rv;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -749,14 +788,18 @@ set_dpdk_if_hqos_pipe (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "profile %d", &profile_id))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -765,9 +808,15 @@ set_dpdk_if_hqos_pipe (vlib_main_t * vm, unformat_input_t * input,
     rte_sched_pipe_config (xd->hqos_ht->hqos, subport_id, pipe_id,
 			   profile_id);
   if (rv)
-    return clib_error_return (0, "pipe configuration failed");
+    {
+      error = clib_error_return (0, "pipe configuration failed");
+      goto done;
+    }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -797,6 +846,7 @@ set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
     .tc_period = 10,
   };
   int rv;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -829,23 +879,33 @@ set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "period %d", &p.tc_period))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
 
   rv = rte_sched_subport_config (xd->hqos_ht->hqos, subport_id, &p);
   if (rv)
-    return clib_error_return (0, "subport configuration failed");
+    {
+      error = clib_error_return (0, "subport configuration failed");
+      goto done;
+    }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -872,6 +932,7 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
   u32 queue = (u32) ~ 0;
   u32 entry = (u32) ~ 0;
   u32 val, i;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -889,20 +950,33 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "queue %d", &queue))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
   if (entry >= 64)
-    return clib_error_return (0, "invalid entry");
+    {
+      error = clib_error_return (0, "invalid entry");
+      goto done;
+    }
   if (tc >= RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE)
-    return clib_error_return (0, "invalid traffic class");
+    {
+      error = clib_error_return (0, "invalid traffic class");
+      goto done;
+    }
   if (queue >= RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS)
-    return clib_error_return (0, "invalid traffic class");
+    {
+      error = clib_error_return (0, "invalid traffic class");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -911,7 +985,10 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
   uword *p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   /* Should never happen, shut up Coverity warning */
   if (p == 0)
-    return clib_error_return (0, "no worker registrations?");
+    {
+      error = clib_error_return (0, "no worker registrations?");
+      goto done;
+    }
 
   vlib_thread_registration_t *tr = (vlib_thread_registration_t *) p[0];
   int worker_thread_first = tr->first_index;
@@ -921,7 +998,10 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
   for (i = 0; i < worker_thread_count; i++)
     xd->hqos_wt[worker_thread_first + i].hqos_tc_table[entry] = val;
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -939,6 +1019,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   dpdk_main_t *dm = &dpdk_main;
+  clib_error_t *error = NULL;
 
   /* Device specific data */
   struct rte_eth_dev_info dev_info;
@@ -984,15 +1065,19 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "mask %llx", &mask))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   /* Get interface */
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -1019,7 +1104,7 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
   if (devconf->hqos_enabled == 0)
     {
       vlib_cli_output (vm, "HQoS disabled for this interface");
-      return 0;
+      goto done;
     }
 
   n_subports_per_port = devconf->hqos.port.n_subports_per_port;
@@ -1028,27 +1113,39 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 
   /* Validate packet field configuration: id, offset and mask */
   if (id >= 3)
-    return clib_error_return (0, "invalid packet field id");
+    {
+      error = clib_error_return (0, "invalid packet field id");
+      goto done;
+    }
 
   switch (id)
     {
     case 0:
       if (dpdk_hqos_validate_mask (mask, n_subports_per_port) != 0)
-	return clib_error_return (0, "invalid subport ID mask "
-				  "(n_subports_per_port = %u)",
-				  n_subports_per_port);
+	{
+	  error = clib_error_return (0, "invalid subport ID mask "
+				     "(n_subports_per_port = %u)",
+				     n_subports_per_port);
+	  goto done;
+	}
       break;
     case 1:
       if (dpdk_hqos_validate_mask (mask, n_pipes_per_subport) != 0)
-	return clib_error_return (0, "invalid pipe ID mask "
-				  "(n_pipes_per_subport = %u)",
-				  n_pipes_per_subport);
+	{
+	  error = clib_error_return (0, "invalid pipe ID mask "
+				     "(n_pipes_per_subport = %u)",
+				     n_pipes_per_subport);
+	  goto done;
+	}
       break;
     case 2:
     default:
       if (dpdk_hqos_validate_mask (mask, tctbl_size) != 0)
-	return clib_error_return (0, "invalid TC table index mask "
-				  "(TC table size = %u)", tctbl_size);
+	{
+	  error = clib_error_return (0, "invalid TC table index mask "
+				     "(TC table size = %u)", tctbl_size);
+	  goto done;
+	}
     }
 
   /* Propagate packet field configuration to all workers */
@@ -1075,7 +1172,10 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 	  __builtin_ctzll (mask);
       }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -1106,6 +1206,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   dpdk_device_config_t *devconf = 0;
   vlib_thread_registration_t *tr;
   uword *p = 0;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1117,14 +1218,18 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 	   &hw_if_index))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify interface name!!");
+    {
+      error = clib_error_return (0, "please specify interface name!!");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -1151,7 +1256,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   if (devconf->hqos_enabled == 0)
     {
       vlib_cli_output (vm, "HQoS disabled for this interface");
-      return 0;
+      goto done;
     }
 
   /* Detect the set of worker threads */
@@ -1159,7 +1264,10 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 
   /* Should never happen, shut up Coverity warning */
   if (p == 0)
-    return clib_error_return (0, "no worker registrations?");
+    {
+      error = clib_error_return (0, "no worker registrations?");
+      goto done;
+    }
 
   tr = (vlib_thread_registration_t *) p[0];
 
@@ -1284,7 +1392,10 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
     }
 #endif
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -1315,6 +1426,7 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   u32 qindex;
   struct rte_sched_queue_stats stats;
   u16 qlen;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1339,14 +1451,18 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
 	;
 
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify interface name!!");
+    {
+      error = clib_error_return (0, "please specify interface name!!");
+      goto done;
+    }
 
   hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
   xd = vec_elt_at_index (dm->devices, hw->dev_instance);
@@ -1373,7 +1489,7 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   if (devconf->hqos_enabled == 0)
     {
       vlib_cli_output (vm, "HQoS disabled for this interface");
-      return 0;
+      goto done;
     }
 
   /*
@@ -1386,7 +1502,10 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
 
   if (rte_sched_queue_read_stats (xd->hqos_ht->hqos, qindex, &stats, &qlen) !=
       0)
-    return clib_error_return (0, "failed to read stats");
+    {
+      error = clib_error_return (0, "failed to read stats");
+      goto done;
+    }
 
   vlib_cli_output (vm, "%=24s%=16s", "Stats Parameter", "Value");
   vlib_cli_output (vm, "%=24s%=16d", "Packets", stats.n_pkts);
@@ -1399,7 +1518,10 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "%=24s%=16d", "Bytes dropped", stats.n_bytes_dropped);
 
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
