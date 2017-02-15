@@ -528,6 +528,29 @@ udp_register_dst_port (vlib_main_t * vm,
 }
 
 void
+udp_unregister_dst_port (vlib_main_t * vm,
+                         udp_dst_port_t dst_port,
+                         u8 is_ip4)
+{
+  udp_main_t * um = &udp_main;
+  udp_dst_port_info_t * pi;
+  udp_input_runtime_t * rt;
+  u16 * n;
+
+  pi = udp_get_dst_port_info (um, dst_port, is_ip4);
+  /* Not registered? Fagedaboudit */
+  if (! pi) 
+      return;
+      
+  /* Kill the mapping. Don't bother killing the pi, it may be back. */
+  rt = vlib_node_get_runtime_data 
+    (vm, is_ip4 ? udp4_input_node.index: udp6_input_node.index);
+  n = sparse_vec_validate (rt->next_by_dst_port, 
+                           clib_host_to_net_u16 (dst_port));
+  n[0] = SPARSE_VEC_INVALID_INDEX;
+}
+
+void
 udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
 {
   udp_input_runtime_t *rt;

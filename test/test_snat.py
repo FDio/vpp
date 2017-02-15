@@ -790,11 +790,9 @@ class TestSNAT(VppTestCase):
         self.snat_add_static_mapping('1.2.3.4',
                                      external_sw_if_index=self.pg7.sw_if_index)
 
-        # static mappings with external interface
+        # no static mappings
         static_mappings = self.vapi.snat_static_mapping_dump()
-        self.assertEqual(1, len(static_mappings))
-        self.assertEqual(self.pg7.sw_if_index,
-                         static_mappings[0].external_sw_if_index)
+        self.assertEqual(0, len(static_mappings))
 
         # configure interface address and check static mappings
         self.pg7.config_ip4()
@@ -802,7 +800,6 @@ class TestSNAT(VppTestCase):
         self.assertEqual(1, len(static_mappings))
         self.assertEqual(static_mappings[0].external_ip_address[0:4],
                          self.pg7.local_ip4n)
-        self.assertEqual(0xFFFFFFFF, static_mappings[0].external_sw_if_index)
 
         # remove interface address and check static mappings
         self.pg7.unconfig_ip4()

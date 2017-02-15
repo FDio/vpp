@@ -38,8 +38,7 @@ typedef enum
 _ (67, dhcp_to_server)                          \
 _ (68, dhcp_to_client)                          \
 _ (500, ikev2)                                  \
-_ (3784, bfd4)                                  \
-_ (3785, bfd_echo4)                             \
+_ (3784, bfd4)                                   \
 _ (4341, lisp_gpe)                              \
 _ (4342, lisp_cp)                          	\
 _ (4739, ipfix)                                 \
@@ -52,8 +51,7 @@ _ (6633, vpath_3)
 #define foreach_udp6_dst_port                   \
 _ (547, dhcpv6_to_server)                       \
 _ (546, dhcpv6_to_client)			\
-_ (3784, bfd6)                                  \
-_ (3785, bfd_echo6)                             \
+_ (3784, bfd6)                                   \
 _ (4341, lisp_gpe6)                             \
 _ (4342, lisp_cp6)                          	\
 _ (4790, vxlan6_gpe)      \
@@ -122,6 +120,10 @@ unformat_function_t unformat_udp_header;
 void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
 			    u32 node_index, u8 is_ip4);
+
+void
+udp_unregister_dst_port (vlib_main_t * vm,
+                         udp_dst_port_t dst_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
