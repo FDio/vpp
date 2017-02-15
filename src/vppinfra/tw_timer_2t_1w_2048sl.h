@@ -24,6 +24,7 @@
 #undef TW_TIMERS_PER_OBJECT
 #undef LOG2_TW_TIMERS_PER_OBJECT
 #undef TW_SUFFIX
+#undef TW_TIMER_MAX_EXPIRATIONS
 
 #define TW_TIMER_WHEELS 1
 #define TW_SLOTS_PER_RING 2048
@@ -32,6 +33,7 @@
 #define TW_TIMERS_PER_OBJECT 2
 #define LOG2_TW_TIMERS_PER_OBJECT 1
 #define TW_SUFFIX _2t_1w_2048sl
+#define TW_TIMER_MAX_EXPIRATIONS 256
 
 #include <vppinfra/tw_timer_template.h>
 

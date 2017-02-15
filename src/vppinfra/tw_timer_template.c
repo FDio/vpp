@@ -258,7 +258,6 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
-  tw->last_run_time = now;
 
   total_nexpirations = 0;
   for (i = 0; i < nticks; i++)
@@ -332,8 +331,12 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 	}
       tw->current_index[TW_TIMER_RING_FAST]++;
       tw->current_tick++;
+
+      if (total_nexpirations >= TW_TIMER_MAX_EXPIRATIONS)
+	break;
     }
 
+  tw->last_run_time += i * tw->ticks_per_second;
   return total_nexpirations;
 }
 
