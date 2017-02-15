@@ -79,26 +79,11 @@ do {                                                            \
 #define foreach_sample_plugin_api_msg                           \
 _(SAMPLE_MACSWAP_ENABLE_DISABLE, sample_macswap_enable_disable)
 
-/* 
- * This routine exists to convince the vlib plugin framework that
- * we haven't accidentally copied a random .dll into the plugin directory.
- *
- * Also collects global variable pointers passed from the vpp engine
- */
-
-clib_error_t * 
-vlib_plugin_register (vlib_main_t * vm, vnet_plugin_handoff_t * h,
-                      int from_early_init)
-{
-  sample_main_t * sm = &sample_main;
-  clib_error_t * error = 0;
-
-  sm->vlib_main = vm;
-  sm->vnet_main = h->vnet_main;
-  sm->ethernet_main = h->ethernet_main;
-
-  return error;
-}
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = SAMPLE_PLUGIN_BUILD_VER,
+};
+/* *INDENT-ON* */
 
 /* Action function shared between message handler and debug CLI */
 
@@ -228,6 +213,8 @@ static clib_error_t * sample_init (vlib_main_t * vm)
   sample_main_t * sm = &sample_main;
   clib_error_t * error = 0;
   u8 * name;
+
+  sm->vnet_main =  vnet_get_main ();
 
   name = format (0, "sample_%08x%c", api_version, 0);
 
