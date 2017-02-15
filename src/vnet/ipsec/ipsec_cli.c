@@ -32,6 +32,7 @@ set_interface_spd_command_fn (vlib_main_t * vm,
   u32 sw_if_index = (u32) ~ 0;
   u32 spd_id;
   int is_add = 1;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -43,14 +44,18 @@ set_interface_spd_command_fn (vlib_main_t * vm,
   else if (unformat (line_input, "del"))
     is_add = 0;
   else
-    return clib_error_return (0, "parse error: '%U'",
-			      format_unformat_error, line_input);
-
-  unformat_free (line_input);
+    {
+      error = clib_error_return (0, "parse error: '%U'",
+				 format_unformat_error, line_input);
+      goto done;
+    }
 
   ipsec_set_interface_spd (vm, sw_if_index, spd_id, is_add);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -72,7 +77,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   ipsec_sa_t sa;
   int is_add = ~0;
   u8 *ck = 0, *ik = 0;
-  clib_error_t *err = 0;
+  clib_error_t *error = NULL;
 
   memset (&sa, 0, sizeof (sa));
 
@@ -90,8 +95,11 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "esp"))
 	sa.protocol = IPSEC_PROTOCOL_ESP;
       else if (unformat (line_input, "ah"))
-	//sa.protocol = IPSEC_PROTOCOL_AH;
-	return clib_error_return (0, "unsupported security protocol 'AH'");
+	{
+	  //sa.protocol = IPSEC_PROTOCOL_AH;
+	  error = clib_error_return (0, "unsupported security protocol 'AH'");
+	  goto done;
+	}
       else
 	if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
 	sa.crypto_key_len = vec_len (ck);
@@ -102,8 +110,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	{
 	  if (sa.crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
 	      sa.crypto_alg >= IPSEC_CRYPTO_N_ALG)
-	    return clib_error_return (0, "unsupported crypto-alg: '%U'",
-				      format_ipsec_crypto_alg, sa.crypto_alg);
+	    {
+	      error = clib_error_return (0, "unsupported crypto-alg: '%U'",
+					 format_ipsec_crypto_alg,
+					 sa.crypto_alg);
+	      goto done;
+	    }
 	}
       else
 	if (unformat (line_input, "integ-key %U", unformat_hex_string, &ik))
@@ -113,8 +125,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	{
 	  if (sa.integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
 	      sa.integ_alg >= IPSEC_INTEG_N_ALG)
-	    return clib_error_return (0, "unsupported integ-alg: '%U'",
-				      format_ipsec_integ_alg, sa.integ_alg);
+	    {
+	      error = clib_error_return (0, "unsupported integ-alg: '%U'",
+					 format_ipsec_integ_alg,
+					 sa.integ_alg);
+	      goto done;
+	    }
 	}
       else if (unformat (line_input, "tunnel-src %U",
 			 unformat_ip4_address, &sa.tunnel_src_addr.ip4))
@@ -135,11 +151,12 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	  sa.is_tunnel_ip6 = 1;
 	}
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   if (sa.crypto_key_len > sizeof (sa.crypto_key))
     sa.crypto_key_len = sizeof (sa.crypto_key);
@@ -156,14 +173,17 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
   if (is_add)
     {
       ASSERT (im->cb.check_support_cb);
-      err = im->cb.check_support_cb (&sa);
-      if (err)
-	return err;
+      error = im->cb.check_support_cb (&sa);
+      if (error)
+	goto done;
     }
 
   ipsec_add_del_sa (vm, &sa, is_add);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -183,6 +203,7 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 spd_id = ~0;
   int is_add = ~0;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -196,18 +217,25 @@ ipsec_spd_add_del_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "%u", &spd_id))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (spd_id == ~0)
-    return clib_error_return (0, "please specify SPD ID");
+    {
+      error = clib_error_return (0, "please specify SPD ID");
+      goto done;
+    }
 
   ipsec_add_del_spd (vm, spd_id, is_add);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -230,6 +258,7 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
   int is_add = 0;
   int is_ip_any = 1;
   u32 tmp, tmp2;
+  clib_error_t *error = NULL;
 
   memset (&p, 0, sizeof (p));
   p.lport.stop = p.rport.stop = ~0;
@@ -262,7 +291,10 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	     &p.policy))
 	{
 	  if (p.policy == IPSEC_POLICY_ACTION_RESOLVE)
-	    return clib_error_return (0, "unsupported action: 'resolve'");
+	    {
+	      error = clib_error_return (0, "unsupported action: 'resolve'");
+	      goto done;
+	    }
 	}
       else if (unformat (line_input, "sa %u", &p.sa_id))
 	;
@@ -300,11 +332,12 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	  p.rport.stop = tmp2;
 	}
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   ipsec_add_del_policy (vm, &p, is_add);
   if (is_ip_any)
@@ -312,7 +345,11 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
       p.is_ipv6 = 1;
       ipsec_add_del_policy (vm, &p, is_add);
     }
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -332,6 +369,7 @@ set_ipsec_sa_key_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ipsec_sa_t sa;
   u8 *ck = 0, *ik = 0;
+  clib_error_t *error = NULL;
 
   memset (&sa, 0, sizeof (sa));
 
@@ -349,11 +387,12 @@ set_ipsec_sa_key_command_fn (vlib_main_t * vm,
 	if (unformat (line_input, "integ-key %U", unformat_hex_string, &ik))
 	sa.integ_key_len = vec_len (ik);
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   if (sa.crypto_key_len > sizeof (sa.crypto_key))
     sa.crypto_key_len = sizeof (sa.crypto_key);
@@ -369,7 +408,10 @@ set_ipsec_sa_key_command_fn (vlib_main_t * vm,
 
   ipsec_set_sa_key (vm, &sa);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -649,6 +691,7 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
   ipsec_add_del_tunnel_args_t a;
   int rv;
   u32 num_m_args = 0;
+  clib_error_t *error = NULL;
 
   memset (&a, 0, sizeof (a));
   a.is_add = 1;
@@ -673,13 +716,18 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
 	a.is_add = 0;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (num_m_args < 4)
-    return clib_error_return (0, "mandatory argument(s) missing");
+    {
+      error = clib_error_return (0, "mandatory argument(s) missing");
+      goto done;
+    }
 
   rv = ipsec_add_del_tunnel_if (&a);
 
@@ -689,16 +737,21 @@ create_ipsec_tunnel_command_fn (vlib_main_t * vm,
       break;
     case VNET_API_ERROR_INVALID_VALUE:
       if (a.is_add)
-	return clib_error_return (0,
-				  "IPSec tunnel interface already exists...");
+	error = clib_error_return (0,
+				   "IPSec tunnel interface already exists...");
       else
-	return clib_error_return (0, "IPSec tunnel interface not exists...");
+	error = clib_error_return (0, "IPSec tunnel interface not exists...");
+      goto done;
     default:
-      return clib_error_return (0, "ipsec_register_interface returned %d",
-				rv);
+      error = clib_error_return (0, "ipsec_register_interface returned %d",
+				 rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -720,6 +773,7 @@ set_interface_key_command_fn (vlib_main_t * vm,
   u32 hw_if_index = (u32) ~ 0;
   u32 alg;
   u8 *key = 0;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -748,25 +802,38 @@ set_interface_key_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "%U", unformat_hex_string, &key))
 	;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (type == IPSEC_IF_SET_KEY_TYPE_NONE)
-    return clib_error_return (0, "unknown key type");
+    {
+      error = clib_error_return (0, "unknown key type");
+      goto done;
+    }
 
   if (alg > 0 && vec_len (key) == 0)
-    return clib_error_return (0, "key is not specified");
+    {
+      error = clib_error_return (0, "key is not specified");
+      goto done;
+    }
 
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "interface not specified");
+    {
+      error = clib_error_return (0, "interface not specified");
+      goto done;
+    }
 
   ipsec_set_interface_key (im->vnet_main, hw_if_index, type, alg, key);
-  vec_free (key);
 
-  return 0;
+done:
+  vec_free (key);
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */

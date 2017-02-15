@@ -413,6 +413,7 @@ configure_policer_command_fn (vlib_main_t * vm,
   u8 is_add = 1;
   u8 *name = 0;
   u32 pi;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -433,13 +434,19 @@ configure_policer_command_fn (vlib_main_t * vm,
       foreach_config_param
 #undef _
 	else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
+  error = policer_add_del (vm, name, &c, &pi, is_add);
+
+done:
   unformat_free (line_input);
 
-  return policer_add_del (vm, name, &c, &pi, is_add);
+  return error;
 }
 
 /* *INDENT-OFF* */

@@ -657,6 +657,7 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
   int rv;
   vnet_vxlan_add_del_tunnel_args_t _a, * a = &_a;
   u32 tunnel_sw_if_index;
+  clib_error_t *error = NULL;
 
   /* Cant "universally zero init" (={0}) due to GCC bug 53119 */
   memset(&src, 0, sizeof src);
@@ -715,7 +716,10 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       {
         encap_fib_index = fib_table_find (fib_ip_proto (ipv6_set), tmp);
         if (encap_fib_index == ~0)
-          return clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
+          {
+            error = clib_error_return (0, "nonexistent encap-vrf-id %d", tmp);
+            goto done;
+          }
       }
     else if (unformat (line_input, "decap-next %U", unformat_decap_next, 
                        &decap_next_index, ipv4_set))
@@ -723,41 +727,72 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "vni %d", &vni))
       {
         if (vni >> 24)  
-          return clib_error_return (0, "vni %d out of range", vni);
+          {
+            error = clib_error_return (0, "vni %d out of range", vni);
+            goto done;
+          }
       }
     else 
-      return clib_error_return (0, "parse error: '%U'", 
-                                format_unformat_error, line_input);
+      {
+        error = clib_error_return (0, "parse error: '%U'",
+                                   format_unformat_error, line_input);
+        goto done;
+      }
   }
 
-  unformat_free (line_input);
-
   if (src_set == 0)
-    return clib_error_return (0, "tunnel src address not specified");
+    {
+      error = clib_error_return (0, "tunnel src address not specified");
+      goto done;
+    }
 
   if (dst_set == 0)
-    return clib_error_return (0, "tunnel dst address not specified");
+    {
+      error = clib_error_return (0, "tunnel dst address not specified");
+      goto done;
+    }
 
   if (grp_set && !ip46_address_is_multicast(&dst))
-    return clib_error_return (0, "tunnel group address not multicast");
+    {
+      error = clib_error_return (0, "tunnel group address not multicast");
+      goto done;
+    }
 
   if (grp_set == 0 && ip46_address_is_multicast(&dst))
-    return clib_error_return (0, "dst address must be unicast");
+    {
+      error = clib_error_return (0, "dst address must be unicast");
+      goto done;
+    }
 
   if (grp_set && mcast_sw_if_index == ~0)
-    return clib_error_return (0, "tunnel nonexistent multicast device");
+    {
+      error = clib_error_return (0, "tunnel nonexistent multicast device");
+      goto done;
+    }
 
   if (ipv4_set && ipv6_set)
-    return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+    {
+      error = clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+      goto done;
+    }
 
   if (ip46_address_cmp(&src, &dst) == 0)
-    return clib_error_return (0, "src and dst addresses are identical");
+    {
+      error = clib_error_return (0, "src and dst addresses are identical");
+      goto done;
+    }
 
   if (decap_next_index == ~0)
-    return clib_error_return (0, "next node not found");
+    {
+      error = clib_error_return (0, "next node not found");
+      goto done;
+    }
 
   if (vni == 0)
-    return clib_error_return (0, "vni not specified");
+    {
+      error = clib_error_return (0, "vni not specified");
+      goto done;
+    }
 
   memset (a, 0, sizeof (*a));
 
@@ -779,17 +814,23 @@ vxlan_add_del_tunnel_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_TUNNEL_EXIST:
-      return clib_error_return (0, "tunnel already exists...");
+      error = clib_error_return (0, "tunnel already exists...");
+      goto done;
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0, "tunnel does not exist...");
+      error = clib_error_return (0, "tunnel does not exist...");
+      goto done;
 
     default:
-      return clib_error_return 
+      error = clib_error_return
         (0, "vnet_vxlan_add_del_tunnel returned %d", rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?
@@ -912,6 +953,8 @@ set_ip_vxlan_bypass (u32 is_ip6,
   vnet_int_vxlan_bypass_mode (sw_if_index, is_ip6, is_enable);
 
  done:
+  unformat_free (line_input);
+
   return error;
 }
 
