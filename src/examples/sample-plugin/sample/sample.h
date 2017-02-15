@@ -28,13 +28,13 @@ typedef struct {
     u16 msg_id_base;
 
     /* convenience */
-    vlib_main_t * vlib_main;
     vnet_main_t * vnet_main;
-    ethernet_main_t * ethernet_main;
 } sample_main_t;
 
 sample_main_t sample_main;
 
 extern vlib_node_registration_t sample_node;
+
+#define SAMPLE_PLUGIN_BUILD_VER "1.0"
 
 #endif /* __included_sample_h__ */

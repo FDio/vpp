@@ -13,7 +13,9 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall
+VPP_INCLUDE_FLAGS = -I../..
+
+AM_CFLAGS = -Wall $(VPP_INCLUDE_FLAGS)
 AM_LDFLAGS = -module -shared -avoid-version
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
