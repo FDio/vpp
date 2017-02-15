@@ -76,7 +76,10 @@ typedef struct
       };
       u32 src_and_dst;
     } ports;
-    u16 src_port, dst_port;
+    struct
+    {
+      u16 src_port, dst_port;
+    };
   };
 
   /* Sequence and acknowledgment number. */
