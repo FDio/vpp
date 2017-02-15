@@ -1038,18 +1038,6 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
       return VNET_API_ERROR_LISP_DISABLED;
     }
 
-  /* check if none of the locators match localy configured address */
-  vec_foreach (loc, rlocs)
-  {
-    ip_prefix_t *p = &gid_address_ippref (&loc->address);
-    if (is_local_ip (lcm, &ip_prefix_addr (p)))
-      {
-	clib_warning ("RLOC %U matches a local address!",
-		      format_gid_address, &loc->address);
-	return VNET_API_ERROR_LISP_RLOC_LOCAL;
-      }
-  }
-
   if (res_map_index)
     res_map_index[0] = ~0;
 
@@ -1063,6 +1051,18 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 
   if (is_add)
     {
+      /* check if none of the locators match localy configured address */
+      vec_foreach (loc, rlocs)
+      {
+	ip_prefix_t *p = &gid_address_ippref (&loc->address);
+	if (is_local_ip (lcm, &ip_prefix_addr (p)))
+	  {
+	    clib_warning ("RLOC %U matches a local address!",
+			  format_gid_address, &loc->address);
+	    return VNET_API_ERROR_LISP_RLOC_LOCAL;
+	  }
+      }
+
       /* overwrite: if mapping already exists, decide if locators should be
        * updated and be done */
       if (old_map && gid_address_cmp (&old_map->eid, eid) == 0)
@@ -2313,7 +2313,7 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
 
   vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
 
-  next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
+  next_index = (ip_addr_version (rloc) == IP4) ?
     ip4_lookup_node.index : ip6_lookup_node.index;
 
   f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
