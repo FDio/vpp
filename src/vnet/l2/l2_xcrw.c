@@ -409,6 +409,7 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
   u8 *rw = 0;
   vnet_main_t *vnm = vnet_get_main ();
   int rv;
+  clib_error_t *error = NULL;
 
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -416,8 +417,11 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
 
   if (!unformat (line_input, "%U",
 		 unformat_vnet_sw_interface, vnm, &l2_sw_if_index))
-    return clib_error_return (0, "unknown input '%U'",
-			      format_unformat_error, line_input);
+    {
+      error = clib_error_return (0, "unknown input '%U'",
+				 format_unformat_error, line_input);
+      goto done;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -436,7 +440,10 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
     }
 
   if (next_node_index == ~0)
-    return clib_error_return (0, "next node not specified");
+    {
+      error = clib_error_return (0, "next node not specified");
+      goto done;
+    }
 
   if (tx_fib_id != ~0)
     {
@@ -448,7 +455,11 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
 	p = hash_get (ip4_main.fib_index_by_table_id, tx_fib_id);
 
       if (p == 0)
-	return clib_error_return (0, "nonexistent tx_fib_id %d", tx_fib_id);
+	{
+	  error =
+	    clib_error_return (0, "nonexistent tx_fib_id %d", tx_fib_id);
+	  goto done;
+	}
 
       tx_fib_index = p[0];
     }
@@ -463,16 +474,21 @@ set_l2_xcrw_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return (0, "%U not cross-connected",
-				format_vnet_sw_if_index_name,
-				vnm, l2_sw_if_index);
+      error = clib_error_return (0, "%U not cross-connected",
+				 format_vnet_sw_if_index_name,
+				 vnm, l2_sw_if_index);
+      goto done;
+
     default:
-      return clib_error_return (0, "vnet_configure_l2_xcrw returned %d", rv);
+      error = clib_error_return (0, "vnet_configure_l2_xcrw returned %d", rv);
+      goto done;
     }
 
+done:
   vec_free (rw);
+  unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 /*?

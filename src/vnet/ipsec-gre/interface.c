@@ -232,6 +232,7 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
   vnet_ipsec_gre_add_del_tunnel_args_t _a, *a = &_a;
   int rv;
   u32 sw_if_index;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -250,16 +251,24 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "remote-sa %d", &rsa))
 	num_m_args++;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (num_m_args < 4)
-    return clib_error_return (0, "mandatory argument(s) missing");
+    {
+      error = clib_error_return (0, "mandatory argument(s) missing");
+      goto done;
+    }
 
   if (memcmp (&src, &dst, sizeof (src)) == 0)
-    return clib_error_return (0, "src and dst are identical");
+    {
+      error = clib_error_return (0, "src and dst are identical");
+      goto done;
+    }
 
   memset (a, 0, sizeof (*a));
   a->is_add = is_add;
@@ -277,14 +286,19 @@ create_ipsec_gre_tunnel_command_fn (vlib_main_t * vm,
 		       vnet_get_main (), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_VALUE:
-      return clib_error_return (0, "GRE tunnel already exists...");
+      error = clib_error_return (0, "GRE tunnel already exists...");
+      goto done;
     default:
-      return clib_error_return (0,
-				"vnet_ipsec_gre_add_del_tunnel returned %d",
-				rv);
+      error = clib_error_return (0,
+				 "vnet_ipsec_gre_add_del_tunnel returned %d",
+				 rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */

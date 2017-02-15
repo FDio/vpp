@@ -372,6 +372,7 @@ cli_add_trace_buffer (vlib_main_t * vm,
   vlib_trace_node_t *tn;
   u32 node_index, add;
   u8 verbose = 0;
+  clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -384,8 +385,11 @@ cli_add_trace_buffer (vlib_main_t * vm,
       else if (unformat (line_input, "verbose"))
 	verbose = 1;
       else
-	return clib_error_create ("expected NODE COUNT, got `%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_create ("expected NODE COUNT, got `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   /* *INDENT-OFF* */
@@ -403,7 +407,10 @@ cli_add_trace_buffer (vlib_main_t * vm,
     }));
   /* *INDENT-ON* */
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */

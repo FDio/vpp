@@ -1308,6 +1308,7 @@ tap_connect_command_fn (vlib_main_t * vm,
   int ip6_address_set = 0;
   u32 ip4_mask_width = 0;
   u32 ip6_mask_width = 0;
+  clib_error_t *error = NULL;
 
   if (tm->is_disabled)
     return clib_error_return (0, "device disabled...");
@@ -1336,12 +1337,18 @@ tap_connect_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "%s", &intfc_name))
         ;
       else
-        return clib_error_return (0, "unknown input `%U'",
-                                  format_unformat_error, line_input);
+        {
+          error = clib_error_return (0, "unknown input `%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
     }
   
   if (intfc_name == 0)
-      return clib_error_return (0, "interface name must be specified");
+    {
+      error = clib_error_return (0, "interface name must be specified");
+      goto done;
+    }
 
   memset (ap, 0, sizeof (*ap));
 
@@ -1367,48 +1374,64 @@ tap_connect_command_fn (vlib_main_t * vm,
   switch (rv) 
     {
     case VNET_API_ERROR_SYSCALL_ERROR_1:
-      return clib_error_return (0, "Couldn't open /dev/net/tun");
+      error = clib_error_return (0, "Couldn't open /dev/net/tun");
+      goto done;
       
     case VNET_API_ERROR_SYSCALL_ERROR_2:
-      return clib_error_return (0, "Error setting flags on '%s'", intfc_name);
-  
+      error = clib_error_return (0, "Error setting flags on '%s'", intfc_name);
+      goto done;
+
     case VNET_API_ERROR_SYSCALL_ERROR_3:
-      return clib_error_return (0,  "Couldn't open provisioning socket");
+      error = clib_error_return (0,  "Couldn't open provisioning socket");
+      goto done;
 
     case VNET_API_ERROR_SYSCALL_ERROR_4:
-      return clib_error_return (0,  "Couldn't get if_index");
+      error = clib_error_return (0,  "Couldn't get if_index");
+      goto done;
     
     case VNET_API_ERROR_SYSCALL_ERROR_5:
-      return clib_error_return (0,  "Couldn't bind provisioning socket");
+      error = clib_error_return (0,  "Couldn't bind provisioning socket");
+      goto done;
 
     case VNET_API_ERROR_SYSCALL_ERROR_6:
-      return clib_error_return (0,  "Couldn't set device non-blocking flag");
+      error = clib_error_return (0,  "Couldn't set device non-blocking flag");
+      goto done;
 
     case VNET_API_ERROR_SYSCALL_ERROR_7:
-      return clib_error_return (0,  "Couldn't set device MTU");
+      error = clib_error_return (0,  "Couldn't set device MTU");
+      goto done;
 
     case VNET_API_ERROR_SYSCALL_ERROR_8:
-      return clib_error_return (0,  "Couldn't get interface flags");
+      error = clib_error_return (0,  "Couldn't get interface flags");
+      goto done;
 
     case VNET_API_ERROR_SYSCALL_ERROR_9:
-      return clib_error_return (0,  "Couldn't set intfc admin state up");
+      error = clib_error_return (0,  "Couldn't set intfc admin state up");
+      goto done;
 
     case VNET_API_ERROR_SYSCALL_ERROR_10:
-      return clib_error_return (0,  "Couldn't set intfc address/mask");
+      error = clib_error_return (0,  "Couldn't set intfc address/mask");
+      goto done;
 
     case VNET_API_ERROR_INVALID_REGISTRATION:
-      return clib_error_return (0,  "Invalid registration");
+      error = clib_error_return (0,  "Invalid registration");
+      goto done;
 
     case 0:
       break;
 
     default:
-      return clib_error_return (0,  "Unknown error: %d", rv);
+      error = clib_error_return (0,  "Unknown error: %d", rv);
+      goto done;
     }
 
   vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, 
                   vnet_get_main(), sw_if_index);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (tap_connect_command, static) = {

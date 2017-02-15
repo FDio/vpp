@@ -2835,6 +2835,7 @@ unix_cli_set_terminal_pager (vlib_main_t * vm,
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
   unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -2852,13 +2853,17 @@ unix_cli_set_terminal_pager (vlib_main_t * vm,
 			 "Pager limit set to %u lines; note, this is global.\n",
 			 um->cli_pager_buffer_limit);
       else
-	return clib_error_return (0, "unknown parameter: `%U`",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown parameter: `%U`",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
+done:
   unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 /*?
@@ -2886,6 +2891,7 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
   unix_cli_file_t *cf;
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 limit;
+  clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -2901,8 +2907,11 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
       else if (unformat (line_input, "limit %u", &cf->history_limit))
 	;
       else
-	return clib_error_return (0, "unknown parameter: `%U`",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown parameter: `%U`",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
 
       /* If we reduced history size, or turned it off, purge the history */
       limit = cf->has_history ? cf->history_limit : 0;
@@ -2914,9 +2923,10 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
 	}
     }
 
+done:
   unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 /*?

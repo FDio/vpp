@@ -547,21 +547,30 @@ pg_capture_cmd_fn (vlib_main_t * vm,
       else
 	{
 	  error = clib_error_create ("unknown input `%U'",
-				     format_unformat_error, input);
-	  return error;
+				     format_unformat_error, line_input);
+	  goto done;
 	}
     }
 
   if (!hi)
-    return clib_error_return (0, "Please specify interface name");
+    {
+      error = clib_error_return (0, "Please specify interface name");
+      goto done;
+    }
 
   if (hi->dev_class_index != pg_dev_class.index)
-    return clib_error_return (0, "Please specify packet-generator interface");
+    {
+      error =
+	clib_error_return (0, "Please specify packet-generator interface");
+      goto done;
+    }
 
   if (!pcap_file_name && is_disable == 0)
-    return clib_error_return (0, "Please specify pcap file name");
+    {
+      error = clib_error_return (0, "Please specify pcap file name");
+      goto done;
+    }
 
-  unformat_free (line_input);
 
   pg_capture_args_t _a, *a = &_a;
 
@@ -572,6 +581,10 @@ pg_capture_cmd_fn (vlib_main_t * vm,
   a->count = count;
 
   error = pg_capture (a);
+
+done:
+  unformat_free (line_input);
+
   return error;
 }
 
@@ -590,6 +603,7 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
   pg_main_t *pg = &pg_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 if_id;
+  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -600,14 +614,19 @@ create_pg_if_cmd_fn (vlib_main_t * vm,
 	;
 
       else
-	return clib_error_create ("unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_create ("unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
+  pg_interface_add_or_get (pg, if_id);
+
+done:
   unformat_free (line_input);
 
-  pg_interface_add_or_get (pg, if_id);
-  return 0;
+  return error;
 }
 
 /* *INDENT-OFF* */

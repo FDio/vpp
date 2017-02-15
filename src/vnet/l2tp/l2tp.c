@@ -427,6 +427,7 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u32 encap_fib_id = ~0;
   u32 encap_fib_index = ~0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -455,18 +456,22 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "l2-sublayer-present"))
 	l2_sublayer_present = 1;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-
-  unformat_free (line_input);
 
   if (encap_fib_id != ~0)
     {
       uword *p;
       ip6_main_t *im = &ip6_main;
       if (!(p = hash_get (im->fib_index_by_table_id, encap_fib_id)))
-	return clib_error_return (0, "No fib with id %d", encap_fib_id);
+	{
+	  error = clib_error_return (0, "No fib with id %d", encap_fib_id);
+	  goto done;
+	}
       encap_fib_index = p[0];
     }
   else
@@ -475,9 +480,15 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
     }
 
   if (our_address_set == 0)
-    return clib_error_return (0, "our address not specified");
+    {
+      error = clib_error_return (0, "our address not specified");
+      goto done;
+    }
   if (client_address_set == 0)
-    return clib_error_return (0, "client address not specified");
+    {
+      error = clib_error_return (0, "client address not specified");
+      goto done;
+    }
 
   rv = create_l2tpv3_ipv6_tunnel (lm, &client_address, &our_address,
 				  local_session_id, remote_session_id,
@@ -491,16 +502,22 @@ create_l2tpv3_tunnel_command_fn (vlib_main_t * vm,
 		       vnet_get_main (), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_VALUE:
-      return clib_error_return (0, "session already exists...");
+      error = clib_error_return (0, "session already exists...");
+      goto done;
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0, "session does not exist...");
+      error = clib_error_return (0, "session does not exist...");
+      goto done;
 
     default:
-      return clib_error_return (0, "l2tp_session_add_del returned %d", rv);
+      error = clib_error_return (0, "l2tp_session_add_del returned %d", rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */

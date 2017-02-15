@@ -470,6 +470,8 @@ vnet_mpls_local_label (vlib_main_t * vm,
   }
 
 done:
+  unformat_free (line_input);
+
   return error;
 }
 

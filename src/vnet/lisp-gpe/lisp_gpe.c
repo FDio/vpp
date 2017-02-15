@@ -218,6 +218,7 @@ lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_en = 1;
   vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -231,12 +232,18 @@ lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
 	is_en = 0;
       else
 	{
-	  return clib_error_return (0, "parse error: '%U'",
-				    format_unformat_error, line_input);
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
 	}
     }
   a->is_en = is_en;
-  return vnet_lisp_gpe_enable_disable (a);
+  error = vnet_lisp_gpe_enable_disable (a);
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
