@@ -195,9 +195,9 @@ l2fwd_process (vlib_main_t * vm,
 }
 
 
-static uword
-l2fwd_node_fn (vlib_main_t * vm,
-	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline uword
+l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		   vlib_frame_t * frame, int do_trace)
 {
   u32 n_left_from, *from, *to_next;
   l2fwd_next_t next_index;
@@ -281,7 +281,7 @@ l2fwd_node_fn (vlib_main_t * vm,
 	  h2 = vlib_buffer_get_current (b2);
 	  h3 = vlib_buffer_get_current (b3);
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+	  if (do_trace)
 	    {
 	      if (b0->flags & VLIB_BUFFER_IS_TRACED)
 		{
@@ -388,8 +388,7 @@ l2fwd_node_fn (vlib_main_t * vm,
 
 	  h0 = vlib_buffer_get_current (b0);
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      l2fwd_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
@@ -418,6 +417,15 @@ l2fwd_node_fn (vlib_main_t * vm,
     }
 
   return frame->n_vectors;
+}
+
+static uword
+l2fwd_node_fn (vlib_main_t * vm,
+	       vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    return l2fwd_node_inline (vm, node, frame, 1 /* do_trace */ );
+  return l2fwd_node_inline (vm, node, frame, 0 /* do_trace */ );
 }
 
 /* *INDENT-OFF* */

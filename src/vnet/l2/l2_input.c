@@ -222,10 +222,10 @@ classify_and_dispatch (vlib_main_t * vm,
 					    feature_bitmap);
 }
 
-
-static uword
-l2input_node_fn (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline uword
+l2input_node_inline (vlib_main_t * vm,
+		     vlib_node_runtime_t * node, vlib_frame_t * frame,
+		     int do_trace)
 {
   u32 n_left_from, *from, *to_next;
   l2input_next_t next_index;
@@ -294,7 +294,7 @@ l2input_node_fn (vlib_main_t * vm,
 	  b2 = vlib_get_buffer (vm, bi2);
 	  b3 = vlib_get_buffer (vm, bi3);
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+	  if (do_trace)
 	    {
 	      /* RX interface handles */
 	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -373,8 +373,7 @@ l2input_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ethernet_header_t *h0 = vlib_buffer_get_current (b0);
 	      l2input_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -401,6 +400,14 @@ l2input_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+l2input_node_fn (vlib_main_t * vm,
+		 vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    return l2input_node_inline (vm, node, frame, 1 /* do_trace */ );
+  return l2input_node_inline (vm, node, frame, 0 /* do_trace */ );
+}
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2input_node) = {

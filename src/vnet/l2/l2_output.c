@@ -140,9 +140,9 @@ l2output_vtr (vlib_node_runtime_t * node, l2_output_config_t * config,
 
 static vlib_node_registration_t l2output_node;
 
-static uword
-l2output_node_fn (vlib_main_t * vm,
-		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline uword
+l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      vlib_frame_t * frame, int do_trace)
 {
   u32 n_left_from, *from, *to_next;
   l2output_next_t next_index;
@@ -214,7 +214,7 @@ l2output_node_fn (vlib_main_t * vm,
 	  sw_if_index2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
 	  sw_if_index3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+	  if (do_trace)
 	    {
 	      h0 = vlib_buffer_get_current (b0);
 	      h1 = vlib_buffer_get_current (b1);
@@ -378,8 +378,7 @@ l2output_node_fn (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
-	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
-			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	  if (do_trace && PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      l2output_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
@@ -434,6 +433,14 @@ l2output_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+l2output_node_fn (vlib_main_t * vm,
+		  vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
+    return l2output_node_inline (vm, node, frame, 1 /* do_trace */ );
+  return l2output_node_inline (vm, node, frame, 0 /* do_trace */ );
+}
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2output_node,static) = {
