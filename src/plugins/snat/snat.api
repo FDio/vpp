@@ -167,6 +167,7 @@ define snat_static_mapping_dump {
     @param protocol - IP protocol
     @param local_port - local port number
     @param external_port - external port number
+    @param external_sw_if_index - external interface
     @param vfr_id - VRF ID
 */
 define snat_static_mapping_details {
@@ -178,6 +179,7 @@ define snat_static_mapping_details {
   u8 protocol;
   u16 local_port;
   u16 external_port;
+  u32 external_sw_if_index;
   u32 vrf_id;
 };
 
