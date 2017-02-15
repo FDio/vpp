@@ -464,11 +464,15 @@ add_del_ip4_key (gid_ip4_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
     old_val = value.value;
 
   if (!is_add)
-    BV (clib_bihash_add_del) (&db->ip4_lookup_table, &kv, 0 /* is_add */ );
+    {
+      BV (clib_bihash_add_del) (&db->ip4_lookup_table, &kv, 0 /* is_add */ );
+      db->count--;
+    }
   else
     {
       kv.value = val;
       BV (clib_bihash_add_del) (&db->ip4_lookup_table, &kv, 1 /* is_add */ );
+      db->count++;
     }
   return old_val;
 }
@@ -553,7 +557,6 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
     {
       if (GID_LOOKUP_MISS != sfi)
 	{
-	  add_del_ip4_key (&db->dst_ip4_table, vni, dst_pref, 0, is_add);
 	  sfib = pool_elt_at_index (db->src_ip4_table_pool, sfi);
 	  if (src_pref)
 	    old_val = add_del_ip4_key (sfib, 0, src_pref, 0, is_add);
@@ -563,6 +566,9 @@ add_del_sd_ip4_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	      memset (&sp, 0, sizeof (sp));
 	      old_val = add_del_ip4_key (sfib, 0, &sp, 0, is_add);
 	    }
+
+	  if (sfib->count == 0)
+	    add_del_ip4_key (&db->dst_ip4_table, vni, dst_pref, 0, is_add);
 	}
       else
 	clib_warning ("cannot delete dst mapping %U!", format_ip_prefix,
@@ -630,11 +636,15 @@ add_del_ip6_key (gid_ip6_table_t * db, u32 vni, ip_prefix_t * pref, u32 val,
     old_val = value.value;
 
   if (!is_add)
-    BV (clib_bihash_add_del) (&db->ip6_lookup_table, &kv, 0 /* is_add */ );
+    {
+      BV (clib_bihash_add_del) (&db->ip6_lookup_table, &kv, 0 /* is_add */ );
+      db->count--;
+    }
   else
     {
       kv.value = val;
       BV (clib_bihash_add_del) (&db->ip6_lookup_table, &kv, 1 /* is_add */ );
+      db->count++;
     }
   return old_val;
 }
@@ -652,11 +662,15 @@ add_del_mac (gid_mac_table_t * db, u32 vni, u8 * dst_mac, u8 * src_mac,
     old_val = value.value;
 
   if (!is_add)
-    BV (clib_bihash_add_del) (&db->mac_lookup_table, &kv, 0 /* is_add */ );
+    {
+      BV (clib_bihash_add_del) (&db->mac_lookup_table, &kv, 0 /* is_add */ );
+      db->count--;
+    }
   else
     {
       kv.value = val;
       BV (clib_bihash_add_del) (&db->mac_lookup_table, &kv, 1 /* is_add */ );
+      db->count++;
     }
   return old_val;
 }
@@ -748,7 +762,6 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
     {
       if (GID_LOOKUP_MISS != sfi)
 	{
-	  add_del_ip6_key (&db->dst_ip6_table, vni, dst_pref, 0, is_add);
 	  sfib = pool_elt_at_index (db->src_ip6_table_pool, sfi);
 	  if (src_pref)
 	    old_val = add_del_ip6_key (sfib, 0, src_pref, 0, is_add);
@@ -759,6 +772,9 @@ add_del_sd_ip6_key (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst_pref,
 	      ip_prefix_version (&sp) = IP6;
 	      old_val = add_del_ip6_key (sfib, 0, &sp, 0, is_add);
 	    }
+
+	  if (sfib->count == 0)
+	    add_del_ip6_key (&db->dst_ip6_table, vni, dst_pref, 0, is_add);
 	}
       else
 	clib_warning ("cannot delete dst mapping %U!", format_ip_prefix,

@@ -50,6 +50,7 @@ typedef struct
   /* ip4 lookup table config parameters */
   u32 ip4_lookup_table_nbuckets;
   uword ip4_lookup_table_size;
+  u32 count;
 } gid_ip4_table_t;
 
 typedef struct
@@ -65,6 +66,7 @@ typedef struct
   /* ip6 lookup table config parameters */
   u32 ip6_lookup_table_nbuckets;
   uword ip6_lookup_table_size;
+  u64 count;
 } gid_ip6_table_t;
 
 typedef struct gid_mac_table
@@ -74,6 +76,7 @@ typedef struct gid_mac_table
   /* mac lookup table config parameters */
   u32 mac_lookup_table_nbuckets;
   uword mac_lookup_table_size;
+  u64 count;
 } gid_mac_table_t;
 
 typedef struct
