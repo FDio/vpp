@@ -28,13 +28,16 @@ lb_vip_command_fn (vlib_main_t * vm,
   int ret;
   u32 gre4 = 0;
   lb_vip_type_t type;
+  clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY, &plen))
-    return clib_error_return (0, "invalid vip prefix: '%U'",
-                                  format_unformat_error, line_input);
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY, &plen)) {
+    error = clib_error_return (0, "invalid vip prefix: '%U'",
+                               format_unformat_error, line_input);
+    goto done;
+  }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
   {
@@ -46,12 +49,12 @@ lb_vip_command_fn (vlib_main_t * vm,
       gre4 = 1;
     else if (unformat(line_input, "encap gre6"))
       gre4 = 0;
-    else
-      return clib_error_return (0, "parse error: '%U'",
-                              format_unformat_error, line_input);
+    else {
+      error = clib_error_return (0, "parse error: '%U'",
+                                format_unformat_error, line_input);
+      goto done;
+    }
   }
-
-  unformat_free (line_input);
 
 
   if (ip46_prefix_is_ip4(&prefix, plen)) {
@@ -65,17 +68,25 @@ lb_vip_command_fn (vlib_main_t * vm,
   u32 index;
   if (!del) {
     if ((ret = lb_vip_add(&prefix, plen, type, new_len, &index))) {
-      return clib_error_return (0, "lb_vip_add error %d", ret);
+      error = clib_error_return (0, "lb_vip_add error %d", ret);
+      goto done;
     } else {
       vlib_cli_output(vm, "lb_vip_add ok %d", index);
     }
   } else {
-    if ((ret = lb_vip_find_index(&prefix, plen, &index)))
-      return clib_error_return (0, "lb_vip_find_index error %d", ret);
-    else if ((ret = lb_vip_del(index)))
-      return clib_error_return (0, "lb_vip_del error %d", ret);
+    if ((ret = lb_vip_find_index(&prefix, plen, &index))) {
+      error = clib_error_return (0, "lb_vip_find_index error %d", ret);
+      goto done;
+    } else if ((ret = lb_vip_del(index))) {
+      error = clib_error_return (0, "lb_vip_del error %d", ret);
+      goto done;
+    }
   }
-  return NULL;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (lb_vip_command, static) =
@@ -96,16 +107,21 @@ lb_as_command_fn (vlib_main_t * vm,
   u32 vip_index;
   u8 del = 0;
   int ret;
+  clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY))
-    return clib_error_return (0, "invalid as address: '%U'",
-                              format_unformat_error, line_input);
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &vip_prefix, &vip_plen, IP46_TYPE_ANY)) {
+    error = clib_error_return (0, "invalid as address: '%U'",
+                               format_unformat_error, line_input);
+    goto done;
+  }
 
-  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, &vip_index)))
-    return clib_error_return (0, "lb_vip_find_index error %d", ret);
+  if ((ret = lb_vip_find_index(&vip_prefix, vip_plen, &vip_index))) {
+    error = clib_error_return (0, "lb_vip_find_index error %d", ret);
+    goto done;
+  }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
   {
@@ -114,15 +130,15 @@ lb_as_command_fn (vlib_main_t * vm,
     } else if (unformat(line_input, "del")) {
       del = 1;
     } else {
-      vec_free(as_array);
-      return clib_error_return (0, "parse error: '%U'",
-                                format_unformat_error, line_input);
+      error = clib_error_return (0, "parse error: '%U'",
+                                 format_unformat_error, line_input);
+      goto done;
     }
   }
 
   if (!vec_len(as_array)) {
-    vec_free(as_array);
-    return clib_error_return (0, "No AS address provided");
+    error = clib_error_return (0, "No AS address provided");
+    goto done;
   }
 
   lb_garbage_collection();
@@ -130,18 +146,21 @@ lb_as_command_fn (vlib_main_t * vm,
 
   if (del) {
     if ((ret = lb_vip_del_ass(vip_index, as_array, vec_len(as_array)))) {
-      vec_free(as_array);
-      return clib_error_return (0, "lb_vip_del_ass error %d", ret);
+      error = clib_error_return (0, "lb_vip_del_ass error %d", ret);
+      goto done;
     }
   } else {
     if ((ret = lb_vip_add_ass(vip_index, as_array, vec_len(as_array)))) {
-      vec_free(as_array);
-      return clib_error_return (0, "lb_vip_add_ass error %d", ret);
+      error = clib_error_return (0, "lb_vip_add_ass error %d", ret);
+      goto done;
     }
   }
 
+done:
+  unformat_free (line_input);
   vec_free(as_array);
-  return 0;
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (lb_as_command, static) =
@@ -163,6 +182,7 @@ lb_conf_command_fn (vlib_main_t * vm,
   u32 per_cpu_sticky_buckets_log2 = 0;
   u32 flow_timeout = lbm->flow_timeout;
   int ret;
+  clib_error_t *error = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -181,19 +201,24 @@ lb_conf_command_fn (vlib_main_t * vm,
       per_cpu_sticky_buckets = 1 << per_cpu_sticky_buckets_log2;
     } else if (unformat(line_input, "timeout %d", &flow_timeout))
       ;
-    else
-      return clib_error_return (0, "parse error: '%U'",
-                                format_unformat_error, line_input);
+    else {
+      error = clib_error_return (0, "parse error: '%U'",
+                                 format_unformat_error, line_input);
+      goto done;
+    }
   }
-
-  unformat_free (line_input);
 
   lb_garbage_collection();
 
-  if ((ret = lb_conf(&ip4, &ip6, per_cpu_sticky_buckets, flow_timeout)))
-    return clib_error_return (0, "lb_conf error %d", ret);
+  if ((ret = lb_conf(&ip4, &ip6, per_cpu_sticky_buckets, flow_timeout))) {
+    error = clib_error_return (0, "lb_conf error %d", ret);
+    goto done;
+  }
 
-  return NULL;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (lb_conf_command, static) =

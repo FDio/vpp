@@ -794,6 +794,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 table_id, vni, bd_id;
   u8 vni_is_set = 0, vrf_is_set = 0, bd_index_is_set = 0;
   u8 nsh_iface = 0;
+  clib_error_t *error = NULL;
 
   if (vnet_lisp_gpe_enable_disable_status () == 0)
     {
@@ -828,8 +829,9 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	{
-	  return clib_error_return (0, "parse error: '%U'",
-				    format_unformat_error, line_input);
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
 	}
     }
 
@@ -839,7 +841,8 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  if (~0 == lisp_gpe_add_nsh_iface (&lisp_gpe_main))
 	    {
-	      return clib_error_return (0, "NSH interface not created");
+	      error = clib_error_return (0, "NSH interface not created");
+	      goto done;
 	    }
 	}
       else
@@ -850,21 +853,34 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
 
   if (vrf_is_set && bd_index_is_set)
-    return clib_error_return (0,
-			      "Cannot set both vrf and brdige domain index!");
+    {
+      error = clib_error_return
+	(0, "Cannot set both vrf and brdige domain index!");
+      goto done;
+    }
 
   if (!vni_is_set)
-    return clib_error_return (0, "vni must be set!");
+    {
+      error = clib_error_return (0, "vni must be set!");
+      goto done;
+    }
 
   if (!vrf_is_set && !bd_index_is_set)
-    return clib_error_return (0, "vrf or bridge domain index must be set!");
+    {
+      error =
+	clib_error_return (0, "vrf or bridge domain index must be set!");
+      goto done;
+    }
 
   if (bd_index_is_set)
     {
       if (is_add)
 	{
 	  if (~0 == lisp_gpe_tenant_l2_iface_add_or_lock (vni, bd_id))
-	    return clib_error_return (0, "L2 interface not created");
+	    {
+	      error = clib_error_return (0, "L2 interface not created");
+	      goto done;
+	    }
 	}
       else
 	lisp_gpe_tenant_l2_iface_unlock (vni);
@@ -874,13 +890,35 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (is_add)
 	{
 	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, table_id))
-	    return clib_error_return (0, "L3 interface not created");
+	    {
+	      error = clib_error_return (0, "L3 interface not created");
+	      goto done;
+	    }
 	}
       else
 	lisp_gpe_tenant_l3_iface_unlock (vni);
     }
 
-  return (NULL);
+  if (nsh_iface)
+    {
+      if (is_add)
+	{
+	  if (~0 == lisp_gpe_add_nsh_iface (&lisp_gpe_main))
+	    {
+	      error = clib_error_return (0, "NSH interface not created");
+	      goto done;
+	    }
+	  else
+	    {
+	      lisp_gpe_del_nsh_iface (&lisp_gpe_main);
+	    }
+	}
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */

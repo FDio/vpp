@@ -465,6 +465,8 @@ map_security_check_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
+  clib_error_t *error = NULL;
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -476,11 +478,17 @@ map_security_check_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "on"))
 	mm->sec_check = true;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
+
+done:
   unformat_free (line_input);
-  return 0;
+
+  return error;
 }
 
 static clib_error_t *
@@ -490,6 +498,8 @@ map_security_check_frag_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
+  clib_error_t *error = NULL;
+
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -501,11 +511,17 @@ map_security_check_frag_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "on"))
 	mm->sec_check_frag = true;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
+
+done:
   unformat_free (line_input);
-  return 0;
+
+  return error;
 }
 
 static clib_error_t *
@@ -523,6 +539,7 @@ map_add_domain_command_fn (vlib_main_t * vm,
   u32 mtu = 0;
   u8 flags = 0;
   ip6_src_len = 128;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -559,20 +576,28 @@ map_add_domain_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "map-t"))
 	flags |= MAP_DOMAIN_TRANSLATION;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (num_m_args < 3)
-    return clib_error_return (0, "mandatory argument(s) missing");
+    {
+      error = clib_error_return (0, "mandatory argument(s) missing");
+      goto done;
+    }
 
   map_create_domain (&ip4_prefix, ip4_prefix_len,
 		     &ip6_prefix, ip6_prefix_len, &ip6_src, ip6_src_len,
 		     ea_bits_len, psid_offset, psid_length, &map_domain_index,
 		     mtu, flags);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 static clib_error_t *
@@ -582,6 +607,7 @@ map_del_domain_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 num_m_args = 0;
   u32 map_domain_index;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -592,17 +618,25 @@ map_del_domain_command_fn (vlib_main_t * vm,
       if (unformat (line_input, "index %d", &map_domain_index))
 	num_m_args++;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (num_m_args != 1)
-    return clib_error_return (0, "mandatory argument(s) missing");
+    {
+      error = clib_error_return (0, "mandatory argument(s) missing");
+      goto done;
+    }
 
   map_delete_domain (map_domain_index);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 static clib_error_t *
@@ -613,6 +647,7 @@ map_add_rule_command_fn (vlib_main_t * vm,
   ip6_address_t tep;
   u32 num_m_args = 0;
   u32 psid = 0, map_domain_index;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -628,19 +663,29 @@ map_add_rule_command_fn (vlib_main_t * vm,
 	if (unformat (line_input, "ip6-dst %U", unformat_ip6_address, &tep))
 	num_m_args++;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (num_m_args != 3)
-    return clib_error_return (0, "mandatory argument(s) missing");
+    {
+      error = clib_error_return (0, "mandatory argument(s) missing");
+      goto done;
+    }
 
   if (map_add_del_psid (map_domain_index, psid, &tep, 1) != 0)
     {
-      return clib_error_return (0, "Failing to add Mapping Rule");
+      error = clib_error_return (0, "Failing to add Mapping Rule");
+      goto done;
     }
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 #if MAP_SKIP_IP6_LOOKUP
@@ -653,6 +698,7 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
   ip4_address_t ip4nh;
   ip6_address_t ip6nh;
   map_main_t *mm = &map_main;
+  clib_error_t *error = NULL;
 
   memset (&ip4nh, 0, sizeof (ip4nh));
   memset (&ip6nh, 0, sizeof (ip6nh));
@@ -669,14 +715,19 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
 	if (unformat (line_input, "ip6-nh %U", unformat_ip6_address, &ip6nh))
 	mm->preresolve_ip6 = ip6nh;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   map_pre_resolve (&ip4nh, &ip6nh);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 #endif
 
@@ -688,6 +739,7 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t icmp_src_address;
   map_main_t *mm = &map_main;
+  clib_error_t *error = NULL;
 
   mm->icmp4_src_address.as_u32 = 0;
 
@@ -701,12 +753,17 @@ map_icmp_relay_source_address_command_fn (vlib_main_t * vm,
 	  (line_input, "%U", unformat_ip4_address, &icmp_src_address))
 	mm->icmp4_src_address = icmp_src_address;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
+
+done:
   unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 static clib_error_t *
@@ -717,6 +774,7 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
   int num_m_args = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -730,16 +788,21 @@ map_icmp_unreachables_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "off"))
 	mm->icmp6_enabled = false;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
 
   if (num_m_args != 1)
-    return clib_error_return (0, "mandatory argument(s) missing");
+    error = clib_error_return (0, "mandatory argument(s) missing");
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 static clib_error_t *
@@ -748,6 +811,7 @@ map_fragment_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -760,12 +824,17 @@ map_fragment_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "outer"))
 	mm->frag_inner = false;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
+
+done:
   unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 static clib_error_t *
@@ -775,6 +844,7 @@ map_fragment_df_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -787,12 +857,17 @@ map_fragment_df_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "off"))
 	mm->frag_ignore_df = false;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
+
+done:
   unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 static clib_error_t *
@@ -803,6 +878,7 @@ map_traffic_class_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   map_main_t *mm = &map_main;
   u32 tc = 0;
+  clib_error_t *error = NULL;
 
   mm->tc_copy = false;
 
@@ -817,12 +893,17 @@ map_traffic_class_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "%x", &tc))
 	mm->tc = tc & 0xff;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
+
+done:
   unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 static u8 *
@@ -922,6 +1003,7 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
   map_domain_t *d;
   bool counters = false;
   u32 map_domain_index = ~0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -934,10 +1016,12 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "index %d", &map_domain_index))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (pool_elts (mm->domains) == 0)
     vlib_cli_output (vm, "No MAP domains are configured...");
@@ -952,15 +1036,19 @@ show_map_domain_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (pool_is_free_index (mm->domains, map_domain_index))
 	{
-	  return clib_error_return (0, "MAP domain does not exists %d",
-				    map_domain_index);
+	  error = clib_error_return (0, "MAP domain does not exists %d",
+				     map_domain_index);
+	  goto done;
 	}
 
       d = pool_elt_at_index (mm->domains, map_domain_index);
       vlib_cli_output (vm, "%U", format_map_domain, d, counters);
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 static clib_error_t *

@@ -315,6 +315,7 @@ test_patch_command_fn (vlib_main_t * vm,
   int rx_set = 0;
   int tx_set = 0;
   int is_add = 1;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -335,10 +336,16 @@ test_patch_command_fn (vlib_main_t * vm,
     }
 
   if (rx_set == 0)
-    return clib_error_return (0, "rx interface not set");
+    {
+      error = clib_error_return (0, "rx interface not set");
+      goto done;
+    }
 
   if (tx_set == 0)
-    return clib_error_return (0, "tx interface not set");
+    {
+      error = clib_error_return (0, "tx interface not set");
+      goto done;
+    }
 
   rv = vnet_l2_patch_add_del (rx_sw_if_index, tx_sw_if_index, is_add);
 
@@ -348,17 +355,24 @@ test_patch_command_fn (vlib_main_t * vm,
       break;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX:
-      return clib_error_return (0, "rx interface not a physical port");
+      error = clib_error_return (0, "rx interface not a physical port");
+      goto done;
 
     case VNET_API_ERROR_INVALID_SW_IF_INDEX_2:
-      return clib_error_return (0, "tx interface not a physical port");
+      error = clib_error_return (0, "tx interface not a physical port");
+      goto done;
 
     default:
-      return clib_error_return
+      error = clib_error_return
 	(0, "WARNING: vnet_l2_patch_add_del returned %d", rv);
+      goto done;
     }
 
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?

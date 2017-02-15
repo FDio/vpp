@@ -2923,7 +2923,10 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
       else if (unformat (line_input, "ra-lifetime"))
 	{
 	  if (!unformat (line_input, "%d", &ra_lifetime))
-	    return (error = unformat_parse_error (line_input));
+	    {
+	      error = unformat_parse_error (line_input);
+	      goto done;
+	    }
 	  use_lifetime = 1;
 	  break;
 	}
@@ -2931,13 +2934,19 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 	{
 	  if (!unformat
 	      (line_input, "%d %d", &ra_initial_count, &ra_initial_interval))
-	    return (error = unformat_parse_error (line_input));
+	    {
+	      error = unformat_parse_error (line_input);
+	      goto done;
+	    }
 	  break;
 	}
       else if (unformat (line_input, "ra-interval"))
 	{
 	  if (!unformat (line_input, "%d", &ra_max_interval))
-	    return (error = unformat_parse_error (line_input));
+	    {
+	      error = unformat_parse_error (line_input);
+	      goto done;
+	    }
 
 	  if (!unformat (line_input, "%d", &ra_min_interval))
 	    ra_min_interval = 0;
@@ -2949,7 +2958,10 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 	  break;
 	}
       else
-	return (unformat_parse_error (line_input));
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
     }
 
   if (add_radv_info)
@@ -3006,7 +3018,10 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 	  else if (unformat (line_input, "no-onlink"))
 	    no_onlink = 1;
 	  else
-	    return (unformat_parse_error (line_input));
+	    {
+	      error = unformat_parse_error (line_input);
+	      goto done;
+	    }
 	}
 
       ip6_neighbor_ra_prefix (vm, sw_if_index,
@@ -3018,9 +3033,9 @@ ip6_neighbor_cmd (vlib_main_t * vm, unformat_input_t * main_input,
 			      off_link, no_autoconfig, no_onlink, is_no);
     }
 
+done:
   unformat_free (line_input);
 
-done:
   return error;
 }
 

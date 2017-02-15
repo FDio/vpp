@@ -399,6 +399,8 @@ set_ip_source_check (vlib_main_t * vm,
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
 			       is_del == 0, &config, sizeof (config));
 done:
+  unformat_free (line_input);
+
   return error;
 }
 
@@ -531,7 +533,9 @@ ip_source_check_accept (vlib_main_t * vm,
     }
 
 done:
-  return (error);
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?

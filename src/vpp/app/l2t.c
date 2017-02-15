@@ -254,6 +254,7 @@ l2tp_session_add_command_fn (vlib_main_t * vm,
   u32 local_session_id = 1, remote_session_id = 1;
   int our_address_set = 0, client_address_set = 0;
   int l2_sublayer_present = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -290,8 +291,12 @@ l2tp_session_add_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "l2-sublayer-present"))
 	l2_sublayer_present = 1;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
     }
 
   unformat_free (line_input);

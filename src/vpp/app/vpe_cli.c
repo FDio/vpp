@@ -36,6 +36,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
   mac_addr_t *mac_addrs = 0;
   u32 sw_if_index;
   u32 i;
+  clib_error_t *error = NULL;
 
   next_hops = NULL;
   rpaths = NULL;
@@ -49,7 +50,11 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
   if (!unformat (line_input, "%U %U",
 		 unformat_ip4_address, &prefix.fp_addr.ip4,
 		 unformat_vnet_sw_interface, vnm, &sw_if_index))
-    goto barf;
+    {
+      error = clib_error_return (0, "unknown input `%U'",
+				 format_unformat_error, line_input);
+      goto done;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -67,13 +72,18 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 	}
       else
 	{
-	barf:
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
 	}
     }
+
   if (vec_len (mac_addrs) == 0 || vec_len (mac_addrs) != vec_len (next_hops))
-    goto barf;
+    {
+      error = clib_error_return (0, "unknown input `%U'",
+				 format_unformat_error, line_input);
+      goto done;
+    }
 
   /* Create / delete special interface route /32's */
 
@@ -100,10 +110,12 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 			     &prefix,
 			     FIB_SOURCE_CLI, FIB_ENTRY_FLAG_NONE, rpaths);
 
+done:
   vec_free (mac_addrs);
   vec_free (next_hops);
+  unformat_free (line_input);
 
-  return 0;
+  return error;
 }
 
 /* *INDENT-OFF* */
