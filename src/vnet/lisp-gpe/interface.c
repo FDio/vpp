@@ -833,6 +833,22 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
+  if (nsh_iface)
+    {
+      if (is_add)
+	{
+	  if (~0 == lisp_gpe_add_nsh_iface (&lisp_gpe_main))
+	    {
+	      return clib_error_return (0, "NSH interface not created");
+	    }
+	}
+      else
+	{
+	  lisp_gpe_del_nsh_iface (&lisp_gpe_main);
+	}
+      return (NULL);
+    }
+
   if (vrf_is_set && bd_index_is_set)
     return clib_error_return (0,
 			      "Cannot set both vrf and brdige domain index!");
@@ -862,21 +878,6 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	lisp_gpe_tenant_l3_iface_unlock (vni);
-    }
-
-  if (nsh_iface)
-    {
-      if (is_add)
-	{
-	  if (~0 == lisp_gpe_add_nsh_iface (&lisp_gpe_main))
-	    {
-	      return clib_error_return (0, "NSH interface not created");
-	    }
-	  else
-	    {
-	      lisp_gpe_del_nsh_iface (&lisp_gpe_main);
-	    }
-	}
     }
 
   return (NULL);
