@@ -170,13 +170,14 @@ void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
 void
 TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 			  void *expired_timer_callback,
-			  f64 timer_interval_in_seconds)
+			  f64 timer_interval_in_seconds, u32 max_expirations)
 {
   int ring, slot;
   tw_timer_wheel_slot_t *ts;
   TWT (tw_timer) * t;
   memset (tw, 0, sizeof (*tw));
   tw->expired_timer_callback = expired_timer_callback;
+  tw->max_expirations = max_expirations;
   if (timer_interval_in_seconds == 0.0)
     {
       clib_warning ("timer interval is zero");
@@ -258,7 +259,6 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 
   /* Remember when we ran, compute next runtime */
   tw->next_run_time = (now + tw->timer_interval);
-  tw->last_run_time = now;
 
   total_nexpirations = 0;
   for (i = 0; i < nticks; i++)
@@ -332,8 +332,12 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 	}
       tw->current_index[TW_TIMER_RING_FAST]++;
       tw->current_tick++;
+
+      if (total_nexpirations >= tw->max_expirations)
+	break;
     }
 
+  tw->last_run_time += i * tw->ticks_per_second;
   return total_nexpirations;
 }
 
