@@ -535,6 +535,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
     fib_route_path_t rpath, *rpaths = NULL;
     mpls_label_t out_label = MPLS_LABEL_INVALID, *labels = NULL;
     u32 sw_if_index;
+    clib_error_t *error = NULL;
 
     memset(&rpath, 0, sizeof(rpath));
 
@@ -595,8 +596,11 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
 	else if (unformat (line_input, "l2-only"))
 	    l2_only = 1;
 	else
-	    return clib_error_return (0, "unknown input '%U'",
-				      format_unformat_error, line_input);
+	{
+	    error = clib_error_return (0, "unknown input '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	}
     }
 
     if (is_del)
@@ -606,17 +610,22 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
     else
     {
 	if (0 == vec_len(labels))
-	    return clib_error_return (0, "No Output Labels '%U'",
-				      format_unformat_error, line_input);
+	{
+	    error = clib_error_return (0, "No Output Labels '%U'",
+				       format_unformat_error, line_input);
+	    goto done;
+	}
 
 	vec_add1(rpaths, rpath);
 	vnet_mpls_tunnel_add(rpaths, labels, l2_only, &sw_if_index);
     }
 
+done:
     vec_free(labels);
     vec_free(rpaths);
+    unformat_free (line_input);
 
-    return (NULL);
+    return error;
 }
 
 /*?

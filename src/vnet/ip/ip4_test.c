@@ -143,8 +143,11 @@ thrash (vlib_main_t * vm,
 	  else if (unformat (line_input, "verbose"))
 	    verbose = 1;
 	  else
-	    return clib_error_return (0, "unknown input `%U'",
-				      format_unformat_error, line_input);
+	    {
+	      error = clib_error_return (0, "unknown input `%U'",
+					 format_unformat_error, line_input);
+	      goto done;
+	    }
 	}
     }
 
@@ -178,7 +181,7 @@ thrash (vlib_main_t * vm,
   if (p == 0)
     {
       vlib_cli_output (vm, "Couldn't map fib id %d to fib index\n", table_id);
-      return 0;
+      goto done;
     }
   table_index = p[0];
 
@@ -294,7 +297,11 @@ thrash (vlib_main_t * vm,
 
       pool_free (tm->route_pool);
     }
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?

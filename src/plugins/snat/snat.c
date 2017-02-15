@@ -1705,6 +1705,7 @@ add_address_command_fn (vlib_main_t * vm,
   int i, count;
   int is_add = 1;
   int rv = 0;
+  clib_error_t *error = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1721,19 +1722,27 @@ add_address_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
         is_add = 0;
       else
-        return clib_error_return (0, "unknown input '%U'",
-          format_unformat_error, input);
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
      }
-  unformat_free (line_input);
 
   if (sm->static_mapping_only)
-    return clib_error_return (0, "static mapping only mode");
+    {
+      error = clib_error_return (0, "static mapping only mode");
+      goto done;
+    }
 
   start_host_order = clib_host_to_net_u32 (start_addr.as_u32);
   end_host_order = clib_host_to_net_u32 (end_addr.as_u32);
   
   if (end_host_order < start_host_order)
-    return clib_error_return (0, "end address less than start address");
+    {
+      error = clib_error_return (0, "end address less than start address");
+      goto done;
+    }
 
   count = (end_host_order - start_host_order) + 1;
 
@@ -1755,11 +1764,11 @@ add_address_command_fn (vlib_main_t * vm,
       switch (rv)
         {
         case VNET_API_ERROR_NO_SUCH_ENTRY:
-          return clib_error_return (0, "S-NAT address not exist.");
-          break;
+          error = clib_error_return (0, "S-NAT address not exist.");
+          goto done;
         case VNET_API_ERROR_UNSPECIFIED:
-          return clib_error_return (0, "S-NAT address used in static mapping.");
-          break;
+          error = clib_error_return (0, "S-NAT address used in static mapping.");
+          goto done;
         default:
           break;
         }
@@ -1767,7 +1776,10 @@ add_address_command_fn (vlib_main_t * vm,
       increment_v4_address (&this_addr);
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (add_address_command, static) = {
@@ -1807,10 +1819,12 @@ snat_feature_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
         is_del = 1;
       else
-        return clib_error_return (0, "unknown input '%U'",
-          format_unformat_error, input);
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
     }
-  unformat_free (line_input);
 
   if (vec_len (inside_sw_if_indices))
     {
@@ -1830,6 +1844,8 @@ snat_feature_command_fn (vlib_main_t * vm,
         }
     }
 
+done:
+  unformat_free (line_input);
   vec_free (inside_sw_if_indices);
   vec_free (outside_sw_if_indices);
 
@@ -1923,13 +1939,18 @@ add_static_mapping_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
         is_add = 0;
       else
-        return clib_error_return (0, "unknown input: '%U'",
-          format_unformat_error, line_input);
+        {
+          error = clib_error_return (0, "unknown input: '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
     }
-  unformat_free (line_input);
 
   if (!addr_only && !proto_set)
-    return clib_error_return (0, "missing protocol");
+    {
+      error = clib_error_return (0, "missing protocol");
+      goto done;
+    }
 
   rv = snat_add_static_mapping(l_addr, e_addr, (u16) l_port, (u16) e_port,
                                vrf_id, addr_only, sw_if_index, proto, is_add);
@@ -1937,21 +1958,26 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   switch (rv)
     {
     case VNET_API_ERROR_INVALID_VALUE:
-      return clib_error_return (0, "External port already in use.");
-      break;
+      error = clib_error_return (0, "External port already in use.");
+      goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       if (is_add)
-        return clib_error_return (0, "External addres must be allocated.");
+        error = clib_error_return (0, "External addres must be allocated.");
       else
-        return clib_error_return (0, "Mapping not exist.");
-      break;
+        error = clib_error_return (0, "Mapping not exist.");
+      goto done;
     case VNET_API_ERROR_NO_SUCH_FIB:
-      return clib_error_return (0, "No such VRF id.");
+      error = clib_error_return (0, "No such VRF id.");
+      goto done;
     case VNET_API_ERROR_VALUE_EXIST:
-      return clib_error_return (0, "Mapping already exist.");
+      error = clib_error_return (0, "Mapping already exist.");
+      goto done;
     default:
       break;
     }
+
+done:
+  unformat_free (line_input);
 
   return error;
 }
@@ -1985,6 +2011,7 @@ set_workers_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   uword *bitmap = 0;
   int rv = 0;
+  clib_error_t *error = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1995,13 +2022,18 @@ set_workers_command_fn (vlib_main_t * vm,
       if (unformat (line_input, "%U", unformat_bitmap_list, &bitmap))
         ;
       else
-        return clib_error_return (0, "unknown input '%U'",
-          format_unformat_error, input);
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
      }
-  unformat_free (line_input);
 
   if (bitmap == 0)
-    return clib_error_return (0, "List of workers must be specified.");
+    {
+      error = clib_error_return (0, "List of workers must be specified.");
+      goto done;
+    }
 
   rv = snat_set_workers(bitmap);
 
@@ -2010,17 +2042,20 @@ set_workers_command_fn (vlib_main_t * vm,
   switch (rv)
     {
     case VNET_API_ERROR_INVALID_WORKER:
-      return clib_error_return (0, "Invalid worker(s).");
-      break;
+      error = clib_error_return (0, "Invalid worker(s).");
+      goto done;
     case VNET_API_ERROR_FEATURE_DISABLED:
-      return clib_error_return (0,
+      error = clib_error_return (0,
         "Supported only if 2 or more workes available.");
-      break;
+      goto done;
     default:
       break;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?
@@ -2047,6 +2082,7 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
   u32 src_port = 0;
   u8 enable = 1;
   int rv = 0;
+  clib_error_t *error = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2061,17 +2097,25 @@ snat_ipfix_logging_enable_disable_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "disable"))
         enable = 0;
       else
-        return clib_error_return (0, "unknown input '%U'",
-          format_unformat_error, input);
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
      }
-  unformat_free (line_input);
 
   rv = snat_ipfix_logging_enable_disable (enable, domain_id, (u16) src_port);
 
   if (rv)
-    return clib_error_return (0, "ipfix logging enable failed");
+    {
+      error = clib_error_return (0, "ipfix logging enable failed");
+      goto done;
+    }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?
@@ -2604,6 +2648,7 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   int rv;
   int is_del = 0;
+  clib_error_t *error = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2617,8 +2662,11 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
         is_del = 1;
       else
-        return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, line_input);
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+          goto done;
+        }
     }
 
   rv = snat_add_interface_address (sm, sw_if_index, is_del);
@@ -2629,10 +2677,15 @@ snat_add_interface_address_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return (0, "snat_add_interface_address returned %d",
-                                rv);
+      error = clib_error_return (0, "snat_add_interface_address returned %d",
+                                 rv);
+      goto done;
     }
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {

@@ -447,6 +447,7 @@ test_policer_command_fn (vlib_main_t * vm,
   int rx_set = 0;
   int is_add = 1;
   int is_show = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -468,7 +469,10 @@ test_policer_command_fn (vlib_main_t * vm,
     }
 
   if (rx_set == 0)
-    return clib_error_return (0, "interface not set");
+    {
+      error = clib_error_return (0, "interface not set");
+      goto done;
+    }
 
   if (is_show)
     {
@@ -477,12 +481,13 @@ test_policer_command_fn (vlib_main_t * vm,
       policer = pool_elt_at_index (pm->policers, pi);
 
       vlib_cli_output (vm, "%U", format_policer_instance, policer);
-      return 0;
+      goto done;
     }
 
   if (is_add && config_name == 0)
     {
-      return clib_error_return (0, "policer config name required");
+      error = clib_error_return (0, "policer config name required");
+      goto done;
     }
 
   rv = test_policer_add_del (rx_sw_if_index, config_name, is_add);
@@ -493,11 +498,15 @@ test_policer_command_fn (vlib_main_t * vm,
       break;
 
     default:
-      return clib_error_return
+      error = clib_error_return
 	(0, "WARNING: vnet_vnet_policer_add_del returned %d", rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */

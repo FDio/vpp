@@ -949,6 +949,7 @@ ila_entry_command_fn (vlib_main_t * vm,
   ila_add_del_entry_args_t args = { 0 };
   u8 next_hop_set = 0;
   int ret;
+  clib_error_t *error = 0;
 
   args.type = ILA_TYPE_IID;
   args.csum_mode = ILA_CSUM_MODE_NO_ACTION;
@@ -986,19 +987,29 @@ ila_entry_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
 	args.is_del = 1;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (!next_hop_set)
-      return clib_error_return (0, "Specified a next hop");
+    {
+      error = clib_error_return (0, "Specified a next hop");
+      goto done;
+    }
 
   if ((ret = ila_add_del_entry (&args)))
-    return clib_error_return (0, "ila_add_del_entry returned error %d", ret);
+    {
+      error = clib_error_return (0, "ila_add_del_entry returned error %d", ret);
+      goto done;
+    }
 
-  return NULL;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (ila_entry_command, static) =

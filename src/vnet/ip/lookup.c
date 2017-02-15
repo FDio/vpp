@@ -568,8 +568,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	}
     }
 
-  unformat_free (line_input);
-
   if (vec_len (prefixs) == 0)
     {
       error =
@@ -704,6 +702,7 @@ done:
   vec_free (dpos);
   vec_free (prefixs);
   vec_free (rpaths);
+  unformat_free (line_input);
   return error;
 }
 
@@ -872,8 +871,6 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	}
     }
 
-  unformat_free (line_input);
-
   if (~0 == table_id)
     {
       /*
@@ -970,6 +967,8 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 		     (scount * gcount) / (timet[1] - timet[0]));
 
 done:
+  unformat_free (line_input);
+
   return error;
 }
 
@@ -1149,23 +1148,36 @@ probe_neighbor_address (vlib_main_t * vm,
 	  is_ip4 = 0;
 	}
       else
-	return clib_error_return (0, "unknown input '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
-  unformat_free (line_input);
-
   if (sw_if_index == ~0)
-    return clib_error_return (0, "Interface required, not set.");
+    {
+      error = clib_error_return (0, "Interface required, not set.");
+      goto done;
+    }
   if (address_set == 0)
-    return clib_error_return (0, "ip address required, not set.");
+    {
+      error = clib_error_return (0, "ip address required, not set.");
+      goto done;
+    }
   if (address_set > 1)
-    return clib_error_return (0, "Multiple ip addresses not supported.");
+    {
+      error = clib_error_return (0, "Multiple ip addresses not supported.");
+      goto done;
+    }
 
   if (is_ip4)
     error = ip4_probe_neighbor_wait (vm, &a4, sw_if_index, retry_count);
   else
     error = ip6_probe_neighbor_wait (vm, &a6, sw_if_index, retry_count);
+
+done:
+  unformat_free (line_input);
 
   return error;
 }

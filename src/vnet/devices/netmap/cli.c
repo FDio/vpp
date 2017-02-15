@@ -37,6 +37,7 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 is_pipe = 0;
   u8 is_master = 0;
   u32 sw_if_index = ~0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -57,30 +58,48 @@ netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (line_input, "slave"))
 	is_master = 0;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (host_if_name == NULL)
-    return clib_error_return (0, "missing host interface name");
+    {
+      error = clib_error_return (0, "missing host interface name");
+      goto done;
+    }
 
   r =
     netmap_create_if (vm, host_if_name, hw_addr_ptr, is_pipe, is_master,
 		      &sw_if_index);
 
   if (r == VNET_API_ERROR_SYSCALL_ERROR_1)
-    return clib_error_return (0, "%s (errno %d)", strerror (errno), errno);
+    {
+      error = clib_error_return (0, "%s (errno %d)", strerror (errno), errno);
+      goto done;
+    }
 
   if (r == VNET_API_ERROR_INVALID_INTERFACE)
-    return clib_error_return (0, "Invalid interface name");
+    {
+      error = clib_error_return (0, "Invalid interface name");
+      goto done;
+    }
 
   if (r == VNET_API_ERROR_SUBIF_ALREADY_EXISTS)
-    return clib_error_return (0, "Interface already exists");
+    {
+      error = clib_error_return (0, "Interface already exists");
+      goto done;
+    }
 
   vlib_cli_output (vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main (),
 		   sw_if_index);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?
@@ -144,6 +163,7 @@ netmap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *host_if_name = NULL;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -154,17 +174,25 @@ netmap_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (unformat (line_input, "name %s", &host_if_name))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
-  unformat_free (line_input);
 
   if (host_if_name == NULL)
-    return clib_error_return (0, "missing host interface name");
+    {
+      error = clib_error_return (0, "missing host interface name");
+      goto done;
+    }
 
   netmap_delete_if (vm, host_if_name);
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /*?

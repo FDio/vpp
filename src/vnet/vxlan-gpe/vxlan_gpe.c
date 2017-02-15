@@ -454,6 +454,7 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   u32 tmp;
   vnet_vxlan_gpe_add_del_tunnel_args_t _a, * a = &_a;
   u32 sw_if_index;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -494,7 +495,10 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
           encap_fib_index =  ip4_fib_index_from_table_id (tmp);
 
         if (encap_fib_index == ~0)
-          return clib_error_return (0, "nonexistent encap fib id %d", tmp);
+          {
+            error = clib_error_return (0, "nonexistent encap fib id %d", tmp);
+            goto done;
+          }
       }
     else if (unformat (line_input, "decap-vrf-id %d", &tmp))
       {
@@ -504,7 +508,10 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
           decap_fib_index = ip4_fib_index_from_table_id (tmp);
 
         if (decap_fib_index == ~0)
-          return clib_error_return (0, "nonexistent decap fib id %d", tmp);
+          {
+            error = clib_error_return (0, "nonexistent decap fib id %d", tmp);
+            goto done;
+          }
       }
     else if (unformat (line_input, "vni %d", &vni))
       vni_set = 1;
@@ -517,27 +524,43 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat(line_input, "next-nsh"))
       protocol = VXLAN_GPE_PROTOCOL_NSH;
     else
-      return clib_error_return (0, "parse error: '%U'",
-                                format_unformat_error, line_input);
+      {
+        error = clib_error_return (0, "parse error: '%U'",
+                                   format_unformat_error, line_input);
+        goto done;
+      }
   }
 
-  unformat_free (line_input);
-
   if (local_set == 0)
-    return clib_error_return (0, "tunnel local address not specified");
+    {
+      error = clib_error_return (0, "tunnel local address not specified");
+      goto done;
+    }
 
   if (remote_set == 0)
-    return clib_error_return (0, "tunnel remote address not specified");
+    {
+      error = clib_error_return (0, "tunnel remote address not specified");
+      goto done;
+    }
 
   if (ipv4_set && ipv6_set)
-    return clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+    {
+      error = clib_error_return (0, "both IPv4 and IPv6 addresses specified");
+      goto done;
+    }
 
   if ((ipv4_set && memcmp(&local.ip4, &remote.ip4, sizeof(local.ip4)) == 0) ||
       (ipv6_set && memcmp(&local.ip6, &remote.ip6, sizeof(local.ip6)) == 0))
-    return clib_error_return (0, "src and dst addresses are identical");
+    {
+      error = clib_error_return (0, "src and dst addresses are identical");
+      goto done;
+    }
 
   if (vni_set == 0)
-    return clib_error_return (0, "vni not specified");
+    {
+      error = clib_error_return (0, "vni not specified");
+      goto done;
+    }
 
   memset (a, 0, sizeof (*a));
 
@@ -558,20 +581,27 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "%U\n", format_vnet_sw_if_index_name, vnet_get_main(), sw_if_index);
       break;
     case VNET_API_ERROR_INVALID_DECAP_NEXT:
-      return clib_error_return (0, "invalid decap-next...");
+      error = clib_error_return (0, "invalid decap-next...");
+      goto done;
 
     case VNET_API_ERROR_TUNNEL_EXIST:
-      return clib_error_return (0, "tunnel already exists...");
+      error = clib_error_return (0, "tunnel already exists...");
+      goto done;
 
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      return clib_error_return (0, "tunnel does not exist...");
+      error = clib_error_return (0, "tunnel does not exist...");
+      goto done;
 
     default:
-      return clib_error_return
+      error = clib_error_return
         (0, "vnet_vxlan_gpe_add_del_tunnel returned %d", rv);
+      goto done;
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (create_vxlan_gpe_tunnel_command, static) = {
