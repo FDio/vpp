@@ -175,6 +175,9 @@ typedef struct
 
   /** vector of expired timers */
   u32 *expired_timer_handles;
+
+  /** maximum expirations */
+  u32 max_expirations;
 } TWT (tw_timer_wheel);
 
 u32 TW (tw_timer_start) (TWT (tw_timer_wheel) * tw,
@@ -184,7 +187,7 @@ void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle);
 
 void TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 			       void *expired_timer_callback,
-			       f64 timer_interval);
+			       f64 timer_interval, u32 max_expirations);
 
 void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw);
 
