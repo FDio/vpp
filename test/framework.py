@@ -142,6 +142,7 @@ class VppTestCase(unittest.TestCase):
             debug_cli = "cli-listen localhost:5002"
         cls.vpp_cmdline = [cls.vpp_bin,
                            "unix", "{", "nodaemon", debug_cli, "}",
+                           "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}"]
         if cls.plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", cls.plugin_path])
@@ -335,6 +336,16 @@ class VppTestCase(unittest.TestCase):
             self.logger.info(self.vapi.ppcli("show hardware"))
             self.logger.info(self.vapi.ppcli("show error"))
             self.logger.info(self.vapi.ppcli("show run"))
+            # Save/Dump VPP api trace log
+            api_trace = "vpp_api_trace.%s.log" % self._testMethodName
+            tmp_api_trace = "/tmp/%s" % api_trace
+            vpp_api_trace_log = "%s/" % self.tempdir + api_trace
+            self.logger.info(self.vapi.cli("api trace save " + api_trace))
+            self.logger.info("Moving %s to %s\n" % (tmp_api_trace, 
+                                                  vpp_api_trace_log))
+            os.rename(tmp_api_trace, vpp_api_trace_log)
+            self.logger.info(self.vapi.cli("api trace dump " +
+                                           vpp_api_trace_log))
             self.registry.remove_vpp_config(self.logger)
 
     def setUp(self):
