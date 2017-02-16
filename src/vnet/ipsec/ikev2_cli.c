@@ -173,14 +173,21 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 				  unformat_input_t * input,
 				  vlib_cli_command_t * cmd)
 {
+  vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 *name = 0;
   clib_error_t *r = 0;
   u32 id_type;
   u8 *data = 0;
   u32 tmp1, tmp2, tmp3;
+  u64 tmp4, tmp5;
   ip4_address_t ip4;
   ip4_address_t end_addr;
+  u32 responder_sw_if_index = (u32) ~ 0;
+  ip4_address_t responder_ip4;
+  ikev2_transform_encr_type_t crypto_alg;
+  ikev2_transform_integ_type_t integ_alg;
+  ikev2_transform_dh_type_t dh_type;
 
   const char *valid_chars = "a-zA-Z0-9_";
 
@@ -308,6 +315,53 @@ ikev2_profile_add_del_command_fn (vlib_main_t * vm,
 				  ip4, end_addr, /*remote */ 0);
 	  goto done;
 	}
+      else if (unformat (line_input, "set %U responder %U %U",
+			 unformat_token, valid_chars, &name,
+			 unformat_vnet_sw_interface, vnm,
+			 &responder_sw_if_index, unformat_ip4_address,
+			 &responder_ip4))
+	{
+	  r =
+	    ikev2_set_profile_responder (vm, name, responder_sw_if_index,
+					 responder_ip4);
+	  goto done;
+	}
+      else
+	if (unformat
+	    (line_input,
+	     "set %U ike-crypto-alg %U %u ike-integ-alg %U ike-dh %U",
+	     unformat_token, valid_chars, &name,
+	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
+	     unformat_ikev2_transform_integ_type, &integ_alg,
+	     unformat_ikev2_transform_dh_type, &dh_type))
+	{
+	  r =
+	    ikev2_set_profile_ike_transforms (vm, name, crypto_alg, integ_alg,
+					      dh_type, tmp1);
+	  goto done;
+	}
+      else
+	if (unformat
+	    (line_input,
+	     "set %U esp-crypto-alg %U %u esp-integ-alg %U esp-dh %U",
+	     unformat_token, valid_chars, &name,
+	     unformat_ikev2_transform_encr_type, &crypto_alg, &tmp1,
+	     unformat_ikev2_transform_integ_type, &integ_alg,
+	     unformat_ikev2_transform_dh_type, &dh_type))
+	{
+	  r =
+	    ikev2_set_profile_esp_transforms (vm, name, crypto_alg, integ_alg,
+					      dh_type, tmp1);
+	  goto done;
+	}
+      else if (unformat (line_input, "set %U sa-lifetime %lu %u %u %lu",
+			 unformat_token, valid_chars, &name,
+			 &tmp4, &tmp1, &tmp2, &tmp5))
+	{
+	  r =
+	    ikev2_set_profile_sa_lifetime (vm, name, tmp4, tmp1, tmp2, tmp5);
+	  goto done;
+	}
       else
 	break;
     }
@@ -332,7 +386,11 @@ VLIB_CLI_COMMAND (ikev2_profile_add_del_command, static) = {
     "ikev2 profile set <id> id <local|remote> <type> <data>\n"
     "ikev2 profile set <id> traffic-selector <local|remote> ip-range "
     "<start-addr> - <end-addr> port-range <start-port> - <end-port> "
-    "protocol <protocol-number>",
+    "protocol <protocol-number>\n"
+    "ikev2 profile set <id> responder <interface> <addr>\n"
+    "ikev2 profile set <id> ike-crypto-alg <crypto alg> <key size> ike-integ-alg <integ alg> ike-dh <dh type>\n"
+    "ikev2 profile set <id> esp-crypto-alg <crypto alg> <key size> esp-integ-alg <integ alg> esp-dh <dh type>\n"
+    "ikev2 profile set <id> sa-lifetime <seconds> <jitter> <handover> <max bytes>",
     .function = ikev2_profile_add_del_command_fn,
 };
 /* *INDENT-ON* */
@@ -461,6 +519,71 @@ VLIB_CLI_COMMAND (set_ikev2_local_key_command, static) = {
     .function = set_ikev2_local_key_command_fn,
 };
 /* *INDENT-ON* */
+
+
+static clib_error_t *
+ikev2_initiate_command_fn (vlib_main_t * vm,
+			   unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *r = 0;
+  u8 *name = 0;
+  u32 tmp1;
+  u64 tmp2;
+
+  const char *valid_chars = "a-zA-Z0-9_";
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "sa-init %U", unformat_token, valid_chars, &name))
+	{
+	  r = ikev2_initiate_sa_init (vm, name);
+	  goto done;
+	}
+      else if (unformat (line_input, "del-child-sa %x", &tmp1))
+	{
+	  r = ikev2_initiate_delete_child_sa (vm, tmp1);
+	  goto done;
+	}
+      else if (unformat (line_input, "del-sa %lx", &tmp2))
+	{
+	  r = ikev2_initiate_delete_ike_sa (vm, tmp2);
+	  goto done;
+	}
+      else if (unformat (line_input, "rekey-child-sa %x", &tmp1))
+	{
+	  r = ikev2_initiate_rekey_child_sa (vm, tmp1);
+	  goto done;
+	}
+      else
+	break;
+    }
+
+  r = clib_error_return (0, "parse error: '%U'",
+			 format_unformat_error, line_input);
+
+done:
+  vec_free (name);
+  unformat_free (line_input);
+  return r;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ikev2_initiate_command, static) = {
+    .path = "ikev2 initiate",
+    .short_help =
+        "ikev2 initiate sa-init <profile id>\n"
+        "ikev2 initiate del-child-sa <child sa ispi>\n"
+        "ikev2 initiate del-sa <sa ispi>\n"
+        "ikev2 initiate rekey-child-sa <profile id> <child sa ispi>\n",
+    .function = ikev2_initiate_command_fn,
+};
+/* *INDENT-ON* */
+
 
 clib_error_t *
 ikev2_cli_init (vlib_main_t * vm)

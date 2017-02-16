@@ -3843,6 +3843,14 @@ _(ikev2_profile_set_auth_reply)                         \
 _(ikev2_profile_set_id_reply)                           \
 _(ikev2_profile_set_ts_reply)                           \
 _(ikev2_set_local_key_reply)                            \
+_(ikev2_set_responder_reply)                            \
+_(ikev2_set_ike_transforms_reply)                       \
+_(ikev2_set_esp_transforms_reply)                       \
+_(ikev2_set_sa_lifetime_reply)                          \
+_(ikev2_initiate_sa_init_reply)                         \
+_(ikev2_initiate_del_ike_sa_reply)                      \
+_(ikev2_initiate_del_child_sa_reply)                    \
+_(ikev2_initiate_rekey_child_sa_reply)                  \
 _(delete_loopback_reply)                                \
 _(bd_ip_mac_add_del_reply)                              \
 _(map_del_domain_reply)                                 \
@@ -4076,6 +4084,14 @@ _(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
 _(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
 _(IKEV2_PROFILE_SET_TS_REPLY, ikev2_profile_set_ts_reply)               \
 _(IKEV2_SET_LOCAL_KEY_REPLY, ikev2_set_local_key_reply)                 \
+_(IKEV2_SET_RESPONDER_REPLY, ikev2_set_responder_reply)                 \
+_(IKEV2_SET_IKE_TRANSFORMS_REPLY, ikev2_set_ike_transforms_reply)       \
+_(IKEV2_SET_ESP_TRANSFORMS_REPLY, ikev2_set_esp_transforms_reply)       \
+_(IKEV2_SET_SA_LIFETIME_REPLY, ikev2_set_sa_lifetime_reply)             \
+_(IKEV2_INITIATE_SA_INIT_REPLY, ikev2_initiate_sa_init_reply)           \
+_(IKEV2_INITIATE_DEL_IKE_SA_REPLY, ikev2_initiate_del_ike_sa_reply)     \
+_(IKEV2_INITIATE_DEL_CHILD_SA_REPLY, ikev2_initiate_del_child_sa_reply) \
+_(IKEV2_INITIATE_REKEY_CHILD_SA_REPLY, ikev2_initiate_rekey_child_sa_reply) \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
 _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
@@ -12738,6 +12754,336 @@ api_ikev2_set_local_key (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_ikev2_set_responder (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_set_responder_t *mp;
+  int ret;
+  u8 *name = 0;
+  u32 sw_if_index = ~0;
+  ip4_address_t address;
+
+  const char *valid_chars = "a-zA-Z0-9_";
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (i, "%U interface %d address %U", unformat_token, valid_chars,
+	   &name, &sw_if_index, unformat_ip4_address, &address))
+	vec_add1 (name, 0);
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vec_len (name))
+    {
+      errmsg ("profile name must be specified");
+      return -99;
+    }
+
+  if (vec_len (name) > 64)
+    {
+      errmsg ("profile name too long");
+      return -99;
+    }
+
+  M (IKEV2_SET_RESPONDER, mp);
+
+  clib_memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+
+  mp->sw_if_index = sw_if_index;
+  clib_memcpy (mp->address, &address, sizeof (address));
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ikev2_set_ike_transforms (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_set_ike_transforms_t *mp;
+  int ret;
+  u8 *name = 0;
+  u32 crypto_alg, crypto_key_size, integ_alg, dh_group;
+
+  const char *valid_chars = "a-zA-Z0-9_";
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U %d %d %d %d", unformat_token, valid_chars, &name,
+		    &crypto_alg, &crypto_key_size, &integ_alg, &dh_group))
+	vec_add1 (name, 0);
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vec_len (name))
+    {
+      errmsg ("profile name must be specified");
+      return -99;
+    }
+
+  if (vec_len (name) > 64)
+    {
+      errmsg ("profile name too long");
+      return -99;
+    }
+
+  M (IKEV2_SET_IKE_TRANSFORMS, mp);
+
+  clib_memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+  mp->crypto_alg = crypto_alg;
+  mp->crypto_key_size = crypto_key_size;
+  mp->integ_alg = integ_alg;
+  mp->dh_group = dh_group;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+
+static int
+api_ikev2_set_esp_transforms (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_set_esp_transforms_t *mp;
+  int ret;
+  u8 *name = 0;
+  u32 crypto_alg, crypto_key_size, integ_alg, dh_group;
+
+  const char *valid_chars = "a-zA-Z0-9_";
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U %d %d %d %d", unformat_token, valid_chars, &name,
+		    &crypto_alg, &crypto_key_size, &integ_alg, &dh_group))
+	vec_add1 (name, 0);
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vec_len (name))
+    {
+      errmsg ("profile name must be specified");
+      return -99;
+    }
+
+  if (vec_len (name) > 64)
+    {
+      errmsg ("profile name too long");
+      return -99;
+    }
+
+  M (IKEV2_SET_ESP_TRANSFORMS, mp);
+
+  clib_memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+  mp->crypto_alg = crypto_alg;
+  mp->crypto_key_size = crypto_key_size;
+  mp->integ_alg = integ_alg;
+  mp->dh_group = dh_group;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ikev2_set_sa_lifetime (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_set_sa_lifetime_t *mp;
+  int ret;
+  u8 *name = 0;
+  u64 lifetime, lifetime_maxdata;
+  u32 lifetime_jitter, handover;
+
+  const char *valid_chars = "a-zA-Z0-9_";
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U %lu %u %u %lu", unformat_token, valid_chars, &name,
+		    &lifetime, &lifetime_jitter, &handover,
+		    &lifetime_maxdata))
+	vec_add1 (name, 0);
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vec_len (name))
+    {
+      errmsg ("profile name must be specified");
+      return -99;
+    }
+
+  if (vec_len (name) > 64)
+    {
+      errmsg ("profile name too long");
+      return -99;
+    }
+
+  M (IKEV2_SET_SA_LIFETIME, mp);
+
+  clib_memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+  mp->lifetime = lifetime;
+  mp->lifetime_jitter = lifetime_jitter;
+  mp->handover = handover;
+  mp->lifetime_maxdata = lifetime_maxdata;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ikev2_initiate_sa_init (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_initiate_sa_init_t *mp;
+  int ret;
+  u8 *name = 0;
+
+  const char *valid_chars = "a-zA-Z0-9_";
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_token, valid_chars, &name))
+	vec_add1 (name, 0);
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (!vec_len (name))
+    {
+      errmsg ("profile name must be specified");
+      return -99;
+    }
+
+  if (vec_len (name) > 64)
+    {
+      errmsg ("profile name too long");
+      return -99;
+    }
+
+  M (IKEV2_INITIATE_SA_INIT, mp);
+
+  clib_memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ikev2_initiate_del_ike_sa (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_initiate_del_ike_sa_t *mp;
+  int ret;
+  u64 ispi;
+
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%lx", &ispi))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IKEV2_INITIATE_DEL_IKE_SA, mp);
+
+  mp->ispi = ispi;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ikev2_initiate_del_child_sa (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_initiate_del_child_sa_t *mp;
+  int ret;
+  u32 ispi;
+
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%x", &ispi))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IKEV2_INITIATE_DEL_CHILD_SA, mp);
+
+  mp->ispi = ispi;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_ikev2_initiate_rekey_child_sa (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ikev2_initiate_rekey_child_sa_t *mp;
+  int ret;
+  u32 ispi;
+
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%x", &ispi))
+	;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IKEV2_INITIATE_REKEY_CHILD_SA, mp);
+
+  mp->ispi = ispi;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
 /*
  * MAP
  */
@@ -17914,6 +18260,14 @@ _(ikev2_profile_set_ts, "name <profile_name> protocol <proto>\n"        \
   "start_port <port> end_port <port> start_addr <ip4> end_addr <ip4>\n" \
   "(local|remote)")                                                     \
 _(ikev2_set_local_key, "file <absolute_file_path>")                     \
+_(ikev2_set_responder, "<profile_name> interface <interface> address <addr>") \
+_(ikev2_set_ike_transforms, "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>") \
+_(ikev2_set_esp_transforms, "<profile_name> <crypto alg> <key size> <integrity alg> <DH group>") \
+_(ikev2_set_sa_lifetime, "<profile_name> <seconds> <jitter> <handover> <max bytes>") \
+_(ikev2_initiate_sa_init, "<profile_name>")                             \
+_(ikev2_initiate_del_ike_sa, "<ispi>")                                  \
+_(ikev2_initiate_del_child_sa, "<ispi>")                                \
+_(ikev2_initiate_rekey_child_sa, "<ispi>")                              \
 _(delete_loopback,"sw_if_index <nn>")                                   \
 _(bd_ip_mac_add_del, "bd_id <bridge-domain-id> <ip4/6-addr> <mac-addr> [del]") \
 _(map_add_domain,                                                       \

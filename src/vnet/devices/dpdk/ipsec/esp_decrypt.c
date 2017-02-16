@@ -174,6 +174,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 		}
 	    }
 
+	  sa0->total_data_size += b0->current_length;
+
 	  if (PREDICT_FALSE(sa0->integ_alg == IPSEC_INTEG_ALG_NONE) ||
 		  PREDICT_FALSE(sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE))
 	    {
