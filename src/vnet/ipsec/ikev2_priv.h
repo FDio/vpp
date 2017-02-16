@@ -109,6 +109,21 @@ typedef struct
 
 typedef struct
 {
+  u32 sw_if_index;
+  ip4_address_t ip4;
+} ikev2_responder_t;
+
+typedef struct
+{
+  ikev2_transform_encr_type_t crypto_alg;
+  ikev2_transform_integ_type_t integ_alg;
+  ikev2_transform_dh_type_t dh_type;
+  u32 crypto_key_size;
+} ikev2_transforms_set;
+
+
+typedef struct
+{
   ikev2_id_type_t type:8;
   u8 *data;
 } ikev2_id_t;
@@ -128,6 +143,11 @@ typedef struct
   u8 *sk_ar;
   u8 *sk_ei;
   u8 *sk_er;
+
+  /* lifetime data */
+  f64 time_to_expiration;
+  u8 is_expired;
+  i8 rekey_retries;
 } ikev2_child_sa_t;
 
 typedef struct
@@ -140,6 +160,7 @@ typedef struct
 {
   u8 protocol_id;
   u32 spi;
+  u32 ispi;
   ikev2_sa_proposal_t *i_proposal;
   ikev2_sa_proposal_t *r_proposal;
   ikev2_ts_t *tsi;
@@ -154,6 +175,24 @@ typedef struct
   u8 *data;
 } ikev2_notify_t;
 
+typedef struct
+{
+  u8 *name;
+  u8 is_enabled;
+
+  ikev2_auth_t auth;
+  ikev2_id_t loc_id;
+  ikev2_id_t rem_id;
+  ikev2_ts_t loc_ts;
+  ikev2_ts_t rem_ts;
+  ikev2_responder_t responder;
+  ikev2_transforms_set ike_ts;
+  ikev2_transforms_set esp_ts;
+  u64 lifetime;
+  u64 lifetime_maxdata;
+  u32 lifetime_jitter;
+  u32 handover;
+} ikev2_profile_t;
 
 typedef struct
 {
@@ -170,6 +209,7 @@ typedef struct
   /* DH data */
   u16 dh_group;
   u8 *dh_shared_key;
+  u8 *dh_private_key;
   u8 *i_dh_data;
   u8 *r_dh_data;
 
@@ -208,20 +248,13 @@ typedef struct
   u32 last_msg_id;
   u8 *last_res_packet_data;
 
+  u8 is_initiator;
+  u32 last_init_msg_id;
+  ikev2_profile_t *profile;
+
   ikev2_child_sa_t *childs;
 } ikev2_sa_t;
 
-typedef struct
-{
-  u8 *name;
-  u8 is_enabled;
-
-  ikev2_auth_t auth;
-  ikev2_id_t loc_id;
-  ikev2_id_t rem_id;
-  ikev2_ts_t loc_ts;
-  ikev2_ts_t rem_ts;
-} ikev2_profile_t;
 
 typedef struct
 {
@@ -250,6 +283,11 @@ typedef struct
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
+  /* pool of IKEv2 Security Associations created in initiator mode */
+  ikev2_sa_t *sais;
+  /* hash */
+  uword *sa_by_ispi;
+
   ikev2_main_per_thread_data_t *per_thread_data;
 
 } ikev2_main_t;
@@ -269,6 +307,7 @@ v8 *ikev2_calc_integr (ikev2_sa_transform_t * tr, v8 * key, u8 * data,
 v8 *ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len);
 int ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst);
 void ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
+void ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t);
 int ikev2_verify_sign (EVP_PKEY * pkey, u8 * sigbuf, u8 * data);
 u8 *ikev2_calc_sign (EVP_PKEY * pkey, u8 * data);
 EVP_PKEY *ikev2_load_cert_file (u8 * file);
@@ -291,6 +330,8 @@ typedef struct
 
 void ikev2_payload_add_notify (ikev2_payload_chain_t * c, u16 msg_type,
 			       u8 * data);
+void ikev2_payload_add_notify_2 (ikev2_payload_chain_t * c, u16 msg_type,
+				 u8 * data, ikev2_notify_t * notify);
 void ikev2_payload_add_sa (ikev2_payload_chain_t * c,
 			   ikev2_sa_proposal_t * proposals);
 void ikev2_payload_add_ke (ikev2_payload_chain_t * c, u16 dh_group,

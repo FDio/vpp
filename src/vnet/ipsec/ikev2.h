@@ -371,6 +371,31 @@ clib_error_t *ikev2_set_profile_ts (vlib_main_t * vm, u8 * name,
 				    u8 protocol_id, u16 start_port,
 				    u16 end_port, ip4_address_t start_addr,
 				    ip4_address_t end_addr, int is_local);
+clib_error_t *ikev2_set_profile_responder (vlib_main_t * vm, u8 * name,
+					   u32 sw_if_index,
+					   ip4_address_t ip4);
+clib_error_t *ikev2_set_profile_ike_transforms (vlib_main_t * vm, u8 * name,
+						ikev2_transform_encr_type_t
+						crypto_alg,
+						ikev2_transform_integ_type_t
+						integ_alg,
+						ikev2_transform_dh_type_t
+						dh_type, u32 crypto_key_size);
+clib_error_t *ikev2_set_profile_esp_transforms (vlib_main_t * vm, u8 * name,
+						ikev2_transform_encr_type_t
+						crypto_alg,
+						ikev2_transform_integ_type_t
+						integ_alg,
+						ikev2_transform_dh_type_t
+						dh_type, u32 crypto_key_size);
+clib_error_t *ikev2_set_profile_sa_lifetime (vlib_main_t * vm, u8 * name,
+					     u64 lifetime, u32 jitter,
+					     u32 handover, u64 maxdata);
+clib_error_t *ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name);
+clib_error_t *ikev2_initiate_delete_child_sa (vlib_main_t * vm, u32 ispi);
+clib_error_t *ikev2_initiate_delete_ike_sa (vlib_main_t * vm, u64 ispi);
+clib_error_t *ikev2_initiate_rekey_child_sa (vlib_main_t * vm, u32 ispi);
+
 /* ikev2_format.c */
 u8 *format_ikev2_auth_method (u8 * s, va_list * args);
 u8 *format_ikev2_id_type (u8 * s, va_list * args);
