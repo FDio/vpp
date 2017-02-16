@@ -182,6 +182,8 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      goto trace;
 	    }
 
+	  sa0->total_data_size += i_b0->current_length;
+
 	  /* grab free buffer */
 	  last_empty_buffer = vec_len (empty_buffers) - 1;
 	  o_bi0 = empty_buffers[last_empty_buffer];
