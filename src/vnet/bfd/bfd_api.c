@@ -54,7 +54,9 @@
   _ (BFD_AUTH_DEL_KEY, bfd_auth_del_key)                   \
   _ (BFD_AUTH_KEYS_DUMP, bfd_auth_keys_dump)               \
   _ (BFD_UDP_AUTH_ACTIVATE, bfd_udp_auth_activate)         \
-  _ (BFD_UDP_AUTH_DEACTIVATE, bfd_udp_auth_deactivate)
+  _ (BFD_UDP_AUTH_DEACTIVATE, bfd_udp_auth_deactivate)     \
+  _ (BFD_UDP_SET_ECHO_SOURCE, bfd_udp_set_echo_source)     \
+  _ (BFD_UDP_DEL_ECHO_SOURCE, bfd_udp_del_echo_source)
 
 pub_sub_handler (bfd_events, BFD_EVENTS);
 
@@ -312,6 +314,33 @@ vl_api_bfd_udp_auth_deactivate_t_handler (vl_api_bfd_udp_auth_deactivate_t *
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BFD_UDP_AUTH_DEACTIVATE_REPLY);
+}
+
+static void
+vl_api_bfd_udp_set_echo_source_t_handler (vl_api_bfd_udp_set_echo_source_t *
+					  mp)
+{
+  vl_api_bfd_udp_set_echo_source_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = bfd_udp_set_echo_source (clib_net_to_host_u32 (mp->sw_if_index));
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_BFD_UDP_SET_ECHO_SOURCE_REPLY);
+}
+
+static void
+vl_api_bfd_udp_del_echo_source_t_handler (vl_api_bfd_udp_del_echo_source_t *
+					  mp)
+{
+  vl_api_bfd_udp_del_echo_source_reply_t *rmp;
+  int rv;
+
+  rv = bfd_udp_del_echo_source ();
+
+  REPLY_MACRO (VL_API_BFD_UDP_DEL_ECHO_SOURCE_REPLY);
 }
 
 /*

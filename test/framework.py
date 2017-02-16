@@ -574,7 +574,7 @@ class VppTestCase(unittest.TestCase):
 
     def assert_equal(self, real_value, expected_value, name_or_class=None):
         if name_or_class is None:
-            self.assertEqual(real_value, expected_value, msg)
+            self.assertEqual(real_value, expected_value)
             return
         try:
             msg = "Invalid %s: %d('%s') does not match expected value %d('%s')"
