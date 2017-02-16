@@ -13,29 +13,43 @@
  * limitations under the License.
  */
 
-/** \brief Configure BFD feature
+/** \brief Set BFD echo source
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param slow_timer - slow timer (seconds)
-    @param min_tx - desired min tx interval
-    @param min_rx - desired min rx interval
-    @param detect_mult - desired detection multiplier
+    @param sw_if_index - interface to use as echo source
 */
-define bfd_set_config
+define bfd_udp_set_echo_source
 {
   u32 client_index;
   u32 context;
-  u32 slow_timer;
-  u32 min_tx;
-  u32 min_rx;
-  u8 detect_mult;
+  u32 sw_if_index;
 };
 
-/** \brief Configure BFD feature response
+/** \brief Set BFD feature response
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
 */
-define bfd_set_config_reply
+define bfd_udp_set_echo_source_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Delete BFD echo source
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define bfd_udp_del_echo_source
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Delete BFD feature response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define bfd_udp_del_echo_source_reply
 {
   u32 context;
   i32 retval;

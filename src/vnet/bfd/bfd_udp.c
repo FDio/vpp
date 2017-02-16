@@ -27,6 +27,9 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_nbr.h>
+#include <vnet/dpo/receive_dpo.h>
+#include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_table.h>
 #include <vnet/bfd/bfd_debug.h>
 #include <vnet/bfd/bfd_udp.h>
 #include <vnet/bfd/bfd_main.h>
@@ -38,6 +41,12 @@ typedef struct
   /* hashmap - bfd session index by bfd key - used for CLI/API lookup, where
    * discriminator is unknown */
   mhash_t bfd_session_idx_by_bfd_key;
+  /* convenience variable */
+  vnet_main_t *vnet_main;
+  /* flag indicating whether echo_source_sw_if_index holds a valid value */
+  int echo_source_is_set;
+  /* loopback interface used to get echo source ip */
+  u32 echo_source_sw_if_index;
 } bfd_udp_main_t;
 
 static vlib_node_registration_t bfd_udp4_input_node;
@@ -46,6 +55,80 @@ static vlib_node_registration_t bfd_udp_echo4_input_node;
 static vlib_node_registration_t bfd_udp_echo6_input_node;
 
 bfd_udp_main_t bfd_udp_main;
+
+vnet_api_error_t
+bfd_udp_set_echo_source (u32 sw_if_index)
+{
+  vnet_sw_interface_t *sw_if =
+    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main,
+				bfd_udp_main.echo_source_sw_if_index);
+  if (sw_if)
+    {
+      bfd_udp_main.echo_source_sw_if_index = sw_if_index;
+      bfd_udp_main.echo_source_is_set = 1;
+      return 0;
+    }
+  return VNET_API_ERROR_BFD_ENOENT;
+}
+
+vnet_api_error_t
+bfd_udp_del_echo_source (u32 sw_if_index)
+{
+  bfd_udp_main.echo_source_sw_if_index = ~0;
+  bfd_udp_main.echo_source_is_set = 0;
+  return 0;
+}
+
+int
+bfd_udp_is_echo_available (bfd_transport_e transport)
+{
+  if (!bfd_udp_main.echo_source_is_set)
+    {
+      return 0;
+    }
+  /*
+   * for the echo to work, we need a loopback interface with at least one
+   * address with netmask length at most 31 (ip4) or 127 (ip6) so that we can
+   * pick an unused address from that subnet
+   */
+  vnet_sw_interface_t *sw_if =
+    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main,
+				bfd_udp_main.echo_source_sw_if_index);
+  if (sw_if && sw_if->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    {
+      if (BFD_TRANSPORT_UDP4 == transport)
+	{
+	  ip4_main_t *im = &ip4_main;
+	  ip_interface_address_t *ia = NULL;
+          /* *INDENT-OFF* */
+          foreach_ip_interface_address (&im->lookup_main, ia,
+                                        bfd_udp_main.echo_source_sw_if_index,
+                                        0 /* honor unnumbered */, ({
+                                          if (ia->address_length <= 31)
+                                            {
+                                              return 1;
+                                            }
+                                        }));
+          /* *INDENT-ON* */
+	}
+      else if (BFD_TRANSPORT_UDP6 == transport)
+	{
+	  ip6_main_t *im = &ip6_main;
+	  ip_interface_address_t *ia = NULL;
+          /* *INDENT-OFF* */
+          foreach_ip_interface_address (&im->lookup_main, ia,
+                                        bfd_udp_main.echo_source_sw_if_index,
+                                        0 /* honor unnumbered */, ({
+                                          if (ia->address_length <= 127)
+                                            {
+                                              return 1;
+                                            }
+                                        }));
+          /* *INDENT-ON* */
+	}
+    }
+  return 0;
+}
 
 static u16
 bfd_udp_bs_idx_to_sport (u32 bs_idx)
@@ -61,9 +144,78 @@ bfd_udp_bs_idx_to_sport (u32 bs_idx)
   return 49152 + bs_idx % (65535 - 49152 + 1);
 }
 
-void
+static void
+lol ()
+{
+}
+
+int
+bfd_udp_get_echo_src_ip4 (ip4_address_t * addr)
+{
+  if (!bfd_udp_main.echo_source_is_set)
+    {
+      BFD_ERR ("cannot find ip4 address, echo source not set");
+      return 0;
+    }
+  ip_interface_address_t *ia = NULL;
+  ip4_main_t *im = &ip4_main;
+
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (
+      &im->lookup_main, ia, bfd_udp_main.echo_source_sw_if_index,
+      0 /* honor unnumbered */, ({
+        ip4_address_t *x =
+            ip_interface_address_get_address (&im->lookup_main, ia);
+        if (ia->address_length <= 31)
+          {
+            addr->as_u32 = clib_host_to_net_u32 (x->as_u32);
+	    /*
+	     * flip the last bit to get a different address, might be network,
+	     * we don't care ...
+	     */
+	    addr->as_u32 ^= 1;
+            addr->as_u32 = clib_net_to_host_u32 (addr->as_u32);
+            return 1;
+          }
+      }));
+  /* *INDENT-ON* */
+  BFD_ERR ("cannot find ip4 address, no usable address found");
+  return 0;
+}
+
+int
+bfd_udp_get_echo_src_ip6 (ip6_address_t * addr)
+{
+  if (!bfd_udp_main.echo_source_is_set)
+    {
+      BFD_ERR ("cannot find ip6 address, echo source not set");
+      return 0;
+    }
+  ip_interface_address_t *ia = NULL;
+  ip6_main_t *im = &ip6_main;
+
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (
+      &im->lookup_main, ia, bfd_udp_main.echo_source_sw_if_index,
+      0 /* honor unnumbered */, ({
+        ip6_address_t *x =
+            ip_interface_address_get_address (&im->lookup_main, ia);
+        if (ia->address_length <= 127)
+          {
+            *addr = *x;
+            addr->as_u8[15] ^= 1; /* flip the last bit of the address */
+            lol ();
+            return 1;
+          }
+      }));
+  /* *INDENT-ON* */
+  BFD_ERR ("cannot find ip6 address, no usable address found");
+  return 0;
+}
+
+int
 bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			const bfd_session_t * bs)
+			const bfd_session_t * bs, int is_echo)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
@@ -83,12 +235,24 @@ bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
   headers->ip4.ip_version_and_header_length = 0x45;
   headers->ip4.ttl = 255;
   headers->ip4.protocol = IP_PROTOCOL_UDP;
-  headers->ip4.src_address.as_u32 = key->local_addr.ip4.as_u32;
-  headers->ip4.dst_address.as_u32 = key->peer_addr.ip4.as_u32;
-
   headers->udp.src_port =
     clib_host_to_net_u16 (bfd_udp_bs_idx_to_sport (bs->bs_idx));
-  headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
+  if (is_echo)
+    {
+      int rv;
+      if (!(rv = bfd_udp_get_echo_src_ip4 (&headers->ip4.src_address)))
+	{
+	  return rv;
+	}
+      headers->ip4.dst_address.as_u32 = key->local_addr.ip4.as_u32;
+      headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd_echo4);
+    }
+  else
+    {
+      headers->ip4.src_address.as_u32 = key->local_addr.ip4.as_u32;
+      headers->ip4.dst_address.as_u32 = key->peer_addr.ip4.as_u32;
+      headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
+    }
 
   /* fix ip length, checksum and udp length */
   const u16 ip_length = vlib_buffer_length_in_chain (vm, b);
@@ -98,11 +262,12 @@ bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
 
   const u16 udp_length = ip_length - (sizeof (headers->ip4));
   headers->udp.length = clib_host_to_net_u16 (udp_length);
+  return 1;
 }
 
-void
+int
 bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			const bfd_session_t * bs)
+			const bfd_session_t * bs, int is_echo)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
@@ -123,14 +288,28 @@ bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
     clib_host_to_net_u32 (0x6 << 28);
   headers->ip6.hop_limit = 255;
   headers->ip6.protocol = IP_PROTOCOL_UDP;
-  clib_memcpy (&headers->ip6.src_address, &key->local_addr.ip6,
-	       sizeof (headers->ip6.src_address));
-  clib_memcpy (&headers->ip6.dst_address, &key->peer_addr.ip6,
-	       sizeof (headers->ip6.dst_address));
-
   headers->udp.src_port =
     clib_host_to_net_u16 (bfd_udp_bs_idx_to_sport (bs->bs_idx));
-  headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
+  if (is_echo)
+    {
+      int rv;
+      if (!(rv = bfd_udp_get_echo_src_ip6 (&headers->ip6.src_address)))
+	{
+	  return rv;
+	}
+      clib_memcpy (&headers->ip6.dst_address, &key->local_addr.ip6,
+		   sizeof (headers->ip6.dst_address));
+
+      headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd_echo6);
+    }
+  else
+    {
+      clib_memcpy (&headers->ip6.src_address, &key->local_addr.ip6,
+		   sizeof (headers->ip6.src_address));
+      clib_memcpy (&headers->ip6.dst_address, &key->peer_addr.ip6,
+		   sizeof (headers->ip6.dst_address));
+      headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
+    }
 
   /* fix ip payload length and udp length */
   const u16 udp_length =
@@ -147,6 +326,7 @@ bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
     {
       headers->udp.checksum = 0xffff;
     }
+  return 1;
 }
 
 static bfd_session_t *
@@ -182,12 +362,17 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
 			      bfd_session_t ** bs_out)
 {
   /* get a pool entry and if we end up not needing it, give it back */
-  bfd_transport_t t = BFD_TRANSPORT_UDP4;
+  bfd_transport_e t = BFD_TRANSPORT_UDP4;
   if (!ip46_address_is_ip4 (local_addr))
     {
       t = BFD_TRANSPORT_UDP6;
     }
   bfd_session_t *bs = bfd_get_session (bum->bfd_main, t);
+  if (!bs)
+    {
+      bfd_put_session (bum->bfd_main, bs);
+      return VNET_API_ERROR_BFD_EAGAIN;
+    }
   bfd_udp_session_t *bus = &bs->udp;
   memset (bus, 0, sizeof (*bus));
   bfd_udp_key_t *key = &bus->key;
@@ -213,6 +398,21 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
       BFD_DBG ("adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, VNET_LINK_IP4, %U, %d) "
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
+
+      fib_prefix_t fib_prefix;
+      memset (&fib_prefix, 0, sizeof (fib_prefix));
+      fib_prefix.fp_len = 0;
+      fib_prefix.fp_proto = FIB_PROTOCOL_IP4;
+      fib_prefix.fp_addr = key->local_addr;
+      u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, 0);	/* FIXME table id 0? */
+      dpo_id_t dpo = DPO_INVALID;
+      dpo_proto_t dproto;
+      dproto = fib_proto_to_dpo (fib_prefix.fp_proto);
+      receive_dpo_add_or_lock (dproto, ~0, NULL, &dpo);
+      fib_table_entry_special_dpo_update (fib_index, &fib_prefix,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_LOCAL, &dpo);
+      dpo_reset (&dpo);
     }
   else
     {
@@ -234,7 +434,7 @@ bfd_udp_validate_api_input (u32 sw_if_index,
 			    const ip46_address_t * peer_addr)
 {
   vnet_sw_interface_t *sw_if =
-    vnet_get_sw_interface (vnet_get_main (), sw_if_index);
+    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main, sw_if_index);
   u8 local_ip_valid = 0;
   ip_interface_address_t *ia = NULL;
   if (!sw_if)
@@ -1001,7 +1201,8 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  const bfd_pkt_t *pkt = vlib_buffer_get_current (b0);
 	  if (bfd_pkt_get_poll (pkt))
 	    {
-	      bfd_init_final_control_frame (vm, b0, bs);
+	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main,
+					    bs);
 	      if (is_ipv6)
 		{
 		  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
@@ -1081,44 +1282,6 @@ VLIB_REGISTER_NODE (bfd_udp6_input_node, static) = {
 };
 /* *INDENT-ON* */
 
-/**
- * @brief swap the source and destination IP addresses in the packet
- */
-static int
-bfd_echo_address_swap (vlib_buffer_t * b, int is_ipv6)
-{
-  udp_header_t *dummy = NULL;
-  if (is_ipv6)
-    {
-      ip6_header_t *ip6 = NULL;
-      bfd_udp6_find_headers (b, &ip6, &dummy);
-      if (!ip6)
-	{
-	  return 0;
-	}
-      ip6_address_t tmp = ip6->dst_address;
-      ip6->dst_address = ip6->src_address;
-      ip6->src_address = tmp;
-      vlib_buffer_advance (b,
-			   (u8 *) ip6 - (u8 *) vlib_buffer_get_current (b));
-    }
-  else
-    {
-      ip4_header_t *ip4 = NULL;
-      bfd_udp4_find_headers (b, &ip4, &dummy);
-      if (!ip4)
-	{
-	  return 0;
-	}
-      ip4_address_t tmp = ip4->dst_address;
-      ip4->dst_address = ip4->src_address;
-      ip4->src_address = tmp;
-      vlib_buffer_advance (b,
-			   (u8 *) ip4 - (u8 *) vlib_buffer_get_current (b));
-    }
-  return 1;
-}
-
 /*
  * Process a frame of bfd echo packets
  * Expect 1 packet / frame
@@ -1153,7 +1316,12 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  clib_memcpy (t0->data, vlib_buffer_get_current (b0), len);
 	}
 
-      if (bfd_echo_address_swap (b0, is_ipv6))
+      if (bfd_consume_echo_pkt (bfd_udp_main.bfd_main, b0))
+	{
+	  b0->error = rt->errors[BFD_UDP_ERROR_NONE];
+	  next0 = BFD_UDP_INPUT_NEXT_NORMAL;
+	}
+      else
 	{
 	  /* loop back the packet */
 	  b0->error = rt->errors[BFD_UDP_ERROR_NONE];
@@ -1168,11 +1336,6 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 					   b0->error, 1);
 	    }
 	  next0 = BFD_UDP_INPUT_NEXT_REPLY;
-	}
-      else
-	{
-	  b0->error = rt->errors[BFD_UDP_ERROR_BAD];
-	  next0 = BFD_UDP_INPUT_NEXT_NORMAL;
 	}
 
       vlib_set_next_frame_buffer (vm, rt, next0, bi0);
@@ -1294,6 +1457,7 @@ bfd_udp_init (vlib_main_t * vm)
   mhash_init (&bfd_udp_main.bfd_session_idx_by_bfd_key, sizeof (uword),
 	      sizeof (bfd_udp_key_t));
   bfd_udp_main.bfd_main = &bfd_main;
+  bfd_udp_main.vnet_main = vnet_get_main ();
   udp_register_dst_port (vm, UDP_DST_PORT_bfd4, bfd_udp4_input_node.index, 1);
   udp_register_dst_port (vm, UDP_DST_PORT_bfd6, bfd_udp6_input_node.index, 0);
   udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo4,

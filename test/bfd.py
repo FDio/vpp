@@ -152,6 +152,27 @@ class BFD(Packet):
 bind_layers(UDP, BFD, dport=BFD.udp_dport)
 
 
+class BFD_vpp_echo(Packet):
+    """ BFD echo packet as used by VPP (non-rfc, as rfc doesn't define one) """
+
+    udp_dport = 3785  #: BFD echo destination port per RFC 5881
+    name = "BFD_VPP_ECHO"
+
+    fields_desc = [
+        BitField("discriminator", 0, 32),
+        BitField("expire_time_clocks", 0, 64),
+        BitField("checksum", 0, 64)
+    ]
+
+    def mysummary(self):
+        return self.sprintf(
+            "BFD_VPP_ECHO(disc=%BFD_VPP_ECHO.discriminator%,"
+            "expire_time_clocks=%BFD_VPP_ECHO.expire_time_clocks%)")
+
+# glue the BFD echo packet class to scapy parser
+bind_layers(UDP, BFD_vpp_echo, dport=BFD_vpp_echo.udp_dport)
+
+
 class VppBFDAuthKey(VppObject):
     """ Represents BFD authentication key in VPP """
 

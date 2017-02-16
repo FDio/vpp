@@ -1117,6 +1117,10 @@ class VppPapiProvider(object):
     def bfd_auth_keys_dump(self):
         return self.api(self.papi.bfd_auth_keys_dump, {})
 
+    def bfd_udp_set_echo_source(self, sw_if_index):
+        return self.api(self.papi.bfd_udp_set_echo_source,
+                        {'sw_if_index': sw_if_index})
+
     def classify_add_del_table(
             self,
             is_add,
