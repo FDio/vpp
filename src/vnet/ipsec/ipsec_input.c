@@ -416,12 +416,7 @@ VLIB_REGISTER_NODE (ipsec_input_ip6_node,static) = {
   .n_errors = ARRAY_LEN(ipsec_input_error_strings),
   .error_strings = ipsec_input_error_strings,
 
-  .n_next_nodes = IPSEC_INPUT_N_NEXT,
-  .next_nodes = {
-#define _(s,n) [IPSEC_INPUT_NEXT_##s] = n,
-    foreach_ipsec_input_next
-#undef _
-  },
+  .sibling_of = "ipsec-input-ip4",
 };
 /* *INDENT-ON* */
 
