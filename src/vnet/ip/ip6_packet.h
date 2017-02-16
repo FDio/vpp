@@ -79,6 +79,8 @@ typedef CLIB_PACKED (union {
 #define ip46_address_reset(ip46)	((ip46)->as_u64[0] = (ip46)->as_u64[1] = 0)
 #define ip46_address_cmp(ip46_1, ip46_2) (memcmp(ip46_1, ip46_2, sizeof(*ip46_1)))
 #define ip46_address_is_zero(ip46)	(((ip46)->as_u64[0] == 0) && ((ip46)->as_u64[1] == 0))
+#define ip46_address_is_equal(a1, a2)	(((a1)->as_u64[0] == (a2)->as_u64[0]) \
+                                         && ((a1)->as_u64[1] == (a2)->as_u64[1]))
 
 always_inline void
 ip46_from_addr_buf (u32 is_ipv6, u8 * buf, ip46_address_t * ip)
