@@ -140,13 +140,12 @@ fill_free_list (vlib_main_t * vm,
 		vlib_buffer_free_list_t * fl, uword min_free_buffers)
 {
   dpdk_main_t *dm = &dpdk_main;
-  vlib_buffer_t *b;
+  vlib_buffer_t *b0, *b1, *b2, *b3;
   int n, i;
-  u32 bi;
-  u32 n_remaining = 0, n_alloc = 0;
+  u32 bi0, bi1, bi2, bi3;
   unsigned socket_id = rte_socket_id ();
   struct rte_mempool *rmp = dm->pktmbuf_pools[socket_id];
-  struct rte_mbuf *mb;
+  struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
 
   /* Too early? */
   if (PREDICT_FALSE (rmp == 0))
@@ -170,24 +169,81 @@ fill_free_list (vlib_main_t * vm,
 
   _vec_len (vm->mbuf_alloc_list) = n;
 
-  for (i = 0; i < n; i++)
+  i = 0;
+
+  while (i < (n - 7))
     {
-      mb = vm->mbuf_alloc_list[i];
+      vlib_prefetch_buffer_header (vlib_buffer_from_rte_mbuf
+				   (vm->mbuf_alloc_list[i + 4]), STORE);
+      vlib_prefetch_buffer_header (vlib_buffer_from_rte_mbuf
+				   (vm->mbuf_alloc_list[i + 5]), STORE);
+      vlib_prefetch_buffer_header (vlib_buffer_from_rte_mbuf
+				   (vm->mbuf_alloc_list[i + 6]), STORE);
+      vlib_prefetch_buffer_header (vlib_buffer_from_rte_mbuf
+				   (vm->mbuf_alloc_list[i + 7]), STORE);
 
-      ASSERT (rte_mbuf_refcnt_read (mb) == 0);
-      rte_mbuf_refcnt_set (mb, 1);
+      mb0 = vm->mbuf_alloc_list[i];
+      mb1 = vm->mbuf_alloc_list[i + 1];
+      mb2 = vm->mbuf_alloc_list[i + 2];
+      mb3 = vm->mbuf_alloc_list[i + 3];
 
-      b = vlib_buffer_from_rte_mbuf (mb);
-      bi = vlib_get_buffer_index (vm, b);
+      ASSERT (rte_mbuf_refcnt_read (mb0) == 0);
+      ASSERT (rte_mbuf_refcnt_read (mb1) == 0);
+      ASSERT (rte_mbuf_refcnt_read (mb2) == 0);
+      ASSERT (rte_mbuf_refcnt_read (mb3) == 0);
 
-      vec_add1_aligned (fl->buffers, bi, CLIB_CACHE_LINE_BYTES);
-      n_alloc++;
-      n_remaining--;
+      rte_mbuf_refcnt_set (mb0, 1);
+      rte_mbuf_refcnt_set (mb1, 1);
+      rte_mbuf_refcnt_set (mb2, 1);
+      rte_mbuf_refcnt_set (mb3, 1);
 
-      vlib_buffer_init_for_free_list (b, fl);
+      b0 = vlib_buffer_from_rte_mbuf (mb0);
+      b1 = vlib_buffer_from_rte_mbuf (mb1);
+      b2 = vlib_buffer_from_rte_mbuf (mb2);
+      b3 = vlib_buffer_from_rte_mbuf (mb3);
+
+      bi0 = vlib_get_buffer_index (vm, b0);
+      bi1 = vlib_get_buffer_index (vm, b1);
+      bi2 = vlib_get_buffer_index (vm, b2);
+      bi3 = vlib_get_buffer_index (vm, b3);
+
+      vec_add1_aligned (fl->buffers, bi0, CLIB_CACHE_LINE_BYTES);
+      vec_add1_aligned (fl->buffers, bi1, CLIB_CACHE_LINE_BYTES);
+      vec_add1_aligned (fl->buffers, bi2, CLIB_CACHE_LINE_BYTES);
+      vec_add1_aligned (fl->buffers, bi3, CLIB_CACHE_LINE_BYTES);
+
+      vlib_buffer_init_for_free_list (b0, fl);
+      vlib_buffer_init_for_free_list (b1, fl);
+      vlib_buffer_init_for_free_list (b2, fl);
+      vlib_buffer_init_for_free_list (b3, fl);
 
       if (fl->buffer_init_function)
-	fl->buffer_init_function (vm, fl, &bi, 1);
+	{
+	  fl->buffer_init_function (vm, fl, &bi0, 1);
+	  fl->buffer_init_function (vm, fl, &bi1, 1);
+	  fl->buffer_init_function (vm, fl, &bi2, 1);
+	  fl->buffer_init_function (vm, fl, &bi3, 1);
+	}
+      i += 4;
+    }
+
+  while (i < n)
+    {
+      mb0 = vm->mbuf_alloc_list[i];
+
+      ASSERT (rte_mbuf_refcnt_read (mb0) == 0);
+      rte_mbuf_refcnt_set (mb0, 1);
+
+      b0 = vlib_buffer_from_rte_mbuf (mb0);
+      bi0 = vlib_get_buffer_index (vm, b0);
+
+      vec_add1_aligned (fl->buffers, bi0, CLIB_CACHE_LINE_BYTES);
+
+      vlib_buffer_init_for_free_list (b0, fl);
+
+      if (fl->buffer_init_function)
+	fl->buffer_init_function (vm, fl, &bi0, 1);
+      i++;
     }
 
   fl->n_alloc += n;
