@@ -133,13 +133,28 @@ ikev2_payload_add_data (ikev2_payload_chain_t * c, u8 * data)
 void
 ikev2_payload_add_notify (ikev2_payload_chain_t * c, u16 msg_type, u8 * data)
 {
+  ikev2_payload_add_notify_2(c, msg_type, data, 0);
+}
+
+void
+ikev2_payload_add_notify_2 (ikev2_payload_chain_t * c, u16 msg_type,
+                               u8 * data, ikev2_notify_t * notify)
+{
   ike_notify_payload_header_t *n;
 
   n =
     (ike_notify_payload_header_t *) ikev2_payload_add_hdr (c,
-							   IKEV2_PAYLOAD_NOTIFY,
-							   sizeof (*n));
+                                                           IKEV2_PAYLOAD_NOTIFY,
+                                                           sizeof (*n));
   n->msg_type = clib_host_to_net_u16 (msg_type);
+  if (notify)
+    {
+      n->protocol_id = notify->protocol_id;
+      if (notify->spi)
+        {
+          n->spi_size = 4;
+        }
+    }
   ikev2_payload_add_data (c, data);
 }
 
