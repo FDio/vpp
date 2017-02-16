@@ -32,6 +32,12 @@ DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_16.07_TARBALL_MD5_CKSUM := 690a2bb570103e58d12f9806e8bf21be
 DPDK_16.11_TARBALL_MD5_CKSUM := 06c1c577795360719d0b4fafaeee21e9
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
+ifeq ($(DPDK_CRYPTO_SW_PMD),y)
+AESNIMB_LIB_ZIP := v0.44.zip
+AESNIMB_LIB_ZIP_URL := https://github.com/01org/intel-ipsec-mb/archive/$(AESNIMB_LIB_ZIP)
+AESNIMB_LIB_SOURCE := $(B)/intel-ipsec-mb
+export AESNI_MULTI_BUFFER_LIB_PATH=$(AESNIMB_LIB_SOURCE)
+endif
 
 ifneq (,$(findstring clang,$(CC)))
 DPDK_CC=clang
@@ -143,6 +149,12 @@ $(CURDIR)/$(DPDK_TARBALL):
 		then cp $(DPDK_DOWNLOAD_DIR)/$(DPDK_TARBALL) $(CURDIR) ; \
 		else curl -o $(CURDIR)/$(DPDK_TARBALL) -LO $(DPDK_TAR_URL) ; \
 	fi
+ifeq ($(DPDK_CRYPTO_SW_PMD),y)
+	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(AESNIMB_LIB_ZIP) ] ; \
+		then cp $(DPDK_DOWNLOAD_DIR)/$(AESNIMB_LIB_ZIP) $(CURDIR) ; \
+		else curl -o $(CURDIR)/$(AESNIMB_LIB_ZIP) -LO $(AESNIMB_LIB_ZIP_URL) ; \
+	fi
+endif
 	@rm -f $(B)/.download.ok
 
 $(B)/.download.ok: $(CURDIR)/$(DPDK_TARBALL)
@@ -159,6 +171,11 @@ download: $(B)/.download.ok
 $(B)/.extract.ok: $(B)/.download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL)
+ifeq ($(DPDK_CRYPTO_SW_PMD),y)
+	@echo --- extracting $(AESNIMB_LIB_ZIP) ---
+	@unzip $(CURDIR)/$(AESNIMB_LIB_ZIP) -d $(B)
+	@mv $(AESNIMB_LIB_SOURCE)* $(AESNIMB_LIB_SOURCE)
+endif
 	@touch $@
 
 .PHONY: extract
@@ -178,6 +195,9 @@ endif
 patch: $(B)/.patch.ok
 
 $(B)/.config.ok: $(B)/.patch.ok $(B)/custom-config
+ifeq ($(DPDK_CRYPTO_SW_PMD),y)
+	@make -C $(AESNIMB_LIB_SOURCE)	
+endif
 	@make $(DPDK_MAKE_ARGS) config
 	@touch $@
 
@@ -187,6 +207,9 @@ config: $(B)/.config.ok
 $(B)/.build.ok: $(DPDK_SOURCE_FILES)
 	@if [ ! -e $(B)/.config.ok ] ; then echo 'Please run "make config" first' && false ; fi
 	@make $(DPDK_MAKE_ARGS) install
+ifeq ($(DPDK_CRYPTO_SW_PMD),y)
+	@cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
+endif
 	@touch $@
 
 .PHONY: build
