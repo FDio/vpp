@@ -2,6 +2,98 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a3291f1_1a03be10",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-16T17:13:53Z",
+      "side": 1,
+      "message": "this is ugly, more pythonic (and more efficient) is:\n\nvpp_api_trace_log \u003d \"%s/%s\" % (self.tempdir, api_trace)",
+      "range": {
+        "startLine": 342,
+        "startChar": 33,
+        "endLine": 342,
+        "endChar": 64
+      },
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0d1a6a6e",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-16T17:13:53Z",
+      "side": 1,
+      "message": "CLI/API invocation is automatically logged to DEBUG log level without contents returned.\n\nsince saving the api trace will be well-known feature I don\u0027t think we need to mention it on the info level\n\ndoing it the way you did will actually only print the output of the command, which could be confusing, so if there is a need for the output, please use the ppcli() helper to print the command itself too:\n\n-\u003e\n\nself.logger.info(self.vapi.ppcli(...))\n\nso that the output is\n\n\u003ctimestamp\u003e api trace save \u003cfile\u003e\n\u003ccontent of api trace save output\u003e",
+      "range": {
+        "startLine": 343,
+        "startChar": 12,
+        "endLine": 343,
+        "endChar": 42
+      },
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cd046217",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-16T17:13:53Z",
+      "side": 1,
+      "message": "-\u003e \"api trace save %s\" % api_trace",
+      "range": {
+        "startLine": 343,
+        "startChar": 43,
+        "endLine": 343,
+        "endChar": 72
+      },
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3a067a21",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 344,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-16T17:13:53Z",
+      "side": 1,
+      "message": "no need for \\n",
+      "range": {
+        "startLine": 344,
+        "startChar": 45,
+        "endLine": 344,
+        "endChar": 48
+      },
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_5a2266ba",
         "filename": "test/framework.py",
         "patchSetId": 2
@@ -13,6 +105,29 @@
       "writtenOn": "2017-02-16T16:41:58Z",
       "side": 1,
       "message": "Bit of history: for security reasons, vpp prepends \"/tmp\" and refuses output filenames containing \".\" and \"/\" characters. Otherwise a malicious actor might output the log to /boot/grub/mumble or worse.",
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ad09162e",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-16T17:13:53Z",
+      "side": 1,
+      "message": "same as above\n\n1. +-\u003e%\n2. ppcli",
+      "range": {
+        "startLine": 347,
+        "startChar": 43,
+        "endLine": 348,
+        "endChar": 60
+      },
       "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
