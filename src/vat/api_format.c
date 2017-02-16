@@ -7573,23 +7573,35 @@ static void
 vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
+  u32 i, count = mp->count;
+  vl_api_dhcp_server_t *s;
 
   if (mp->is_ipv6)
     print (vam->ofp,
-	   "RX Table-ID %d, Server Table-ID %d, Server Address %U, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
+	   "RX Table-ID %d, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
 	   ntohl (mp->rx_vrf_id),
-	   ntohl (mp->server_vrf_id),
-	   format_ip6_address, mp->dhcp_server,
 	   format_ip6_address, mp->dhcp_src_address,
 	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
   else
     print (vam->ofp,
-	   "RX Table-ID %d, Server Table-ID %d, Server Address %U, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
+	   "RX Table-ID %d, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
 	   ntohl (mp->rx_vrf_id),
-	   ntohl (mp->server_vrf_id),
-	   format_ip4_address, mp->dhcp_server,
 	   format_ip4_address, mp->dhcp_src_address,
 	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
+
+  for (i = 0; i < count; i++)
+    {
+      s = &mp->servers[i];
+
+      if (mp->is_ipv6)
+	print (vam->ofp,
+	       " Server Table-ID %d, Server Address %U",
+	       ntohl (s->server_vrf_id), format_ip6_address, s->dhcp_server);
+      else
+	print (vam->ofp,
+	       " Server Table-ID %d, Server Address %U",
+	       ntohl (s->server_vrf_id), format_ip4_address, s->dhcp_server);
+    }
 }
 
 static void vl_api_dhcp_proxy_details_t_handler_json
@@ -7597,8 +7609,10 @@ static void vl_api_dhcp_proxy_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
+  u32 i, count = mp->count;
   struct in_addr ip4;
   struct in6_addr ip6;
+  vl_api_dhcp_server_t *s;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -7609,24 +7623,38 @@ static void vl_api_dhcp_proxy_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "rx-table-id", ntohl (mp->rx_vrf_id));
-  vat_json_object_add_uint (node, "server-table-id",
-			    ntohl (mp->server_vrf_id));
+  vat_json_object_add_uint (node, "vss-fib-id", ntohl (mp->vss_fib_id));
+  vat_json_object_add_uint (node, "vss-oui", ntohl (mp->vss_oui));
+
   if (mp->is_ipv6)
     {
-      clib_memcpy (&ip6, &mp->dhcp_server, sizeof (ip6));
-      vat_json_object_add_ip6 (node, "server_address", ip6);
       clib_memcpy (&ip6, &mp->dhcp_src_address, sizeof (ip6));
       vat_json_object_add_ip6 (node, "src_address", ip6);
     }
   else
     {
-      clib_memcpy (&ip4, &mp->dhcp_server, sizeof (ip4));
-      vat_json_object_add_ip4 (node, "server_address", ip4);
       clib_memcpy (&ip4, &mp->dhcp_src_address, sizeof (ip4));
       vat_json_object_add_ip4 (node, "src_address", ip4);
     }
-  vat_json_object_add_uint (node, "vss-fib-id", ntohl (mp->vss_fib_id));
-  vat_json_object_add_uint (node, "vss-oui", ntohl (mp->vss_oui));
+
+  for (i = 0; i < count; i++)
+    {
+      s = &mp->servers[i];
+
+      vat_json_object_add_uint (node, "server-table-id",
+				ntohl (s->server_vrf_id));
+
+      if (mp->is_ipv6)
+	{
+	  clib_memcpy (&ip4, &s->dhcp_server, sizeof (ip4));
+	  vat_json_object_add_ip4 (node, "src_address", ip4);
+	}
+      else
+	{
+	  clib_memcpy (&ip6, &s->dhcp_server, sizeof (ip6));
+	  vat_json_object_add_ip6 (node, "server_address", ip6);
+	}
+    }
 }
 
 static int

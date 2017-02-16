@@ -44,7 +44,7 @@ dhcp_proxy_rx_table_unlock (fib_protocol_t proto,
         mfib_table_unlock(fib_index, proto);
 }
 
-static u32
+ u32
 dhcp_proxy_rx_table_get_table_id (fib_protocol_t proto,
                                   u32 fib_index)
 {
@@ -72,7 +72,7 @@ dhcp_proxy_walk (fib_protocol_t proto,
                  void *ctx)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
-  dhcp_server_t * server;
+  dhcp_proxy_t * server;
   u32 server_index, i;
 
   vec_foreach_index (i, dpm->dhcp_server_index_by_rx_fib_index[proto])
@@ -124,31 +124,68 @@ dhcp_vss_walk (fib_protocol_t proto,
     }
 }
 
+static u32
+dhcp_proxy_server_find (dhcp_proxy_t *proxy,
+                        fib_protocol_t proto,
+                        ip46_address_t *addr,
+                        u32 server_table_id)
+{
+    dhcp_server_t *server;
+    u32 ii, fib_index;
+
+    vec_foreach_index(ii, proxy->dhcp_servers)
+    {
+        server = &proxy->dhcp_servers[ii];
+        fib_index = fib_table_find(proto, server_table_id);
+
+        if (ip46_address_is_equal(&server->dhcp_server,
+                                  addr) &&
+            (server->server_fib_index == fib_index))
+        {
+            return (ii);
+        }
+    }
+    return (~0);
+}
+
 int
 dhcp_proxy_server_del (fib_protocol_t proto,
-                       u32 rx_fib_index)
+                       u32 rx_fib_index,
+                       ip46_address_t *addr,
+                       u32 server_table_id)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
-  dhcp_server_t * server = 0;
-  int rc = 0;
+  dhcp_proxy_t *proxy = 0;
 
-  server = dhcp_get_server(dpm, rx_fib_index, proto);
+  proxy = dhcp_get_proxy(dpm, rx_fib_index, proto);
 
-  if (NULL == server)
+  if (NULL != proxy)
   {
-      rc = VNET_API_ERROR_NO_SUCH_ENTRY;
+      dhcp_server_t *server;
+      u32 index;
+
+      index = dhcp_proxy_server_find(proxy, proto, addr, server_table_id);
+
+      if (~0 != index)
+      {
+          server = &proxy->dhcp_servers[index];
+          fib_table_unlock (server->server_fib_index, proto);
+
+          vec_del1(proxy->dhcp_servers, index);
+
+          if (0 == vec_len(proxy->dhcp_servers))
+          {
+              /* no servers left, delete the proxy config */
+              dpm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index] = ~0;
+              vec_free(proxy->dhcp_servers);
+              pool_put (dpm->dhcp_servers[proto], proxy);
+              return (1);
+          }
+      }
   }
-  else
-  {
-      /* Use the default server again.  */
-      dpm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index] = ~0;
 
-      fib_table_unlock (server->server_fib_index, proto);
-
-      pool_put (dpm->dhcp_servers[proto], server);
-  }
-
-  return (rc);
+  /* the proxy still exists */
+  return (0);
 }
 
 int
@@ -159,48 +196,42 @@ dhcp_proxy_server_add (fib_protocol_t proto,
                        u32 server_table_id)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
-  dhcp_server_t * server = 0;
+  dhcp_proxy_t * proxy = 0;
   int new = 0;
 
-  server = dhcp_get_server(dpm, rx_fib_index, proto);
+  proxy = dhcp_get_proxy(dpm, rx_fib_index, proto);
 
-  if (NULL == server)
+  if (NULL == proxy)
   {
       vec_validate_init_empty(dpm->dhcp_server_index_by_rx_fib_index[proto],
                               rx_fib_index,
                               ~0);
 
-      pool_get (dpm->dhcp_servers[proto], server);
-      memset (server, 0, sizeof (*server));
+      pool_get (dpm->dhcp_servers[proto], proxy);
+      memset (proxy, 0, sizeof (*proxy));
       new = 1;
 
       dpm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index] =
-          server - dpm->dhcp_servers[proto];
+          proxy - dpm->dhcp_servers[proto];
 
-      server->rx_fib_index = rx_fib_index;
-      server->server_fib_index = 
-          fib_table_find_or_create_and_lock(proto, server_table_id);
+      proxy->dhcp_src_address = *src_address;
+      proxy->rx_fib_index = rx_fib_index;
   }
   else
   {
-      /* modify, may need to swap server FIBs */
-      u32 tmp_index;
-
-      tmp_index = fib_table_find(proto, server_table_id);
-
-      if (tmp_index != server->server_fib_index)
+      if (~0 != dhcp_proxy_server_find(proxy, proto, addr, server_table_id))
       {
-          tmp_index = server->server_fib_index;
-
-          /* certainly swapping if the fib doesn't exist */
-          server->server_fib_index = 
-              fib_table_find_or_create_and_lock(proto, server_table_id);
-          fib_table_unlock (tmp_index, proto);
+          return (new);
       }
   }
 
-  server->dhcp_server = *addr;
-  server->dhcp_src_address = *src_address;
+  dhcp_server_t server = {
+      .dhcp_server = *addr,
+      .server_fib_index = fib_table_find_or_create_and_lock(proto,
+                                                            server_table_id),
+  };
+
+  vec_add1(proxy->dhcp_servers, server);
 
   return (new);
 }
@@ -213,31 +244,15 @@ typedef struct dhcp4_proxy_dump_walk_ctx_t_
 } dhcp_proxy_dump_walk_cxt_t;
 
 static int
-dhcp_proxy_dump_walk (dhcp_server_t *server,
+dhcp_proxy_dump_walk (dhcp_proxy_t *proxy,
                       void *arg)
 {
   dhcp_proxy_dump_walk_cxt_t *ctx = arg;
-  fib_table_t *s_fib;
-  u32 rx_table_id;
-  dhcp_vss_t *v;
-
-  v = dhcp_get_vss_info(&dhcp_proxy_main,
-                        server->rx_fib_index,
-                        ctx->proto);
-
-  s_fib = fib_table_get(server->server_fib_index, ctx->proto);
-  rx_table_id = dhcp_proxy_rx_table_get_table_id(server->rx_fib_index,
-                                                 ctx->proto);
 
   dhcp_send_details(ctx->proto,
                     ctx->opaque,
                     ctx->context,
-                    &server->dhcp_server,
-                    &server->dhcp_src_address,
-                    s_fib->ft_table_id,
-                    rx_table_id,
-                    (v ? v->fib_id : 0),
-                    (v ? v->oui : 0));
+                    proxy);
 
   return (1);
 }

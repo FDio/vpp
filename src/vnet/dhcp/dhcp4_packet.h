@@ -55,6 +55,11 @@ typedef enum {
   DHCP_PACKET_ACK=5,
 } dhcp_packet_type_t;
 
+typedef enum dhcp_packet_option_t_
+{
+    DHCP_PACKET_OPTION_MSG_TYPE = 53,
+} dhcp_packet_option_t;
+
 /* charming antique: 99.130.83.99 is the dhcp magic cookie */
 #define DHCP_MAGIC (clib_host_to_net_u32(0x63825363))
 

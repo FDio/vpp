@@ -24,6 +24,7 @@
 #include <vnet/api_errno.h>
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/dhcp/client.h>
+#include <vnet/fib/fib_table.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -113,46 +114,73 @@ vl_api_dhcp_proxy_dump_t_handler (vl_api_dhcp_proxy_dump_t * mp)
   if (q == 0)
     return;
 
-  dhcp_proxy_dump ((mp->is_ip6 == 0 ?
+  dhcp_proxy_dump ((mp->is_ip6 == 1 ?
 		    FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4), q, mp->context);
 }
 
 void
 dhcp_send_details (fib_protocol_t proto,
-		   void *opaque,
-		   u32 context,
-		   const ip46_address_t * server,
-		   const ip46_address_t * src,
-		   u32 server_fib_id,
-		   u32 rx_fib_id, u32 vss_fib_id, u32 vss_oui)
+		   void *opaque, u32 context, dhcp_proxy_t * proxy)
 {
   vl_api_dhcp_proxy_details_t *mp;
   unix_shared_memory_queue_t *q = opaque;
+  vl_api_dhcp_server_t *v_server;
+  dhcp_server_t *server;
+  fib_table_t *s_fib;
+  dhcp_vss_t *vss;
+  u32 count;
+  size_t n;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  count = vec_len (proxy->dhcp_servers);
+  n = sizeof (*mp) + (count * sizeof (vl_api_dhcp_server_t));
+  mp = vl_msg_api_alloc (n);
   if (!mp)
     return;
-  memset (mp, 0, sizeof (*mp));
+  memset (mp, 0, n);
   mp->_vl_msg_id = ntohs (VL_API_DHCP_PROXY_DETAILS);
   mp->context = context;
-
-  mp->rx_vrf_id = htonl (rx_fib_id);
-  mp->server_vrf_id = htonl (server_fib_id);
-  mp->vss_oui = htonl (vss_oui);
-  mp->vss_fib_id = htonl (vss_fib_id);
+  mp->count = count;
 
   mp->is_ipv6 = (proto == FIB_PROTOCOL_IP6);
+  mp->rx_vrf_id =
+    htonl (dhcp_proxy_rx_table_get_table_id (proto, proxy->rx_fib_index));
+
+  vss = dhcp_get_vss_info (&dhcp_proxy_main, proxy->rx_fib_index, proto);
+
+  if (NULL != vss)
+    {
+      mp->vss_oui = htonl (vss->oui);
+      mp->vss_fib_id = htonl (vss->fib_id);
+    }
+
+  vec_foreach_index (count, proxy->dhcp_servers)
+  {
+    server = &proxy->dhcp_servers[count];
+    v_server = &mp->servers[count];
+
+    s_fib = fib_table_get (server->server_fib_index, proto);
+
+    v_server->server_vrf_id = htonl (s_fib->ft_table_id);
+
+    if (mp->is_ipv6)
+      {
+	memcpy (v_server->dhcp_server, &server->dhcp_server.ip6, 16);
+      }
+    else
+      {
+	/* put the address in the first bytes */
+	memcpy (v_server->dhcp_server, &server->dhcp_server.ip4, 4);
+      }
+  }
 
   if (mp->is_ipv6)
     {
-      memcpy (mp->dhcp_server, server, 16);
-      memcpy (mp->dhcp_src_address, src, 16);
+      memcpy (mp->dhcp_src_address, &proxy->dhcp_src_address.ip6, 16);
     }
   else
     {
       /* put the address in the first bytes */
-      memcpy (mp->dhcp_server, &server->ip4, 4);
-      memcpy (mp->dhcp_src_address, &src->ip4, 4);
+      memcpy (mp->dhcp_src_address, &proxy->dhcp_src_address.ip4, 4);
     }
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
