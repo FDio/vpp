@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_5a2266ba",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-16T16:41:58Z",
+      "side": 1,
+      "message": "Bit of history: for security reasons, vpp prepends \"/tmp\" and refuses output filenames containing \".\" and \"/\" characters. Otherwise a malicious actor might output the log to /boot/grub/mumble or worse.",
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
