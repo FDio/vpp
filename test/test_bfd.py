@@ -6,14 +6,14 @@ import unittest
 import hashlib
 import binascii
 import time
-from random import randint, shuffle
+from random import randint, shuffle, getrandbits
 from socket import AF_INET, AF_INET6
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import UDP, IP
 from scapy.layers.inet6 import IPv6
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
-    BFDDiagCode, BFDState
+    BFDDiagCode, BFDState, BFD_vpp_echo
 from framework import VppTestCase, VppTestRunner
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
@@ -266,6 +266,7 @@ class BFDTestSession(object):
         self.my_discriminator = 0
         self.desired_min_tx = 100000
         self.required_min_rx = 100000
+        self.required_min_echo_rx = None
         self.detect_mult = detect_mult
         self.diag = BFDDiagCode.no_diagnostic
         self.your_discriminator = None
@@ -280,24 +281,27 @@ class BFDTestSession(object):
             self.our_seq_number += 1
 
     def update(self, my_discriminator=None, your_discriminator=None,
-               desired_min_tx=None, required_min_rx=None, detect_mult=None,
+               desired_min_tx=None, required_min_rx=None,
+               required_min_echo_rx=None, detect_mult=None,
                diag=None, state=None, auth_type=None):
         """ update BFD parameters associated with session """
-        if my_discriminator:
+        if my_discriminator is not None:
             self.my_discriminator = my_discriminator
-        if your_discriminator:
+        if your_discriminator is not None:
             self.your_discriminator = your_discriminator
-        if required_min_rx:
+        if required_min_rx is not None:
             self.required_min_rx = required_min_rx
-        if desired_min_tx:
+        if required_min_echo_rx is not None:
+            self.required_min_echo_rx = required_min_echo_rx
+        if desired_min_tx is not None:
             self.desired_min_tx = desired_min_tx
-        if detect_mult:
+        if detect_mult is not None:
             self.detect_mult = detect_mult
-        if diag:
+        if diag is not None:
             self.diag = diag
-        if state:
+        if state is not None:
             self.state = state
-        if auth_type:
+        if auth_type is not None:
             self.auth_type = auth_type
 
     def fill_packet_fields(self, packet):
@@ -316,6 +320,11 @@ class BFDTestSession(object):
                 "BFD: setting packet.required_min_rx_interval=%s",
                 self.required_min_rx)
             bfd.required_min_rx_interval = self.required_min_rx
+        if self.required_min_echo_rx:
+            self.test.logger.debug(
+                "BFD: setting packet.required_min_echo_rx=%s",
+                self.required_min_echo_rx)
+            bfd.required_min_echo_rx_interval = self.required_min_echo_rx
         if self.desired_min_tx:
             self.test.logger.debug(
                 "BFD: setting packet.desired_min_tx_interval=%s",
@@ -579,6 +588,10 @@ class BFD4TestCase(VppTestCase):
         super(BFD4TestCase, cls).setUpClass()
         try:
             cls.create_pg_interfaces([0])
+            cls.create_loopback_interfaces([0])
+            cls.loopback0 = cls.lo_interfaces[0]
+            cls.loopback0.config_ip4()
+            cls.loopback0.admin_up()
             cls.pg0.config_ip4()
             cls.pg0.configure_ipv4_neighbors()
             cls.pg0.admin_up()
@@ -646,32 +659,29 @@ class BFD4TestCase(VppTestCase):
         bfd_session_up(self)
         self.test_session.update(required_min_rx=0)
         self.test_session.send_packet()
-        cap = 2 * self.vpp_session.desired_min_tx *\
-            self.test_session.detect_mult
-        time_mark = time.time()
-        count = 0
-        # busy wait here, trying to collect a packet or event, vpp is not
-        # allowed to send packets and the session will timeout first - so the
-        # Up->Down event must arrive before any packets do
-        while time.time() < time_mark + cap / USEC_IN_SEC:
+        for dummy in range(self.test_session.detect_mult):
+            self.sleep(self.vpp_session.required_min_rx / USEC_IN_SEC,
+                       "sleep before transmitting bfd packet")
+            self.test_session.send_packet()
             try:
-                p = wait_for_bfd_packet(
-                    self, timeout=0,
-                    pcap_time_min=time_mark - self.vpp_clock_offset)
+                p = wait_for_bfd_packet(self, timeout=0)
                 self.logger.error(ppp("Received unexpected packet:", p))
-                count += 1
             except CaptureTimeoutError:
                 pass
-            events = self.vapi.collect_events()
-            if len(events) > 0:
-                verify_event(self, events[0], BFDState.down)
-                break
-        self.assert_equal(count, 0, "number of packets received")
+        self.assert_equal(
+            len(self.vapi.collect_events()), 0, "number of bfd events")
+        self.test_session.update(required_min_rx=100000)
+        for dummy in range(3):
+            self.test_session.send_packet()
+            wait_for_bfd_packet(
+                self, timeout=self.test_session.required_min_rx / USEC_IN_SEC)
+        self.assert_equal(
+            len(self.vapi.collect_events()), 0, "number of bfd events")
 
     def test_conn_down(self):
         """ verify session goes down after inactivity """
         bfd_session_up(self)
-        detection_time = self.vpp_session.detect_mult *\
+        detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
         self.sleep(detection_time, "waiting for BFD session time-out")
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
@@ -799,7 +809,7 @@ class BFD4TestCase(VppTestCase):
         before = time.time()
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         after = time.time()
-        detection_time = self.vpp_session.detect_mult *\
+        detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
         self.assert_in_range(after - before,
                              0.9 * detection_time,
@@ -829,6 +839,71 @@ class BFD4TestCase(VppTestCase):
         # poll bit must not be set
         self.assertNotIn("P", p.sprintf("%BFD.flags%"),
                          "Poll bit not set in BFD packet")
+
+    def test_queued_poll(self):
+        """ test poll sequence queueing """
+        bfd_session_up(self)
+        p = wait_for_bfd_packet(self)
+        self.vpp_session.modify_parameters(
+            required_min_rx=2 * self.vpp_session.required_min_rx)
+        p = wait_for_bfd_packet(self)
+        poll_sequence_start = time.time()
+        poll_sequence_length_min = 0.5
+        send_final_after = time.time() + poll_sequence_length_min
+        # poll bit needs to be set
+        self.assertIn("P", p.sprintf("%BFD.flags%"),
+                      "Poll bit not set in BFD packet")
+        self.assert_equal(p[BFD].required_min_rx_interval,
+                          self.vpp_session.required_min_rx,
+                          "BFD required min rx interval")
+        self.vpp_session.modify_parameters(
+            required_min_rx=2 * self.vpp_session.required_min_rx)
+        # 2nd poll sequence should be queued now
+        # don't send the reply back yet, wait for some time to emulate
+        # longer round-trip time
+        packet_count = 0
+        while time.time() < send_final_after:
+            self.test_session.send_packet()
+            p = wait_for_bfd_packet(self)
+            self.assert_equal(len(self.vapi.collect_events()), 0,
+                              "number of bfd events")
+            self.assert_equal(p[BFD].required_min_rx_interval,
+                              self.vpp_session.required_min_rx,
+                              "BFD required min rx interval")
+            packet_count += 1
+            # poll bit must be set
+            self.assertIn("P", p.sprintf("%BFD.flags%"),
+                          "Poll bit not set in BFD packet")
+        final = self.test_session.create_packet()
+        final[BFD].flags = "F"
+        self.test_session.send_packet(final)
+        # finish 1st with final
+        poll_sequence_length = time.time() - poll_sequence_start
+        # vpp must wait for some time before starting new poll sequence
+        poll_no_2_started = False
+        for dummy in range(2 * packet_count):
+            p = wait_for_bfd_packet(self)
+            self.assert_equal(len(self.vapi.collect_events()), 0,
+                              "number of bfd events")
+            if "P" in p.sprintf("%BFD.flags%"):
+                poll_no_2_started = True
+                if time.time() < poll_sequence_start + poll_sequence_length:
+                    raise Exception("VPP started 2nd poll sequence too soon")
+                final = self.test_session.create_packet()
+                final[BFD].flags = "F"
+                self.test_session.send_packet(final)
+                break
+            else:
+                self.test_session.send_packet()
+        self.assertTrue(poll_no_2_started, "2nd poll sequence not performed")
+        # finish 2nd with final
+        final = self.test_session.create_packet()
+        final[BFD].flags = "F"
+        self.test_session.send_packet(final)
+        p = wait_for_bfd_packet(self)
+        # poll bit must not be set
+        self.assertNotIn("P", p.sprintf("%BFD.flags%"),
+                         "Poll bit set in BFD packet")
 
     def test_no_periodic_if_remote_demand(self):
         """ no periodic frames outside poll sequence if remote demand set """
@@ -868,7 +943,7 @@ class BFD4TestCase(VppTestCase):
         echo_packet = (Ether(src=self.pg0.remote_mac,
                              dst=self.pg0.local_mac) /
                        IP(src=self.pg0.remote_ip4,
-                          dst=self.pg0.local_ip4) /
+                          dst=self.pg0.remote_ip4) /
                        UDP(dport=BFD.udp_dport_echo) /
                        Raw("this should be looped back"))
         for dummy in range(echo_packet_count):
@@ -887,18 +962,236 @@ class BFD4TestCase(VppTestCase):
             self.assert_equal(self.pg0.local_mac, ether.src, "Source MAC")
             ip = p[IP]
             self.assert_equal(self.pg0.remote_ip4, ip.dst, "Destination IP")
-            self.assert_equal(self.pg0.local_ip4, ip.src, "Destination IP")
+            self.assert_equal(self.pg0.remote_ip4, ip.src, "Destination IP")
             udp = p[UDP]
             self.assert_equal(udp.dport, BFD.udp_dport_echo,
                               "UDP destination port")
             self.assert_equal(udp.sport, udp_sport_rx, "UDP source port")
             udp_sport_rx += 1
-            self.assertTrue(p.haslayer(Raw) and p[Raw] == echo_packet[Raw],
-                            "Received packet is not the echo packet sent")
+            # need to compare the hex payload here, otherwise BFD_vpp_echo
+            # gets in way
+            self.assertEqual(str(p[UDP].payload),
+                             str(echo_packet[UDP].payload),
+                             "Received packet is not the echo packet sent")
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
 
+    def test_echo(self):
+        """ echo function """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.send_packet()
+        detection_time = self.test_session.detect_mult *\
+            self.vpp_session.required_min_rx / USEC_IN_SEC
+        # echo shouldn't work without echo source set
+        for dummy in range(3):
+            sleep = 0.75 * detection_time
+            self.sleep(sleep, "delay before sending bfd packet")
+            self.test_session.send_packet()
+        p = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        self.assert_equal(p[BFD].required_min_rx_interval,
+                          self.vpp_session.required_min_rx,
+                          "BFD required min rx interval")
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        # should be turned on - loopback echo packets
+        for dummy in range(3):
+            loop_until = time.time() + 0.75 * detection_time
+            while time.time() < loop_until:
+                p = self.pg0.wait_for_packet(1)
+                self.logger.debug(ppp("Got packet:", p))
+                if p[UDP].dport == BFD.udp_dport_echo:
+                    self.assert_equal(
+                        p[IP].dst, self.pg0.local_ip4, "BFD ECHO dst IP")
+                    self.assertNotEqual(p[IP].src, self.loopback0.local_ip4,
+                                        "BFD ECHO src IP equal to loopback IP")
+                    self.logger.debug(ppp("Looping back packet:", p))
+                    self.pg0.add_stream(p)
+                    self.pg_start()
+                elif p.haslayer(BFD):
+                    self.assertGreaterEqual(p[BFD].required_min_rx_interval,
+                                            1000000)
+                    if "P" in p.sprintf("%BFD.flags%"):
+                        final = self.test_session.create_packet()
+                        final[BFD].flags = "F"
+                        self.test_session.send_packet(final)
+                else:
+                    raise Exception(ppp("Received unknown packet:", p))
+
+                self.assert_equal(len(self.vapi.collect_events()), 0,
+                                  "number of bfd events")
+            self.test_session.send_packet()
+
+    def test_echo_fail(self):
+        """ session goes down if echo function fails """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.send_packet()
+        detection_time = self.test_session.detect_mult *\
+            self.vpp_session.required_min_rx / USEC_IN_SEC
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        # echo function should be used now, but we will drop the echo packets
+        verified_diag = False
+        for dummy in range(3):
+            loop_until = time.time() + 0.75 * detection_time
+            while time.time() < loop_until:
+                p = self.pg0.wait_for_packet(1)
+                self.logger.debug(ppp("Got packet:", p))
+                if p[UDP].dport == BFD.udp_dport_echo:
+                    # dropped
+                    pass
+                elif p.haslayer(BFD):
+                    if "P" in p.sprintf("%BFD.flags%"):
+                        self.assertGreaterEqual(
+                            p[BFD].required_min_rx_interval,
+                            1000000)
+                        final = self.test_session.create_packet()
+                        final[BFD].flags = "F"
+                        self.test_session.send_packet(final)
+                    if p[BFD].state == BFDState.down:
+                        self.assert_equal(p[BFD].diag,
+                                          BFDDiagCode.echo_function_failed,
+                                          BFDDiagCode)
+                        verified_diag = True
+                else:
+                    raise Exception(ppp("Received unknown packet:", p))
+            self.test_session.send_packet()
+        events = self.vapi.collect_events()
+        self.assert_equal(len(events), 1, "number of bfd events")
+        self.assert_equal(events[0].state, BFDState.down, BFDState)
+        self.assertTrue(verified_diag, "Incorrect diagnostics code received")
+
+    def test_echo_stop(self):
+        """ echo function stops if peer sets required min echo rx zero """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.send_packet()
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        # wait for first echo packet
+        while True:
+            p = self.pg0.wait_for_packet(1)
+            self.logger.debug(ppp("Got packet:", p))
+            if p[UDP].dport == BFD.udp_dport_echo:
+                self.logger.debug(ppp("Looping back packet:", p))
+                self.pg0.add_stream(p)
+                self.pg_start()
+                break
+            elif p.haslayer(BFD):
+                # ignore BFD
+                pass
+            else:
+                raise Exception(ppp("Received unknown packet:", p))
+        self.test_session.update(required_min_echo_rx=0)
+        self.test_session.send_packet()
+        # echo packets shouldn't arrive anymore
+        for dummy in range(5):
+            wait_for_bfd_packet(
+                self, pcap_time_min=time.time() - self.vpp_clock_offset)
+            self.test_session.send_packet()
+            events = self.vapi.collect_events()
+            self.assert_equal(len(events), 0, "number of bfd events")
+
+    def test_stale_echo(self):
+        """ stale echo packets don't keep a session up """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.test_session.send_packet()
+        # should be turned on - loopback echo packets
+        echo_packet = None
+        timeout_at = None
+        timeout_ok = False
+        for dummy in range(10 * self.vpp_session.detect_mult):
+            p = self.pg0.wait_for_packet(1)
+            if p[UDP].dport == BFD.udp_dport_echo:
+                if echo_packet is None:
+                    self.logger.debug(ppp("Got first echo packet:", p))
+                    echo_packet = p
+                    timeout_at = time.time() + self.vpp_session.detect_mult * \
+                        self.test_session.required_min_echo_rx / USEC_IN_SEC
+                else:
+                    self.logger.debug(ppp("Got followup echo packet:", p))
+                self.logger.debug(ppp("Looping back first echo packet:", p))
+                self.pg0.add_stream(echo_packet)
+                self.pg_start()
+            elif p.haslayer(BFD):
+                self.logger.debug(ppp("Got packet:", p))
+                if "P" in p.sprintf("%BFD.flags%"):
+                    final = self.test_session.create_packet()
+                    final[BFD].flags = "F"
+                    self.test_session.send_packet(final)
+                if p[BFD].state == BFDState.down:
+                    self.assertIsNotNone(
+                        timeout_at,
+                        "Session went down before first echo packet received")
+                    now = time.time()
+                    self.assertGreaterEqual(
+                        now, timeout_at,
+                        "Session timeout at %s, but is expected at %s" %
+                        (now, timeout_at))
+                    self.assert_equal(p[BFD].diag,
+                                      BFDDiagCode.echo_function_failed,
+                                      BFDDiagCode)
+                    events = self.vapi.collect_events()
+                    self.assert_equal(len(events), 1, "number of bfd events")
+                    self.assert_equal(events[0].state, BFDState.down, BFDState)
+                    timeout_ok = True
+                    break
+            else:
+                raise Exception(ppp("Received unknown packet:", p))
+            self.test_session.send_packet()
+        self.assertTrue(timeout_ok, "Expected timeout event didn't occur")
+
+    def test_invalid_echo_checksum(self):
+        """ echo packets with invalid checksum don't keep a session up """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        self.test_session.send_packet()
+        # should be turned on - loopback echo packets
+        timeout_at = None
+        timeout_ok = False
+        for dummy in range(10 * self.vpp_session.detect_mult):
+            p = self.pg0.wait_for_packet(1)
+            if p[UDP].dport == BFD.udp_dport_echo:
+                self.logger.debug(ppp("Got echo packet:", p))
+                if timeout_at is None:
+                    timeout_at = time.time() + self.vpp_session.detect_mult * \
+                        self.test_session.required_min_echo_rx / USEC_IN_SEC
+                p[BFD_vpp_echo].checksum = getrandbits(64)
+                self.logger.debug(ppp("Looping back modified echo packet:", p))
+                self.pg0.add_stream(p)
+                self.pg_start()
+            elif p.haslayer(BFD):
+                self.logger.debug(ppp("Got packet:", p))
+                if "P" in p.sprintf("%BFD.flags%"):
+                    final = self.test_session.create_packet()
+                    final[BFD].flags = "F"
+                    self.test_session.send_packet(final)
+                if p[BFD].state == BFDState.down:
+                    self.assertIsNotNone(
+                        timeout_at,
+                        "Session went down before first echo packet received")
+                    now = time.time()
+                    self.assertGreaterEqual(
+                        now, timeout_at,
+                        "Session timeout at %s, but is expected at %s" %
+                        (now, timeout_at))
+                    self.assert_equal(p[BFD].diag,
+                                      BFDDiagCode.echo_function_failed,
+                                      BFDDiagCode)
+                    events = self.vapi.collect_events()
+                    self.assert_equal(len(events), 1, "number of bfd events")
+                    self.assert_equal(events[0].state, BFDState.down, BFDState)
+                    timeout_ok = True
+                    break
+            else:
+                raise Exception(ppp("Received unknown packet:", p))
+            self.test_session.send_packet()
+        self.assertTrue(timeout_ok, "Expected timeout event didn't occur")
+
     def test_admin_up_down(self):
+        """ put session admin-up and admin-down """
         bfd_session_up(self)
         self.vpp_session.admin_down()
         self.pg0.enable_capture()
@@ -931,6 +1224,42 @@ class BFD4TestCase(VppTestCase):
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.up)
 
+    def test_config_change_remote_demand(self):
+        """ configuration change while peer in demand mode """
+        bfd_session_up(self)
+        demand = self.test_session.create_packet()
+        demand[BFD].flags = "D"
+        self.test_session.send_packet(demand)
+        self.vpp_session.modify_parameters(
+            required_min_rx=2 * self.vpp_session.required_min_rx)
+        p = wait_for_bfd_packet(self)
+        # poll bit must be set
+        self.assertIn("P", p.sprintf("%BFD.flags%"), "Poll bit not set")
+        # terminate poll sequence
+        final = self.test_session.create_packet()
+        final[BFD].flags = "D+F"
+        self.test_session.send_packet(final)
+        # vpp should be quiet now again
+        transmit_time = 0.9 \
+            * max(self.vpp_session.required_min_rx,
+                  self.test_session.desired_min_tx) \
+            / USEC_IN_SEC
+        count = 0
+        for dummy in range(self.test_session.detect_mult * 2):
+            time.sleep(transmit_time)
+            self.test_session.send_packet(demand)
+            try:
+                p = wait_for_bfd_packet(self, timeout=0)
+                self.logger.error(ppp("Received unexpected packet:", p))
+                count += 1
+            except CaptureTimeoutError:
+                pass
+        events = self.vapi.collect_events()
+        for e in events:
+            self.logger.error("Received unexpected event: %s", e)
+        self.assert_equal(count, 0, "number of packets received")
+        self.assert_equal(len(events), 0, "number of events received")
+
 
 class BFD6TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (IPv6) """
@@ -949,6 +1278,10 @@ class BFD6TestCase(VppTestCase):
             cls.pg0.configure_ipv6_neighbors()
             cls.pg0.admin_up()
             cls.pg0.resolve_ndp()
+            cls.create_loopback_interfaces([0])
+            cls.loopback0 = cls.lo_interfaces[0]
+            cls.loopback0.config_ip6()
+            cls.loopback0.admin_up()
 
         except Exception:
             super(BFD6TestCase, cls).tearDownClass()
@@ -1003,7 +1336,7 @@ class BFD6TestCase(VppTestCase):
         echo_packet = (Ether(src=self.pg0.remote_mac,
                              dst=self.pg0.local_mac) /
                        IPv6(src=self.pg0.remote_ip6,
-                            dst=self.pg0.local_ip6) /
+                            dst=self.pg0.remote_ip6) /
                        UDP(dport=BFD.udp_dport_echo) /
                        Raw("this should be looped back"))
         for dummy in range(echo_packet_count):
@@ -1022,16 +1355,67 @@ class BFD6TestCase(VppTestCase):
             self.assert_equal(self.pg0.local_mac, ether.src, "Source MAC")
             ip = p[IPv6]
             self.assert_equal(self.pg0.remote_ip6, ip.dst, "Destination IP")
-            self.assert_equal(self.pg0.local_ip6, ip.src, "Destination IP")
+            self.assert_equal(self.pg0.remote_ip6, ip.src, "Destination IP")
             udp = p[UDP]
             self.assert_equal(udp.dport, BFD.udp_dport_echo,
                               "UDP destination port")
             self.assert_equal(udp.sport, udp_sport_rx, "UDP source port")
             udp_sport_rx += 1
-            self.assertTrue(p.haslayer(Raw) and p[Raw] == echo_packet[Raw],
-                            "Received packet is not the echo packet sent")
+            # need to compare the hex payload here, otherwise BFD_vpp_echo
+            # gets in way
+            self.assertEqual(str(p[UDP].payload),
+                             str(echo_packet[UDP].payload),
+                             "Received packet is not the echo packet sent")
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
+        self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
+                          "ECHO packet identifier for test purposes)")
+
+    def test_echo(self):
+        """ echo function used """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.send_packet()
+        detection_time = self.test_session.detect_mult *\
+            self.vpp_session.required_min_rx / USEC_IN_SEC
+        # echo shouldn't work without echo source set
+        for dummy in range(3):
+            sleep = 0.75 * detection_time
+            self.sleep(sleep, "delay before sending bfd packet")
+            self.test_session.send_packet()
+        p = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        self.assert_equal(p[BFD].required_min_rx_interval,
+                          self.vpp_session.required_min_rx,
+                          "BFD required min rx interval")
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        # should be turned on - loopback echo packets
+        for dummy in range(3):
+            loop_until = time.time() + 0.75 * detection_time
+            while time.time() < loop_until:
+                p = self.pg0.wait_for_packet(1)
+                self.logger.debug(ppp("Got packet:", p))
+                if p[UDP].dport == BFD.udp_dport_echo:
+                    self.assert_equal(
+                        p[IPv6].dst, self.pg0.local_ip6, "BFD ECHO dst IP")
+                    self.assertNotEqual(p[IPv6].src, self.loopback0.local_ip6,
+                                        "BFD ECHO src IP equal to loopback IP")
+                    self.logger.debug(ppp("Looping back packet:", p))
+                    self.pg0.add_stream(p)
+                    self.pg_start()
+                elif p.haslayer(BFD):
+                    self.assertGreaterEqual(p[BFD].required_min_rx_interval,
+                                            1000000)
+                    if "P" in p.sprintf("%BFD.flags%"):
+                        final = self.test_session.create_packet()
+                        final[BFD].flags = "F"
+                        self.test_session.send_packet(final)
+                else:
+                    raise Exception(ppp("Received unknown packet:", p))
+
+                self.assert_equal(len(self.vapi.collect_events()), 0,
+                                  "number of bfd events")
+            self.test_session.send_packet()
 
 
 class BFDSHA1TestCase(VppTestCase):
@@ -1121,7 +1505,7 @@ class BFDSHA1TestCase(VppTestCase):
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
     def test_send_bad_seq_number(self):
-        """ session is not kept alive by msgs with bad seq numbers"""
+        """ session is not kept alive by msgs with bad sequence numbers"""
         key = self.factory.create_random_key(
             self, BFDAuthType.meticulous_keyed_sha1)
         key.add_vpp_config()
@@ -1133,16 +1517,13 @@ class BFDSHA1TestCase(VppTestCase):
             self, self.pg0, AF_INET, sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id)
         bfd_session_up(self)
-        detection_time = self.vpp_session.detect_mult *\
+        detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
-        session_timeout = time.time() + detection_time
-        while time.time() < session_timeout:
-            self.assert_equal(len(self.vapi.collect_events()), 0,
-                              "number of bfd events")
-            wait_for_bfd_packet(self)
+        send_until = time.time() + 2 * detection_time
+        while time.time() < send_until:
             self.test_session.send_packet()
-        wait_for_bfd_packet(self)
-        self.test_session.send_packet()
+            self.sleep(0.7 * self.vpp_session.required_min_rx / USEC_IN_SEC,
+                       "time between bfd packets")
         e = self.vapi.collect_events()
         # session should be down now, because the sequence numbers weren't
         # updated
@@ -1250,7 +1631,7 @@ class BFDSHA1TestCase(VppTestCase):
             bfd_key_id=self.vpp_session.bfd_key_id, our_seq_number=0)
         bfd_session_up(self)
         # don't send any packets for 2*detection_time
-        detection_time = self.vpp_session.detect_mult *\
+        detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
         self.sleep(detection_time, "simulating peer restart")
         events = self.vapi.collect_events()

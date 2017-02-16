@@ -22,6 +22,7 @@
 #include <vppinfra/clib.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/bfd/bfd_api.h>
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
@@ -49,10 +50,17 @@ typedef struct
 
 struct bfd_session_s;
 
-void bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			     const struct bfd_session_s *bs);
-void bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
-			     const struct bfd_session_s *bs);
+int bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
+			    const struct bfd_session_s *bs, int is_echo);
+int bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
+			    const struct bfd_session_s *bs, int is_echo);
+
+/**
+ * @brief check if the bfd udp layer is echo-capable at this time
+ *
+ * @return 1 if available, 0 otherwise
+ */
+int bfd_udp_is_echo_available (bfd_transport_e transport);
 
 #endif /* __included_bfd_udp_h__ */
 
