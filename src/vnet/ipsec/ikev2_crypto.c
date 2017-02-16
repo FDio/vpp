@@ -343,6 +343,7 @@ ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len)
   v8 *r;
   int out_len = 0, block_size;
   ikev2_sa_transform_t *tr_encr;
+  u8 *key = sa->is_initiator ? sa->sk_er : sa->sk_ei;
 
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
@@ -357,7 +358,7 @@ ikev2_decrypt_data (ikev2_sa_t * sa, u8 * data, int len)
 
   EVP_CIPHER_CTX_init (&ctx);
   r = vec_new (u8, len - block_size);
-  EVP_DecryptInit_ex (&ctx, tr_encr->cipher, NULL, sa->sk_ei, data);
+  EVP_DecryptInit_ex (&ctx, tr_encr->cipher, NULL, key, data);
   EVP_DecryptUpdate (&ctx, r, &out_len, data + block_size, len - block_size);
   EVP_DecryptFinal_ex (&ctx, r + out_len, &out_len);
 
@@ -375,6 +376,7 @@ ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst)
   int out_len;
   int bs;
   ikev2_sa_transform_t *tr_encr;
+  u8 *key = sa->is_initiator ? sa->sk_ei : sa->sk_er;
 
   tr_encr =
     ikev2_sa_get_td_for_type (sa->r_proposals, IKEV2_TRANSFORM_TYPE_ENCR);
@@ -385,7 +387,7 @@ ikev2_encrypt_data (ikev2_sa_t * sa, v8 * src, u8 * dst)
 
   EVP_CIPHER_CTX_init (&ctx);
 
-  EVP_EncryptInit_ex (&ctx, tr_encr->cipher, NULL, sa->sk_er, dst /* dst */ );
+  EVP_EncryptInit_ex (&ctx, tr_encr->cipher, NULL, key, dst /* dst */ );
   EVP_EncryptUpdate (&ctx, dst + bs, &out_len, src, vec_len (src));
 
   EVP_CIPHER_CTX_cleanup (&ctx);
@@ -407,16 +409,29 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       BN_hex2bn (&dh->g, t->dh_g);
       DH_generate_key (dh);
 
-      sa->r_dh_data = vec_new (u8, t->key_len);
-      r = BN_bn2bin (dh->pub_key, sa->r_dh_data);
-      ASSERT (r == t->key_len);
+      if (sa->is_initiator)
+	{
+	  sa->i_dh_data = vec_new (u8, t->key_len);
+	  r = BN_bn2bin (dh->pub_key, sa->i_dh_data);
+	  ASSERT (r == t->key_len);
 
-      BIGNUM *ex;
-      sa->dh_shared_key = vec_new (u8, t->key_len);
-      ex = BN_bin2bn (sa->i_dh_data, vec_len (sa->i_dh_data), NULL);
-      r = DH_compute_key (sa->dh_shared_key, ex, dh);
-      ASSERT (r == t->key_len);
-      BN_clear_free (ex);
+	  sa->dh_private_key = vec_new (u8, t->key_len);
+	  r = BN_bn2bin (dh->priv_key, sa->dh_private_key);
+	  ASSERT (r == t->key_len);
+
+	}
+      else
+	{
+	  sa->r_dh_data = vec_new (u8, t->key_len);
+	  r = BN_bn2bin (dh->pub_key, sa->r_dh_data);
+	  ASSERT (r == t->key_len);
+	  BIGNUM *ex;
+	  sa->dh_shared_key = vec_new (u8, t->key_len);
+	  ex = BN_bin2bn (sa->i_dh_data, vec_len (sa->i_dh_data), NULL);
+	  r = DH_compute_key (sa->dh_shared_key, ex, dh);
+	  ASSERT (r == t->key_len);
+	  BN_clear_free (ex);
+	}
       DH_free (dh);
     }
   else if (t->dh_group == IKEV2_DH_GROUP_ECP)
@@ -439,21 +454,113 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       len = t->key_len / 2;
 
       EC_POINT_get_affine_coordinates_GFp (group, r_point, x, y, bn_ctx);
-      sa->r_dh_data = vec_new (u8, t->key_len);
-      x_off = len - BN_num_bytes (x);
-      memset (sa->r_dh_data, 0, x_off);
-      BN_bn2bin (x, sa->r_dh_data + x_off);
-      y_off = t->key_len - BN_num_bytes (y);
-      memset (sa->r_dh_data + len, 0, y_off - len);
-      BN_bn2bin (y, sa->r_dh_data + y_off);
+
+      if (sa->is_initiator)
+	{
+	  sa->i_dh_data = vec_new (u8, t->key_len);
+	  x_off = len - BN_num_bytes (x);
+	  memset (sa->i_dh_data, 0, x_off);
+	  BN_bn2bin (x, sa->i_dh_data + x_off);
+	  y_off = t->key_len - BN_num_bytes (y);
+	  memset (sa->i_dh_data + len, 0, y_off - len);
+	  BN_bn2bin (y, sa->i_dh_data + y_off);
+
+	  const BIGNUM *prv = EC_KEY_get0_private_key (ec);
+	  sa->dh_private_key = vec_new (u8, BN_num_bytes (prv));
+	  r = BN_bn2bin (prv, sa->dh_private_key);
+	  ASSERT (r == BN_num_bytes (prv));
+	}
+      else
+	{
+	  sa->r_dh_data = vec_new (u8, t->key_len);
+	  x_off = len - BN_num_bytes (x);
+	  memset (sa->r_dh_data, 0, x_off);
+	  BN_bn2bin (x, sa->r_dh_data + x_off);
+	  y_off = t->key_len - BN_num_bytes (y);
+	  memset (sa->r_dh_data + len, 0, y_off - len);
+	  BN_bn2bin (y, sa->r_dh_data + y_off);
+
+	  x = BN_bin2bn (sa->i_dh_data, len, x);
+	  y = BN_bin2bn (sa->i_dh_data + len, len, y);
+	  EC_POINT_set_affine_coordinates_GFp (group, i_point, x, y, bn_ctx);
+	  sa->dh_shared_key = vec_new (u8, t->key_len);
+	  EC_POINT_mul (group, shared_point, NULL, i_point,
+			EC_KEY_get0_private_key (ec), NULL);
+	  EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y,
+					       bn_ctx);
+	  x_off = len - BN_num_bytes (x);
+	  memset (sa->dh_shared_key, 0, x_off);
+	  BN_bn2bin (x, sa->dh_shared_key + x_off);
+	  y_off = t->key_len - BN_num_bytes (y);
+	  memset (sa->dh_shared_key + len, 0, y_off - len);
+	  BN_bn2bin (y, sa->dh_shared_key + y_off);
+	}
+
+      EC_KEY_free (ec);
+      BN_free (x);
+      BN_free (y);
+      BN_CTX_free (bn_ctx);
+      EC_POINT_free (i_point);
+      EC_POINT_free (shared_point);
+    }
+}
+
+void
+ikev2_complete_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
+{
+  int r;
+
+  if (t->dh_group == IKEV2_DH_GROUP_MODP)
+    {
+      DH *dh = DH_new ();
+      BN_hex2bn (&dh->p, t->dh_p);
+      BN_hex2bn (&dh->g, t->dh_g);
+      dh->priv_key =
+	BN_bin2bn (sa->dh_private_key, vec_len (sa->dh_private_key), NULL);
+
+      BIGNUM *ex;
+      sa->dh_shared_key = vec_new (u8, t->key_len);
+      ex = BN_bin2bn (sa->r_dh_data, vec_len (sa->r_dh_data), NULL);
+      r = DH_compute_key (sa->dh_shared_key, ex, dh);
+      ASSERT (r == t->key_len);
+      BN_clear_free (ex);
+      DH_free (dh);
+    }
+  else if (t->dh_group == IKEV2_DH_GROUP_ECP)
+    {
+      EC_KEY *ec = EC_KEY_new_by_curve_name (t->nid);
+      ASSERT (ec);
+
+      const EC_GROUP *group = EC_KEY_get0_group (ec);
+      BIGNUM *x = NULL, *y = NULL;
+      BN_CTX *bn_ctx = BN_CTX_new ();
+      u16 x_off, y_off, len;
+      BIGNUM *prv;
+
+      prv =
+	BN_bin2bn (sa->dh_private_key, vec_len (sa->dh_private_key), NULL);
+      EC_KEY_set_private_key (ec, prv);
+
+      x = BN_new ();
+      y = BN_new ();
+      len = t->key_len / 2;
+
+      x = BN_bin2bn (sa->r_dh_data, len, x);
+      y = BN_bin2bn (sa->r_dh_data + len, len, y);
+      EC_POINT *r_point = EC_POINT_new (group);
+      EC_POINT_set_affine_coordinates_GFp (group, r_point, x, y, bn_ctx);
+      EC_KEY_set_public_key (ec, r_point);
+
+      EC_POINT *i_point = EC_POINT_new (group);
+      EC_POINT *shared_point = EC_POINT_new (group);
 
       x = BN_bin2bn (sa->i_dh_data, len, x);
       y = BN_bin2bn (sa->i_dh_data + len, len, y);
       EC_POINT_set_affine_coordinates_GFp (group, i_point, x, y, bn_ctx);
-      sa->dh_shared_key = vec_new (u8, t->key_len);
-      EC_POINT_mul (group, shared_point, NULL, i_point,
+      EC_POINT_mul (group, shared_point, NULL, r_point,
 		    EC_KEY_get0_private_key (ec), NULL);
       EC_POINT_get_affine_coordinates_GFp (group, shared_point, x, y, bn_ctx);
+      sa->dh_shared_key = vec_new (u8, t->key_len);
       x_off = len - BN_num_bytes (x);
       memset (sa->dh_shared_key, 0, x_off);
       BN_bn2bin (x, sa->dh_shared_key + x_off);
@@ -464,8 +571,10 @@ ikev2_generate_dh (ikev2_sa_t * sa, ikev2_sa_transform_t * t)
       EC_KEY_free (ec);
       BN_free (x);
       BN_free (y);
+      BN_free (prv);
       BN_CTX_free (bn_ctx);
       EC_POINT_free (i_point);
+      EC_POINT_free (r_point);
       EC_POINT_free (shared_point);
     }
 }

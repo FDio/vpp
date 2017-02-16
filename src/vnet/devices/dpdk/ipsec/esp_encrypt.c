@@ -177,6 +177,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      goto trace;
 	    }
 
+	  sa0->total_data_size += b0->current_length;
+
 	  sa_sess = pool_elt_at_index (cwm->sa_sess_d[1], sa_index0);
 	  if (PREDICT_FALSE (!sa_sess->sess))
 	    {
