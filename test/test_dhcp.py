@@ -293,7 +293,7 @@ class TestDHCP(VppTestCase):
         #
         # Inject a response from the server
         #  dropped, because there is no IP addrees on the
-        #  clinet interfce to fill in the option.
+        #  client interfce to fill in the option.
         #
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /

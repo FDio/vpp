@@ -22,9 +22,8 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
-#include <vnet/dhcp/proxy.h>
+#include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/dhcp/client.h>
-#include <vnet/dhcpv6/proxy.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -51,52 +50,19 @@ _(DHCP_PROXY_DETAILS,dhcp_proxy_details)          \
 _(DHCP_PROXY_SET_VSS,dhcp_proxy_set_vss)          \
 _(DHCP_CLIENT_CONFIG, dhcp_client_config)
 
-static void
-dhcpv4_proxy_config (vl_api_dhcp_proxy_config_t * mp)
-{
-  vl_api_dhcp_proxy_config_reply_t *rmp;
-  int rv;
-
-  rv = dhcp_proxy_set_server ((ip4_address_t *) (&mp->dhcp_server),
-			      (ip4_address_t *) (&mp->dhcp_src_address),
-			      (u32) ntohl (mp->rx_vrf_id),
-			      (u32) ntohl (mp->server_vrf_id),
-			      (int) (mp->is_add == 0));
-
-  REPLY_MACRO (VL_API_DHCP_PROXY_CONFIG_REPLY);
-}
-
-
-static void
-dhcpv6_proxy_config (vl_api_dhcp_proxy_config_t * mp)
-{
-  vl_api_dhcp_proxy_config_reply_t *rmp;
-  int rv = -1;
-
-  rv = dhcpv6_proxy_set_server ((ip6_address_t *) (&mp->dhcp_server),
-				(ip6_address_t *) (&mp->dhcp_src_address),
-				(u32) ntohl (mp->rx_vrf_id),
-				(u32) ntohl (mp->server_vrf_id),
-				(int) (mp->is_add == 0));
-
-  REPLY_MACRO (VL_API_DHCP_PROXY_CONFIG_REPLY);
-}
-
 
 static void
 vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t * mp)
 {
   vl_api_dhcp_proxy_set_vss_reply_t *rmp;
   int rv;
-  if (!mp->is_ipv6)
-    rv = dhcp_proxy_set_option82_vss (ntohl (mp->tbl_id),
-				      ntohl (mp->oui),
-				      ntohl (mp->fib_id),
-				      (int) mp->is_add == 0);
-  else
-    rv = dhcpv6_proxy_set_vss (ntohl (mp->tbl_id),
-			       ntohl (mp->oui),
-			       ntohl (mp->fib_id), (int) mp->is_add == 0);
+
+  rv = dhcp_proxy_set_vss ((mp->is_ipv6 ?
+			    FIB_PROTOCOL_IP6 :
+			    FIB_PROTOCOL_IP4),
+			   ntohl (mp->tbl_id),
+			   ntohl (mp->oui),
+			   ntohl (mp->fib_id), (int) mp->is_add == 0);
 
   REPLY_MACRO (VL_API_DHCP_PROXY_SET_VSS_REPLY);
 }
@@ -105,10 +71,38 @@ vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t * mp)
 static void vl_api_dhcp_proxy_config_t_handler
   (vl_api_dhcp_proxy_config_t * mp)
 {
-  if (mp->is_ipv6 == 0)
-    dhcpv4_proxy_config (mp);
+  vl_api_dhcp_proxy_set_vss_reply_t *rmp;
+  ip46_address_t src, server;
+  int rv = -1;
+
+  if (mp->is_ipv6)
+    {
+      clib_memcpy (&src.ip6, mp->dhcp_src_address, sizeof (src.ip6));
+      clib_memcpy (&server.ip6, mp->dhcp_server, sizeof (server.ip6));
+
+      rv = dhcp6_proxy_set_server (&server,
+				   &src,
+				   (u32) ntohl (mp->rx_vrf_id),
+				   (u32) ntohl (mp->server_vrf_id),
+				   (int) (mp->is_add == 0));
+    }
   else
-    dhcpv6_proxy_config (mp);
+    {
+      ip46_address_reset (&src);
+      ip46_address_reset (&server);
+
+      clib_memcpy (&src.ip4, mp->dhcp_src_address, sizeof (src.ip4));
+      clib_memcpy (&server.ip4, mp->dhcp_server, sizeof (server.ip4));
+
+      rv = dhcp4_proxy_set_server (&server,
+				   &src,
+				   (u32) ntohl (mp->rx_vrf_id),
+				   (u32) ntohl (mp->server_vrf_id),
+				   (int) (mp->is_add == 0));
+    }
+
+
+  REPLY_MACRO (VL_API_DHCP_PROXY_CONFIG_REPLY);
 }
 
 static void
@@ -120,14 +114,13 @@ vl_api_dhcp_proxy_dump_t_handler (vl_api_dhcp_proxy_dump_t * mp)
   if (q == 0)
     return;
 
-  if (mp->is_ip6 == 0)
-    dhcp_proxy_dump (q, mp->context);
-  else
-    dhcpv6_proxy_dump (q, mp->context);
+  dhcp_proxy_dump ((mp->is_ip6 == 0 ?
+		    FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4), q, mp->context);
 }
 
 void
-dhcp_send_details (void *opaque,
+dhcp_send_details (fib_protocol_t proto,
+		   void *opaque,
 		   u32 context,
 		   const ip46_address_t * server,
 		   const ip46_address_t * src,
@@ -149,7 +142,7 @@ dhcp_send_details (void *opaque,
   mp->vss_oui = htonl (vss_oui);
   mp->vss_fib_id = htonl (vss_fib_id);
 
-  mp->is_ipv6 = !ip46_address_is_ip4 (server);
+  mp->is_ipv6 = (proto == FIB_PROTOCOL_IP6);
 
   if (mp->is_ipv6)
     {

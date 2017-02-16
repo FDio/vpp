@@ -1,5 +1,5 @@
-#ifndef included_vnet_dhcp_packet_h
-#define included_vnet_dhcp_packet_h
+#ifndef included_vnet_dhcp4_packet_h
+#define included_vnet_dhcp4_packet_h
 
 /*
  * DHCP packet format
@@ -58,4 +58,4 @@ typedef enum {
 /* charming antique: 99.130.83.99 is the dhcp magic cookie */
 #define DHCP_MAGIC (clib_host_to_net_u32(0x63825363))
 
-#endif /* included_vnet_dhcp_packet_h */
+#endif /* included_vnet_dhcp4_packet_h */

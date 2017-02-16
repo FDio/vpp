@@ -14,7 +14,7 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/dhcp/client.h>
-#include <vnet/dhcp/proxy.h>
+#include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
 
 dhcp_client_main_t dhcp_client_main;

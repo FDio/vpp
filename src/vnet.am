@@ -674,7 +674,7 @@ libvnet_la_SOURCES +=				\
  vnet/dhcp/dhcp_api.c
 
 nobase_include_HEADERS +=			\
- vnet/dhcp/client.h					\
+ vnet/dhcp/client.h				\
  vnet/dhcp/dhcp.api.h
 
 API_FILES += vnet/dhcp/dhcp.api
@@ -683,13 +683,16 @@ API_FILES += vnet/dhcp/dhcp.api
 # DHCP proxy
 ########################################
 libvnet_la_SOURCES +=				\
- vnet/dhcp/proxy_node.c				\
- vnet/dhcp/proxy.h
+ vnet/dhcp/dhcp6_proxy_node.c                   \
+ vnet/dhcp/dhcp4_proxy_node.c			\
+ vnet/dhcp/dhcp_proxy.c
 
 nobase_include_HEADERS +=			\
- vnet/dhcp/packet.h				\
- vnet/dhcp/proxy.h				\
- vnet/dhcp/proxy_error.def
+ vnet/dhcp/dhcp4_packet.h		        \
+ vnet/dhcp/dhcp6_packet.h		        \
+ vnet/dhcp/dhcp_proxy.h				\
+ vnet/dhcp/dhcp6_proxy_error.def                \
+ vnet/dhcp/dhcp4_proxy_error.def
 
 ########################################
 # ipv6 segment routing
@@ -708,17 +711,6 @@ nobase_include_HEADERS +=			\
  vnet/sr/sr.api.h
 
 API_FILES += vnet/sr/sr.api
-
-########################################
-# DHCPv6 proxy
-########################################
-libvnet_la_SOURCES +=				\
- vnet/dhcpv6/proxy_node.c
-
-nobase_include_HEADERS +=			\
- vnet/dhcpv6/packet.h				\
- vnet/dhcpv6/proxy.h				\
- vnet/dhcpv6/proxy_error.def
 
 ########################################
 # IPFIX / netflow v10

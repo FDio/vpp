@@ -21,8 +21,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
-#include <vnet/dhcp/proxy.h>
-#include <vnet/dhcpv6/proxy.h>
+#include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/sr/sr_packet.h>

@@ -1,5 +1,5 @@
-#ifndef included_vnet_dhcp_packet_h
-#define included_vnet_dhcp_packet_h
+#ifndef included_vnet_dhcp6_packet_h
+#define included_vnet_dhcp6_packet_h
 
 /*
  * DHCP packet format
@@ -180,4 +180,4 @@ typedef CLIB_PACKED (struct {
 }) dhcpv6_client_mac_t;
 
 
-#endif /* included_vnet_dhcp_packet_h */
+#endif /* included_vnet_dhcp6_packet_h */

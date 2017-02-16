@@ -20,7 +20,7 @@
 #define included_dhcp_client_h
 
 #include <vnet/ip/ip.h>
-#include <vnet/dhcp/packet.h>
+#include <vnet/dhcp/dhcp4_packet.h>
 
 #define foreach_dhcp_client_state               \
 _(DHCP_DISCOVER)                                \

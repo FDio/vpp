@@ -29,3 +29,4 @@ dhcp_proxy_error (OPTION_82_VSS_NOT_PROCESSED, "DHCP VSS not processed by DHCP s
 dhcp_proxy_error (BAD_YIADDR, "DHCP packets with bad your_ip_address fields")
 dhcp_proxy_error (BAD_SVR_FIB_OR_ADDRESS, "DHCP packets not from DHCP server or server FIB.")
 dhcp_proxy_error (PKT_TOO_BIG, "DHCP packets which are too big.")
+
