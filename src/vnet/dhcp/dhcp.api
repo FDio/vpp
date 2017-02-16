@@ -137,19 +137,25 @@ define dhcp_proxy_dump
   u8  is_ip6;
 };
 
+typeonly manual_print manual_endian define dhcp_server
+{
+  u32 server_vrf_id;
+  u8 dhcp_server[16];
+};
+
 /** \brief Tell client about a DHCP completion event
     @param client_index - opaque cookie to identify the sender
 */
-define dhcp_proxy_details
+manual_endian manual_print define dhcp_proxy_details
 {
   u32 context;
   u32 rx_vrf_id;
-  u32 server_vrf_id;
   u32 vss_oui;
   u32 vss_fib_id;
   u8 is_ipv6;
-  u8 dhcp_server[16];
   u8 dhcp_src_address[16];
+  u8 count;
+  vl_api_dhcp_server_t servers[count];
 };
 
 /*

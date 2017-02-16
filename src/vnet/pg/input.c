@@ -1373,6 +1373,7 @@ typedef struct
   u32 stream_index;
 
   u32 packet_length;
+  u32 sw_if_index;
 
   /* Use pre data for packet data. */
   vlib_buffer_t buffer;
@@ -1399,6 +1400,7 @@ format_pg_input_trace (u8 * s, va_list * va)
     s = format (s, "stream %d", t->stream_index);
 
   s = format (s, ", %d bytes", t->packet_length);
+  s = format (s, ", %d sw_if_index", t->sw_if_index);
 
   s = format (s, "\n%U%U",
 	      format_white_space, indent, format_vlib_buffer, &t->buffer);
@@ -1458,6 +1460,9 @@ pg_input_trace (pg_main_t * pg,
       t0->packet_length = vlib_buffer_length_in_chain (vm, b0);
       t1->packet_length = vlib_buffer_length_in_chain (vm, b1);
 
+      t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+      t1->sw_if_index = vnet_buffer (b1)->sw_if_index[VLIB_RX];
+
       clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
       clib_memcpy (&t1->buffer, b1, sizeof (b1[0]) - sizeof (b1->pre_data));
 
@@ -1484,6 +1489,7 @@ pg_input_trace (pg_main_t * pg,
 
       t0->stream_index = stream_index;
       t0->packet_length = vlib_buffer_length_in_chain (vm, b0);
+      t0->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
       clib_memcpy (&t0->buffer, b0, sizeof (b0[0]) - sizeof (b0->pre_data));
       clib_memcpy (t0->buffer.pre_data, b0->data,
 		   sizeof (t0->buffer.pre_data));
