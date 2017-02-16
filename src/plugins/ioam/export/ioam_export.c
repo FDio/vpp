@@ -83,7 +83,7 @@ _(IOAM_EXPORT_IP6_ENABLE_DISABLE, ioam_export_ip6_enable_disable)
 
 ioam_export_main_t ioam_export_main;
 
-vlib_node_registration_t export_node;
+extern vlib_node_registration_t export_node;
 
 /* Action function shared between message handler and debug CLI */
 
