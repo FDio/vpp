@@ -638,6 +638,22 @@ class VppPapiProvider(object):
              }
         )
 
+    def ip_neighbor_dump(self,
+                         sw_if_index,
+                         is_ipv6=0):
+        """ Return IP neighbor dump.
+
+        :param sw_if_index:
+        :param int is_ipv6: 1 for IPv6 neighbor, 0 for IPv4. (Default = 0)
+        """
+
+        return self.api(
+            self.papi.ip_neighbor_dump,
+            {'is_ipv6': is_ipv6,
+             'sw_if_index': sw_if_index
+             }
+        )
+
     def reset_vrf(self,
                   vrf_id,
                   is_ipv6=0,

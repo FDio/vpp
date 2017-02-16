@@ -135,18 +135,17 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           u32 original_sw_if_index = 0;
           u8  *end = NULL;
           u32 fib_index;
-          dhcp_server_t * server;
+          dhcp_proxy_t *proxy;
+          dhcp_server_t *server;
           u32 rx_sw_if_index;
           dhcp_option_t *o;
           u32 len = 0;
           vlib_buffer_free_list_t *fl;
+          u8 is_discover = 0;
 
 	  bi0 = from[0];
-	  to_next[0] = bi0;
 	  from += 1;
-	  to_next += 1;
 	  n_left_from -= 1;
-	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
@@ -172,16 +171,17 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           rx_sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
           fib_index = im->fib_index_by_sw_if_index [rx_sw_if_index];
-          server = dhcp_get_server(dpm, fib_index, FIB_PROTOCOL_IP4);
-          
-          if (PREDICT_FALSE (NULL == server))
+          proxy = dhcp_get_proxy(dpm, fib_index, FIB_PROTOCOL_IP4);
+
+          if (PREDICT_FALSE (NULL == proxy))
             {
               error0 = DHCP_PROXY_ERROR_NO_SERVER;
               next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
               pkts_no_server++;
               goto do_trace;
             }
-          
+
+          server = &proxy->dhcp_servers[0];
           vlib_buffer_advance (b0, -(sizeof(*ip0)));
           ip0 = vlib_buffer_get_current (b0);
 
@@ -198,7 +198,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 
           sum0 = ip0->checksum;
           old0 = ip0->src_address.as_u32;
-          new0 = server->dhcp_src_address.ip4.as_u32;
+          new0 = proxy->dhcp_src_address.ip4.as_u32;
           ip0->src_address.as_u32 = new0;
           sum0 = ip_csum_update (sum0, old0, new0, 
                                 ip4_header_t /* structure */, 
@@ -209,7 +209,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           vnet_buffer(b0)->sw_if_index[VLIB_TX] =
             server->server_fib_index;
 
-          h0->gateway_ip_address.as_u32 = server->dhcp_src_address.ip4.as_u32;
+          h0->gateway_ip_address.as_u32 = proxy->dhcp_src_address.ip4.as_u32;
           pkts_to_server++;
 
           o = (dhcp_option_t *) h0->options;
@@ -220,7 +220,16 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           end = b0->data + b0->current_data + b0->current_length;
           /* TLVs are not performance-friendly... */
           while  (o->option != 0xFF /* end of options */ && (u8 *)o < end) 
+            {
+              if (DHCP_PACKET_OPTION_MSG_TYPE == o->option)
+                {
+                  if (DHCP_PACKET_DISCOVER == o->data[0])
+                    {
+                      is_discover = 1;
+                    }
+                }
               o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
+          }
 
           fl = vlib_buffer_get_free_list (vm, b0->free_list_index);
           // start write at (option*)o, some packets have padding
@@ -340,6 +349,65 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
           
           next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP;
 
+          /*
+           * If we have multiple servers configured and this is the
+           * client's discover message, then send copies to each of
+           * those servers
+           */
+          if (is_discover && vec_len(proxy->dhcp_servers) > 1)
+          {
+              u32 ii;
+
+              for (ii = 1; ii < vec_len(proxy->dhcp_servers); ii++)
+              {
+                  vlib_buffer_t *c0;
+                  u32 ci0;
+              
+                  c0 = vlib_buffer_copy(vm, b0);
+                  ci0 = vlib_get_buffer_index(vm, c0);
+                  server = &proxy->dhcp_servers[ii];
+
+                  ip0 = vlib_buffer_get_current (c0);
+
+                  sum0 = ip0->checksum;
+                  old0 = ip0->dst_address.as_u32;
+                  new0 = server->dhcp_server.ip4.as_u32;
+                  ip0->dst_address.as_u32 = server->dhcp_server.ip4.as_u32;
+                  sum0 = ip_csum_update (sum0, old0, new0, 
+                                         ip4_header_t /* structure */, 
+                                         dst_address /* changed member */);
+                  ip0->checksum = ip_csum_fold (sum0);
+
+                  to_next[0] = ci0;
+                  to_next += 1;
+                  n_left_to_next -= 1;
+
+                  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+                                                   to_next, n_left_to_next,
+                                                   ci0, next0);
+
+                  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+                  {
+                      dhcp_proxy_trace_t *tr;
+
+                      tr = vlib_add_trace (vm, node, c0, sizeof (*tr));
+                      tr->which = 0; /* to server */
+                      tr->error = error0;
+                      tr->original_sw_if_index = original_sw_if_index;
+                      tr->sw_if_index = sw_if_index;
+                      if (next0 == DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP)
+                          tr->trace_ip4_address.as_u32 = server->dhcp_server.ip4.as_u32;
+                  }
+
+                  if (PREDICT_FALSE(0 == n_left_to_next))
+                  {
+                      vlib_put_next_frame (vm, node, next_index,
+                                           n_left_to_next);
+                      vlib_get_next_frame (vm, node, next_index,
+                                           to_next, n_left_to_next);
+                  }
+              }
+          }
         do_trace:
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
@@ -350,10 +418,15 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
                tr->original_sw_if_index = original_sw_if_index;
                tr->sw_if_index = sw_if_index;
                if (next0 == DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP)
-                 tr->trace_ip4_address.as_u32 = server->dhcp_server.ip4.as_u32;
+                 tr->trace_ip4_address.as_u32 =
+                     proxy->dhcp_servers[0].dhcp_server.ip4.as_u32;
             }
 
         do_enqueue:
+	  to_next[0] = bi0;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
@@ -437,7 +510,8 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
       u32 error0 = (u32)~0;
       vnet_sw_interface_t *swif;
       u32 fib_index;
-      dhcp_server_t * server;
+      dhcp_proxy_t *proxy;
+      dhcp_server_t *server;
       u32 original_sw_if_index = (u32) ~0;
       ip4_address_t relay_addr = {
           .as_u32 = 0,
@@ -547,20 +621,26 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
         }
 
       fib_index = im->fib_index_by_sw_if_index [sw_if_index];
-      server = dhcp_get_server(dpm, fib_index, FIB_PROTOCOL_IP4);
+      proxy = dhcp_get_proxy(dpm, fib_index, FIB_PROTOCOL_IP4);
 
-      if (PREDICT_FALSE (NULL == server))
+      if (PREDICT_FALSE (NULL == proxy))
         {
           error0 = DHCP_PROXY_ERROR_NO_SERVER;
           goto drop_packet;
         }
       
-      if (ip0->src_address.as_u32 != server->dhcp_server.ip4.as_u32)
-        {             
-          error0 = DHCP_PROXY_ERROR_BAD_SVR_FIB_OR_ADDRESS;
-          goto drop_packet;
+      vec_foreach(server, proxy->dhcp_servers)
+        {
+          if (ip0->src_address.as_u32 == server->dhcp_server.ip4.as_u32)
+            {
+              goto server_found;
+            }
         }
 
+      error0 = DHCP_PROXY_ERROR_BAD_SVR_FIB_OR_ADDRESS;
+      goto drop_packet;
+
+    server_found:
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
 
       swif = vnet_get_sw_interface (vnm, sw_if_index);
@@ -709,9 +789,8 @@ dhcp4_proxy_set_server (ip46_address_t *addr,
 
   if (is_del)
     {
-      rc = dhcp_proxy_server_del (FIB_PROTOCOL_IP4, rx_fib_index);
-
-      if (0 == rc)
+      if (dhcp_proxy_server_del (FIB_PROTOCOL_IP4, rx_fib_index,
+                                 addr, server_table_id))
       {
           fib_table_entry_special_remove(rx_fib_index,
                                          &all_1s,
@@ -809,29 +888,35 @@ VLIB_CLI_COMMAND (dhcp_proxy_set_command, static) = {
 static u8 *
 format_dhcp4_proxy_server (u8 * s, va_list * args)
 {
-  dhcp_server_t * server = va_arg (*args, dhcp_server_t *);
+  dhcp_proxy_t *proxy = va_arg (*args, dhcp_proxy_t *);
   ip4_fib_t * rx_fib, * server_fib;
+  dhcp_server_t *server;
 
-  if (server == 0)
+  if (proxy == 0)
     {
-      s = format (s, "%=16s%=16s%=14s%=14s", "Server", "Src Address", 
-                  "Server FIB", "RX FIB");
+        s = format (s, "%=14s%=16s%s", "RX FIB", "Src Address", 
+                    "Servers FIB,Address");
       return s;
     }
 
-  server_fib = ip4_fib_get(server->server_fib_index);
-  rx_fib = ip4_fib_get(server->rx_fib_index);
+  rx_fib = ip4_fib_get(proxy->rx_fib_index);
 
-  s = format (s, "%=16U%=16U%=14u%=14u",
-              format_ip46_address, &server->dhcp_server, IP46_TYPE_ANY,
-              format_ip46_address, &server->dhcp_src_address, IP46_TYPE_ANY,
-              server_fib->table_id,
-              rx_fib->table_id);
+  s = format (s, "%=14u%=16U",
+              rx_fib->table_id,
+              format_ip46_address, &proxy->dhcp_src_address, IP46_TYPE_ANY);
+
+  vec_foreach(server, proxy->dhcp_servers)
+  {
+      server_fib = ip4_fib_get(server->server_fib_index);
+      s = format (s, "%u,%U  ",
+                  server_fib->table_id,
+                  format_ip46_address, &server->dhcp_server, IP46_TYPE_ANY);
+  }
   return s;
 }
 
 static int
-dhcp4_proxy_show_walk (dhcp_server_t *server,
+dhcp4_proxy_show_walk (dhcp_proxy_t *server,
                        void *ctx)
 {
     vlib_main_t * vm = ctx;

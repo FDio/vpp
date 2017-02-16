@@ -366,7 +366,7 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
   o = (dhcp_option_t * )dhcp->options;
 
   /* Send option 53, the DHCP message type */
-  o->option = 53;
+  o->option = DHCP_PACKET_OPTION_MSG_TYPE;
   o->length = 1;
   o->data[0] = type;
   o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
