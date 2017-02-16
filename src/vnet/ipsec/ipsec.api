@@ -394,6 +394,234 @@ define ikev2_set_local_key_reply
   i32 retval;
 };
 
+/** \brief IKEv2: Set IKEv2 responder interface and IP address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param sw_if_index - interface index
+    @param address - interface address
+*/
+define ikev2_set_responder
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u32 sw_if_index;
+  u8 address[4];
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 responder interface and IP address
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_set_responder_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+
+/** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param crypto_alg - encryption algorithm
+    @param crypto_key_size - encryption key size
+    @param integ_alg - integrity algorithm
+    @param dh_group - Diffie-Hellman group
+    
+*/
+define ikev2_set_ike_transforms
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u32 crypto_alg;
+  u32 crypto_key_size;
+  u32 integ_alg;
+  u32 dh_group;
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 IKE transforms
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_set_ike_transforms_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Set IKEv2 ESP transforms in SA_INIT proposal (RFC 7296)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param crypto_alg - encryption algorithm
+    @param crypto_key_size - encryption key size
+    @param integ_alg - integrity algorithm
+    @param dh_group - Diffie-Hellman group
+    
+*/
+define ikev2_set_esp_transforms
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u32 crypto_alg;
+  u32 crypto_key_size;
+  u32 integ_alg;
+  u32 dh_group;
+};
+
+/** \brief Reply for IKEv2: Set IKEv2 ESP transforms
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_set_esp_transforms_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Set Child SA lifetime, limited by time and/or data
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    @param lifetime - SA maximum life time in seconds (0 to disable)
+    @param lifetime_jitter - Jitter added to prevent simultaneounus rekeying
+    @param handover - Hand over time
+    @param lifetime_maxdata - SA maximum life time in bytes (0 to disable)
+    
+*/
+define ikev2_set_sa_lifetime
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+  u64 lifetime;
+  u32 lifetime_jitter;
+  u32 handover;
+  u64 lifetime_maxdata;
+};
+
+/** \brief Reply for IKEv2: Set Child SA lifetime
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_set_sa_lifetime_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Initiate the SA_INIT exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param name - IKEv2 profile name
+    
+*/
+define ikev2_initiate_sa_init
+{
+  u32 client_index;
+  u32 context;
+
+  u8 name[64];
+};
+
+/** \brief Reply for IKEv2: Initiate the SA_INIT exchange
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_initiate_sa_init_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Initiate the delete IKE SA exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param ispi - IKE SA initiator SPI
+    
+*/
+define ikev2_initiate_del_ike_sa
+{
+  u32 client_index;
+  u32 context;
+
+  u64 ispi;
+};
+
+/** \brief Reply for IKEv2: Initiate the delete IKE SA exchange
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_initiate_del_ike_sa_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Initiate the delete Child SA exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param ispi - Child SA initiator SPI
+    
+*/
+define ikev2_initiate_del_child_sa
+{
+  u32 client_index;
+  u32 context;
+
+  u32 ispi;
+};
+
+/** \brief Reply for IKEv2: Initiate the delete Child SA exchange
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_initiate_del_child_sa_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IKEv2: Initiate the rekey Child SA exchange
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+
+    @param ispi - Child SA initiator SPI
+    
+*/
+define ikev2_initiate_rekey_child_sa
+{
+  u32 client_index;
+  u32 context;
+
+  u32 ispi;
+};
+
+/** \brief Reply for IKEv2: Initiate the rekey Child SA exchange
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define ikev2_initiate_rekey_child_sa_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief Dump ipsec policy database data
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

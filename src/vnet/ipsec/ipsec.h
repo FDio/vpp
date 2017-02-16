@@ -127,6 +127,9 @@ typedef struct
   u32 last_seq;
   u32 last_seq_hi;
   u64 replay_window;
+
+  /*lifetime data */
+  u64 total_data_size;
 } ipsec_sa_t;
 
 typedef struct

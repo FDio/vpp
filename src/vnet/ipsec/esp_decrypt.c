@@ -190,6 +190,8 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		}
 	    }
 
+	  sa0->total_data_size += i_b0->current_length;
+
 	  if (PREDICT_TRUE (sa0->integ_alg != IPSEC_INTEG_ALG_NONE))
 	    {
 	      u8 sig[64];
