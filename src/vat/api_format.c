@@ -2098,17 +2098,21 @@ set_combined_interface_counter (u8 vnet_counter_type, u32 sw_if_index,
   vam->combined_interface_counters[vnet_counter_type][sw_if_index] = counter;
 }
 
-static void vl_api_vnet_interface_counters_t_handler
-  (vl_api_vnet_interface_counters_t * mp)
+static void vl_api_vnet_interface_simple_counters_t_handler
+  (vl_api_vnet_interface_simple_counters_t * mp)
 {
   /* not supported */
 }
 
-static void vl_api_vnet_interface_counters_t_handler_json
-  (vl_api_vnet_interface_counters_t * mp)
+static void vl_api_vnet_interface_combined_counters_t_handler
+  (vl_api_vnet_interface_combined_counters_t * mp)
 {
-  interface_counter_t counter;
-  vlib_counter_t *v;
+  /* not supported */
+}
+
+static void vl_api_vnet_interface_simple_counters_t_handler_json
+  (vl_api_vnet_interface_simple_counters_t * mp)
+{
   u64 *v_packets;
   u64 packets;
   u32 count;
@@ -2118,31 +2122,38 @@ static void vl_api_vnet_interface_counters_t_handler_json
   count = ntohl (mp->count);
   first_sw_if_index = ntohl (mp->first_sw_if_index);
 
-  if (!mp->is_combined)
+  v_packets = (u64 *) & mp->data;
+  for (i = 0; i < count; i++)
     {
-      v_packets = (u64 *) & mp->data;
-      for (i = 0; i < count; i++)
-	{
-	  packets =
-	    clib_net_to_host_u64 (clib_mem_unaligned (v_packets, u64));
-	  set_simple_interface_counter (mp->vnet_counter_type,
-					first_sw_if_index + i, packets);
-	  v_packets++;
-	}
+      packets = clib_net_to_host_u64 (clib_mem_unaligned (v_packets, u64));
+      set_simple_interface_counter (mp->vnet_counter_type,
+				    first_sw_if_index + i, packets);
+      v_packets++;
     }
-  else
+}
+
+static void vl_api_vnet_interface_combined_counters_t_handler_json
+  (vl_api_vnet_interface_combined_counters_t * mp)
+{
+  interface_counter_t counter;
+  vlib_counter_t *v;
+  u32 first_sw_if_index;
+  int i;
+  u32 count;
+
+  count = ntohl (mp->count);
+  first_sw_if_index = ntohl (mp->first_sw_if_index);
+
+  v = (vlib_counter_t *) & mp->data;
+  for (i = 0; i < count; i++)
     {
-      v = (vlib_counter_t *) & mp->data;
-      for (i = 0; i < count; i++)
-	{
-	  counter.packets =
-	    clib_net_to_host_u64 (clib_mem_unaligned (&v->packets, u64));
-	  counter.bytes =
-	    clib_net_to_host_u64 (clib_mem_unaligned (&v->bytes, u64));
-	  set_combined_interface_counter (mp->vnet_counter_type,
-					  first_sw_if_index + i, counter);
-	  v++;
-	}
+      counter.packets =
+	clib_net_to_host_u64 (clib_mem_unaligned (&v->packets, u64));
+      counter.bytes =
+	clib_net_to_host_u64 (clib_mem_unaligned (&v->bytes, u64));
+      set_combined_interface_counter (mp->vnet_counter_type,
+				      first_sw_if_index + i, counter);
+      v++;
     }
 }
 
@@ -4118,8 +4129,10 @@ static void vl_api_flow_classify_details_t_handler_json
   vat_json_object_add_uint (node, "table_index", ntohl (mp->table_index));
 }
 
-
-
+#define vl_api_vnet_interface_simple_counters_t_endian vl_noop_handler
+#define vl_api_vnet_interface_simple_counters_t_print vl_noop_handler
+#define vl_api_vnet_interface_combined_counters_t_endian vl_noop_handler
+#define vl_api_vnet_interface_combined_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -4539,7 +4552,8 @@ _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
-_(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
+_(VNET_INTERFACE_SIMPLE_COUNTERS, vnet_interface_simple_counters)       \
+_(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)   \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \

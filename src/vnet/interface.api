@@ -206,21 +206,42 @@ define sw_interface_get_table_reply
   u32 vrf_id;
 };
 
-/** \brief Stats counters structure 
+typeonly manual_print manual_endian define vlib_counter
+{
+  u64 packets;			/**< packet counter */
+  u64 bytes;			/**< byte counter  */
+};
+
+/** \brief Simple stats counters structure
     @param vnet_counter_type- such as ip4, ip6, punts, etc
-    @param is_combined - rx & tx total (all types) counts   
     @param first_sw_if_index - first sw index in block of index, counts
-    @param count - number of interfaces this stats block includes counters for
-    @param data - contiguous block of vlib_counter_t structures 
+    @param count - number of counters, equal to the number of interfaces in
+      this stats block
+    @param data - contiguous block of u64 counters
 */
-define vnet_interface_counters
+manual_print manual_endian define vnet_interface_simple_counters
 {
   /* enums - plural - in vnet/interface.h */
   u8 vnet_counter_type;
-  u8 is_combined;
   u32 first_sw_if_index;
   u32 count;
-  u8 data[count];
+  u64 data[count];
+};
+
+/** \brief Combined stats counters structure
+    @param vnet_counter_type- such as ip4, ip6, punts, etc
+    @param first_sw_if_index - first sw index in block of index, counts
+    @param count - number of counters, equal to the number of interfaces in
+      this stats block
+    @param data - contiguous block of vlib_counter_t structures
+*/
+manual_print manual_endian define vnet_interface_combined_counters
+{
+  /* enums - plural - in vnet/interface.h */
+  u8 vnet_counter_type;
+  u32 first_sw_if_index;
+  u32 count;
+  vl_api_vlib_counter_t data[count];
 };
 
 /** \brief Set unnumbered interface add / del request
