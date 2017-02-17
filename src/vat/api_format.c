@@ -13638,6 +13638,8 @@ api_lisp_add_del_locator_set (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_add_del_locator_set api_lisp_add_del_locator_set
+
 static int
 api_lisp_add_del_locator (vat_main_t * vam)
 {
@@ -13750,6 +13752,8 @@ api_lisp_add_del_locator (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_add_del_locator api_lisp_add_del_locator
 
 uword
 unformat_hmac_key_id (unformat_input_t * input, va_list * args)
@@ -13876,16 +13880,7 @@ api_lisp_add_del_local_eid (vat_main_t * vam)
   return ret;
 }
 
-/* *INDENT-OFF* */
-/** Used for transferring locators via VPP API */
-typedef CLIB_PACKED(struct
-{
-  u8 is_ip4; /**< is locator an IPv4 address? */
-  u8 priority; /**< locator priority */
-  u8 weight;   /**< locator weight */
-  u8 addr[16]; /**< IPv4/IPv6 address */
-}) rloc_t;
-/* *INDENT-ON* */
+#define api_one_add_del_local_eid api_lisp_add_del_local_eid
 
 static int
 api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
@@ -14093,6 +14088,8 @@ api_lisp_add_del_map_server (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_add_del_map_server api_lisp_add_del_map_server
+
 static int
 api_lisp_add_del_map_resolver (vat_main_t * vam)
 {
@@ -14158,6 +14155,8 @@ api_lisp_add_del_map_resolver (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_add_del_map_resolver api_lisp_add_del_map_resolver
 
 static int
 api_lisp_gpe_enable_disable (vat_main_t * vam)
@@ -14246,6 +14245,8 @@ api_lisp_rloc_probe_enable_disable (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_rloc_probe_enable_disable api_lisp_rloc_probe_enable_disable
+
 static int
 api_lisp_map_register_enable_disable (vat_main_t * vam)
 {
@@ -14287,6 +14288,8 @@ api_lisp_map_register_enable_disable (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_map_register_enable_disable api_lisp_map_register_enable_disable
 
 static int
 api_lisp_enable_disable (vat_main_t * vam)
@@ -14332,6 +14335,8 @@ api_lisp_enable_disable (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_enable_disable api_lisp_enable_disable
+
 static int
 api_show_lisp_map_register_state (vat_main_t * vam)
 {
@@ -14347,6 +14352,8 @@ api_show_lisp_map_register_state (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_show_one_map_register_state api_show_lisp_map_register_state
 
 static int
 api_show_lisp_rloc_probe_state (vat_main_t * vam)
@@ -14364,6 +14371,8 @@ api_show_lisp_rloc_probe_state (vat_main_t * vam)
   return ret;
 }
 
+#define api_show_one_rloc_probe_state api_show_lisp_rloc_probe_state
+
 static int
 api_show_lisp_map_request_mode (vat_main_t * vam)
 {
@@ -14379,6 +14388,8 @@ api_show_lisp_map_request_mode (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_show_one_map_request_mode api_show_lisp_map_request_mode
 
 static int
 api_lisp_map_request_mode (vat_main_t * vam)
@@ -14413,6 +14424,8 @@ api_lisp_map_request_mode (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_map_request_mode api_lisp_map_request_mode
 
 /**
  * Enable/disable LISP proxy ITR.
@@ -14464,6 +14477,8 @@ api_lisp_pitr_set_locator_set (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_pitr_set_locator_set api_lisp_pitr_set_locator_set
+
 static int
 api_show_lisp_pitr (vat_main_t * vam)
 {
@@ -14483,6 +14498,8 @@ api_show_lisp_pitr (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_show_one_pitr api_show_lisp_pitr
 
 /**
  * Add/delete mapping between vni and vrf
@@ -14537,6 +14554,8 @@ api_lisp_eid_table_add_del_map (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_eid_table_add_del_map api_lisp_eid_table_add_del_map
 
 uword
 unformat_negative_mapping_action (unformat_input_t * input, va_list * args)
@@ -14691,6 +14710,8 @@ api_lisp_add_del_remote_mapping (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_add_del_remote_mapping api_lisp_add_del_remote_mapping
+
 /**
  * Add/del LISP adjacency. Saves mapping in LISP control plane and updates
  * forwarding entries in data-plane accordingly.
@@ -14816,6 +14837,8 @@ api_lisp_add_del_adjacency (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_add_del_adjacency api_lisp_add_del_adjacency
 
 static int
 api_lisp_gpe_add_del_iface (vat_main_t * vam)
@@ -14951,6 +14974,8 @@ api_lisp_add_del_map_request_itr_rlocs (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_add_del_map_request_itr_rlocs api_lisp_add_del_map_request_itr_rlocs
+
 static int
 api_lisp_locator_dump (vat_main_t * vam)
 {
@@ -15027,6 +15052,8 @@ api_lisp_locator_dump (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_locator_dump api_lisp_locator_dump
+
 static int
 api_lisp_locator_set_dump (vat_main_t * vam)
 {
@@ -15074,6 +15101,8 @@ api_lisp_locator_set_dump (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_locator_set_dump api_lisp_locator_set_dump
 
 static int
 api_lisp_eid_table_map_dump (vat_main_t * vam)
@@ -15131,6 +15160,8 @@ api_lisp_eid_table_map_dump (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_eid_table_map_dump api_lisp_eid_table_map_dump
+
 static int
 api_lisp_eid_table_vni_dump (vat_main_t * vam)
 {
@@ -15156,6 +15187,8 @@ api_lisp_eid_table_vni_dump (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_eid_table_vni_dump api_lisp_eid_table_vni_dump
 
 static int
 api_lisp_eid_table_dump (vat_main_t * vam)
@@ -15254,6 +15287,8 @@ api_lisp_eid_table_dump (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_eid_table_dump api_lisp_eid_table_dump
+
 static int
 api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
 {
@@ -15348,6 +15383,8 @@ api_lisp_adjacencies_get (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_adjacencies_get api_lisp_adjacencies_get
+
 static int
 api_lisp_map_server_dump (vat_main_t * vam)
 {
@@ -15372,6 +15409,8 @@ api_lisp_map_server_dump (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_map_server_dump api_lisp_map_server_dump
 
 static int
 api_lisp_map_resolver_dump (vat_main_t * vam)
@@ -15398,6 +15437,8 @@ api_lisp_map_resolver_dump (vat_main_t * vam)
   return ret;
 }
 
+#define api_one_map_resolver_dump api_lisp_map_resolver_dump
+
 static int
 api_show_lisp_status (vat_main_t * vam)
 {
@@ -15416,6 +15457,8 @@ api_show_lisp_status (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_show_one_status api_show_lisp_status
 
 static int
 api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
@@ -15476,6 +15519,8 @@ api_lisp_get_map_request_itr_rlocs (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
+#define api_one_get_map_request_itr_rlocs api_lisp_get_map_request_itr_rlocs
 
 static int
 api_af_packet_create (vat_main_t * vam)
@@ -18325,7 +18370,48 @@ _(get_node_graph, " ")                                                  \
 _(sw_interface_clear_stats,"<intfc> | sw_if_index <nn>")                \
 _(ioam_enable, "[trace] [pow] [ppc <encap|decap>]")                     \
 _(ioam_disable, "")                                                     \
-_(lisp_add_del_locator_set, "locator-set <locator_name> [iface <intf> |" \
+_(one_add_del_locator_set, "locator-set <locator_name> [iface <intf> |" \
+                            " sw_if_index <sw_if_index> p <priority> "  \
+                            "w <weight>] [del]")                        \
+_(one_add_del_locator, "locator-set <locator_name> "                    \
+                        "iface <intf> | sw_if_index <sw_if_index> "     \
+                        "p <priority> w <weight> [del]")                \
+_(one_add_del_local_eid,"vni <vni> eid "                                \
+                         "<ipv4|ipv6>/<prefix> | <L2 address> "         \
+                         "locator-set <locator_name> [del]"             \
+                         "[key-id sha1|sha256 secret-key <secret-key>]")\
+_(one_add_del_map_resolver, "<ip4|6-addr> [del]")                       \
+_(one_add_del_map_server, "<ip4|6-addr> [del]")                         \
+_(one_enable_disable, "enable|disable")                                 \
+_(one_map_register_enable_disable, "enable|disable")                    \
+_(one_rloc_probe_enable_disable, "enable|disable")                      \
+_(one_add_del_remote_mapping, "add|del vni <vni> eid <dest-eid> "       \
+                               "[seid <seid>] "                         \
+                               "rloc <locator> p <prio> "               \
+                               "w <weight> [rloc <loc> ... ] "          \
+                               "action <action> [del-all]")             \
+_(one_add_del_adjacency, "add|del vni <vni> reid <remote-eid> leid "    \
+                          "<local-eid>")                                \
+_(one_pitr_set_locator_set, "locator-set <loc-set-name> | del")         \
+_(one_map_request_mode, "src-dst|dst-only")                             \
+_(one_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")            \
+_(one_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")               \
+_(one_locator_set_dump, "[local | remote]")                             \
+_(one_locator_dump, "ls_index <index> | ls_name <name>")                \
+_(one_eid_table_dump, "[eid <ipv4|ipv6>/<prefix> | <mac>] [vni] "       \
+                       "[local] | [remote]")                            \
+_(one_eid_table_vni_dump, "")                                           \
+_(one_eid_table_map_dump, "l2|l3")                                      \
+_(one_map_resolver_dump, "")                                            \
+_(one_map_server_dump, "")                                              \
+_(one_adjacencies_get, "vni <vni>")                                     \
+_(show_one_rloc_probe_state, "")                                        \
+_(show_one_map_register_state, "")                                      \
+_(show_one_status, "")                                                  \
+_(one_get_map_request_itr_rlocs, "")                                    \
+_(show_one_pitr, "")                                                    \
+_(show_one_map_request_mode, "")                                        \
+_(lisp_add_del_locator_set, "locator-set <locator_name> [iface <intf> |"\
                             " sw_if_index <sw_if_index> p <priority> "  \
                             "w <weight>] [del]")                        \
 _(lisp_add_del_locator, "locator-set <locator_name> "                   \

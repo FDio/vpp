@@ -578,7 +578,9 @@ libvnet_la_SOURCES +=				\
  vnet/lisp-cp/gid_dictionary.c			\
  vnet/lisp-cp/lisp_msg_serdes.c			\
  vnet/lisp-cp/packets.c				\
+ vnet/lisp-cp/one_cli.c				\
  vnet/lisp-cp/lisp_cli.c			\
+ vnet/lisp-cp/one_api.c				\
  vnet/lisp-cp/lisp_api.c
 
 nobase_include_HEADERS +=			\
@@ -588,9 +590,11 @@ nobase_include_HEADERS +=			\
  vnet/lisp-cp/lisp_cp_messages.h		\
  vnet/lisp-cp/lisp_msg_serdes.h			\
  vnet/lisp-cp/control.h				\
+ vnet/lisp-cp/one.api.h				\
  vnet/lisp-cp/lisp.api.h
 
 API_FILES += vnet/lisp-cp/lisp.api
+API_FILES += vnet/lisp-cp/one.api
 
 if ENABLE_TESTS
 LDS = \
