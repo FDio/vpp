@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_4b629ad9",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 668,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "this conditional results in different behaviour than previously.\nnow if RECYCLE is set we will not call;\n vlib_buffer_add_to_free_list()\n   vec_add1_aligned (f-\u003ebuffers, buffer_index, ...);\nwhereas previously we would.\nis that intentional?",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_abaa1ed2",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "Am I correct in thinking this will only delete the cloned packet if all of its clones are present in the input buffers array?\nmaybe instead;\n  if (nb-\u003eclone_count) {\n    \u003cskip it\u003e\n  }\n  else\n  {\n     cloned \u003d \u003cget cloned buffer if it has one\u003e\n     buffer_free(nb)\n\n     if (0 \u003d\u003d --cloned-\u003eclone_count) {\n       buffer_free(cloned)\n    }\n}",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4b4bba59",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 529,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "can we have n_buffers as u16? In theory we could replicate out of all but one of the total number of interfaces.",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b3e76ba",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 538,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "as much as i like const, does it make a difference here? I think the const folding optimisation will only happen if the value is known at compile time.",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8b41a23b",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "prefetch one buffer ahead?",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cba56a05",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "i don\u0027t understand why this is n_buffers-1 and not n_buffers - since that\u0027s how many clones there are.",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8b6882bb",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 604,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "this function is not used.",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0b9c92bf",
+        "filename": "src/vnet/devices/dpdk/device.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "PREDICT_FALSE",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eba026f6",
+        "filename": "src/vnet/dpo/replicate_dpo.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 648,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T20:04:22Z",
+      "side": 1,
+      "message": "we can move this validate to a for_each cpu_index loop when we build the replicate DPO. then move the reset_length to this location.\nI can do that in a follow up if you like.",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
