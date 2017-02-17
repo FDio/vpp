@@ -227,6 +227,29 @@
       "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_105f1d10",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-17T09:34:12Z",
+      "side": 1,
+      "message": "one more which I didn\u0027t realize yesterday:\n\nthe registry object is meant to keep track of objects configured in vpp (object can be a route, a bfd session, anything which can be configured stand-alone) and to automatically figure out which of these objects are still present and remove the configuration for them. only some objects use it currently, but eventually all will.\n\nso as it is, the api trace will contain the API calls from setUp() and test_() but not from tearDown().\n\nI think it\u0027d make sense to move the save api trace block after the self.registry.remove_vpp_config() call.",
+      "range": {
+        "startLine": 349,
+        "startChar": 12,
+        "endLine": 349,
+        "endChar": 56
+      },
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
