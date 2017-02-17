@@ -82,10 +82,6 @@ DOXY_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_EXCLUDE))' | se
 # Include all the normal source directories in the include file path
 DOXY_INCLUDE_PATH = $(DOXY_SRC_DIRECTORIES)
 
-# Also include any plugin directories that exist
-DOXY_INCLUDE_PATH += \
-	$(shell find $(WS_ROOT)/plugins -maxdepth 1 -type d | sed -e 's@^$(WS_ROOT)/*@@')
-
 # Find API header directories and include them in the header path.
 # This is only useful if VPP and plugins are already built; nothing
 # here depends on those targets. We don't build documentation for these
@@ -140,7 +136,7 @@ ifeq ($(OS_ID),ubuntu)
 			sudo apt-get $(CONFIRM) $(FORCE) install $$inst; \
 		fi
 	@if [ ! -s /usr/lib/graphviz/config6a ]; then \
-		echo "Rebuidlding system Graphviz configuration."; \
+		echo "Rebuilding system Graphviz configuration."; \
 		sudo dot -c; \
 	fi
 else ifneq ("$(wildcard /etc/redhat-release)","")

@@ -30,7 +30,6 @@ Directory name         | Description
      build-root        | Build output directory
      doxygen           | Documentation generator configuration
      dpdk              | DPDK patches and build infrastructure
-@ref plugins           | Not-yet-relocated VPP bundled plugins directory
 @ref src               | VPP source code
 @ref src/plugins       | VPP bundled plugins directory
 @ref src/svm           | Shared virtual memory allocation library
@@ -45,7 +44,7 @@ Directory name         | Description
 @ref src/vpp-api       | VPP application API bindings
 @ref src/vppinfra      | VPP core library
      test              | Unit tests
-@ref vpp-api           | Not-yet-relocated API bindings
+@ref src/vpp/api       | Not-yet-relocated API bindings
 
 
 ## Getting started
@@ -100,3 +99,8 @@ information.
 
 Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
 advanced building strategies and development notes.
+
+
+## Test Framework
+
+There is PyDoc generated documentation available for the VPP test framework. See @subpage test_framework_doc for details.
