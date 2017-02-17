@@ -250,6 +250,30 @@
       "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9072ede3",
+        "filename": "test/framework.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 349,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-02-17T15:27:14Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_105f1d10",
+      "range": {
+        "startLine": 349,
+        "startChar": 12,
+        "endLine": 349,
+        "endChar": 56
+      },
+      "revId": "56071bc5f2bad01af8e704c73cd7587de4622f0a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
