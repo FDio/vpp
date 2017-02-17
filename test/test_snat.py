@@ -485,7 +485,7 @@ class TestSNAT(VppTestCase):
                                                  src_ip=self.pg1.local_ip4)
 
     def test_dynamic_icmp_errors_in2out_ttl_2(self):
-        """ SNAT handling of error respones to client packets with TTL=2 """
+        """ SNAT handling of error responses to client packets with TTL=2 """
 
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
@@ -512,7 +512,7 @@ class TestSNAT(VppTestCase):
         self.verify_capture_in_with_icmp_errors(capture, self.pg0)
 
     def test_dynamic_icmp_errors_out2in_ttl_2(self):
-        """ SNAT handling of error respones to server packets with TTL=2 """
+        """ SNAT handling of error responses to server packets with TTL=2 """
 
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
@@ -545,6 +545,34 @@ class TestSNAT(VppTestCase):
         # Server side - verify ICMP type 11 packets
         capture = self.pg1.get_capture(len(pkts))
         self.verify_capture_out_with_icmp_errors(capture)
+
+    def test_ping_out_interface_from_outside(self):
+        """ Ping SNAT out interface from outside """
+
+        self.snat_add_address(self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.pg1.local_ip4) /
+             ICMP(id=self.icmp_id_out, type='echo-request'))
+        pkts = [p]
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.assertEqual(1, len(capture))
+        packet = capture[0]
+        try:
+            self.assertEqual(packet[IP].src, self.pg1.local_ip4)
+            self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
+            self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+            self.assertEqual(packet[ICMP].type, 0)  # echo reply
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet "
+                                  "(outside network):", packet))
+            raise
 
     def test_static_in(self):
         """ SNAT 1:1 NAT initialized from inside network """
