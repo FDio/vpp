@@ -1,0 +1,158 @@
+Descriptions of section entries:
+
+	M: Maintainer Full name and E-mail address: Full Name <address@domain>
+	   One maintainer per line.  Multiple M: lines acceptable.
+	F: Files and directories with wildcard patterns.
+	   A trailing slash includes all files and subdirectory files.
+	   F:	drivers/net/	all files in and below drivers/net
+	   F:	drivers/net/*	all files in drivers/net, but not below
+	   One pattern per line.  Multiple F: lines acceptable.
+	C: Single line comment related to current section.
+
+		-----------------------------------
+
+Build System
+M:	Damjan Marion <damarion@cisco.com>
+F:	Makefile
+F:	src/*.ac
+F:	src/*.am
+F:	src/*.mk
+F:	src/m4/
+
+Build System Internal
+M:	Dave Barach <dave@barachs.net>
+F:	build-root/Makefile
+F:	build-data/*
+
+Doxygen
+M:	Chris Luke <chrisy@flirble.org>
+F:	doxygen/
+
+DPDK Development Packaging
+M:	Damjan Marion <damarion@cisco.com>
+F:	dpdk/
+F:	dpdk/*
+
+Infrastructure Library
+M:	Dave Barach <dave@barachs.net>
+F:	src/vppinfra/
+
+VLIB Library
+M:	Dave Barach <dave@barachs.net>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vlib/
+
+VLIB API Libraries
+M:	Dave Barach <dave@barachs.net>
+F:	src/vlibapi/
+F:	src/vlibmemory/
+F:	src/vlibsocket/
+
+VNET Bidirectonal Forwarding Detection (BFD)
+M:	Klement Sekera <ksekera@cisco.com>
+F:	src/vnet/bfd/
+
+VNET Device Drivers
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/devices/
+
+VNET Device Drivers - DPDK Crypto
+M:	Sergio Gonzales Monroy <sergio.gonzalez.monroy@intel.com>
+F:	src/devices/dpdk/ipsec/
+
+VNET Feature Arcs
+M:	Dave Barach <dave@barachs.net>
+M:	Damjan Marion <damarion@cisco.com>
+F:	src/vnet/feature/
+
+VNET FIB
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/fib/
+F:	src/vnet/mfib/
+F:	src/vnet/dpo
+F:	src/vnet/adj
+
+VNET IPv4 and IPv6 LPM
+M:	Dave Barach <dave@barachs.net>
+F:	src/vnet/ip/
+
+VNET IPv6 Segment Routing
+M:	Pablo Camarillo <pcamaril@cisco.com>
+F:	src/vnet/sr/
+
+VNET IPSec
+M:	Sergio Gonzales Monroy <sergio.gonzalez.monroy@intel.com>
+M:	Matus Fabian <matfabia@cisco.com>
+F:	src/vnet/ipsec/
+
+VNET L2
+M:	John Lo <loj@cisco.com>
+F:	src/vnet/l2/
+
+VNET Link Layer Discovery Protocol (LLDP)
+M:	Klement Sekera <ksekera@cisco.com>
+F:	src/vnet/lldp/
+
+VNET LISP
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vnet/lisp-cp/
+F:	src/vnet/lisp-gpe/
+
+VNET MAP
+M:	Ole Troan <ot@cisco.com>
+F:	src/vnet/map
+
+VNET MPLS
+M:	Neale Ranns <nranns@cisco.com>
+F:	src/vnet/mpls/
+
+VNET VXLAN
+M:	John Lo <loj@cisco.com>
+F:	src/vnet/vxlan/
+
+Plugin - flowperpkt
+M:	Dave Barach <dave@barachs.net>
+F:	src/plugins/flowperpkt/
+F:	src/plugins/flowperpkt.am
+
+Plugin - SIXRD
+M:	Ole Troan <ot@cisco.com>
+F:	src/plugins/sixrd/
+F:	src/plugins/sixrd.am
+
+Test Infrastructure
+M:	Klement Sekera <ksekera@cisco.com>
+F:	test/
+
+SVM Library
+M:	Dave Barach <dave@barachs.net>
+F:	src/svm
+
+VPP API TEST
+M:	Dave Barach <dave@barachs.net>
+F:	src/vat/
+
+VPP Executable
+M:	Dave Barach <dave@barachs.net>
+F:	src/vpp/
+
+Graphical Event Viewer
+M:	Dave Barach <dave@barachs.net>
+F:	src/tools/g2/
+
+Performance Tooling
+M:	Dave Barach <dave@barachs.net>
+F:	src/tools/perftool/
+
+Binary API Compiler
+M:	Dave Barach <dave@barachs.net>
+F:	src/tools/vppapigen/
+
+Ganglia Telemetry Module
+M:	Dave Barach <dave@barachs.net>
+F:	gmod/
+
+THE REST
+C:	Contact vpp-dev Mailing List <vpp-dev@fd.io>
+F:	*
+F:	*/
