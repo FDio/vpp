@@ -50,6 +50,7 @@
 #include <vnet/ipsec-gre/ipsec_gre.api.h>
 #include <vnet/lisp-cp/lisp.api.h>
 #include <vnet/lisp-gpe/lisp_gpe.api.h>
+#include <vnet/lisp-cp/one.api.h>
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/sr/sr.api.h>
 #include <vnet/classify/classify.api.h>
