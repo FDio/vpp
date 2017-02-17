@@ -2,6 +2,7 @@ from abc import abstractmethod, ABCMeta
 import socket
 
 from util import Host
+from vpp_neighbor import VppNeighbor
 
 
 class VppInterface(object):
@@ -201,10 +202,7 @@ class VppInterface(object):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            macn = host.mac.replace(":", "").decode('hex')
-            ipn = host.ip4n
-            self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn, vrf_id)
+            VppNeighbor(self.test, self.sw_if_index, host.mac, host.ip4)
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
@@ -232,10 +230,8 @@ class VppInterface(object):
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
         """
         for host in self._remote_hosts:
-            macn = host.mac.replace(":", "").decode('hex')
-            ipn = host.ip6n
-            self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn, vrf_id, is_ipv6=1)
+            VppNeighbor(self.test, self.sw_if_index, host.mac, host.ip6,
+                        inet=socket.AF_INET6)
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""
@@ -316,3 +312,15 @@ class VppInterface(object):
                i.table_id == self.ip4_table_id:
                 return True
         return False
+
+    def set_unnumbered(self, ip_sw_if_index):
+        """ Set the interface to unnumbered via ip_sw_if_index """
+        self.test.vapi.sw_interface_set_unnumbered(
+            self.sw_if_index,
+            ip_sw_if_index)
+
+    def set_proxy_arp(self, enable=1):
+        """ Set the interface to unnumbered via ip_sw_if_index """
+        self.test.vapi.proxy_arp_intfc_enable_disable(
+            self.sw_if_index,
+            enable)

@@ -240,6 +240,20 @@ class VppPapiProvider(object):
                          'address_length': addr_len,
                          'address': addr})
 
+    def sw_interface_set_unnumbered(self, sw_if_index, ip_sw_if_index,
+                                    is_add=1):
+        """ Set the Interface to be unnumbered
+
+        :param is_add:  (Default value = 1)
+        :param sw_if_index - interface That will be unnumbered
+        :param ip_sw_if_index - interface with an IP addres
+
+        """
+        return self.api(self.papi.sw_interface_set_unnumbered,
+                        {'sw_if_index': ip_sw_if_index,
+                         'unnumbered_sw_if_index': sw_if_index,
+                         'is_add': is_add})
+
     def sw_interface_enable_disable_mpls(self, sw_if_index,
                                          is_enable=1):
         """
@@ -635,6 +649,59 @@ class VppPapiProvider(object):
              'is_static': is_static,
              'mac_address': mac_address,
              'dst_address': dst_address
+             }
+        )
+
+    def ip_neighbor_dump(self,
+                         sw_if_index,
+                         is_ipv6=0):
+        """ Return IP neighbor dump.
+
+        :param sw_if_index:
+        :param int is_ipv6: 1 for IPv6 neighbor, 0 for IPv4. (Default = 0)
+        """
+
+        return self.api(
+            self.papi.ip_neighbor_dump,
+            {'is_ipv6': is_ipv6,
+             'sw_if_index': sw_if_index
+             }
+        )
+
+    def proxy_arp_add_del(self,
+                          low_address,
+                          hi_address,
+                          vrf_id=0,
+                          is_add=1):
+        """ Config Proxy Arp Range.
+
+        :param low_address: Start address in the rnage to Proxy for
+        :param hi_address: End address in the rnage to Proxy for
+        :param vrf_id: The VRF/table in which to proxy
+        """
+
+        return self.api(
+            self.papi.proxy_arp_add_del,
+            {'vrf_id': vrf_id,
+             'is_add': is_add,
+             'low_address': low_address,
+             'hi_address': hi_address,
+             }
+        )
+
+    def proxy_arp_intfc_enable_disable(self,
+                                       sw_if_index,
+                                       is_enable=1):
+        """ Enable/Disable an interface for proxy ARP requests
+
+        :param sw_if_index: Interface
+        :param enable_disable: Enable/Disable
+        """
+
+        return self.api(
+            self.papi.proxy_arp_intfc_enable_disable,
+            {'sw_if_index': sw_if_index,
+             'enable_disable': is_enable
              }
         )
 
