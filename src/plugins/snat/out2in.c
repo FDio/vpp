@@ -270,12 +270,6 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
 
   if (!is_error_message)
     {
-      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply))
-        {
-          b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
-          next0 = SNAT_OUT2IN_NEXT_DROP;
-          goto out;
-        }
       key0.protocol = SNAT_PROTOCOL_ICMP;
       key0.port = echo0->identifier;
     }
@@ -352,6 +346,13 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
   else
     s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
                             value0.value);
+
+  if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply && !is_error_message))
+    {
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
+      next0 = SNAT_OUT2IN_NEXT_DROP;
+      goto out;
+    }
 
   sum0 = ip_incremental_checksum (0, icmp0,
                                   ntohs(ip0->length) - ip4_header_bytes (ip0));
