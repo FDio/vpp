@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b0b60989",
+        "filename": "src/vpp.am",
+        "patchSetId": 4
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-17T14:57:13Z",
+      "side": 1,
+      "message": "please link against libvnet, not against executable.\nSorry, did not spot this before...",
+      "range": {
+        "startLine": 82,
+        "startChar": 0,
+        "endLine": 88,
+        "endChar": 5
+      },
+      "revId": "369bf19168b2ddb81981b6160eb9c027fffa8634",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
