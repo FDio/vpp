@@ -316,3 +316,15 @@ class VppInterface(object):
                i.table_id == self.ip4_table_id:
                 return True
         return False
+
+    def set_unnumbered(self, ip_sw_if_index):
+        """ Set the interface ot unnumbered via ip_sw_if_index """
+        self.test.vapi.sw_interface_set_unnumbered(
+            self.sw_if_index,
+            ip_sw_if_index)
+
+    def set_proxy_arp(self, enable=1):
+        """ Set the interface ot unnumbered via ip_sw_if_index """
+        self.test.vapi.proxy_arp_intfc_enable_disable(
+            self.sw_if_index,
+            enable)
