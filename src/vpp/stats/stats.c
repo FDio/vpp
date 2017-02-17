@@ -45,12 +45,13 @@ stats_main_t stats_main;
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-#define foreach_stats_msg                               \
-_(WANT_STATS, want_stats)                               \
-_(VNET_INTERFACE_COUNTERS, vnet_interface_counters)     \
-_(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)         \
-_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)         \
-_(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)         \
+#define foreach_stats_msg						\
+_(WANT_STATS, want_stats)						\
+_(VNET_INTERFACE_SIMPLE_COUNTERS, vnet_interface_simple_counters)	\
+_(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)	\
+_(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)				\
+_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)				\
+_(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)				\
 _(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
 
 /* These constants ensure msg sizes <= 1024, aka ring allocation */
@@ -127,7 +128,7 @@ stats_dsunlock (int hint, int tag)
 static void
 do_simple_interface_counters (stats_main_t * sm)
 {
-  vl_api_vnet_interface_counters_t *mp = 0;
+  vl_api_vnet_interface_simple_counters_t *mp = 0;
   vnet_interface_main_t *im = sm->interface_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
@@ -155,9 +156,8 @@ do_simple_interface_counters (stats_main_t * sm)
 
 	    mp = vl_msg_api_alloc_as_if_client
 	      (sizeof (*mp) + items_this_message * sizeof (v));
-	    mp->_vl_msg_id = ntohs (VL_API_VNET_INTERFACE_COUNTERS);
+	    mp->_vl_msg_id = ntohs (VL_API_VNET_INTERFACE_SIMPLE_COUNTERS);
 	    mp->vnet_counter_type = cm - im->sw_if_counters;
-	    mp->is_combined = 0;
 	    mp->first_sw_if_index = htonl (i);
 	    mp->count = 0;
 	    vp = (u64 *) mp->data;
@@ -182,7 +182,7 @@ do_simple_interface_counters (stats_main_t * sm)
 static void
 do_combined_interface_counters (stats_main_t * sm)
 {
-  vl_api_vnet_interface_counters_t *mp = 0;
+  vl_api_vnet_interface_combined_counters_t *mp = 0;
   vnet_interface_main_t *im = sm->interface_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
@@ -206,9 +206,8 @@ do_combined_interface_counters (stats_main_t * sm)
 
 	    mp = vl_msg_api_alloc_as_if_client
 	      (sizeof (*mp) + items_this_message * sizeof (v));
-	    mp->_vl_msg_id = ntohs (VL_API_VNET_INTERFACE_COUNTERS);
+	    mp->_vl_msg_id = ntohs (VL_API_VNET_INTERFACE_COMBINED_COUNTERS);
 	    mp->vnet_counter_type = cm - im->combined_sw_if_counters;
-	    mp->is_combined = 1;
 	    mp->first_sw_if_index = htonl (i);
 	    mp->count = 0;
 	    vp = (vlib_counter_t *) mp->data;
@@ -943,13 +942,13 @@ stats_thread_fn (void *arg)
 }
 
 static void
-vl_api_vnet_interface_counters_t_handler (vl_api_vnet_interface_counters_t *
-					  mp)
+  vl_api_vnet_interface_simple_counters_t_handler
+  (vl_api_vnet_interface_simple_counters_t * mp)
 {
   vpe_client_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
-  vl_api_vnet_interface_counters_t *mp_copy = NULL;
+  vl_api_vnet_interface_simple_counters_t *mp_copy = NULL;
   u32 mp_size;
 
 #if STATS_DEBUG > 0
@@ -958,110 +957,154 @@ vl_api_vnet_interface_counters_t_handler (vl_api_vnet_interface_counters_t *
   int i;
 #endif
 
-  mp_size = sizeof (*mp) + (ntohl (mp->count) *
-			    (mp->is_combined ? sizeof (vlib_counter_t) :
-			     sizeof (u64)));
+  mp_size = sizeof (*mp) + (ntohl (mp->count) * sizeof (u64));
 
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
-  ({
-    q = vl_api_client_index_to_input_queue (reg->client_index);
-    if (q)
-      {
-        if (q_prev && (q_prev->cursize < q_prev->maxsize))
-          {
-            mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-            clib_memcpy(mp_copy, mp, mp_size);
-            vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
-            mp = mp_copy;
-          }
-        q_prev = q;
-      }
-  }));
+	       ({
+		 q = vl_api_client_index_to_input_queue (reg->client_index);
+		 if (q)
+		   {
+		     if (q_prev && (q_prev->cursize < q_prev->maxsize))
+		       {
+			 mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+			 clib_memcpy(mp_copy, mp, mp_size);
+			 vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+			 mp = mp_copy;
+		       }
+		     q_prev = q;
+		   }
+	       }));
   /* *INDENT-ON* */
 
 #if STATS_DEBUG > 0
   count = ntohl (mp->count);
   sw_if_index = ntohl (mp->first_sw_if_index);
-  if (mp->is_combined == 0)
-    {
-      u64 *vp, v;
-      vp = (u64 *) mp->data;
+  u64 *vp, v;
+  vp = (u64 *) mp->data;
 
-      switch (mp->vnet_counter_type)
-	{
-	case VNET_INTERFACE_COUNTER_DROP:
-	  counter_name = "drop";
-	  break;
-	case VNET_INTERFACE_COUNTER_PUNT:
-	  counter_name = "punt";
-	  break;
-	case VNET_INTERFACE_COUNTER_IP4:
-	  counter_name = "ip4";
-	  break;
-	case VNET_INTERFACE_COUNTER_IP6:
-	  counter_name = "ip6";
-	  break;
-	case VNET_INTERFACE_COUNTER_RX_NO_BUF:
-	  counter_name = "rx-no-buff";
-	  break;
-	case VNET_INTERFACE_COUNTER_RX_MISS:
-	  , counter_name = "rx-miss";
-	  break;
-	case VNET_INTERFACE_COUNTER_RX_ERROR:
-	  , counter_name = "rx-error (fifo-full)";
-	  break;
-	case VNET_INTERFACE_COUNTER_TX_ERROR:
-	  , counter_name = "tx-error (fifo-full)";
-	  break;
-	default:
-	  counter_name = "bogus";
-	  break;
-	}
-      for (i = 0; i < count; i++)
-	{
-	  v = clib_mem_unaligned (vp, u64);
-	  v = clib_net_to_host_u64 (v);
-	  vp++;
-	  fformat (stdout, "%U.%s %lld\n", format_vnet_sw_if_index_name,
-		   sm->vnet_main, sw_if_index, counter_name, v);
-	  sw_if_index++;
-	}
+  switch (mp->vnet_counter_type)
+    {
+    case VNET_INTERFACE_COUNTER_DROP:
+      counter_name = "drop";
+      break;
+    case VNET_INTERFACE_COUNTER_PUNT:
+      counter_name = "punt";
+      break;
+    case VNET_INTERFACE_COUNTER_IP4:
+      counter_name = "ip4";
+      break;
+    case VNET_INTERFACE_COUNTER_IP6:
+      counter_name = "ip6";
+      break;
+    case VNET_INTERFACE_COUNTER_RX_NO_BUF:
+      counter_name = "rx-no-buff";
+      break;
+    case VNET_INTERFACE_COUNTER_RX_MISS:
+      , counter_name = "rx-miss";
+      break;
+    case VNET_INTERFACE_COUNTER_RX_ERROR:
+      , counter_name = "rx-error (fifo-full)";
+      break;
+    case VNET_INTERFACE_COUNTER_TX_ERROR:
+      , counter_name = "tx-error (fifo-full)";
+      break;
+    default:
+      counter_name = "bogus";
+      break;
+    }
+  for (i = 0; i < count; i++)
+    {
+      v = clib_mem_unaligned (vp, u64);
+      v = clib_net_to_host_u64 (v);
+      vp++;
+      fformat (stdout, "%U.%s %lld\n", format_vnet_sw_if_index_name,
+	       sm->vnet_main, sw_if_index, counter_name, v);
+      sw_if_index++;
+    }
+#endif
+  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+    {
+      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
     }
   else
     {
-      vlib_counter_t *vp;
-      u64 packets, bytes;
-      vp = (vlib_counter_t *) mp->data;
-
-      switch (mp->vnet_counter_type)
-	{
-	case VNET_INTERFACE_COUNTER_RX:
-	  counter_name = "rx";
-	  break;
-	case VNET_INTERFACE_COUNTER_TX:
-	  counter_name = "tx";
-	  break;
-	default:
-	  counter_name = "bogus";
-	  break;
-	}
-      for (i = 0; i < count; i++)
-	{
-	  packets = clib_mem_unaligned (&vp->packets, u64);
-	  packets = clib_net_to_host_u64 (packets);
-	  bytes = clib_mem_unaligned (&vp->bytes, u64);
-	  bytes = clib_net_to_host_u64 (bytes);
-	  vp++;
-	  fformat (stdout, "%U.%s.packets %lld\n",
-		   format_vnet_sw_if_index_name,
-		   sm->vnet_main, sw_if_index, counter_name, packets);
-	  fformat (stdout, "%U.%s.bytes %lld\n",
-		   format_vnet_sw_if_index_name,
-		   sm->vnet_main, sw_if_index, counter_name, bytes);
-	  sw_if_index++;
-	}
+      vl_msg_api_free (mp);
     }
+}
+
+static void
+  vl_api_vnet_interface_combined_counters_t_handler
+  (vl_api_vnet_interface_combined_counters_t * mp)
+{
+  vpe_client_registration_t *reg;
+  stats_main_t *sm = &stats_main;
+  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  vl_api_vnet_interface_combined_counters_t *mp_copy = NULL;
+  u32 mp_size;
+
+#if STATS_DEBUG > 0
+  char *counter_name;
+  u32 count, sw_if_index;
+  int i;
+#endif
+
+  mp_size = sizeof (*mp) + (ntohl (mp->count) * sizeof (vlib_counter_t));
+
+  /* *INDENT-OFF* */
+  pool_foreach(reg, sm->stats_registrations,
+	       ({
+		 q = vl_api_client_index_to_input_queue (reg->client_index);
+		 if (q)
+		   {
+		     if (q_prev && (q_prev->cursize < q_prev->maxsize))
+		       {
+			 mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+			 clib_memcpy(mp_copy, mp, mp_size);
+			 vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+			 mp = mp_copy;
+		       }
+		     q_prev = q;
+		   }
+	       }));
+  /* *INDENT-ON* */
+
+#if STATS_DEBUG > 0
+  count = ntohl (mp->count);
+  sw_if_index = ntohl (mp->first_sw_if_index);
+
+  vlib_counter_t *vp;
+  u64 packets, bytes;
+  vp = (vlib_counter_t *) mp->data;
+
+  switch (mp->vnet_counter_type)
+    {
+    case VNET_INTERFACE_COUNTER_RX:
+      counter_name = "rx";
+      break;
+    case VNET_INTERFACE_COUNTER_TX:
+      counter_name = "tx";
+      break;
+    default:
+      counter_name = "bogus";
+      break;
+    }
+  for (i = 0; i < count; i++)
+    {
+      packets = clib_mem_unaligned (&vp->packets, u64);
+      packets = clib_net_to_host_u64 (packets);
+      bytes = clib_mem_unaligned (&vp->bytes, u64);
+      bytes = clib_net_to_host_u64 (bytes);
+      vp++;
+      fformat (stdout, "%U.%s.packets %lld\n",
+	       format_vnet_sw_if_index_name,
+	       sm->vnet_main, sw_if_index, counter_name, packets);
+      fformat (stdout, "%U.%s.bytes %lld\n",
+	       format_vnet_sw_if_index_name,
+	       sm->vnet_main, sw_if_index, counter_name, bytes);
+      sw_if_index++;
+    }
+
 #endif
   if (q_prev && (q_prev->cursize < q_prev->maxsize))
     {
@@ -1305,6 +1348,10 @@ stats_memclnt_delete_callback (u32 client_index)
   return 0;
 }
 
+#define vl_api_vnet_interface_simple_counters_t_endian vl_noop_handler
+#define vl_api_vnet_interface_simple_counters_t_print vl_noop_handler
+#define vl_api_vnet_interface_combined_counters_t_endian vl_noop_handler
+#define vl_api_vnet_interface_combined_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_endian vl_noop_handler
 #define vl_api_vnet_ip4_fib_counters_t_print vl_noop_handler
 #define vl_api_vnet_ip6_fib_counters_t_endian vl_noop_handler
@@ -1342,7 +1389,8 @@ stats_init (vlib_main_t * vm)
 #undef _
 
   /* tell the msg infra not to free these messages... */
-  am->message_bounce[VL_API_VNET_INTERFACE_COUNTERS] = 1;
+  am->message_bounce[VL_API_VNET_INTERFACE_SIMPLE_COUNTERS] = 1;
+  am->message_bounce[VL_API_VNET_INTERFACE_COMBINED_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP4_FIB_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP6_FIB_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP4_NBR_COUNTERS] = 1;
