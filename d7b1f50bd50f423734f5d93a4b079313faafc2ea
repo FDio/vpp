@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_f0fff1ff",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-17T09:15:18Z",
+      "side": 1,
+      "message": "Please use .tar.gz instead. Github can provide it and it will remove need for unzip dependency.",
+      "range": {
+        "startLine": 37,
+        "startChar": 23,
+        "endLine": 37,
+        "endChar": 71
+      },
+      "revId": "d7b1f50bd50f423734f5d93a4b079313faafc2ea",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
