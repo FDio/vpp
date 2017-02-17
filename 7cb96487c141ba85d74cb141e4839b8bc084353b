@@ -1,0 +1,208 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_ebd5c643",
+        "filename": "src/vnet/devices/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "unused",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_abf8dee5",
+        "filename": "src/vnet/devices/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "is an interface lock too coarse? A lock per ring instead? then s2m and m2s can occur simultaneously.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0bd13257",
+        "filename": "src/vnet/devices/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 121,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "if (mif not ADMIN_UP)\n  drop the whole frame",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8bdd2273",
+        "filename": "src/vnet/devices/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "i had to lookup the operator preference rules for this line :( left-to-right associativity. maybe some parenthesis to save those of us who don\u0027t hold that info in our heads.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4be73a41",
+        "filename": "src/vnet/devices/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 175,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "ASSERT(b1-\u003ecurrent_length \u003c\u003d mif-\u003ebuffer_size)",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2be4ee39",
+        "filename": "src/vnet/devices/memif/device.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "free_slots -\u003d 2",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4b905a95",
+        "filename": "src/vnet/devices/memif/memif.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 295,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "if (\u003cno more memif interfaces\u003e)\n  timeout \u003d 100 years",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ebeee621",
+        "filename": "src/vnet/devices/memif/memif.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 333,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "INDENT-OFF",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0bea520f",
+        "filename": "src/vnet/devices/memif/memif.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 511,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "vlib_signal_process(..., NO_MORE_INTERFACES)",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b9316a4",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "some @brief documentation on each struct would be helpful.\nso would a short description of what this interface type is best suited for.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6bdaf679",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "unused",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cbf32a09",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "move this function and associated defines to the .c file.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
