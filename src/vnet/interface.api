@@ -245,7 +245,8 @@ define sw_interface_get_table_reply
     @param vnet_counter_type- such as ip4, ip6, punts, etc
     @param is_combined - rx & tx total (all types) counts   
     @param first_sw_if_index - first sw index in block of index, counts
-    @param count - number of interfaces this stats block includes counters for
+    @param count - number of counters, equal to the number of interfaces in 
+      this stats block if not is_combined, twice that number if is_combined
     @param data - contiguous block of vlib_counter_t structures 
 */
 define vnet_interface_counters
@@ -255,7 +256,7 @@ define vnet_interface_counters
   u8 is_combined;
   u32 first_sw_if_index;
   u32 count;
-  u8 data[count];
+  u64 data[count];
 };
 
 /** \brief Set unnumbered interface add / del request

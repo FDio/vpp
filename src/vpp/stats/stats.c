@@ -221,7 +221,7 @@ do_combined_interface_counters (stats_main_t * sm)
 	mp->count++;
 	if (mp->count == items_this_message)
 	  {
-	    mp->count = htonl (items_this_message);
+	    mp->count = htonl (2 * items_this_message);
 	    /* Send to the main thread... */
 	    vl_msg_api_send_shmem (q, (u8 *) & mp);
 	    mp = 0;
