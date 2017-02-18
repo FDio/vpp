@@ -212,6 +212,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_cbdd6a44",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T13:16:37Z",
+      "side": 1,
+      "message": "but we don\u0027t send the original. the original is modified by the vlib_buffer_advance and is only used as the \u0027next\u0027 buffer for the clones.\nthe caller of this function gets back an array of size n_buffers that are all clones.",
+      "parentUuid": "3a3291f1_eb3146a3",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_8b6882bb",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 12
