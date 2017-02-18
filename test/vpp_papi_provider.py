@@ -286,6 +286,31 @@ class VppPapiProvider(object):
                          'suppress': suppress,
                          'send_unicast': send_unicast})
 
+    def ip6_sw_interface_ra_prefix(self,
+                                   sw_if_index,
+                                   address,
+                                   address_length,
+                                   use_default=0,
+                                   no_advertise=0,
+                                   off_link=0,
+                                   no_autoconfig=0,
+                                   no_onlink=0,
+                                   is_no=0,
+                                   val_lifetime=0xffffffff,
+                                   pref_lifetime=0xffffffff):
+        return self.api(self.papi.sw_interface_ip6nd_ra_prefix,
+                        {'sw_if_index': sw_if_index,
+                         'address': address,
+                         'address_length': address_length,
+                         'use_default': use_default,
+                         'no_advertise': no_advertise,
+                         'off_link': off_link,
+                         'no_autoconfig': no_autoconfig,
+                         'no_onlink': no_onlink,
+                         'is_no': is_no,
+                         'val_lifetime': val_lifetime,
+                         'pref_lifetime': pref_lifetime})
+
     def ip6_sw_interface_enable_disable(self, sw_if_index, enable):
         """
         Enable/Disable An interface for IPv6

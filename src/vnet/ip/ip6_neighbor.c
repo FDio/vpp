@@ -107,7 +107,6 @@ typedef struct
 
   /* local information */
   u32 sw_if_index;
-  u32 fib_index;
   int send_radv;		/* radv on/off on this interface -  set by config */
   int cease_radv;		/* we are ceasing  to send  - set byf config */
   int send_unicast;
@@ -1924,7 +1923,79 @@ icmp6_router_advertisement (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
-/* create and initialize router advertisement parameters with default values for this intfc */
+/**
+ * @brief Add a multicast Address to the advertised MLD set
+ */
+static void
+ip6_neighbor_add_mld_prefix (ip6_radv_t * radv_info, ip6_address_t * addr)
+{
+  ip6_mldp_group_t *mcast_group_info;
+  uword *p;
+
+  /* lookup  mldp info for this interface */
+  p = mhash_get (&radv_info->address_to_mldp_index, &addr);
+  mcast_group_info =
+    p ? pool_elt_at_index (radv_info->mldp_group_pool, p[0]) : 0;
+
+  /* add address */
+  if (!mcast_group_info)
+    {
+      /* add */
+      u32 mi;
+      pool_get (radv_info->mldp_group_pool, mcast_group_info);
+
+      mi = mcast_group_info - radv_info->mldp_group_pool;
+      mhash_set (&radv_info->address_to_mldp_index, &addr, mi,	/* old_value */
+		 0);
+
+      mcast_group_info->type = 4;
+      mcast_group_info->mcast_source_address_pool = 0;
+      mcast_group_info->num_sources = 0;
+      clib_memcpy (&mcast_group_info->mcast_address, &addr,
+		   sizeof (ip6_address_t));
+    }
+}
+
+/**
+ * @brief Delete a multicast Address from the advertised MLD set
+ */
+static void
+ip6_neighbor_del_mld_prefix (ip6_radv_t * radv_info, ip6_address_t * addr)
+{
+  ip6_mldp_group_t *mcast_group_info;
+  uword *p;
+
+  p = mhash_get (&radv_info->address_to_mldp_index, &addr);
+  mcast_group_info =
+    p ? pool_elt_at_index (radv_info->mldp_group_pool, p[0]) : 0;
+
+  if (mcast_group_info)
+    {
+      mhash_unset (&radv_info->address_to_mldp_index, &addr,
+		   /* old_value */ 0);
+      pool_put (radv_info->mldp_group_pool, mcast_group_info);
+    }
+}
+
+/**
+ * @brief Add a multicast Address to the advertised MLD set
+ */
+static void
+ip6_neighbor_add_mld_grp (ip6_radv_t * a,
+			  ip6_multicast_address_scope_t scope,
+			  ip6_multicast_link_local_group_id_t group)
+{
+  ip6_address_t addr;
+
+  ip6_set_reserved_multicast_address (&addr, scope, group);
+
+  ip6_neighbor_add_mld_prefix (a, &addr);
+}
+
+/**
+ * @brief create and initialize router advertisement parameters with default
+ * values for this intfc
+ */
 static u32
 ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 				   u32 sw_if_index, u32 is_add)
@@ -1953,47 +2024,29 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 
       if (!is_add)
 	{
-	  u32 i, *to_delete = 0;
 	  ip6_radv_prefix_t *p;
 	  ip6_mldp_group_t *m;
 
 	  /* release the lock on the interface's mcast adj */
 	  adj_unlock (a->mcast_adj_index);
 
-	  /* clean up prefix_pool */
+	  /* clean up prefix and MDP pools */
 	  /* *INDENT-OFF* */
-	  pool_foreach (p, a->adv_prefixes_pool,
+          pool_flush(p, a->adv_prefixes_pool,
           ({
-            vec_add1 (to_delete, p  -  a->adv_prefixes_pool);
-          }));
-	  /* *INDENT-ON* */
-
-	  for (i = 0; i < vec_len (to_delete); i++)
-	    {
-	      p = pool_elt_at_index (a->adv_prefixes_pool, to_delete[i]);
 	      mhash_unset (&a->address_to_prefix_index, &p->prefix, 0);
-	      pool_put (a->adv_prefixes_pool, p);
-	    }
-
-	  vec_free (to_delete);
-	  to_delete = 0;
-
-	  /* clean up mldp group pool */
-	  /* *INDENT-OFF* */
-	  pool_foreach (m, a->mldp_group_pool,
+          }));
+	  pool_flush (m, a->mldp_group_pool,
           ({
-            vec_add1 (to_delete, m  -  a->mldp_group_pool);
+	      mhash_unset (&a->address_to_mldp_index, &m->mcast_address, 0);
           }));
 	  /* *INDENT-ON* */
 
-	  for (i = 0; i < vec_len (to_delete); i++)
-	    {
-	      m = pool_elt_at_index (a->mldp_group_pool, to_delete[i]);
-	      mhash_unset (&a->address_to_mldp_index, &m->mcast_address, 0);
-	      pool_put (a->mldp_group_pool, m);
-	    }
+	  pool_free (a->mldp_group_pool);
+	  pool_free (a->adv_prefixes_pool);
 
-	  vec_free (to_delete);
+	  mhash_free (&a->address_to_prefix_index);
+	  mhash_free (&a->address_to_mldp_index);
 
 	  pool_put (nm->if_radv_pool, a);
 	  nm->if_radv_pool_index_by_sw_if_index[sw_if_index] = ~0;
@@ -2017,13 +2070,13 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  memset (a, 0, sizeof (a[0]));
 
 	  a->sw_if_index = sw_if_index;
-	  a->fib_index = ~0;
 	  a->max_radv_interval = DEF_MAX_RADV_INTERVAL;
 	  a->min_radv_interval = DEF_MIN_RADV_INTERVAL;
 	  a->curr_hop_limit = DEF_CURR_HOP_LIMIT;
 	  a->adv_router_lifetime_in_sec = DEF_DEF_RTR_LIFETIME;
 
-	  a->adv_link_layer_address = 1;	/* send ll address source address option */
+	  /* send ll address source address option */
+	  a->adv_link_layer_address = 1;
 
 	  a->min_delay_between_radv = MIN_DELAY_BETWEEN_RAS;
 	  a->max_delay_between_radv = MAX_DELAY_BETWEEN_RAS;
@@ -2059,86 +2112,15 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 						      sw_if_index);
 
 	  /* add multicast groups we will always be reporting  */
-	  ip6_address_t addr;
-	  ip6_mldp_group_t *mcast_group_info;
-
-	  ip6_set_reserved_multicast_address (&addr,
-					      IP6_MULTICAST_SCOPE_link_local,
-					      IP6_MULTICAST_GROUP_ID_all_hosts);
-
-	  /* lookup  mldp info for this interface */
-
-	  uword *p = mhash_get (&a->address_to_mldp_index, &addr);
-	  mcast_group_info =
-	    p ? pool_elt_at_index (a->mldp_group_pool, p[0]) : 0;
-
-	  /* add address */
-	  if (!mcast_group_info)
-	    {
-	      /* add */
-	      u32 mi;
-	      pool_get (a->mldp_group_pool, mcast_group_info);
-
-	      mi = mcast_group_info - a->mldp_group_pool;
-	      mhash_set (&a->address_to_mldp_index, &addr, mi,	/* old_value */
-			 0);
-
-	      mcast_group_info->type = 4;
-	      mcast_group_info->mcast_source_address_pool = 0;
-	      mcast_group_info->num_sources = 0;
-	      clib_memcpy (&mcast_group_info->mcast_address, &addr,
-			   sizeof (ip6_address_t));
-	    }
-
-	  ip6_set_reserved_multicast_address (&addr,
-					      IP6_MULTICAST_SCOPE_link_local,
-					      IP6_MULTICAST_GROUP_ID_all_routers);
-
-	  p = mhash_get (&a->address_to_mldp_index, &addr);
-	  mcast_group_info =
-	    p ? pool_elt_at_index (a->mldp_group_pool, p[0]) : 0;
-
-	  if (!mcast_group_info)
-	    {
-	      /* add */
-	      u32 mi;
-	      pool_get (a->mldp_group_pool, mcast_group_info);
-
-	      mi = mcast_group_info - a->mldp_group_pool;
-	      mhash_set (&a->address_to_mldp_index, &addr, mi,	/* old_value */
-			 0);
-
-	      mcast_group_info->type = 4;
-	      mcast_group_info->mcast_source_address_pool = 0;
-	      mcast_group_info->num_sources = 0;
-	      clib_memcpy (&mcast_group_info->mcast_address, &addr,
-			   sizeof (ip6_address_t));
-	    }
-
-	  ip6_set_reserved_multicast_address (&addr,
-					      IP6_MULTICAST_SCOPE_link_local,
-					      IP6_MULTICAST_GROUP_ID_mldv2_routers);
-
-	  p = mhash_get (&a->address_to_mldp_index, &addr);
-	  mcast_group_info =
-	    p ? pool_elt_at_index (a->mldp_group_pool, p[0]) : 0;
-
-	  if (!mcast_group_info)
-	    {
-	      /* add */
-	      u32 mi;
-	      pool_get (a->mldp_group_pool, mcast_group_info);
-
-	      mi = mcast_group_info - a->mldp_group_pool;
-	      mhash_set (&a->address_to_mldp_index, &addr, mi,	/* old_value */
-			 0);
-
-	      mcast_group_info->type = 4;
-	      mcast_group_info->mcast_source_address_pool = 0;
-	      mcast_group_info->num_sources = 0;
-	      clib_memcpy (&mcast_group_info->mcast_address, &addr,
-			   sizeof (ip6_address_t));
-	    }
+	  ip6_neighbor_add_mld_grp (a,
+				    IP6_MULTICAST_SCOPE_link_local,
+				    IP6_MULTICAST_GROUP_ID_all_hosts);
+	  ip6_neighbor_add_mld_grp (a,
+				    IP6_MULTICAST_SCOPE_link_local,
+				    IP6_MULTICAST_GROUP_ID_all_routers);
+	  ip6_neighbor_add_mld_grp (a,
+				    IP6_MULTICAST_SCOPE_link_local,
+				    IP6_MULTICAST_GROUP_ID_mldv2_routers);
 	}
     }
   return ri;
@@ -3695,7 +3677,9 @@ VLIB_CLI_COMMAND (set_ip6_link_local_address_command, static) =
 };
 /* *INDENT-ON* */
 
-/* callback when an interface address is added or deleted */
+/**
+ * @brief callback when an interface address is added or deleted
+ */
 static void
 ip6_neighbor_add_del_interface_address (ip6_main_t * im,
 					uword opaque,
@@ -3710,7 +3694,6 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
   vlib_main_t *vm = vnm->vlib_main;
   ip6_radv_t *radv_info;
   ip6_address_t a;
-  ip6_mldp_group_t *mcast_group_info;
 
   /* create solicited node multicast address for this interface adddress */
   ip6_set_solicited_node_multicast_address (&a, 0);
@@ -3737,28 +3720,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
 	  if (!ip6_address_is_link_local_unicast (address))
 	    radv_info->ref_count++;
 
-	  /* lookup  prefix info for this  address on this interface */
-	  uword *p = mhash_get (&radv_info->address_to_mldp_index, &a);
-	  mcast_group_info =
-	    p ? pool_elt_at_index (radv_info->mldp_group_pool, p[0]) : 0;
-
-	  /* add -solicted node multicast address  */
-	  if (!mcast_group_info)
-	    {
-	      /* add */
-	      u32 mi;
-	      pool_get (radv_info->mldp_group_pool, mcast_group_info);
-
-	      mi = mcast_group_info - radv_info->mldp_group_pool;
-	      mhash_set (&radv_info->address_to_mldp_index, &a, mi,
-			 /* old_value */ 0);
-
-	      mcast_group_info->type = 4;
-	      mcast_group_info->mcast_source_address_pool = 0;
-	      mcast_group_info->num_sources = 0;
-	      clib_memcpy (&mcast_group_info->mcast_address, &a,
-			   sizeof (ip6_address_t));
-	    }
+	  ip6_neighbor_add_mld_prefix (radv_info, &a);
 	}
     }
   else
@@ -3775,17 +3737,7 @@ ip6_neighbor_add_del_interface_address (ip6_main_t * im,
 	  /* get radv_info */
 	  radv_info = pool_elt_at_index (nm->if_radv_pool, ri);
 
-	  /* lookup  prefix info for this  address on this interface */
-	  uword *p = mhash_get (&radv_info->address_to_mldp_index, &a);
-	  mcast_group_info =
-	    p ? pool_elt_at_index (radv_info->mldp_group_pool, p[0]) : 0;
-
-	  if (mcast_group_info)
-	    {
-	      mhash_unset (&radv_info->address_to_mldp_index, &a,
-			   /* old_value */ 0);
-	      pool_put (radv_info->mldp_group_pool, mcast_group_info);
-	    }
+	  ip6_neighbor_del_mld_prefix (radv_info, &a);
 
 	  /* if interface up send MLDP "report" */
 	  radv_info->all_routers_mcast = 0;

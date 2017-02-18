@@ -272,6 +272,17 @@ class VppInterface(object):
                                                   suppress,
                                                   send_unicast)
 
+    def ip6_ra_prefix(self, address, address_length, is_no=0,
+                      off_link=0, no_autoconfig=0, use_default=0):
+        """Configure IPv6 RA suppress on the VPP interface."""
+        self.test.vapi.ip6_sw_interface_ra_prefix(self.sw_if_index,
+                                                  address,
+                                                  address_length,
+                                                  is_no=is_no,
+                                                  off_link=off_link,
+                                                  no_autoconfig=no_autoconfig,
+                                                  use_default=use_default)
+
     def admin_up(self):
         """Put interface ADMIN-UP."""
         self.test.vapi.sw_interface_set_flags(self.sw_if_index,

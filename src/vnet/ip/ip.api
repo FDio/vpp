@@ -241,17 +241,31 @@ define sw_interface_ip6nd_ra_config_reply
 /** \brief IPv6 router advertisement prefix config request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - 
-    @param address[] -
-    @param address_length -
-    @param use_default -
-    @param no_advertise -
-    @param off_link -
-    @param no_autoconfig -
-    @param no_onlink -
-    @param is_no -
-    @param val_lifetime -
-    @param pref_lifetime -
+    @param sw_if_index - The interface the RA prefix information is for
+    @param address[] - The prefix to advertise
+    @param address_length - the prefix length
+    @param use_default - Revert to default settings
+    @param no_advertise - Do not advertise this prefix
+    @param off_link - The prefix is off link (it is not configured on the interface)
+                      Configures the L-flag, When set, indicates that this
+		      prefix can be used for on-link determination.
+    @param no_autoconfig - Setting for the A-flag. When
+                           set indicates that this prefix can be used for
+                          stateless address configuration.
+    @param no_onlink - The prefix is not on link. Make sure this is consistent
+                       with the off_link parameter else YMMV
+    @param is_no - add/delete
+    @param val_lifetime - The length of time in
+                     seconds (relative to the time the packet is sent)
+                     that the prefix is valid for the purpose of on-link
+                     determination.  A value of all one bits
+                     (0xffffffff) represents infinity
+    @param pref_lifetime - The length of time in
+                     seconds (relative to the time the packet is sent)
+                     that addresses generated from the prefix via
+                     stateless address autoconfiguration remain
+                     preferred [ADDRCONF].  A value of all one bits
+                     (0xffffffff) represents infinity.
 */
 define sw_interface_ip6nd_ra_prefix
 {

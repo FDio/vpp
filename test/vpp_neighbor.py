@@ -31,7 +31,7 @@ class VppNeighbor(VppObject):
     """
 
     def __init__(self, test, sw_if_index, mac_addr, nbr_addr,
-                 af=AF_INET, is_static=0):
+                 af=AF_INET, is_static=False):
         self._test = test
         self.sw_if_index = sw_if_index
         self.mac_addr = mactobinary(mac_addr)
