@@ -49,6 +49,7 @@
 #include <vnet/dpo/punt_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
+#include <vnet/ip/ip6_neighbor.h>
 
 /**
  * @file

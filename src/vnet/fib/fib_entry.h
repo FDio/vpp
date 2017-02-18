@@ -81,6 +81,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_DHCP,
     /**
+     * IPv6 Proxy ND
+     */
+    FIB_SOURCE_IP6_ND_PROXY,
+    /**
      * Adjacency source.
      * routes created as a result of ARP/ND entries. This is lower priority
      * then the API/CLI. This is on purpose. trust me.
@@ -141,6 +145,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_LISP] = "LISP", 			\
     [FIB_SOURCE_CLASSIFY] = "classify",			\
     [FIB_SOURCE_DHCP] = "DHCP",   			\
+    [FIB_SOURCE_IP6_ND_PROXY] = "IPv6-proxy-nd",        \
     [FIB_SOURCE_RR] = "recursive-resolution",	        \
     [FIB_SOURCE_AE] = "attached_export",	        \
     [FIB_SOURCE_MPLS] = "mpls",           	        \

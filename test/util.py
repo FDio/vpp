@@ -47,6 +47,11 @@ def ip4n_range(ip4n, s, e):
             for ip in ip4_range(ip4, s, e))
 
 
+def mactobinary(mac):
+    """ Convert the : separated format into binary packet data for the API """
+    return mac.replace(':', '').decode('hex')
+
+
 class NumericConstant(object):
     __metaclass__ = ABCMeta
 

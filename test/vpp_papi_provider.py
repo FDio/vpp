@@ -257,6 +257,12 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'suppress': suppress})
 
+    def ip6_nd_proxy(self, address, sw_if_index, is_del=0):
+        return self.api(self.papi.ip6nd_proxy,
+                        {'address': address,
+                         'sw_if_index': sw_if_index,
+                         'is_del': is_del})
+
     def ip6_sw_interface_ra_config(self, sw_if_index,
                                    no,
                                    suppress,
@@ -635,6 +641,22 @@ class VppPapiProvider(object):
              'is_static': is_static,
              'mac_address': mac_address,
              'dst_address': dst_address
+             }
+        )
+
+    def ip_neighbor_dump(self,
+                         sw_if_index,
+                         is_ipv6=0):
+        """ Return IP neighbor dump.
+
+        :param sw_if_index:
+        :param int is_ipv6: 1 for IPv6 neighbor, 0 for IPv4. (Default = 0)
+        """
+
+        return self.api(
+            self.papi.ip_neighbor_dump,
+            {'is_ipv6': is_ipv6,
+             'sw_if_index': sw_if_index
              }
         )
 
