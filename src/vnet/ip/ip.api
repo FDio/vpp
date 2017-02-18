@@ -294,6 +294,56 @@ define sw_interface_ip6nd_ra_prefix_reply
   i32 retval;
 };
 
+/** \brief IPv6 ND proxy config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - The interface the host is on
+    @param address - The address of the host for which to proxy for
+    @param is_add - Adding or deleting
+*/
+define ip6nd_proxy_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_del;
+  u8 address[16];
+};
+
+/** \brief IPv6 ND proxy response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define ip6nd_proxy_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief IPv6 ND proxy details returned after request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define ip6nd_proxy_details
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 address[16];
+};
+
+/** \brief IPv6 ND proxy dump request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param sw_if_index - The interface the host is on
+    @param address - The address of the host for which to proxy for
+*/
+define ip6nd_proxy_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
 /** \brief IPv6 interface enable / disable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

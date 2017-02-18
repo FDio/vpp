@@ -72,6 +72,9 @@ _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
+_(IP6ND_PROXY_ADD_DEL, ip6nd_proxy_add_del)                             \
+_(IP6ND_PROXY_DUMP, ip6nd_proxy_dump)                                   \
+_(IP6ND_PROXY_DETAILS, ip6nd_proxy_details)                             \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable )    \
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
   sw_interface_ip6_set_link_local_address)
@@ -1397,6 +1400,105 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX_REPLY);
+}
+
+static void
+send_ip6nd_proxy_details (unix_shared_memory_queue_t * q,
+			  u32 context,
+			  const ip46_address_t * addr, u32 sw_if_index)
+{
+  vl_api_ip6nd_proxy_details_t *mp;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_IP6ND_PROXY_DETAILS);
+  mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  memcpy (mp->address, addr, 16);
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
+vl_api_ip6nd_proxy_details_t_handler (vl_api_ip_neighbor_details_t * mp)
+{
+  clib_warning ("BUG");
+}
+
+typedef struct api_ip6nd_proxy_fib_table_walk_ctx_t_
+{
+  u32 *indices;
+} api_ip6nd_proxy_fib_table_walk_ctx_t;
+
+static int
+api_ip6nd_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
+{
+  api_ip6nd_proxy_fib_table_walk_ctx_t *ctx = arg;
+
+  if (fib_entry_is_sourced (fei, FIB_SOURCE_IP6_ND_PROXY))
+    {
+      vec_add1 (ctx->indices, fei);
+    }
+
+  return (1);
+}
+
+static void
+vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
+{
+  ip6_main_t *im6 = &ip6_main;
+  fib_table_t *fib_table;
+  api_ip6nd_proxy_fib_table_walk_ctx_t ctx = {
+    .indices = NULL,
+  };
+  fib_node_index_t *feip;
+  fib_prefix_t pfx;
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (fib_table, im6->fibs,
+  ({
+    fib_table_walk(fib_table->ft_index,
+                   FIB_PROTOCOL_IP6,
+                   api_ip6nd_proxy_fib_table_walk,
+                   &ctx);
+  }));
+  /* *INDENT-ON* */
+
+  vec_sort_with_function (ctx.indices, fib_entry_cmp_for_sort);
+
+  vec_foreach (feip, ctx.indices)
+  {
+    fib_entry_get_prefix (*feip, &pfx);
+
+    send_ip6nd_proxy_details (q,
+			      mp->context,
+			      &pfx.fp_addr,
+			      fib_entry_get_resolving_interface (*feip));
+  }
+
+  vec_free (ctx.indices);
+}
+
+static void
+vl_api_ip6nd_proxy_add_del_t_handler (vl_api_ip6nd_proxy_add_del_t * mp)
+{
+  vl_api_ip6nd_proxy_add_del_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = ip6_neighbor_proxy_add_del (ntohl (mp->sw_if_index),
+				   (ip6_address_t *) mp->address, mp->is_del);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_IP6ND_PROXY_ADD_DEL_REPLY);
 }
 
 static void
