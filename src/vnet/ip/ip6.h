@@ -217,24 +217,6 @@ extern vlib_node_registration_t ip6_discover_neighbor_node;
 extern vlib_node_registration_t ip6_glean_node;
 extern vlib_node_registration_t ip6_midchain_node;
 
-extern vlib_node_registration_t ip6_icmp_neighbor_discovery_event_node;
-
-/* ipv6 neighbor discovery - timer/event types */
-typedef enum
-{
-  ICMP6_ND_EVENT_INIT,
-} ip6_icmp_neighbor_discovery_event_type_t;
-
-typedef union
-{
-  u32 add_del_swindex;
-  struct
-  {
-    u32 up_down_swindex;
-    u32 fib_index;
-  } up_down_event;
-} ip6_icmp_neighbor_discovery_event_data_t;
-
 always_inline uword
 ip6_destination_matches_route (const ip6_main_t * im,
 			       const ip6_address_t * key,
@@ -342,8 +324,6 @@ int ip6_address_compare (ip6_address_t * a1, ip6_address_t * a2);
 clib_error_t *ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst,
 				  u32 sw_if_index);
 
-clib_error_t *ip6_set_neighbor_limit (u32 neighbor_limit);
-
 uword
 ip6_udp_register_listener (vlib_main_t * vm,
 			   u16 dst_port, u32 next_node_index);
@@ -359,19 +339,6 @@ serialize_function_t serialize_vnet_ip6_main, unserialize_vnet_ip6_main;
 void ip6_ethernet_update_adjacency (vnet_main_t * vnm,
 				    u32 sw_if_index, u32 ai);
 
-int
-vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
-				u32 sw_if_index,
-				ip6_address_t * a,
-				u8 * link_layer_address,
-				uword n_bytes_link_layer_address,
-				int is_static);
-int
-vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
-				  u32 sw_if_index,
-				  ip6_address_t * a,
-				  u8 * link_layer_address,
-				  uword n_bytes_link_layer_address);
 
 void
 ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
@@ -384,22 +351,6 @@ ip6_ethernet_mac_address_from_link_local_address (u8 * mac,
 int vnet_set_ip6_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);
 
-int
-ip6_neighbor_ra_config (vlib_main_t * vm, u32 sw_if_index,
-			u8 suppress, u8 managed, u8 other,
-			u8 ll_option, u8 send_unicast, u8 cease,
-			u8 use_lifetime, u32 lifetime,
-			u32 initial_count, u32 initial_interval,
-			u32 max_interval, u32 min_interval, u8 is_no);
-
-int
-ip6_neighbor_ra_prefix (vlib_main_t * vm, u32 sw_if_index,
-			ip6_address_t * prefix_addr, u8 prefix_len,
-			u8 use_default, u32 val_lifetime, u32 pref_lifetime,
-			u8 no_advertise, u8 off_link, u8 no_autoconfig,
-			u8 no_onlink, u8 is_no);
-
-
 clib_error_t *enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index);
 
 clib_error_t *disable_ip6_interface (vlib_main_t * vm, u32 sw_if_index);
@@ -409,12 +360,6 @@ int ip6_interface_enabled (vlib_main_t * vm, u32 sw_if_index);
 clib_error_t *set_ip6_link_local_address (vlib_main_t * vm,
 					  u32 sw_if_index,
 					  ip6_address_t * address);
-
-void vnet_register_ip6_neighbor_resolution_event (vnet_main_t * vnm,
-						  void *address_arg,
-						  uword node_index,
-						  uword type_opaque,
-						  uword data);
 
 int vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
 				      void *data_callback,
