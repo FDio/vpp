@@ -10,7 +10,8 @@ from vpp_pg_interface import is_ipv6_misc
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
-    ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation
+    ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation, \
+    ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo
 from util import ppp
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
@@ -288,7 +289,7 @@ class TestIPv6(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, pkts,
                                         "No response to NS for unknown target")
 
-    def validate_ra(self, intf, rx, dst_ip=None):
+    def validate_ra(self, intf, rx, dst_ip=None, mtu=9000, pi_opt=None):
         if not dst_ip:
             dst_ip = intf.remote_ip6
 
@@ -308,17 +309,47 @@ class TestIPv6(VppTestCase):
         self.assertEqual(in6_ptop(rx[IPv6].src),
                          in6_ptop(mk_ll_addr(intf.local_mac)))
 
+        # it should contain the links MTU
+        ra = rx[ICMPv6ND_RA]
+        self.assertEqual(ra[ICMPv6NDOptMTU].mtu, mtu)
+
+        # it should contain the source's link layer address option
+        sll = ra[ICMPv6NDOptSrcLLAddr]
+        self.assertEqual(sll.lladdr, intf.local_mac)
+
+        if not pi_opt:
+            # the RA should not contain prefix information
+            self.assertFalse(ra.haslayer(ICMPv6NDOptPrefixInfo))
+        else:
+            raos = rx.getlayer(ICMPv6NDOptPrefixInfo, 1)
+
+            # the options are nested in the scapy packet in way that i cannot
+            # decipher how to decode. this 1st layer of option always returns
+            # nested classes, so a direct obj1=obj2 comparison always fails.
+            # however, the getlayer(.., 2) does give one instnace.
+            # so we cheat here and construct a new opt instnace for comparison
+            rd = ICMPv6NDOptPrefixInfo(prefixlen=raos.prefixlen,
+                                       prefix=raos.prefix,
+                                       L=raos.L,
+                                       A=raos.A)
+            if type(pi_opt) is list:
+                for ii in range(len(pi_opt)):
+                    self.assertEqual(pi_opt[ii], rd)
+                    rd = rx.getlayer(ICMPv6NDOptPrefixInfo, ii+2)
+            else:
+                self.assertEqual(pi_opt, raos)
+
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
-                           filter_out_fn=is_ipv6_misc):
+                           filter_out_fn=is_ipv6_misc,
+                           opt=None):
         intf.add_stream(pkts)
-        self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         rx = intf.get_capture(1, filter_out_fn=filter_out_fn)
 
         self.assertEqual(len(rx), 1)
         rx = rx[0]
-        self.validate_ra(intf, rx, dst_ip)
+        self.validate_ra(intf, rx, dst_ip, pi_opt=opt)
 
     def test_rs(self):
         """ IPv6 Router Solicitation Exceptions
@@ -414,6 +445,184 @@ class TestIPv6(VppTestCase):
                                 "RS sourced from unspecified",
                                 dst_ip="ff02::1",
                                 filter_out_fn=None)
+
+        #
+        # Configure The RA to announce the links prefix
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len)
+
+        #
+        # RAs should now contain the prefix information option
+        #
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                    prefix=self.pg0.local_ip6,
+                                    L=1,
+                                    A=1)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        ll = mk_ll_addr(self.pg0.remote_mac)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(dst=self.pg0.local_ip6, src=ll) /
+             ICMPv6ND_RS())
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with prefix-info",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Change the prefix info to not off-link
+        #  L-flag is clear
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len,
+                               off_link=1)
+
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                    prefix=self.pg0.local_ip6,
+                                    L=0,
+                                    A=1)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix info with L-flag=0",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Change the prefix info to not off-link, no-autoconfig
+        #  L and A flag are clear in the advert
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len,
+                               off_link=1,
+                               no_autoconfig=1)
+
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                    prefix=self.pg0.local_ip6,
+                                    L=0,
+                                    A=0)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix info with A & L-flag=0",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Change the flag settings back to the defaults
+        #  L and A flag are set in the advert
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len)
+
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                    prefix=self.pg0.local_ip6,
+                                    L=1,
+                                    A=1)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix info",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Change the prefix info to not off-link, no-autoconfig
+        #  L and A flag are clear in the advert
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len,
+                               off_link=1,
+                               no_autoconfig=1)
+
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                    prefix=self.pg0.local_ip6,
+                                    L=0,
+                                    A=0)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix info with A & L-flag=0",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Use the reset to defults option to revert to defaults
+        #  L and A flag are clear in the advert
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len,
+                               use_default=1)
+
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                    prefix=self.pg0.local_ip6,
+                                    L=1,
+                                    A=1)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix reverted to defaults",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Advertise Another prefix. With no L-flag/A-flag
+        #
+        self.pg0.ip6_ra_prefix(self.pg1.local_ip6n,
+                               self.pg1.local_ip6_prefix_len,
+                               off_link=1,
+                               no_autoconfig=1)
+
+        opt = [ICMPv6NDOptPrefixInfo(prefixlen=self.pg0.local_ip6_prefix_len,
+                                     prefix=self.pg0.local_ip6,
+                                     L=1,
+                                     A=1),
+               ICMPv6NDOptPrefixInfo(prefixlen=self.pg1.local_ip6_prefix_len,
+                                     prefix=self.pg1.local_ip6,
+                                     L=0,
+                                     A=0)]
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        ll = mk_ll_addr(self.pg0.remote_mac)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(dst=self.pg0.local_ip6, src=ll) /
+             ICMPv6ND_RS())
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with multiple Prefix infos",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Remove the first refix-info - expect the second is still in the
+        # advert
+        #
+        self.pg0.ip6_ra_prefix(self.pg0.local_ip6n,
+                               self.pg0.local_ip6_prefix_len,
+                               is_no=1)
+
+        opt = ICMPv6NDOptPrefixInfo(prefixlen=self.pg1.local_ip6_prefix_len,
+                                    prefix=self.pg1.local_ip6,
+                                    L=0,
+                                    A=0)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix reverted to defaults",
+                                dst_ip=ll,
+                                opt=opt)
+
+        #
+        # Remove the second prefix-info - expect no prefix-info i nthe adverts
+        #
+        self.pg0.ip6_ra_prefix(self.pg1.local_ip6n,
+                               self.pg1.local_ip6_prefix_len,
+                               is_no=1)
+
+        self.pg0.ip6_ra_config(send_unicast=1)
+        self.send_and_expect_ra(self.pg0, p,
+                                "RA with Prefix reverted to defaults",
+                                dst_ip=ll)
 
         #
         # Reset the periodic advertisements back to default values
