@@ -350,6 +350,7 @@ do {									\
 
     It is a bad idea to allocate or free pool element from within
     @c pool_foreach. Build a vector of indices and dispose of them later.
+    Or call pool_flush.
 
 
     @par Example
@@ -420,6 +421,31 @@ do {									\
       if (! pool_is_free_index ((v), (i)))	\
 	do { body; } while (0);			\
     }
+
+/**
+ * @brief Remove all elemenets from a pool in a safe way
+ *
+ * @param VAR each element in the pool
+ * @param POOL The pool to flush
+ * @param BODY The actions to perform on each element before it is returned to
+ *        the pool. i.e. before it is 'freed'
+ */
+#define pool_flush(VAR, POOL, BODY)                     \
+{                                                       \
+  uword *_pool_var(ii), *_pool_var(dv) = NULL;          \
+                                                        \
+  pool_foreach((VAR), (POOL),                           \
+  ({                                                    \
+    vec_add1(_pool_var(dv), (VAR) - (POOL));            \
+  }));                                                  \
+  vec_foreach(_pool_var(ii), _pool_var(dv))             \
+  {                                                     \
+    (VAR) = pool_elt_at_index((POOL), *_pool_var(ii));  \
+    do { BODY; } while (0);                             \
+    pool_put((POOL), (VAR));                            \
+  }                                                     \
+  vec_free(_pool_var(dv));                              \
+}
 
 #endif /* included_pool_h */
 
