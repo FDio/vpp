@@ -104,6 +104,23 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_4b6cda9c",
+        "filename": "src/vnet/devices/memif/memif.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "there\u0027s no dependency on j for this offset, so all j use the same offset.\nshould i be:\n ring-\u003edesc[j].offset \u003d buffer_offset + (slot * mif-\u003ebuffer_size) + (j * mif-\u003ebuffer_size);\nsame with the loop below.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_4b905a95",
         "filename": "src/vnet/devices/memif/memif.c",
         "patchSetId": 11
@@ -121,6 +138,23 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_2b52aedd",
+        "filename": "src/vnet/devices/memif/memif.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 324,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "vec_free (mif-\u003ering_data);",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_ebeee621",
         "filename": "src/vnet/devices/memif/memif.c",
         "patchSetId": 11
@@ -130,6 +164,23 @@
         "id": 267
       },
       "writtenOn": "2017-02-17T23:31:47Z",
+      "side": 1,
+      "message": "INDENT-OFF",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2b698e8b",
+        "filename": "src/vnet/devices/memif/memif.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
       "side": 1,
       "message": "INDENT-OFF",
       "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
@@ -172,6 +223,40 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_eb6386af",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "unused",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6bf676d9",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "not needed? there\u0027s only one region.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_6bdaf679",
         "filename": "src/vnet/devices/memif/memif.h",
         "patchSetId": 11
@@ -189,6 +274,159 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_4b03bab8",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "could be u16.\ntwo semi-colons.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ab145ef5",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "unused",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8bf9a2ca",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "removing the unused attributes we can bring this down to 16 and get more per-cacheline",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ab5d7eeb",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "i give up :) why 128 and not CACHE_LINE_SIZE_BYTES?",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cb58cafc",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "this is set in the region but never checked. did you intent to use it as over/under run protection or as a \u0027ready\u0027 signal to the slave?",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cb0faae0",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "there\u0027s only one region.\nwe\u0027d save an instruction or to in memif_get_buffer if this were not an array.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eb0a66d1",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "why multiple rings, we only ever use ring-id\u003d0.\nis the intent to later use the packet\u0027s hash/entropy to choose a ring on TX?",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0b5ff2e6",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "unsued",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8b72c27a",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "extern",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_cbf32a09",
         "filename": "src/vnet/devices/memif/memif.h",
         "patchSetId": 11
@@ -200,6 +438,108 @@
       "writtenOn": "2017-02-17T23:31:47Z",
       "side": 1,
       "message": "move this function and associated defines to the .c file.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b6f9693",
+        "filename": "src/vnet/devices/memif/memif.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "only F_SEAL_SHRINK is used. and can be moved to memif.c",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4b55fac4",
+        "filename": "src/vnet/devices/memif/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "only need num_slots buffers.\nif we take more than we need, then this vector is non-empty when the interface is deleted and so buffers therein to be deallocated.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0b06d2ce",
+        "filename": "src/vnet/devices/memif/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "clib_memcpy (vlib_buffer_get_current (b0) + CLIB_CACHE_LINE_BYTES,\n                        mb0 + CLIB_CACHE_LINE_BYTES,\n\t\t\tb0-\u003ecurrent_length - CLIB_CACHE_LINE_BYTES);\n\nsame in the TX direction",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8b4be22a",
+        "filename": "src/vnet/devices/memif/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "this conditional is redundant. b0 has already been dereferenced.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b48b62d",
+        "filename": "src/vnet/devices/memif/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 225,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "also redundant.",
+      "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ab469e21",
+        "filename": "src/vnet/devices/memif/node.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-18T10:56:35Z",
+      "side": 1,
+      "message": "If we stop servicing the rings when the interface is ADMIN_DOWN then the other end the see the rings fill and experience TX errors. I don\u0027t think that is the behaviour we want - it\u0027s not what happens for other interface types. I think better to consume descriptors and ignore the buffers.",
       "revId": "7cb96487c141ba85d74cb141e4839b8bc084353b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
