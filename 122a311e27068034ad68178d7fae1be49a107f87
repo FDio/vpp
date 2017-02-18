@@ -230,6 +230,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_8be76212",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-18T19:55:46Z",
+      "side": 1,
+      "message": "we want tail to be freed when last cloned buffer chain is freed.\nIf we are making 5 replicas:\n\n1. when first clone is freed, head will have  clone_count\u003d0 and it will be returned to the free list, tail will have clone_count\u003d4 and that will decreased to 3\n\n2. when second clone is freed, head will have  clone_count\u003d0 and it will be returned to the free list, tail will have clone_count\u003d3 and that will decreased to 2\n\n....\n\n5. when 5th clone is freed, head will have  clone_count\u003d0 and it will be returned to the free list, tail will have clone_count\u003d0 and it will be returned to the free list.",
+      "parentUuid": "3a3291f1_cbdd6a44",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_8b6882bb",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 12
