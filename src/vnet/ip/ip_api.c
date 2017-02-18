@@ -77,6 +77,7 @@ _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
+_(IP6ND_PROXY, ip6nd_proxy)                                             \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable )    \
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
   sw_interface_ip6_set_link_local_address)
@@ -1480,6 +1481,21 @@ static void
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_IP6ND_RA_PREFIX_REPLY);
+}
+
+static void
+vl_api_ip6nd_proxy_t_handler (vl_api_ip6nd_proxy_t * mp)
+{
+  vl_api_ip6nd_proxy_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = ip6_neighbor_proxy_add_del (ntohl (mp->sw_if_index),
+				   (ip6_address_t *) mp->address, mp->is_del);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_IP6ND_PROXY_REPLY);
 }
 
 static void
