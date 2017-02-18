@@ -197,6 +197,22 @@ typedef struct
 
 } ip6_neighbor_main_t;
 
+/* ipv6 neighbor discovery - timer/event types */
+typedef enum
+{
+  ICMP6_ND_EVENT_INIT,
+} ip6_icmp_neighbor_discovery_event_type_t;
+
+typedef union
+{
+  u32 add_del_swindex;
+  struct
+  {
+    u32 up_down_swindex;
+    u32 fib_index;
+  } up_down_event;
+} ip6_icmp_neighbor_discovery_event_data_t;
+
 static ip6_neighbor_main_t ip6_neighbor_main;
 static ip6_address_t ip6a_zero;	/* ip6 address 0 */
 
@@ -312,7 +328,7 @@ static void ip6_neighbor_set_unset_rpc_callback
 static void set_unset_ip6_neighbor_rpc
   (vlib_main_t * vm,
    u32 sw_if_index,
-   ip6_address_t * a, u8 * link_layer_addreess, int is_add, int is_static)
+   ip6_address_t * a, u8 * link_layer_address, int is_add, int is_static)
 {
   ip6_neighbor_set_unset_rpc_args_t args;
   void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
@@ -321,7 +337,8 @@ static void set_unset_ip6_neighbor_rpc
   args.is_add = is_add;
   args.is_static = is_static;
   clib_memcpy (&args.addr, a, sizeof (*a));
-  clib_memcpy (args.link_layer_address, link_layer_addreess, 6);
+  if (NULL != link_layer_address)
+    clib_memcpy (args.link_layer_address, link_layer_address, 6);
 
   vl_api_rpc_call_main_thread (ip6_neighbor_set_unset_rpc_callback,
 			       (u8 *) & args, sizeof (args));
@@ -1028,13 +1045,34 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 							  &h0->target_address,
 							  128);
 
-		  if (FIB_NODE_INDEX_INVALID == fei ||
-		      !(FIB_ENTRY_FLAG_LOCAL &
-			fib_entry_get_flags_for_source (fei,
-							FIB_SOURCE_INTERFACE)))
+		  if (FIB_NODE_INDEX_INVALID == fei)
 		    {
+		      /* The target address is not in the FIB */
 		      error0 =
 			ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_UNKNOWN;
+		    }
+		  else
+		    {
+		      if (FIB_ENTRY_FLAG_LOCAL &
+			  fib_entry_get_flags_for_source (fei,
+							  FIB_SOURCE_INTERFACE))
+			{
+			  /* It's an address that belongs to one of our interfaces
+			   * that's good. */
+			}
+		      else
+			if (fib_entry_is_sourced
+			    (fei, FIB_SOURCE_IP6_ND_PROXY))
+			{
+			  /* The address was added by IPv6 Proxy ND config.
+			   * We should only respond to these if the NS arrived on
+			   * the link that has a matching covering prefix */
+			}
+		      else
+			{
+			  error0 =
+			    ICMP6_ERROR_NEIGHBOR_SOLICITATION_SOURCE_UNKNOWN;
+			}
 		    }
 		}
 	    }
@@ -4020,6 +4058,92 @@ vnet_ip6_nd_term (vlib_main_t * vm,
   return 0;
 
 }
+
+int
+ip6_neighbor_proxy_add_del (u32 sw_if_index, ip6_address_t * addr, u8 is_del)
+{
+  u32 fib_index;
+
+  fib_prefix_t pfx = {
+    .fp_len = 128,
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_addr = {
+		.ip6 = *addr,
+		},
+  };
+  ip46_address_t nh = {
+    .ip6 = *addr,
+  };
+
+  fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
+
+  if (~0 == fib_index)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  if (is_del)
+    {
+      fib_table_entry_path_remove (fib_index,
+				   &pfx,
+				   FIB_SOURCE_IP6_ND_PROXY,
+				   FIB_PROTOCOL_IP6,
+				   &nh,
+				   sw_if_index,
+				   ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+      /* flush the ND cache of this address if it's there */
+      vnet_unset_ip6_ethernet_neighbor (vlib_get_main (),
+					sw_if_index, addr, NULL, 0);
+    }
+  else
+    {
+      fib_table_entry_path_add (fib_index,
+				&pfx,
+				FIB_SOURCE_IP6_ND_PROXY,
+				FIB_ENTRY_FLAG_NONE,
+				FIB_PROTOCOL_IP6,
+				&nh,
+				sw_if_index,
+				~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+    }
+  return (0);
+}
+
+static clib_error_t *
+set_ip6_nd_proxy_cmd (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  ip6_address_t addr;
+  u32 sw_if_index;
+  u8 is_del = 0;
+
+  if (unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      /* get the rest of the command */
+      while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (input, "%U", unformat_ip6_address, &addr))
+	    break;
+	  else if (unformat (input, "delete") || unformat (input, "del"))
+	    is_del = 1;
+	  else
+	    return (unformat_parse_error (input));
+	}
+    }
+
+  ip6_neighbor_proxy_add_del (sw_if_index, &addr, is_del);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_ip6_nd_proxy_command, static) =
+{
+  .path = "set ip6 nd proxy",
+  .short_help = "set ip6 nd proxy <HOST> <INTERFACE>",
+  .function = set_ip6_nd_proxy_cmd,
+};
+/* *INDENT-ON* */
 
 void
 ethernet_ndp_change_mac (u32 sw_if_index)

@@ -276,6 +276,12 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'suppress': suppress})
 
+    def ip6_nd_proxy(self, address, sw_if_index, is_del=0):
+        return self.api(self.papi.ip6nd_proxy_add_del,
+                        {'address': address,
+                         'sw_if_index': sw_if_index,
+                         'is_del': is_del})
+
     def ip6_sw_interface_ra_config(self, sw_if_index,
                                    no,
                                    suppress,
