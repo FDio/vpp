@@ -248,6 +248,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_6bc79646",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-19T22:16:11Z",
+      "side": 1,
+      "message": "what makes me uncomfortable with this is that;\n4. when second clone is freed, head will have  clone_count\u003d0 and it will be returned to the free list, tail will have clone_count\u003d1 and that will decreased to 0\nnow the state of the original is inconsistent; it has a clone_count of 0 but has 1 clone. now we could say that clone_count is really clone_count-1, but that leaves an ambiguity when clone_count is 0.  If we just removed a clone and the clone_count is 0, then the number of clones is really 0, otherwise the number of clones is 1.\nit put my bug radar on alert.\n\nwhat are the performance advantages of this approach? the decrement saving of the clone_count is moved to this location with n_buffers-1.",
+      "parentUuid": "3a3291f1_8be76212",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_8b6882bb",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 12
