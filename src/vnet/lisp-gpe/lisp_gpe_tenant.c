@@ -314,8 +314,8 @@ lisp_gpe_tenant_show (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_tenant_command) = {
-  .path = "show lisp gpe tenant",
-  .short_help = "show lisp gpe tenant",
+  .path = "show gpe tenant",
+  .short_help = "show gpe tenant",
   .function = lisp_gpe_tenant_show,
 };
 /* *INDENT-ON* */

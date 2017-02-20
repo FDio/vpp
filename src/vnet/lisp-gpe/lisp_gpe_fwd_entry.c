@@ -1321,8 +1321,8 @@ lisp_gpe_fwd_entry_show (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_fwd_entry_show_command, static) = {
-  .path = "show lisp gpe entry",
-  .short_help = "show lisp gpe entry vni <vni> vrf <vrf> [leid <leid>] reid <reid>",
+  .path = "show gpe entry",
+  .short_help = "show gpe entry vni <vni> vrf <vrf> [leid <leid>] reid <reid>",
   .function = lisp_gpe_fwd_entry_show,
 };
 /* *INDENT-ON* */

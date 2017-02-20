@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-/** \brief LISP locator structure
+/** \brief GPE locator structure
     @param is_ip4 - whether addr is IPv4 or v6
     @param weight - locator weight
     @param addr - IPv4/6 address
 */
-typeonly manual_print manual_endian define lisp_gpe_locator
+typeonly manual_print manual_endian define gpe_locator
 {
   u8 is_ip4;
   u8 weight;
   u8 addr[16];
 };
 
-/** \brief add or delete lisp gpe tunnel
+/** \brief add or delete GPE tunnel
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
@@ -43,7 +43,7 @@ typeonly manual_print manual_endian define lisp_gpe_locator
     @param loc_num - number of locators
     @param locs - array of remote locators
 */
-manual_print manual_endian define lisp_gpe_add_del_fwd_entry
+manual_print manual_endian define gpe_add_del_fwd_entry
 {
   u32 client_index;
   u32 context;
@@ -57,25 +57,25 @@ manual_print manual_endian define lisp_gpe_add_del_fwd_entry
   u32 dp_table;
   u8 action;
   u32 loc_num;
-  vl_api_lisp_gpe_locator_t locs[loc_num];
+  vl_api_gpe_locator_t locs[loc_num];
 };
 
 /** \brief Reply for gpe_fwd_entry add/del
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
 */
-define lisp_gpe_add_del_fwd_entry_reply
+define gpe_add_del_fwd_entry_reply
 {
   u32 context;
   i32 retval;
 };
 
-/** \brief enable or disable lisp-gpe protocol
+/** \brief enable or disable gpe protocol
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_en - enable protocol if non-zero, else disable
 */
-define lisp_gpe_enable_disable
+define gpe_enable_disable
 {
   u32 client_index;
   u32 context;
@@ -86,7 +86,7 @@ define lisp_gpe_enable_disable
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
 */
-define lisp_gpe_enable_disable_reply
+define gpe_enable_disable_reply
 {
   u32 context;
   i32 retval;
@@ -97,7 +97,7 @@ define lisp_gpe_enable_disable_reply
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
 */
-define lisp_gpe_add_del_iface
+define gpe_add_del_iface
 {
   u32 client_index;
   u32 context;
@@ -111,20 +111,20 @@ define lisp_gpe_add_del_iface
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
 */
-define lisp_gpe_add_del_iface_reply
+define gpe_add_del_iface_reply
 {
   u32 context;
   i32 retval;
 };
 
-define lisp_gpe_fwd_entries_get
+define gpe_fwd_entries_get
 {
   u32 client_index;
   u32 context;
   u32 vni;
 };
 
-typeonly manual_print manual_endian define lisp_gpe_fwd_entry
+typeonly manual_print manual_endian define gpe_fwd_entry
 {
   u32 fwd_entry_index;
   u32 dp_table;
@@ -135,27 +135,27 @@ typeonly manual_print manual_endian define lisp_gpe_fwd_entry
   u8 reid[16];
 };
 
-manual_print manual_endian define lisp_gpe_fwd_entries_get_reply
+manual_print manual_endian define gpe_fwd_entries_get_reply
 {
   u32 context;
   i32 retval;
   u32 count;
-  vl_api_lisp_gpe_fwd_entry_t entries[count];
+  vl_api_gpe_fwd_entry_t entries[count];
 };
 
-define lisp_gpe_fwd_entry_path_dump
+define gpe_fwd_entry_path_dump
 {
   u32 client_index;
   u32 context;
   u32 fwd_entry_index;
 };
 
-manual_endian manual_print define lisp_gpe_fwd_entry_path_details
+manual_endian manual_print define gpe_fwd_entry_path_details
 {
   u32 client_index;
   u32 context;
-  vl_api_lisp_gpe_locator_t lcl_loc;
-  vl_api_lisp_gpe_locator_t rmt_loc;
+  vl_api_gpe_locator_t lcl_loc;
+  vl_api_gpe_locator_t rmt_loc;
 };
 
 /*

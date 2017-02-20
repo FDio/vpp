@@ -168,8 +168,8 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_add_del_fwd_entry_command, static) = {
-  .path = "lisp gpe entry",
-  .short_help = "lisp gpe entry add/del vni <vni> vrf/bd <id> [leid <leid>]"
+  .path = "gpe entry",
+  .short_help = "gpe entry add/del vni <vni> vrf/bd <id> [leid <leid>]"
       "reid <reid> [loc-pair <lloc> <rloc> w <weight>] "
       "[negative action <action>]",
   .function = lisp_gpe_add_del_fwd_entry_command_fn,
@@ -241,8 +241,8 @@ lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (enable_disable_lisp_gpe_command, static) = {
-  .path = "lisp gpe",
-  .short_help = "lisp gpe [enable|disable]",
+  .path = "gpe",
+  .short_help = "gpe [enable|disable]",
   .function = lisp_gpe_enable_disable_command_fn,
 };
 /* *INDENT-ON* */
@@ -278,8 +278,8 @@ lisp_show_iface_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_show_iface_command) = {
-    .path = "show lisp gpe interface",
-    .short_help = "show lisp gpe interface",
+    .path = "show gpe interface",
+    .short_help = "show gpe interface",
     .function = lisp_show_iface_command_fn,
 };
 /* *INDENT-ON* */

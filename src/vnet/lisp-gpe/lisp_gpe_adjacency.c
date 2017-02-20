@@ -514,7 +514,7 @@ lisp_gpe_adjacency_show (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
 {
-  .path = "show lisp gpe adjacency",
+  .path = "show gpe adjacency",
   .function = lisp_gpe_adjacency_show,
 };
 /* *INDENT-ON* */
