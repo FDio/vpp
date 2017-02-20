@@ -714,13 +714,13 @@ get_ptr_to_offset (vlib_buffer_t * b0, int offset)
 }
 
 static u8
-acl_get_l4_proto (vlib_buffer_t * b0, int node_is_ip6)
+acl_get_proto (vlib_buffer_t * b0, int node_is_ip6, int eh_offset)
 {
   u8 proto;
   int proto_offset;
   if (node_is_ip6)
     {
-      proto_offset = 20;
+      proto_offset = 20 + eh_offset;
     }
   else
     {
@@ -808,7 +808,7 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
     {
       clib_memcpy (&src.ip4, get_ptr_to_offset (b0, 26), 4);
       clib_memcpy (&dst.ip4, get_ptr_to_offset (b0, 30), 4);
-      proto = acl_get_l4_proto (b0, 0);
+      proto = acl_get_proto (b0, 0, 0);
       if (1 == proto)
 	{
 	  *trace_bitmap |= 0x00000001;
@@ -828,7 +828,7 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
     {
       clib_memcpy (&src, get_ptr_to_offset (b0, 22), 16);
       clib_memcpy (&dst, get_ptr_to_offset (b0, 38), 16);
-      proto = acl_get_l4_proto (b0, 1);
+      proto = acl_get_proto (b0, 1, 0);
       if (58 == proto)
 	{
 	  *trace_bitmap |= 0x00000002;
@@ -839,10 +839,34 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
 	}
       else
 	{
+      int eh_offset = 0;
+      uword *p = hash_get (am->extension_headers_by_id, proto);
+
+      while (p)
+      {
+        /* Extension headers - if present, Hop-by-Hop Options header MUST be the first one */
+        if (ACL_EH_HOPBYHOP==proto && eh_offset!=0)
+            break;
+
+        u8 eh_next_proto = acl_get_proto (b0, 1, 34 + eh_offset);
+        if (ACL_EH_HOPBYHOP == proto || ACL_EH_DESTOPT == proto || ACL_EH_ROUTING == proto)
+     	  {
+     	    u8 eh_len = (u8) (*(u8 *) get_ptr_to_offset (b0, 54 + eh_offset + 1));
+     	    // ACL_EH_ROUTING : skip present addresses
+     	    // ACL_EH_HOPBYHOP, ACL_EH_DESTOPT : skip options and padding
+     	    eh_offset += 8 * eh_len;
+     	  }
+        eh_offset += 8;
+        proto = eh_next_proto;
+        p = hash_get (am->extension_headers_by_id, proto);
+      }
 	  /* assume TCP/UDP */
-	  src_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 54)));
-	  dst_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 56)));
-	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 40 + 13);
+      if (ACL_EH_NONEXT != proto)
+      {
+    	  src_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 54 + eh_offset)));
+    	  dst_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 56 + eh_offset)));
+    	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 40 + 13 + eh_offset);
+      }
 	}
     }
   if (pool_is_free_index (am->acls, acl_index))
@@ -1873,6 +1897,11 @@ acl_init (vlib_main_t * vm)
   setup_message_id_table (am, &api_main);
 
   vec_free (name);
+
+  am->extension_headers_by_id = hash_create (0, sizeof (uword));
+#define _(N,v,s) hash_set (am->extension_headers_by_id, v, s);
+  foreach_acl_eh;
+#undef _
 
   return error;
 }

@@ -9,8 +9,30 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest
+from scapy.layers.inet6 import IPv6ExtHdrHopByHop, IPv6ExtHdrRouting, \
+    IPv6ExtHdrFragment, IPv6ExtHdrDestOpt, PadN
 from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
+
+
+def create_IPv6ExtHdrHopByHop(self, next_header):
+    return IPv6ExtHdrHopByHop(nh=next_header,
+                              options=PadN(optdata='\101' * 65))
+
+
+def create_IPv6ExtHdrDestOpt(self, next_header):
+    return IPv6ExtHdrDestOpt(nh=next_header,
+                             options=PadN(optdata='\102' * 65))
+
+
+def create_IPv6ExtHdrRouting(self, next_header):
+    return IPv6ExtHdrRouting(nh=next_header,
+                             addresses=["2001:db8:dead::1",
+                                        "2001:db8:dead::2"])
+
+
+def create_IPv6ExtHdrFragment(self, next_header):
+    return IPv6ExtHdrFragment(nh=next_header, m=0)
 
 
 class TestACLplugin(VppTestCase):
@@ -19,6 +41,10 @@ class TestACLplugin(VppTestCase):
     # traffic types
     IP = 0
     ICMP = 1
+    EH = 2
+    EH_HOPBYHOP = 3
+    EH_NONEXT = 4
+    EH_WRONGHOPBYHOP = 5
 
     # IP version
     IPRANDOM = -1
@@ -57,6 +83,14 @@ class TestACLplugin(VppTestCase):
 
     # Test variables
     bd_id = 1
+
+    ehs = [43, 44, 60]
+    ehs_fn = {0: create_IPv6ExtHdrHopByHop,
+              43: create_IPv6ExtHdrRouting,
+              44: create_IPv6ExtHdrFragment,
+              60: create_IPv6ExtHdrDestOpt}
+
+    EH_MAX_PER_PACKET = 10
 
     @classmethod
     def setUpClass(cls):
@@ -228,6 +262,35 @@ class TestACLplugin(VppTestCase):
                 return TCP(sport=ports, dport=ports)
         return ''
 
+    def create_extension_headers(self, traffic_type, upper_layer):
+        # generate number of EHs in packet
+        eh_count = len(self.ehs) - 1
+        p_eh_count = random.randint(2, self.EH_MAX_PER_PACKET)
+
+        # generate random sequence of EH from supported ones - self.ehs[]
+        p_ehs = []
+        if traffic_type == self.EH_HOPBYHOP:
+            p_ehs.append(0)
+        for i in range(1, p_eh_count+1):
+            nh = self.ehs[random.randint(0, eh_count)]
+            p_ehs.append(nh)
+
+        if traffic_type == self.EH_NONEXT:
+            p_ehs.append(59)
+        else:
+            if traffic_type == self.EH_WRONGHOPBYHOP:
+                l = len(p_ehs)-1
+                i = random.randint(1, len(p_ehs)-1)
+                p_ehs[random.randint(1, len(p_ehs)-1)] = 0
+            # add last one to be IP upper layer (transport layer)
+            p_ehs.append(upper_layer)
+
+        # generate packet data based on extension header types
+        p = self.ehs_fn[p_ehs[0]](self, p_ehs[1])
+        for i in range(1, len(p_ehs)-1):
+            p /= self.ehs_fn[p_ehs[i]](self, p_ehs[i+1])
+        return p
+
     def create_stream(self, src_if, packet_sizes, traffic_type=0, ipv6=0,
                       proto=-1, ports=0):
         """
@@ -273,6 +336,12 @@ class TestACLplugin(VppTestCase):
                             p /= ICMP(type=self.icmp4_type,
                                       code=self.icmp4_code)
                     else:
+                        if traffic_type == self.EH or \
+                           traffic_type == self.EH_HOPBYHOP or \
+                           traffic_type == self.EH_NONEXT or \
+                           traffic_type == self.EH_WRONGHOPBYHOP:
+                                p /= self.create_extension_headers(
+                                    traffic_type, pkt_info.proto)
                         p /= self.create_upper_layer(i, pkt_info.proto, ports)
                     p /= Raw(payload)
                     pkt_info.data = p.copy()
@@ -582,7 +651,6 @@ class TestACLplugin(VppTestCase):
         self.run_verify_negat_test(self.IP, self.IPV4,
                                    self.proto[self.IP][self.UDP])
         self.logger.info("ACLP_TEST_FINISH_0003")
-        # self.assertEqual(1, 0)
 
     def test_0004_vpp624_permit_icmpv4(self):
         """ VPP_624 permit ICMPv4
@@ -1010,6 +1078,94 @@ class TestACLplugin(VppTestCase):
                                    self.proto[self.IP][self.UDP], port)
 
         self.logger.info("ACLP_TEST_FINISH_0020")
+
+    def test_0030_ipv6_eh_permit(self):
+        """ permit IPV6 TCP/UDP with EH
+        """
+        self.logger.info("ACLP_TEST_START_0020")
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.UDP]))
+        # Deny ip any any in the end
+        rules.append(self.create_rule(self.IPV6, self.DENY,
+                                      self.PORTS_ALL, 0))
+
+        # Apply rules
+        self.apply_rules(rules, "permit ip6 with EHs")
+
+        # Traffic should still pass
+        self.run_verify_test(self.EH, self.IPV6)
+
+        self.logger.info("ACLP_TEST_FINISH_0020")
+
+    def test_0031_ipv6_eh_hopbyhop(self):
+        """ permit IPV6 TCP/UDP with EH and one hop-by-hop ext. header
+        """
+        self.logger.info("ACLP_TEST_START_0030")
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.UDP]))
+        # Deny ip any any in the end
+        rules.append(self.create_rule(self.IPV6, self.DENY,
+                                      self.PORTS_ALL, 0))
+
+        # Apply rules
+        self.apply_rules(rules, "permit ip6 with EHs with nop-by-hop")
+
+        # Traffic should still pass
+        self.run_verify_test(self.EH_HOPBYHOP, self.IPV6)
+
+        self.logger.info("ACLP_TEST_FINISH_0030")
+
+    def test_0032_ipv6_eh_nonext(self):
+        """ permit IPV6 TCP/UDP with EH and no next ext. header
+        """
+        self.logger.info("ACLP_TEST_START_0031")
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.UDP]))
+        # Deny ip any any in the end
+        rules.append(self.create_rule(self.IPV6, self.DENY,
+                                      self.PORTS_ALL, 0))
+
+        # Apply rules
+        self.apply_rules(rules, "permit ip6 with EHs with no-extension header")
+
+        # Traffic should not pass
+        self.run_verify_negat_test(self.EH_NONEXT, self.IPRANDOM)
+
+        self.logger.info("ACLP_TEST_FINISH_0031")
+
+    def test_0032_ipv6_eh_wronghopbyhop(self):
+        """ permit IPV6 TCP/UDP with EH and wrong hop-by-hop ext. header
+        """
+        self.logger.info("ACLP_TEST_START_0032")
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.TCP]))
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, self.PORTS_RANGE,
+                                      self.proto[self.IP][self.UDP]))
+        # Deny ip any any in the end
+        rules.append(self.create_rule(self.IPV6, self.DENY,
+                                      self.PORTS_ALL, 0))
+
+        # Apply rules
+        self.apply_rules(rules, "permit ip6 with EHs with nop-by-hop")
+
+        # Traffic should still pass
+        self.run_verify_negat_test(self.EH_WRONGHOPBYHOP, self.IPV6)
+
+        self.logger.info("ACLP_TEST_FINISH_0032")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
