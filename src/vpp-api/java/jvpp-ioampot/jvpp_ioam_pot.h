@@ -24,9 +24,6 @@
 
 /* Global state for JVPP-IOAM-POT */
 typedef struct {
-    /* Base message index for the pot plugin */
-    u16 msg_id_base;
-
     /* Pointer to shared memory queue */
     unix_shared_memory_queue_t * vl_input_queue;
 
