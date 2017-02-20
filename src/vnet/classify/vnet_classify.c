@@ -1417,7 +1417,7 @@ classify_table_command_fn (vlib_main_t * vm,
     else if (unformat (input, "table %d", &table_index))
       ;
     else if (unformat (input, "mask %U", unformat_classify_mask, 
-                       cm, &mask, &skip, &match))
+                       &mask, &skip, &match))
       ;
     else if (unformat (input, "memory-size %uM", &tmp))
       memory_size = tmp<<20;
