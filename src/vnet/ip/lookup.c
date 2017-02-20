@@ -188,13 +188,6 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip_sw_interface_add_del);
 void
 ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 {
-  /* ensure that adjacency is cacheline aligned and sized */
-  STATIC_ASSERT (STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0,
-		 "Cache line marker must be 1st element in struct");
-  STATIC_ASSERT (STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
-		 CLIB_CACHE_LINE_BYTES,
-		 "Data in cache line 0 is bigger than cache line size");
-
   /* Preallocate three "special" adjacencies */
   lm->adjacency_heap = adj_pool;
 
@@ -251,7 +244,8 @@ format_ip_flow_hash_config (u8 * s, va_list * args)
 u8 *
 format_ip_lookup_next (u8 * s, va_list * args)
 {
-  ip_lookup_next_t n = va_arg (*args, ip_lookup_next_t);
+  /* int promotion of ip_lookup_next_t */
+  ip_lookup_next_t n = va_arg (*args, int);
   char *t = 0;
 
   switch (n)
