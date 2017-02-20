@@ -140,7 +140,19 @@ typedef struct {
   vnet_main_t * vnet_main;
 } acl_main_t;
 
-extern acl_main_t acl_main;
+#define foreach_acl_eh                     \
+   _(HOPBYHOP , 0  , "IPv6ExtHdrHopByHop") \
+   _(ROUTING  , 43 , "IPv6ExtHdrRouting")  \
+   _(FRAGMENT , 44 , "IPv6ExtHdrFragment") \
+   _(DESTOPT  , 60 , "IPv6ExtHdrDestOpt")  \
+   _(NONEXT   , 59 , "NoNextHdr")
 
+ typedef enum {
+ #define _(P, v, s) ACL_EH_##P = v,
+	 foreach_acl_eh
+ #undef _
+ } acl_eh_t;
+
+extern acl_main_t acl_main;
 
 #endif
