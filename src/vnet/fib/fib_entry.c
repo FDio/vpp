@@ -1426,7 +1426,10 @@ fib_entry_encode (fib_node_index_t fib_entry_index,
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
-    fib_path_list_walk(fib_entry->fe_parent, fib_path_encode, api_rpaths);
+    if (FIB_NODE_INDEX_INVALID != fib_entry->fe_parent)
+    {
+        fib_path_list_walk(fib_entry->fe_parent, fib_path_encode, api_rpaths);
+    }
 }
 
 void

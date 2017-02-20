@@ -1162,7 +1162,7 @@ fib_table_flush (u32 fib_index,
 
     vec_foreach(fib_entry_index, ctx.ftf_entries)
     {
-        fib_entry_delete(*fib_entry_index, source);
+        fib_table_entry_delete_index(*fib_entry_index, source);
     }
 
     vec_free(ctx.ftf_entries);
