@@ -104,7 +104,6 @@ typedef struct {
 
   /* hash lookup specific vrf_id -> option 82 vss suboption  */
   u32 *vss_index_by_rx_fib_index[DHCP_N_PROTOS];
-
 } dhcp_proxy_main_t;
 
 extern dhcp_proxy_main_t dhcp_proxy_main;

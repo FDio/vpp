@@ -226,7 +226,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
           /* Send to DHCPV6 server via the configured FIB */
           rx_sw_if_index = sw_if_index =  vnet_buffer(b0)->sw_if_index[VLIB_RX];
-          rx_fib_idx = im->fib_index_by_sw_if_index [rx_sw_if_index];
+          rx_fib_idx = im->mfib_index_by_sw_if_index [rx_sw_if_index];
           server = dhcp_get_server(dpm, rx_fib_idx, FIB_PROTOCOL_IP6);
 
           if (PREDICT_FALSE (NULL == server))
@@ -587,7 +587,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       //Advance buffer to start of encapsulated DHCPv6 message
       vlib_buffer_advance (b0, sizeof(*r0));
 
-      client_fib_idx = im->fib_index_by_sw_if_index[sw_if_index];
+      client_fib_idx = im->mfib_index_by_sw_if_index[sw_if_index];
       server = dhcp_get_server(dm, client_fib_idx, FIB_PROTOCOL_IP6);
 
       if (NULL == server)
@@ -894,7 +894,8 @@ static u8 *
 format_dhcp6_proxy_server (u8 * s, va_list * args)
 {
   dhcp_server_t * server = va_arg (*args, dhcp_server_t *);
-  ip6_fib_t * rx_fib, * server_fib;
+  ip6_fib_t *server_fib;
+  ip6_mfib_t *rx_fib;
 
   if (NULL == server)
     {
@@ -904,7 +905,7 @@ format_dhcp6_proxy_server (u8 * s, va_list * args)
     }
 
   server_fib = ip6_fib_get(server->server_fib_index);
-  rx_fib = ip6_fib_get(server->rx_fib_index);
+  rx_fib = ip6_mfib_get(server->rx_fib_index);
 
 
   s = format (s, "%=40U%=40U%=14u%=14u",
