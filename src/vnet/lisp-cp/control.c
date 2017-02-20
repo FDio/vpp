@@ -1301,6 +1301,7 @@ vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
       pool_get (lcm->mapping_pool, m);
       m->locator_set_index = locator_set_index;
       m->local = 1;
+      m->pitr_set = 1;
       lcm->pitr_map_index = m - lcm->mapping_pool;
 
       /* enable pitr mode */

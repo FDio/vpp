@@ -327,11 +327,15 @@ typedef struct
 
   u32 ttl;
   u8 action;
-  u8 authoritative;
 
-  u8 local;
+  u8 authoritative:1;
+  u8 local:1;
   /* valid only for remote mappings */
-  u8 is_static;
+  u8 is_static:1;
+  u8 pitr_set:1;
+  u8 rsvd:4;
+
+
   u8 *key;
   lisp_key_type_t key_id;
   u8 timer_set;

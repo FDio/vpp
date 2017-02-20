@@ -752,6 +752,10 @@ send_lisp_eid_table_details (mapping_t * mapit,
       return;
     }
 
+  /* don't send PITR generated mapping */
+  if (mapit->pitr_set)
+    return;
+
   gid = &mapit->eid;
   ip_prefix = &gid_address_ippref (gid);
   mac = gid_address_mac (gid);
