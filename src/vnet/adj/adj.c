@@ -48,7 +48,7 @@ adj_alloc (fib_protocol_t proto)
 {
     ip_adjacency_t *adj;
 
-    pool_get(adj_pool, adj);
+    pool_get_aligned(adj_pool, adj, CLIB_CACHE_LINE_BYTES);
 
     adj_poison(adj);
 
@@ -58,7 +58,6 @@ adj_alloc (fib_protocol_t proto)
                                    adj_get_index(adj));
 
     adj->rewrite_header.sw_if_index = ~0;
-    adj->n_adj = 1;
     adj->lookup_next_index = 0;
 
     fib_node_init(&adj->ia_node,

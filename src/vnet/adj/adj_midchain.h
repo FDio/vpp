@@ -25,26 +25,6 @@
 #include <vnet/adj/adj.h>
 
 /**
- * @brief Flags controlling the midchain adjacency
- */
-typedef enum adj_midchain_flag_t_
-{
-    /**
-     * No flags
-     */
-    ADJ_MIDCHAIN_FLAG_NONE = 0,
-
-    /**
-     * Packets TX through the midchain do not increment the interface
-     * counters. This should be used when the adj is associated with an L2
-     * interface and that L2 interface is in a bridege domain. In that case
-     * the packet will have traversed the interface's TX node, and hence have
-     * been counted, before it traverses ths midchain
-     */
-    ADJ_MIDCHAIN_FLAG_NO_COUNT = (1 << 0),
-} adj_midchain_flag_t;
-
-/**
  * @brief
  *  Convert an existing neighbour adjacency into a midchain
  *
@@ -60,7 +40,7 @@ typedef enum adj_midchain_flag_t_
  */
 extern void adj_nbr_midchain_update_rewrite(adj_index_t adj_index,
 					    adj_midchain_fixup_t fixup,
-					    adj_midchain_flag_t flags,
+					    adj_flags_t flags,
 					    u8 *rewrite);
 
 /**

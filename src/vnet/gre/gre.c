@@ -242,8 +242,8 @@ gre_update_adj (vnet_main_t * vnm,
 {
     adj_nbr_midchain_update_rewrite (ai, gre_fixup, 
                                      (VNET_LINK_ETHERNET == adj_get_link_type (ai) ?
-                                      ADJ_MIDCHAIN_FLAG_NO_COUNT :
-                                      ADJ_MIDCHAIN_FLAG_NONE),
+                                      ADJ_FLAG_MIDCHAIN_NO_COUNT :
+                                      ADJ_FLAG_NONE),
 				     gre_build_rewrite(vnm, sw_if_index,
 						       adj_get_link_type(ai),
 						       NULL));

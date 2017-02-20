@@ -40,8 +40,7 @@ libvnet_la_SOURCES +=				\
   vnet/interface_format.c			\
   vnet/interface_output.c			\
   vnet/misc.c					\
-  vnet/replication.c                            \
-  vnet/rewrite.c
+  vnet/replication.c
 
 nobase_include_HEADERS +=			\
   vnet/api_errno.h				\
@@ -963,14 +962,16 @@ libvnet_la_SOURCES +=				\
   vnet/adj/adj_mcast.c   			\
   vnet/adj/adj_l2.c      			\
   vnet/adj/adj_nsh.c      			\
-  vnet/adj/adj.c
+  vnet/adj/adj.c		                \
+  vnet/adj/rewrite.c
 
 nobase_include_HEADERS +=			\
   vnet/adj/adj.h				\
   vnet/adj/adj_types.h				\
   vnet/adj/adj_glean.h  			\
   vnet/adj/adj_nsh.h  				\
-  vnet/adj/adj_nbr.h
+  vnet/adj/adj_nbr.h 				\
+  vnet/adj/rewrite.h
 
 ########################################
 # Data-Plane Objects

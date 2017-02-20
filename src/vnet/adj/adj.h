@@ -24,7 +24,6 @@
  *            address in the ARP packet.
  *          UNSHARED. Only one per-interface.
  *   - midchain: a nighbour adj on a virtual/tunnel interface.
- *   - rewrite: an adj with no key, but with a rewrite string.
  *
  * The API to create and update the adjacency is very sub-type specific. This
  * is intentional as it encourages the user to carefully consider which adjacency
@@ -42,10 +41,227 @@
 #ifndef __ADJ_H__
 #define __ADJ_H__
 
-#include <vnet/ip/lookup.h>
 #include <vnet/adj/adj_types.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_glean.h>
+#include <vnet/adj/rewrite.h>
+
+/** @brief Common (IP4/IP6) next index stored in adjacency. */
+typedef enum
+{
+  /** Adjacency to drop this packet. */
+  IP_LOOKUP_NEXT_DROP,
+  /** Adjacency to punt this packet. */
+  IP_LOOKUP_NEXT_PUNT,
+
+  /** This packet is for one of our own IP addresses. */
+  IP_LOOKUP_NEXT_LOCAL,
+
+  /** This packet matches an "incomplete adjacency" and packets
+     need to be passed to ARP to find rewrite string for
+     this destination. */
+  IP_LOOKUP_NEXT_ARP,
+
+  /** This packet matches an "interface route" and packets
+     need to be passed to ARP to find rewrite string for
+     this destination. */
+  IP_LOOKUP_NEXT_GLEAN,
+
+  /** This packet is to be rewritten and forwarded to the next
+     processing node.  This is typically the output interface but
+     might be another node for further output processing. */
+  IP_LOOKUP_NEXT_REWRITE,
+
+  /** This packets follow a mid-chain adjacency */
+  IP_LOOKUP_NEXT_MIDCHAIN,
+
+  /** This packets needs to go to ICMP error */
+  IP_LOOKUP_NEXT_ICMP_ERROR,
+
+  /** Multicast Adjacency. */
+  IP_LOOKUP_NEXT_MCAST,
+
+  IP_LOOKUP_N_NEXT,
+} __attribute__ ((packed)) ip_lookup_next_t;
+
+typedef enum
+{
+  IP4_LOOKUP_N_NEXT = IP_LOOKUP_N_NEXT,
+} ip4_lookup_next_t;
+
+typedef enum
+{
+  /* Hop-by-hop header handling */
+  IP6_LOOKUP_NEXT_HOP_BY_HOP = IP_LOOKUP_N_NEXT,
+  IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP,
+  IP6_LOOKUP_NEXT_POP_HOP_BY_HOP,
+  IP6_LOOKUP_N_NEXT,
+} ip6_lookup_next_t;
+
+#define IP4_LOOKUP_NEXT_NODES {					\
+    [IP_LOOKUP_NEXT_DROP] = "ip4-drop",				\
+    [IP_LOOKUP_NEXT_PUNT] = "ip4-punt",				\
+    [IP_LOOKUP_NEXT_LOCAL] = "ip4-local",			\
+    [IP_LOOKUP_NEXT_ARP] = "ip4-arp",				\
+    [IP_LOOKUP_NEXT_GLEAN] = "ip4-glean",			\
+    [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite",    		\
+    [IP_LOOKUP_NEXT_MCAST] = "ip4-rewrite-mcast",	        \
+    [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
+    [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
+}
+
+#define IP6_LOOKUP_NEXT_NODES {					\
+    [IP_LOOKUP_NEXT_DROP] = "ip6-drop",				\
+    [IP_LOOKUP_NEXT_PUNT] = "ip6-punt",				\
+    [IP_LOOKUP_NEXT_LOCAL] = "ip6-local",			\
+    [IP_LOOKUP_NEXT_ARP] = "ip6-discover-neighbor",		\
+    [IP_LOOKUP_NEXT_GLEAN] = "ip6-glean",			\
+    [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",			\
+    [IP_LOOKUP_NEXT_MCAST] = "ip6-rewrite-mcast",		\
+    [IP_LOOKUP_NEXT_MIDCHAIN] = "ip6-midchain",			\
+    [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
+    [IP6_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
+    [IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\
+    [IP6_LOOKUP_NEXT_POP_HOP_BY_HOP] = "ip6-pop-hop-by-hop",	\
+}
+
+/**
+ * Forward delcartion
+ */
+struct ip_adjacency_t_;
+
+/**
+ * @brief A function type for post-rewrite fixups on midchain adjacency
+ */
+typedef void (*adj_midchain_fixup_t) (vlib_main_t * vm,
+				      struct ip_adjacency_t_ * adj,
+				      vlib_buffer_t * b0);
+
+/**
+ * @brief Flags on an IP adjacency
+ */
+typedef enum ip_adjacency_flags_t_
+{
+    ADJ_FLAG_NONE = 0,
+
+    /**
+     * Currently a sync walk is active. Used to prevent re-entrant walking
+     */
+    ADJ_FLAG_SYNC_WALK_ACTIVE = (1 << 0),
+
+    /**
+     * Packets TX through the midchain do not increment the interface
+     * counters. This should be used when the adj is associated with an L2
+     * interface and that L2 interface is in a bridege domain. In that case
+     * the packet will have traversed the interface's TX node, and hence have
+     * been counted, before it traverses ths midchain
+     */
+    ADJ_FLAG_MIDCHAIN_NO_COUNT = (1 << 1),
+}  __attribute__ ((packed)) adj_flags_t;
+
+/**
+ * @brief IP unicast adjacency.
+ *  @note cache aligned.
+ *
+ * An adjacency is a represenation of a peer on a particular link.
+ */
+typedef struct ip_adjacency_t_
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /**
+   * Linkage into the FIB node grpah. First member since this type
+   * has 8 byte alignment requirements.
+   */
+  fib_node_t ia_node;
+
+  /**
+   * Next hop after ip4-lookup.
+   *  This is not accessed in the rewrite nodes.
+   * 1-bytes
+   */
+  ip_lookup_next_t lookup_next_index;
+
+  /**
+   * link/ether-type
+   * 1 bytes
+   */
+  vnet_link_t ia_link;
+
+  /**
+   * The protocol of the neighbor/peer. i.e. the protocol with
+   * which to interpret the 'next-hop' attirbutes of the sub-types.
+   * 1-btyes
+   */
+  fib_protocol_t ia_nh_proto;
+
+  /**
+   * Flags on the adjacency
+   * 1-bytes
+   */
+  adj_flags_t ia_flags;
+
+  union
+  {
+    /**
+     * IP_LOOKUP_NEXT_ARP/IP_LOOKUP_NEXT_REWRITE
+     *
+     * neighbour adjacency sub-type;
+     */
+    struct
+    {
+      ip46_address_t next_hop;
+    } nbr;
+      /**
+       * IP_LOOKUP_NEXT_MIDCHAIN
+       *
+       * A nbr adj that is also recursive. Think tunnels.
+       * A nbr adj can transition to be of type MDICHAIN
+       * so be sure to leave the two structs with the next_hop
+       * fields aligned.
+       */
+    struct
+    {
+      /**
+       * The recursive next-hop.
+       *  This field MUST be at the same memory location as
+       *   sub_type.nbr.next_hop
+       */
+      ip46_address_t next_hop;
+      /**
+       * The next DPO to use
+       */
+      dpo_id_t next_dpo;
+      /**
+       * A function to perform the post-rewrite fixup
+       */
+      adj_midchain_fixup_t fixup_func;
+    } midchain;
+    /**
+     * IP_LOOKUP_NEXT_GLEAN
+     *
+     * Glean the address to ARP for from the packet's destination.
+     * Technically these aren't adjacencies, i.e. they are not a
+     * representation of a peer. One day we might untangle this coupling
+     * and use a new Glean DPO.
+     */
+    struct
+    {
+      ip46_address_t receive_addr;
+    } glean;
+  } sub_type;
+
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
+  /* Rewrite in second/third cache lines */
+  vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
+} ip_adjacency_t;
+
+STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
+	       "IP adjacency cachline 0 is not offset");
+STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline1) ==
+		CLIB_CACHE_LINE_BYTES),
+	       "IP adjacency cachline 1 is more than one cachline size offset");
 
 /**
  * @brief
