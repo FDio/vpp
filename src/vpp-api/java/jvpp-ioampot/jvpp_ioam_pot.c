@@ -29,11 +29,6 @@
 #include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_printfun
 
-/* Get the API version number */
-#define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-pot/pot_all_api_h.h>
-#undef vl_api_version
-
 #include <vnet/api_errno.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -58,38 +53,29 @@
 JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_ioampot_JVppIoampotImpl_init0
   (JNIEnv *env, jclass clazz, jobject callback, jlong queue_address, jint my_client_index) {
   ioampot_main_t * plugin_main = &ioampot_main;
-  u8 * name;
   clib_warning ("Java_io_fd_vpp_jvpp_ioampot_JVppIoampotImpl_init0");
 
   plugin_main->my_client_index = my_client_index;
   plugin_main->vl_input_queue = (unix_shared_memory_queue_t *)queue_address;
 
-  name = format (0, "ioam_pot_%08x%c", api_version, 0);
-  plugin_main->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
+  plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
+  plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
 
-  if (plugin_main->msg_id_base == (u16) ~0) {
-    jclass exClass = (*env)->FindClass(env, "java/lang/IllegalStateException");
-    (*env)->ThrowNew(env, exClass, "ioam_pot plugin is not loaded in VPP");
-  } else {
-    plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
-    plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
+  // verify API has not changed since jar generation
+  #define _(N)             \
+      get_message_id(env, #N);
+      foreach_supported_api_message;
+  #undef _
 
-    // verify API has not changed since jar generation
-    #define _(N)             \
-        get_message_id(env, #N);  \
-        foreach_supported_api_message;
-    #undef _
-
-    #define _(N,n)                                  \
-        vl_msg_api_set_handlers(get_message_id(env, #N), #n,     \
-                vl_api_##n##_t_handler,             \
-                vl_noop_handler,                    \
-                vl_api_##n##_t_endian,              \
-                vl_api_##n##_t_print,               \
-                sizeof(vl_api_##n##_t), 1);
-        foreach_api_reply_handler;
-    #undef _
-  }
+  #define _(N,n)                                  \
+      vl_msg_api_set_handlers(get_message_id(env, #N), #n,     \
+              vl_api_##n##_t_handler,             \
+              vl_noop_handler,                    \
+              vl_api_##n##_t_endian,              \
+              vl_api_##n##_t_print,               \
+              sizeof(vl_api_##n##_t), 1);
+      foreach_api_reply_handler;
+  #undef _
 }
 
 JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_ioampot_JVppIoampotImpl_close0
