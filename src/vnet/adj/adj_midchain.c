@@ -384,6 +384,14 @@ adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
     return (arc);
 }
 
+static u32
+adj_nbr_midchain_get_tx_node (ip_adjacency_t *adj)
+{
+    return ((adj->ia_flags & ADJ_FLAG_MIDCHAIN_NO_COUNT) ?
+            adj_midchain_tx_no_count_node.index :
+            adj_midchain_tx_node.index);
+}
+
 /**
  * adj_nbr_midchain_update_rewrite
  *
@@ -394,12 +402,12 @@ adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
 void
 adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
 				 adj_midchain_fixup_t fixup,
-				 adj_midchain_flag_t flags,
+				 adj_flags_t flags,
 				 u8 *rewrite)
 {
+    u32 feature_index, tx_node;
     ip_adjacency_t *adj;
     u8 arc_index;
-    u32 feature_index;
 
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
@@ -416,15 +424,14 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     ASSERT(NULL != rewrite);
 
     adj->sub_type.midchain.fixup_func = fixup;
+    adj->ia_flags |= flags;
 
     arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
-    feature_index = (flags & ADJ_MIDCHAIN_FLAG_NO_COUNT) ?
+    feature_index = (flags & ADJ_FLAG_MIDCHAIN_NO_COUNT) ?
                     adj_midchain_tx_no_count_feature_node[adj->ia_link] :
                     adj_midchain_tx_feature_node[adj->ia_link];
 
-    adj->sub_type.midchain.tx_function_node = (flags & ADJ_MIDCHAIN_FLAG_NO_COUNT) ?
-                                               adj_midchain_tx_no_count_node.index :
-                                               adj_midchain_tx_node.index;
+    tx_node = adj_nbr_midchain_get_tx_node(adj);
 
     vnet_feature_enable_disable_with_index (arc_index, feature_index,
 					    adj->rewrite_header.sw_if_index,
@@ -437,7 +444,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
      * node are any output features, then the midchain-tx.  from there we
      * need to get to the stacked child's node.
      */
-    dpo_stack_from_node(adj->sub_type.midchain.tx_function_node,
+    dpo_stack_from_node(tx_node,
 			&adj->sub_type.midchain.next_dpo,
 			drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
 
@@ -447,7 +454,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj_nbr_update_rewrite_internal(adj,
 				    IP_LOOKUP_NEXT_MIDCHAIN,
 				    adj_get_midchain_node(adj->ia_link),
-				    adj->sub_type.midchain.tx_function_node,
+				    tx_node,
 				    rewrite);
 }
 
@@ -491,7 +498,7 @@ adj_nbr_midchain_stack (adj_index_t adj_index,
 
     ASSERT(IP_LOOKUP_NEXT_MIDCHAIN == adj->lookup_next_index);
 
-    dpo_stack_from_node(adj->sub_type.midchain.tx_function_node,
+    dpo_stack_from_node(adj_nbr_midchain_get_tx_node(adj),
 			&adj->sub_type.midchain.next_dpo,
 			next);
 }

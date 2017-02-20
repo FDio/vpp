@@ -361,8 +361,8 @@ lisp_gpe_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
   adj_nbr_midchain_update_rewrite
     (ai, lisp_gpe_fixup,
      (VNET_LINK_ETHERNET == linkt ?
-      ADJ_MIDCHAIN_FLAG_NO_COUNT :
-      ADJ_MIDCHAIN_FLAG_NONE),
+      ADJ_FLAG_MIDCHAIN_NO_COUNT :
+      ADJ_FLAG_NONE),
      lisp_gpe_tunnel_build_rewrite (lgt, ladj,
 				    lisp_gpe_adj_proto_from_vnet_link_type
 				    (linkt)));

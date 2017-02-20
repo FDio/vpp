@@ -333,7 +333,7 @@ adj_nbr_update_rewrite (adj_index_t adj_index,
  */
 void
 adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
-				 u32 adj_next_index,
+				 ip_lookup_next_t adj_next_index,
 				 u32 this_node,
 				 u32 next_node,
 				 u8 *rewrite)
@@ -367,7 +367,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
     if (ADJ_INDEX_INVALID != walk_ai)
     {
         walk_adj = adj_get(walk_ai);
-        if (IP_ADJ_SYNC_WALK_ACTIVE & walk_adj->ia_flags)
+        if (ADJ_FLAG_SYNC_WALK_ACTIVE & walk_adj->ia_flags)
         {
             do_walk = 0;
         }
@@ -376,7 +376,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
             /*
              * Prevent re-entrant walk of the same adj
              */
-            walk_adj->ia_flags |= IP_ADJ_SYNC_WALK_ACTIVE;
+            walk_adj->ia_flags |= ADJ_FLAG_SYNC_WALK_ACTIVE;
             do_walk = 1;
         }
     }
@@ -502,7 +502,7 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
      */
     if (do_walk)
     {
-        walk_adj->ia_flags &= ~IP_ADJ_SYNC_WALK_ACTIVE;
+        walk_adj->ia_flags &= ~ADJ_FLAG_SYNC_WALK_ACTIVE;
     }
 
     adj_unlock(adj_get_index(adj));
