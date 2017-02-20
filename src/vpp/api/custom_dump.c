@@ -2329,12 +2329,12 @@ static void *vl_api_lisp_enable_disable_t_print
   FINISH;
 }
 
-static void *vl_api_lisp_gpe_add_del_iface_t_print
-  (vl_api_lisp_gpe_add_del_iface_t * mp, void *handle)
+static void *vl_api_gpe_add_del_iface_t_print
+  (vl_api_gpe_add_del_iface_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: lisp_gpe_add_del_iface ");
+  s = format (0, "SCRIPT: gpe_add_del_iface ");
 
   s = format (s, "%s ", mp->is_add ? "up" : "down");
   s = format (s, "vni %d ", mp->vni);
@@ -2479,12 +2479,12 @@ static void *vl_api_lisp_add_del_local_eid_t_print
   FINISH;
 }
 
-static void *vl_api_lisp_gpe_add_del_fwd_entry_t_print
-  (vl_api_lisp_gpe_add_del_fwd_entry_t * mp, void *handle)
+static void *vl_api_gpe_add_del_fwd_entry_t_print
+  (vl_api_gpe_add_del_fwd_entry_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: lisp_gpe_add_del_fwd_entry TODO");
+  s = format (0, "SCRIPT: gpe_add_del_fwd_entry TODO");
 
   FINISH;
 }
@@ -2507,12 +2507,12 @@ static void *vl_api_lisp_add_del_map_resolver_t_print
   FINISH;
 }
 
-static void *vl_api_lisp_gpe_enable_disable_t_print
-  (vl_api_lisp_gpe_enable_disable_t * mp, void *handle)
+static void *vl_api_gpe_enable_disable_t_print
+  (vl_api_gpe_enable_disable_t * mp, void *handle)
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: lisp_gpe_enable_disable ");
+  s = format (0, "SCRIPT: gpe_enable_disable ");
 
   s = format (s, "%s ", mp->is_en ? "enable" : "disable");
 
@@ -3022,8 +3022,8 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(LISP_ENABLE_DISABLE, lisp_enable_disable)                             \
-_(LISP_GPE_ENABLE_DISABLE, lisp_gpe_enable_disable)                     \
-_(LISP_GPE_ADD_DEL_IFACE, lisp_gpe_add_del_iface)                       \
+_(GPE_ENABLE_DISABLE, gpe_enable_disable)                               \
+_(GPE_ADD_DEL_IFACE, gpe_add_del_iface)                                 \
 _(LISP_PITR_SET_LOCATOR_SET, lisp_pitr_set_locator_set)                 \
 _(LISP_MAP_REQUEST_MODE, lisp_map_request_mode)                         \
 _(SHOW_LISP_MAP_REQUEST_MODE, show_lisp_map_request_mode)               \
@@ -3033,7 +3033,7 @@ _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                   \
   lisp_add_del_map_request_itr_rlocs)                                   \
 _(LISP_EID_TABLE_ADD_DEL_MAP, lisp_eid_table_add_del_map)               \
 _(LISP_ADD_DEL_LOCAL_EID, lisp_add_del_local_eid)                       \
-_(LISP_GPE_ADD_DEL_FWD_ENTRY, lisp_gpe_add_del_fwd_entry)               \
+_(GPE_ADD_DEL_FWD_ENTRY, gpe_add_del_fwd_entry)                         \
 _(LISP_ADD_DEL_LOCATOR_SET, lisp_add_del_locator_set)                   \
 _(LISP_ADD_DEL_MAP_RESOLVER, lisp_add_del_map_resolver)                 \
 _(LISP_ADD_DEL_LOCATOR, lisp_add_del_locator)                           \

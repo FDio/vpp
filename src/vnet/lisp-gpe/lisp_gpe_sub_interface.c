@@ -248,8 +248,8 @@ lisp_gpe_sub_interface_show (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lisp_gpe_sub_interface_command) = {
-  .path = "show lisp gpe sub-interface",
-  .short_help = "show lisp gpe sub-interface",
+  .path = "show gpe sub-interface",
+  .short_help = "show gpe sub-interface",
   .function = lisp_gpe_sub_interface_show,
 };
 /* *INDENT-ON* */
