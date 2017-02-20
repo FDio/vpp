@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_46816f8e",
+        "filename": "src/vnet/classify/vnet_classify.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1420,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-20T18:37:59Z",
+      "side": 0,
+      "message": "As far as I can tell, unformat_classify_mask expects vnet_classify_main as the first argument. Were you planning on removing cm from unformat_classify_mask as well?",
+      "range": {
+        "startLine": 1420,
+        "startChar": 23,
+        "endLine": 1420,
+        "endChar": 26
+      },
+      "revId": "6ca42d333b247eaee4995a7f779a43759a81909e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
