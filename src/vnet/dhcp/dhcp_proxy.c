@@ -17,11 +17,54 @@
 
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 
 /**
  * @brief Shard 4/6 instance of DHCP main
  */
 dhcp_proxy_main_t dhcp_proxy_main;
+
+static void
+dhcp_proxy_rx_table_lock (fib_protocol_t proto,
+                          u32 fib_index)
+{
+    if (FIB_PROTOCOL_IP4 == proto)
+        fib_table_lock(fib_index, proto);
+    else
+        mfib_table_lock(fib_index, proto);
+}
+
+static void
+dhcp_proxy_rx_table_unlock (fib_protocol_t proto,
+                            u32 fib_index)
+{
+    if (FIB_PROTOCOL_IP4 == proto)
+        fib_table_unlock(fib_index, proto);
+    else
+        mfib_table_unlock(fib_index, proto);
+}
+
+static u32
+dhcp_proxy_rx_table_get_table_id (fib_protocol_t proto,
+                                  u32 fib_index)
+{
+    if (FIB_PROTOCOL_IP4 == proto)
+      {
+        fib_table_t *fib;
+
+        fib = fib_table_get(fib_index, proto);
+
+        return (fib->ft_table_id);
+      }
+    else
+      {
+        mfib_table_t *mfib;
+
+        mfib = mfib_table_get(fib_index, proto);
+
+        return (mfib->mft_table_id);
+      }
+}
 
 void
 dhcp_proxy_walk (fib_protocol_t proto,
@@ -51,10 +94,10 @@ dhcp_vss_walk (fib_protocol_t proto,
                void *ctx)
 {
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
+  mfib_table_t *mfib;
   dhcp_vss_t * vss;
   u32 vss_index, i;
   fib_table_t *fib;
-
 
   vec_foreach_index (i, dpm->vss_index_by_rx_fib_index[proto])
   {
@@ -64,10 +107,20 @@ dhcp_vss_walk (fib_protocol_t proto,
 
       vss = pool_elt_at_index (dpm->vss[proto], vss_index);
 
-      fib = fib_table_get(i, proto);
+      if (FIB_PROTOCOL_IP4 == proto)
+        {
+          fib = fib_table_get(i, proto);
 
-      if (!fn(vss, fib->ft_table_id, ctx))
-          break;
+          if (!fn(vss, fib->ft_table_id, ctx))
+              break;
+        }
+      else
+        {
+          mfib = mfib_table_get(i, proto);
+
+          if (!fn(vss, mfib->mft_table_id, ctx))
+              break;
+        }
     }
 }
 
@@ -164,7 +217,8 @@ dhcp_proxy_dump_walk (dhcp_server_t *server,
                       void *arg)
 {
   dhcp_proxy_dump_walk_cxt_t *ctx = arg;
-  fib_table_t *s_fib, *r_fib;
+  fib_table_t *s_fib;
+  u32 rx_table_id;
   dhcp_vss_t *v;
 
   v = dhcp_get_vss_info(&dhcp_proxy_main,
@@ -172,7 +226,8 @@ dhcp_proxy_dump_walk (dhcp_server_t *server,
                         ctx->proto);
 
   s_fib = fib_table_get(server->server_fib_index, ctx->proto);
-  r_fib = fib_table_get(server->rx_fib_index, ctx->proto);
+  rx_table_id = dhcp_proxy_rx_table_get_table_id(server->rx_fib_index,
+                                                 ctx->proto);
 
   dhcp_send_details(ctx->proto,
                     ctx->opaque,
@@ -180,7 +235,7 @@ dhcp_proxy_dump_walk (dhcp_server_t *server,
                     &server->dhcp_server,
                     &server->dhcp_src_address,
                     s_fib->ft_table_id,
-                    r_fib->ft_table_id,
+                    rx_table_id,
                     (v ? v->fib_id : 0),
                     (v ? v->oui : 0));
 
@@ -226,7 +281,10 @@ int dhcp_proxy_set_vss (fib_protocol_t proto,
   u32  rx_fib_index;
   int rc = 0;
   
-  rx_fib_index = fib_table_find_or_create_and_lock(proto, tbl_id);
+  if (proto == FIB_PROTOCOL_IP4)
+      rx_fib_index = fib_table_find_or_create_and_lock(proto, tbl_id);
+  else
+      rx_fib_index = mfib_table_find_or_create_and_lock(proto, tbl_id);
   v = dhcp_get_vss_info(dm, rx_fib_index, proto);
 
   if (NULL != v)
@@ -235,7 +293,7 @@ int dhcp_proxy_set_vss (fib_protocol_t proto,
       {
           /* release the lock held on the table when the VSS
            * info was created */
-          fib_table_unlock (rx_fib_index, proto);
+          dhcp_proxy_rx_table_unlock (proto, rx_fib_index);
 
           pool_put (dm->vss[proto], v);
           dm->vss_index_by_rx_fib_index[proto][rx_fib_index] = ~0;
@@ -258,18 +316,18 @@ int dhcp_proxy_set_vss (fib_protocol_t proto,
                                   rx_fib_index, ~0);
 
           /* hold a lock on the table whilst the VSS info exist */
-          fib_table_lock (rx_fib_index, proto);
-
           pool_get (dm->vss[proto], v);
           v->fib_id = fib_id;
           v->oui = oui;
+
           dm->vss_index_by_rx_fib_index[proto][rx_fib_index] =
               v - dm->vss[proto];
+          dhcp_proxy_rx_table_lock (proto, rx_fib_index);
       }
   }
 
   /* Release the lock taken during the create_or_lock at the start */
-  fib_table_unlock (rx_fib_index, proto);
-  
+  dhcp_proxy_rx_table_unlock (proto, rx_fib_index);
+
   return (rc);
 }

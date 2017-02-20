@@ -29,6 +29,7 @@
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/vnet_msg_enum.h>
 #include <vnet/fib/fib_api.h>
+#include <vnet/mfib/mfib_table.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -340,9 +341,9 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
 						     table_id);
-
       vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
       ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+
       fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
 						      table_id);
       vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
@@ -362,7 +363,6 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						     table_id);
-
       vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
       ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
 
