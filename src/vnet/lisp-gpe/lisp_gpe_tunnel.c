@@ -263,7 +263,7 @@ show_lisp_gpe_tunnel_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_lisp_gpe_tunnel_command, static) =
 {
-  .path = "show lisp gpe tunnel",
+  .path = "show gpe tunnel",
   .function = show_lisp_gpe_tunnel_command_fn,
 };
 /* *INDENT-ON* */

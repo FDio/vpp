@@ -2696,28 +2696,28 @@ static void
 }
 
 static void
-api_lisp_gpe_fwd_entry_net_to_host (vl_api_lisp_gpe_fwd_entry_t * e)
+api_gpe_fwd_entry_net_to_host (vl_api_gpe_fwd_entry_t * e)
 {
   e->dp_table = clib_net_to_host_u32 (e->dp_table);
   e->fwd_entry_index = clib_net_to_host_u32 (e->fwd_entry_index);
 }
 
 static void
-  lisp_gpe_fwd_entries_get_reply_t_net_to_host
-  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+  gpe_fwd_entries_get_reply_t_net_to_host
+  (vl_api_gpe_fwd_entries_get_reply_t * mp)
 {
   u32 i;
 
   mp->count = clib_net_to_host_u32 (mp->count);
   for (i = 0; i < mp->count; i++)
     {
-      api_lisp_gpe_fwd_entry_net_to_host (&mp->entries[i]);
+      api_gpe_fwd_entry_net_to_host (&mp->entries[i]);
     }
 }
 
 static void
-  vl_api_lisp_gpe_fwd_entry_path_details_t_handler
-  (vl_api_lisp_gpe_fwd_entry_path_details_t * mp)
+  vl_api_gpe_fwd_entry_path_details_t_handler
+  (vl_api_gpe_fwd_entry_path_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   u8 *(*format_ip_address_fcn) (u8 *, va_list *) = 0;
@@ -2733,7 +2733,7 @@ static void
 }
 
 static void
-lisp_fill_locator_node (vat_json_node_t * n, vl_api_lisp_gpe_locator_t * loc)
+lisp_fill_locator_node (vat_json_node_t * n, vl_api_gpe_locator_t * loc)
 {
   struct in6_addr ip6;
   struct in_addr ip4;
@@ -2752,8 +2752,8 @@ lisp_fill_locator_node (vat_json_node_t * n, vl_api_lisp_gpe_locator_t * loc)
 }
 
 static void
-  vl_api_lisp_gpe_fwd_entry_path_details_t_handler_json
-  (vl_api_lisp_gpe_fwd_entry_path_details_t * mp)
+  vl_api_gpe_fwd_entry_path_details_t_handler_json
+  (vl_api_gpe_fwd_entry_path_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
@@ -2777,18 +2777,18 @@ static void
 }
 
 static void
-  vl_api_lisp_gpe_fwd_entries_get_reply_t_handler
-  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+  vl_api_gpe_fwd_entries_get_reply_t_handler
+  (vl_api_gpe_fwd_entries_get_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   u32 i;
   int retval = clib_net_to_host_u32 (mp->retval);
-  vl_api_lisp_gpe_fwd_entry_t *e;
+  vl_api_gpe_fwd_entry_t *e;
 
   if (retval)
     goto end;
 
-  lisp_gpe_fwd_entries_get_reply_t_net_to_host (mp);
+  gpe_fwd_entries_get_reply_t_net_to_host (mp);
 
   for (i = 0; i < mp->count; i++)
     {
@@ -2804,20 +2804,20 @@ end:
 }
 
 static void
-  vl_api_lisp_gpe_fwd_entries_get_reply_t_handler_json
-  (vl_api_lisp_gpe_fwd_entries_get_reply_t * mp)
+  vl_api_gpe_fwd_entries_get_reply_t_handler_json
+  (vl_api_gpe_fwd_entries_get_reply_t * mp)
 {
   u8 *s = 0;
   vat_main_t *vam = &vat_main;
   vat_json_node_t *e = 0, root;
   u32 i;
   int retval = clib_net_to_host_u32 (mp->retval);
-  vl_api_lisp_gpe_fwd_entry_t *fwd;
+  vl_api_gpe_fwd_entry_t *fwd;
 
   if (retval)
     goto end;
 
-  lisp_gpe_fwd_entries_get_reply_t_net_to_host (mp);
+  gpe_fwd_entries_get_reply_t_net_to_host (mp);
   vat_json_init_array (&root);
 
   for (i = 0; i < mp->count; i++)
@@ -3879,11 +3879,11 @@ _(lisp_add_del_locator_reply)                           \
 _(lisp_add_del_local_eid_reply)                         \
 _(lisp_add_del_remote_mapping_reply)                    \
 _(lisp_add_del_adjacency_reply)                         \
-_(lisp_gpe_add_del_fwd_entry_reply)                     \
+_(gpe_add_del_fwd_entry_reply)                          \
 _(lisp_add_del_map_resolver_reply)                      \
 _(lisp_add_del_map_server_reply)                        \
-_(lisp_gpe_enable_disable_reply)                        \
-_(lisp_gpe_add_del_iface_reply)                         \
+_(gpe_enable_disable_reply)                             \
+_(gpe_add_del_iface_reply)                              \
 _(lisp_enable_disable_reply)                            \
 _(lisp_rloc_probe_enable_disable_reply)                 \
 _(lisp_map_register_enable_disable_reply)               \
@@ -4132,10 +4132,10 @@ _(LISP_ADD_DEL_LOCATOR_REPLY, lisp_add_del_locator_reply)               \
 _(LISP_ADD_DEL_LOCAL_EID_REPLY, lisp_add_del_local_eid_reply)           \
 _(LISP_ADD_DEL_REMOTE_MAPPING_REPLY, lisp_add_del_remote_mapping_reply) \
 _(LISP_ADD_DEL_ADJACENCY_REPLY, lisp_add_del_adjacency_reply)           \
-_(LISP_GPE_ADD_DEL_FWD_ENTRY_REPLY, lisp_gpe_add_del_fwd_entry_reply)   \
+_(GPE_ADD_DEL_FWD_ENTRY_REPLY, gpe_add_del_fwd_entry_reply)             \
 _(LISP_ADD_DEL_MAP_RESOLVER_REPLY, lisp_add_del_map_resolver_reply)     \
 _(LISP_ADD_DEL_MAP_SERVER_REPLY, lisp_add_del_map_server_reply)         \
-_(LISP_GPE_ENABLE_DISABLE_REPLY, lisp_gpe_enable_disable_reply)         \
+_(GPE_ENABLE_DISABLE_REPLY, gpe_enable_disable_reply)                   \
 _(LISP_ENABLE_DISABLE_REPLY, lisp_enable_disable_reply)                 \
 _(LISP_MAP_REGISTER_ENABLE_DISABLE_REPLY,                               \
   lisp_map_register_enable_disable_reply)                               \
@@ -4144,7 +4144,7 @@ _(LISP_RLOC_PROBE_ENABLE_DISABLE_REPLY,                                 \
 _(LISP_PITR_SET_LOCATOR_SET_REPLY, lisp_pitr_set_locator_set_reply)     \
 _(LISP_MAP_REQUEST_MODE_REPLY, lisp_map_request_mode_reply)             \
 _(LISP_EID_TABLE_ADD_DEL_MAP_REPLY, lisp_eid_table_add_del_map_reply)   \
-_(LISP_GPE_ADD_DEL_IFACE_REPLY, lisp_gpe_add_del_iface_reply)           \
+_(GPE_ADD_DEL_IFACE_REPLY, gpe_add_del_iface_reply)                     \
 _(LISP_LOCATOR_SET_DETAILS, lisp_locator_set_details)                   \
 _(LISP_LOCATOR_DETAILS, lisp_locator_details)                           \
 _(LISP_EID_TABLE_DETAILS, lisp_eid_table_details)                       \
@@ -4153,9 +4153,9 @@ _(LISP_EID_TABLE_VNI_DETAILS, lisp_eid_table_vni_details)               \
 _(LISP_MAP_RESOLVER_DETAILS, lisp_map_resolver_details)                 \
 _(LISP_MAP_SERVER_DETAILS, lisp_map_server_details)                     \
 _(LISP_ADJACENCIES_GET_REPLY, lisp_adjacencies_get_reply)               \
-_(LISP_GPE_FWD_ENTRIES_GET_REPLY, lisp_gpe_fwd_entries_get_reply)       \
-_(LISP_GPE_FWD_ENTRY_PATH_DETAILS,                                      \
-  lisp_gpe_fwd_entry_path_details)                                      \
+_(GPE_FWD_ENTRIES_GET_REPLY, gpe_fwd_entries_get_reply)                 \
+_(GPE_FWD_ENTRY_PATH_DETAILS,                                           \
+  gpe_fwd_entry_path_details)                                           \
 _(SHOW_LISP_STATUS_REPLY, show_lisp_status_reply)                       \
 _(LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                             \
   lisp_add_del_map_request_itr_rlocs_reply)                             \
@@ -13905,7 +13905,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
 {
   u32 dp_table = 0, vni = 0;;
   unformat_input_t *input = vam->input;
-  vl_api_lisp_gpe_add_del_fwd_entry_t *mp;
+  vl_api_gpe_add_del_fwd_entry_t *mp;
   u8 is_add = 1;
   lisp_eid_vat_t _rmt_eid, *rmt_eid = &_rmt_eid;
   lisp_eid_vat_t _lcl_eid, *lcl_eid = &_lcl_eid;
@@ -13913,8 +13913,7 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
   u32 action = ~0, w;
   ip4_address_t rmt_rloc4, lcl_rloc4;
   ip6_address_t rmt_rloc6, lcl_rloc6;
-  vl_api_lisp_gpe_locator_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc =
-    0;
+  vl_api_gpe_locator_t *rmt_locs = 0, *lcl_locs = 0, rloc, *curr_rloc = 0;
   int ret;
 
   memset (&rloc, 0, sizeof (rloc));
@@ -14006,8 +14005,8 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M2 (LISP_GPE_ADD_DEL_FWD_ENTRY, mp,
-      sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs) * 2);
+  M2 (GPE_ADD_DEL_FWD_ENTRY, mp,
+      sizeof (vl_api_gpe_locator_t) * vec_len (rmt_locs) * 2);
 
   mp->is_add = is_add;
   lisp_eid_put_vat (mp->rmt_eid, rmt_eid->addr, rmt_eid->type);
@@ -14023,11 +14022,11 @@ api_lisp_gpe_add_del_fwd_entry (vat_main_t * vam)
     {
       mp->loc_num = clib_host_to_net_u32 (vec_len (rmt_locs) * 2);
       clib_memcpy (mp->locs, lcl_locs,
-		   (sizeof (vl_api_lisp_gpe_locator_t) * vec_len (lcl_locs)));
+		   (sizeof (vl_api_gpe_locator_t) * vec_len (lcl_locs)));
 
-      u32 offset = sizeof (vl_api_lisp_gpe_locator_t) * vec_len (lcl_locs);
+      u32 offset = sizeof (vl_api_gpe_locator_t) * vec_len (lcl_locs);
       clib_memcpy (((u8 *) mp->locs) + offset, rmt_locs,
-		   (sizeof (vl_api_lisp_gpe_locator_t) * vec_len (rmt_locs)));
+		   (sizeof (vl_api_gpe_locator_t) * vec_len (rmt_locs)));
     }
   vec_free (lcl_locs);
   vec_free (rmt_locs);
@@ -14176,7 +14175,7 @@ static int
 api_lisp_gpe_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
-  vl_api_lisp_gpe_enable_disable_t *mp;
+  vl_api_gpe_enable_disable_t *mp;
   u8 is_set = 0;
   u8 is_en = 1;
   int ret;
@@ -14205,7 +14204,7 @@ api_lisp_gpe_enable_disable (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_GPE_ENABLE_DISABLE, mp);
+  M (GPE_ENABLE_DISABLE, mp);
 
   mp->is_en = is_en;
 
@@ -14834,7 +14833,7 @@ static int
 api_lisp_gpe_add_del_iface (vat_main_t * vam)
 {
   unformat_input_t *input = vam->input;
-  vl_api_lisp_gpe_add_del_iface_t *mp;
+  vl_api_gpe_add_del_iface_t *mp;
   u8 action_set = 0, is_add = 1, is_l2 = 0, dp_table_set = 0, vni_set = 0;
   u32 dp_table = 0, vni = 0;
   int ret;
@@ -14881,7 +14880,7 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
     }
 
   /* Construct the API message */
-  M (LISP_GPE_ADD_DEL_IFACE, mp);
+  M (GPE_ADD_DEL_IFACE, mp);
 
   mp->is_add = is_add;
   mp->dp_table = dp_table;
@@ -15271,7 +15270,7 @@ static int
 api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_lisp_gpe_fwd_entries_get_t *mp;
+  vl_api_gpe_fwd_entries_get_t *mp;
   u8 vni_set = 0;
   u32 vni = ~0;
   int ret;
@@ -15301,7 +15300,7 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
 	     "leid", "reid");
     }
 
-  M (LISP_GPE_FWD_ENTRIES_GET, mp);
+  M (GPE_FWD_ENTRIES_GET, mp);
   mp->vni = clib_host_to_net_u32 (vni);
 
   /* send it... */
@@ -15312,10 +15311,10 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
   return ret;
 }
 
-#define vl_api_lisp_gpe_fwd_entries_get_reply_t_endian vl_noop_handler
-#define vl_api_lisp_gpe_fwd_entries_get_reply_t_print vl_noop_handler
-#define vl_api_lisp_gpe_fwd_entry_path_details_t_endian vl_noop_handler
-#define vl_api_lisp_gpe_fwd_entry_path_details_t_print vl_noop_handler
+#define vl_api_gpe_fwd_entries_get_reply_t_endian vl_noop_handler
+#define vl_api_gpe_fwd_entries_get_reply_t_print vl_noop_handler
+#define vl_api_gpe_fwd_entry_path_details_t_endian vl_noop_handler
+#define vl_api_gpe_fwd_entry_path_details_t_print vl_noop_handler
 
 static int
 api_lisp_adjacencies_get (vat_main_t * vam)
@@ -15433,7 +15432,7 @@ api_show_lisp_status (vat_main_t * vam)
 static int
 api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
 {
-  vl_api_lisp_gpe_fwd_entry_path_dump_t *mp;
+  vl_api_gpe_fwd_entry_path_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
   unformat_input_t *i = vam->input;
   u32 fwd_entry_index = ~0;
@@ -15458,7 +15457,7 @@ api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
       print (vam->ofp, "first line");
     }
 
-  M (LISP_GPE_FWD_ENTRY_PATH_DUMP, mp);
+  M (GPE_FWD_ENTRY_PATH_DUMP, mp);
 
   /* send it... */
   S (mp);
@@ -18348,15 +18347,11 @@ _(lisp_add_del_local_eid,"vni <vni> eid "                               \
                          "<ipv4|ipv6>/<prefix> | <L2 address> "         \
                          "locator-set <locator_name> [del]"             \
                          "[key-id sha1|sha256 secret-key <secret-key>]") \
-_(lisp_gpe_add_del_fwd_entry, "reid <eid> [leid <eid>] vni <vni>"       \
-  "vrf/bd <dp_table> loc-pair <lcl_loc> <rmt_loc> w <weight>... [del]") \
 _(lisp_add_del_map_resolver, "<ip4|6-addr> [del]")                      \
 _(lisp_add_del_map_server, "<ip4|6-addr> [del]")                        \
-_(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_enable_disable, "enable|disable")                                \
 _(lisp_map_register_enable_disable, "enable|disable")                   \
 _(lisp_rloc_probe_enable_disable, "enable|disable")                     \
-_(lisp_gpe_add_del_iface, "up|down")                                    \
 _(lisp_add_del_remote_mapping, "add|del vni <vni> eid <dest-eid> "      \
                                "[seid <seid>] "                         \
                                "rloc <locator> p <prio> "               \
@@ -18379,6 +18374,10 @@ _(lisp_map_server_dump, "")                                             \
 _(lisp_adjacencies_get, "vni <vni>")                                    \
 _(lisp_gpe_fwd_entries_get, "vni <vni>")                                \
 _(lisp_gpe_fwd_entry_path_dump, "index <fwd_entry_index>")              \
+_(lisp_gpe_add_del_iface, "up|down")                                    \
+_(lisp_gpe_enable_disable, "enable|disable")                            \
+_(lisp_gpe_add_del_fwd_entry, "reid <eid> [leid <eid>] vni <vni>"       \
+  "vrf/bd <dp_table> loc-pair <lcl_loc> <rmt_loc> w <weight>... [del]") \
 _(show_lisp_rloc_probe_state, "")                                       \
 _(show_lisp_map_register_state, "")                                     \
 _(show_lisp_status, "")                                                 \
