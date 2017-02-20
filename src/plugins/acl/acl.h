@@ -133,13 +133,34 @@ typedef struct {
   u32 acl_out_ip6_match_next[256];
   u32 n_match_actions;
 
+  /* Extension headers by number */
+  uword *extension_headers_by_id;
 
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
 } acl_main_t;
 
-extern acl_main_t acl_main;
+#define foreach_acl_eh                                          \
+   _(HOPBYHOP , 0  , "IPv6ExtHdrHopByHop")                      \
+   _(ROUTING  , 43 , "IPv6ExtHdrRouting")                       \
+   _(FRAGMENT , 44 , "IPv6ExtHdrFragment")                      \
+   _(DESTOPT  , 60 , "IPv6ExtHdrDestOpt")                       \
+   _(NONEXT   , 59 , "NoNextHdr")                               \
+   _(ESP      , 50 , "EncapsulatingSecurityPayload")            \
+   _(AUTH     , 51 , "Authentication Header")                   \
+   _(MOBILITY , 135, "Mobility Header")                         \
+   _(HIP      , 139, "Experimental use Host Identity Protocol") \
+   _(SHIM6    , 140, "Shim6 Protocol")                          \
+   _(EXP1     , 253, "Use for experimentation and testing")     \
+   _(EXP2     , 254, "Use for experimentation and testing")
 
+ typedef enum {
+ #define _(N, v, s) ACL_EH_##N = v,
+	 foreach_acl_eh
+ #undef _
+ } acl_eh_t;
+
+extern acl_main_t acl_main;
 
 #endif
