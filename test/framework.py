@@ -50,6 +50,10 @@ class _PacketInfo(object):
     #: Store the index of the destination packet generator interface
     #: of the packet.
     dst = -1
+    #: Store expected ip version
+    ip = -1
+    #: Store expected upper protocol
+    proto = -1
     #: Store the copy of the former packet.
     data = None
 
@@ -515,7 +519,8 @@ class VppTestCase(unittest.TestCase):
 
         :returns: string containing serialized data from packet info
         """
-        return "%d %d %d" % (info.index, info.src, info.dst)
+        return "%d %d %d %d %d" % (info.index, info.src, info.dst,
+                                   info.ip, info.proto)
 
     @staticmethod
     def payload_to_info(payload):
@@ -532,6 +537,8 @@ class VppTestCase(unittest.TestCase):
         info.index = int(numbers[0])
         info.src = int(numbers[1])
         info.dst = int(numbers[2])
+        info.ip = int(numbers[3])
+        info.proto = int(numbers[4])
         return info
 
     def get_next_packet_info(self, info):

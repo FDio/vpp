@@ -208,10 +208,10 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       r->src_prefixlen = rules[i].src_ip_prefix_len;
       r->dst_prefixlen = rules[i].dst_ip_prefix_len;
       r->proto = rules[i].proto;
-      r->src_port_or_type_first = rules[i].srcport_or_icmptype_first;
-      r->src_port_or_type_last = rules[i].srcport_or_icmptype_last;
-      r->dst_port_or_code_first = rules[i].dstport_or_icmpcode_first;
-      r->dst_port_or_code_last = rules[i].dstport_or_icmpcode_last;
+      r->src_port_or_type_first = ntohs ( rules[i].srcport_or_icmptype_first );
+      r->src_port_or_type_last = ntohs ( rules[i].srcport_or_icmptype_last );
+      r->dst_port_or_code_first = ntohs ( rules[i].dstport_or_icmpcode_first );
+      r->dst_port_or_code_last = ntohs ( rules[i].dstport_or_icmpcode_last );
       r->tcp_flags_value = rules[i].tcp_flags_value;
       r->tcp_flags_mask = rules[i].tcp_flags_mask;
     }
@@ -767,13 +767,13 @@ get_ptr_to_offset (vlib_buffer_t * b0, int offset)
 }
 
 static u8
-acl_get_l4_proto (vlib_buffer_t * b0, int node_is_ip6)
+acl_get_proto (vlib_buffer_t * b0, int node_is_ip6, int eh_offset)
 {
   u8 proto;
   int proto_offset;
   if (node_is_ip6)
     {
-      proto_offset = 20;
+      proto_offset = 20 + eh_offset;
     }
   else
     {
@@ -839,8 +839,8 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
   int is_ip6;
   int is_ip4;
   u8 proto;
-  u16 src_port;
-  u16 dst_port;
+  u16 src_port = 0;
+  u16 dst_port = 0;
   u8 tcp_flags = 0;
   int i;
   acl_list_t *a;
@@ -861,20 +861,18 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
     {
       clib_memcpy (&src.ip4, get_ptr_to_offset (b0, 26), 4);
       clib_memcpy (&dst.ip4, get_ptr_to_offset (b0, 30), 4);
-      proto = acl_get_l4_proto (b0, 0);
+      proto = acl_get_proto (b0, 0, 0);
       if (1 == proto)
 	{
 	  *trace_bitmap |= 0x00000001;
 	  /* type */
-	  src_port = *(u8 *) get_ptr_to_offset (b0, 34);
+	  src_port = ((u16) (*(u8 *) get_ptr_to_offset (b0, 34)));
 	  /* code */
-	  dst_port = *(u8 *) get_ptr_to_offset (b0, 35);
-	}
-      else
-	{
+	  dst_port = ((u16) (*(u8 *) get_ptr_to_offset (b0, 35)));
+	} else {
 	  /* assume TCP/UDP */
-	  src_port = (*(u16 *) get_ptr_to_offset (b0, 34));
-	  dst_port = (*(u16 *) get_ptr_to_offset (b0, 36));
+	  src_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 34)));
+	  dst_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 36)));
 	  /* UDP gets ability to check on an oddball data byte as a bonus */
 	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 20 + 13);
 	}
@@ -883,21 +881,45 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
     {
       clib_memcpy (&src, get_ptr_to_offset (b0, 22), 16);
       clib_memcpy (&dst, get_ptr_to_offset (b0, 38), 16);
-      proto = acl_get_l4_proto (b0, 1);
+      proto = acl_get_proto (b0, 1, 0);
       if (58 == proto)
 	{
 	  *trace_bitmap |= 0x00000002;
 	  /* type */
-	  src_port = *(u8 *) get_ptr_to_offset (b0, 54);
+	  src_port = (u16) (*(u8 *) get_ptr_to_offset (b0, 54));
 	  /* code */
-	  dst_port = *(u8 *) get_ptr_to_offset (b0, 55);
+	  dst_port = (u16) (*(u8 *) get_ptr_to_offset (b0, 55));
 	}
       else
 	{
+      int eh_offset = 0;
+      uword *p = hash_get (am->extension_headers_by_id, proto);
+
+      while (p)
+      {
+        /* Extension headers - if present, Hop-by-Hop Options header MUST be the first one */
+        if (ACL_EH_HOPBYHOP==proto && eh_offset!=0)
+            break;
+
+        u8 eh_next_proto = acl_get_proto (b0, 1, 34 + eh_offset);
+        if (ACL_EH_HOPBYHOP == proto || ACL_EH_DESTOPT == proto || ACL_EH_ROUTING == proto)
+     	  {
+     	    u8 eh_len = (u8) (*(u8 *) get_ptr_to_offset (b0, 54 + eh_offset + 1));
+     	    // ACL_EH_ROUTING : skip present addresses
+     	    // ACL_EH_HOPBYHOP, ACL_EH_DESTOPT : skip options and padding
+     	    eh_offset += 8 * eh_len;
+     	  }
+        eh_offset += 8;
+        proto = eh_next_proto;
+        p = hash_get (am->extension_headers_by_id, proto);
+      }
 	  /* assume TCP/UDP */
-	  src_port = (*(u16 *) get_ptr_to_offset (b0, 54));
-	  dst_port = (*(u16 *) get_ptr_to_offset (b0, 56));
-	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 40 + 13);
+      if (ACL_EH_NONEXT != proto)
+      {
+    	  src_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 54 + eh_offset)));
+    	  dst_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 56 + eh_offset)));
+    	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 40 + 13 + eh_offset);
+      }
 	}
     }
   if (pool_is_free_index (am->acls, acl_index))
@@ -1485,10 +1507,10 @@ copy_acl_rule_to_api_rule (vl_api_acl_rule_t * api_rule, acl_rule_t * r)
   api_rule->src_ip_prefix_len = r->src_prefixlen;
   api_rule->dst_ip_prefix_len = r->dst_prefixlen;
   api_rule->proto = r->proto;
-  api_rule->srcport_or_icmptype_first = r->src_port_or_type_first;
-  api_rule->srcport_or_icmptype_last = r->src_port_or_type_last;
-  api_rule->dstport_or_icmpcode_first = r->dst_port_or_code_first;
-  api_rule->dstport_or_icmpcode_last = r->dst_port_or_code_last;
+  api_rule->srcport_or_icmptype_first = htons (r->src_port_or_type_first);
+  api_rule->srcport_or_icmptype_last = htons (r->src_port_or_type_last);
+  api_rule->dstport_or_icmpcode_first = htons (r->dst_port_or_code_first);
+  api_rule->dstport_or_icmpcode_last = htons (r->dst_port_or_code_last);
   api_rule->tcp_flags_mask = r->tcp_flags_mask;
   api_rule->tcp_flags_value = r->tcp_flags_value;
 }
@@ -1928,6 +1950,11 @@ acl_init (vlib_main_t * vm)
   setup_message_id_table (am, &api_main);
 
   vec_free (name);
+
+  am->extension_headers_by_id = hash_create (0, sizeof (uword));
+#define _(N,v,s) hash_set (am->extension_headers_by_id, v, s);
+  foreach_acl_eh;
+#undef _
 
   return error;
 }
