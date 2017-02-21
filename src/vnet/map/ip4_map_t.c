@@ -1100,10 +1100,12 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      next1 = IP4_MAPT_NEXT_DROP;
 	    }
 
-	  d0 = ip4_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				   &vnet_buffer (p0)->map_t.map_domain_index);
-	  d1 = ip4_map_get_domain (vnet_buffer (p1)->ip.adj_index[VLIB_TX],
-				   &vnet_buffer (p1)->map_t.map_domain_index);
+	  vnet_buffer (p0)->map_t.map_domain_index =
+	    vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  d0 = ip4_map_get_domain (vnet_buffer (p0)->map_t.map_domain_index);
+	  vnet_buffer (p1)->map_t.map_domain_index =
+	    vnet_buffer (p1)->ip.adj_index[VLIB_TX];
+	  d1 = ip4_map_get_domain (vnet_buffer (p1)->map_t.map_domain_index);
 
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 	  vnet_buffer (p1)->map_t.mtu = d1->mtu ? d1->mtu : ~0;
@@ -1213,8 +1215,9 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      next0 = IP4_MAPT_NEXT_DROP;
 	    }
 
-	  d0 = ip4_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				   &vnet_buffer (p0)->map_t.map_domain_index);
+	  vnet_buffer (p0)->map_t.map_domain_index =
+	    vnet_buffer (p0)->ip.adj_index[VLIB_TX];
+	  d0 = ip4_map_get_domain (vnet_buffer (p0)->map_t.map_domain_index);
 
 	  vnet_buffer (p0)->map_t.mtu = d0->mtu ? d0->mtu : ~0;
 
