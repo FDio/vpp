@@ -504,7 +504,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 	       vlib_buffer_get_current (s), s->current_length);
 
   /* next segments */
-  for (i = 1; i < n_buffers; i++)
+  for (i = 1; i < n_alloc; i++)
     {
       /* previous */
       d->next_buffer = new_buffers[i];
