@@ -2326,7 +2326,8 @@ typedef enum
 always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_midchain, int is_mcast)
+		    vlib_frame_t * frame,
+		    int do_counters, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip4_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -2487,10 +2488,13 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  /*
 	   * pre-fetch the per-adjacency counters
 	   */
-	  vlib_prefetch_combined_counter (&adjacency_counters,
-					  cpu_index, adj_index0);
-	  vlib_prefetch_combined_counter (&adjacency_counters,
-					  cpu_index, adj_index1);
+	  if (do_counters)
+	    {
+	      vlib_prefetch_combined_counter (&adjacency_counters,
+					      cpu_index, adj_index0);
+	      vlib_prefetch_combined_counter (&adjacency_counters,
+					      cpu_index, adj_index1);
+	    }
 
 	  /* Don't adjust the buffer for ttl issue; icmp-error node wants
 	   * to see the IP headerr */
@@ -2525,15 +2529,20 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  /*
 	   * Bump the per-adjacency counters
 	   */
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     cpu_index,
-	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	  if (do_counters)
+	    {
+	      vlib_increment_combined_counter
+		(&adjacency_counters,
+		 cpu_index,
+		 adj_index0, 1,
+		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     cpu_index,
-	     adj_index1, 1, vlib_buffer_length_in_chain (vm, p1) + rw_len1);
+	      vlib_increment_combined_counter
+		(&adjacency_counters,
+		 cpu_index,
+		 adj_index1, 1,
+		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
+	    }
 
 	  if (is_midchain)
 	    {
@@ -2722,21 +2731,30 @@ static uword
 ip4_rewrite (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip4_rewrite_inline (vm, node, frame, 0, 0);
+  if (adj_are_counters_enabled ())
+    return ip4_rewrite_inline (vm, node, frame, 1, 0, 0);
+  else
+    return ip4_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
 static uword
 ip4_midchain (vlib_main_t * vm,
 	      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip4_rewrite_inline (vm, node, frame, 1, 0);
+  if (adj_are_counters_enabled ())
+    return ip4_rewrite_inline (vm, node, frame, 1, 1, 0);
+  else
+    return ip4_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
 static uword
 ip4_rewrite_mcast (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip4_rewrite_inline (vm, node, frame, 0, 1);
+  if (adj_are_counters_enabled ())
+    return ip4_rewrite_inline (vm, node, frame, 1, 0, 1);
+  else
+    return ip4_rewrite_inline (vm, node, frame, 0, 0, 1);
 }
 
 /* *INDENT-OFF* */

@@ -1911,7 +1911,8 @@ typedef enum
 always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
-		    vlib_frame_t * frame, int is_midchain, int is_mcast)
+		    vlib_frame_t * frame,
+		    int do_counters, int is_midchain, int is_mcast)
 {
   ip_lookup_main_t *lm = &ip6_main.lookup_main;
   u32 *from = vlib_frame_vector_args (frame);
@@ -2042,14 +2043,17 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 	  vnet_buffer (p1)->ip.save_rewrite_length = rw_len1;
 
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     cpu_index,
-	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     cpu_index, adj_index1,
-	     1, vlib_buffer_length_in_chain (vm, p1) + rw_len1);
+	  if (do_counters)
+	    {
+	      vlib_increment_combined_counter
+		(&adjacency_counters,
+		 cpu_index, adj_index0, 1,
+		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	      vlib_increment_combined_counter
+		(&adjacency_counters,
+		 cpu_index, adj_index1, 1,
+		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
+	    }
 
 	  /* Check MTU of outgoing interface. */
 	  error0 =
@@ -2175,10 +2179,13 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     cpu_index,
-	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	  if (do_counters)
+	    {
+	      vlib_increment_combined_counter
+		(&adjacency_counters,
+		 cpu_index, adj_index0, 1,
+		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	    }
 
 	  /* Check MTU of outgoing interface. */
 	  error0 =
@@ -2238,21 +2245,30 @@ static uword
 ip6_rewrite (vlib_main_t * vm,
 	     vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_rewrite_inline (vm, node, frame, 0, 0);
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame, 1, 0, 0);
+  else
+    return ip6_rewrite_inline (vm, node, frame, 0, 0, 0);
 }
 
 static uword
 ip6_rewrite_mcast (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_rewrite_inline (vm, node, frame, 0, 1);
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame, 1, 0, 1);
+  else
+    return ip6_rewrite_inline (vm, node, frame, 0, 0, 1);
 }
 
 static uword
 ip6_midchain (vlib_main_t * vm,
 	      vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  return ip6_rewrite_inline (vm, node, frame, 1, 0);
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame, 1, 1, 0);
+  else
+    return ip6_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
 /* *INDENT-OFF* */
