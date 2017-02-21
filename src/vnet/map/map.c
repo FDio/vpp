@@ -41,6 +41,7 @@ crc_u32 (u32 data, u32 value)
 }
 #endif
 
+
 /*
  * This code supports the following MAP modes:
  *
@@ -437,23 +438,141 @@ map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 }
 
 #ifdef MAP_SKIP_IP6_LOOKUP
+/**
+ * Pre-resolvd per-protocol global next-hops
+ */
+map_main_pre_resolved_t pre_resolved[FIB_PROTOCOL_MAX];
+
+static void
+map_pre_resolve_init (map_main_pre_resolved_t * pr)
+{
+  pr->fei = FIB_NODE_INDEX_INVALID;
+  fib_node_init (&pr->node, FIB_NODE_TYPE_MAP_E);
+}
+
+static u8 *
+format_map_pre_resolve (u8 * s, va_list ap)
+{
+  map_main_pre_resolved_t *pr = va_arg (ap, map_main_pre_resolved_t *);
+
+  if (FIB_NODE_INDEX_INVALID != pr->fei)
+    {
+      fib_prefix_t pfx;
+
+      fib_entry_get_prefix (pr->fei, &pfx);
+
+      return (format (s, "%U (%u)",
+		      format_ip46_address, &pfx.fp_addr, IP46_TYPE_ANY,
+		      pr->dpo.dpoi_index));
+    }
+  else
+    {
+      return (format (s, "un-set"));
+    }
+}
+
+
+/**
+ * Function definition to inform the FIB node that its last lock has gone.
+ */
+static void
+map_last_lock_gone (fib_node_t * node)
+{
+  /*
+   * The MAP is a root of the graph. As such
+   * it never has children and thus is never locked.
+   */
+  ASSERT (0);
+}
+
+static map_main_pre_resolved_t *
+map_from_fib_node (fib_node_t * node)
+{
+#if (CLIB_DEBUG > 0)
+  ASSERT (FIB_NODE_TYPE_MAP_E == node->fn_type);
+#endif
+  return ((map_main_pre_resolved_t *)
+	  (((char *) node) -
+	   STRUCT_OFFSET_OF (map_main_pre_resolved_t, node)));
+}
+
+static void
+map_stack (map_main_pre_resolved_t * pr)
+{
+  const dpo_id_t *dpo;
+
+  dpo = fib_entry_contribute_ip_forwarding (pr->fei);
+
+  dpo_copy (&pr->dpo, dpo);
+}
+
+/**
+ * Function definition to backwalk a FIB node
+ */
+static fib_node_back_walk_rc_t
+map_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+{
+  map_stack (map_from_fib_node (node));
+
+  return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
+/**
+ * Function definition to get a FIB node from its index
+ */
+static fib_node_t *
+map_fib_node_get (fib_node_index_t index)
+{
+  return (&pre_resolved[index].node);
+}
+
+/*
+ * Virtual function table registered by MPLS GRE tunnels
+ * for participation in the FIB object graph.
+ */
+const static fib_node_vft_t map_vft = {
+  .fnv_get = map_fib_node_get,
+  .fnv_last_lock = map_last_lock_gone,
+  .fnv_back_walk = map_back_walk,
+};
+
+static void
+map_fib_resolve (map_main_pre_resolved_t * pr,
+		 fib_protocol_t proto, u8 len, const ip46_address_t * addr)
+{
+  fib_prefix_t pfx = {
+    .fp_proto = proto,
+    .fp_len = len,
+    .fp_addr = *addr,
+  };
+
+  pr->fei = fib_table_entry_special_add (0,	// default fib
+					 &pfx,
+					 FIB_SOURCE_RR,
+					 FIB_ENTRY_FLAG_NONE,
+					 ADJ_INDEX_INVALID);
+  pr->sibling = fib_entry_child_add (pr->fei, FIB_NODE_TYPE_MAP_E, proto);
+  map_stack (pr);
+}
+
 static void
 map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6)
 {
-  map_main_t *mm = &map_main;
-  ip6_main_t *im6 = &ip6_main;
-
-  if (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0)
+  if (ip6 && (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0))
     {
-      // FIXME NOT an ADJ
-      mm->adj6_index = ip6_fib_table_fwding_lookup (im6, 0, ip6);
-      clib_warning ("FIB lookup results in: %u", mm->adj6_index);
+      ip46_address_t addr = {
+	.ip6 = *ip6,
+      };
+      map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP6],
+		       FIB_PROTOCOL_IP6, 128, &addr);
     }
-  if (ip4->as_u32 != 0)
+  if (ip4 && (ip4->as_u32 != 0))
     {
-      // FIXME NOT an ADJ
-      mm->adj4_index = ip4_fib_table_lookup_lb (0, ip4);
-      clib_warning ("FIB lookup results in: %u", mm->adj4_index);
+      ip46_address_t addr = {
+	.ip4 = *ip4,
+      };
+      map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP4],
+		       FIB_PROTOCOL_IP4, 32, &addr);
     }
 }
 #endif
@@ -695,9 +814,8 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
 			    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  ip4_address_t ip4nh;
-  ip6_address_t ip6nh;
-  map_main_t *mm = &map_main;
+  ip4_address_t ip4nh, *p_v4 = NULL;
+  ip6_address_t ip6nh, *p_v6 = NULL;
   clib_error_t *error = NULL;
 
   memset (&ip4nh, 0, sizeof (ip4nh));
@@ -710,10 +828,10 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (line_input, "ip4-nh %U", unformat_ip4_address, &ip4nh))
-	mm->preresolve_ip4 = ip4nh;
+	p_v4 = &ip4nh;
       else
 	if (unformat (line_input, "ip6-nh %U", unformat_ip6_address, &ip6nh))
-	mm->preresolve_ip6 = ip6nh;
+	p_v6 = &ip6nh;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -722,7 +840,7 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
 	}
     }
 
-  map_pre_resolve (&ip4nh, &ip6nh);
+  map_pre_resolve (p_v4, p_v6);
 
 done:
   unformat_free (line_input);
@@ -1113,9 +1231,10 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 #if MAP_SKIP_IP6_LOOKUP
   vlib_cli_output (vm,
-		   "MAP pre-resolve: IP6 next-hop: %U (%u), IP4 next-hop: %U (%u)\n",
-		   format_ip6_address, &mm->preresolve_ip6, mm->adj6_index,
-		   format_ip4_address, &mm->preresolve_ip4, mm->adj4_index);
+		   "MAP pre-resolve: IP6 next-hop: %U, IP4 next-hop: %U\n",
+		   format_map_pre_resolve, &pre_resolved[FIB_PROTOCOL_IP6],
+		   format_map_pre_resolve, &pre_resolved[FIB_PROTOCOL_IP4]);
+
 #endif
 
   if (mm->tc_copy)
@@ -2180,10 +2299,12 @@ map_init (vlib_main_t * vm)
   mm->vlib_main = vm;
 
 #ifdef MAP_SKIP_IP6_LOOKUP
-  memset (&mm->preresolve_ip4, 0, sizeof (mm->preresolve_ip4));
-  memset (&mm->preresolve_ip6, 0, sizeof (mm->preresolve_ip6));
-  mm->adj4_index = 0;
-  mm->adj6_index = 0;
+  fib_protocol_t proto;
+
+  FOR_EACH_FIB_PROTOCOL (proto)
+  {
+    map_pre_resolve_init (&pre_resolved[proto]);
+  }
 #endif
 
   /* traffic class */
@@ -2238,6 +2359,9 @@ map_init (vlib_main_t * vm)
   mm->ip6_reass_fifo_last = MAP_REASS_INDEX_NONE;
   map_ip6_reass_reinit (NULL, NULL);
 
+#ifdef MAP_SKIP_IP6_LOOKUP
+  fib_node_register_type (FIB_NODE_TYPE_MAP_E, &map_vft);
+#endif
   map_dpo_module_init ();
 
   return 0;

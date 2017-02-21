@@ -1624,3 +1624,31 @@ class VppPapiProvider(object):
             {
                 'vni': vni
             })
+
+    def map_add_domain(self,
+                       ip6_prefix,
+                       ip6_prefix_len,
+                       ip6_src,
+                       ip6_src_prefix_len,
+                       ip4_prefix,
+                       ip4_prefix_len,
+                       ea_bits_len=0,
+                       psid_offset=0,
+                       psid_length=0,
+                       is_translation=0,
+                       mtu=1280):
+        return self.api(
+            self.papi.map_add_domain,
+            {
+                'ip6_prefix': ip6_prefix,
+                'ip6_prefix_len': ip6_prefix_len,
+                'ip4_prefix': ip4_prefix,
+                'ip4_prefix_len': ip4_prefix_len,
+                'ip6_src': ip6_src,
+                'ip6_src_prefix_len': ip6_src_prefix_len,
+                'ea_bits_len': ea_bits_len,
+                'psid_offset': psid_offset,
+                'psid_length': psid_length,
+                'is_translation': is_translation,
+                'mtu': mtu
+            })

@@ -151,18 +151,10 @@ static_always_inline bool
 ip6_map_ip4_lookup_bypass (vlib_buffer_t * p0, ip4_header_t * ip)
 {
 #ifdef MAP_SKIP_IP6_LOOKUP
-  map_main_t *mm = &map_main;
-  u32 adj_index0 = mm->adj4_index;
-  if (adj_index0 > 0)
+  if (FIB_NODE_INDEX_INVALID != pre_resolved[FIB_PROTOCOL_IP4].fei)
     {
-      ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-      ip_adjacency_t *adj = ip_get_adjacency (lm4, mm->adj4_index);
-      if (adj->n_adj > 1)
-	{
-	  u32 hash_c0 = ip4_compute_flow_hash (ip, IP_FLOW_HASH_DEFAULT);
-	  adj_index0 += (hash_c0 & (adj->n_adj - 1));
-	}
-      vnet_buffer (p0)->ip.adj_index[VLIB_TX] = adj_index0;
+      vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+	pre_resolved[FIB_PROTOCOL_IP4].dpo.dpoi_index;
       return (true);
     }
 #endif
@@ -1195,7 +1187,7 @@ VLIB_REGISTER_NODE(ip6_map_node) = {
   .next_nodes = {
     [IP6_MAP_NEXT_IP4_LOOKUP] = "ip4-lookup",
 #ifdef MAP_SKIP_IP6_LOOKUP
-    [IP6_MAP_NEXT_IP4_REWRITE] = "ip4-rewrite",
+    [IP6_MAP_NEXT_IP4_REWRITE] = "ip4-load-balance",
 #endif
     [IP6_MAP_NEXT_IP6_REASS] = "ip6-map-ip6-reass",
     [IP6_MAP_NEXT_IP4_REASS] = "ip6-map-ip4-reass",

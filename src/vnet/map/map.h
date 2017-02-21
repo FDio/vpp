@@ -198,6 +198,40 @@ typedef struct {
   map_ip6_fragment_t fragments[MAP_IP6_REASS_MAX_FRAGMENTS_PER_REASSEMBLY];
 } map_ip6_reass_t;
 
+#ifdef MAP_SKIP_IP6_LOOKUP
+/**
+ * A pre-resolved next-hop
+ */
+typedef struct map_main_pre_resolved_t_
+{
+  /**
+   * Linkage into the FIB graph
+   */
+  fib_node_t node;
+
+  /**
+   * The FIB entry index of the next-hop
+   */
+  fib_node_index_t fei;
+
+  /**
+   * This object sibling index on the FIB entry's child dependency list
+   */
+  u32 sibling;
+
+  /**
+   * The Load-balance object index to use to forward
+   */
+  dpo_id_t dpo;
+} map_main_pre_resolved_t;
+
+/**
+ * Pre-resolved next hops for v4 and v6. Why these are global and not
+ * per-domain is beyond me.
+ */
+extern map_main_pre_resolved_t pre_resolved[FIB_PROTOCOL_MAX];
+#endif
+
 typedef struct {
   /* pool of MAP domains */
   map_domain_t *domains;
@@ -206,13 +240,6 @@ typedef struct {
   vlib_simple_counter_main_t *simple_domain_counters;
   vlib_combined_counter_main_t *domain_counters;
   volatile u32 *counter_lock;
-
-#ifdef MAP_SKIP_IP6_LOOKUP
-  /* pre-presolve */
-  u32 adj6_index, adj4_index;
-  ip4_address_t preresolve_ip4;
-  ip6_address_t preresolve_ip6;
-#endif
 
   /* Traffic class: zero, copy (~0) or fixed value */
   u8 tc;
