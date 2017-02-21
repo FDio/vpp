@@ -73,7 +73,6 @@
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \
-_(mcast)                                        \
 _(swt)                                          \
 _(l2)                                           \
 _(l2t)                                          \
@@ -158,15 +157,6 @@ typedef struct
       u8 exp;
       u8 first;
     } mpls;
-
-    /* Multicast replication */
-    struct
-    {
-      u32 pad[3];
-      u32 mcast_group_index;
-      u32 mcast_current_index;
-      u32 original_free_list_index;
-    } mcast;
 
     /* ip4-in-ip6 softwire termination, only valid there */
     struct
