@@ -35,6 +35,12 @@ vlib_combined_counter_main_t adjacency_counters;
  */
 ip_adjacency_t *adj_pool;
 
+/**
+ * @brief Global Config for enabling per-adjacency counters.
+ * By default these are disabled.
+ */
+int adj_per_adj_counters;
+
 always_inline void
 adj_poison (ip_adjacency_t * adj)
 {
@@ -375,11 +381,16 @@ adj_show (vlib_main_t * vm,
 {
     adj_index_t ai = ADJ_INDEX_INVALID;
     u32 sw_if_index = ~0;
+    int summary = 0;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
 	if (unformat (input, "%d", &ai))
 	    ;
+	else if (unformat (input, "sum"))
+	    summary = 1;
+	else if (unformat (input, "summary"))
+	    summary = 1;
 	else if (unformat (input, "%U",
 			   unformat_vnet_sw_interface, vnet_get_main(),
 			   &sw_if_index))
@@ -388,39 +399,49 @@ adj_show (vlib_main_t * vm,
 	    break;
     }
 
-    if (ADJ_INDEX_INVALID != ai)
+    if (summary)
     {
-        if (pool_is_free_index(adj_pool, ai))
-        {
-	    vlib_cli_output (vm, "adjacency %d invalid", ai);
-            return 0;
-        }
-
-	vlib_cli_output (vm, "[@%d] %U",
-                         ai,
-                         format_ip_adjacency,  ai,
-			 FORMAT_IP_ADJACENCY_DETAIL);
+        vlib_cli_output (vm, "Number of adjacenies: %d", pool_elts(adj_pool));
+        vlib_cli_output (vm, "Per-adjacency counters: %s",
+                         (adj_are_counters_enabled() ?
+                          "enabled":
+                          "disabled"));
     }
     else
     {
-	/* *INDENT-OFF* */
-	pool_foreach_index(ai, adj_pool,
-	({
-	    if (~0 != sw_if_index &&
-		sw_if_index != adj_get_sw_if_index(ai))
-	    {
-            }
-            else
+        if (ADJ_INDEX_INVALID != ai)
+        {
+            if (pool_is_free_index(adj_pool, ai))
             {
-		vlib_cli_output (vm, "[@%d] %U",
-				 ai,
-				 format_ip_adjacency, ai,
-				 FORMAT_IP_ADJACENCY_NONE);
-	    }
-	}));
-	/* *INDENT-ON* */
-    }
+                vlib_cli_output (vm, "adjacency %d invalid", ai);
+                return 0;
+            }
 
+            vlib_cli_output (vm, "[@%d] %U",
+                             ai,
+                             format_ip_adjacency,  ai,
+                             FORMAT_IP_ADJACENCY_DETAIL);
+        }
+        else
+        {
+            /* *INDENT-OFF* */
+            pool_foreach_index(ai, adj_pool,
+            ({
+                if (~0 != sw_if_index &&
+                    sw_if_index != adj_get_sw_if_index(ai))
+                {
+                }
+                else
+                {
+                    vlib_cli_output (vm, "[@%d] %U",
+                                     ai,
+                                     format_ip_adjacency, ai,
+                                     FORMAT_IP_ADJACENCY_NONE);
+                }
+            }));
+            /* *INDENT-ON* */
+        }
+    }
     return 0;
 }
 
@@ -438,6 +459,50 @@ adj_show (vlib_main_t * vm,
  ?*/
 VLIB_CLI_COMMAND (adj_show_command, static) = {
     .path = "show adj",
-    .short_help = "show adj [<adj_index>] [interface]",
+    .short_help = "show adj [<adj_index>] [interface] [summary]",
     .function = adj_show,
+};
+
+/**
+ * @brief CLI invoked function to enable/disable per-adj counters
+ */
+static clib_error_t *
+adj_cli_counters_set (vlib_main_t * vm,
+                      unformat_input_t * input,
+                      vlib_cli_command_t * cmd)
+{
+    clib_error_t *error = NULL;
+    int enable = ~0;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+	if (unformat (input, "enable"))
+	    enable = 1;
+	else if (unformat (input, "disable"))
+	    enable = 0;
+	else
+	    break;
+    }
+
+    if (enable != ~0)
+    {
+        /* user requested something sensible */
+        adj_per_adj_counters = enable;
+    }
+    else
+    {
+        error = clib_error_return (0, "specify 'enable' or 'disable'");
+    }
+
+    return (error);
+}
+
+/*?
+ * Enabe/disble per-adjacency counters. This is optional because it comes with
+ * a non-negligible performance cost.
+ ?*/
+VLIB_CLI_COMMAND (adj_cli_counters_set_command, static) = {
+    .path = "adjacency counters",
+    .short_help = "adjacency counters [enable|disable]",
+    .function = adj_cli_counters_set,
 };
