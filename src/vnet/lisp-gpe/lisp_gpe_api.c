@@ -56,7 +56,9 @@ _(GPE_ADD_DEL_FWD_ENTRY, gpe_add_del_fwd_entry)               \
 _(GPE_FWD_ENTRIES_GET, gpe_fwd_entries_get)                   \
 _(GPE_FWD_ENTRY_PATH_DUMP, gpe_fwd_entry_path_dump)           \
 _(GPE_ENABLE_DISABLE, gpe_enable_disable)                     \
-_(GPE_ADD_DEL_IFACE, gpe_add_del_iface)
+_(GPE_ADD_DEL_IFACE, gpe_add_del_iface)                       \
+_(GPE_SET_ENCAP_MODE, gpe_set_encap_mode)                     \
+_(GPE_GET_ENCAP_MODE, gpe_get_encap_mode)
 
 static locator_pair_t *
 unformat_gpe_loc_pairs (void *locs, u32 rloc_num)
@@ -371,6 +373,30 @@ vl_api_gpe_add_del_iface_t_handler (vl_api_gpe_add_del_iface_t * mp)
     }
 
   REPLY_MACRO (VL_API_GPE_ADD_DEL_IFACE_REPLY);
+}
+
+static void
+vl_api_gpe_set_encap_mode_t_handler (vl_api_gpe_set_encap_mode_t * mp)
+{
+  vl_api_gpe_set_encap_mode_reply_t *rmp;
+  int rv = 0;
+
+  rv = vnet_gpe_set_encap_mode (mp->mode);
+  REPLY_MACRO (VL_API_GPE_SET_ENCAP_MODE_REPLY);
+}
+
+static void
+vl_api_gpe_get_encap_mode_t_handler (vl_api_gpe_get_encap_mode_t * mp)
+{
+  vl_api_gpe_get_encap_mode_reply_t *rmp;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_GPE_GET_ENCAP_MODE_REPLY,
+  ({
+    rmp->encap_mode = vnet_gpe_get_encap_mode ();
+  }));
+  /* *INDENT-ON* */
 }
 
 /*
