@@ -540,7 +540,7 @@ static int api_snat_worker_dump(vat_main_t * vam)
   return ret;
 }
 
-static int api_snat_ipfix_enable_disable (vat_main_t * vam)
+static int api_snat_add_del_interface_addr (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
   vl_api_snat_add_del_interface_addr_t * mp;
@@ -611,7 +611,7 @@ static int api_snat_interface_addr_dump(vat_main_t * vam)
   return ret;
 }
 
-static int api_snat_add_del_interface_addr (vat_main_t * vam)
+static int api_snat_ipfix_enable_disable (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
   vl_api_snat_ipfix_enable_disable_t * mp;
