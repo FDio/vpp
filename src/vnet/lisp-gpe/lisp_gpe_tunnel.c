@@ -50,6 +50,7 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
   lisp_gpe_header_t *lisp0;
   u8 *rw = 0;
   int len;
+  gpe_encap_mode_t encap_mode = vnet_gpe_get_encap_mode ();
 
   if (IP4 == ip_addr_version (&lgt->key->lcl))
     {
@@ -111,6 +112,10 @@ lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
     }
 
   lisp0->flags = ladj->flags;
+  if (GPE_ENCAP_VXLAN == encap_mode)
+    /* unset P flag */
+    lisp0->flags &= ~LISP_GPE_FLAGS_P;
+
   lisp0->ver_res = 0;
   lisp0->res = 0;
   lisp0->next_protocol = payload_proto;

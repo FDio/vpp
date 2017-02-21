@@ -158,6 +158,51 @@ manual_endian manual_print define gpe_fwd_entry_path_details
   vl_api_gpe_locator_t rmt_loc;
 };
 
+/** \brief Set GPE encapsulation mode
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - LISP (value 0) or VXLAN (value 1)
+*/
+define gpe_set_encap_mode
+{
+  u32 client_index;
+  u32 context;
+  u8 mode;
+};
+
+/** \brief Reply for set_encap_mode
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define gpe_set_encap_mode_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief get GPE encapsulation mode
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mode - LISP (value 0) or VXLAN (value 1)
+*/
+define gpe_get_encap_mode
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for set_encap_mode
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param encap_mode - GPE encapsulation mode
+*/
+define gpe_get_encap_mode_reply
+{
+  u32 context;
+  i32 retval;
+  u8 encap_mode;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
