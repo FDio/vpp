@@ -116,10 +116,16 @@ class VppIpRoute(VppObject):
         return self.object_id()
 
     def object_id(self):
-        return ("%d:%s/%d"
-                % (self.table_id,
-                   socket.inet_ntop(socket.AF_INET, self.dest_addr),
-                   self.dest_addr_len))
+        if self.is_ip6:
+            return ("%d:%s/%d"
+                    % (self.table_id,
+                       socket.inet_ntop(socket.AF_INET6, self.dest_addr),
+                       self.dest_addr_len))
+        else:
+            return ("%d:%s/%d"
+                    % (self.table_id,
+                       socket.inet_ntop(socket.AF_INET, self.dest_addr),
+                       self.dest_addr_len))
 
 
 class VppIpMRoute(VppObject):
