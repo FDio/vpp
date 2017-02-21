@@ -62,6 +62,13 @@ static u32 next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] = {
 always_inline u32
 next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
 {
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+
+  if (GPE_ENCAP_VXLAN == lgm->encap_mode)
+    {
+      return next_proto_to_next_index[lgh->next_protocol];
+    }
+
   /* lisp-gpe router */
   if (PREDICT_TRUE ((lgh->flags & LISP_GPE_FLAGS_P)
 		    && lgh->next_protocol < LISP_GPE_NEXT_PROTOS))
