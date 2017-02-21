@@ -88,6 +88,14 @@ typedef struct tunnel_lookup
   uword *vni_by_sw_if_index;
 } tunnel_lookup_t;
 
+
+typedef enum gpe_encap_mode_e
+{
+  GPE_ENCAP_LISP,
+  GPE_ENCAP_VXLAN,
+  GPE_ENCAP_COUNT
+} gpe_encap_mode_t;
+
 /** LISP-GPE global state*/
 typedef struct lisp_gpe_main
 {
@@ -130,6 +138,8 @@ typedef struct lisp_gpe_main
   tunnel_lookup_t nsh_ifaces;
 
   const dpo_id_t *nsh_cp_lkup;
+
+  gpe_encap_mode_t encap_mode;
 
   /** convenience */
   vlib_main_t *vlib_main;
@@ -268,6 +278,8 @@ typedef enum lgpe_ip6_lookup_next
 u8 *format_vnet_lisp_gpe_status (u8 * s, va_list * args);
 
 lisp_api_gpe_fwd_entry_t *vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni);
+gpe_encap_mode_t vnet_gpe_get_encap_mode (void);
+int vnet_gpe_set_encap_mode (gpe_encap_mode_t mode);
 
 #endif /* included_vnet_lisp_gpe_h */
 

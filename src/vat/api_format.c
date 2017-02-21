@@ -2729,6 +2729,53 @@ static void
     }
 }
 
+static u8 *
+format_gpe_encap_mode (u8 * s, va_list * args)
+{
+  u32 mode = va_arg (*args, u32);
+
+  switch (mode)
+    {
+    case 0:
+      return format (s, "lisp");
+    case 1:
+      return format (s, "vxlan");
+    }
+  return 0;
+}
+
+static void
+  vl_api_gpe_get_encap_mode_reply_t_handler
+  (vl_api_gpe_get_encap_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "gpe mode: %U", format_gpe_encap_mode, mp->encap_mode);
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_gpe_get_encap_mode_reply_t_handler_json
+  (vl_api_gpe_get_encap_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  u8 *encap_mode = format (0, "%U", format_gpe_encap_mode, mp->encap_mode);
+  vec_add1 (encap_mode, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "gpe_mode", encap_mode);
+
+  vec_free (encap_mode);
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void
   vl_api_gpe_fwd_entry_path_details_t_handler
   (vl_api_gpe_fwd_entry_path_details_t * mp)
@@ -3900,6 +3947,7 @@ _(one_add_del_map_request_itr_rlocs_reply)              \
 _(one_eid_table_add_del_map_reply)                      \
 _(gpe_add_del_fwd_entry_reply)                          \
 _(gpe_enable_disable_reply)                             \
+_(gpe_set_encap_mode_reply)                             \
 _(gpe_add_del_iface_reply)                              \
 _(vxlan_gpe_add_del_tunnel_reply)                       \
 _(af_packet_delete_reply)                               \
@@ -4160,6 +4208,8 @@ _(ONE_EID_TABLE_VNI_DETAILS, one_eid_table_vni_details)                 \
 _(ONE_MAP_RESOLVER_DETAILS, one_map_resolver_details)                   \
 _(ONE_MAP_SERVER_DETAILS, one_map_server_details)                       \
 _(ONE_ADJACENCIES_GET_REPLY, one_adjacencies_get_reply)                 \
+_(GPE_SET_ENCAP_MODE_REPLY, gpe_set_encap_mode_reply)                   \
+_(GPE_GET_ENCAP_MODE_REPLY, gpe_get_encap_mode_reply)                   \
 _(GPE_ADD_DEL_IFACE_REPLY, gpe_add_del_iface_reply)                     \
 _(GPE_ENABLE_DISABLE_REPLY, gpe_enable_disable_reply)                   \
 _(GPE_ADD_DEL_FWD_ENTRY_REPLY, gpe_add_del_fwd_entry_reply)             \
@@ -14863,6 +14913,68 @@ api_one_add_del_adjacency (vat_main_t * vam)
 
 #define api_lisp_add_del_adjacency api_one_add_del_adjacency
 
+uword
+unformat_gpe_encap_mode (unformat_input_t * input, va_list * args)
+{
+  u32 *mode = va_arg (*args, u32 *);
+
+  if (unformat (input, "lisp"))
+    *mode = 0;
+  else if (unformat (input, "vxlan"))
+    *mode = 1;
+  else
+    return 0;
+
+  return 1;
+}
+
+static int
+api_gpe_get_encap_mode (vat_main_t * vam)
+{
+  vl_api_gpe_get_encap_mode_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (GPE_GET_ENCAP_MODE, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_gpe_set_encap_mode (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_gpe_set_encap_mode_t *mp;
+  int ret;
+  u32 mode = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_gpe_encap_mode, &mode))
+	;
+      else
+	break;
+    }
+
+  /* Construct the API message */
+  M (GPE_SET_ENCAP_MODE, mp);
+
+  mp->mode = mode;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
 static int
 api_lisp_gpe_add_del_iface (vat_main_t * vam)
 {
@@ -18471,6 +18583,8 @@ _(lisp_map_server_dump, "")                                             \
 _(lisp_adjacencies_get, "vni <vni>")                                    \
 _(lisp_gpe_fwd_entries_get, "vni <vni>")                                \
 _(lisp_gpe_fwd_entry_path_dump, "index <fwd_entry_index>")              \
+_(gpe_set_encap_mode, "lisp|vxlan")                                     \
+_(gpe_get_encap_mode, "")                                               \
 _(lisp_gpe_add_del_iface, "up|down")                                    \
 _(lisp_gpe_enable_disable, "enable|disable")                            \
 _(lisp_gpe_add_del_fwd_entry, "reid <eid> [leid <eid>] vni <vni>"       \

@@ -209,6 +209,102 @@ vnet_lisp_gpe_enable_disable (vnet_lisp_gpe_enable_disable_args_t * a)
   return 0;
 }
 
+/** Set GPE encapsulation mode. */
+int
+vnet_gpe_set_encap_mode (gpe_encap_mode_t mode)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+
+  if (mode >= GPE_ENCAP_COUNT)
+    return VNET_API_ERROR_INVALID_GPE_MODE;
+
+  if (pool_elts (lgm->lisp_fwd_entry_pool) != 0)
+    return VNET_API_ERROR_LISP_GPE_ENTRIES_PRESENT;
+
+  lgm->encap_mode = mode;
+  return 0;
+}
+
+/** CLI command to set GPE encap */
+static clib_error_t *
+gpe_set_encap_mode_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  gpe_encap_mode_t mode = GPE_ENCAP_COUNT;
+  vnet_api_error_t rv;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "lisp"))
+	mode = GPE_ENCAP_LISP;
+      else if (unformat (line_input, "vxlan"))
+	mode = GPE_ENCAP_VXLAN;
+      else
+	{
+	  return clib_error_return (0, "parse error: '%U'",
+				    format_unformat_error, line_input);
+	}
+    }
+  rv = vnet_gpe_set_encap_mode (mode);
+  if (rv)
+    {
+      return clib_error_return (0,
+				"Error: invalid mode or GPE entries are present!");
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gpe_set_encap_mode_command, static) = {
+  .path = "gpe encap",
+  .short_help = "gpe encap [lisp|vxlan]",
+  .function = gpe_set_encap_mode_command_fn,
+};
+/* *INDENT-ON* */
+
+/** Format GPE encap mode. */
+u8 *
+format_vnet_gpe_encap_mode (u8 * s, va_list * args)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+
+  switch (lgm->encap_mode)
+    {
+    case GPE_ENCAP_LISP:
+      return format (s, "lisp");
+    case GPE_ENCAP_VXLAN:
+      return format (s, "vxlan");
+    default:
+      return 0;
+    }
+  return 0;
+}
+
+/** CLI command to show GPE encap */
+static clib_error_t *
+gpe_show_encap_mode_command_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  vlib_cli_output (vm, "encap mode: %U", format_vnet_gpe_encap_mode);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gpe_show_encap_mode_command, static) = {
+  .path = "show gpe encap",
+  .short_help = "show GPE encapulation mode",
+  .function = gpe_show_encap_mode_command_fn,
+};
+/* *INDENT-ON* */
+
 /** CLI command to enable/disable LISP-GPE. */
 static clib_error_t *
 lisp_gpe_enable_disable_command_fn (vlib_main_t * vm,
@@ -318,6 +414,7 @@ lisp_gpe_init (vlib_main_t * vm)
   lgm->im6 = &ip6_main;
   lgm->lm4 = &ip4_main.lookup_main;
   lgm->lm6 = &ip6_main.lookup_main;
+  lgm->encap_mode = GPE_ENCAP_LISP;
 
   lgm->lisp_gpe_fwd_entries =
     hash_create_mem (0, sizeof (lisp_gpe_fwd_entry_key_t), sizeof (uword));
@@ -328,6 +425,13 @@ lisp_gpe_init (vlib_main_t * vm)
 			 lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
 
   return 0;
+}
+
+gpe_encap_mode_t
+vnet_gpe_get_encap_mode (void)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  return lgm->encap_mode;
 }
 
 VLIB_INIT_FUNCTION (lisp_gpe_init);
