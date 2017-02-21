@@ -109,6 +109,12 @@ extern ip_adjacency_t *adj_pool;
 extern vlib_combined_counter_main_t adjacency_counters;
 
 /**
+ * @brief Global Config for enabling per-adjacency counters
+ * This is configurable because it comes with  a non-negligible
+ * performance cost. */
+extern int adj_per_adj_counters;
+
+/**
  * @brief
  * Get a pointer to an adjacency object from its index
  */
@@ -116,6 +122,15 @@ static inline ip_adjacency_t *
 adj_get (adj_index_t adj_index)
 {
     return (vec_elt_at_index(adj_pool, adj_index));
+}
+
+/**
+ * @brief Get the global configuration option for enabling per-adj counters
+ */
+static inline int 
+adj_are_counters_enabled (void)
+{
+    return (adj_per_adj_counters);
 }
 
 #endif
