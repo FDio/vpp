@@ -22,23 +22,6 @@
 /**
  * A representation of a MAP DPO
  */
-typedef struct map_dpo_t
-{
-    /**
-     * The dat-plane protocol
-     */
-    dpo_proto_t md_proto;
-
-    /**
-     * the MAP domain index
-     */
-    u32 md_domain;
-
-    /**
-     * Number of locks/users of the label
-     */
-    u16 md_locks;
-} map_dpo_t;
 
 extern void map_dpo_create (dpo_proto_t dproto,
 			    u32 domain_index,
@@ -52,15 +35,8 @@ extern u8* format_map_dpo(u8 *s, va_list *args);
 /*
  * Encapsulation violation for fast data-path access
  */
-extern map_dpo_t *map_dpo_pool;
 extern dpo_type_t map_dpo_type;
 extern dpo_type_t map_t_dpo_type;
-
-static inline map_dpo_t *
-map_dpo_get (index_t index)
-{
-    return (pool_elt_at_index(map_dpo_pool, index));
-}
 
 extern void map_dpo_module_init(void);
 

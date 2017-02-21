@@ -17,48 +17,20 @@
 #include <vnet/map/map_dpo.h>
 
 /**
- * pool of all MPLS Label DPOs
- */
-map_dpo_t *map_dpo_pool;
-
-/**
  * The register MAP DPO type
  */
 dpo_type_t map_dpo_type;
 dpo_type_t map_t_dpo_type;
-
-static map_dpo_t *
-map_dpo_alloc (void)
-{
-    map_dpo_t *md;
-
-    pool_get_aligned(map_dpo_pool, md, CLIB_CACHE_LINE_BYTES);
-    memset(md, 0, sizeof(*md));
-
-    return (md);
-}
-
-static index_t
-map_dpo_get_index (map_dpo_t *md)
-{
-    return (md - map_dpo_pool);
-}
 
 void
 map_dpo_create (dpo_proto_t dproto,
 		u32 domain_index,
 		dpo_id_t *dpo)
 {
-    map_dpo_t *md;
-
-    md = map_dpo_alloc();
-    md->md_domain = domain_index;
-    md->md_proto = dproto;
-
     dpo_set(dpo,
 	    map_dpo_type,
 	    dproto,
-	    map_dpo_get_index(md));
+	    domain_index);
 }
 
 void
@@ -66,16 +38,10 @@ map_t_dpo_create (dpo_proto_t dproto,
 		  u32 domain_index,
 		  dpo_id_t *dpo)
 {
-    map_dpo_t *md;
-
-    md = map_dpo_alloc();
-    md->md_domain = domain_index;
-    md->md_proto = dproto;
-
     dpo_set(dpo,
 	    map_t_dpo_type,
 	    dproto,
-	    map_dpo_get_index(md));
+	    domain_index);
 }
 
 
@@ -84,14 +50,8 @@ format_map_dpo (u8 *s, va_list *args)
 {
     index_t index = va_arg (*args, index_t);
     CLIB_UNUSED(u32 indent) = va_arg (*args, u32);
-    map_dpo_t *md;
 
-    md = map_dpo_get(index);
-
-    return (format(s, "map:[%d]:%U domain:%d",
-		   index,
-                   format_dpo_proto, md->md_proto,
-		   md->md_domain));
+    return (format(s, "map: domain:%d", index));
 }
 
 u8*
@@ -99,40 +59,19 @@ format_map_t_dpo (u8 *s, va_list *args)
 {
     index_t index = va_arg (*args, index_t);
     CLIB_UNUSED(u32 indent) = va_arg (*args, u32);
-    map_dpo_t *md;
 
-    md = map_dpo_get(index);
-
-    return (format(s, "map-t:[%d]:%U domain:%d",
-		   index,
-                   format_dpo_proto, md->md_proto,
-		   md->md_domain));
+    return (format(s, "map-t: domain:%d", index));
 }
 
 
 static void
 map_dpo_lock (dpo_id_t *dpo)
 {
-    map_dpo_t *md;
-
-    md = map_dpo_get(dpo->dpoi_index);
-
-    md->md_locks++;
 }
 
 static void
 map_dpo_unlock (dpo_id_t *dpo)
 {
-    map_dpo_t *md;
-
-    md = map_dpo_get(dpo->dpoi_index);
-
-    md->md_locks--;
-
-    if (0 == md->md_locks)
-    {
-	pool_put(map_dpo_pool, md);
-    }
 }
 
 const static dpo_vft_t md_vft = {

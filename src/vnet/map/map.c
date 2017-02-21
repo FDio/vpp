@@ -177,7 +177,6 @@ map_create_domain (ip4_address_t * ip4_prefix,
   map_main_t *mm = &map_main;
   dpo_id_t dpo_v4 = DPO_INVALID;
   dpo_id_t dpo_v6 = DPO_INVALID;
-  fib_node_index_t fei;
   map_domain_t *d;
 
   /* Sanity check on the src prefix length */
@@ -268,57 +267,28 @@ map_create_domain (ip4_address_t * ip4_prefix,
   dpo_reset (&dpo_v4);
 
   /*
-   * Multiple MAP domains may share same source IPv6 TEP.
-   * In this case the route will exist and be MAP sourced.
-   * Find the adj (if any) already contributed and modify it
+   * construct a DPO to use the v6 domain
    */
-  fib_prefix_t pfx6 = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = d->ip6_src_len,
-    .fp_addr = {
-		.ip6 = d->ip6_src,
-		}
-    ,
-  };
-  fei = fib_table_lookup_exact_match (0, &pfx6);
-
-  if (FIB_NODE_INDEX_INVALID != fei)
-    {
-      dpo_id_t dpo = DPO_INVALID;
-
-      if (fib_entry_get_dpo_for_source (fei, FIB_SOURCE_MAP, &dpo))
-	{
-	  /*
-	   * modify the existing MAP to indicate it's shared
-	   * skip to route add.
-	   */
-	  const dpo_id_t *md_dpo;
-	  map_dpo_t *md;
-
-	  ASSERT (DPO_LOAD_BALANCE == dpo.dpoi_type);
-
-	  md_dpo = load_balance_get_bucket (dpo.dpoi_index, 0);
-	  md = map_dpo_get (md_dpo->dpoi_index);
-
-	  md->md_domain = ~0;
-	  dpo_copy (&dpo_v6, md_dpo);
-	  dpo_reset (&dpo);
-
-	  goto route_add;
-	}
-    }
-
   if (d->flags & MAP_DOMAIN_TRANSLATION)
     map_t_dpo_create (DPO_PROTO_IP6, *map_domain_index, &dpo_v6);
   else
     map_dpo_create (DPO_PROTO_IP6, *map_domain_index, &dpo_v6);
 
-route_add:
   /*
+   * Multiple MAP domains may share same source IPv6 TEP. Which is just dandy.
+   * We are not tracking the sharing. So a v4 lookup to find the correct
+   * domain post decap/trnaslate is always done
+   *
    * Create ip6 route. This is a reference counted add. If the prefix
    * already exists and is MAP sourced, it is now MAP source n+1 times
    * and will need to be removed n+1 times.
    */
+  fib_prefix_t pfx6 = {
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_len = d->ip6_src_len,
+    .fp_addr.ip6 = d->ip6_src,
+  };
+
   fib_table_entry_special_dpo_add (0, &pfx6,
 				   FIB_SOURCE_MAP,
 				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v6);
