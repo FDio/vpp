@@ -5,10 +5,11 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, UDP, ICMP, icmptypes, icmpcodes
 from util import ppp
 
 
@@ -463,6 +464,86 @@ class TestIPv4FibCrud(VppTestCase):
             "10.0.1.0", self.pg0.remote_ip4, 100))
         fib_dump = self.vapi.ip_fib_dump()
         self.verify_not_in_route_dump(fib_dump, self.deleted_routes)
+
+
+class TestIPNull(VppTestCase):
+    """ IPv4 routes via NULL """
+
+    def setUp(self):
+        super(TestIPNull, self).setUp()
+
+        # create 2 pg interfaces
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPNull, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def test_ip_null(self):
+        """ IP NULL route """
+
+        #
+        # A route via IP NULL that will reply with ICMP unreachables
+        #
+        ip_unreach = VppIpRoute(self, "10.0.0.1", 32, [], is_unreach=1)
+        ip_unreach.add_vpp_config()
+
+        p_unreach = (Ether(src=self.pg0.remote_mac,
+                           dst=self.pg0.local_mac) /
+                     IP(src=self.pg0.remote_ip4, dst="10.0.0.1") /
+                     UDP(sport=1234, dport=1234) /
+                     Raw('\xa5' * 100))
+
+        self.pg0.add_stream(p_unreach)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(1)
+        rx = rx[0]
+        icmp = rx[ICMP]
+
+        self.assertEqual(icmptypes[icmp.type], "dest-unreach")
+        self.assertEqual(icmpcodes[icmp.type][icmp.code], "host-unreachable")
+        self.assertEqual(icmp.src, self.pg0.remote_ip4)
+        self.assertEqual(icmp.dst, "10.0.0.1")
+
+        #
+        # ICMP replies are rate limited. so sit and spin.
+        #
+        self.sleep(1)
+
+        #
+        # A route via IP NULL that will reply with ICMP prohibited
+        #
+        ip_prohibit = VppIpRoute(self, "10.0.0.2", 32, [], is_prohibit=1)
+        ip_prohibit.add_vpp_config()
+
+        p_prohibit = (Ether(src=self.pg0.remote_mac,
+                            dst=self.pg0.local_mac) /
+                      IP(src=self.pg0.remote_ip4, dst="10.0.0.2") /
+                      UDP(sport=1234, dport=1234) /
+                      Raw('\xa5' * 100))
+
+        self.pg0.add_stream(p_prohibit)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(1)
+
+        rx = rx[0]
+        icmp = rx[ICMP]
+
+        self.assertEqual(icmptypes[icmp.type], "dest-unreach")
+        self.assertEqual(icmpcodes[icmp.type][icmp.code], "host-prohibited")
+        self.assertEqual(icmp.src, self.pg0.remote_ip4)
+        self.assertEqual(icmp.dst, "10.0.0.2")
 
 
 if __name__ == '__main__':

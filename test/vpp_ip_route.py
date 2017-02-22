@@ -46,26 +46,31 @@ class VppIpRoute(VppObject):
     """
 
     def __init__(self, test, dest_addr,
-                 dest_addr_len, paths, table_id=0, is_ip6=0, is_local=0):
+                 dest_addr_len, paths, table_id=0, is_ip6=0, is_local=0,
+                 is_unreach=0, is_prohibit=0):
         self._test = test
         self.paths = paths
         self.dest_addr_len = dest_addr_len
         self.table_id = table_id
         self.is_ip6 = is_ip6
         self.is_local = is_local
+        self.is_unreach = is_unreach
+        self.is_prohibit = is_prohibit
         if is_ip6:
             self.dest_addr = socket.inet_pton(socket.AF_INET6, dest_addr)
         else:
             self.dest_addr = socket.inet_pton(socket.AF_INET, dest_addr)
 
     def add_vpp_config(self):
-        if self.is_local:
+        if self.is_local or self.is_unreach or self.is_prohibit:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
                 socket.inet_pton(socket.AF_INET6, "::"),
                 0xffffffff,
-                is_local=1,
+                is_local=self.is_local,
+                is_unreach=self.is_unreach,
+                is_prohibit=self.is_prohibit,
                 table_id=self.table_id,
                 is_ipv6=self.is_ip6)
         else:
@@ -84,13 +89,15 @@ class VppIpRoute(VppObject):
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
-        if self.is_local:
+        if self.is_local or self.is_unreach or self.is_prohibit:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
                 socket.inet_pton(socket.AF_INET6, "::"),
                 0xffffffff,
-                is_local=1,
+                is_local=self.is_local,
+                is_unreach=self.is_unreach,
+                is_prohibit=self.is_prohibit,
                 is_add=0,
                 table_id=self.table_id,
                 is_ipv6=self.is_ip6)
@@ -116,10 +123,16 @@ class VppIpRoute(VppObject):
         return self.object_id()
 
     def object_id(self):
-        return ("%d:%s/%d"
-                % (self.table_id,
-                   socket.inet_ntop(socket.AF_INET, self.dest_addr),
-                   self.dest_addr_len))
+        if self.is_ip6:
+            return ("%d:%s/%d"
+                    % (self.table_id,
+                       socket.inet_ntop(socket.AF_INET6, self.dest_addr),
+                       self.dest_addr_len))
+        else:
+            return ("%d:%s/%d"
+                    % (self.table_id,
+                       socket.inet_ntop(socket.AF_INET, self.dest_addr),
+                       self.dest_addr_len))
 
 
 class VppIpMRoute(VppObject):

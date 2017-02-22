@@ -7,13 +7,14 @@ from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_neighbor import find_nbr
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6ND_RA, ICMPv6NDOptSrcLLAddr, getmacbyip6, ICMPv6MRD_Solicitation, \
     ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
-    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr
+    ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types
 
 from util import ppp
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
@@ -886,6 +887,74 @@ class IPv6NDProxyTest(TestIPv6ND):
         rx = self.pg0.get_capture(1)
 
         self.assertTrue(rx[0].haslayer(ICMPv6ND_NS))
+
+
+class TestIPNull(VppTestCase):
+    """ IPv6 routes via NULL """
+
+    def setUp(self):
+        super(TestIPNull, self).setUp()
+
+        # create 2 pg interfaces
+        self.create_pg_interfaces(range(1))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIPNull, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+
+    def test_ip_null(self):
+        """ IP NULL route """
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst="2001::1") /
+             UDP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        #
+        # A route via IP NULL that will reply with ICMP unreachables
+        #
+        ip_unreach = VppIpRoute(self, "2001::", 64, [], is_unreach=1, is_ip6=1)
+        ip_unreach.add_vpp_config()
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(1)
+        rx = rx[0]
+        icmp = rx[ICMPv6DestUnreach]
+
+        # 0 = "No route to destination"
+        self.assertEqual(icmp.code, 0)
+
+        # ICMP is rate limited. pause a bit
+        self.sleep(1)
+
+        #
+        # A route via IP NULL that will reply with ICMP prohibited
+        #
+        ip_prohibit = VppIpRoute(self, "2001::1", 128, [],
+                                 is_prohibit=1, is_ip6=1)
+        ip_prohibit.add_vpp_config()
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(1)
+        rx = rx[0]
+        icmp = rx[ICMPv6DestUnreach]
+
+        # 1 = "Communication with destination administratively prohibited"
+        self.assertEqual(icmp.code, 1)
 
 
 if __name__ == '__main__':
