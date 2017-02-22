@@ -59,8 +59,8 @@ class TestIPMcast(VppTestCase):
     def setUp(self):
         super(TestIPMcast, self).setUp()
 
-        # create 4 pg interfaces
-        self.create_pg_interfaces(range(4))
+        # create 8 pg interfaces
+        self.create_pg_interfaces(range(8))
 
         # setup interfaces
         for i in self.pg_interfaces:
@@ -176,7 +176,9 @@ class TestIPMcast(VppTestCase):
 
         #
         # A (*,G).
-        # one accepting interface, pg0, 3 forwarding interfaces
+        # one accepting interface, pg0, 7 forwarding interfaces
+        #  many forwarding interfaces test the case where the replicare DPO
+        #  needs to use extra cache lines for the buckets.
         #
         route_232_1_1_1 = VppIpMRoute(
             self,
@@ -190,6 +192,14 @@ class TestIPMcast(VppTestCase):
              VppMRoutePath(self.pg2.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
              VppMRoutePath(self.pg3.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg4.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg5.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg6.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg7.sw_if_index,
                            MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
         route_232_1_1_1.add_vpp_config()
 
@@ -235,9 +245,14 @@ class TestIPMcast(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        # We expect replications on Pg1, 2,
+        # We expect replications on Pg1->7
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
+        self.verify_capture_ip4(self.pg3, tx)
+        self.verify_capture_ip4(self.pg4, tx)
+        self.verify_capture_ip4(self.pg5, tx)
+        self.verify_capture_ip4(self.pg6, tx)
+        self.verify_capture_ip4(self.pg7, tx)
 
         # no replications on Pg0
         self.pg0.assert_nothing_captured(
