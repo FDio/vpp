@@ -13,21 +13,22 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir}
 AM_LDFLAGS = -module -shared -avoid-version
+AM_LIBTOOLFLAGS = --quiet
+SUFFIXES = .api.h .api .api.json
+API_FILES =
+BUILT_SOURCES =
+vppplugins_LTLIBRARIES =
+vppapitestplugins_LTLIBRARIES =
+noinst_HEADERS =
+nobase_apiinclude_HEADERS =
+ACLOCAL_AMFLAGS = -I m4
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
-vppapitestplugins_LTLIBRARIES = sample_test_plugin.la
-vppplugins_LTLIBRARIES = sample_plugin.la
-
-sample_plugin_la_SOURCES = sample/sample.c sample/node.c \
-	sample/sample_plugin.api.h
-
-BUILT_SOURCES = sample/sample.api.h sample/sample.api.json
-
-SUFFIXES = .api.h .api
+include sample.am
 
 %.api.h: %.api
 	mkdir -p `dirname $@` ; \
@@ -40,15 +41,15 @@ SUFFIXES = .api.h .api
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
 	| vppapigen --input - --json $@
 
-apidir = $(prefix)/sample/
-api_DATA = sample/sample.api.json
+apidir = $(prefix)/api/plugins
+apiincludedir = ${includedir}/vpp_plugins
 
-noinst_HEADERS =				\
-  sample/sample_all_api_h.h			\
-  sample/sample_msg_enum.h			\
-  sample/sample.api.h
+api_DATA = \
+	$(patsubst %.api,%.api.json,$(API_FILES))
 
-sample_test_plugin_la_SOURCES = sample/sample_test.c sample/sample_plugin.api.h
+BUILT_SOURCES += \
+	$(patsubst %.api,%.api.h,$(API_FILES))
+
 
 # Remove *.la files
 install-data-hook:
