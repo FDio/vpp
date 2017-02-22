@@ -368,5 +368,6 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 endif
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
+	@make test
 
 
