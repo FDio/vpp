@@ -160,7 +160,7 @@ trace_frame_queue (vlib_main_t * vm, unformat_input_t * input,
 	enable = 1;
       else if (unformat (line_input, "off"))
 	enable = 0;
-      else if (unformat (line_input, "index %u"), &index)
+      else if (unformat (line_input, "index %u", &index))
 	;
       else
 	return clib_error_return (0, "parse error: '%U'",
