@@ -17790,7 +17790,9 @@ api_sw_interface_set_mtu (vat_main_t * vam)
 static int
 q_or_quit (vat_main_t * vam)
 {
+#if VPP_API_TEST_BUILTIN == 0
   longjmp (vam->jump_buf, 1);
+#endif
   return 0;			/* not so much */
 }
 

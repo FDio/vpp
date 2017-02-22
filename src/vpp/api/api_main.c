@@ -88,6 +88,7 @@ api_command_fn (vlib_main_t * vm,
   /* Split input into cmd + args */
   this_cmd = cmdp = vam->inbuf;
 
+  /* Skip leading whitespace */
   while (cmdp < (this_cmd + vec_len (this_cmd)))
     {
       if (*cmdp == ' ' || *cmdp == '\t' || *cmdp == '\n')
@@ -99,15 +100,18 @@ api_command_fn (vlib_main_t * vm,
     }
 
   argsp = cmdp;
+
+  /* Advance past the command */
   while (argsp < (this_cmd + vec_len (this_cmd)))
     {
-      if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n')
+      if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n' && argsp != 0)
 	{
 	  argsp++;
 	}
       else
 	break;
     }
+  /* NULL terminate the command */
   *argsp++ = 0;
 
   while (argsp < (this_cmd + vec_len (this_cmd)))
@@ -158,7 +162,7 @@ api_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (api_command, static) =
 {
   .path = "binary-api",
-  .short_help = "binary-api <name> [<args>]",
+  .short_help = "binary-api [help] <name> [<args>]",
   .function = api_command_fn,
 };
 /* *INDENT-ON* */
