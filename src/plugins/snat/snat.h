@@ -217,9 +217,20 @@ typedef struct {
   dlist_elt_t * list_pool;
 } snat_main_per_thread_data_t;
 
+struct snat_main_s;
+
+typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
+                                        vlib_node_runtime_t *node,
+                                        u32 cpu_index,
+                                        vlib_buffer_t *b0,
+                                        snat_session_key_t *p_key,
+                                        snat_session_key_t *p_value,
+                                        u8 *p_dont_translate,
+                                        void *d);
+
 typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip, u32 rx_fib_index);
 
-typedef struct {
+typedef struct snat_main_s {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
@@ -232,6 +243,9 @@ typedef struct {
 
   /* Translated packets worker lookup => IP address + port number */
   clib_bihash_8_8_t worker_by_out;
+
+  snat_icmp_match_function_t * icmp_match_in2out_cb;
+  snat_icmp_match_function_t * icmp_match_out2in_cb;
 
   u32 num_workers;
   u32 first_worker_index;
@@ -381,6 +395,47 @@ snat_proto_to_ip_proto (snat_protocol_t snat_proto)
   ip_proto = (snat_proto == SNAT_PROTOCOL_ICMP) ? IP_PROTOCOL_ICMP : ip_proto;
 
   return ip_proto;
+}
+
+typedef struct {
+  u16 src_port, dst_port;
+} tcp_udp_header_t;
+
+u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
+                           u32 cpu_index, vlib_buffer_t *b0,
+                           snat_session_key_t *p_key,
+                           snat_session_key_t *p_value,
+                           u8 *p_dont_translate, void *d);
+u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
+                           u32 cpu_index, vlib_buffer_t *b0,
+                           snat_session_key_t *p_key,
+                           snat_session_key_t *p_value,
+                           u8 *p_dont_translate, void *d);
+u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
+                           u32 cpu_index, vlib_buffer_t *b0,
+                           snat_session_key_t *p_key,
+                           snat_session_key_t *p_value,
+                           u8 *p_dont_translate, void *d);
+u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
+                           u32 cpu_index, vlib_buffer_t *b0,
+                           snat_session_key_t *p_key,
+                           snat_session_key_t *p_value,
+                           u8 *p_dont_translate, void *d);
+
+static_always_inline u8
+icmp_is_error_message (icmp46_header_t * icmp)
+{
+  switch(icmp->type)
+    {
+    case ICMP4_destination_unreachable:
+    case ICMP4_time_exceeded:
+    case ICMP4_parameter_problem:
+    case ICMP4_source_quench:
+    case ICMP4_redirect:
+    case ICMP4_alternate_host_address:
+      return 1;
+    }
+  return 0;
 }
 
 #endif /* __included_snat_h__ */

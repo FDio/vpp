@@ -415,61 +415,23 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                                       s->in2out.fib_index);
   return next0;
 }
-                      
-typedef struct {
-  u16 src_port, dst_port;
-} tcp_udp_header_t;
 
-static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
-                                         vlib_buffer_t * b0,
-                                         ip4_header_t * ip0,
-                                         icmp46_header_t * icmp0,
-                                         u32 sw_if_index0,
-                                         u32 rx_fib_index0,
-                                         vlib_node_runtime_t * node,
-                                         u32 next0,
-                                         f64 now,
-                                         u32 cpu_index,
-                                         snat_session_t ** p_s0)
+static_always_inline
+snat_in2out_error_t icmp_get_key(icmp46_header_t *icmp0,
+                                 snat_session_key_t *p_key0)
 {
   snat_session_key_t key0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0 = 0;
   void *l4_header = 0;
   icmp46_header_t *inner_icmp0;
-  clib_bihash_kv_8_8_t kv0, value0;
-  snat_session_t * s0 = 0;
-  u32 new_addr0, old_addr0;
-  u16 old_id0, new_id0;
-  ip_csum_t sum0;
-  u16 checksum0;
-  snat_runtime_t * rt = (snat_runtime_t *)node->runtime_data;
-  u8 is_error_message = 0;
 
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
-  key0.addr = ip0->src_address;
-  key0.fib_index = rx_fib_index0;
-  
-  switch(icmp0->type)
-    {
-    case ICMP4_destination_unreachable:
-    case ICMP4_time_exceeded:
-    case ICMP4_parameter_problem:
-    case ICMP4_source_quench:
-    case ICMP4_redirect:
-    case ICMP4_alternate_host_address:
-      is_error_message = 1;
-    }
-
-  if (!is_error_message)
+  if (!icmp_is_error_message (icmp0))
     {
       if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
-        {
-          b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
-          next0 = SNAT_IN2OUT_NEXT_DROP;
-          goto out;
-        }
+        return SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE;
       key0.protocol = SNAT_PROTOCOL_ICMP;
       key0.port = echo0->identifier;
     }
@@ -490,21 +452,72 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
           key0.port = ((tcp_udp_header_t*)l4_header)->dst_port;
           break;
         default:
-          b0->error = node->errors[SNAT_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL];
-          next0 = SNAT_IN2OUT_NEXT_DROP;
-          goto out;
+          return SNAT_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL;
         }
     }
+  *p_key0 = key0;
+  return -1; /* success */
+}
+
+/**
+ * Get address and port values to be used for packet SNAT translation
+ * and create session if needed
+ *
+ * @param[in,out] sm             SNAT main
+ * @param[in,out] node           SNAT node runtime
+ * @param[in] cpu_index          CPU index
+ * @param[in,out] b0             buffer containing packet to be translated
+ * @param[out] p_key             address and port before NAT translation
+ * @param[out] p_value           address and port after NAT translation
+ * @param[out] p_dont_translate  if packet should not be translated
+ * @param d                      optional parameter
+ */
+u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
+                           u32 cpu_index, vlib_buffer_t *b0,
+                           snat_session_key_t *p_key,
+                           snat_session_key_t *p_value,
+                           u8 *p_dont_translate, void *d)
+{
+  snat_runtime_t *rt;
+  ip4_header_t *ip0;
+  icmp46_header_t *icmp0;
+  u32 sw_if_index0;
+  u32 rx_fib_index0;
+  snat_session_key_t key0;
+  snat_session_t *s0 = 0;
+  u8 dont_translate = 0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  u32 next0 = ~0;
+  int err;
+
+  rt = (snat_runtime_t *) node->runtime_data;
+  ip0 = vlib_buffer_get_current (b0);
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
+  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+
+  err = icmp_get_key (icmp0, &key0);
+  if (err != -1)
+    {
+      b0->error = node->errors[err];
+      next0 = SNAT_IN2OUT_NEXT_DROP;
+      goto out;
+    }
+  key0.addr = ip0->src_address;
+  key0.fib_index = rx_fib_index0;
 
   kv0.key = key0.as_u64;
-  
+
   if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
     {
       if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
-        goto out;
+        {
+          dont_translate = 1;
+          goto out;
+        }
 
-      if (is_error_message)
+      if (icmp_is_error_message (icmp0))
         {
           next0 = SNAT_IN2OUT_NEXT_DROP;
           goto out;
@@ -512,13 +525,128 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
 
       next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
                          &s0, node, next0, cpu_index);
-      
+
       if (PREDICT_FALSE (next0 == SNAT_IN2OUT_NEXT_DROP))
         goto out;
     }
   else
     s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
                             value0.value);
+
+out:
+  *p_key = key0;
+  if (s0)
+    *p_value = s0->out2in;
+  *p_dont_translate = dont_translate;
+  if (d)
+    *(snat_session_t**)d = s0;
+  return next0;
+}
+
+/**
+ * Get address and port values to be used for packet SNAT translation
+ *
+ * @param[in] sm                 SNAT main
+ * @param[in,out] node           SNAT node runtime
+ * @param[in] cpu_index          CPU index
+ * @param[in,out] b0             buffer containing packet to be translated
+ * @param[out] p_key             address and port before NAT translation
+ * @param[out] p_value           address and port after NAT translation
+ * @param[out] p_dont_translate  if packet should not be translated
+ * @param d                      optional parameter
+ */
+u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
+                           u32 cpu_index, vlib_buffer_t *b0,
+                           snat_session_key_t *p_key,
+                           snat_session_key_t *p_value,
+                           u8 *p_dont_translate, void *d)
+{
+  snat_runtime_t *rt;
+  ip4_header_t *ip0;
+  icmp46_header_t *icmp0;
+  u32 sw_if_index0;
+  u32 rx_fib_index0;
+  snat_session_key_t key0;
+  snat_session_key_t sm0;
+  u8 dont_translate = 0;
+  u32 next0 = ~0;
+  int err;
+
+  rt = (snat_runtime_t *) node->runtime_data;
+  ip0 = vlib_buffer_get_current (b0);
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
+  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
+
+  err = icmp_get_key (icmp0, &key0);
+  if (err != -1)
+    {
+      b0->error = node->errors[err];
+      next0 = SNAT_IN2OUT_NEXT_DROP;
+      goto out2;
+    }
+  key0.addr = ip0->src_address;
+  key0.fib_index = rx_fib_index0;
+
+  if (snat_static_mapping_match(sm, key0, &sm0, 0))
+    {
+      if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
+          IP_PROTOCOL_ICMP, rx_fib_index0)))
+        {
+          dont_translate = 1;
+          goto out;
+        }
+
+      if (icmp_is_error_message (icmp0))
+        {
+          next0 = SNAT_IN2OUT_NEXT_DROP;
+          goto out;
+        }
+
+      b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
+      next0 = SNAT_IN2OUT_NEXT_DROP;
+      goto out;
+    }
+
+out:
+  *p_value = sm0;
+out2:
+  *p_key = key0;
+  *p_dont_translate = dont_translate;
+  return next0;
+}
+
+static inline u32 icmp_in2out (snat_main_t *sm,
+                               vlib_buffer_t * b0,
+                               ip4_header_t * ip0,
+                               icmp46_header_t * icmp0,
+                               u32 sw_if_index0,
+                               u32 rx_fib_index0,
+                               vlib_node_runtime_t * node,
+                               u32 next0,
+                               u32 cpu_index,
+                               void *d)
+{
+  snat_session_key_t key0, sm0;
+  icmp_echo_header_t *echo0, *inner_echo0 = 0;
+  ip4_header_t *inner_ip0;
+  void *l4_header = 0;
+  icmp46_header_t *inner_icmp0;
+  u8 dont_translate;
+  u32 new_addr0, old_addr0;
+  u16 old_id0, new_id0;
+  ip_csum_t sum0;
+  u16 checksum0;
+  u32 next0_tmp;
+
+  echo0 = (icmp_echo_header_t *)(icmp0+1);
+
+  next0_tmp = sm->icmp_match_in2out_cb(sm, node, cpu_index, b0,
+                                       &key0, &sm0, &dont_translate, d);
+  if (next0_tmp != ~0)
+    next0 = next0_tmp;
+  if (next0 == SNAT_IN2OUT_NEXT_DROP || dont_translate)
+    goto out;
 
   sum0 = ip_incremental_checksum (0, icmp0,
                                   ntohs(ip0->length) - ip4_header_bytes (ip0));
@@ -530,28 +658,34 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
     }
 
   old_addr0 = ip0->src_address.as_u32;
-  ip0->src_address = s0->out2in.addr;
-  new_addr0 = ip0->src_address.as_u32;
-  vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
+  new_addr0 = ip0->src_address.as_u32 = sm0.addr.as_u32;
+  vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
 
   sum0 = ip0->checksum;
   sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
                          src_address /* changed member */);
   ip0->checksum = ip_csum_fold (sum0);
   
-  if (!is_error_message)
+  if (!icmp_is_error_message (icmp0))
     {
-      old_id0 = echo0->identifier;
-      new_id0 = s0->out2in.port;
-      echo0->identifier = new_id0;
+      new_id0 = sm0.port;
+      if (PREDICT_FALSE(new_id0 != echo0->identifier))
+        {
+          old_id0 = echo0->identifier;
+          new_id0 = sm0.port;
+          echo0->identifier = new_id0;
 
-      sum0 = icmp0->checksum;
-      sum0 = ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
-                             identifier);
-      icmp0->checksum = ip_csum_fold (sum0);
+          sum0 = icmp0->checksum;
+          sum0 = ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
+                                 identifier);
+          icmp0->checksum = ip_csum_fold (sum0);
+        }
     }
   else
     {
+      inner_ip0 = (ip4_header_t *)(echo0+1);
+      l4_header = ip4_next_header (inner_ip0);
+
       if (!ip4_header_checksum_is_valid (inner_ip0))
         {
           next0 = SNAT_IN2OUT_NEXT_DROP;
@@ -559,7 +693,7 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
         }
 
       old_addr0 = inner_ip0->dst_address.as_u32;
-      inner_ip0->dst_address = s0->out2in.addr;
+      inner_ip0->dst_address = sm0.addr;
       new_addr0 = inner_ip0->src_address.as_u32;
 
       sum0 = icmp0->checksum;
@@ -570,8 +704,11 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
       switch (key0.protocol)
         {
           case SNAT_PROTOCOL_ICMP:
+            inner_icmp0 = (icmp46_header_t*)l4_header;
+            inner_echo0 = (icmp_echo_header_t *)(inner_icmp0+1);
+
             old_id0 = inner_echo0->identifier;
-            new_id0 = s0->out2in.port;
+            new_id0 = sm0.port;
             inner_echo0->identifier = new_id0;
 
             sum0 = icmp0->checksum;
@@ -582,7 +719,7 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
           case SNAT_PROTOCOL_UDP:
           case SNAT_PROTOCOL_TCP:
             old_id0 = ((tcp_udp_header_t*)l4_header)->dst_port;
-            new_id0 = s0->out2in.port;
+            new_id0 = sm0.port;
             ((tcp_udp_header_t*)l4_header)->dst_port = new_id0;
 
             sum0 = icmp0->checksum;
@@ -595,22 +732,7 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
         }
     }
 
-  /* Accounting */
-  s0->last_heard = now;
-  s0->total_pkts++;
-  s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
-  /* Per-user LRU list maintenance for dynamic translations */
-  if (!snat_is_session_static (s0))
-    {
-      clib_dlist_remove (sm->per_thread_data[cpu_index].list_pool,
-                         s0->per_user_index);
-      clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool,
-                          s0->per_user_list_head_index,
-                          s0->per_user_index);
-    }
-
 out:
-  *p_s0 = s0;
   return next0;
 }
 
@@ -714,6 +836,40 @@ snat_hairpinning (snat_main_t *sm,
             }
         }
     }
+}
+
+static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
+                                         vlib_buffer_t * b0,
+                                         ip4_header_t * ip0,
+                                         icmp46_header_t * icmp0,
+                                         u32 sw_if_index0,
+                                         u32 rx_fib_index0,
+                                         vlib_node_runtime_t * node,
+                                         u32 next0,
+                                         f64 now,
+                                         u32 cpu_index,
+                                         snat_session_t ** p_s0)
+{
+  next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
+                      next0, cpu_index, p_s0);
+  snat_session_t * s0 = *p_s0;
+  if (PREDICT_TRUE(next0 != SNAT_IN2OUT_NEXT_DROP && s0))
+    {
+      /* Accounting */
+      s0->last_heard = now;
+      s0->total_pkts++;
+      s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
+      /* Per-user LRU list maintenance for dynamic translations */
+      if (!snat_is_session_static (s0))
+        {
+          clib_dlist_remove (sm->per_thread_data[cpu_index].list_pool,
+                             s0->per_user_index);
+          clib_dlist_addtail (sm->per_thread_data[cpu_index].list_pool,
+                              s0->per_user_list_head_index,
+                              s0->per_user_index);
+        }
+    }
+  return next0;
 }
 
 static inline uword
@@ -1997,67 +2153,6 @@ VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_worker_handoff_node, snat_in2out_worker_handoff_fn);
 
-/********************************/
-/*** static mapping only mode ***/
-/********************************/
-static inline u32 icmp_in2out_static_map (snat_main_t *sm,
-                                          vlib_buffer_t * b0,
-                                          ip4_header_t * ip0,
-                                          icmp46_header_t * icmp0,
-                                          u32 sw_if_index0,
-                                          vlib_node_runtime_t * node,
-                                          u32 next0,
-                                          u32 rx_fib_index0)
-{
-  snat_session_key_t key0, sm0;
-  icmp_echo_header_t *echo0;
-  u32 new_addr0, old_addr0;
-  u16 old_id0, new_id0;
-  ip_csum_t sum0;
-  snat_runtime_t * rt = (snat_runtime_t *)node->runtime_data;
-
-  echo0 = (icmp_echo_header_t *)(icmp0+1);
-
-  key0.addr = ip0->src_address;
-  key0.port = echo0->identifier;
-  key0.fib_index = rx_fib_index0;
-  
-  if (snat_static_mapping_match(sm, key0, &sm0, 0))
-    {
-      if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
-          IP_PROTOCOL_ICMP, rx_fib_index0)))
-        return next0;
-
-      b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
-      return SNAT_IN2OUT_NEXT_DROP;
-    }
-
-  new_addr0 = sm0.addr.as_u32;
-  new_id0 = sm0.port;
-  vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
-  old_addr0 = ip0->src_address.as_u32;
-  ip0->src_address.as_u32 = new_addr0;
-  
-  sum0 = ip0->checksum;
-  sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
-                         ip4_header_t,
-                         src_address /* changed member */);
-  ip0->checksum = ip_csum_fold (sum0);
-  
-  if (PREDICT_FALSE(new_id0 != echo0->identifier))
-    {
-      old_id0 = echo0->identifier;
-      echo0->identifier = new_id0;
-
-      sum0 = icmp0->checksum;
-      sum0 = ip_csum_update (sum0, old_id0, new_id0, icmp_echo_header_t,
-                             identifier);
-      icmp0->checksum = ip_csum_fold (sum0);
-    }
-
-  return next0;
-}
-
 static uword
 snat_in2out_fast_static_map_fn (vlib_main_t * vm,
                                 vlib_node_runtime_t * node,
@@ -2130,8 +2225,8 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
                   proto0, rx_fib_index0)))
                 goto trace0;
 
-              next0 = icmp_in2out_static_map
-                (sm, b0, ip0, icmp0, sw_if_index0, node, next0, rx_fib_index0);
+              next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0,
+                                  rx_fib_index0, node, next0, ~0, 0);
               goto trace0;
             }
 

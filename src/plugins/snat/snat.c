@@ -2657,6 +2657,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
       if (!static_mapping_only ||
           (static_mapping_only && static_mapping_connection_tracking))
         {
+          sm->icmp_match_in2out_cb = icmp_match_in2out_slow;
+          sm->icmp_match_out2in_cb = icmp_match_out2in_slow;
+
           clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
                                 user_memory_size);
 
@@ -2673,6 +2676,11 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
           clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
                                 user_memory_size);
+        }
+      else
+        {
+          sm->icmp_match_in2out_cb = icmp_match_in2out_fast;
+          sm->icmp_match_out2in_cb = icmp_match_out2in_fast;
         }
       clib_bihash_init_8_8 (&sm->static_mapping_by_local,
                             "static_mapping_by_local", static_mapping_buckets,
