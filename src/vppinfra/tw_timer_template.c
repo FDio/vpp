@@ -337,7 +337,7 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 	break;
     }
 
-  tw->last_run_time += i * tw->ticks_per_second;
+  tw->last_run_time += i * tw->timer_interval;
   return total_nexpirations;
 }
 
