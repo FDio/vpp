@@ -33,6 +33,56 @@
  * Abstraction Layer and pcap Tx Trace.
  */
 
+
+static clib_error_t *
+get_hqos (u32 hw_if_index, u32 subport_id, dpdk_device_t ** xd,
+	  dpdk_device_config_t ** devconf)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  vnet_hw_interface_t *hw;
+  struct rte_eth_dev_info dev_info;
+  uword *p = 0;
+  clib_error_t *error = NULL;
+
+
+  if (hw_if_index == (u32) ~ 0)
+    {
+      error = clib_error_return (0, "please specify valid interface name");
+      goto done;
+    }
+
+  if (subport_id != 0)
+    {
+      error = clib_error_return (0, "Invalid subport");
+      goto done;
+    }
+
+  hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
+  *xd = vec_elt_at_index (dm->devices, hw->dev_instance);
+
+  rte_eth_dev_info_get ((*xd)->device_index, &dev_info);
+  if (dev_info.pci_dev)
+    {				/* bonded interface has no pci info */
+      vlib_pci_addr_t pci_addr;
+
+      pci_addr.domain = dev_info.pci_dev->addr.domain;
+      pci_addr.bus = dev_info.pci_dev->addr.bus;
+      pci_addr.slot = dev_info.pci_dev->addr.devid;
+      pci_addr.function = dev_info.pci_dev->addr.function;
+
+      p =
+	hash_get (dm->conf->device_config_index_by_pci_addr, pci_addr.as_u32);
+    }
+
+  if (p)
+    (*devconf) = pool_elt_at_index (dm->conf->dev_confs, p[0]);
+  else
+    (*devconf) = &dm->conf->default_devconf;
+
+done:
+  return error;
+}
+
 static clib_error_t *
 pcap_trace_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -316,10 +366,19 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * This command displays statistics of each DPDK mempool.
+ *
+ * @cliexpar
+ * Example of how to display DPDK buffer data:
+ * @cliexstart{show dpdk buffer}
+ * name="mbuf_pool_socket0"  available =   15104 allocated =    1280 total =   16384
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_bufferr,static) = {
     .path = "show dpdk buffer",
-    .short_help = "show dpdk buffer state",
+    .short_help = "show dpdk buffer",
     .function = show_dpdk_buffer,
     .is_mp_safe = 1,
 };
@@ -378,10 +437,36 @@ test_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * This command tests the allocation and freeing of DPDK buffers.
+ * If both '<em>allocate</em>' and '<em>free</em>' are entered on the
+ * same command, the '<em>free</em>' is executed first. If no
+ * parameters are provided, this command display how many DPDK buffers
+ * the test command has allocated.
+ *
+ * @cliexpar
+ * @parblock
+ *
+ * Example of how to display how many DPDK buffer test command has allcoated:
+ * @cliexstart{test dpdk buffer}
+ * Currently 0 buffers allocated
+ * @cliexend
+ *
+ * Example of how to allocate DPDK buffers using the test command:
+ * @cliexstart{test dpdk buffer allocate 10}
+ * Currently 10 buffers allocated
+ * @cliexend
+ *
+ * Example of how to free DPDK buffers allocated by the test command:
+ * @cliexstart{test dpdk buffer free 10}
+ * Currently 0 buffers allocated
+ * @cliexend
+ * @endparblock
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_test_dpdk_buffer,static) = {
     .path = "test dpdk buffer",
-    .short_help = "test dpdk buffer [allocate <nn>][free <nn>]",
+    .short_help = "test dpdk buffer [allocate <nn>] [free <nn>]",
     .function = test_dpdk_buffer,
     .is_mp_safe = 1,
 };
@@ -460,10 +545,20 @@ done:
   return error;
 }
 
+/*?
+ * This command sets the number of DPDK '<em>rx</em>' and
+ * '<em>tx</em>' descriptors for the given physical interface. Use
+ * the command '<em>show hardware-interface</em>' to display the
+ * current descriptor allocation.
+ *
+ * @cliexpar
+ * Example of how to set the DPDK interface descriptors:
+ * @cliexcmd{set dpdk interface descriptors GigabitEthernet0/8/0 rx 512 tx 512}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
     .path = "set dpdk interface descriptors",
-    .short_help = "set dpdk interface descriptors <if-name> [rx <n>] [tx <n>]",
+    .short_help = "set dpdk interface descriptors <interface> [rx <nn>] [tx <nn>]",
     .function = set_dpdk_if_desc,
 };
 /* *INDENT-ON* */
@@ -482,7 +577,8 @@ show_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
 
   for (cpu = 0; cpu < vec_len (dm->devices_by_cpu); cpu++)
     {
-      if (vec_len (dm->devices_by_cpu[cpu]))
+      if (cpu >= dm->input_cpu_first_index &&
+	  cpu < (dm->input_cpu_first_index + dm->input_cpu_count))
 	vlib_cli_output (vm, "Thread %u (%s at lcore %u):", cpu,
 			 vlib_worker_threads[cpu].name,
 			 vlib_worker_threads[cpu].lcore_id);
@@ -499,6 +595,21 @@ show_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * This command is used to display the thread and core each
+ * DPDK interface and queue is assigned too.
+ *
+ * @cliexpar
+ * Example of how to display the DPDK interface placement:
+ * @cliexstart{show dpdk interface placement}
+ * Thread 1 (vpp_wk_0 at lcore 1):
+ *   GigabitEthernet0/8/0 queue 0
+ *   GigabitEthernet0/9/0 queue 0
+ * Thread 2 (vpp_wk_1 at lcore 2):
+ *   GigabitEthernet0/8/0 queue 1
+ *   GigabitEthernet0/9/0 queue 1
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_if_placement,static) = {
     .path = "show dpdk interface placement",
@@ -596,18 +707,18 @@ set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
                 rte_lcore_to_socket_id(vlib_worker_threads[cpu].lcore_id);
 
               vec_sort_with_function(dm->devices_by_cpu[i],
-                                     dpdk_device_queue_sort);
+		                     dpdk_device_queue_sort);
 
               vec_sort_with_function(dm->devices_by_cpu[cpu],
-                                     dpdk_device_queue_sort);
+		                     dpdk_device_queue_sort);
 
               if (vec_len(dm->devices_by_cpu[i]) == 0)
                 vlib_node_set_state (vlib_mains[i], dpdk_input_node.index,
-                                     VLIB_NODE_STATE_DISABLED);
+		                     VLIB_NODE_STATE_DISABLED);
 
               if (vec_len(dm->devices_by_cpu[cpu]) == 1)
                 vlib_node_set_state (vlib_mains[cpu], dpdk_input_node.index,
-                                     VLIB_NODE_STATE_POLLING);
+		                     VLIB_NODE_STATE_POLLING);
 
               goto done;
             }
@@ -623,10 +734,30 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to assign a given interface, and optionally a
+ * given queue, to a different thread. This will not create a thread,
+ * so the thread must already exist. Use '<em>/etc/vpp/startup.conf</em>'
+ * for the initial thread creation. If the '<em>queue</em>' is not provided,
+ * it defaults to 0.
+ *
+ * @cliexpar
+ * Example of how to display the DPDK interface placement:
+ * @cliexstart{show dpdk interface placement}
+ * Thread 1 (vpp_wk_0 at lcore 1):
+ *   GigabitEthernet0/8/0 queue 0
+ *   GigabitEthernet0/9/0 queue 0
+ * Thread 2 (vpp_wk_1 at lcore 2):
+ *   GigabitEthernet0/8/0 queue 1
+ *   GigabitEthernet0/9/0 queue 1
+ * @cliexend
+ * Example of how to assign a DPDK interface and queue to a thread:
+ * @cliexcmd{set dpdk interface placement GigabitEthernet0/8/0 queue 1 thread 1}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_placement,static) = {
     .path = "set dpdk interface placement",
-    .short_help = "set dpdk interface placement <if-name> [queue <n>]  thread <n>",
+    .short_help = "set dpdk interface placement <interface> [queue <n>] thread <n>",
     .function = set_dpdk_if_placement,
 };
 /* *INDENT-ON* */
@@ -645,7 +776,8 @@ show_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
 
   for (cpu = 0; cpu < vec_len (dm->devices_by_hqos_cpu); cpu++)
     {
-      if (vec_len (dm->devices_by_hqos_cpu[cpu]))
+      if (cpu >= dm->hqos_cpu_first_index &&
+	  cpu < (dm->hqos_cpu_first_index + dm->hqos_cpu_count))
 	vlib_cli_output (vm, "Thread %u (%s at lcore %u):", cpu,
 			 vlib_worker_threads[cpu].name,
 			 vlib_worker_threads[cpu].lcore_id);
@@ -661,6 +793,19 @@ show_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/*?
+ * This command is used to display the thread and core each
+ * DPDK output interface and HQoS queue is assigned too.
+ *
+ * @cliexpar
+ * Example of how to display the DPDK output interface and HQoS queue placement:
+ * @cliexstart{show dpdk interface hqos placement}
+ * Thread 1 (vpp_hqos-threads_0 at lcore 3):
+ *   GigabitEthernet0/8/0 queue 0
+ * Thread 2 (vpp_hqos-threads_1 at lcore 4):
+ *   GigabitEthernet0/9/0 queue 0
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_if_hqos_placement, static) = {
   .path = "show dpdk interface hqos placement",
@@ -749,10 +894,27 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to assign a given DPDK output interface and
+ * HQoS queue to a different thread. This will not create a thread,
+ * so the thread must already exist. Use '<em>/etc/vpp/startup.conf</em>'
+ * for the initial thread creation. See @ref qos_doc for more details.
+ *
+ * @cliexpar
+ * Example of how to display the DPDK output interface and HQoS queue placement:
+ * @cliexstart{show dpdk interface hqos placement}
+ * Thread 1 (vpp_hqos-threads_0 at lcore 3):
+ *   GigabitEthernet0/8/0 queue 0
+ * Thread 2 (vpp_hqos-threads_1 at lcore 4):
+ *   GigabitEthernet0/9/0 queue 0
+ * @cliexend
+ * Example of how to assign a DPDK output interface and HQoS queue to a thread:
+ * @cliexcmd{set dpdk interface hqos placement GigabitEthernet0/8/0 thread 2}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_placement, static) = {
   .path = "set dpdk interface hqos placement",
-  .short_help = "set dpdk interface hqos placement <if-name> thread <n>",
+  .short_help = "set dpdk interface hqos placement <interface> thread <n>",
   .function = set_dpdk_if_hqos_placement,
 };
 /* *INDENT-ON* */
@@ -819,12 +981,28 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to change the profile associate with a HQoS pipe. The
+ * '<em><profile_id></em>' is zero based. Use the command
+ * '<em>show dpdk interface hqos</em>' to display the content of each profile.
+ * See @ref qos_doc for more details.
+ *
+ * @note
+ * Currently there is not an API to create a new HQoS pipe profile. One is
+ * created by default in the code (search for '<em>hqos_pipe_params_default</em>'').
+ * Additional profiles can be created in code and code recompiled. Then use this
+ * command to assign it.
+ *
+ * @cliexpar
+ * Example of how to assign a new profile to a HQoS pipe:
+ * @cliexcmd{set dpdk interface hqos pipe GigabitEthernet0/8/0 subport 0 pipe 2 profile 1}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_pipe, static) =
 {
   .path = "set dpdk interface hqos pipe",
-  .short_help = "set dpdk interface hqos pipe <if-name> subport <n> pipe <n> "
-                  "profile <n>",
+  .short_help = "set dpdk interface hqos pipe <interface> subport <subport_id> pipe <pipe_id> "
+                  "profile <profile_id>",
   .function = set_dpdk_if_hqos_pipe,
 };
 /* *INDENT-ON* */
@@ -835,18 +1013,18 @@ set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   dpdk_main_t *dm = &dpdk_main;
-  vnet_hw_interface_t *hw;
-  dpdk_device_t *xd;
+  dpdk_device_t *xd = NULL;
   u32 hw_if_index = (u32) ~ 0;
   u32 subport_id = (u32) ~ 0;
-  struct rte_sched_subport_params p = {
-    .tb_rate = 1250000000,	/* 10GbE */
-    .tb_size = 1000000,
-    .tc_rate = {1250000000, 1250000000, 1250000000, 1250000000},
-    .tc_period = 10,
-  };
+  struct rte_sched_subport_params p;
   int rv;
   clib_error_t *error = NULL;
+  u32 tb_rate = (u32) ~ 0;
+  u32 tb_size = (u32) ~ 0;
+  u32 tc_rate[RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE] =
+    { (u32) ~ 0, (u32) ~ 0, (u32) ~ 0, (u32) ~ 0 };
+  u32 tc_period = (u32) ~ 0;
+  dpdk_device_config_t *devconf = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -859,24 +1037,19 @@ set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "subport %d", &subport_id))
 	;
-      else if (unformat (line_input, "rate %d", &p.tb_rate))
-	{
-	  p.tc_rate[0] = p.tb_rate;
-	  p.tc_rate[1] = p.tb_rate;
-	  p.tc_rate[2] = p.tb_rate;
-	  p.tc_rate[3] = p.tb_rate;
-	}
-      else if (unformat (line_input, "bktsize %d", &p.tb_size))
+      else if (unformat (line_input, "rate %d", &tb_rate))
 	;
-      else if (unformat (line_input, "tc0 %d", &p.tc_rate[0]))
+      else if (unformat (line_input, "bktsize %d", &tb_size))
 	;
-      else if (unformat (line_input, "tc1 %d", &p.tc_rate[1]))
+      else if (unformat (line_input, "tc0 %d", &tc_rate[0]))
 	;
-      else if (unformat (line_input, "tc2 %d", &p.tc_rate[2]))
+      else if (unformat (line_input, "tc1 %d", &tc_rate[1]))
 	;
-      else if (unformat (line_input, "tc3 %d", &p.tc_rate[3]))
+      else if (unformat (line_input, "tc2 %d", &tc_rate[2]))
 	;
-      else if (unformat (line_input, "period %d", &p.tc_period))
+      else if (unformat (line_input, "tc3 %d", &tc_rate[3]))
+	;
+      else if (unformat (line_input, "period %d", &tc_period))
 	;
       else
 	{
@@ -886,20 +1059,59 @@ set_dpdk_if_hqos_subport (vlib_main_t * vm, unformat_input_t * input,
 	}
     }
 
-  if (hw_if_index == (u32) ~ 0)
-    {
-      error = clib_error_return (0, "please specify valid interface name");
-      goto done;
-    }
+  error = get_hqos (hw_if_index, subport_id, &xd, &devconf);
 
-  hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
-  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
-
-  rv = rte_sched_subport_config (xd->hqos_ht->hqos, subport_id, &p);
-  if (rv)
+  if (error == NULL)
     {
-      error = clib_error_return (0, "subport configuration failed");
-      goto done;
+      /* Copy the current values over to local structure. */
+      memcpy (&p, &devconf->hqos.subport[subport_id], sizeof (p));
+
+      /* Update local structure with input values. */
+      if (tb_rate != (u32) ~ 0)
+	{
+	  p.tb_rate = tb_rate;
+	  p.tc_rate[0] = tb_rate;
+	  p.tc_rate[1] = tb_rate;
+	  p.tc_rate[2] = tb_rate;
+	  p.tc_rate[3] = tb_rate;
+	}
+      if (tb_size != (u32) ~ 0)
+	{
+	  p.tb_size = tb_size;
+	}
+      if (tc_rate[0] != (u32) ~ 0)
+	{
+	  p.tc_rate[0] = tc_rate[0];
+	}
+      if (tc_rate[1] != (u32) ~ 0)
+	{
+	  p.tc_rate[1] = tc_rate[1];
+	}
+      if (tc_rate[2] != (u32) ~ 0)
+	{
+	  p.tc_rate[2] = tc_rate[2];
+	}
+      if (tc_rate[3] != (u32) ~ 0)
+	{
+	  p.tc_rate[3] = tc_rate[3];
+	}
+      if (tc_period != (u32) ~ 0)
+	{
+	  p.tc_period = tc_period;
+	}
+
+      /* Apply changes. */
+      rv = rte_sched_subport_config (xd->hqos_ht->hqos, subport_id, &p);
+      if (rv)
+	{
+	  error = clib_error_return (0, "subport configuration failed");
+	  goto done;
+	}
+      else
+	{
+	  /* Successfully applied, so save of the input values. */
+	  memcpy (&devconf->hqos.subport[subport_id], &p, sizeof (p));
+	}
     }
 
 done:
@@ -908,10 +1120,25 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to set the subport level parameters such as token
+ * bucket rate (bytes per seconds), token bucket size (bytes), traffic class
+ * rates (bytes per seconds) and token update period (Milliseconds).
+ *
+ * By default, the '<em>rate</em>' is set to 1250000000 bytes/second (10GbE
+ * rate) and each of the four traffic classes is set to 100% of the port rate.
+ * If the '<em>rate</em>' is updated by this command, all four traffic classes
+ * are assigned the same value. Each of the four traffic classes can be updated
+ * individually.
+ *
+ * @cliexpar
+ * Example of how modify the subport attributes for a 1GbE link:
+ * @cliexcmd{set dpdk interface hqos subport GigabitEthernet0/8/0 subport 0 rate 125000000}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_subport, static) = {
   .path = "set dpdk interface hqos subport",
-  .short_help = "set dpdk interface hqos subport <if-name> subport <n> "
+  .short_help = "set dpdk interface hqos subport <interface> subport <subport_id> "
                  "[rate <n>] [bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] "
                  "[period <n>]",
   .function = set_dpdk_if_hqos_subport,
@@ -974,7 +1201,7 @@ set_dpdk_if_hqos_tctbl (vlib_main_t * vm, unformat_input_t * input,
     }
   if (queue >= RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS)
     {
-      error = clib_error_return (0, "invalid traffic class");
+      error = clib_error_return (0, "invalid traffic class queue");
       goto done;
     }
 
@@ -1004,10 +1231,31 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to set the traffic class translation table. The
+ * traffic class translation table is used to map 64 values (0-63) to one of
+ * four traffic class and one of four HQoS input queue. Use the '<em>show
+ * dpdk interface hqos</em>' command to display the traffic class translation
+ * table. See @ref qos_doc for more details.
+ *
+ * This command has the following parameters:
+ *
+ * - <b><interface></b> - Used to specify the output interface.
+ *
+ * - <b>entry <map_val></b> - Mapped value (0-63) to assign traffic class and queue to.
+ *
+ * - <b>tc <tc_id></b> - Traffic class (0-3) to be used by the provided mapped value.
+ *
+ * - <b>queue <queue_id></b> - HQoS input queue (0-3) to be used by the provided mapped value.
+ *
+ * @cliexpar
+ * Example of how modify the traffic class translation table:
+ * @cliexcmd{set dpdk interface hqos tctbl GigabitEthernet0/8/0 entry 16 tc 2 queue 2}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_tctbl, static) = {
   .path = "set dpdk interface hqos tctbl",
-  .short_help = "set dpdk interface hqos tctbl <if-name> entry <n> tc <n> queue <n>",
+  .short_help = "set dpdk interface hqos tctbl <interface> entry <map_val> tc <tc_id> queue <queue_id>",
   .function = set_dpdk_if_hqos_tctbl,
 };
 /* *INDENT-ON* */
@@ -1058,6 +1306,12 @@ set_dpdk_if_hqos_pktfield (vlib_main_t * vm, unformat_input_t * input,
 	  (line_input, "%U", unformat_vnet_hw_interface, dm->vnet_main,
 	   &hw_if_index))
 	;
+      else if (unformat (line_input, "id subport"))
+	id = 0;
+      else if (unformat (line_input, "id pipe"))
+	id = 1;
+      else if (unformat (line_input, "id tc"))
+	id = 2;
       else if (unformat (line_input, "id %d", &id))
 	;
       else if (unformat (line_input, "offset %d", &offset))
@@ -1178,11 +1432,50 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to set the packet fields required for classifiying the
+ * incoming packet. As a result of classification process, packet field
+ * information will be mapped to 5 tuples (subport, pipe, traffic class, pipe,
+ * color) and stored in packet mbuf.
+ *
+ * This command has the following parameters:
+ *
+ * - <b><interface></b> - Used to specify the output interface.
+ *
+ * - <b>id subport|pipe|tc</b> - Classification occurs across three fields.
+ * This parameter indicates which of the three masks are being configured. Legacy
+ * code used 0-2 to represent these three fields, so 0-2 is still accepted.
+ *   - <b>subport|0</b> - Currently only one subport is supported, so only
+ * an empty mask is supported for the subport classification.
+ *   - <b>pipe|1</b> - Currently, 4096 pipes per subport are supported, so a
+ * 12-bit mask should be configure to map to the 0-4095 pipes.
+ *   - <b>tc|2</b> - The translation table (see '<em>set dpdk interface hqos
+ * tctbl</em>' command) maps each value (0-63) into one of the 4 traffic classes
+ * per pipe. A 6-bit mask should be configure to map this field to a traffic class.
+ *
+ * - <b>offset <n></b> - Offset in the packet to apply the 64-bit mask for classification.
+ * The offset should be on an 8-byte boundary (0,8,16,24..).
+ *
+ * - <b>mask <hex-mask></b> - 64-bit mask to apply to packet at the given '<em>offset</em>'.
+ * Bits must be contiguous and should not include '<em>0x</em>'.
+ *
+ * The default values for the '<em>pktfield</em>' assumes Ethernet/IPv4/UDP packets with
+ * no VLAN. Adjust based on expected packet format and desired classification field.
+ * - '<em>subport</em>' is always empty (offset 0 mask 0000000000000000)
+ * - By default, '<em>pipe</em>' maps to the UDP payload bits 12 .. 23 (offset 40
+ * mask 0000000fff000000)
+ * - By default, '<em>tc</em>' maps to the DSCP field in IP header (offset 48 mask
+ * 00000000000000fc)
+ *
+ * @cliexpar
+ * Example of how modify the '<em>pipe</em>' classification filter to match VLAN:
+ * @cliexcmd{set dpdk interface hqos pktfield GigabitEthernet0/8/0 id pipe offset 8 mask 0000000000000FFF}
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_dpdk_if_hqos_pktfield, static) = {
   .path = "set dpdk interface hqos pktfield",
-  .short_help = "set dpdk interface hqos pktfield <if-name> id <n> offset <n> "
-                 "mask <n>",
+  .short_help = "set dpdk interface hqos pktfield <interface> id subport|pipe|tc offset <n> "
+                 "mask <hex-mask>",
   .function = set_dpdk_if_hqos_pktfield,
 };
 /* *INDENT-ON* */
@@ -1201,7 +1494,7 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
   dpdk_device_hqos_per_worker_thread_t *wk;
   u32 *tctbl;
   u32 hw_if_index = (u32) ~ 0;
-  u32 profile_id, i;
+  u32 profile_id, subport_id, i;
   struct rte_eth_dev_info dev_info;
   dpdk_device_config_t *devconf = 0;
   vlib_thread_registration_t *tr;
@@ -1284,40 +1577,156 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 		   ht->hqos_burst_deq);
 
   vlib_cli_output (vm,
-		   "   Packet field 0: slab position = %4u, slab bitmask = 0x%016llx",
+		   "   Packet field 0: slab position = %4u, slab bitmask = 0x%016llx   (subport)",
 		   wk->hqos_field0_slabpos, wk->hqos_field0_slabmask);
   vlib_cli_output (vm,
-		   "   Packet field 1: slab position = %4u, slab bitmask = 0x%016llx",
+		   "   Packet field 1: slab position = %4u, slab bitmask = 0x%016llx   (pipe)",
 		   wk->hqos_field1_slabpos, wk->hqos_field1_slabmask);
   vlib_cli_output (vm,
-		   "   Packet field 2: slab position = %4u, slab bitmask = 0x%016llx",
+		   "   Packet field 2: slab position = %4u, slab bitmask = 0x%016llx   (tc)",
 		   wk->hqos_field2_slabpos, wk->hqos_field2_slabmask);
-  vlib_cli_output (vm, "   Packet field 2 translation table:");
-  vlib_cli_output (vm, "     [ 0 .. 15]: "
-		   "%2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u",
-		   tctbl[0], tctbl[1], tctbl[2], tctbl[3],
-		   tctbl[4], tctbl[5], tctbl[6], tctbl[7],
-		   tctbl[8], tctbl[9], tctbl[10], tctbl[11],
-		   tctbl[12], tctbl[13], tctbl[14], tctbl[15]);
-  vlib_cli_output (vm, "     [16 .. 31]: "
-		   "%2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u",
-		   tctbl[16], tctbl[17], tctbl[18], tctbl[19],
-		   tctbl[20], tctbl[21], tctbl[22], tctbl[23],
-		   tctbl[24], tctbl[25], tctbl[26], tctbl[27],
-		   tctbl[28], tctbl[29], tctbl[30], tctbl[31]);
-  vlib_cli_output (vm, "     [32 .. 47]: "
-		   "%2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u",
-		   tctbl[32], tctbl[33], tctbl[34], tctbl[35],
-		   tctbl[36], tctbl[37], tctbl[38], tctbl[39],
-		   tctbl[40], tctbl[41], tctbl[42], tctbl[43],
-		   tctbl[44], tctbl[45], tctbl[46], tctbl[47]);
-  vlib_cli_output (vm, "     [48 .. 63]: "
-		   "%2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u %2u",
-		   tctbl[48], tctbl[49], tctbl[50], tctbl[51],
-		   tctbl[52], tctbl[53], tctbl[54], tctbl[55],
-		   tctbl[56], tctbl[57], tctbl[58], tctbl[59],
-		   tctbl[60], tctbl[61], tctbl[62], tctbl[63]);
-
+  vlib_cli_output (vm,
+		   "   Packet field 2  tc translation table: ([Mapped Value Range]: tc/queue tc/queue ...)");
+  vlib_cli_output (vm,
+		   "     [ 0 .. 15]: "
+		   "%u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u",
+		   tctbl[0] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[0] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[1] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[1] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[2] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[2] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[3] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[3] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[4] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[4] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[5] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[5] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[6] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[6] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[7] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[7] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[8] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[8] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[9] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[9] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[10] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[10] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[11] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[11] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[12] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[12] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[13] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[13] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[14] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[14] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[15] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[15] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS);
+  vlib_cli_output (vm,
+		   "     [16 .. 31]: "
+		   "%u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u",
+		   tctbl[16] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[16] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[17] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[17] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[18] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[18] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[19] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[19] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[20] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[20] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[21] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[21] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[22] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[22] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[23] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[23] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[24] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[24] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[25] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[25] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[26] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[26] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[27] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[27] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[28] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[28] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[29] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[29] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[30] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[30] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[31] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[31] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS);
+  vlib_cli_output (vm,
+		   "     [32 .. 47]: "
+		   "%u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u",
+		   tctbl[32] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[32] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[33] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[33] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[34] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[34] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[35] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[35] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[36] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[36] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[37] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[37] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[38] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[38] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[39] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[39] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[40] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[40] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[41] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[41] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[42] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[42] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[43] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[43] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[44] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[44] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[45] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[45] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[46] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[46] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[47] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[47] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS);
+  vlib_cli_output (vm,
+		   "     [48 .. 63]: "
+		   "%u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u %u/%u",
+		   tctbl[48] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[48] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[49] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[49] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[50] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[50] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[51] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[51] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[52] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[52] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[53] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[53] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[54] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[54] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[55] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[55] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[56] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[56] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[57] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[57] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[58] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[58] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[59] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[59] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[60] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[60] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[61] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[61] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[62] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[62] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[63] / RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS,
+		   tctbl[63] % RTE_SCHED_QUEUES_PER_TRAFFIC_CLASS);
   vlib_cli_output (vm, " Port:");
   vlib_cli_output (vm, "   Rate = %u bytes/second", cfg->port.rate);
   vlib_cli_output (vm, "   MTU = %u bytes", cfg->port.mtu);
@@ -1333,6 +1742,23 @@ show_dpdk_if_hqos (vlib_main_t * vm, unformat_input_t * input,
 		   cfg->port.qsize[3]);
   vlib_cli_output (vm, "   Number of pipe profiles = %u",
 		   cfg->port.n_pipe_profiles);
+
+  for (subport_id = 0; subport_id < vec_len (cfg->subport); subport_id++)
+    {
+      vlib_cli_output (vm, " Subport %u:", subport_id);
+      vlib_cli_output (vm, "   Rate = %u bytes/second",
+		       cfg->subport[subport_id].tb_rate);
+      vlib_cli_output (vm, "   Token bucket size = %u bytes",
+		       cfg->subport[subport_id].tb_size);
+      vlib_cli_output (vm,
+		       "   Traffic class rate: TC0 = %u, TC1 = %u, TC2 = %u, TC3 = %u bytes/second",
+		       cfg->subport[subport_id].tc_rate[0],
+		       cfg->subport[subport_id].tc_rate[1],
+		       cfg->subport[subport_id].tc_rate[2],
+		       cfg->subport[subport_id].tc_rate[3]);
+      vlib_cli_output (vm, "   TC period = %u milliseconds",
+		       cfg->subport[subport_id].tc_period);
+    }
 
   for (profile_id = 0; profile_id < vec_len (cfg->pipe); profile_id++)
     {
@@ -1398,10 +1824,53 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to display details of an output interface's HQoS
+ * settings.
+ *
+ * @cliexpar
+ * Example of how to display HQoS settings for an interfaces:
+ * @cliexstart{show dpdk interface hqos GigabitEthernet0/8/0}
+ *  Thread:
+ *    Input SWQ size = 4096 packets
+ *    Enqueue burst size = 256 packets
+ *    Dequeue burst size = 220 packets
+ *    Packet field 0: slab position =    0, slab bitmask = 0x0000000000000000   (subport)
+ *    Packet field 1: slab position =   40, slab bitmask = 0x0000000fff000000   (pipe)
+ *    Packet field 2: slab position =    8, slab bitmask = 0x00000000000000fc   (tc)
+ *    Packet field 2  tc translation table: ([Mapped Value Range]: tc/queue tc/queue ...)
+ *      [ 0 .. 15]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+ *      [16 .. 31]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+ *      [32 .. 47]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+ *      [48 .. 63]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+ *  Port:
+ *    Rate = 1250000000 bytes/second
+ *    MTU = 1514 bytes
+ *    Frame overhead = 24 bytes
+ *    Number of subports = 1
+ *    Number of pipes per subport = 4096
+ *    Packet queue size: TC0 = 64, TC1 = 64, TC2 = 64, TC3 = 64 packets
+ *    Number of pipe profiles = 2
+ *  Subport 0:
+ *    Rate = 1250000000 bytes/second
+ *    Token bucket size = 1000000 bytes
+ *    Traffic class rate: TC0 = 1250000000, TC1 = 1250000000, TC2 = 1250000000, TC3 = 1250000000 bytes/second
+ *    TC period = 10 milliseconds
+ *  Pipe profile 0:
+ *    Rate = 305175 bytes/second
+ *    Token bucket size = 1000000 bytes
+ *    Traffic class rate: TC0 = 305175, TC1 = 305175, TC2 = 305175, TC3 = 305175 bytes/second
+ *    TC period = 40 milliseconds
+ *    TC0 WRR weights: Q0 = 1, Q1 = 1, Q2 = 1, Q3 = 1
+ *    TC1 WRR weights: Q0 = 1, Q1 = 1, Q2 = 1, Q3 = 1
+ *    TC2 WRR weights: Q0 = 1, Q1 = 1, Q2 = 1, Q3 = 1
+ *    TC3 WRR weights: Q0 = 1, Q1 = 1, Q2 = 1, Q3 = 1
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_if_hqos, static) = {
   .path = "show dpdk interface hqos",
-  .short_help = "show dpdk interface hqos <if-name>",
+  .short_help = "show dpdk interface hqos <interface>",
   .function = show_dpdk_if_hqos,
 };
 
@@ -1412,6 +1881,8 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+#ifdef RTE_SCHED_COLLECT_STATS
   dpdk_main_t *dm = &dpdk_main;
   u32 hw_if_index = (u32) ~ 0;
   u32 subport = (u32) ~ 0;
@@ -1426,7 +1897,6 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   u32 qindex;
   struct rte_sched_queue_stats stats;
   u16 qlen;
-  clib_error_t *error = NULL;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1517,6 +1987,16 @@ show_dpdk_hqos_queue_stats (vlib_main_t * vm, unformat_input_t * input,
   vlib_cli_output (vm, "%=24s%=16d", "Bytes", stats.n_bytes);
   vlib_cli_output (vm, "%=24s%=16d", "Bytes dropped", stats.n_bytes_dropped);
 
+#else
+
+  /* Get a line of input */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  vlib_cli_output (vm, "RTE_SCHED_COLLECT_STATS disabled in DPDK");
+  goto done;
+
+#endif
 
 done:
   unformat_free (line_input);
@@ -1524,10 +2004,29 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to display statistics associated with a HQoS traffic class
+ * queue.
+ *
+ * @note
+ * Statistic collection by the scheduler is disabled by default in DPDK. In order to
+ * turn it on, add the following line to '<em>../vpp/dpdk/Makefile</em>':
+ * - <b>$(call set,RTE_SCHED_COLLECT_STATS,y)</b>
+ *
+ * @cliexpar
+ * Example of how to display statistics of HQoS a HQoS traffic class queue:
+ * @cliexstart{show dpdk hqos queue GigabitEthernet0/9/0 subport 0 pipe 3181 tc 0 tc_q 0}
+ *      Stats Parameter          Value
+ *          Packets               140
+ *      Packets dropped            0
+ *           Bytes               8400
+ *       Bytes dropped             0
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_show_dpdk_hqos_queue_stats, static) = {
   .path = "show dpdk hqos queue",
-  .short_help = "show dpdk hqos queue <if-name> subport <subport> pipe <pipe> tc <tc> tc_q <tc_q>",
+  .short_help = "show dpdk hqos queue <interface> subport <subport_id> pipe <pipe_id> tc <tc_id> tc_q <queue_id>",
   .function = show_dpdk_hqos_queue_stats,
 };
 /* *INDENT-ON* */
@@ -1544,10 +2043,21 @@ show_dpdk_version_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * This command is used to display the current DPDK version and
+ * the list of arguments passed to DPDK when started.
+ *
+ * @cliexpar
+ * Example of how to display how many DPDK buffer test command has allcoated:
+ * @cliexstart{show dpdk version}
+ * DPDK Version:        DPDK 16.11.0
+ * DPDK EAL init args:  -c 1 -n 4 --huge-dir /run/vpp/hugepages --file-prefix vpp -w 0000:00:08.0 -w 0000:00:09.0 --master-lcore 0 --socket-mem 256
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
   .path = "show dpdk version",
-  .short_help = "show dpdk version information",
+  .short_help = "show dpdk version",
   .function = show_dpdk_version_command_fn,
 };
 /* *INDENT-ON* */

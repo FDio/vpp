@@ -195,21 +195,22 @@ token bucket rate (bytes per seconds), token bucket size (bytes), traffic
 class rates (bytes per seconds) and token update period (Milliseconds).
 
 ```
-set dpdk interface hqos subport <if-name> subport <n> [rate <n>]
+set dpdk interface hqos subport <interface> subport <subport_id> [rate <n>]
     [bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] [period <n>]
 ```
 
 For setting the pipe profile, following command can be used.    
 
 ```
-set dpdk interface hqos pipe <if-name> subport <n> pipe <n> profile <n>
+set dpdk interface hqos pipe <interface> subport <subport_id> pipe <pipe_id>
+    profile <profile_id>
 ```
 
 To assign QoS scheduler instance to the specific thread, following command can
 be used.
 
 ```
-set dpdk interface hqos placement <if-name> thread <n>
+set dpdk interface hqos placement <interface> thread <n>
 ```
 
 The command below is used to set the packet fields required for classifiying
@@ -218,13 +219,14 @@ information will be mapped to 5 tuples (subport, pipe, traffic class, pipe,
 color) and stored in packet mbuf.
 
 ```
-set dpdk interface hqos pktfield <if-name> id <n> offset <n> mask <n>
+set dpdk interface hqos pktfield <interface> id subport|pipe|tc offset <n>
+    mask <hex-mask>
 ```
 
 The DSCP table entries used for idenfiying the traffic class and queue can be set using the command below;   
 
 ```  
-set dpdk interface hqos tctbl <if-name> entry <n> tc <n> queue <n>
+set dpdk interface hqos tctbl <interface> entry <map_val> tc <tc_id> queue <queue_id>
 ```
 
 
@@ -238,14 +240,14 @@ The QoS Scheduler configuration can displayed using the command below.
      Input SWQ size = 4096 packets
      Enqueue burst size = 256 packets
      Dequeue burst size = 220 packets
-     Packet field 0: slab position =    0, slab bitmask = 0x0000000000000000
-     Packet field 1: slab position =   40, slab bitmask = 0x0000000fff000000
-     Packet field 2: slab position =    8, slab bitmask = 0x00000000000000fc
-     Packet field 2 translation table:
-     [ 0 .. 15]:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-     [16 .. 31]:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-     [32 .. 47]:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
-     [48 .. 63]:  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+     Packet field 0: slab position =    0, slab bitmask = 0x0000000000000000   (subport)
+     Packet field 1: slab position =   40, slab bitmask = 0x0000000fff000000   (pipe)
+     Packet field 2: slab position =    8, slab bitmask = 0x00000000000000fc   (tc)
+     Packet field 2  tc translation table: ([Mapped Value Range]: tc/queue tc/queue ...)
+     [ 0 .. 15]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+     [16 .. 31]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+     [32 .. 47]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
+     [48 .. 63]: 0/0 0/1 0/2 0/3 1/0 1/1 1/2 1/3 2/0 2/1 2/2 2/3 3/0 3/1 3/2 3/3
    Port:
      Rate = 1250000000 bytes/second
      MTU = 1514 bytes
@@ -254,7 +256,12 @@ The QoS Scheduler configuration can displayed using the command below.
      Number of pipes per subport = 4096
      Packet queue size: TC0 = 64, TC1 = 64, TC2 = 64, TC3 = 64 packets
      Number of pipe profiles = 1
-     Pipe profile 0:
+   Subport 0:
+     Rate = 120000000 bytes/second
+     Token bucket size = 1000000 bytes
+     Traffic class rate: TC0 = 120000000, TC1 = 120000000, TC2 = 120000000, TC3 = 120000000 bytes/second
+     TC period = 10 milliseconds
+   Pipe profile 0:
      Rate = 305175 bytes/second
      Token bucket size = 1000000 bytes
      Traffic class rate: TC0 = 305175, TC1 = 305175, TC2 = 305175, TC3 = 305175 bytes/second
@@ -270,9 +277,9 @@ below command.
 
 ```
     vpp# show dpdk interface hqos placement
-      Thread 5 (vpp_hqos-threads_0 at lcore 5):
+    Thread 5 (vpp_hqos-threads_0 at lcore 5):
       TenGigabitEthernet2/0/0 queue 0
-      Thread 6 (vpp_hqos-threads_1 at lcore 6):
+    Thread 6 (vpp_hqos-threads_1 at lcore 6):
       TenGigabitEthernet4/0/1 queue 0
 ```
 
