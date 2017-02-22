@@ -1093,8 +1093,6 @@ uword unformat_l2_mask (unformat_input_t * input, va_list * args)
 
 uword unformat_classify_mask (unformat_input_t * input, va_list * args)
 {
-  vnet_classify_main_t * CLIB_UNUSED(cm) 
-    = va_arg (*args, vnet_classify_main_t *);
   u8 ** maskp = va_arg (*args, u8 **);
   u32 * skipp = va_arg (*args, u32 *);
   u32 * matchp = va_arg (*args, u32 *);
@@ -1417,7 +1415,7 @@ classify_table_command_fn (vlib_main_t * vm,
     else if (unformat (input, "table %d", &table_index))
       ;
     else if (unformat (input, "mask %U", unformat_classify_mask, 
-                       cm, &mask, &skip, &match))
+                       &mask, &skip, &match))
       ;
     else if (unformat (input, "memory-size %uM", &tmp))
       memory_size = tmp<<20;
