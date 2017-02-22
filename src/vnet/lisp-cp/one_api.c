@@ -27,10 +27,10 @@
 
 #include <vnet/vnet_msg_enum.h>
 
-#define vl_api_remote_locator_t_endian vl_noop_handler
-#define vl_api_remote_locator_t_print vl_noop_handler
-#define vl_api_local_locator_t_endian vl_noop_handler
-#define vl_api_local_locator_t_print vl_noop_handler
+#define vl_api_one_remote_locator_t_endian vl_noop_handler
+#define vl_api_one_remote_locator_t_print vl_noop_handler
+#define vl_api_one_local_locator_t_endian vl_noop_handler
+#define vl_api_one_local_locator_t_print vl_noop_handler
 
 #define vl_api_one_add_del_locator_set_t_endian vl_noop_handler
 #define vl_api_one_add_del_locator_set_t_print vl_noop_handler
@@ -92,11 +92,11 @@ _(ONE_USE_PETR, one_use_petr)                                           \
 _(SHOW_ONE_USE_PETR, show_one_use_petr)                                 \
 
 static locator_t *
-unformat_one_locs (vl_api_remote_locator_t * rmt_locs, u32 rloc_num)
+unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
 {
   u32 i;
   locator_t *locs = 0, loc;
-  vl_api_remote_locator_t *r;
+  vl_api_one_remote_locator_t *r;
 
   for (i = 0; i < rloc_num; i++)
     {
@@ -121,7 +121,7 @@ vl_api_one_add_del_locator_set_t_handler (vl_api_one_add_del_locator_set_t *
   int rv = 0;
   vnet_lisp_add_del_locator_set_args_t _a, *a = &_a;
   locator_t locator;
-  vl_api_local_locator_t *ls_loc;
+  vl_api_one_local_locator_t *ls_loc;
   u32 ls_index = ~0, locator_num;
   u8 *locator_name = NULL;
   int i;
@@ -1271,7 +1271,7 @@ static void
 setup_message_id_table (api_main_t * am)
 {
 #define _(id,n,crc) vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
-  foreach_vl_msg_name_crc_lisp;
+  foreach_vl_msg_name_crc_one;
 #undef _
 }
 
