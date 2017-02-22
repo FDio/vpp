@@ -112,6 +112,7 @@ errmsg (char *fmt, ...)
   vec_free (s);
 }
 
+#if VPP_API_TEST_BUILTIN == 0
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
@@ -130,7 +131,6 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-#if VPP_API_TEST_BUILTIN == 0
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
 unformat_ip4_address (unformat_input_t * input, va_list * args)
@@ -385,6 +385,21 @@ unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
 #undef _
     else
     return 0;
+  return 1;
+}
+#else /* VPP_API_TEST_BUILTIN == 1 */
+static uword
+api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
+{
+  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 *result = va_arg (*args, u32 *);
+  u32 sw_if_index;
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    return 0;
+
+  *result = sw_if_index;
   return 1;
 }
 #endif /* VPP_API_TEST_BUILTIN */
