@@ -502,6 +502,7 @@ unformat_function_t unformat_ip_next_index;
 unformat_function_t unformat_ip4_match;
 unformat_function_t unformat_ip6_match;
 unformat_function_t unformat_l3_match;
+unformat_function_t unformat_l4_match;
 unformat_function_t unformat_vlan_tag;
 unformat_function_t unformat_l2_match;
 unformat_function_t unformat_classify_match;

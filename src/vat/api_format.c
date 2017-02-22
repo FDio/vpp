@@ -112,6 +112,7 @@ errmsg (char *fmt, ...)
   vec_free (s);
 }
 
+#if VPP_API_TEST_BUILTIN == 0
 static uword
 api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 {
@@ -130,7 +131,6 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
   return 1;
 }
 
-#if VPP_API_TEST_BUILTIN == 0
 /* Parse an IP4 address %d.%d.%d.%d. */
 uword
 unformat_ip4_address (unformat_input_t * input, va_list * args)
@@ -387,6 +387,21 @@ unformat_ikev2_id_type (unformat_input_t * input, va_list * args)
     return 0;
   return 1;
 }
+#else /* VPP_API_TEST_BUILTIN == 1 */
+static uword
+api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
+{
+  vat_main_t *vam __attribute__ ((unused)) = va_arg (*args, vat_main_t *);
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 *result = va_arg (*args, u32 *);
+  u32 sw_if_index;
+
+  if (!unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+    return 0;
+
+  *result = sw_if_index;
+  return 1;
+}
 #endif /* VPP_API_TEST_BUILTIN */
 
 static uword
@@ -511,6 +526,7 @@ static const char *mfib_flag_long_names[] = MFIB_ENTRY_NAMES_LONG;
 static const char *mfib_itf_flag_long_names[] = MFIB_ITF_NAMES_LONG;
 static const char *mfib_itf_flag_names[] = MFIB_ITF_NAMES_SHORT;
 
+#if (VPP_API_TEST_BUILTIN==0)
 uword
 unformat_mfib_itf_flags (unformat_input_t * input, va_list * args)
 {
@@ -553,7 +569,6 @@ unformat_mfib_entry_flags (unformat_input_t * input, va_list * args)
   return (old == *eflags ? 0 : 1);
 }
 
-#if (VPP_API_TEST_BUILTIN==0)
 u8 *
 format_ip4_address (u8 * s, va_list * args)
 {
@@ -8724,6 +8739,12 @@ _(ttl)                                          \
 _(protocol)                                     \
 _(checksum)
 
+typedef struct
+{
+  u16 src_port, dst_port;
+} tcpudp_header_t;
+
+#if VPP_API_TEST_BUILTIN == 0
 uword
 unformat_tcp_mask (unformat_input_t * input, va_list * args)
 {
@@ -8805,11 +8826,6 @@ unformat_udp_mask (unformat_input_t * input, va_list * args)
   *maskp = mask;
   return 1;
 }
-
-typedef struct
-{
-  u16 src_port, dst_port;
-} tcpudp_header_t;
 
 uword
 unformat_l4_mask (unformat_input_t * input, va_list * args)
@@ -9204,6 +9220,7 @@ unformat_classify_mask (unformat_input_t * input, va_list * args)
 
   return 0;
 }
+#endif /* VPP_API_TEST_BUILTIN */
 
 #define foreach_l2_next                         \
 _(drop, DROP)                                   \
@@ -9242,7 +9259,7 @@ _(local, LOCAL)                                 \
 _(rewrite, REWRITE)
 
 uword
-unformat_ip_next_index (unformat_input_t * input, va_list * args)
+api_unformat_ip_next_index (unformat_input_t * input, va_list * args)
 {
   u32 *miss_next_indexp = va_arg (*args, u32 *);
   u32 next_index = 0;
@@ -9270,7 +9287,7 @@ out:
 _(deny, DENY)
 
 uword
-unformat_acl_next_index (unformat_input_t * input, va_list * args)
+api_unformat_acl_next_index (unformat_input_t * input, va_list * args)
 {
   u32 *miss_next_indexp = va_arg (*args, u32 *);
   u32 next_index = 0;
@@ -9358,13 +9375,13 @@ api_classify_add_del_table (vat_main_t * vam)
 	;
       else if (unformat (i, "next-table %d", &next_table_index))
 	;
-      else if (unformat (i, "miss-next %U", unformat_ip_next_index,
+      else if (unformat (i, "miss-next %U", api_unformat_ip_next_index,
 			 &miss_next_index))
 	;
       else if (unformat (i, "l2-miss-next %U", unformat_l2_next_index,
 			 &miss_next_index))
 	;
-      else if (unformat (i, "acl-miss-next %U", unformat_acl_next_index,
+      else if (unformat (i, "acl-miss-next %U", api_unformat_acl_next_index,
 			 &miss_next_index))
 	;
       else if (unformat (i, "current-data-flag %d", &current_data_flag))
@@ -9421,6 +9438,7 @@ api_classify_add_del_table (vat_main_t * vam)
   return ret;
 }
 
+#if VPP_API_TEST_BUILTIN == 0
 uword
 unformat_l4_match (unformat_input_t * input, va_list * args)
 {
@@ -9785,10 +9803,10 @@ unformat_l2_match (unformat_input_t * input, va_list * args)
   *matchp = match;
   return 1;
 }
-
+#endif
 
 uword
-unformat_classify_match (unformat_input_t * input, va_list * args)
+api_unformat_classify_match (unformat_input_t * input, va_list * args)
 {
   u8 **matchp = va_arg (*args, u8 **);
   u32 skip_n_vectors = va_arg (*args, u32);
@@ -9884,13 +9902,13 @@ api_classify_add_del_session (vat_main_t * vam)
     {
       if (unformat (i, "del"))
 	is_add = 0;
-      else if (unformat (i, "hit-next %U", unformat_ip_next_index,
+      else if (unformat (i, "hit-next %U", api_unformat_ip_next_index,
 			 &hit_next_index))
 	;
       else if (unformat (i, "l2-hit-next %U", unformat_l2_next_index,
 			 &hit_next_index))
 	;
-      else if (unformat (i, "acl-hit-next %U", unformat_acl_next_index,
+      else if (unformat (i, "acl-hit-next %U", api_unformat_acl_next_index,
 			 &hit_next_index))
 	;
       else if (unformat (i, "policer-hit-next %d", &hit_next_index))
@@ -9903,7 +9921,7 @@ api_classify_add_del_session (vat_main_t * vam)
 	;
       else if (unformat (i, "match_n %d", &match_n_vectors))
 	;
-      else if (unformat (i, "match %U", unformat_classify_match,
+      else if (unformat (i, "match %U", api_unformat_classify_match,
 			 &match, skip_n_vectors, match_n_vectors))
 	;
       else if (unformat (i, "advance %d", &advance))
