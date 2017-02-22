@@ -335,6 +335,13 @@ class VppInterface(object):
             self.sw_if_index,
             ip_sw_if_index)
 
+    def unset_unnumbered(self, ip_sw_if_index):
+        """ Unaet the interface to unnumbered via ip_sw_if_index """
+        self.test.vapi.sw_interface_set_unnumbered(
+            self.sw_if_index,
+            ip_sw_if_index,
+            is_add=0)
+
     def set_proxy_arp(self, enable=1):
         """ Set the interface to enable/disable Proxy ARP """
         self.test.vapi.proxy_arp_intfc_enable_disable(
