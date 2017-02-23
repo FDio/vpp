@@ -6,9 +6,6 @@
     interfaces in 5 VRFs are tested
     - jumbo packets in configuration with 15 pg-ip6 interfaces leads to \
     problems too
-    - Reset of FIB table / VRF does not remove routes from IP FIB (see Jira \
-    ticket https://jira.fd.io/browse/VPP-560) so checks of reset VRF tables \
-    are skipped in tests 2, 3 and 4
 
 **config 1**
     - add 15 pg-ip6 interfaces
@@ -25,7 +22,7 @@
     - no packet received in case of pg-ip6 interfaces not in VRF
 
 **config 2**
-    - delete 2 VRFs
+    - reset 2 VRFs
 
 **test 2**
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
@@ -36,7 +33,7 @@
     - no packet received in case of pg-ip6 interfaces not in VRF
 
 **config 3**
-    - add 1 of deleted VRFs and 1 new VRF
+    - add 1 of reset VRFs and 1 new VRF
 
 **test 3**
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
@@ -47,7 +44,7 @@
     - no packet received in case of pg-ip6 interfaces not in VRF
 
 **config 4**
-    - delete all VRFs (i.e. no VRF except VRF=0 created)
+    - reset all VRFs (i.e. no VRF except VRF=0 created)
 
 **test 4**
     - send IP6 packets between all pg-ip6 interfaces in all VRF groups
@@ -60,13 +57,39 @@
 
 import unittest
 import random
+import socket
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet6 import IPv6, UDP
+from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
+    RouterAlert, IPv6ExtHdrHopByHop
+from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
+from scapy.pton_ntop import inet_ntop
+from scapy.data import IPV6_ADDR_UNICAST
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
+
+# VRF status constants
+VRF_NOT_CONFIGURED = 0
+VRF_CONFIGURED = 1
+VRF_RESET = 2
+
+
+def is_ipv6_misc_ext(p):
+    """ Is packet one of uninteresting IPv6 broadcasts (extended to filter out
+    ICMPv6 Neighbor Discovery - Neighbor Advertisement packets too)? """
+    if p.haslayer(ICMPv6ND_RA):
+        if in6_ismaddr(p[IPv6].dst):
+            return True
+    if p.haslayer(ICMPv6ND_NS):
+        if in6_isllsnmaddr(p[IPv6].dst):
+            return True
+    if p.haslayer(IPv6ExtHdrHopByHop):
+        for o in p[IPv6ExtHdrHopByHop].options:
+            if isinstance(o, RouterAlert):
+                return True
+    return False
 
 
 class TestIP6VrfMultiInst(VppTestCase):
@@ -112,8 +135,8 @@ class TestIP6VrfMultiInst(VppTestCase):
             # Create list of VRFs
             cls.vrf_list = list()
 
-            # Create list of deleted VRFs
-            cls.vrf_deleted_list = list()
+            # Create list of reset VRFs
+            cls.vrf_reset_list = list()
 
             # Create list of pg_interfaces in VRFs
             cls.pg_in_vrf = list()
@@ -170,8 +193,8 @@ class TestIP6VrfMultiInst(VppTestCase):
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
-            if vrf_id in self.vrf_deleted_list:
-                self.vrf_deleted_list.remove(vrf_id)
+            if vrf_id in self.vrf_reset_list:
+                self.vrf_reset_list.remove(vrf_id)
             for j in range(self.pg_ifs_per_vrf):
                 pg_if = self.pg_if_by_vrf_id[vrf_id][j]
                 pg_if.set_table_ip6(vrf_id)
@@ -189,16 +212,16 @@ class TestIP6VrfMultiInst(VppTestCase):
 
     def reset_vrf(self, vrf_id):
         """
-        Delete required FIB table / VRF.
+        Reset required FIB table / VRF.
 
-        :param int vrf_id: The FIB table / VRF ID to be deleted.
+        :param int vrf_id: The FIB table / VRF ID to be reset.
         """
         # self.vapi.reset_vrf(vrf_id, is_ipv6=1)
         self.vapi.reset_fib(vrf_id, is_ipv6=1)
         if vrf_id in self.vrf_list:
             self.vrf_list.remove(vrf_id)
-        if vrf_id not in self.vrf_deleted_list:
-            self.vrf_deleted_list.append(vrf_id)
+        if vrf_id not in self.vrf_reset_list:
+            self.vrf_reset_list.append(vrf_id)
         for j in range(self.pg_ifs_per_vrf):
             pg_if = self.pg_if_by_vrf_id[vrf_id][j]
             if pg_if in self.pg_in_vrf:
@@ -287,16 +310,24 @@ class TestIP6VrfMultiInst(VppTestCase):
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
         ip6_fib_dump = self.vapi.ip6_fib_dump()
+        vrf_exist = False
         vrf_count = 0
         for ip6_fib_details in ip6_fib_dump:
             if ip6_fib_details[2] == vrf_id:
-                vrf_count += 1
-        if vrf_count == 0:
+                if not vrf_exist:
+                    vrf_exist = True
+                addr = inet_ntop(socket.AF_INET6, ip6_fib_details[4])
+                addrtype = in6_getAddrType(addr)
+                vrf_count += 1 if addrtype == IPV6_ADDR_UNICAST else 0
+        if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv6 VRF ID %d is not configured" % vrf_id)
-            return 0
+            return VRF_NOT_CONFIGURED
+        elif vrf_exist and vrf_count == 0:
+            self.logger.info("IPv6 VRF ID %d has been reset" % vrf_id)
+            return VRF_RESET
         else:
             self.logger.info("IPv6 VRF ID %d is configured" % vrf_id)
-            return 1
+            return VRF_CONFIGURED
 
     def run_verify_test(self):
         """
@@ -328,7 +359,8 @@ class TestIP6VrfMultiInst(VppTestCase):
                 capture = pg_if.get_capture(remark="interface is in VRF")
                 self.verify_capture(pg_if, capture)
             elif pg_if in self.pg_not_in_vrf:
-                pg_if.assert_nothing_captured(remark="interface is not in VRF")
+                pg_if.assert_nothing_captured(remark="interface is not in VRF",
+                                              filter_out_fn=is_ipv6_misc_ext)
                 self.logger.debug("No capture for interface %s" % pg_if.name)
             else:
                 raise Exception("Unknown interface: %s" % pg_if.name)
@@ -342,13 +374,11 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Verify 1
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
 
         # Test 1
         self.run_verify_test()
 
-    @unittest.skip("IPv6 FIB reset leads to crash of VPP - Jira ticket "
-                   "https://jira.fd.io/browse/VPP-643")
     def test_ip6_vrf_02(self):
         """ IP6 VRF  Multi-instance test 2 - reset 2 VRFs
         """
@@ -358,46 +388,52 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.reset_vrf(2)
 
         # Verify 2
-        # for vrf_id in self.vrf_deleted_list:
-        #     self.assertEqual(self.verify_vrf(vrf_id), 0)
+        for vrf_id in self.vrf_reset_list:
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_RESET)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
 
         # Test 2
         self.run_verify_test()
+
+        # Reset routes learned from ICMPv6 Neighbor Discovery
+        for vrf_id in self.vrf_reset_list:
+            self.reset_vrf(vrf_id)
 
     def test_ip6_vrf_03(self):
         """ IP6 VRF  Multi-instance 3 - add 2 VRFs
         """
         # Config 3
-        # Add 1 of deleted VRFs and 1 new VRF
-        # self.create_vrf_and_assign_interfaces(1)
+        # Add 1 of reset VRFs and 1 new VRF
+        self.create_vrf_and_assign_interfaces(1)
         self.create_vrf_and_assign_interfaces(1, start=5)
 
         # Verify 3
-        # for vrf_id in self.vrf_deleted_list:
-        #     self.assertEqual(self.verify_vrf(vrf_id), 0)
+        for vrf_id in self.vrf_reset_list:
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_RESET)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
 
         # Test 3
         self.run_verify_test()
 
-    @unittest.skip("IPv6 FIB reset leads to crash of VPP - Jira ticket "
-                   "https://jira.fd.io/browse/VPP-643")
+        # Reset routes learned from ICMPv6 Neighbor Discovery
+        for vrf_id in self.vrf_reset_list:
+            self.reset_vrf(vrf_id)
+
     def test_ip6_vrf_04(self):
         """ IP6 VRF  Multi-instance test 4 - reset 4 VRFs
         """
         # Config 4
-        # Delete all VRFs (i.e. no VRF except VRF=0 created)
+        # Reset all VRFs (i.e. no VRF except VRF=0 created)
         for i in range(len(self.vrf_list)):
             self.reset_vrf(self.vrf_list[0])
 
         # Verify 4
-        # for vrf_id in self.vrf_deleted_list:
-        #     self.assertEqual(self.verify_vrf(vrf_id), 0)
+        for vrf_id in self.vrf_reset_list:
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_RESET)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
 
         # Test 4
         self.run_verify_test()
