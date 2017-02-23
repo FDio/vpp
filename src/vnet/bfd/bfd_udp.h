@@ -62,6 +62,11 @@ int bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
  */
 int bfd_udp_is_echo_available (bfd_transport_e transport);
 
+void
+bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index, int *have_usable_ip4,
+			 ip4_address_t * ip4, int *have_usable_ip6,
+			 ip6_address_t * ip6);
+
 #endif /* __included_bfd_udp_h__ */
 
 /*
