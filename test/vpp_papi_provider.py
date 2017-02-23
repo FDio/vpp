@@ -29,6 +29,11 @@ class L2_VTR_OP:
     L2_POP_1 = 3
 
 
+class UnexpectedApiReturnValueError(Exception):
+    """ exception raised when the API return value is unexpected """
+    pass
+
+
 class VppPapiProvider(object):
     """VPP-api provider using vpp-papi
 
@@ -144,13 +149,13 @@ class VppPapiProvider(object):
                     "return value instead of %d in %s" % \
                     (reply.retval, repr(reply))
                 self.test_class.logger.info(msg)
-                raise Exception(msg)
+                raise UnexpectedApiReturnValueError(msg)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
                 msg = "API call failed, expected zero return value instead "\
                     "of %d in %s" % (expected_retval, repr(reply))
                 self.test_class.logger.info(msg)
-                raise Exception(msg)
+                raise UnexpectedApiReturnValueError(msg)
         else:
             raise Exception("Internal error, unexpected value for "
                             "self._expect_api_retval %s" %
@@ -1187,6 +1192,9 @@ class VppPapiProvider(object):
     def bfd_udp_set_echo_source(self, sw_if_index):
         return self.api(self.papi.bfd_udp_set_echo_source,
                         {'sw_if_index': sw_if_index})
+
+    def bfd_udp_del_echo_source(self):
+        return self.api(self.papi.bfd_udp_del_echo_source, {})
 
     def classify_add_del_table(
             self,
