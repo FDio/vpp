@@ -244,7 +244,7 @@ pci_dirs=`find /sys/bus/pci/drivers -type d -name igb_uio -o -name uio_pci_gener
 for d in $pci_dirs; do
     for f in ${d}/*; do
         [ -e "${f}/config" ] || continue
-        echo 1 > ${f}/remove
+        echo ${f##*/} > ${d}/unbind
         basename `dirname ${f}` | xargs echo -n "Removing driver"; echo " for PCI ID" `basename ${f}`
         removed=y
     done
