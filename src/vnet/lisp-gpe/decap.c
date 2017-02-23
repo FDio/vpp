@@ -56,6 +56,7 @@ static u32 next_proto_to_next_index[LISP_GPE_NEXT_PROTOS] = {
   LISP_GPE_INPUT_NEXT_IP4_INPUT,
   LISP_GPE_INPUT_NEXT_IP6_INPUT,
   LISP_GPE_INPUT_NEXT_L2_INPUT,
+  LISP_GPE_INPUT_NEXT_NSH_INPUT,
   LISP_GPE_INPUT_NEXT_DROP
 };
 
@@ -89,6 +90,8 @@ next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
     return &lgm->l3_ifaces;
   else if (LISP_GPE_INPUT_NEXT_L2_INPUT == next_index)
     return &lgm->l2_ifaces;
+  else if (LISP_GPE_INPUT_NEXT_NSH_INPUT == next_index)
+    return &lgm->nsh_ifaces;
   clib_warning ("next_index not associated to an interface!");
   return 0;
 }

@@ -54,7 +54,8 @@ typedef CLIB_PACKED (struct {
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(L2_INPUT, "l2-input")
+_(L2_INPUT, "l2-input")                         \
+_(NSH_INPUT, "nsh-input")
 
 /** Enum of possible next nodes post LISP-GPE decap */
 typedef enum
