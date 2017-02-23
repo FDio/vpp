@@ -531,6 +531,7 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
   int rv;
   u32 sw_if_index;
   u8 mac_address[6];
+  u32 user_instance = ~0;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -538,11 +539,14 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
     {
       if (unformat (input, "mac %U", unformat_ethernet_address, mac_address))
 	;
+      if (unformat (input, "instance %d", &user_instance))
+	;
       else
 	break;
     }
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mac_address, ~0);
+  rv = vnet_create_loopback_interface (&sw_if_index, mac_address,
+				       user_instance);
 
   if (rv)
     return clib_error_return (0, "vnet_create_loopback_interface failed");
@@ -558,15 +562,15 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
  *
  * @cliexpar
  * The following two command syntaxes are equivalent:
- * @cliexcmd{loopback create-interface [mac <mac-addr>]}
- * @cliexcmd{create loopback interface [mac <mac-addr>]}
+ * @cliexcmd{loopback create-interface [mac <mac-addr>] [instance <instance>]}
+ * @cliexcmd{create loopback interface [mac <mac-addr>] [instance <instance>]}
  * Example of how to create a loopback interface:
  * @cliexcmd{loopback create-interface}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .path = "loopback create-interface",
-  .short_help = "loopback create-interface [mac <mac-addr>]",
+  .short_help = "loopback create-interface [mac <mac-addr>] [instance <instance>]",
   .function = create_simulated_ethernet_interfaces,
 };
 /* *INDENT-ON* */
@@ -577,15 +581,15 @@ VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
  *
  * @cliexpar
  * The following two command syntaxes are equivalent:
- * @cliexcmd{loopback create-interface [mac <mac-addr>]}
- * @cliexcmd{create loopback interface [mac <mac-addr>]}
+ * @cliexcmd{loopback create-interface [mac <mac-addr>] [instance <instance>]}
+ * @cliexcmd{create loopback interface [mac <mac-addr>] [instance <instance>]}
  * Example of how to create a loopback interface:
  * @cliexcmd{create loopback interface}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_loopback_interface_command, static) = {
   .path = "create loopback interface",
-  .short_help = "create loopback interface [mac <mac-addr>]",
+  .short_help = "create loopback interface [mac <mac-addr>] [instance <instance>]",
   .function = create_simulated_ethernet_interfaces,
 };
 /* *INDENT-ON* */

@@ -1049,9 +1049,11 @@ vl_api_create_loopback_t_handler (vl_api_create_loopback_t * mp)
 {
   vl_api_create_loopback_reply_t *rmp;
   u32 sw_if_index;
+  u32 user_instance = ntohl (mp->user_instance);
   int rv;
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address, ~0);
+  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address,
+				       user_instance);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_LOOPBACK_REPLY,

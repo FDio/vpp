@@ -405,12 +405,14 @@ define reset_fib_reply
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param mac_address - mac addr to assign to the interface if none-zero
+    @param user_instance - requested instance, ~0 => dynamically allocate
 */
 define create_loopback
 {
   u32 client_index;
   u32 context;
   u8 mac_address[6];
+  u32 user_instance;
 };
 
 /** \brief Create loopback interface response
