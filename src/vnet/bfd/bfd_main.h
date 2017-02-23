@@ -74,11 +74,14 @@ typedef struct bfd_session_s
   /* session state */
   bfd_state_e local_state;
 
+  /* remote session state */
+  bfd_state_e remote_state;
+
   /* local diagnostics */
   bfd_diag_code_e local_diag;
 
-  /* remote session state */
-  bfd_state_e remote_state;
+  /* remote diagnostics */
+  bfd_diag_code_e remote_diag;
 
   /* local discriminator */
   u32 local_discr;
@@ -315,6 +318,7 @@ void bfd_event (bfd_main_t * bm, bfd_session_t * bs);
 void bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
 				   bfd_main_t * bm, bfd_session_t * bs);
 u8 *format_bfd_session (u8 * s, va_list * args);
+u8 *format_bfd_auth_key (u8 * s, va_list * args);
 void bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down);
 unsigned bfd_auth_type_supported (bfd_auth_type_e auth_type);
 vnet_api_error_t bfd_auth_activate (bfd_session_t * bs, u32 conf_key_id,
@@ -324,6 +328,9 @@ vnet_api_error_t bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
 					 u32 desired_min_tx_usec,
 					 u32 required_min_rx_usec,
 					 u8 detect_mult);
+
+u32 bfd_clocks_to_usec (const bfd_main_t * bm, u64 clocks);
+const char *bfd_poll_state_string (bfd_poll_state_e state);
 
 #define USEC_PER_MS 1000LL
 #define USEC_PER_SECOND (1000 * USEC_PER_MS)

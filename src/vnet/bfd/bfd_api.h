@@ -22,7 +22,6 @@
 #include <vnet/api_errno.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/bfd/bfd_udp.h>
 
 #define foreach_bfd_transport(F) \
   F (UDP4, "ip4-rewrite")        \

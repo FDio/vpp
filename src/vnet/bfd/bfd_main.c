@@ -55,7 +55,7 @@ bfd_usec_to_clocks (const bfd_main_t * bm, u64 us)
   return bm->cpu_cps * ((f64) us / USEC_PER_SECOND);
 }
 
-static u32
+u32
 bfd_clocks_to_usec (const bfd_main_t * bm, u64 clocks)
 {
   return (clocks / bm->cpu_cps) * USEC_PER_SECOND;
@@ -70,7 +70,7 @@ static u32 bfd_node_index_by_transport[] = {
 #undef F
 };
 
-static u8 *
+u8 *
 format_bfd_auth_key (u8 * s, va_list * args)
 {
   const bfd_auth_key_t *key = va_arg (*args, bfd_auth_key_t *);
@@ -147,7 +147,7 @@ bfd_set_state (bfd_main_t * bm, bfd_session_t * bs,
     }
 }
 
-static const char *
+const char *
 bfd_poll_state_string (bfd_poll_state_e state)
 {
   switch (state)
@@ -265,12 +265,16 @@ bfd_calc_next_echo_tx (bfd_main_t * bm, bfd_session_t * bs, u64 now)
 static void
 bfd_recalc_detection_time (bfd_main_t * bm, bfd_session_t * bs)
 {
-  bs->detection_time_clocks =
-    bs->remote_detect_mult * clib_max (bs->effective_required_min_rx_clocks,
-				       bs->remote_desired_min_tx_clocks);
-  BFD_DBG ("Recalculated detection time %lu clocks/%.2fs",
-	   bs->detection_time_clocks,
-	   bs->detection_time_clocks / bm->cpu_cps);
+  if (bs->local_state == BFD_STATE_init || bs->local_state == BFD_STATE_up)
+    {
+      bs->detection_time_clocks =
+	bs->remote_detect_mult *
+	clib_max (bs->effective_required_min_rx_clocks,
+		  bs->remote_desired_min_tx_clocks);
+      BFD_DBG ("Recalculated detection time %lu clocks/%.2fs",
+	       bs->detection_time_clocks,
+	       bs->detection_time_clocks / bm->cpu_cps);
+    }
 }
 
 static void
@@ -284,7 +288,8 @@ bfd_set_timer (bfd_main_t * bm, bfd_session_t * bs, u64 now,
     {
       rx_timeout = bs->last_rx_clocks + bs->detection_time_clocks;
     }
-  if (BFD_STATE_up != bs->local_state || !bs->remote_demand ||
+  if (BFD_STATE_up != bs->local_state ||
+      (!bs->remote_demand && bs->remote_min_rx_usec) ||
       BFD_POLL_NOT_NEEDED != bs->poll_state)
     {
       tx_timeout = bs->tx_timeout_clocks;
@@ -348,7 +353,7 @@ bfd_set_effective_desired_min_tx (bfd_main_t * bm,
 
 static void
 bfd_set_effective_required_min_rx (bfd_main_t * bm,
-				   bfd_session_t * bs, u64 now,
+				   bfd_session_t * bs,
 				   u64 required_min_rx_clocks)
 {
   bs->effective_required_min_rx_clocks = required_min_rx_clocks;
@@ -393,44 +398,33 @@ void
 bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
 {
   BFD_DBG ("\nStarting session: %U", format_bfd_session, bs);
+  bfd_set_effective_required_min_rx (bm, bs,
+				     bs->config_required_min_rx_clocks);
   bfd_recalc_tx_interval (bm, bs);
   vlib_process_signal_event (bm->vlib_main, bm->bfd_process_node_index,
 			     BFD_EVENT_NEW_SESSION, bs->bs_idx);
-}
-
-vnet_api_error_t
-bfd_del_session (uword bs_idx)
-{
-  const bfd_main_t *bm = &bfd_main;
-  if (!pool_is_free_index (bm->sessions, bs_idx))
-    {
-      bfd_session_t *bs = pool_elt_at_index (bm->sessions, bs_idx);
-      pool_put (bm->sessions, bs);
-      return 0;
-    }
-  else
-    {
-      BFD_ERR ("no such session");
-      return VNET_API_ERROR_BFD_ENOENT;
-    }
-  return 0;
 }
 
 void
 bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down)
 {
   bfd_main_t *bm = &bfd_main;
+  u64 now = clib_cpu_time_now ();
   if (admin_up_down)
     {
       BFD_DBG ("Session set admin-up, bs-idx=%u", bs->bs_idx);
       bfd_set_state (bm, bs, BFD_STATE_down, 0);
       bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
+      bfd_calc_next_tx (bm, bs, now);
+      bfd_set_timer (bm, bs, now, 0);
     }
   else
     {
       BFD_DBG ("Session set admin-down, bs-idx=%u", bs->bs_idx);
       bfd_set_diag (bs, BFD_DIAG_CODE_admin_down);
       bfd_set_state (bm, bs, BFD_STATE_admin_down, 0);
+      bfd_calc_next_tx (bm, bs, now);
+      bfd_set_timer (bm, bs, now, 0);
     }
 }
 
@@ -515,7 +509,7 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 					clib_max
 					(bs->config_desired_min_tx_clocks,
 					 bm->default_desired_min_tx_clocks));
-      bfd_set_effective_required_min_rx (bm, bs, now,
+      bfd_set_effective_required_min_rx (bm, bs,
 					 bs->config_required_min_rx_clocks);
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
@@ -525,7 +519,7 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 					clib_max
 					(bs->config_desired_min_tx_clocks,
 					 bm->default_desired_min_tx_clocks));
-      bfd_set_effective_required_min_rx (bm, bs, now,
+      bfd_set_effective_required_min_rx (bm, bs,
 					 bs->config_required_min_rx_clocks);
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
@@ -540,7 +534,7 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 					bs->config_desired_min_tx_clocks);
       if (BFD_POLL_NOT_NEEDED == bs->poll_state)
 	{
-	  bfd_set_effective_required_min_rx (bm, bs, now,
+	  bfd_set_effective_required_min_rx (bm, bs,
 					     bs->config_required_min_rx_clocks);
 	}
       bfd_set_timer (bm, bs, now, handling_wakeup);
@@ -932,7 +926,7 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
 	  bs->echo = 1;
 	  bs->echo_last_rx_clocks = now;
 	  bs->echo_tx_timeout_clocks = now;
-	  bfd_set_effective_required_min_rx (bm, bs, now,
+	  bfd_set_effective_required_min_rx (bm, bs,
 					     clib_max
 					     (bm->min_required_min_rx_while_echo_clocks,
 					      bs->config_required_min_rx_clocks));
@@ -1569,6 +1563,7 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   bs->remote_discr = pkt->my_disc;
   bs->remote_state = bfd_pkt_get_state (pkt);
   bs->remote_demand = bfd_pkt_get_demand (pkt);
+  bs->remote_diag = bfd_pkt_get_diag_code (pkt);
   u64 now = clib_cpu_time_now ();
   bs->last_rx_clocks = now;
   if (bfd_pkt_get_auth_present (pkt))
@@ -1621,7 +1616,7 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 	  bfd_set_poll_state (bs, BFD_POLL_NOT_NEEDED);
 	  if (BFD_STATE_up == bs->local_state)
 	    {
-	      bfd_set_effective_required_min_rx (bm, bs, now,
+	      bfd_set_effective_required_min_rx (bm, bs,
 						 clib_max (bs->echo *
 							   bm->min_required_min_rx_while_echo_clocks,
 							   bs->config_required_min_rx_clocks));
@@ -1912,6 +1907,97 @@ bfd_session_set_params (bfd_main_t * bm, bfd_session_t * bs,
       BFD_DBG ("Ignore parameter change - no change, bs_idx=%u", bs->bs_idx);
     }
   return 0;
+}
+
+vnet_api_error_t
+bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
+		  const u8 * key_data)
+{
+#if WITH_LIBSSL > 0
+  bfd_auth_key_t *auth_key = NULL;
+  if (!key_len || key_len > bfd_max_len_for_auth_type (auth_type))
+    {
+      clib_warning ("Invalid authentication key length for auth_type=%d:%s "
+		    "(key_len=%u, must be "
+		    "non-zero, expected max=%u)",
+		    auth_type, bfd_auth_type_str (auth_type), key_len,
+		    (u32) bfd_max_len_for_auth_type (auth_type));
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+  if (!bfd_auth_type_supported (auth_type))
+    {
+      clib_warning ("Unsupported auth type=%d:%s", auth_type,
+		    bfd_auth_type_str (auth_type));
+      return VNET_API_ERROR_BFD_NOTSUPP;
+    }
+  bfd_main_t *bm = &bfd_main;
+  uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
+  if (key_idx_p)
+    {
+      /* modifying existing key - must not be used */
+      const uword key_idx = *key_idx_p;
+      auth_key = pool_elt_at_index (bm->auth_keys, key_idx);
+      if (auth_key->use_count > 0)
+	{
+	  clib_warning ("Authentication key with conf ID %u in use by %u BFD "
+			"session(s) - cannot modify",
+			conf_key_id, auth_key->use_count);
+	  return VNET_API_ERROR_BFD_EINUSE;
+	}
+    }
+  else
+    {
+      /* adding new key */
+      pool_get (bm->auth_keys, auth_key);
+      auth_key->conf_key_id = conf_key_id;
+      hash_set (bm->auth_key_by_conf_key_id, conf_key_id,
+		auth_key - bm->auth_keys);
+    }
+  auth_key->auth_type = auth_type;
+  memset (auth_key->key, 0, sizeof (auth_key->key));
+  clib_memcpy (auth_key->key, key_data, key_len);
+  return 0;
+#else
+  clib_warning ("SSL missing, cannot manipulate authentication keys");
+  return VNET_API_ERROR_BFD_NOTSUPP;
+#endif
+}
+
+vnet_api_error_t
+bfd_auth_del_key (u32 conf_key_id)
+{
+#if WITH_LIBSSL > 0
+  bfd_auth_key_t *auth_key = NULL;
+  bfd_main_t *bm = &bfd_main;
+  uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
+  if (key_idx_p)
+    {
+      /* deleting existing key - must not be used */
+      const uword key_idx = *key_idx_p;
+      auth_key = pool_elt_at_index (bm->auth_keys, key_idx);
+      if (auth_key->use_count > 0)
+	{
+	  clib_warning ("Authentication key with conf ID %u in use by %u BFD "
+			"session(s) - cannot delete",
+			conf_key_id, auth_key->use_count);
+	  return VNET_API_ERROR_BFD_EINUSE;
+	}
+      hash_unset (bm->auth_key_by_conf_key_id, conf_key_id);
+      memset (auth_key, 0, sizeof (*auth_key));
+      pool_put (bm->auth_keys, auth_key);
+    }
+  else
+    {
+      /* no such key */
+      clib_warning ("Authentication key with conf ID %u does not exist",
+		    conf_key_id);
+      return VNET_API_ERROR_BFD_ENOENT;
+    }
+  return 0;
+#else
+  clib_warning ("SSL missing, cannot manipulate authentication keys");
+  return VNET_API_ERROR_BFD_NOTSUPP;
+#endif
 }
 
 bfd_main_t bfd_main;
