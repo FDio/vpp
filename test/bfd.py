@@ -198,6 +198,10 @@ class VppBFDAuthKey(VppObject):
         """ key data """
         return self._key
 
+    @key.setter
+    def key(self, value):
+        self._key = value
+
     @property
     def conf_key_id(self):
         """ configuration key ID """
