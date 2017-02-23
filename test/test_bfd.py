@@ -6,8 +6,9 @@ import unittest
 import hashlib
 import binascii
 import time
+from struct import pack, unpack
 from random import randint, shuffle, getrandbits
-from socket import AF_INET, AF_INET6
+from socket import AF_INET, AF_INET6, inet_ntop
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import UDP, IP
@@ -17,6 +18,7 @@ from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
 from framework import VppTestCase, VppTestRunner
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
+from vpp_papi_provider import UnexpectedApiReturnValueError
 
 USEC_IN_SEC = 1000000
 
@@ -461,19 +463,25 @@ def bfd_session_up(test):
                       test.vpp_clock_offset)
     if old_offset:
         test.assertAlmostEqual(
-            old_offset, test.vpp_clock_offset, delta=0.1,
+            old_offset, test.vpp_clock_offset, delta=0.5,
             msg="vpp clock offset not stable (new: %s, old: %s)" %
             (test.vpp_clock_offset, old_offset))
     test.logger.info("BFD: Sending Init")
     test.test_session.update(my_discriminator=randint(0, 40000000),
                              your_discriminator=p[BFD].my_discriminator,
                              state=BFDState.init)
+    if test.test_session.sha1_key and test.test_session.sha1_key.auth_type == \
+            BFDAuthType.meticulous_keyed_sha1:
+        test.test_session.inc_seq_num()
     test.test_session.send_packet()
     test.logger.info("BFD: Waiting for event")
     e = test.vapi.wait_for_event(1, "bfd_udp_session_details")
     verify_event(test, e, expected_state=BFDState.up)
     test.logger.info("BFD: Session is Up")
     test.test_session.update(state=BFDState.up)
+    if test.test_session.sha1_key and test.test_session.sha1_key.auth_type == \
+            BFDAuthType.meticulous_keyed_sha1:
+        test.test_session.inc_seq_num()
     test.test_session.send_packet()
     test.assert_equal(test.vpp_session.state, BFDState.up, BFDState)
 
@@ -482,12 +490,39 @@ def bfd_session_down(test):
     """ Bring BFD session down """
     test.assert_equal(test.vpp_session.state, BFDState.up, BFDState)
     test.test_session.update(state=BFDState.down)
+    if test.test_session.sha1_key and test.test_session.sha1_key.auth_type == \
+            BFDAuthType.meticulous_keyed_sha1:
+        test.test_session.inc_seq_num()
     test.test_session.send_packet()
     test.logger.info("BFD: Waiting for event")
     e = test.vapi.wait_for_event(1, "bfd_udp_session_details")
     verify_event(test, e, expected_state=BFDState.down)
     test.logger.info("BFD: Session is Down")
     test.assert_equal(test.vpp_session.state, BFDState.down, BFDState)
+
+
+def verify_bfd_session_config(test, session, state=None):
+    dump = session.get_bfd_udp_session_dump_entry()
+    test.assertIsNotNone(dump)
+    # since dump is not none, we have verified that sw_if_index and addresses
+    # are valid (in get_bfd_udp_session_dump_entry)
+    if state:
+        test.assert_equal(dump.state, state, "session state")
+    test.assert_equal(dump.required_min_rx, session.required_min_rx,
+                      "required min rx interval")
+    test.assert_equal(dump.desired_min_tx, session.desired_min_tx,
+                      "desired min tx interval")
+    test.assert_equal(dump.detect_mult, session.detect_mult,
+                      "detect multiplier")
+    if session.sha1_key is None:
+        test.assert_equal(dump.is_authenticated, 0, "is_authenticated flag")
+    else:
+        test.assert_equal(dump.is_authenticated, 1, "is_authenticated flag")
+        test.assert_equal(dump.bfd_key_id, session.bfd_key_id,
+                          "bfd key id")
+        test.assert_equal(dump.conf_key_id,
+                          session.sha1_key.conf_key_id,
+                          "config key id")
 
 
 def verify_ip(test, packet):
@@ -625,6 +660,32 @@ class BFD4TestCase(VppTestCase):
     def test_session_up(self):
         """ bring BFD session up """
         bfd_session_up(self)
+
+    def test_session_up_by_ip(self):
+        """ bring BFD session up - first frame looked up by address pair """
+        self.logger.info("BFD: Sending Slow control frame")
+        self.test_session.update(my_discriminator=randint(0, 40000000))
+        self.test_session.send_packet()
+        self.pg0.enable_capture()
+        p = self.pg0.wait_for_packet(1)
+        self.assert_equal(p[BFD].your_discriminator,
+                          self.test_session.my_discriminator,
+                          "BFD - your discriminator")
+        self.assert_equal(p[BFD].state, BFDState.init, BFDState)
+        self.test_session.update(your_discriminator=p[BFD].my_discriminator,
+                                 state=BFDState.up)
+        self.logger.info("BFD: Waiting for event")
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.init)
+        self.logger.info("BFD: Sending Up")
+        self.test_session.send_packet()
+        self.logger.info("BFD: Waiting for event")
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.up)
+        self.logger.info("BFD: Session is Up")
+        self.test_session.update(state=BFDState.up)
+        self.test_session.send_packet()
+        self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
     def test_session_down(self):
         """ bring BFD session down """
@@ -905,6 +966,16 @@ class BFD4TestCase(VppTestCase):
         self.assertNotIn("P", p.sprintf("%BFD.flags%"),
                          "Poll bit set in BFD packet")
 
+    def test_poll_response(self):
+        """ test correct response to control frame with poll bit set """
+        bfd_session_up(self)
+        poll = self.test_session.create_packet()
+        poll[BFD].flags = "P"
+        self.test_session.send_packet(poll)
+        final = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        self.assertIn("F", final.sprintf("%BFD.flags%"))
+
     def test_no_periodic_if_remote_demand(self):
         """ no periodic frames outside poll sequence if remote demand set """
         bfd_session_up(self)
@@ -1091,6 +1162,36 @@ class BFD4TestCase(VppTestCase):
             events = self.vapi.collect_events()
             self.assert_equal(len(events), 0, "number of bfd events")
 
+    def test_echo_source_removed(self):
+        """ echo function stops if echo source is removed """
+        bfd_session_up(self)
+        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.send_packet()
+        self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        # wait for first echo packet
+        while True:
+            p = self.pg0.wait_for_packet(1)
+            self.logger.debug(ppp("Got packet:", p))
+            if p[UDP].dport == BFD.udp_dport_echo:
+                self.logger.debug(ppp("Looping back packet:", p))
+                self.pg0.add_stream(p)
+                self.pg_start()
+                break
+            elif p.haslayer(BFD):
+                # ignore BFD
+                pass
+            else:
+                raise Exception(ppp("Received unknown packet:", p))
+        self.vapi.bfd_udp_del_echo_source()
+        self.test_session.send_packet()
+        # echo packets shouldn't arrive anymore
+        for dummy in range(5):
+            wait_for_bfd_packet(
+                self, pcap_time_min=time.time() - self.vpp_clock_offset)
+            self.test_session.send_packet()
+            events = self.vapi.collect_events()
+            self.assert_equal(len(events), 0, "number of bfd events")
+
     def test_stale_echo(self):
         """ stale echo packets don't keep a session up """
         bfd_session_up(self)
@@ -1199,28 +1300,31 @@ class BFD4TestCase(VppTestCase):
         verify_event(self, e, expected_state=BFDState.admin_down)
         for dummy in range(2):
             p = wait_for_bfd_packet(self)
-            self.assert_equal(BFDState.admin_down, p[BFD].state, BFDState)
+            self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
         # try to bring session up - shouldn't be possible
         self.test_session.update(state=BFDState.init)
         self.test_session.send_packet()
         for dummy in range(2):
             p = wait_for_bfd_packet(self)
-            self.assert_equal(BFDState.admin_down, p[BFD].state, BFDState)
+            self.assert_equal(p[BFD].state, BFDState.admin_down, BFDState)
         self.vpp_session.admin_up()
         self.test_session.update(state=BFDState.down)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.down)
-        p = wait_for_bfd_packet(self)
-        self.assert_equal(BFDState.down, p[BFD].state, BFDState)
+        p = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        self.assert_equal(p[BFD].state, BFDState.down, BFDState)
         self.test_session.send_packet()
-        p = wait_for_bfd_packet(self)
-        self.assert_equal(BFDState.init, p[BFD].state, BFDState)
+        p = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        self.assert_equal(p[BFD].state, BFDState.init, BFDState)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.init)
         self.test_session.update(state=BFDState.up)
         self.test_session.send_packet()
-        p = wait_for_bfd_packet(self)
-        self.assert_equal(BFDState.up, p[BFD].state, BFDState)
+        p = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
+        self.assert_equal(p[BFD].state, BFDState.up, BFDState)
         e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
         verify_event(self, e, expected_state=BFDState.up)
 
@@ -1232,7 +1336,8 @@ class BFD4TestCase(VppTestCase):
         self.test_session.send_packet(demand)
         self.vpp_session.modify_parameters(
             required_min_rx=2 * self.vpp_session.required_min_rx)
-        p = wait_for_bfd_packet(self)
+        p = wait_for_bfd_packet(
+            self, pcap_time_min=time.time() - self.vpp_clock_offset)
         # poll bit must be set
         self.assertIn("P", p.sprintf("%BFD.flags%"), "Poll bit not set")
         # terminate poll sequence
@@ -1313,6 +1418,32 @@ class BFD6TestCase(VppTestCase):
     def test_session_up(self):
         """ bring BFD session up """
         bfd_session_up(self)
+
+    def test_session_up_by_ip(self):
+        """ bring BFD session up - first frame looked up by address pair """
+        self.logger.info("BFD: Sending Slow control frame")
+        self.test_session.update(my_discriminator=randint(0, 40000000))
+        self.test_session.send_packet()
+        self.pg0.enable_capture()
+        p = self.pg0.wait_for_packet(1)
+        self.assert_equal(p[BFD].your_discriminator,
+                          self.test_session.my_discriminator,
+                          "BFD - your discriminator")
+        self.assert_equal(p[BFD].state, BFDState.init, BFDState)
+        self.test_session.update(your_discriminator=p[BFD].my_discriminator,
+                                 state=BFDState.up)
+        self.logger.info("BFD: Waiting for event")
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.init)
+        self.logger.info("BFD: Sending Up")
+        self.test_session.send_packet()
+        self.logger.info("BFD: Waiting for event")
+        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
+        verify_event(self, e, expected_state=BFDState.up)
+        self.logger.info("BFD: Session is Up")
+        self.test_session.update(state=BFDState.up)
+        self.test_session.send_packet()
+        self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
 
     def test_hold_up(self):
         """ hold BFD session up """
@@ -1512,7 +1643,6 @@ class BFDSHA1TestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4, sha1_key=key)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(
             self, self.pg0, AF_INET, sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id)
@@ -1547,7 +1677,6 @@ class BFDSHA1TestCase(VppTestCase):
 
         self.vpp_session = vpp_bfd_udp_session
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = legitimate_test_session
         # bring vpp session up
         bfd_session_up(self)
@@ -1625,7 +1754,6 @@ class BFDSHA1TestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4, sha1_key=key)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(
             self, self.pg0, AF_INET, sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id, our_seq_number=0)
@@ -1633,7 +1761,7 @@ class BFDSHA1TestCase(VppTestCase):
         # don't send any packets for 2*detection_time
         detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
-        self.sleep(detection_time, "simulating peer restart")
+        self.sleep(2*detection_time, "simulating peer restart")
         events = self.vapi.collect_events()
         self.assert_equal(len(events), 1, "number of bfd events")
         verify_event(self, events[0], expected_state=BFDState.down)
@@ -1685,7 +1813,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(self, self.pg0, AF_INET)
         bfd_session_up(self)
         for dummy in range(self.test_session.detect_mult * 2):
@@ -1710,7 +1837,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4, sha1_key=key)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(
             self, self.pg0, AF_INET, sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id)
@@ -1742,7 +1868,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4, sha1_key=key1)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(
             self, self.pg0, AF_INET, sha1_key=key1,
             bfd_key_id=self.vpp_session.bfd_key_id)
@@ -1769,7 +1894,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(self, self.pg0, AF_INET)
         bfd_session_up(self)
         for dummy in range(self.test_session.detect_mult * 2):
@@ -1798,7 +1922,6 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.vpp_session = VppBFDUDPSession(self, self.pg0,
                                             self.pg0.remote_ip4, sha1_key=key)
         self.vpp_session.add_vpp_config()
-        self.vpp_session.admin_up()
         self.test_session = BFDTestSession(
             self, self.pg0, AF_INET, sha1_key=key,
             bfd_key_id=self.vpp_session.bfd_key_id)
@@ -1856,6 +1979,422 @@ class BFDAuthOnOffTestCase(VppTestCase):
         self.assert_equal(self.vpp_session.state, BFDState.up, BFDState)
         self.assert_equal(len(self.vapi.collect_events()), 0,
                           "number of bfd events")
+
+
+class BFDCLITestCase(VppTestCase):
+    """Bidirectional Forwarding Detection (BFD) (CLI) """
+    pg0 = None
+
+    @classmethod
+    def setUpClass(cls):
+        super(BFDCLITestCase, cls).setUpClass()
+
+        try:
+            cls.create_pg_interfaces((0,))
+            cls.pg0.config_ip4()
+            cls.pg0.config_ip6()
+            cls.pg0.resolve_arp()
+            cls.pg0.resolve_ndp()
+
+        except Exception:
+            super(BFDCLITestCase, cls).tearDownClass()
+            raise
+
+    def setUp(self):
+        super(BFDCLITestCase, self).setUp()
+        self.factory = AuthKeyFactory()
+        self.pg0.enable_capture()
+
+    def tearDown(self):
+        try:
+            self.vapi.want_bfd_events(enable_disable=0)
+        except UnexpectedApiReturnValueError:
+            # some tests aren't subscribed, so this is not an issue
+            pass
+        self.vapi.collect_events()  # clear the event queue
+        super(BFDCLITestCase, self).tearDown()
+
+    def cli_verify_no_response(self, cli):
+        """ execute a CLI, asserting that the response is empty """
+        self.assert_equal(self.vapi.cli(cli),
+                          "",
+                          "CLI command response")
+
+    def cli_verify_response(self, cli, expected):
+        """ execute a CLI, asserting that the response matches expectation """
+        self.assert_equal(self.vapi.cli(cli).strip(),
+                          expected,
+                          "CLI command response")
+
+    def test_show(self):
+        """ show commands """
+        k1 = self.factory.create_random_key(self)
+        k1.add_vpp_config()
+        k2 = self.factory.create_random_key(
+            self, auth_type=BFDAuthType.meticulous_keyed_sha1)
+        k2.add_vpp_config()
+        s1 = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        s1.add_vpp_config()
+        s2 = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip6, af=AF_INET6,
+                              sha1_key=k2)
+        s2.add_vpp_config()
+        self.logger.info(self.vapi.ppcli("show bfd keys"))
+        self.logger.info(self.vapi.ppcli("show bfd sessions"))
+        self.logger.info(self.vapi.ppcli("show bfd"))
+
+    def test_set_del_sha1_key(self):
+        """ set/delete SHA1 auth key """
+        k = self.factory.create_random_key(self)
+        self.registry.register(k, self.logger)
+        self.cli_verify_no_response(
+            "bfd key set conf-key-id %s type keyed-sha1 secret %s" %
+            (k.conf_key_id,
+                "".join("{:02x}".format(ord(c)) for c in k.key)))
+        self.assertTrue(k.query_vpp_config())
+        self.vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4, sha1_key=k)
+        self.vpp_session.add_vpp_config()
+        self.test_session = \
+            BFDTestSession(self, self.pg0, AF_INET, sha1_key=k,
+                           bfd_key_id=self.vpp_session.bfd_key_id)
+        self.vapi.want_bfd_events()
+        bfd_session_up(self)
+        bfd_session_down(self)
+        # try to replace the secret for the key - should fail because the key
+        # is in-use
+        k2 = self.factory.create_random_key(self)
+        self.cli_verify_response(
+            "bfd key set conf-key-id %s type keyed-sha1 secret %s" %
+            (k.conf_key_id,
+                "".join("{:02x}".format(ord(c)) for c in k2.key)),
+            "bfd key set: `bfd_auth_set_key' API call failed, "
+            "rv=-103:BFD object in use")
+        # manipulating the session using old secret should still work
+        bfd_session_up(self)
+        bfd_session_down(self)
+        self.vpp_session.remove_vpp_config()
+        self.cli_verify_no_response(
+            "bfd key del conf-key-id %s" % k.conf_key_id)
+        self.assertFalse(k.query_vpp_config())
+
+    def test_set_del_meticulous_sha1_key(self):
+        """ set/delete meticulous SHA1 auth key """
+        k = self.factory.create_random_key(
+            self, auth_type=BFDAuthType.meticulous_keyed_sha1)
+        self.registry.register(k, self.logger)
+        self.cli_verify_no_response(
+            "bfd key set conf-key-id %s type meticulous-keyed-sha1 secret %s" %
+            (k.conf_key_id,
+                "".join("{:02x}".format(ord(c)) for c in k.key)))
+        self.assertTrue(k.query_vpp_config())
+        self.vpp_session = VppBFDUDPSession(self, self.pg0,
+                                            self.pg0.remote_ip6, af=AF_INET6,
+                                            sha1_key=k)
+        self.vpp_session.add_vpp_config()
+        self.vpp_session.admin_up()
+        self.test_session = \
+            BFDTestSession(self, self.pg0, AF_INET6, sha1_key=k,
+                           bfd_key_id=self.vpp_session.bfd_key_id)
+        self.vapi.want_bfd_events()
+        bfd_session_up(self)
+        bfd_session_down(self)
+        # try to replace the secret for the key - should fail because the key
+        # is in-use
+        k2 = self.factory.create_random_key(self)
+        self.cli_verify_response(
+            "bfd key set conf-key-id %s type keyed-sha1 secret %s" %
+            (k.conf_key_id,
+                "".join("{:02x}".format(ord(c)) for c in k2.key)),
+            "bfd key set: `bfd_auth_set_key' API call failed, "
+            "rv=-103:BFD object in use")
+        # manipulating the session using old secret should still work
+        bfd_session_up(self)
+        bfd_session_down(self)
+        self.vpp_session.remove_vpp_config()
+        self.cli_verify_no_response(
+            "bfd key del conf-key-id %s" % k.conf_key_id)
+        self.assertFalse(k.query_vpp_config())
+
+    def test_add_mod_del_bfd_udp(self):
+        """ create/modify/delete IPv4 BFD UDP session """
+        vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4)
+        self.registry.register(vpp_session, self.logger)
+        cli_add_cmd = "bfd udp session add interface %s local-addr %s " \
+            "peer-addr %s desired-min-tx %s required-min-rx %s "\
+            "detect-mult %s" % (self.pg0.name, self.pg0.local_ip4,
+                                self.pg0.remote_ip4,
+                                vpp_session.desired_min_tx,
+                                vpp_session.required_min_rx,
+                                vpp_session.detect_mult)
+        self.cli_verify_no_response(cli_add_cmd)
+        # 2nd add should fail
+        self.cli_verify_response(
+            cli_add_cmd,
+            "bfd udp session add: `bfd_add_add_session' API call"
+            " failed, rv=-101:Duplicate BFD object")
+        verify_bfd_session_config(self, vpp_session)
+        mod_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4,
+            required_min_rx=2 * vpp_session.required_min_rx,
+            desired_min_tx=3 * vpp_session.desired_min_tx,
+            detect_mult=4 * vpp_session.detect_mult)
+        self.cli_verify_no_response(
+            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "desired-min-tx %s required-min-rx %s detect-mult %s" %
+            (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4,
+             mod_session.desired_min_tx, mod_session.required_min_rx,
+             mod_session.detect_mult))
+        verify_bfd_session_config(self, mod_session)
+        cli_del_cmd = "bfd udp session del interface %s local-addr %s "\
+            "peer-addr %s" % (self.pg0.name,
+                              self.pg0.local_ip4, self.pg0.remote_ip4)
+        self.cli_verify_no_response(cli_del_cmd)
+        # 2nd del is expected to fail
+        self.cli_verify_response(
+            cli_del_cmd, "bfd udp session del: `bfd_udp_del_session' API call"
+            " failed, rv=-102:No such BFD object")
+        self.assertFalse(vpp_session.query_vpp_config())
+
+    def test_add_mod_del_bfd_udp6(self):
+        """ create/modify/delete IPv6 BFD UDP session """
+        vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6)
+        self.registry.register(vpp_session, self.logger)
+        cli_add_cmd = "bfd udp session add interface %s local-addr %s " \
+            "peer-addr %s desired-min-tx %s required-min-rx %s "\
+            "detect-mult %s" % (self.pg0.name, self.pg0.local_ip6,
+                                self.pg0.remote_ip6,
+                                vpp_session.desired_min_tx,
+                                vpp_session.required_min_rx,
+                                vpp_session.detect_mult)
+        self.cli_verify_no_response(cli_add_cmd)
+        # 2nd add should fail
+        self.cli_verify_response(
+            cli_add_cmd,
+            "bfd udp session add: `bfd_add_add_session' API call"
+            " failed, rv=-101:Duplicate BFD object")
+        verify_bfd_session_config(self, vpp_session)
+        mod_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6,
+            required_min_rx=2 * vpp_session.required_min_rx,
+            desired_min_tx=3 * vpp_session.desired_min_tx,
+            detect_mult=4 * vpp_session.detect_mult)
+        self.cli_verify_no_response(
+            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "desired-min-tx %s required-min-rx %s detect-mult %s" %
+            (self.pg0.name, self.pg0.local_ip6, self.pg0.remote_ip6,
+             mod_session.desired_min_tx,
+             mod_session.required_min_rx, mod_session.detect_mult))
+        verify_bfd_session_config(self, mod_session)
+        cli_del_cmd = "bfd udp session del interface %s local-addr %s "\
+            "peer-addr %s" % (self.pg0.name,
+                              self.pg0.local_ip6, self.pg0.remote_ip6)
+        self.cli_verify_no_response(cli_del_cmd)
+        # 2nd del is expected to fail
+        self.cli_verify_response(
+            cli_del_cmd,
+            "bfd udp session del: `bfd_udp_del_session' API call"
+            " failed, rv=-102:No such BFD object")
+        self.assertFalse(vpp_session.query_vpp_config())
+
+    def test_add_mod_del_bfd_udp_auth(self):
+        """ create/modify/delete IPv4 BFD UDP session (authenticated) """
+        key = self.factory.create_random_key(self)
+        key.add_vpp_config()
+        vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4, sha1_key=key)
+        self.registry.register(vpp_session, self.logger)
+        cli_add_cmd = "bfd udp session add interface %s local-addr %s " \
+            "peer-addr %s desired-min-tx %s required-min-rx %s "\
+            "detect-mult %s conf-key-id %s bfd-key-id %s"\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4,
+               vpp_session.desired_min_tx, vpp_session.required_min_rx,
+               vpp_session.detect_mult, key.conf_key_id,
+               vpp_session.bfd_key_id)
+        self.cli_verify_no_response(cli_add_cmd)
+        # 2nd add should fail
+        self.cli_verify_response(
+            cli_add_cmd,
+            "bfd udp session add: `bfd_add_add_session' API call"
+            " failed, rv=-101:Duplicate BFD object")
+        verify_bfd_session_config(self, vpp_session)
+        mod_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip4, sha1_key=key,
+            bfd_key_id=vpp_session.bfd_key_id,
+            required_min_rx=2 * vpp_session.required_min_rx,
+            desired_min_tx=3 * vpp_session.desired_min_tx,
+            detect_mult=4 * vpp_session.detect_mult)
+        self.cli_verify_no_response(
+            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "desired-min-tx %s required-min-rx %s detect-mult %s" %
+            (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4,
+             mod_session.desired_min_tx,
+             mod_session.required_min_rx, mod_session.detect_mult))
+        verify_bfd_session_config(self, mod_session)
+        cli_del_cmd = "bfd udp session del interface %s local-addr %s "\
+            "peer-addr %s" % (self.pg0.name,
+                              self.pg0.local_ip4, self.pg0.remote_ip4)
+        self.cli_verify_no_response(cli_del_cmd)
+        # 2nd del is expected to fail
+        self.cli_verify_response(
+            cli_del_cmd,
+            "bfd udp session del: `bfd_udp_del_session' API call"
+            " failed, rv=-102:No such BFD object")
+        self.assertFalse(vpp_session.query_vpp_config())
+
+    def test_add_mod_del_bfd_udp6_auth(self):
+        """ create/modify/delete IPv6 BFD UDP session (authenticated) """
+        key = self.factory.create_random_key(
+            self, auth_type=BFDAuthType.meticulous_keyed_sha1)
+        key.add_vpp_config()
+        vpp_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6, sha1_key=key)
+        self.registry.register(vpp_session, self.logger)
+        cli_add_cmd = "bfd udp session add interface %s local-addr %s " \
+            "peer-addr %s desired-min-tx %s required-min-rx %s "\
+            "detect-mult %s conf-key-id %s bfd-key-id %s" \
+            % (self.pg0.name, self.pg0.local_ip6, self.pg0.remote_ip6,
+               vpp_session.desired_min_tx, vpp_session.required_min_rx,
+               vpp_session.detect_mult, key.conf_key_id,
+               vpp_session.bfd_key_id)
+        self.cli_verify_no_response(cli_add_cmd)
+        # 2nd add should fail
+        self.cli_verify_response(
+            cli_add_cmd,
+            "bfd udp session add: `bfd_add_add_session' API call"
+            " failed, rv=-101:Duplicate BFD object")
+        verify_bfd_session_config(self, vpp_session)
+        mod_session = VppBFDUDPSession(
+            self, self.pg0, self.pg0.remote_ip6, af=AF_INET6, sha1_key=key,
+            bfd_key_id=vpp_session.bfd_key_id,
+            required_min_rx=2 * vpp_session.required_min_rx,
+            desired_min_tx=3 * vpp_session.desired_min_tx,
+            detect_mult=4 * vpp_session.detect_mult)
+        self.cli_verify_no_response(
+            "bfd udp session mod interface %s local-addr %s peer-addr %s "
+            "desired-min-tx %s required-min-rx %s detect-mult %s" %
+            (self.pg0.name, self.pg0.local_ip6, self.pg0.remote_ip6,
+             mod_session.desired_min_tx,
+             mod_session.required_min_rx, mod_session.detect_mult))
+        verify_bfd_session_config(self, mod_session)
+        cli_del_cmd = "bfd udp session del interface %s local-addr %s "\
+            "peer-addr %s" % (self.pg0.name,
+                              self.pg0.local_ip6, self.pg0.remote_ip6)
+        self.cli_verify_no_response(cli_del_cmd)
+        # 2nd del is expected to fail
+        self.cli_verify_response(
+            cli_del_cmd,
+            "bfd udp session del: `bfd_udp_del_session' API call"
+            " failed, rv=-102:No such BFD object")
+        self.assertFalse(vpp_session.query_vpp_config())
+
+    def test_auth_on_off(self):
+        """ turn authentication on and off """
+        key = self.factory.create_random_key(
+            self, auth_type=BFDAuthType.meticulous_keyed_sha1)
+        key.add_vpp_config()
+        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        auth_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4,
+                                        sha1_key=key)
+        session.add_vpp_config()
+        cli_activate = \
+            "bfd udp session auth activate interface %s local-addr %s "\
+            "peer-addr %s conf-key-id %s bfd-key-id %s"\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4,
+               key.conf_key_id, auth_session.bfd_key_id)
+        self.cli_verify_no_response(cli_activate)
+        verify_bfd_session_config(self, auth_session)
+        self.cli_verify_no_response(cli_activate)
+        verify_bfd_session_config(self, auth_session)
+        cli_deactivate = \
+            "bfd udp session auth deactivate interface %s local-addr %s "\
+            "peer-addr %s "\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+        self.cli_verify_no_response(cli_deactivate)
+        verify_bfd_session_config(self, session)
+        self.cli_verify_no_response(cli_deactivate)
+        verify_bfd_session_config(self, session)
+
+    def test_auth_on_off_delayed(self):
+        """ turn authentication on and off (delayed) """
+        key = self.factory.create_random_key(
+            self, auth_type=BFDAuthType.meticulous_keyed_sha1)
+        key.add_vpp_config()
+        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        auth_session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4,
+                                        sha1_key=key)
+        session.add_vpp_config()
+        cli_activate = \
+            "bfd udp session auth activate interface %s local-addr %s "\
+            "peer-addr %s conf-key-id %s bfd-key-id %s delayed yes"\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4,
+               key.conf_key_id, auth_session.bfd_key_id)
+        self.cli_verify_no_response(cli_activate)
+        verify_bfd_session_config(self, auth_session)
+        self.cli_verify_no_response(cli_activate)
+        verify_bfd_session_config(self, auth_session)
+        cli_deactivate = \
+            "bfd udp session auth deactivate interface %s local-addr %s "\
+            "peer-addr %s delayed yes"\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+        self.cli_verify_no_response(cli_deactivate)
+        verify_bfd_session_config(self, session)
+        self.cli_verify_no_response(cli_deactivate)
+        verify_bfd_session_config(self, session)
+
+    def test_admin_up_down(self):
+        """ put session admin-up and admin-down """
+        session = VppBFDUDPSession(self, self.pg0, self.pg0.remote_ip4)
+        session.add_vpp_config()
+        cli_down = \
+            "bfd udp session set-flags admin down interface %s local-addr %s "\
+            "peer-addr %s "\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+        cli_up = \
+            "bfd udp session set-flags admin up interface %s local-addr %s "\
+            "peer-addr %s "\
+            % (self.pg0.name, self.pg0.local_ip4, self.pg0.remote_ip4)
+        self.cli_verify_no_response(cli_down)
+        verify_bfd_session_config(self, session, state=BFDState.admin_down)
+        self.cli_verify_no_response(cli_up)
+        verify_bfd_session_config(self, session, state=BFDState.down)
+
+    def test_set_del_udp_echo_source(self):
+        """ set/del udp echo source """
+        self.create_loopback_interfaces([0])
+        self.loopback0 = self.lo_interfaces[0]
+        self.loopback0.admin_up()
+        self.cli_verify_response("show bfd echo-source",
+                                 "UDP echo source is not set.")
+        cli_set = "bfd udp echo-source set interface %s" % self.loopback0.name
+        self.cli_verify_no_response(cli_set)
+        self.cli_verify_response("show bfd echo-source",
+                                 "UDP echo source is: %s\n"
+                                 "IPv4 address usable as echo source: none\n"
+                                 "IPv6 address usable as echo source: none" %
+                                 self.loopback0.name)
+        self.loopback0.config_ip4()
+        unpacked = unpack("!L", self.loopback0.local_ip4n)
+        echo_ip4 = inet_ntop(AF_INET, pack("!L", unpacked[0] ^ 1))
+        self.cli_verify_response("show bfd echo-source",
+                                 "UDP echo source is: %s\n"
+                                 "IPv4 address usable as echo source: %s\n"
+                                 "IPv6 address usable as echo source: none" %
+                                 (self.loopback0.name, echo_ip4))
+        unpacked = unpack("!LLLL", self.loopback0.local_ip6n)
+        echo_ip6 = inet_ntop(AF_INET6, pack("!LLLL", unpacked[0], unpacked[1],
+                                            unpacked[2], unpacked[3] ^ 1))
+        self.loopback0.config_ip6()
+        self.cli_verify_response("show bfd echo-source",
+                                 "UDP echo source is: %s\n"
+                                 "IPv4 address usable as echo source: %s\n"
+                                 "IPv6 address usable as echo source: %s" %
+                                 (self.loopback0.name, echo_ip4, echo_ip6))
+        cli_del = "bfd udp echo-source del"
+        self.cli_verify_no_response(cli_del)
+        self.cli_verify_response("show bfd echo-source",
+                                 "UDP echo source is not set.")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

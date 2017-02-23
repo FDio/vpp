@@ -46,6 +46,7 @@ class VppObjectRegistry(object):
         if obj.object_id() not in self._object_dict:
             self._object_registry.append(obj)
             self._object_dict[obj.object_id()] = obj
+            logger.debug("REG: registering %s" % obj)
         else:
             logger.debug("REG: duplicate add, ignoring (%s)" % obj)
 
