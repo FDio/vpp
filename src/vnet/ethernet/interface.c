@@ -454,12 +454,14 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
 /* *INDENT-ON* */
 
 int
-vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address)
+vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
+				u32 user_instance)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
   static u32 instance;
+  u32 this_instance;
   u8 address[6];
   u32 hw_if_index;
   vnet_hw_interface_t *hw_if;
@@ -472,6 +474,14 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address)
 
   memset (address, 0, sizeof (address));
 
+  if (user_instance != ~0)
+    {
+      return VNET_API_ERROR_INVALID_REGISTRATION;
+    }
+
+  this_instance = instance;
+  instance++;
+
   /*
    * Default MAC address (dead:0000:0000 + instance) is allocated
    * if zero mac_address is configured. Otherwise, user-configurable MAC
@@ -483,12 +493,13 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address)
     {
       address[0] = 0xde;
       address[1] = 0xad;
-      address[5] = instance;
+      address[5] = this_instance;
     }
 
   error = ethernet_register_interface
     (vnm,
-     ethernet_simulated_device_class.index, instance++, address, &hw_if_index,
+     ethernet_simulated_device_class.index, this_instance,
+     address, &hw_if_index,
      /* flag change */ 0);
 
   if (error)
@@ -531,7 +542,7 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
 	break;
     }
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mac_address);
+  rv = vnet_create_loopback_interface (&sw_if_index, mac_address, ~0);
 
   if (rv)
     return clib_error_return (0, "vnet_create_loopback_interface failed");

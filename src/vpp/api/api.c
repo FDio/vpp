@@ -1051,7 +1051,7 @@ vl_api_create_loopback_t_handler (vl_api_create_loopback_t * mp)
   u32 sw_if_index;
   int rv;
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address);
+  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address, ~0);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_LOOPBACK_REPLY,
