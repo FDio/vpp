@@ -97,11 +97,6 @@ class SimpleDriver(Driver):
             self.test.logger.info('Running {}'.format(tc[1]['name']))
             self.configure_tc(tc[1])
 
-            print self.test.vapi.cli("sh lisp loc")
-            print self.test.vapi.cli("sh lisp eid")
-            print self.test.vapi.cli("sh lisp adj vni 0")
-            print self.test.vapi.cli("sh lisp gpe entry")
-
             packet = self.create_packet(self.test.pg0, self.test.pg1, dest,
                                         'data')
             self.test.pg0.add_stream(packet)
