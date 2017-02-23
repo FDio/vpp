@@ -858,7 +858,7 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     vec_reset_length (pci_addr);
     pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
 
-    if (d->device_class != PCI_CLASS_NETWORK_ETHERNET)
+    if (d->device_class != PCI_CLASS_NETWORK_ETHERNET && d->device_class != PCI_CLASS_PROCESSOR_CO)
       continue;
 
     if (num_whitelisted)
