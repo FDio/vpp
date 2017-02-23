@@ -369,6 +369,7 @@ libvnet_la_SOURCES +=				\
  vnet/bfd/bfd_udp.c				\
  vnet/bfd/bfd_main.c				\
  vnet/bfd/bfd_protocol.c			\
+ vnet/bfd/bfd_cli.c                             \
  vnet/bfd/bfd_api.c
 
 API_FILES += vnet/bfd/bfd.api

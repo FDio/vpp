@@ -60,8 +60,7 @@ vnet_api_error_t
 bfd_udp_set_echo_source (u32 sw_if_index)
 {
   vnet_sw_interface_t *sw_if =
-    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main,
-				bfd_udp_main.echo_source_sw_if_index);
+    vnet_get_sw_interface_safe (bfd_udp_main.vnet_main, sw_if_index);
   if (sw_if)
     {
       bfd_udp_main.echo_source_sw_if_index = sw_if_index;
@@ -84,6 +83,7 @@ bfd_udp_is_echo_available (bfd_transport_e transport)
 {
   if (!bfd_udp_main.echo_source_is_set)
     {
+      BFD_DBG ("UDP echo source not set - echo not available");
       return 0;
     }
   /*
@@ -127,6 +127,7 @@ bfd_udp_is_echo_available (bfd_transport_e transport)
           /* *INDENT-ON* */
 	}
     }
+  BFD_DBG ("No usable IP address for UDP echo - echo not available");
   return 0;
 }
 
@@ -142,11 +143,6 @@ bfd_udp_bs_idx_to_sport (u32 bs_idx)
    * source port number SHOULD be minimized.
    */
   return 49152 + bs_idx % (65535 - 49152 + 1);
-}
-
-static void
-lol ()
-{
 }
 
 int
@@ -204,13 +200,30 @@ bfd_udp_get_echo_src_ip6 (ip6_address_t * addr)
           {
             *addr = *x;
             addr->as_u8[15] ^= 1; /* flip the last bit of the address */
-            lol ();
             return 1;
           }
       }));
   /* *INDENT-ON* */
   BFD_ERR ("cannot find ip6 address, no usable address found");
   return 0;
+}
+
+void
+bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index, int *have_usable_ip4,
+			 ip4_address_t * ip4, int *have_usable_ip6,
+			 ip6_address_t * ip6)
+{
+  if (bfd_udp_main.echo_source_is_set)
+    {
+      *is_set = 1;
+      *sw_if_index = bfd_udp_main.echo_source_sw_if_index;
+      *have_usable_ip4 = bfd_udp_get_echo_src_ip4 (ip4);
+      *have_usable_ip6 = bfd_udp_get_echo_src_ip6 (ip6);
+    }
+  else
+    {
+      *is_set = 0;
+    }
 }
 
 int
@@ -658,97 +671,6 @@ bfd_udp_session_set_flags (u32 sw_if_index,
     }
   bfd_session_set_flags (bs, admin_up_down);
   return 0;
-}
-
-vnet_api_error_t
-bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
-		  const u8 * key_data)
-{
-#if WITH_LIBSSL > 0
-  bfd_auth_key_t *auth_key = NULL;
-  if (!key_len || key_len > bfd_max_len_for_auth_type (auth_type))
-    {
-      clib_warning ("Invalid authentication key length for auth_type=%d:%s "
-		    "(key_len=%u, must be "
-		    "non-zero, expected max=%u)",
-		    auth_type, bfd_auth_type_str (auth_type), key_len,
-		    (u32) bfd_max_len_for_auth_type (auth_type));
-      return VNET_API_ERROR_INVALID_VALUE;
-    }
-  if (!bfd_auth_type_supported (auth_type))
-    {
-      clib_warning ("Unsupported auth type=%d:%s", auth_type,
-		    bfd_auth_type_str (auth_type));
-      return VNET_API_ERROR_BFD_NOTSUPP;
-    }
-  bfd_main_t *bm = bfd_udp_main.bfd_main;
-  uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
-  if (key_idx_p)
-    {
-      /* modifying existing key - must not be used */
-      const uword key_idx = *key_idx_p;
-      auth_key = pool_elt_at_index (bm->auth_keys, key_idx);
-      if (auth_key->use_count > 0)
-	{
-	  clib_warning ("Authentication key with conf ID %u in use by %u BFD "
-			"sessions - cannot modify",
-			conf_key_id, auth_key->use_count);
-	  return VNET_API_ERROR_BFD_EINUSE;
-	}
-    }
-  else
-    {
-      /* adding new key */
-      pool_get (bm->auth_keys, auth_key);
-      auth_key->conf_key_id = conf_key_id;
-      hash_set (bm->auth_key_by_conf_key_id, conf_key_id,
-		auth_key - bm->auth_keys);
-    }
-  auth_key->auth_type = auth_type;
-  memset (auth_key->key, 0, sizeof (auth_key->key));
-  clib_memcpy (auth_key->key, key_data, key_len);
-  return 0;
-#else
-  clib_warning ("SSL missing, cannot manipulate authentication keys");
-  return VNET_API_ERROR_BFD_NOTSUPP;
-#endif
-}
-
-vnet_api_error_t
-bfd_auth_del_key (u32 conf_key_id)
-{
-#if WITH_LIBSSL > 0
-  bfd_auth_key_t *auth_key = NULL;
-  bfd_main_t *bm = bfd_udp_main.bfd_main;
-  uword *key_idx_p = hash_get (bm->auth_key_by_conf_key_id, conf_key_id);
-  if (key_idx_p)
-    {
-      /* deleting existing key - must not be used */
-      const uword key_idx = *key_idx_p;
-      auth_key = pool_elt_at_index (bm->auth_keys, key_idx);
-      if (auth_key->use_count > 0)
-	{
-	  clib_warning ("Authentication key with conf ID %u in use by %u BFD "
-			"sessions - cannot delete",
-			conf_key_id, auth_key->use_count);
-	  return VNET_API_ERROR_BFD_EINUSE;
-	}
-      hash_unset (bm->auth_key_by_conf_key_id, conf_key_id);
-      memset (auth_key, 0, sizeof (*auth_key));
-      pool_put (bm->auth_keys, auth_key);
-    }
-  else
-    {
-      /* no such key */
-      clib_warning ("Authentication key with conf ID %u does not exist",
-		    conf_key_id);
-      return VNET_API_ERROR_BFD_ENOENT;
-    }
-  return 0;
-#else
-  clib_warning ("SSL missing, cannot manipulate authentication keys");
-  return VNET_API_ERROR_BFD_NOTSUPP;
-#endif
 }
 
 vnet_api_error_t

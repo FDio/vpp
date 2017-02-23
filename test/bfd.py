@@ -198,6 +198,10 @@ class VppBFDAuthKey(VppObject):
         """ key data """
         return self._key
 
+    @key.setter
+    def key(self, value):
+        self._key = value
+
     @property
     def conf_key_id(self):
         """ configuration key ID """
@@ -249,7 +253,10 @@ class VppBFDUDPSession(VppObject):
         self._required_min_rx = required_min_rx
         self._detect_mult = detect_mult
         self._sha1_key = sha1_key
-        self._bfd_key_id = bfd_key_id if bfd_key_id else randint(0, 255)
+        if bfd_key_id is not None:
+            self._bfd_key_id = bfd_key_id
+        else:
+            self._bfd_key_id = randint(0, 255)
 
     @property
     def test(self):
