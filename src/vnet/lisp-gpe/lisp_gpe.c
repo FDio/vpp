@@ -299,6 +299,41 @@ format_vnet_lisp_gpe_status (u8 * s, va_list * args)
   return format (s, "%s", lgm->is_en ? "enabled" : "disabled");
 }
 
+/**
+ * Adds arc from lisp-gpe-input to nsh-input if nsh-input is available
+ */
+static void
+gpe_add_arc_from_input_to_nsh ()
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  vlib_main_t *vm = lgm->vlib_main;
+  vlib_node_t *nsh_input;
+
+  /* Arc already exists */
+  if (next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH]
+      != LISP_GPE_INPUT_NEXT_DROP)
+    return;
+
+  /* Check if nsh-input is available */
+  if ((nsh_input = vlib_get_node_by_name (vm, (u8 *) "nsh-input")))
+    {
+      u32 slot4, slot6;
+      slot4 = vlib_node_add_next_with_slot (vm, lisp_gpe_ip4_input_node.index,
+					    nsh_input->index,
+					    LISP_GPE_NEXT_PROTO_NSH);
+      slot6 = vlib_node_add_next_with_slot (vm, lisp_gpe_ip6_input_node.index,
+					    nsh_input->index,
+					    LISP_GPE_NEXT_PROTO_NSH);
+      ASSERT (slot4 == slot6 && slot4 == LISP_GPE_INPUT_NEXT_NSH_INPUT);
+
+      next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH] = slot4;
+    }
+  else
+    {
+      clib_warning ("Couldn't add arc from gpe-input to nsh-input");
+    }
+}
+
 /** LISP-GPE init function. */
 clib_error_t *
 lisp_gpe_init (vlib_main_t * vm)
@@ -326,6 +361,9 @@ lisp_gpe_init (vlib_main_t * vm)
 			 lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */ );
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
 			 lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
+
+  gpe_add_arc_from_input_to_nsh ();
+
   return 0;
 }
 
