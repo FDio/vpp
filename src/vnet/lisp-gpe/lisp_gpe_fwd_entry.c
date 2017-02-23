@@ -808,13 +808,13 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
  * @return next node index.
  */
 const dpo_id_t *
-lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm, u32 spi_si)
+lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm, u32 spi_si_net_order)
 {
   int rv;
   BVT (clib_bihash_kv) kv, value;
 
   memset (&kv, 0, sizeof (kv));
-  kv.key[0] = spi_si;
+  kv.key[0] = spi_si_net_order;
   rv = BV (clib_bihash_search_inline_2) (&lgm->nsh_fib, &kv, &value);
 
   if (rv != 0)
@@ -842,14 +842,14 @@ lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm, u32 spi_si)
  * @return ~0 or value of overwritten entry.
  */
 static u32
-lisp_nsh_fib_add_del_entry (u32 spi_si, u32 lfei, u8 is_add)
+lisp_nsh_fib_add_del_entry (u32 spi_si_host_order, u32 lfei, u8 is_add)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   BVT (clib_bihash_kv) kv, value;
   u32 old_val = ~0;
 
   memset (&kv, 0, sizeof (kv));
-  kv.key[0] = spi_si;
+  kv.key[0] = clib_host_to_net_u32 (spi_si_host_order);
   kv.value = 0ULL;
 
   if (BV (clib_bihash_search) (&lgm->nsh_fib, &kv, &value) == 0)
