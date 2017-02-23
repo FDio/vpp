@@ -45,7 +45,7 @@ define bfd_udp_del_echo_source
   u32 context;
 };
 
-/** \brief Delete BFD feature response
+/** \brief Delete BFD echo source response
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
 */
@@ -53,32 +53,6 @@ define bfd_udp_del_echo_source_reply
 {
   u32 context;
   i32 retval;
-};
-
-/** \brief Get BFD configuration
-*/
-define bfd_get_config
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief Get BFD configuration response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param slow_timer - slow timer (seconds)
-    @param min_tx - desired min tx interval
-    @param min_rx - desired min rx interval
-    @param detect_mult - desired detection multiplier
-*/
-define bfd_get_config_reply
-{
-  u32 client_index;
-  u32 context;
-  u32 slow_timer;
-  u32 min_tx;
-  u32 min_rx;
-  u8 detect_mult;
 };
 
 /** \brief Add UDP BFD session on interface
