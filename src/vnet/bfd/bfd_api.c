@@ -154,6 +154,21 @@ send_bfd_udp_session_details (unix_shared_memory_queue_t * q, u32 context,
   bfd_udp_key_t *key = &bus->key;
   mp->sw_if_index = clib_host_to_net_u32 (key->sw_if_index);
   mp->is_ipv6 = !(ip46_address_is_ip4 (&key->local_addr));
+  if ((!bs->auth.is_delayed && bs->auth.curr_key) ||
+      (bs->auth.is_delayed && bs->auth.next_key))
+    {
+      mp->is_authenticated = 1;
+    }
+  if (bs->auth.is_delayed && bs->auth.next_key)
+    {
+      mp->bfd_key_id = bs->auth.next_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.next_key->conf_key_id);
+    }
+  else if (!bs->auth.is_delayed && bs->auth.curr_key)
+    {
+      mp->bfd_key_id = bs->auth.curr_bfd_key_id;
+      mp->conf_key_id = clib_host_to_net_u32 (bs->auth.curr_key->conf_key_id);
+    }
   if (mp->is_ipv6)
     {
       clib_memcpy (mp->local_addr, &key->local_addr,
@@ -289,10 +304,9 @@ vl_api_bfd_udp_auth_activate_t_handler (vl_api_bfd_udp_auth_activate_t * mp)
 
   BFD_UDP_API_PARAM_COMMON_CODE;
 
-  rv =
-    bfd_udp_auth_activate (BFD_UDP_API_PARAM_FROM_MP (mp),
-			   clib_net_to_host_u32 (mp->conf_key_id),
-			   mp->bfd_key_id, mp->is_delayed);
+  rv = bfd_udp_auth_activate (BFD_UDP_API_PARAM_FROM_MP (mp),
+			      clib_net_to_host_u32 (mp->conf_key_id),
+			      mp->bfd_key_id, mp->is_delayed);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_BFD_UDP_AUTH_ACTIVATE_REPLY);
