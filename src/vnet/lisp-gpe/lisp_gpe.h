@@ -65,6 +65,9 @@ typedef enum
     LISP_GPE_INPUT_N_NEXT,
 } lisp_gpe_input_next_t;
 
+/* Arc to nsh-input added only if nsh-input exists */
+#define LISP_GPE_INPUT_NEXT_NSH_INPUT 4
+
 typedef enum
 {
 #define lisp_gpe_error(n,s) LISP_GPE_ERROR_##n,

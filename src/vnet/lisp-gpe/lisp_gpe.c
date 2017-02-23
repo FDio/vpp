@@ -326,6 +326,7 @@ lisp_gpe_init (vlib_main_t * vm)
 			 lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */ );
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
 			 lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
+
   return 0;
 }
 
