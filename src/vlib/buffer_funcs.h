@@ -489,7 +489,15 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 
   vec_validate (new_buffers, n_buffers - 1);
   n_alloc = vlib_buffer_alloc (vm, new_buffers, n_buffers);
-  ASSERT (n_alloc == n_buffers);
+
+  /* No guarantee that we'll get all the buffers we asked for */
+  if (PREDICT_FALSE (n_alloc < n_buffers))
+    {
+      if (n_alloc > 0)
+	vlib_buffer_free (vm, new_buffers, n_alloc);
+      vec_free (new_buffers);
+      return 0;
+    }
 
   /* 1st segment */
   s = b;
@@ -518,6 +526,7 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
       d->flags = s->flags & flag_mask;
     }
 
+  vec_free (new_buffers);
   return fd;
 }
 

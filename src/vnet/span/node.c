@@ -83,11 +83,15 @@ span_mirror (vlib_main_t * vm, span_interface_t * si0, vlib_buffer_t * b0,
 	mirror_frames[i] = vnet_get_frame_to_sw_interface (vnm, i);
       to_mirror_next = vlib_frame_vector_args (mirror_frames[i]);
       to_mirror_next += mirror_frames[i]->n_vectors;
+      /* This can fail */
       c0 = vlib_buffer_copy (vm, b0);
-      vnet_buffer (c0)->sw_if_index[VLIB_TX] = i;
-      c0->flags |= VNET_BUFFER_SPAN_CLONE;
-      to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
-      mirror_frames[i]->n_vectors++;
+      if (PREDICT_TRUE(c0 != 0))
+        {
+          vnet_buffer (c0)->sw_if_index[VLIB_TX] = i;
+          c0->flags |= VNET_BUFFER_SPAN_CLONE;
+          to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
+          mirror_frames[i]->n_vectors++;
+        }
     }));
   /* *INDENT-ON* */
 }
