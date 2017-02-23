@@ -116,6 +116,7 @@ _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)			\
 _(RESET_FIB, reset_fib)							\
 _(CREATE_LOOPBACK, create_loopback)					\
+_(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)			\
 _(CONTROL_PING, control_ping)                                           \
 _(CLI_REQUEST, cli_request)                                             \
 _(CLI_INBAND, cli_inband)						\
@@ -1026,10 +1027,30 @@ vl_api_create_loopback_t_handler (vl_api_create_loopback_t * mp)
   u32 sw_if_index;
   int rv;
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address);
+  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address, 0, 0);
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_CREATE_LOOPBACK_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void vl_api_create_loopback_instance_t_handler
+  (vl_api_create_loopback_instance_t * mp)
+{
+  vl_api_create_loopback_instance_reply_t *rmp;
+  u32 sw_if_index;
+  u8 is_specified = mp->is_specified;
+  u32 user_instance = ntohl (mp->user_instance);
+  int rv;
+
+  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address,
+				       is_specified, user_instance);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_CREATE_LOOPBACK_INSTANCE_REPLY,
   ({
     rmp->sw_if_index = ntohl (sw_if_index);
   }));

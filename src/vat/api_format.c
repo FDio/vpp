@@ -725,6 +725,34 @@ static void vl_api_create_loopback_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void vl_api_create_loopback_instance_reply_t_handler
+  (vl_api_create_loopback_instance_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  vam->retval = retval;
+  vam->regenerate_interface_table = 1;
+  vam->sw_if_index = ntohl (mp->sw_if_index);
+  vam->result_ready = 1;
+}
+
+static void vl_api_create_loopback_instance_reply_t_handler_json
+  (vl_api_create_loopback_instance_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_af_packet_create_reply_t_handler
   (vl_api_af_packet_create_reply_t * mp)
 {
@@ -4010,6 +4038,7 @@ foreach_standard_reply_retval_handler;
 
 #define foreach_vpe_api_reply_msg                                       \
 _(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
+_(CREATE_LOOPBACK_INSTANCE_REPLY, create_loopback_instance_reply)       \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
 _(CONTROL_PING_REPLY, control_ping_reply)                               \
@@ -4720,8 +4749,11 @@ api_create_loopback (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_create_loopback_t *mp;
+  vl_api_create_loopback_instance_t *mp_lbi;
   u8 mac_address[6];
   u8 mac_set = 0;
+  u8 is_specified = 0;
+  u32 user_instance = 0;
   int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
@@ -4730,16 +4762,31 @@ api_create_loopback (vat_main_t * vam)
     {
       if (unformat (i, "mac %U", unformat_ethernet_address, mac_address))
 	mac_set = 1;
+      if (unformat (i, "instance %d", &user_instance))
+	is_specified = 1;
       else
 	break;
     }
 
-  /* Construct the API message */
-  M (CREATE_LOOPBACK, mp);
-  if (mac_set)
-    clib_memcpy (mp->mac_address, mac_address, sizeof (mac_address));
+  if (is_specified)
+    {
+      M (CREATE_LOOPBACK_INSTANCE, mp_lbi);
+      mp_lbi->is_specified = is_specified;
+      if (is_specified)
+	mp_lbi->user_instance = htonl (user_instance);
+      if (mac_set)
+	clib_memcpy (mp_lbi->mac_address, mac_address, sizeof (mac_address));
+      S (mp_lbi);
+    }
+  else
+    {
+      /* Construct the API message */
+      M (CREATE_LOOPBACK, mp);
+      if (mac_set)
+	clib_memcpy (mp->mac_address, mac_address, sizeof (mac_address));
+      S (mp);
+    }
 
-  S (mp);
   W (ret);
   return ret;
 }
@@ -18021,7 +18068,7 @@ echo (vat_main_t * vam)
 
 /* List of API message constructors, CLI names map to api_xxx */
 #define foreach_vpe_api_msg                                             \
-_(create_loopback,"[mac <mac-addr>]")                                   \
+_(create_loopback,"[mac <mac-addr>] [instance <instance>]")             \
 _(sw_interface_dump,"")                                                 \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \

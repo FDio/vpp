@@ -72,6 +72,18 @@ static void *vl_api_create_loopback_t_print
   FINISH;
 }
 
+static void *vl_api_create_loopback_instance_t_print
+  (vl_api_create_loopback_instance_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: create_loopback ");
+  s = format (s, "mac %U ", format_ethernet_address, &mp->mac_address);
+  s = format (s, "instance %d ", ntohl (mp->user_instance));
+
+  FINISH;
+}
+
 static void *vl_api_delete_loopback_t_print
   (vl_api_delete_loopback_t * mp, void *handle)
 {
@@ -2821,6 +2833,7 @@ foreach_custom_print_no_arg_function
 #undef _
 #define foreach_custom_print_function                                   \
 _(CREATE_LOOPBACK, create_loopback)                                     \
+_(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)                   \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \

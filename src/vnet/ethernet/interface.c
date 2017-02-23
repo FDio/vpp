@@ -453,13 +453,87 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
 };
 /* *INDENT-ON* */
 
+
+/*
+ * Maintain a bitmap of allocated loopback instance numbers.
+ */
+#define LOOPBACK_MAX_INSTANCE		(16 * 1024)
+
+static u32
+loopback_instance_alloc (u8 is_specified, u32 want)
+{
+  ethernet_main_t *em = &ethernet_main;
+
+  /*
+   * Check for dynamically allocaetd instance number.
+   */
+  if (!is_specified)
+    {
+      u32 bit;
+
+      bit = clib_bitmap_first_clear (em->bm_loopback_instances);
+      if (bit >= LOOPBACK_MAX_INSTANCE)
+	{
+	  return ~0;
+	}
+      em->bm_loopback_instances = clib_bitmap_set (em->bm_loopback_instances,
+						   bit, 1);
+      return bit;
+    }
+
+  /*
+   * In range?
+   */
+  if (want >= LOOPBACK_MAX_INSTANCE)
+    {
+      return ~0;
+    }
+
+  /*
+   * Already in use?
+   */
+  if (clib_bitmap_get (em->bm_loopback_instances, want))
+    {
+      return ~0;
+    }
+
+  /*
+   * Grant allocation request.
+   */
+  em->bm_loopback_instances = clib_bitmap_set (em->bm_loopback_instances,
+					       want, 1);
+
+  return want;
+}
+
+static int
+loopback_instance_free (u32 instance)
+{
+  ethernet_main_t *em = &ethernet_main;
+
+  if (instance >= LOOPBACK_MAX_INSTANCE)
+    {
+      return -1;
+    }
+
+  if (clib_bitmap_get (em->bm_loopback_instances, instance) == 0)
+    {
+      return -1;
+    }
+
+  em->bm_loopback_instances = clib_bitmap_set (em->bm_loopback_instances,
+					       instance, 0);
+  return 0;
+}
+
 int
-vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address)
+vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
+				u8 is_specified, u32 user_instance)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
-  static u32 instance;
+  u32 instance;
   u8 address[6];
   u32 hw_if_index;
   vnet_hw_interface_t *hw_if;
@@ -471,6 +545,16 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address)
   *sw_if_indexp = (u32) ~ 0;
 
   memset (address, 0, sizeof (address));
+
+  /*
+   * Allocate a loopback instance.  Either select on dynamically
+   * or try to use the desired user_instance number.
+   */
+  instance = loopback_instance_alloc (is_specified, user_instance);
+  if (instance == ~0)
+    {
+      return VNET_API_ERROR_INVALID_REGISTRATION;
+    }
 
   /*
    * Default MAC address (dead:0000:0000 + instance) is allocated
@@ -488,7 +572,7 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address)
 
   error = ethernet_register_interface
     (vnm,
-     ethernet_simulated_device_class.index, instance++, address, &hw_if_index,
+     ethernet_simulated_device_class.index, instance, address, &hw_if_index,
      /* flag change */ 0);
 
   if (error)
@@ -520,6 +604,8 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
   int rv;
   u32 sw_if_index;
   u8 mac_address[6];
+  u8 is_specified = 0;
+  u32 user_instance = 0;
 
   memset (mac_address, 0, sizeof (mac_address));
 
@@ -527,11 +613,14 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
     {
       if (unformat (input, "mac %U", unformat_ethernet_address, mac_address))
 	;
+      if (unformat (input, "instance %d", &user_instance))
+	is_specified = 1;
       else
 	break;
     }
 
-  rv = vnet_create_loopback_interface (&sw_if_index, mac_address);
+  rv = vnet_create_loopback_interface (&sw_if_index, mac_address,
+				       is_specified, user_instance);
 
   if (rv)
     return clib_error_return (0, "vnet_create_loopback_interface failed");
@@ -547,15 +636,15 @@ create_simulated_ethernet_interfaces (vlib_main_t * vm,
  *
  * @cliexpar
  * The following two command syntaxes are equivalent:
- * @cliexcmd{loopback create-interface [mac <mac-addr>]}
- * @cliexcmd{create loopback interface [mac <mac-addr>]}
+ * @cliexcmd{loopback create-interface [mac <mac-addr>] [instance <instance>]}
+ * @cliexcmd{create loopback interface [mac <mac-addr>] [instance <instance>]}
  * Example of how to create a loopback interface:
  * @cliexcmd{loopback create-interface}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
   .path = "loopback create-interface",
-  .short_help = "loopback create-interface [mac <mac-addr>]",
+  .short_help = "loopback create-interface [mac <mac-addr>] [instance <instance>]",
   .function = create_simulated_ethernet_interfaces,
 };
 /* *INDENT-ON* */
@@ -566,15 +655,15 @@ VLIB_CLI_COMMAND (create_simulated_ethernet_interface_command, static) = {
  *
  * @cliexpar
  * The following two command syntaxes are equivalent:
- * @cliexcmd{loopback create-interface [mac <mac-addr>]}
- * @cliexcmd{create loopback interface [mac <mac-addr>]}
+ * @cliexcmd{loopback create-interface [mac <mac-addr>] [instance <instance>]}
+ * @cliexcmd{create loopback interface [mac <mac-addr>] [instance <instance>]}
  * Example of how to create a loopback interface:
  * @cliexcmd{create loopback interface}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (create_loopback_interface_command, static) = {
   .path = "create loopback interface",
-  .short_help = "create loopback interface [mac <mac-addr>]",
+  .short_help = "create loopback interface [mac <mac-addr>] [instance <instance>]",
   .function = create_simulated_ethernet_interfaces,
 };
 /* *INDENT-ON* */
@@ -594,12 +683,24 @@ vnet_delete_loopback_interface (u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *si;
+  u32 hw_if_index;
+  vnet_hw_interface_t *hw;
+  u32 instance;
 
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
-  ethernet_delete_interface (vnm, si->hw_if_index);
+  hw_if_index = si->hw_if_index;
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+  instance = hw->dev_instance;
+
+  if (loopback_instance_free (instance) < 0)
+    {
+      return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+    }
+
+  ethernet_delete_interface (vnm, hw_if_index);
 
   return 0;
 }
