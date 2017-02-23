@@ -265,6 +265,9 @@ typedef struct
 
   /* Feature arc index */
   u8 output_feature_arc_index;
+
+  /* Allocated loopback instances */
+  uword *bm_loopback_instances;
 } ethernet_main_t;
 
 ethernet_main_t ethernet_main;
@@ -412,7 +415,8 @@ clib_error_t *next_by_ethertype_init (next_by_ethertype_t * l3_next);
 clib_error_t *next_by_ethertype_register (next_by_ethertype_t * l3_next,
 					  u32 ethertype, u32 next_index);
 
-int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address);
+int vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
+				    u8 is_specified, u32 user_instance);
 int vnet_delete_loopback_interface (u32 sw_if_index);
 int vnet_delete_sub_interface (u32 sw_if_index);
 

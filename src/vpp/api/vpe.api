@@ -425,6 +425,34 @@ define create_loopback_reply
   u32 sw_if_index;
 };
 
+/** \brief Create loopback interface instance request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mac_address - mac addr to assign to the interface if none-zero
+    @param is_specified - if non-0, a specific user_instance is being requested
+    @param user_instance - requested instance, ~0 => dynamically allocate
+*/
+define create_loopback_instance
+{
+  u32 client_index;
+  u32 context;
+  u8 mac_address[6];
+  u8 is_specified;
+  u32 user_instance;
+};
+
+/** \brief Create loopback interface instance response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+    @param retval - return code for the request
+*/
+define create_loopback_instance_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
 /** \brief Delete loopback interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
