@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_a5bec6fd",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-23T03:32:36Z",
+      "side": 1,
+      "message": "Tabs",
+      "range": {
+        "startLine": 99,
+        "startChar": 69,
+        "endLine": 99,
+        "endChar": 70
+      },
+      "revId": "fbc0ba8569ce719292447a3096d70b4ed5b3ae33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e5c4ce93",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-23T03:32:36Z",
+      "side": 1,
+      "message": "If we have active fwd entries, either refuse to do the update and notify user or flush/update all fwd entries.",
+      "range": {
+        "startLine": 221,
+        "startChar": 2,
+        "endLine": 221,
+        "endChar": 17
+      },
+      "revId": "fbc0ba8569ce719292447a3096d70b4ed5b3ae33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c5c1d281",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 394,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-23T03:32:36Z",
+      "side": 1,
+      "message": "Indent",
+      "range": {
+        "startLine": 394,
+        "startChar": 2,
+        "endLine": 394,
+        "endChar": 8
+      },
+      "revId": "fbc0ba8569ce719292447a3096d70b4ed5b3ae33",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
