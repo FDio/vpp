@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_084a5180",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 492,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-23T21:34:13Z",
+      "side": 1,
+      "message": "Oh snap. Buffer allocation failure MUST be handled properly.",
+      "revId": "d045ede051547a12dfd7e00c9c1ab6d4b357a282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_28450d70",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 507,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-23T21:34:13Z",
+      "side": 1,
+      "message": "Tip of the iceberg.",
+      "revId": "d045ede051547a12dfd7e00c9c1ab6d4b357a282",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
