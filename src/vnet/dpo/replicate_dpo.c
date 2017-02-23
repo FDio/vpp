@@ -34,6 +34,21 @@
 #define REP_DBG(_p, _fmt, _args...)
 #endif
 
+#define foreach_replicate_dpo_error                       \
+_(BUFFER_ALLOCATION_FAILURE, "Buffer Allocation Failure")
+
+typedef enum {
+#define _(sym,str) REPLICATE_DPO_ERROR_##sym,
+  foreach_replicate_dpo_error
+#undef _
+  REPLICATE_DPO_N_ERROR,
+} replicate_dpo_error_t;
+
+static char * replicate_dpo_error_strings[] = {
+#define _(sym,string) string,
+  foreach_replicate_dpo_error
+#undef _
+};
 
 /**
  * Pool of all DPOs. It's not static so the DP can have fast access
@@ -678,8 +693,17 @@ replicate_inline (vlib_main_t * vm,
                     vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
                 }
 
-                /* Make a copy */
+                /* Make a copy. This can fail, so deal with it. */
                 c0 = vlib_buffer_copy(vm, b0);
+                if (PREDICT_FALSE (c0 == 0))
+                  {
+                    vlib_node_increment_counter 
+                      (vm, node->node_index, 
+                       REPLICATE_DPO_ERROR_BUFFER_ALLOCATION_FAILURE,
+                       1);
+                    continue;
+                  }
+                
                 ci0 = vlib_get_buffer_index(vm, c0);
 
                 to_next[0] = ci0;
@@ -738,6 +762,9 @@ VLIB_REGISTER_NODE (ip4_replicate_node) = {
   .name = "ip4-replicate",
   .vector_size = sizeof (u32),
 
+  .n_errors = ARRAY_LEN(replicate_dpo_error_strings),
+  .error_strings = replicate_dpo_error_strings,
+
   .format_trace = format_replicate_trace,
   .n_next_nodes = 1,
   .next_nodes = {
@@ -760,6 +787,9 @@ VLIB_REGISTER_NODE (ip6_replicate_node) = {
   .function = ip6_replicate,
   .name = "ip6-replicate",
   .vector_size = sizeof (u32),
+
+  .n_errors = ARRAY_LEN(replicate_dpo_error_strings),
+  .error_strings = replicate_dpo_error_strings,
 
   .format_trace = format_replicate_trace,
   .n_next_nodes = 1,

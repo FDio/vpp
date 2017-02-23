@@ -42,9 +42,10 @@ static u8 * format_li_hit_trace (u8 * s, va_list * args)
 
 vlib_node_registration_t li_hit_node;
 
-#define foreach_li_hit_error                    \
-_(HITS, "LI packets processed")                 \
-_(NO_COLLECTOR, "No collector configured")
+#define foreach_li_hit_error                                    \
+_(HITS, "LI packets processed")                                 \
+_(NO_COLLECTOR, "No collector configured")                      \
+_(BUFFER_ALLOCATION_FAILURE, "Buffer allocation failure")
 
 typedef enum {
 #define _(sym,str) LI_HIT_ERROR_##sym,
@@ -197,8 +198,16 @@ li_hit_node_fn (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
           if (PREDICT_TRUE(to_int_next != 0))
             {
-              /* Make an intercept copy */
+              /* Make an intercept copy. This can fail. */
               c0 = vlib_buffer_copy (vm, b0);
+
+              if (PREDICT_FALSE (c0 == 0))
+                {
+                  vlib_node_increment_counter 
+                    (vm, node->node_index, 
+                     LI_HIT_ERROR_BUFFER_ALLOCATION_FAILURE, 1);
+                  goto skip;
+                }
               
               vlib_buffer_advance(c0, -sizeof(*iu0));
 
@@ -225,6 +234,7 @@ li_hit_node_fn (vlib_main_t * vm,
               to_int_next++;
             }
 
+        skip:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE) 
                             && (b0->flags & VLIB_BUFFER_IS_TRACED))) 
             {
