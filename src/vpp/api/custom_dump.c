@@ -68,6 +68,7 @@ static void *vl_api_create_loopback_t_print
 
   s = format (0, "SCRIPT: create_loopback ");
   s = format (s, "mac %U ", format_ethernet_address, &mp->mac_address);
+  s = format (s, "instance %d ", ntohl (mp->user_instance));
 
   FINISH;
 }

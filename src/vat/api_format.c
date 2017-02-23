@@ -4768,6 +4768,7 @@ api_create_loopback (vat_main_t * vam)
   vl_api_create_loopback_t *mp;
   u8 mac_address[6];
   u8 mac_set = 0;
+  u32 user_instance = ~0;
   int ret;
 
   memset (mac_address, 0, sizeof (mac_address));
@@ -4776,12 +4777,15 @@ api_create_loopback (vat_main_t * vam)
     {
       if (unformat (i, "mac %U", unformat_ethernet_address, mac_address))
 	mac_set = 1;
+      if (unformat (i, "instance %d", &user_instance))
+	;
       else
 	break;
     }
 
   /* Construct the API message */
   M (CREATE_LOOPBACK, mp);
+  mp->user_instance = htonl (user_instance);
   if (mac_set)
     clib_memcpy (mp->mac_address, mac_address, sizeof (mac_address));
 
@@ -18283,7 +18287,7 @@ echo (vat_main_t * vam)
 
 /* List of API message constructors, CLI names map to api_xxx */
 #define foreach_vpe_api_msg                                             \
-_(create_loopback,"[mac <mac-addr>]")                                   \
+_(create_loopback,"[mac <mac-addr>] [instance <instance>]")             \
 _(sw_interface_dump,"")                                                 \
 _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
