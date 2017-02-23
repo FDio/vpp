@@ -305,6 +305,7 @@ lisp_gpe_init (vlib_main_t * vm)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   clib_error_t *error = 0;
+  vlib_node_t *nsh_input;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -326,6 +327,22 @@ lisp_gpe_init (vlib_main_t * vm)
 			 lisp_gpe_ip4_input_node.index, 1 /* is_ip4 */ );
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
 			 lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
+
+  /* Add nsh-input as possible next node after decap, if available */
+  if ((nsh_input = vlib_get_node_by_name (vm, (u8 *) "nsh-input")))
+    {
+      u32 slot4, slot6;
+      slot4 = vlib_node_add_next_with_slot (vm, lisp_gpe_ip4_input_node.index,
+					    nsh_input->index,
+					    LISP_GPE_NEXT_PROTO_NSH);
+      slot6 = vlib_node_add_next_with_slot (vm, lisp_gpe_ip6_input_node.index,
+					    nsh_input->index,
+					    LISP_GPE_NEXT_PROTO_NSH);
+      ASSERT (slot4 == slot6 && slot4 == LISP_GPE_INPUT_NEXT_NSH_INPUT);
+
+      next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH] = slot4;
+    }
+
   return 0;
 }
 
