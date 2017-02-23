@@ -89,6 +89,8 @@ next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
     return &lgm->l3_ifaces;
   else if (LISP_GPE_INPUT_NEXT_L2_INPUT == next_index)
     return &lgm->l2_ifaces;
+  else if (LISP_GPE_INPUT_NEXT_NSH_INPUT == next_index)
+    return &lgm->nsh_ifaces;
   clib_warning ("next_index not associated to an interface!");
   return 0;
 }
@@ -491,6 +493,52 @@ VLIB_REGISTER_NODE (lisp_gpe_ip6_input_node) = {
   // $$$$ .unformat_buffer = unformat_lisp_gpe_header,
 };
 /* *INDENT-ON* */
+
+/**
+ * Adds arc from lisp-gpe-input to nsh-input if nsh-input is available
+ */
+static void
+gpe_add_arc_from_input_to_nsh ()
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  vlib_main_t *vm = lgm->vlib_main;
+  vlib_node_t *nsh_input;
+
+  /* Arc already exists */
+  if (next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH]
+      != LISP_GPE_INPUT_NEXT_DROP)
+    return;
+
+  /* Check if nsh-input is available */
+  if ((nsh_input = vlib_get_node_by_name (vm, (u8 *) "nsh-input")))
+    {
+      u32 slot4, slot6;
+      slot4 = vlib_node_add_next_with_slot (vm, lisp_gpe_ip4_input_node.index,
+					    nsh_input->index,
+					    LISP_GPE_NEXT_PROTO_NSH);
+      slot6 = vlib_node_add_next_with_slot (vm, lisp_gpe_ip6_input_node.index,
+					    nsh_input->index,
+					    LISP_GPE_NEXT_PROTO_NSH);
+      ASSERT (slot4 == slot6 && slot4 == LISP_GPE_INPUT_NEXT_NSH_INPUT);
+
+      next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH] = slot4;
+    }
+}
+
+/** GPE decap init function. */
+clib_error_t *
+gpe_decap_init (vlib_main_t * vm)
+{
+  clib_error_t *error = 0;
+
+  if ((error = vlib_call_init_function (vm, lisp_gpe_init)))
+    return error;
+
+  gpe_add_arc_from_input_to_nsh ();
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (gpe_decap_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
