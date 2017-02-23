@@ -82,11 +82,13 @@ bfd_pkt_get_control_plane_independent (const bfd_pkt_t * pkt)
   return (pkt->head.sta_flags >> 3) & 1;
 }
 
+#if 0
 void
 bfd_pkt_set_control_plane_independent (bfd_pkt_t * pkt)
 {
   pkt->head.sta_flags |= 1 << 3;
 }
+#endif
 
 u8
 bfd_pkt_get_auth_present (const bfd_pkt_t * pkt)
@@ -106,11 +108,13 @@ bfd_pkt_get_demand (const bfd_pkt_t * pkt)
   return (pkt->head.sta_flags >> 1) & 1;
 }
 
+#if 0
 void
 bfd_pkt_set_demand (bfd_pkt_t * pkt)
 {
   pkt->head.sta_flags |= 1 << 1;
 }
+#endif
 
 u8
 bfd_pkt_get_multipoint (const bfd_pkt_t * pkt)
@@ -118,11 +122,13 @@ bfd_pkt_get_multipoint (const bfd_pkt_t * pkt)
   return (pkt->head.sta_flags >> 0) & 1;
 }
 
+#if 0
 void
 bfd_pkt_set_multipoint (bfd_pkt_t * pkt)
 {
   pkt->head.sta_flags |= 1 << 0;
 }
+#endif
 
 u32
 bfd_max_len_for_auth_type (bfd_auth_type_e auth_type)
