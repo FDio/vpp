@@ -453,6 +453,71 @@ VNET_DEVICE_CLASS (ethernet_simulated_device_class) = {
 };
 /* *INDENT-ON* */
 
+
+/*
+ * Maintain a bitmap of allocated instance numbers.
+ */
+#define LOOPBACK_MAX_INSTANCE		(16 * 1024)
+
+static uword *bm_loopback_instances;
+
+static u32
+loopback_instance_alloc (u32 want)
+{
+  /*
+   * Allocate allocation instance bitmap on first reference.
+   */
+  if (bm_loopback_instances == 0)
+    {
+      clib_bitmap_alloc (bm_loopback_instances, LOOPBACK_MAX_INSTANCE);
+      if (bm_loopback_instances == 0)
+	{
+	  return ~0;
+	}
+      clib_bitmap_zero (bm_loopback_instances);
+    }
+
+  /*
+   * Check for dynamically allocaetd instance number.
+   */
+  if (want == ~0)
+    {
+      u32 bit;
+
+      bit = clib_bitmap_first_clear (bm_loopback_instances);
+      if (bit >= 8 * clib_bitmap_bytes (bm_loopback_instances))
+	{
+	  return ~0;
+	}
+      clib_bitmap_set (bm_loopback_instances, bit, 1);
+      return bit;
+    }
+
+  /*
+   * In range?
+   */
+  if (want >= 8 * clib_bitmap_bytes (bm_loopback_instances))
+    {
+      return ~0;
+    }
+
+  /*
+   * Already in use?
+   */
+  if (clib_bitmap_get (bm_loopback_instances, want))
+    {
+      return ~0;
+    }
+
+  /*
+   * Grant allocation request.
+   */
+  clib_bitmap_set (bm_loopback_instances, want, 1);
+
+  return want;
+}
+
+
 int
 vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
 				u32 user_instance)
@@ -460,7 +525,6 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *error;
-  static u32 instance;
   u32 this_instance;
   u8 address[6];
   u32 hw_if_index;
@@ -474,13 +538,16 @@ vnet_create_loopback_interface (u32 * sw_if_indexp, u8 * mac_address,
 
   memset (address, 0, sizeof (address));
 
-  if (user_instance != ~0)
+
+  /*
+   * Allocate a loopbacl instance.  Either select on dynamically
+   * or try to use the desired user_instance number.
+   */
+  this_instance = loopback_instance_alloc (user_instance);
+  if (this_instance == ~0)
     {
       return VNET_API_ERROR_INVALID_REGISTRATION;
     }
-
-  this_instance = instance;
-  instance++;
 
   /*
    * Default MAC address (dead:0000:0000 + instance) is allocated
