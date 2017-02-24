@@ -406,14 +406,21 @@ mfib_entry_alloc (u32 fib_index,
     mfib_entry_t *mfib_entry;
 
     pool_get(mfib_entry_pool, mfib_entry);
-    memset(mfib_entry, 0, sizeof(*mfib_entry));
 
     fib_node_init(&mfib_entry->mfe_node,
                   FIB_NODE_TYPE_MFIB_ENTRY);
 
+    /*
+     * Some of the members require non-default initialisation
+     * so we also init those that don't and thus save on the call to memset.
+     */
+    mfib_entry->mfe_flags = 0;
     mfib_entry->mfe_fib_index = fib_index;
     mfib_entry->mfe_prefix = *prefix;
     mfib_entry->mfe_parent = FIB_NODE_INDEX_INVALID;
+    mfib_entry->mfe_sibling = FIB_NODE_INDEX_INVALID;
+    mfib_entry->mfe_srcs = NULL;
+    mfib_entry->mfe_itfs = NULL;
 
     dpo_reset(&mfib_entry->mfe_rep);
 

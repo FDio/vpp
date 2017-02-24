@@ -431,7 +431,7 @@ ip6_mfib_table_entry_insert (ip6_mfib_t *mfib,
 {
     ip6_mfib_node_t *i6mn = clib_mem_alloc(sizeof(*i6mn));
 
-    memset(i6mn, 0, sizeof(*i6mn));
+    memset(i6mn->i6mn_nodes, 0, sizeof(i6mn->i6mn_nodes));
 
     IP6_MFIB_MK_KEY_MASK(grp, src, len, &i6mn->i6mn_key);
     i6mn->i6mn_entry = mfib_entry_index;
