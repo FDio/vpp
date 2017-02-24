@@ -683,11 +683,6 @@ unformat_function_t unformat_hash_string;
 /* Main test routine. */
 int test_hash_main (unformat_input_t * input);
 
-static inline void
-hash_delete (void *bob)
-{
-}
-
 #endif /* included_hash_h */
 
 /*
