@@ -538,7 +538,7 @@ static const fib_node_vft_t fib_path_list_vft = {
     .fnv_mem_show = fib_path_list_memory_show,
 };
 
-static fib_path_list_t *
+static inline fib_path_list_t *
 fib_path_list_alloc (fib_node_index_t *path_list_index)
 {
     fib_path_list_t *path_list;
@@ -549,11 +549,9 @@ fib_path_list_alloc (fib_node_index_t *path_list_index)
     fib_node_init(&path_list->fpl_node,
 		  FIB_NODE_TYPE_PATH_LIST);
     path_list->fpl_urpf = INDEX_INVALID;
+    path_list->fpl_paths = NULL;
 
-    if (NULL != path_list_index)
-    {
-	*path_list_index = fib_path_list_get_index(path_list);
-    }
+    *path_list_index = fib_path_list_get_index(path_list);
 
     FIB_PATH_LIST_DBG(path_list, "alloc");
 
