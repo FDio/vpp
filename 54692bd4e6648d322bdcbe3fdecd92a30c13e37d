@@ -1,0 +1,222 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_ab81f790",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "ARPTestCase",
+      "range": {
+        "startLine": 17,
+        "startChar": 6,
+        "endLine": 17,
+        "endChar": 13
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eb77ffd2",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "no need for this list ... can directly add_stream(packet)\n\nmultiple occurrences follow",
+      "range": {
+        "startLine": 138,
+        "startChar": 8,
+        "endLine": 138,
+        "endChar": 26
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cb7443d1",
+        "filename": "test/test_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 273,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "this should be automatically performed by self._registry in tearDown()\n\nregistry knows because add_vpp_config calls reistry.register()",
+      "range": {
+        "startLine": 269,
+        "startChar": 0,
+        "endLine": 273,
+        "endChar": 38
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cbad6333",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "-\u003eto",
+      "range": {
+        "startLine": 321,
+        "startChar": 30,
+        "endLine": 321,
+        "endChar": 32
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ebb01f8d",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 327,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "fix the copy paste",
+      "range": {
+        "startLine": 327,
+        "startChar": 12,
+        "endLine": 327,
+        "endChar": 62
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0b736bea",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "could we move this to util.py\nalso Conver -\u003econvert",
+      "range": {
+        "startLine": 11,
+        "startChar": 1,
+        "endLine": 13,
+        "endChar": 45
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2b6e2702",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "idea: make VppInterace.configure_ipvX_neighbors use this abstraction instead of direct API",
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_abaa1717",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "it\u0027s better to just take af argument and use it directly, then a call\n\nn \u003d VppNeighbor(self, sw_if_index, mac, nbr, 1, 0)\n\ntranslates to more readable\n\nn \u003d VppNeighbor(self, sw_if_index, mac, nbr, AF_INET, 0)\n\nalso don\u0027t use 1 and 0, use True/False (for is_static)",
+      "range": {
+        "startLine": 22,
+        "startChar": 17,
+        "endLine": 22,
+        "endChar": 25
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8ba75b4f",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "is_ipv6 \u003d 1 if AF_INET6 \u003d\u003d self.af else 0,",
+      "range": {
+        "startLine": 39,
+        "startChar": 20,
+        "endLine": 39,
+        "endChar": 31
+      },
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b642f22",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-24T15:11:06Z",
+      "side": 1,
+      "message": "if using self.af, this will also be fixed for ipv6",
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
