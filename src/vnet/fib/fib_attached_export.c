@@ -544,7 +544,7 @@ fib_ae_import_format (fib_entry_t *fib_entry,
 	{
 	    s = format(s, "%d, ", *index);
 	}
-	    s = format(s, "]]");
+        s = format(s, "]]");
     }
 
     return (s);

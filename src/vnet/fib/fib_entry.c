@@ -551,11 +551,18 @@ fib_entry_alloc (u32 fib_index,
     return (fib_entry);
 }
 
-static void
+static fib_entry_t*
 fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
 				    fib_source_t source,
 				    fib_entry_flag_t old_flags)
 {
+    fib_node_index_t fei;
+
+    /*
+     * save the index so we can recover from pool reallocs
+     */
+    fei = fib_entry_get_index(fib_entry);
+
     /*
      * handle changes to attached export for import entries
      */
@@ -592,6 +599,11 @@ fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
      */
 
     /*
+     * reload the entry address post possible pool realloc
+     */
+    fib_entry = fib_entry_get(fei);
+
+    /*
      * handle changes to attached export for export entries
      */
     int is_attached  = (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(fib_entry));
@@ -605,6 +617,8 @@ fib_entry_post_flag_update_actions (fib_entry_t *fib_entry,
 	// FIXME
     }
     // else FIXME
+
+    return (fib_entry);
 }
 
 static void
@@ -612,7 +626,9 @@ fib_entry_post_install_actions (fib_entry_t *fib_entry,
 				fib_source_t source,
 				fib_entry_flag_t old_flags)
 {
-    fib_entry_post_flag_update_actions(fib_entry, source, old_flags);
+    fib_entry = fib_entry_post_flag_update_actions(fib_entry,
+                                                   source,
+                                                   old_flags);
     fib_entry_src_action_installed(fib_entry, source);
 }
 
@@ -909,7 +925,9 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
 		 * no more sources left. this entry is toast.
 		 */
 		fib_entry_src_action_uninstall(fib_entry);
-		fib_entry_post_flag_update_actions(fib_entry, source, bflags);
+		fib_entry = fib_entry_post_flag_update_actions(fib_entry,
+                                                               source,
+                                                               bflags);
 
 		return (FIB_ENTRY_SRC_FLAG_NONE);
 	    }
@@ -997,7 +1015,9 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
 		 * no more sources left. this entry is toast.
 		 */
 		fib_entry_src_action_uninstall(fib_entry);
-		fib_entry_post_flag_update_actions(fib_entry, source, bflags);
+		fib_entry = fib_entry_post_flag_update_actions(fib_entry,
+                                                               source,
+                                                               bflags);
 
 		return (FIB_ENTRY_SRC_FLAG_NONE);
 	    }
