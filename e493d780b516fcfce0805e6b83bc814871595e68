@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_565fd6e5",
+        "filename": "src/vnet/lisp-gpe/decap.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-02-24T19:30:37Z",
+      "side": 1,
+      "message": "Since this is on the critical path, I\u0027d like to optimize it. Could you do something like:\n\nif (PREDICT_TRUE((lisp_mode \u0026\u0026 P_bit) || vxlan_mode))\n if (PREDICT_FALSE (lgh-\u003enext_protocol  \u003e LISP_GPE_NEXT_PROTOS)\n   return LISP_GPE_INPUT_NEXT_DROP\n return next_proto_to_next_index[lgh-\u003enext_protocol];\nelse\n .. legacy lisp",
+      "range": {
+        "startLine": 67,
+        "startChar": 2,
+        "endLine": 67,
+        "endChar": 41
+      },
+      "revId": "e493d780b516fcfce0805e6b83bc814871595e68",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
