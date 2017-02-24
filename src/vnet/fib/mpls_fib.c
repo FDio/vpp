@@ -272,7 +272,7 @@ mpls_fib_table_destroy (mpls_fib_t *mf)
 	hash_unset(mpls_main.fib_index_by_table_id,
 		   fib_table->ft_table_id);
     }
-    hash_delete(mf->mf_entries);
+    hash_free(mf->mf_entries);
 
     pool_put(mpls_main.fibs, fib_table);
 }

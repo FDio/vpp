@@ -292,6 +292,8 @@ mfib_entry_src_flush (mfib_entry_src_t *msrc)
     ({
         mfib_itf_delete(mfib_itf_get(mfii));
     }));
+    hash_free(msrc->mfes_itfs);
+    msrc->mfes_itfs = NULL;
     fib_path_list_unlock(msrc->mfes_pl);
 }
 
