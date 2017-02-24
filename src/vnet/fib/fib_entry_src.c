@@ -266,6 +266,7 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 {
     fib_entry_src_collect_forwarding_ctx_t *ctx;
     fib_path_ext_t *path_ext;
+    int have_path_ext;
 
     ctx = arg;
 
@@ -285,14 +286,17 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     /*
      * get the matching path-extension for the path being visited.
      */
+    have_path_ext = 0;
     vec_foreach(path_ext, ctx->esrc->fes_path_exts)
     {
         if (path_ext->fpe_path_index == path_index)
+        {
+            have_path_ext = 1;
             break;
+        }
     }
     
-    if (NULL != path_ext &&
-        path_ext->fpe_path_index == path_index &&
+    if (have_path_ext &&
         fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0]))
     {
         /*
