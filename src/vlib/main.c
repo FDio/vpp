@@ -1017,6 +1017,7 @@ dispatch_node (vlib_main_t * vm,
 	      && (node->flags
 		  & VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE)))
 	{
+#ifdef DISPATCH_NODE_ELOG_REQUIRED
 	  ELOG_TYPE_DECLARE (e) =
 	  {
 	    .function = (char *) __FUNCTION__,.format =
@@ -1028,6 +1029,8 @@ dispatch_node (vlib_main_t * vm,
 	  {
 	    u32 node_name, vector_length, is_polling;
 	  } *ed;
+	  vlib_worker_thread_t *w = vlib_worker_threads + vm->cpu_index;
+#endif
 
 	  if (dispatch_state == VLIB_NODE_STATE_INTERRUPT
 	      && v >= nm->polling_threshold_vector_length)
@@ -1045,10 +1048,13 @@ dispatch_node (vlib_main_t * vm,
 	      nm->input_node_counts_by_state[VLIB_NODE_STATE_INTERRUPT] -= 1;
 	      nm->input_node_counts_by_state[VLIB_NODE_STATE_POLLING] += 1;
 
-	      ed = ELOG_DATA (&vm->elog_main, e);
+#ifdef DISPATCH_NODE_ELOG_REQUIRED
+	      ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
+				    w->elog_track);
 	      ed->node_name = n->name_elog_string;
 	      ed->vector_length = v;
 	      ed->is_polling = 1;
+#endif
 	    }
 	  else if (dispatch_state == VLIB_NODE_STATE_POLLING
 		   && v <= nm->interrupt_threshold_vector_length)
@@ -1073,10 +1079,13 @@ dispatch_node (vlib_main_t * vm,
 		{
 		  node->flags |=
 		    VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
-		  ed = ELOG_DATA (&vm->elog_main, e);
+#ifdef DISPATCH_NODE_ELOG_REQUIRED
+		  ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main, e,
+					w->elog_track);
 		  ed->node_name = n->name_elog_string;
 		  ed->vector_length = v;
 		  ed->is_polling = 0;
+#endif
 		}
 	    }
 	}
