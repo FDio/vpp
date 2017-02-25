@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_76c5325a",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 306,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-25T09:42:12Z",
+      "side": 1,
+      "message": ".... this was moved to an INIT function in decap.c",
+      "revId": "19d6c61d3995780e85e6ae0c869502a2f78093b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_96c89e75",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-25T09:42:12Z",
+      "side": 1,
+      "message": "we wouldn\u0027t need to make this part of the public API if ....",
+      "revId": "19d6c61d3995780e85e6ae0c869502a2f78093b4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
