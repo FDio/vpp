@@ -220,6 +220,15 @@ split_plugin_path (plugin_main_t * pm)
   return rv;
 }
 
+static int
+plugin_name_sort_cmp (void *a1, void *a2)
+{
+  plugin_info_t *p1 = a1;
+  plugin_info_t *p2 = a2;
+
+  return strcmp ((char *) p1->name, (char *) p2->name);
+}
+
 int
 vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 {
@@ -229,6 +238,7 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
   uword *p;
   plugin_info_t *pi;
   u8 **plugin_path;
+  u32 *load_fail_indices = 0;
   int i;
 
   plugin_path = split_plugin_path (pm);
@@ -271,22 +281,15 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
 	    goto ignore;
 
 	  plugin_name = format (0, "%s%c", entry->d_name, 0);
+	  /* Have we seen this plugin already? */
 	  p = hash_get_mem (pm->plugin_by_name_hash, plugin_name);
 	  if (p == 0)
 	    {
+	      /* No, add it to the plugin vector */
 	      vec_add2 (pm->plugin_info, pi, 1);
 	      pi->name = plugin_name;
 	      pi->filename = filename;
 	      pi->file_info = statb;
-
-	      if (load_one_plugin (pm, pi, from_early_init))
-		{
-		  vec_free (plugin_name);
-		  vec_free (filename);
-		  _vec_len (pm->plugin_info) = vec_len (pm->plugin_info) - 1;
-		  memset (pi, 0, sizeof (*pi));
-		  continue;
-		}
 	      hash_set_mem (pm->plugin_by_name_hash, plugin_name,
 			    pi - pm->plugin_info);
 	    }
@@ -297,6 +300,49 @@ vlib_load_new_plugins (plugin_main_t * pm, int from_early_init)
       vec_free (plugin_path[i]);
     }
   vec_free (plugin_path);
+
+
+  /*
+   * Sort the plugins by name. This is important.
+   * API traces contain absolute message numbers.
+   * Loading plugins in directory (vs. alphabetical) order
+   * makes trace replay incredibly fragile.
+   */
+  vec_sort_with_function (pm->plugin_info, plugin_name_sort_cmp);
+
+  /*
+   * Attempt to load the plugins
+   */
+  for (i = 0; i < vec_len (pm->plugin_info); i++)
+    {
+      pi = vec_elt_at_index (pm->plugin_info, i);
+
+      if (load_one_plugin (pm, pi, from_early_init))
+	{
+	  /* Make a note of any which fail to load */
+	  vec_add1 (load_fail_indices, i);
+	  hash_unset_mem (pm->plugin_by_name_hash, pi->name);
+	  vec_free (pi->name);
+	  vec_free (pi->filename);
+	}
+    }
+
+  /* Remove plugin info vector elements corresponding to load failures */
+  if (vec_len (load_fail_indices) > 0)
+    {
+      for (i = vec_len (load_fail_indices) - 1; i >= 0; i--)
+	vec_delete (pm->plugin_info, 1, load_fail_indices[i]);
+      vec_free (load_fail_indices);
+    }
+
+  /* Recreate the plugin name hash */
+  for (i = 0; i < vec_len (pm->plugin_info); i++)
+    {
+      pi = vec_elt_at_index (pm->plugin_info, i);
+      hash_unset_mem (pm->plugin_by_name_hash, pi->name);
+      hash_set_mem (pm->plugin_by_name_hash, pi->name, pi - pm->plugin_info);
+    }
+
   return 0;
 }
 
