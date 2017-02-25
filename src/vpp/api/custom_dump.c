@@ -581,8 +581,6 @@ static void *vl_api_ip_neighbor_add_del_t_print
   if (mp->is_static)
     s = format (s, "is_static ");
 
-  s = format (s, "vrf_id %d ", ntohl (mp->vrf_id));
-
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
 

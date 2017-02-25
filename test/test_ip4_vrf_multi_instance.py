@@ -190,7 +190,7 @@ class TestIp4VrfMultiInst(VppTestCase):
                 if pg_if in self.pg_not_in_vrf:
                     self.pg_not_in_vrf.remove(pg_if)
                 pg_if.config_ip4()
-                pg_if.configure_ipv4_neighbors(vrf_id)
+                pg_if.configure_ipv4_neighbors()
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip arp"))
 

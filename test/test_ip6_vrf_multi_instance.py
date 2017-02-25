@@ -206,7 +206,7 @@ class TestIP6VrfMultiInst(VppTestCase):
                     self.pg_not_in_vrf.remove(pg_if)
                 pg_if.config_ip6()
                 pg_if.disable_ipv6_ra()
-                pg_if.configure_ipv6_neighbors(vrf_id)
+                pg_if.configure_ipv6_neighbors()
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
 

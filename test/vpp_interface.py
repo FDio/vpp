@@ -196,7 +196,7 @@ class VppInterface(object):
             self.has_ip4_config = False
         self.has_ip4_config = False
 
-    def configure_ipv4_neighbors(self, vrf_id=0):
+    def configure_ipv4_neighbors(self):
         """For every remote host assign neighbor's MAC to IPv4 addresses.
 
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
@@ -205,7 +205,7 @@ class VppInterface(object):
             macn = host.mac.replace(":", "").decode('hex')
             ipn = host.ip4n
             self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn, vrf_id)
+                self.sw_if_index, macn, ipn)
 
     def config_ip6(self):
         """Configure IPv6 address on the VPP interface."""
@@ -227,7 +227,7 @@ class VppInterface(object):
             self.has_ip6_config = False
         self.has_ip6_config = False
 
-    def configure_ipv6_neighbors(self, vrf_id=0):
+    def configure_ipv6_neighbors(self):
         """For every remote host assign neighbor's MAC to IPv6 addresses.
 
         :param vrf_id: The FIB table / VRF ID. (Default value = 0)
@@ -236,7 +236,7 @@ class VppInterface(object):
             macn = host.mac.replace(":", "").decode('hex')
             ipn = host.ip6n
             self.test.vapi.ip_neighbor_add_del(
-                self.sw_if_index, macn, ipn, vrf_id, is_ipv6=1)
+                self.sw_if_index, macn, ipn, is_ipv6=1)
 
     def unconfig(self):
         """Unconfigure IPv6 and IPv4 address on the VPP interface."""
