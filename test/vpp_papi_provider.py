@@ -629,7 +629,6 @@ class VppPapiProvider(object):
                             sw_if_index,
                             mac_address,
                             dst_address,
-                            vrf_id=0,
                             is_add=1,
                             is_ipv6=0,
                             is_static=0,
@@ -639,7 +638,6 @@ class VppPapiProvider(object):
         :param sw_if_index:
         :param mac_address:
         :param dst_address:
-        :param vrf_id:  (Default value = 0)
         :param is_add:  (Default value = 1)
         :param is_ipv6:  (Default value = 0)
         :param is_static:  (Default value = 0)
@@ -647,8 +645,7 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.ip_neighbor_add_del,
-            {'vrf_id': vrf_id,
-             'sw_if_index': sw_if_index,
+            {'sw_if_index': sw_if_index,
              'is_add': is_add,
              'is_ipv6': is_ipv6,
              'is_static': is_static,
