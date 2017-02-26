@@ -319,6 +319,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_d65e2645",
+        "filename": "test/vpp_neighbor.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-02-26T13:01:54Z",
+      "side": 1,
+      "message": "undone.\nthere are some tests (the multi VRF instance) that rely on the behaviour.   Though I tried to unpick the tests to make them work, it was more effort that I\u0027m prepared to spend. please ask the original authors.",
+      "parentUuid": "3a3291f1_6b19cf87",
+      "revId": "54692bd4e6648d322bdcbe3fdecd92a30c13e37d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_abaa1717",
         "filename": "test/vpp_neighbor.py",
         "patchSetId": 2
