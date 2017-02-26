@@ -550,7 +550,7 @@ int vnet_vxlan_add_del_tunnel
           mcast_shared_t ep = mcast_shared_get(&t->dst);
 
           /* Stack shared mcast dst mac addr rewrite on encap */
-          dpo_set (&dpo, DPO_ADJACENCY,
+          dpo_set (&dpo, DPO_ADJACENCY_MCAST,
                    fib_proto_to_dpo(fp),
                    ep.mcast_adj_index);
 
