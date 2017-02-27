@@ -753,8 +753,14 @@ void node_complex_generate (node_t *this, enum passid which, FILE *fp)
         fprintf(fp, "vl_print(handle, \"%s%s ----- \\n\");\n", 
                 union_prefix, member_name);
         indent_me(fp);
-        fprintf(fp, "%s_print(&a->%s%s, handle);\n", 
-                CDATA0, union_prefix, member_name);
+
+        if (deeper->type == NODE_VECTOR)
+            fprintf(fp, "%s_print(a->%s%s, handle);\n", 
+                    CDATA0, union_prefix, member_name);
+        else
+            fprintf(fp, "%s_print(&a->%s%s, handle);\n", 
+                    CDATA0, union_prefix, member_name);
+
         indent_me(fp);
         fprintf(fp, "vl_print(handle, \"%s%s ----- END \\n\");\n", 
                 union_prefix, member_name);
@@ -772,8 +778,12 @@ void node_complex_generate (node_t *this, enum passid which, FILE *fp)
         }
 
         indent_me(fp);
-        fprintf(fp, "%s_endian(&a->%s%s);\n", 
-                CDATA0, union_prefix, member_name);
+        if (deeper->type == NODE_VECTOR)
+            fprintf(fp, "%s_endian(a->%s%s);\n", 
+                    CDATA0, union_prefix, member_name);
+        else
+            fprintf(fp, "%s_endian(&a->%s%s);\n", 
+                    CDATA0, union_prefix, member_name);
         break;
     case PYTHON_PASS:
         fprintf(fp, "('%s',", CDATA0);
