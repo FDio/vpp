@@ -70,6 +70,17 @@ vl_api_memclnt_delete_t_print (vl_api_memclnt_delete_t * a, void *handle)
   return handle;
 }
 
+static inline void *
+vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
+				     void *handle)
+{
+  vl_print (handle, "vl_api_trace_plugin_msg_ids: %s first %u last %u\n",
+	    a->plugin_name,
+	    clib_host_to_net_u16 (a->first_msg_id),
+	    clib_host_to_net_u16 (a->last_msg_id));
+  return handle;
+}
+
 /* instantiate all the endian swap functions we know about */
 #define vl_endianfun
 #include <vlibmemory/vl_memory_api_h.h>
@@ -112,14 +123,13 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
   /* serialize the count */
   serialize_integer (sm, nmsg, sizeof (u32));
 
-  hash_foreach_pair (hp, am->msg_index_by_name_and_crc, (
-							  {
-							  serialize_likely_small_unsigned_integer
-							  (sm, hp->value[0]);
-							  serialize_cstring
-							  (sm,
-							   (char *) hp->key);
-							  }));
+  /* *INDENT-OFF* */
+  hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+  ({
+    serialize_likely_small_unsigned_integer (sm, hp->value[0]);
+    serialize_cstring (sm, (char *) hp->key);
+  }));
+  /* *INDENT-ON* */
 
   return serialize_close_vector (sm);
 }
@@ -389,6 +399,31 @@ static u64 vector_rate_histogram[SLEEP_N_BUCKETS];
 
 static void memclnt_queue_callback (vlib_main_t * vm);
 
+/*
+ * Callback to send ourselves a plugin numbering-space trace msg
+ */
+static void
+send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
+{
+  vl_api_trace_plugin_msg_ids_t *mp;
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  unix_shared_memory_queue_t *q;
+
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_TRACE_PLUGIN_MSG_IDS);
+  strncpy ((char *) mp->plugin_name, (char *) name,
+	   sizeof (mp->plugin_name) - 1);
+  mp->first_msg_id = clib_host_to_net_u16 (first_msg_id);
+  mp->last_msg_id = clib_host_to_net_u16 (last_msg_id);
+
+  q = shmem_hdr->vl_input_queue;
+
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
 static uword
 memclnt_process (vlib_main_t * vm,
 		 vlib_node_runtime_t * node, vlib_frame_t * f)
@@ -402,6 +437,7 @@ memclnt_process (vlib_main_t * vm,
   f64 dead_client_scan_time;
   f64 sleep_time, start_time;
   f64 vector_rate;
+  int i;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
@@ -423,6 +459,16 @@ memclnt_process (vlib_main_t * vm,
 
   sleep_time = 20.0;
   dead_client_scan_time = vlib_time_now (vm) + 20.0;
+
+  /*
+   * Send plugin message range messages for each plugin we loaded
+   */
+  for (i = 0; i < vec_len (am->msg_ranges); i++)
+    {
+      vl_api_msg_range_t *rp = am->msg_ranges + i;
+      send_one_plugin_msg_ids_msg (rp->name, rp->first_msg_id,
+				   rp->last_msg_id);
+    }
 
   /* $$$ pay attention to frame size, control CPU usage */
   while (1)
@@ -1320,9 +1366,19 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
   pthread_mutex_unlock (&q->mutex);
 }
 
+static void
+vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
+{
+  /* Do nothing. We just want to trace the message */
+}
+
+
 #define foreach_rpc_api_msg                     \
 _(RPC_CALL,rpc_call)                            \
 _(RPC_REPLY,rpc_reply)
+
+#define foreach_plugin_trace_msg		\
+_(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
 
 static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
@@ -1335,6 +1391,16 @@ rpc_api_hookup (vlib_main_t * vm)
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 0 /* do not trace */);
   foreach_rpc_api_msg;
+#undef _
+
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+                           vl_api_##n##_t_handler,              \
+                           vl_noop_handler,                     \
+                           vl_noop_handler,			\
+                           vl_api_##n##_t_print,                \
+                           sizeof(vl_api_##n##_t), 1 /* do trace */);
+  foreach_plugin_trace_msg;
 #undef _
   return 0;
 }

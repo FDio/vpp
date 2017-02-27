@@ -89,3 +89,18 @@ define get_first_msg_id_reply {
     i32 retval;
     u16 first_msg_id;
 };
+
+/*
+ * Trace the plugin message-id allocator
+ * so we stand a chance of dealing with different sets of plugins
+ * at api trace replay time
+ */
+
+manual_print define trace_plugin_msg_ids
+{
+    u32 client_index;
+    u32 context;
+    u8 plugin_name[128];
+    u16 first_msg_id;
+    u16 last_msg_id;
+};
