@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_511360b8",
+        "filename": "test/vpp_interface.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 328,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-02-27T09:47:46Z",
+      "side": 1,
+      "message": "though the typo is fixed, this comment still doesn\u0027t make sense ;)",
+      "range": {
+        "startLine": 328,
+        "startChar": 12,
+        "endLine": 328,
+        "endChar": 66
+      },
+      "revId": "ab33de4857531f930c0e3542bfae6191b42b4655",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
