@@ -1,0 +1,251 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_9c343fdf",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "Dump S-NAT users",
+      "range": {
+        "startLine": 355,
+        "startChar": 11,
+        "endLine": 355,
+        "endChar": 27
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5c4ed770",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 367,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "use VRF ID as in another APIs",
+      "range": {
+        "startLine": 367,
+        "startChar": 4,
+        "endLine": 367,
+        "endChar": 44
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3c530b19",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 395,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "use VRF ID as in another APIs",
+      "range": {
+        "startLine": 395,
+        "startChar": 2,
+        "endLine": 395,
+        "endChar": 16
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7c48735b",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "out_...",
+      "range": {
+        "startLine": 401,
+        "startChar": 4,
+        "endLine": 402,
+        "endChar": 36
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9c4b1f59",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "in_...",
+      "range": {
+        "startLine": 404,
+        "startChar": 4,
+        "endLine": 405,
+        "endChar": 36
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1c584f31",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "use only once, protocol is always same",
+      "range": {
+        "startLine": 406,
+        "startChar": 4,
+        "endLine": 406,
+        "endChar": 44
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fc5c6327",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 411,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "not needed in API",
+      "range": {
+        "startLine": 411,
+        "startChar": 4,
+        "endLine": 411,
+        "endChar": 59
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1c6f2fc7",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1480,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "use ip protocol number (use snat_proto_to_ip_proto)",
+      "range": {
+        "startLine": 1480,
+        "startChar": 2,
+        "endLine": 1480,
+        "endChar": 51
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5c9c97c0",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1550,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "add params",
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3ca1cbf8",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 658,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "add all data in API",
+      "range": {
+        "startLine": 656,
+        "startChar": 0,
+        "endLine": 658,
+        "endChar": 53
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fcaa23d3",
+        "filename": "test/test_snat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 896,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-02-27T12:34:43Z",
+      "side": 1,
+      "message": "please do something better, validate more data from API",
+      "range": {
+        "startLine": 896,
+        "startChar": 0,
+        "endLine": 896,
+        "endChar": 61
+      },
+      "revId": "25c0ecd0b5649f8aa8dc58c2c77e8884c58e9b60",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
