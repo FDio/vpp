@@ -41,6 +41,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
+#include <vnet/l2/l2_output.h>
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
@@ -582,6 +583,15 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 
     vnet_interface_counter_unlock (im);
   }
+  /* Wipe any stale l2 input config data. */
+  if (sw_if_index < vec_len (l2input_main.configs))
+    memset(vec_elt_at_index (l2input_main.configs, sw_if_index),
+           0, sizeof(l2_input_config_t));
+
+   /* Wipe any stale l2 output config data. */
+  if (sw_if_index < vec_len (l2output_main.configs))
+    memset(vec_elt_at_index (l2output_main.configs, sw_if_index),
+           0, sizeof(l2_output_config_t));
 
   return sw_if_index;
 }
