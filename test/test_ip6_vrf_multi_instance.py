@@ -65,7 +65,6 @@ from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
     RouterAlert, IPv6ExtHdrHopByHop
 from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
 from scapy.pton_ntop import inet_ntop
-from scapy.data import IPV6_ADDR_UNICAST
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
@@ -185,7 +184,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            dest_addr = pg_if.remote_hosts[0].ip6n
+            dest_addr = pg_if.local_ip6n
             dest_addr_len = 64
             self.vapi.ip_add_del_route(
                 dest_addr, dest_addr_len, pg_if.local_ip6n, is_ipv6=1,
@@ -317,8 +316,15 @@ class TestIP6VrfMultiInst(VppTestCase):
                 if not vrf_exist:
                     vrf_exist = True
                 addr = inet_ntop(socket.AF_INET6, ip6_fib_details[4])
-                addrtype = in6_getAddrType(addr)
-                vrf_count += 1 if addrtype == IPV6_ADDR_UNICAST else 0
+                found = False
+                for pg_if in self.pg_if_by_vrf_id[vrf_id]:
+                    if found:
+                        break
+                    for host in pg_if.remote_hosts:
+                        if str(addr) == str(host.ip6):
+                            vrf_count += 1
+                            found = True
+                            break
         if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv6 VRF ID %d is not configured" % vrf_id)
             return VRF_NOT_CONFIGURED
