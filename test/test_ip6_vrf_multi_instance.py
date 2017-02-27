@@ -65,15 +65,10 @@ from scapy.layers.inet6 import UDP, IPv6, ICMPv6ND_NS, ICMPv6ND_RA, \
     RouterAlert, IPv6ExtHdrHopByHop
 from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
 from scapy.pton_ntop import inet_ntop
-from scapy.data import IPV6_ADDR_UNICAST
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
-
-# VRF status constants
-VRF_NOT_CONFIGURED = 0
-VRF_CONFIGURED = 1
-VRF_RESET = 2
+from vrf import VRFState
 
 
 def is_ipv6_misc_ext(p):
@@ -185,7 +180,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            dest_addr = pg_if.remote_hosts[0].ip6n
+            dest_addr = pg_if.local_ip6n
             dest_addr_len = 64
             self.vapi.ip_table_add_del(vrf_id, is_add=1, is_ipv6=1)
             self.vapi.ip_add_del_route(
@@ -211,9 +206,9 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
 
-    def reset_vrf(self, vrf_id):
+    def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
-        Reset required FIB table / VRF.
+        Reset required FIB table / VRF and remove it from VRF list.
 
         :param int vrf_id: The FIB table / VRF ID to be reset.
         """
@@ -230,7 +225,7 @@ class TestIP6VrfMultiInst(VppTestCase):
                 self.pg_in_vrf.remove(pg_if)
             if pg_if not in self.pg_not_in_vrf:
                 self.pg_not_in_vrf.append(pg_if)
-        self.logger.info("IPv6 VRF ID %d reset" % vrf_id)
+        self.logger.info("IPv6 VRF ID %d reset finished" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
         self.vapi.ip_table_add_del(vrf_id, is_add=0, is_ipv6=1)
@@ -320,17 +315,24 @@ class TestIP6VrfMultiInst(VppTestCase):
                 if not vrf_exist:
                     vrf_exist = True
                 addr = inet_ntop(socket.AF_INET6, ip6_fib_details.address)
-                addrtype = in6_getAddrType(addr)
-                vrf_count += 1 if addrtype == IPV6_ADDR_UNICAST else 0
+                found = False
+                for pg_if in self.pg_if_by_vrf_id[vrf_id]:
+                    if found:
+                        break
+                    for host in pg_if.remote_hosts:
+                        if str(addr) == str(host.ip6):
+                            vrf_count += 1
+                            found = True
+                            break
         if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv6 VRF ID %d is not configured" % vrf_id)
-            return VRF_NOT_CONFIGURED
+            return VRFState.not_configured
         elif vrf_exist and vrf_count == 0:
             self.logger.info("IPv6 VRF ID %d has been reset" % vrf_id)
-            return VRF_RESET
+            return VRFState.reset
         else:
             self.logger.info("IPv6 VRF ID %d is configured" % vrf_id)
-            return VRF_CONFIGURED
+            return VRFState.configured
 
     def run_verify_test(self):
         """
@@ -377,7 +379,8 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Verify 1
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
 
         # Test 1
         self.run_verify_test()
@@ -387,21 +390,23 @@ class TestIP6VrfMultiInst(VppTestCase):
         """
         # Config 2
         # Delete 2 VRFs
-        self.reset_vrf(1)
-        self.reset_vrf(2)
+        self.reset_vrf_and_remove_from_vrf_list(1)
+        self.reset_vrf_and_remove_from_vrf_list(2)
 
         # Verify 2
         for vrf_id in self.vrf_reset_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_RESET)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
 
         # Test 2
         self.run_verify_test()
 
         # Reset routes learned from ICMPv6 Neighbor Discovery
         for vrf_id in self.vrf_reset_list:
-            self.reset_vrf(vrf_id)
+            self.reset_vrf_and_remove_from_vrf_list(vrf_id)
 
     def test_ip6_vrf_03(self):
         """ IP6 VRF  Multi-instance 3 - add 2 VRFs
@@ -413,30 +418,35 @@ class TestIP6VrfMultiInst(VppTestCase):
 
         # Verify 3
         for vrf_id in self.vrf_reset_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_RESET)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
 
         # Test 3
         self.run_verify_test()
 
         # Reset routes learned from ICMPv6 Neighbor Discovery
         for vrf_id in self.vrf_reset_list:
-            self.reset_vrf(vrf_id)
+            self.reset_vrf_and_remove_from_vrf_list(vrf_id)
 
     def test_ip6_vrf_04(self):
         """ IP6 VRF  Multi-instance test 4 - reset 4 VRFs
         """
         # Config 4
-        # Reset all VRFs (i.e. no VRF except VRF=0 created)
+        # Reset all VRFs (i.e. no VRF except VRF=0 configured)
         for i in range(len(self.vrf_list)):
-            self.reset_vrf(self.vrf_list[0])
+            self.reset_vrf_and_remove_from_vrf_list(self.vrf_list[0])
 
         # Verify 4
         for vrf_id in self.vrf_reset_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_RESET)
-        for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), VRF_CONFIGURED)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
+        vrf_list_length = len(self.vrf_list)
+        self.assertEqual(
+            vrf_list_length, 0,
+            "List of configured VRFs is not empty: %s != 0" % vrf_list_length)
 
         # Test 4
         self.run_verify_test()

@@ -6,9 +6,6 @@
     interfaces in 5 VRFs are tested
     - jumbo packets in configuration with 15 pg-ip4 interfaces leads to \
     problems too
-    - Reset of FIB table / VRF does not remove routes from IP FIB (see Jira \
-    ticket https://jira.fd.io/browse/VPP-560) so checks of reset VRF tables \
-    are skipped in tests 2, 3 and 4
 
 **config 1**
     - add 15 pg-ip4 interfaces
@@ -25,7 +22,7 @@
     - no packet received in case of pg-ip4 interfaces not in VRF
 
 **config 2**
-    - delete 2 VRFs
+    - reset 2 VRFs
 
 **test 2**
     - send IP4 packets between all pg-ip4 interfaces in all VRF groups
@@ -36,7 +33,7 @@
     - no packet received in case of pg-ip4 interfaces not in VRF
 
 **config 3**
-    - add 1 of deleted VRFs and 1 new VRF
+    - add 1 of reset VRFs and 1 new VRF
 
 **test 3**
     - send IP4 packets between all pg-ip4 interfaces in all VRF groups
@@ -47,7 +44,7 @@
     - no packet received in case of pg-ip4 interfaces not in VRF
 
 **config 4**
-    - delete all VRFs (i.e. no VRF except VRF=0 created)
+    - reset all created VRFs
 
 **test 4**
     - send IP4 packets between all pg-ip4 interfaces in all VRF groups
@@ -60,6 +57,7 @@
 
 import unittest
 import random
+import socket
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -67,6 +65,7 @@ from scapy.layers.inet import IP, UDP, ARP
 
 from framework import VppTestCase, VppTestRunner
 from util import ppp
+from vrf import VRFState
 
 
 def is_ipv4_misc(p):
@@ -119,8 +118,8 @@ class TestIp4VrfMultiInst(VppTestCase):
             # Create list of VRFs
             cls.vrf_list = list()
 
-            # Create list of deleted VRFs
-            cls.vrf_deleted_list = list()
+            # Create list of reset VRFs
+            cls.vrf_reset_list = list()
 
             # Create list of pg_interfaces in VRFs
             cls.pg_in_vrf = list()
@@ -170,7 +169,7 @@ class TestIp4VrfMultiInst(VppTestCase):
         for i in range(count):
             vrf_id = i + start
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
-            dest_addr = pg_if.remote_hosts[0].ip4n
+            dest_addr = pg_if.local_ip4n
             dest_addr_len = 24
             self.vapi.ip_table_add_del(vrf_id, is_add=1)
             self.vapi.ip_add_del_route(
@@ -179,8 +178,8 @@ class TestIp4VrfMultiInst(VppTestCase):
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
-            if vrf_id in self.vrf_deleted_list:
-                self.vrf_deleted_list.remove(vrf_id)
+            if vrf_id in self.vrf_reset_list:
+                self.vrf_reset_list.remove(vrf_id)
             for j in range(self.pg_ifs_per_vrf):
                 pg_if = self.pg_if_by_vrf_id[vrf_id][j]
                 pg_if.set_table_ip4(vrf_id)
@@ -195,18 +194,18 @@ class TestIp4VrfMultiInst(VppTestCase):
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip arp"))
 
-    def delete_vrf(self, vrf_id):
+    def reset_vrf_and_remove_from_vrf_list(self, vrf_id):
         """
-        Delete required FIB table / VRF.
+        Reset required FIB table / VRF and remove it from VRF list.
 
-        :param int vrf_id: The FIB table / VRF ID to be deleted.
+        :param int vrf_id: The FIB table / VRF ID to be reset.
         """
         # self.vapi.reset_vrf(vrf_id, is_ipv6=0)
         self.vapi.reset_fib(vrf_id, is_ipv6=0)
         if vrf_id in self.vrf_list:
             self.vrf_list.remove(vrf_id)
-        if vrf_id not in self.vrf_deleted_list:
-            self.vrf_deleted_list.append(vrf_id)
+        if vrf_id not in self.vrf_reset_list:
+            self.vrf_reset_list.append(vrf_id)
         for j in range(self.pg_ifs_per_vrf):
             pg_if = self.pg_if_by_vrf_id[vrf_id][j]
             pg_if.unconfig_ip4()
@@ -214,7 +213,7 @@ class TestIp4VrfMultiInst(VppTestCase):
                 self.pg_in_vrf.remove(pg_if)
             if pg_if not in self.pg_not_in_vrf:
                 self.pg_not_in_vrf.append(pg_if)
-        self.logger.info("IPv4 VRF ID %d reset" % vrf_id)
+        self.logger.info("IPv4 VRF ID %d reset finished" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip arp"))
         self.vapi.ip_table_add_del(vrf_id, is_add=0)
@@ -297,16 +296,31 @@ class TestIp4VrfMultiInst(VppTestCase):
         :return: 1 if the FIB table / VRF ID is configured, otherwise return 0.
         """
         ip_fib_dump = self.vapi.ip_fib_dump()
+        vrf_exist = False
         vrf_count = 0
         for ip_fib_details in ip_fib_dump:
-            if ip_fib_details[2] == vrf_id:
-                vrf_count += 1
-        if vrf_count == 0:
+            if ip_fib_details.table_id == vrf_id:
+                if not vrf_exist:
+                    vrf_exist = True
+                addr = socket.inet_ntoa(ip_fib_details.address)
+                found = False
+                for pg_if in self.pg_if_by_vrf_id[vrf_id]:
+                    if found:
+                        break
+                    for host in pg_if.remote_hosts:
+                        if str(addr) == str(host.ip4):
+                            vrf_count += 1
+                            found = True
+                            break
+        if not vrf_exist and vrf_count == 0:
             self.logger.info("IPv4 VRF ID %d is not configured" % vrf_id)
-            return 0
+            return VRFState.not_configured
+        elif vrf_exist and vrf_count == 0:
+            self.logger.info("IPv4 VRF ID %d has been reset" % vrf_id)
+            return VRFState.reset
         else:
             self.logger.info("IPv4 VRF ID %d is configured" % vrf_id)
-            return 1
+            return VRFState.configured
 
     def run_verify_test(self):
         """
@@ -345,7 +359,7 @@ class TestIp4VrfMultiInst(VppTestCase):
                 raise Exception("Unknown interface: %s" % pg_if.name)
 
     def test_ip4_vrf_01(self):
-        """ IP4 VRF  Multi-instance test 1 - create 5 BDs
+        """ IP4 VRF  Multi-instance test 1 - create 4 VRFs
         """
         # Config 1
         # Create 4 VRFs
@@ -353,24 +367,27 @@ class TestIp4VrfMultiInst(VppTestCase):
 
         # Verify 1
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
 
         # Test 1
         self.run_verify_test()
 
     def test_ip4_vrf_02(self):
-        """ IP4 VRF  Multi-instance test 2 - delete 2 VRFs
+        """ IP4 VRF  Multi-instance test 2 - reset 2 VRFs
         """
         # Config 2
-        # Delete 2 VRFs
-        self.delete_vrf(1)
-        self.delete_vrf(2)
+        # Reset 2 VRFs
+        self.reset_vrf_and_remove_from_vrf_list(1)
+        self.reset_vrf_and_remove_from_vrf_list(2)
 
         # Verify 2
-        # for vrf_id in self.vrf_deleted_list:
-        #     self.assertEqual(self.verify_vrf(vrf_id), 0)
+        for vrf_id in self.vrf_reset_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
 
         # Test 2
         self.run_verify_test()
@@ -379,32 +396,37 @@ class TestIp4VrfMultiInst(VppTestCase):
         """ IP4 VRF  Multi-instance 3 - add 2 VRFs
         """
         # Config 3
-        # Add 1 of deleted VRFs and 1 new VRF
+        # Add 1 of reset VRFs and 1 new VRF
         self.create_vrf_and_assign_interfaces(1)
         self.create_vrf_and_assign_interfaces(1, start=5)
 
         # Verify 3
-        # for vrf_id in self.vrf_deleted_list:
-        #     self.assertEqual(self.verify_vrf(vrf_id), 0)
+        for vrf_id in self.vrf_reset_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
         for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.configured, VRFState)
 
         # Test 3
         self.run_verify_test()
 
     def test_ip4_vrf_04(self):
-        """ IP4 VRF  Multi-instance test 4 - delete 4 VRFs
+        """ IP4 VRF  Multi-instance test 4 - reset 4 VRFs
         """
         # Config 4
-        # Delete all VRFs (i.e. no VRF except VRF=0 created)
+        # Reset all VRFs (i.e. no VRF except VRF=0 configured)
         for i in range(len(self.vrf_list)):
-            self.delete_vrf(self.vrf_list[0])
+            self.reset_vrf_and_remove_from_vrf_list(self.vrf_list[0])
 
         # Verify 4
-        # for vrf_id in self.vrf_deleted_list:
-        #     self.assertEqual(self.verify_vrf(vrf_id), 0)
-        for vrf_id in self.vrf_list:
-            self.assertEqual(self.verify_vrf(vrf_id), 1)
+        for vrf_id in self.vrf_reset_list:
+            self.assert_equal(self.verify_vrf(vrf_id),
+                              VRFState.reset, VRFState)
+        vrf_list_length = len(self.vrf_list)
+        self.assertEqual(
+            vrf_list_length, 0,
+            "List of configured VRFs is not empty: %s != 0" % vrf_list_length)
 
         # Test 4
         self.run_verify_test()
