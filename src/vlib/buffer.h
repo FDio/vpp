@@ -77,6 +77,7 @@ typedef struct
                 <br> VLIB_BUFFER_REPL_FAIL: packet replication failure
                 <br> VLIB_BUFFER_RECYCLE: as it says
                 <br> VLIB_BUFFER_FLOW_REPORT: buffer is a flow report,
+                <br> VLIB_BUFFER_EXT_HDR_VALID: buffer contains valid external buffer manager header,
                 set to avoid adding it to a flow report
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
              */
@@ -88,6 +89,7 @@ typedef struct
 #define VLIB_BUFFER_REPL_FAIL (1 << 4)
 #define VLIB_BUFFER_RECYCLE (1 << 5)
 #define VLIB_BUFFER_FLOW_REPORT (1 << 6)
+#define VLIB_BUFFER_EXT_HDR_VALID (1 << 7)
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
