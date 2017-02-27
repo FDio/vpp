@@ -266,6 +266,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_31669452",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-02-27T10:23:51Z",
+      "side": 1,
+      "message": "clone_count is buffer parameter, not buffer_chain parameter, and it is not inconsistent.\n\nLooking into dictionary: clone is a person or thing regarded as an exact copy of another.\n\nhere clone_count means how many exact copies specific buffer have. if clone_count\u003d0, then there is no exact copies, and only original exists.\n\nSounds pretty clear to me, or my Croatian english is so bad :)",
+      "parentUuid": "3a3291f1_6bc79646",
+      "revId": "122a311e27068034ad68178d7fae1be49a107f87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_8b6882bb",
         "filename": "src/vlib/buffer_funcs.h",
         "patchSetId": 12
