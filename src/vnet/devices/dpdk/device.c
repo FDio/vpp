@@ -159,7 +159,7 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 
   /* buffer is coming from non-dpdk source so we need to init
      rte_mbuf header */
-  if (PREDICT_FALSE ((b->flags & VNET_BUFFER_RTE_MBUF_VALID) == 0))
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_EXT_HDR_VALID) == 0))
     {
       vlib_buffer_t *b2 = b;
       last_mb = mb = rte_mbuf_from_vlib_buffer (b2);
