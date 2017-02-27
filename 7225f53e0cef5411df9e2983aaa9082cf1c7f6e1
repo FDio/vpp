@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_7cf9934c",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 462,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-27T16:37:50Z",
+      "side": 1,
+      "message": "Rather than adding a lonely static, I\u0027d be tempted to add this to the ethernet_main_t...",
+      "revId": "7225f53e0cef5411df9e2983aaa9082cf1c7f6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fced838c",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-27T16:37:50Z",
+      "side": 1,
+      "message": "You don\u0027t need to do this. All of the bitmap functions consider a NULL pointer to be a bitmap with zero bits set...",
+      "revId": "7225f53e0cef5411df9e2983aaa9082cf1c7f6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_dc02c73d",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 492,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-27T16:37:50Z",
+      "side": 1,
+      "message": "OOPS: you mean bm_loopback_instances \u003d clib_bitmap_set (bm_loopback_instances, bit, 1);\n\nOtherwise, e.g. the newly allocated / expanded bitmap will not be reflected in bm_loopback_instances. I suspect this might be why you statically-allocate the bitmap. No need to do that - and it will waste space if you allocate 3 loopbacks - BUT you must not lose the return value from clib_bitmap_set(...)...",
+      "revId": "7225f53e0cef5411df9e2983aaa9082cf1c7f6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_bcfffb33",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 499,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-27T16:37:50Z",
+      "side": 1,
+      "message": "How about \"if (want \u003e NNN)\" \u003ccomplain\u003e?",
+      "revId": "7225f53e0cef5411df9e2983aaa9082cf1c7f6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9cfc3f40",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 515,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-02-27T16:37:50Z",
+      "side": 1,
+      "message": "See previous OOPS...",
+      "revId": "7225f53e0cef5411df9e2983aaa9082cf1c7f6e1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
