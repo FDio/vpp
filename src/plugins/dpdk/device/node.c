@@ -19,14 +19,14 @@
 #include <vppinfra/xxhash.h>
 
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/dpdk/dpdk.h>
+#include <dpdk/device/dpdk.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/mpls/packet.h>
 #include <vnet/handoff.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
 
-#include "dpdk_priv.h"
+#include <dpdk/device/dpdk_priv.h>
 
 static char *dpdk_error_strings[] = {
 #define _(n,s) s,

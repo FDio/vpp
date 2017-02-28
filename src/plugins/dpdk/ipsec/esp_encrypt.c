@@ -20,10 +20,10 @@
 #include <vnet/ip/ip.h>
 
 #include <vnet/ipsec/ipsec.h>
-#include <vnet/devices/dpdk/ipsec/ipsec.h>
-#include <vnet/devices/dpdk/ipsec/esp.h>
-#include <vnet/devices/dpdk/dpdk.h>
-#include <vnet/devices/dpdk/dpdk_priv.h>
+#include <dpdk/ipsec/ipsec.h>
+#include <dpdk/ipsec/esp.h>
+#include <dpdk/device/dpdk.h>
+#include <dpdk/device/dpdk_priv.h>
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \

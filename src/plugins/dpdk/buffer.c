@@ -72,8 +72,8 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
-#include <vnet/devices/dpdk/dpdk_priv.h>
+#include <dpdk/device/dpdk.h>
+#include <dpdk/device/dpdk_priv.h>
 
 
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,

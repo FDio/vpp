@@ -42,8 +42,8 @@
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
-#include <vnet/devices/dpdk/dpdk_priv.h>
+#include <dpdk/device/dpdk.h>
+#include <dpdk/device/dpdk_priv.h>
 
 static clib_error_t *
 dpdk_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)

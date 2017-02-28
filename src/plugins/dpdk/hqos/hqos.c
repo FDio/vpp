@@ -27,7 +27,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/dpdk/dpdk.h>
+#include <dpdk/device/dpdk.h>
 
 #include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
@@ -44,7 +44,7 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
-#include "dpdk_priv.h"
+#include <dpdk/device/dpdk_priv.h>
 
 dpdk_main_t dpdk_main;
 
