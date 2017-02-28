@@ -324,11 +324,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_input_acl.c				\
  vnet/ip/lookup.c				\
  vnet/ip/ping.c					\
- vnet/ip/punt.c					\
- vnet/ip/udp_format.c				\
- vnet/ip/udp_init.c				\
- vnet/ip/udp_local.c				\
- vnet/ip/udp_pg.c
+ vnet/ip/punt.c
 
 nobase_include_HEADERS +=			\
  vnet/ip/format.h				\
@@ -354,11 +350,7 @@ nobase_include_HEADERS +=			\
  vnet/ip/ports.def				\
  vnet/ip/protocols.def				\
  vnet/ip/punt_error.def				\
- vnet/ip/punt.h					\
- vnet/ip/tcp_packet.h				\
- vnet/ip/udp_error.def				\
- vnet/ip/udp.h					\
- vnet/ip/udp_packet.h
+ vnet/ip/punt.h
 
 API_FILES += vnet/ip/ip.api
 
@@ -473,6 +465,38 @@ test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
 test_map_LDFLAGS = -static
 endif
 
+########################################
+# Layer 4 protocol: tcp
+########################################
+libvnet_la_SOURCES +=				\
+ vnet/tcp/tcp_format.c				\
+ vnet/tcp/tcp_pg.c				\
+ vnet/tcp/tcp_syn_filter4.c			\
+ vnet/tcp/tcp_output.c				\
+ vnet/tcp/tcp_input.c				\
+ vnet/tcp/tcp_newreno.c				\
+ vnet/tcp/tcp.c
+
+nobase_include_HEADERS +=			\
+ vnet/tcp/tcp_packet.h				\
+ vnet/tcp/tcp_timer.h				\
+ vnet/tcp/tcp.h
+
+########################################
+# Layer 4 protocol: udp
+########################################
+libvnet_la_SOURCES +=				\
+ vnet/udp/udp.c					\
+ vnet/udp/udp_input.c				\
+ vnet/udp/builtin_server.c			\
+ vnet/udp/udp_format.c				\
+ vnet/udp/udp_local.c				\
+ vnet/udp/udp_pg.c
+
+nobase_include_HEADERS +=			\
+  vnet/udp/udp_error.def                       	\
+  vnet/udp/udp.h                               	\
+  vnet/udp/udp_packet.h
 
 ########################################
 # Tunnel protocol: gre
@@ -832,6 +856,28 @@ libvnet_la_SOURCES +=				\
 
 nobase_include_HEADERS +=			\
   vnet/devices/ssvm/ssvm_eth.h
+
+########################################
+# session managmeent
+########################################
+
+libvnet_la_SOURCES +=				\
+  vnet/session/session.c			\
+  vnet/session/node.c				\
+  vnet/session/transport.c			\
+  vnet/session/application.c			\
+  vnet/session/session_cli.c			\
+  vnet/session/hashes.c				\
+  vnet/session/application_interface.c		\
+  vnet/session/session_api.c
+
+nobase_include_HEADERS +=			\
+  vnet/session/session.h			\
+  vnet/session/application.h			\
+  vnet/session/transport.h			\
+  vnet/session/application_interface.h
+
+API_FILES += vnet/session/session.api
 
 ########################################
 # Linux packet interface

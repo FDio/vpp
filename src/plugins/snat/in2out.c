@@ -689,12 +689,12 @@ snat_hairpinning (snat_main_t *sm,
                              ip4_header_t, dst_address);
       ip0->checksum = ip_csum_fold (sum0);
 
-      old_dst_port0 = tcp0->ports.dst;
+      old_dst_port0 = tcp0->dst;
       if (PREDICT_TRUE(new_dst_port0 != old_dst_port0))
         {
           if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
             {
-              tcp0->ports.dst = new_dst_port0;
+              tcp0->dst = new_dst_port0;
               sum0 = tcp0->checksum;
               sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
                                      ip4_header_t, dst_address);
@@ -872,9 +872,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
             {
-              old_port0 = tcp0->ports.src;
-              tcp0->ports.src = s0->out2in.port;
-              new_port0 = tcp0->ports.src;
+              old_port0 = tcp0->src_port;
+              tcp0->src_port = s0->out2in.port;
+              new_port0 = tcp0->src_port;
 
               sum0 = tcp0->checksum;
               sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -1012,9 +1012,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           if (PREDICT_TRUE(proto1 == SNAT_PROTOCOL_TCP))
             {
-              old_port1 = tcp1->ports.src;
-              tcp1->ports.src = s1->out2in.port;
-              new_port1 = tcp1->ports.src;
+              old_port1 = tcp1->src_port;
+              tcp1->src_port = s1->out2in.port;
+              new_port1 = tcp1->src_port;
 
               sum1 = tcp1->checksum;
               sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
@@ -1188,9 +1188,9 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
             {
-              old_port0 = tcp0->ports.src;
-              tcp0->ports.src = s0->out2in.port;
-              new_port0 = tcp0->ports.src;
+              old_port0 = tcp0->src_port;
+              tcp0->src_port = s0->out2in.port;
+              new_port0 = tcp0->src_port;
 
               sum0 = tcp0->checksum;
               sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -1667,8 +1667,8 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
             {
               if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
                 {
-                  old_port0 = tcp0->ports.src;
-                  tcp0->ports.src = new_port0;
+                  old_port0 = tcp0->src_port;
+                  tcp0->src_port = new_port0;
 
                   sum0 = tcp0->checksum;
                   sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
