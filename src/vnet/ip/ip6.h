@@ -461,8 +461,8 @@ ip6_compute_flow_hash (const ip6_header_t * ip,
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
   b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
 
-  t1 = is_tcp_udp ? tcp->ports.src : 0;
-  t2 = is_tcp_udp ? tcp->ports.dst : 0;
+  t1 = is_tcp_udp ? tcp->src : 0;
+  t2 = is_tcp_udp ? tcp->dst : 0;
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
   t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
@@ -496,6 +496,46 @@ int ip6_hbh_register_option (u8 option,
 					 ip6_hop_by_hop_option_t * opt));
 int ip6_hbh_unregister_option (u8 option);
 void ip6_hbh_set_next_override (uword next);
+
+/**
+ * Push IPv6 header to buffer
+ *
+ * @param vm - vlib_main
+ * @param b - buffer to write the header to
+ * @param src - source IP
+ * @param dst - destination IP
+ * @param prot - payload proto
+ *
+ * @return - pointer to start of IP header
+ */
+always_inline void *
+vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
+		      ip6_address_t * src, ip6_address_t * dst, int proto)
+{
+  ip6_header_t *ip6h;
+  u16 payload_length;
+
+  /* make some room */
+  ip6h = vlib_buffer_push_uninit (b, sizeof (ip6_header_t));
+
+  ip6h->ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 (0x6 << 28);
+
+  /* calculate ip6 payload length */
+  payload_length = vlib_buffer_length_in_chain (vm, b);
+  payload_length -= sizeof (*ip6h);
+
+  ip6h->payload_length = clib_host_to_net_u16 (payload_length);
+
+  ip6h->hop_limit = 0xff;
+  ip6h->protocol = proto;
+  clib_memcpy (ip6h->src_address.as_u8, src->as_u8,
+	       sizeof (ip6h->src_address));
+  clib_memcpy (ip6h->dst_address.as_u8, dst->as_u8,
+	       sizeof (ip6h->src_address));
+
+  return ip6h;
+}
 
 #endif /* included_ip_ip6_h */
 

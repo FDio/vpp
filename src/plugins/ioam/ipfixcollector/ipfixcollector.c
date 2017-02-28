@@ -15,7 +15,7 @@
 
 #include <vnet/ip/ip.h>
 #include <vnet/plugin/plugin.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <ioam/ipfixcollector/ipfixcollector.h>
 
 ipfix_collector_main_t ipfix_collector_main;

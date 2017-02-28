@@ -1,0 +1,19 @@
+loop create
+set int ip address loop0 192.168.1.1/8
+set int state loop0 up
+
+packet-generator new {
+  name udp
+  limit 512
+  rate 1e4
+  node ip4-input
+  size 100-100
+  interface loop0
+  no-recycle
+  data {
+   UDP: 192.168.1.2 - 192.168.2.255 -> 192.168.1.1
+   UDP: 4321 -> 1234
+    length 72
+    incrementing 100
+  }
+}

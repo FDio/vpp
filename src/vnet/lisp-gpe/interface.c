@@ -23,7 +23,7 @@
 #include <vppinfra/hash.h>
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>

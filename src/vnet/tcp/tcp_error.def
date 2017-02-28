@@ -1,0 +1,35 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
+tcp_error (NONE, "no error")
+tcp_error (NO_LISTENER, "no listener for dst port")
+tcp_error (LOOKUP_DROPS, "lookup drops")
+tcp_error (DISPATCH, "Dispatch error")
+tcp_error (ENQUEUED, "Packets pushed into rx fifo")                              
+tcp_error (PURE_ACK, "Pure acks")
+tcp_error (SYNS_RCVD, "SYNs received")
+tcp_error (SYN_ACKS_RCVD, "SYN-ACKs received")
+tcp_error (NOT_READY, "Session not ready for packets")                               
+tcp_error (FIFO_FULL, "Packets dropped for lack of rx fifo space")               
+tcp_error (EVENT_FIFO_FULL, "Events not sent for lack of event fifo space")      
+tcp_error (API_QUEUE_FULL, "Sessions not created for lack of API queue space")
+tcp_error (CREATE_SESSION_FAIL, "Sessions couldn't be allocated")
+tcp_error (SEGMENT_INVALID, "Invalid segment")
+tcp_error (ACK_INVALID, "Invalid ACK")
+tcp_error (ACK_DUP, "Duplicate ACK")
+tcp_error (ACK_OLD, "Old ACK")
+tcp_error (PKTS_SENT, "Packets sent")
+tcp_error (FILTERED_DUPACKS, "Filtered duplicate ACKs")
+tcp_error (RST_SENT, "Resets sent")
