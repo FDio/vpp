@@ -1478,8 +1478,18 @@ ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
   return p0->flags;
 }
 
-static uword
-ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+/* *INDENT-OFF* */
+VNET_FEATURE_ARC_INIT (ip4_local) =
+{
+  .arc_name  = "ip4-local",
+  .start_nodes = VNET_FEATURES ("ip4-local"),
+};
+/* *INDENT-ON* */
+
+static inline uword
+ip4_local_inline (vlib_main_t * vm,
+		  vlib_node_runtime_t * node,
+		  vlib_frame_t * frame, int head_of_feature_arc)
 {
   ip4_main_t *im = &ip4_main;
   ip_lookup_main_t *lm = &im->lookup_main;
@@ -1487,6 +1497,7 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   u32 *from, *to_next, n_left_from, n_left_to_next;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip4_input_node.index);
+  u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1513,7 +1524,7 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  i32 len_diff0, len_diff1;
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
 	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1;
-	  u8 enqueue_code;
+	  u32 sw_if_index0, sw_if_index1;
 
 	  pi0 = to_next[0] = from[0];
 	  pi1 = to_next[1] = from[1];
@@ -1521,6 +1532,8 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  n_left_from -= 2;
 	  to_next += 2;
 	  n_left_to_next -= 2;
+
+	  next0 = next1 = IP_LOCAL_NEXT_DROP;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
@@ -1531,14 +1544,18 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
 	  vnet_buffer (p1)->ip.start_of_ip_header = p1->current_data;
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
+
+	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
+	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
+
+	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
 	  fib_index0 =
 	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
 	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
-				vnet_buffer (p1)->sw_if_index[VLIB_RX]);
+	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
 	  fib_index1 =
 	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
 	     (u32) ~ 0) ? fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
@@ -1557,6 +1574,13 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	     until support of IP frag reassembly is implemented */
 	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
 	  proto1 = ip4_is_fragment (ip1) ? 0xfe : ip1->protocol;
+
+	  if (head_of_feature_arc == 0)
+	    {
+	      error0 = error1 = IP4_ERROR_UNKNOWN_PROTOCOL;
+	      goto skip_checks;
+	    }
+
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_udp1 = proto1 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
@@ -1686,6 +1710,7 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 	  next1 = lm->local_next_by_ip_protocol[proto1];
 
+	skip_checks:
 	  next0 =
 	    error0 != IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
 	  next1 =
@@ -1694,44 +1719,17 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  p0->error = error0 ? error_node->errors[error0] : 0;
 	  p1->error = error1 ? error_node->errors[error1] : 0;
 
-	  enqueue_code = (next0 != next_index) + 2 * (next1 != next_index);
-
-	  if (PREDICT_FALSE (enqueue_code != 0))
+	  if (head_of_feature_arc)
 	    {
-	      switch (enqueue_code)
-		{
-		case 1:
-		  /* A B A */
-		  to_next[-2] = pi1;
-		  to_next -= 1;
-		  n_left_to_next += 1;
-		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
-		  break;
-
-		case 2:
-		  /* A A B */
-		  to_next -= 1;
-		  n_left_to_next += 1;
-		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
-		  break;
-
-		case 3:
-		  /* A B B or A B C */
-		  to_next -= 2;
-		  n_left_to_next += 2;
-		  vlib_set_next_frame_buffer (vm, node, next0, pi0);
-		  vlib_set_next_frame_buffer (vm, node, next1, pi1);
-		  if (next0 == next1)
-		    {
-		      vlib_put_next_frame (vm, node, next_index,
-					   n_left_to_next);
-		      next_index = next1;
-		      vlib_get_next_frame (vm, node, next_index, to_next,
-					   n_left_to_next);
-		    }
-		  break;
-		}
+	      if (PREDICT_TRUE (error0 == (u8) IP4_ERROR_UNKNOWN_PROTOCOL))
+		vnet_feature_arc_start (arc_index, sw_if_index0, &next0, p0);
+	      if (PREDICT_TRUE (error1 == (u8) IP4_ERROR_UNKNOWN_PROTOCOL))
+		vnet_feature_arc_start (arc_index, sw_if_index1, &next1, p1);
 	    }
+
+	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, pi1,
+					   next0, next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -1746,6 +1744,7 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
 	  load_balance_t *lb0;
 	  const dpo_id_t *dpo0;
+	  u32 sw_if_index0;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -1753,14 +1752,18 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
+	  next0 = IP_LOCAL_NEXT_DROP;
+
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+
+	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
+
 	  fib_index0 =
 	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
 	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
@@ -1775,6 +1778,13 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Treat IP frag packets as "experimental" protocol for now
 	     until support of IP frag reassembly is implemented */
 	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
+
+	  if (head_of_feature_arc == 0)
+	    {
+	      error0 = IP4_ERROR_UNKNOWN_PROTOCOL;
+	      goto skip_check;
+	    }
+
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
 
@@ -1847,6 +1857,8 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		     ip0->dst_address.as_u32 != 0xFFFFFFFF)
 		    ? IP4_ERROR_SRC_LOOKUP_MISS : error0);
 
+	skip_check:
+
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 
 	  next0 =
@@ -1854,18 +1866,15 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  p0->error = error0 ? error_node->errors[error0] : 0;
 
-	  if (PREDICT_FALSE (next0 != next_index))
+	  if (head_of_feature_arc)
 	    {
-	      n_left_to_next += 1;
-	      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
-
-	      next_index = next0;
-	      vlib_get_next_frame (vm, node, next_index, to_next,
-				   n_left_to_next);
-	      to_next[0] = pi0;
-	      to_next += 1;
-	      n_left_to_next -= 1;
+	      if (PREDICT_TRUE (error0 == (u8) IP4_ERROR_UNKNOWN_PROTOCOL))
+		vnet_feature_arc_start (arc_index, sw_if_index0, &next0, p0);
 	    }
+
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
+					   n_left_to_next, pi0, next0);
+
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1874,20 +1883,56 @@ ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   return frame->n_vectors;
 }
 
+static uword
+ip4_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return ip4_local_inline (vm, node, frame, 1 /* head of feature arc */ );
+}
+
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_local_node) =
 {
-  .function = ip4_local,.name = "ip4-local",.vector_size =
-    sizeof (u32),.format_trace =
-    format_ip4_forward_next_trace,.n_next_nodes =
-    IP_LOCAL_N_NEXT,.next_nodes =
+  .function = ip4_local,
+  .name = "ip4-local",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip4_forward_next_trace,
+  .n_next_nodes = IP_LOCAL_N_NEXT,
+  .next_nodes =
   {
-  [IP_LOCAL_NEXT_DROP] = "error-drop",
-      [IP_LOCAL_NEXT_PUNT] = "error-punt",
-      [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
-      [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",}
-,};
+    [IP_LOCAL_NEXT_DROP] = "error-drop",
+    [IP_LOCAL_NEXT_PUNT] = "error-punt",
+    [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
+    [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",},
+};
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_node, ip4_local);
+
+static uword
+ip4_local_end_of_arc (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return ip4_local_inline (vm, node, frame, 0 /* head of feature arc */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip4_local_end_of_arc_node,static) = {
+  .function = ip4_local_end_of_arc,
+  .name = "ip4-local-end-of-arc",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_forward_next_trace,
+  .sibling_of = "ip4-local",
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_local_end_of_arc_node, ip4_local_end_of_arc)
+
+VNET_FEATURE_INIT (ip4_local_end_of_arc, static) = {
+  .arc_name = "ip4-local",
+  .node_name = "ip4-local-end-of-arc",
+  .runs_before = 0, /* not before any other features */
+};
+/* *INDENT-ON* */
 
 void
 ip4_register_protocol (u32 protocol, u32 node_index)

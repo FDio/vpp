@@ -33,18 +33,13 @@
  * nels = number of elements on the queue
  * elsize = element size, presumably 4 and cacheline-size will
  *          be popular choices.
- * coid  = consumer coid, from ChannelCreate
  * pid   = consumer pid
- * pulse_code  = pulse code consumer expects
- * pulse_value = pulse value consumer expects
- * consumer_prio = consumer's priority, so pulses won't change
- *                 the consumer's priority.
  *
  * The idea is to call this function in the queue consumer,
  * and e-mail the queue pointer to the producer(s).
  *
- * The spp process / main thread allocates one of these
- * at startup; its main input queue. The spp main input queue
+ * The vpp process / main thread allocates one of these
+ * at startup; its main input queue. The vpp main input queue
  * has a pointer to it in the shared memory segment header.
  *
  * You probably want to be on an svm data heap before calling this
@@ -70,7 +65,7 @@ unix_shared_memory_queue_init (int nels,
   q->signal_when_queue_non_empty = signal_when_queue_non_empty;
 
   memset (&attr, 0, sizeof (attr));
-  memset (&cattr, 0, sizeof (attr));
+  memset (&cattr, 0, sizeof (cattr));
 
   if (pthread_mutexattr_init (&attr))
     clib_unix_warning ("mutexattr_init");
@@ -277,6 +272,7 @@ unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,
   clib_memcpy (elem, headp, q->elsize);
 
   q->head++;
+  /* $$$$ JFC shouldn't this be == 0? */
   if (q->cursize == q->maxsize)
     need_broadcast = 1;
 

@@ -29,7 +29,7 @@ typedef struct _unix_shared_memory_queue
   pthread_cond_t condvar;	/* 8 bytes */
   int head;
   int tail;
-  int cursize;
+  volatile int cursize;
   int maxsize;
   int elsize;
   int consumer_pid;
