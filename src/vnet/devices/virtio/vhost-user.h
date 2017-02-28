@@ -328,17 +328,6 @@ typedef struct
 int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
 			 vhost_user_intf_details_t ** out_vuids);
 
-// CLI commands to be used from dpdk
-clib_error_t *vhost_user_connect_command_fn (vlib_main_t * vm,
-					     unformat_input_t * input,
-					     vlib_cli_command_t * cmd);
-clib_error_t *vhost_user_delete_command_fn (vlib_main_t * vm,
-					    unformat_input_t * input,
-					    vlib_cli_command_t * cmd);
-clib_error_t *show_vhost_user_command_fn (vlib_main_t * vm,
-					  unformat_input_t * input,
-					  vlib_cli_command_t * cmd);
-
 #endif
 
 /*

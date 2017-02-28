@@ -3970,13 +3970,6 @@ _(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_set_mtu_reply)
 
-#if DPDK > 0
-#define foreach_standard_dpdk_reply_retval_handler      \
-_(sw_interface_set_dpdk_hqos_pipe_reply)                \
-_(sw_interface_set_dpdk_hqos_subport_reply)             \
-_(sw_interface_set_dpdk_hqos_tctbl_reply)
-#endif
-
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
     (vl_api_##n##_t * mp)                       \
@@ -4007,39 +4000,6 @@ foreach_standard_reply_retval_handler;
     }
 foreach_standard_reply_retval_handler;
 #undef _
-
-#if DPDK > 0
-#define _(n)                                    \
-    static void vl_api_##n##_t_handler          \
-    (vl_api_##n##_t * mp)                       \
-    {                                           \
-        vat_main_t * vam = &vat_main;           \
-        i32 retval = ntohl(mp->retval);         \
-        if (vam->async_mode) {                  \
-            vam->async_errors += (retval < 0);  \
-        } else {                                \
-            vam->retval = retval;               \
-            vam->result_ready = 1;              \
-        }                                       \
-    }
-foreach_standard_dpdk_reply_retval_handler;
-#undef _
-
-#define _(n)                                    \
-    static void vl_api_##n##_t_handler_json     \
-    (vl_api_##n##_t * mp)                       \
-    {                                           \
-        vat_main_t * vam = &vat_main;           \
-        vat_json_node_t node;                   \
-        vat_json_init_object(&node);            \
-        vat_json_object_add_int(&node, "retval", ntohl(mp->retval));    \
-        vat_json_print(vam->ofp, &node);        \
-        vam->retval = ntohl(mp->retval);        \
-        vam->result_ready = 1;                  \
-    }
-foreach_standard_dpdk_reply_retval_handler;
-#undef _
-#endif
 
 /*
  * Table of message reply handlers, must include boilerplate handlers
@@ -4271,16 +4231,6 @@ _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)
-
-#if DPDK > 0
-#define foreach_vpe_dpdk_api_reply_msg                                  \
-_(SW_INTERFACE_SET_DPDK_HQOS_PIPE_REPLY,                                \
-  sw_interface_set_dpdk_hqos_pipe_reply)                                \
-_(SW_INTERFACE_SET_DPDK_HQOS_SUBPORT_REPLY,                             \
-  sw_interface_set_dpdk_hqos_subport_reply)                             \
-_(SW_INTERFACE_SET_DPDK_HQOS_TCTBL_REPLY,                               \
-  sw_interface_set_dpdk_hqos_tctbl_reply)
-#endif
 
 typedef struct
 {
@@ -5080,226 +5030,6 @@ api_sw_interface_clear_stats (vat_main_t * vam)
   W (ret);
   return ret;
 }
-
-#if DPDK >0
-static int
-api_sw_interface_set_dpdk_hqos_pipe (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_dpdk_hqos_pipe_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u32 subport;
-  u8 subport_set = 0;
-  u32 pipe;
-  u8 pipe_set = 0;
-  u32 profile;
-  u8 profile_set = 0;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "rx %U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %u", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "subport %u", &subport))
-	subport_set = 1;
-      else
-	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "pipe %u", &pipe))
-	pipe_set = 1;
-      else if (unformat (i, "profile %u", &profile))
-	profile_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  if (subport_set == 0)
-    {
-      errmsg ("missing subport ");
-      return -99;
-    }
-
-  if (pipe_set == 0)
-    {
-      errmsg ("missing pipe");
-      return -99;
-    }
-
-  if (profile_set == 0)
-    {
-      errmsg ("missing profile");
-      return -99;
-    }
-
-  M (SW_INTERFACE_SET_DPDK_HQOS_PIPE, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->subport = ntohl (subport);
-  mp->pipe = ntohl (pipe);
-  mp->profile = ntohl (profile);
-
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_dpdk_hqos_subport (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_dpdk_hqos_subport_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u32 subport;
-  u8 subport_set = 0;
-  u32 tb_rate = 1250000000;	/* 10GbE */
-  u32 tb_size = 1000000;
-  u32 tc_rate[] = { 1250000000, 1250000000, 1250000000, 1250000000 };
-  u32 tc_period = 10;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "rx %U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %u", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "subport %u", &subport))
-	subport_set = 1;
-      else
-	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "rate %u", &tb_rate))
-	{
-	  u32 tc_id;
-
-	  for (tc_id = 0; tc_id < (sizeof (tc_rate) / sizeof (tc_rate[0]));
-	       tc_id++)
-	    tc_rate[tc_id] = tb_rate;
-	}
-      else if (unformat (i, "bktsize %u", &tb_size))
-	;
-      else if (unformat (i, "tc0 %u", &tc_rate[0]))
-	;
-      else if (unformat (i, "tc1 %u", &tc_rate[1]))
-	;
-      else if (unformat (i, "tc2 %u", &tc_rate[2]))
-	;
-      else if (unformat (i, "tc3 %u", &tc_rate[3]))
-	;
-      else if (unformat (i, "period %u", &tc_period))
-	;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  if (subport_set == 0)
-    {
-      errmsg ("missing subport ");
-      return -99;
-    }
-
-  M (SW_INTERFACE_SET_DPDK_HQOS_SUBPORT, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->subport = ntohl (subport);
-  mp->tb_rate = ntohl (tb_rate);
-  mp->tb_size = ntohl (tb_size);
-  mp->tc_rate[0] = ntohl (tc_rate[0]);
-  mp->tc_rate[1] = ntohl (tc_rate[1]);
-  mp->tc_rate[2] = ntohl (tc_rate[2]);
-  mp->tc_rate[3] = ntohl (tc_rate[3]);
-  mp->tc_period = ntohl (tc_period);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-
-static int
-api_sw_interface_set_dpdk_hqos_tctbl (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_sw_interface_set_dpdk_hqos_tctbl_t *mp;
-  u32 sw_if_index;
-  u8 sw_if_index_set = 0;
-  u8 entry_set = 0;
-  u8 tc_set = 0;
-  u8 queue_set = 0;
-  u32 entry, tc, queue;
-  int ret;
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "rx %U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %u", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "entry %d", &entry))
-	entry_set = 1;
-      else if (unformat (i, "tc %d", &tc))
-	tc_set = 1;
-      else if (unformat (i, "queue %d", &queue))
-	queue_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing interface name or sw_if_index");
-      return -99;
-    }
-
-  if (entry_set == 0)
-    {
-      errmsg ("missing entry ");
-      return -99;
-    }
-
-  if (tc_set == 0)
-    {
-      errmsg ("missing traffic class ");
-      return -99;
-    }
-
-  if (queue_set == 0)
-    {
-      errmsg ("missing queue ");
-      return -99;
-    }
-
-  M (SW_INTERFACE_SET_DPDK_HQOS_TCTBL, mp);
-
-  mp->sw_if_index = ntohl (sw_if_index);
-  mp->entry = ntohl (entry);
-  mp->tc = ntohl (tc);
-  mp->queue = ntohl (queue);
-
-  S (mp);
-  W (ret);
-  return ret;
-}
-#endif
 
 static int
 api_sw_interface_add_del_address (vat_main_t * vam)
@@ -18656,18 +18386,6 @@ _(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
 _(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")
 
-#if DPDK > 0
-#define foreach_vpe_dpdk_api_msg                                        \
-_(sw_interface_set_dpdk_hqos_pipe,                                      \
-  "rx <intfc> | sw_if_index <id> subport <subport-id> pipe <pipe-id>\n" \
-  "profile <profile-id>\n")                                             \
-_(sw_interface_set_dpdk_hqos_subport,                                   \
-  "rx <intfc> | sw_if_index <id> subport <subport-id> [rate <n>]\n"     \
-  "[bktsize <n>] [tc0 <n>] [tc1 <n>] [tc2 <n>] [tc3 <n>] [period <n>]\n") \
-_(sw_interface_set_dpdk_hqos_tctbl,                                     \
-  "rx <intfc> | sw_if_index <id> entry <n> tc <n> queue <n>\n")
-#endif
-
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
 _(comment, "usage: comment <ignore-rest-of-line>")		\
@@ -18705,22 +18423,6 @@ _(unset, "usage: unset <variable-name>")
 foreach_vpe_api_reply_msg;
 #undef _
 
-#if DPDK > 0
-#define _(N,n)                                  \
-    static void vl_api_##n##_t_handler_uni      \
-    (vl_api_##n##_t * mp)                       \
-    {                                           \
-        vat_main_t * vam = &vat_main;           \
-        if (vam->json_output) {                 \
-            vl_api_##n##_t_handler_json(mp);    \
-        } else {                                \
-            vl_api_##n##_t_handler(mp);         \
-        }                                       \
-    }
-foreach_vpe_dpdk_api_reply_msg;
-#undef _
-#endif
-
 void
 vat_api_hookup (vat_main_t * vam)
 {
@@ -18733,18 +18435,6 @@ vat_api_hookup (vat_main_t * vam)
                            sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_reply_msg;
 #undef _
-
-#if DPDK > 0
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler_uni,          \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
-  foreach_vpe_dpdk_api_reply_msg;
-#undef _
-#endif
 
 #if (VPP_API_TEST_BUILTIN==0)
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
@@ -18760,21 +18450,11 @@ vat_api_hookup (vat_main_t * vam)
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
   foreach_vpe_api_msg;
 #undef _
-#if DPDK >0
-#define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
-  foreach_vpe_dpdk_api_msg;
-#undef _
-#endif
 
   /* Help strings */
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_vpe_api_msg;
 #undef _
-#if DPDK >0
-#define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
-  foreach_vpe_dpdk_api_msg;
-#undef _
-#endif
 
   /* CLI functions */
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, n);

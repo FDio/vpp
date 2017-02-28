@@ -23,8 +23,7 @@ libvnet_la_DEPENDENCIES = \
 	libvlibmemory.la	\
 	libvlibmemoryclient.la
 
-libvnet_la_LIBADD = $(libvnet_la_DEPENDENCIES) -lm -lpthread -ldl -lrt $(DPDK_LD_ADD)
-libvnet_la_LDFLAGS = $(DPDK_LD_FLAGS)
+libvnet_la_LIBADD = $(libvnet_la_DEPENDENCIES) -lm -lpthread -ldl -lrt
 
 if WITH_LIBSSL
 libvnet_la_LIBADD += -lcrypto
@@ -396,15 +395,6 @@ libvnet_la_SOURCES +=				\
  vnet/ipsec/ipsec_api.c
 
 API_FILES += vnet/ipsec/ipsec.api
-
-if WITH_DPDK
-libvnet_la_SOURCES +=				\
- vnet/devices/dpdk/ipsec/esp_encrypt.c		\
- vnet/devices/dpdk/ipsec/esp_decrypt.c		\
- vnet/devices/dpdk/ipsec/crypto_node.c		\
- vnet/devices/dpdk/ipsec/cli.c			\
- vnet/devices/dpdk/ipsec/ipsec.c
-endif
 endif
 
 libvnet_la_SOURCES +=				\
@@ -416,11 +406,6 @@ nobase_include_HEADERS +=			\
  vnet/ipsec/ikev2.h				\
  vnet/ipsec/ikev2_priv.h			\
  vnet/ipsec/ipsec.api.h
-if WITH_DPDK
-nobase_include_HEADERS +=			\
- vnet/devices/dpdk/ipsec/ipsec.h		\
- vnet/devices/dpdk/ipsec/esp.h
-endif
 
 ########################################
 # Layer 3 protocol: osi
@@ -803,29 +788,7 @@ nobase_include_HEADERS +=			\
   vnet/pg/pg.h					\
   vnet/pg/edit.h
 
-########################################
-# DPDK
-########################################
-if WITH_DPDK
-libvnet_la_SOURCES +=				\
-  vnet/devices/dpdk/buffer.c			\
-  vnet/devices/dpdk/dpdk_priv.h		\
-  vnet/devices/dpdk/device.c		\
-  vnet/devices/dpdk/format.c		\
-  vnet/devices/dpdk/init.c			\
-  vnet/devices/dpdk/main.c			\
-  vnet/devices/dpdk/node.c			\
-  vnet/devices/dpdk/thread.c			\
-  vnet/devices/dpdk/hqos.c			\
-  vnet/devices/dpdk/cli.c			\
-  vnet/devices/dpdk/dpdk_api.c
-
-nobase_include_HEADERS +=			\
-  vnet/devices/dpdk/dpdk.h			\
-  vnet/devices/dpdk/dpdk.api.h
-
-API_FILES += vnet/devices/dpdk/dpdk.api
-else
+if !WITH_DPDK
 libvnet_la_SOURCES +=				\
   vnet/devices/nic/ixge.c                       \
   vnet/devices/nic/ixge.h                       \

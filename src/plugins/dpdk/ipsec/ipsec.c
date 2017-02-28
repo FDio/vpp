@@ -18,9 +18,9 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vlib/node_funcs.h>
 
-#include <vnet/devices/dpdk/dpdk.h>
-#include <vnet/devices/dpdk/ipsec/ipsec.h>
-#include <vnet/devices/dpdk/ipsec/esp.h>
+#include <dpdk/device/dpdk.h>
+#include <dpdk/ipsec/ipsec.h>
+#include <dpdk/ipsec/esp.h>
 
 #define DPDK_CRYPTO_NB_SESS_OBJS  20000
 #define DPDK_CRYPTO_CACHE_SIZE	  512

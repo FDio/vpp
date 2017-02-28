@@ -390,6 +390,9 @@ typedef struct
 
   /* mempool */
   struct rte_mempool **pktmbuf_pools;
+
+  /* API message ID base */
+  u16 msg_id_base;
 } dpdk_main_t;
 
 dpdk_main_t dpdk_main;

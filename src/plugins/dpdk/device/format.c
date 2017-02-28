@@ -19,9 +19,9 @@
 #include <assert.h>
 
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/dpdk/dpdk.h>
+#include <dpdk/device/dpdk.h>
 
-#include "dpdk_priv.h"
+#include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
 #define foreach_dpdk_counter                    \
