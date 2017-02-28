@@ -12,6 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * @file
+ * @brief BFD protocol implementation
+ */
 #include <vnet/bfd/bfd_protocol.h>
 
 u8
@@ -131,7 +135,7 @@ bfd_pkt_set_multipoint (bfd_pkt_t * pkt)
 #endif
 
 u32
-bfd_max_len_for_auth_type (bfd_auth_type_e auth_type)
+bfd_max_key_len_for_auth_type (bfd_auth_type_e auth_type)
 {
 #define F(t, l, n, s) \
   if (auth_type == t) \

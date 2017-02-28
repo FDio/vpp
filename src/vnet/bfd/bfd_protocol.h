@@ -40,7 +40,10 @@ typedef enum
 #undef F
 } bfd_auth_type_e;
 
-u32 bfd_max_len_for_auth_type (bfd_auth_type_e auth_type);
+/**
+ * @brief get the maximum length of key data for given auth type
+ */
+u32 bfd_max_key_len_for_auth_type (bfd_auth_type_e auth_type);
 const char *bfd_auth_type_str (bfd_auth_type_e auth_type);
 
 /* *INDENT-OFF* */
