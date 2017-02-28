@@ -239,6 +239,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
      + VNET_INTERFACE_COUNTER_RX,
      os_get_cpu_number (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
 
+  vnet_device_increment_rx_packets (cpu_index, n_rx_packets);
   return n_rx_packets;
 }
 
