@@ -27,10 +27,12 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_packet.h>
 #include <vnet/adj/adj_types.h>
+#include <vppinfra/bihash_24_8.h>
+#include <vppinfra/bihash_template.h>
 
 /** IP4-UDP-LISP encap header */
 /* *INDENT-OFF* */

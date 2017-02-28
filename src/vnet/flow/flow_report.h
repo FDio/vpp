@@ -23,7 +23,7 @@
 #include <vnet/ip/ip_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <vlib/cli.h>
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>

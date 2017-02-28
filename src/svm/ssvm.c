@@ -169,6 +169,22 @@ re_map_it:
   return 0;
 }
 
+void
+ssvm_delete (ssvm_private_t * ssvm)
+{
+  u8 *fn;
+
+  fn = format (0, "/dev/shm/%s%c", ssvm->name, 0);
+
+  /* Throw away the backing file */
+  if (unlink ((char *) fn) < 0)
+    clib_unix_warning ("unlink segment '%s'", ssvm->name);
+
+  munmap ((void *) ssvm->requested_va, ssvm->ssvm_size);
+  vec_free (fn);
+}
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

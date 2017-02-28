@@ -360,7 +360,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
   memset (f, 0, sizeof (f[0]));
   f->index = f - bm->buffer_free_list_pool;
   f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
-  f->min_n_buffers_each_physmem_alloc = 16;
+  f->min_n_buffers_each_physmem_alloc = VLIB_FRAME_SIZE;
   f->name = clib_mem_is_heap_object (name) ? name : format (0, "%s", name);
 
   /* Setup free buffer template. */

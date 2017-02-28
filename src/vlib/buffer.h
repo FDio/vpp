@@ -240,6 +240,74 @@ vlib_get_buffer_opaque2 (vlib_buffer_t * b)
   return (void *) b->opaque2;
 }
 
+/** \brief Get pointer to the end of buffer's data
+ * @param b     pointer to the buffer
+ * @return      pointer to tail of packet's data
+ */
+always_inline u8 *
+vlib_buffer_get_tail (vlib_buffer_t * b)
+{
+  return b->data + b->current_data + b->current_length;
+}
+
+/** \brief Append uninitialized data to buffer
+ * @param b     pointer to the buffer
+ * @param size  number of uninitialized bytes
+ * @return      pointer to beginning of uninitialized data
+ */
+always_inline void *
+vlib_buffer_put_uninit (vlib_buffer_t * b, u8 size)
+{
+  void *p = vlib_buffer_get_tail (b);
+  /* XXX make sure there's enough space */
+  b->current_length += size;
+  return p;
+}
+
+/** \brief Prepend uninitialized data to buffer
+ * @param b     pointer to the buffer
+ * @param size  number of uninitialized bytes
+ * @return      pointer to beginning of uninitialized data
+ */
+always_inline void *
+vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
+{
+  ASSERT (b->current_data + VLIB_BUFFER_PRE_DATA_SIZE >= size);
+  b->current_data -= size;
+  b->current_length += size;
+
+  return vlib_buffer_get_current (b);
+}
+
+/** \brief Make head room, typically for packet headers
+ * @param b     pointer to the buffer
+ * @param size  number of head room bytes
+ * @return      pointer to start of buffer (current data)
+ */
+always_inline void *
+vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
+{
+  ASSERT (b->current_data + VLIB_BUFFER_PRE_DATA_SIZE >= size);
+  b->current_data += size;
+  return vlib_buffer_get_current (b);
+}
+
+/** \brief Retrieve bytes from buffer head
+ * @param b     pointer to the buffer
+ * @param size  number of bytes to pull
+ * @return      pointer to start of buffer (current data)
+ */
+always_inline void *
+vlib_buffer_pull (vlib_buffer_t * b, u8 size)
+{
+  if (b->current_length + VLIB_BUFFER_PRE_DATA_SIZE < size)
+    return 0;
+
+  void *data = vlib_buffer_get_current (b);
+  vlib_buffer_advance (b, size);
+  return data;
+}
+
 /* Forward declaration. */
 struct vlib_main_t;
 

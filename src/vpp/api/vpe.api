@@ -38,6 +38,7 @@
  * IPSEC-GRE APIs: see .../src/vnet/ipsec-gre/{ipsec_gre.api, ipsec_gre_api.c}
  * LISP APIs: see .../src/vnet/lisp/{lisp.api, lisp_api.c}
  * LISP-GPE APIs: see .../src/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
+ * SESSION APIs: .../vnet/session/{session.api session_api.c}
  * MPLS APIs: see .../src/vnet/mpls/{mpls.api, mpls_api.c}
  * SR APIs: see .../src/vnet/sr/{sr.api, sr_api.c}
  * DPDK APIs: see ... /src/vnet/devices/dpdk/{dpdk.api, dpdk_api.c}
