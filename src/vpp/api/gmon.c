@@ -59,17 +59,9 @@ typedef struct
 
 } gmon_main_t;
 
-#if DPDK == 0
-static inline u64
-vnet_get_aggregate_rx_packets (void)
-{
-  return 0;
-}
-#else
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
-#endif
+#include <vnet/devices/devices.h>
 
 gmon_main_t gmon_main;
 

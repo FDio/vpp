@@ -39,8 +39,44 @@ typedef enum
     [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = "mpls-input",			\
 }
 
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* total input packet counter */
+  u64 aggregate_rx_packets;
+} vnet_device_per_worker_data_t;
+
+typedef struct
+{
+  vnet_device_per_worker_data_t *workers;
+} vnet_device_main_t;
+
+extern vnet_device_main_t vnet_device_main;
 extern vlib_node_registration_t device_input_node;
 extern const u32 device_input_next_node_advance[];
+
+static inline u64
+vnet_get_aggregate_rx_packets (void)
+{
+  vnet_device_main_t *vdm = &vnet_device_main;
+  u64 sum = 0;
+  vnet_device_per_worker_data_t *pwd;
+
+  vec_foreach (pwd, vdm->workers) sum += pwd->aggregate_rx_packets;
+
+  return sum;
+}
+
+static inline void
+vnet_device_increment_rx_packets (u32 cpu_index, u64 count)
+{
+  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_per_worker_data_t *pwd;
+
+  pwd = vec_elt_at_index (vdm->workers, cpu_index);
+  pwd->aggregate_rx_packets += count;
+}
 
 #endif /* included_vnet_vnet_device_h */
 

@@ -19,6 +19,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
+vnet_device_main_t vnet_device_main;
+
 static uword
 device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 vlib_frame_t * frame)
@@ -82,6 +84,18 @@ VNET_FEATURE_INIT (ethernet_input, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+vnet_device_init (vlib_main_t * vm)
+{
+  vnet_device_main_t *vdm = &vnet_device_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  vec_validate_aligned (vdm->workers, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (vnet_device_init);
 /*
  * fd.io coding-style-patch-verification: ON
  *
