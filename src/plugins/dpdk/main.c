@@ -14,8 +14,9 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
-
+#include <vnet/plugin/plugin.h>
+#include <dpdk/device/dpdk.h>
+#include <vpp/app/version.h>
 
 /*
  * Called by the dpdk driver's rte_delay_us() function.
@@ -70,7 +71,11 @@ rte_delay_us_override_cb (unsigned us)
 
 static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 {
+  dpdk_main_t * dm = &dpdk_main;
   clib_error_t * error = 0;
+
+  dm->vlib_main = vm;
+  dm->vnet_main = vnet_get_main ();
 
   if ((error = vlib_call_init_function (vm, dpdk_init)))
     return error;
@@ -83,3 +88,8 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (dpdk_main_init);
 
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+};
+/* *INDENT-ON* */

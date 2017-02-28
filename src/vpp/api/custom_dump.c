@@ -237,58 +237,6 @@ static void *vl_api_sw_interface_set_l2_bridge_t_print
   FINISH;
 }
 
-#if DPDK > 0
-static void *vl_api_sw_interface_set_dpdk_hqos_pipe_t_print
-  (vl_api_sw_interface_set_dpdk_hqos_pipe_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_set_dpdk_hqos_pipe ");
-
-  s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
-
-  s = format (s, "subport %u  pipe %u  profile %u ",
-	      ntohl (mp->subport), ntohl (mp->pipe), ntohl (mp->profile));
-
-  FINISH;
-}
-
-static void *vl_api_sw_interface_set_dpdk_hqos_subport_t_print
-  (vl_api_sw_interface_set_dpdk_hqos_subport_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_set_dpdk_hqos_subport ");
-
-  s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
-
-  s =
-    format (s,
-	    "subport %u  rate %u  bkt_size %u  tc0 %u tc1 %u tc2 %u tc3 %u period %u",
-	    ntohl (mp->subport), ntohl (mp->tb_rate), ntohl (mp->tb_size),
-	    ntohl (mp->tc_rate[0]), ntohl (mp->tc_rate[1]),
-	    ntohl (mp->tc_rate[2]), ntohl (mp->tc_rate[3]),
-	    ntohl (mp->tc_period));
-
-  FINISH;
-}
-
-static void *vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print
-  (vl_api_sw_interface_set_dpdk_hqos_tctbl_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: sw_interface_set_dpdk_hqos_tctbl ");
-
-  s = format (s, "sw_if_index %u ", ntohl (mp->sw_if_index));
-
-  s = format (s, "entry %u  tc %u  queue %u",
-	      ntohl (mp->entry), ntohl (mp->tc), ntohl (mp->queue));
-
-  FINISH;
-}
-#endif
-
 static void *vl_api_bridge_domain_add_del_t_print
   (vl_api_bridge_domain_add_del_t * mp, void *handle)
 {
@@ -3036,18 +2984,6 @@ vl_msg_api_custom_dump_configure (api_main_t * am)
     = (void *) vl_api_##f##_t_print;
   foreach_custom_print_function;
 #undef _
-
-#if DPDK > 0
-  /*
-   * manually add DPDK hqos print handlers
-   */
-  am->msg_print_handlers[VL_API_SW_INTERFACE_SET_DPDK_HQOS_PIPE] =
-    (void *) vl_api_sw_interface_set_dpdk_hqos_pipe_t_print;
-  am->msg_print_handlers[VL_API_SW_INTERFACE_SET_DPDK_HQOS_SUBPORT] =
-    (void *) vl_api_sw_interface_set_dpdk_hqos_subport_t_print;
-  am->msg_print_handlers[VL_API_SW_INTERFACE_SET_DPDK_HQOS_TCTBL] =
-    (void *) vl_api_sw_interface_set_dpdk_hqos_tctbl_t_print;
-#endif
 }
 
 /*

@@ -14,8 +14,8 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/devices/dpdk/dpdk.h>
-#include <vnet/devices/dpdk/ipsec/ipsec.h>
+#include <dpdk/device/dpdk.h>
+#include <dpdk/ipsec/ipsec.h>
 
 static void
 dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)
