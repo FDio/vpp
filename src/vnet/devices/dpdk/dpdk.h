@@ -66,7 +66,6 @@ extern vnet_device_class_t dpdk_device_class;
 extern vlib_node_registration_t dpdk_input_node;
 extern vlib_node_registration_t handoff_dispatch_node;
 
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
 #define foreach_dpdk_pmd          \
   _ ("net_thunderx", THUNDERX)    \
   _ ("net_e1000_em", E1000EM)     \
@@ -85,25 +84,6 @@ extern vlib_node_registration_t handoff_dispatch_node;
   _ ("net_cxgbe", CXGBE)          \
   _ ("net_mlx5", MLX5)            \
   _ ("net_dpaa2", DPAA2)
-#else
-#define foreach_dpdk_pmd          \
-  _ ("rte_nicvf_pmd", THUNDERX)	  \
-  _ ("rte_em_pmd", E1000EM)       \
-  _ ("rte_igb_pmd", IGB)          \
-  _ ("rte_igbvf_pmd", IGBVF)      \
-  _ ("rte_ixgbe_pmd", IXGBE)      \
-  _ ("rte_ixgbevf_pmd", IXGBEVF)  \
-  _ ("rte_i40e_pmd", I40E)        \
-  _ ("rte_i40evf_pmd", I40EVF)    \
-  _ ("rte_virtio_pmd", VIRTIO)    \
-  _ ("rte_enic_pmd", ENIC)        \
-  _ ("rte_vmxnet3_pmd", VMXNET3)  \
-  _ ("AF_PACKET PMD", AF_PACKET)  \
-  _ ("rte_bond_pmd", BOND)        \
-  _ ("rte_pmd_fm10k", FM10K)      \
-  _ ("rte_cxgbe_pmd", CXGBE)      \
-  _ ("rte_dpaa2_dpni", DPAA2)
-#endif
 
 typedef enum
 {

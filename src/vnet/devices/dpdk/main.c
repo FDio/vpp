@@ -61,14 +61,12 @@ rte_delay_us_override (unsigned us)
   return 0;			// no override
 }
 
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
 static void
 rte_delay_us_override_cb (unsigned us)
 {
   if (rte_delay_us_override (us) == 0)
     rte_delay_us_block (us);
 }
-#endif
 
 static clib_error_t * dpdk_main_init (vlib_main_t * vm)
 {
@@ -77,12 +75,9 @@ static clib_error_t * dpdk_main_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, dpdk_init)))
     return error;
 
-#if DPDK
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
   /* register custom delay function */
   rte_delay_us_callback_register (rte_delay_us_override_cb);
-#endif
-#endif
+
   return error;
 }
 

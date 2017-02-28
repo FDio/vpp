@@ -55,11 +55,6 @@ vlib_buffer_is_mpls (vlib_buffer_t * b)
   return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST));
 }
 
-#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
-/* New ol_flags bits added in DPDK-16.11 */
-#define PKT_RX_IP_CKSUM_GOOD    (1ULL << 7)
-#endif
-
 always_inline u32
 dpdk_rx_next_from_etype (struct rte_mbuf * mb, vlib_buffer_t * b0)
 {
@@ -79,15 +74,8 @@ dpdk_rx_next_from_etype (struct rte_mbuf * mb, vlib_buffer_t * b0)
 always_inline int
 dpdk_mbuf_is_vlan (struct rte_mbuf *mb)
 {
-#if RTE_VERSION >= RTE_VERSION_NUM(16, 11, 0, 0)
   return (mb->packet_type & RTE_PTYPE_L2_ETHER_VLAN) ==
     RTE_PTYPE_L2_ETHER_VLAN;
-#else
-  return
-    (mb->ol_flags &
-     (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) ==
-    PKT_RX_VLAN_PKT;
-#endif
 }
 
 always_inline int

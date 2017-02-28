@@ -428,11 +428,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       /* workaround for drivers not setting driver_name */
       if ((!dev_info.driver_name) && (dev_info.pci_dev))
-#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
-	dev_info.driver_name = dev_info.pci_dev->driver->name;
-#else
 	dev_info.driver_name = dev_info.pci_dev->driver->driver.name;
-#endif
+
       ASSERT (dev_info.driver_name);
 
       if (!xd->pmd)
@@ -1608,11 +1605,8 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    struct rte_eth_dev_info dev_info;
 	    rte_eth_dev_info_get (i, &dev_info);
 	    if (!dev_info.driver_name)
-#if RTE_VERSION < RTE_VERSION_NUM(16, 11, 0, 0)
-	      dev_info.driver_name = dev_info.pci_dev->driver->name;
-#else
 	      dev_info.driver_name = dev_info.pci_dev->driver->driver.name;
-#endif
+
 	    ASSERT (dev_info.driver_name);
 	    if (strncmp (dev_info.driver_name, "rte_bond_pmd", 12) == 0)
 	      {
