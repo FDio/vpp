@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_173ca8e1",
+        "filename": "MAINTAINERS",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-02-28T16:43:19Z",
+      "side": 1,
+      "message": "I believe it is Keith Burns who owns vxlan-gpe code base.",
+      "range": {
+        "startLine": 89,
+        "startChar": 7,
+        "endLine": 89,
+        "endChar": 11
+      },
+      "revId": "4ecdc7c2ff39d9592837d610659a141802c51846",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
