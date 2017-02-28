@@ -68,7 +68,7 @@ next_protocol_to_next_index (lisp_gpe_header_t * lgh, u8 * next_header)
   if (PREDICT_TRUE ((lgh->flags & LISP_GPE_FLAGS_P)
 		    || GPE_ENCAP_VXLAN == lgm->encap_mode))
     {
-      if (PREDICT_FALSE (lgh->next_protocol > LISP_GPE_NEXT_PROTOS))
+      if (PREDICT_FALSE (lgh->next_protocol >= LISP_GPE_NEXT_PROTOS))
 	return LISP_GPE_INPUT_NEXT_DROP;
 
       return next_proto_to_next_index[lgh->next_protocol];
