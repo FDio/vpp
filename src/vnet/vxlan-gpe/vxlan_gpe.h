@@ -29,7 +29,7 @@
 #include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 
 /**
  * @brief VXLAN GPE header struct

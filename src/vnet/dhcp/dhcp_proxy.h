@@ -26,7 +26,7 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 
 typedef enum {
 #define dhcp_proxy_error(n,s) DHCP_PROXY_ERROR_##n,

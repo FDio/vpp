@@ -309,8 +309,8 @@ ip4_compute_flow_hash (const ip4_header_t * ip,
   b = (flow_hash_config & IP_FLOW_HASH_REVERSE_SRC_DST) ? t1 : t2;
   b ^= (flow_hash_config & IP_FLOW_HASH_PROTO) ? ip->protocol : 0;
 
-  t1 = is_tcp_udp ? tcp->ports.src : 0;
-  t2 = is_tcp_udp ? tcp->ports.dst : 0;
+  t1 = is_tcp_udp ? tcp->src : 0;
+  t2 = is_tcp_udp ? tcp->dst : 0;
 
   t1 = (flow_hash_config & IP_FLOW_HASH_SRC_PORT) ? t1 : 0;
   t2 = (flow_hash_config & IP_FLOW_HASH_DST_PORT) ? t2 : 0;
@@ -334,6 +334,44 @@ u8 *format_ip4_forward_next_trace (u8 * s, va_list * args);
 
 u32 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
 
+#define IP_DF 0x4000		/* don't fragment */
+
+/**
+ * Push IPv4 header to buffer
+ *
+ * This does not support fragmentation.
+ *
+ * @param vm - vlib_main
+ * @param b - buffer to write the header to
+ * @param src - source IP
+ * @param dst - destination IP
+ * @param prot - payload proto
+ *
+ * @return - pointer to start of IP header
+ */
+always_inline void *
+vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
+		      ip4_address_t * src, ip4_address_t * dst, int proto)
+{
+  ip4_header_t *ih;
+
+  /* make some room */
+  ih = vlib_buffer_push_uninit (b, sizeof (ip4_header_t));
+
+  ih->ip_version_and_header_length = 0x45;
+  ih->tos = 0;
+  ih->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b));
+
+  /* No fragments */
+  ih->flags_and_fragment_offset = clib_host_to_net_u16 (IP_DF);
+  ih->ttl = 255;
+  ih->protocol = proto;
+  ih->src_address.as_u32 = src->as_u32;
+  ih->dst_address.as_u32 = dst->as_u32;
+
+  ih->checksum = ip4_header_checksum (ih);
+  return ih;
+}
 #endif /* included_ip_ip4_h */
 
 /*

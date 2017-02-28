@@ -157,7 +157,9 @@ nobase_include_HEADERS = \
   vppinfra/asm_mips.h \
   vppinfra/asm_x86.h \
   vppinfra/bihash_8_8.h \
+  vppinfra/bihash_16_8.h \
   vppinfra/bihash_24_8.h \
+  vppinfra/bihash_48_8.h \
   vppinfra/bihash_template.h \
   vppinfra/bihash_template.c \
   vppinfra/bitmap.h \
@@ -206,6 +208,7 @@ nobase_include_HEADERS = \
   vppinfra/timer.h \
   vppinfra/tw_timer_2t_1w_2048sl.h \
   vppinfra/tw_timer_16t_2w_512sl.h \
+  vppinfra/tw_timer_16t_1w_2048sl.h \
   vppinfra/tw_timer_template.h \
   vppinfra/tw_timer_template.c \
   vppinfra/types.h \
@@ -261,6 +264,8 @@ CLIB_CORE = \
   vppinfra/tw_timer_2t_1w_2048sl.c \
   vppinfra/tw_timer_16t_2w_512sl.h \
   vppinfra/tw_timer_16t_2w_512sl.c \
+  vppinfra/tw_timer_16t_1w_2048sl.h \
+  vppinfra/tw_timer_16t_1w_2048sl.c \
   vppinfra/unformat.c \
   vppinfra/vec.c \
   vppinfra/vector.c \

@@ -1,16 +1,18 @@
+loop create
+set int ip address loop0 192.168.1.1/8
+set int state loop0 up
+
 packet-generator new {
   name x
-  limit 1
+  limit 2048
   node ip4-input
-  size 64-64
+  size 100-100
+  interface loop0
   no-recycle
   data {
-    TCP: 1.2.3.4 -> 5.6.7.8
-    TCP: 1234 -> 5678
+    TCP: 192.168.1.2 -> 192.168.1.1
+    TCP: 32415 -> 80
+    SYN
     incrementing 100
   }
 }
-
-tr add pg-input 100
-ip route 5.6.7.8/32 via local
-ip route 1.2.3.4/32 via local

@@ -41,7 +41,7 @@
 #define included_ip4_packet_h
 
 #include <vnet/ip/ip_packet.h>	/* for ip_csum_t */
-#include <vnet/ip/tcp_packet.h>	/* for tcp_header_t */
+#include <vnet/tcp/tcp_packet.h>	/* for tcp_header_t */
 #include <vppinfra/byte_order.h>	/* for clib_net_to_host_u16 */
 
 /* IP4 address which can be accessed either as 4 bytes
@@ -342,10 +342,10 @@ ip4_tcp_reply_x1 (ip4_header_t * ip0, tcp_header_t * tcp0)
   ip0->src_address.data_u32 = dst0;
   ip0->dst_address.data_u32 = src0;
 
-  src0 = tcp0->ports.src;
-  dst0 = tcp0->ports.dst;
-  tcp0->ports.src = dst0;
-  tcp0->ports.dst = src0;
+  src0 = tcp0->src;
+  dst0 = tcp0->dst;
+  tcp0->src = dst0;
+  tcp0->dst = src0;
 }
 
 always_inline void
@@ -363,14 +363,14 @@ ip4_tcp_reply_x2 (ip4_header_t * ip0, ip4_header_t * ip1,
   ip0->dst_address.data_u32 = src0;
   ip1->dst_address.data_u32 = src1;
 
-  src0 = tcp0->ports.src;
-  src1 = tcp1->ports.src;
-  dst0 = tcp0->ports.dst;
-  dst1 = tcp1->ports.dst;
-  tcp0->ports.src = dst0;
-  tcp1->ports.src = dst1;
-  tcp0->ports.dst = src0;
-  tcp1->ports.dst = src1;
+  src0 = tcp0->src;
+  src1 = tcp1->src;
+  dst0 = tcp0->dst;
+  dst1 = tcp1->dst;
+  tcp0->src = dst0;
+  tcp1->src = dst1;
+  tcp0->dst = src0;
+  tcp1->dst = src1;
 }
 
 #endif /* included_ip4_packet_h */
