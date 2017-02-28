@@ -16,6 +16,10 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
+/**
+ * @file
+ * @brief BFD binary API implementation
+ */
 
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>

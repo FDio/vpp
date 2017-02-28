@@ -13,7 +13,7 @@
  */
 /**
  * @file
- * @brief BFD global declarations
+ * @brief BFD UDP transport layer declarations
  */
 
 #ifndef __included_bfd_udp_h__
@@ -25,23 +25,27 @@
 #include <vnet/bfd/bfd_api.h>
 
 /* *INDENT-OFF* */
+/** identifier of BFD session based on UDP transport only */
 typedef CLIB_PACKED (struct {
-
+  /** interface to which the session is tied */
   u32 sw_if_index;
+  /** local address */
   ip46_address_t local_addr;
+  /** peer address */
   ip46_address_t peer_addr;
-
 }) bfd_udp_key_t;
 /* *INDENT-ON* */
 
+/** UDP transport specific data embedded in bfd_session's union */
 typedef struct
 {
+  /** key identifying this session */
   bfd_udp_key_t key;
-
+  /** adjacency index returned from adj lock call */
   adj_index_t adj_index;
 } bfd_udp_session_t;
 
-/* bfd udp echo packet trace capture */
+/** bfd udp echo packet trace capture */
 typedef struct
 {
   u32 len;
@@ -50,8 +54,23 @@ typedef struct
 
 struct bfd_session_s;
 
+/**
+ * @brief add the necessary transport layer by prepending it to existing data
+ *
+ * @param is_echo 1 if this is echo packet, 0 if control frame
+ *
+ * @return 1 on success, 0 on failure
+ */
 int bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
 			    const struct bfd_session_s *bs, int is_echo);
+
+/**
+ * @brief add the necessary transport layer by prepending it to existing data
+ *
+ * @param is_echo 1 if this is echo packet, 0 if control frame
+ *
+ * @return 1 on success, 0 on failure
+ */
 int bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
 			    const struct bfd_session_s *bs, int is_echo);
 
@@ -62,10 +81,12 @@ int bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
  */
 int bfd_udp_is_echo_available (bfd_transport_e transport);
 
-void
-bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index, int *have_usable_ip4,
-			 ip4_address_t * ip4, int *have_usable_ip6,
-			 ip6_address_t * ip6);
+/**
+ * @brief get echo source information - used by CLI
+ */
+void bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index,
+			      int *have_usable_ip4, ip4_address_t * ip4,
+			      int *have_usable_ip6, ip6_address_t * ip6);
 
 #endif /* __included_bfd_udp_h__ */
 

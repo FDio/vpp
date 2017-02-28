@@ -737,7 +737,7 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_activate_command, static) = {
                 " peer-addr <peer-address>"
                 " conf-key-id <config key ID>"
                 " bfd-key-id <BFD key ID>"
-                " [ delayed <yes|no>]",
+                " [ delayed <yes|no> ]",
   .function = bfd_cli_udp_session_auth_activate,
 };
 
@@ -815,7 +815,7 @@ VLIB_CLI_COMMAND (bfd_cli_udp_session_auth_deactivate_command, static) = {
                 " interface <interface>"
                 " local-addr <local-address>"
                 " peer-addr <peer-address>"
-                "[ delayed <yes|no>]",
+                "[ delayed <yes|no> ]",
   .function = bfd_cli_udp_session_auth_deactivate,
 };
 /* *INDENT-ON* */
