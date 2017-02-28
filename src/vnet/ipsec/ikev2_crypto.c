@@ -17,7 +17,7 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/ipsec/ikev2.h>
 #include <vnet/ipsec/ikev2_priv.h>
 #include <openssl/obj_mac.h>

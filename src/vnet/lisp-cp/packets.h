@@ -26,51 +26,6 @@ void *pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp,
 
 void *pkt_push_ecm_hdr (vlib_buffer_t * b);
 
-always_inline u8 *
-vlib_buffer_get_tail (vlib_buffer_t * b)
-{
-  return b->data + b->current_data + b->current_length;
-}
-
-always_inline void *
-vlib_buffer_put_uninit (vlib_buffer_t * b, u8 size)
-{
-  /* XXX should make sure there's enough space! */
-  void *p = vlib_buffer_get_tail (b);
-  b->current_length += size;
-  return p;
-}
-
-always_inline void *
-vlib_buffer_push_uninit (vlib_buffer_t * b, u8 size)
-{
-  /* XXX should make sure there's enough space! */
-  ASSERT (b->current_data >= size);
-  b->current_data -= size;
-  b->current_length += size;
-
-  return vlib_buffer_get_current (b);
-}
-
-always_inline void *
-vlib_buffer_make_headroom (vlib_buffer_t * b, u8 size)
-{
-  /* XXX should make sure there's enough space! */
-  b->current_data += size;
-  return vlib_buffer_get_current (b);
-}
-
-always_inline void *
-vlib_buffer_pull (vlib_buffer_t * b, u8 size)
-{
-  if (b->current_length < size)
-    return 0;
-
-  void *data = vlib_buffer_get_current (b);
-  vlib_buffer_advance (b, size);
-  return data;
-}
-
 /* *INDENT-ON* */
 
 /*
