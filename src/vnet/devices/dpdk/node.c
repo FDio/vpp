@@ -556,8 +556,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
      + VNET_INTERFACE_COUNTER_RX,
      cpu_index, xd->vlib_sw_if_index, mb_index, n_rx_bytes);
 
-  dpdk_worker_t *dw = vec_elt_at_index (dm->workers, cpu_index);
-  dw->aggregate_rx_packets += mb_index;
+  vnet_device_increment_rx_packets (cpu_index, mb_index);
 
   return mb_index;
 }

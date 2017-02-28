@@ -287,6 +287,8 @@ out:
      + VNET_INTERFACE_COUNTER_RX, cpu_index,
      intfc->vlib_hw_if_index, rx_queue_index, n_rx_bytes);
 
+  vnet_device_increment_rx_packets (cpu_index, rx_queue_index);
+
   return rx_queue_index;
 }
 

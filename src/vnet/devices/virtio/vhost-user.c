@@ -1819,6 +1819,8 @@ vhost_user_if_input (vlib_main_t * vm,
      + VNET_INTERFACE_COUNTER_RX,
      os_get_cpu_number (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
 
+  vnet_device_increment_rx_packets (cpu_index, n_rx_packets);
+
   return n_rx_packets;
 }
 

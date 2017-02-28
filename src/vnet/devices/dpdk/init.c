@@ -277,9 +277,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   vec_validate_aligned (dm->devices_by_cpu, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
-  vec_validate_aligned (dm->workers, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-
   dm->hqos_cpu_first_index = 0;
   dm->hqos_cpu_count = 0;
 
@@ -294,9 +291,6 @@ dpdk_lib_init (dpdk_main_t * dm)
     }
 
   vec_validate_aligned (dm->devices_by_hqos_cpu, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
-
-  vec_validate_aligned (dm->hqos_threads, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
   nports = rte_eth_dev_count ();
@@ -1756,8 +1750,6 @@ dpdk_init (vlib_main_t * vm)
   STATIC_ASSERT (offsetof (dpdk_device_t, cacheline1) ==
 		 CLIB_CACHE_LINE_BYTES,
 		 "Data in cache line 0 is bigger than cache line size");
-  STATIC_ASSERT (offsetof (dpdk_worker_t, cacheline0) == 0,
-		 "Cache line marker must be 1st element in dpdk_worker_t");
   STATIC_ASSERT (offsetof (frame_queue_trace_t, cacheline0) == 0,
 		 "Cache line marker must be 1st element in frame_queue_trace_t");
 

@@ -225,22 +225,6 @@ typedef struct
 
 typedef struct
 {
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
-  /* total input packet counter */
-  u64 aggregate_rx_packets;
-} dpdk_worker_t;
-
-typedef struct
-{
-  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-
-  /* total input packet counter */
-  u64 aggregate_rx_packets;
-} dpdk_hqos_thread_t;
-
-typedef struct
-{
   u32 device;
   u16 queue_id;
 } dpdk_device_and_queue_t;
@@ -360,12 +344,6 @@ typedef struct
   /* vlib buffer free list, must be same size as an rte_mbuf */
   u32 vlib_buffer_free_list_index;
 
-  /* dpdk worker "threads" */
-  dpdk_worker_t *workers;
-
-  /* dpdk HQoS "threads" */
-  dpdk_hqos_thread_t *hqos_threads;
-
   /* Ethernet input node index */
   u32 ethernet_input_node_index;
 
@@ -474,18 +452,6 @@ int dpdk_set_link_state_poll_interval (f64 interval);
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 void dpdk_device_lock_init (dpdk_device_t * xd);
 void dpdk_device_lock_free (dpdk_device_t * xd);
-
-static inline u64
-vnet_get_aggregate_rx_packets (void)
-{
-  dpdk_main_t *dm = &dpdk_main;
-  u64 sum = 0;
-  dpdk_worker_t *dw;
-
-  vec_foreach (dw, dm->workers) sum += dw->aggregate_rx_packets;
-
-  return sum;
-}
 
 void dpdk_rx_trace (dpdk_main_t * dm,
 		    vlib_node_runtime_t * node,
