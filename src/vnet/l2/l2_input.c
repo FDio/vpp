@@ -513,10 +513,13 @@ l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value)
  */
 
 u32
-set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_index, u32 bd_index,	/* for bridged interface */
-		 u32 bvi,	/* the bridged interface is the BVI */
-		 u32 shg,	/* the bridged interface's split horizon group */
-		 u32 xc_sw_if_index)	/* peer interface for xconnect */
+set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
+		 u32 mode,	/* One of L2 modes or back to L3 mode        */
+		 u32 sw_if_index,	/* sw interface index                */
+		 u32 bd_index,	/* for bridged interface                     */
+		 u32 bvi,	/* the bridged interface is the BVI          */
+		 u32 shg,	/* the bridged interface split horizon group */
+		 u32 xc_sw_if_index)	/* peer interface for xconnect       */
 {
   l2input_main_t *mp = &l2input_main;
   l2output_main_t *l2om = &l2output_main;
@@ -583,6 +586,10 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main, u32 mode, u32 sw_if_
       config->shg = 0;
       config->bd_index = 0;
       config->feature_bitmap = L2INPUT_FEAT_DROP;
+
+      /* Clear L2 output config */
+      out_config = l2output_intf_config (sw_if_index);
+      memset (out_config, 0, sizeof (l2_output_config_t));
 
       /* Make sure any L2-output packet to this interface now in L3 mode is
        * dropped. This may happen if L2 FIB MAC entry is stale */
