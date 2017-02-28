@@ -59,50 +59,18 @@ always_inline u32
 dpdk_rx_next_from_etype (struct rte_mbuf * mb, vlib_buffer_t * b0)
 {
   if (PREDICT_TRUE (vlib_buffer_is_ip4 (b0)))
-    if (PREDICT_TRUE ((mb->ol_flags & PKT_RX_IP_CKSUM_GOOD) != 0))
-      return VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-    else
-      return VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    {
+      if (PREDICT_TRUE ((mb->ol_flags & PKT_RX_IP_CKSUM_GOOD) != 0))
+	return VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
+      else
+	return VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
+    }
   else if (PREDICT_TRUE (vlib_buffer_is_ip6 (b0)))
     return VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
   else if (PREDICT_TRUE (vlib_buffer_is_mpls (b0)))
     return VNET_DEVICE_INPUT_NEXT_MPLS_INPUT;
   else
     return VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-}
-
-always_inline int
-dpdk_mbuf_is_vlan (struct rte_mbuf *mb)
-{
-  return (mb->packet_type & RTE_PTYPE_L2_ETHER_VLAN) ==
-    RTE_PTYPE_L2_ETHER_VLAN;
-}
-
-always_inline int
-dpdk_mbuf_is_ip4 (struct rte_mbuf *mb)
-{
-  return RTE_ETH_IS_IPV4_HDR (mb->packet_type) != 0;
-}
-
-always_inline int
-dpdk_mbuf_is_ip6 (struct rte_mbuf *mb)
-{
-  return RTE_ETH_IS_IPV6_HDR (mb->packet_type) != 0;
-}
-
-always_inline u32
-dpdk_rx_next_from_mb (struct rte_mbuf * mb, vlib_buffer_t * b0)
-{
-  if (PREDICT_FALSE (dpdk_mbuf_is_vlan (mb)))
-    return VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-  else if (PREDICT_TRUE (dpdk_mbuf_is_ip4 (mb)))
-    return VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-  else if (PREDICT_TRUE (dpdk_mbuf_is_ip6 (mb)))
-    return VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-  else if (PREDICT_TRUE (vlib_buffer_is_mpls (b0)))
-    return VNET_DEVICE_INPUT_NEXT_MPLS_INPUT;
-  else
-    return dpdk_rx_next_from_etype (mb, b0);
 }
 
 always_inline void
@@ -146,9 +114,6 @@ dpdk_rx_trace (dpdk_main_t * dm,
 
       if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	next0 = xd->per_interface_next_index;
-      else if (PREDICT_TRUE
-	       ((xd->flags & DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE) != 0))
-	next0 = dpdk_rx_next_from_mb (mb, b0);
       else
 	next0 = dpdk_rx_next_from_etype (mb, b0);
 
@@ -249,6 +214,13 @@ dpdk_prefetch_buffer (struct rte_mbuf *mb)
   vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
   CLIB_PREFETCH (mb, CLIB_CACHE_LINE_BYTES, LOAD);
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, STORE);
+}
+
+static_always_inline void
+dpdk_prefetch_buffer_data (struct rte_mbuf *mb)
+{
+  vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
+  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
 }
 
 /*
@@ -371,16 +343,17 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    {
 	      next0 = next1 = next2 = next3 = xd->per_interface_next_index;
 	    }
-	  else if (PREDICT_TRUE
-		   ((xd->flags & DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE) != 0))
-	    {
-	      next0 = dpdk_rx_next_from_mb (mb0, b0);
-	      next1 = dpdk_rx_next_from_mb (mb1, b1);
-	      next2 = dpdk_rx_next_from_mb (mb2, b2);
-	      next3 = dpdk_rx_next_from_mb (mb3, b3);
-	    }
 	  else
 	    {
+	      /* prefetch packet data for faster access to the ethertype */
+	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
+					 [mb_index + 4]);
+	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
+					 [mb_index + 5]);
+	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
+					 [mb_index + 6]);
+	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
+					 [mb_index + 7]);
 	      next0 = dpdk_rx_next_from_etype (mb0, b0);
 	      next1 = dpdk_rx_next_from_etype (mb1, b1);
 	      next2 = dpdk_rx_next_from_etype (mb2, b2);
@@ -499,9 +472,6 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 
 	  if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	    next0 = xd->per_interface_next_index;
-	  else if (PREDICT_TRUE
-		   ((xd->flags & DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE) != 0))
-	    next0 = dpdk_rx_next_from_mb (mb0, b0);
 	  else
 	    next0 = dpdk_rx_next_from_etype (mb0, b0);
 
