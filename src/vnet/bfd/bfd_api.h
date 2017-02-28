@@ -14,7 +14,7 @@
  */
 /**
  * @file
- * @brief BFD global declarations
+ * @brief BFD API declarations
  */
 #ifndef __included_bfd_api_h__
 #define __included_bfd_api_h__
@@ -34,6 +34,9 @@ typedef enum
 #undef F
 } bfd_transport_e;
 
+/**
+ * @brief create a new bfd session
+ */
 vnet_api_error_t
 bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
 		     const ip46_address_t * peer_addr,
@@ -41,39 +44,66 @@ bfd_udp_add_session (u32 sw_if_index, const ip46_address_t * local_addr,
 		     u8 detect_mult, u8 is_authenticated, u32 conf_key_id,
 		     u8 bfd_key_id);
 
+/**
+ * @brief modify existing session
+ */
 vnet_api_error_t
 bfd_udp_mod_session (u32 sw_if_index, const ip46_address_t * local_addr,
 		     const ip46_address_t * peer_addr,
 		     u32 desired_min_tx_usec, u32 required_min_rx_usec,
 		     u8 detect_mult);
 
+/**
+ * @brief delete existing session
+ */
 vnet_api_error_t bfd_udp_del_session (u32 sw_if_index,
 				      const ip46_address_t * local_addr,
 				      const ip46_address_t * peer_addr);
 
+/**
+ * @brief set session admin down/up
+ */
 vnet_api_error_t bfd_udp_session_set_flags (u32 sw_if_index,
 					    const ip46_address_t * local_addr,
 					    const ip46_address_t * peer_addr,
 					    u8 admin_up_down);
 
+/**
+ * @brief create or modify bfd authentication key
+ */
 vnet_api_error_t bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
 				   const u8 * key);
 
+/**
+ * @brief delete existing authentication key
+ */
 vnet_api_error_t bfd_auth_del_key (u32 conf_key_id);
 
+/**
+ * @brief activate authentication for existing session
+ */
 vnet_api_error_t bfd_udp_auth_activate (u32 sw_if_index,
 					const ip46_address_t * local_addr,
 					const ip46_address_t * peer_addr,
 					u32 conf_key_id, u8 bfd_key_id,
 					u8 is_delayed);
 
+/**
+ * @brief deactivate authentication for existing session
+ */
 vnet_api_error_t bfd_udp_auth_deactivate (u32 sw_if_index,
 					  const ip46_address_t * local_addr,
 					  const ip46_address_t * peer_addr,
 					  u8 is_delayed);
 
+/**
+ * @brief set echo-source interface
+ */
 vnet_api_error_t bfd_udp_set_echo_source (u32 loopback_sw_if_index);
 
+/**
+ * @brief unset echo-source interface
+ */
 vnet_api_error_t bfd_udp_del_echo_source ();
 
 #endif /* __included_bfd_api_h__ */

@@ -37,19 +37,19 @@ typedef enum
 
 typedef struct
 {
-  /* global configuration key ID */
+  /** global configuration key ID */
   u32 conf_key_id;
 
-  /* keeps track of how many sessions reference this key */
+  /** keeps track of how many sessions reference this key */
   u32 use_count;
 
-  /*
+  /**
    * key data directly usable for bfd purposes - already padded with zeroes
    * (so we don't need the actual length)
    */
   u8 key[20];
 
-  /* authentication type for this key */
+  /** authentication type for this key */
   bfd_auth_type_e auth_type;
 } bfd_auth_key_t;
 
@@ -68,152 +68,152 @@ typedef enum
 
 typedef struct bfd_session_s
 {
-  /* index in bfd_main.sessions pool */
+  /** index in bfd_main.sessions pool */
   u32 bs_idx;
 
-  /* session state */
+  /** session state */
   bfd_state_e local_state;
 
-  /* remote session state */
+  /** remote session state */
   bfd_state_e remote_state;
 
-  /* local diagnostics */
+  /** local diagnostics */
   bfd_diag_code_e local_diag;
 
-  /* remote diagnostics */
+  /** remote diagnostics */
   bfd_diag_code_e remote_diag;
 
-  /* local discriminator */
+  /** local discriminator */
   u32 local_discr;
 
-  /* remote discriminator */
+  /** remote discriminator */
   u32 remote_discr;
 
-  /* configured desired min tx interval (microseconds) */
+  /** configured desired min tx interval (microseconds) */
   u32 config_desired_min_tx_usec;
 
-  /* configured desired min tx interval (clocks) */
+  /** configured desired min tx interval (clocks) */
   u64 config_desired_min_tx_clocks;
 
-  /* effective desired min tx interval (clocks) */
+  /** effective desired min tx interval (clocks) */
   u64 effective_desired_min_tx_clocks;
 
-  /* configured required min rx interval (microseconds) */
+  /** configured required min rx interval (microseconds) */
   u32 config_required_min_rx_usec;
 
-  /* configured required min rx interval (clocks) */
+  /** configured required min rx interval (clocks) */
   u64 config_required_min_rx_clocks;
 
-  /* effective required min rx interval (clocks) */
+  /** effective required min rx interval (clocks) */
   u64 effective_required_min_rx_clocks;
 
-  /* remote min rx interval (microseconds) */
+  /** remote min rx interval (microseconds) */
   u64 remote_min_rx_usec;
 
-  /* remote min rx interval (clocks) */
+  /** remote min rx interval (clocks) */
   u64 remote_min_rx_clocks;
 
-  /* remote min echo rx interval (microseconds) */
+  /** remote min echo rx interval (microseconds) */
   u64 remote_min_echo_rx_usec;
 
-  /* remote min echo rx interval (clocks) */
+  /** remote min echo rx interval (clocks) */
   u64 remote_min_echo_rx_clocks;
 
-  /* remote desired min tx interval (clocks) */
+  /** remote desired min tx interval (clocks) */
   u64 remote_desired_min_tx_clocks;
 
-  /* configured detect multiplier */
+  /** configured detect multiplier */
   u8 local_detect_mult;
 
-  /* 1 if remote system sets demand mode, 0 otherwise */
+  /** 1 if remote system sets demand mode, 0 otherwise */
   u8 remote_demand;
 
-  /* remote detect multiplier */
+  /** remote detect multiplier */
   u8 remote_detect_mult;
 
-  /* 1 is echo function is active, 0 otherwise */
+  /** 1 is echo function is active, 0 otherwise */
   u8 echo;
 
-  /* set to value of timer in timing wheel, 0 if never set */
+  /** set to value of timer in timing wheel, 0 if never set */
   u64 wheel_time_clocks;
 
-  /* transmit interval */
+  /** transmit interval */
   u64 transmit_interval_clocks;
 
-  /* next time at which to transmit a packet */
+  /** next time at which to transmit a packet */
   u64 tx_timeout_clocks;
 
-  /* timestamp of last packet transmitted */
+  /** timestamp of last packet transmitted */
   u64 last_tx_clocks;
 
-  /* timestamp of last packet received */
+  /** timestamp of last packet received */
   u64 last_rx_clocks;
 
-  /* transmit interval for echo packets */
+  /** transmit interval for echo packets */
   u64 echo_transmit_interval_clocks;
 
-  /* next time at which to transmit echo packet */
+  /** next time at which to transmit echo packet */
   u64 echo_tx_timeout_clocks;
 
-  /* timestamp of last echo packet transmitted */
+  /** timestamp of last echo packet transmitted */
   u64 echo_last_tx_clocks;
 
-  /* timestamp of last echo packet received */
+  /** timestamp of last echo packet received */
   u64 echo_last_rx_clocks;
 
-  /* secret used for calculating/checking checksum of echo packets */
+  /** secret used for calculating/checking checksum of echo packets */
   u32 echo_secret;
 
-  /* detection time */
+  /** detection time */
   u64 detection_time_clocks;
 
-  /* state info regarding poll sequence */
+  /** state info regarding poll sequence */
   bfd_poll_state_e poll_state;
 
-  /*
+  /**
    * helper for delayed poll sequence - marks either start of running poll
    * sequence or timeout, after which we can start the next poll sequnce
    */
   u64 poll_state_start_or_timeout_clocks;
 
-  /* authentication information */
+  /** authentication information */
   struct
   {
-    /* current key in use */
+    /** current key in use */
     bfd_auth_key_t *curr_key;
 
-    /*
+    /**
      * set to next key to use if delayed switch is enabled - in that case
      * the key is switched when first incoming packet is signed with next_key
      */
     bfd_auth_key_t *next_key;
 
-    /* sequence number incremented occasionally or always (if meticulous) */
+    /** sequence number incremented occasionally or always (if meticulous) */
     u32 local_seq_number;
 
-    /* remote sequence number */
+    /** remote sequence number */
     u32 remote_seq_number;
 
-    /* set to 1 if remote sequence number is known */
+    /** set to 1 if remote sequence number is known */
     u8 remote_seq_number_known;
 
-    /* current key ID sent out in bfd packet */
+    /** current key ID sent out in bfd packet */
     u8 curr_bfd_key_id;
 
-    /* key ID to use when switched to next_key */
+    /** key ID to use when switched to next_key */
     u8 next_bfd_key_id;
 
-    /*
+    /**
      * set to 1 if delayed action is pending, which might be activation
      * of authentication, change of key or deactivation
      */
     u8 is_delayed;
   } auth;
 
-  /* transport type for this session */
+  /** transport type for this session */
   bfd_transport_e transport;
 
-  /* union of transport-specific data */
+  /** union of transport-specific data */
   union
   {
     bfd_udp_session_t udp;
@@ -222,48 +222,48 @@ typedef struct bfd_session_s
 
 typedef struct
 {
-  /* pool of bfd sessions context data */
+  /** pool of bfd sessions context data */
   bfd_session_t *sessions;
 
-  /* timing wheel for scheduling timeouts */
+  /** timing wheel for scheduling timeouts */
   timing_wheel_t wheel;
 
-  /* timing wheel inaccuracy, in clocks */
+  /** timing wheel inaccuracy, in clocks */
   u64 wheel_inaccuracy;
 
-  /* hashmap - bfd session by discriminator */
+  /** hashmap - bfd session by discriminator */
   u32 *session_by_disc;
 
-  /* background process node index */
+  /** background process node index */
   u32 bfd_process_node_index;
 
-  /* convenience variables */
+  /** convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 
-  /* cpu clocks per second */
+  /** cpu clocks per second */
   f64 cpu_cps;
 
-  /* default desired min tx in clocks */
+  /** default desired min tx in clocks */
   u64 default_desired_min_tx_clocks;
 
-  /* minimum required min rx while echo function is active - clocks */
+  /** minimum required min rx while echo function is active - clocks */
   u64 min_required_min_rx_while_echo_clocks;
 
-  /* for generating random numbers */
+  /** for generating random numbers */
   u32 random_seed;
 
-  /* pool of authentication keys */
+  /** pool of authentication keys */
   bfd_auth_key_t *auth_keys;
 
-  /* hashmap - index in pool auth_keys by conf_key_id */
+  /** hashmap - index in pool auth_keys by conf_key_id */
   u32 *auth_key_by_conf_key_id;
 
 } bfd_main_t;
 
 extern bfd_main_t bfd_main;
 
-/* Packet counters */
+/** Packet counters */
 #define foreach_bfd_error(F)               \
   F (NONE, "good bfd packets (processed)") \
   F (BAD, "invalid bfd packets")           \
@@ -277,7 +277,7 @@ typedef enum
     BFD_N_ERROR,
 } bfd_error_t;
 
-/* bfd packet trace capture */
+/** bfd packet trace capture */
 typedef struct
 {
   u32 len;
@@ -291,14 +291,14 @@ enum
   BFD_EVENT_CONFIG_CHANGED,
 } bfd_process_event_e;
 
-/* echo packet structure */
 /* *INDENT-OFF* */
+/** echo packet structure */
 typedef CLIB_PACKED (struct {
-  /* local discriminator */
+  /** local discriminator */
   u32 discriminator;
-  /* expire time of this packet - clocks */
+  /** expire time of this packet - clocks */
   u64 expire_time_clocks;
-  /* checksum - based on discriminator, local secret and expire time */
+  /** checksum - based on discriminator, local secret and expire time */
   u64 checksum;
 }) bfd_echo_pkt_t;
 /* *INDENT-ON* */
@@ -335,10 +335,10 @@ const char *bfd_poll_state_string (bfd_poll_state_e state);
 #define USEC_PER_MS 1000LL
 #define USEC_PER_SECOND (1000 * USEC_PER_MS)
 
-/* default, slow transmission interval for BFD packets, per spec at least 1s */
+/** default, slow transmission interval for BFD packets, per spec at least 1s */
 #define BFD_DEFAULT_DESIRED_MIN_TX_USEC USEC_PER_SECOND
 
-/*
+/**
  * minimum required min rx set locally when echo function is used, per spec
  * should be set to at least 1s
  */

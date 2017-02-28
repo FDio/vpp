@@ -1606,8 +1606,6 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
   bfd_set_remote_required_min_echo_rx (bm, bs, now,
 				       clib_net_to_host_u32
 				       (pkt->req_min_echo_rx));
-  /* FIXME 6.8.2 */
-  /* FIXME 6.8.4 */
   if (bfd_pkt_get_final (pkt))
     {
       if (BFD_POLL_IN_PROGRESS == bs->poll_state)
@@ -1915,13 +1913,13 @@ bfd_auth_set_key (u32 conf_key_id, u8 auth_type, u8 key_len,
 {
 #if WITH_LIBSSL > 0
   bfd_auth_key_t *auth_key = NULL;
-  if (!key_len || key_len > bfd_max_len_for_auth_type (auth_type))
+  if (!key_len || key_len > bfd_max_key_len_for_auth_type (auth_type))
     {
       clib_warning ("Invalid authentication key length for auth_type=%d:%s "
 		    "(key_len=%u, must be "
 		    "non-zero, expected max=%u)",
 		    auth_type, bfd_auth_type_str (auth_type), key_len,
-		    (u32) bfd_max_len_for_auth_type (auth_type));
+		    (u32) bfd_max_key_len_for_auth_type (auth_type));
       return VNET_API_ERROR_INVALID_VALUE;
     }
   if (!bfd_auth_type_supported (auth_type))
