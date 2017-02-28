@@ -23,7 +23,7 @@
  */
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/ip/punt.h>
 
 #define foreach_punt_next \

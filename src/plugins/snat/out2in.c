@@ -19,7 +19,7 @@
 #include <vnet/handoff.h>
 
 #include <vnet/ip/ip.h>
-#include <vnet/ip/udp.h>
+#include <vnet/udp/udp.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/ip4_fib.h>
 #include <snat/snat.h>
@@ -602,9 +602,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
             {
-              old_port0 = tcp0->ports.dst;
-              tcp0->ports.dst = s0->in2out.port;
-              new_port0 = tcp0->ports.dst;
+              old_port0 = tcp0->dst_port;
+              tcp0->dst_port = s0->in2out.port;
+              new_port0 = tcp0->dst_port;
 
               sum0 = tcp0->checksum;
               sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -737,9 +737,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_TRUE(proto1 == SNAT_PROTOCOL_TCP))
             {
-              old_port1 = tcp1->ports.dst;
-              tcp1->ports.dst = s1->in2out.port;
-              new_port1 = tcp1->ports.dst;
+              old_port1 = tcp1->dst_port;
+              tcp1->dst_port = s1->in2out.port;
+              new_port1 = tcp1->dst_port;
 
               sum1 = tcp1->checksum;
               sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
@@ -907,9 +907,9 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
             {
-              old_port0 = tcp0->ports.dst;
-              tcp0->ports.dst = s0->in2out.port;
-              new_port0 = tcp0->ports.dst;
+              old_port0 = tcp0->dst_port;
+              tcp0->dst_port = s0->in2out.port;
+              new_port0 = tcp0->dst_port;
 
               sum0 = tcp0->checksum;
               sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -1369,8 +1369,8 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
             {
                if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
                 {
-                  old_port0 = tcp0->ports.dst;
-                  tcp0->ports.dst = new_port0;
+                  old_port0 = tcp0->dst_port;
+                  tcp0->dst_port = new_port0;
 
                   sum0 = tcp0->checksum;
                   sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
