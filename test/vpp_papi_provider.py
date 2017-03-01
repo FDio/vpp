@@ -849,6 +849,9 @@ class VppPapiProvider(object):
             create_vrf_if_needed=0,
             is_resolve_host=0,
             is_resolve_attached=0,
+            is_interface_rx=0,
+            is_rpf_id=0,
+            is_multicast=0,
             is_add=1,
             is_drop=0,
             is_multipath=0,
@@ -872,6 +875,7 @@ class VppPapiProvider(object):
         :param is_local:  (Default value = 0)
         :param is_classify:  (Default value = 0)
         :param is_multipath:  (Default value = 0)
+        :param is_multicast:  (Default value = 0)
         :param is_resolve_host:  (Default value = 0)
         :param is_resolve_attached:  (Default value = 0)
         :param not_last:  (Default value = 0)
@@ -889,8 +893,11 @@ class VppPapiProvider(object):
              'mr_is_add': is_add,
              'mr_is_classify': is_classify,
              'mr_is_multipath': is_multipath,
+             'mr_is_multicast': is_multicast,
              'mr_is_resolve_host': is_resolve_host,
              'mr_is_resolve_attached': is_resolve_attached,
+             'mr_is_interface_rx': is_interface_rx,
+             'mr_is_rpf_id': is_rpf_id,
              'mr_next_hop_proto_is_ip4': next_hop_proto_is_ip4,
              'mr_next_hop_weight': next_hop_weight,
              'mr_next_hop': next_hop_address,
@@ -936,7 +943,8 @@ class VppPapiProvider(object):
             next_hop_via_label=MPLS_LABEL_INVALID,
             create_vrf_if_needed=0,
             is_add=1,
-            l2_only=0):
+            l2_only=0,
+            is_multicast=0):
         """
 
         :param dst_address_length:
@@ -956,8 +964,8 @@ class VppPapiProvider(object):
         :param is_multipath:  (Default value = 0)
         :param is_resolve_host:  (Default value = 0)
         :param is_resolve_attached:  (Default value = 0)
-        :param not_last:  (Default value = 0)
         :param next_hop_weight:  (Default value = 1)
+        :param is_multicast:  (Default value = 0)
 
         """
         return self.api(
@@ -965,6 +973,7 @@ class VppPapiProvider(object):
             {'mt_sw_if_index': tun_sw_if_index,
              'mt_is_add': is_add,
              'mt_l2_only': l2_only,
+             'mt_is_multicast': is_multicast,
              'mt_next_hop_proto_is_ip4': next_hop_proto_is_ip4,
              'mt_next_hop_weight': next_hop_weight,
              'mt_next_hop': next_hop_address,
@@ -1469,6 +1478,7 @@ class VppPapiProvider(object):
                           e_flags,
                           next_hop_sw_if_index,
                           i_flags,
+                          rpf_id=0,
                           table_id=0,
                           create_vrf_if_needed=0,
                           is_add=1,
@@ -1481,6 +1491,8 @@ class VppPapiProvider(object):
             {'next_hop_sw_if_index': next_hop_sw_if_index,
              'entry_flags': e_flags,
              'itf_flags': i_flags,
+             'table_id': table_id,
+             'rpf_id': rpf_id,
              'create_vrf_if_needed': create_vrf_if_needed,
              'is_add': is_add,
              'is_ipv6': is_ipv6,

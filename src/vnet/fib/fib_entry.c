@@ -75,13 +75,7 @@ fib_entry_get_default_chain_type (const fib_entry_t *fib_entry)
 	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
     case FIB_PROTOCOL_MPLS:
 	if (MPLS_EOS == fib_entry->fe_prefix.fp_eos)
-	    /*
-	     * If the entry being asked is a eos-MPLS label entry,
-	     * then use the payload-protocol field, that we stashed there
-	     * for just this purpose
-	     */
-	    return (fib_forw_chain_type_from_dpo_proto(
-			fib_entry->fe_prefix.fp_payload_proto));
+	    return (FIB_FORW_CHAIN_TYPE_MPLS_EOS);
 	else
 	    return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
     }
@@ -371,6 +365,35 @@ fib_entry_contribute_urpf (fib_node_index_t entry_index,
 }
 
 /*
+ * If the client is request a chain for multicast forwarding then swap
+ * the chain type to one that can provide such transport.
+ */
+static fib_forward_chain_type_t
+fib_entry_chain_type_mcast_to_ucast (fib_forward_chain_type_t fct)
+{
+    switch (fct)
+    {
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+        /*
+         * we can only transport IP multicast packets if there is an
+         * LSP.
+         */
+        fct = FIB_FORW_CHAIN_TYPE_MPLS_EOS;
+        break;
+    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
+    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+    case FIB_FORW_CHAIN_TYPE_NSH:
+        break;
+    }
+
+    return (fct);
+}
+
+/*
  * fib_entry_contribute_forwarding
  *
  * Get an lock the forwarding information (DPO) contributed by the FIB entry.
@@ -384,6 +407,11 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
     fib_entry_t *fib_entry;
 
     fib_entry = fib_entry_get(fib_entry_index);
+
+    /*
+     * mfib children ask for mcast chains. fix these to the appropriate ucast types.
+     */
+    fct = fib_entry_chain_type_mcast_to_ucast(fct);
 
     if (fct == fib_entry_get_default_chain_type(fib_entry))
     {
@@ -414,6 +442,11 @@ fib_entry_contribute_forwarding (fib_node_index_t fib_entry_index,
 
         dpo_copy(dpo, &fed->fd_dpo);
     }
+    /*
+     * don't allow the special index indicating replicate.vs.load-balance
+     * to escape to the clients
+     */
+    dpo->dpoi_index &= ~MPLS_IS_REPLICATE;
 }
 
 const dpo_id_t *

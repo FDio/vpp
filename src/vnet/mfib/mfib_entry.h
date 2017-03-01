@@ -42,17 +42,6 @@ typedef struct mfib_entry_t_ {
      * The index of the FIB table this entry is in
      */
     u32 mfe_fib_index;
-    /**
-     * the path-list for which this entry is a child. This is also the path-list
-     * that is contributing forwarding for this entry.
-     */
-    fib_node_index_t mfe_parent;
-    /**
-     * index of this entry in the parent's child list.
-     * This is set when this entry is added as a child, but can also
-     * be changed by the parent as it manages its list.
-     */
-    u32 mfe_sibling;
 
     /**
      * A vector of sources contributing forwarding
@@ -65,7 +54,7 @@ typedef struct mfib_entry_t_ {
     CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);
 
     /**
-     * The Replicate DPO used for forwarding.
+     * The DPO used for forwarding; replicate, drop, etc..
      */
     dpo_id_t mfe_rep;
 
@@ -73,6 +62,11 @@ typedef struct mfib_entry_t_ {
      * Route flags
      */
     mfib_entry_flags_t mfe_flags;
+
+    /**
+     * RPF-ID used when the packets ingress not from an interface
+     */
+    fib_rpf_id_t mfe_rpf_id;
 
     /**
      * A hash table of interfaces
@@ -90,11 +84,13 @@ extern u8 *format_mfib_entry(u8 * s, va_list * args);
 extern fib_node_index_t mfib_entry_create(u32 fib_index,
                                           mfib_source_t source,
                                           const mfib_prefix_t *prefix,
+                                          fib_rpf_id_t rpf_id,
                                           mfib_entry_flags_t entry_flags);
 
 extern int mfib_entry_update(fib_node_index_t fib_entry_index,
                              mfib_source_t source,
                              mfib_entry_flags_t entry_flags,
+                             fib_rpf_id_t rpf_id,
                              index_t rep_dpo);
 
 extern void mfib_entry_path_update(fib_node_index_t fib_entry_index,

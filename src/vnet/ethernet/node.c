@@ -249,7 +249,7 @@ determine_next_node (ethernet_main_t * em,
     {
       *next0 = em->l3_next.input_next_ip6;
     }
-  else if (type0 == ETHERNET_TYPE_MPLS_UNICAST)
+  else if (type0 == ETHERNET_TYPE_MPLS)
     {
       *next0 = em->l3_next.input_next_mpls;
 
@@ -1252,7 +1252,7 @@ next_by_ethertype_register (next_by_ethertype_t * l3_next,
 	{
 	  l3_next->input_next_ip6 = next_index;
 	}
-      else if (ethertype == ETHERNET_TYPE_MPLS_UNICAST)
+      else if (ethertype == ETHERNET_TYPE_MPLS)
 	{
 	  l3_next->input_next_mpls = next_index;
 	}

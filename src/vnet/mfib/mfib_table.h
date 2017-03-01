@@ -122,6 +122,7 @@ extern fib_node_index_t mfib_table_lookup_exact_match(u32 fib_index,
 extern fib_node_index_t mfib_table_entry_update(u32 fib_index,
                                                 const mfib_prefix_t *prefix,
                                                 mfib_source_t source,
+                                                fib_rpf_id_t rpf_id,
                                                 mfib_entry_flags_t flags);
 
 /**

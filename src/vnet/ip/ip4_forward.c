@@ -2752,6 +2752,16 @@ ip4_rewrite_mcast (vlib_main_t * vm,
     return ip4_rewrite_inline (vm, node, frame, 0, 0, 1);
 }
 
+static uword
+ip4_mcast_midchain (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip4_rewrite_inline (vm, node, frame, 1, 1, 1);
+  else
+    return ip4_rewrite_inline (vm, node, frame, 0, 1, 1);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_rewrite_node) = {
   .function = ip4_rewrite,
@@ -2777,6 +2787,16 @@ VLIB_REGISTER_NODE (ip4_rewrite_mcast_node) = {
   .sibling_of = "ip4-rewrite",
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_mcast_node, ip4_rewrite_mcast)
+
+VLIB_REGISTER_NODE (ip4_mcast_midchain_node, static) = {
+  .function = ip4_mcast_midchain,
+  .name = "ip4-mcast-midchain",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip4_rewrite_trace,
+  .sibling_of = "ip4-rewrite",
+};
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_mcast_midchain_node, ip4_mcast_midchain)
 
 VLIB_REGISTER_NODE (ip4_midchain_node) = {
   .function = ip4_midchain,

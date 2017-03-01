@@ -67,6 +67,10 @@ adj_alloc (fib_protocol_t proto)
     adj->lookup_next_index = 0;
     adj->ia_delegates = NULL;
 
+    /* lest it become a midchain in the future */
+    memset(&adj->sub_type.midchain.next_dpo, 0,
+           sizeof(adj->sub_type.midchain.next_dpo));
+
     ip4_main.lookup_main.adjacency_heap = adj_pool;
     ip6_main.lookup_main.adjacency_heap = adj_pool;
 
@@ -117,6 +121,9 @@ format_ip_adjacency (u8 * s, va_list * args)
 	break;
     case IP_LOOKUP_NEXT_MCAST:
 	s = format (s, "%U", format_adj_mcast, adj_index, 0);
+	break;
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+	s = format (s, "%U", format_adj_mcast_midchain, adj_index, 0);
 	break;
     default:
 	break;
@@ -180,6 +187,7 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 			 adj->rewrite_header.sw_if_index);
 	break;
     case IP_LOOKUP_NEXT_MCAST:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
 	adj_mcast_remove(adj->ia_nh_proto,
 			 adj->rewrite_header.sw_if_index);
 	break;
@@ -338,6 +346,7 @@ adj_walk (u32 sw_if_index,
     FOR_EACH_FIB_IP_PROTOCOL(proto)
     {
         adj_nbr_walk(sw_if_index, proto, cb, ctx);
+        adj_mcast_walk(sw_if_index, proto, cb, ctx);
     }
 }
 
@@ -544,9 +553,9 @@ adj_show (vlib_main_t * vm,
  * [@0]
  * [@1]  glean: loop0
  * [@2] ipv4 via 1.0.0.2 loop0: IP4: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
- * [@3] mpls via 1.0.0.2 loop0: MPLS_UNICAST: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@3] mpls via 1.0.0.2 loop0: MPLS: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
  * [@4] ipv4 via 1.0.0.3 loop0: IP4: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
- * [@5] mpls via 1.0.0.3 loop0: MPLS_UNICAST: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
+ * [@5] mpls via 1.0.0.3 loop0: MPLS: 00:00:22:aa:bb:cc -> 00:00:11:aa:bb:cc
  * @cliexend
  ?*/
 VLIB_CLI_COMMAND (adj_show_command, static) = {

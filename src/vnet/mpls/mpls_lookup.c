@@ -20,8 +20,17 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/dpo/replicate_dpo.h>
 
-vlib_node_registration_t mpls_lookup_node;
+/**
+ * Static MPLS VLIB forwarding node
+ */
+static vlib_node_registration_t mpls_lookup_node;
+
+/**
+ * The arc/edge from the MPLS lookup node to the MPLS replicate node
+ */
+static u32 mpls_lookup_to_replicate_edge;
 
 typedef struct {
   u32 next_index;
@@ -156,81 +165,123 @@ mpls_lookup (vlib_main_t * vm,
           lbi2 = mpls_fib_table_forwarding_lookup (lfib_index2, h2);
           lbi3 = mpls_fib_table_forwarding_lookup (lfib_index3, h3);
 
-          lb0 = load_balance_get(lbi0);
-          lb1 = load_balance_get(lbi1);
-          lb2 = load_balance_get(lbi2);
-          lb3 = load_balance_get(lbi3);
-
           hash_c0 = vnet_buffer(b0)->ip.flow_hash = 0;
           hash_c1 = vnet_buffer(b1)->ip.flow_hash = 0;
           hash_c2 = vnet_buffer(b2)->ip.flow_hash = 0;
           hash_c3 = vnet_buffer(b3)->ip.flow_hash = 0;
 
-          if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
+          if (MPLS_IS_REPLICATE & lbi0)
           {
-              hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-                  mpls_compute_flow_hash(h0, lb0->lb_hash_config);
+              next0 = mpls_lookup_to_replicate_edge;
+              vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+                  (lbi0 & ~MPLS_IS_REPLICATE);
           }
-          if (PREDICT_FALSE(lb1->lb_n_buckets > 1))
+          else
           {
-              hash_c1 = vnet_buffer (b1)->ip.flow_hash =
-                  mpls_compute_flow_hash(h1, lb1->lb_hash_config);
+              lb0 = load_balance_get(lbi0);
+
+              if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
+              {
+                  hash_c0 = vnet_buffer (b0)->ip.flow_hash =
+                      mpls_compute_flow_hash(h0, lb0->lb_hash_config);
+              }
+              ASSERT (lb0->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb0->lb_n_buckets));
+              dpo0 = load_balance_get_bucket_i(lb0,
+                                               (hash_c0 &
+                                                (lb0->lb_n_buckets_minus_1)));
+              next0 = dpo0->dpoi_next_node;
+
+              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+              vlib_increment_combined_counter
+                  (cm, thread_index, lbi0, 1,
+                   vlib_buffer_length_in_chain (vm, b0));
           }
-          if (PREDICT_FALSE(lb2->lb_n_buckets > 1))
+          if (MPLS_IS_REPLICATE & lbi1)
           {
-              hash_c2 = vnet_buffer (b2)->ip.flow_hash =
-                  mpls_compute_flow_hash(h2, lb2->lb_hash_config);
+              next1 = mpls_lookup_to_replicate_edge;
+              vnet_buffer (b1)->ip.adj_index[VLIB_TX] =
+                  (lbi1 & ~MPLS_IS_REPLICATE);
           }
-          if (PREDICT_FALSE(lb3->lb_n_buckets > 1))
+          else
           {
-              hash_c3 = vnet_buffer (b3)->ip.flow_hash =
-                  mpls_compute_flow_hash(h3, lb3->lb_hash_config);
+              lb1 = load_balance_get(lbi1);
+
+              if (PREDICT_FALSE(lb1->lb_n_buckets > 1))
+              {
+                  hash_c1 = vnet_buffer (b1)->ip.flow_hash =
+                      mpls_compute_flow_hash(h1, lb1->lb_hash_config);
+              }
+              ASSERT (lb1->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb1->lb_n_buckets));
+              dpo1 = load_balance_get_bucket_i(lb1,
+                                               (hash_c1 &
+                                                (lb1->lb_n_buckets_minus_1)));
+              next1 = dpo1->dpoi_next_node;
+
+              vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+
+              vlib_increment_combined_counter
+                  (cm, thread_index, lbi1, 1,
+                   vlib_buffer_length_in_chain (vm, b1));
           }
+          if (MPLS_IS_REPLICATE & lbi2)
+          {
+              next2 = mpls_lookup_to_replicate_edge;
+              vnet_buffer (b2)->ip.adj_index[VLIB_TX] =
+                  (lbi2 & ~MPLS_IS_REPLICATE);
+          }
+          else
+          {
+              lb2 = load_balance_get(lbi2);
 
-          ASSERT (lb0->lb_n_buckets > 0);
-          ASSERT (is_pow2 (lb0->lb_n_buckets));
-          ASSERT (lb1->lb_n_buckets > 0);
-          ASSERT (is_pow2 (lb1->lb_n_buckets));
-          ASSERT (lb2->lb_n_buckets > 0);
-          ASSERT (is_pow2 (lb2->lb_n_buckets));
-          ASSERT (lb3->lb_n_buckets > 0);
-          ASSERT (is_pow2 (lb3->lb_n_buckets));
+              if (PREDICT_FALSE(lb2->lb_n_buckets > 1))
+              {
+                  hash_c2 = vnet_buffer (b2)->ip.flow_hash =
+                      mpls_compute_flow_hash(h2, lb2->lb_hash_config);
+              }
+              ASSERT (lb2->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb2->lb_n_buckets));
+              dpo2 = load_balance_get_bucket_i(lb2,
+                                               (hash_c2 &
+                                                (lb2->lb_n_buckets_minus_1)));
+              next2 = dpo2->dpoi_next_node;
 
-          dpo0 = load_balance_get_bucket_i(lb0,
-                                           (hash_c0 &
-                                            (lb0->lb_n_buckets_minus_1)));
-          dpo1 = load_balance_get_bucket_i(lb1,
-                                           (hash_c1 &
-                                            (lb1->lb_n_buckets_minus_1)));
-          dpo2 = load_balance_get_bucket_i(lb2,
-                                           (hash_c2 &
-                                            (lb2->lb_n_buckets_minus_1)));
-          dpo3 = load_balance_get_bucket_i(lb3,
-                                           (hash_c3 &
-                                            (lb3->lb_n_buckets_minus_1)));
+              vnet_buffer (b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
 
-          next0 = dpo0->dpoi_next_node;
-          next1 = dpo1->dpoi_next_node;
-          next2 = dpo2->dpoi_next_node;
-          next3 = dpo3->dpoi_next_node;
+              vlib_increment_combined_counter
+                  (cm, thread_index, lbi2, 1,
+                   vlib_buffer_length_in_chain (vm, b2));
+          }
+          if (MPLS_IS_REPLICATE & lbi3)
+          {
+              next3 = mpls_lookup_to_replicate_edge;
+              vnet_buffer (b3)->ip.adj_index[VLIB_TX] =
+                  (lbi3 & ~MPLS_IS_REPLICATE);
+          }
+          else
+          {
+              lb3 = load_balance_get(lbi3);
 
-          vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-          vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
-          vnet_buffer (b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
-          vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
+              if (PREDICT_FALSE(lb3->lb_n_buckets > 1))
+              {
+                  hash_c3 = vnet_buffer (b3)->ip.flow_hash =
+                      mpls_compute_flow_hash(h3, lb3->lb_hash_config);
+              }
+              ASSERT (lb3->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb3->lb_n_buckets));
+              dpo3 = load_balance_get_bucket_i(lb3,
+                                               (hash_c3 &
+                                                (lb3->lb_n_buckets_minus_1)));
+              next3 = dpo3->dpoi_next_node;
 
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi0, 1,
-               vlib_buffer_length_in_chain (vm, b0));
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi1, 1,
-               vlib_buffer_length_in_chain (vm, b1));
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi2, 1,
-               vlib_buffer_length_in_chain (vm, b2));
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi3, 1,
-               vlib_buffer_length_in_chain (vm, b3));
+              vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
+
+              vlib_increment_combined_counter
+                  (cm, thread_index, lbi3, 1,
+                   vlib_buffer_length_in_chain (vm, b3));
+          }
 
           /*
            * before we pop the label copy th values we need to maintain.
@@ -331,31 +382,41 @@ mpls_lookup (vlib_main_t * vm,
                                 vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 
           lbi0 = mpls_fib_table_forwarding_lookup(lfib_index0, h0);
-	  lb0 = load_balance_get(lbi0);
-
           hash_c0 = vnet_buffer(b0)->ip.flow_hash = 0;
-          if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
+
+          if (MPLS_IS_REPLICATE & lbi0)
           {
-              hash_c0 = vnet_buffer (b0)->ip.flow_hash =
-                  mpls_compute_flow_hash(h0, lb0->lb_hash_config);
+              next0 = mpls_lookup_to_replicate_edge;
+              vnet_buffer (b0)->ip.adj_index[VLIB_TX] =
+                  (lbi0 & ~MPLS_IS_REPLICATE);
+          }
+          else
+          {
+              lb0 = load_balance_get(lbi0);
+
+              if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
+              {
+                  hash_c0 = vnet_buffer (b0)->ip.flow_hash =
+                      mpls_compute_flow_hash(h0, lb0->lb_hash_config);
+              }
+
+              ASSERT (lb0->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb0->lb_n_buckets));
+
+              dpo0 = load_balance_get_bucket_i(lb0,
+                                               (hash_c0 &
+                                                (lb0->lb_n_buckets_minus_1)));
+
+              next0 = dpo0->dpoi_next_node;
+              vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+
+              vlib_increment_combined_counter
+                  (cm, thread_index, lbi0, 1,
+                   vlib_buffer_length_in_chain (vm, b0));
           }
 
-          ASSERT (lb0->lb_n_buckets > 0);
-          ASSERT (is_pow2 (lb0->lb_n_buckets));
-
-          dpo0 = load_balance_get_bucket_i(lb0,
-                                           (hash_c0 &
-                                            (lb0->lb_n_buckets_minus_1)));
-
-          next0 = dpo0->dpoi_next_node;
-          vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-
-          vlib_increment_combined_counter
-              (cm, thread_index, lbi0, 1,
-               vlib_buffer_length_in_chain (vm, b0));
-
           /*
-           * before we pop the label copy th values we need to maintain.
+           * before we pop the label copy, values we need to maintain.
            * The label header is in network byte order.
            *  last byte is the TTL.
            *  bits 2 to 4 inclusive are the EXP bits
@@ -398,7 +459,7 @@ static char * mpls_error_strings[] = {
 #undef mpls_error
 };
 
-VLIB_REGISTER_NODE (mpls_lookup_node) = {
+VLIB_REGISTER_NODE (mpls_lookup_node, static) = {
   .function = mpls_lookup,
   .name = "mpls-lookup",
   /* Takes a vector of packets. */
@@ -621,3 +682,22 @@ VLIB_REGISTER_NODE (mpls_load_balance_node) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_load_balance_node, mpls_load_balance)
+
+
+static clib_error_t *
+mpls_lookup_init (vlib_main_t * vm)
+{
+  clib_error_t * error;
+
+  if ((error = vlib_call_init_function (vm, mpls_init)))
+    return error;
+
+  mpls_lookup_to_replicate_edge =
+      vlib_node_add_named_next(vm,
+                               mpls_lookup_node.index,
+                               "mpls-replicate");
+
+  return (NULL);
+}
+
+VLIB_INIT_FUNCTION (mpls_lookup_init);

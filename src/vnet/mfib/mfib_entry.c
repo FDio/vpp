@@ -49,6 +49,15 @@
 #endif
 
 /**
+ * MFIB extensions to each path
+ */
+typedef struct mfib_path_ext_t_
+{
+    mfib_itf_flags_t mfpe_flags;
+    fib_node_index_t mfpe_path;
+} mfib_path_ext_t;
+
+/**
  * The source of an MFIB entry
  */
 typedef struct mfib_entry_src_t_
@@ -59,20 +68,37 @@ typedef struct mfib_entry_src_t_
     mfib_source_t mfes_src;
 
     /**
-     * The path-list of forwarding interfaces
-     */
-    fib_node_index_t mfes_pl;
-
-    /**
      * Route flags
      */
     mfib_entry_flags_t mfes_flags;
 
     /**
-     * The hash table of all interfaces
+     * The path-list of forwarding interfaces
+     */
+    fib_node_index_t mfes_pl;
+
+    /**
+     * RPF-ID
+     */
+    fib_rpf_id_t mfes_rpf_id;
+
+    /**
+     * Hash table of path extensions
+     */
+    mfib_path_ext_t *mfes_exts;
+
+    /**
+     * The hash table of all interfaces.
+     *  This is forwarding time information derived from the paths
+     *  and their extensions.
      */
     mfib_itf_t *mfes_itfs;
 } mfib_entry_src_t;
+
+/**
+ * Pool of path extensions
+ */
+static mfib_path_ext_t *mfib_path_ext_pool;
 
 /**
  * String names for each source
@@ -123,6 +149,24 @@ format_mfib_entry_dpo (u8 * s, va_list * args)
                    MFIB_ENTRY_FORMAT_BRIEF));
 }
 
+static inline mfib_path_ext_t *
+mfib_entry_path_ext_get (index_t mi)
+{
+    return (pool_elt_at_index(mfib_path_ext_pool, mi));
+}
+
+static u8 *
+format_mfib_entry_path_ext (u8 * s, va_list * args)
+{
+    mfib_path_ext_t *path_ext;
+    index_t mpi = va_arg(*args, index_t);
+
+    path_ext = mfib_entry_path_ext_get(mpi);
+    return (format(s, "path:%d flags:%U",
+                   path_ext->mfpe_path,
+                   format_mfib_itf_flags, path_ext->mfpe_flags));
+}
+
 u8 *
 format_mfib_entry (u8 * s, va_list * args)
 {
@@ -141,6 +185,8 @@ format_mfib_entry (u8 * s, va_list * args)
 
     if (level >= MFIB_ENTRY_FORMAT_DETAIL)
     {
+        fib_node_index_t path_index, mpi;
+
         s = format (s, "\n");
         s = format (s, " fib:%d", mfib_entry->mfe_fib_index);
         s = format (s, " index:%d", mfib_entry_get_index(mfib_entry));
@@ -153,6 +199,14 @@ format_mfib_entry (u8 * s, va_list * args)
             {
                 s = fib_path_list_format(msrc->mfes_pl, s);
             }
+            s = format (s, "    Extensions:\n",
+                        mfib_source_names[msrc->mfes_src]);
+            hash_foreach(path_index, mpi, msrc->mfes_exts,
+            ({
+                s = format(s, "     %U\n", format_mfib_entry_path_ext, mpi);
+            }));
+            s = format (s, "    Interface-Forwarding:\n",
+                        mfib_source_names[msrc->mfes_src]);
             hash_foreach(sw_if_index, mfi, msrc->mfes_itfs,
             ({
                 s = format(s, "    %U\n", format_mfib_itf, mfi);
@@ -165,7 +219,7 @@ format_mfib_entry (u8 * s, va_list * args)
     ({
         s = format(s, "\n  %U", format_mfib_itf, mfi);
     }));
-
+    s = format(s, "\n  RPF-ID:%d", mfib_entry->mfe_rpf_id);
     s = format(s, "\n  %U-chain\n  %U",
                format_fib_forw_chain_type,
                mfib_entry_get_default_chain_type(mfib_entry),
@@ -314,13 +368,6 @@ mfib_entry_src_remove (mfib_entry_t *mfib_entry,
     }
 }
 
-static int
-mfib_entry_src_n_itfs (const mfib_entry_src_t *msrc)
-{
-    return (hash_elts(msrc->mfes_itfs));
-}
-
-
 static void
 mfib_entry_last_lock_gone (fib_node_t *node)
 {
@@ -338,7 +385,6 @@ mfib_entry_last_lock_gone (fib_node_t *node)
         mfib_entry_src_flush(msrc);
     }
 
-    fib_path_list_unlock(mfib_entry->mfe_parent);
     vec_free(mfib_entry->mfe_srcs);
 
     fib_node_deinit(&mfib_entry->mfe_node);
@@ -417,10 +463,9 @@ mfib_entry_alloc (u32 fib_index,
     mfib_entry->mfe_flags = 0;
     mfib_entry->mfe_fib_index = fib_index;
     mfib_entry->mfe_prefix = *prefix;
-    mfib_entry->mfe_parent = FIB_NODE_INDEX_INVALID;
-    mfib_entry->mfe_sibling = FIB_NODE_INDEX_INVALID;
     mfib_entry->mfe_srcs = NULL;
     mfib_entry->mfe_itfs = NULL;
+    mfib_entry->mfe_rpf_id = MFIB_RPF_ID_NONE;
 
     dpo_reset(&mfib_entry->mfe_rep);
 
@@ -431,10 +476,57 @@ mfib_entry_alloc (u32 fib_index,
     return (mfib_entry);
 }
 
+static inline mfib_path_ext_t *
+mfib_entry_path_ext_find (mfib_path_ext_t *exts,
+                          fib_node_index_t path_index)
+{
+    uword *p;
+
+    p = hash_get(exts, path_index);
+
+    if (NULL != p)
+    {
+        return (mfib_entry_path_ext_get(p[0]));
+    }
+
+    return (NULL);
+}
+
+static mfib_path_ext_t*
+mfib_path_ext_add (mfib_entry_src_t *msrc,
+                   fib_node_index_t path_index,
+                   mfib_itf_flags_t mfi_flags)
+{
+    mfib_path_ext_t *path_ext;
+
+    pool_get(mfib_path_ext_pool, path_ext);
+
+    path_ext->mfpe_flags = mfi_flags;
+    path_ext->mfpe_path = path_index;
+
+    hash_set(msrc->mfes_exts, path_index,
+             path_ext - mfib_path_ext_pool);
+
+    return (path_ext);
+}
+
+static void
+mfib_path_ext_remove (mfib_entry_src_t *msrc,
+                      fib_node_index_t path_index)
+{
+    mfib_path_ext_t *path_ext;
+
+    path_ext = mfib_entry_path_ext_find(msrc->mfes_exts, path_index);
+
+    hash_unset(msrc->mfes_exts, path_index);
+    pool_put(mfib_path_ext_pool, path_ext);
+}
+
 typedef struct mfib_entry_collect_forwarding_ctx_t_
 {
     load_balance_path_t * next_hops;
     fib_forward_chain_type_t fct;
+    mfib_entry_src_t *msrc;
 } mfib_entry_collect_forwarding_ctx_t;
 
 static int
@@ -455,6 +547,20 @@ mfib_entry_src_collect_forwarding (fib_node_index_t pl_index,
         return (!0);
     }
 
+    /*
+     * If the path is not forwarding to use it
+     */
+    mfib_path_ext_t *path_ext;
+    
+    path_ext = mfib_entry_path_ext_find(ctx->msrc->mfes_exts,
+                                        path_index);
+
+    if (NULL != path_ext &&
+        !(path_ext->mfpe_flags & MFIB_ITF_FLAG_FORWARD))
+    {
+        return (!0);
+    }
+    
     switch (ctx->fct)
     {
     case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
@@ -483,46 +589,61 @@ mfib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 }
 
 static void
-mfib_entry_stack (mfib_entry_t *mfib_entry)
+mfib_entry_stack (mfib_entry_t *mfib_entry,
+                  mfib_entry_src_t *msrc)
 {
     dpo_proto_t dp;
 
     dp = fib_proto_to_dpo(mfib_entry_get_proto(mfib_entry));
 
-    if (FIB_NODE_INDEX_INVALID != mfib_entry->mfe_parent)
+    if (NULL != msrc &&
+        FIB_NODE_INDEX_INVALID != msrc->mfes_pl)
     {
         mfib_entry_collect_forwarding_ctx_t ctx = {
             .next_hops = NULL,
             .fct = mfib_entry_get_default_chain_type(mfib_entry),
+            .msrc = msrc,
         };
 
-        fib_path_list_walk(mfib_entry->mfe_parent,
+        fib_path_list_walk(msrc->mfes_pl,
                            mfib_entry_src_collect_forwarding,
                            &ctx);
 
         if (!(MFIB_ENTRY_FLAG_EXCLUSIVE & mfib_entry->mfe_flags))
         {
-            /*
-             * each path contirbutes a next-hop. form a replicate
-             * from those choices.
-             */
-            if (!dpo_id_is_valid(&mfib_entry->mfe_rep) ||
-                dpo_is_drop(&mfib_entry->mfe_rep))
+            if (NULL == ctx.next_hops)
             {
-                dpo_id_t tmp_dpo = DPO_INVALID;
-
-                dpo_set(&tmp_dpo,
-                        DPO_REPLICATE, dp,
-                        replicate_create(0, dp));
-
+                /*
+                 * no next-hops, stack directly on the drop
+                 */
                 dpo_stack(DPO_MFIB_ENTRY, dp,
                           &mfib_entry->mfe_rep,
-                          &tmp_dpo);
-
-                dpo_reset(&tmp_dpo);
+                          drop_dpo_get(dp));
             }
-            replicate_multipath_update(&mfib_entry->mfe_rep,
-                                       ctx.next_hops);
+            else
+            {
+                /*
+                 * each path contirbutes a next-hop. form a replicate
+                 * from those choices.
+                 */
+                if (!dpo_id_is_valid(&mfib_entry->mfe_rep) ||
+                    dpo_is_drop(&mfib_entry->mfe_rep))
+                {
+                    dpo_id_t tmp_dpo = DPO_INVALID;
+
+                    dpo_set(&tmp_dpo,
+                            DPO_REPLICATE, dp,
+                            replicate_create(0, dp));
+
+                    dpo_stack(DPO_MFIB_ENTRY, dp,
+                              &mfib_entry->mfe_rep,
+                              &tmp_dpo);
+
+                    dpo_reset(&tmp_dpo);
+                }
+                replicate_multipath_update(&mfib_entry->mfe_rep,
+                                           ctx.next_hops);
+            }
         }
         else
         {
@@ -548,11 +669,11 @@ mfib_entry_stack (mfib_entry_t *mfib_entry)
     }
 }
 
-static void
-mfib_entry_forwarding_path_add (mfib_entry_src_t *msrc,
-                                const fib_route_path_t *rpath)
+static fib_node_index_t
+mfib_entry_src_path_add (mfib_entry_src_t *msrc,
+                         const fib_route_path_t *rpath)
 {
-    fib_node_index_t old_pl_index;
+    fib_node_index_t path_index;
     fib_route_path_t *rpaths;
 
     ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_flags));
@@ -562,33 +683,27 @@ mfib_entry_forwarding_path_add (mfib_entry_src_t *msrc,
      */
     rpaths = NULL;
     vec_add1(rpaths, rpath[0]);
-
-    old_pl_index = msrc->mfes_pl;
 
     if (FIB_NODE_INDEX_INVALID == msrc->mfes_pl)
     {
-        msrc->mfes_pl =
-            fib_path_list_create(FIB_PATH_LIST_FLAG_NO_URPF,
-                                 rpaths);
+        /* A non-shared path-list */
+        msrc->mfes_pl = fib_path_list_create(FIB_PATH_LIST_FLAG_NO_URPF,
+                                             NULL);
+        fib_path_list_lock(msrc->mfes_pl);
     }
-    else
-    {
-        msrc->mfes_pl =
-            fib_path_list_copy_and_path_add(msrc->mfes_pl,
-                                            FIB_PATH_LIST_FLAG_NO_URPF,
-                                            rpaths);
-    }
-    fib_path_list_lock(msrc->mfes_pl);
-    fib_path_list_unlock(old_pl_index);
+
+    path_index = fib_path_list_path_add(msrc->mfes_pl, rpaths);
 
     vec_free(rpaths);
+
+    return (path_index);
 }
 
-static int
-mfib_entry_forwarding_path_remove (mfib_entry_src_t *msrc,
-                                   const fib_route_path_t *rpath)
+static fib_node_index_t
+mfib_entry_src_path_remove (mfib_entry_src_t *msrc,
+                            const fib_route_path_t *rpath)
 {
-    fib_node_index_t old_pl_index;
+    fib_node_index_t path_index;
     fib_route_path_t *rpaths;
 
     ASSERT(!(MFIB_ENTRY_FLAG_EXCLUSIVE & msrc->mfes_flags));
@@ -599,56 +714,31 @@ mfib_entry_forwarding_path_remove (mfib_entry_src_t *msrc,
     rpaths = NULL;
     vec_add1(rpaths, rpath[0]);
 
-    old_pl_index = msrc->mfes_pl;
-
-    msrc->mfes_pl =
-        fib_path_list_copy_and_path_remove(msrc->mfes_pl,
-                                           FIB_PATH_LIST_FLAG_NONE,
-                                           rpaths);
-
-    fib_path_list_lock(msrc->mfes_pl);
-    fib_path_list_unlock(old_pl_index);
+    path_index = fib_path_list_path_remove(msrc->mfes_pl, rpaths);
 
     vec_free(rpaths);
 
-    return (FIB_NODE_INDEX_INVALID != msrc->mfes_pl);
+    return (path_index);
 }
 
 static void
 mfib_entry_recalculate_forwarding (mfib_entry_t *mfib_entry)
 {
-    fib_node_index_t old_pl_index;
     mfib_entry_src_t *bsrc;
-
-    old_pl_index = mfib_entry->mfe_parent;
 
     /*
      * copy the forwarding data from the bast source
      */
     bsrc = mfib_entry_get_best_src(mfib_entry);
 
-    if (NULL == bsrc)
+    if (NULL != bsrc)
     {
-        mfib_entry->mfe_parent = FIB_NODE_INDEX_INVALID;
-    }
-    else
-    {
-        mfib_entry->mfe_parent = bsrc->mfes_pl;
         mfib_entry->mfe_flags = bsrc->mfes_flags;
         mfib_entry->mfe_itfs = bsrc->mfes_itfs;
+        mfib_entry->mfe_rpf_id = bsrc->mfes_rpf_id;
     }
 
-    /*
-     * re-stack the entry on the best forwarding info.
-     */
-    if (old_pl_index != mfib_entry->mfe_parent ||
-        FIB_NODE_INDEX_INVALID == old_pl_index)
-    {
-        mfib_entry_stack(mfib_entry);
-
-        fib_path_list_lock(mfib_entry->mfe_parent);
-        fib_path_list_unlock(old_pl_index);
-    }
+    mfib_entry_stack(mfib_entry, bsrc);
 }
 
 
@@ -656,6 +746,7 @@ fib_node_index_t
 mfib_entry_create (u32 fib_index,
                    mfib_source_t source,
                    const mfib_prefix_t *prefix,
+                   fib_rpf_id_t rpf_id,
                    mfib_entry_flags_t entry_flags)
 {
     fib_node_index_t mfib_entry_index;
@@ -666,6 +757,7 @@ mfib_entry_create (u32 fib_index,
                                   &mfib_entry_index);
     msrc = mfib_entry_src_find_or_create(mfib_entry, source);
     msrc->mfes_flags = entry_flags;
+    msrc->mfes_rpf_id = rpf_id;
 
     mfib_entry_recalculate_forwarding(mfib_entry);
 
@@ -682,13 +774,14 @@ static int
 mfib_entry_src_ok_for_delete (const mfib_entry_src_t *msrc)
 {
     return ((MFIB_ENTRY_FLAG_NONE == msrc->mfes_flags &&
-             0 == mfib_entry_src_n_itfs(msrc)));
+             0 == fib_path_list_get_n_paths(msrc->mfes_pl)));
 }
 
 int
 mfib_entry_update (fib_node_index_t mfib_entry_index,
                    mfib_source_t source,
                    mfib_entry_flags_t entry_flags,
+                   fib_rpf_id_t rpf_id,
                    index_t repi)
 {
     mfib_entry_t *mfib_entry;
@@ -697,6 +790,7 @@ mfib_entry_update (fib_node_index_t mfib_entry_index,
     mfib_entry = mfib_entry_get(mfib_entry_index);
     msrc = mfib_entry_src_find_or_create(mfib_entry, source);
     msrc->mfes_flags = entry_flags;
+    msrc->mfes_rpf_id = rpf_id;
 
     if (INDEX_INVALID != repi)
     {
@@ -768,55 +862,79 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
                         const fib_route_path_t *rpath,
                         mfib_itf_flags_t itf_flags)
 {
+    fib_node_index_t path_index;
+    mfib_path_ext_t *path_ext;
+    mfib_itf_flags_t old, new;
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
-    mfib_itf_t *mfib_itf;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
     ASSERT(NULL != mfib_entry);
     msrc = mfib_entry_src_find_or_create(mfib_entry, source);
 
     /*
-     * search for the interface in the current set
+     * add the path to the path-list. If it's a duplicate we'll get
+     * back the original path.
      */
-    mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
-                                   rpath[0].frp_sw_if_index);
+    path_index = mfib_entry_src_path_add(msrc, rpath);
 
-    if (NULL == mfib_itf)
+    /*
+     * find the path extension for that path
+     */
+    path_ext = mfib_entry_path_ext_find(msrc->mfes_exts, path_index);
+
+    if (NULL == path_ext)
     {
-        /*
-         * this is a path we do not yet have. If it is forwarding then we
-         * add it to the replication set
-         */
-        if (itf_flags & MFIB_ITF_FLAG_FORWARD)
-        {
-            mfib_entry_forwarding_path_add(msrc, rpath);
-        }
-        /*
-         * construct a new ITF for this entry's list
-         */
-        mfib_entry_itf_add(msrc,
-                           rpath[0].frp_sw_if_index,
-                           mfib_itf_create(rpath[0].frp_sw_if_index,
-                                           itf_flags));
+        old = MFIB_ITF_FLAG_NONE;
+        path_ext = mfib_path_ext_add(msrc, path_index, itf_flags);
     }
     else
     {
-        int was_forwarding = !!(mfib_itf->mfi_flags & MFIB_ITF_FLAG_FORWARD);
-        int is_forwarding  = !!(itf_flags & MFIB_ITF_FLAG_FORWARD);
+        old = path_ext->mfpe_flags;
+        path_ext->mfpe_flags = itf_flags;
+    }
 
-        if (!was_forwarding && is_forwarding)
+    /*
+     * Has the path changed its contribution to the input interface set.
+     * Which only paths with interfaces can do...
+     */
+    if (~0 != rpath[0].frp_sw_if_index)
+    {
+        mfib_itf_t *mfib_itf;
+
+        new = itf_flags;
+
+        if (old != new)
         {
-            mfib_entry_forwarding_path_add(msrc, rpath);
+            if (MFIB_ITF_FLAG_NONE == new)
+            {
+                /*
+                 * no more interface flags on this path, remove
+                 * from the data-plane set
+                 */
+                mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+            }
+            else if (MFIB_ITF_FLAG_NONE == old)
+            {
+                /*
+                 * This interface is now contributing
+                 */
+                mfib_entry_itf_add(msrc,
+                                   rpath[0].frp_sw_if_index,
+                                   mfib_itf_create(rpath[0].frp_sw_if_index,
+                                                   itf_flags));
+            }
+            else
+            {
+                /*
+                 * change of flag contributions
+                 */
+                mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
+                                               rpath[0].frp_sw_if_index);
+                /* Seen by packets inflight */
+                mfib_itf->mfi_flags = new;
+            }
         }
-        else if (was_forwarding && !is_forwarding)
-        {
-            mfib_entry_forwarding_path_remove(msrc, rpath);
-        }
-        /*
-         * packets in flight see these updates.
-         */
-        mfib_itf->mfi_flags = itf_flags;
     }
 
     mfib_entry_recalculate_forwarding(mfib_entry);
@@ -833,9 +951,9 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
                         mfib_source_t source,
                         const fib_route_path_t *rpath)
 {
+    fib_node_index_t path_index;
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
-    mfib_itf_t *mfib_itf;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
     ASSERT(NULL != mfib_entry);
@@ -850,32 +968,22 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
     }
 
     /*
-     * search for the interface in the current set
+     * remove the path from the path-list. If it's not there we'll get
+     * back invalid
      */
-    mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
-                                   rpath[0].frp_sw_if_index);
+    path_index = mfib_entry_src_path_remove(msrc, rpath);
 
-    if (NULL == mfib_itf)
+    if (FIB_NODE_INDEX_INVALID != path_index)
     {
         /*
-         * removing a path that does not exist
+         * don't need the extension, nor the interface anymore
          */
-        return (mfib_entry_ok_for_delete(mfib_entry));
+        mfib_path_ext_remove(msrc, path_index);
+        if (~0 != rpath[0].frp_sw_if_index)
+        {
+            mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+        }
     }
-
-    /*
-     * we have this path. If it is forwarding then we
-     * remove it to the replication set
-     */
-    if (mfib_itf->mfi_flags & MFIB_ITF_FLAG_FORWARD)
-    {
-        mfib_entry_forwarding_path_remove(msrc, rpath);
-    }
-
-    /*
-     * remove the interface/path from this entry's list
-     */
-    mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
 
     if (mfib_entry_src_ok_for_delete(msrc))
     {
@@ -1057,11 +1165,14 @@ mfib_entry_encode (fib_node_index_t mfib_entry_index,
                   fib_route_path_encode_t **api_rpaths)
 {
     mfib_entry_t *mfib_entry;
+    mfib_entry_src_t *bsrc;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
-    if (FIB_NODE_INDEX_INVALID != mfib_entry->mfe_parent)
+    bsrc = mfib_entry_get_best_src(mfib_entry);
+
+    if (FIB_NODE_INDEX_INVALID != bsrc->mfes_pl)
     {
-        fib_path_list_walk(mfib_entry->mfe_parent,
+        fib_path_list_walk(bsrc->mfes_pl,
                            fib_path_encode,
                            api_rpaths);
     }

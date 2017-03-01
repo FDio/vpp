@@ -25,6 +25,8 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/bfd/bfd_main.h>
+#include <vnet/dpo/interface_dpo.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 #include <vnet/mpls/mpls.h>
 
@@ -271,6 +273,7 @@ typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_O_LB,
     FT_LB_SPECIAL,
     FT_LB_ADJ,
+    FT_LB_INTF,
 } fib_test_lb_bucket_type_t;
 
 typedef struct fib_test_lb_bucket_t_ {
@@ -315,6 +318,31 @@ typedef struct fib_test_lb_bucket_t_ {
     };
 } fib_test_lb_bucket_t;
 
+typedef enum fib_test_rep_bucket_type_t_ {
+    FT_REP_LABEL_O_ADJ,
+    FT_REP_DISP_MFIB_LOOKUP,
+    FT_REP_INTF,
+} fib_test_rep_bucket_type_t;
+
+typedef struct fib_test_rep_bucket_t_ {
+    fib_test_rep_bucket_type_t type;
+
+    union
+    {
+	struct
+	{
+	    mpls_eos_bit_t eos;
+	    mpls_label_t label;
+	    u8 ttl;
+	    adj_index_t adj;
+	} label_o_adj;
+ 	struct
+	{
+	    adj_index_t adj;
+	} adj;
+   };
+} fib_test_rep_bucket_t;
+
 #define FIB_TEST_LB(_cond, _comment, _args...)			\
 {								\
     if (!FIB_TEST_I(_cond, _comment, ##_args)) {		\
@@ -322,7 +350,83 @@ typedef struct fib_test_lb_bucket_t_ {
     }								\
 }
 
-static int
+int
+fib_test_validate_rep_v (const replicate_t *rep,
+                         u16 n_buckets,
+                         va_list ap)
+{
+    const fib_test_rep_bucket_t *exp;
+    const dpo_id_t *dpo;
+    int bucket;
+
+    FIB_TEST_LB((n_buckets == rep->rep_n_buckets),
+                "n_buckets = %d", rep->rep_n_buckets);
+
+    for (bucket = 0; bucket < n_buckets; bucket++)
+    {
+	exp = va_arg(ap, fib_test_rep_bucket_t*);
+
+        dpo = replicate_get_bucket_i(rep, bucket);
+
+	switch (exp->type)
+	{
+	case FT_REP_LABEL_O_ADJ:
+	    {
+		const mpls_label_dpo_t *mld;
+                mpls_label_t hdr;
+		FIB_TEST_LB((DPO_MPLS_LABEL == dpo->dpoi_type),
+                            "bucket %d stacks on %U",
+                            bucket,
+                            format_dpo_type, dpo->dpoi_type);
+	    
+		mld = mpls_label_dpo_get(dpo->dpoi_index);
+                hdr = clib_net_to_host_u32(mld->mld_hdr[0].label_exp_s_ttl);
+
+		FIB_TEST_LB((vnet_mpls_uc_get_label(hdr) ==
+			     exp->label_o_adj.label),
+			    "bucket %d stacks on label %d",
+			    bucket,
+			    exp->label_o_adj.label);
+
+		FIB_TEST_LB((vnet_mpls_uc_get_s(hdr) ==
+			     exp->label_o_adj.eos),
+			    "bucket %d stacks on label %d %U",
+			    bucket,
+			    exp->label_o_adj.label,
+			    format_mpls_eos_bit, exp->label_o_adj.eos);
+
+		FIB_TEST_LB((DPO_ADJACENCY_INCOMPLETE == mld->mld_dpo.dpoi_type),
+			    "bucket %d label stacks on %U",
+			    bucket,
+			    format_dpo_type, mld->mld_dpo.dpoi_type);
+
+		FIB_TEST_LB((exp->label_o_adj.adj == mld->mld_dpo.dpoi_index),
+			    "bucket %d label stacks on adj %d",
+			    bucket,
+			    exp->label_o_adj.adj);
+	    }
+	    break;
+	case FT_REP_INTF:
+            FIB_TEST_LB((DPO_INTERFACE == dpo->dpoi_type),
+                        "bucket %d stacks on %U",
+                        bucket,
+                        format_dpo_type, dpo->dpoi_type);
+
+            FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
+                        "bucket %d stacks on adj %d",
+                        bucket,
+                        exp->adj.adj);
+	    break;
+        case FT_REP_DISP_MFIB_LOOKUP:
+//            ASSERT(0);
+            break;
+        }
+    }
+
+    return (!0);
+}
+
+int
 fib_test_validate_lb_v (const load_balance_t *lb,
 			u16 n_buckets,
 			va_list ap)
@@ -484,6 +588,16 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			bucket,
 			exp->adj.adj);
 	    break;
+	case FT_LB_INTF:
+	    FIB_TEST_I((DPO_INTERFACE == dpo->dpoi_type),
+		       "bucket %d stacks on %U",
+		       bucket,
+		       format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
+			"bucket %d stacks on adj %d",
+			bucket,
+			exp->adj.adj);
+	    break;
 	case FT_LB_O_LB:
 	    FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
                        "bucket %d stacks on %U",
@@ -509,14 +623,13 @@ fib_test_validate_lb_v (const load_balance_t *lb,
     return (!0);
 }
 
-static int
+int
 fib_test_validate_entry (fib_node_index_t fei,
 			 fib_forward_chain_type_t fct,
 			 u16 n_buckets,
 			 ...)
 {
     dpo_id_t dpo = DPO_INVALID;
-    const load_balance_t *lb;
     fib_prefix_t pfx;
     index_t fw_lbi;
     u32 fib_index;
@@ -529,47 +642,59 @@ fib_test_validate_entry (fib_node_index_t fei,
     fib_index = fib_entry_get_fib_index(fei);
     fib_entry_contribute_forwarding(fei, fct, &dpo);
 
-    FIB_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
-		"Entry links to %U",
-		format_dpo_type, dpo.dpoi_type);
-    lb = load_balance_get(dpo.dpoi_index);
-
-    res = fib_test_validate_lb_v(lb, n_buckets, ap);
-
-    /*
-     * ensure that the LB contributed by the entry is the
-     * same as the LB in the forwarding tables
-     */
-    if (fct == fib_entry_get_default_chain_type(fib_entry_get(fei)))
+    if (DPO_REPLICATE == dpo.dpoi_type)
     {
-        switch (pfx.fp_proto)
+        const replicate_t *rep;
+
+        rep = replicate_get(dpo.dpoi_index);
+        res = fib_test_validate_rep_v(rep, n_buckets, ap);
+    }
+    else
+    {
+        const load_balance_t *lb;
+
+        FIB_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
+                    "Entry links to %U",
+                    format_dpo_type, dpo.dpoi_type);
+
+        lb = load_balance_get(dpo.dpoi_index);
+        res = fib_test_validate_lb_v(lb, n_buckets, ap);
+
+        /*
+         * ensure that the LB contributed by the entry is the
+         * same as the LB in the forwarding tables
+         */
+        if (fct == fib_entry_get_default_chain_type(fib_entry_get(fei)))
         {
-        case FIB_PROTOCOL_IP4:
-            fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx.fp_addr.ip4);
-            break;
-        case FIB_PROTOCOL_IP6:
-            fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx.fp_addr.ip6);
-            break;
-        case FIB_PROTOCOL_MPLS:
+            switch (pfx.fp_proto)
             {
-                mpls_unicast_header_t hdr = {
-                    .label_exp_s_ttl = 0,
-                };
-
-                vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx.fp_label);
-                vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx.fp_eos);
-                hdr.label_exp_s_ttl = clib_host_to_net_u32(hdr.label_exp_s_ttl);
-
-                fw_lbi = mpls_fib_table_forwarding_lookup(fib_index, &hdr);
+            case FIB_PROTOCOL_IP4:
+                fw_lbi = ip4_fib_forwarding_lookup(fib_index, &pfx.fp_addr.ip4);
                 break;
+            case FIB_PROTOCOL_IP6:
+                fw_lbi = ip6_fib_table_fwding_lookup(&ip6_main, fib_index, &pfx.fp_addr.ip6);
+                break;
+            case FIB_PROTOCOL_MPLS:
+                {
+                    mpls_unicast_header_t hdr = {
+                        .label_exp_s_ttl = 0,
+                    };
+
+                    vnet_mpls_uc_set_label(&hdr.label_exp_s_ttl, pfx.fp_label);
+                    vnet_mpls_uc_set_s(&hdr.label_exp_s_ttl, pfx.fp_eos);
+                    hdr.label_exp_s_ttl = clib_host_to_net_u32(hdr.label_exp_s_ttl);
+
+                    fw_lbi = mpls_fib_table_forwarding_lookup(fib_index, &hdr);
+                    break;
+                }
+            default:
+                fw_lbi = 0;
             }
-        default:
-            fw_lbi = 0;
+            FIB_TEST_LB((fw_lbi == dpo.dpoi_index),
+                        "Contributed LB = FW LB: %U\n %U",
+                        format_load_balance, fw_lbi, 0,
+                        format_load_balance, dpo.dpoi_index, 0);
         }
-        FIB_TEST_LB((fw_lbi == dpo.dpoi_index),
-                    "Contributed LB = FW LB: %U\n %U",
-                    format_load_balance, fw_lbi, 0,
-                    format_load_balance, dpo.dpoi_index, 0);
     }
 
     dpo_reset(&dpo);
@@ -1289,6 +1414,7 @@ fib_test_v4 (void)
 
     lookup_dpo_add_or_lock_w_fib_index(fib_index,
                                        DPO_PROTO_IP4,
+                                       LOOKUP_UNICAST,
                                        LOOKUP_INPUT_DST_ADDR,
                                        LOOKUP_TABLE_FROM_CONFIG,
                                        &ex_dpo);
@@ -2604,7 +2730,6 @@ fib_test_v4 (void)
 			     1,
 			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
-
 
     fei = fib_table_lookup(fib_index, &pfx_5_5_5_6_s_32);
     dpo1 = fib_entry_contribute_ip_forwarding(fei);
@@ -7493,6 +7618,7 @@ lfib_test (void)
     fib_route_path_t *rpaths = NULL, rpath = {
     	.frp_proto = FIB_PROTOCOL_MPLS,
     	.frp_local_label = 1200,
+        .frp_eos = MPLS_NON_EOS,
     	.frp_sw_if_index = ~0, // recurive
     	.frp_fib_index = 0, // Default MPLS fib
     	.frp_weight = 1,
@@ -7608,6 +7734,146 @@ lfib_test (void)
     dpo_reset(&ip_1200);
 
     /*
+     * An rx-interface route.
+     *  like the tail of an mcast LSP
+     */
+    dpo_id_t idpo = DPO_INVALID;
+
+    interface_dpo_add_or_lock(DPO_PROTO_IP4,
+                              tm->hw[0]->sw_if_index,
+                              &idpo);
+
+    fib_prefix_t pfx_2500 = {
+	.fp_len = 21,
+	.fp_proto = FIB_PROTOCOL_MPLS,
+	.fp_label = 2500,
+	.fp_eos = MPLS_EOS,
+	.fp_payload_proto = DPO_PROTO_IP4,
+    };
+    fib_test_lb_bucket_t rx_intf_0 = {
+        .type = FT_LB_INTF,
+        .adj = {
+            .adj = idpo.dpoi_index,
+        },
+    };
+
+    lfe = fib_table_entry_update_one_path(fib_index,
+					  &pfx_2500,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_NONE,
+					  FIB_PROTOCOL_IP4,
+					  NULL,
+					  tm->hw[0]->sw_if_index,
+					  ~0, // invalid fib index
+					  0,
+					  NULL,
+					  FIB_ROUTE_PATH_INTF_RX);
+    FIB_TEST(fib_test_validate_entry(lfe,
+    				     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+    				     1,
+    				     &rx_intf_0),
+    	     "2500 rx-interface 0");
+    fib_table_entry_delete(fib_index, &pfx_2500, FIB_SOURCE_API);
+
+    /*
+     * An MPLS mulicast entry
+     */
+    fib_prefix_t pfx_3500 = {
+	.fp_len = 21,
+	.fp_proto = FIB_PROTOCOL_MPLS,
+	.fp_label = 3500,
+	.fp_eos = MPLS_EOS,
+	.fp_payload_proto = DPO_PROTO_IP4,
+    };
+    fib_test_rep_bucket_t mc_0 = {
+        .type = FT_REP_LABEL_O_ADJ,
+	.label_o_adj = {
+	    .adj = ai_mpls_10_10_10_1,
+	    .label = 3300,
+	    .eos = MPLS_EOS,
+	},
+    };
+    fib_test_rep_bucket_t mc_intf_0 = {
+        .type = FT_REP_INTF,
+        .adj = {
+            .adj = idpo.dpoi_index,
+        },
+    };
+    mpls_label_t *l3300 = NULL;
+    vec_add1(l3300, 3300);
+
+    lfe = fib_table_entry_update_one_path(lfib_index,
+					  &pfx_3500,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_MULTICAST,
+					  FIB_PROTOCOL_IP4,
+					  &nh_10_10_10_1,
+					  tm->hw[0]->sw_if_index,
+					  ~0, // invalid fib index
+					  1,
+					  l3300,
+					  FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(fib_test_validate_entry(lfe,
+    				     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+    				     1,
+    				     &mc_0),
+    	     "3500 via replicate over 10.10.10.1");
+
+    /*
+     * MPLS Bud-node. Add a replication via an interface-receieve path
+     */
+    lfe = fib_table_entry_path_add(lfib_index,
+				   &pfx_3500,
+				   FIB_SOURCE_API,
+				   FIB_ENTRY_FLAG_MULTICAST,
+				   FIB_PROTOCOL_IP4,
+                                   NULL,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0, // invalid fib index
+                                   0,
+                                   NULL,
+                                   FIB_ROUTE_PATH_INTF_RX);
+    FIB_TEST(fib_test_validate_entry(lfe,
+                                     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                     2,
+                                     &mc_0,
+                                     &mc_intf_0),
+    	     "3500 via replicate over 10.10.10.1 and interface-rx");
+
+    /*
+     * Add a replication via an interface-free for-us path
+     */
+    fib_test_rep_bucket_t mc_disp = {
+        .type = FT_REP_DISP_MFIB_LOOKUP,
+        .adj = {
+            .adj = idpo.dpoi_index,
+        },
+    };
+    lfe = fib_table_entry_path_add(lfib_index,
+				   &pfx_3500,
+				   FIB_SOURCE_API,
+				   FIB_ENTRY_FLAG_MULTICAST,
+				   FIB_PROTOCOL_IP4,
+                                   NULL,
+                                   5, // rpf-id
+                                   0, // default table
+                                   0,
+                                   NULL,
+                                   FIB_ROUTE_PATH_RPF_ID);
+    FIB_TEST(fib_test_validate_entry(lfe,
+                                     FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                     3,
+                                     &mc_0,
+                                     &mc_disp,
+                                     &mc_intf_0),
+    	     "3500 via replicate over 10.10.10.1 and interface-rx");
+
+
+    
+    fib_table_entry_delete(fib_index, &pfx_3500, FIB_SOURCE_API);
+    dpo_reset(&idpo);
+
+    /*
      * cleanup
      */
     mpls_sw_interface_enable_disable(&mpls_main,
@@ -7617,6 +7883,9 @@ lfib_test (void)
     FIB_TEST(lb_count == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",
              lb_count, pool_elts(load_balance_pool));
+    FIB_TEST(0 == pool_elts(interface_dpo_pool),
+	     "interface_dpo resources freed %d of %d",
+             0, pool_elts(interface_dpo_pool));
 
     return (0);
 }

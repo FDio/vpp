@@ -17,6 +17,7 @@
 #define __ADJ_INTERNAL_H__
 
 #include <vnet/adj/adj.h>
+#include <vnet/adj/adj_mcast.h>
 #include <vnet/ip/ip.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/adj/adj_l2.h>
@@ -87,11 +88,14 @@ adj_get_index (ip_adjacency_t *adj)
     return (adj - adj_pool);
 }
 
-extern void adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
-					     ip_lookup_next_t adj_next_index,
-					     u32 complete_next_index,
-					     u32 next_index,
-					     u8 *rewrite);
+extern void adj_nbr_update_rewrite_internal(ip_adjacency_t *adj,
+                                            ip_lookup_next_t adj_next_index,
+                                            u32 complete_next_index,
+                                            u32 next_index,
+                                            u8 *rewrite);
+extern void adj_midchain_setup(adj_index_t adj_index,
+                               adj_midchain_fixup_t fixup,
+                               adj_flags_t flags);
 
 extern ip_adjacency_t * adj_alloc(fib_protocol_t proto);
 

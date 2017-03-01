@@ -18,9 +18,12 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls_tunnel.h>
+#include <vnet/mpls/mpls_types.h>
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/adj/adj_midchain.h>
+#include <vnet/adj/adj_mcast.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 /**
  * @brief pool of tunnel instances
@@ -38,109 +41,189 @@ static u32 * mpls_tunnel_free_hw_if_indices;
 static u32 *mpls_tunnel_db;
 
 /**
+ * @brief MPLS tunnel flags strings
+ */
+static const char *mpls_tunnel_attribute_names[] = MPLS_TUNNEL_ATTRIBUTES;
+
+/**
  * @brief Get a tunnel object from a SW interface index
  */
 static mpls_tunnel_t*
 mpls_tunnel_get_from_sw_if_index (u32 sw_if_index)
 {
     if ((vec_len(mpls_tunnel_db) < sw_if_index) ||
-	(~0 == mpls_tunnel_db[sw_if_index]))
-	return (NULL);
+        (~0 == mpls_tunnel_db[sw_if_index]))
+        return (NULL);
 
     return (pool_elt_at_index(mpls_tunnel_pool,
-			      mpls_tunnel_db[sw_if_index]));
-}
-
-/**
- * @brief Return true if the label stack is imp-null only
- */
-static fib_forward_chain_type_t
-mpls_tunnel_get_fwd_chain_type (const mpls_tunnel_t *mt)
-{
-    if ((1 == vec_len(mt->mt_label_stack)) &&
-	(mt->mt_label_stack[0] == MPLS_IETF_IMPLICIT_NULL_LABEL))
-    {
-	/*
-	 * the only label in the label stack is implicit null
-	 * we need to build an IP chain.
-	 */
-	if (FIB_PROTOCOL_IP4 == fib_path_list_get_proto(mt->mt_path_list))
-	{
-	    return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
-	}
-	else
-	{
-	    return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
-	}
-    }
-    else
-    {
-	return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
-    }
+                              mpls_tunnel_db[sw_if_index]));
 }
 
 /**
  * @brief Build a rewrite string for the MPLS tunnel.
- *
- * We have choices here;
- *  1 - have an Adjacency with a zero length string and stack it on
- *       MPLS label objects
- *  2 - put the label header rewrites in the adjacency string.
- *
- * We choose 2 since it results in fewer graph nodes in the egress path
+ */
+static u8*
+mpls_tunnel_build_rewrite_i (void)
+{
+    /*
+     * passing the adj code a NULL rewirte means 'i don't have one cos
+     * t'other end is unresolved'. That's not the case here. For the mpls
+     * tunnel there are just no bytes of encap to apply in the adj. We'll impose
+     * the label stack once we choose a path. So return a zero length rewrite.
+     */
+    u8 *rewrite = NULL;
+
+    vec_validate(rewrite, 0);
+    vec_reset_length(rewrite);
+
+    return (rewrite);
+}
+
+/**
+ * @brief Build a rewrite string for the MPLS tunnel.
  */
 static u8*
 mpls_tunnel_build_rewrite (vnet_main_t * vnm,
-			   u32 sw_if_index,
-			   vnet_link_t link_type,
-			   const void *dst_address)
+                           u32 sw_if_index,
+                           vnet_link_t link_type,
+                           const void *dst_address)
 {
-    mpls_unicast_header_t *muh;
-    mpls_tunnel_t *mt;
-    u8 *rewrite;
-    u32 mti, ii;
+    return (mpls_tunnel_build_rewrite_i());
+}
 
-    rewrite = NULL;
-    mti = mpls_tunnel_db[sw_if_index];
-    mt = pool_elt_at_index(mpls_tunnel_pool, mti);
+typedef struct mpls_tunnel_collect_forwarding_ctx_t_
+{
+    load_balance_path_t * next_hops;
+    const mpls_tunnel_t *mt;
+    fib_forward_chain_type_t fct;
+} mpls_tunnel_collect_forwarding_ctx_t;
+
+static int
+mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
+                                fib_node_index_t path_index,
+                                void *arg)
+{
+    mpls_tunnel_collect_forwarding_ctx_t *ctx;
+    fib_path_ext_t *path_ext;
+    int have_path_ext;
+
+    ctx = arg;
 
     /*
-     * The vector must be allocated as u8 so the length is correct
+     * if the path is not resolved, don't include it.
      */
-    ASSERT(0 < vec_len(mt->mt_label_stack));
-    vec_validate(rewrite, (sizeof(*muh) * vec_len(mt->mt_label_stack)) - 1);
-    ASSERT(rewrite);
-    muh = (mpls_unicast_header_t *)rewrite;
-
-    /*
-     * The last (inner most) label in the stack may be EOS, all the rest Non-EOS
-     */
-    for (ii = 0; ii < vec_len(mt->mt_label_stack)-1; ii++)
+    if (!fib_path_is_resolved(path_index))
     {
-	vnet_mpls_uc_set_label(&muh[ii].label_exp_s_ttl, mt->mt_label_stack[ii]);
-	vnet_mpls_uc_set_ttl(&muh[ii].label_exp_s_ttl, 255);
-	vnet_mpls_uc_set_exp(&muh[ii].label_exp_s_ttl, 0);
-	vnet_mpls_uc_set_s(&muh[ii].label_exp_s_ttl, MPLS_NON_EOS);
-	muh[ii].label_exp_s_ttl = clib_host_to_net_u32(muh[ii].label_exp_s_ttl);
+        return (!0);
     }
 
-    vnet_mpls_uc_set_label(&muh[ii].label_exp_s_ttl, mt->mt_label_stack[ii]);
-    vnet_mpls_uc_set_ttl(&muh[ii].label_exp_s_ttl, 255);
-    vnet_mpls_uc_set_exp(&muh[ii].label_exp_s_ttl, 0);
-
-    if ((VNET_LINK_MPLS == link_type) &&
-	(mt->mt_label_stack[ii] != MPLS_IETF_IMPLICIT_NULL_LABEL))
+    /*
+     * get the matching path-extension for the path being visited.
+     */
+    have_path_ext = 0;
+    vec_foreach(path_ext, ctx->mt->mt_path_exts)
     {
-	vnet_mpls_uc_set_s(&muh[ii].label_exp_s_ttl, MPLS_NON_EOS);
+        if (path_ext->fpe_path_index == path_index)
+        {
+            have_path_ext = 1;
+            break;
+        }
+    }
+
+    if (have_path_ext)
+    {
+        /*
+         * found a matching extension. stack it to obtain the forwarding
+         * info for this path.
+         */
+        ctx->next_hops = fib_path_ext_stack(path_ext,
+                                            ctx->fct,
+                                            ctx->fct,
+                                            ctx->next_hops);
+    }
+    else
+        ASSERT(0);
+    /*
+     * else
+     *   There should be a path-extenios associated with each path
+     */
+
+    return (!0);
+}
+
+static void
+mpls_tunnel_mk_lb (mpls_tunnel_t *mt,
+                   vnet_link_t linkt,
+                   fib_forward_chain_type_t fct,
+                   dpo_id_t *dpo_lb)
+{
+    dpo_proto_t lb_proto;
+
+    /*
+     * If the entry has path extensions then we construct a load-balance
+     * by stacking the extensions on the forwarding chains of the paths.
+     * Otherwise we use the load-balance of the path-list
+     */
+    mpls_tunnel_collect_forwarding_ctx_t ctx = {
+        .mt = mt,
+        .next_hops = NULL,
+        .fct = fct,
+    };
+
+    /*
+     * As an optimisation we allocate the vector of next-hops to be sized
+     * equal to the maximum nuber of paths we will need, which is also the
+     * most likely number we will need, since in most cases the paths are 'up'.
+     */
+    vec_validate(ctx.next_hops, fib_path_list_get_n_paths(mt->mt_path_list));
+    vec_reset_length(ctx.next_hops);
+
+    lb_proto = vnet_link_to_dpo_proto(linkt);
+
+    fib_path_list_walk(mt->mt_path_list,
+                       mpls_tunnel_collect_forwarding,
+                       &ctx);
+
+    if (!dpo_id_is_valid(dpo_lb))
+    {
+        /*
+         * first time create
+         */
+        if (mt->mt_flags & MPLS_TUNNEL_FLAG_MCAST)
+        {
+            dpo_set(dpo_lb,
+                    DPO_REPLICATE,
+                    lb_proto,
+                    replicate_create(0, lb_proto));
+        }
+        else
+        {
+            flow_hash_config_t fhc;
+
+            fhc = 0; // FIXME
+            /* fhc = fib_table_get_flow_hash_config(fib_entry->fe_fib_index, */
+            /*                                      dpo_proto_to_fib(lb_proto)); */
+            dpo_set(dpo_lb,
+                    DPO_LOAD_BALANCE,
+                    lb_proto,
+                    load_balance_create(0, lb_proto, fhc));
+        }
+    }
+
+    if (mt->mt_flags & MPLS_TUNNEL_FLAG_MCAST)
+    {
+        /*
+         * MPLS multicast
+         */
+        replicate_multipath_update(dpo_lb, ctx.next_hops);
     }
     else
     {
-	vnet_mpls_uc_set_s(&muh[ii].label_exp_s_ttl, MPLS_EOS);
+        load_balance_multipath_update(dpo_lb,
+                                      ctx.next_hops,
+                                      LOAD_BALANCE_FLAG_NONE);
+        vec_free(ctx.next_hops);
     }
-
-    muh[ii].label_exp_s_ttl = clib_host_to_net_u32(muh[ii].label_exp_s_ttl);
-
-    return (rewrite);
 }
 
 /**
@@ -161,45 +244,47 @@ mpls_tunnel_stack (adj_index_t ai)
     mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
 
     if (NULL == mt)
-	return;
+        return;
 
     /*
-     * find the adjacency that is contributed by the FIB path-list
-     * that this tunnel resovles via, and use it as the next adj
-     * in the midchain
+     * while we're stacking the adj, remove the tunnel from the child list
+     * of the path list. this breaks a circular dependency of walk updates
+     * where the create of adjacencies in the children can lead to walks
+     * that get back here.
+     */
+    fib_path_list_lock(mt->mt_path_list);
+
+    fib_path_list_child_remove(mt->mt_path_list,
+                               mt->mt_sibling_index);
+
+    /*
+     * Construct the DPO (load-balance or replicate) that we can stack
+     * the tunnel's midchain on
      */
     if (vnet_hw_interface_get_flags(vnet_get_main(),
-				    mt->mt_hw_if_index) &
-	VNET_HW_INTERFACE_FLAG_LINK_UP)
+                                    mt->mt_hw_if_index) &
+        VNET_HW_INTERFACE_FLAG_LINK_UP)
     {
-	dpo_id_t dpo = DPO_INVALID;
+        dpo_id_t dpo = DPO_INVALID;
 
-	fib_path_list_contribute_forwarding(mt->mt_path_list,
-					    mpls_tunnel_get_fwd_chain_type(mt),
-					    &dpo);
+        mpls_tunnel_mk_lb(mt,
+                          adj->ia_link,
+                          FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                          &dpo);
 
-	if (DPO_LOAD_BALANCE == dpo.dpoi_type)
-	{
-	    /*
-	     * we don't support multiple paths, so no need to load-balance.
-	     * pull the first and only choice and stack directly on that.
-	     */
-	    load_balance_t *lb;
-
-	    lb = load_balance_get (dpo.dpoi_index);
-
-	    ASSERT(1 == lb->lb_n_buckets);
-
-	    dpo_copy(&dpo, load_balance_get_bucket_i (lb, 0));
-	}
-
-	adj_nbr_midchain_stack(ai, &dpo);
-	dpo_reset(&dpo);
+        adj_nbr_midchain_stack(ai, &dpo);
+        dpo_reset(&dpo);
     }
     else
     {
-	adj_nbr_midchain_unstack(ai);
+        adj_nbr_midchain_unstack(ai);
     }
+
+    mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
+                                                   FIB_NODE_TYPE_MPLS_TUNNEL,
+                                                   mt - mpls_tunnel_pool);
+
+    fib_path_list_lock(mt->mt_path_list);
 }
 
 /**
@@ -207,7 +292,7 @@ mpls_tunnel_stack (adj_index_t ai)
  */
 static adj_walk_rc_t
 mpls_adj_walk_cb (adj_index_t ai,
-		 void *ctx)
+                 void *ctx)
 {
     mpls_tunnel_stack(ai);
 
@@ -224,17 +309,17 @@ mpls_tunnel_restack (mpls_tunnel_t *mt)
      */
     FOR_EACH_FIB_PROTOCOL(proto)
     {
-	adj_nbr_walk(mt->mt_sw_if_index,
-		     proto,
-		     mpls_adj_walk_cb,
-		     NULL);
+        adj_nbr_walk(mt->mt_sw_if_index,
+                     proto,
+                     mpls_adj_walk_cb,
+                     NULL);
     }
 }
 
 static clib_error_t *
 mpls_tunnel_admin_up_down (vnet_main_t * vnm,
-			   u32 hw_if_index,
-			   u32 flags)
+                           u32 hw_if_index,
+                           u32 flags)
 {
     vnet_hw_interface_t * hi;
     mpls_tunnel_t *mt;
@@ -244,13 +329,13 @@ mpls_tunnel_admin_up_down (vnet_main_t * vnm,
     mt = mpls_tunnel_get_from_sw_if_index(hi->sw_if_index);
 
     if (NULL == mt)
-	return (NULL);
+        return (NULL);
 
     if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-	vnet_hw_interface_set_flags (vnm, hw_if_index,
-				     VNET_HW_INTERFACE_FLAG_LINK_UP);
+        vnet_hw_interface_set_flags (vnm, hw_if_index,
+                                     VNET_HW_INTERFACE_FLAG_LINK_UP);
     else
-	vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */);
+        vnet_hw_interface_set_flags (vnm, hw_if_index, 0 /* down */);
 
     mpls_tunnel_restack(mt);
 
@@ -263,22 +348,58 @@ mpls_tunnel_admin_up_down (vnet_main_t * vnm,
  */
 static void
 mpls_tunnel_fixup (vlib_main_t *vm,
-		   ip_adjacency_t *adj,
-		   vlib_buffer_t *b0)
+                   ip_adjacency_t *adj,
+                   vlib_buffer_t *b0)
 {
+    /*
+     * A no-op w.r.t. the header. but reset the 'have we pushed any
+     * MPLS labels onto the packet' flag. That way when we enter the
+     * tunnel we'll get a TTL set to 255
+     */
+    vnet_buffer(b0)->mpls.first = 0;
 }
 
 static void
 mpls_tunnel_update_adj (vnet_main_t * vnm,
-			u32 sw_if_index,
-			adj_index_t ai)
+                        u32 sw_if_index,
+                        adj_index_t ai)
 {
-    adj_nbr_midchain_update_rewrite(
-	ai, mpls_tunnel_fixup, 
-	ADJ_FLAG_NONE,
-	mpls_tunnel_build_rewrite(vnm, sw_if_index,
-				  adj_get_link_type(ai),
-				  NULL));
+    ip_adjacency_t *adj;
+
+    ASSERT(ADJ_INDEX_INVALID != ai);
+
+    adj = adj_get(ai);
+
+    switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_GLEAN:
+        adj_nbr_midchain_update_rewrite(ai, mpls_tunnel_fixup,
+                                        ADJ_FLAG_NONE,
+                                        mpls_tunnel_build_rewrite_i());
+        break;
+    case IP_LOOKUP_NEXT_MCAST:
+        /*
+         * Construct a partial rewrite from the known ethernet mcast dest MAC
+         * There's no MAC fixup, so the last 2 parameters are 0
+         */
+        adj_mcast_midchain_update_rewrite(ai, mpls_tunnel_fixup,
+                                          ADJ_FLAG_NONE,
+                                          mpls_tunnel_build_rewrite_i(),
+                                          0, 0);
+        break;
+
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+      ASSERT (0);
+      break;
+    }
 
     mpls_tunnel_stack(ai);
 }
@@ -312,7 +433,7 @@ typedef struct mpls_tunnel_trace_t_
 
 static u8 *
 format_mpls_tunnel_tx_trace (u8 * s,
-			     va_list * args)
+                             va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
@@ -327,8 +448,8 @@ format_mpls_tunnel_tx_trace (u8 * s,
  */
 static uword
 mpls_tunnel_tx (vlib_main_t * vm,
-		vlib_node_runtime_t * node,
-		vlib_frame_t * frame)
+                vlib_node_runtime_t * node,
+                vlib_frame_t * frame)
 {
   u32 next_index;
   u32 * from, * to_next, n_left_from, n_left_to_next;
@@ -355,32 +476,32 @@ mpls_tunnel_tx (vlib_main_t * vm,
        * FIXME DUAL LOOP
        */
       while (n_left_from > 0 && n_left_to_next > 0)
-	{
-	  vlib_buffer_t * b0;
-	  u32 bi0;
+        {
+          vlib_buffer_t * b0;
+          u32 bi0;
 
-	  bi0 = from[0];
-	  to_next[0] = bi0;
-	  from += 1;
-	  to_next += 1;
-	  n_left_from -= 1;
-	  n_left_to_next -= 1;
+          bi0 = from[0];
+          to_next[0] = bi0;
+          from += 1;
+          to_next += 1;
+          n_left_from -= 1;
+          n_left_to_next -= 1;
 
-	  b0 = vlib_get_buffer(vm, bi0);
+          b0 = vlib_get_buffer(vm, bi0);
 
-	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mt->mt_l2_adj;
+          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mt->mt_l2_adj;
 
-	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-	    {
-	      mpls_tunnel_trace_t *tr = vlib_add_trace (vm, node,
-						   b0, sizeof (*tr));
-	      tr->tunnel_id = rd->dev_instance;
-	    }
+          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+            {
+              mpls_tunnel_trace_t *tr = vlib_add_trace (vm, node,
+                                                   b0, sizeof (*tr));
+              tr->tunnel_id = rd->dev_instance;
+            }
 
-	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-					   to_next, n_left_to_next,
-					   bi0, mt->mt_l2_tx_arc);
-	}
+          vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+                                           to_next, n_left_to_next,
+                                           bi0, mt->mt_l2_tx_arc);
+        }
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
@@ -417,13 +538,13 @@ mpls_tunnel_get (u32 mti)
  */
 void
 mpls_tunnel_walk (mpls_tunnel_walk_cb_t cb,
-		  void *ctx)
+                  void *ctx)
 {
     u32 mti;
 
     pool_foreach_index(mti, mpls_tunnel_pool,
     ({
-	cb(mti, ctx);
+        cb(mti, ctx);
     }));
 }
 
@@ -435,25 +556,22 @@ vnet_mpls_tunnel_del (u32 sw_if_index)
     mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
 
     if (NULL == mt)
-	return;
-    
-    fib_path_list_child_remove(mt->mt_path_list,
-			       mt->mt_sibling_index);
-    if (ADJ_INDEX_INVALID != mt->mt_l2_adj)
-	adj_unlock(mt->mt_l2_adj);
+        return;
 
-    vec_free(mt->mt_label_stack);
+    if (FIB_NODE_INDEX_INVALID != mt->mt_path_list)
+        fib_path_list_child_remove(mt->mt_path_list,
+                                   mt->mt_sibling_index);
+    if (ADJ_INDEX_INVALID != mt->mt_l2_adj)
+        adj_unlock(mt->mt_l2_adj);
 
     vec_add1 (mpls_tunnel_free_hw_if_indices, mt->mt_hw_if_index);
     pool_put(mpls_tunnel_pool, mt);
     mpls_tunnel_db[sw_if_index] = ~0;
 }
 
-void
-vnet_mpls_tunnel_add (fib_route_path_t *rpaths,
-		      mpls_label_t *label_stack,
-		      u8 l2_only,
-		      u32 *sw_if_index)
+u32
+vnet_mpls_tunnel_create (u8 l2_only,
+                         u8 is_multicast)
 {
     vnet_hw_interface_t * hi;
     mpls_tunnel_t *mt;
@@ -466,28 +584,33 @@ vnet_mpls_tunnel_add (fib_route_path_t *rpaths,
     mti = mt - mpls_tunnel_pool;
     fib_node_init(&mt->mt_node, FIB_NODE_TYPE_MPLS_TUNNEL);
     mt->mt_l2_adj = ADJ_INDEX_INVALID;
+    mt->mt_path_list = FIB_NODE_INDEX_INVALID;
+    mt->mt_sibling_index = FIB_NODE_INDEX_INVALID;
+
+    if (is_multicast)
+        mt->mt_flags |= MPLS_TUNNEL_FLAG_MCAST;
 
     /*
      * Create a new, or re=use and old, tunnel HW interface
      */
     if (vec_len (mpls_tunnel_free_hw_if_indices) > 0)
     {
-	mt->mt_hw_if_index = 
-	    mpls_tunnel_free_hw_if_indices[vec_len(mpls_tunnel_free_hw_if_indices)-1];
-	_vec_len (mpls_tunnel_free_hw_if_indices) -= 1;
-	hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
-	hi->hw_instance = mti;
-	hi->dev_instance = mti;
+        mt->mt_hw_if_index =
+            mpls_tunnel_free_hw_if_indices[vec_len(mpls_tunnel_free_hw_if_indices)-1];
+        _vec_len (mpls_tunnel_free_hw_if_indices) -= 1;
+        hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
+        hi->hw_instance = mti;
+        hi->dev_instance = mti;
     }
-    else 
+    else
     {
-	mt->mt_hw_if_index = vnet_register_interface(
-	                         vnm,
-				 mpls_tunnel_class.index,
-				 mti,
-				 mpls_tunnel_hw_interface_class.index,
-				 mti);
-	hi = vnet_get_hw_interface(vnm, mt->mt_hw_if_index);
+        mt->mt_hw_if_index = vnet_register_interface(
+                                 vnm,
+                                 mpls_tunnel_class.index,
+                                 mti,
+                                 mpls_tunnel_hw_interface_class.index,
+                                 mti);
+        hi = vnet_get_hw_interface(vnm, mt->mt_hw_if_index);
     }
 
     /*
@@ -497,43 +620,218 @@ vnet_mpls_tunnel_add (fib_route_path_t *rpaths,
     vec_validate_init_empty(mpls_tunnel_db, mt->mt_sw_if_index, ~0);
     mpls_tunnel_db[mt->mt_sw_if_index] = mti;
 
+    if (l2_only)
+    {
+        mt->mt_l2_adj =
+            adj_nbr_add_or_lock(fib_path_list_get_proto(mt->mt_path_list),
+                                VNET_LINK_ETHERNET,
+                                &zero_addr,
+                                mt->mt_sw_if_index);
+
+        mt->mt_l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
+                                                    hi->tx_node_index,
+                                                    "adj-l2-midchain");
+    }
+
+    return (mt->mt_sw_if_index);
+}
+
+/*
+ * mpls_tunnel_path_ext_add
+ *
+ * append a path extension to the entry's list
+ */
+static void
+mpls_tunnel_path_ext_append (mpls_tunnel_t *mt,
+                             const fib_route_path_t *rpath)
+{
+    if (NULL != rpath->frp_label_stack)
+    {
+        fib_path_ext_t *path_ext;
+
+        vec_add2(mt->mt_path_exts, path_ext, 1);
+
+        fib_path_ext_init(path_ext, mt->mt_path_list, rpath);
+    }
+}
+
+/*
+ * mpls_tunnel_path_ext_insert
+ *
+ * insert, sorted, a path extension to the entry's list.
+ * It's not strictly necessary in sort the path extensions, since each
+ * extension has the path index to which it resolves. However, by being
+ * sorted the load-balance produced has a deterministic order, not an order
+ * based on the sequence of extension additions. this is a considerable benefit.
+ */
+static void
+mpls_tunnel_path_ext_insert (mpls_tunnel_t *mt,
+                             const fib_route_path_t *rpath)
+{
+    if (0 == vec_len(mt->mt_path_exts))
+        return (mpls_tunnel_path_ext_append(mt, rpath));
+
+    if (NULL != rpath->frp_label_stack)
+    {
+        fib_path_ext_t path_ext;
+        int i = 0;
+
+        fib_path_ext_init(&path_ext, mt->mt_path_list, rpath);
+
+        while (i < vec_len(mt->mt_path_exts) &&
+               (fib_path_ext_cmp(&mt->mt_path_exts[i], rpath) < 0))
+        {
+            i++;
+        }
+
+        vec_insert_elts(mt->mt_path_exts, &path_ext, 1, i);
+    }
+}
+
+void
+vnet_mpls_tunnel_path_add (u32 sw_if_index,
+                           fib_route_path_t *rpaths)
+{
+    mpls_tunnel_t *mt;
+    u32 mti;
+
+    mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
+
+    if (NULL == mt)
+        return;
+
+    mti = mt - mpls_tunnel_pool;
+
     /*
      * construct a path-list from the path provided
      */
-    mt->mt_path_list = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, rpaths);
-    mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
-						   FIB_NODE_TYPE_MPLS_TUNNEL,
-						   mti);
-
-    mt->mt_label_stack = vec_dup(label_stack);
-
-    if (l2_only)
+    if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
     {
-	mt->mt_l2_adj =
-	    adj_nbr_add_or_lock(fib_path_list_get_proto(mt->mt_path_list),
-				VNET_LINK_ETHERNET,
-				&zero_addr,
-				mt->mt_sw_if_index);
-
-	mt->mt_l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
-						    hi->tx_node_index,
-						    "adj-l2-midchain");
+        mt->mt_path_list = fib_path_list_create(FIB_PATH_LIST_FLAG_SHARED, rpaths);
+        mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
+                                                       FIB_NODE_TYPE_MPLS_TUNNEL,
+                                                       mti);
     }
+    else
+    {
+        fib_node_index_t old_pl_index;
+        fib_path_ext_t *path_ext;
 
-    *sw_if_index = mt->mt_sw_if_index;
+        old_pl_index = mt->mt_path_list;
+
+        mt->mt_path_list =
+            fib_path_list_copy_and_path_add(old_pl_index,
+                                            FIB_PATH_LIST_FLAG_SHARED,
+                                            rpaths);
+
+        fib_path_list_child_remove(old_pl_index,
+                                   mt->mt_sibling_index);
+        mt->mt_sibling_index = fib_path_list_child_add(mt->mt_path_list,
+                                                       FIB_NODE_TYPE_MPLS_TUNNEL,
+                                                       mti);
+        /*
+         * re-resolve all the path-extensions with the new path-list
+         */
+        vec_foreach(path_ext, mt->mt_path_exts)
+        {
+            fib_path_ext_resolve(path_ext, mt->mt_path_list);
+        }
+    }
+    mpls_tunnel_path_ext_insert(mt, rpaths);
+    mpls_tunnel_restack(mt);
 }
+
+int
+vnet_mpls_tunnel_path_remove (u32 sw_if_index,
+                              fib_route_path_t *rpaths)
+{
+    mpls_tunnel_t *mt;
+    u32 mti;
+
+    mt = mpls_tunnel_get_from_sw_if_index(sw_if_index);
+
+    if (NULL == mt)
+        return (0);
+
+    mti = mt - mpls_tunnel_pool;
+
+    /*
+     * construct a path-list from the path provided
+     */
+    if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
+    {
+        /* can't remove a path if we have onoe */
+        return (0);
+    }
+    else
+    {
+        fib_node_index_t old_pl_index;
+        fib_path_ext_t *path_ext;
+
+        old_pl_index = mt->mt_path_list;
+
+        mt->mt_path_list =
+            fib_path_list_copy_and_path_remove(old_pl_index,
+                                               FIB_PATH_LIST_FLAG_SHARED,
+                                               rpaths);
+
+        fib_path_list_child_remove(old_pl_index,
+                                   mt->mt_sibling_index);
+
+        if (FIB_NODE_INDEX_INVALID == mt->mt_path_list)
+        {
+            /* no paths left */
+            return (0);
+        }
+        else
+        {
+            mt->mt_sibling_index =
+                fib_path_list_child_add(mt->mt_path_list,
+                                        FIB_NODE_TYPE_MPLS_TUNNEL,
+                                        mti);
+        }
+        /*
+         * find the matching path extension and remove it
+         */
+        vec_foreach(path_ext, mt->mt_path_exts)
+        {
+            if (!fib_path_ext_cmp(path_ext, rpaths))
+            {
+                /*
+                 * delete the element moving the remaining elements down 1 position.
+                 * this preserves the sorted order.
+                 */
+                vec_free(path_ext->fpe_label_stack);
+                vec_delete(mt->mt_path_exts, 1,
+                           (path_ext - mt->mt_path_exts));
+                break;
+            }
+        }
+       /*
+         * re-resolve all the path-extensions with the new path-list
+         */
+        vec_foreach(path_ext, mt->mt_path_exts)
+        {
+            fib_path_ext_resolve(path_ext, mt->mt_path_list);
+        }
+
+        mpls_tunnel_restack(mt);
+   }
+
+    return (fib_path_list_get_n_paths(mt->mt_path_list));
+}
+
 
 static clib_error_t *
 vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
-				    unformat_input_t * input,
-				    vlib_cli_command_t * cmd)
+                                    unformat_input_t * input,
+                                    vlib_cli_command_t * cmd)
 {
     unformat_input_t _line_input, * line_input = &_line_input;
     vnet_main_t * vnm = vnet_get_main();
-    u8 is_del = 0;
-    u8 l2_only = 0;
+    u8 is_del = 0, l2_only = 0, is_multicast =0;
     fib_route_path_t rpath, *rpaths = NULL;
-    mpls_label_t out_label = MPLS_LABEL_INVALID, *labels = NULL;
+    mpls_label_t out_label = MPLS_LABEL_INVALID;
     u32 sw_if_index;
     clib_error_t *error = NULL;
 
@@ -541,87 +839,89 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
 
     /* Get a line of input. */
     if (! unformat_user (input, unformat_line_input, line_input))
-	return 0;
+        return 0;
 
     while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-	if (unformat (line_input, "del %U",
-		      unformat_vnet_sw_interface, vnm,
-		      &sw_if_index))
-	    is_del = 1;
-	else if (unformat (line_input, "add"))
-	    is_del = 0;
-	else if (unformat (line_input, "out-label %U",
-			   unformat_mpls_unicast_label, &out_label))
-	{
-	    vec_add1(labels, out_label);
-	}
-	else if (unformat (line_input, "via %U %U",
-			   unformat_ip4_address,
-			   &rpath.frp_addr.ip4,
-			   unformat_vnet_sw_interface, vnm,
-			   &rpath.frp_sw_if_index))
-	{
-	    rpath.frp_weight = 1;
-	    rpath.frp_proto = FIB_PROTOCOL_IP4;
-	}
-			 
-	else if (unformat (line_input, "via %U %U",
-			   unformat_ip6_address,
-			   &rpath.frp_addr.ip6,
-			   unformat_vnet_sw_interface, vnm,
-			   &rpath.frp_sw_if_index))
-	{
-	    rpath.frp_weight = 1;
-	    rpath.frp_proto = FIB_PROTOCOL_IP6;
-	}
-	else if (unformat (line_input, "via %U",
-			   unformat_ip6_address,
-			   &rpath.frp_addr.ip6))
-	{
-	    rpath.frp_fib_index = 0;
-	    rpath.frp_weight = 1;
-	    rpath.frp_sw_if_index = ~0;
-	    rpath.frp_proto = FIB_PROTOCOL_IP6;
-	}
-	else if (unformat (line_input, "via %U",
-			   unformat_ip4_address,
-			   &rpath.frp_addr.ip4))
-	{
-	    rpath.frp_fib_index = 0;
-	    rpath.frp_weight = 1;
-	    rpath.frp_sw_if_index = ~0;
-	    rpath.frp_proto = FIB_PROTOCOL_IP4;
-	}
-	else if (unformat (line_input, "l2-only"))
-	    l2_only = 1;
-	else
-	{
-	    error = clib_error_return (0, "unknown input '%U'",
-				       format_unformat_error, line_input);
-	    goto done;
-	}
+        if (unformat (line_input, "del %U",
+                      unformat_vnet_sw_interface, vnm,
+                      &sw_if_index))
+            is_del = 1;
+        else if (unformat (line_input, "add"))
+            is_del = 0;
+        else if (unformat (line_input, "out-label %U",
+                           unformat_mpls_unicast_label, &out_label))
+        {
+            vec_add1(rpath.frp_label_stack, out_label);
+        }
+        else if (unformat (line_input, "via %U %U",
+                           unformat_ip4_address,
+                           &rpath.frp_addr.ip4,
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath.frp_sw_if_index))
+        {
+            rpath.frp_weight = 1;
+            rpath.frp_proto = FIB_PROTOCOL_IP4;
+        }
+
+        else if (unformat (line_input, "via %U %U",
+                           unformat_ip6_address,
+                           &rpath.frp_addr.ip6,
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath.frp_sw_if_index))
+        {
+            rpath.frp_weight = 1;
+            rpath.frp_proto = FIB_PROTOCOL_IP6;
+        }
+        else if (unformat (line_input, "via %U",
+                           unformat_ip6_address,
+                           &rpath.frp_addr.ip6))
+        {
+            rpath.frp_fib_index = 0;
+            rpath.frp_weight = 1;
+            rpath.frp_sw_if_index = ~0;
+            rpath.frp_proto = FIB_PROTOCOL_IP6;
+        }
+        else if (unformat (line_input, "via %U",
+                           unformat_ip4_address,
+                           &rpath.frp_addr.ip4))
+        {
+            rpath.frp_fib_index = 0;
+            rpath.frp_weight = 1;
+            rpath.frp_sw_if_index = ~0;
+            rpath.frp_proto = FIB_PROTOCOL_IP4;
+        }
+        else if (unformat (line_input, "l2-only"))
+            l2_only = 1;
+        else if (unformat (line_input, "multicast"))
+            is_multicast = 1;
+        else
+        {
+            error = clib_error_return (0, "unknown input '%U'",
+                                       format_unformat_error, line_input);
+            goto done;
+        }
     }
 
     if (is_del)
     {
-	vnet_mpls_tunnel_del(sw_if_index);
+        vnet_mpls_tunnel_del(sw_if_index);
     }
     else
     {
-	if (0 == vec_len(labels))
-	{
-	    error = clib_error_return (0, "No Output Labels '%U'",
-				       format_unformat_error, line_input);
-	    goto done;
-	}
+        if (0 == vec_len(rpath.frp_label_stack))
+        {
+            error = clib_error_return (0, "No Output Labels '%U'",
+                                       format_unformat_error, line_input);
+            goto done;
+        }
 
-	vec_add1(rpaths, rpath);
-	vnet_mpls_tunnel_add(rpaths, labels, l2_only, &sw_if_index);
+        vec_add1(rpaths, rpath);
+        sw_if_index = vnet_mpls_tunnel_create(l2_only, is_multicast);
+        vnet_mpls_tunnel_path_add(sw_if_index, rpaths);
     }
 
 done:
-    vec_free(labels);
     vec_free(rpaths);
     unformat_free (line_input);
 
@@ -638,7 +938,7 @@ done:
  ?*/
 VLIB_CLI_COMMAND (create_mpls_tunnel_command, static) = {
   .path = "mpls tunnel",
-  .short_help = 
+  .short_help =
   "mpls tunnel via [addr] [interface] [out-labels]",
   .function = vnet_create_mpls_tunnel_command_fn,
 };
@@ -647,19 +947,28 @@ static u8 *
 format_mpls_tunnel (u8 * s, va_list * args)
 {
     mpls_tunnel_t *mt = va_arg (*args, mpls_tunnel_t *);
-    int ii;
+    mpls_tunnel_attribute_t attr;
+    fib_path_ext_t *path_ext;
 
     s = format(s, "mpls_tunnel%d: sw_if_index:%d hw_if_index:%d",
-	       mt - mpls_tunnel_pool,
-	       mt->mt_sw_if_index,
-	       mt->mt_hw_if_index);
-    s = format(s, "\n label-stack:\n  ");
-    for (ii = 0; ii < vec_len(mt->mt_label_stack); ii++)
-    {
-	s = format(s, "%d, ", mt->mt_label_stack[ii]);
+               mt - mpls_tunnel_pool,
+               mt->mt_sw_if_index,
+               mt->mt_hw_if_index);
+    if (MPLS_TUNNEL_FLAG_NONE != mt->mt_flags) {
+        s = format(s, " \n flags:");
+        FOR_EACH_MPLS_TUNNEL_ATTRIBUTE(attr) {
+            if ((1<<attr) & mt->mt_flags) {
+                s = format (s, "%s,", mpls_tunnel_attribute_names[attr]);
+            }
+        }
     }
     s = format(s, "\n via:\n");
     s = fib_path_list_format(mt->mt_path_list, s);
+    s = format(s, "    Extensions:");
+    vec_foreach(path_ext, mt->mt_path_exts)
+    {
+        s = format(s, "\n     %U", format_fib_path_ext, path_ext);
+    }
     s = format(s, "\n");
 
     return (s);
@@ -667,42 +976,42 @@ format_mpls_tunnel (u8 * s, va_list * args)
 
 static clib_error_t *
 show_mpls_tunnel_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+                             unformat_input_t * input,
+                             vlib_cli_command_t * cmd)
 {
     mpls_tunnel_t * mt;
     u32 mti = ~0;
 
     if (pool_elts (mpls_tunnel_pool) == 0)
-	vlib_cli_output (vm, "No MPLS tunnels configured...");
+        vlib_cli_output (vm, "No MPLS tunnels configured...");
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-	if (unformat (input, "%d", &mti))
-	    ;
-	else
-	    break;
+        if (unformat (input, "%d", &mti))
+            ;
+        else
+            break;
     }
 
     if (~0 == mti)
     {
-	pool_foreach (mt, mpls_tunnel_pool,
-	({
-	    vlib_cli_output (vm, "[@%d] %U",
-			     mt - mpls_tunnel_pool,
-			     format_mpls_tunnel, mt);
-	}));
+        pool_foreach (mt, mpls_tunnel_pool,
+        ({
+            vlib_cli_output (vm, "[@%d] %U",
+                             mt - mpls_tunnel_pool,
+                             format_mpls_tunnel, mt);
+        }));
     }
     else
     {
-	if (pool_is_free_index(mpls_tunnel_pool, mti))
-	    return clib_error_return (0, "Not atunnel index %d", mti);
+        if (pool_is_free_index(mpls_tunnel_pool, mti))
+            return clib_error_return (0, "Not atunnel index %d", mti);
 
-	mt = pool_elt_at_index(mpls_tunnel_pool, mti);
+        mt = pool_elt_at_index(mpls_tunnel_pool, mti);
 
-	vlib_cli_output (vm, "[@%d] %U",
-			 mt - mpls_tunnel_pool,
-			 format_mpls_tunnel, mt);
+        vlib_cli_output (vm, "[@%d] %U",
+                         mt - mpls_tunnel_pool,
+                         format_mpls_tunnel, mt);
     }
 
     return 0;
@@ -715,7 +1024,7 @@ show_mpls_tunnel_command_fn (vlib_main_t * vm,
  * @cliexstart{sh mpls tunnel 2}
  * [@2] mpls_tunnel2: sw_if_index:5 hw_if_index:5
  *  label-stack:
- *    3, 
+ *    3,
  *  via:
  *   index:26 locks:1 proto:ipv4 uPRF-list:26 len:1 itfs:[2, ]
  *     index:26 pl-index:26 ipv4 weight=1 attached-nexthop:  oper-flags:resolved,
@@ -743,7 +1052,7 @@ mpls_tunnel_from_fib_node (fib_node_t *node)
  */
 static fib_node_back_walk_rc_t
 mpls_tunnel_back_walk (fib_node_t *node,
-		      fib_node_back_walk_ctx_t *ctx)
+                      fib_node_back_walk_ctx_t *ctx)
 {
     mpls_tunnel_restack(mpls_tunnel_from_fib_node(node));
 

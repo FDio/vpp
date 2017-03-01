@@ -17,6 +17,7 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/mpls_label_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_table.h>
@@ -229,14 +230,17 @@ fib_forward_chain_type_t
 fib_entry_chain_type_fixup (const fib_entry_t *entry,
 			    fib_forward_chain_type_t fct)
 {
-    ASSERT(FIB_FORW_CHAIN_TYPE_MPLS_EOS == fct);
-
     /*
      * The EOS chain is a tricky since one cannot know the adjacency
      * to link to without knowing what the packets payload protocol
      * will be once the label is popped.
      */
     fib_forward_chain_type_t dfct;
+
+    if (FIB_FORW_CHAIN_TYPE_MPLS_EOS != fct)
+    {
+        return (fct);
+    }
 
     dfct = fib_entry_get_default_chain_type(entry);
 
@@ -303,7 +307,12 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
          * found a matching extension. stack it to obtain the forwarding
          * info for this path.
          */
-        ctx->next_hops = fib_path_ext_stack(path_ext, ctx->fib_entry, ctx->fct, ctx->next_hops);
+        ctx->next_hops =
+            fib_path_ext_stack(path_ext,
+                               ctx->fct,
+                               fib_entry_chain_type_fixup(ctx->fib_entry,
+                                                          ctx->fct),
+                               ctx->next_hops);
     }
     else
     {
@@ -355,6 +364,9 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
                                            fib_entry_chain_type_fixup(ctx->fib_entry,
                                                                       ctx->fct),
                                            &nh->path_dpo);
+            fib_path_stack_mpls_disp(path_index,
+                                     ctx->fib_entry->fe_prefix.fp_payload_proto,
+                                     &nh->path_dpo);
 
             break;
         }
@@ -424,50 +436,70 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         /*
          * first time create
          */
-        flow_hash_config_t fhc;
+        if (esrc->fes_entry_flags & FIB_ENTRY_FLAG_MULTICAST)
+        {
+            dpo_set(dpo_lb,
+                    DPO_REPLICATE,
+                    lb_proto,
+                    MPLS_IS_REPLICATE | replicate_create(0, lb_proto));
+        }
+        else
+        {
+            flow_hash_config_t fhc;
 
-        fhc = fib_table_get_flow_hash_config(fib_entry->fe_fib_index,
-                                             dpo_proto_to_fib(lb_proto));
-        dpo_set(dpo_lb,
-                DPO_LOAD_BALANCE,
-                lb_proto,
-                load_balance_create(0, lb_proto, fhc));
+            fhc = fib_table_get_flow_hash_config(fib_entry->fe_fib_index,
+                                                 dpo_proto_to_fib(lb_proto));
+            dpo_set(dpo_lb,
+                    DPO_LOAD_BALANCE,
+                    lb_proto,
+                    load_balance_create(0, lb_proto, fhc));
+        }
     }
 
-    load_balance_multipath_update(dpo_lb,
-                                  ctx.next_hops,
-                                  fib_entry_calc_lb_flags(&ctx));
-    vec_free(ctx.next_hops);
-
-    /*
-     * if this entry is sourced by the uRPF-exempt source then we
-     * append the always present local0 interface (index 0) to the
-     * uRPF list so it is not empty. that way packets pass the loose check.
-     */
-    index_t ui = fib_path_list_get_urpf(esrc->fes_pl);
-
-    if ((fib_entry_is_sourced(fib_entry_get_index(fib_entry),
-			      FIB_SOURCE_URPF_EXEMPT) ||
-	 (esrc->fes_entry_flags & FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT))&&
-	(0 == fib_urpf_check_size(ui)))
+    if (esrc->fes_entry_flags & FIB_ENTRY_FLAG_MULTICAST)
     {
-	/*
-	 * The uRPF list we get from the path-list is shared by all
-	 * other users of the list, but the uRPF exemption applies
-	 * only to this prefix. So we need our own list.
-	 */
-	ui = fib_urpf_list_alloc_and_lock();
-	fib_urpf_list_append(ui, 0);
-	fib_urpf_list_bake(ui);
-	load_balance_set_urpf(dpo_lb->dpoi_index, ui);
-	fib_urpf_list_unlock(ui);
+        /*
+         * MPLS multicast
+         */
+        replicate_multipath_update(dpo_lb, ctx.next_hops);
     }
     else
     {
-	load_balance_set_urpf(dpo_lb->dpoi_index, ui);
+        load_balance_multipath_update(dpo_lb,
+                                      ctx.next_hops,
+                                      fib_entry_calc_lb_flags(&ctx));
+        vec_free(ctx.next_hops);
+
+        /*
+         * if this entry is sourced by the uRPF-exempt source then we
+         * append the always present local0 interface (index 0) to the
+         * uRPF list so it is not empty. that way packets pass the loose check.
+         */
+        index_t ui = fib_path_list_get_urpf(esrc->fes_pl);
+
+        if ((fib_entry_is_sourced(fib_entry_get_index(fib_entry),
+                                  FIB_SOURCE_URPF_EXEMPT) ||
+             (esrc->fes_entry_flags & FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT))&&
+            (0 == fib_urpf_check_size(ui)))
+        {
+            /*
+             * The uRPF list we get from the path-list is shared by all
+             * other users of the list, but the uRPF exemption applies
+             * only to this prefix. So we need our own list.
+             */
+            ui = fib_urpf_list_alloc_and_lock();
+            fib_urpf_list_append(ui, 0);
+            fib_urpf_list_bake(ui);
+            load_balance_set_urpf(dpo_lb->dpoi_index, ui);
+            fib_urpf_list_unlock(ui);
+        }
+        else
+        {
+            load_balance_set_urpf(dpo_lb->dpoi_index, ui);
+        }
+        load_balance_set_fib_entry_flags(dpo_lb->dpoi_index,
+                                         fib_entry_get_flags_i(fib_entry));
     }
-    load_balance_set_fib_entry_flags(dpo_lb->dpoi_index,
-                                     fib_entry_get_flags_i(fib_entry));
 }
 
 void
@@ -887,21 +919,6 @@ fib_entry_src_action_remove (fib_entry_t *fib_entry,
     return (sflags);
 }
 
-static inline int
-fib_route_recurses_via_self (const fib_prefix_t *prefix,
-			     const fib_route_path_t *rpath)
-{
-    /*
-     * not all zeros next hop &&
-     * is recursive path &&
-     * nexthop is same as the route's address
-     */
-    return ((!ip46_address_is_zero(&rpath->frp_addr)) &&
-	    (~0 == rpath->frp_sw_if_index) &&
-	    (0 == ip46_address_cmp(&rpath->frp_addr, &prefix->fp_addr)));
-
-}
-
 /*
  * fib_route_attached_cross_table
  *
@@ -962,13 +979,13 @@ fib_entry_src_flags_2_path_list_flags (fib_entry_flag_t eflags)
     {
 	plf |= FIB_PATH_LIST_FLAG_DROP;
     }
-    if (eflags & FIB_ENTRY_FLAG_LOCAL)
-    {
-	plf |= FIB_PATH_LIST_FLAG_LOCAL;
-    }
     if (eflags & FIB_ENTRY_FLAG_EXCLUSIVE)
     {
 	plf |= FIB_PATH_LIST_FLAG_EXCLUSIVE;
+    }
+    if (eflags & FIB_ENTRY_FLAG_LOCAL)
+    {
+	plf |= FIB_PATH_LIST_FLAG_LOCAL;
     }
 
     return (plf);
@@ -980,25 +997,6 @@ fib_entry_flags_update (const fib_entry_t *fib_entry,
 			fib_path_list_flags_t *pl_flags,
 			fib_entry_src_t *esrc)
 {
-    /*
-     * don't allow the addition of a recursive looped path for prefix
-     * via itself.
-     */
-    if (fib_route_recurses_via_self(&fib_entry->fe_prefix, rpath))	
-    {
-	/*
-	 * force the install of a drop path-list.
-	 * we want the entry to have some path-list, mainly so
-	 * the dodgy path can be rmeoved when the source stops playing
-	 * silly buggers.
-	 */
-	*pl_flags |= FIB_PATH_LIST_FLAG_DROP;
-    }
-    else
-    {
-	*pl_flags &= ~FIB_PATH_LIST_FLAG_DROP;
-    }
-
     if ((esrc->fes_src == FIB_SOURCE_API) ||
 	(esrc->fes_src == FIB_SOURCE_CLI))
     {
