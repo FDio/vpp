@@ -5,7 +5,9 @@ import socket
 
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
-    VppMplsIpBind
+    VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
+    MRouteItfFlags, MRouteEntryFlags
+from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -21,7 +23,7 @@ class TestMPLS(VppTestCase):
         super(TestMPLS, self).setUp()
 
         # create 2 pg interfaces
-        self.create_pg_interfaces(range(2))
+        self.create_pg_interfaces(range(4))
 
         # setup both interfaces
         # assign them different tables.
@@ -53,10 +55,11 @@ class TestMPLS(VppTestCase):
             mpls_labels,
             mpls_ttl=255,
             ping=0,
-            ip_itf=None):
+            ip_itf=None,
+            n=257):
         self.reset_packet_infos()
         pkts = []
-        for i in range(0, 257):
+        for i in range(0, n):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = Ether(dst=src_if.local_mac, src=src_if.remote_mac)
@@ -278,7 +281,7 @@ class TestMPLS(VppTestCase):
         self.pg_start()
 
         rx = self.pg0.get_capture()
-        self.verify_capture_labelled_ip4(self.pg0, rx, tx, [33])
+        self.verify_capture_labelled(self.pg0, rx, tx, [33])
 
         #
         # A simple MPLS xconnect - non-eos label in label out
@@ -358,7 +361,7 @@ class TestMPLS(VppTestCase):
         self.pg_start()
 
         rx = self.pg0.get_capture()
-        self.verify_capture_labelled_ip4(self.pg0, rx, tx, [33, 44, 45])
+        self.verify_capture_labelled(self.pg0, rx, tx, [33, 44, 45], num=2)
 
         #
         # A recursive non-EOS x-connect, which resolves through another
@@ -576,25 +579,19 @@ class TestMPLS(VppTestCase):
         #
         # Create a tunnel with a single out label
         #
-        nh_addr = socket.inet_pton(socket.AF_INET, self.pg0.remote_ip4)
-
-        reply = self.vapi.mpls_tunnel_add_del(
-            0xffffffff,  # don't know the if index yet
-            1,  # IPv4 next-hop
-            nh_addr,
-            self.pg0.sw_if_index,
-            0,  # next-hop-table-id
-            1,  # next-hop-weight
-            2,  # num-out-labels,
-            [44, 46])
-        self.vapi.sw_interface_set_flags(reply.sw_if_index, admin_up_down=1)
+        mpls_tun = VppMPLSTunnelInterface(self,
+                                          [VppRoutePath(self.pg0.remote_ip4,
+                                                        self.pg0.sw_if_index,
+                                                        labels=[44, 46])])
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
 
         #
         # add an unlabelled route through the new tunnel
         #
         route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
                                     [VppRoutePath("0.0.0.0",
-                                                  reply.sw_if_index)])
+                                                  mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
         self.vapi.cli("clear trace")
@@ -737,6 +734,161 @@ class TestMPLS(VppTestCase):
 
         route_35_eos.remove_vpp_config()
         route_34_eos.remove_vpp_config()
+
+    def test_interface_rx(self):
+        """ MPLS Interface Receive """
+
+        #
+        # Add a non-recursive route that will forward the traffic
+        # post-interface-rx
+        #
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    table_id=1,
+                                    paths=[VppRoutePath(self.pg1.remote_ip4,
+                                                        self.pg1.sw_if_index)])
+        route_10_0_0_1.add_vpp_config()
+
+        #
+        # An interface receive label that maps traffic to RX on interface
+        # pg1
+        # by injecting the packet in on pg0, which is in table 0
+        # doing an interface-rx on pg1 and matching a route in table 1
+        # if the packet egresses, then we must have swapped to pg1
+        # so as to have matched the route in table 1
+        #
+        route_34_eos = VppMplsRoute(self, 34, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  self.pg1.sw_if_index,
+                                                  is_interface_rx=1)])
+        route_34_eos.add_vpp_config()
+
+        #
+        # ping an interface in the default table
+        # PG0 is in the default table
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_labelled_ip4(self.pg1, [34])
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture()
+        self.verify_capture_ip4(self.pg1, rx, tx)
+
+    def test_mcast_mid_point(self):
+        """ MPLS Multicast Mid Point """
+
+        #
+        # Add a non-recursive route that will forward the traffic
+        # post-interface-rx
+        #
+        route_10_0_0_1 = VppIpRoute(self, "10.0.0.1", 32,
+                                    table_id=1,
+                                    paths=[VppRoutePath(self.pg1.remote_ip4,
+                                                        self.pg1.sw_if_index)])
+        route_10_0_0_1.add_vpp_config()
+
+        #
+        # Add a mcast entry that replicate to pg2 and pg3
+        # and replicate to a interface-rx (like a bud node would)
+        #
+        route_3400_eos = VppMplsRoute(self, 3400, 1,
+                                      [VppRoutePath(self.pg2.remote_ip4,
+                                                    self.pg2.sw_if_index,
+                                                    labels=[3401]),
+                                       VppRoutePath(self.pg3.remote_ip4,
+                                                    self.pg3.sw_if_index,
+                                                    labels=[3402]),
+                                       VppRoutePath("0.0.0.0",
+                                                    self.pg1.sw_if_index,
+                                                    is_interface_rx=1)],
+                                      is_multicast=1)
+        route_3400_eos.add_vpp_config()
+
+        #
+        # ping an interface in the default table
+        # PG0 is in the default table
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_labelled_ip4(self.pg1, [3400], n=257)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture()
+        self.verify_capture_ip4(self.pg1, rx, tx)
+
+        rx = self.pg2.get_capture(257)
+        self.verify_capture_labelled(self.pg2, rx, tx, [3401])
+        rx = self.pg3.get_capture(257)
+        self.verify_capture_labelled(self.pg3, rx, tx, [3402])
+
+    def test_mcast_head(self):
+        """ MPLS Multicast Head-end """
+
+        #
+        # Create a multicast tunnel with two replications
+        #
+        mpls_tun = VppMPLSTunnelInterface(self,
+                                          [VppRoutePath(self.pg2.remote_ip4,
+                                                        self.pg2.sw_if_index,
+                                                        labels=[42]),
+                                           VppRoutePath(self.pg3.remote_ip4,
+                                                        self.pg3.sw_if_index,
+                                                        labels=[43])],
+                                           is_multicast=1)
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+
+        #
+        # add an unlabelled route through the new tunnel
+        #
+        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  mpls_tun._sw_if_index)])
+        route_10_0_0_3.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(257)
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [42])
+        rx = self.pg3.get_capture(257)
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [43])
+
+        #
+        # An an IP multicast route via the tunnel
+        # A (*,G).
+        # one accepting interface, pg0, 1 forwarding interface via the tunnel
+        #
+        route_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(mpls_tun._sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232_1_1_1.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(257)
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [42])
+        rx = self.pg3.get_capture(257)
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [43])
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -66,12 +66,13 @@ fib_prefix_from_ip46_addr (const ip46_address_t *addr,
 
 void
 fib_prefix_from_mpls_label (mpls_label_t label,
+                            mpls_eos_bit_t eos,
 			    fib_prefix_t *pfx)
 {
     pfx->fp_proto = FIB_PROTOCOL_MPLS;
     pfx->fp_len = 21;
     pfx->fp_label = label;
-    pfx->fp_eos = MPLS_NON_EOS;
+    pfx->fp_eos = eos;
 }
 
 int

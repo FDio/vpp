@@ -65,6 +65,10 @@ typedef enum fib_path_cfg_attribute_t_ {
     /**
      * The path is a for-us path
      */
+    FIB_PATH_CFG_ATTRIBUTE_INTF_RX,
+    /**
+     * The path is an interface recieve
+     */
     FIB_PATH_CFG_ATTRIBUTE_LOCAL,
     /**
      * Marker. Add new types before this one, then update it.
@@ -83,6 +87,7 @@ typedef enum fib_path_cfg_attribute_t_ {
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST] = "resolve-host", \
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED] = "resolve-attached", \
     [FIB_PATH_CFG_ATTRIBUTE_LOCAL] = "local",	        \
+    [FIB_PATH_CFG_ATTRIBUTE_INTF_RX] = "intercace-rx",	        \
 }
 
 #define FOR_EACH_FIB_PATH_CFG_ATTRIBUTE(_item) \
@@ -100,6 +105,7 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_RESOLVE_HOST = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST),
     FIB_PATH_CFG_FLAG_RESOLVE_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED),
     FIB_PATH_CFG_FLAG_LOCAL = (1 << FIB_PATH_CFG_ATTRIBUTE_LOCAL),
+    FIB_PATH_CFG_FLAG_INTF_RX = (1 << FIB_PATH_CFG_ATTRIBUTE_INTF_RX),
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
 

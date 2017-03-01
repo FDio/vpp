@@ -688,10 +688,12 @@ add_del_route_t_handler (u8 is_multipath,
 			 u8 is_unreach,
 			 u8 is_prohibit,
 			 u8 is_local,
+			 u8 is_multicast,
 			 u8 is_classify,
 			 u32 classify_table_index,
 			 u8 is_resolve_host,
 			 u8 is_resolve_attached,
+			 u8 is_interface_rx,
 			 u32 fib_index,
 			 const fib_prefix_t * prefix,
 			 u8 next_hop_proto_is_ip4,
@@ -714,16 +716,22 @@ add_del_route_t_handler (u8 is_multipath,
     .frp_label_stack = next_hop_out_label_stack,
   };
   fib_route_path_t *paths = NULL;
+  fib_entry_flag_t entry_flags = FIB_ENTRY_FLAG_NONE;
 
   if (MPLS_LABEL_INVALID != next_hop_via_label)
     {
       path.frp_proto = FIB_PROTOCOL_MPLS;
       path.frp_local_label = next_hop_via_label;
+      path.frp_eos = MPLS_NON_EOS;
     }
   if (is_resolve_host)
     path_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
   if (is_resolve_attached)
     path_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
+  if (is_interface_rx)
+    path_flags |= FIB_ROUTE_PATH_INTF_RX;
+  if (is_multicast)
+    entry_flags |= FIB_ENTRY_FLAG_MULTICAST;
 
   path.frp_flags = path_flags;
 
@@ -737,8 +745,7 @@ add_del_route_t_handler (u8 is_multipath,
       if (is_add)
 	fib_table_entry_path_add2 (fib_index,
 				   prefix,
-				   FIB_SOURCE_API,
-				   FIB_ENTRY_FLAG_NONE, paths);
+				   FIB_SOURCE_API, entry_flags, paths);
       else
 	fib_table_entry_path_remove2 (fib_index,
 				      prefix, FIB_SOURCE_API, paths);
@@ -809,8 +816,7 @@ add_del_route_t_handler (u8 is_multipath,
 	{
 	  vec_add1 (paths, path);
 	  fib_table_entry_update (fib_index,
-				  prefix,
-				  FIB_SOURCE_API, FIB_ENTRY_FLAG_NONE, paths);
+				  prefix, FIB_SOURCE_API, entry_flags, paths);
 	  vec_free (paths);
 	}
       else
@@ -926,11 +932,11 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->is_drop,
 				   mp->is_unreach,
 				   mp->is_prohibit,
-				   mp->is_local,
+				   mp->is_local, 0,
 				   mp->is_classify,
 				   mp->classify_table_index,
 				   mp->is_resolve_host,
-				   mp->is_resolve_attached,
+				   mp->is_resolve_attached, 0,
 				   fib_index, &pfx, 1,
 				   &nh,
 				   ntohl (mp->next_hop_sw_if_index),
@@ -985,11 +991,11 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->is_drop,
 				   mp->is_unreach,
 				   mp->is_prohibit,
-				   mp->is_local,
+				   mp->is_local, 0,
 				   mp->is_classify,
 				   mp->classify_table_index,
 				   mp->is_resolve_host,
-				   mp->is_resolve_attached,
+				   mp->is_resolve_attached, 0,
 				   fib_index, &pfx, 0,
 				   &nh, ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,

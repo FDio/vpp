@@ -137,11 +137,11 @@ extern int fib_path_list_is_looped(fib_node_index_t path_list_index);
 extern fib_protocol_t fib_path_list_get_proto(fib_node_index_t path_list_index);
 extern u8 * fib_path_list_format(fib_node_index_t pl_index,
 				 u8 * s);
-extern u8 * fib_path_list_adjs_format(fib_node_index_t pl_index,
-				      u32 indent,
-				      u8 * s);
 extern index_t fib_path_list_lb_map_add_or_lock(fib_node_index_t pl_index,
                                                 const fib_node_index_t *pis);
+extern u32 fib_path_list_find_rpath (fib_node_index_t path_list_index,
+                                     const fib_route_path_t *rpath);
+
 /**
  * A callback function type for walking a path-list's paths
  */

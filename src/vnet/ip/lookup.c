@@ -439,6 +439,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 unformat_mpls_unicast_label, &rpath.frp_local_label))
 	{
 	  rpath.frp_weight = 1;
+	  rpath.frp_eos = MPLS_NON_EOS;
 	  rpath.frp_proto = FIB_PROTOCOL_MPLS;
 	  rpath.frp_sw_if_index = ~0;
 	  vec_add1 (rpaths, rpath);

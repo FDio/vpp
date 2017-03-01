@@ -11,6 +11,22 @@ from vpp_object import *
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
+class MRouteItfFlags:
+    MFIB_ITF_FLAG_NONE = 0
+    MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
+    MFIB_ITF_FLAG_ACCEPT = 2
+    MFIB_ITF_FLAG_FORWARD = 4
+    MFIB_ITF_FLAG_SIGNAL_PRESENT = 8
+    MFIB_ITF_FLAG_INTERNAL_COPY = 16
+
+
+class MRouteEntryFlags:
+    MFIB_ENTRY_FLAG_NONE = 0
+    MFIB_ENTRY_FLAG_SIGNAL = 1
+    MFIB_ENTRY_FLAG_DROP = 2
+    MFIB_ENTRY_FLAG_CONNECTED = 4
+    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
+
 
 class VppRoutePath(object):
 
@@ -21,15 +37,18 @@ class VppRoutePath(object):
             nh_table_id=0,
             labels=[],
             nh_via_label=MPLS_LABEL_INVALID,
-            is_ip6=0):
+            is_ip6=0,
+            is_interface_rx=0):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
         self.nh_labels = labels
+        self.weight = 1
         if is_ip6:
             self.nh_addr = socket.inet_pton(socket.AF_INET6, nh_addr)
         else:
             self.nh_addr = socket.inet_pton(socket.AF_INET, nh_addr)
+        self.is_interface_rx = is_interface_rx
 
 
 class VppMRoutePath(VppRoutePath):
@@ -294,14 +313,17 @@ class VppMplsRoute(VppObject):
     MPLS Route/LSP
     """
 
-    def __init__(self, test, local_label, eos_bit, paths, table_id=0):
+    def __init__(self, test, local_label, eos_bit, paths, table_id=0,
+                 is_multicast=0):
         self._test = test
         self.paths = paths
         self.local_label = local_label
         self.eos_bit = eos_bit
         self.table_id = table_id
+        self.is_multicast = is_multicast
 
     def add_vpp_config(self):
+        is_multipath = len(self.paths) > 1
         for path in self.paths:
             self._test.vapi.mpls_route_add_del(
                 self.local_label,
@@ -309,7 +331,10 @@ class VppMplsRoute(VppObject):
                 1,
                 path.nh_addr,
                 path.nh_itf,
+                is_multicast=self.is_multicast,
+                is_multipath=is_multipath,
                 table_id=self.table_id,
+                is_interface_rx=path.is_interface_rx,
                 next_hop_out_label_stack=path.nh_labels,
                 next_hop_n_out_labels=len(
                     path.nh_labels),

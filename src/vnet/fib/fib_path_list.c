@@ -156,26 +156,6 @@ format_fib_path_list (u8 * s, va_list * args)
 }
 
 u8 *
-fib_path_list_adjs_format (fib_node_index_t path_list_index,
-			   u32 indent,
-			   u8 * s)
-{
-    fib_path_list_t *path_list;
-    u32 i;
-
-    path_list = fib_path_list_get(path_list_index);
-
-    vec_foreach_index (i, path_list->fpl_paths)
-    {
-	s = fib_path_adj_format(path_list->fpl_paths[i],
-				indent, s);
-    }
-
-    return (s);
-}
-
-
-u8 *
 fib_path_list_format (fib_node_index_t path_list_index,
 		      u8 * s)
 {
@@ -774,6 +754,30 @@ fib_path_list_create_special (fib_protocol_t nh_proto,
 
     return (path_list_index);
 }
+
+/*
+ * return the index info the path-lists's vector of paths, of the matching path.
+ * ~0 if not found
+ */
+u32
+fib_path_list_find_rpath (fib_node_index_t path_list_index,
+                          const fib_route_path_t *rpath)
+{
+    fib_path_list_t *path_list;
+    u32 ii;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    vec_foreach_index (ii, path_list->fpl_paths)
+    {
+        if (!fib_path_cmp_w_route_path(path_list->fpl_paths[ii], rpath))
+        {
+            return (ii);
+        }
+    }
+    return (~0);
+}
+
 
 /*
  * fib_path_list_copy_and_path_add

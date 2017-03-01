@@ -282,6 +282,11 @@ typedef enum fib_route_path_flags_t_
      * A for-us/local path
      */
     FIB_ROUTE_PATH_LOCAL = (1 << 2),
+    /**
+     * A path that result in received traffic being recieved/recirculated
+     * so that it appears to have arrived on the new interface
+     */
+    FIB_ROUTE_PATH_INTF_RX = (1 << 3),
 } fib_route_path_flags_t;
 
 /**
@@ -317,11 +322,17 @@ typedef struct fib_route_path_t_ {
 	 */
 	ip46_address_t frp_addr;
 
-	/**
-	 * The MPLS local Label to reursively resolve through.
-	 * This is valid when the path type is MPLS.
-	 */
-	mpls_label_t frp_local_label;
+        struct {
+            /**
+             * The MPLS local Label to reursively resolve through.
+             * This is valid when the path type is MPLS.
+             */
+            mpls_label_t frp_local_label;
+            /**
+             * EOS bit for the resolving label
+             */
+            mpls_eos_bit_t frp_eos;
+        };
     };
     /**
      * The interface.

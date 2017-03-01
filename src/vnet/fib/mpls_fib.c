@@ -317,8 +317,15 @@ mpls_fib_forwarding_table_update (mpls_fib_t *mf,
 {
     mpls_label_t key;
 
-    ASSERT(DPO_LOAD_BALANCE == dpo->dpoi_type);
-
+    ASSERT((DPO_LOAD_BALANCE == dpo->dpoi_type) ||
+           (DPO_REPLICATE == dpo->dpoi_type));
+    if (CLIB_DEBUG > 0)
+    {
+        if (DPO_REPLICATE == dpo->dpoi_type)
+            ASSERT(dpo->dpoi_index & MPLS_IS_REPLICATE);
+        if (DPO_LOAD_BALANCE == dpo->dpoi_type)
+            ASSERT(!(dpo->dpoi_index & MPLS_IS_REPLICATE));
+    }
     key = mpls_fib_entry_mk_key(label, eos);
 
     mf->mf_lbs[key] = dpo->dpoi_index;
