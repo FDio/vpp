@@ -38,9 +38,11 @@ lisp_show_adjacencies_command_fn (vlib_main_t * vm,
 	{
 	  vlib_cli_output (vm, "parse error: '%U'",
 			   format_unformat_error, line_input);
+	  unformat_free (line_input);
 	  return 0;
 	}
     }
+  unformat_free (line_input);
 
   if (~0 == vni)
     {
@@ -94,9 +96,11 @@ lisp_add_del_map_server_command_fn (vlib_main_t * vm,
 	{
 	  vlib_cli_output (vm, "parse error: '%U'",
 			   format_unformat_error, line_input);
+	  unformat_free (line_input);
 	  return 0;
 	}
     }
+  unformat_free (line_input);
 
   if (!ip_set)
     {
@@ -191,7 +195,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (key && (0 == key_id))
     {
       vlib_cli_output (vm, "invalid key_id!");
-      return 0;
+      goto done;
     }
 
   gid_address_copy (&a->eid, &eid);
@@ -213,6 +217,7 @@ done:
     vec_free (locator_set_name);
   gid_address_free (&a->eid);
   vec_free (a->key);
+  unformat_free (line_input);
   return error;
 }
 
@@ -233,6 +238,7 @@ lisp_eid_table_map_command_fn (vlib_main_t * vm,
   u8 is_add = 1, is_l2 = 0;
   u32 vni = 0, dp_id = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -250,11 +256,16 @@ lisp_eid_table_map_command_fn (vlib_main_t * vm,
 	is_l2 = 1;
       else
 	{
-	  return unformat_parse_error (line_input);
+	  error = unformat_parse_error (line_input);
+	  goto done;
 	}
     }
   vnet_lisp_eid_table_map (vni, dp_id, is_l2, is_add);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -482,7 +493,7 @@ lisp_add_del_adjacency_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  != ip_prefix_version (leid_ippref)))
     {
       clib_warning ("remote and local EIDs are of different types!");
-      return error;
+      goto done;
     }
 
   memset (a, 0, sizeof (a[0]));
@@ -536,11 +547,14 @@ lisp_map_request_mode_command_fn (vlib_main_t * vm,
   if (_MR_MODE_MAX == mr_mode)
     {
       clib_warning ("No map request mode entered!");
-      return 0;
+      goto done;
     }
 
   vnet_lisp_set_map_request_mode (mr_mode);
+
 done:
+  unformat_free (i);
+
   return 0;
 }
 
@@ -633,7 +647,10 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "disable"))
 	is_add = 0;
       else
-	return clib_error_return (0, "parse error");
+	{
+	  error = clib_error_return (0, "parse error");
+	  goto done;
+	}
     }
 
   if (!locator_name_set)
@@ -651,6 +668,7 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
 done:
   if (locator_set_name)
     vec_free (locator_set_name);
+  unformat_free (line_input);
   return error;
 }
 
@@ -774,6 +792,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
   gid_address_t eid;
   u8 print_all = 1;
   u8 filter = 0;
+  clib_error_t *error = NULL;
 
   memset (&eid, 0, sizeof (eid));
 
@@ -790,8 +809,11 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "remote"))
 	filter = 2;
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   vlib_cli_output (vm, "%-35s%-20s%-30s%-20s%-s",
@@ -818,7 +840,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
     {
       mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &eid);
       if ((u32) ~ 0 == mi)
-	return 0;
+	goto done;
 
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
       locator_set_t *ls = pool_elt_at_index (lcm->locator_set_pool,
@@ -827,14 +849,17 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       if (filter && !((1 == filter && ls->local) ||
 		      (2 == filter && !ls->local)))
 	{
-	  return 0;
+	  goto done;
 	}
 
       vlib_cli_output (vm, "%U,", format_eid_entry, lcm->vnet_main,
 		       lcm, mapit, ls);
     }
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -853,6 +878,7 @@ lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_enabled = 0;
   u8 is_set = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -869,16 +895,24 @@ lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_set = 1;
       else
 	{
-	  return clib_error_return (0, "parse error: '%U'",
-				    format_unformat_error, line_input);
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
 	}
     }
 
   if (!is_set)
-    return clib_error_return (0, "state not set");
+    {
+      error = clib_error_return (0, "state not set");
+      goto done;
+    }
 
   vnet_lisp_enable_disable (is_enabled);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -897,6 +931,7 @@ lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_enabled = 0;
   u8 is_set = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -915,18 +950,22 @@ lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
 	{
 	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
 			   line_input);
-	  return 0;
+	  goto done;
 	}
     }
 
   if (!is_set)
     {
       vlib_cli_output (vm, "state not set!");
-      return 0;
+      goto done;
     }
 
   vnet_lisp_map_register_enable_disable (is_enabled);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -945,6 +984,7 @@ lisp_rloc_probe_enable_disable_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_enabled = 0;
   u8 is_set = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -963,18 +1003,22 @@ lisp_rloc_probe_enable_disable_command_fn (vlib_main_t * vm,
 	{
 	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
 			   line_input);
-	  return 0;
+	  goto done;
 	}
     }
 
   if (!is_set)
     {
       vlib_cli_output (vm, "state not set!");
-      return 0;
+      goto done;
     }
 
   vnet_lisp_rloc_probe_enable_disable (is_enabled);
-  return 0;
+
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -1022,6 +1066,7 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   uword *vni_table = 0;
   u8 is_l2 = 0;
+  clib_error_t *error = NULL;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1040,14 +1085,17 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
 	  is_l2 = 0;
 	}
       else
-	return clib_error_return (0, "parse error: '%U'",
-				  format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (!vni_table)
     {
       vlib_cli_output (vm, "Error: expected l2|l3 param!\n");
-      return 0;
+      goto done;
     }
 
   vlib_cli_output (vm, "%=10s%=10s", "VNI", is_l2 ? "BD" : "VRF");
@@ -1059,7 +1107,10 @@ lisp_show_eid_table_map_command_fn (vlib_main_t * vm,
   }));
   /* *INDENT-ON* */
 
-  return 0;
+done:
+  unformat_free (line_input);
+
+  return error;
 }
 
 /* *INDENT-OFF* */
@@ -1131,6 +1182,7 @@ done:
   vec_free (locators);
   if (locator_set_name)
     vec_free (locator_set_name);
+  unformat_free (line_input);
   return error;
 }
 
@@ -1205,6 +1257,7 @@ lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
 done:
   vec_free (locators);
   vec_free (locator_set_name);
+  unformat_free (line_input);
   return error;
 }
 
@@ -1322,6 +1375,7 @@ lisp_add_del_map_resolver_command_fn (vlib_main_t * vm,
     }
 
 done:
+  unformat_free (line_input);
   return error;
 }
 
@@ -1372,9 +1426,9 @@ lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
 				 is_add ? "add" : "delete");
     }
 
-  vec_free (locator_set_name);
-
 done:
+  vec_free (locator_set_name);
+  unformat_free (line_input);
   return error;
 
 }
@@ -1438,7 +1492,10 @@ lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "disable"))
 	is_add = 0;
       else
-	return clib_error_return (0, "parse error");
+	{
+	  error = clib_error_return (0, "parse error");
+	  goto done;
+	}
     }
 
   if (!ip_set)
@@ -1454,6 +1511,7 @@ lisp_use_petr_set_locator_set_command_fn (vlib_main_t * vm,
     }
 
 done:
+  unformat_free (line_input);
   return error;
 }
 

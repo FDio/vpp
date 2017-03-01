@@ -849,7 +849,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	{
 	  lisp_gpe_del_nsh_iface (&lisp_gpe_main);
 	}
-      return (NULL);
+      goto done;
     }
 
   if (vrf_is_set && bd_index_is_set)
