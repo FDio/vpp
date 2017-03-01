@@ -210,7 +210,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
 	    next0 = SSVM_ETH_INPUT_NEXT_IP4_INPUT;
 	  else if (type0 == ETHERNET_TYPE_IP6)
 	    next0 = SSVM_ETH_INPUT_NEXT_IP6_INPUT;
-	  else if (type0 == ETHERNET_TYPE_MPLS_UNICAST)
+	  else if (type0 == ETHERNET_TYPE_MPLS)
 	    next0 = SSVM_ETH_INPUT_NEXT_MPLS_INPUT;
 
 	  l3_offset0 = ((next0 == SSVM_ETH_INPUT_NEXT_IP4_INPUT ||

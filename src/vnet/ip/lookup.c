@@ -300,6 +300,7 @@ format_ip_adjacency_packet_data (u8 * s, va_list * args)
   switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_MCAST:
       s = format (s, "%U",
 		  format_vnet_rewrite_header,
 		  vnm->vlib_main, &adj->rewrite_header, packet_data,
@@ -455,6 +456,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 unformat_mpls_unicast_label, &rpath.frp_local_label))
 	{
 	  rpath.frp_weight = 1;
+	  rpath.frp_eos = MPLS_NON_EOS;
 	  rpath.frp_proto = FIB_PROTOCOL_MPLS;
 	  rpath.frp_sw_if_index = ~0;
 	  vec_add1 (rpaths, rpath);
@@ -928,7 +930,7 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  else if (eflags)
 	    {
 	      mfib_table_entry_update (fib_index, &pfx, MFIB_SOURCE_CLI,
-				       eflags);
+				       MFIB_RPF_ID_NONE, eflags);
 	    }
 	  else
 	    {

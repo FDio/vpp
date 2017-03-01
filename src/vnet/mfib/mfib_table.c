@@ -165,6 +165,7 @@ fib_node_index_t
 mfib_table_entry_update (u32 fib_index,
                          const mfib_prefix_t *prefix,
                          mfib_source_t source,
+                         fib_rpf_id_t rpf_id,
                          mfib_entry_flags_t entry_flags)
 {
     fib_node_index_t mfib_entry_index;
@@ -181,7 +182,8 @@ mfib_table_entry_update (u32 fib_index,
              * update to a non-existing entry with non-zero flags
              */
             mfib_entry_index = mfib_entry_create(fib_index, source,
-                                                 prefix, entry_flags);
+                                                 prefix, rpf_id,
+                                                 entry_flags);
 
             mfib_table_entry_insert(mfib_table, prefix, mfib_entry_index);
         }
@@ -198,6 +200,7 @@ mfib_table_entry_update (u32 fib_index,
         if (mfib_entry_update(mfib_entry_index,
                               source,
                               entry_flags,
+                              rpf_id,
                               INDEX_INVALID))
         {
             /*
@@ -230,6 +233,7 @@ mfib_table_entry_path_update (u32 fib_index,
         mfib_entry_index = mfib_entry_create(fib_index,
                                              source,
                                              prefix,
+                                             MFIB_RPF_ID_NONE,
                                              MFIB_ENTRY_FLAG_NONE);
 
         mfib_table_entry_insert(mfib_table, prefix, mfib_entry_index);
@@ -304,6 +308,7 @@ mfib_table_entry_special_add (u32 fib_index,
         mfib_entry_index = mfib_entry_create(fib_index,
                                              source,
                                              prefix,
+                                             MFIB_RPF_ID_NONE,
                                              MFIB_ENTRY_FLAG_NONE);
 
         mfib_table_entry_insert(mfib_table, prefix, mfib_entry_index);
@@ -311,6 +316,7 @@ mfib_table_entry_special_add (u32 fib_index,
 
     mfib_entry_update(mfib_entry_index, source,
                       (MFIB_ENTRY_FLAG_EXCLUSIVE | entry_flags),
+                      MFIB_RPF_ID_NONE,
                       rep_dpo);
 
     return (mfib_entry_index);

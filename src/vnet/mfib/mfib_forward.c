@@ -380,13 +380,27 @@ mfib_forward_rpf (vlib_main_t * vm,
              * for the case of throughput traffic that is not replicated
              * to the host stack nor sets local flags
              */
-            if (PREDICT_TRUE(NULL != mfi0))
+
+            /*
+             * If the mfib entry has a configured RPF-ID check that
+             * in preference to an interface based RPF
+             */
+            if (MFIB_RPF_ID_NONE != mfe0->mfe_rpf_id)
             {
-                iflags0 = mfi0->mfi_flags;
+                iflags0 = (mfe0->mfe_rpf_id == vnet_buffer(b0)->ip.rpf_id ?
+                           MFIB_ITF_FLAG_ACCEPT :
+                           MFIB_ITF_FLAG_NONE);
             }
             else
             {
-                iflags0 = MFIB_ITF_FLAG_NONE;
+                if (PREDICT_TRUE(NULL != mfi0))
+                {
+                    iflags0 = mfi0->mfi_flags;
+                }
+                else
+                {
+                    iflags0 = MFIB_ITF_FLAG_NONE;
+                }
             }
             eflags0 = mfe0->mfe_flags;
 
@@ -436,17 +450,16 @@ mfib_forward_rpf (vlib_main_t * vm,
             {
                 mfib_forward_rpf_trace_t *t0;
 
-                t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
+                t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
                 t0->entry_index = mfei0;
+                t0->itf_flags = iflags0;
                 if (NULL == mfi0)
                 {
                     t0->sw_if_index = ~0;
-                    t0->itf_flags = MFIB_ITF_FLAG_NONE;
                 }
                 else
                 {
                     t0->sw_if_index = mfi0->mfi_sw_if_index;
-                    t0->itf_flags = mfi0->mfi_flags;
                 }
             }
             vlib_validate_buffer_enqueue_x1 (vm, node, next,
@@ -478,7 +491,7 @@ VLIB_REGISTER_NODE (ip4_mfib_forward_rpf_node, static) = {
 
     .n_next_nodes = MFIB_FORWARD_RPF_N_NEXT,
     .next_nodes = {
-        [MFIB_FORWARD_RPF_NEXT_DROP] = "error-drop",
+        [MFIB_FORWARD_RPF_NEXT_DROP] = "ip4-drop",
     },
 };
 
@@ -503,7 +516,7 @@ VLIB_REGISTER_NODE (ip6_mfib_forward_rpf_node, static) = {
 
     .n_next_nodes = MFIB_FORWARD_RPF_N_NEXT,
     .next_nodes = {
-        [MFIB_FORWARD_RPF_NEXT_DROP] = "error-drop",
+        [MFIB_FORWARD_RPF_NEXT_DROP] = "ip6-drop",
     },
 };
 

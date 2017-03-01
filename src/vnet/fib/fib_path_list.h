@@ -39,6 +39,11 @@ typedef enum fib_path_list_attribute_t_ {
      */
     FIB_PATH_LIST_ATTRIBUTE_SHARED = FIB_PATH_LIST_ATTRIBUTE_FIRST,
     /**
+     * Indexed means the path-list keeps a hash table of all paths for
+     * fast lookup. The lookup result is the fib_node_index of the path.
+     */
+    FIB_PATH_LIST_ATTRIBUTE_INDEXED,
+    /**
      * explicit drop path-list. Used when the entry source needs to 
      * force a drop, despite the fact the path info is present.
      */
@@ -73,6 +78,7 @@ typedef enum fib_path_list_attribute_t_ {
 typedef enum fib_path_list_flags_t_ {
     FIB_PATH_LIST_FLAG_NONE      = 0,
     FIB_PATH_LIST_FLAG_SHARED    = (1 << FIB_PATH_LIST_ATTRIBUTE_SHARED),
+    FIB_PATH_LIST_FLAG_INDEXED    = (1 << FIB_PATH_LIST_ATTRIBUTE_INDEXED),
     FIB_PATH_LIST_FLAG_DROP      = (1 << FIB_PATH_LIST_ATTRIBUTE_DROP),
     FIB_PATH_LIST_FLAG_LOCAL     = (1 << FIB_PATH_LIST_ATTRIBUTE_LOCAL),
     FIB_PATH_LIST_FLAG_EXCLUSIVE = (1 << FIB_PATH_LIST_ATTRIBUTE_EXCLUSIVE),
@@ -83,10 +89,11 @@ typedef enum fib_path_list_flags_t_ {
 
 #define FIB_PATH_LIST_ATTRIBUTES {       		 \
     [FIB_PATH_LIST_ATTRIBUTE_SHARED]    = "shared",	 \
+    [FIB_PATH_LIST_ATTRIBUTE_INDEXED]    = "indexed",	 \
     [FIB_PATH_LIST_ATTRIBUTE_RESOLVED]  = "resolved",	 \
     [FIB_PATH_LIST_ATTRIBUTE_DROP]      = "drop",	 \
     [FIB_PATH_LIST_ATTRIBUTE_EXCLUSIVE] = "exclusive",   \
-    [FIB_PATH_LIST_ATTRIBUTE_LOCAL]     = "local",	 \
+    [FIB_PATH_LIST_ATTRIBUTE_LOCAL]     = "local",      \
     [FIB_PATH_LIST_ATTRIBUTE_LOOPED]     = "looped",	 \
     [FIB_PATH_LIST_ATTRIBUTE_NO_URPF]     = "no-uRPF",	 \
 }
@@ -110,6 +117,13 @@ extern fib_node_index_t fib_path_list_copy_and_path_remove(
     fib_node_index_t pl_index,
     fib_path_list_flags_t flags,
     const fib_route_path_t *path);
+extern fib_node_index_t fib_path_list_path_add (
+    fib_node_index_t path_list_index,
+    const fib_route_path_t *rpaths);
+extern fib_node_index_t fib_path_list_path_remove (
+    fib_node_index_t path_list_index,
+    const fib_route_path_t *rpaths);
+
 extern u32 fib_path_list_get_n_paths(fib_node_index_t pl_index);
 
 extern void fib_path_list_contribute_forwarding(fib_node_index_t path_list_index,
@@ -137,11 +151,11 @@ extern int fib_path_list_is_looped(fib_node_index_t path_list_index);
 extern fib_protocol_t fib_path_list_get_proto(fib_node_index_t path_list_index);
 extern u8 * fib_path_list_format(fib_node_index_t pl_index,
 				 u8 * s);
-extern u8 * fib_path_list_adjs_format(fib_node_index_t pl_index,
-				      u32 indent,
-				      u8 * s);
 extern index_t fib_path_list_lb_map_add_or_lock(fib_node_index_t pl_index,
                                                 const fib_node_index_t *pis);
+extern u32 fib_path_list_find_rpath (fib_node_index_t path_list_index,
+                                     const fib_route_path_t *rpath);
+
 /**
  * A callback function type for walking a path-list's paths
  */

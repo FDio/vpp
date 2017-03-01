@@ -17,6 +17,7 @@
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/adj/adj.h>
+#include <vnet/mpls/mpls_types.h>
 
 #undef REP_DEBUG
 
@@ -106,6 +107,7 @@ replicate_format (index_t repi,
     dpo_id_t *buckets;
     u32 i;
 
+    repi &= ~MPLS_IS_REPLICATE;
     rep = replicate_get(repi);
     vlib_get_combined_counter(&(replicate_main.repm_counters), repi, &to);
     buckets = replicate_get_buckets(rep);
@@ -187,6 +189,7 @@ replicate_set_bucket (index_t repi,
     replicate_t *rep;
     dpo_id_t *buckets;
 
+    repi &= ~MPLS_IS_REPLICATE;
     rep = replicate_get(repi);
     buckets = replicate_get_buckets(rep);
 
@@ -199,11 +202,13 @@ int
 replicate_is_drop (const dpo_id_t *dpo)
 {
     replicate_t *rep;
+    index_t repi;
 
     if (DPO_REPLICATE != dpo->dpoi_type)
         return (0);
 
-    rep = replicate_get(dpo->dpoi_index);
+    repi = dpo->dpoi_index & ~MPLS_IS_REPLICATE;
+    rep = replicate_get(repi);
 
     if (1 == rep->rep_n_buckets)
     {
@@ -218,6 +223,7 @@ replicate_get_bucket (index_t repi,
 {
     replicate_t *rep;
 
+    repi &= ~MPLS_IS_REPLICATE;
     rep = replicate_get(repi);
 
     return (replicate_get_bucket_i(rep, bucket));
@@ -288,9 +294,11 @@ replicate_multipath_update (const dpo_id_t *dpo,
     dpo_id_t *tmp_dpo;
     u32 ii, n_buckets;
     replicate_t *rep;
+    index_t repi;
 
     ASSERT(DPO_REPLICATE == dpo->dpoi_type);
-    rep = replicate_get(dpo->dpoi_index);
+    repi = dpo->dpoi_index & ~MPLS_IS_REPLICATE;
+    rep = replicate_get(repi);
     nhs = replicate_multipath_next_hop_fixup(next_hops,
                                              rep->rep_proto);
     n_buckets = vec_len(nhs);
@@ -718,7 +726,7 @@ format_replicate_trace (u8 * s, va_list * args)
 
   s = format (s, "replicate: %d via %U",
               t->rep_index,
-              format_dpo_id, &t->dpo);
+              format_dpo_id, &t->dpo, 0);
   return s;
 }
 
@@ -731,7 +739,7 @@ ip4_replicate (vlib_main_t * vm,
 }
 
 /**
- * @brief
+ * @brief IP4 replication node
  */
 VLIB_REGISTER_NODE (ip4_replicate_node) = {
   .function = ip4_replicate,
@@ -744,7 +752,7 @@ VLIB_REGISTER_NODE (ip4_replicate_node) = {
   .format_trace = format_replicate_trace,
   .n_next_nodes = 1,
   .next_nodes = {
-      [0] = "error-drop",
+      [0] = "ip4-drop",
   },
 };
 
@@ -757,7 +765,7 @@ ip6_replicate (vlib_main_t * vm,
 }
 
 /**
- * @brief
+ * @brief IPv6 replication node
  */
 VLIB_REGISTER_NODE (ip6_replicate_node) = {
   .function = ip6_replicate,
@@ -770,7 +778,33 @@ VLIB_REGISTER_NODE (ip6_replicate_node) = {
   .format_trace = format_replicate_trace,
   .n_next_nodes = 1,
   .next_nodes = {
-      [0] = "error-drop",
+      [0] = "ip6-drop",
+  },
+};
+
+static uword
+mpls_replicate (vlib_main_t * vm,
+                vlib_node_runtime_t * node,
+                vlib_frame_t * frame)
+{
+    return (replicate_inline (vm, node, frame));
+}
+
+/**
+ * @brief MPLS replication node
+ */
+VLIB_REGISTER_NODE (mpls_replicate_node) = {
+  .function = mpls_replicate,
+  .name = "mpls-replicate",
+  .vector_size = sizeof (u32),
+
+  .n_errors = ARRAY_LEN(replicate_dpo_error_strings),
+  .error_strings = replicate_dpo_error_strings,
+
+  .format_trace = format_replicate_trace,
+  .n_next_nodes = 1,
+  .next_nodes = {
+      [0] = "mpls-drop",
   },
 };
 

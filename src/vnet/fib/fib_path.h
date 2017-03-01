@@ -65,6 +65,14 @@ typedef enum fib_path_cfg_attribute_t_ {
     /**
      * The path is a for-us path
      */
+    FIB_PATH_CFG_ATTRIBUTE_INTF_RX,
+    /**
+     * The path is a deag with rpf-id
+     */
+    FIB_PATH_CFG_ATTRIBUTE_RPF_ID,
+    /**
+     * The path is an interface recieve
+     */
     FIB_PATH_CFG_ATTRIBUTE_LOCAL,
     /**
      * Marker. Add new types before this one, then update it.
@@ -83,6 +91,8 @@ typedef enum fib_path_cfg_attribute_t_ {
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST] = "resolve-host", \
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED] = "resolve-attached", \
     [FIB_PATH_CFG_ATTRIBUTE_LOCAL] = "local",	        \
+    [FIB_PATH_CFG_ATTRIBUTE_INTF_RX] = "interface-rx",	        \
+    [FIB_PATH_CFG_ATTRIBUTE_RPF_ID] = "rpf-id",  \
 }
 
 #define FOR_EACH_FIB_PATH_CFG_ATTRIBUTE(_item) \
@@ -100,6 +110,8 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_RESOLVE_HOST = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST),
     FIB_PATH_CFG_FLAG_RESOLVE_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED),
     FIB_PATH_CFG_FLAG_LOCAL = (1 << FIB_PATH_CFG_ATTRIBUTE_LOCAL),
+    FIB_PATH_CFG_FLAG_INTF_RX = (1 << FIB_PATH_CFG_ATTRIBUTE_INTF_RX),
+    FIB_PATH_CFG_FLAG_RPF_ID = (1 << FIB_PATH_CFG_ATTRIBUTE_RPF_ID),
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
 
@@ -111,8 +123,6 @@ extern u8 *fib_path_adj_format(fib_node_index_t pi,
 extern u8 * format_fib_path(u8 * s, va_list * args);
 
 extern fib_node_index_t fib_path_create(fib_node_index_t pl_index,
-					fib_protocol_t nh_proto,
-					fib_path_cfg_flags_t flags,
 					const fib_route_path_t *path);
 extern fib_node_index_t fib_path_create_special(fib_node_index_t pl_index,
 						fib_protocol_t nh_proto,
@@ -139,6 +149,9 @@ extern load_balance_path_t * fib_path_append_nh_for_multipath_hash(
     fib_node_index_t path_index,
     fib_forward_chain_type_t fct,
     load_balance_path_t *hash_key);
+extern void fib_path_stack_mpls_disp(fib_node_index_t path_index,
+                                     dpo_proto_t payload_proto,
+                                     dpo_id_t *dpo);
 extern void fib_path_contribute_forwarding(fib_node_index_t path_index,
 					   fib_forward_chain_type_t type,
 					   dpo_id_t *dpo);

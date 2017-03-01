@@ -103,8 +103,8 @@ fib_path_ext_is_imp_null (fib_path_ext_t *path_ext)
 
 load_balance_path_t *
 fib_path_ext_stack (fib_path_ext_t *path_ext,
-		    const fib_entry_t *entry,
                     fib_forward_chain_type_t child_fct,
+                    fib_forward_chain_type_t imp_null_fct,
 		    load_balance_path_t *nhs)
 {
     fib_forward_chain_type_t parent_fct;
@@ -129,7 +129,7 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
 	 */
 	if (fib_path_ext_is_imp_null(path_ext))
 	{
-            parent_fct = fib_entry_chain_type_fixup(entry, child_fct);
+            parent_fct = imp_null_fct;
         }
         else
         {
