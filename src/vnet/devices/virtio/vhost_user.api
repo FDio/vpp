@@ -19,6 +19,7 @@
     @param sock_filename - unix socket filename, used to speak with frontend
     @param use_custom_mac - enable or disable the use of the provided hardware address
     @param mac_address - hardware address to use if 'use_custom_mac' is set
+    @param operation_mode - interrupt, polling, or adaptive
 */
 define create_vhost_user_if
 {
@@ -31,6 +32,7 @@ define create_vhost_user_if
   u8 use_custom_mac;
   u8 mac_address[6];
   u8 tag[64];
+  u8 operation_mode;
 };
 
 /** \brief vhost-user interface create response
@@ -59,6 +61,7 @@ define modify_vhost_user_if
   u8 sock_filename[256];
   u8 renumber;
   u32 custom_dev_instance;
+  u8 operation_mode;
 };
 
 /** \brief vhost-user interface modify response
@@ -111,6 +114,7 @@ define sw_interface_vhost_user_details
   u8 sock_filename[256];
   u32 num_regions;
   i32 sock_errno;
+  u8 operation_mode;
 };
 
 define sw_interface_vhost_user_dump
