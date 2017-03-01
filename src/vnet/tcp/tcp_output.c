@@ -91,24 +91,30 @@ tcp_window_compute_scale (u32 available_space)
 }
 
 /**
+ * TCP's IW as recommended by RFC6928
+ */
+always_inline u32
+tcp_initial_wnd_unscaled (tcp_connection_t * tc)
+{
+  return TCP_IW_N_SEGMENTS * dummy_mtu;
+}
+
+/**
  * Compute initial window and scale factor. As per RFC1323, window field in
  * SYN and SYN-ACK segments is never scaled.
  */
 u32
 tcp_initial_window_to_advertise (tcp_connection_t * tc)
 {
-  u32 available_space;
+  u32 max_fifo;
 
   /* Initial wnd for SYN. Fifos are not allocated yet.
-   * Use some predefined value */
-  if (tc->state != TCP_STATE_SYN_RCVD)
-    {
-      return TCP_DEFAULT_RX_FIFO_SIZE;
-    }
+   * Use some predefined value. For SYN-ACK we still want the
+   * scale to be computed in the same way */
+  max_fifo = TCP_MAX_RX_FIFO_SIZE;
 
-  available_space = stream_session_max_enqueue (&tc->connection);
-  tc->rcv_wscale = tcp_window_compute_scale (available_space);
-  tc->rcv_wnd = clib_min (available_space, TCP_WND_MAX << tc->rcv_wscale);
+  tc->rcv_wscale = tcp_window_compute_scale (max_fifo);
+  tc->rcv_wnd = tcp_initial_wnd_unscaled (tc);
 
   return clib_min (tc->rcv_wnd, TCP_WND_MAX);
 }
@@ -119,23 +125,43 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
 u32
 tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
 {
-  u32 available_space, wnd, scaled_space;
+  u32 available_space, max_fifo, observed_wnd;
 
-  if (state != TCP_STATE_ESTABLISHED)
+  if (state < TCP_STATE_ESTABLISHED)
     return tcp_initial_window_to_advertise (tc);
 
+  /*
+   * Figure out how much space we have available
+   */
   available_space = stream_session_max_enqueue (&tc->connection);
-  scaled_space = available_space >> tc->rcv_wscale;
+  max_fifo = stream_session_fifo_size (&tc->connection);
 
-  /* Need to update scale */
-  if (PREDICT_FALSE ((scaled_space == 0 && available_space != 0))
-      || (scaled_space >= TCP_WND_MAX))
-    tc->rcv_wscale = tcp_window_compute_scale (available_space);
+  ASSERT (tc->opt.mss < max_fifo);
 
-  wnd = clib_min (available_space, TCP_WND_MAX << tc->rcv_wscale);
-  tc->rcv_wnd = wnd;
+  if (available_space < tc->opt.mss && available_space < max_fifo / 8)
+    available_space = 0;
 
-  return wnd >> tc->rcv_wscale;
+  /*
+   * Use the above and what we know about what we've previously advertised
+   * to compute the new window
+   */
+  observed_wnd = tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
+
+  /* Bad. Thou shalt not shrink */
+  if (available_space < observed_wnd)
+    {
+      if (available_space == 0)
+	clib_warning ("Didn't shrink rcv window despite not having space");
+    }
+
+  tc->rcv_wnd = clib_min (available_space, TCP_WND_MAX << tc->rcv_wscale);
+
+  if (tc->rcv_wnd == 0)
+    {
+      tc->flags |= TCP_CONN_SENT_RCV_WND0;
+    }
+
+  return tc->rcv_wnd >> tc->rcv_wscale;
 }
 
 /**
@@ -225,7 +251,7 @@ tcp_options_write (u8 * data, tcp_options_t * opts)
 }
 
 always_inline int
-tcp_make_syn_options (tcp_options_t * opts, u32 initial_wnd)
+tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
 {
   u8 len = 0;
 
@@ -234,7 +260,7 @@ tcp_make_syn_options (tcp_options_t * opts, u32 initial_wnd)
   len += TCP_OPTION_LEN_MSS;
 
   opts->flags |= TCP_OPTS_FLAG_WSCALE;
-  opts->wscale = tcp_window_compute_scale (initial_wnd);
+  opts->wscale = wnd_scale;
   len += TCP_OPTION_LEN_WINDOW_SCALE;
 
   opts->flags |= TCP_OPTS_FLAG_TSTAMP;
@@ -327,8 +353,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
     case TCP_STATE_SYN_RCVD:
       return tcp_make_synack_options (tc, opts);
     case TCP_STATE_SYN_SENT:
-      return tcp_make_syn_options (opts,
-				   tcp_initial_window_to_advertise (tc));
+      return tcp_make_syn_options (opts, tc->rcv_wscale);
     default:
       clib_warning ("Not handled!");
       return 0;
@@ -732,7 +757,7 @@ tcp_send_syn (tcp_connection_t * tc)
 
   /* Make and write options */
   memset (&snd_opts, 0, sizeof (snd_opts));
-  tcp_opts_len = tcp_make_syn_options (&snd_opts, initial_wnd);
+  tcp_opts_len = tcp_make_syn_options (&snd_opts, tc->rcv_wscale);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->iss,
@@ -900,7 +925,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
 
   tcp_reuse_buffer (vm, b);
 
-  ASSERT (tc->state == TCP_STATE_ESTABLISHED);
+  ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
   ASSERT (max_bytes != 0);
 
   if (tcp_opts_sack_permitted (&tc->opt))
@@ -929,7 +954,6 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
 				       max_bytes);
   ASSERT (n_bytes != 0);
 
-  tc->snd_nxt += n_bytes;
   tcp_push_hdr_i (tc, b, tc->state);
 
   return n_bytes;
@@ -967,7 +991,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   tcp_get_free_buffer_index (tm, &bi);
   b = vlib_get_buffer (vm, bi);
 
-  if (tc->state == TCP_STATE_ESTABLISHED)
+  if (tc->state >= TCP_STATE_ESTABLISHED)
     {
       tcp_fastrecovery_off (tc);
 
@@ -977,6 +1001,12 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Figure out what and how many bytes we can send */
       snd_space = tcp_available_snd_space (tc);
       max_bytes = clib_min (tc->snd_mss, snd_space);
+
+      if (max_bytes == 0)
+	{
+	  clib_warning ("no wnd to retransmit");
+	  return;
+	}
       tcp_prepare_retransmit_segment (tc, b, max_bytes);
 
       tc->rtx_bytes += max_bytes;
@@ -996,7 +1026,11 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
       vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+
       tcp_push_hdr_i (tc, b, tc->state);
+
+      /* Account for the SYN */
+      tc->snd_nxt += 1;
     }
 
   if (!is_syn)
@@ -1163,8 +1197,8 @@ tcp46_output_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE
 	      (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
 	    {
+	      ASSERT (tc0->snt_dupacks > 0);
 	      tc0->snt_dupacks--;
-	      ASSERT (tc0->snt_dupacks >= 0);
 	      if (!tcp_session_has_ooo_data (tc0))
 		{
 		  error0 = TCP_ERROR_FILTERED_DUPACKS;

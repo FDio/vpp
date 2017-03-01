@@ -51,7 +51,7 @@ ip_is_local (ip46_address_t * ip46_address, u8 is_ip4)
       prefix.fp_proto = FIB_PROTOCOL_IP6;
     }
 
-  clib_memcpy (&prefix.fp_addr, ip46_address, sizeof (ip46_address));
+  clib_memcpy (&prefix.fp_addr, ip46_address, sizeof (ip46_address_t));
   fei = fib_table_lookup (0, &prefix);
   flags = fib_entry_get_flags (fei);
 
@@ -186,9 +186,7 @@ vnet_connect_i (u32 api_client_index, u32 api_context, session_type_t sst,
   /*
    * Not connecting to a local server. Create regular session
    */
-  stream_session_open (sst, ip46, port, app->index);
-
-  return 0;
+  return stream_session_open (sst, ip46, port, app->index);
 }
 
 /**

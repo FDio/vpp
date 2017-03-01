@@ -52,6 +52,8 @@ _(DISCONNECT_SOCK, disconnect_sock)                               	\
 _(DISCONNECT_SOCK_REPLY, disconnect_sock_reply)                        	\
 _(ACCEPT_SOCK_REPLY, accept_sock_reply)                           	\
 _(RESET_SOCK_REPLY, reset_sock_reply)                   		\
+_(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
+
 
 static int
 send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
@@ -146,7 +148,6 @@ send_session_connected_uri_callback (u32 api_client_index,
   mp = vl_msg_api_alloc (sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_URI_REPLY);
   mp->context = app->api_context;
-  mp->retval = is_fail;
   if (!is_fail)
     {
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
@@ -157,6 +158,7 @@ send_session_connected_uri_callback (u32 api_client_index,
       mp->session_type = s->session_type;
       mp->vpp_event_queue_address = (u64) vpp_queue;
       mp->client_event_queue_address = (u64) app->event_queue;
+      mp->retval = 0;
 
       session_manager_get_segment_info (s->server_segment_index, &seg_name,
 					&mp->segment_size);
@@ -164,12 +166,22 @@ send_session_connected_uri_callback (u32 api_client_index,
       if (mp->segment_name_length)
 	clib_memcpy (mp->segment_name, seg_name, mp->segment_name_length);
     }
+  else
+    {
+      mp->retval = VNET_API_ERROR_SESSION_CONNECT_FAIL;
+    }
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 
   /* Remove client if connect failed */
   if (is_fail)
-    application_del (app);
+    {
+      application_del (app);
+    }
+  else
+    {
+      s->session_state = SESSION_STATE_READY;
+    }
 
   return 0;
 }
@@ -432,6 +444,17 @@ api_session_not_valid (u32 session_index, u32 thread_index)
 }
 
 static void
+vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
+{
+  vl_api_session_enable_disable_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+
+  vnet_session_enable_disable (vm, mp->is_enable);
+  REPLY_MACRO (VL_API_SESSION_ENABLE_DISABLE_REPLY);
+}
+
+static void
 vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
 {
   vl_api_bind_uri_reply_t *rmp;
@@ -476,7 +499,6 @@ vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
       }
   }));
   /* *INDENT-ON* */
-
 }
 
 static void
@@ -493,7 +515,9 @@ vl_api_unbind_uri_t_handler (vl_api_unbind_uri_t * mp)
 static void
 vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 {
+  vl_api_connect_uri_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
+  int rv;
 
   a->uri = (char *) mp->uri;
   a->api_client_index = mp->client_index;
@@ -501,7 +525,19 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   a->options = mp->options;
   a->session_cb_vft = &uri_session_cb_vft;
   a->mp = mp;
-  vnet_connect_uri (a);
+
+  rv = vnet_connect_uri (a);
+
+  if (rv == 0 || rv == VNET_CONNECT_REDIRECTED)
+    return;
+
+  /* Got some error, relay it */
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_CONNECT_URI_REPLY, ({
+    rmp->retval = rv;
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -662,7 +698,9 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
 static void
 vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 {
+  vl_api_connect_sock_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
+  int rv;
 
   clib_memcpy (&a->tep.ip, mp->ip,
 	       (mp->is_ip4 ? sizeof (ip4_address_t) :
@@ -675,7 +713,18 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   a->api_context = mp->context;
   a->mp = mp;
 
-  vnet_connect (a);
+  rv = vnet_connect (a);
+
+  if (rv == 0 || rv == VNET_CONNECT_REDIRECTED)
+    return;
+
+  /* Got some error, relay it */
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_CONNECT_URI_REPLY, ({
+    rmp->retval = rv;
+  }));
+  /* *INDENT-ON* */
 }
 
 static void

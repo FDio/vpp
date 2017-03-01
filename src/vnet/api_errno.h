@@ -103,7 +103,8 @@ _(LISP_RLOC_LOCAL, -110, "RLOC address is local")                       \
 _(BFD_EAGAIN, -111, "BFD object cannot be manipulated at this time")	\
 _(INVALID_GPE_MODE, -112, "Invalid GPE mode")                           \
 _(LISP_GPE_ENTRIES_PRESENT, -113, "LISP GPE entries are present")       \
-_(ADDRESS_FOUND_FOR_INTERFACE, -114, "Address found for interface")
+_(ADDRESS_FOUND_FOR_INTERFACE, -114, "Address found for interface")	\
+_(SESSION_CONNECT_FAIL, -115, "Session failed to connect")
 
 typedef enum
 {

@@ -100,6 +100,7 @@ application_t *application_new (application_type_t type, session_type_t sst,
 				session_cb_vft_t * cb_fns);
 void application_del (application_t * app);
 application_t *application_get (u32 index);
+application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
 u32 application_get_index (application_t * app);
 

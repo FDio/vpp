@@ -60,7 +60,7 @@ format_stream_session (u8 * s, va_list * args)
     }
   else
     {
-      clib_warning ("Session in unknown state!");
+      clib_warning ("Session in state: %d!", ss->session_state);
     }
 
   vec_free (str);
@@ -77,6 +77,11 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   stream_session_t *pool;
   stream_session_t *s;
   u8 *str = 0;
+
+  if (!smm->is_enabled)
+    {
+      clib_error_return (0, "session layer is not enabled");
+    }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -126,11 +131,14 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (show_uri_command, static) =
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_session_command, static) =
 {
-.path = "show session",.short_help = "show session [verbose]",.function =
-    show_session_command_fn,};
-
+  .path = "show session",
+  .short_help = "show session [verbose]",
+  .function = show_session_command_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -141,6 +149,11 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 session_index = ~0;
   stream_session_t *pool, *session;
   application_t *server;
+
+  if (!smm->is_enabled)
+    {
+      clib_error_return (0, "session layer is not enabled");
+    }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -174,11 +187,43 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-VLIB_CLI_COMMAND (clear_uri_session_command, static) =
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (clear_session_command, static) =
 {
-.path = "clear session",.short_help =
-    "clear session thread <thread> session <index>",.function =
-    clear_session_command_fn,};
+  .path = "clear session",
+  .short_help = "clear session thread <thread> session <index>",
+  .function = clear_session_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
+			   vlib_cli_command_t * cmd)
+{
+  u8 is_en = 1;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	is_en = 1;
+      else if (unformat (input, "disable"))
+	is_en = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  return vnet_session_enable_disable (vm, is_en);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (session_enable_disable_command, static) =
+{
+  .path = "session",
+  .short_help = "session [enable|disable]",
+  .function = session_enable_disable_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

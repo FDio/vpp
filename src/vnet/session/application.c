@@ -154,6 +154,15 @@ application_get (u32 index)
   return pool_elt_at_index (app_pool, index);
 }
 
+application_t *
+application_get_if_valid (u32 index)
+{
+  if (pool_is_free_index (app_pool, index))
+    return 0;
+
+  return pool_elt_at_index (app_pool, index);
+}
+
 u32
 application_get_index (application_t * app)
 {
@@ -209,7 +218,7 @@ format_application_server (u8 * s, va_list * args)
 
   regp = vl_api_client_index_to_registration (srv->api_client_index);
   if (!regp)
-    server_name = format (0, "%s%c", regp->name, 0);
+    server_name = format (0, "builtin-%d%c", srv->index, 0);
   else
     server_name = regp->name;
 
@@ -269,10 +278,16 @@ static clib_error_t *
 show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		     vlib_cli_command_t * cmd)
 {
+  session_manager_main_t *smm = &session_manager_main;
   application_t *app;
   int do_server = 0;
   int do_client = 0;
   int verbose = 0;
+
+  if (!smm->is_enabled)
+    {
+      clib_error_return (0, "session layer is not enabled");
+    }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -323,16 +338,20 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
           /* *INDENT-ON* */
 	}
       else
-	vlib_cli_output (vm, "No active server bindings");
+	vlib_cli_output (vm, "No active client bindings");
     }
 
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_app_command, static) =
 {
-.path = "show app",.short_help =
-    "show app [server|client] [verbose]",.function = show_app_command_fn,};
+  .path = "show app",
+  .short_help = "show app [server|client] [verbose]",
+  .function = show_app_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

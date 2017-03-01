@@ -311,11 +311,11 @@ stream_session_half_open_lookup (session_manager_main_t * smm,
 }
 
 transport_connection_t *
-stream_session_lookup_transport4 (session_manager_main_t * smm,
-				  ip4_address_t * lcl, ip4_address_t * rmt,
+stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
 				  u16 lcl_port, u16 rmt_port, u8 proto,
 				  u32 my_thread_index)
 {
+  session_manager_main_t *smm = &session_manager_main;
   session_kv4_t kv4;
   stream_session_t *s;
   int rv;
@@ -345,11 +345,11 @@ stream_session_lookup_transport4 (session_manager_main_t * smm,
 }
 
 transport_connection_t *
-stream_session_lookup_transport6 (session_manager_main_t * smm,
-				  ip6_address_t * lcl, ip6_address_t * rmt,
+stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
 				  u16 lcl_port, u16 rmt_port, u8 proto,
 				  u32 my_thread_index)
 {
+  session_manager_main_t *smm = &session_manager_main;
   stream_session_t *s;
   session_kv6_t kv6;
   int rv;
@@ -554,7 +554,7 @@ session_manager_allocate_session_fifos (session_manager_main_t * smm,
 					u8 * added_a_segment)
 {
   svm_fifo_segment_private_t *fifo_segment;
-  u32 fifo_size, default_fifo_size = 8192 /* TODO config */ ;
+  u32 fifo_size, default_fifo_size = 128 << 10;	/* TODO config */
   int i;
 
   *added_a_segment = 0;
@@ -948,7 +948,7 @@ void
 connects_session_manager_init (session_manager_main_t * smm, u8 session_type)
 {
   session_manager_t *sm;
-  u32 connect_fifo_size = 8 << 10;	/* Config? */
+  u32 connect_fifo_size = 256 << 10;	/* Config? */
   u32 default_segment_size = 1 << 20;
 
   pool_get (smm->session_managers, sm);
@@ -1055,10 +1055,15 @@ stream_session_delete (stream_session_t * s)
   svm_fifo_segment_free_fifo (fifo_segment, s->server_rx_fifo);
   svm_fifo_segment_free_fifo (fifo_segment, s->server_tx_fifo);
 
-  /* Cleanup app if client */
-  app = application_get (s->app_index);
+  app = application_get_if_valid (s->app_index);
+
+  /* No app. A possibility: after disconnect application called unbind */
+  if (!app)
+    return;
+
   if (app->mode == APP_CLIENT)
     {
+      /* Cleanup app if client */
       application_del (app);
     }
   else if (app->mode == APP_SERVER)
@@ -1068,6 +1073,7 @@ stream_session_delete (stream_session_t * s)
       svm_fifo_t **fifos;
       u32 fifo_index;
 
+      /* For server, see if any segments can be removed */
       sm = session_manager_get (app->session_manager_index);
 
       /* Delete fifo */
@@ -1096,10 +1102,10 @@ stream_session_delete_notify (transport_connection_t * tc)
 {
   stream_session_t *s;
 
+  /* App might've been removed already */
   s = stream_session_get_if_valid (tc->s_index, tc->thread_index);
   if (!s)
     {
-      clib_warning ("Surprised!");
       return;
     }
   stream_session_delete (s);
@@ -1151,16 +1157,24 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   return 0;
 }
 
-void
+int
 stream_session_open (u8 sst, ip46_address_t * addr, u16 port_host_byte_order,
 		     u32 app_index)
 {
   transport_connection_t *tc;
   u32 tci;
   u64 value;
+  int rv;
 
   /* Ask transport to open connection */
-  tci = tp_vfts[sst].open (addr, port_host_byte_order);
+  rv = tp_vfts[sst].open (addr, port_host_byte_order);
+  if (rv < 0)
+    {
+      clib_warning ("Transport failed to open connection.");
+      return VNET_API_ERROR_SESSION_CONNECT_FAIL;
+    }
+
+  tci = rv;
 
   /* Get transport connection */
   tc = tp_vfts[sst].get_half_open (tci);
@@ -1170,6 +1184,8 @@ stream_session_open (u8 sst, ip46_address_t * addr, u16 port_host_byte_order,
 
   /* Add to the half-open lookup table */
   stream_session_half_open_table_add (sst, tc, value);
+
+  return 0;
 }
 
 /**
@@ -1216,15 +1232,12 @@ session_get_transport_vft (u8 type)
 }
 
 static clib_error_t *
-session_manager_main_init (vlib_main_t * vm)
+session_manager_main_enable (vlib_main_t * vm)
 {
-  u32 num_threads;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
   session_manager_main_t *smm = &session_manager_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
   int i;
-
-  smm->vlib_main = vm;
-  smm->vnet_main = vnet_get_main ();
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -1272,11 +1285,48 @@ session_manager_main_init (vlib_main_t * vm)
   for (i = 0; i < SESSION_N_TYPES; i++)
     smm->connect_manager_index[i] = INVALID_INDEX;
 
+  smm->is_enabled = 1;
+
   return 0;
 }
 
-VLIB_INIT_FUNCTION (session_manager_main_init);
+clib_error_t *
+vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
+{
+  if (is_en)
+    {
+      if (session_manager_main.is_enabled)
+	return 0;
 
+      vlib_node_set_state (vm, session_queue_node.index,
+			   VLIB_NODE_STATE_POLLING);
+
+      return session_manager_main_enable (vm);
+    }
+  else
+    {
+      session_manager_main.is_enabled = 0;
+      vlib_node_set_state (vm, session_queue_node.index,
+			   VLIB_NODE_STATE_DISABLED);
+    }
+
+  return 0;
+}
+
+
+clib_error_t *
+session_manager_main_init (vlib_main_t * vm)
+{
+  session_manager_main_t *smm = &session_manager_main;
+
+  smm->vlib_main = vm;
+  smm->vnet_main = vnet_get_main ();
+  smm->is_enabled = 0;
+
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (session_manager_main_init)
 /*
  * fd.io coding-style-patch-verification: ON
  *
