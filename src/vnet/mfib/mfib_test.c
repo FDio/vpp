@@ -20,6 +20,8 @@
 #include <vnet/mfib/mfib_signal.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_test.h>
+#include <vnet/fib/fib_table.h>
 
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/adj/adj_mcast.h>
@@ -201,8 +203,8 @@ mfib_test_validate_rep_v (const replicate_t *rep,
         if (DPO_RECEIVE != dt)
         {
             MFIB_TEST_REP((ai == dpo->dpoi_index),
-                          "bucket %d stacks on %U",
-                          bucket,
+                          "bucket %d [exp:%d] stacks on %U",
+                          bucket, ai,
                           format_dpo_id, dpo, 0);
         }
     }
@@ -734,6 +736,7 @@ mfib_test_i (fib_protocol_t PROTO,
     mfib_table_entry_update(fib_index,
                             pfx_s_g,
                             MFIB_SOURCE_API,
+                            MFIB_RPF_ID_NONE,
                             MFIB_ENTRY_FLAG_SIGNAL);
     MFIB_TEST(mfib_test_entry(mfei,
                               MFIB_ENTRY_FLAG_SIGNAL,
@@ -824,6 +827,7 @@ mfib_test_i (fib_protocol_t PROTO,
     mfib_table_entry_update(fib_index,
                             pfx_s_g,
                             MFIB_SOURCE_API,
+                            MFIB_RPF_ID_NONE,
                             (MFIB_ENTRY_FLAG_SIGNAL |
                              MFIB_ENTRY_FLAG_CONNECTED));
     MFIB_TEST(mfib_test_entry(mfei,
@@ -965,6 +969,7 @@ mfib_test_i (fib_protocol_t PROTO,
     mfib_table_entry_update(fib_index,
                             pfx_s_g,
                             MFIB_SOURCE_API,
+                            MFIB_RPF_ID_NONE,
                             MFIB_ENTRY_FLAG_NONE);
     mfei = mfib_table_lookup_exact_match(fib_index,
                                          pfx_s_g);
@@ -1074,6 +1079,117 @@ mfib_test_i (fib_protocol_t PROTO,
     dpo_reset(&td);
 
     /*
+     * A Multicast LSP. This a mLDP head-end
+     */
+    fib_node_index_t ai_mpls_10_10_10_1, lfei;
+    ip46_address_t nh_10_10_10_1 = {
+	.ip4 = {
+	    .as_u32 = clib_host_to_net_u32(0x0a0a0a01),
+	},
+    };
+    ai_mpls_10_10_10_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                             VNET_LINK_MPLS,
+                                             &nh_10_10_10_1,
+                                             tm->hw[0]->sw_if_index);
+
+    fib_prefix_t pfx_3500 = {
+	.fp_len = 21,
+	.fp_proto = FIB_PROTOCOL_MPLS,
+	.fp_label = 3500,
+	.fp_eos = MPLS_EOS,
+	.fp_payload_proto = DPO_PROTO_IP4,
+    };
+    fib_test_rep_bucket_t mc_0 = {
+        .type = FT_REP_LABEL_O_ADJ,
+	.label_o_adj = {
+	    .adj = ai_mpls_10_10_10_1,
+	    .label = 3300,
+	    .eos = MPLS_EOS,
+	},
+    };
+    mpls_label_t *l3300 = NULL;
+    vec_add1(l3300, 3300);
+
+    /*
+     * MPLS enable an interface so we get the MPLS table created
+     */
+    mpls_sw_interface_enable_disable(&mpls_main,
+                                     tm->hw[0]->sw_if_index,
+                                     1);
+
+    lfei = fib_table_entry_update_one_path(0, // default MPLS Table
+                                           &pfx_3500,
+                                           FIB_SOURCE_API,
+                                           FIB_ENTRY_FLAG_MULTICAST,
+                                           FIB_PROTOCOL_IP4,
+                                           &nh_10_10_10_1,
+                                           tm->hw[0]->sw_if_index,
+                                           ~0, // invalid fib index
+                                           1,
+                                           l3300,
+                                           FIB_ROUTE_PATH_FLAG_NONE);
+    MFIB_TEST(fib_test_validate_entry(lfei,
+                                      FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                      1,
+                                      &mc_0),
+              "3500 via replicate over 10.10.10.1");
+
+    /*
+     * An (S,G) that resolves via the mLDP head-end
+     */
+    fib_route_path_t path_via_mldp = {
+        .frp_proto = FIB_PROTOCOL_MPLS,
+        .frp_local_label = pfx_3500.fp_label,
+        .frp_eos = MPLS_EOS,
+        .frp_sw_if_index = 0xffffffff,
+        .frp_fib_index = 0,
+        .frp_weight = 1,
+        .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+    };
+    dpo_id_t mldp_dpo = DPO_INVALID;
+
+    fib_entry_contribute_forwarding(lfei,
+                                    FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                    &mldp_dpo);
+
+    mfei = mfib_table_entry_path_update(fib_index,
+                                        pfx_s_g,
+                                        MFIB_SOURCE_API,
+                                        &path_via_mldp,
+                                        MFIB_ITF_FLAG_FORWARD);
+
+    MFIB_TEST(mfib_test_entry(mfei,
+                              MFIB_ENTRY_FLAG_NONE,
+                              1,
+                              DPO_REPLICATE, mldp_dpo.dpoi_index),
+              "%U over-mLDP replicate OK",
+              format_mfib_prefix, pfx_s_g);
+
+    /*
+     * add a for-us path. this tests two types of non-attached paths on one entry
+     */
+    mfei = mfib_table_entry_path_update(fib_index,
+                                        pfx_s_g,
+                                        MFIB_SOURCE_API,
+                                        &path_for_us,
+                                        MFIB_ITF_FLAG_FORWARD);
+    MFIB_TEST(mfib_test_entry(mfei,
+                              MFIB_ENTRY_FLAG_NONE,
+                              2,
+                              DPO_REPLICATE, mldp_dpo.dpoi_index,
+                              DPO_RECEIVE, 0),
+              "%U mLDP+for-us replicate OK",
+              format_mfib_prefix, pfx_s_g);
+
+    mfib_table_entry_delete(fib_index,
+                            pfx_s_g,
+                            MFIB_SOURCE_API);
+    fib_table_entry_delete(0,
+                           &pfx_3500,
+                           FIB_SOURCE_API);
+    dpo_reset(&mldp_dpo);
+
+    /*
      * Unlock the table - it's the last lock so should be gone thereafter
      */
     mfib_table_unlock(fib_index, PROTO);
@@ -1085,6 +1201,13 @@ mfib_test_i (fib_protocol_t PROTO,
     adj_unlock(ai_1);
     adj_unlock(ai_2);
     adj_unlock(ai_3);
+
+    /*
+     * MPLS disable the interface
+     */
+    mpls_sw_interface_enable_disable(&mpls_main,
+                                     tm->hw[0]->sw_if_index,
+                                     0);
 
     /*
      * test we've leaked no resources

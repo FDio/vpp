@@ -81,9 +81,6 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 
 	    adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
-	    /* We should never rewrite a pkt using the MISS adjacency */
-	    ASSERT(adj_index0);
-
 	    adj0 = adj_get (adj_index0);
 
 	    /* Guess we are only writing on simple Ethernet header. */

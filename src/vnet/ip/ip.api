@@ -478,6 +478,7 @@ define ip_mroute_add_del
   u32 table_id;
   u32 entry_flags;
   u32 itf_flags;
+  u32 rpf_id;
   u16 grp_address_length;
   u8 create_vrf_if_needed;
   u8 is_add;
@@ -518,6 +519,8 @@ manual_endian manual_print define ip_mfib_details
 {
   u32 context;
   u32 table_id;
+  u32 entry_flags;
+  u32 rpf_id;
   u8  address_length;
   u8  grp_address[4];
   u8  src_address[4];

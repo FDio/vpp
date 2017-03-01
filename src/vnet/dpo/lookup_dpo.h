@@ -47,6 +47,19 @@ typedef enum lookup_table_t_ {
 }
 
 /**
+ * Switch to use the packet's source or destination address for lookup
+ */
+typedef enum lookup_cast_t_ {
+    LOOKUP_UNICAST,
+    LOOKUP_MULTICAST,
+} __attribute__ ((packed)) lookup_cast_t;
+
+#define LOOKUP_CASTS {                 \
+    [LOOKUP_UNICAST]   = "unicast",    \
+    [LOOKUP_MULTICAST] = "multicast",  \
+}
+
+/**
  * A representation of an MPLS label for imposition in the data-path
  */
 typedef struct lookup_dpo_t
@@ -74,6 +87,11 @@ typedef struct lookup_dpo_t
     lookup_table_t lkd_table;
 
     /**
+     * Unicast of rmulticast FIB lookup
+     */
+    lookup_cast_t lkd_cast;
+
+    /**
      * Number of locks
      */
     u16 lkd_locks;
@@ -81,11 +99,13 @@ typedef struct lookup_dpo_t
 
 extern void lookup_dpo_add_or_lock_w_fib_index(fib_node_index_t fib_index,
                                                dpo_proto_t proto,
+                                               lookup_cast_t cast,
                                                lookup_input_t input,
                                                lookup_table_t table,
                                                dpo_id_t *dpo);
 extern void lookup_dpo_add_or_lock_w_table_id(u32 table_id,
                                               dpo_proto_t proto,
+                                              lookup_cast_t cast,
                                               lookup_input_t input,
                                               lookup_table_t table,
                                               dpo_id_t *dpo);
