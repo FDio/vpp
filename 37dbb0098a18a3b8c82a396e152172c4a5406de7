@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_29c2ace9",
+        "filename": "MAINTAINERS",
+        "patchSetId": 3
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-03-01T01:39:48Z",
+      "side": 1,
+      "message": "Could we make it clear here that multiple M: are acceptable as is done below for multiple F: ?",
+      "revId": "37dbb0098a18a3b8c82a396e152172c4a5406de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8993e0f9",
+        "filename": "MAINTAINERS",
+        "patchSetId": 3
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-03-01T01:39:48Z",
+      "side": 1,
+      "message": "Missing the closing \u003e",
+      "revId": "37dbb0098a18a3b8c82a396e152172c4a5406de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6990b4ec",
+        "filename": "MAINTAINERS",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-03-01T01:39:48Z",
+      "side": 1,
+      "message": "Missing the closing \u003e",
+      "revId": "37dbb0098a18a3b8c82a396e152172c4a5406de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_49bdf867",
+        "filename": "MAINTAINERS",
+        "patchSetId": 3
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-03-01T01:39:48Z",
+      "side": 1,
+      "message": "As amusing as I find this, vpp-dev can\u0027t be added as a reviewer to a gerrit ;)",
+      "revId": "37dbb0098a18a3b8c82a396e152172c4a5406de7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
