@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/adj/adj.h>
+#include <vnet/adj/adj_mcast.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/fib/fib_walk.h>
 #include <vnet/ip/ip.h>
@@ -120,6 +120,59 @@ adj_mcast_update_rewrite (adj_index_t adj_index,
                                         vnet_get_main(),
                                         adj->rewrite_header.sw_if_index),
                                     rewrite);
+    /*
+     * set the fields corresponding to the mcast IP address rewrite
+     * The mask must be stored in network byte order, since the packet's
+     * IP address will also be in network order.
+     */
+    adj->rewrite_header.dst_mcast_offset = offset;
+    adj->rewrite_header.dst_mcast_mask = clib_host_to_net_u32(mask);
+}
+
+/**
+ * adj_mcast_midchain_update_rewrite
+ *
+ * Update the adjacency's rewrite string. A NULL string implies the
+ * rewirte is reset (i.e. when ARP/ND etnry is gone).
+ * NB: the adj being updated may be handling traffic in the DP.
+ */
+void
+adj_mcast_midchain_update_rewrite (adj_index_t adj_index,
+                                   adj_midchain_fixup_t fixup,
+                                   adj_flags_t flags,
+                                   u8 *rewrite,
+                                   u8 offset,
+                                   u32 mask)
+{
+    ip_adjacency_t *adj;
+
+    ASSERT(ADJ_INDEX_INVALID != adj_index);
+
+    adj = adj_get(adj_index);
+
+    /*
+     * one time only update. since we don't support chainging the tunnel
+     * src,dst, this is all we need.
+     */
+    ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_MCAST);
+    /*
+     * tunnels can always provide a rewrite.
+     */
+    ASSERT(NULL != rewrite);
+
+    adj_midchain_setup(adj_index, fixup, flags);
+
+    /*
+     * update the adj's rewrite string and build the arc
+     * from the rewrite node to the interface's TX node
+     */
+    adj_nbr_update_rewrite_internal(adj, IP_LOOKUP_NEXT_MCAST_MIDCHAIN,
+                                    adj_get_mcast_node(adj->ia_nh_proto),
+                                    vnet_tx_node_index_for_sw_interface(
+                                        vnet_get_main(),
+                                        adj->rewrite_header.sw_if_index),
+                                    rewrite);
+
     /*
      * set the fields corresponding to the mcast IP address rewrite
      * The mask must be stored in network byte order, since the packet's
@@ -260,6 +313,24 @@ adj_mcast_interface_delete (vnet_main_t * vnm,
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION(adj_mcast_interface_delete);
 
+/**
+ * @brief Walk the multicast Adjacencies on a given interface
+ */
+void
+adj_mcast_walk (u32 sw_if_index,
+                fib_protocol_t proto,
+                adj_walk_cb_t cb,
+                void *ctx)
+{
+    if (vec_len(adj_mcasts[proto]) > sw_if_index)
+    {
+        if (ADJ_INDEX_INVALID != adj_mcasts[proto][sw_if_index])
+        {
+            cb(adj_mcasts[proto][sw_if_index], ctx);
+        }
+    }
+}
+
 u8*
 format_adj_mcast (u8* s, va_list *ap)
 {
@@ -269,9 +340,33 @@ format_adj_mcast (u8* s, va_list *ap)
 
     s = format(s, "%U-mcast: ",
                format_fib_protocol, adj->ia_nh_proto);
+    if (adj->rewrite_header.flags & VNET_REWRITE_HAS_FEATURES)
+        s = format(s, "[features] ");
     s = format (s, "%U",
 		format_vnet_rewrite,
                 &adj->rewrite_header, sizeof (adj->rewrite_data), 0);
+
+    return (s);
+}
+
+u8*
+format_adj_mcast_midchain (u8* s, va_list *ap)
+{
+    index_t index = va_arg(*ap, index_t);
+    CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
+    vnet_main_t * vnm = vnet_get_main();
+    ip_adjacency_t * adj = adj_get(index);
+
+    s = format(s, "%U-mcast-midchain: ",
+               format_fib_protocol, adj->ia_nh_proto);
+    s = format (s, "%U",
+		format_vnet_rewrite,
+		vnm->vlib_main, &adj->rewrite_header,
+                sizeof (adj->rewrite_data), 0);
+    s = format (s, "\n%Ustacked-on:\n%U%U",
+		format_white_space, indent,
+		format_white_space, indent+2,
+		format_dpo_id, &adj->sub_type.midchain.next_dpo, indent+2);
 
     return (s);
 }
@@ -292,6 +387,11 @@ const static dpo_vft_t adj_mcast_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_mcast,
+};
+const static dpo_vft_t adj_mcast_midchain_dpo_vft = {
+    .dv_lock = adj_dpo_lock,
+    .dv_unlock = adj_dpo_unlock,
+    .dv_format = format_adj_mcast_midchain,
 };
 
 /**
@@ -316,6 +416,31 @@ const static char* const * const adj_mcast_nodes[DPO_PROTO_NUM] =
 {
     [DPO_PROTO_IP4]  = adj_mcast_ip4_nodes,
     [DPO_PROTO_IP6]  = adj_mcast_ip6_nodes,
+    [DPO_PROTO_MPLS] = NULL,
+};
+
+/**
+ * @brief The per-protocol VLIB graph nodes that are assigned to a mcast
+ *        object.
+ *
+ * this means that these graph nodes are ones from which a mcast is the
+ * parent object in the DPO-graph.
+ */
+const static char* const adj_mcast_midchain_ip4_nodes[] =
+{
+    "ip4-mcast-midchain",
+    NULL,
+};
+const static char* const adj_mcast_midchain_ip6_nodes[] =
+{
+    "ip6-mcast-midchain",
+    NULL,
+};
+
+const static char* const * const adj_mcast_midchain_nodes[DPO_PROTO_NUM] =
+{
+    [DPO_PROTO_IP4]  = adj_mcast_midchain_ip4_nodes,
+    [DPO_PROTO_IP6]  = adj_mcast_midchain_ip6_nodes,
     [DPO_PROTO_MPLS] = NULL,
 };
 
@@ -349,5 +474,10 @@ adj_mcast_db_size (void)
 void
 adj_mcast_module_init (void)
 {
-    dpo_register(DPO_ADJACENCY_MCAST, &adj_mcast_dpo_vft, adj_mcast_nodes);
+    dpo_register(DPO_ADJACENCY_MCAST,
+                 &adj_mcast_dpo_vft,
+                 adj_mcast_nodes);
+    dpo_register(DPO_ADJACENCY_MCAST_MIDCHAIN,
+                 &adj_mcast_midchain_dpo_vft,
+                 adj_mcast_midchain_nodes);
 }

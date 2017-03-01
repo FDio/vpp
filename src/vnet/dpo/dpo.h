@@ -108,12 +108,15 @@ typedef enum dpo_type_t_ {
     DPO_ADJACENCY_MIDCHAIN,
     DPO_ADJACENCY_GLEAN,
     DPO_ADJACENCY_MCAST,
+    DPO_ADJACENCY_MCAST_MIDCHAIN,
     DPO_RECEIVE,
     DPO_LOOKUP,
     DPO_LISP_CP,
     DPO_CLASSIFY,
     DPO_MPLS_LABEL,
+    DPO_MPLS_DISPOSITION,
     DPO_MFIB_ENTRY,
+    DPO_INTERFACE,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -129,6 +132,7 @@ typedef enum dpo_type_t_ {
     [DPO_ADJACENCY_MIDCHAIN] = "dpo-adjacency-midcahin",	\
     [DPO_ADJACENCY_GLEAN] = "dpo-glean",	\
     [DPO_ADJACENCY_MCAST] = "dpo-adj-mcast",	\
+    [DPO_ADJACENCY_MCAST_MIDCHAIN] = "dpo-adj-mcast-midchain",	\
     [DPO_RECEIVE] = "dpo-receive",	\
     [DPO_LOOKUP] = "dpo-lookup",	\
     [DPO_LOAD_BALANCE] = "dpo-load-balance",	\
@@ -136,7 +140,9 @@ typedef enum dpo_type_t_ {
     [DPO_LISP_CP] = "dpo-lisp-cp",	\
     [DPO_CLASSIFY] = "dpo-classify",	\
     [DPO_MPLS_LABEL] = "dpo-mpls-label", \
-    [DPO_MFIB_ENTRY] = "dpo-mfib_entry"	\
+    [DPO_MPLS_DISPOSITION] = "dpo-mpls-diposition", \
+    [DPO_MFIB_ENTRY] = "dpo-mfib_entry", \
+    [DPO_INTERFACE] = "dpo-interface"	\
 }
 
 /**

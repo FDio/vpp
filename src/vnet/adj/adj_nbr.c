@@ -195,8 +195,6 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
     adj->ia_link = link_type;
     adj->ia_nh_proto = nh_proto;
     adj->rewrite_header.sw_if_index = sw_if_index;
-    memset(&adj->sub_type.midchain.next_dpo, 0,
-           sizeof(adj->sub_type.midchain.next_dpo));
 
     adj_nbr_evaluate_feature (adj_get_index(adj));
     return (adj);

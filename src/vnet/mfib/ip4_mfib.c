@@ -72,6 +72,7 @@ ip4_create_mfib_with_table_id (u32 table_id)
         mfib_table_entry_update(mfib_table->mft_index,
                                 &prefix,
                                 MFIB_SOURCE_DEFAULT_ROUTE,
+                                MFIB_RPF_ID_NONE,
                                 MFIB_ENTRY_FLAG_DROP);
     }
 

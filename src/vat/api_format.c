@@ -16369,32 +16369,82 @@ api_netmap_delete (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_mpls_tunnel_details_t_handler
-  (vl_api_mpls_tunnel_details_t * mp)
+static void
+vl_api_mpls_fib_path_print (vat_main_t * vam, vl_api_fib_path2_t * fp)
+{
+  if (fp->afi == IP46_TYPE_IP6)
+    print (vam->ofp,
+	   "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+	   "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U",
+	   ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+	   fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+	   format_ip6_address, fp->next_hop);
+  else if (fp->afi == IP46_TYPE_IP4)
+    print (vam->ofp,
+	   "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
+	   "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U",
+	   ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
+	   fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
+	   format_ip4_address, fp->next_hop);
+}
+
+static void
+vl_api_mpls_fib_path_json_print (vat_json_node_t * node,
+				 vl_api_fib_path2_t * fp)
+{
+  struct in_addr ip4;
+  struct in6_addr ip6;
+
+  vat_json_object_add_uint (node, "weight", ntohl (fp->weight));
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (fp->sw_if_index));
+  vat_json_object_add_uint (node, "is_local", fp->is_local);
+  vat_json_object_add_uint (node, "is_drop", fp->is_drop);
+  vat_json_object_add_uint (node, "is_unreach", fp->is_unreach);
+  vat_json_object_add_uint (node, "is_prohibit", fp->is_prohibit);
+  vat_json_object_add_uint (node, "next_hop_afi", fp->afi);
+  if (fp->afi == IP46_TYPE_IP4)
+    {
+      clib_memcpy (&ip4, &fp->next_hop, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "next_hop", ip4);
+    }
+  else if (fp->afi == IP46_TYPE_IP6)
+    {
+      clib_memcpy (&ip6, &fp->next_hop, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "next_hop", ip6);
+    }
+}
+
+static void
+vl_api_mpls_tunnel_details_t_handler (vl_api_mpls_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  i32 len = mp->mt_next_hop_n_labels;
+  int count = ntohl (mp->mt_count);
+  vl_api_fib_path2_t *fp;
   i32 i;
 
-  print (vam->ofp, "[%d]: via %U %d labels ",
-	 mp->tunnel_index,
-	 format_ip4_address, mp->mt_next_hop,
-	 ntohl (mp->mt_next_hop_sw_if_index));
-  for (i = 0; i < len; i++)
+  print (vam->ofp, "[%d]: sw_if_index %d via:",
+	 ntohl (mp->mt_tunnel_index), ntohl (mp->mt_sw_if_index));
+  fp = mp->mt_paths;
+  for (i = 0; i < count; i++)
     {
-      print (vam->ofp, "%u ", ntohl (mp->mt_next_hop_out_labels[i]));
+      vl_api_mpls_fib_path_print (vam, fp);
+      fp++;
     }
+
   print (vam->ofp, "");
 }
 
-static void vl_api_mpls_tunnel_details_t_handler_json
-  (vl_api_mpls_tunnel_details_t * mp)
+#define vl_api_mpls_tunnel_details_t_endian vl_noop_handler
+#define vl_api_mpls_tunnel_details_t_print vl_noop_handler
+
+static void
+vl_api_mpls_tunnel_details_t_handler_json (vl_api_mpls_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;
-  struct in_addr ip4;
+  int count = ntohl (mp->mt_count);
+  vl_api_fib_path2_t *fp;
   i32 i;
-  i32 len = mp->mt_next_hop_n_labels;
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -16404,17 +16454,17 @@ static void vl_api_mpls_tunnel_details_t_handler_json
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
-  vat_json_object_add_uint (node, "tunnel_index", ntohl (mp->tunnel_index));
-  clib_memcpy (&ip4, &(mp->mt_next_hop), sizeof (ip4));
-  vat_json_object_add_ip4 (node, "next_hop", ip4);
-  vat_json_object_add_uint (node, "next_hop_sw_if_index",
-			    ntohl (mp->mt_next_hop_sw_if_index));
-  vat_json_object_add_uint (node, "l2_only", ntohl (mp->mt_l2_only));
-  vat_json_object_add_uint (node, "label_count", len);
-  for (i = 0; i < len; i++)
+  vat_json_object_add_uint (node, "tunnel_index",
+			    ntohl (mp->mt_tunnel_index));
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->mt_sw_if_index));
+
+  vat_json_object_add_uint (node, "l2_only", mp->mt_l2_only);
+
+  fp = mp->mt_paths;
+  for (i = 0; i < count; i++)
     {
-      vat_json_object_add_uint (node, "label",
-				ntohl (mp->mt_next_hop_out_labels[i]));
+      vl_api_mpls_fib_path_json_print (node, fp);
+      fp++;
     }
 }
 
@@ -16453,6 +16503,7 @@ api_mpls_tunnel_dump (vat_main_t * vam)
 #define vl_api_mpls_fib_details_t_endian vl_noop_handler
 #define vl_api_mpls_fib_details_t_print vl_noop_handler
 
+
 static void
 vl_api_mpls_fib_details_t_handler (vl_api_mpls_fib_details_t * mp)
 {
@@ -16467,20 +16518,7 @@ vl_api_mpls_fib_details_t_handler (vl_api_mpls_fib_details_t * mp)
   fp = mp->path;
   for (i = 0; i < count; i++)
     {
-      if (fp->afi == IP46_TYPE_IP6)
-	print (vam->ofp,
-	       "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
-	       "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U",
-	       ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
-	       fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
-	       format_ip6_address, fp->next_hop);
-      else if (fp->afi == IP46_TYPE_IP4)
-	print (vam->ofp,
-	       "  weight %d, sw_if_index %d, is_local %d, is_drop %d, "
-	       "is_unreach %d, is_prohitbit %d, afi %d, next_hop %U",
-	       ntohl (fp->weight), ntohl (fp->sw_if_index), fp->is_local,
-	       fp->is_drop, fp->is_unreach, fp->is_prohibit, fp->afi,
-	       format_ip4_address, fp->next_hop);
+      vl_api_mpls_fib_path_print (vam, fp);
       fp++;
     }
 }
@@ -16491,8 +16529,6 @@ static void vl_api_mpls_fib_details_t_handler_json
   vat_main_t *vam = &vat_main;
   int count = ntohl (mp->count);
   vat_json_node_t *node = NULL;
-  struct in_addr ip4;
-  struct in6_addr ip6;
   vl_api_fib_path2_t *fp;
   int i;
 
@@ -16511,23 +16547,8 @@ static void vl_api_mpls_fib_details_t_handler_json
   fp = mp->path;
   for (i = 0; i < count; i++)
     {
-      vat_json_object_add_uint (node, "weight", ntohl (fp->weight));
-      vat_json_object_add_uint (node, "sw_if_index", ntohl (fp->sw_if_index));
-      vat_json_object_add_uint (node, "is_local", fp->is_local);
-      vat_json_object_add_uint (node, "is_drop", fp->is_drop);
-      vat_json_object_add_uint (node, "is_unreach", fp->is_unreach);
-      vat_json_object_add_uint (node, "is_prohibit", fp->is_prohibit);
-      vat_json_object_add_uint (node, "next_hop_afi", fp->afi);
-      if (fp->afi == IP46_TYPE_IP4)
-	{
-	  clib_memcpy (&ip4, &fp->next_hop, sizeof (ip4));
-	  vat_json_object_add_ip4 (node, "next_hop", ip4);
-	}
-      else if (fp->afi == IP46_TYPE_IP6)
-	{
-	  clib_memcpy (&ip6, &fp->next_hop, sizeof (ip6));
-	  vat_json_object_add_ip6 (node, "next_hop", ip6);
-	}
+      vl_api_mpls_fib_path_json_print (node, fp);
+      fp++;
     }
 }
 

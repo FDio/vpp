@@ -562,7 +562,7 @@ VLIB_REGISTER_NODE (mpls_label_imposition_node) = {
     .format_trace = format_mpls_label_imposition_trace,
     .n_next_nodes = 1,
     .next_nodes = {
-        [0] = "error-drop",
+        [0] = "mpls-drop",
     }
 };
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_label_imposition_node,
@@ -584,7 +584,7 @@ VLIB_REGISTER_NODE (ip4_mpls_label_imposition_node) = {
     .format_trace = format_mpls_label_imposition_trace,
     .n_next_nodes = 1,
     .next_nodes = {
-        [0] = "error-drop",
+        [0] = "ip4-drop",
     }
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_imposition_node,
@@ -606,7 +606,7 @@ VLIB_REGISTER_NODE (ip6_mpls_label_imposition_node) = {
     .format_trace = format_mpls_label_imposition_trace,
     .n_next_nodes = 1,
     .next_nodes = {
-        [0] = "error-drop",
+        [0] = "ip6-drop",
     }
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_imposition_node,
