@@ -213,12 +213,15 @@ struct _session_manager_main
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn *session_rx_fns[SESSION_N_TYPES];
 
+  u8 is_enabled;
+
   /* Convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
 };
 
 extern session_manager_main_t session_manager_main;
+extern vlib_node_registration_t session_queue_node;
 
 /*
  * Session manager function
@@ -276,14 +279,12 @@ stream_session_t *stream_session_lookup6 (ip6_address_t * lcl,
 					  ip6_address_t * rmt, u16 lcl_port,
 					  u16 rmt_port, u8, u32 thread_index);
 transport_connection_t
-  * stream_session_lookup_transport4 (session_manager_main_t * smm,
-				      ip4_address_t * lcl,
+  * stream_session_lookup_transport4 (ip4_address_t * lcl,
 				      ip4_address_t * rmt, u16 lcl_port,
 				      u16 rmt_port, u8 proto,
 				      u32 thread_index);
 transport_connection_t
-  * stream_session_lookup_transport6 (session_manager_main_t * smm,
-				      ip6_address_t * lcl,
+  * stream_session_lookup_transport6 (ip6_address_t * lcl,
 				      ip6_address_t * rmt, u16 lcl_port,
 				      u16 rmt_port, u8 proto,
 				      u32 thread_index);
@@ -338,6 +339,14 @@ stream_session_max_enqueue (transport_connection_t * tc)
   return svm_fifo_max_enqueue (s->server_rx_fifo);
 }
 
+always_inline u32
+stream_session_fifo_size (transport_connection_t * tc)
+{
+  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  return s->server_rx_fifo->nitems;
+}
+
+
 int
 stream_session_enqueue_data (transport_connection_t * tc, u8 * data, u16 len,
 			     u8 queue_event);
@@ -356,8 +365,8 @@ void stream_session_reset_notify (transport_connection_t * tc);
 int
 stream_session_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 sst, u8 notify);
-void stream_session_open (u8 sst, ip46_address_t * addr,
-			  u16 port_host_byte_order, u32 api_client_index);
+int stream_session_open (u8 sst, ip46_address_t * addr,
+			 u16 port_host_byte_order, u32 api_client_index);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
 int
@@ -368,6 +377,8 @@ u8 *format_stream_session (u8 * s, va_list * args);
 
 void session_register_transport (u8 type, const transport_proto_vft_t * vft);
 transport_proto_vft_t *session_get_transport_vft (u8 type);
+
+clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
 #endif /* __included_session_h__ */
 
