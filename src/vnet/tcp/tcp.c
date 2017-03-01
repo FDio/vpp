@@ -217,6 +217,7 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
   return 0;
 }
 
+#define PORT_MASK ((1 << 16)- 1)
 /**
  * Allocate local port and add if successful add entry to local endpoint
  * table to mark the pair as used.
@@ -235,7 +236,7 @@ tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
   /* Start at random point or max */
   pool_get (tm->local_endpoints, tep);
   clib_memcpy (&tep->ip, ip, sizeof (*ip));
-  tep->port = random_u32 (&time_now) << 16;
+  tep->port = random_u32 (&time_now) % PORT_MASK;
   tep->port = tep->port < min ? max : tep->port;
 
   /* Search for first free slot */
@@ -360,7 +361,10 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   /* Allocate source port */
   lcl_port = tcp_allocate_local_port (tm, &lcl_addr);
   if (lcl_port < 1)
-    return -1;
+    {
+      clib_warning ("Failed to allocate src port");
+      return -1;
+    }
 
   /*
    * Create connection and send SYN

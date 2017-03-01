@@ -11,12 +11,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_PROGRAMS += uri_udp_test2 uri_tcp_test
+noinst_PROGRAMS += uri_udp_test uri_tcp_test
 
-uri_udp_test2_SOURCES = uri/uri_udp_test2.c			
-uri_udp_test2_LDADD = libvlibmemoryclient.la libvlibapi.la libsvm.la \
-	libvppinfra.la -lpthread -lm -lrt 
+uri_udp_test_SOURCES = uri/uri_udp_test.c
+uri_udp_test_LDADD = libvlibmemoryclient.la libvlibapi.la libsvm.la \
+	libvppinfra.la -lpthread -lm -lrt
 
 uri_tcp_test_SOURCES = uri/uri_tcp_test.c
 uri_tcp_test_LDADD = libvlibmemoryclient.la libvlibapi.la libsvm.la \
-	libvppinfra.la -lpthread -lm -lrt 
+	libvppinfra.la -lpthread -lm -lrt
