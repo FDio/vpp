@@ -88,6 +88,7 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
 					  (ip_prefix_version (dst_prefix) ==
 					   IP6 ? DPO_PROTO_IP6 :
 					   DPO_PROTO_IP4),
+					  LOOKUP_UNICAST,
 					  LOOKUP_INPUT_SRC_ADDR,
 					  LOOKUP_TABLE_FROM_CONFIG,
 					  &src_lkup_dpo);

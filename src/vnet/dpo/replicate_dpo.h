@@ -25,6 +25,7 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/fib_types.h>
+#include <vnet/mpls/mpls_types.h>
 
 /**
  * replicate main
@@ -119,6 +120,7 @@ extern replicate_t *replicate_pool;
 static inline replicate_t*
 replicate_get (index_t repi)
 {
+    repi &= ~MPLS_IS_REPLICATE;
     return (pool_elt_at_index(replicate_pool, repi));
 }
 

@@ -1360,7 +1360,7 @@ vnet_link_to_l3_proto (vnet_link_t link)
     case VNET_LINK_IP6:
       return (VNET_L3_PACKET_TYPE_IP6);
     case VNET_LINK_MPLS:
-      return (VNET_L3_PACKET_TYPE_MPLS_UNICAST);
+      return (VNET_L3_PACKET_TYPE_MPLS);
     case VNET_LINK_ARP:
       return (VNET_L3_PACKET_TYPE_ARP);
     case VNET_LINK_ETHERNET:

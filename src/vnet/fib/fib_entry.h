@@ -193,6 +193,11 @@ typedef enum fib_entry_attribute_t_ {
      */
     FIB_ENTRY_ATTRIBUTE_LOCAL,
     /**
+     * The prefix/address is a multicast prefix.
+     *  this aplies only to MPLS. IP multicast is handled by mfib
+     */
+    FIB_ENTRY_ATTRIBUTE_MULTICAST,
+    /**
      * The prefix/address exempted from loose uRPF check
      * To be used with caution
      */
@@ -200,7 +205,7 @@ typedef enum fib_entry_attribute_t_ {
     /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_MULTICAST,
 } fib_entry_attribute_t;
 
 /**
@@ -215,7 +220,8 @@ typedef enum fib_entry_attribute_t_ {
     [FIB_ENTRY_ATTRIBUTE_DROP]      = "drop",		\
     [FIB_ENTRY_ATTRIBUTE_EXCLUSIVE] = "exclusive",      \
     [FIB_ENTRY_ATTRIBUTE_LOCAL]     = "local",		\
-    [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt"   \
+    [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt",  \
+    [FIB_ENTRY_ATTRIBUTE_MULTICAST] = "multicast",	\
 }
 
 #define FOR_EACH_FIB_ATTRIBUTE(_item)			\
@@ -232,6 +238,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_LOCAL     = (1 << FIB_ENTRY_ATTRIBUTE_LOCAL),
     FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
+    FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
 } __attribute__((packed)) fib_entry_flag_t;
 
 /**
@@ -396,7 +403,7 @@ typedef struct fib_entry_t_ {
      *     paint the header straight on without the need to check the packet
      *     type to derive the EOS bit value.
      */
-    dpo_id_t fe_lb; // [FIB_FORW_CHAIN_MPLS_NUM];
+    dpo_id_t fe_lb;
     /**
      * Vector of source infos.
      * Most entries will only have 1 source. So we optimise for memory usage,
