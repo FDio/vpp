@@ -508,9 +508,9 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
     {
       /* Number of bytes in first copy segment */
       first_copy_bytes =
-	((nitems - f->head) < total_copy_bytes) ?
-	(nitems - f->head) : total_copy_bytes;
-      clib_memcpy (copy_here, &f->data[f->head], first_copy_bytes);
+	((nitems - f->head + offset) < total_copy_bytes) ?
+	(nitems - f->head + offset) : total_copy_bytes;
+      clib_memcpy (copy_here, &f->data[f->head + offset], first_copy_bytes);
 
       /* Number of bytes in second copy segment, if any */
       second_copy_bytes = total_copy_bytes - first_copy_bytes;

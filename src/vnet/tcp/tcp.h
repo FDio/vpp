@@ -30,7 +30,8 @@
 #define TCP_MAX_OPTION_SPACE 40
 
 #define TCP_DUPACK_THRESHOLD 3
-#define TCP_DEFAULT_RX_FIFO_SIZE 64 << 10
+#define TCP_MAX_RX_FIFO_SIZE 2 << 20
+#define TCP_IW_N_SEGMENTS 10
 
 /** TCP FSM state definitions as per RFC793. */
 #define foreach_tcp_fsm_state   \
@@ -590,7 +591,6 @@ vlib_buffer_push_tcp_net_order (vlib_buffer_t * b, u16 sp, u16 dp, u32 seq,
 /**
  * Push TCP header to buffer
  *
- * @param vm - vlib_main
  * @param b - buffer to write the header to
  * @param sp_net - source port net order
  * @param dp_net - destination port net order
