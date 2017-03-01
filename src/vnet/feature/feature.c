@@ -434,6 +434,7 @@ set_interface_features_command_fn (vlib_main_t * vm,
 done:
   vec_free (feature_name);
   vec_free (arc_name);
+  unformat_free (line_input);
   return error;
 }
 
