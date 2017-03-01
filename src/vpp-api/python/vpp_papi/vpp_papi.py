@@ -31,6 +31,20 @@ def vpp_atexit(self):
         eprint ('Cleaning up VPP on exit')
         self.disconnect()
 
+
+class Empty(object):
+    pass
+
+
+class FuncWrapper(object):
+    def __init__(self, func):
+        self._func = func
+        self.__name__ = func.__name__
+
+    def __call__(self, **kwargs):
+        return self._func(**kwargs)
+
+
 class VPP():
     """VPP interface.
 
@@ -309,9 +323,16 @@ class VPP():
         f.__doc__ = ", ".join(["%s %s" % (argtypes[k], k) for k in args.keys()])
         return f
 
+    @property
+    def api(self):
+        if not hasattr(self, "_api"):
+            raise Exception("Not connected, api definitions not available")
+        return self._api
+
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
+        self._api = Empty()
         for name, msgdef in self.messages.iteritems():
             if name in self.vpp_dictionary:
                 if self.messages[name]['crc'] != self.vpp_dictionary[name]['crc']:
@@ -322,7 +343,15 @@ class VPP():
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
                 multipart = True if name.find('_dump') > 0 else False
-                setattr(self, name, self.make_function(name, i, msgdef, multipart, async))
+                f = self.make_function(name, i, msgdef, multipart, async)
+                setattr(self._api, name, FuncWrapper(f))
+
+                # olf API stuff starts here - will be removed in 17.07
+                if hasattr(self, name):
+                    raise NameError(
+                        3, "Conflicting name in JSON definition: `%s'" % name)
+                setattr(self, name, f)
+                # old API stuff ends here
 
     def _write (self, buf):
         """Send a binary-packed message to VPP."""
