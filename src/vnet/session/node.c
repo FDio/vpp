@@ -104,9 +104,13 @@ session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   snd_space0 = transport_vft->send_space (tc0);
   snd_mss0 = transport_vft->send_mss (tc0);
 
+  /* Can't make any progress */
   if (snd_space0 == 0 || svm_fifo_max_dequeue (s0->server_tx_fifo) == 0
       || snd_mss0 == 0)
-    return 0;
+    {
+      vec_add1 (smm->evts_partially_read[thread_index], *e0);
+      return 0;
+    }
 
   ASSERT (e0->enqueue_length > 0);
 
@@ -143,7 +147,12 @@ session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (PREDICT_FALSE (n_bufs < 0.9 * VLIB_FRAME_SIZE))
 	    {
 	      /* Keep track of how much we've dequeued and exit */
-	      e0->enqueue_length -= max_len_to_snd0 - left_to_snd0;
+	      if (left_to_snd0 != max_len_to_snd0)
+		{
+		  e0->enqueue_length -= max_len_to_snd0 - left_to_snd0;
+		  vec_add1 (smm->evts_partially_read[thread_index], *e0);
+		}
+
 	      return -1;
 	    }
 
@@ -185,12 +194,13 @@ session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t0->server_thread_index = s0->thread_index;
 	    }
 
+	  /* *INDENT-OFF* */
 	  if (1)
 	    {
-	      ELOG_TYPE_DECLARE (e) =
-	      {
-	      .format = "evt-dequeue: id %d length %d",.format_args =
-		  "i4i4",};
+	      ELOG_TYPE_DECLARE (e) = {
+		  .format = "evt-dequeue: id %d length %d",
+		  .format_args = "i4i4",
+	      };
 	      struct
 	      {
 		u32 data[2];
@@ -199,6 +209,7 @@ session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ed->data[0] = e0->event_id;
 	      ed->data[1] = e0->enqueue_length;
 	    }
+	  /* *INDENT-ON* */
 
 	  len_to_deq0 = (left_to_snd0 < snd_mss0) ? left_to_snd0 : snd_mss0;
 
@@ -289,7 +300,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   session_fifo_event_t *my_fifo_events, *e;
-  u32 n_to_dequeue;
+  u32 n_to_dequeue, n_events;
   unix_shared_memory_queue_t *q;
   int n_tx_packets = 0;
   u32 my_thread_index = vm->cpu_index;
@@ -309,14 +320,16 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* min number of events we can dequeue without blocking */
   n_to_dequeue = q->cursize;
-  if (n_to_dequeue == 0)
-    return 0;
-
   my_fifo_events = smm->fifo_events[my_thread_index];
 
-  /* If we didn't manage to process previous events try going
+  if (n_to_dequeue == 0 && vec_len (my_fifo_events) == 0)
+    return 0;
+
+  /*
+   * If we didn't manage to process previous events try going
    * over them again without dequeuing new ones.
-   * XXX: Block senders to sessions that can't keep up */
+   */
+  /* XXX: Block senders to sessions that can't keep up */
   if (vec_len (my_fifo_events) >= 100)
     goto skip_dequeue;
 
@@ -338,8 +351,8 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   smm->fifo_events[my_thread_index] = my_fifo_events;
 
 skip_dequeue:
-
-  for (i = 0; i < n_to_dequeue; i++)
+  n_events = vec_len (my_fifo_events);
+  for (i = 0; i < n_events; i++)
     {
       svm_fifo_t *f0;		/* $$$ prefetch 1 ahead maybe */
       stream_session_t *s0;
@@ -354,8 +367,13 @@ skip_dequeue:
       /* $$$ add multiple event queues, per vpp worker thread */
       ASSERT (server_thread_index0 == my_thread_index);
 
-      s0 = pool_elt_at_index (smm->sessions[my_thread_index],
-			      server_session_index0);
+      s0 = stream_session_get_if_valid (server_session_index0,
+					my_thread_index);
+      if (!s0)
+	{
+	  clib_warning ("It's dead Jim!");
+	  continue;
+	}
 
       ASSERT (s0->thread_index == my_thread_index);
 
@@ -380,11 +398,11 @@ skip_dequeue:
 done:
 
   /* Couldn't process all events. Probably out of buffers */
-  if (PREDICT_FALSE (i < n_to_dequeue))
+  if (PREDICT_FALSE (i < n_events))
     {
       session_fifo_event_t *partially_read =
 	smm->evts_partially_read[my_thread_index];
-      vec_add (partially_read, &my_fifo_events[i], n_to_dequeue - i);
+      vec_add (partially_read, &my_fifo_events[i], n_events - i);
       vec_free (my_fifo_events);
       smm->fifo_events[my_thread_index] = partially_read;
       smm->evts_partially_read[my_thread_index] = 0;
@@ -413,8 +431,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .n_errors = ARRAY_LEN (session_queue_error_strings),
   .error_strings = session_queue_error_strings,
   .n_next_nodes = SESSION_QUEUE_N_NEXT,
-  /* .state = VLIB_NODE_STATE_DISABLED, enable on-demand? */
-  /* edit / add dispositions here */
+  .state = VLIB_NODE_STATE_DISABLED,
   .next_nodes =
   {
       [SESSION_QUEUE_NEXT_DROP] = "error-drop",

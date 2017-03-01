@@ -711,7 +711,7 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   if (tcp_opts_sack_permitted (&tc->opt))
     tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
 
-  new_snd_wnd = clib_net_to_host_u32 (th->window) << tc->snd_wscale;
+  new_snd_wnd = clib_net_to_host_u16 (th->window) << tc->snd_wscale;
 
   if (tcp_ack_is_dupack (tc, b, new_snd_wnd))
     {
@@ -1320,7 +1320,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Parse options */
 	  tcp_options_parse (tcp0, &new_tc0->opt);
-	  tcp_connection_init_vars (new_tc0);
 
 	  if (tcp_opts_tstamp (&new_tc0->opt))
 	    {
@@ -1331,10 +1330,12 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_opts_wscale (&new_tc0->opt))
 	    new_tc0->snd_wscale = new_tc0->opt.wscale;
 
-	  new_tc0->snd_wnd = clib_net_to_host_u32 (tcp0->window)
-	    << new_tc0->snd_wscale;
+	  /* No scaling */
+	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window);
 	  new_tc0->snd_wl1 = seq0;
 	  new_tc0->snd_wl2 = ack0;
+
+	  tcp_connection_init_vars (new_tc0);
 
 	  /* SYN-ACK: See if we can switch to ESTABLISHED state */
 	  if (tcp_ack (tcp0))
@@ -1344,6 +1345,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* TODO Dequeue acknowledged segments if we support Fast Open */
 	      new_tc0->snd_una = ack0;
 	      new_tc0->state = TCP_STATE_ESTABLISHED;
+
+	      /* Make sure las is initialized for the wnd computation */
+	      new_tc0->rcv_las = new_tc0->rcv_nxt;
 
 	      /* Notify app that we have connection */
 	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
@@ -1575,7 +1579,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Initialize session variables */
 	      tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
-	      tc0->snd_wnd = clib_net_to_host_u32 (tcp0->window)
+	      tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window)
 		<< tc0->opt.wscale;
 	      tc0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	      tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
@@ -1899,7 +1903,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  tcp_options_parse (th0, &child0->opt);
-	  tcp_connection_init_vars (child0);
 
 	  child0->irs = vnet_buffer (b0)->tcp.seq_number;
 	  child0->rcv_nxt = vnet_buffer (b0)->tcp.seq_number + 1;
@@ -1913,6 +1916,16 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      child0->tsval_recent_age = tcp_time_now ();
 	    }
 
+	  if (tcp_opts_wscale (&child0->opt))
+	    child0->snd_wscale = child0->opt.wscale;
+
+	  /* No scaling */
+	  child0->snd_wnd = clib_net_to_host_u16 (th0->window);
+	  child0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
+	  child0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
+
+	  tcp_connection_init_vars (child0);
+
 	  /* Reuse buffer to make syn-ack and send */
 	  tcp_make_synack (child0, b0);
 	  next0 = tcp_next_output (is_ip4);
@@ -1923,7 +1936,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	    }
 
-	  b0->error = error0 ? node->errors[error0] : 0;
+	  b0->error = node->errors[error0];
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -2069,7 +2082,6 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->cpu_index;
   tcp_main_t *tm = vnet_get_tcp_main ();
-  session_manager_main_t *ssm = vnet_get_session_manager_main ();
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -2109,26 +2121,26 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* lookup session */
 	      tc0 =
-		(tcp_connection_t *) stream_session_lookup_transport4 (ssm,
-								       &ip40->dst_address,
-								       &ip40->src_address,
-								       tcp0->dst_port,
-								       tcp0->src_port,
-								       SESSION_TYPE_IP4_TCP,
-								       my_thread_index);
+		(tcp_connection_t *)
+		stream_session_lookup_transport4 (&ip40->dst_address,
+						  &ip40->src_address,
+						  tcp0->dst_port,
+						  tcp0->src_port,
+						  SESSION_TYPE_IP4_TCP,
+						  my_thread_index);
 	    }
 	  else
 	    {
 	      ip60 = vlib_buffer_get_current (b0);
 	      tcp0 = ip6_next_header (ip60);
 	      tc0 =
-		(tcp_connection_t *) stream_session_lookup_transport6 (ssm,
-								       &ip60->src_address,
-								       &ip60->dst_address,
-								       tcp0->src_port,
-								       tcp0->dst_port,
-								       SESSION_TYPE_IP6_TCP,
-								       my_thread_index);
+		(tcp_connection_t *)
+		stream_session_lookup_transport6 (&ip60->src_address,
+						  &ip60->dst_address,
+						  tcp0->src_port,
+						  tcp0->dst_port,
+						  SESSION_TYPE_IP6_TCP,
+						  my_thread_index);
 	    }
 
 	  /* Session exists */
