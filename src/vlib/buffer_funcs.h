@@ -792,14 +792,22 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);
 
+  clib_memcpy (STRUCT_MARK_PTR (dst, template_start),
+	       STRUCT_MARK_PTR (src, template_start),
+	       STRUCT_OFFSET_OF (vlib_buffer_t, template_end) -
+	       STRUCT_OFFSET_OF (vlib_buffer_t, template_start));
+
+  /* Not in the first 16 octets. */
+  dst->n_add_refs = src->n_add_refs;
+
   /* Make sure it really worked. */
-#define _(f) dst->f = src->f
+#define _(f) ASSERT (dst->f == src->f);
   _(current_data);
   _(current_length);
   _(flags);
   _(free_list_index);
 #undef _
-  dst->total_length_not_including_first_buffer = 0;
+  ASSERT (dst->total_length_not_including_first_buffer == 0);
   ASSERT (dst->n_add_refs == 0);
 }
 
@@ -825,15 +833,30 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * dst0,
   /* Make sure buffer template is sane. */
   ASSERT (fl->index == fl->buffer_init_template.free_list_index);
 
+  clib_memcpy (STRUCT_MARK_PTR (dst0, template_start),
+	       STRUCT_MARK_PTR (src, template_start),
+	       STRUCT_OFFSET_OF (vlib_buffer_t, template_end) -
+	       STRUCT_OFFSET_OF (vlib_buffer_t, template_start));
+
+  clib_memcpy (STRUCT_MARK_PTR (dst1, template_start),
+	       STRUCT_MARK_PTR (src, template_start),
+	       STRUCT_OFFSET_OF (vlib_buffer_t, template_end) -
+	       STRUCT_OFFSET_OF (vlib_buffer_t, template_start));
+
+  /* Not in the first 16 octets. */
+  dst0->n_add_refs = src->n_add_refs;
+  dst1->n_add_refs = src->n_add_refs;
+
   /* Make sure it really worked. */
-#define _(f) dst0->f = src->f;  dst1->f = src->f
+#define _(f) ASSERT (dst0->f == src->f);  ASSERT( dst1->f == src->f)
   _(current_data);
   _(current_length);
   _(flags);
   _(free_list_index);
 #undef _
-  dst0->total_length_not_including_first_buffer = 0;
-  dst1->total_length_not_including_first_buffer = 0;
+
+  ASSERT (dst0->total_length_not_including_first_buffer == 0);
+  ASSERT (dst1->total_length_not_including_first_buffer == 0);
   ASSERT (dst0->n_add_refs == 0);
   ASSERT (dst1->n_add_refs == 0);
 }

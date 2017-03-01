@@ -61,6 +61,7 @@
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  STRUCT_MARK (template_start);
   /* Offset within data[] that we are currently processing.
      If negative current header points into predata area. */
   i16 current_data;  /**< signed offset in data[], pre_data[]
@@ -103,6 +104,7 @@ typedef struct
   /**< Only valid for first buffer in chain. Current length plus
      total length given here give total number of bytes in buffer chain.
   */
+    STRUCT_MARK (template_end);
 
   u32 next_buffer;   /**< Next buffer for this linked-list of buffers.
                         Only valid if VLIB_BUFFER_NEXT_PRESENT flag is set.
