@@ -7,6 +7,26 @@
 
 @page release_notes_1704 Release notes for VPP 17.04
 
+## API changes
+
+- Python API: To avoid conflicts between VPP API messages names and
+  the Python API binding function names, VPP API methods are put in a
+  separate proxy object.
+  https://gerrit.fd.io/r/#/c/5570/
+  The api methods are now referenced as:
+    vpp_handle = VPP(jsonfiles)
+    vpp_handle.connect(...)
+    vpp = vpp_handle.api
+    vpp.show_version()
+    vpp_handle.disconnect()
+
+  For backwards compatibility VPP API methods are left in the main
+  name space (VPP), but will be removed from 17.07.
+
+- create_loopback message to be replaced with create_loopback_instance
+  create_loopback will be removed from 17.07.
+  https://gerrit.fd.io/r/#/c/5572/
+
 @todo Release 17.04 needs release notes.
 
 @page release_notes_1701 Release notes for VPP 17.01
