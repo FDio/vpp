@@ -1,5 +1,4 @@
 import os
-import socket
 import fnmatch
 import time
 from hook import Hook
@@ -56,7 +55,7 @@ class VppPapiProvider(object):
             for filename in fnmatch.filter(filenames, '*.api.json'):
                 jsonfiles.append(os.path.join(root, filename))
 
-        self.papi = VPP(jsonfiles)
+        self.vpp = VPP(jsonfiles)
         self._events = deque()
 
     def __enter__(self):
@@ -124,12 +123,13 @@ class VppPapiProvider(object):
 
     def connect(self):
         """Connect the API to VPP"""
-        self.papi.connect(self.name, self.shm_prefix)
-        self.papi.register_event_callback(self)
+        self.vpp.connect(self.name, self.shm_prefix)
+        self.papi = self.vpp.api
+        self.vpp.register_event_callback(self)
 
     def disconnect(self):
         """Disconnect the API from VPP"""
-        self.papi.disconnect()
+        self.vpp.disconnect()
 
     def api(self, api_fn, api_args, expected_retval=0):
         """ Call API function and check it's return value.
@@ -190,7 +190,7 @@ class VppPapiProvider(object):
 
     def show_version(self):
         """ """
-        return self.papi.show_version()
+        return self.api(self.papi.show_version, {})
 
     def pg_create_interface(self, pg_index):
         """
