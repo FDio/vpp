@@ -346,7 +346,7 @@ adj_get_midchain_node (vnet_link_t link)
 static u8
 adj_midchain_get_feature_arc_index_for_link_type (const ip_adjacency_t *adj)
 {
-  u8 arc = (u8) ~0;
+    u8 arc = (u8) ~0;
     switch (adj->ia_link)
     {
     case VNET_LINK_IP4:
@@ -393,17 +393,14 @@ adj_nbr_midchain_get_tx_node (ip_adjacency_t *adj)
 }
 
 /**
- * adj_nbr_midchain_update_rewrite
+ * adj_midchain_setup
  *
- * Update the adjacency's rewrite string. A NULL string implies the
- * rewrite is reset (i.e. when ARP/ND etnry is gone).
- * NB: the adj being updated may be handling traffic in the DP.
+ * Setup the adj as a mid-chain
  */
 void
-adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
-				 adj_midchain_fixup_t fixup,
-				 adj_flags_t flags,
-				 u8 *rewrite)
+adj_midchain_setup (adj_index_t adj_index,
+                    adj_midchain_fixup_t fixup,
+                    adj_flags_t flags)
 {
     u32 feature_index, tx_node;
     ip_adjacency_t *adj;
@@ -412,16 +409,6 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     ASSERT(ADJ_INDEX_INVALID != adj_index);
 
     adj = adj_get(adj_index);
-
-    /*
-     * one time only update. since we don't support chainging the tunnel
-     * src,dst, this is all we need.
-     */
-    ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_ARP);
-    /*
-     * tunnels can always provide a rewrite.
-     */
-    ASSERT(NULL != rewrite);
 
     adj->sub_type.midchain.fixup_func = fixup;
     adj->ia_flags |= flags;
@@ -447,6 +434,38 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     dpo_stack_from_node(tx_node,
 			&adj->sub_type.midchain.next_dpo,
 			drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
+}
+
+/**
+ * adj_nbr_midchain_update_rewrite
+ *
+ * Update the adjacency's rewrite string. A NULL string implies the
+ * rewrite is reset (i.e. when ARP/ND etnry is gone).
+ * NB: the adj being updated may be handling traffic in the DP.
+ */
+void
+adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
+				 adj_midchain_fixup_t fixup,
+				 adj_flags_t flags,
+				 u8 *rewrite)
+{
+    ip_adjacency_t *adj;
+
+    ASSERT(ADJ_INDEX_INVALID != adj_index);
+
+    adj = adj_get(adj_index);
+
+    /*
+     * one time only update. since we don't support chainging the tunnel
+     * src,dst, this is all we need.
+     */
+    ASSERT(adj->lookup_next_index == IP_LOOKUP_NEXT_ARP);
+    /*
+     * tunnels can always provide a rewrite.
+     */
+    ASSERT(NULL != rewrite);
+
+    adj_midchain_setup(adj_index, fixup, flags);
 
     /*
      * update the rewirte with the workers paused.
@@ -454,7 +473,7 @@ adj_nbr_midchain_update_rewrite (adj_index_t adj_index,
     adj_nbr_update_rewrite_internal(adj,
 				    IP_LOOKUP_NEXT_MIDCHAIN,
 				    adj_get_midchain_node(adj->ia_link),
-				    tx_node,
+				    adj_nbr_midchain_get_tx_node(adj),
 				    rewrite);
 }
 
@@ -496,7 +515,8 @@ adj_nbr_midchain_stack (adj_index_t adj_index,
 
     adj = adj_get(adj_index);
 
-    ASSERT(IP_LOOKUP_NEXT_MIDCHAIN == adj->lookup_next_index);
+    ASSERT((IP_LOOKUP_NEXT_MIDCHAIN == adj->lookup_next_index) ||
+           (IP_LOOKUP_NEXT_MCAST_MIDCHAIN == adj->lookup_next_index));
 
     dpo_stack_from_node(adj_nbr_midchain_get_tx_node(adj),
 			&adj->sub_type.midchain.next_dpo,

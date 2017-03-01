@@ -883,6 +883,7 @@ dhcp6_proxy_set_server (ip46_address_t *addr,
          mfib_table_entry_update(rx_fib_index,
                                  &all_dhcp_servers,
                                  MFIB_SOURCE_DHCP,
+                                 MFIB_RPF_ID_NONE,
                                  MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
          mfib_table_lock(rx_fib_index, FIB_PROTOCOL_IP6);
      }

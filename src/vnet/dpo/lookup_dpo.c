@@ -21,8 +21,12 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/mpls_fib.h>
+#include <vnet/mfib/mfib_table.h>
+#include <vnet/mfib/ip4_mfib.h>
+#include <vnet/mfib/ip6_mfib.h>
 
 static const char *const lookup_input_names[] = LOOKUP_INPUTS;
+static const char *const lookup_cast_names[] = LOOKUP_CASTS;
 
 /**
  * @brief Enumeration of the lookup subtypes
@@ -31,6 +35,7 @@ typedef enum lookup_sub_type_t_
 {
     LOOKUP_SUB_TYPE_SRC,
     LOOKUP_SUB_TYPE_DST,
+    LOOKUP_SUB_TYPE_DST_MCAST,
     LOOKUP_SUB_TYPE_DST_TABLE_FROM_INTERFACE,
 } lookup_sub_type_t;
 #define LOOKUP_SUB_TYPE_NUM (LOOKUP_SUB_TYPE_DST_TABLE_FROM_INTERFACE+1)
@@ -67,6 +72,7 @@ lookup_dpo_get_index (lookup_dpo_t *lkd)
 static void
 lookup_dpo_add_or_lock_i (fib_node_index_t fib_index,
                           dpo_proto_t proto,
+                          lookup_cast_t cast,
                           lookup_input_t input,
                           lookup_table_t table_config,
                           dpo_id_t *dpo)
@@ -79,6 +85,7 @@ lookup_dpo_add_or_lock_i (fib_node_index_t fib_index,
     lkd->lkd_proto = proto;
     lkd->lkd_input = input;
     lkd->lkd_table = table_config;
+    lkd->lkd_cast  = cast;
 
     /*
      * use the input type to select the lookup sub-type
@@ -100,6 +107,10 @@ lookup_dpo_add_or_lock_i (fib_node_index_t fib_index,
             type = lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST];
             break;
         }
+        if (LOOKUP_MULTICAST == cast)
+        {
+            type = lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST_MCAST];
+        }
     }
 
     if (0 == type)
@@ -115,20 +126,29 @@ lookup_dpo_add_or_lock_i (fib_node_index_t fib_index,
 void
 lookup_dpo_add_or_lock_w_fib_index (fib_node_index_t fib_index,
                                     dpo_proto_t proto,
+                                    lookup_cast_t cast,
                                     lookup_input_t input,
                                     lookup_table_t table_config,
                                     dpo_id_t *dpo)
 {
     if (LOOKUP_TABLE_FROM_CONFIG == table_config)
     {
-	fib_table_lock(fib_index, dpo_proto_to_fib(proto));
+        if (LOOKUP_UNICAST == cast)
+        {
+            fib_table_lock(fib_index, dpo_proto_to_fib(proto));
+        }
+        else
+        {
+            mfib_table_lock(fib_index, dpo_proto_to_fib(proto));
+        }
     }
-    lookup_dpo_add_or_lock_i(fib_index, proto, input, table_config, dpo);
+    lookup_dpo_add_or_lock_i(fib_index, proto, cast, input, table_config, dpo);
 }
 
 void
 lookup_dpo_add_or_lock_w_table_id (u32 table_id,
                                    dpo_proto_t proto,
+                                   lookup_cast_t cast,
                                    lookup_input_t input,
                                    lookup_table_t table_config,
                                    dpo_id_t *dpo)
@@ -137,13 +157,22 @@ lookup_dpo_add_or_lock_w_table_id (u32 table_id,
 
     if (LOOKUP_TABLE_FROM_CONFIG == table_config)
     {
-	fib_index =
-	    fib_table_find_or_create_and_lock(dpo_proto_to_fib(proto),
-					      table_id);
+        if (LOOKUP_UNICAST == cast)
+        {
+            fib_index =
+                fib_table_find_or_create_and_lock(dpo_proto_to_fib(proto),
+                                                  table_id);
+        }
+        else
+        {
+            fib_index =
+                mfib_table_find_or_create_and_lock(dpo_proto_to_fib(proto),
+                                                   table_id);
+        }
     }
 
     ASSERT(FIB_NODE_INDEX_INVALID != fib_index);
-    lookup_dpo_add_or_lock_i(fib_index, proto, input, table_config, dpo);    
+    lookup_dpo_add_or_lock_i(fib_index, proto, cast, input, table_config, dpo);
 }
 
 u8*
@@ -156,16 +185,29 @@ format_lookup_dpo (u8 *s, va_list *args)
 
     if (LOOKUP_TABLE_FROM_INPUT_INTERFACE == lkd->lkd_table)
     {
-        s = format(s, "%s lookup in interface's %U table",
+        s = format(s, "%s,%s lookup in interface's %U table",
                    lookup_input_names[lkd->lkd_input],
+                   lookup_cast_names[lkd->lkd_cast],
                    format_dpo_proto, lkd->lkd_proto);
     }
     else
     {
-	s = format(s, "%s lookup in %U",
-		   lookup_input_names[lkd->lkd_input],
-		   format_fib_table_name, lkd->lkd_fib_index,
-		   dpo_proto_to_fib(lkd->lkd_proto));
+        if (LOOKUP_UNICAST == lkd->lkd_cast)
+        {
+            s = format(s, "%s,%s lookup in %U",
+                       lookup_input_names[lkd->lkd_input],
+                       lookup_cast_names[lkd->lkd_cast],
+                       format_fib_table_name, lkd->lkd_fib_index,
+                       dpo_proto_to_fib(lkd->lkd_proto));
+        }
+        else
+        {
+            s = format(s, "%s,%s lookup in %U",
+                       lookup_input_names[lkd->lkd_input],
+                       lookup_cast_names[lkd->lkd_cast],
+                       format_mfib_table_name, lkd->lkd_fib_index,
+                       dpo_proto_to_fib(lkd->lkd_proto));
+        }
     }
     return (s);
 }
@@ -193,8 +235,16 @@ lookup_dpo_unlock (dpo_id_t *dpo)
     {
         if (LOOKUP_TABLE_FROM_CONFIG == lkd->lkd_table)
         {
-	    fib_table_unlock(lkd->lkd_fib_index,
-			     dpo_proto_to_fib(lkd->lkd_proto));
+            if (LOOKUP_UNICAST == lkd->lkd_cast)
+            {
+                fib_table_unlock(lkd->lkd_fib_index,
+                                 dpo_proto_to_fib(lkd->lkd_proto));
+            }
+            else
+            {
+                mfib_table_unlock(lkd->lkd_fib_index,
+                                  dpo_proto_to_fib(lkd->lkd_proto));
+            }
         }
         pool_put(lookup_dpo_pool, lkd);
     }
@@ -1069,6 +1119,123 @@ VLIB_REGISTER_NODE (lookup_mpls_dst_itf_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_mpls_dst_itf_node, lookup_mpls_dst_itf)
 
+typedef enum lookup_ip_dst_mcast_next_t_ {
+    LOOKUP_IP_DST_MCAST_NEXT_RPF,
+    LOOKUP_IP_DST_MCAST_N_NEXT,
+} mfib_forward_lookup_next_t;
+
+always_inline uword
+lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
+                                vlib_node_runtime_t * node,
+                                vlib_frame_t * from_frame,
+                                int is_v4)
+{
+    u32 n_left_from, next_index, * from, * to_next;
+
+    from = vlib_frame_vector_args (from_frame);
+    n_left_from = from_frame->n_vectors;
+
+    next_index = LOOKUP_IP_DST_MCAST_NEXT_RPF;
+
+    while (n_left_from > 0)
+    {
+        u32 n_left_to_next;
+
+        vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
+
+        /* while (n_left_from >= 4 && n_left_to_next >= 2) */
+        /*   } */
+
+        while (n_left_from > 0 && n_left_to_next > 0)
+        {
+            u32 bi0, lkdi0, fib_index0,  next0;
+            const lookup_dpo_t * lkd0;
+            fib_node_index_t mfei0;
+            vlib_buffer_t * b0;
+
+            bi0 = from[0];
+            to_next[0] = bi0;
+            from += 1;
+            to_next += 1;
+            n_left_from -= 1;
+            n_left_to_next -= 1;
+
+            b0 = vlib_get_buffer (vm, bi0);
+
+            /* dst lookup was done by mpls lookup */
+            lkdi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
+            lkd0 = lookup_dpo_get(lkdi0);
+            fib_index0 = lkd0->lkd_fib_index;
+            next0 = LOOKUP_IP_DST_MCAST_NEXT_RPF;
+
+            if (is_v4)
+            {
+                ip4_header_t * ip0;
+
+                ip0 = vlib_buffer_get_current (b0);
+                mfei0 = ip4_mfib_table_lookup(ip4_mfib_get(fib_index0),
+                                              &ip0->src_address,
+                                              &ip0->dst_address,
+                                              64);
+                if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+                {
+                    lookup_trace_t *tr = vlib_add_trace (vm, node,
+                                                         b0, sizeof (*tr));
+                    tr->fib_index = fib_index0;
+                    tr->lbi = mfei0;
+                    tr->addr.ip4 = ip0->dst_address;
+                }
+            }
+            else
+            {
+                ip6_header_t * ip0;
+
+                ip0 = vlib_buffer_get_current (b0);
+                mfei0 = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index0),
+                                               &ip0->src_address,
+                                               &ip0->dst_address);
+                if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+                {
+                    lookup_trace_t *tr = vlib_add_trace (vm, node,
+                                                         b0, sizeof (*tr));
+                    tr->fib_index = fib_index0;
+                    tr->lbi = mfei0;
+                    tr->addr.ip6 = ip0->dst_address;
+                }
+            }
+
+            vnet_buffer (b0)->ip.adj_index[VLIB_TX] = mfei0;
+
+           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
+                                            n_left_to_next, bi0, next0);
+        }
+        vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+    return from_frame->n_vectors;
+}
+
+always_inline uword
+lookup_ip4_dst_mcast (vlib_main_t * vm,
+                      vlib_node_runtime_t * node,
+                      vlib_frame_t * from_frame)
+{
+    return (lookup_dpo_ip_dst_mcast_inline(vm, node, from_frame, 1));
+}
+
+VLIB_REGISTER_NODE (lookup_ip4_dst_mcast_node) = {
+    .function = lookup_ip4_dst_mcast,
+    .name = "lookup-ip4-dst-mcast",
+    .vector_size = sizeof (u32),
+
+    .format_trace = format_lookup_trace,
+    .n_next_nodes = LOOKUP_IP_DST_MCAST_N_NEXT,
+    .next_nodes = {
+        [LOOKUP_IP_DST_MCAST_NEXT_RPF] = "ip4-mfib-forward-rpf",
+    },
+};
+VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip4_dst_mcast_node,
+                              lookup_ip4_dst_mcast)
+
 static void
 lookup_dpo_mem_show (void)
 {
@@ -1129,6 +1296,22 @@ const static char* const * const lookup_dst_nodes[DPO_PROTO_NUM] =
     [DPO_PROTO_MPLS] = lookup_dst_mpls_nodes,
 };
 
+const static char* const lookup_dst_mcast_ip4_nodes[] =
+{
+    "lookup-ip4-dst-mcast",
+    NULL,
+};
+const static char* const lookup_dst_mcast_ip6_nodes[] =
+{
+    "lookup-ip6-dst-mcast",
+    NULL,
+};
+const static char* const * const lookup_dst_mcast_nodes[DPO_PROTO_NUM] =
+{
+    [DPO_PROTO_IP4]  = lookup_dst_mcast_ip4_nodes,
+    [DPO_PROTO_IP6]  = lookup_dst_mcast_ip6_nodes,
+};
+
 const static char* const lookup_dst_from_interface_ip4_nodes[] =
 {
     "lookup-ip4-dst-itf",
@@ -1168,6 +1351,8 @@ lookup_dpo_module_init (void)
         dpo_register_new_type(&lkd_vft, lookup_src_nodes);
     lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST] =
         dpo_register_new_type(&lkd_vft, lookup_dst_nodes);
+    lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST_MCAST] =
+        dpo_register_new_type(&lkd_vft, lookup_dst_mcast_nodes);
     lookup_dpo_sub_types[LOOKUP_SUB_TYPE_DST_TABLE_FROM_INTERFACE] =
         dpo_register_new_type(&lkd_vft, lookup_dst_from_interface_nodes);
 }

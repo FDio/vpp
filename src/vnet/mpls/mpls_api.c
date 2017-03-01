@@ -27,6 +27,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/fib/mpls_fib.h>
+#include <vnet/fib/fib_path_list.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -163,6 +164,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 			    dpo_proto_to_fib (pfx.fp_payload_proto),
 			    mp->mr_next_hop_table_id,
 			    mp->mr_create_table_if_needed,
+			    mp->mr_is_rpf_id,
 			    &fib_index, &next_hop_fib_index);
 
   if (0 != rv)
@@ -192,10 +194,13 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 				   0,	// mp->is_unreach,
 				   0,	// mp->is_prohibit,
 				   0,	// mp->is_local,
+				   mp->mr_is_multicast,
 				   mp->mr_is_classify,
 				   mp->mr_classify_table_index,
 				   mp->mr_is_resolve_host,
 				   mp->mr_is_resolve_attached,
+				   mp->mr_is_interface_rx,
+				   mp->mr_is_rpf_id,
 				   fib_index, &pfx,
 				   mp->mr_next_hop_proto_is_ip4,
 				   &nh, ntohl (mp->mr_next_hop_sw_if_index),
@@ -229,45 +234,53 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   int rv = 0;
   u32 tunnel_sw_if_index;
   int ii;
+  fib_route_path_t rpath, *rpaths = NULL;
+
+  memset (&rpath, 0, sizeof (rpath));
 
   stats_dslock_with_hint (1 /* release hint */ , 5 /* tag */ );
 
+  if (mp->mt_next_hop_proto_is_ip4)
+    {
+      rpath.frp_proto = FIB_PROTOCOL_IP4;
+      clib_memcpy (&rpath.frp_addr.ip4,
+		   mp->mt_next_hop, sizeof (rpath.frp_addr.ip4));
+    }
+  else
+    {
+      rpath.frp_proto = FIB_PROTOCOL_IP6;
+      clib_memcpy (&rpath.frp_addr.ip6,
+		   mp->mt_next_hop, sizeof (rpath.frp_addr.ip6));
+    }
+  rpath.frp_sw_if_index = ntohl (mp->mt_next_hop_sw_if_index);
+  rpath.frp_weight = 1;
+
   if (mp->mt_is_add)
     {
-      fib_route_path_t rpath, *rpaths = NULL;
-      mpls_label_t *label_stack = NULL;
-
-      memset (&rpath, 0, sizeof (rpath));
-
-      if (mp->mt_next_hop_proto_is_ip4)
-	{
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
-	  clib_memcpy (&rpath.frp_addr.ip4,
-		       mp->mt_next_hop, sizeof (rpath.frp_addr.ip4));
-	}
-      else
-	{
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
-	  clib_memcpy (&rpath.frp_addr.ip6,
-		       mp->mt_next_hop, sizeof (rpath.frp_addr.ip6));
-	}
-      rpath.frp_sw_if_index = ntohl (mp->mt_next_hop_sw_if_index);
-
       for (ii = 0; ii < mp->mt_next_hop_n_out_labels; ii++)
-	vec_add1 (label_stack, ntohl (mp->mt_next_hop_out_label_stack[ii]));
+	vec_add1 (rpath.frp_label_stack,
+		  ntohl (mp->mt_next_hop_out_label_stack[ii]));
+    }
 
-      vec_add1 (rpaths, rpath);
+  vec_add1 (rpaths, rpath);
 
-      vnet_mpls_tunnel_add (rpaths, label_stack,
-			    mp->mt_l2_only, &tunnel_sw_if_index);
-      vec_free (rpaths);
-      vec_free (label_stack);
+  tunnel_sw_if_index = ntohl (mp->mt_sw_if_index);
+
+  if (mp->mt_is_add)
+    {
+      if (~0 == tunnel_sw_if_index)
+	tunnel_sw_if_index = vnet_mpls_tunnel_create (mp->mt_l2_only,
+						      mp->mt_is_multicast);
+      vnet_mpls_tunnel_path_add (tunnel_sw_if_index, rpaths);
     }
   else
     {
       tunnel_sw_if_index = ntohl (mp->mt_sw_if_index);
-      vnet_mpls_tunnel_del (tunnel_sw_if_index);
+      if (!vnet_mpls_tunnel_path_remove (tunnel_sw_if_index, rpaths))
+	vnet_mpls_tunnel_del (tunnel_sw_if_index);
     }
+
+  vec_free (rpaths);
 
   stats_dsunlock ();
 
@@ -289,10 +302,12 @@ typedef struct mpls_tunnel_send_walk_ctx_t_
 static void
 send_mpls_tunnel_entry (u32 mti, void *arg)
 {
+  fib_route_path_encode_t *api_rpaths, *api_rpath;
   mpls_tunnel_send_walk_ctx_t *ctx;
   vl_api_mpls_tunnel_details_t *mp;
   const mpls_tunnel_t *mt;
-  u32 nlabels;
+  vl_api_fib_path2_t *fp;
+  u32 n;
 
   ctx = arg;
 
@@ -300,18 +315,34 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
     return;
 
   mt = mpls_tunnel_get (mti);
-  nlabels = vec_len (mt->mt_label_stack);
+  n = fib_path_list_get_n_paths (mt->mt_path_list);
 
-  mp = vl_msg_api_alloc (sizeof (*mp) + nlabels * sizeof (u32));
-  memset (mp, 0, sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) + n * sizeof (vl_api_fib_path2_t));
+  memset (mp, 0, sizeof (*mp) + n * sizeof (vl_api_fib_path2_t));
+
   mp->_vl_msg_id = ntohs (VL_API_MPLS_TUNNEL_DETAILS);
   mp->context = ctx->context;
 
-  mp->tunnel_index = ntohl (mti);
-  memcpy (mp->mt_next_hop_out_labels,
-	  mt->mt_label_stack, nlabels * sizeof (u32));
+  mp->mt_tunnel_index = ntohl (mti);
+  mp->mt_count = ntohl (n);
+
+  fib_path_list_walk (mt->mt_path_list, fib_path_encode, &api_rpaths);
+
+  fp = mp->mt_paths;
+  vec_foreach (api_rpath, api_rpaths)
+  {
+    memset (fp, 0, sizeof (*fp));
+
+    fp->weight = htonl (api_rpath->rpath.frp_weight);
+    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
+    copy_fib_next_hop (api_rpath, fp);
+    fp++;
+  }
 
   // FIXME
+  // memcpy (mp->mt_next_hop_out_labels,
+  //   mt->mt_label_stack, nlabels * sizeof (u32));
+
 
   vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
 }

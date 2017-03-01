@@ -622,6 +622,7 @@ class TestIPMcast(VppTestCase):
             (MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
              MRouteItfFlags.MFIB_ITF_FLAG_NEGATE_SIGNAL))
 
+        self.vapi.cli("clear trace")
         tx = self._mcast_connected_send_stream("232.1.1.1")
 
         signals = self.vapi.mfib_signal_dump()

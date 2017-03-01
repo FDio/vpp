@@ -291,7 +291,7 @@ mpls_setup_nodes (vlib_main_t * vm)
   rt->last_outer_fib_index = 0;
   rt->mpls_main = &mpls_main;
 
-  ethernet_register_input_type (vm, ETHERNET_TYPE_MPLS_UNICAST,
+  ethernet_register_input_type (vm, ETHERNET_TYPE_MPLS,
                                 mpls_input_node.index);
 }
 

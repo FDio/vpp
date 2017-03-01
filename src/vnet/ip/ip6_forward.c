@@ -2246,6 +2246,16 @@ ip6_midchain (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
+static uword
+ip6_mcast_midchain (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
+  else
+    return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_midchain_node) =
 {
@@ -2289,6 +2299,19 @@ VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast);
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
+{
+  .function = ip6_mcast_midchain,
+  .name = "ip6-mcast-midchain",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_rewrite_trace,
+  .sibling_of = "ip6-rewrite",
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_mcast_midchain_node, ip6_mcast_midchain);
 
 /*
  * Hop-by-Hop handling

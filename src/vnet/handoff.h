@@ -150,7 +150,7 @@ eth_get_sym_key (ethernet_header_t * h0)
 			ip->dst_address.as_u64[0] ^
 			ip->dst_address.as_u64[1] ^ ip->protocol);
     }
-  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST))
+  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS))
     {
       hash_key = mpls_get_key ((mpls_unicast_header_t *) (h0 + 1));
     }
@@ -179,8 +179,7 @@ eth_get_sym_key (ethernet_header_t * h0)
 		   ip->dst_address.as_u64[0] ^
 		   ip->dst_address.as_u64[1] ^ ip->protocol);
 	}
-      else if (outer->type ==
-	       clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST))
+      else if (outer->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS))
 	{
 	  hash_key = mpls_get_key ((mpls_unicast_header_t *) (outer + 1));
 	}
@@ -210,7 +209,7 @@ eth_get_key (ethernet_header_t * h0)
     {
       hash_key = ipv6_get_key ((ip6_header_t *) (h0 + 1));
     }
-  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST))
+  else if (h0->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS))
     {
       hash_key = mpls_get_key ((mpls_unicast_header_t *) (h0 + 1));
     }
@@ -230,8 +229,7 @@ eth_get_key (ethernet_header_t * h0)
 	{
 	  hash_key = ipv6_get_key ((ip6_header_t *) (outer + 1));
 	}
-      else if (outer->type ==
-	       clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST))
+      else if (outer->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS))
 	{
 	  hash_key = mpls_get_key ((mpls_unicast_header_t *) (outer + 1));
 	}

@@ -66,12 +66,13 @@ fib_prefix_from_ip46_addr (const ip46_address_t *addr,
 
 void
 fib_prefix_from_mpls_label (mpls_label_t label,
+                            mpls_eos_bit_t eos,
 			    fib_prefix_t *pfx)
 {
     pfx->fp_proto = FIB_PROTOCOL_MPLS;
     pfx->fp_len = 21;
     pfx->fp_label = label;
-    pfx->fp_eos = MPLS_NON_EOS;
+    pfx->fp_eos = eos;
 }
 
 int
@@ -194,17 +195,7 @@ fib_route_path_cmp (const fib_route_path_t *rpath1,
 
     if (0 != res) return (res);
 
-    if (~0 != rpath1->frp_sw_if_index &&
-        ~0 != rpath2->frp_sw_if_index)
-    {
-        res = vnet_sw_interface_compare(vnet_get_main(),
-                                        rpath1->frp_sw_if_index,
-                                        rpath2->frp_sw_if_index);
-    }
-    else
-    {
-        res = rpath1->frp_sw_if_index - rpath2->frp_sw_if_index;
-    }
+    res = (rpath1->frp_sw_if_index - rpath2->frp_sw_if_index);
 
     if (0 != res) return (res);
 
