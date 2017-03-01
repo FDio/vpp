@@ -52,7 +52,7 @@ always_inline int
 vlib_buffer_is_mpls (vlib_buffer_t * b)
 {
   ethernet_header_t *h = (ethernet_header_t *) vlib_buffer_get_current (b);
-  return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST));
+  return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS));
 }
 
 always_inline u32

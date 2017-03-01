@@ -1943,9 +1943,6 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
-	  /* We should never rewrite a pkt using the MISS adjacency */
-	  ASSERT (adj_index0 && adj_index1);
-
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
@@ -2111,9 +2108,6 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
-	  /* We should never rewrite a pkt using the MISS adjacency */
-	  ASSERT (adj_index0);
-
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 
 	  ip0 = vlib_buffer_get_current (p0);
@@ -2252,6 +2246,16 @@ ip6_midchain (vlib_main_t * vm,
     return ip6_rewrite_inline (vm, node, frame, 0, 1, 0);
 }
 
+static uword
+ip6_mcast_midchain (vlib_main_t * vm,
+		    vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (adj_are_counters_enabled ())
+    return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
+  else
+    return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_midchain_node) =
 {
@@ -2295,6 +2299,19 @@ VLIB_REGISTER_NODE (ip6_rewrite_mcast_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast);
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
+{
+  .function = ip6_mcast_midchain,
+  .name = "ip6-mcast-midchain",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_rewrite_trace,
+  .sibling_of = "ip6-rewrite",
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_mcast_midchain_node, ip6_mcast_midchain);
 
 /*
  * Hop-by-Hop handling

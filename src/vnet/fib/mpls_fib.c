@@ -164,6 +164,7 @@ mpls_fib_create_with_table_id (u32 table_id)
 
     lookup_dpo_add_or_lock_w_fib_index(0, // unused
                                        DPO_PROTO_IP4,
+                                       LOOKUP_UNICAST,
                                        LOOKUP_INPUT_DST_ADDR,
                                        LOOKUP_TABLE_FROM_INPUT_INTERFACE,
                                        &dpo);
@@ -178,6 +179,7 @@ mpls_fib_create_with_table_id (u32 table_id)
 
     lookup_dpo_add_or_lock_w_fib_index(0, //unsued
                                        DPO_PROTO_MPLS,
+                                       LOOKUP_UNICAST,
                                        LOOKUP_INPUT_DST_ADDR,
                                        LOOKUP_TABLE_FROM_INPUT_INTERFACE,
                                        &dpo);
@@ -196,6 +198,7 @@ mpls_fib_create_with_table_id (u32 table_id)
 
     lookup_dpo_add_or_lock_w_fib_index(0, //unused
                                        DPO_PROTO_IP6,
+                                       LOOKUP_UNICAST,
                                        LOOKUP_INPUT_DST_ADDR,
                                        LOOKUP_TABLE_FROM_INPUT_INTERFACE,
                                        &dpo);
@@ -209,6 +212,7 @@ mpls_fib_create_with_table_id (u32 table_id)
     prefix.fp_eos = MPLS_NON_EOS;
     lookup_dpo_add_or_lock_w_fib_index(0, // unsued
                                        DPO_PROTO_MPLS,
+                                       LOOKUP_UNICAST,
                                        LOOKUP_INPUT_DST_ADDR,
                                        LOOKUP_TABLE_FROM_INPUT_INTERFACE,
                                        &dpo);
@@ -317,8 +321,15 @@ mpls_fib_forwarding_table_update (mpls_fib_t *mf,
 {
     mpls_label_t key;
 
-    ASSERT(DPO_LOAD_BALANCE == dpo->dpoi_type);
-
+    ASSERT((DPO_LOAD_BALANCE == dpo->dpoi_type) ||
+           (DPO_REPLICATE == dpo->dpoi_type));
+    if (CLIB_DEBUG > 0)
+    {
+        if (DPO_REPLICATE == dpo->dpoi_type)
+            ASSERT(dpo->dpoi_index & MPLS_IS_REPLICATE);
+        if (DPO_LOAD_BALANCE == dpo->dpoi_type)
+            ASSERT(!(dpo->dpoi_index & MPLS_IS_REPLICATE));
+    }
     key = mpls_fib_entry_mk_key(label, eos);
 
     mf->mf_lbs[key] = dpo->dpoi_index;

@@ -55,15 +55,24 @@ class VppRoutePath(object):
             nh_table_id=0,
             labels=[],
             nh_via_label=MPLS_LABEL_INVALID,
-            is_ip6=0):
+            is_ip6=0,
+            rpf_id=0,
+            is_interface_rx=0):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
         self.nh_labels = labels
+        self.weight = 1
+        self.rpf_id = rpf_id
         if is_ip6:
             self.nh_addr = inet_pton(AF_INET6, nh_addr)
         else:
             self.nh_addr = inet_pton(AF_INET, nh_addr)
+        self.is_interface_rx = is_interface_rx
+        self.is_rpf_id = 0
+        if rpf_id != 0:
+            self.is_rpf_id = 1
+            self.nh_itf = rpf_id
 
 
 class VppMRoutePath(VppRoutePath):
@@ -176,13 +185,15 @@ class VppIpMRoute(VppObject):
     """
 
     def __init__(self, test, src_addr, grp_addr,
-                 grp_addr_len, e_flags, paths, table_id=0, is_ip6=0):
+                 grp_addr_len, e_flags, paths, table_id=0,
+                 rpf_id=0, is_ip6=0):
         self._test = test
         self.paths = paths
         self.grp_addr_len = grp_addr_len
         self.table_id = table_id
         self.e_flags = e_flags
         self.is_ip6 = is_ip6
+        self.rpf_id = rpf_id
 
         if is_ip6:
             self.grp_addr = inet_pton(AF_INET6, grp_addr)
@@ -199,6 +210,7 @@ class VppIpMRoute(VppObject):
                                               self.e_flags,
                                               path.nh_itf,
                                               path.nh_i_flags,
+                                              rpf_id=self.rpf_id,
                                               table_id=self.table_id,
                                               is_ipv6=self.is_ip6)
         self._test.registry.register(self, self._test.logger)
@@ -223,6 +235,18 @@ class VppIpMRoute(VppObject):
                                           self.e_flags,
                                           0xffffffff,
                                           0,
+                                          table_id=self.table_id,
+                                          is_ipv6=self.is_ip6)
+
+    def update_rpf_id(self, rpf_id):
+        self.rpf_id = rpf_id
+        self._test.vapi.ip_mroute_add_del(self.src_addr,
+                                          self.grp_addr,
+                                          self.grp_addr_len,
+                                          self.e_flags,
+                                          0xffffffff,
+                                          0,
+                                          rpf_id=self.rpf_id,
                                           table_id=self.table_id,
                                           is_ipv6=self.is_ip6)
 
@@ -342,14 +366,17 @@ class VppMplsRoute(VppObject):
     MPLS Route/LSP
     """
 
-    def __init__(self, test, local_label, eos_bit, paths, table_id=0):
+    def __init__(self, test, local_label, eos_bit, paths, table_id=0,
+                 is_multicast=0):
         self._test = test
         self.paths = paths
         self.local_label = local_label
         self.eos_bit = eos_bit
         self.table_id = table_id
+        self.is_multicast = is_multicast
 
     def add_vpp_config(self):
+        is_multipath = len(self.paths) > 1
         for path in self.paths:
             self._test.vapi.mpls_route_add_del(
                 self.local_label,
@@ -357,7 +384,11 @@ class VppMplsRoute(VppObject):
                 1,
                 path.nh_addr,
                 path.nh_itf,
+                is_multicast=self.is_multicast,
+                is_multipath=is_multipath,
                 table_id=self.table_id,
+                is_interface_rx=path.is_interface_rx,
+                is_rpf_id=path.is_rpf_id,
                 next_hop_out_label_stack=path.nh_labels,
                 next_hop_n_out_labels=len(
                     path.nh_labels),
@@ -372,6 +403,7 @@ class VppMplsRoute(VppObject):
                                                1,
                                                path.nh_addr,
                                                path.nh_itf,
+                                               is_rpf_id=path.is_rpf_id,
                                                table_id=self.table_id,
                                                is_add=0)
 

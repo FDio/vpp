@@ -115,7 +115,7 @@ ethernet_build_rewrite (vnet_main_t * vnm,
 #define _(a,b) case VNET_LINK_##a: type = ETHERNET_TYPE_##b; break
       _(IP4, IP4);
       _(IP6, IP6);
-      _(MPLS, MPLS_UNICAST);
+      _(MPLS, MPLS);
       _(ARP, ARP);
 #undef _
     default:

@@ -286,7 +286,15 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  rpath.frp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1(rpaths, rpath);
       }
-			 
+      else if (unformat (line_input, "rx-ip4 %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+      {
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+          rpath.frp_flags = FIB_ROUTE_PATH_INTF_RX;
+	  vec_add1(rpaths, rpath);
+      }
       else if (unformat (line_input, "via %U %U",
 			 unformat_ip6_address,
  			 &rpath.frp_addr.ip6,
@@ -512,10 +520,3 @@ mpls_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (mpls_init);
-
-mpls_main_t * mpls_get_main (vlib_main_t * vm)
-{
-  vlib_call_init_function (vm, mpls_init);
-  return &mpls_main;
-}
-

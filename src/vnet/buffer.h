@@ -130,6 +130,9 @@ typedef struct
 
 	  /* Rewrite length */
 	  u32 save_rewrite_length;
+
+	  /* MFIB RPF ID */
+	  u32 rpf_id;
 	};
 
 	/* ICMP */

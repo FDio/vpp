@@ -92,8 +92,12 @@ typedef enum
   /** This packets needs to go to ICMP error */
   IP_LOOKUP_NEXT_ICMP_ERROR,
 
-  /** Multicast Adjacency. */
+  /** Multicast Adjacency. An adjacency for sending mcast packets */
   IP_LOOKUP_NEXT_MCAST,
+
+  /** Multicast Midchain Adjacency. An Adjacency for sending macst packets
+   *  on a tunnel/virtual interface */
+  IP_LOOKUP_NEXT_MCAST_MIDCHAIN,
 
   IP_LOOKUP_N_NEXT,
 } ip_lookup_next_t;
@@ -121,6 +125,7 @@ typedef enum
     [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite",    		\
     [IP_LOOKUP_NEXT_MCAST] = "ip4-rewrite-mcast",	        \
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
+    [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip4-mcast-midchain",     \
     [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip4-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
 }
@@ -134,6 +139,7 @@ typedef enum
     [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",			\
     [IP_LOOKUP_NEXT_MCAST] = "ip6-rewrite-mcast",		\
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip6-midchain",			\
+    [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip6-mcast-midchain",     \
     [IP_LOOKUP_NEXT_LOAD_BALANCE] = "ip6-load-balance",		\
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
     [IP6_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
