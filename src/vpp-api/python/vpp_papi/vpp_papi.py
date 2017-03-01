@@ -15,21 +15,42 @@
 #
 
 from __future__ import print_function
-import sys, os, logging, collections, struct, json, threading, glob
+import sys
+import logging
+import collections
+import struct
+import json
+import threading
+import glob
 import atexit
-
-logging.basicConfig(level=logging.DEBUG)
 import vpp_api
+logging.basicConfig(level=logging.DEBUG)
+
 
 def eprint(*args, **kwargs):
     """Print critical diagnostics to stderr."""
     print(*args, file=sys.stderr, **kwargs)
 
+
 def vpp_atexit(self):
     """Clean up VPP connection on shutdown."""
     if self.connected:
-        eprint ('Cleaning up VPP on exit')
+        eprint('Cleaning up VPP on exit')
         self.disconnect()
+
+
+class Empty(object):
+    pass
+
+
+class FuncWrapper(object):
+    def __init__(self, func):
+        self._func = func
+        self.__name__ = func.__name__
+
+    def __call__(self, **kwargs):
+        return self._func(**kwargs)
+
 
 class VPP():
     """VPP interface.
@@ -43,7 +64,8 @@ class VPP():
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
-    def __init__(self, apifiles = None, testmode = False):
+
+    def __init__(self, apifiles=None, testmode=False):
         """Create a VPP API object.
 
         apifiles is a list of files containing API
@@ -76,7 +98,7 @@ class VPP():
 
                 for m in api['messages']:
                     self.add_message(m[0], m[1:])
-	self.apifiles = apifiles
+        self.apifiles = apifiles
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
@@ -87,14 +109,16 @@ class VPP():
 
     class ContextId(object):
         """Thread-safe provider of unique context IDs."""
+
         def __init__(self):
             self.context = 0
-	    self.lock = threading.Lock()
+            self.lock = threading.Lock()
+
         def __call__(self):
             """Get a new unique (or, at least, not recently used) context."""
-	    with self.lock:
-		self.context += 1
-		return self.context
+            with self.lock:
+                self.context += 1
+                return self.context
     get_context = ContextId()
 
     def status(self):
@@ -102,15 +126,15 @@ class VPP():
         print('Connected') if self.connected else print('Not Connected')
         print('Read API definitions from', ', '.join(self.apifiles))
 
-    def __struct (self, t, n = None, e = -1, vl = None):
+    def __struct(self, t, n=None, e=-1, vl=None):
         """Create a packing structure for a message."""
-        base_types = { 'u8' : 'B',
-                       'u16' : 'H',
-                       'u32' : 'I',
-                       'i32' : 'i',
-                       'u64' : 'Q',
-                       'f64' : 'd',
-                       }
+        base_types = {'u8': 'B',
+                      'u16': 'H',
+                      'u32': 'I',
+                      'i32': 'i',
+                      'u64': 'Q',
+                      'f64': 'd',
+                      }
         pack = None
         if t in base_types:
             pack = base_types[t]
@@ -143,7 +167,8 @@ class VPP():
                                        args))]
             elif e == 0:
                 # Old style VLA
-                raise NotImplementedError(1, 'No support for compound types ' + t)
+                raise NotImplementedError(
+                    1, 'No support for compound types ' + t)
             return lambda self, encode, buf, offset, args: (
                 self.__struct_type(encode, self.messages[t], buf, offset, args)
             )
@@ -165,7 +190,7 @@ class VPP():
             if k not in msgdef['args']:
                 raise ValueError(1, 'Invalid field-name in message call ' + k)
 
-        for k,v in msgdef['args'].iteritems():
+        for k, v in msgdef['args'].iteritems():
             off += size
             if k in kwargs:
                 if type(v) is list:
@@ -199,7 +224,6 @@ class VPP():
 
         return off + size - offset
 
-
     def __getitem__(self, name):
         if name in self.messages:
             return self.messages[name]
@@ -219,19 +243,19 @@ class VPP():
         res = []
         off = offset
         size = 0
-        for k,v in msgdef['args'].iteritems():
+        for k, v in msgdef['args'].iteritems():
             off += size
             if type(v) is list:
                 lst = []
-                if callable(v[1]): # compound type
+                if callable(v[1]):  # compound type
                     size = 0
-                    if v[0] in msgdef['args']: # vla
+                    if v[0] in msgdef['args']:  # vla
                         e = res[v[2]]
-                    else: # fixed array
+                    else:  # fixed array
                         e = v[0]
                     res.append(lst)
                     for i in range(e):
-                        (s,l) = v[1](self, False, buf, off + size, None)
+                        (s, l) = v[1](self, False, buf, off + size, None)
                         lst.append(l)
                         size += s
                     continue
@@ -253,7 +277,7 @@ class VPP():
                         size += v[1].size
             else:
                 if callable(v):
-                    (s,l) = v(self, False, buf, off, None)
+                    (s, l) = v(self, False, buf, off, None)
                     res.append(l)
                     size += s
                 else:
@@ -285,11 +309,11 @@ class VPP():
                 raise ValueError('Variable Length Array must be last: ' + name)
             args[field_name] = self.__struct(*f)
             argtypes[field_name] = field_type
-            if len(f) == 4: # Find offset to # elements field
+            if len(f) == 4:  # Find offset to # elements field
                 args[field_name].append(args.keys().index(f[3]) - i)
             fields.append(field_name)
         msg['return_tuple'] = collections.namedtuple(name, fields,
-                                                     rename = True)
+                                                     rename=True)
         self.messages[name] = msg
         self.messages[name]['args'] = args
         self.messages[name]['argtypes'] = argtypes
@@ -302,16 +326,23 @@ class VPP():
         if (async):
             f = lambda **kwargs: (self._call_vpp_async(i, msgdef, **kwargs))
         else:
-            f = lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+            f = lambda **kwargs: (self._call_vpp(i,
+                                                 msgdef, multipart, **kwargs))
         args = self.messages[name]['args']
         argtypes = self.messages[name]['argtypes']
         f.__name__ = str(name)
-        f.__doc__ = ", ".join(["%s %s" % (argtypes[k], k) for k in args.keys()])
+        f.__doc__ = ", ".join(["%s %s" % (argtypes[k], k)
+                               for k in args.keys()])
         return f
+
+    @property
+    def api(self):
+        return self._api
 
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
+        self._api = Empty()
         for name, msgdef in self.messages.iteritems():
             if name in self.vpp_dictionary:
                 if self.messages[name]['crc'] != self.vpp_dictionary[name]['crc']:
@@ -322,9 +353,17 @@ class VPP():
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
                 multipart = True if name.find('_dump') > 0 else False
-                setattr(self, name, self.make_function(name, i, msgdef, multipart, async))
+                f = self.make_function(name, i, msgdef, multipart, async)
+                setattr(self._api, name, FuncWrapper(f))
 
-    def _write (self, buf):
+                # olf API stuff starts here - will be removed in 17.07
+                if hasattr(self, name):
+                    raise NameError(
+                        3, "Conflicting name in JSON definition: `%s'" % name)
+                setattr(self, name, f)
+                # old API stuff ends here
+
+    def _write(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise IOError(1, 'Not connected')
@@ -337,13 +376,13 @@ class VPP():
 
         if not d:
             raise IOError(3, 'Cannot get VPP API dictionary')
-        for i,n in d:
-            name, crc =  n.rsplit('_', 1)
+        for i, n in d:
+            name, crc = n.rsplit('_', 1)
             crc = '0x' + crc
-            self.vpp_dictionary[name] = { 'id' : i, 'crc' : crc }
+            self.vpp_dictionary[name] = {'id': i, 'crc': crc}
             self.vpp_dictionary_maxid = max(self.vpp_dictionary_maxid, i)
 
-    def connect(self, name, chroot_prefix = None, async = False, rx_qlen = 32):
+    def connect(self, name, chroot_prefix=None, async=False, rx_qlen=32):
         """Attach to VPP.
 
         name - the name of the client.
@@ -353,10 +392,10 @@ class VPP():
         client and server.
         """
         msg_handler = self.msg_handler_sync if not async else self.msg_handler_async
-	if chroot_prefix is not None:
-	    rv = vpp_api.connect(name, msg_handler, rx_qlen, chroot_prefix)
+        if chroot_prefix is not None:
+            rv = vpp_api.connect(name, msg_handler, rx_qlen, chroot_prefix)
         else:
-	    rv = vpp_api.connect(name, msg_handler, rx_qlen)
+            rv = vpp_api.connect(name, msg_handler, rx_qlen)
 
         if rv != 0:
             raise IOError(2, 'Connect failed')
@@ -389,15 +428,15 @@ class VPP():
             result = self.results[context]
             ev = result['e']
 
-	timed_out = not ev.wait(self.timeout)
+        timed_out = not ev.wait(self.timeout)
 
-	if timed_out:
-	   raise IOError(3, 'Waiting for reply timed out')
-	else:
-	    with self.results_lock:
+        if timed_out:
+            raise IOError(3, 'Waiting for reply timed out')
+        else:
+            with self.results_lock:
                 result = self.results[context]
-		del self.results[context]
-		return result['r']
+                del self.results[context]
+                return result['r']
 
     def results_prepare(self, context, multi=False):
         """Prep for receiving a result in response to a request msg
@@ -444,8 +483,8 @@ class VPP():
 
         if context == 0:
             # No context -> async notification that we feed to the callback
-	    if self.event_callback:
-		self.event_callback(msgname, r)
+            if self.event_callback:
+                self.event_callback(msgname, r)
         else:
             # Context -> use the results structure (carefully) to find
             # who we're responding to and return the message to that
@@ -502,13 +541,13 @@ class VPP():
 
         msgname = type(r).__name__
 
-	if self.event_callback:
-	    self.event_callback(msgname, r)
+        if self.event_callback:
+            self.event_callback(msgname, r)
 
     def _control_ping(self, context):
         """Send a ping command."""
         self._call_vpp_async(self.control_ping_index,
-			     self.control_ping_msgdef,
+                             self.control_ping_msgdef,
                              context=context)
 
     def _call_vpp(self, i, msgdef, multipart, **kwargs):
@@ -530,7 +569,7 @@ class VPP():
         # We need a context if not supplied, in order to get the
         # response
         context = kwargs.get('context', self.get_context())
-	kwargs['context'] = context
+        kwargs['context'] = context
 
         # Set up to receive a response
         self.results_prepare(context, multi=multipart)
