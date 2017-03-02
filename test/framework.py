@@ -110,10 +110,6 @@ class VppTestCase(unittest.TestCase):
             return
         dl = d.lower()
         if dl == "core":
-            if resource.getrlimit(resource.RLIMIT_CORE)[0] <= 0:
-                # give a heads up if this is actually useless
-                print(colorize("WARNING: core size limit is set 0, core files "
-                               "will NOT be created", RED))
             cls.debug_core = True
         elif dl == "gdb":
             cls.debug_gdb = True
@@ -140,8 +136,17 @@ class VppTestCase(unittest.TestCase):
         debug_cli = ""
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:
             debug_cli = "cli-listen localhost:5002"
-        cls.vpp_cmdline = [cls.vpp_bin,
-                           "unix", "{", "nodaemon", debug_cli, "}",
+        coredump_size = None
+        try:
+            size = os.getenv("COREDUMP_SIZE")
+            if size is not None:
+                coredump_size = "coredump-size %s" % size
+        except:
+            pass
+        if coredump_size is None:
+            coredump_size = "coredump-size unlimited"
+        cls.vpp_cmdline = [cls.vpp_bin, "unix",
+                           "{", "nodaemon", debug_cli, coredump_size, "}",
                            "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}"]
         if cls.plugin_path is not None:
