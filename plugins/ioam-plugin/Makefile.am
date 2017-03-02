@@ -215,7 +215,7 @@ install-data-hook:
 # Java code generation
 #
 jvpp_registry_root = ../../vpp-api/java
-jvpp_registry_version = 17.01
+jvpp_registry_version = 17.01.1
 jioam_trace_jarfile = jvpp-ioam-trace-$(PACKAGE_VERSION).jar
 jvpp_trace_package_dir = io/fd/vpp/jvpp/ioamtrace
 jvpp_root = ioam/jvpp

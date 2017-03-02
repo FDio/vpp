@@ -1,8 +1,17 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_17011
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_17011 Release notes for VPP 17.01.1
+
+This is bug fix release.
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
 
 @page release_notes_1701 Release notes for VPP 17.01
 
