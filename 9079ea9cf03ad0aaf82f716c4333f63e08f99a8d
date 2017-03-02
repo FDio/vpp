@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_df8876e9",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1190,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-02T07:46:31Z",
+      "side": 1,
+      "message": "The delta is only updated during barrier release. Isn\u0027it an issue ?\nCould there be some very long time without any worker thread barrier ?",
+      "range": {
+        "startLine": 1190,
+        "startChar": 2,
+        "endLine": 1190,
+        "endChar": 68
+      },
+      "revId": "9079ea9cf03ad0aaf82f716c4333f63e08f99a8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_bf6daa34",
+        "filename": "src/vppinfra/time.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-02T07:46:31Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be a f64 ? Or this would provide only second granularity.\nWhereas the granularity should be smaller than the vhost coalescing delay.",
+      "range": {
+        "startLine": 70,
+        "startChar": 2,
+        "endLine": 70,
+        "endChar": 12
+      },
+      "revId": "9079ea9cf03ad0aaf82f716c4333f63e08f99a8d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
