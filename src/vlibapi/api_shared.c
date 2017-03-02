@@ -890,6 +890,9 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
       msg += size;
     }
 
+  if (which == REPLAY)
+    am->replay_in_progress = 1;
+
   for (; i <= last_index; i++)
     {
       trace_cfg_t *cfgp;
@@ -914,6 +917,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	  vlib_cli_output (vm, "Ugh: msg id %d no trace config\n", msg_id);
 	  munmap (hp, file_size);
 	  vec_free (tmpbuf);
+	  am->replay_in_progress = 0;
 	  return;
 	}
 
@@ -937,6 +941,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 	      vlib_cli_output (vm, "Ugh: msg id %d no endian swap\n", msg_id);
 	      munmap (hp, file_size);
 	      vec_free (tmpbuf);
+	      am->replay_in_progress = 0;
 	      return;
 	    }
 	  endian_fp = am->msg_endian_handlers[msg_id];
@@ -1038,6 +1043,7 @@ vl_msg_api_process_file (vlib_main_t * vm, u8 * filename,
 
   munmap (hp, file_size);
   vec_free (tmpbuf);
+  am->replay_in_progress = 0;
 }
 
 u8 *
