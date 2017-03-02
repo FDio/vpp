@@ -94,6 +94,7 @@ l2output_main_t l2output_main;
 
 /* Mappings from feature ID to graph node name */
 #define foreach_l2output_feat \
+ _(OUTPUT,            "interface-output")           \
  _(SPAN,              "feature-bitmap-drop")        \
  _(CFM,               "feature-bitmap-drop")        \
  _(QOS,               "feature-bitmap-drop")        \
@@ -217,9 +218,21 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 		    vlib_buffer_t * b0,
 		    u32 sw_if_index, u32 feature_bitmap, u32 * next0)
 {
-  if (feature_bitmap)
+  /*
+   * The output feature bitmap always have at least the output feature bit set
+   * for a normal L2 interface (or all 0's if the interface is changed from L2
+   * to L3 mode). So if next_nodes specified is that from the l2-output node and
+   * the bitmap is all clear except output feature bit, we know there is no more
+   * feature and will fall through to output packet. If next_nodes is from a L2
+   * output feature node (and not l2-output), we always want to get the node for
+   * the next L2 output feature, including the last feature being interface-
+   * output node to output packet.
+   */
+  if ((next_nodes != &l2output_main.next_nodes)
+      || ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
     {
       /* There are some features to execute */
+      ASSERT (feature_bitmap != 0);
 
       /* Save bitmap for the next feature graph nodes */
       vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
@@ -228,6 +241,33 @@ l2_output_dispatch (vlib_main_t * vlib_main,
       *next0 =
 	feat_bitmap_get_next_node_index (next_nodes->feat_next_node_index,
 					 feature_bitmap);
+      if (PREDICT_FALSE (*next0 == 0))
+	{
+	  /*
+	   * Before dropping the packet, let's verify that the mapping we have just
+	   * used was initialized properly. We do it by checking the node index slated for the OUTPUT feature
+	   * position - if that one is zero, then we definitely need to initialize the structure
+	   * and get the correct next0. As a precaution, in strange case that even after initializing
+	   * the verdict is still to drop the packet, do not print the warning.
+	   */
+	  u32 interface_output_node_index =
+	    next_nodes->feat_next_node_index[L2OUTPUT_FEAT_OUTPUT_BIT];
+	  if (PREDICT_FALSE (interface_output_node_index == 0))
+	    {
+	      feat_bitmap_init_next_nodes (vlib_main, node->node_index,
+					   L2OUTPUT_N_FEAT,
+					   l2output_get_feat_names (),
+					   next_nodes->feat_next_node_index);
+	      *next0 =
+		feat_bitmap_get_next_node_index
+		(next_nodes->feat_next_node_index, feature_bitmap);
+	      /* If we now got a non-zero value, complain about previously uninitialized data structure. */
+	      if (*next0)
+		clib_warning
+		  ("node index %d attempted to use uninitialized feature list, fixed up.",
+		   node->node_index);
+	    }
+	}
     }
   else
     {
