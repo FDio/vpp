@@ -493,7 +493,7 @@ l2_output_classify_init (vlib_main_t * vm)
 			       l2_output_classify_node.index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
-			       cm->feat_next_node_index);
+			       cm->next_nodes.feat_next_node_index);
   rt->l2cm = cm;
   rt->vcm = cm->vnet_classify_main;
 

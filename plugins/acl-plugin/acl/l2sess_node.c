@@ -531,8 +531,6 @@ l2sess_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2sess_next_t next_index;
   u32 pkts_swapped = 0;
-  u32 cached_sw_if_index = (u32) ~ 0;
-  u32 cached_next_index = (u32) ~ 0;
   u32 feature_bitmap0;
   u32 trace_flags0;
 
@@ -584,11 +582,9 @@ l2sess_node_fn (vlib_main_t * vm,
 	    int node_is_out = -1;
 	    CLIB_UNUSED (int node_is_ip6) = -1;
 	    CLIB_UNUSED (int node_is_track) = -1;
-	    u32 node_index = 0;
 	    u32 session_tables[2] = { ~0, ~0 };
 	    u32 session_nexts[2] = { ~0, ~0 };
-	    l2_output_next_nodes_st *next_nodes = 0;
-	    u32 *input_feat_next_node_index;
+	    u32 *feat_next_node_index;
 	    u8 l4_proto;
 	    u64 now = clib_cpu_time_now ();
 
@@ -602,9 +598,7 @@ if(node_var.index == node->node_index)                                   \
     node_is_out = is_out;                                                \
     node_is_ip6 = is_ip6;                                                \
     node_is_track = is_track;                                            \
-    node_index = node_var.index;                                         \
-    next_nodes = &sm->node_var ## _next_nodes;                           \
-    input_feat_next_node_index = sm->node_var ## _input_next_node_index; \
+    feat_next_node_index = sm->node_var ## _feat_next_node_index; \
   }
 	    foreach_l2sess_node
 #undef _
@@ -715,38 +709,8 @@ if(node_var.index == node->node_index)                                   \
 		check_idle_sessions (sm, sw_if_index0, now);
 	      }
 
-	    if (node_is_out)
-	      {
-		if (feature_bitmap0)
-		  {
-		    trace_flags0 |= 0x10;
-		  }
-		if (sw_if_index0 == cached_sw_if_index)
-		  {
-		    trace_flags0 |= 0x20;
-		  }
-		l2_output_dispatch (sm->vlib_main,
-				    sm->vnet_main,
-				    node,
-				    node_index,
-				    &cached_sw_if_index,
-				    &cached_next_index,
-				    next_nodes,
-				    b0, sw_if_index0, feature_bitmap0,
-				    &next0);
-		trace_flags0 |= 2;
-
-	      }
-	    else
-	      {
-		next0 =
-		  feat_bitmap_get_next_node_index (input_feat_next_node_index,
+	    next0 = feat_bitmap_get_next_node_index (feat_next_node_index,
 						   feature_bitmap0);
-		trace_flags0 |= 4;
-
-	      }
-
-
 
 	    if (next0 >= node->n_next_nodes)
 	      {
