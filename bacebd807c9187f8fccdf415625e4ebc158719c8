@@ -1,0 +1,360 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_7fc4e23f",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 364,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "S-NAT users",
+      "range": {
+        "startLine": 364,
+        "startChar": 11,
+        "endLine": 364,
+        "endChar": 27
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5fc1262d",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 369,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "delete",
+      "range": {
+        "startLine": 369,
+        "startChar": 33,
+        "endLine": 369,
+        "endChar": 34
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3fde5a12",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 383,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "delete",
+      "range": {
+        "startLine": 383,
+        "startChar": 17,
+        "endLine": 383,
+        "endChar": 22
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1fe39eda",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 387,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "remove this param",
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ffe7b2e2",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "delete",
+      "range": {
+        "startLine": 398,
+        "startChar": 17,
+        "endLine": 398,
+        "endChar": 22
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_dfecf6c9",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "outside",
+      "range": {
+        "startLine": 401,
+        "startChar": 32,
+        "endLine": 401,
+        "endChar": 38
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_bfd12afd",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 402,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "outside",
+      "range": {
+        "startLine": 402,
+        "startChar": 26,
+        "endLine": 402,
+        "endChar": 32
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9fce6e59",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "inside",
+      "range": {
+        "startLine": 403,
+        "startChar": 31,
+        "endLine": 403,
+        "endChar": 37
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7fdbc21b",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 404,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "inside",
+      "range": {
+        "startLine": 404,
+        "startChar": 25,
+        "endLine": 404,
+        "endChar": 31
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5fd8061d",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 405,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "delete",
+      "range": {
+        "startLine": 405,
+        "startChar": 22,
+        "endLine": 405,
+        "endChar": 29
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3f053a7a",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "delte last empty line",
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_df03d671",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1551,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "vrf_id",
+      "range": {
+        "startLine": 1551,
+        "startChar": 45,
+        "endLine": 1551,
+        "endChar": 51
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fffe926a",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1551,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "ip_address",
+      "range": {
+        "startLine": 1551,
+        "startChar": 18,
+        "endLine": 1551,
+        "endChar": 28
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1f0a7e8a",
+        "filename": "src/plugins/snat/snat.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "trailing white space",
+      "range": {
+        "startLine": 114,
+        "startChar": 16,
+        "endLine": 114,
+        "endChar": 17
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_bff80a7d",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 694,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "trailing white space",
+      "range": {
+        "startLine": 694,
+        "startChar": 64,
+        "endLine": 694,
+        "endChar": 65
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9ff54e85",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 746,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-02T05:31:07Z",
+      "side": 1,
+      "message": "ip_address \u003cip\u003e vrf_id \u003ctable-id\u003e",
+      "range": {
+        "startLine": 746,
+        "startChar": 27,
+        "endLine": 746,
+        "endChar": 54
+      },
+      "revId": "bacebd807c9187f8fccdf415625e4ebc158719c8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
