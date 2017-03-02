@@ -50,6 +50,12 @@ class VppObjectRegistry(object):
         else:
             logger.debug("REG: duplicate add, ignoring (%s)" % obj)
 
+    def unregister_all(self, logger):
+        """ Remove all object registrations from registry. """
+        logger.debug("REG: removing all object registrations")
+        self._object_registry = []
+        self._object_dict = dict()
+
     def remove_vpp_config(self, logger):
         """
         Remove configuration (if present) from vpp and then remove all objects
@@ -72,8 +78,7 @@ class VppObjectRegistry(object):
         for obj in self._object_registry:
             if obj.query_vpp_config():
                 failed.append(obj)
-        self._object_registry = []
-        self._object_dict = dict()
+        self.unregister_all(logger)
         if failed:
             logger.error("REG: Couldn't remove configuration for object(s):")
             for obj in failed:
