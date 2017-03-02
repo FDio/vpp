@@ -189,6 +189,9 @@ typedef struct
 
   char *region_name;
   char *root_path;
+
+  /* Replay in progress? */
+  int replay_in_progress;
 } api_main_t;
 
 extern api_main_t api_main;

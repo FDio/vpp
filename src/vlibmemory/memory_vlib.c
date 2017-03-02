@@ -1249,6 +1249,8 @@ vl_api_show_plugin_command (vlib_main_t * vm,
   for (i = 0; i < vec_len (rp); i++)
     vlib_cli_output (vm, "%U", format_api_msg_range, rp + i);
 
+  vec_free (rp);
+
   return 0;
 }
 
@@ -1369,9 +1371,37 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
 static void
 vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
 {
-  /* Do nothing. We just want to trace the message */
-}
+  api_main_t *am = &api_main;
+  vl_api_msg_range_t *rp;
+  uword *p;
 
+  /* Noop (except for tracing) during normal operation */
+  if (am->replay_in_progress == 0)
+    return;
+
+  p = hash_get_mem (am->msg_range_by_name, mp->plugin_name);
+  if (p == 0)
+    {
+      clib_warning ("WARNING: traced plugin '%s' not in current image",
+		    mp->plugin_name);
+      return;
+    }
+
+  rp = vec_elt_at_index (am->msg_ranges, p[0]);
+  if (rp->first_msg_id != clib_net_to_host_u16 (mp->first_msg_id))
+    {
+      clib_warning ("WARNING: traced plugin '%s' first message id %d not %d",
+		    mp->plugin_name, clib_net_to_host_u16 (mp->first_msg_id),
+		    rp->first_msg_id);
+    }
+
+  if (rp->last_msg_id != clib_net_to_host_u16 (mp->last_msg_id))
+    {
+      clib_warning ("WARNING: traced plugin '%s' last message id %d not %d",
+		    mp->plugin_name, clib_net_to_host_u16 (mp->last_msg_id),
+		    rp->last_msg_id);
+    }
+}
 
 #define foreach_rpc_api_msg                     \
 _(RPC_CALL,rpc_call)                            \
