@@ -492,7 +492,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
 {
   vl_api_create_vlan_subif_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 hw_if_index, sw_if_index = (u32) ~ 0;
+  u32 sw_if_index = (u32) ~ 0;
   vnet_hw_interface_t *hi;
   int rv = 0;
   u32 id;
@@ -506,8 +506,13 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  hw_if_index = ntohl (mp->sw_if_index);
-  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  hi = vnet_get_sup_hw_interface (vnm, ntohl (mp->sw_if_index));
+
+  if (hi->bond_info == VNET_HW_INTERFACE_BOND_INFO_SLAVE)
+    {
+      rv = VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED;
+      goto out;
+    }
 
   id = ntohl (mp->vlan_id);
   if (id == 0 || id > 4095)
