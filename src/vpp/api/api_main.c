@@ -48,7 +48,6 @@ api_main_init (vlib_main_t * vm)
   vam->vlib_main = vm;
   vam->my_client_index = (u32) ~ 0;
   init_error_string_table (vam);
-  vat_api_hookup (vam);
   rv = vat_plugin_init (vam);
   if (rv)
     clib_warning ("vat_plugin_init returned %d", rv);

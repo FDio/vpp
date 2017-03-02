@@ -50,7 +50,6 @@ _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)               \
 _(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                   \
 _(WANT_INTERFACE_EVENTS, want_interface_events)                 \
 _(SW_INTERFACE_DUMP, sw_interface_dump)                         \
-_(SW_INTERFACE_DETAILS, sw_interface_details)                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)   \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)               \
 _(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
@@ -682,12 +681,6 @@ static void vl_api_sw_interface_tag_add_del_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_TAG_ADD_DEL_REPLY);
-}
-
-static void
-vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 /*

@@ -46,8 +46,7 @@
 _(CREATE_VHOST_USER_IF, create_vhost_user_if)                           \
 _(MODIFY_VHOST_USER_IF, modify_vhost_user_if)                           \
 _(DELETE_VHOST_USER_IF, delete_vhost_user_if)                           \
-_(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
-_(SW_INTERFACE_VHOST_USER_DETAILS, sw_interface_vhost_user_details)
+_(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
 
 /*
  * WARNING: replicated pending api refactor completion
@@ -146,13 +145,6 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
       vnet_clear_sw_interface_tag (vnm, sw_if_index);
       send_sw_interface_flags_deleted (vam, q, sw_if_index);
     }
-}
-
-static void
-  vl_api_sw_interface_vhost_user_details_t_handler
-  (vl_api_sw_interface_vhost_user_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void

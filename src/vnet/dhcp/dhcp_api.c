@@ -46,7 +46,6 @@
 #define foreach_vpe_api_msg                       \
 _(DHCP_PROXY_CONFIG,dhcp_proxy_config)            \
 _(DHCP_PROXY_DUMP,dhcp_proxy_dump)                \
-_(DHCP_PROXY_DETAILS,dhcp_proxy_details)          \
 _(DHCP_PROXY_SET_VSS,dhcp_proxy_set_vss)          \
 _(DHCP_CLIENT_CONFIG, dhcp_client_config)
 
@@ -156,13 +155,6 @@ dhcp_send_details (fib_protocol_t proto,
       memcpy (mp->dhcp_src_address, &src->ip4, 4);
     }
   vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-
-static void
-vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 void

@@ -59,17 +59,12 @@
 
 #define foreach_ip_api_msg                                              \
 _(IP_FIB_DUMP, ip_fib_dump)                                             \
-_(IP_FIB_DETAILS, ip_fib_details)                                       \
 _(IP6_FIB_DUMP, ip6_fib_dump)                                           \
-_(IP6_FIB_DETAILS, ip6_fib_details)                                     \
 _(IP_MFIB_DUMP, ip_mfib_dump)                                           \
-_(IP_MFIB_DETAILS, ip_mfib_details)                                     \
 _(IP6_MFIB_DUMP, ip6_mfib_dump)                                         \
-_(IP6_MFIB_DETAILS, ip6_mfib_details)                                   \
 _(IP_NEIGHBOR_DUMP, ip_neighbor_dump)                                   \
 _(IP_MROUTE_ADD_DEL, ip_mroute_add_del)                                 \
 _(MFIB_SIGNAL_DUMP, mfib_signal_dump)                                   \
-_(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
@@ -103,12 +98,6 @@ send_ip_neighbor_details (u8 is_ipv6,
   memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-vl_api_ip_neighbor_details_t_handler (vl_api_ip_neighbor_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void
@@ -183,24 +172,6 @@ copy_fib_next_hop (fib_route_path_encode_t * api_rpath, void *fp_arg)
   else
     memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip6,
 	    sizeof (api_rpath->rpath.frp_addr.ip6));
-}
-
-static void
-vl_api_ip_fib_details_t_handler (vl_api_ip_fib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip_fib_details_t_endian (vl_api_ip_fib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip_fib_details_t_print (vl_api_ip_fib_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void
@@ -314,24 +285,6 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
   }
 
   vec_free (lfeis);
-}
-
-static void
-vl_api_ip6_fib_details_t_handler (vl_api_ip6_fib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip6_fib_details_t_endian (vl_api_ip6_fib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip6_fib_details_t_print (vl_api_ip6_fib_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void
@@ -470,24 +423,6 @@ vl_api_ip6_fib_dump_t_handler (vl_api_ip6_fib_dump_t * mp)
 }
 
 static void
-vl_api_ip_mfib_details_t_handler (vl_api_ip_mfib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip_mfib_details_t_endian (vl_api_ip_mfib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip_mfib_details_t_print (vl_api_ip_mfib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
 send_ip_mfib_details (vpe_api_main_t * am,
 		      unix_shared_memory_queue_t * q,
 		      u32 table_id,
@@ -589,24 +524,6 @@ vl_api_ip_mfib_dump_t_handler (vl_api_ip_mfib_dump_t * mp)
 
   vec_free (ctx.entries);
   vec_free (api_rpaths);
-}
-
-static void
-vl_api_ip6_mfib_details_t_handler (vl_api_ip6_mfib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip6_mfib_details_t_endian (vl_api_ip6_mfib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_ip6_mfib_details_t_print (vl_api_ip6_mfib_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void

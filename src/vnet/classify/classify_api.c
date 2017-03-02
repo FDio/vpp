@@ -53,7 +53,6 @@ _(CLASSIFY_TABLE_IDS,classify_table_ids)                                \
 _(CLASSIFY_TABLE_BY_INTERFACE, classify_table_by_interface)             \
 _(CLASSIFY_TABLE_INFO,classify_table_info)                              \
 _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
-_(CLASSIFY_SESSION_DETAILS,classify_session_details)                    \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
 _(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
@@ -354,13 +353,6 @@ vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-static void
-vl_api_classify_session_details_t_handler (vl_api_classify_session_details_t *
-					   mp)
-{
-  clib_warning ("BUG");
 }
 
 static void

@@ -944,6 +944,7 @@ static void vl_api_sw_interface_details_t_handler_json
     }
 }
 
+#if VPP_API_TEST_BUILTIN == 0
 static void vl_api_sw_interface_set_flags_t_handler
   (vl_api_sw_interface_set_flags_t * mp)
 {
@@ -954,6 +955,7 @@ static void vl_api_sw_interface_set_flags_t_handler
 	    mp->admin_up_down ? "admin-up" : "admin-down",
 	    mp->link_up_down ? "link-up" : "link-down");
 }
+#endif
 
 static void vl_api_sw_interface_set_flags_t_handler_json
   (vl_api_sw_interface_set_flags_t * mp)
@@ -4009,7 +4011,6 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                                       \
 _(CREATE_LOOPBACK_REPLY, create_loopback_reply)                         \
 _(SW_INTERFACE_DETAILS, sw_interface_details)                           \
-_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
 _(SW_INTERFACE_SET_FLAGS_REPLY, sw_interface_set_flags_reply)           \
 _(CONTROL_PING_REPLY, control_ping_reply)                               \
 _(CLI_REPLY, cli_reply)                                                 \
@@ -4126,11 +4127,6 @@ _(IKEV2_INITIATE_REKEY_CHILD_SA_REPLY, ikev2_initiate_rekey_child_sa_reply) \
 _(DELETE_LOOPBACK_REPLY, delete_loopback_reply)                         \
 _(BD_IP_MAC_ADD_DEL_REPLY, bd_ip_mac_add_del_reply)                     \
 _(DHCP_COMPL_EVENT, dhcp_compl_event)                                   \
-_(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
-_(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
-_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
-_(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \
-_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)                         \
 _(MAP_ADD_DOMAIN_REPLY, map_add_domain_reply)                           \
 _(MAP_DEL_DOMAIN_REPLY, map_del_domain_reply)                           \
 _(MAP_ADD_DEL_RULE_REPLY, map_add_del_rule_reply)	                \
@@ -4231,6 +4227,14 @@ _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)
+
+#define foreach_standalone_reply_msg					\
+_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
+_(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
+_(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
+_(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
+_(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
 
 typedef struct
 {
@@ -15425,7 +15429,15 @@ api_af_packet_create (vat_main_t * vam)
   vec_free (host_if_name);
 
   S (mp);
-  W2 (ret, fprintf (vam->ofp, " new sw_if_index = %d ", vam->sw_if_index));
+
+  /* *INDENT-OFF* */
+  W2 (ret,
+      ({
+        if (ret == 0)
+          fprintf (vam->ofp ? vam->ofp : stderr,
+                   " new sw_if_index = %d\n", vam->sw_if_index);
+      }));
+  /* *INDENT-ON* */
   return ret;
 }
 
@@ -18417,6 +18429,9 @@ _(unset, "usage: unset <variable-name>")
         }                                       \
     }
 foreach_vpe_api_reply_msg;
+#if VPP_API_TEST_BUILTIN == 0
+foreach_standalone_reply_msg;
+#endif
 #undef _
 
 void
@@ -18430,6 +18445,9 @@ vat_api_hookup (vat_main_t * vam)
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_reply_msg;
+#if VPP_API_TEST_BUILTIN == 0
+  foreach_standalone_reply_msg;
+#endif
 #undef _
 
 #if (VPP_API_TEST_BUILTIN==0)
@@ -18462,6 +18480,17 @@ vat_api_hookup (vat_main_t * vam)
   foreach_cli_function;
 #undef _
 }
+
+#if VPP_API_TEST_BUILTIN
+static clib_error_t *
+vat_api_hookup_shim (vlib_main_t * vm)
+{
+  vat_api_hookup (&vat_main);
+  return 0;
+}
+
+VLIB_API_INIT_FUNCTION (vat_api_hookup_shim);
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
