@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_e2039971",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-03-02T15:40:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_7f062222",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 73,
+        "endChar": 13
+      },
+      "revId": "107034de8113c98c5f58b6707f63cc8c9dd51fe9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_42002d01",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 1
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_c2f89d7e",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 372,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-03-02T15:40:23Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_42002d01",
+      "range": {
+        "startLine": 372,
+        "startChar": 54,
+        "endLine": 372,
+        "endChar": 55
+      },
+      "revId": "107034de8113c98c5f58b6707f63cc8c9dd51fe9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_5f03660f",
         "filename": "test/test_ip4_vrf_multi_instance.py",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2017-03-02T09:51:22Z",
       "side": 1,
       "message": "for vrf in self.vrf_list: ?",
+      "range": {
+        "startLine": 416,
+        "startChar": 1,
+        "endLine": 417,
+        "endChar": 44
+      },
+      "revId": "107034de8113c98c5f58b6707f63cc8c9dd51fe9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a2f59184",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 417,
+      "author": {
+        "id": 207
+      },
+      "writtenOn": "2017-03-02T15:40:23Z",
+      "side": 1,
+      "message": "It would reset only every second VRF ID as the VRF is removed from vrf_list in reset_vrf method so pointer of for loop points to entry 1 in second loop but the origninate entry 1 has been moved to entry 0 in the first loop:\n------------------------------------------------------------------------------\nStarting IP4 VRF  Multi-instance test 4 - reset 4 VRFs ...\n------------------------------------------------------------------------------\n15:59:28,596 IPv4 VRF ID 3 reset finished\n15:59:28,600 IPv4 VRF ID 1 reset finished\n\u003d\u003e there is missing reset of VRF ID 4 and VRF ID 5...\n15:59:28,606 IPv4 VRF ID 2 has been reset\n15:59:28,614 IPv4 VRF ID 3 has been reset\n15:59:28,626 IPv4 VRF ID 1 has been reset",
+      "parentUuid": "3a3291f1_5f03660f",
       "range": {
         "startLine": 416,
         "startChar": 1,
