@@ -208,10 +208,10 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       r->src_prefixlen = rules[i].src_ip_prefix_len;
       r->dst_prefixlen = rules[i].dst_ip_prefix_len;
       r->proto = rules[i].proto;
-      r->src_port_or_type_first = rules[i].srcport_or_icmptype_first;
-      r->src_port_or_type_last = rules[i].srcport_or_icmptype_last;
-      r->dst_port_or_code_first = rules[i].dstport_or_icmpcode_first;
-      r->dst_port_or_code_last = rules[i].dstport_or_icmpcode_last;
+      r->src_port_or_type_first = ntohs (rules[i].srcport_or_icmptype_first);
+      r->src_port_or_type_last = ntohs (rules[i].srcport_or_icmptype_last);
+      r->dst_port_or_code_first = ntohs (rules[i].dstport_or_icmpcode_first);
+      r->dst_port_or_code_last = ntohs (rules[i].dstport_or_icmpcode_last);
       r->tcp_flags_value = rules[i].tcp_flags_value;
       r->tcp_flags_mask = rules[i].tcp_flags_mask;
     }
@@ -873,8 +873,8 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
       else
 	{
 	  /* assume TCP/UDP */
-	  src_port = (*(u16 *) get_ptr_to_offset (b0, 34));
-	  dst_port = (*(u16 *) get_ptr_to_offset (b0, 36));
+	  src_port = ntohs (*(u16 *) get_ptr_to_offset (b0, 34));
+	  dst_port = ntohs (*(u16 *) get_ptr_to_offset (b0, 36));
 	  /* UDP gets ability to check on an oddball data byte as a bonus */
 	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 20 + 13);
 	}
@@ -895,8 +895,8 @@ acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
       else
 	{
 	  /* assume TCP/UDP */
-	  src_port = (*(u16 *) get_ptr_to_offset (b0, 54));
-	  dst_port = (*(u16 *) get_ptr_to_offset (b0, 56));
+	  src_port = ntohs (*(u16 *) get_ptr_to_offset (b0, 54));
+	  dst_port = ntohs (*(u16 *) get_ptr_to_offset (b0, 56));
 	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 40 + 13);
 	}
     }
