@@ -5,6 +5,24 @@ ifndef VPP_PYTHON_PREFIX
 	$(error VPP_PYTHON_PREFIX is not set)
 endif
 
+.PHONY: verify-no-running-vpp
+
+ifdef VPP_ZOMBIE_NOCHECK
+VPP_PIDS=
+else
+VPP_PIDS=$(shell pgrep -d, -x vpp_main)
+endif
+
+verify-no-running-vpp:
+	@if [ "$(VPP_PIDS)" != "" ]; then \
+		echo; \
+		echo "*** Existing vpp processes detected (PID(s): $(VPP_PIDS)). Running tests under these conditions is not supported. ***"; \
+		echo; \
+		ps -fp $(VPP_PIDS);\
+		echo; \
+		false; \
+	fi
+
 UNITTEST_EXTRA_OPTS=""
 
 ifeq ($(FAILFAST),1)
@@ -44,10 +62,10 @@ define retest-func
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover $(UNITTEST_EXTRA_OPTS) -p test_\"*.py\""
 endef
 
-test: reset verify-python-path $(PAPI_INSTALL_DONE)
+test: verify-python-path verify-no-running-vpp reset $(PAPI_INSTALL_DONE)
 	$(call retest-func)
 
-retest: reset verify-python-path
+retest: verify-python-path verify-no-running-vpp reset
 	$(call retest-func)
 
 .PHONY: wipe doc
@@ -127,6 +145,8 @@ help:
 	@echo "                             TEST='bfd.BFDAPITestCase.*' selects all tests from test_bfd.py which are part of BFDAPITestCase class"
 	@echo "                             TEST='bfd.BFDAPITestCase.test_add_bfd' selects a single test named test_add_bfd from test_bfd.py/BFDAPITestCase"
 	@echo "                             TEST='*.*.test_add_bfd' selects all test functions named test_add_bfd from all files/classes"
+	@echo ""
+	@echo " VPP_ZOMBIE_NOCHECK=1 - skip checking for vpp (zombie) processes (CAUTION)"
 	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"
