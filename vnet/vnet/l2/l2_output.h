@@ -94,6 +94,7 @@ l2output_main_t l2output_main;
 
 /* Mappings from feature ID to graph node name */
 #define foreach_l2output_feat \
+ _(OUTPUT,            "interface-output")           \
  _(SPAN,              "feature-bitmap-drop")        \
  _(CFM,               "feature-bitmap-drop")        \
  _(QOS,               "feature-bitmap-drop")        \
@@ -217,9 +218,21 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 		    vlib_buffer_t * b0,
 		    u32 sw_if_index, u32 feature_bitmap, u32 * next0)
 {
-  if (feature_bitmap)
+  /*
+   * The output feature bitmap always have at least the output feature bit set
+   * for a normal L2 interface (or all 0's if the interface is changed from L2
+   * to L3 mode). So if next_nodes specified is that from the l2-output node and
+   * the bitmap is all clear except output feature bit, we know there is no more
+   * feature and will fall through to output packet. If next_nodes is from a L2
+   * output feature node (and not l2-output), we always want to get the node for
+   * the next L2 output feature, including the last feature being interface-
+   * output node to output packet.
+   */
+  if ((next_nodes != &l2output_main.next_nodes)
+      || ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
     {
       /* There are some features to execute */
+      ASSERT (feature_bitmap != 0);
 
       /* Save bitmap for the next feature graph nodes */
       vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
