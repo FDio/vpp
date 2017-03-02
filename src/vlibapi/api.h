@@ -271,6 +271,21 @@ vlib_node_t **vlib_node_unserialize (u8 * vector);
 
 #define VLIB_API_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,api_init)
 
+/* Call given init function: used for init function dependencies. */
+#define vlib_call_api_init_function(vm, x)                              \
+  ({                                                                    \
+    extern vlib_init_function_t * _VLIB_INIT_FUNCTION_SYMBOL (x,api_init); \
+    vlib_init_function_t * _f = _VLIB_INIT_FUNCTION_SYMBOL (x,api_init); \
+    clib_error_t * _error = 0;                                          \
+    if (! hash_get (vm->init_functions_called, _f))                     \
+      {                                                                 \
+	hash_set1 (vm->init_functions_called, _f);                      \
+	_error = _f (vm);                                               \
+      }                                                                 \
+    _error;                                                             \
+  })
+
+
 #endif /* included_api_h */
 
 /*

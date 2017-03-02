@@ -128,12 +128,8 @@ _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)     \
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)   \
 _(GET_NODE_INDEX, get_node_index)                                       \
 _(ADD_NODE_NEXT, add_node_next)						\
-_(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
-_(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
 _(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)                     \
 _(SHOW_VERSION, show_version)						\
-_(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
-_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
@@ -1436,62 +1432,6 @@ out:
   /* *INDENT-ON* */
 }
 
-static void vl_api_vxlan_add_del_tunnel_t_handler
-  (vl_api_vxlan_add_del_tunnel_t * mp)
-{
-  vl_api_vxlan_add_del_tunnel_reply_t *rmp;
-  int rv = 0;
-  vnet_vxlan_add_del_tunnel_args_t _a, *a = &_a;
-  u32 encap_fib_index;
-  uword *p;
-  ip4_main_t *im = &ip4_main;
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index = ~0;
-
-  p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
-  if (!p)
-    {
-      rv = VNET_API_ERROR_NO_SUCH_FIB;
-      goto out;
-    }
-  encap_fib_index = p[0];
-  memset (a, 0, sizeof (*a));
-
-  a->is_add = mp->is_add;
-  a->is_ip6 = mp->is_ipv6;
-
-  /* ip addresses sent in network byte order */
-  ip46_from_addr_buf (mp->is_ipv6, mp->dst_address, &a->dst);
-  ip46_from_addr_buf (mp->is_ipv6, mp->src_address, &a->src);
-
-  /* Check src & dst are different */
-  if (ip46_address_cmp (&a->dst, &a->src) == 0)
-    {
-      rv = VNET_API_ERROR_SAME_SRC_DST;
-      goto out;
-    }
-  a->mcast_sw_if_index = ntohl (mp->mcast_sw_if_index);
-  if (ip46_address_is_multicast (&a->dst) &&
-      pool_is_free_index (vnm->interface_main.sw_interfaces,
-			  a->mcast_sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto out;
-    }
-  a->encap_fib_index = encap_fib_index;
-  a->decap_next_index = ntohl (mp->decap_next_index);
-  a->vni = ntohl (mp->vni);
-  rv = vnet_vxlan_add_del_tunnel (a, &sw_if_index);
-
-out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_VXLAN_ADD_DEL_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
-}
-
 static void send_vxlan_tunnel_details
   (vxlan_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
 {
@@ -1525,43 +1465,6 @@ static void send_vxlan_tunnel_details
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
-static void vl_api_vxlan_tunnel_dump_t_handler
-  (vl_api_vxlan_tunnel_dump_t * mp)
-{
-  unix_shared_memory_queue_t *q;
-  vxlan_main_t *vxm = &vxlan_main;
-  vxlan_tunnel_t *t;
-  u32 sw_if_index;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
-
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  if (~0 == sw_if_index)
-    {
-      /* *INDENT-OFF* */
-      pool_foreach (t, vxm->tunnels,
-      ({
-        send_vxlan_tunnel_details(t, q, mp->context);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      if ((sw_if_index >= vec_len (vxm->tunnel_index_by_sw_if_index)) ||
-	  (~0 == vxm->tunnel_index_by_sw_if_index[sw_if_index]))
-	{
-	  return;
-	}
-      t = &vxm->tunnels[vxm->tunnel_index_by_sw_if_index[sw_if_index]];
-      send_vxlan_tunnel_details (t, q, mp->context);
-    }
-}
-
 static void
 vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
 {
@@ -1583,83 +1486,6 @@ vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
   BAD_TX_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2_PATCH_ADD_DEL_REPLY);
-}
-
-static void
-  vl_api_vxlan_gpe_add_del_tunnel_t_handler
-  (vl_api_vxlan_gpe_add_del_tunnel_t * mp)
-{
-  vl_api_vxlan_gpe_add_del_tunnel_reply_t *rmp;
-  int rv = 0;
-  vnet_vxlan_gpe_add_del_tunnel_args_t _a, *a = &_a;
-  u32 encap_fib_index, decap_fib_index;
-  u8 protocol;
-  uword *p;
-  ip4_main_t *im = &ip4_main;
-  u32 sw_if_index = ~0;
-
-
-  p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
-  if (!p)
-    {
-      rv = VNET_API_ERROR_NO_SUCH_FIB;
-      goto out;
-    }
-  encap_fib_index = p[0];
-
-  protocol = mp->protocol;
-
-  /* Interpret decap_vrf_id as an opaque if sending to other-than-ip4-input */
-  if (protocol == VXLAN_GPE_INPUT_NEXT_IP4_INPUT)
-    {
-      p = hash_get (im->fib_index_by_table_id, ntohl (mp->decap_vrf_id));
-      if (!p)
-	{
-	  rv = VNET_API_ERROR_NO_SUCH_INNER_FIB;
-	  goto out;
-	}
-      decap_fib_index = p[0];
-    }
-  else
-    {
-      decap_fib_index = ntohl (mp->decap_vrf_id);
-    }
-
-  /* Check src & dst are different */
-  if ((mp->is_ipv6 && memcmp (mp->local, mp->remote, 16) == 0) ||
-      (!mp->is_ipv6 && memcmp (mp->local, mp->remote, 4) == 0))
-    {
-      rv = VNET_API_ERROR_SAME_SRC_DST;
-      goto out;
-    }
-  memset (a, 0, sizeof (*a));
-
-  a->is_add = mp->is_add;
-  a->is_ip6 = mp->is_ipv6;
-  /* ip addresses sent in network byte order */
-  if (a->is_ip6)
-    {
-      clib_memcpy (&(a->local.ip6), mp->local, 16);
-      clib_memcpy (&(a->remote.ip6), mp->remote, 16);
-    }
-  else
-    {
-      clib_memcpy (&(a->local.ip4), mp->local, 4);
-      clib_memcpy (&(a->remote.ip4), mp->remote, 4);
-    }
-  a->encap_fib_index = encap_fib_index;
-  a->decap_fib_index = decap_fib_index;
-  a->protocol = protocol;
-  a->vni = ntohl (mp->vni);
-  rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
-
-out:
-  /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_VXLAN_GPE_ADD_DEL_TUNNEL_REPLY,
-  ({
-    rmp->sw_if_index = ntohl (sw_if_index);
-  }));
-  /* *INDENT-ON* */
 }
 
 static void send_vxlan_gpe_tunnel_details
@@ -1694,43 +1520,6 @@ static void send_vxlan_gpe_tunnel_details
   rmp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-static void vl_api_vxlan_gpe_tunnel_dump_t_handler
-  (vl_api_vxlan_gpe_tunnel_dump_t * mp)
-{
-  unix_shared_memory_queue_t *q;
-  vxlan_gpe_main_t *vgm = &vxlan_gpe_main;
-  vxlan_gpe_tunnel_t *t;
-  u32 sw_if_index;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
-
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  if (~0 == sw_if_index)
-    {
-      /* *INDENT-OFF* */
-      pool_foreach (t, vgm->tunnels,
-      ({
-        send_vxlan_gpe_tunnel_details(t, q, mp->context);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      if ((sw_if_index >= vec_len (vgm->tunnel_index_by_sw_if_index)) ||
-	  (~0 == vgm->tunnel_index_by_sw_if_index[sw_if_index]))
-	{
-	  return;
-	}
-      t = &vgm->tunnels[vgm->tunnel_index_by_sw_if_index[sw_if_index]];
-      send_vxlan_gpe_tunnel_details (t, q, mp->context);
-    }
 }
 
 static void

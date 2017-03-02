@@ -46,7 +46,6 @@ stats_main_t stats_main;
 
 #define foreach_stats_msg                               \
 _(WANT_STATS, want_stats)                               \
-_(WANT_STATS_REPLY, want_stats_reply)                   \
 _(VNET_INTERFACE_COUNTERS, vnet_interface_counters)     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)         \
@@ -1224,12 +1223,6 @@ vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
     {
       vl_msg_api_free (mp);
     }
-}
-
-static void
-vl_api_want_stats_reply_t_handler (vl_api_want_stats_reply_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void

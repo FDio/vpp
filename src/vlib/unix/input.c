@@ -66,6 +66,7 @@ linux_epoll_file_update (unix_file_t * f, unix_file_update_type_t update_type)
   unix_main_t *um = &unix_main;
   linux_epoll_main_t *em = &linux_epoll_main;
   struct epoll_event e;
+  int op;
 
   memset (&e, 0, sizeof (e));
 
@@ -76,13 +77,29 @@ linux_epoll_file_update (unix_file_t * f, unix_file_update_type_t update_type)
     e.events |= EPOLLET;
   e.data.u32 = f - um->file_pool;
 
-  if (epoll_ctl (em->epoll_fd,
-		 (update_type == UNIX_FILE_UPDATE_ADD
-		  ? EPOLL_CTL_ADD
-		  : (update_type == UNIX_FILE_UPDATE_MODIFY
-		     ? EPOLL_CTL_MOD
-		     : EPOLL_CTL_DEL)), f->file_descriptor, &e) < 0)
-    clib_warning ("epoll_ctl");
+  op = -1;
+
+  switch (update_type)
+    {
+    case UNIX_FILE_UPDATE_ADD:
+      op = EPOLL_CTL_ADD;
+      break;
+
+    case UNIX_FILE_UPDATE_MODIFY:
+      op = EPOLL_CTL_MOD;
+      break;
+
+    case UNIX_FILE_UPDATE_DELETE:
+      op = EPOLL_CTL_DEL;
+      break;
+
+    default:
+      clib_warning ("unknown update_type %d", update_type);
+      return;
+    }
+
+  if (epoll_ctl (em->epoll_fd, op, f->file_descriptor, &e) < 0)
+    clib_unix_warning ("epoll_ctl");
 }
 
 static uword

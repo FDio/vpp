@@ -48,13 +48,10 @@
 _(L2_XCONNECT_DUMP, l2_xconnect_dump)                       \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                   \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                     \
-_(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)                   \
 _(L2FIB_ADD_DEL, l2fib_add_del)                             \
 _(L2_FLAGS, l2_flags)                                       \
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)             \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                   \
-_(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)             \
-_(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details) \
 _(BRIDGE_FLAGS, bridge_flags)                               \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite) \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)
@@ -138,12 +135,6 @@ send_l2fib_table_entry (vpe_api_main_t * am,
   mp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-vl_api_l2_fib_table_entry_t_handler (vl_api_l2_fib_table_entry_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void
@@ -327,19 +318,6 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
     rv = bd_delete_bd_index (bdm, bd_id);
 
   REPLY_MACRO (VL_API_BRIDGE_DOMAIN_ADD_DEL_REPLY);
-}
-
-static void
-vl_api_bridge_domain_details_t_handler (vl_api_bridge_domain_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-  vl_api_bridge_domain_sw_if_details_t_handler
-  (vl_api_bridge_domain_sw_if_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void

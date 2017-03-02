@@ -50,9 +50,7 @@ _(MPLS_IP_BIND_UNBIND, mpls_ip_bind_unbind)                 \
 _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                   \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)                 \
 _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                       \
-_(MPLS_TUNNEL_DETAILS, mpls_tunnel_details)                 \
-_(MPLS_FIB_DUMP, mpls_fib_dump)                             \
-_(MPLS_FIB_DETAILS, mpls_fib_details)
+_(MPLS_FIB_DUMP, mpls_fib_dump)
 
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
@@ -280,12 +278,6 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   /* *INDENT-ON* */
 }
 
-static void
-vl_api_mpls_tunnel_details_t_handler (vl_api_mpls_tunnel_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
 typedef struct mpls_tunnel_send_walk_ctx_t_
 {
   unix_shared_memory_queue_t *q;
@@ -338,24 +330,6 @@ vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
     .context = mp->context,
   };
   mpls_tunnel_walk (send_mpls_tunnel_entry, &ctx);
-}
-
-static void
-vl_api_mpls_fib_details_t_handler (vl_api_mpls_fib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_mpls_fib_details_t_endian (vl_api_mpls_fib_details_t * mp)
-{
-  clib_warning ("BUG");
-}
-
-static void
-vl_api_mpls_fib_details_t_print (vl_api_mpls_fib_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 static void
