@@ -46,6 +46,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 /** Default CLI pager limit is not configured in startup.conf */
 #define UNIX_CLI_DEFAULT_PAGER_LIMIT 100000
@@ -340,6 +342,26 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       else
 	if (unformat (input, "cli-history-limit %d", &um->cli_history_limit))
 	;
+      else if (unformat (input, "coredump-size"))
+	{
+	  uword coredump_size = 0;
+	  if (unformat (input, "unlimited"))
+	    {
+	      coredump_size = RLIM_INFINITY;
+	    }
+	  else
+	    if (!unformat (input, "%U", unformat_memory_size, &coredump_size))
+	    {
+	      return clib_error_return (0,
+					"invalid coredump-size parameter `%U'",
+					format_unformat_error, input);
+	    }
+	  const struct rlimit new_limit = { coredump_size, coredump_size };
+	  if (0 != setrlimit (RLIMIT_CORE, &new_limit))
+	    {
+	      clib_unix_warning ("prlimit() failed");
+	    }
+	}
       else if (unformat (input, "full-coredump"))
 	{
 	  int fd;
