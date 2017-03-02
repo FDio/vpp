@@ -754,7 +754,7 @@ void node_complex_generate (node_t *this, enum passid which, FILE *fp)
                 union_prefix, member_name);
         indent_me(fp);
 
-        if (deeper->type == NODE_VECTOR)
+        if (deeper && deeper->type == NODE_VECTOR)
             fprintf(fp, "%s_print(a->%s%s, handle);\n", 
                     CDATA0, union_prefix, member_name);
         else
@@ -778,7 +778,7 @@ void node_complex_generate (node_t *this, enum passid which, FILE *fp)
         }
 
         indent_me(fp);
-        if (deeper->type == NODE_VECTOR)
+        if (deeper && deeper->type == NODE_VECTOR)
             fprintf(fp, "%s_endian(a->%s%s);\n", 
                     CDATA0, union_prefix, member_name);
         else
