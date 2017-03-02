@@ -185,7 +185,7 @@ bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index)
 	    else if (sw_if->flood_class == VNET_FLOOD_CLASS_TUNNEL_NORMAL)
 	      bd_config->tun_normal_count--;
 	  }
-	vec_del1 (bd_config->members, ix);
+	vec_delete (bd_config->members, 1, ix);
 	update_flood_count (bd_config);
 
 	return BD_REMOVE_ERROR_OK;
