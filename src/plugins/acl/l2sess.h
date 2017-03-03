@@ -95,8 +95,7 @@ typedef struct {
      * on whether the node is an input or output one.
      */
 #define _(node_name, node_var, is_out, is_ip6, is_track) \
-    u32 node_var ## _input_next_node_index[32]; \
-    l2_output_next_nodes_st node_var ## _next_nodes;
+    u32 node_var ## _feat_next_node_index[32];
 foreach_l2sess_node
 #undef _
     l2_output_next_nodes_st output_next_nodes;

@@ -31,10 +31,18 @@
 #include <vnet/l2/l2_input.h>
 
 void
-l2sess_init_next_features_input (vlib_main_t * vm, l2sess_main_t * sm)
+l2sess_init_next_features (vlib_main_t * vm, l2sess_main_t * sm)
 {
-#define _(node_name, node_var, is_out, is_ip6, is_track) \
-  if (!is_out) feat_bitmap_init_next_nodes(vm, node_var.index, L2INPUT_N_FEAT,  l2input_get_feat_names (), sm->node_var ## _input_next_node_index);
+#define _(node_name, node_var, is_out, is_ip6, is_track)                 \
+  if (is_out)                                                            \
+    feat_bitmap_init_next_nodes(vm, node_var.index, L2OUTPUT_N_FEAT,      \
+                                l2output_get_feat_names (),               \
+                                sm->node_var ## _feat_next_node_index); \
+  else                                                                   \
+    feat_bitmap_init_next_nodes(vm, node_var.index, L2INPUT_N_FEAT,      \
+                                l2input_get_feat_names (),               \
+                                sm->node_var ## _feat_next_node_index);
+
   foreach_l2sess_node
 #undef _
 }
@@ -62,7 +70,7 @@ l2sess_setup_nodes (void)
   vlib_main_t *vm = vlib_get_main ();
   l2sess_main_t *sm = &l2sess_main;
 
-  l2sess_init_next_features_input (vm, sm);
+  l2sess_init_next_features (vm, sm);
 
   l2sess_add_our_next_nodes (vm, sm, (u8 *) "l2-input-classify", 0);
   l2sess_add_our_next_nodes (vm, sm, (u8 *) "l2-output-classify", 1);

@@ -73,7 +73,7 @@ acl_in_node_fn (vlib_main_t * vm,
   u32 feature_bitmap0;
   u32 trace_bitmap = 0;
   u32 *input_feat_next_node_index =
-    acl_main.acl_in_node_input_next_node_index;
+    acl_main.acl_in_node_feat_next_node_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

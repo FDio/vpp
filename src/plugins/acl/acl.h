@@ -122,9 +122,8 @@ typedef struct {
   u32 l2_output_classify_next_acl;
 
   /* next node indices for feature bitmap */
-  u32 acl_in_node_input_next_node_index[32];
-  /* the respective thing for the output feature */
-  l2_output_next_nodes_st acl_out_output_next_nodes;
+  u32 acl_in_node_feat_next_node_index[32];
+  u32 acl_out_node_feat_next_node_index[32];
 
   /* ACL match actions (must be coherent across in/out ACLs to next indices (can differ) */
 
