@@ -74,7 +74,7 @@ AC_DEFUN([PLUGIN_DISABLED],
      AC_HELP_STRING([--enable-$1-plugin], [Build $1 plugin]),
        [enable_$1_plugin=yes ],
        [enable_$1_plugin=no])
-  AM_CONDITIONAL(m4_toupper((ENABLE_$1_PLUGIN), test "$enable_$1_plugin" = "yes")
+  AM_CONDITIONAL(m4_toupper(ENABLE_$1_PLUGIN), test "$enable_$1_plugin" = "yes")
   m4_append([list_of_plugins], [$1], [, ])
 ])
 
