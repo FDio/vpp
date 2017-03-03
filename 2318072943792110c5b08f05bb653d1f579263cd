@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_f3ab6987",
+        "filename": "src/configure.ac",
+        "patchSetId": 4
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-03-03T16:24:59Z",
+      "side": 1,
+      "message": "Since this is sample code, please leave it disabled by default.",
+      "revId": "2318072943792110c5b08f05bb653d1f579263cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
