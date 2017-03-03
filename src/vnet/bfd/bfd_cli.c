@@ -891,6 +891,31 @@ VLIB_CLI_COMMAND (bfd_cli_udp_del_echo_source_cmd, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+enable_sbfd (vlib_main_t * vm,
+	     unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  // vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  // u32 sw_if_index;
+
+  /* Filter entries by interface if given. */
+  //sw_if_index = ~0;
+  //(void) unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index);
+  printf ("enable_sbfd\n");
+  sbfd_flag = 1;
+  printf ("sbfd_flag = %u\n", sbfd_flag);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (enable_sbfd_command, static) = {
+  .path = "enable sbfd",
+  .function = enable_sbfd,
+  .short_help = "enable sbfd",
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

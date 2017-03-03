@@ -50,6 +50,8 @@ typedef struct
 
 struct bfd_session_s;
 
+u8 sbfd_flag;
+
 int bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
 			    const struct bfd_session_s *bs, int is_echo);
 int bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,

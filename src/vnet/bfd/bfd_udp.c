@@ -53,6 +53,8 @@ static vlib_node_registration_t bfd_udp4_input_node;
 static vlib_node_registration_t bfd_udp6_input_node;
 static vlib_node_registration_t bfd_udp_echo4_input_node;
 static vlib_node_registration_t bfd_udp_echo6_input_node;
+static vlib_node_registration_t sbfd_udp4_input_node;
+static vlib_node_registration_t sbfd_udp6_input_node;
 
 bfd_udp_main_t bfd_udp_main;
 
@@ -264,7 +266,10 @@ bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
     {
       headers->ip4.src_address.as_u32 = key->local_addr.ip4.as_u32;
       headers->ip4.dst_address.as_u32 = key->peer_addr.ip4.as_u32;
-      headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
+      if (!sbfd_flag)
+	headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd4);
+      else
+	headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_sbfd4);
     }
 
   /* fix ip length, checksum and udp length */
@@ -321,7 +326,10 @@ bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
 		   sizeof (headers->ip6.src_address));
       clib_memcpy (&headers->ip6.dst_address, &key->peer_addr.ip6,
 		   sizeof (headers->ip6.dst_address));
-      headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
+      if (!sbfd_flag)
+	headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_bfd6);
+      else
+	headers->udp.dst_port = clib_host_to_net_u16 (UDP_DST_PORT_sbfd6);
     }
 
   /* fix ip payload length and udp length */
@@ -916,6 +924,14 @@ bfd_udp4_scan (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       return err;
     }
+  if (clib_net_to_host_u16 (udp->dst_port) == 3784)
+    {
+      sbfd_flag = 0;
+    }
+  else
+    {
+      sbfd_flag = 1;
+    }
   bfd_rpc_update_session (bs->bs_idx, pkt);
   *bs_out = bs;
   return BFD_UDP_ERROR_NONE;
@@ -1060,6 +1076,15 @@ bfd_udp6_scan (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       return err;
     }
+  if (clib_net_to_host_u16 (udp->dst_port) == 3784)
+    {
+      sbfd_flag = 0;
+    }
+  else
+    {
+      sbfd_flag = 1;
+    }
+
   bfd_rpc_update_session (bs->bs_idx, pkt);
   *bs_out = bs;
   return BFD_UDP_ERROR_NONE;
@@ -1345,6 +1370,66 @@ VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
 
 /* *INDENT-ON* */
 
+static uword
+sbfd_udp4_input (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  return bfd_udp_input (vm, rt, f, 0);
+}
+
+/*
+ *sbfd input graph node declaration
+ */
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (sbfd_udp4_input_node, static) = {
+  .function = sbfd_udp4_input,
+  .name = "sbfd-udp4-input",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = BFD_UDP_N_ERROR,
+  .error_strings = bfd_udp_error_strings,
+
+  .format_trace = bfd_input_format_trace,
+
+  .n_next_nodes = BFD_UDP_INPUT_N_NEXT,
+  .next_nodes =
+      {
+              [BFD_UDP_INPUT_NEXT_NORMAL] = "error-drop",
+              [BFD_UDP_INPUT_NEXT_REPLY] = "ip4-lookup",
+      },
+};
+/* *INDENT_ON* */
+
+static uword
+sbfd_udp6_input (vlib_main_t * vm, vlib_node_runtime_t *rt, vlib_frame_t * f)
+{
+  return bfd_udp_input (vm, rt, f, 0);
+}
+
+/*
+ *sbfd input graph node declaration
+ */
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (sbfd_udp6_input_node, static) = {
+  .function = sbfd_udp6_input,
+  .name = "sbfd-udp6-input",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = BFD_UDP_N_ERROR,
+  .error_strings = bfd_udp_error_strings,
+
+  .format_trace = bfd_input_format_trace,
+
+  .n_next_nodes = BFD_UDP_INPUT_N_NEXT,
+  .next_nodes =
+      {
+              [BFD_UDP_INPUT_NEXT_NORMAL] = "error-drop",
+              [BFD_UDP_INPUT_NEXT_REPLY] = "ip6-lookup",
+      },
+};
+/* *INDENT_ON* */
+
 static clib_error_t *
 bfd_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
 {
@@ -1386,6 +1471,8 @@ bfd_udp_init (vlib_main_t * vm)
 			 bfd_udp_echo4_input_node.index, 1);
   udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo6,
 			 bfd_udp_echo6_input_node.index, 0);
+  udp_register_dst_port (vm, UDP_DST_PORT_sbfd4, sbfd_udp4_input_node.index, 1);
+  udp_register_dst_port (vm, UDP_DST_PORT_sbfd6, sbfd_udp6_input_node.index, 0);
   return 0;
 }
 

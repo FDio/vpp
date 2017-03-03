@@ -108,13 +108,14 @@ bfd_pkt_get_demand (const bfd_pkt_t * pkt)
   return (pkt->head.sta_flags >> 1) & 1;
 }
 
-#if 0
+//#if 0
 void
 bfd_pkt_set_demand (bfd_pkt_t * pkt)
 {
   pkt->head.sta_flags |= 1 << 1;
 }
-#endif
+
+//#endif
 
 u8
 bfd_pkt_get_multipoint (const bfd_pkt_t * pkt)

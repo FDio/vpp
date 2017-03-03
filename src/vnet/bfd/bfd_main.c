@@ -703,6 +703,10 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
   bfd_pkt_set_version (pkt, 1);
   bfd_pkt_set_diag_code (pkt, bs->local_diag);
   bfd_pkt_set_state (pkt, bs->local_state);
+  if (sbfd_flag)
+    {
+      bfd_pkt_set_demand (pkt);
+    }
   pkt->head.detect_mult = bs->local_detect_mult;
   pkt->head.length = clib_host_to_net_u32 (bfd_length);
   pkt->my_disc = bs->local_discr;
@@ -1654,11 +1658,18 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
     }
   else if (BFD_STATE_down == bs->local_state)
     {
-      if (BFD_STATE_down == bs->remote_state)
+      if (!sbfd_flag)
 	{
-	  bfd_set_state (bm, bs, BFD_STATE_init, 0);
+	  if (BFD_STATE_down == bs->remote_state)
+	    {
+	      bfd_set_state (bm, bs, BFD_STATE_init, 0);
+	    }
+	  else if (BFD_STATE_init == bs->remote_state)
+	    {
+	      bfd_set_state (bm, bs, BFD_STATE_up, 0);
+	    }
 	}
-      else if (BFD_STATE_init == bs->remote_state)
+      else
 	{
 	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
 	}
