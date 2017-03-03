@@ -1,0 +1,291 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b8cee081",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "I think a node that is currently in adaptative node, and polling, should probably remain polling.\nReconfiguring a queue on some CPU should not cause another CPU to switch from polling to interrupt.",
+      "range": {
+        "startLine": 453,
+        "startChar": 4,
+        "endLine": 454,
+        "endChar": 55
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_18373401",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 551,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "We cannot offer to lock all worker threads everytime we receive a signal.\nWhy do you need it anyway ? This should only be executed by the main thread, isn\u0027t it ? (only called by unix fd callbacks).",
+      "range": {
+        "startLine": 551,
+        "startChar": 7,
+        "endLine": 551,
+        "endChar": 44
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3832f010",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1002,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "Should be 0, or \u0027\u0026\u003d ~VRING_USED_F_NO_NOTIFY\u0027",
+      "range": {
+        "startLine": 1002,
+        "startChar": 44,
+        "endLine": 1002,
+        "endChar": 67
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_985b2454",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1910,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "What about adaptative mode ?\nWe shouldn\u0027t send signals while polling unless really necessary (after some time elapsed).",
+      "range": {
+        "startLine": 1910,
+        "startChar": 3,
+        "endLine": 1910,
+        "endChar": 51
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_38643021",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1948,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "There surely is a faster way to set a whole bitmap to 0.",
+      "range": {
+        "startLine": 1948,
+        "startChar": 3,
+        "endLine": 1948,
+        "endChar": 22
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_b8b0208c",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1956,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "Please find another way to present the code.",
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f8446875",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1969,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "tx qid ?!\nSeems to me that the pending_input_bitmap should not have one bit per interface, but rather one bit per (interface,rx-queue) pair. So you get the qid from the bit index. Possibly a bit like we store both interface ID and queue ID in the private_data field from the unix_fd.",
+      "range": {
+        "startLine": 1969,
+        "startChar": 19,
+        "endLine": 1969,
+        "endChar": 33
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_d872cce4",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1985,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "Would it be possible to not duplicate code with ADAPTATIVE/INTERRUPT mode ?",
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_d8bbec70",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2407,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "What about adaptative mode ? We shouldn\u0027t send calls unless really necessary when in polling mode (including when in adaptative).",
+      "range": {
+        "startLine": 2407,
+        "startChar": 3,
+        "endLine": 2407,
+        "endChar": 51
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_38bd5069",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3039,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "invalid",
+      "range": {
+        "startLine": 3039,
+        "startChar": 15,
+        "endLine": 3039,
+        "endChar": 22
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7893d8fa",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3151,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "configured mode: %s\\n",
+      "range": {
+        "startLine": 3151,
+        "startChar": 29,
+        "endLine": 3151,
+        "endChar": 60
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_b88940cc",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3164,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "mode: %s\\n",
+      "range": {
+        "startLine": 3164,
+        "startChar": 29,
+        "endLine": 3164,
+        "endChar": 41
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_58901cec",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3298,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-03T12:24:23Z",
+      "side": 1,
+      "message": "\"Optional parameter specifying the input thread polling policy.\"",
+      "range": {
+        "startLine": 3297,
+        "startChar": 52,
+        "endLine": 3298,
+        "endChar": 23
+      },
+      "revId": "080472012be85ca1475389212f52ac93818b8917",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
