@@ -1481,8 +1481,8 @@ send_snat_user_session_details
   rmp->inside_port = s->in2out.port;
   rmp->protocol = ntohs(snat_proto_to_ip_proto(s->in2out.protocol));
   rmp->is_static = s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING ? 1 : 0;
-  rmp->last_heard = ntohl(s->last_heard);
-  rmp->total_bytes = ntohl(s->total_bytes);
+  rmp->last_heard = clib_host_to_net_u64((u64)s->last_heard);
+  rmp->total_bytes = clib_host_to_net_u64(s->total_bytes);
   rmp->total_pkts = ntohl(s->total_pkts);
   rmp->context = context;
 

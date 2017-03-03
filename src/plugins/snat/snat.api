@@ -413,7 +413,7 @@ define snat_user_session_details {
   u16 inside_port;
   u16 protocol;
   u8 is_static;
-  f64 last_heard;
+  u64 last_heard;
   u64 total_bytes;
   u32 total_pkts;
 };
