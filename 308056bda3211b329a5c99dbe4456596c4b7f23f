@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b3c4c192",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-03-03T14:44:22Z",
+      "side": 1,
+      "message": "It is not really using l2output_main.next_nodes, but rather the \"output\" feature is mapped to interface-output node which does handle the sw_if_index reuse properly.",
+      "range": {
+        "startLine": 20,
+        "startChar": 31,
+        "endLine": 20,
+        "endChar": 44
+      },
+      "revId": "308056bda3211b329a5c99dbe4456596c4b7f23f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
