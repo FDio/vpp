@@ -1555,7 +1555,7 @@ void
 bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
 {
   bfd_session_t *bs = bfd_find_session_by_idx (bm, bs_idx);
-  if (!bs)
+  if (!bs || (pkt->your_disc && pkt->your_disc != bs->local_discr))
     {
       return;
     }
