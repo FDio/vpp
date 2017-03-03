@@ -61,8 +61,6 @@
 #include <vlibmemory/api.h>
 #include <vnet/classify/input_acl.h>
 #include <vnet/l2/l2_classify.h>
-#include <vnet/vxlan/vxlan.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/map/map.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip_source_and_port_range_check.h>
@@ -109,7 +107,6 @@ _(OAM_ADD_DEL, oam_add_del)                                             \
 _(IS_ADDRESS_REACHABLE, is_address_reachable)                           \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
-_(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)               \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
@@ -371,29 +368,6 @@ vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_VPATH_REPLY);
-}
-
-static void
-  vl_api_sw_interface_set_vxlan_bypass_t_handler
-  (vl_api_sw_interface_set_vxlan_bypass_t * mp)
-{
-  vl_api_sw_interface_set_vxlan_bypass_reply_t *rmp;
-  int rv = 0;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
-
-  VALIDATE_SW_IF_INDEX (mp);
-
-  if (mp->is_ipv6)
-    {
-      /* not yet implemented */
-    }
-  else
-    vnet_feature_enable_disable ("ip4-unicast", "ip4-vxlan-bypass",
-				 sw_if_index, mp->enable, 0, 0);
-
-  BAD_SW_IF_INDEX_LABEL;
-
-  REPLY_MACRO (VL_API_SW_INTERFACE_SET_VXLAN_BYPASS_REPLY);
 }
 
 static void
@@ -1437,39 +1411,6 @@ out:
   /* *INDENT-ON* */
 }
 
-static void send_vxlan_tunnel_details
-  (vxlan_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
-{
-  vl_api_vxlan_tunnel_details_t *rmp;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
-  u8 is_ipv6 = !ip46_address_is_ip4 (&t->dst);
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_VXLAN_TUNNEL_DETAILS);
-  if (is_ipv6)
-    {
-      memcpy (rmp->src_address, t->src.ip6.as_u8, 16);
-      memcpy (rmp->dst_address, t->dst.ip6.as_u8, 16);
-      rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
-    }
-  else
-    {
-      memcpy (rmp->src_address, t->src.ip4.as_u8, 4);
-      memcpy (rmp->dst_address, t->dst.ip4.as_u8, 4);
-      rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
-    }
-  rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
-  rmp->vni = htonl (t->vni);
-  rmp->decap_next_index = htonl (t->decap_next_index);
-  rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->is_ipv6 = is_ipv6;
-  rmp->context = context;
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
 static void
 vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
 {
@@ -1491,40 +1432,6 @@ vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
   BAD_TX_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2_PATCH_ADD_DEL_REPLY);
-}
-
-static void send_vxlan_gpe_tunnel_details
-  (vxlan_gpe_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
-{
-  vl_api_vxlan_gpe_tunnel_details_t *rmp;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
-  u8 is_ipv6 = !(t->flags & VXLAN_GPE_TUNNEL_IS_IPV4);
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_VXLAN_GPE_TUNNEL_DETAILS);
-  if (is_ipv6)
-    {
-      memcpy (rmp->local, &(t->local.ip6), 16);
-      memcpy (rmp->remote, &(t->remote.ip6), 16);
-      rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
-      rmp->decap_vrf_id = htonl (im6->fibs[t->decap_fib_index].ft_table_id);
-    }
-  else
-    {
-      memcpy (rmp->local, &(t->local.ip4), 4);
-      memcpy (rmp->remote, &(t->remote.ip4), 4);
-      rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
-      rmp->decap_vrf_id = htonl (im4->fibs[t->decap_fib_index].ft_table_id);
-    }
-  rmp->vni = htonl (t->vni);
-  rmp->protocol = t->protocol;
-  rmp->sw_if_index = htonl (t->sw_if_index);
-  rmp->is_ipv6 = is_ipv6;
-  rmp->context = context;
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
 static void
@@ -2183,7 +2090,6 @@ vpe_api_hookup (vlib_main_t * vm)
   am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_TABLE].size += 5 * sizeof (u32x4);
   am->api_trace_cfg[VL_API_CLASSIFY_ADD_DEL_SESSION].size
     += 5 * sizeof (u32x4);
-  am->api_trace_cfg[VL_API_VXLAN_ADD_DEL_TUNNEL].size += 16 * sizeof (u32);
 
   /*
    * Thread-safe API messages
