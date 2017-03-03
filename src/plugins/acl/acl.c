@@ -1883,7 +1883,11 @@ acl_setup_nodes (void)
 
   feat_bitmap_init_next_nodes (vm, acl_in_node.index, L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
-			       am->acl_in_node_input_next_node_index);
+			       am->acl_in_node_feat_next_node_index);
+
+  feat_bitmap_init_next_nodes (vm, acl_out_node.index, L2OUTPUT_N_FEAT,
+			       l2output_get_feat_names (),
+			       am->acl_out_node_feat_next_node_index);
 
   memset (&am->acl_in_ip4_match_next[0], 0,
 	  sizeof (am->acl_in_ip4_match_next));

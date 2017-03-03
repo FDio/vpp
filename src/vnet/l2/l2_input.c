@@ -703,10 +703,11 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  shg = 0;		/* not used in xconnect */
 	}
 
-      /* set up split-horizon group */
+      /* set up split-horizon group and set output feature bit */
       config->shg = shg;
       out_config = l2output_intf_config (sw_if_index);
       out_config->shg = shg;
+      out_config->feature_bitmap |= L2OUTPUT_FEAT_OUTPUT;
 
       /*
        * Test: remove this when non-IP features can be configured.

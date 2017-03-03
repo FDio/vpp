@@ -68,13 +68,12 @@ acl_out_node_fn (vlib_main_t * vm,
 		 vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   acl_main_t *am = &acl_main;
-  l2_output_next_nodes_st *next_nodes = &am->acl_out_output_next_nodes;
+  u32 *output_feat_next_node_index =
+    am->acl_out_node_feat_next_node_index;
   u32 n_left_from, *from, *to_next;
   acl_out_next_t next_index;
   u32 pkts_acl_checked = 0;
   u32 feature_bitmap0;
-  u32 cached_sw_if_index = (u32) ~ 0;
-  u32 cached_next_index = (u32) ~ 0;
   u32 match_acl_index = ~0;
   u32 match_rule_index = ~0;
   u32 trace_bitmap = 0;
@@ -119,14 +118,9 @@ acl_out_node_fn (vlib_main_t * vm,
 	    }
 	  if (next0 == ~0)
 	    {
-	      l2_output_dispatch (vm,
-				  am->vnet_main,
-				  node,
-				  acl_out_node.index,
-				  &cached_sw_if_index,
-				  &cached_next_index,
-				  next_nodes,
-				  b0, sw_if_index0, feature_bitmap0, &next0);
+              next0 =
+                feat_bitmap_get_next_node_index (output_feat_next_node_index,
+                                                 feature_bitmap0);
 	    }
 
 
