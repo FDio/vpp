@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_3d19c288",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_be682cf6",
+      "range": {
+        "startLine": 398,
+        "startChar": 6,
+        "endLine": 398,
+        "endChar": 9
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_79e2de04",
         "filename": "src/plugins/ioam/ip6/ioam_cache.h",
         "patchSetId": 9
@@ -36,6 +60,30 @@
       "writtenOn": "2017-02-09T11:16:54Z",
       "side": 1,
       "message": "Instead of having locks at thread level, what we can do is\n1. Allocate a fixed size vector for storing cache entries. This will not change.\n2. Also allocate a fixed size vector for locks for having locks at per cache entry level.\nWith this we can get rid of thread level locking and have only entry level locking. Also we may not need per worker thread pool, one global pool should be fine.",
+      "range": {
+        "startLine": 523,
+        "startChar": 27,
+        "endLine": 523,
+        "endChar": 39
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1d1e0671",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 523,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "The design is now changed to be completely lock free.",
+      "parentUuid": "3a3291f1_79e2de04",
       "range": {
         "startLine": 523,
         "startChar": 27,
@@ -88,6 +136,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_9d09d633",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 357,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "v6 header has no checksum. TCP checksum is unaffected by this change.",
+      "parentUuid": "3a3291f1_fe2b5492",
+      "range": {
+        "startLine": 357,
+        "startChar": 8,
+        "endLine": 357,
+        "endChar": 16
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_de189886",
         "filename": "src/plugins/ioam/ip6/ioam_cache_node.c",
         "patchSetId": 9
@@ -99,6 +171,30 @@
       "writtenOn": "2017-02-08T19:34:33Z",
       "side": 1,
       "message": "ip checksum fixup - ip_csum_update()",
+      "range": {
+        "startLine": 361,
+        "startChar": 8,
+        "endLine": 361,
+        "endChar": 22
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_bd0c9243",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "v6 header has no checksum. TCP checksum is unaffected by this change.",
+      "parentUuid": "3a3291f1_de189886",
       "range": {
         "startLine": 361,
         "startChar": 8,
@@ -128,6 +224,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_7d062a22",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_thread.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "This thread is completely removed. Per your suggestion /10 patch is lock free and input node takes care of expiring the timer wheel.",
+      "parentUuid": "3a3291f1_9e269067",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_79b53ecc",
         "filename": "src/plugins/ioam/ip6/ioam_cache_tunnel_select_node.c",
         "patchSetId": 9
@@ -139,6 +253,30 @@
       "writtenOn": "2017-02-09T11:16:54Z",
       "side": 1,
       "message": "IP checksum fix",
+      "range": {
+        "startLine": 437,
+        "startChar": 7,
+        "endLine": 440,
+        "endChar": 59
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fd121a61",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_tunnel_select_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "no checksum in v6 header. Pseudo header for TCP checksum is not affected by this change.",
+      "parentUuid": "3a3291f1_79b53ecc",
       "range": {
         "startLine": 437,
         "startChar": 7,
@@ -174,6 +312,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_dd175e50",
+        "filename": "src/plugins/ioam/ip6/ioam_cache_tunnel_select_node.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 627,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_59ca8250",
+      "range": {
+        "startLine": 627,
+        "startChar": 42,
+        "endLine": 627,
+        "endChar": 58
+      },
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_1e03c0b9",
         "filename": "src/vnet/ip/ip6.h",
         "patchSetId": 9
@@ -185,6 +347,24 @@
       "writtenOn": "2017-02-08T15:44:00Z",
       "side": 1,
       "message": "The find_hdr argument is terminally confusing. Please find some way of expressing what it actually means. Changing the name might help. I can see what it does, but not why one would want it.",
+      "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5d2c8eab",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-03T05:39:19Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_1e03c0b9",
       "revId": "89ea14a000bf1640530af8ceaf887c8d56f94f5a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
