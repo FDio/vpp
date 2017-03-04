@@ -842,7 +842,8 @@ nobase_include_HEADERS +=			\
   vnet/session/session.h			\
   vnet/session/application.h			\
   vnet/session/transport.h			\
-  vnet/session/application_interface.h
+  vnet/session/application_interface.h		\
+  vnet/session/session.api.h
 
 API_FILES += vnet/session/session.api
 
