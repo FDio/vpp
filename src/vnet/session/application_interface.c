@@ -364,8 +364,7 @@ vnet_connect_uri (vnet_connect_args_t * a)
 }
 
 int
-vnet_disconnect_session (u32 client_index, u32 session_index,
-			 u32 thread_index)
+vnet_disconnect_session (u32 session_index, u32 thread_index)
 {
   stream_session_t *session;
 
