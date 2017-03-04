@@ -763,8 +763,7 @@ snat_vat_api_hookup (vat_main_t *vam)
 
   /* API messages we can send */
 #define _(n,h)                                          \
-  hash_set_mem (vam->function_by_name, #n, api_##n);    \
-  clib_warning ("vam %llx add '%s' handler %llx", vam, #n, api_##n);
+  hash_set_mem (vam->function_by_name, #n, api_##n);
   foreach_vpe_api_msg;
 #undef _    
     

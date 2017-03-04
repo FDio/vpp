@@ -158,7 +158,7 @@ static int api_" plugin-name "_enable_disable (vat_main_t * vam)
 #define foreach_vpe_api_msg \\
 _(" plugin-name "_enable_disable, \"<intfc> [disable]\")
 
-void vat_api_hookup (vat_main_t *vam)
+static void " plugin-name "_api_hookup (vat_main_t *vam)
 {
     " plugin-name "_test_main_t * sm = &" plugin-name "_test_main;
     /* Hook up handlers for replies from the data plane plug-in */
@@ -196,7 +196,7 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
-    vat_api_hookup (vam);
+    " plugin-name "_api_hookup (vam);
   
   vec_free(name);
   

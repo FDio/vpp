@@ -351,7 +351,7 @@ _(sw_interface_set_dpdk_hqos_subport,                                     \
 _(sw_interface_set_dpdk_hqos_tctbl,                                       \
   "rx sw_if_index <id> entry <n> tc <n> queue <n>\n")
 
-void vat_api_hookup (vat_main_t *vam)
+static void dpdk_api_hookup (vat_main_t *vam)
 {
   dpdk_test_main_t * dm __attribute__((unused)) = &dpdk_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -389,7 +389,7 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   dm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (dm->msg_id_base != (u16) ~0)
-    vat_api_hookup (vam);
+    dpdk_api_hookup (vam);
   
   vec_free(name);
   
