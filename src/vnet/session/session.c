@@ -616,7 +616,10 @@ again:
 	  goto again;
 	}
       else
-	return SESSION_ERROR_NO_SPACE;
+	{
+	  clib_warning ("No space to allocate fifos!");
+	  return SESSION_ERROR_NO_SPACE;
+	}
     }
   return 0;
 }
@@ -804,6 +807,10 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
   evt.event_type = FIFO_EVENT_SERVER_RX;
   evt.event_id = serial_number++;
   evt.enqueue_length = svm_fifo_max_dequeue (s->server_rx_fifo);
+
+  /* Built-in server? Hand event to the callback... */
+  if (app->cb_fns.builtin_server_rx_callback)
+    return app->cb_fns.builtin_server_rx_callback (s, &evt);
 
   /* Add event to server's event queue */
   q = app->event_queue;

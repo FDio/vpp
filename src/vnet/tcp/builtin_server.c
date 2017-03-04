@@ -18,6 +18,16 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 
+typedef struct
+{
+  u8 * rx_buf;
+
+  vlib_main_t *vlib_main;
+} builtin_server_main_t;
+
+builtin_server_main_t builtin_server_main;
+
+
 int
 builtin_session_accept_callback (stream_session_t * s)
 {
@@ -56,10 +66,34 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
 }
 
 int
-builtin_server_rx_callback (stream_session_t * s)
+builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t *e)
 {
-  clib_warning ("called...");
-  return 0;
+  int rv, bytes;
+  int n_tx_packets;
+  svm_fifo_t *save_tx_fifo;
+  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  vlib_main_t *vm = vlib_get_main();
+  vlib_node_runtime_t * node;
+
+  node = vlib_node_get_runtime (vm, session_queue_node.index);
+
+  bytes = e->enqueue_length;
+  if (PREDICT_FALSE(bytes <= 0))
+    {
+      clib_warning ("bizarre rx callback: bytes %d", bytes);
+      return 0;
+    }
+
+  /* Seriously scary in 15 different ways, but it appears to work... */
+  save_tx_fifo = s->server_tx_fifo;
+  s->server_tx_fifo = s->server_rx_fifo;
+
+  rv = session_fifo_rx_dequeue (vm, node, smm, e, s, s->thread_index, 
+    &n_tx_packets);
+  
+  s->server_tx_fifo = save_tx_fifo;
+
+  return rv;
 }
 
 static session_cb_vft_t builtin_session_cb_vft = {
@@ -110,6 +144,7 @@ server_create_command_fn (vlib_main_t * vm,
     }
 #endif
 
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
   rv = server_create (vm);
   switch (rv)
     {
