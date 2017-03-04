@@ -63,8 +63,8 @@ format_function_t format_tcp_state;
   _(DELACK, "DELAYED ACK")              \
   _(PERSIST, "PERSIST")                 \
   _(KEEP, "KEEP")                       \
-  _(2MSL, "2MSL")                       \
-  _(RETRANSMIT_SYN, "RETRANSMIT_SYN")   \
+  _(WAITCLOSE, "WAIT CLOSE")            \
+  _(RETRANSMIT_SYN, "RETRANSMIT SYN")   \
   _(ESTABLISH, "ESTABLISH")
 
 typedef enum _tcp_timers
@@ -89,6 +89,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_DELACK_TIME         1	/* 0.1s */
 #define TCP_ESTABLISH_TIME      750	/* 75s */
 #define TCP_2MSL_TIME           300	/* 30s */
+#define TCP_CLOSEWAIT_TIME	1	/* 0.1s */
+#define TCP_CLEANUP_TIME	5	/* 0.5s Time to wait before cleanup */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
 #define TCP_RTT_MAX 30 * THZ	/* 30s (probably too much) */
@@ -102,6 +104,7 @@ void tcp_update_time (f64 now, u32 thread_index);
   _(DELACK, "Delay ACK")                        \
   _(SNDACK, "Send ACK")                         \
   _(BURSTACK, "Burst ACK set")                  \
+  _(FINSNT, "FIN sent")				\
   _(SENT_RCV_WND0, "Sent 0 receive window")     \
   _(RECOVERY, "Recovery on")                    \
   _(FAST_RECOVERY, "Fast Recovery on")
@@ -331,6 +334,8 @@ clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
 always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, u32 thread_index)
 {
+  if (pool_is_free_index (tcp_main.connections[thread_index], conn_index))
+    return 0;
   return pool_elt_at_index (tcp_main.connections[thread_index], conn_index);
 }
 
@@ -347,6 +352,7 @@ tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
+void tcp_connection_reset (tcp_connection_t * tc);
 
 always_inline tcp_connection_t *
 tcp_listener_get (u32 tli)
@@ -361,7 +367,7 @@ tcp_half_open_connection_get (u32 conn_index)
 }
 
 void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
-void tcp_make_finack (tcp_connection_t * tc, vlib_buffer_t * b);
+void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4);
 void tcp_send_syn (tcp_connection_t * tc);
@@ -467,7 +473,7 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 }
 
 always_inline void
-tcp_retransmit_timer_set (tcp_main_t * tm, tcp_connection_t * tc)
+tcp_retransmit_timer_set (tcp_connection_t * tc)
 {
   /* XXX Switch to faster TW */
   tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,

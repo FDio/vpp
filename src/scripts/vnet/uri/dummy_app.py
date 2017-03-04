@@ -2,7 +2,7 @@
 
 import socket
 import sys
-import bitstring
+import time
 
 # action can be reflect or drop 
 action = "drop"
@@ -22,6 +22,7 @@ def handle_connection (connection, client_address):
 def run_server(ip, port):
     print("Starting server {}:{}".format(repr(ip), repr(port)))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_address = (ip, int(port))
     sock.bind(server_address)
     sock.listen(1)
@@ -39,12 +40,31 @@ def prepare_data():
 def run_client(ip, port):
     print("Starting client {}:{}".format(repr(ip), repr(port)))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_address = ("6.0.1.1", 1234)
+    server_address = (ip, port)
     sock.connect(server_address)
     
     data = prepare_data()
+    n_rcvd = 0
+    n_sent = len (data)
     try:
         sock.sendall(data)
+        
+        timeout = time.time() + 2
+        while n_rcvd < n_sent and time.time() < timeout:
+            tmp = sock.recv(1500)
+            tmp = bytearray (tmp)
+            n_read = len(tmp)
+            for i in range(n_read):
+                if (data[n_rcvd + i] != tmp[i]):
+                    print("Difference at byte {}. Sent {} got {}"
+                          .format(n_rcvd + i, data[n_rcvd + i], tmp[i]))
+            n_rcvd += n_read
+            
+        if (n_rcvd < n_sent or n_rcvd > n_sent):
+            print("Sent {} and got back {}".format(n_sent, n_rcvd))
+        else:
+            print("Got back what we've sent!!");
+            
     finally:
         sock.close()
     
@@ -62,4 +82,4 @@ if __name__ == "__main__":
     if (len(sys.argv) == 5):
         action = sys.argv[4]
 
-    run (sys.argv[1], sys.argv[2], sys.argv[3])
+    run (sys.argv[1], sys.argv[2], int(sys.argv[3]))

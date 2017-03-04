@@ -92,6 +92,19 @@ application_del (application_t * app)
   pool_put (app_pool, app);
 }
 
+static void
+application_verify_cb_fns (application_type_t type, session_cb_vft_t * cb_fns)
+{
+  if (type == APP_SERVER && cb_fns->session_accept_callback == 0)
+    clib_warning ("No accept callback function provided");
+  if (type == APP_CLIENT && cb_fns->session_connected_callback == 0)
+    clib_warning ("No session connected callback function provided");
+  if (cb_fns->session_disconnect_callback == 0)
+    clib_warning ("No session disconnect callback function provided");
+  if (cb_fns->session_reset_callback == 0)
+    clib_warning ("No session reset callback function provided");
+}
+
 application_t *
 application_new (application_type_t type, session_type_t sst,
 		 u32 api_client_index, u32 flags, session_cb_vft_t * cb_fns)
@@ -141,6 +154,9 @@ application_new (application_type_t type, session_type_t sst,
   app->api_client_index = api_client_index;
   app->flags = flags;
   app->cb_fns = *cb_fns;
+
+  /* Check that the obvious things are properly set up */
+  application_verify_cb_fns (type, cb_fns);
 
   /* Add app to lookup by api_client_index table */
   application_table_add (app);

@@ -244,18 +244,18 @@ udp4_uri_input_node_fn (vlib_main_t * vm,
       /* Get session's server */
       server0 = application_get (s0->app_index);
 
-      /* Built-in server? Deliver the goods... */
-      if (server0->cb_fns.builtin_server_rx_callback)
-	{
-	  server0->cb_fns.builtin_server_rx_callback (s0);
-	  continue;
-	}
-
       /* Fabricate event */
       evt.fifo = s0->server_rx_fifo;
       evt.event_type = FIFO_EVENT_SERVER_RX;
       evt.event_id = serial_number++;
       evt.enqueue_length = svm_fifo_max_dequeue (s0->server_rx_fifo);
+
+      /* Built-in server? Deliver the goods... */
+      if (server0->cb_fns.builtin_server_rx_callback)
+	{
+	  server0->cb_fns.builtin_server_rx_callback (s0, &evt);
+	  continue;
+	}
 
       /* Add event to server's event queue */
       q = server0->event_queue;

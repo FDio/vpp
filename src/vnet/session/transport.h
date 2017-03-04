@@ -74,7 +74,7 @@ typedef struct _transport_proto_vft
     u32 (*push_header) (transport_connection_t * tconn, vlib_buffer_t * b);
     u16 (*send_mss) (transport_connection_t * tc);
     u32 (*send_space) (transport_connection_t * tc);
-    u32 (*rx_fifo_offset) (transport_connection_t * tc);
+    u32 (*tx_fifo_offset) (transport_connection_t * tc);
 
   /*
    * Connection retrieval
@@ -92,39 +92,39 @@ typedef struct _transport_proto_vft
 
 } transport_proto_vft_t;
 
+/* *INDENT-OFF* */
 /* 16 octets */
-typedef CLIB_PACKED (struct
-		     {
-		     union
-		     {
-		     struct
-		     {
-		     ip4_address_t src; ip4_address_t dst;
-		     u16 src_port;
-		     u16 dst_port;
-		     /* align by making this 4 octets even though its a 1-bit field
-		      * NOTE: avoid key overlap with other transports that use 5 tuples for
-		      * session identification.
-		      */
-		     u32 proto;
-		     };
-		     u64 as_u64[2];
-		     };
-		     }) v4_connection_key_t;
+typedef CLIB_PACKED (struct {
+  union
+    {
+      struct
+	{
+	  ip4_address_t src; ip4_address_t dst;
+	  u16 src_port;
+	  u16 dst_port;
+	  /* align by making this 4 octets even though its a 1-bit field
+	   * NOTE: avoid key overlap with other transports that use 5 tuples for
+	   * session identification.
+	   */
+	  u32 proto;
+	};
+      u64 as_u64[2];
+    };
+}) v4_connection_key_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     union
-		     {
-		     struct
-		     {
-		     /* 48 octets */
-		     ip6_address_t src; ip6_address_t dst;
-		     u16 src_port;
-		     u16 dst_port; u32 proto; u8 unused_for_now[8];
-		     }; u64 as_u64[6];
-		     };
-		     }) v6_connection_key_t;
+typedef CLIB_PACKED (struct {
+  union
+    {
+      struct
+	{
+	  /* 48 octets */
+	  ip6_address_t src; ip6_address_t dst;
+	  u16 src_port;
+	  u16 dst_port; u32 proto; u8 unused_for_now[8];
+	}; u64 as_u64[6];
+    };
+}) v6_connection_key_t;
+/* *INDENT-ON* */
 
 typedef clib_bihash_kv_16_8_t session_kv4_t;
 typedef clib_bihash_kv_48_8_t session_kv6_t;
