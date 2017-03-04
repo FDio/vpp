@@ -78,10 +78,11 @@ static u32 session_type_to_next[] = {
 };
 
 always_inline int
-session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   session_manager_main_t * smm, session_fifo_event_t * e0,
-		   stream_session_t * s0, u32 thread_index, int *n_tx_packets,
-		   u8 peek_data)
+session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
+				session_manager_main_t * smm,
+				session_fifo_event_t * e0,
+				stream_session_t * s0, u32 thread_index,
+				int *n_tx_packets, u8 peek_data)
 {
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 left_to_snd0, max_len_to_snd0, len_to_deq0, n_bufs, snd_space0;
@@ -120,7 +121,7 @@ session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (peek_data)
     {
       /* Offset in rx fifo from where to peek data  */
-      rx_offset = transport_vft->rx_fifo_offset (tc0);
+      rx_offset = transport_vft->tx_fifo_offset (tc0);
     }
 
   /* TODO check if transport is willing to send len_to_snd0
@@ -194,24 +195,26 @@ session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      t0->server_thread_index = s0->thread_index;
 	    }
 
+	  len_to_deq0 = (left_to_snd0 < snd_mss0) ? left_to_snd0 : snd_mss0;
+
 	  /* *INDENT-OFF* */
 	  if (1)
 	    {
 	      ELOG_TYPE_DECLARE (e) = {
-		  .format = "evt-dequeue: id %d length %d",
-		  .format_args = "i4i4",
+		  .format = "evt-deq: id %d len %d rd %d wnd %d",
+		  .format_args = "i4i4i4i4",
 	      };
 	      struct
 	      {
-		u32 data[2];
+		u32 data[4];
 	      } *ed;
 	      ed = ELOG_DATA (&vm->elog_main, e);
 	      ed->data[0] = e0->event_id;
 	      ed->data[1] = e0->enqueue_length;
+	      ed->data[2] = len_to_deq0;
+	      ed->data[3] = left_to_snd0;
 	    }
 	  /* *INDENT-ON* */
-
-	  len_to_deq0 = (left_to_snd0 < snd_mss0) ? left_to_snd0 : snd_mss0;
 
 	  /* Make room for headers */
 	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
@@ -276,22 +279,25 @@ dequeue_fail:
 }
 
 int
-session_fifo_rx_peek (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      session_manager_main_t * smm, session_fifo_event_t * e0,
-		      stream_session_t * s0, u32 thread_index, int *n_tx_pkts)
+session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
+			      session_manager_main_t * smm,
+			      session_fifo_event_t * e0,
+			      stream_session_t * s0, u32 thread_index,
+			      int *n_tx_pkts)
 {
-  return session_fifo_rx_i (vm, node, smm, e0, s0, thread_index, n_tx_pkts,
-			    1);
+  return session_tx_fifo_read_and_snd_i (vm, node, smm, e0, s0, thread_index,
+					 n_tx_pkts, 1);
 }
 
 int
-session_fifo_rx_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 session_manager_main_t * smm,
-			 session_fifo_event_t * e0, stream_session_t * s0,
-			 u32 thread_index, int *n_tx_pkts)
+session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 session_manager_main_t * smm,
+				 session_fifo_event_t * e0,
+				 stream_session_t * s0, u32 thread_index,
+				 int *n_tx_pkts)
 {
-  return session_fifo_rx_i (vm, node, smm, e0, s0, thread_index, n_tx_pkts,
-			    0);
+  return session_tx_fifo_read_and_snd_i (vm, node, smm, e0, s0, thread_index,
+					 n_tx_pkts, 0);
 }
 
 static uword
@@ -369,11 +375,15 @@ skip_dequeue:
 
       s0 = stream_session_get_if_valid (server_session_index0,
 					my_thread_index);
-      if (!s0)
+
+      if (CLIB_DEBUG && !s0)
 	{
-	  clib_warning ("It's dead Jim!");
+	  clib_warning ("It's dead, Jim!");
 	  continue;
 	}
+
+      if (PREDICT_FALSE (s0->session_state == SESSION_STATE_CLOSED))
+	continue;
 
       ASSERT (s0->thread_index == my_thread_index);
 

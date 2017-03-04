@@ -287,6 +287,7 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
       session = pool_elt_at_index (utm->sessions, p[0]);
       hash_unset (utm->session_index_by_vpp_handles, key);
       pool_put (utm->sessions, session);
+      utm->time_to_stop = 1;
     }
   else
     {
@@ -296,7 +297,7 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION_REPLY);
+  rmp->_vl_msg_id = ntohs (VL_API_RESET_SESSION_REPLY);
   rmp->retval = rv;
   rmp->session_index = mp->session_index;
   rmp->session_thread_index = mp->session_thread_index;
@@ -734,7 +735,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	    {
 	      rv = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, utm->rx_buf);
 	    }
-	  while (rv == -2);
+	  while (rv == -2 && !utm->time_to_stop);
 
 	  /* Fabricate TX event, send to vpp */
 	  evt.fifo = tx_fifo;
@@ -750,7 +751,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
       if (n_read > 0)
 	bytes -= n_read;
     }
-  while (n_read < 0 || bytes > 0);
+  while ((n_read < 0 || bytes > 0) && !utm->time_to_stop);
 }
 
 void
