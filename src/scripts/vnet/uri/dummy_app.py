@@ -2,7 +2,7 @@
 
 import socket
 import sys
-import bitstring
+import time
 
 # action can be reflect or drop 
 action = "drop"
@@ -39,14 +39,26 @@ def prepare_data():
 def run_client(ip, port):
     print("Starting client {}:{}".format(repr(ip), repr(port)))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_address = ("6.0.1.1", 1234)
+    server_address = (ip, port)
     sock.connect(server_address)
     
     data = prepare_data()
+    n_rcvd = 0
+    n_sent = len (data)
     try:
         sock.sendall(data)
+        
+        timeout = time.time() + 2
+        while n_rcvd < n_sent and time.time() < timeout:
+            tmp = sock.recv(16)
+            n_rcvd += len(tmp)
+            
+        if (n_rcvd < n_sent):
+            print "Didn't receive all what we've sent!!"
     finally:
         sock.close()
+        
+
     
 def run(mode, ip, port):
     if (mode == "server"):
@@ -62,4 +74,4 @@ if __name__ == "__main__":
     if (len(sys.argv) == 5):
         action = sys.argv[4]
 
-    run (sys.argv[1], sys.argv[2], sys.argv[3])
+    run (sys.argv[1], sys.argv[2], int(sys.argv[3]))

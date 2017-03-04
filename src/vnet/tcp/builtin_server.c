@@ -18,6 +18,16 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 
+typedef struct
+{
+  u8 *rx_buf;
+
+  vlib_main_t *vlib_main;
+} builtin_server_main_t;
+
+builtin_server_main_t builtin_server_main;
+
+
 int
 builtin_session_accept_callback (stream_session_t * s)
 {
@@ -30,6 +40,8 @@ void
 builtin_session_disconnect_callback (stream_session_t * s)
 {
   clib_warning ("called...");
+
+  vnet_disconnect_session (s->session_index, s->thread_index);
 }
 
 int
@@ -56,9 +68,53 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
 }
 
 int
-builtin_server_rx_callback (stream_session_t * s)
+builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * e)
 {
-  clib_warning ("called...");
+  int n_written, bytes, total_copy_bytes, n_tx_packets;
+  int n_read;
+  svm_fifo_t *tx_fifo;
+  builtin_server_main_t *bsm = &builtin_server_main;
+  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_runtime_t *node;
+
+  bytes = e->enqueue_length;
+  if (PREDICT_FALSE (bytes <= 0))
+    {
+      clib_warning ("bizarre rx callback: bytes %d", bytes);
+      return 0;
+    }
+
+  tx_fifo = s->server_tx_fifo;
+
+  /* Number of bytes we're going to copy */
+  total_copy_bytes = (bytes < (tx_fifo->nitems - tx_fifo->cursize)) ? bytes :
+    tx_fifo->nitems - tx_fifo->cursize;
+
+  if (PREDICT_FALSE (total_copy_bytes <= 0))
+    {
+      clib_warning ("no space in tx fifo, event had %d bytes", bytes);
+      return 0;
+    }
+
+  node = vlib_node_get_runtime (vm, session_queue_node.index);
+
+  vec_validate (bsm->rx_buf, total_copy_bytes - 1);
+  _vec_len (bsm->rx_buf) = total_copy_bytes;
+
+  n_read = svm_fifo_dequeue_nowait (s->server_rx_fifo, 0, total_copy_bytes,
+				    bsm->rx_buf);
+  ASSERT (n_read == total_copy_bytes);
+  n_written = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, bsm->rx_buf);
+  ASSERT (n_written == total_copy_bytes);
+
+  n_written =
+    session_tx_fifo_peek_and_snd (vm, node, smm, e, s, s->thread_index,
+				  &n_tx_packets);
+
+  if (n_written)
+    clib_warning ("tx dequeue returned %d", n_written);
+
   return 0;
 }
 
@@ -68,7 +124,7 @@ static session_cb_vft_t builtin_session_cb_vft = {
   .session_connected_callback = builtin_session_connected_callback,
   .add_segment_callback = builtin_add_segment_callback,
   .redirect_connect_callback = builtin_redirect_connect_callback,
-  .builtin_server_rx_callback = builtin_server_rx_callback
+  .builtin_server_rx_callback = builtin_server_rx_callback,
 };
 
 static int
@@ -110,6 +166,7 @@ server_create_command_fn (vlib_main_t * vm,
     }
 #endif
 
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
   rv = server_create (vm);
   switch (rv)
     {
@@ -121,10 +178,14 @@ server_create_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (server_create_command, static) =
 {
-.path = "test server",.short_help = "test server",.function =
-    server_create_command_fn,};
+  .path = "test server",
+  .short_help = "test server",
+  .function = server_create_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
 * fd.io coding-style-patch-verification: ON

@@ -78,10 +78,11 @@ static u32 session_type_to_next[] = {
 };
 
 always_inline int
-session_fifo_rx_i (vlib_main_t * vm, vlib_node_runtime_t * node,
-		   session_manager_main_t * smm, session_fifo_event_t * e0,
-		   stream_session_t * s0, u32 thread_index, int *n_tx_packets,
-		   u8 peek_data)
+session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
+				session_manager_main_t * smm,
+				session_fifo_event_t * e0,
+				stream_session_t * s0, u32 thread_index,
+				int *n_tx_packets, u8 peek_data)
 {
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 left_to_snd0, max_len_to_snd0, len_to_deq0, n_bufs, snd_space0;
@@ -276,22 +277,25 @@ dequeue_fail:
 }
 
 int
-session_fifo_rx_peek (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      session_manager_main_t * smm, session_fifo_event_t * e0,
-		      stream_session_t * s0, u32 thread_index, int *n_tx_pkts)
+session_tx_fifo_peek_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
+			      session_manager_main_t * smm,
+			      session_fifo_event_t * e0,
+			      stream_session_t * s0, u32 thread_index,
+			      int *n_tx_pkts)
 {
-  return session_fifo_rx_i (vm, node, smm, e0, s0, thread_index, n_tx_pkts,
-			    1);
+  return session_tx_fifo_read_and_snd_i (vm, node, smm, e0, s0, thread_index,
+					 n_tx_pkts, 1);
 }
 
 int
-session_fifo_rx_dequeue (vlib_main_t * vm, vlib_node_runtime_t * node,
-			 session_manager_main_t * smm,
-			 session_fifo_event_t * e0, stream_session_t * s0,
-			 u32 thread_index, int *n_tx_pkts)
+session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
+				 session_manager_main_t * smm,
+				 session_fifo_event_t * e0,
+				 stream_session_t * s0, u32 thread_index,
+				 int *n_tx_pkts)
 {
-  return session_fifo_rx_i (vm, node, smm, e0, s0, thread_index, n_tx_pkts,
-			    0);
+  return session_tx_fifo_read_and_snd_i (vm, node, smm, e0, s0, thread_index,
+					 n_tx_pkts, 0);
 }
 
 static uword

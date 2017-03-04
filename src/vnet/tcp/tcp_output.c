@@ -396,6 +396,7 @@ tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 
   /* Leave enough space for headers */
   vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  vnet_buffer (b)->tcp.flags = 0;
 }
 
 /**
@@ -443,16 +444,22 @@ tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
  * Convert buffer to FIN-ACK
  */
 void
-tcp_make_finack (tcp_connection_t * tc, vlib_buffer_t * b)
+tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = tm->vlib_main;
+  u8 flags = 0;
 
   tcp_reuse_buffer (vm, b);
-  tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_ACK | TCP_FLAG_FIN);
+
+  if (tc->rcv_las == tc->rcv_nxt)
+    flags = TCP_FLAG_FIN;
+  else
+    flags = TCP_FLAG_FIN | TCP_FLAG_ACK;
+
+  tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, flags);
 
   /* Reset flags, make sure ack is sent */
-  tc->flags = TCP_CONN_SNDACK;
   vnet_buffer (b)->tcp.flags &= ~TCP_BUF_FLAG_DUPACK;
 
   tc->snd_nxt += 1;
@@ -500,7 +507,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
 
   /* Init retransmit timer */
-  tcp_retransmit_timer_set (tm, tc);
+  tcp_retransmit_timer_set (tc);
 }
 
 always_inline void
@@ -818,7 +825,7 @@ tcp_send_fin (tcp_connection_t * tc)
   /* Leave enough space for headers */
   vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 
-  tcp_make_finack (tc, b);
+  tcp_make_fin (tc, b);
 
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 }
@@ -1038,7 +1045,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
       /* Re-enable retransmit timer */
-      tcp_retransmit_timer_set (tm, tc);
+      tcp_retransmit_timer_set (tc);
     }
   else
     {
@@ -1139,7 +1146,6 @@ tcp46_output_inline (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
 		     vlib_frame_t * from_frame, int is_ip4)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->cpu_index;
 
@@ -1193,6 +1199,19 @@ tcp46_output_inline (vlib_main_t * vm,
 	      ASSERT (!bogus);
 	    }
 
+	  /* It may happen that FIN is sent before we clean up all queued
+	   * packets. Make sure we don't send more packets after FIN. */
+	  if (PREDICT_FALSE (tc0->state == TCP_STATE_LAST_ACK))
+	    {
+	      if (tc0->flags & TCP_CONN_FIN_SNT)
+		{
+		  next0 = TCP_OUTPUT_NEXT_DROP;
+		  error0 = TCP_ERROR_NONE;
+		  goto done;
+		}
+	      tc0->flags |= TCP_CONN_FIN_SNT;
+	    }
+
 	  /* Filter out DUPACKs if there are no OOO segments left */
 	  if (PREDICT_FALSE
 	      (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
@@ -1236,7 +1255,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	  if (!tcp_timer_is_active (tc0, TCP_TIMER_RETRANSMIT)
 	      && tc0->snd_nxt != tc0->snd_una)
 	    {
-	      tcp_retransmit_timer_set (tm, tc0);
+	      tcp_retransmit_timer_set (tc0);
 	      tc0->rto_boff = 0;
 	    }
 

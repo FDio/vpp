@@ -162,8 +162,8 @@ typedef int
 			session_fifo_event_t * e0, stream_session_t * s0,
 			u32 thread_index, int *n_tx_pkts);
 
-extern session_fifo_rx_fn session_fifo_rx_peek;
-extern session_fifo_rx_fn session_fifo_rx_dequeue;
+extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
+extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 
 struct _session_manager_main
 {
