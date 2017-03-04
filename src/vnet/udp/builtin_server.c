@@ -39,7 +39,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
 }
 
 static int
-builtin_server_rx_callback (stream_session_t * s)
+builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * ep)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   u32 this_transfer;

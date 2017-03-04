@@ -548,8 +548,8 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
 
   rv = api_session_not_valid (mp->session_index, mp->session_thread_index);
   if (!rv)
-    rv = vnet_disconnect_session (mp->client_index, mp->session_index,
-				  mp->session_thread_index);
+    rv =
+      vnet_disconnect_session (mp->session_index, mp->session_thread_index);
 
   REPLY_MACRO (VL_API_DISCONNECT_SESSION_REPLY);
 }
@@ -572,8 +572,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
     }
 
   /* Disconnect has been confirmed. Confirm close to transport */
-  vnet_disconnect_session (mp->client_index, mp->session_index,
-			   mp->session_thread_index);
+  vnet_disconnect_session (mp->session_index, mp->session_thread_index);
 }
 
 static void

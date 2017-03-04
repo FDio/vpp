@@ -112,9 +112,7 @@ typedef enum
 int vnet_bind_uri (vnet_bind_args_t *);
 int vnet_unbind_uri (char *uri, u32 api_client_index);
 int vnet_connect_uri (vnet_connect_args_t * a);
-int
-vnet_disconnect_session (u32 client_index, u32 session_index,
-			 u32 thread_index);
+int vnet_disconnect_session (u32 session_index, u32 thread_index);
 
 int vnet_bind (vnet_bind_args_t * a);
 int vnet_connect (vnet_connect_args_t * a);
