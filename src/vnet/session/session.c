@@ -373,7 +373,7 @@ stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
   /* Finally, try half-open connections */
   rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
   if (rv == 0)
-    return tp_vfts[s->session_type].get_half_open (kv6.value & 0xFFFFFFFF);
+    return tp_vfts[proto].get_half_open (kv6.value & 0xFFFFFFFF);
 
   return 0;
 }
@@ -617,7 +617,10 @@ again:
 	  goto again;
 	}
       else
-	return SESSION_ERROR_NO_SPACE;
+	{
+	  clib_warning ("No space to allocate fifos!");
+	  return SESSION_ERROR_NO_SPACE;
+	}
     }
   return 0;
 }
@@ -805,6 +808,10 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
   evt.event_type = FIFO_EVENT_SERVER_RX;
   evt.event_id = serial_number++;
   evt.enqueue_length = svm_fifo_max_dequeue (s->server_rx_fifo);
+
+  /* Built-in server? Hand event to the callback... */
+  if (app->cb_fns.builtin_server_rx_callback)
+    return app->cb_fns.builtin_server_rx_callback (s, &evt);
 
   /* Add event to server's event queue */
   q = app->event_queue;
@@ -1197,8 +1204,8 @@ stream_session_open (u8 sst, ip46_address_t * addr, u16 port_host_byte_order,
 void
 stream_session_disconnect (stream_session_t * s)
 {
-  tp_vfts[s->session_type].close (s->connection_index, s->thread_index);
   s->session_state = SESSION_STATE_CLOSED;
+  tp_vfts[s->session_type].close (s->connection_index, s->thread_index);
 }
 
 /**
@@ -1221,7 +1228,8 @@ session_register_transport (u8 type, const transport_proto_vft_t * vft)
 
   /* If an offset function is provided, then peek instead of dequeue */
   smm->session_rx_fns[type] =
-    (vft->rx_fifo_offset) ? session_fifo_rx_peek : session_fifo_rx_dequeue;
+    (vft->tx_fifo_offset) ? session_tx_fifo_peek_and_snd :
+    session_tx_fifo_dequeue_and_snd;
 }
 
 transport_proto_vft_t *
