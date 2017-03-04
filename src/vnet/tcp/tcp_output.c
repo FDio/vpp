@@ -500,7 +500,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
 
   /* Init retransmit timer */
-  tcp_retransmit_timer_set (tm, tc);
+  tcp_retransmit_timer_set (tc);
 }
 
 always_inline void
@@ -1038,7 +1038,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
       /* Re-enable retransmit timer */
-      tcp_retransmit_timer_set (tm, tc);
+      tcp_retransmit_timer_set (tc);
     }
   else
     {
@@ -1139,7 +1139,6 @@ tcp46_output_inline (vlib_main_t * vm,
 		     vlib_node_runtime_t * node,
 		     vlib_frame_t * from_frame, int is_ip4)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->cpu_index;
 
@@ -1236,7 +1235,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	  if (!tcp_timer_is_active (tc0, TCP_TIMER_RETRANSMIT)
 	      && tc0->snd_nxt != tc0->snd_una)
 	    {
-	      tcp_retransmit_timer_set (tm, tc0);
+	      tcp_retransmit_timer_set (tc0);
 	      tc0->rto_boff = 0;
 	    }
 

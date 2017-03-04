@@ -462,7 +462,7 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 }
 
 always_inline void
-tcp_retransmit_timer_set (tcp_main_t * tm, tcp_connection_t * tc)
+tcp_retransmit_timer_set (tcp_connection_t * tc)
 {
   /* XXX Switch to faster TW */
   tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,

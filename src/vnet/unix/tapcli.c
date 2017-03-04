@@ -1436,7 +1436,8 @@ done:
 
 VLIB_CLI_COMMAND (tap_connect_command, static) = {
     .path = "tap connect",
-    .short_help = "tap connect <intfc-name> [hwaddr <addr>]",
+    .short_help =
+	"tap connect <intfc-name> [address <ip-addr>/mw] [hwaddr <addr>]",
     .function = tap_connect_command_fn,
 };
 

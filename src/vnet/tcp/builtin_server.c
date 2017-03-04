@@ -56,7 +56,7 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
 }
 
 int
-builtin_server_rx_callback (stream_session_t * s)
+builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t *ep)
 {
   clib_warning ("called...");
   return 0;
@@ -110,6 +110,7 @@ server_create_command_fn (vlib_main_t * vm,
     }
 #endif
 
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */);
   rv = server_create (vm);
   switch (rv)
     {

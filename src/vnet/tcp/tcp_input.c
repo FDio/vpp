@@ -1587,7 +1587,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Shoulder tap the server */
 	      stream_session_accept_notify (&tc0->connection);
 
-	      tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT_SYN);
+	      /* Reset SYN-ACK retransmit timer */
+	      tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT);
 	      break;
 	    case TCP_STATE_ESTABLISHED:
 	      /* We can get packets in established state here because they
