@@ -1,0 +1,5 @@
+tap connect tap0 address 6.0.1.2/24
+set int ip addr tap-0 6.0.1.1/24
+set int state tap-0 up
+trace add tapcli-rx 10
+session enable
