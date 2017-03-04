@@ -98,7 +98,7 @@ vnet_bind_i (u32 api_client_index, ip46_address_t * ip46, u16 port_host_order,
 
   if (application_lookup (api_client_index))
     {
-      clib_warning ("Only one bind supported for now");
+      clib_warning ("Only one connection supported for now");
       return VNET_API_ERROR_ADDRESS_IN_USE;
     }
 
@@ -364,8 +364,7 @@ vnet_connect_uri (vnet_connect_args_t * a)
 }
 
 int
-vnet_disconnect_session (u32 client_index, u32 session_index,
-			 u32 thread_index)
+vnet_disconnect_session (u32 session_index, u32 thread_index)
 {
   stream_session_t *session;
 

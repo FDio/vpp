@@ -130,6 +130,27 @@ send_session_disconnect_uri_callback (stream_session_t * s)
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
+static void
+send_session_reset_uri_callback (stream_session_t * s)
+{
+  vl_api_reset_session_t *mp;
+  unix_shared_memory_queue_t *q;
+  application_t *app = application_get (s->app_index);
+
+  q = vl_api_client_index_to_input_queue (app->api_client_index);
+
+  if (!q)
+    return;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_RESET_SESSION);
+
+  mp->session_thread_index = s->thread_index;
+  mp->session_index = s->session_index;
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
 static int
 send_session_connected_uri_callback (u32 api_client_index,
 				     stream_session_t * s, u8 is_fail)
@@ -347,6 +368,26 @@ send_session_disconnect_callback (stream_session_t * s)
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
+static void
+send_session_reset_callback (stream_session_t * s)
+{
+  vl_api_reset_sock_t *mp;
+  unix_shared_memory_queue_t *q;
+  application_t *app = application_get (s->app_index);
+
+  q = vl_api_client_index_to_input_queue (app->api_client_index);
+
+  if (!q)
+    return;
+
+  mp = vl_msg_api_alloc (sizeof (*mp));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_RESET_SOCK);
+
+  mp->handle = make_session_handle (s);
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
 /**
  * Redirect a connect_uri message to the indicated server.
  * Only sent if the server has bound the related port with
@@ -414,6 +455,7 @@ static session_cb_vft_t uri_session_cb_vft = {
   .session_accept_callback = send_session_accept_uri_callback,
   .session_disconnect_callback = send_session_disconnect_uri_callback,
   .session_connected_callback = send_session_connected_uri_callback,
+  .session_reset_callback = send_session_reset_uri_callback,
   .add_segment_callback = send_add_segment_callback,
   .redirect_connect_callback = redirect_connect_uri_callback
 };
@@ -422,6 +464,7 @@ static session_cb_vft_t session_cb_vft = {
   .session_accept_callback = send_session_accept_callback,
   .session_disconnect_callback = send_session_disconnect_callback,
   .session_connected_callback = send_session_connected_callback,
+  .session_reset_callback = send_session_reset_callback,
   .add_segment_callback = send_add_segment_callback,
   .redirect_connect_callback = redirect_connect_callback
 };
@@ -548,8 +591,8 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
 
   rv = api_session_not_valid (mp->session_index, mp->session_thread_index);
   if (!rv)
-    rv = vnet_disconnect_session (mp->client_index, mp->session_index,
-				  mp->session_thread_index);
+    rv =
+      vnet_disconnect_session (mp->session_index, mp->session_thread_index);
 
   REPLY_MACRO (VL_API_DISCONNECT_SESSION_REPLY);
 }
@@ -572,8 +615,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
     }
 
   /* Disconnect has been confirmed. Confirm close to transport */
-  vnet_disconnect_session (mp->client_index, mp->session_index,
-			   mp->session_thread_index);
+  vnet_disconnect_session (mp->session_index, mp->session_thread_index);
 }
 
 static void
