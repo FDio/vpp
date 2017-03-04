@@ -227,7 +227,8 @@ tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
 {
   transport_endpoint_t *tep;
   u32 time_now, tei;
-  u16 min = 1024, max = 65535, tries;	/* XXX configurable ? */
+  u16 min = 1024, max = 65535;	/* XXX configurable ? */
+  int tries;
 
   tries = max - min;
   time_now = tcp_time_now ();
@@ -505,10 +506,10 @@ tcp_session_send_space (transport_connection_t * trans_conn)
 }
 
 u32
-tcp_session_rx_fifo_offset (transport_connection_t * trans_conn)
+tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return (tc->snd_una_max - tc->snd_una);
+  return (tc->snd_nxt - tc->snd_una);
 }
 
 /* *INDENT-OFF* */
@@ -524,7 +525,7 @@ const static transport_proto_vft_t tcp4_proto = {
   .cleanup = tcp_session_cleanup,
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
-  .rx_fifo_offset = tcp_session_rx_fifo_offset,
+  .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .format_connection = format_tcp_session_ip4,
   .format_listener = format_tcp_listener_session_ip4,
   .format_half_open = format_tcp_half_open_session_ip4
@@ -542,7 +543,7 @@ const static transport_proto_vft_t tcp6_proto = {
   .cleanup = tcp_session_cleanup,
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
-  .rx_fifo_offset = tcp_session_rx_fifo_offset,
+  .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .format_connection = format_tcp_session_ip6,
   .format_listener = format_tcp_listener_session_ip6,
   .format_half_open = format_tcp_half_open_session_ip6
@@ -579,13 +580,32 @@ tcp_timer_establish_handler (u32 conn_index)
 }
 
 void
-tcp_timer_2msl_handler (u32 conn_index)
+tcp_timer_waitclose_handler (u32 conn_index)
 {
   u32 cpu_index = os_get_cpu_number ();
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (conn_index, cpu_index);
-  tc->timers[TCP_TIMER_2MSL] = TCP_TIMER_HANDLE_INVALID;
+  tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
+
+  /* Session didn't come back with a close(). Send FIN either way
+   * and switch to LAST_ACK. */
+  if (tc->state == TCP_STATE_CLOSE_WAIT)
+    {
+      if (tc->flags & TCP_CONN_FINSNT)
+	{
+	  clib_warning ("FIN was sent and still in CLOSE WAIT. Weird!");
+	}
+
+      tcp_send_fin (tc);
+      tc->state = TCP_STATE_LAST_ACK;
+
+      /* Make sure we don't wait in LAST ACK forever */
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+
+      /* Don't delete the connection yet */
+      return;
+    }
 
   tcp_connection_del (tc);
 }
@@ -597,7 +617,7 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
     tcp_timer_delack_handler,
     0,
     tcp_timer_keep_handler,
-    tcp_timer_2msl_handler,
+    tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
     tcp_timer_establish_handler
 };
