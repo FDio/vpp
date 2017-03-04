@@ -1023,6 +1023,12 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
 				    my_thread_index);
 
+          if (PREDICT_FALSE (tc0 == 0))
+            {
+              error0 = TCP_ERROR_INVALID_CONNECTION;
+              goto drop;
+            }
+
 	  /* Checksum computed by ipx_local no need to compute again */
 
 	  if (is_ip4)
@@ -1072,12 +1078,12 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* 8: check the FIN bit */
 	  if (tcp_fin (th0))
 	    {
-	      /* Send ACK and enter CLOSE-WAIT */
-	      tcp_make_ack (tc0, b0);
-	      tcp_connection_force_ack (tc0, b0);
-	      next0 = tcp_next_output (tc0->c_is_ip4);
+	      /* Enter CLOSE-WAIT and notify session. Don't send ACK, instead
+	       * wait for session to call close. To avoid lingering
+	       * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
 	      tc0->state = TCP_STATE_CLOSE_WAIT;
 	      stream_session_disconnect_notify (&tc0->connection);
+	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	    }
 
 	drop:
@@ -1587,7 +1593,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Shoulder tap the server */
 	      stream_session_accept_notify (&tc0->connection);
 
-	      tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT_SYN);
+	      /* Reset SYN-ACK retransmit timer */
+	      tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT);
 	      break;
 	    case TCP_STATE_ESTABLISHED:
 	      /* We can get packets in established state here because they
@@ -1684,7 +1691,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_SYN_RCVD:
 	      /* Send FIN-ACK notify app and enter CLOSE-WAIT */
 	      tcp_connection_timers_reset (tc0);
-	      tcp_make_finack (tc0, b0);
+	      tcp_make_fin (tc0, b0);
 	      next0 = tcp_next_output (tc0->c_is_ip4);
 	      stream_session_disconnect_notify (&tc0->connection);
 	      tc0->state = TCP_STATE_CLOSE_WAIT;
@@ -1697,12 +1704,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_FIN_WAIT_1:
 	      tc0->state = TCP_STATE_TIME_WAIT;
 	      tcp_connection_timers_reset (tc0);
-	      tcp_timer_set (tc0, TCP_TIMER_2MSL, TCP_2MSL_TIME);
+	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      break;
 	    case TCP_STATE_FIN_WAIT_2:
 	      /* Got FIN, send ACK! */
 	      tc0->state = TCP_STATE_TIME_WAIT;
-	      tcp_timer_set (tc0, TCP_TIMER_2MSL, TCP_2MSL_TIME);
+	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      tcp_make_ack (tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 	      break;
@@ -1710,7 +1717,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Remain in the TIME-WAIT state. Restart the 2 MSL time-wait
 	       * timeout.
 	       */
-	      tcp_timer_update (tc0, TCP_TIMER_2MSL, TCP_2MSL_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      break;
 	    }
 
@@ -2113,6 +2120,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+	  vnet_buffer (b0)->tcp.flags = 0;
 
 	  if (is_ip4)
 	    {
@@ -2168,7 +2176,6 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Send reset */
 	      next0 = TCP_INPUT_NEXT_RESET;
 	      error0 = TCP_ERROR_NO_LISTENER;
-	      vnet_buffer (b0)->tcp.flags = 0;
 	    }
 
 	  b0->error = error0 ? node->errors[error0] : 0;

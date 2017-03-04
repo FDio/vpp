@@ -102,11 +102,23 @@ typedef CLIB_PACKED (struct
 
 typedef struct _stream_session_t
 {
+  /** fifo pointers. Once allocated, these do not move */
+  svm_fifo_t *server_rx_fifo;
+  svm_fifo_t *server_tx_fifo;
+
   /** Type */
   u8 session_type;
 
   /** State */
   u8 session_state;
+
+  u8 thread_index;
+
+  /** used during unbind processing */
+  u8 is_deleted;
+
+  /** To avoid n**2 "one event per frame" check */
+  u8 enqueue_epoch;
 
   /** Session index in per_thread pool */
   u32 session_index;
@@ -114,20 +126,8 @@ typedef struct _stream_session_t
   /** Transport specific */
   u32 connection_index;
 
-  u8 thread_index;
-
   /** Application specific */
   u32 pid;
-
-  /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
-
-  /** To avoid n**2 "one event per frame" check */
-  u8 enqueue_epoch;
-
-  /** used during unbind processing */
-  u8 is_deleted;
 
   /** stream server pool index */
   u32 app_index;
@@ -162,8 +162,8 @@ typedef int
 			session_fifo_event_t * e0, stream_session_t * s0,
 			u32 thread_index, int *n_tx_pkts);
 
-extern session_fifo_rx_fn session_fifo_rx_peek;
-extern session_fifo_rx_fn session_fifo_rx_dequeue;
+extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
+extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 
 struct _session_manager_main
 {
