@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_6e81d28e",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 2343,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-05T16:48:09Z",
+      "side": 1,
+      "message": "vnet/ip/ip6_hop_by_hop.c might be a better place for this function.",
+      "revId": "49ab563988496357934ab9e45bdd820edd839bf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4e7e16b0",
+        "filename": "src/vnet/sr/sr.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-05T16:48:09Z",
+      "side": 1,
+      "message": "can we name this SR specific function, sr_ip6_compute_rewrite_string_insert",
+      "revId": "49ab563988496357934ab9e45bdd820edd839bf3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
