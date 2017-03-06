@@ -586,8 +586,7 @@ ip4_load_balance (vlib_main_t * vm,
 	   * We don't want to use the same hash value at each level in the recursion
 	   * graph as that would lead to polarisation
 	   */
-	  hc0 = vnet_buffer (p0)->ip.flow_hash = 0;
-	  hc1 = vnet_buffer (p1)->ip.flow_hash = 0;
+	  hc0 = hc1 = 0;
 
 	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
 	    {
@@ -599,7 +598,7 @@ ip4_load_balance (vlib_main_t * vm,
 	      else
 		{
 		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip0, hc0);
+		    ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
 		}
 	    }
 	  if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
@@ -612,7 +611,7 @@ ip4_load_balance (vlib_main_t * vm,
 	      else
 		{
 		  hc1 = vnet_buffer (p1)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip1, hc1);
+		    ip4_compute_flow_hash (ip1, lb1->lb_hash_config);
 		}
 	    }
 
@@ -662,7 +661,7 @@ ip4_load_balance (vlib_main_t * vm,
 
 	  lb0 = load_balance_get (lbi0);
 
-	  hc0 = vnet_buffer (p0)->ip.flow_hash = 0;
+	  hc0 = 0;
 	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
 	    {
 	      if (PREDICT_TRUE (vnet_buffer (p0)->ip.flow_hash))
@@ -673,7 +672,7 @@ ip4_load_balance (vlib_main_t * vm,
 	      else
 		{
 		  hc0 = vnet_buffer (p0)->ip.flow_hash =
-		    ip4_compute_flow_hash (ip0, hc0);
+		    ip4_compute_flow_hash (ip0, lb0->lb_hash_config);
 		}
 	    }
 
