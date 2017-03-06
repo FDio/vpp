@@ -189,6 +189,10 @@ make_v6_ss_kv (session_kv6_t * kv, ip6_address_t * lcl, ip6_address_t * rmt,
 
   kv->key[0] = key.as_u64[0];
   kv->key[1] = key.as_u64[1];
+  kv->key[2] = 0;
+  kv->key[3] = 0;
+  kv->key[4] = 0;
+  kv->key[5] = 0;
   kv->value = ~0ULL;
 }
 
@@ -209,6 +213,10 @@ make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
 
   kv->key[0] = key.as_u64[0];
   kv->key[1] = key.as_u64[1];
+  kv->key[2] = 0;
+  kv->key[3] = 0;
+  kv->key[4] = 0;
+  kv->key[5] = 0;
   kv->value = ~0ULL;
 }
 
