@@ -42,19 +42,19 @@ wrap_pneum_callback (unsigned char * data, int len)
 }
 
 static PyObject *
-wrap_connect (PyObject *self, PyObject *args)
+wrap_connect (PyObject *self, PyObject *args, PyObject *kw)
 {
   char * name, * chroot_prefix = NULL;
-  int rx_qlen=32; /* default rx queue length */
+  int rx_qlen = 32; /* default rx queue length */
   int rv;
   PyObject * temp = NULL;
   pneum_callback_t cb = NULL;
 
-  if (!PyArg_ParseTuple(args, "s|Ois:wrap_connect",
-			&name, &temp, &rx_qlen, &chroot_prefix))
+  if (!PyArg_ParseTuple(args, "sOzi:wrap_connect",
+			&name, &temp, &chroot_prefix, &rx_qlen))
     return (NULL);
 
-  if (temp)
+  if (temp != Py_None)
     {
       if (!PyCallable_Check(temp))
 	{
@@ -82,6 +82,7 @@ wrap_disconnect (PyObject *self, PyObject *args)
   Py_END_ALLOW_THREADS
   return PyLong_FromLong(rv);
 }
+
 static PyObject *
 wrap_write (PyObject *self, PyObject *args)
 {
@@ -90,6 +91,7 @@ wrap_write (PyObject *self, PyObject *args)
 
   if (!PyArg_ParseTuple(args, "s#", &data, &len))
     return NULL;
+
   Py_BEGIN_ALLOW_THREADS
   rv = pneum_write(data, len);
   Py_END_ALLOW_THREADS
@@ -102,9 +104,12 @@ wrap_read (PyObject *self, PyObject *args)
 {
   char *data;
   int len, rv;
+  unsigned short timeout;
 
+  if (!PyArg_ParseTuple(args, "H", &timeout))
+    return (NULL);
   Py_BEGIN_ALLOW_THREADS
-  rv = pneum_read(&data, &len);
+  rv = pneum_read(&data, &len, timeout);
   Py_END_ALLOW_THREADS
 
   if (rv != 0) { Py_RETURN_NONE; }
@@ -113,9 +118,9 @@ wrap_read (PyObject *self, PyObject *args)
 #else
   PyObject *ret = Py_BuildValue("s#", data, len);
 #endif
+  pneum_free(data);
   if (!ret) { Py_RETURN_NONE; }
 
-  pneum_free(data);
   return ret;
 }
 
@@ -147,12 +152,32 @@ wrap_msg_table (PyObject *self, PyObject *args)
   Py_RETURN_NONE;
 }
 
+static PyObject *
+wrap_suspend (PyObject *self, PyObject *args)
+{
+  Py_BEGIN_ALLOW_THREADS
+  pneum_rx_suspend();
+  Py_END_ALLOW_THREADS
+  Py_RETURN_NONE;
+}
+
+static PyObject *
+wrap_resume (PyObject *self, PyObject *args)
+{
+  Py_BEGIN_ALLOW_THREADS
+  pneum_rx_resume();
+  Py_END_ALLOW_THREADS
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef vpp_api_Methods[] = {
   {"connect", wrap_connect, METH_VARARGS, "Connect to the VPP API."},
   {"disconnect", wrap_disconnect, METH_VARARGS, "Disconnect from the VPP API."},
   {"write", wrap_write, METH_VARARGS, "Write data to the VPP API."},
   {"read", wrap_read, METH_VARARGS, "Read data from the VPP API."},
   {"msg_table", wrap_msg_table, METH_VARARGS, "Get API dictionary."},
+  {"suspend", wrap_suspend, METH_VARARGS, "Suspend RX thread."},
+  {"resume", wrap_resume, METH_VARARGS, "Resume RX thread."},
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
