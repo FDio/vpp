@@ -285,8 +285,9 @@ show_sw_interfaces (vlib_main_t * vm,
       _vec_len (sorted_sis) = 0;
       pool_foreach (si, im->sw_interfaces, (
 					     {
-					     vec_add1 (sorted_sis, si[0]);
-					     }
+					     if (vnet_swif_is_api_visible
+						 (si)) vec_add1 (sorted_sis,
+								 si[0]);}
 		    ));
 
       /* Sort by name. */

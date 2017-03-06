@@ -18,6 +18,7 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/adj/adj_mcast.h>
+#include <vnet/interface.h>
 #include <vlib/vlib.h>
 
 /**
@@ -462,8 +463,11 @@ int vnet_vxlan_add_del_tunnel
       l2im->configs[sw_if_index].feature_bitmap = L2INPUT_FEAT_DROP;
       l2im->configs[sw_if_index].bd_index = 0;
       
+      vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, sw_if_index);
+      si->flags &= ~VNET_SW_INTERFACE_FLAG_HIDDEN;
       vnet_sw_interface_set_flags (vnm, sw_if_index, 
                                    VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+
       fib_node_init(&t->node, FIB_NODE_TYPE_VXLAN_TUNNEL);
       fib_prefix_t tun_dst_pfx;
       u32 encap_index = !is_ip6 ?
@@ -573,6 +577,9 @@ int vnet_vxlan_add_del_tunnel
       t = pool_elt_at_index (vxm->tunnels, p[0]);
 
       vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */);
+      vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, t->sw_if_index);
+      si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
+
       /* make sure tunnel is removed from l2 bd or xconnect */
       set_int_l2_mode(vxm->vlib_main, vnm, MODE_L3, t->sw_if_index, 0, 0, 0, 0);
       vec_add1 (vxm->free_vxlan_tunnel_hw_if_indices, t->hw_if_index);
