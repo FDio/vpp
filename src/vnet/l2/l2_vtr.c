@@ -732,9 +732,9 @@ l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
 	*vtr_op = L2_VTR_PUSH_2;
 
       clib_memcpy (b_dmac, in_config->macs_tags.b_dst_address,
-		   sizeof (b_dmac));
+		   sizeof (in_config->macs_tags.b_dst_address));
       clib_memcpy (b_smac, in_config->macs_tags.b_src_address,
-		   sizeof (b_smac));
+		   sizeof (in_config->macs_tags.b_src_address));
 
       *b_vlanid =
 	clib_host_to_net_u16 (in_config->macs_tags.priority_dei_id) & 0xFFF;
