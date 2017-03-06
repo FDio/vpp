@@ -46,6 +46,30 @@
       "revId": "35af9e50cdbfc73dab963557f4ffbd56b21e2abc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6a365b54",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-03-06T23:48:27Z",
+      "side": 0,
+      "message": "My point was that the prefetch for ethertype is not necessary if interface is in L2 mode, since the next node is going to be ethernet-input anyway and not dependent on ethertype. So it may be better to have ethertype prefetch here instead of common in line 217.",
+      "parentUuid": "3a3291f1_aa2c4303",
+      "range": {
+        "startLine": 348,
+        "startChar": 56,
+        "endLine": 348,
+        "endChar": 65
+      },
+      "revId": "35af9e50cdbfc73dab963557f4ffbd56b21e2abc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
