@@ -205,21 +205,21 @@ send_sw_interface_details (vpe_api_main_t * am,
     }
 
   /* pbb tag rewrite data */
+  ethernet_header_t eth_hdr;
   u32 vtr_op = L2_VTR_DISABLED;
   u16 outer_tag = 0;
-  u8 b_dmac[6];
-  u8 b_smac[6];
   u16 b_vlanid = 0;
   u32 i_sid = 0;
-  memset (b_dmac, 0, sizeof (b_dmac));
-  memset (b_smac, 0, sizeof (b_smac));
+  memset (&eth_hdr, 0, sizeof (eth_hdr));
 
   if (!l2pbb_get (am->vlib_main, am->vnet_main, swif->sw_if_index,
-		  &vtr_op, &outer_tag, b_dmac, b_smac, &b_vlanid, &i_sid))
+		  &vtr_op, &outer_tag, &eth_hdr, &b_vlanid, &i_sid))
     {
       mp->sub_dot1ah = 1;
-      clib_memcpy (mp->b_dmac, b_dmac, sizeof (b_dmac));
-      clib_memcpy (mp->b_smac, b_smac, sizeof (b_smac));
+      clib_memcpy (mp->b_dmac, eth_hdr.dst_address,
+		   sizeof (eth_hdr.dst_address));
+      clib_memcpy (mp->b_smac, eth_hdr.src_address,
+		   sizeof (eth_hdr.src_address));
       mp->b_vlanid = b_vlanid;
       mp->i_sid = i_sid;
     }

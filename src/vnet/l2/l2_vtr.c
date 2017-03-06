@@ -687,7 +687,7 @@ VLIB_CLI_COMMAND (int_l2_vtr_cli, static) = {
  */
 u32
 l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
-	   u32 * vtr_op, u16 * outer_tag, u8 * b_dmac, u8 * b_smac,
+	   u32 * vtr_op, u16 * outer_tag, ethernet_header_t * eth_hdr,
 	   u16 * b_vlanid, u32 * i_sid)
 {
   u32 error = 1;
@@ -702,8 +702,6 @@ l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
 
   *vtr_op = L2_VTR_DISABLED;
   *outer_tag = 0;
-  *b_dmac = 0;
-  *b_smac = 0;
   *b_vlanid = 0;
   *i_sid = 0;
 
@@ -731,16 +729,16 @@ l2pbb_get (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_index,
       else if (in_config->push_bytes)
 	*vtr_op = L2_VTR_PUSH_2;
 
-      clib_memcpy (b_dmac, in_config->macs_tags.b_dst_address,
-		   sizeof (b_dmac));
-      clib_memcpy (b_smac, in_config->macs_tags.b_src_address,
-		   sizeof (b_smac));
+      clib_memcpy (&eth_hdr->dst_address, in_config->macs_tags.b_dst_address,
+		   sizeof (eth_hdr->dst_address));
+      clib_memcpy (&eth_hdr->src_address, in_config->macs_tags.b_src_address,
+		   sizeof (eth_hdr->src_address));
 
       *b_vlanid =
 	clib_host_to_net_u16 (in_config->macs_tags.priority_dei_id) & 0xFFF;
       *i_sid =
-	clib_host_to_net_u32 (in_config->
-			      macs_tags.priority_dei_uca_res_sid) & 0xFFFFF;
+	clib_host_to_net_u32 (in_config->macs_tags.
+			      priority_dei_uca_res_sid) & 0xFFFFF;
       error = 0;
     }
 done:
