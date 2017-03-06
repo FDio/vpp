@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_a7bd9c6a",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-06T16:41:16Z",
+      "side": 1,
+      "message": "Changed to use ip6_locate_header() with latest patch.\nInitially in Patch1, I did modify ip6_compute_flow_hash() to take care of hbh header but later what we thought was to not add any extra clock cycles for packets without hbh headers. So changed it to not to touch existing ip6_compute_flow_hash(), but instead add ip6_compute_flow_hash_for_ext_hdr() which will be called only when extension header is present.\nThis way we are not adding any additional cycles for packets without hbh header.",
+      "parentUuid": "3a3291f1_c418a677",
+      "revId": "edb946631759a1cfd22584592b936b571068b1cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_440dd636",
         "filename": "src/vnet/ip/ip6_forward.c",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2017-03-05T20:53:06Z",
       "side": 1,
       "message": "why the check for whether it\u0027s an adj?\nwhen the forwarding chain has load-balancing over multiple levels, e.g.\n\nLB-a\n   | ----\u003eLB-b\n   |            |------\u003e Adj-a\n   |            |------\u003e Adj-b\n   |\n   | ----\u003eLB-c\n   |           |------\u003e Adj-c\n   |           |------\u003e Adj-d\n\nyour changes will mean your new hash algorithm is used when making choices at LB-b and LB-c (in ip6_load_balance()), but not when making a choice at LB-a (in ip6_lookup_inline()).",
+      "revId": "edb946631759a1cfd22584592b936b571068b1cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_874e2095",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 196,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-06T16:41:16Z",
+      "side": 1,
+      "message": "I overlooked this. Corrected it now.",
+      "parentUuid": "3a3291f1_440dd636",
       "revId": "edb946631759a1cfd22584592b936b571068b1cc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_ea1dab67",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 955,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-06T16:41:16Z",
+      "side": 1,
+      "message": "Typically hbh headers are added at host generating packet or in case of In-Band OAM, we add it in edge of the domain routers using classifier. After this all transit routers which see HBH options need to update the data irrespective of packet received/going out on any interface. So we would need to add o/p feature on all interfaces in the system which scans for HBH header and update if present. This would be costlier than current approach where we send it to HBH node only when HBH options are present.",
+      "parentUuid": "3a3291f1_e41de267",
+      "revId": "edb946631759a1cfd22584592b936b571068b1cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_040fce2f",
         "filename": "src/vnet/ip/ip6_forward.c",
         "patchSetId": 3
@@ -64,6 +118,24 @@
       "writtenOn": "2017-03-05T20:53:06Z",
       "side": 1,
       "message": "what guarantees this union member is still valid this late in the game?",
+      "revId": "edb946631759a1cfd22584592b936b571068b1cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8a2aa77c",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2810,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-06T16:41:16Z",
+      "side": 1,
+      "message": "There is not guaranty that this will be valid, but with the current set of usecase for in-band OAM, this is not being overwritten by any other features :)\nIn the past, we did consider to use the opaque2 to store this, but that would cause performance hit as its in next cache line.",
+      "parentUuid": "3a3291f1_040fce2f",
       "revId": "edb946631759a1cfd22584592b936b571068b1cc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
