@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_6aff7b68",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 578,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-03-06T22:00:16Z",
+      "side": 1,
+      "message": "Can the templates for different thread be different? I am wondering if all threads can use the same template or not. Or, is per thread template used to avoid memory access conflict from different threads?",
+      "range": {
+        "startLine": 578,
+        "startChar": 22,
+        "endLine": 578,
+        "endChar": 34
+      },
+      "revId": "458dfba9088a74ad40d65b9e7ddc071e9c1cd3f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
