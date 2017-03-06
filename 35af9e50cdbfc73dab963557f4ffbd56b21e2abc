@@ -22,6 +22,30 @@
       "revId": "35af9e50cdbfc73dab963557f4ffbd56b21e2abc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_aa2c4303",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-06T23:10:58Z",
+      "side": 0,
+      "message": "We are still prefetching cacheline where ethertype sits. See line 217.",
+      "parentUuid": "3a3291f1_0af47785",
+      "range": {
+        "startLine": 348,
+        "startChar": 56,
+        "endLine": 348,
+        "endChar": 65
+      },
+      "revId": "35af9e50cdbfc73dab963557f4ffbd56b21e2abc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
