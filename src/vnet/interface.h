@@ -538,6 +538,9 @@ typedef struct
 
 #define VNET_SW_INTERFACE_FLAG_BOND_SLAVE (1 << 4)
 
+/* Interface is disabled waiting to be recycled */
+#define VNET_SW_INTERFACE_FLAG_DELETED (1 << 5)
+
   /* Index for this interface. */
   u32 sw_if_index;
 

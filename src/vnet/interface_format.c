@@ -321,6 +321,7 @@ unformat_vnet_sw_interface (unformat_input_t * input, va_list * args)
   u32 *result = va_arg (*args, u32 *);
   vnet_hw_interface_t *hi;
   u32 hw_if_index, id, id_specified;
+  u32 sw_if_index;
   u8 *if_name = 0;
   uword *p, error = 0;
 
@@ -340,14 +341,17 @@ unformat_vnet_sw_interface (unformat_input_t * input, va_list * args)
   hi = vnet_get_hw_interface (vnm, hw_if_index);
   if (!id_specified)
     {
-      *result = hi->sw_if_index;
+      sw_if_index = hi->sw_if_index;
     }
   else
     {
       if (!(p = hash_get (hi->sub_interface_sw_if_index_by_id, id)))
-	return 0;
-      *result = p[0];
+	goto done;
+      sw_if_index = p[0];
     }
+  if (!vnet_sw_interface_is_api_visible (vnm, sw_if_index))
+    goto done;
+  *result = sw_if_index;
   error = 1;
 done:
   vec_free (if_name);
