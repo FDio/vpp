@@ -140,6 +140,30 @@
       "revId": "107034de8113c98c5f58b6707f63cc8c9dd51fe9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e7f164ce",
+        "filename": "test/test_ip4_vrf_multi_instance.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 417,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-03-06T14:45:17Z",
+      "side": 1,
+      "message": "then we need to improve naming, because reset_vrf doesn\u0027t hint array removal/manipulation one bit\n\ne.g. -\u003e reset_vrf_and_remove_from_vrf_list",
+      "parentUuid": "3a3291f1_a2f59184",
+      "range": {
+        "startLine": 416,
+        "startChar": 1,
+        "endLine": 417,
+        "endChar": 44
+      },
+      "revId": "107034de8113c98c5f58b6707f63cc8c9dd51fe9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
