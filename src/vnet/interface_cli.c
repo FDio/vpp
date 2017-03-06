@@ -283,11 +283,10 @@ show_sw_interfaces (vlib_main_t * vm,
       sorted_sis =
 	vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
       _vec_len (sorted_sis) = 0;
-      pool_foreach (si, im->sw_interfaces, (
-					     {
-					     vec_add1 (sorted_sis, si[0]);
-					     }
-		    ));
+      pool_foreach (si, im->sw_interfaces, ({
+					     if (vnet_swif_is_api_visible (si))
+					       vec_add1 (sorted_sis, si[0]);
+					     }));
 
       /* Sort by name. */
       vec_sort_with_function (sorted_sis, sw_interface_name_compare);
