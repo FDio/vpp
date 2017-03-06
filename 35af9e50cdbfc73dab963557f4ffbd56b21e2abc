@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_0af47785",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-03-06T22:43:53Z",
+      "side": 0,
+      "message": "Having separate prefetch here means prefetch for ethertype area won\u0027t be done for interface in L2 mode. I wonder if this will make any difference in L2 forwarding performance or not, though.",
+      "range": {
+        "startLine": 348,
+        "startChar": 56,
+        "endLine": 348,
+        "endChar": 65
+      },
+      "revId": "35af9e50cdbfc73dab963557f4ffbd56b21e2abc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
