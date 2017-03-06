@@ -18,6 +18,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/api_errno.h>
+#include <vnet/devices/devices.h>
 
 /** feature registration object */
 typedef struct _vnet_feature_arc_registration
@@ -227,7 +228,7 @@ vnet_feature_next (u32 sw_if_index, u32 * next0, vlib_buffer_t * b0)
 
 static_always_inline void
 vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
-				    vlib_buffer_t * b0, u16 buffer_advanced0)
+				    vlib_buffer_t * b0)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
@@ -242,9 +243,12 @@ vnet_feature_start_device_input_x1 (u32 sw_if_index, u32 * next0,
        * Save next0 so that the last feature in the chain
        * can skip ethernet-input if indicated...
        */
+      u16 adv;
+
       vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
-      vnet_buffer (b0)->device_input_feat.buffer_advance = buffer_advanced0;
-      vlib_buffer_advance (b0, -buffer_advanced0);
+      adv = device_input_next_node_advance[*next0];
+      vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b0, -adv);
 
       b0->feature_arc_index = feature_arc_index;
       b0->current_config_index =
@@ -258,10 +262,7 @@ static_always_inline void
 vnet_feature_start_device_input_x2 (u32 sw_if_index,
 				    u32 * next0,
 				    u32 * next1,
-				    vlib_buffer_t * b0,
-				    vlib_buffer_t * b1,
-				    u16 buffer_advanced0,
-				    u16 buffer_advanced1)
+				    vlib_buffer_t * b0, vlib_buffer_t * b1)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
@@ -276,12 +277,17 @@ vnet_feature_start_device_input_x2 (u32 sw_if_index,
        * Save next0 so that the last feature in the chain
        * can skip ethernet-input if indicated...
        */
+      u16 adv;
+
       vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
+      adv = device_input_next_node_advance[*next0];
+      vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b0, -adv);
+
       vnet_buffer (b1)->device_input_feat.saved_next_index = *next1;
-      vnet_buffer (b0)->device_input_feat.buffer_advance = buffer_advanced0;
-      vnet_buffer (b1)->device_input_feat.buffer_advance = buffer_advanced1;
-      vlib_buffer_advance (b0, -buffer_advanced0);
-      vlib_buffer_advance (b1, -buffer_advanced1);
+      adv = device_input_next_node_advance[*next1];
+      vnet_buffer (b1)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b1, -adv);
 
       b0->feature_arc_index = feature_arc_index;
       b1->feature_arc_index = feature_arc_index;
@@ -303,12 +309,7 @@ vnet_feature_start_device_input_x4 (u32 sw_if_index,
 				    u32 * next3,
 				    vlib_buffer_t * b0,
 				    vlib_buffer_t * b1,
-				    vlib_buffer_t * b2,
-				    vlib_buffer_t * b3,
-				    u16 buffer_advanced0,
-				    u16 buffer_advanced1,
-				    u16 buffer_advanced2,
-				    u16 buffer_advanced3)
+				    vlib_buffer_t * b2, vlib_buffer_t * b3)
 {
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
@@ -323,20 +324,27 @@ vnet_feature_start_device_input_x4 (u32 sw_if_index,
        * Save next0 so that the last feature in the chain
        * can skip ethernet-input if indicated...
        */
+      u16 adv;
+
       vnet_buffer (b0)->device_input_feat.saved_next_index = *next0;
+      adv = device_input_next_node_advance[*next0];
+      vnet_buffer (b0)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b0, -adv);
+
       vnet_buffer (b1)->device_input_feat.saved_next_index = *next1;
+      adv = device_input_next_node_advance[*next1];
+      vnet_buffer (b1)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b1, -adv);
+
       vnet_buffer (b2)->device_input_feat.saved_next_index = *next2;
+      adv = device_input_next_node_advance[*next2];
+      vnet_buffer (b2)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b2, -adv);
+
       vnet_buffer (b3)->device_input_feat.saved_next_index = *next3;
-
-      vnet_buffer (b0)->device_input_feat.buffer_advance = buffer_advanced0;
-      vnet_buffer (b1)->device_input_feat.buffer_advance = buffer_advanced1;
-      vnet_buffer (b2)->device_input_feat.buffer_advance = buffer_advanced2;
-      vnet_buffer (b3)->device_input_feat.buffer_advance = buffer_advanced3;
-
-      vlib_buffer_advance (b0, -buffer_advanced0);
-      vlib_buffer_advance (b1, -buffer_advanced1);
-      vlib_buffer_advance (b2, -buffer_advanced2);
-      vlib_buffer_advance (b3, -buffer_advanced3);
+      adv = device_input_next_node_advance[*next3];
+      vnet_buffer (b3)->device_input_feat.buffer_advance = adv;
+      vlib_buffer_advance (b3, -adv);
 
       b0->feature_arc_index = feature_arc_index;
       b1->feature_arc_index = feature_arc_index;

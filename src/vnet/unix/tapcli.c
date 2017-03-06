@@ -355,8 +355,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
     to_next++;
     n_left_to_next--;
 
-    vnet_feature_start_device_input_x1 (ti->sw_if_index, &next_index, 
-                                        b_first, 0);
+    vnet_feature_start_device_input_x1 (ti->sw_if_index, &next_index, b_first);
 
     vlib_validate_buffer_enqueue_x1 (vm, node, next,
                                      to_next, n_left_to_next,
