@@ -430,7 +430,7 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
 {
   snat_session_key_t key0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
-  ip4_header_t *inner_ip0;
+  ip4_header_t *inner_ip0 = 0;
   void *l4_header = 0;
   icmp46_header_t *inner_icmp0;
   clib_bihash_kv_8_8_t kv0, value0;
