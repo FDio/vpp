@@ -1747,7 +1747,7 @@ vhost_user_if_input (vlib_main_t * vm,
 
 	    /* redirect if feature path enabled */
 	    vnet_feature_start_device_input_x1 (vui->sw_if_index, &next0,
-						b_head, 0);
+						b_head);
 
 	    u32 bi = to_next[-1];	//Cannot use to_next[-1] in the macro
 	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

@@ -218,7 +218,7 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* redirect if feature path enabled */
 	      vnet_feature_start_device_input_x1 (nif->sw_if_index, &next0,
-						  first_b0, 0);
+						  first_b0);
 
 	      /* enque and take next packet */
 	      vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
