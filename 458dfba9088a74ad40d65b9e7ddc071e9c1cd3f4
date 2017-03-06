@@ -46,6 +46,30 @@
       "revId": "458dfba9088a74ad40d65b9e7ddc071e9c1cd3f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2a4053a4",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 578,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-03-06T23:50:20Z",
+      "side": 1,
+      "message": "I see, that make sense. Thanks for the clarification.",
+      "parentUuid": "3a3291f1_caed4fb9",
+      "range": {
+        "startLine": 578,
+        "startChar": 22,
+        "endLine": 578,
+        "endChar": 34
+      },
+      "revId": "458dfba9088a74ad40d65b9e7ddc071e9c1cd3f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
