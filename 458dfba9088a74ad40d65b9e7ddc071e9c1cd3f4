@@ -22,6 +22,30 @@
       "revId": "458dfba9088a74ad40d65b9e7ddc071e9c1cd3f4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_caed4fb9",
+        "filename": "src/plugins/dpdk/device/init.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 578,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-06T23:10:58Z",
+      "side": 1,
+      "message": "No, as we are updating rx sw_if_index inside the template on each dpdk_device_input call",
+      "parentUuid": "3a3291f1_6aff7b68",
+      "range": {
+        "startLine": 578,
+        "startChar": 22,
+        "endLine": 578,
+        "endChar": 34
+      },
+      "revId": "458dfba9088a74ad40d65b9e7ddc071e9c1cd3f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
