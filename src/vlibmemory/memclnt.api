@@ -48,11 +48,24 @@ define memclnt_delete_reply {
     u64 handle;               /* in case the client wonders */
 };
 
-/* 
+/*
  * Client RX thread exit
  */
-
 define rx_thread_exit {
+    u8 dummy;
+};
+
+/*
+ * Client RX thread suspend
+ */
+define memclnt_rx_thread_suspend {
+    u8 dummy;
+};
+
+/*
+ * Client read timeout
+ */
+define memclnt_read_timeout {
     u8 dummy;
 };
 

@@ -39,7 +39,7 @@ libpneum_la_LDFLAGS = -module
 libpneum_la_CPPFLAGS =
 
 # TODO: Support both Python 2 and 3.
-install-exec-local:
+install-exec-local: $(lib_LTLIBRARIES)
 	cd $(srcdir);							\
 	mkdir -p $(pythondir);						\
 	mkdir -p $(pyexecdir); 						\
