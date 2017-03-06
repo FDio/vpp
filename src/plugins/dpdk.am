@@ -17,7 +17,6 @@ vppplugins_LTLIBRARIES += dpdk_plugin.la
 dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive,-lm,-ldl
 
 dpdk_plugin_la_SOURCES =					\
-  dpdk/init.c							\
   dpdk/main.c							\
   dpdk/buffer.c							\
   dpdk/thread.c							\
@@ -25,6 +24,7 @@ dpdk_plugin_la_SOURCES =					\
   dpdk/device/dpdk_priv.h					\
   dpdk/device/device.c						\
   dpdk/device/format.c						\
+  dpdk/device/init.c						\
   dpdk/device/node.c						\
   dpdk/hqos/hqos.c						\
   dpdk/ipsec/esp_encrypt.c					\
