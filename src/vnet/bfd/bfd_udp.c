@@ -411,21 +411,6 @@ bfd_udp_add_session_internal (bfd_udp_main_t * bum, u32 sw_if_index,
       BFD_DBG ("adj_nbr_add_or_lock(FIB_PROTOCOL_IP4, VNET_LINK_IP4, %U, %d) "
 	       "returns %d", format_ip46_address, &key->peer_addr,
 	       IP46_TYPE_ANY, key->sw_if_index, bus->adj_index);
-
-      fib_prefix_t fib_prefix;
-      memset (&fib_prefix, 0, sizeof (fib_prefix));
-      fib_prefix.fp_len = 0;
-      fib_prefix.fp_proto = FIB_PROTOCOL_IP4;
-      fib_prefix.fp_addr = key->local_addr;
-      u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, 0);	/* FIXME table id 0? */
-      dpo_id_t dpo = DPO_INVALID;
-      dpo_proto_t dproto;
-      dproto = fib_proto_to_dpo (fib_prefix.fp_proto);
-      receive_dpo_add_or_lock (dproto, ~0, NULL, &dpo);
-      fib_table_entry_special_dpo_update (fib_index, &fib_prefix,
-					  FIB_SOURCE_API,
-					  FIB_ENTRY_FLAG_LOCAL, &dpo);
-      dpo_reset (&dpo);
     }
   else
     {
