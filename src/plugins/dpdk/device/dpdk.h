@@ -338,6 +338,9 @@ typedef struct
   /* per-thread recycle lists */
   u32 **recycle;
 
+  /* per-thread buffer templates */
+  vlib_buffer_t *buffer_templates;
+
   /* buffer flags template, configurable to enable/disable tcp / udp cksum */
   u32 buffer_flags_template;
 

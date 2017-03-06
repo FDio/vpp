@@ -572,6 +572,21 @@ dpdk_lib_init (dpdk_main_t * dm)
     dm->buffer_flags_template &= ~(IP_BUFFER_L4_CHECKSUM_CORRECT
 				   | IP_BUFFER_L4_CHECKSUM_COMPUTED);
 
+  /* vlib_buffer_t template */
+  vec_validate_aligned (dm->buffer_templates, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  for (i = 0; i < tm->n_vlib_mains; i++)
+    {
+      vlib_buffer_free_list_t *fl;
+      vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, i);
+      fl = vlib_buffer_get_free_list (vm,
+				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (bt, fl);
+      bt->flags = dm->buffer_flags_template;
+      bt->current_data = -RTE_PKTMBUF_HEADROOM;
+      vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+    }
+
   for (i = 0; i < nports; i++)
     {
       u8 addr[6];
