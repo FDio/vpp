@@ -538,6 +538,9 @@ typedef struct
 
 #define VNET_SW_INTERFACE_FLAG_BOND_SLAVE (1 << 4)
 
+/* Interface does not appear in CLI/API */
+#define VNET_SW_INTERFACE_FLAG_HIDDEN (1 << 5)
+
   /* Index for this interface. */
   u32 sw_if_index;
 
