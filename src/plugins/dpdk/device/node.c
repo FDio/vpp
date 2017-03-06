@@ -37,21 +37,21 @@ static char *dpdk_error_strings[] = {
 always_inline int
 vlib_buffer_is_ip4 (vlib_buffer_t * b)
 {
-  ethernet_header_t *h = (ethernet_header_t *) b->data;
+  ethernet_header_t *h = (ethernet_header_t *) vlib_buffer_get_current (b);
   return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP4));
 }
 
 always_inline int
 vlib_buffer_is_ip6 (vlib_buffer_t * b)
 {
-  ethernet_header_t *h = (ethernet_header_t *) b->data;
+  ethernet_header_t *h = (ethernet_header_t *) vlib_buffer_get_current (b);
   return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6));
 }
 
 always_inline int
 vlib_buffer_is_mpls (vlib_buffer_t * b)
 {
-  ethernet_header_t *h = (ethernet_header_t *) b->data;
+  ethernet_header_t *h = (ethernet_header_t *) vlib_buffer_get_current (b);
   return (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS_UNICAST));
 }
 
@@ -217,10 +217,35 @@ dpdk_prefetch_buffer (struct rte_mbuf *mb)
 }
 
 static_always_inline void
-dpdk_prefetch_buffer_data (struct rte_mbuf *mb)
+dpdk_prefetch_ethertype (struct rte_mbuf *mb)
 {
-  vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
-  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (mb->buf_addr + mb->data_off +
+		 STRUCT_OFFSET_OF (ethernet_header_t, type),
+		 CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+
+/*
+   This function should fill 1st cacheline of vlib_buffer_t metadata with data
+   from buffer template. Instead of filling field by field, we construct
+   template and then use 128/256 bit vector instruction to copy data.
+   This code first loads whole cacheline into 4 128-bit registers (xmm)
+   or two 256 bit registers (ymm) and then stores data into all 4 buffers
+   efectively saving on register load operations.
+*/
+
+static_always_inline void
+dpdk_buffer_init_from_template (void *d0, void *d1, void *d2, void *d3,
+				void *s)
+{
+  int i;
+  for (i = 0; i < 2; i++)
+    {
+      *(u8x32 *) (((u8 *) d0) + i * 32) =
+	*(u8x32 *) (((u8 *) d1) + i * 32) =
+	*(u8x32 *) (((u8 *) d2) + i * 32) =
+	*(u8x32 *) (((u8 *) d3) + i * 32) = *(u8x32 *) (((u8 *) s) + i * 32);
+    }
 }
 
 /*
@@ -229,7 +254,8 @@ dpdk_prefetch_buffer_data (struct rte_mbuf *mb)
  */
 static_always_inline u32
 dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
-		   vlib_node_runtime_t * node, u32 cpu_index, u16 queue_id)
+		   vlib_node_runtime_t * node, u32 cpu_index, u16 queue_id,
+		   int maybe_multiseg)
 {
   u32 n_buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -239,7 +265,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   uword n_rx_bytes = 0;
   u32 n_trace, trace_cnt __attribute__ ((unused));
   vlib_buffer_free_list_t *fl;
-  u32 buffer_flags_template;
+  vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, cpu_index);
 
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
     return 0;
@@ -250,8 +276,6 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
     {
       return 0;
     }
-
-  buffer_flags_template = dm->buffer_flags_template;
 
   vec_reset_length (xd->d_trace_buffers[cpu_index]);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
@@ -272,33 +296,44 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 
   fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
+  /* Update buffer template */
+  vnet_buffer (bt)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
+  bt->error = node->errors[DPDK_ERROR_NONE];
+
   mb_index = 0;
 
   while (n_buffers > 0)
     {
       vlib_buffer_t *b0, *b1, *b2, *b3;
-      u32 bi0, next0, l3_offset0;
-      u32 bi1, next1, l3_offset1;
-      u32 bi2, next2, l3_offset2;
-      u32 bi3, next3, l3_offset3;
+      u32 bi0, next0;
+      u32 bi1, next1;
+      u32 bi2, next2;
+      u32 bi3, next3;
       u8 error0, error1, error2, error3;
       u64 or_ol_flags;
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_buffers > 8 && n_left_to_next > 4)
+      while (n_buffers >= 12 && n_left_to_next >= 4)
 	{
-	  struct rte_mbuf *mb0 = xd->rx_vectors[queue_id][mb_index];
-	  struct rte_mbuf *mb1 = xd->rx_vectors[queue_id][mb_index + 1];
-	  struct rte_mbuf *mb2 = xd->rx_vectors[queue_id][mb_index + 2];
-	  struct rte_mbuf *mb3 = xd->rx_vectors[queue_id][mb_index + 3];
+	  struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
 
-	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 4]);
-	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 5]);
-	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 6]);
-	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 7]);
+	  /* prefetches are interleaved with the rest of the code to reduce
+	     pressure on L1 cache */
+	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 8]);
+	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 4]);
 
-	  if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
+	  mb0 = xd->rx_vectors[queue_id][mb_index];
+	  mb1 = xd->rx_vectors[queue_id][mb_index + 1];
+	  mb2 = xd->rx_vectors[queue_id][mb_index + 2];
+	  mb3 = xd->rx_vectors[queue_id][mb_index + 3];
+
+	  ASSERT (mb0);
+	  ASSERT (mb1);
+	  ASSERT (mb2);
+	  ASSERT (mb3);
+
+	  if (maybe_multiseg)
 	    {
 	      if (PREDICT_FALSE (mb0->nb_segs > 1))
 		dpdk_prefetch_buffer (mb0->next);
@@ -310,22 +345,29 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 		dpdk_prefetch_buffer (mb3->next);
 	    }
 
-	  ASSERT (mb0);
-	  ASSERT (mb1);
-	  ASSERT (mb2);
-	  ASSERT (mb3);
-
-	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
-			 mb2->ol_flags | mb3->ol_flags);
 	  b0 = vlib_buffer_from_rte_mbuf (mb0);
 	  b1 = vlib_buffer_from_rte_mbuf (mb1);
 	  b2 = vlib_buffer_from_rte_mbuf (mb2);
 	  b3 = vlib_buffer_from_rte_mbuf (mb3);
 
-	  vlib_buffer_init_for_free_list (b0, fl);
-	  vlib_buffer_init_for_free_list (b1, fl);
-	  vlib_buffer_init_for_free_list (b2, fl);
-	  vlib_buffer_init_for_free_list (b3, fl);
+	  dpdk_buffer_init_from_template (b0, b1, b2, b3, bt);
+
+	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 9]);
+	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 5]);
+
+	  /* current_data must be set to -RTE_PKTMBUF_HEADROOM in template */
+	  b0->current_data += mb0->data_off;
+	  b1->current_data += mb1->data_off;
+	  b2->current_data += mb2->data_off;
+	  b3->current_data += mb3->data_off;
+
+	  b0->current_length = mb0->data_len;
+	  b1->current_length = mb1->data_len;
+	  b2->current_length = mb2->data_len;
+	  b3->current_length = mb3->data_len;
+
+	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 10]);
+	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 7]);
 
 	  bi0 = vlib_get_buffer_index (vm, b0);
 	  bi1 = vlib_get_buffer_index (vm, b1);
@@ -345,21 +387,17 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    }
 	  else
 	    {
-	      /* prefetch packet data for faster access to the ethertype */
-	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
-					 [mb_index + 4]);
-	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
-					 [mb_index + 5]);
-	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
-					 [mb_index + 6]);
-	      dpdk_prefetch_buffer_data (xd->rx_vectors[queue_id]
-					 [mb_index + 7]);
 	      next0 = dpdk_rx_next_from_etype (mb0, b0);
 	      next1 = dpdk_rx_next_from_etype (mb1, b1);
 	      next2 = dpdk_rx_next_from_etype (mb2, b2);
 	      next3 = dpdk_rx_next_from_etype (mb3, b3);
 	    }
 
+	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 11]);
+	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 6]);
+
+	  or_ol_flags = (mb0->ol_flags | mb1->ol_flags |
+			 mb2->ol_flags | mb3->ol_flags);
 	  if (PREDICT_FALSE (or_ol_flags & PKT_RX_IP_CKSUM_BAD))
 	    {
 	      dpdk_rx_error_from_mb (mb0, &next0, &error0);
@@ -371,46 +409,11 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	      b2->error = node->errors[error2];
 	      b3->error = node->errors[error3];
 	    }
-	  else
-	    {
-	      b0->error = b1->error = node->errors[DPDK_ERROR_NONE];
-	      b2->error = b3->error = node->errors[DPDK_ERROR_NONE];
-	    }
 
-	  l3_offset0 = device_input_next_node_advance[next0];
-	  l3_offset1 = device_input_next_node_advance[next1];
-	  l3_offset2 = device_input_next_node_advance[next2];
-	  l3_offset3 = device_input_next_node_advance[next3];
-
-	  b0->current_data = l3_offset0 + mb0->data_off;
-	  b1->current_data = l3_offset1 + mb1->data_off;
-	  b2->current_data = l3_offset2 + mb2->data_off;
-	  b3->current_data = l3_offset3 + mb3->data_off;
-
-	  b0->current_data -= RTE_PKTMBUF_HEADROOM;
-	  b1->current_data -= RTE_PKTMBUF_HEADROOM;
-	  b2->current_data -= RTE_PKTMBUF_HEADROOM;
-	  b3->current_data -= RTE_PKTMBUF_HEADROOM;
-
-	  b0->current_length = mb0->data_len - l3_offset0;
-	  b1->current_length = mb1->data_len - l3_offset1;
-	  b2->current_length = mb2->data_len - l3_offset2;
-	  b3->current_length = mb3->data_len - l3_offset3;
-
-	  b0->flags = buffer_flags_template;
-	  b1->flags = buffer_flags_template;
-	  b2->flags = buffer_flags_template;
-	  b3->flags = buffer_flags_template;
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-	  vnet_buffer (b1)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-	  vnet_buffer (b2)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-	  vnet_buffer (b3)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  vnet_buffer (b2)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  vnet_buffer (b3)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  vlib_buffer_advance (b0, device_input_next_node_advance[next0]);
+	  vlib_buffer_advance (b1, device_input_next_node_advance[next1]);
+	  vlib_buffer_advance (b2, device_input_next_node_advance[next2]);
+	  vlib_buffer_advance (b3, device_input_next_node_advance[next3]);
 
 	  n_rx_bytes += mb0->pkt_len;
 	  n_rx_bytes += mb1->pkt_len;
@@ -418,7 +421,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  n_rx_bytes += mb3->pkt_len;
 
 	  /* Process subsequent segments of multi-segment packets */
-	  if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
+	  if (maybe_multiseg)
 	    {
 	      dpdk_process_subseq_segs (vm, b0, mb0, fl);
 	      dpdk_process_subseq_segs (vm, b1, mb1, fl);
@@ -452,6 +455,13 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	{
 	  struct rte_mbuf *mb0 = xd->rx_vectors[queue_id][mb_index];
 
+	  if (PREDICT_TRUE (n_buffers > 3))
+	    {
+	      dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 2]);
+	      dpdk_prefetch_ethertype (xd->rx_vectors[queue_id]
+				       [mb_index + 1]);
+	    }
+
 	  ASSERT (mb0);
 
 	  b0 = vlib_buffer_from_rte_mbuf (mb0);
@@ -460,7 +470,11 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  if (PREDICT_FALSE (mb0->nb_segs > 1))
 	    dpdk_prefetch_buffer (mb0->next);
 
-	  vlib_buffer_init_for_free_list (b0, fl);
+	  clib_memcpy (b0, bt, CLIB_CACHE_LINE_BYTES);
+
+	  ASSERT (b0->current_data == -RTE_PKTMBUF_HEADROOM);
+	  b0->current_data += mb0->data_off;
+	  b0->current_length = mb0->data_len;
 
 	  bi0 = vlib_get_buffer_index (vm, b0);
 
@@ -474,18 +488,9 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	    next0 = dpdk_rx_next_from_etype (mb0, b0);
 
 	  dpdk_rx_error_from_mb (mb0, &next0, &error0);
-	  b0->error = node->errors[error0];
 
-	  l3_offset0 = device_input_next_node_advance[next0];
+	  vlib_buffer_advance (b0, device_input_next_node_advance[next0]);
 
-	  b0->current_data = l3_offset0;
-	  b0->current_data += mb0->data_off - RTE_PKTMBUF_HEADROOM;
-	  b0->current_length = mb0->data_len - l3_offset0;
-
-	  b0->flags = buffer_flags_template;
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	  n_rx_bytes += mb0->pkt_len;
 
 	  /* Process subsequent segments of multi-segment packets */
@@ -604,7 +609,10 @@ dpdk_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   vec_foreach (dq, dm->devices_by_cpu[cpu_index])
     {
       xd = vec_elt_at_index(dm->devices, dq->device);
-      n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id);
+      if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
+        n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, /* maybe_multiseg */ 1);
+      else
+        n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, /* maybe_multiseg */ 0);
     }
   /* *INDENT-ON* */
 
