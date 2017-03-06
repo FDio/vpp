@@ -427,7 +427,7 @@ vnet_interface_output_node (vlib_main_t * vm,
   vnet_hw_interface_t *hi;
   u32 n_left_to_tx, *from, *from_end, *to_tx;
   u32 n_bytes, n_buffers, n_packets;
-  u32 n_bytes_b0, n_bytes_b1;
+  u32 n_bytes_b0, n_bytes_b1, n_bytes_b2, n_bytes_b3;
   u32 cpu_index = vm->cpu_index;
   vnet_interface_main_t *im = &vnm->interface_main;
   u32 next_index = VNET_INTERFACE_OUTPUT_NEXT_TX;
@@ -492,58 +492,76 @@ vnet_interface_output_node (vlib_main_t * vm,
          than VNET_FRAME_SIZE vectors in it. */
       vlib_get_new_next_frame (vm, node, next_index, to_tx, n_left_to_tx);
 
-      while (from + 4 <= from_end && n_left_to_tx >= 2)
+      while (from + 8 <= from_end && n_left_to_tx >= 4)
 	{
-	  u32 bi0, bi1;
-	  vlib_buffer_t *b0, *b1;
-	  u32 tx_swif0, tx_swif1;
+	  u32 bi0, bi1, bi2, bi3;
+	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  u32 tx_swif0, tx_swif1, tx_swif2, tx_swif3;
 
 	  /* Prefetch next iteration. */
-	  vlib_prefetch_buffer_with_index (vm, from[2], LOAD);
-	  vlib_prefetch_buffer_with_index (vm, from[3], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, from[4], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, from[5], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, from[6], LOAD);
+	  vlib_prefetch_buffer_with_index (vm, from[7], LOAD);
 
 	  bi0 = from[0];
 	  bi1 = from[1];
+	  bi2 = from[2];
+	  bi3 = from[3];
 	  to_tx[0] = bi0;
 	  to_tx[1] = bi1;
-	  from += 2;
-	  to_tx += 2;
-	  n_left_to_tx -= 2;
+	  to_tx[2] = bi2;
+	  to_tx[3] = bi3;
+	  from += 4;
+	  to_tx += 4;
+	  n_left_to_tx -= 4;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
+	  b2 = vlib_get_buffer (vm, bi2);
+	  b3 = vlib_get_buffer (vm, bi3);
 
 	  /* Be grumpy about zero length buffers for benefit of
 	     driver tx function. */
 	  ASSERT (b0->current_length > 0);
 	  ASSERT (b1->current_length > 0);
+	  ASSERT (b2->current_length > 0);
+	  ASSERT (b3->current_length > 0);
 
 	  n_bytes_b0 = vlib_buffer_length_in_chain (vm, b0);
 	  n_bytes_b1 = vlib_buffer_length_in_chain (vm, b1);
+	  n_bytes_b2 = vlib_buffer_length_in_chain (vm, b2);
+	  n_bytes_b3 = vlib_buffer_length_in_chain (vm, b3);
 	  tx_swif0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	  tx_swif1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	  tx_swif2 = vnet_buffer (b2)->sw_if_index[VLIB_TX];
+	  tx_swif3 = vnet_buffer (b3)->sw_if_index[VLIB_TX];
 
 	  n_bytes += n_bytes_b0 + n_bytes_b1;
-	  n_packets += 2;
+	  n_bytes += n_bytes_b2 + n_bytes_b3;
+	  n_packets += 4;
 
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
 	      b0->feature_arc_index = arc;
 	      b1->feature_arc_index = arc;
+	      b2->feature_arc_index = arc;
+	      b3->feature_arc_index = arc;
 	      b0->current_config_index = current_config_index;
 	      b1->current_config_index = current_config_index;
+	      b2->current_config_index = current_config_index;
+	      b3->current_config_index = current_config_index;
 	    }
 
+	  /* update vlan subif tx counts, if required */
 	  if (PREDICT_FALSE (tx_swif0 != rt->sw_if_index))
 	    {
-	      /* update vlan subif tx counts, if required */
 	      vlib_increment_combined_counter (im->combined_sw_if_counters +
 					       VNET_INTERFACE_COUNTER_TX,
 					       cpu_index, tx_swif0, 1,
 					       n_bytes_b0);
 	    }
 
-	  /* update vlan subif tx counts, if required */
 	  if (PREDICT_FALSE (tx_swif1 != rt->sw_if_index))
 	    {
 
@@ -551,6 +569,23 @@ vnet_interface_output_node (vlib_main_t * vm,
 					       VNET_INTERFACE_COUNTER_TX,
 					       cpu_index, tx_swif1, 1,
 					       n_bytes_b1);
+	    }
+
+	  if (PREDICT_FALSE (tx_swif2 != rt->sw_if_index))
+	    {
+
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       VNET_INTERFACE_COUNTER_TX,
+					       cpu_index, tx_swif2, 1,
+					       n_bytes_b2);
+	    }
+	  if (PREDICT_FALSE (tx_swif3 != rt->sw_if_index))
+	    {
+
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       VNET_INTERFACE_COUNTER_TX,
+					       cpu_index, tx_swif3, 1,
+					       n_bytes_b3);
 	    }
 	}
 
