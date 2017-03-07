@@ -1361,8 +1361,8 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           ip4_header_t * ip0, * ip1;
           ip_csum_t sum0, sum1;
           ip4_address_t new_addr0, old_addr0, new_addr1, old_addr1;
-          u16 old_port0, new_port0, lo_port0, i;
-          u16 old_port1, new_port1, lo_port1;
+          u16 old_port0, new_port0, lo_port0, i0;
+          u16 old_port1, new_port1, lo_port1, i1;
           udp_header_t * udp0, * udp1;
           tcp_header_t * tcp0, * tcp1;
           u32 proto0, proto1;
@@ -1409,6 +1409,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               clib_warning("no match for internal host %U",
                            format_ip4_address, &ip0->src_address);
+              b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace0;
             }
 
@@ -1419,10 +1420,10 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               key0.ext_host_addr = ip0->dst_address;
               key0.ext_host_port = tcp0->dst;
-              for (i = 0; i < dm0->ports_per_host; i++)
+              for (i0 = 0; i0 < dm0->ports_per_host; i0++)
                 {
-                  key0.out_port = clib_host_to_net_u16 (lo_port0 + i +
-                    (clib_net_to_host_u16 (tcp0->src) % dm0->ports_per_host));
+                  key0.out_port = clib_host_to_net_u16 (lo_port0 +
+                    ((i0 + clib_net_to_host_u16 (tcp0->src)) % dm0->ports_per_host));
 
                   if (snat_det_get_ses_by_out (dm0, &ip0->src_address, key0.as_u64))
                     continue;
@@ -1433,6 +1434,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                 if (PREDICT_FALSE(!ses0))
                   {
                     next0 = SNAT_IN2OUT_NEXT_DROP;
+                    b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
                     goto trace0;
                   }
             }
@@ -1528,6 +1530,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               clib_warning("no match for internal host %U",
                            format_ip4_address, &ip0->src_address);
+              b1->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace1;
             }
 
@@ -1539,10 +1542,10 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               key1.ext_host_addr = ip1->dst_address;
               key1.ext_host_port = tcp1->dst;
-              for (i = 0; i < dm1->ports_per_host; i++)
+              for (i1 = 0; i1 < dm1->ports_per_host; i1++)
                 {
-                  key1.out_port = clib_host_to_net_u16 (lo_port1 + i +
-                    (clib_net_to_host_u16 (tcp1->src) % dm1->ports_per_host));
+                  key1.out_port = clib_host_to_net_u16 (lo_port1 +
+                    ((i1 + clib_net_to_host_u16 (tcp1->src)) % dm1->ports_per_host));
 
                   if (snat_det_get_ses_by_out (dm1, &ip1->src_address, key1.as_u64))
                     continue;
@@ -1553,6 +1556,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                 if (PREDICT_FALSE(!ses1))
                   {
                     next1 = SNAT_IN2OUT_NEXT_DROP;
+                    b1->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
                     goto trace1;
                   }
             }
@@ -1652,7 +1656,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           ip4_header_t * ip0;
           ip_csum_t sum0;
           ip4_address_t new_addr0, old_addr0;
-          u16 old_port0, new_port0, lo_port0, i;
+          u16 old_port0, new_port0, lo_port0, i0;
           udp_header_t * udp0;
           tcp_header_t * tcp0;
           u32 proto0;
@@ -1682,6 +1686,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               clib_warning("no match for internal host %U",
                            format_ip4_address, &ip0->src_address);
+              b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace00;
             }
 
@@ -1692,10 +1697,10 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               key0.ext_host_addr = ip0->dst_address;
               key0.ext_host_port = tcp0->dst;
-              for (i = 0; i < dm0->ports_per_host; i++)
+              for (i0 = 0; i0 < dm0->ports_per_host; i0++)
                 {
-                  key0.out_port = clib_host_to_net_u16 (lo_port0 + i +
-                    (clib_net_to_host_u16 (tcp0->src) % dm0->ports_per_host));
+                  key0.out_port = clib_host_to_net_u16 (lo_port0 +
+                    ((i0 + clib_net_to_host_u16 (tcp0->src)) % dm0->ports_per_host));
 
                   if (snat_det_get_ses_by_out (dm0, &ip0->src_address, key0.as_u64))
                     continue;
@@ -1706,6 +1711,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                 if (PREDICT_FALSE(!ses0))
                   {
                     next0 = SNAT_IN2OUT_NEXT_DROP;
+                    b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
                     goto trace00;
                   }
             }
