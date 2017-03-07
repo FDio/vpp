@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 
 #undef always_inline
+#include <rte_config.h>
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 
