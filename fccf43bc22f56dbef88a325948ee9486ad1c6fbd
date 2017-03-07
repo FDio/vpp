@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_2a2613cf",
+        "filename": "src/plugins/ioam/udp-ping/udp_ping_node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T08:03:34Z",
+      "side": 1,
+      "message": "Done in all new files.",
+      "parentUuid": "3a3291f1_aa1323b7",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_6a841bd4",
         "filename": "src/plugins/ioam/udp-ping/udp_ping_packet.h",
         "patchSetId": 8
@@ -36,6 +60,30 @@
       "writtenOn": "2017-03-07T04:08:24Z",
       "side": 1,
       "message": "These are unused fields as we handle this in hbh trace type header? I understand we are keeping it here to maintain structure per draft-lapukhov-dataplane-probe-01, we can drop this in next revision when if we want to go with ioam data in the udp payload directly.",
+      "range": {
+        "startLine": 129,
+        "startChar": 1,
+        "endLine": 135,
+        "endChar": 14
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0a2117b4",
+        "filename": "src/plugins/ioam/udp-ping/udp_ping_packet.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T08:03:34Z",
+      "side": 1,
+      "message": "Yes, these are unused but I have them here just to maintain structure as per draft. Once we come up with full packet format for udp-ping with IOAM, I will modify this.",
+      "parentUuid": "3a3291f1_6a841bd4",
       "range": {
         "startLine": 129,
         "startChar": 1,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_aa19e389",
+        "filename": "src/plugins/ioam/udp-ping/udp_ping_util.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T08:03:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_4a871fd8",
+      "range": {
+        "startLine": 202,
+        "startChar": 26,
+        "endLine": 202,
+        "endChar": 34
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_ca442fb9",
         "filename": "src/vnet/ip/ip6.h",
         "patchSetId": 8
@@ -94,6 +166,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_8a1ce778",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T08:03:34Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_ca442fb9",
+      "range": {
+        "startLine": 455,
+        "startChar": 0,
+        "endLine": 455,
+        "endChar": 17
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_ea492bd1",
         "filename": "src/vnet/ip/ip6_hop_by_hop.h",
         "patchSetId": 8
@@ -105,6 +201,30 @@
       "writtenOn": "2017-03-07T04:08:24Z",
       "side": 1,
       "message": "ip6_ioam_find_hbh_option in ip6_ioam_analyse.h does a similar thing. We should clean it up in a subsequent commit.",
+      "range": {
+        "startLine": 234,
+        "startChar": 0,
+        "endLine": 234,
+        "endChar": 18
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6a13fb66",
+        "filename": "src/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T08:03:34Z",
+      "side": 1,
+      "message": "Will take this up in next commit.",
+      "parentUuid": "3a3291f1_ea492bd1",
       "range": {
         "startLine": 234,
         "startChar": 0,
