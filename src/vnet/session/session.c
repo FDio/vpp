@@ -22,6 +22,7 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/session/application.h>
+#include <vnet/tcp/tcp.h>
 
 /**
  * Per-type vector of transport protocol virtual function tables
@@ -1287,6 +1288,9 @@ session_manager_main_enable (vlib_main_t * vm)
 
   smm->is_enabled = 1;
 
+  /* Enable TCP transport */
+  vnet_tcp_enable_disable (vm, 1);
+
   return 0;
 }
 
@@ -1312,7 +1316,6 @@ vnet_session_enable_disable (vlib_main_t * vm, u8 is_en)
 
   return 0;
 }
-
 
 clib_error_t *
 session_manager_main_init (vlib_main_t * vm)

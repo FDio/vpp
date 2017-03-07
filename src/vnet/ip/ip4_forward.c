@@ -1706,10 +1706,11 @@ ip4_local_inline (vlib_main_t * vm,
 		     ip1->dst_address.as_u32 != 0xFFFFFFFF)
 		    ? IP4_ERROR_SRC_LOOKUP_MISS : error1);
 
+	skip_checks:
+
 	  next0 = lm->local_next_by_ip_protocol[proto0];
 	  next1 = lm->local_next_by_ip_protocol[proto1];
 
-	skip_checks:
 	  next0 =
 	    error0 != IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
 	  next1 =
