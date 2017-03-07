@@ -26,8 +26,8 @@
 #include <vlibmemory/unix_shared_memory_queue.h>
 
 #include <vnet/udp/udp_packet.h>
-#include <vnet/lisp-cp/packets.h>
 #include <math.h>
+#include <vnet/session/session_debug.h>
 
 vlib_node_registration_t session_queue_node;
 
@@ -198,22 +198,12 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  len_to_deq0 = (left_to_snd0 < snd_mss0) ? left_to_snd0 : snd_mss0;
 
 	  /* *INDENT-OFF* */
-	  if (1)
-	    {
-	      ELOG_TYPE_DECLARE (e) = {
-		  .format = "evt-deq: id %d len %d rd %d wnd %d",
-		  .format_args = "i4i4i4i4",
-	      };
-	      struct
-	      {
-		u32 data[4];
-	      } *ed;
-	      ed = ELOG_DATA (&vm->elog_main, e);
+	  SESSION_EVT_DBG(s0, SESSION_EVT_DEQ, ({
 	      ed->data[0] = e0->event_id;
 	      ed->data[1] = e0->enqueue_length;
 	      ed->data[2] = len_to_deq0;
 	      ed->data[3] = left_to_snd0;
-	    }
+	  }));
 	  /* *INDENT-ON* */
 
 	  /* Make room for headers */
@@ -392,7 +382,7 @@ skip_dequeue:
 	case FIFO_EVENT_SERVER_TX:
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
-	  rv = (smm->session_rx_fns[s0->session_type]) (vm, node, smm, e0, s0,
+	  rv = (smm->session_tx_fns[s0->session_type]) (vm, node, smm, e0, s0,
 							my_thread_index,
 							&n_tx_packets);
 	  if (rv < 0)

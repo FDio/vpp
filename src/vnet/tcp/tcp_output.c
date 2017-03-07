@@ -828,6 +828,7 @@ tcp_send_fin (tcp_connection_t * tc)
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
   tc->flags |= TCP_CONN_FINSNT;
+  TCP_EVT_DBG(tc, TCP_EVT_FIN_SENT);
 }
 
 always_inline u8
@@ -1242,22 +1243,6 @@ tcp46_output_inline (vlib_main_t * vm,
 		  tc0->rtt_ts = tcp_time_now ();
 		  tc0->rtt_seq = tc0->snd_nxt;
 		}
-
-	      if (1)
-		{
-		  ELOG_TYPE_DECLARE (e) =
-		  {
-		  .format =
-		      "output: snd_una %u snd_una_max %u",.format_args =
-		      "i4i4",};
-		  struct
-		  {
-		    u32 data[2];
-		  } *ed;
-		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->data[0] = tc0->snd_una - tc0->iss;
-		  ed->data[1] = tc0->snd_una_max - tc0->iss;
-		}
 	    }
 
 	  /* Set the retransmit timer if not set already and not
@@ -1275,6 +1260,8 @@ tcp46_output_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+
+	  TCP_EVT_DBG(tc0, TCP_EVT_OUTPUT);
 
 	done:
 	  b0->error = error0 != 0 ? node->errors[error0] : 0;
