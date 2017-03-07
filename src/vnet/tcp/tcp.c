@@ -21,7 +21,7 @@
 tcp_main_t tcp_main;
 
 static u32
-tcp_connection_bind (vlib_main_t * vm, u32 session_index, ip46_address_t * ip,
+tcp_connection_bind (u32 session_index, ip46_address_t * ip,
 		     u16 port_host_byte_order, u8 is_ip4)
 {
   tcp_main_t *tm = &tcp_main;
@@ -43,42 +43,41 @@ tcp_connection_bind (vlib_main_t * vm, u32 session_index, ip46_address_t * ip,
   listener->state = TCP_STATE_LISTEN;
   listener->c_is_ip4 = 1;
 
+  tcp_connection_timers_init (listener);
+
+  TCP_EVT_DBG (TCP_EVT_BIND, listener);
+
   return listener->c_c_index;
 }
 
 u32
-tcp_session_bind_ip4 (vlib_main_t * vm, u32 session_index,
-		      ip46_address_t * ip, u16 port_host_byte_order)
+tcp_session_bind_ip4 (u32 session_index, ip46_address_t * ip,
+		      u16 port_host_byte_order)
 {
-  return tcp_connection_bind (vm, session_index, ip, port_host_byte_order, 1);
+  return tcp_connection_bind (session_index, ip, port_host_byte_order, 1);
 }
 
 u32
-tcp_session_bind_ip6 (vlib_main_t * vm, u32 session_index,
-		      ip46_address_t * ip, u16 port_host_byte_order)
+tcp_session_bind_ip6 (u32 session_index, ip46_address_t * ip,
+		      u16 port_host_byte_order)
 {
-  return tcp_connection_bind (vm, session_index, ip, port_host_byte_order, 0);
+  return tcp_connection_bind (session_index, ip, port_host_byte_order, 0);
 
 }
 
 static void
-tcp_session_unbind (u32 listener_index)
+tcp_connection_unbind (u32 listener_index)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
+  TCP_EVT_DBG (TCP_EVT_UNBIND,
+	       pool_elt_at_index (tm->listener_pool, listener_index));
   pool_put_index (tm->listener_pool, listener_index);
 }
 
 u32
-tcp_session_unbind_ip4 (vlib_main_t * vm, u32 listener_index)
+tcp_session_unbind (u32 listener_index)
 {
-  tcp_session_unbind (listener_index);
-  return 0;
-}
-
-u32
-tcp_session_unbind_ip6 (vlib_main_t * vm, u32 listener_index)
-{
-  tcp_session_unbind (listener_index);
+  tcp_connection_unbind (listener_index);
   return 0;
 }
 
@@ -135,6 +134,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 void
 tcp_connection_del (tcp_connection_t * tc)
 {
+  TCP_EVT_DBG (TCP_EVT_DELETE, tc);
   stream_session_delete_notify (&tc->connection);
   tcp_connection_cleanup (tc);
 }
@@ -169,6 +169,8 @@ tcp_connection_reset (tcp_connection_t * tc)
 void
 tcp_connection_close (tcp_connection_t * tc)
 {
+  TCP_EVT_DBG (TCP_EVT_CLOSE, tc);
+
   /* Send FIN if needed */
   if (tc->state == TCP_STATE_ESTABLISHED || tc->state == TCP_STATE_SYN_RCVD
       || tc->state == TCP_STATE_CLOSE_WAIT)
@@ -403,6 +405,8 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
 
   tc->state = TCP_STATE_SYN_SENT;
 
+  TCP_EVT_DBG (TCP_EVT_OPEN, tc);
+
   return tc->c_c_index;
 }
 
@@ -418,82 +422,119 @@ tcp_session_open_ip6 (ip46_address_t * addr, u16 port)
   return tcp_connection_open (addr, port, 0);
 }
 
+const char *tcp_dbg_evt_str[] = {
+#define _(sym, str) str,
+  foreach_tcp_dbg_evt
+#undef _
+};
+
+const char *tcp_fsm_states[] = {
+#define _(sym, str) str,
+  foreach_tcp_fsm_state
+#undef _
+};
+
 u8 *
-format_tcp_session_ip4 (u8 * s, va_list * args)
+format_tcp_state (u8 * s, va_list * args)
+{
+  tcp_state_t *state = va_arg (*args, tcp_state_t *);
+
+  if (*state < TCP_N_STATES)
+    s = format (s, "%s", tcp_fsm_states[*state]);
+  else
+    s = format (s, "UNKNOWN");
+
+  return s;
+}
+
+const char *tcp_conn_timers[] = {
+#define _(sym, str) str,
+  foreach_tcp_timer
+#undef _
+};
+
+u8 *
+format_tcp_timers (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  int i, last = 0;
+
+  for (i = 0; i < TCP_N_TIMERS; i++)
+    if (tc->timers[i] != TCP_TIMER_HANDLE_INVALID)
+      last = i;
+
+  s = format (s, "[");
+  for (i = 0; i < last; i++)
+    {
+      if (tc->timers[i] != TCP_TIMER_HANDLE_INVALID)
+	s = format (s, "%s,", tcp_conn_timers[i]);
+    }
+
+  if (last > 0)
+    s = format (s, "%s]", tcp_conn_timers[i]);
+  else
+    s = format (s, "]");
+
+  return s;
+}
+
+u8 *
+format_tcp_connection (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+
+  if (tc->c_is_ip4)
+    {
+      s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
+		  format_ip4_address, &tc->c_lcl_ip4,
+		  clib_net_to_host_u16 (tc->c_lcl_port), format_ip4_address,
+		  &tc->c_rmt_ip4, clib_net_to_host_u16 (tc->c_rmt_port));
+    }
+  else
+    {
+      s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
+		  format_ip6_address, &tc->c_lcl_ip6,
+		  clib_net_to_host_u16 (tc->c_lcl_port), format_ip6_address,
+		  &tc->c_rmt_ip6, clib_net_to_host_u16 (tc->c_rmt_port));
+    }
+
+  return s;
+}
+
+u8 *
+format_tcp_connection_verbose (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  s = format (s, "%U %U %U", format_tcp_connection, tc, format_tcp_state,
+	      &tc->state, format_tcp_timers, tc);
+  return s;
+}
+
+u8 *
+format_tcp_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   u32 thread_index = va_arg (*args, u32);
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (tci, thread_index);
-
-  s = format (s, "[%s] %U:%d->%U:%d", "tcp", format_ip4_address,
-	      &tc->c_lcl_ip4, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip4_address, &tc->c_rmt_ip4,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-
-  return s;
+  return format (s, "%U", format_tcp_connection, tc);
 }
 
 u8 *
-format_tcp_session_ip6 (u8 * s, va_list * args)
-{
-  u32 tci = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
-  tcp_connection_t *tc = tcp_connection_get (tci, thread_index);
-  s = format (s, "[%s] %U:%d->%U:%d", "tcp", format_ip6_address,
-	      &tc->c_lcl_ip6, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip6_address, &tc->c_rmt_ip6,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
-}
-
-u8 *
-format_tcp_listener_session_ip4 (u8 * s, va_list * args)
+format_tcp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   tcp_connection_t *tc = tcp_listener_get (tci);
-  s = format (s, "[%s] %U:%d->%U:%d", "tcp", format_ip4_address,
-	      &tc->c_lcl_ip4, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip4_address, &tc->c_rmt_ip4,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
+  return format (s, "%U", format_tcp_connection, tc);
 }
 
 u8 *
-format_tcp_listener_session_ip6 (u8 * s, va_list * args)
-{
-  u32 tci = va_arg (*args, u32);
-  tcp_connection_t *tc = tcp_listener_get (tci);
-  s = format (s, "[%s] %U:%d->%U:%d", "tcp", format_ip6_address,
-	      &tc->c_lcl_ip6, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip6_address, &tc->c_rmt_ip6,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
-}
-
-u8 *
-format_tcp_half_open_session_ip4 (u8 * s, va_list * args)
+format_tcp_half_open_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   tcp_connection_t *tc = tcp_half_open_connection_get (tci);
-  s = format (s, "[%s] %U:%d->%U:%d", "tcp", format_ip4_address,
-	      &tc->c_lcl_ip4, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip4_address, &tc->c_rmt_ip4,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
-}
-
-u8 *
-format_tcp_half_open_session_ip6 (u8 * s, va_list * args)
-{
-  u32 tci = va_arg (*args, u32);
-  tcp_connection_t *tc = tcp_half_open_connection_get (tci);
-  s = format (s, "[%s] %U:%d->%U:%d", "tcp", format_ip6_address,
-	      &tc->c_lcl_ip6, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip6_address, &tc->c_rmt_ip6,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
+  return format (s, "%U", format_tcp_connection, tc);
 }
 
 transport_connection_t *
@@ -534,7 +575,7 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tcp4_proto = {
   .bind = tcp_session_bind_ip4,
-  .unbind = tcp_session_unbind_ip4,
+  .unbind = tcp_session_unbind,
   .push_header = tcp_push_header,
   .get_connection = tcp_session_get_transport,
   .get_listener = tcp_session_get_listener,
@@ -545,14 +586,14 @@ const static transport_proto_vft_t tcp4_proto = {
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
-  .format_connection = format_tcp_session_ip4,
-  .format_listener = format_tcp_listener_session_ip4,
-  .format_half_open = format_tcp_half_open_session_ip4
+  .format_connection = format_tcp_session,
+  .format_listener = format_tcp_listener_session,
+  .format_half_open = format_tcp_half_open_session,
 };
 
 const static transport_proto_vft_t tcp6_proto = {
   .bind = tcp_session_bind_ip6,
-  .unbind = tcp_session_unbind_ip6,
+  .unbind = tcp_session_unbind,
   .push_header = tcp_push_header,
   .get_connection = tcp_session_get_transport,
   .get_listener = tcp_session_get_listener,
@@ -563,9 +604,9 @@ const static transport_proto_vft_t tcp6_proto = {
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
-  .format_connection = format_tcp_session_ip6,
-  .format_listener = format_tcp_listener_session_ip6,
-  .format_half_open = format_tcp_half_open_session_ip6
+  .format_connection = format_tcp_session,
+  .format_listener = format_tcp_listener_session,
+  .format_half_open = format_tcp_half_open_session,
 };
 /* *INDENT-ON* */
 
@@ -653,6 +694,8 @@ tcp_expired_timers_dispatch (u32 * expired_timers)
       /* Get session index and timer id */
       connection_index = expired_timers[i] & 0x0FFFFFFF;
       timer_id = expired_timers[i] >> 28;
+
+      TCP_EVT_DBG (TCP_EVT_TIMER_POP, connection_index, timer_id);
 
       /* Handle expiration */
       (*timer_expiration_handlers[timer_id]) (connection_index);

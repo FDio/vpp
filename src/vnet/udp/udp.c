@@ -25,7 +25,7 @@
 udp_uri_main_t udp_uri_main;
 
 u32
-udp_session_bind_ip4 (vlib_main_t * vm, u32 session_index,
+udp_session_bind_ip4 (u32 session_index,
 		      ip46_address_t * ip, u16 port_number_host_byte_order)
 {
   udp_uri_main_t *um = vnet_get_udp_main ();
@@ -42,7 +42,7 @@ udp_session_bind_ip4 (vlib_main_t * vm, u32 session_index,
 }
 
 u32
-udp_session_bind_ip6 (vlib_main_t * vm, u32 session_index,
+udp_session_bind_ip6 (u32 session_index,
 		      ip46_address_t * ip, u16 port_number_host_byte_order)
 {
   udp_uri_main_t *um = vnet_get_udp_main ();
@@ -58,8 +58,9 @@ udp_session_bind_ip6 (vlib_main_t * vm, u32 session_index,
 }
 
 u32
-udp_session_unbind_ip4 (vlib_main_t * vm, u32 listener_index)
+udp_session_unbind_ip4 (u32 listener_index)
 {
+  vlib_main_t *vm = vlib_get_main ();
   udp_connection_t *listener;
   listener = udp_listener_get (listener_index);
 
@@ -69,8 +70,9 @@ udp_session_unbind_ip4 (vlib_main_t * vm, u32 listener_index)
 }
 
 u32
-udp_session_unbind_ip6 (vlib_main_t * vm, u32 listener_index)
+udp_session_unbind_ip6 (u32 listener_index)
 {
+  vlib_main_t *vm = vlib_get_main ();
   udp_connection_t *listener;
 
   listener = udp_listener_get (listener_index);
