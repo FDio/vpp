@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b84ed96d",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-03-07T12:47:04Z",
+      "side": 1,
+      "message": "i think this prefetch cannot be done in parallel with mb prefetch (line 215) - it depends on its result\ni think it would be better to prefetch an mbuf and previous prefetched mbuf fields\n\ndpdk_prefetch_buffer(mb, prev_mb) {\nprefetch(mb);\nprefetch(prev_mb-\u003e...);\n}\n\nsee:\nhttp://www-dyn.cl.cam.ac.uk/~tmj32/wordpress/software-prefetching-for-indirect-memory-accesses/",
+      "revId": "aa50c248b730fa7f84d19508423c9ba35b472e3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
