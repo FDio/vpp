@@ -16,6 +16,24 @@
       "revId": "78372a9a55098ad43c4d6d941b640cce4ff24226",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6d9af564",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1336,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T14:33:19Z",
+      "side": 0,
+      "message": "We register with ip6_local for all local packets with next proto as HBH and process it - udp_ping_init() -- \u003e ip6_register_protocol(IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS, udp_ping_local.index);",
+      "parentUuid": "3a3291f1_edf145ce",
+      "revId": "78372a9a55098ad43c4d6d941b640cce4ff24226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
