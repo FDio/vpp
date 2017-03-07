@@ -20,7 +20,7 @@
 #include <vnet/ip/ip.h>
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_48_8.h>
-
+#include <vnet/tcp/tcp_debug.h>
 /*
  * Protocol independent transport properties associated to a session
  */
@@ -37,6 +37,10 @@ typedef struct _transport_connection
   u8 is_ip4;			/**< Flag if IP4 connection */
   u32 thread_index;		/**< Worker-thread index */
 
+#if TRANSPORT_DEBUG
+  elog_track_t elog_track;	/**< Debug purposes */
+#endif
+
   /** Macros for 'derived classes' where base is named "connection" */
 #define c_lcl_ip connection.lcl_ip
 #define c_rmt_ip connection.rmt_ip
@@ -52,6 +56,7 @@ typedef struct _transport_connection
 #define c_c_index connection.c_index
 #define c_is_ip4 connection.is_ip4
 #define c_thread_index connection.thread_index
+#define c_elog_track connection.elog_track
 } transport_connection_t;
 
 /*
@@ -62,8 +67,8 @@ typedef struct _transport_proto_vft
   /*
    * Setup
    */
-  u32 (*bind) (vlib_main_t *, u32, ip46_address_t *, u16);
-  u32 (*unbind) (vlib_main_t *, u32);
+  u32 (*bind) (u32, ip46_address_t *, u16);
+  u32 (*unbind) (u32);
   int (*open) (ip46_address_t * addr, u16 port_host_byte_order);
   void (*close) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
@@ -89,7 +94,6 @@ typedef struct _transport_proto_vft
   u8 *(*format_connection) (u8 * s, va_list * args);
   u8 *(*format_listener) (u8 * s, va_list * args);
   u8 *(*format_half_open) (u8 * s, va_list * args);
-
 } transport_proto_vft_t;
 
 /* *INDENT-OFF* */

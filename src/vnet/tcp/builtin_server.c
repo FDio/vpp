@@ -160,7 +160,7 @@ server_create (vlib_main_t * vm)
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
-  a->uri = "tcp://0.0.0.0/80";
+  a->uri = "tcp://0.0.0.0/1234";
   a->api_client_index = ~0;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;

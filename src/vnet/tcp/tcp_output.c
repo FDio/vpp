@@ -452,11 +452,7 @@ tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b)
 
   tcp_reuse_buffer (vm, b);
 
-  if (tc->rcv_las == tc->rcv_nxt)
-    flags = TCP_FLAG_FIN;
-  else
-    flags = TCP_FLAG_FIN | TCP_FLAG_ACK;
-
+  flags = TCP_FLAG_FIN | TCP_FLAG_ACK;
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, flags);
 
   /* Reset flags, make sure ack is sent */
@@ -828,6 +824,7 @@ tcp_send_fin (tcp_connection_t * tc)
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
   tc->flags |= TCP_CONN_FINSNT;
+  TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
 }
 
 always_inline u8
@@ -887,6 +884,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   tc->snd_nxt += data_len;
+  TCP_EVT_DBG (TCP_EVT_PKTIZE, tc);
 }
 
 /* Send delayed ACK when timer expires */
@@ -1186,6 +1184,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	    }
 
 	  th0 = vlib_buffer_get_current (b0);
+	  TCP_EVT_DBG (TCP_EVT_OUTPUT, tc0, th0->flags, b0->current_length);
 
 	  if (is_ip4)
 	    {
@@ -1242,22 +1241,6 @@ tcp46_output_inline (vlib_main_t * vm,
 		  tc0->rtt_ts = tcp_time_now ();
 		  tc0->rtt_seq = tc0->snd_nxt;
 		}
-
-	      if (1)
-		{
-		  ELOG_TYPE_DECLARE (e) =
-		  {
-		  .format =
-		      "output: snd_una %u snd_una_max %u",.format_args =
-		      "i4i4",};
-		  struct
-		  {
-		    u32 data[2];
-		  } *ed;
-		  ed = ELOG_DATA (&vm->elog_main, e);
-		  ed->data[0] = tc0->snd_una - tc0->iss;
-		  ed->data[1] = tc0->snd_una_max - tc0->iss;
-		}
 	    }
 
 	  /* Set the retransmit timer if not set already and not
@@ -1275,9 +1258,8 @@ tcp46_output_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
-
 	done:
-	  b0->error = error0 != 0 ? node->errors[error0] : 0;
+	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 
@@ -1307,34 +1289,50 @@ tcp6_output (vlib_main_t * vm, vlib_node_runtime_t * node,
   return tcp46_output_inline (vm, node, from_frame, 0 /* is_ip4 */ );
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp4_output_node) =
 {
   .function = tcp4_output,.name = "tcp4-output",
     /* Takes a vector of packets. */
-    .vector_size = sizeof (u32),.n_errors = TCP_N_ERROR,.error_strings =
-    tcp_error_strings,.n_next_nodes = TCP_OUTPUT_N_NEXT,.next_nodes =
-  {
+    .vector_size = sizeof (u32),
+    .n_errors = TCP_N_ERROR,
+    .error_strings = tcp_error_strings,
+    .n_next_nodes = TCP_OUTPUT_N_NEXT,
+    .next_nodes = {
 #define _(s,n) [TCP_OUTPUT_NEXT_##s] = n,
     foreach_tcp4_output_next
 #undef _
-  }
-,.format_buffer = format_tcp_header,.format_trace = format_tcp_tx_trace,};
+    },
+    .format_buffer = format_tcp_header,
+    .format_trace = format_tcp_tx_trace,
+};
+/* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp4_output_node, tcp4_output)
+VLIB_NODE_FUNCTION_MULTIARCH (tcp4_output_node, tcp4_output);
+
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_output_node) =
 {
-  .function = tcp6_output,.name = "tcp6-output",
+  .function = tcp6_output,
+  .name = "tcp6-output",
     /* Takes a vector of packets. */
-    .vector_size = sizeof (u32),.n_errors = TCP_N_ERROR,.error_strings =
-    tcp_error_strings,.n_next_nodes = TCP_OUTPUT_N_NEXT,.next_nodes =
-  {
+  .vector_size = sizeof (u32),
+  .n_errors = TCP_N_ERROR,
+  .error_strings = tcp_error_strings,
+  .n_next_nodes = TCP_OUTPUT_N_NEXT,
+  .next_nodes = {
 #define _(s,n) [TCP_OUTPUT_NEXT_##s] = n,
     foreach_tcp6_output_next
 #undef _
-  }
-,.format_buffer = format_tcp_header,.format_trace = format_tcp_tx_trace,};
+  },
+  .format_buffer = format_tcp_header,
+  .format_trace = format_tcp_tx_trace,
+};
+/* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (tcp6_output_node, tcp6_output) u32
+VLIB_NODE_FUNCTION_MULTIARCH (tcp6_output_node, tcp6_output);
+
+u32
 tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 {
   tcp_connection_t *tc;
@@ -1405,7 +1403,7 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next0 = TCP_RESET_NEXT_IP_LOOKUP;
 
 	done:
-	  b0->error = error0 != 0 ? node->errors[error0] : 0;
+	  b0->error = node->errors[error0];
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1450,6 +1448,8 @@ VLIB_REGISTER_NODE (tcp4_reset_node) = {
 };
 /* *INDENT-ON* */
 
+VLIB_NODE_FUNCTION_MULTIARCH (tcp4_reset_node, tcp4_send_reset);
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (tcp6_reset_node) = {
   .function = tcp6_send_reset,
@@ -1465,6 +1465,8 @@ VLIB_REGISTER_NODE (tcp6_reset_node) = {
   },
 };
 /* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (tcp6_reset_node, tcp6_send_reset);
 
 /*
  * fd.io coding-style-patch-verification: ON
