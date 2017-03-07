@@ -125,6 +125,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_d86765b6",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 955,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T14:33:19Z",
+      "side": 1,
+      "message": "Fixed point 1. ip6_compute_flow_hash() takes care of hbh header.\nFor point 2, we need to discuss more on which is the best place to have hbh processing. From In-Band OAM, we need both input and output interfaces. So it makes sense for us to do it in o/p feature. So can we defer this for now? We will take this up later.",
+      "parentUuid": "3a3291f1_ed9f055e",
+      "revId": "edb946631759a1cfd22584592b936b571068b1cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_040fce2f",
         "filename": "src/vnet/ip/ip6_forward.c",
         "patchSetId": 3
