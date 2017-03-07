@@ -1023,11 +1023,13 @@ class VppPapiProvider(object):
             first_ip_address,
             last_ip_address,
             is_add=1,
-            is_ip4=1):
+            is_ip4=1,
+            vrf_id=0xFFFFFFFF):
         """Add/del S-NAT address range
 
         :param first_ip_address: First IP address
         :param last_ip_address: Last IP address
+        :param vrf_id: VRF id for the address range
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         :param is_ip4: 1 if address type is IPv4 (Default value = 1)
         """
@@ -1036,6 +1038,7 @@ class VppPapiProvider(object):
             {'is_ip4': is_ip4,
              'first_ip_address': first_ip_address,
              'last_ip_address': last_ip_address,
+             'vrf_id': vrf_id,
              'is_add': is_add})
 
     def snat_address_dump(self):
