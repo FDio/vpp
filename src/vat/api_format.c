@@ -1254,10 +1254,11 @@ static void vl_api_show_version_reply_t_handler_json
 static void
 vl_api_ip4_arp_event_t_handler (vl_api_ip4_arp_event_t * mp)
 {
+  u32 sw_if_index = ntohl (mp->sw_if_index);
   errmsg ("arp %s event: address %U new mac %U sw_if_index %d",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
 	  format_ip4_address, &mp->address,
-	  format_ethernet_address, mp->new_mac, mp->sw_if_index);
+	  format_ethernet_address, mp->new_mac, sw_if_index);
 }
 
 static void
@@ -1269,10 +1270,11 @@ vl_api_ip4_arp_event_t_handler_json (vl_api_ip4_arp_event_t * mp)
 static void
 vl_api_ip6_nd_event_t_handler (vl_api_ip6_nd_event_t * mp)
 {
+  u32 sw_if_index = ntohl (mp->sw_if_index);
   errmsg ("ip6 nd %s event: address %U new mac %U sw_if_index %d",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
 	  format_ip6_address, mp->address,
-	  format_ethernet_address, mp->new_mac, mp->sw_if_index);
+	  format_ethernet_address, mp->new_mac, sw_if_index);
 }
 
 static void
