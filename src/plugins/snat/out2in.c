@@ -1081,6 +1081,7 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
               clib_warning("unknown dst address:  %U",
                            format_ip4_address, &ip0->dst_address);
               next0 = SNAT_OUT2IN_NEXT_DROP;
+              b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace0;
             }
 
@@ -1090,12 +1091,14 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
           ses0 = snat_det_get_ses_by_out (dm0, &new_addr0, key0.as_u64);
           if (PREDICT_FALSE(!ses0))
             {
-              clib_warning("no match src %U:%d dst %d for user %U",
-                           format_ip4_address, &ip0->dst_address,
+              clib_warning("no match src %U:%d dst %U:%d for user %U",
+                           format_ip4_address, &ip0->src_address,
                            clib_net_to_host_u16 (tcp0->src),
+                           format_ip4_address, &ip0->dst_address,
                            clib_net_to_host_u16 (tcp0->dst),
                            format_ip4_address, &new_addr0);
               next0 = SNAT_OUT2IN_NEXT_DROP;
+              b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace0;
             }
           new_port0 = ses0->in_port;
@@ -1173,6 +1176,7 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
               clib_warning("unknown dst address:  %U",
                            format_ip4_address, &ip1->dst_address);
               next1 = SNAT_OUT2IN_NEXT_DROP;
+              b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace1;
             }
 
@@ -1182,12 +1186,14 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
           ses1 = snat_det_get_ses_by_out (dm1, &new_addr1, key1.as_u64);
           if (PREDICT_FALSE(!ses1))
             {
-              clib_warning("no match src %U:%d dst %d for user %U",
-                           format_ip4_address, &ip1->dst_address,
+              clib_warning("no match src %U:%d dst %U:%d for user %U",
+                           format_ip4_address, &ip1->src_address,
                            clib_net_to_host_u16 (tcp1->src),
+                           format_ip4_address, &ip1->dst_address,
                            clib_net_to_host_u16 (tcp1->dst),
                            format_ip4_address, &new_addr1);
               next1 = SNAT_OUT2IN_NEXT_DROP;
+              b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace1;
             }
           new_port1 = ses1->in_port;
@@ -1296,6 +1302,7 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
               clib_warning("unknown dst address:  %U",
                            format_ip4_address, &ip0->dst_address);
               next0 = SNAT_OUT2IN_NEXT_DROP;
+              b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace00;
             }
 
@@ -1305,12 +1312,14 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
           ses0 = snat_det_get_ses_by_out (dm0, &new_addr0, key0.as_u64);
           if (PREDICT_FALSE(!ses0))
             {
-              clib_warning("no match src %U:%d dst %d for user %U",
-                           format_ip4_address, &ip0->dst_address,
+              clib_warning("no match src %U:%d dst %U:%d for user %U",
+                           format_ip4_address, &ip0->src_address,
                            clib_net_to_host_u16 (tcp0->src),
+                           format_ip4_address, &ip0->dst_address,
                            clib_net_to_host_u16 (tcp0->dst),
                            format_ip4_address, &new_addr0);
               next0 = SNAT_OUT2IN_NEXT_DROP;
+              b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace00;
             }
           new_port0 = ses0->in_port;
