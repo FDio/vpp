@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_edf145ce",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1336,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-07T10:37:12Z",
+      "side": 0,
+      "message": "why is this removed?\nIs there no information we wish to extract from the HBH options when the packet terminates on this device?",
+      "revId": "78372a9a55098ad43c4d6d941b640cce4ff24226",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
