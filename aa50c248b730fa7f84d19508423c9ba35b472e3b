@@ -16,6 +16,24 @@
       "revId": "aa50c248b730fa7f84d19508423c9ba35b472e3b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_18f4cd85",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-07T17:27:47Z",
+      "side": 1,
+      "message": "Actually PREFETCH two lines above is redundant, as 1st cacheline of rte_mbuf is always hot.",
+      "parentUuid": "3a3291f1_b84ed96d",
+      "revId": "aa50c248b730fa7f84d19508423c9ba35b472e3b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
