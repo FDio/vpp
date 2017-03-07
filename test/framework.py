@@ -78,6 +78,15 @@ def pump_output(testclass):
         # of properly terminating the loop
 
 
+def running_extended_tests():
+    try:
+        s = os.getenv("EXTENDED_TESTS")
+        return True if s.lower() in ("y", "yes", "1") else False
+    except:
+        return False
+    return False
+
+
 class VppTestCase(unittest.TestCase):
     """This subclass is a base class for VPP test cases that are implemented as
     classes. It provides methods to create and run test case.
@@ -230,9 +239,6 @@ class VppTestCase(unittest.TestCase):
         cls.verbose = 0
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
-        print(double_line_delim)
-        print(colorize(getdoc(cls).splitlines()[0], YELLOW))
-        print(double_line_delim)
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
@@ -613,6 +619,22 @@ class VppTestCase(unittest.TestCase):
         time.sleep(timeout)
 
 
+class TestCasePrinter(object):
+    _shared_state = {}
+
+    def __init__(self):
+        self.__dict__ = self._shared_state
+        if not hasattr(self, "_test_case_set"):
+            self._test_case_set = set()
+
+    def print_test_case_heading_if_first_time(self, case):
+        if case.__class__ not in self._test_case_set:
+            print(double_line_delim)
+            print(colorize(getdoc(case.__class__).splitlines()[0], YELLOW))
+            print(double_line_delim)
+            self._test_case_set.add(case.__class__)
+
+
 class VppTestResult(unittest.TestResult):
     """
     @property result_string
@@ -641,6 +663,7 @@ class VppTestResult(unittest.TestResult):
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.result_string = None
+        self.printer = TestCasePrinter()
 
     def addSuccess(self, test):
         """
@@ -740,6 +763,7 @@ class VppTestResult(unittest.TestResult):
         :param test:
 
         """
+        self.printer.print_test_case_heading_if_first_time(test)
         unittest.TestResult.startTest(self, test)
         if self.verbosity > 0:
             self.stream.writeln(
