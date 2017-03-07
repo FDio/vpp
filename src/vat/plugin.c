@@ -181,7 +181,6 @@ vat_plugin_init (vat_main_t * vam)
 {
   plugin_main_t *pm = &vat_plugin_main;
 
-
   pm->plugin_path = format (0, "%s%c", vat_plugin_path, 0);
   if (vat_plugin_name_filter)
     pm->plugin_name_filter = format (0, "%s%c", vat_plugin_name_filter, 0);

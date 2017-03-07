@@ -56,6 +56,16 @@ api_main_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (api_main_init);
 
+void
+vat_plugin_hash_create (void)
+{
+  vat_main_t *vam = &vat_main;
+
+  vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
+  vam->function_by_name = hash_create_string (0, sizeof (uword));
+  vam->help_by_name = hash_create_string (0, sizeof (uword));
+}
+
 static clib_error_t *
 api_command_fn (vlib_main_t * vm,
 		unformat_input_t * input, vlib_cli_command_t * cmd)

@@ -18314,13 +18314,13 @@ vat_api_hookup (vat_main_t * vam)
 
 #if (VPP_API_TEST_BUILTIN==0)
   vl_msg_api_set_first_available_msg_id (VL_MSG_FIRST_AVAILABLE);
-#endif
 
   vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
 
   vam->function_by_name = hash_create_string (0, sizeof (uword));
 
   vam->help_by_name = hash_create_string (0, sizeof (uword));
+#endif
 
   /* API messages we can send */
 #define _(n,h) hash_set_mem (vam->function_by_name, #n, api_##n);
