@@ -14,7 +14,12 @@
 vppapitestplugins_LTLIBRARIES += dpdk_test_plugin.la
 vppplugins_LTLIBRARIES += dpdk_plugin.la
 
-dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive,-lm,-ldl
+dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive
+if WITH_DPDK_CRYPTO_SW
+dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a
+dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libisal_crypto.a,-l:libisal_crypto.a
+endif
+dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
 
 dpdk_plugin_la_SOURCES =					\
   dpdk/main.c							\
