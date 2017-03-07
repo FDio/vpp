@@ -316,7 +316,8 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
         (sm, &s->out2in, s->outside_address_index);
       s->outside_address_index = ~0;
 
-      if (snat_alloc_outside_address_and_port (sm, &key1, &address_index))
+      if (snat_alloc_outside_address_and_port (sm, rx_fib_index0, &key1,
+                                               &address_index))
         {
           ASSERT(0);
 
@@ -334,7 +335,8 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
         {
           static_mapping = 0;
           /* Try to create dynamic translation */
-          if (snat_alloc_outside_address_and_port (sm, &key1, &address_index))
+          if (snat_alloc_outside_address_and_port (sm, rx_fib_index0, &key1,
+                                                   &address_index))
             {
               b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
               return SNAT_IN2OUT_NEXT_DROP;

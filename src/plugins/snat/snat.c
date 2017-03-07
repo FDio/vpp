@@ -241,10 +241,13 @@ snat_add_del_addr_to_fib (ip4_address_t * addr, u32 sw_if_index, int is_add)
                            FIB_SOURCE_PLUGIN_HI);
 }
 
-void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
+void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
 {
   snat_address_t * ap;
   snat_interface_t *i;
+
+  if (vrf_id != ~0)
+    sm->vrf_mode = 1;
 
   /* Check if address already exists */
   vec_foreach (ap, sm->addresses)
@@ -255,6 +258,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr)
 
   vec_add2 (sm->addresses, ap, 1);
   ap->addr = *addr;
+  ap->fib_index = ip4_fib_index_from_table_id(vrf_id);
 #define _(N, i, n, s) \
   clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535);
   foreach_snat_protocol
@@ -824,6 +828,7 @@ vl_api_snat_add_address_range_t_handler
   vl_api_snat_add_address_range_reply_t * rmp;
   ip4_address_t this_addr;
   u32 start_host_order, end_host_order;
+  u32 vrf_id;
   int i, count;
   int rv = 0;
   u32 * tmp;
@@ -847,6 +852,8 @@ vl_api_snat_add_address_range_t_handler
 
   count = (end_host_order - start_host_order) + 1;
 
+  vrf_id = clib_host_to_net_u32 (mp->vrf_id);
+
   if (count > 1024)
     clib_warning ("%U - %U, %d addresses...",
                   format_ip4_address, mp->first_ip_address,
@@ -858,7 +865,7 @@ vl_api_snat_add_address_range_t_handler
   for (i = 0; i < count; i++)
     {
       if (mp->is_add)
-        snat_add_address (sm, &this_addr);
+        snat_add_address (sm, &this_addr, vrf_id);
       else
         rv = snat_del_address (sm, this_addr, 0);
 
@@ -898,6 +905,10 @@ send_snat_address_details
   rmp->_vl_msg_id = ntohs (VL_API_SNAT_ADDRESS_DETAILS+sm->msg_id_base);
   rmp->is_ip4 = 1;
   clib_memcpy (rmp->ip_address, &(a->addr), 4);
+  if (a->fib_index != ~0)
+    rmp->vrf_id = ntohl(ip4_fib_get(a->fib_index)->table_id);
+  else
+    rmp->vrf_id = ~0;
   rmp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
@@ -1786,6 +1797,7 @@ int snat_static_mapping_match (snat_main_t * sm,
 }
 
 int snat_alloc_outside_address_and_port (snat_main_t * sm, 
+                                         u32 fib_index,
                                          snat_session_key_t * k,
                                          u32 * address_indexp)
 {
@@ -1796,6 +1808,8 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
   for (i = 0; i < vec_len (sm->addresses); i++)
     {
       a = sm->addresses + i;
+      if (sm->vrf_mode && a->fib_index != ~0 && a->fib_index != fib_index)
+        continue;
       switch (k->protocol)
         {
 #define _(N, j, n, s) \
@@ -1842,6 +1856,7 @@ add_address_command_fn (vlib_main_t * vm,
   snat_main_t * sm = &snat_main;
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
+  u32 vrf_id = ~0;
   int i, count;
   int is_add = 1;
   int rv = 0;
@@ -1856,6 +1871,8 @@ add_address_command_fn (vlib_main_t * vm,
       if (unformat (line_input, "%U - %U",
                     unformat_ip4_address, &start_addr,
                     unformat_ip4_address, &end_addr))
+        ;
+      else if (unformat (line_input, "tenant-vrf %u", &vrf_id))
         ;
       else if (unformat (line_input, "%U", unformat_ip4_address, &start_addr))
         end_addr = start_addr;
@@ -1897,7 +1914,7 @@ add_address_command_fn (vlib_main_t * vm,
   for (i = 0; i < count; i++)
     {
       if (is_add)
-        snat_add_address (sm, &this_addr);
+        snat_add_address (sm, &this_addr, vrf_id);
       else
         rv = snat_del_address (sm, this_addr, 0);
 
@@ -1924,7 +1941,8 @@ done:
 
 VLIB_CLI_COMMAND (add_address_command, static) = {
   .path = "snat add address",
-  .short_help = "snat add addresses <ip4-range-start> [- <ip4-range-end>] [del]",
+  .short_help = "snat add addresses <ip4-range-start> [- <ip4-range-end>] "
+                "[tenant-vrf <vrf-id>] [del]",
   .function = add_address_command_fn,
 };
 
@@ -2543,6 +2561,11 @@ show_snat_command_fn (vlib_main_t * vm,
       vec_foreach (ap, sm->addresses)
         {
           vlib_cli_output (vm, "%U", format_ip4_address, &ap->addr);
+          if (ap->fib_index != ~0)
+              vlib_cli_output (vm, "  tenant VRF: %u",
+                               ip4_fib_get(ap->fib_index)->table_id);
+          else
+            vlib_cli_output (vm, "  tenant VRF independent");
 #define _(N, i, n, s) \
           vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
           foreach_snat_protocol
@@ -2675,7 +2698,7 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                 if (sm->addresses[j].addr.as_u32 == address->as_u32)
                   return;
 
-              snat_add_address (sm, address);
+              snat_add_address (sm, address, ~0);
               /* Scan static map resolution vector */
               for (j = 0; j < vec_len (sm->to_resolve); j++)
                 {
@@ -2773,7 +2796,7 @@ static int snat_add_interface_address (snat_main_t *sm,
 
   /* If the address is already bound - or static - add it now */
   if (first_int_addr)
-      snat_add_address (sm, first_int_addr);
+      snat_add_address (sm, first_int_addr, ~0);
 
   return 0;
 }
