@@ -304,6 +304,9 @@ typedef struct _tcp_main
   /* Congestion control algorithms registered */
   tcp_cc_algorithm_t *cc_algos;
 
+  /* Flag that indicates if stack is on or off */
+  u8 is_enabled;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -322,6 +325,8 @@ vnet_get_tcp_main ()
 {
   return &tcp_main;
 }
+
+clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
 
 always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, u32 thread_index)
