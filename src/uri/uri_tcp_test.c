@@ -848,13 +848,21 @@ server_test (uri_tcp_test_main_t * utm)
   fformat (stdout, "Test complete...\n");
 }
 
-#define foreach_uri_msg                         \
-_(BIND_URI_REPLY, bind_uri_reply)               \
-_(UNBIND_URI_REPLY, unbind_uri_reply)           \
-_(ACCEPT_SESSION, accept_session)               \
-_(CONNECT_URI_REPLY, connect_uri_reply)         \
-_(DISCONNECT_SESSION, disconnect_session)       \
-_(RESET_SESSION, reset_session)       		\
+static void
+vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
+					   mp)
+{
+  clib_warning ("retval %d", ntohl (mp->retval));
+}
+
+#define foreach_uri_msg                                 \
+_(BIND_URI_REPLY, bind_uri_reply)                       \
+_(UNBIND_URI_REPLY, unbind_uri_reply)                   \
+_(ACCEPT_SESSION, accept_session)                       \
+_(CONNECT_URI_REPLY, connect_uri_reply)                 \
+_(DISCONNECT_SESSION, disconnect_session)               \
+_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   \
+_(RESET_SESSION, reset_session)                         \
 _(MAP_ANOTHER_SEGMENT, map_another_segment)
 
 void
@@ -877,8 +885,9 @@ main (int argc, char **argv)
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
   unformat_input_t _argv, *a = &_argv;
   u8 *chroot_prefix;
-  u8 *heap;
-  u8 *bind_name = (u8 *) "tcp://0.0.0.0/1234";
+  u8 *heap, *uri = 0;
+  u8 *bind_uri = (u8 *) "tcp://0.0.0.0/1234";
+  u8 *connect_uri = (u8 *) "tcp://6.0.1.2/1234";
   u32 tmp;
   mheap_t *h;
   session_t *session;
@@ -911,7 +920,7 @@ main (int argc, char **argv)
 	{
 	  vl_set_memory_root_path ((char *) chroot_prefix);
 	}
-      else if (unformat (a, "uri %s", &bind_name))
+      else if (unformat (a, "uri %s", &uri))
 	;
       else if (unformat (a, "segment-size %dM", &tmp))
 	utm->configured_segment_size = tmp << 20;
@@ -932,12 +941,21 @@ main (int argc, char **argv)
 	}
     }
 
-  utm->uri = format (0, "%s%c", bind_name, 0);
+  if (uri)
+    {
+      utm->uri = format (0, "%s%c", uri, 0);
+      utm->connect_uri = format (0, "%s%c", uri, 0);
+    }
+  else
+    {
+      utm->uri = format (0, "%s%c", bind_uri, 0);
+      utm->connect_uri = format (0, "%s%c", connect_uri, 0);
+    }
+
   utm->i_am_master = i_am_master;
   utm->segment_main = &svm_fifo_segment_main;
   utm->drop_packets = drop_packets;
   utm->test_return_packets = test_return_packets;
-  utm->connect_uri = format (0, "tcp://6.0.1.2/1234%c", 0);
 
   setup_signal_handlers ();
   uri_api_hookup (utm);
@@ -952,6 +970,7 @@ main (int argc, char **argv)
   if (i_am_master == 0)
     {
       client_test (utm);
+      vl_client_disconnect_from_vlib ();
       exit (0);
     }
 

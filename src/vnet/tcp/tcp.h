@@ -22,6 +22,7 @@
 #include <vnet/tcp/tcp_timer.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/session.h>
+#include <vnet/tcp/tcp_debug.h>
 
 #define TCP_TICK 10e-3			/**< TCP tick period (s) */
 #define THZ 1/TCP_TICK			/**< TCP tick frequency */
@@ -222,7 +223,7 @@ typedef struct _tcp_connection
   u32 prev_ssthresh;	/**< ssthresh before congestion */
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
   u32 rtx_bytes;	/**< Retransmitted bytes */
-  u32 tsecr_last_ack;	/**< Timestamp echoed to us in last health ACK */
+  u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
 
   /* RTT and RTO */
@@ -353,6 +354,9 @@ void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
 void tcp_connection_reset (tcp_connection_t * tc);
+
+u8 *format_tcp_connection (u8 * s, va_list * args);
+u8 *format_tcp_connection_verbose (u8 * s, va_list * args);
 
 always_inline tcp_connection_t *
 tcp_listener_get (u32 tli)
