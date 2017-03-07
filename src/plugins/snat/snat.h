@@ -118,6 +118,7 @@ typedef struct {
 
 typedef struct {
   ip4_address_t addr;
+  u32 fib_index;
 #define _(N, i, n, s) \
   u32 busy_##n##_ports; \
   uword * busy_##n##_port_bitmap;
@@ -226,6 +227,9 @@ typedef struct {
   u32 inside_vrf_id;
   u32 inside_fib_index;
 
+  /* tenant VRF aware address pool activation flag */
+  u8 vrf_mode;
+
   /* API message ID base */
   u16 msg_id_base;
 
@@ -250,6 +254,7 @@ void snat_free_outside_address_and_port (snat_main_t * sm,
                                          u32 address_index);
 
 int snat_alloc_outside_address_and_port (snat_main_t * sm, 
+                                         u32 fib_index,
                                          snat_session_key_t * k,
                                          u32 * address_indexp);
 

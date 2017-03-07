@@ -405,7 +405,7 @@ class TestSNAT(VppTestCase):
             proto,
             is_add)
 
-    def snat_add_address(self, ip, is_add=1):
+    def snat_add_address(self, ip, is_add=1, vrf_id=0xFFFFFFFF):
         """
         Add/delete S-NAT address
 
@@ -413,7 +413,8 @@ class TestSNAT(VppTestCase):
         :param is_add: 1 if add, 0 if delete (Default add)
         """
         snat_addr = socket.inet_pton(socket.AF_INET, ip)
-        self.vapi.snat_add_address_range(snat_addr, snat_addr, is_add)
+        self.vapi.snat_add_address_range(snat_addr, snat_addr, is_add,
+                                         vrf_id=vrf_id)
 
     def test_dynamic(self):
         """ SNAT dynamic translation test """
@@ -1200,6 +1201,73 @@ class TestSNAT(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.get_capture(0)
+
+    def test_vrf_mode(self):
+        """ S-NAT tenant VRF aware address pool mode """
+
+        vrf_id1 = 1
+        vrf_id2 = 2
+        nat_ip1 = "10.0.0.10"
+        nat_ip2 = "10.0.0.11"
+
+        self.pg0.unconfig_ip4()
+        self.pg1.unconfig_ip4()
+        self.pg0.set_table_ip4(vrf_id1)
+        self.pg1.set_table_ip4(vrf_id2)
+        self.pg0.config_ip4()
+        self.pg1.config_ip4()
+
+        self.snat_add_address(nat_ip1, vrf_id=vrf_id1)
+        self.snat_add_address(nat_ip2, vrf_id=vrf_id2)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg2.sw_if_index,
+                                                 is_inside=0)
+
+        # first VRF
+        pkts = self.create_stream_in(self.pg0, self.pg2)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg2.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip1)
+
+        # second VRF
+        pkts = self.create_stream_in(self.pg1, self.pg2)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg2.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip2)
+
+    def test_vrf_feature_independent(self):
+        """ S-NAT tenant VRF independent address pool mode """
+
+        nat_ip1 = "10.0.0.10"
+        nat_ip2 = "10.0.0.11"
+
+        self.snat_add_address(nat_ip1)
+        self.snat_add_address(nat_ip2)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg2.sw_if_index,
+                                                 is_inside=0)
+
+        # first VRF
+        pkts = self.create_stream_in(self.pg0, self.pg2)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg2.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip1)
+
+        # second VRF
+        pkts = self.create_stream_in(self.pg1, self.pg2)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg2.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip1)
 
     def tearDown(self):
         super(TestSNAT, self).tearDown()
