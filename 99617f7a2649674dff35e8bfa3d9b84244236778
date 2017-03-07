@@ -16,6 +16,24 @@
       "revId": "99617f7a2649674dff35e8bfa3d9b84244236778",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6d0af522",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-07T08:10:20Z",
+      "side": 0,
+      "message": "It is already lb0-\u003elb_hash_config. I think you are looking at the removed code.\n\nRemoved:\nip4_compute_flow_hash (ip0, hc0);\n\nAdded:\nip4_compute_flow_hash (ip0, lb0-\u003elb_hash_config);",
+      "parentUuid": "3a3291f1_8aa507b7",
+      "revId": "99617f7a2649674dff35e8bfa3d9b84244236778",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
