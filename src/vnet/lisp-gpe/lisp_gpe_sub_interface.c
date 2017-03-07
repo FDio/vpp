@@ -49,11 +49,11 @@ lisp_gpe_sub_interface_db_find (const ip_address_t * lrloc, u32 vni)
 {
   uword *p;
 
-  lisp_gpe_sub_interface_key_t key = {
-    .local_rloc = *lrloc,
-    .vni = clib_host_to_net_u32 (vni),
-  };
+  lisp_gpe_sub_interface_key_t key;
 
+  memset (&key, 0, sizeof (key));
+  ip_address_copy (&key.local_rloc, lrloc);
+  key.vni = clib_host_to_net_u32 (vni);
   p = hash_get_mem (lisp_gpe_sub_interfaces, &key);
 
   if (NULL == p)
@@ -66,16 +66,16 @@ static void
 lisp_gpe_sub_interface_db_insert (const lisp_gpe_sub_interface_t * l3s)
 {
   hash_set_mem (lisp_gpe_sub_interfaces,
-		&l3s->key, l3s - lisp_gpe_sub_interface_pool);
+		l3s->key, l3s - lisp_gpe_sub_interface_pool);
   hash_set_mem (lisp_gpe_sub_interfaces_sw_if_index,
-		&l3s->key, l3s->sw_if_index);
+		l3s->key, l3s->sw_if_index);
 }
 
 static void
 lisp_gpe_sub_interface_db_remove (const lisp_gpe_sub_interface_t * l3s)
 {
-  hash_unset_mem (lisp_gpe_sub_interfaces, &l3s->key);
-  hash_unset_mem (lisp_gpe_sub_interfaces_sw_if_index, &l3s->key);
+  hash_unset_mem (lisp_gpe_sub_interfaces, l3s->key);
+  hash_unset_mem (lisp_gpe_sub_interfaces_sw_if_index, l3s->key);
 }
 
 lisp_gpe_sub_interface_t *
