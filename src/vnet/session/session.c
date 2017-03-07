@@ -23,6 +23,7 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/session/application.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/session/session_debug.h>
 
 /**
  * Per-type vector of transport protocol virtual function tables
@@ -823,19 +824,12 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
   else
     return -1;
 
-  if (1)
-    {
-      ELOG_TYPE_DECLARE (e) =
-      {
-      .format = "evt-enqueue: id %d length %d",.format_args = "i4i4",};
-      struct
-      {
-	u32 data[2];
-      } *ed;
-      ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+  /* *INDENT-OFF* */
+  SESSION_EVT_DBG(s, SESSION_EVT_ENQ, ({
       ed->data[0] = evt.event_id;
       ed->data[1] = evt.enqueue_length;
-    }
+  }));
+  /* *INDENT-ON* */
 
   return 0;
 }
@@ -908,8 +902,7 @@ stream_session_start_listen (u32 server_index, ip46_address_t * ip, u16 port)
   s->app_index = srv->index;
 
   /* Transport bind/listen  */
-  tci = tp_vfts[srv->session_type].bind (smm->vlib_main, s->session_index, ip,
-					 port);
+  tci = tp_vfts[srv->session_type].bind (s->session_index, ip, port);
 
   /* Attach transport to session */
   s->connection_index = tci;
@@ -938,8 +931,7 @@ stream_session_stop_listen (u32 server_index)
   tc = tp_vfts[srv->session_type].get_listener (listener->connection_index);
   stream_session_table_del_for_tc (smm, listener->session_type, tc);
 
-  tp_vfts[srv->session_type].unbind (smm->vlib_main,
-				     listener->connection_index);
+  tp_vfts[srv->session_type].unbind (listener->connection_index);
   pool_put (smm->listen_sessions[srv->session_type], listener);
 }
 
@@ -1235,7 +1227,7 @@ session_register_transport (u8 type, const transport_proto_vft_t * vft)
   tp_vfts[type] = *vft;
 
   /* If an offset function is provided, then peek instead of dequeue */
-  smm->session_rx_fns[type] =
+  smm->session_tx_fns[type] =
     (vft->tx_fifo_offset) ? session_tx_fifo_peek_and_snd :
     session_tx_fifo_dequeue_and_snd;
 }
