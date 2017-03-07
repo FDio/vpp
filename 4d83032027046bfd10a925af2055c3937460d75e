@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a3291f1_ad90dd43",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 868,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-07T10:46:56Z",
+      "side": 1,
+      "message": "missing clib_net_to_host_u32",
+      "range": {
+        "startLine": 868,
+        "startChar": 42,
+        "endLine": 868,
+        "endChar": 48
+      },
+      "revId": "4d83032027046bfd10a925af2055c3937460d75e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_cdec49f6",
         "filename": "src/plugins/snat/snat.c",
         "patchSetId": 2
