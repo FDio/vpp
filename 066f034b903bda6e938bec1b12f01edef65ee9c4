@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_98a55db7",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 633
+      },
+      "writtenOn": "2017-03-07T16:05:19Z",
+      "side": 0,
+      "message": "If this is not kept the build will fail if the isa-l is not installed system wide: fatal error: isa-l_crypto/aes_gcm.h: No such file or directory",
+      "range": {
+        "startLine": 216,
+        "startChar": 1,
+        "endLine": 216,
+        "endChar": 82
+      },
+      "revId": "066f034b903bda6e938bec1b12f01edef65ee9c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
