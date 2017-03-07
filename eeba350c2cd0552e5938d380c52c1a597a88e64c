@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_18c04d7b",
+        "filename": "src/vnet/l2/l2_vtr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 735,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-07T14:14:44Z",
+      "side": 1,
+      "message": "can we be sure that this size matches b_dmac?\nTo be sure we should pass the d_bmac size as an input argument, or perhaps use a more explicit type, like ethernet_header_t as an argument instead of d_dmac and b_smac. then the sizes are known.",
+      "revId": "eeba350c2cd0552e5938d380c52c1a597a88e64c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
