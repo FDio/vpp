@@ -1493,7 +1493,7 @@ arp_change_data_callback (u32 pool_index, u8 * new_mac,
     }
   else
     {				/* same mac */
-      if (sw_if_index == event->sw_if_index &&
+      if (sw_if_index == ntohl(event->sw_if_index) &&
 	  (!event->mac_ip ||
 	   /* for BD case, also check IP address with 10 sec timeout */
 	   (address == event->address &&
@@ -1503,7 +1503,7 @@ arp_change_data_callback (u32 pool_index, u8 * new_mac,
   /* *INDENT-ON* */
 
   arp_event_last_time = now;
-  event->sw_if_index = sw_if_index;
+  event->sw_if_index = htonl (sw_if_index);
   if (event->mac_ip)
     event->address = address;
   return 0;
@@ -1531,7 +1531,7 @@ nd_change_data_callback (u32 pool_index, u8 * new_mac,
     }
   else
     {				/* same mac */
-      if (sw_if_index == event->sw_if_index &&
+      if (sw_if_index == ntohl(event->sw_if_index) &&
 	  (!event->mac_ip ||
 	   /* for BD case, also check IP address with 10 sec timeout */
 	   (ip6_address_is_equal (address,
@@ -1542,7 +1542,7 @@ nd_change_data_callback (u32 pool_index, u8 * new_mac,
   /* *INDENT-ON* */
 
   nd_event_last_time = now;
-  event->sw_if_index = sw_if_index;
+  event->sw_if_index = htonl (sw_if_index);
   if (event->mac_ip)
     clib_memcpy (event->address, address, sizeof (event->address));
   return 0;
