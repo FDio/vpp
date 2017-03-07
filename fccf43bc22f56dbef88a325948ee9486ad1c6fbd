@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_aa1323b7",
+        "filename": "src/plugins/ioam/udp-ping/udp_ping_node.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-07T04:08:24Z",
+      "side": 1,
+      "message": "need to fix copyright year",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6a841bd4",
+        "filename": "src/plugins/ioam/udp-ping/udp_ping_packet.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 135,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-07T04:08:24Z",
+      "side": 1,
+      "message": "These are unused fields as we handle this in hbh trace type header? I understand we are keeping it here to maintain structure per draft-lapukhov-dataplane-probe-01, we can drop this in next revision when if we want to go with ioam data in the udp payload directly.",
+      "range": {
+        "startLine": 129,
+        "startChar": 1,
+        "endLine": 135,
+        "endChar": 14
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4a871fd8",
+        "filename": "src/plugins/ioam/udp-ping/udp_ping_util.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 202,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-07T04:08:24Z",
+      "side": 1,
+      "message": "#define for max rewrite len is desirable",
+      "range": {
+        "startLine": 202,
+        "startChar": 26,
+        "endLine": 202,
+        "endChar": 34
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ca442fb9",
+        "filename": "src/vnet/ip/ip6.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 455,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-07T04:08:24Z",
+      "side": 1,
+      "message": "merge conflict, need to be removed",
+      "range": {
+        "startLine": 455,
+        "startChar": 0,
+        "endLine": 455,
+        "endChar": 17
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ea492bd1",
+        "filename": "src/vnet/ip/ip6_hop_by_hop.h",
+        "patchSetId": 8
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-07T04:08:24Z",
+      "side": 1,
+      "message": "ip6_ioam_find_hbh_option in ip6_ioam_analyse.h does a similar thing. We should clean it up in a subsequent commit.",
+      "range": {
+        "startLine": 234,
+        "startChar": 0,
+        "endLine": 234,
+        "endChar": 18
+      },
+      "revId": "fccf43bc22f56dbef88a325948ee9486ad1c6fbd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
