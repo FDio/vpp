@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b375da99",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_sub_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-03-07T22:05:44Z",
+      "side": 1,
+      "message": "Is this relevant given that we initialize all the fields? We should however make sure all ip_addressess passed here are properly initialized.",
+      "range": {
+        "startLine": 54,
+        "startChar": 2,
+        "endLine": 54,
+        "endChar": 11
+      },
+      "revId": "17e1f013d83b622da1cef25dcc30b81a17616260",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
