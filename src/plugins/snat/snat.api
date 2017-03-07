@@ -26,6 +26,7 @@
     @param is_ip4 - 1 if address type is IPv4
     @param first_ip_address - first IP address
     @param last_ip_address - last IP address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
     @param is_add - 1 if add, 0 if delete
 */
 define snat_add_address_range {
@@ -34,6 +35,7 @@ define snat_add_address_range {
   u8 is_ip4;
   u8 first_ip_address[16];
   u8 last_ip_address[16];
+  u32 vrf_id;
   u8 is_add;
 };
 
@@ -59,11 +61,13 @@ define snat_address_dump {
     @param context - sender context, to match reply w/ request
     @param is_ip4 - 1 if address type is IPv4
     @param ip_address - IP address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
 */
 define snat_address_details {
   u32 context;
   u8 is_ip4;
   u8 ip_address[16];
+  u32 vrf_id;
 };
 
 /** \brief Enable/disable S-NAT feature on the interface
