@@ -633,17 +633,14 @@ tcp_initialize_timer_wheels (tcp_main_t * tm)
 }
 
 clib_error_t *
-tcp_init (vlib_main_t * vm)
+tcp_main_enable (vlib_main_t * vm)
 {
-  ip_main_t *im = &ip_main;
-  ip_protocol_info_t *pi;
   tcp_main_t *tm = vnet_get_tcp_main ();
+  ip_protocol_info_t *pi;
+  ip_main_t *im = &ip_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u32 num_threads;
-
-  tm->vlib_main = vm;
-  tm->vnet_main = vnet_get_main ();
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -695,6 +692,36 @@ tcp_init (vlib_main_t * vm)
 			 (64 << 20) /*$$$ config parameter table size */ );
 
   return error;
+}
+
+clib_error_t *
+vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en)
+{
+  if (is_en)
+    {
+      if (tcp_main.is_enabled)
+	return 0;
+
+      return tcp_main_enable (vm);
+    }
+  else
+    {
+      tcp_main.is_enabled = 0;
+    }
+
+  return 0;
+}
+
+clib_error_t *
+tcp_init (vlib_main_t * vm)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+
+  tm->vlib_main = vm;
+  tm->vnet_main = vnet_get_main ();
+  tm->is_enabled = 0;
+
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (tcp_init);
