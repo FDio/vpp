@@ -107,6 +107,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_ed9f055e",
+        "filename": "src/vnet/ip/ip6_forward.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 955,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-07T10:37:12Z",
+      "side": 1,
+      "message": "i think there are two parts to the issue of HBH:\n 1) generating a correct hash when HBH is present, irrespective of whether the device examines those packets (i.e. whatever the value of im-\u003ehbh_enabeld)\n 2) steering packets to the HBH node when HBH processing is enabled on the device (i.e. im-\u003ehbh_enabled \u003d\u003d TRUE)\n\nFor 1) we should extend ip6_compute_flow_hash(). therein there is already a check for the packet\u0027s payload proto, by adding an \u0027else if HBH\u0027, and removing other checks for HBH in the lookup/load_balance nodes, we are not adding extra instructions.\nfor 2) I still maintain that trying to intercept packets before they reach an adjacency is not the correct approach, for the reason that not all packets will reach an adjacency. Consider the case of MAP-E. There a packet from the host, with HBH options, will match a route that leads to a MAP-E encap object. At that point we will add another IP6 header, then load-balance/lookup (and now there is not HBH options), then we reach the adj.\nSo to guarantee that all packets from hosts are checked for HBH options, we need to run as an input feature. However, that input feature is enabled only when im-\u003ehbh_enabled\u003d\u003dTRUE. So there is no added cost when it is not. We can add infra to the feature management code that does the \u0027enable on all interfaces\u0027 management.",
+      "parentUuid": "3a3291f1_ea1dab67",
+      "revId": "edb946631759a1cfd22584592b936b571068b1cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_040fce2f",
         "filename": "src/vnet/ip/ip6_forward.c",
         "patchSetId": 3
