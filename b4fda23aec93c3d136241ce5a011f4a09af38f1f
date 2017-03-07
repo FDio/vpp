@@ -1,0 +1,337 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_4daf3995",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 599,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "So this is the only place where some bit in the bitmap is set to 1.\nAnd the only place this function is called is in vhost_user_kickfd_read_ready.\n\nI think you are confusing vhost_user_kickfd_read_ready and vhost_user_callfd_read_ready.\nThe function that is called when we receive an interrupt about pending packets is vhost_user_callfd_read_ready.",
+      "range": {
+        "startLine": 599,
+        "startChar": 6,
+        "endLine": 599,
+        "endChar": 21
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8dd76123",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1042,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "What about the ADAPTATIVE mode ?\nAdaptative mode should disabled interrupts while in polling mode, and enable them again while in interrupt mode.\nIf you believe adaptative is too hard for now, maybe you should focus on interrupt mode alone, and do adaptative later.",
+      "range": {
+        "startLine": 1039,
+        "startChar": 6,
+        "endLine": 1042,
+        "endChar": 10
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4de179fd",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1642,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Please call this only once per loop execution (after wakeup).",
+      "range": {
+        "startLine": 1642,
+        "startChar": 13,
+        "endLine": 1642,
+        "endChar": 26
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_adbb3de4",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1649,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Why do you need that check ? int_deadline is when you need to wake-up. Whether or not this is more than coalesce_time is irrelevant. And actually it will very likely not be given that it is set to now + coalesce_time.",
+      "range": {
+        "startLine": 1649,
+        "startChar": 6,
+        "endLine": 1649,
+        "endChar": 55
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2dcf4d81",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1656,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Could we avoid code repetition ?",
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4d5cd9ed",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 1680,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "You can find more about process nodes here: https://docs.fd.io/vpp/16.12/dd/d64/vlib__process__doc_8h.html\nAs far as I understand, process nodes are only executed by the main thread (0).",
+      "range": {
+        "startLine": 1680,
+        "startChar": 12,
+        "endLine": 1680,
+        "endChar": 34
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6dac35a1",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2073,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Why not set everything to zero after the loop ?",
+      "range": {
+        "startLine": 2073,
+        "startChar": 1,
+        "endLine": 2073,
+        "endChar": 51
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ada21dac",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2082,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Code replication again with the POLLING case.\nWhat would be the matter having the bitmap_zero called in POLLING mode ?",
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8da521b7",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2891,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Why do you do this ?",
+      "range": {
+        "startLine": 2890,
+        "startChar": 6,
+        "endLine": 2891,
+        "endChar": 11
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_add1fd58",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2988,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "See below my other comment about format and unformat functions.",
+      "range": {
+        "startLine": 2975,
+        "startChar": 1,
+        "endLine": 2988,
+        "endChar": 2
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cde2092f",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 3134,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "I only notice this now. You should not use such \"return string\" paradigm, but rather format functions. We have plenty of format and unformat functions defined for many enumerations. Please use format and unformat functions as models.",
+      "range": {
+        "startLine": 3119,
+        "startChar": 0,
+        "endLine": 3134,
+        "endChar": 1
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_adea1d0d",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 3409,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "It is possible to introduce new lines like this:\n\"This is a \"\n\"sentence.\"\n\nWill be understood by the compiler as \"This is a sentence.\".",
+      "range": {
+        "startLine": 3409,
+        "startChar": 18,
+        "endLine": 3409,
+        "endChar": 178
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ad5fbde4",
+        "filename": "src/vnet/devices/virtio/vhost-user.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "I am not sure it was necessary to make a macro out of that. ;-)",
+      "range": {
+        "startLine": 47,
+        "startChar": 8,
+        "endLine": 47,
+        "endChar": 41
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8d62c1ab",
+        "filename": "src/vnet/devices/virtio/vhost-user.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "I don\u0027t understand. vlib does not set this value. \nvlib works per thread, not per queue.",
+      "range": {
+        "startLine": 308,
+        "startChar": 2,
+        "endLine": 308,
+        "endChar": 50
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6dcb15a6",
+        "filename": "src/vnet/devices/virtio/vhost_user.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-07T10:31:46Z",
+      "side": 1,
+      "message": "Please specify the value associated with each mode.",
+      "range": {
+        "startLine": 22,
+        "startChar": 28,
+        "endLine": 22,
+        "endChar": 59
+      },
+      "revId": "b4fda23aec93c3d136241ce5a011f4a09af38f1f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
