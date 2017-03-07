@@ -25,6 +25,8 @@
 static void
 vpe_main_init (vlib_main_t * vm)
 {
+  void vat_plugin_hash_create (void);
+
   if (CLIB_DEBUG > 0)
     vlib_unix_cli_set_prompt ("DBGvpp# ");
   else
@@ -33,6 +35,10 @@ vpe_main_init (vlib_main_t * vm)
   /* Turn off network stack components which we don't want */
   vlib_mark_init_function_complete (vm, srp_init);
 
+  /*
+   * Create the binary api plugin hashes before loading plugins
+   */
+  vat_plugin_hash_create ();
 }
 
 /*
