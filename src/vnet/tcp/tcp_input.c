@@ -730,6 +730,8 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   /* Updates congestion control (slow start/congestion avoidance) */
   tcp_cc_rcv_ack (tc);
 
+  TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
+
   /* If everything has been acked, stop retransmit timer
    * otherwise update */
   if (tc->snd_una == tc->snd_una_max)
@@ -922,6 +924,8 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
    * segments can be enqueued after fifo tail offset changes. */
   error = tcp_session_enqueue_data (tc, b, n_data_bytes);
 
+  TCP_EVT_DBG (TCP_EVT_INPUT, tc, n_data_bytes);
+
   /* Check if ACK can be delayed */
   if (tcp_can_delack (tc))
     {
@@ -1079,6 +1083,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * wait for session to call close. To avoid lingering
 	       * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
 	      tc0->state = TCP_STATE_CLOSE_WAIT;
+	      TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
 	      stream_session_disconnect_notify (&tc0->connection);
 	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	    }
@@ -1134,7 +1139,8 @@ VLIB_REGISTER_NODE (tcp4_established_node) =
   .name = "tcp4-established",
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
-  .n_errors = TCP_N_ERROR,.error_strings = tcp_error_strings,
+  .n_errors = TCP_N_ERROR,
+  .error_strings = tcp_error_strings,
   .n_next_nodes = TCP_ESTABLISHED_N_NEXT,
   .next_nodes =
   {
@@ -1363,7 +1369,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
-	      /* Notify app that we have connection XXX */
+	      /* Notify app that we have connection */
 	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
 
 	      tcp_make_synack (new_tc0, b0);
@@ -1726,7 +1732,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_FIN_WAIT_2:
 	      /* Got FIN, send ACK! */
 	      tc0->state = TCP_STATE_TIME_WAIT;
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	      tcp_make_ack (tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 	      break;
@@ -1737,6 +1743,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      break;
 	    }
+	  TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
 
 	  b0->error = error0 ? node->errors[error0] : 0;
 
@@ -1950,6 +1957,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  tcp_connection_init_vars (child0);
 
+	  TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0);
+
 	  /* Reuse buffer to make syn-ack and send */
 	  tcp_make_synack (child0, b0);
 	  next0 = tcp_next_output (is_ip4);
@@ -2063,25 +2072,6 @@ typedef struct
   u16 dst_port;
   u8 state;
 } tcp_rx_trace_t;
-
-const char *tcp_fsm_states[] = {
-#define _(sym, str) str,
-  foreach_tcp_fsm_state
-#undef _
-};
-
-u8 *
-format_tcp_state (u8 * s, va_list * args)
-{
-  tcp_state_t *state = va_arg (*args, tcp_state_t *);
-
-  if (state[0] < TCP_N_STATES)
-    s = format (s, "%s", tcp_fsm_states[state[0]]);
-  else
-    s = format (s, "UNKNOWN");
-
-  return s;
-}
 
 u8 *
 format_tcp_rx_trace (u8 * s, va_list * args)

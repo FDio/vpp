@@ -211,7 +211,7 @@ struct _session_manager_main
   session_manager_t *session_managers;
 
   /** Per transport rx function that can either dequeue or peek */
-  session_fifo_rx_fn *session_rx_fns[SESSION_N_TYPES];
+  session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
 
   u8 is_enabled;
 
@@ -358,6 +358,7 @@ u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
 void
 stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 			       u8 is_fail);
+
 void stream_session_accept_notify (transport_connection_t * tc);
 void stream_session_disconnect_notify (transport_connection_t * tc);
 void stream_session_delete_notify (transport_connection_t * tc);
