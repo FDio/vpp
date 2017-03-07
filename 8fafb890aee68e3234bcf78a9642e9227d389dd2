@@ -1,0 +1,107 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_ad9c5dc1",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-07T08:49:44Z",
+      "side": 1,
+      "message": "VRF id of tenant",
+      "range": {
+        "startLine": 29,
+        "startChar": 20,
+        "endLine": 29,
+        "endChar": 49
+      },
+      "revId": "8fafb890aee68e3234bcf78a9642e9227d389dd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6d7d556e",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-07T08:49:44Z",
+      "side": 1,
+      "message": "add vrf_id",
+      "revId": "8fafb890aee68e3234bcf78a9642e9227d389dd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cd46894f",
+        "filename": "src/plugins/snat/snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-07T08:49:44Z",
+      "side": 1,
+      "message": "tenant VRF aware address pool activation flag",
+      "revId": "8fafb890aee68e3234bcf78a9642e9227d389dd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ad833d55",
+        "filename": "test/test_snat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1206,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-07T08:49:44Z",
+      "side": 1,
+      "message": "S-NAT tenant VRF aware address pool mode",
+      "range": {
+        "startLine": 1206,
+        "startChar": 12,
+        "endLine": 1206,
+        "endChar": 25
+      },
+      "revId": "8fafb890aee68e3234bcf78a9642e9227d389dd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8d864164",
+        "filename": "test/test_snat.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1244,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-07T08:49:44Z",
+      "side": 1,
+      "message": "S-NAT tenant VRF independent address pool mode",
+      "range": {
+        "startLine": 1244,
+        "startChar": 12,
+        "endLine": 1244,
+        "endChar": 57
+      },
+      "revId": "8fafb890aee68e3234bcf78a9642e9227d389dd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
