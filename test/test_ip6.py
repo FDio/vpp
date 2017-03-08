@@ -6,8 +6,8 @@ from socket import AF_INET6
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
-from vpp_neighbor import find_nbr
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, find_route
+from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -350,6 +350,30 @@ class TestIPv6(TestIPv6ND):
 
         self.send_and_assert_no_replies(self.pg0, pkts,
                                         "No response to NS for unknown target")
+
+        #
+        # A neighbor entry that has no associated FIB-entry
+        #
+        self.pg0.generate_remote_hosts(4)
+        nd_entry = VppNeighbor(self,
+                               self.pg0.sw_if_index,
+                               self.pg0.remote_hosts[2].mac,
+                               self.pg0.remote_hosts[2].ip6,
+                               af=AF_INET6,
+                               is_no_fib_entry=1)
+        nd_entry.add_vpp_config()
+
+        #
+        # check we have the neighbor, but no route
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg0.sw_if_index,
+                                 self.pg0._remote_hosts[2].ip6,
+                                 inet=AF_INET6))
+        self.assertFalse(find_route(self,
+                                    self.pg0._remote_hosts[2].ip6,
+                                    128,
+                                    inet=AF_INET6))
 
     def validate_ra(self, intf, rx, dst_ip=None, mtu=9000, pi_opt=None):
         if not dst_ip:

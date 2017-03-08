@@ -100,6 +100,7 @@ typedef struct
   u32 sw_if_index;
   ethernet_arp_ip4_over_ethernet_address_t a;
   int is_static;
+  int is_no_fib_entry;
   int flags;
 #define ETHERNET_ARP_ARGS_REMOVE (1<<0)
 #define ETHERNET_ARP_ARGS_FLUSH  (1<<1)
@@ -253,6 +254,9 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
 
   if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC)
     flags = format (flags, "D");
+
+  if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_NO_FIB_ENTRY)
+    flags = format (flags, "N");
 
   s = format (s, "%=12U%=16U%=6s%=20U%=24U",
 	      format_vlib_cpu_time, vnm->vlib_main, e->cpu_time_last_updated,
@@ -525,6 +529,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_interface_t *arp_int;
   int is_static = args->is_static;
   u32 sw_if_index = args->sw_if_index;
+  int is_no_fib_entry = args->is_no_fib_entry;
 
   vec_validate (am->ethernet_arp_by_sw_if_index, sw_if_index);
 
@@ -546,16 +551,6 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   if (make_new_arp_cache_entry)
     {
-      fib_prefix_t pfx = {
-	.fp_len = 32,
-	.fp_proto = FIB_PROTOCOL_IP4,
-	.fp_addr = {
-		    .ip4 = a->ip4,
-		    }
-	,
-      };
-      u32 fib_index;
-
       pool_get (am->ip4_entry_pool, e);
 
       if (NULL == arp_int->arp_entries)
@@ -570,17 +565,25 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
       clib_memcpy (e->ethernet_address,
 		   a->ethernet, sizeof (e->ethernet_address));
 
-      fib_index = ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index);
-      e->fib_entry_index =
-	fib_table_entry_update_one_path (fib_index,
-					 &pfx,
-					 FIB_SOURCE_ADJ,
-					 FIB_ENTRY_FLAG_ATTACHED,
-					 FIB_PROTOCOL_IP4,
-					 &pfx.fp_addr,
-					 e->sw_if_index,
-					 ~0,
-					 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
+      if (!is_no_fib_entry)
+	{
+	  fib_prefix_t pfx = {
+	    .fp_len = 32,
+	    .fp_proto = FIB_PROTOCOL_IP4,
+	    .fp_addr.ip4 = a->ip4,
+	  };
+	  u32 fib_index;
+
+	  fib_index =
+	    ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index);
+	  e->fib_entry_index =
+	    fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_ADJ,
+					     FIB_ENTRY_FLAG_ATTACHED,
+					     FIB_PROTOCOL_IP4, &pfx.fp_addr,
+					     e->sw_if_index, ~0, 1, NULL,
+					     FIB_ROUTE_PATH_FLAG_NONE);
+	  e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_NO_FIB_ENTRY;
+	}
     }
   else
     {
@@ -1142,7 +1145,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	      vnet_arp_set_ip4_over_ethernet (vnm, sw_if_index0,
 					      &arp0->ip4_over_ethernet[0],
-					      0 /* is_static */ );
+					      0 /* is_static */ , 0);
 	      error0 = ETHERNET_ARP_ERROR_l3_src_address_learned;
 	    }
 
@@ -1658,6 +1661,8 @@ arp_entry_free (ethernet_arp_interface_t * eai, ethernet_arp_ip4_entry_t * e)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
+  /* it's safe to delete the ADJ source on the FIB entry, even if it
+   * was added */
   fib_table_entry_delete_index (e->fib_entry_index, FIB_SOURCE_ADJ);
   hash_unset (eai->arp_entries, e->ip4_address.as_u32);
   pool_put (am->ip4_entry_pool, e);
@@ -1828,13 +1833,15 @@ increment_ip4_and_mac_address (ethernet_arp_ip4_over_ethernet_address_t * a)
 
 int
 vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
-				u32 sw_if_index, void *a_arg, int is_static)
+				u32 sw_if_index, void *a_arg,
+				int is_static, int is_no_fib_entry)
 {
   ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
   vnet_arp_set_ip4_over_ethernet_rpc_args_t args;
 
   args.sw_if_index = sw_if_index;
   args.is_static = is_static;
+  args.is_no_fib_entry = is_no_fib_entry;
   args.flags = 0;
   clib_memcpy (&args.a, a, sizeof (*a));
 
@@ -1931,6 +1938,7 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
   u32 fib_index = 0;
   u32 fib_id;
   int is_static = 0;
+  int is_no_fib_entry = 0;
   int is_proxy = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -1947,6 +1955,9 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
 
       else if (unformat (input, "static"))
 	is_static = 1;
+
+      else if (unformat (input, "no-fib-entry"))
+	is_no_fib_entry = 1;
 
       else if (unformat (input, "count %d", &count))
 	;
@@ -1991,7 +2002,7 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
 		 1 /* type */ , 0 /* data */ );
 
 	      vnet_arp_set_ip4_over_ethernet
-		(vnm, sw_if_index, &addr, is_static);
+		(vnm, sw_if_index, &addr, is_static, is_no_fib_entry);
 
 	      vlib_process_wait_for_event (vm);
 	      event_type = vlib_process_get_events (vm, &event_data);
@@ -2046,7 +2057,7 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (ip_arp_add_del_command, static) = {
   .path = "set ip arp",
   .short_help =
-  "set ip arp [del] <intfc> <ip-address> <mac-address> [static] [count <count>] [fib-id <fib-id>] [proxy <lo-addr> - <hi-addr>]",
+  "set ip arp [del] <intfc> <ip-address> <mac-address> [static] [no-fib-entry] [count <count>] [fib-id <fib-id>] [proxy <lo-addr> - <hi-addr>]",
   .function = ip_arp_add_del_command_fn,
 };
 /* *INDENT-ON* */

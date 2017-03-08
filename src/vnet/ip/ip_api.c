@@ -655,7 +655,8 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 	rv = vnet_set_ip6_ethernet_neighbor
 	  (vm, ntohl (mp->sw_if_index),
 	   (ip6_address_t *) (mp->dst_address),
-	   mp->mac_address, sizeof (mp->mac_address), mp->is_static);
+	   mp->mac_address, sizeof (mp->mac_address), mp->is_static,
+	   mp->is_no_adj_fib);
       else
 	rv = vnet_unset_ip6_ethernet_neighbor
 	  (vm, ntohl (mp->sw_if_index),
@@ -671,7 +672,8 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 
       if (mp->is_add)
 	rv = vnet_arp_set_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index),
-					     &a, mp->is_static);
+					     &a, mp->is_static,
+					     mp->is_no_adj_fib);
       else
 	rv =
 	  vnet_arp_unset_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index), &a);

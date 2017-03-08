@@ -140,6 +140,13 @@ typedef struct
   };
 } ethernet_arp_header_t;
 
+typedef enum ethernet_arp_entry_flags_t_
+{
+  ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC = (1 << 0),
+  ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC = (1 << 1),
+  ETHERNET_ARP_IP4_ENTRY_FLAG_NO_FIB_ENTRY = (1 << 2),
+} __attribute__ ((packed)) ethernet_arp_entry_flags_t;
+
 typedef struct
 {
   u32 sw_if_index;
@@ -147,9 +154,7 @@ typedef struct
 
   u8 ethernet_address[6];
 
-  u16 flags;
-#define ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC  (1 << 0)
-#define ETHERNET_ARP_IP4_ENTRY_FLAG_DYNAMIC (1 << 1)
+  ethernet_arp_entry_flags_t flags;
 
   u64 cpu_time_last_updated;
 

@@ -4,12 +4,29 @@
   object abstractions for representing IP routes in VPP
 """
 
-import socket
 from vpp_object import *
+from socket import inet_pton, inet_ntop, AF_INET, AF_INET6
 
 # from vnet/vnet/mpls/mpls_types.h
 MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
+
+
+def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
+    if inet == AF_INET:
+        s = 4
+        routes = test.vapi.ip_fib_dump()
+    else:
+        s = 16
+        routes = test.vapi.ip6_fib_dump()
+
+    route_addr = inet_pton(inet, ip_addr)
+    for e in routes:
+        if route_addr == e.address[:s] \
+           and len == e.address_length \
+           and table_id == e.table_id:
+            return True
+    return False
 
 
 class VppRoutePath(object):
@@ -27,9 +44,9 @@ class VppRoutePath(object):
         self.nh_via_label = nh_via_label
         self.nh_labels = labels
         if is_ip6:
-            self.nh_addr = socket.inet_pton(socket.AF_INET6, nh_addr)
+            self.nh_addr = inet_pton(AF_INET6, nh_addr)
         else:
-            self.nh_addr = socket.inet_pton(socket.AF_INET, nh_addr)
+            self.nh_addr = inet_pton(AF_INET, nh_addr)
 
 
 class VppMRoutePath(VppRoutePath):
@@ -56,17 +73,18 @@ class VppIpRoute(VppObject):
         self.is_local = is_local
         self.is_unreach = is_unreach
         self.is_prohibit = is_prohibit
+        self.dest_addr_p = dest_addr
         if is_ip6:
-            self.dest_addr = socket.inet_pton(socket.AF_INET6, dest_addr)
+            self.dest_addr = inet_pton(AF_INET6, dest_addr)
         else:
-            self.dest_addr = socket.inet_pton(socket.AF_INET, dest_addr)
+            self.dest_addr = inet_pton(AF_INET, dest_addr)
 
     def add_vpp_config(self):
         if self.is_local or self.is_unreach or self.is_prohibit:
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
-                socket.inet_pton(socket.AF_INET6, "::"),
+                inet_pton(AF_INET6, "::"),
                 0xffffffff,
                 is_local=self.is_local,
                 is_unreach=self.is_unreach,
@@ -93,7 +111,7 @@ class VppIpRoute(VppObject):
             self._test.vapi.ip_add_del_route(
                 self.dest_addr,
                 self.dest_addr_len,
-                socket.inet_pton(socket.AF_INET6, "::"),
+                inet_pton(AF_INET6, "::"),
                 0xffffffff,
                 is_local=self.is_local,
                 is_unreach=self.is_unreach,
@@ -111,28 +129,20 @@ class VppIpRoute(VppObject):
                                                  is_add=0)
 
     def query_vpp_config(self):
-        dump = self._test.vapi.ip_fib_dump()
-        for e in dump:
-            if self.dest_addr == e.address \
-               and self.dest_addr_len == e.address_length \
-               and self.table_id == e.table_id:
-                return True
-        return False
+        return find_route(self._test,
+                          self.dest_addr_p,
+                          self.dest_addr_len,
+                          self.table_id,
+                          inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
 
     def __str__(self):
         return self.object_id()
 
     def object_id(self):
-        if self.is_ip6:
-            return ("%d:%s/%d"
-                    % (self.table_id,
-                       socket.inet_ntop(socket.AF_INET6, self.dest_addr),
-                       self.dest_addr_len))
-        else:
-            return ("%d:%s/%d"
-                    % (self.table_id,
-                       socket.inet_ntop(socket.AF_INET, self.dest_addr),
-                       self.dest_addr_len))
+        return ("%d:%s/%d"
+                % (self.table_id,
+                   self.dest_addr_p,
+                   self.dest_addr_len))
 
 
 class VppIpMRoute(VppObject):
@@ -150,11 +160,11 @@ class VppIpMRoute(VppObject):
         self.is_ip6 = is_ip6
 
         if is_ip6:
-            self.grp_addr = socket.inet_pton(socket.AF_INET6, grp_addr)
-            self.src_addr = socket.inet_pton(socket.AF_INET6, src_addr)
+            self.grp_addr = inet_pton(AF_INET6, grp_addr)
+            self.src_addr = inet_pton(AF_INET6, src_addr)
         else:
-            self.grp_addr = socket.inet_pton(socket.AF_INET, grp_addr)
-            self.src_addr = socket.inet_pton(socket.AF_INET, src_addr)
+            self.grp_addr = inet_pton(AF_INET, grp_addr)
+            self.src_addr = inet_pton(AF_INET, src_addr)
 
     def add_vpp_config(self):
         for path in self.paths:
@@ -221,14 +231,14 @@ class VppIpMRoute(VppObject):
         if self.is_ip6:
             return ("%d:(%s,%s/%d)"
                     % (self.table_id,
-                       socket.inet_ntop(socket.AF_INET6, self.src_addr),
-                       socket.inet_ntop(socket.AF_INET6, self.grp_addr),
+                       inet_ntop(AF_INET6, self.src_addr),
+                       inet_ntop(AF_INET6, self.grp_addr),
                        self.grp_addr_len))
         else:
             return ("%d:(%s,%s/%d)"
                     % (self.table_id,
-                       socket.inet_ntop(socket.AF_INET, self.src_addr),
-                       socket.inet_ntop(socket.AF_INET, self.grp_addr),
+                       inet_ntop(AF_INET, self.src_addr),
+                       inet_ntop(AF_INET, self.grp_addr),
                        self.grp_addr_len))
 
 
@@ -261,7 +271,7 @@ class VppMplsIpBind(VppObject):
     def __init__(self, test, local_label, dest_addr, dest_addr_len,
                  table_id=0, ip_table_id=0):
         self._test = test
-        self.dest_addr = socket.inet_pton(socket.AF_INET, dest_addr)
+        self.dest_addr = inet_pton(AF_INET, dest_addr)
         self.dest_addr_len = dest_addr_len
         self.local_label = local_label
         self.table_id = table_id
@@ -298,7 +308,7 @@ class VppMplsIpBind(VppObject):
                 % (self.table_id,
                    self.local_label,
                    self.ip_table_id,
-                   socket.inet_ntop(socket.AF_INET, self.dest_addr),
+                   inet_ntop(AF_INET, self.dest_addr),
                    self.dest_addr_len))
 
 

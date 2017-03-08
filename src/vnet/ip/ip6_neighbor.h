@@ -28,13 +28,18 @@ typedef struct
   u32 pad;
 } ip6_neighbor_key_t;
 
+typedef enum ip6_neighbor_flags_t_
+{
+  IP6_NEIGHBOR_FLAG_STATIC = (1 << 0),
+  IP6_NEIGHBOR_FLAG_DYNAMIC = (1 << 1),
+  IP6_NEIGHBOR_FLAG_NO_FIB_ENTRY = (1 << 2),
+} __attribute__ ((packed)) ip6_neighbor_flags_t;
+
 typedef struct
 {
   ip6_neighbor_key_t key;
   u8 link_layer_address[8];
-  u16 flags;
-#define IP6_NEIGHBOR_FLAG_STATIC (1 << 0)
-#define IP6_NEIGHBOR_FLAG_DYNAMIC  (2 << 0)
+  ip6_neighbor_flags_t flags;
   u64 cpu_time_last_updated;
   fib_node_index_t fib_entry_index;
 } ip6_neighbor_t;
@@ -69,7 +74,8 @@ extern int vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 					   ip6_address_t * a,
 					   u8 * link_layer_address,
 					   uword n_bytes_link_layer_address,
-					   int is_static);
+					   int is_static,
+					   int is_no_fib_entry);
 
 extern int vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 					     u32 sw_if_index,

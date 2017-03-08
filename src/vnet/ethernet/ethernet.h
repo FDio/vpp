@@ -403,7 +403,8 @@ void ethernet_set_rx_redirect (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 
 int
 vnet_arp_set_ip4_over_ethernet (vnet_main_t * vnm,
-				u32 sw_if_index, void *a_arg, int is_static);
+				u32 sw_if_index, void *a_arg,
+				int is_static, int is_no_fib_entry);
 
 int
 vnet_arp_unset_ip4_over_ethernet (vnet_main_t * vnm,

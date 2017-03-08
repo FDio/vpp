@@ -5,7 +5,7 @@ from socket import AF_INET, AF_INET6, inet_pton
 
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, find_route
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -115,7 +115,7 @@ class ARPTestCase(VppTestCase):
         #
         # Generate some hosts on the LAN
         #
-        self.pg1.generate_remote_hosts(4)
+        self.pg1.generate_remote_hosts(5)
 
         #
         # Send IP traffic to one of these unresolved hosts.
@@ -300,6 +300,25 @@ class ARPTestCase(VppTestCase):
         self.send_and_assert_no_replies(self.pg0, p,
                                         "ARP req for non-local source")
 
+        #
+        # A neighbor entry that has no associated FIB-entry
+        #
+        arp_no_fib = VppNeighbor(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1.remote_hosts[4].mac,
+                                 self.pg1.remote_hosts[4].ip4,
+                                 is_no_fib_entry=1)
+        arp_no_fib.add_vpp_config()
+
+        #
+        # check we have the neighbor, but no route
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1._remote_hosts[4].ip4))
+        self.assertFalse(find_route(self,
+                                    self.pg1._remote_hosts[4].ip4,
+                                    32))
         #
         # cleanup
         #
