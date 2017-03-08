@@ -47,6 +47,26 @@ vl (void *v)
   return vec_len (v);
 }
 
+void do_search(test_main_t *tm, BVT(clib_bihash)*h)
+{
+  int i, j;
+  BVT (clib_bihash_kv) kv;
+  for (j = 0; j < tm->search_iter; j++)
+    {
+      for (i = 0; i < tm->nitems; i++)
+        {
+	  kv.key = tm->keys[i];
+	  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+	    if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
+	      clib_warning ("[%d] search for key %lld failed unexpectedly\n",
+			    i, tm->keys[i]);
+	  if (kv.value != (u64) (i + 1))
+	    clib_warning
+	      ("[%d] search for key %lld returned %lld, not %lld\n", i,
+	       tm->keys, kv.value, (u64) (i + 1));
+        }
+    }
+}
 static clib_error_t *
 test_bihash_vec64 (test_main_t * tm)
 {
@@ -123,6 +143,7 @@ test_bihash (test_main_t * tm)
     }
 
   fformat (stdout, "Add items...\n");
+
   for (i = 0; i < tm->nitems; i++)
     {
       kv.key = tm->keys[i];
@@ -140,27 +161,14 @@ test_bihash (test_main_t * tm)
 	}
     }
 
+
   fformat (stdout, "%U", BV (format_bihash), h, 0 /* very verbose */ );
 
   fformat (stdout, "Search for items %d times...\n", tm->search_iter);
 
   before = clib_time_now (&tm->clib_time);
 
-  for (j = 0; j < tm->search_iter; j++)
-    {
-      for (i = 0; i < tm->nitems; i++)
-	{
-	  kv.key = tm->keys[i];
-	  if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
-	    if (BV (clib_bihash_search) (h, &kv, &kv) < 0)
-	      clib_warning ("[%d] search for key %lld failed unexpectedly\n",
-			    i, tm->keys[i]);
-	  if (kv.value != (u64) (i + 1))
-	    clib_warning
-	      ("[%d] search for key %lld returned %lld, not %lld\n", i,
-	       tm->keys, kv.value, (u64) (i + 1));
-	}
-    }
+  do_search(tm, h);
 
   delta = clib_time_now (&tm->clib_time) - before;
   total_searches = (uword) tm->search_iter * (uword) tm->nitems;
