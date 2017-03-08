@@ -170,6 +170,21 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
   return /* no error */ 0;
 }
 
+static clib_error_t *
+ip_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+{
+  vec_validate_init_empty (ip4_main.
+			   lookup_main.if_address_pool_index_by_sw_if_index,
+			   sw_if_index, ~0);
+  vec_validate_init_empty (ip6_main.
+			   lookup_main.if_address_pool_index_by_sw_if_index,
+			   sw_if_index, ~0);
+
+  return (NULL);
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip_sw_interface_add_del);
+
 void
 ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 {
