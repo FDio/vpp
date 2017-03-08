@@ -2540,7 +2540,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
 		     vhost_user_intf_t * vui,
 		     int server_sock_fd,
 		     const char *sock_filename,
-		     u64 feature_mask, u32 * sw_if_index)
+		     u64 feature_mask, u32 * sw_if_index, u8 operation_mode)
 {
   vnet_sw_interface_t *sw;
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
@@ -2567,6 +2567,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vui->feature_mask = feature_mask;
   vui->unix_file_index = ~0;
   vui->log_base_addr = 0;
+  vui->operation_mode = operation_mode;
 
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
     vhost_user_vring_init (vui, q);
@@ -2594,12 +2595,16 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      u8 is_server,
 		      u32 * sw_if_index,
 		      u64 feature_mask,
-		      u8 renumber, u32 custom_dev_instance, u8 * hwaddr)
+		      u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
+		      u8 operation_mode)
 {
   vhost_user_intf_t *vui = NULL;
   u32 sw_if_idx = ~0;
   int rv = 0;
   int server_sock_fd = -1;
+
+  if (operation_mode != VHOST_USER_POLLING_MODE)
+    return VNET_API_ERROR_UNIMPLEMENTED;
 
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
     {
@@ -2619,7 +2624,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   vhost_user_create_ethernet (vnm, vm, vui, hwaddr);
   vhost_user_vui_init (vnm, vui, server_sock_fd, sock_filename,
-		       feature_mask, &sw_if_idx);
+		       feature_mask, &sw_if_idx, operation_mode);
 
   if (renumber)
     vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
@@ -2637,7 +2642,8 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
 		      u8 is_server,
 		      u32 sw_if_index,
-		      u64 feature_mask, u8 renumber, u32 custom_dev_instance)
+		      u64 feature_mask, u8 renumber, u32 custom_dev_instance,
+		      u8 operation_mode)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui = NULL;
@@ -2646,6 +2652,8 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
   vnet_hw_interface_t *hwif;
 
+  if (operation_mode != VHOST_USER_POLLING_MODE)
+    return VNET_API_ERROR_UNIMPLEMENTED;
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
       hwif->dev_class_index != vhost_user_dev_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -2660,7 +2668,8 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   vhost_user_term_if (vui);
   vhost_user_vui_init (vnm, vui, server_sock_fd,
-		       sock_filename, feature_mask, &sw_if_idx);
+		       sock_filename, feature_mask, &sw_if_idx,
+		       operation_mode);
 
   if (renumber)
     vnet_interface_name_renumber (sw_if_idx, custom_dev_instance);
@@ -2685,6 +2694,7 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   u8 hwaddr[6];
   u8 *hw = NULL;
   clib_error_t *error = NULL;
+  u8 operation_mode = VHOST_USER_POLLING_MODE;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -2719,7 +2729,8 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
   int rv;
   if ((rv = vhost_user_create_if (vnm, vm, (char *) sock_filename,
 				  is_server, &sw_if_index, feature_mask,
-				  renumber, custom_dev_instance, hw)))
+				  renumber, custom_dev_instance, hw,
+				  operation_mode)))
     {
       error = clib_error_return (0, "vhost_user_create_if returned %d", rv);
       goto done;
@@ -2809,6 +2820,7 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
       vui = pool_elt_at_index (vum->vhost_user_interfaces, hi->dev_instance);
 
       vec_add2 (r_vuids, vuid, 1);
+      vuid->operation_mode = vui->operation_mode;
       vuid->sw_if_index = vui->sw_if_index;
       vuid->virtio_net_hdr_sz = vui->virtio_net_hdr_sz;
       vuid->features = vui->features;
