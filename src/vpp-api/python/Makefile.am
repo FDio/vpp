@@ -44,8 +44,7 @@ install-exec-local: $(lib_LTLIBRARIES)
 	mkdir -p $(pythondir);						\
 	mkdir -p $(pyexecdir); 						\
 	PYTHONUSERBASE=$(prefix)					\
-	python setup.py build_ext -L $(libdir)				\
-	-I $(prefix)/include/ install --user
+	python setup.py install --user
 
 #
 # Test client

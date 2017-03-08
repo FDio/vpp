@@ -18,18 +18,12 @@ except ImportError:
     from distutils.core import setup, Extension
 
 setup (name = 'vpp_papi',
-       version = '1.3',
+       version = '1.4',
        description = 'VPP Python binding',
        author = 'Ole Troan',
        author_email = 'ot@cisco.com',
        test_suite = 'tests',
        packages=['vpp_papi'],
-       ext_modules = [
-           Extension(
-               'vpp_api',
-               sources = ['vpp_papi/pneum_wrap.c'],
-               libraries = ['pneum'],
-           )],
        long_description = '''VPP Python language binding.''',
        zip_safe = True,
 )
