@@ -1354,7 +1354,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  tmp = format (0, "--no-pci%c", 0);
 	  vec_add1 (conf->eal_init_args, tmp);
 	}
-      else if (unformat (input, "poll-sleep %d", &dm->poll_sleep))
+      else if (unformat (input, "poll-sleep %d", &dm->poll_sleep_usec))
 	;
 
 #define _(a)                                    \
