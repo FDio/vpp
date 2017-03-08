@@ -1322,11 +1322,31 @@ class TestDeterministicNAT(VppTestCase):
         rep2 = self.vapi.snat_det_reverse(out_addr_n, rep1.out_port_hi)
         self.assertEqual(rep2.in_addr[:4], in_addr_t_n)
 
+        deterministic_mappings = self.vapi.snat_det_map_dump()
+        self.assertEqual(len(deterministic_mappings), 1)
+        dsm = deterministic_mappings[0]
+        self.assertEqual(in_addr_n, dsm.in_addr[:4])
+        self.assertEqual(in_plen, dsm.in_plen)
+        self.assertEqual(out_addr_n, dsm.out_addr[:4])
+        self.assertEqual(out_plen, dsm.out_plen)
+
+    def clear_snat(self):
+        """
+        Clear SNAT configuration.
+        """
+        deterministic_mappings = self.vapi.snat_det_map_dump()
+        for dsm in deterministic_mappings:
+            self.vapi.snat_add_det_map(dsm.in_addr,
+                                       dsm.in_plen,
+                                       dsm.out_addr,
+                                       dsm.out_plen,
+                                       is_add=0)
+
     def tearDown(self):
         super(TestDeterministicNAT, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show snat detail"))
-
+            self.clear_snat()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
