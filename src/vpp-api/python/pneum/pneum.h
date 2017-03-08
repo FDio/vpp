@@ -25,9 +25,11 @@ int pneum_disconnect(void);
 int pneum_read(char **data, int *l, unsigned short timeout);
 int pneum_write(char *data, int len);
 void pneum_free(void * msg);
-uword * pneum_msg_table_get_hash (void);
+
+int pneum_get_msg_index(unsigned char * name);
 int pneum_msg_table_size(void);
-uint32_t pneum_get_msg_index(unsigned char * name);
+int pneum_msg_table_max_index(void);
+
 void pneum_rx_suspend (void);
 void pneum_rx_resume (void);
 
