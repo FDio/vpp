@@ -55,7 +55,7 @@ class VppPapiProvider(object):
             for filename in fnmatch.filter(filenames, '*.api.json'):
                 jsonfiles.append(os.path.join(root, filename))
 
-        self.vpp = VPP(jsonfiles)
+        self.vpp = VPP(jsonfiles, logger=test_class.logger)
         self._events = deque()
 
     def __enter__(self):
