@@ -90,6 +90,10 @@ _(SHOW_ONE_PITR, show_one_pitr)                                         \
 _(SHOW_ONE_MAP_REQUEST_MODE, show_one_map_request_mode)                 \
 _(ONE_USE_PETR, one_use_petr)                                           \
 _(SHOW_ONE_USE_PETR, show_one_use_petr)                                 \
+_(SHOW_ONE_STATS_ENABLE_DISABLE, show_one_stats_enable_disable)         \
+_(ONE_STATS_ENABLE_DISABLE, one_stats_enable_disable)                   \
+_(ONE_STATS_DUMP, one_stats_dump)                                       \
+
 
 static locator_t *
 unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
@@ -1254,6 +1258,37 @@ vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
             ARRAY_LEN(rmp->locator_set_name) - 1);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+  vl_api_show_one_stats_enable_disable_t_handler
+  (vl_api_show_one_stats_enable_disable_t * mp)
+{
+  vl_api_show_one_stats_enable_disable_reply_t *rmp = NULL;
+  vnet_api_error_t rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SHOW_ONE_STATS_ENABLE_DISABLE_REPLY,
+  ({
+    rmp->is_en = vnet_lisp_stats_enable_disable_state ();
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+  vl_api_one_stats_enable_disable_t_handler
+  (vl_api_one_stats_enable_disable_t * mp)
+{
+  vl_api_one_enable_disable_reply_t *rmp = NULL;
+
+  vnet_api_error_t rv = vnet_lisp_stats_enable_disable (mp->is_en);
+  REPLY_MACRO (VL_API_ONE_ENABLE_DISABLE_REPLY);
+}
+
+static void
+vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
+{
+
 }
 
 /*

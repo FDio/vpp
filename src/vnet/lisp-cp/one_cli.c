@@ -1642,6 +1642,62 @@ VLIB_CLI_COMMAND (one_show_rloc_probe_state_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_show_stats_command_fn (vlib_main_t * vm,
+			    unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  u8 is_enabled = vnet_lisp_stats_enable_disable_state ();
+  vlib_cli_output (vm, "%s\n", is_enabled ? "enabled" : "disabled");
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_show_stats_command) = {
+    .path = "show one stats",
+    .short_help = "show ONE statistics",
+    .function = lisp_show_stats_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_stats_enable_disable_command_fn (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 enable = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	enable = 1;
+      else if (unformat (line_input, "disable"))
+	enable = 0;
+      else
+	{
+	  clib_warning ("Error: expected enable/disable!");
+	  goto done;
+	}
+    }
+  vnet_lisp_stats_enable_disable (enable);
+done:
+  unformat_free (line_input);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_stats_enable_disable_command) = {
+    .path = "one stats",
+    .short_help = "enable/disable ONE statistics collecting",
+    .function = lisp_stats_enable_disable_command_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

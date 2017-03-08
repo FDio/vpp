@@ -210,6 +210,9 @@ typedef struct
   /* timing wheel for mappping timeouts */
   timing_wheel_t wheel;
 
+  /* statistics */
+  u8 stats_enabled;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
@@ -331,6 +334,9 @@ lisp_get_petr_mapping (lisp_cp_main_t * lcm)
 {
   return pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
 }
+
+u8 vnet_lisp_stats_enable_disable_state (void);
+vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
 
 #endif /* VNET_CONTROL_H_ */
 

@@ -3801,6 +3801,29 @@ send_map_resolver_service (vlib_main_t * vm,
   return 0;
 }
 
+vnet_api_error_t
+vnet_lisp_stats_enable_disable (u8 enable)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    return VNET_API_ERROR_LISP_DISABLED;
+
+  lcm->stats_enabled = enable;
+  return 0;
+}
+
+u8
+vnet_lisp_stats_enable_disable_state (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    return VNET_API_ERROR_LISP_DISABLED;
+
+  return lcm->stats_enabled;
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (lisp_retry_service_node,static) = {
     .function = send_map_resolver_service,
