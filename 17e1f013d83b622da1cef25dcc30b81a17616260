@@ -22,6 +22,30 @@
       "revId": "17e1f013d83b622da1cef25dcc30b81a17616260",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f355a2c6",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_sub_interface.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2017-03-08T07:24:45Z",
+      "side": 1,
+      "message": "The main difference here is that this clears entire structure including padding. In the previous case the padding was uninitialized and that was the reason that lookup almost always failed.",
+      "parentUuid": "3a3291f1_b375da99",
+      "range": {
+        "startLine": 54,
+        "startChar": 2,
+        "endLine": 54,
+        "endChar": 11
+      },
+      "revId": "17e1f013d83b622da1cef25dcc30b81a17616260",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
