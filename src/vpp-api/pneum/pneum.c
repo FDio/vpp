@@ -241,7 +241,7 @@ pneum_rx_resume (void)
   pthread_mutex_unlock(&pm->queue_lock);
 }
 
-uword *
+static uword *
 pneum_msg_table_get_hash (void)
 {
   api_main_t *am = &api_main;
@@ -460,8 +460,29 @@ pneum_write (char *p, int l)
   return (rv);
 }
 
-uint32_t
+int
 pneum_get_msg_index (unsigned char * name)
 {
   return vl_api_get_msg_index (name);
+}
+
+int
+pneum_msg_table_max_index(void)
+{
+  int max = 0;
+  hash_pair_t *hp;
+  uword *h = pneum_msg_table_get_hash();
+  hash_foreach_pair (hp, h,
+  ({
+    if (hp->value[0] > max)
+      max = hp->value[0];
+  }));
+
+  return max;
+}
+
+void
+pneum_set_error_handler (pneum_error_callback_t cb)
+{
+  if (cb) clib_error_register_handler (cb, 0);
 }
