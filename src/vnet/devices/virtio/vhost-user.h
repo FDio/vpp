@@ -42,6 +42,7 @@
 #define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX        0x8000
 
 #define VRING_USED_F_NO_NOTIFY  1
+#define VRING_AVAIL_F_NO_INTERRUPT 1
 
 #define foreach_virtio_net_feature      \
  _ (VIRTIO_NET_F_MRG_RXBUF, 15)         \
@@ -65,11 +66,13 @@ typedef enum
 int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 * sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr);
+			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
+			  u8 operation_mode);
 int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance);
+			  u8 renumber, u32 custom_dev_instance,
+			  u8 operation_mode);
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
@@ -209,6 +212,10 @@ typedef struct
   u64 log_guest_addr;
 } vhost_user_vring_t;
 
+#define VHOST_USER_POLLING_MODE   0
+#define VHOST_USER_INTERRUPT_MODE 1
+#define VHOST_USER_ADAPTIVE_MODE  2
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -249,6 +256,8 @@ typedef struct
 
   /* Vector of workers for this interface */
   u32 *workers;
+
+  u8 operation_mode;
 } vhost_user_intf_t;
 
 typedef struct
@@ -323,6 +332,7 @@ typedef struct
   u8 sock_filename[256];
   u32 num_regions;
   int sock_errno;
+  u8 operation_mode;
 } vhost_user_intf_details_t;
 
 int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,

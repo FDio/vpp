@@ -19,6 +19,7 @@
     @param sock_filename - unix socket filename, used to speak with frontend
     @param use_custom_mac - enable or disable the use of the provided hardware address
     @param mac_address - hardware address to use if 'use_custom_mac' is set
+    @param operation_mode - polling=0, interrupt=1, or adaptive=2
 */
 define create_vhost_user_if
 {
@@ -31,6 +32,7 @@ define create_vhost_user_if
   u8 use_custom_mac;
   u8 mac_address[6];
   u8 tag[64];
+  u8 operation_mode;
 };
 
 /** \brief vhost-user interface create response
@@ -49,6 +51,7 @@ define create_vhost_user_if_reply
     @param client_index - opaque cookie to identify the sender
     @param is_server - our side is socket server
     @param sock_filename - unix socket filename, used to speak with frontend
+    @param operation_mode - polling=0, interrupt=1, or adaptive=2
 */
 define modify_vhost_user_if
 {
@@ -59,6 +62,7 @@ define modify_vhost_user_if
   u8 sock_filename[256];
   u8 renumber;
   u32 custom_dev_instance;
+  u8 operation_mode;
 };
 
 /** \brief vhost-user interface modify response
@@ -99,6 +103,7 @@ define delete_vhost_user_if_reply
     @param is_server - vhost-user server socket
     @param sock_filename - socket filename
     @param num_regions - number of used memory regions
+    @param operation_mode - polling=0, interrupt=1, or adaptive=2
 */
 define sw_interface_vhost_user_details
 {
@@ -111,6 +116,7 @@ define sw_interface_vhost_user_details
   u8 sock_filename[256];
   u32 num_regions;
   i32 sock_errno;
+  u8 operation_mode;
 };
 
 define sw_interface_vhost_user_dump
