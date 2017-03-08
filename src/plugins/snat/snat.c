@@ -1622,7 +1622,7 @@ vl_api_snat_det_forward_t_handler
   snat_main_t * sm = &snat_main;
   vl_api_snat_det_forward_reply_t * rmp;
   int rv = 0;
-  u16 lo_port = 0;
+  u16 lo_port = 0, hi_port = 0;
   snat_det_map_t * dm;
   ip4_address_t in_addr, out_addr;
 
@@ -1636,12 +1636,13 @@ vl_api_snat_det_forward_t_handler
     }
 
   snat_det_forward(dm, &in_addr, &out_addr, &lo_port);
+  hi_port = lo_port + dm->ports_per_host - 1;
 
 send_reply:
   REPLY_MACRO2(VL_API_SNAT_DET_FORWARD_REPLY,
   ({
     rmp->out_port_lo = ntohs(lo_port);
-    rmp->out_port_hi = ntohs(lo_port + dm->ports_per_host - 1);
+    rmp->out_port_hi = ntohs(hi_port);
     rmp->is_ip4 = 1;
     memset(rmp->out_addr, 0, 16);
     clib_memcpy(rmp->out_addr, &out_addr, 4);
