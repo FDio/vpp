@@ -16,10 +16,6 @@ vppplugins_LTLIBRARIES += dpdk_plugin.la
 
 dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive,-lm,-ldl
 
-# due to internal compiler error in GCC when compiling dpdk/device/node.c
-# debug sysmbols level reduced to 1. See GCC PR #79953 for details
-CFLAGS += -g1
-
 dpdk_plugin_la_SOURCES =					\
   dpdk/main.c							\
   dpdk/buffer.c							\
