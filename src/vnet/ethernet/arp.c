@@ -792,6 +792,7 @@ typedef enum
   _ (missing_interface_address, "ARP missing interface address") \
   _ (gratuitous_arp, "ARP probe or announcement dropped") \
   _ (interface_no_table, "Interface is not mapped to an IP table") \
+  _ (interface_not_ip_enabled, "Interface is not IP enabled") \
 
 typedef enum
 {
@@ -1047,6 +1048,11 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	     ETHERNET_ARP_ERROR_l3_type_not_ip4 : error0);
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+
+	  /* not playing the ARP game if the interface is not IPv4 enabled */
+	  error0 =
+	    (im4->ip_enabled_by_sw_if_index[sw_if_index0] == 0 ?
+	     ETHERNET_ARP_ERROR_interface_not_ip_enabled : error0);
 
 	  if (error0)
 	    goto drop2;
