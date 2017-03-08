@@ -533,12 +533,12 @@ static inline void
 poll_rate_limit (dpdk_main_t * dm)
 {
   /* Limit the poll rate by sleeping for N msec between polls */
-  if (PREDICT_FALSE (dm->poll_sleep != 0))
+  if (PREDICT_FALSE (dm->poll_sleep_usec != 0))
     {
       struct timespec ts, tsrem;
 
       ts.tv_sec = 0;
-      ts.tv_nsec = 1000 * 1000 * dm->poll_sleep;	/* 1ms */
+      ts.tv_nsec = 1000 * dm->poll_sleep_usec;
 
       while (nanosleep (&ts, &tsrem) < 0)
 	{
