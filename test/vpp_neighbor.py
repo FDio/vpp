@@ -31,12 +31,13 @@ class VppNeighbor(VppObject):
     """
 
     def __init__(self, test, sw_if_index, mac_addr, nbr_addr,
-                 af=AF_INET, is_static=False):
+                 af=AF_INET, is_static=False, is_no_fib_entry=False):
         self._test = test
         self.sw_if_index = sw_if_index
         self.mac_addr = mactobinary(mac_addr)
         self.af = af
         self.is_static = is_static
+        self.is_no_fib_entry = is_no_fib_entry
         self.nbr_addr = inet_pton(af, nbr_addr)
 
     def add_vpp_config(self):
@@ -46,7 +47,8 @@ class VppNeighbor(VppObject):
             self.nbr_addr,
             is_add=1,
             is_ipv6=1 if AF_INET6 == self.af else 0,
-            is_static=self.is_static)
+            is_static=self.is_static,
+            is_no_adj_fib=self.is_no_fib_entry)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):

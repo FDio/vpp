@@ -235,6 +235,9 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
   if (n->flags & IP6_NEIGHBOR_FLAG_STATIC)
     flags = format (flags, "S");
 
+  if (n->flags & IP6_NEIGHBOR_FLAG_NO_FIB_ENTRY)
+    flags = format (flags, "N");
+
   si = vnet_get_sw_interface (vnm, n->key.sw_if_index);
   s = format (s, "%=12U%=20U%=6s%=20U%=40U",
 	      format_vlib_cpu_time, vm, n->cpu_time_last_updated,
@@ -317,6 +320,7 @@ typedef struct
 {
   u8 is_add;
   u8 is_static;
+  u8 is_no_fib_entry;
   u8 link_layer_address[6];
   u32 sw_if_index;
   ip6_address_t addr;
@@ -328,7 +332,8 @@ static void ip6_neighbor_set_unset_rpc_callback
 static void set_unset_ip6_neighbor_rpc
   (vlib_main_t * vm,
    u32 sw_if_index,
-   ip6_address_t * a, u8 * link_layer_address, int is_add, int is_static)
+   ip6_address_t * a, u8 * link_layer_address, int is_add, int is_static,
+   int is_no_fib_entry)
 {
   ip6_neighbor_set_unset_rpc_args_t args;
   void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
@@ -336,6 +341,7 @@ static void set_unset_ip6_neighbor_rpc
   args.sw_if_index = sw_if_index;
   args.is_add = is_add;
   args.is_static = is_static;
+  args.is_no_fib_entry = is_no_fib_entry;
   clib_memcpy (&args.addr, a, sizeof (*a));
   if (NULL != link_layer_address)
     clib_memcpy (args.link_layer_address, link_layer_address, 6);
@@ -565,7 +571,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 				ip6_address_t * a,
 				u8 * link_layer_address,
 				uword n_bytes_link_layer_address,
-				int is_static)
+				int is_static, int is_no_fib_entry)
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   ip6_neighbor_key_t k;
@@ -578,7 +584,8 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   if (os_get_cpu_number ())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
-				  1 /* set new neighbor */ , is_static);
+				  1 /* set new neighbor */ , is_static,
+				  is_no_fib_entry);
       return 0;
     }
 
@@ -598,16 +605,6 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 
   if (make_new_nd_cache_entry)
     {
-      fib_prefix_t pfx = {
-	.fp_len = 128,
-	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_addr = {
-		    .ip6 = k.ip6_address,
-		    }
-	,
-      };
-      u32 fib_index;
-
       pool_get (nm->neighbor_pool, n);
       mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
 		 /* old value */ 0);
@@ -619,9 +616,25 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
       /*
        * create the adj-fib. the entry in the FIB table for and to the peer.
        */
-      fib_index = ip6_main.fib_index_by_sw_if_index[n->key.sw_if_index];
-      n->fib_entry_index = fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_ADJ, FIB_ENTRY_FLAG_NONE, FIB_PROTOCOL_IP6, &pfx.fp_addr, n->key.sw_if_index, ~0, 1, NULL,	// no label stack
-							    FIB_ROUTE_PATH_FLAG_NONE);
+      if (!is_no_fib_entry)
+	{
+	  fib_prefix_t pfx = {
+	    .fp_len = 128,
+	    .fp_proto = FIB_PROTOCOL_IP6,
+	    .fp_addr.ip6 = k.ip6_address,
+	  };
+	  u32 fib_index;
+
+	  fib_index = ip6_main.fib_index_by_sw_if_index[n->key.sw_if_index];
+	  n->fib_entry_index =
+	    fib_table_entry_update_one_path (fib_index, &pfx,
+					     FIB_SOURCE_ADJ,
+					     FIB_ENTRY_FLAG_NONE,
+					     FIB_PROTOCOL_IP6, &pfx.fp_addr,
+					     n->key.sw_if_index, ~0, 1, NULL,
+					     FIB_ROUTE_PATH_FLAG_NONE);
+	  n->flags |= IP6_NEIGHBOR_FLAG_NO_FIB_ENTRY;
+	}
     }
   else
     {
@@ -712,7 +725,7 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   if (os_get_cpu_number ())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
-				  0 /* unset */ , 0);
+				  0 /* unset */ , 0, 0);
       return 0;
     }
 
@@ -746,7 +759,8 @@ static void ip6_neighbor_set_unset_rpc_callback
   vlib_main_t *vm = vlib_get_main ();
   if (a->is_add)
     vnet_set_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr,
-				    a->link_layer_address, 6, a->is_static);
+				    a->link_layer_address, 6, a->is_static,
+				    a->is_no_fib_entry);
   else
     vnet_unset_ip6_ethernet_neighbor (vm, a->sw_if_index, &a->addr,
 				      a->link_layer_address, 6);
@@ -850,6 +864,7 @@ set_ip6_neighbor (vlib_main_t * vm,
   int addr_valid = 0;
   int is_del = 0;
   int is_static = 0;
+  int is_no_fib_entry = 0;
   u32 sw_if_index;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -865,6 +880,8 @@ set_ip6_neighbor (vlib_main_t * vm,
 	is_del = 1;
       else if (unformat (input, "static"))
 	is_static = 1;
+      else if (unformat (input, "no-fib-entry"))
+	is_no_fib_entry = 1;
       else
 	break;
     }
@@ -875,7 +892,7 @@ set_ip6_neighbor (vlib_main_t * vm,
   if (!is_del)
     vnet_set_ip6_ethernet_neighbor (vm, sw_if_index, &addr,
 				    mac_address, sizeof (mac_address),
-				    is_static);
+				    is_static, is_no_fib_entry);
   else
     vnet_unset_ip6_ethernet_neighbor (vm, sw_if_index, &addr,
 				      mac_address, sizeof (mac_address));
@@ -1023,7 +1040,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      &h0->target_address,
 					      o0->ethernet_address,
 					      sizeof (o0->ethernet_address),
-					      0);
+					      0, 0);
 	    }
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)
@@ -1338,7 +1355,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 					      &ip0->src_address,
 					      o0->ethernet_address,
 					      sizeof (o0->ethernet_address),
-					      0);
+					      0, 0);
 	    }
 
 	  /* default is to drop */

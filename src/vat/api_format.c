@@ -7132,6 +7132,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
   u8 is_static = 0;
+  u8 is_no_fib_entry = 0;
   u8 mac_address[6];
   u8 mac_set = 0;
   u8 v4_address_set = 0;
@@ -7158,6 +7159,8 @@ api_ip_neighbor_add_del (vat_main_t * vam)
 	sw_if_index_set = 1;
       else if (unformat (i, "is_static"))
 	is_static = 1;
+      else if (unformat (i, "no-fib-entry"))
+	is_no_fib_entry = 1;
       else if (unformat (i, "dst %U", unformat_ip4_address, &v4address))
 	v4_address_set = 1;
       else if (unformat (i, "dst %U", unformat_ip6_address, &v6address))
@@ -7191,6 +7194,7 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_add = is_add;
   mp->is_static = is_static;
+  mp->is_no_adj_fib = is_no_fib_entry;
   if (mac_set)
     clib_memcpy (mp->mac_address, mac_address, 6);
   if (v6_address_set)

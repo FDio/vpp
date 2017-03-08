@@ -663,6 +663,7 @@ class VppPapiProvider(object):
                             is_add=1,
                             is_ipv6=0,
                             is_static=0,
+                            is_no_adj_fib=0,
                             ):
         """ Add neighbor MAC to IPv4 or IPv6 address.
 
@@ -672,6 +673,7 @@ class VppPapiProvider(object):
         :param is_add:  (Default value = 1)
         :param is_ipv6:  (Default value = 0)
         :param is_static:  (Default value = 0)
+        :param is_no_adj_fib:  (Default value = 0)
         """
 
         return self.api(
@@ -680,6 +682,7 @@ class VppPapiProvider(object):
              'is_add': is_add,
              'is_ipv6': is_ipv6,
              'is_static': is_static,
+             'is_no_adj_fib': is_no_adj_fib,
              'mac_address': mac_address,
              'dst_address': dst_address
              }

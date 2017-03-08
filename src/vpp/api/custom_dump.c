@@ -593,6 +593,9 @@ static void *vl_api_ip_neighbor_add_del_t_print
   if (mp->is_static)
     s = format (s, "is_static ");
 
+  if (mp->is_no_adj_fib)
+    s = format (s, "is_no_fib_entry ");
+
   if (memcmp (mp->mac_address, null_mac, 6))
     s = format (s, "mac %U ", format_ethernet_address, mp->mac_address);
 
