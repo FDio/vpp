@@ -19,16 +19,19 @@
 #include <vppinfra/types.h>
 
 typedef void (*pneum_callback_t)(unsigned char * data, int len);
+typedef void (*pneum_error_callback_t)(void *, unsigned char *, int);
 int pneum_connect(char * name, char * chroot_prefix, pneum_callback_t cb,
     int rx_qlen);
 int pneum_disconnect(void);
 int pneum_read(char **data, int *l, unsigned short timeout);
 int pneum_write(char *data, int len);
 void pneum_free(void * msg);
-uword * pneum_msg_table_get_hash (void);
+
+int pneum_get_msg_index(unsigned char * name);
 int pneum_msg_table_size(void);
-uint32_t pneum_get_msg_index(unsigned char * name);
+int pneum_msg_table_max_index(void);
+
 void pneum_rx_suspend (void);
 void pneum_rx_resume (void);
-
+void pneum_set_error_handler(pneum_error_callback_t);
 #endif
