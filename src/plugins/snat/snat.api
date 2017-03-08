@@ -387,12 +387,14 @@ define snat_user_details {
 /** \brief S-NAT user's sessions
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
     @param user_ip - IP address of the user to dump
     @param vrf_id - VRF_ID
 */
 define snat_user_session_dump {
   u32 client_index;
   u32 context;
+  u8 is_ip4;
   u8 ip_address[16];
   u32 vrf_id;
 };

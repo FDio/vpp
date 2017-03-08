@@ -1539,6 +1539,8 @@ vl_api_snat_user_session_dump_t_handler
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
+  if (!mp->is_ip4)
+    return;
 
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
   ukey.fib_index = ip4_fib_index_from_table_id (ntohl(mp->vrf_id));
