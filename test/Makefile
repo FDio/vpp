@@ -30,7 +30,7 @@ UNITTEST_EXTRA_OPTS="-f"
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
-PYTHON_DEPENDS=scapy==2.3.3 pexpect subprocess32 git+https://github.com/klement/py-lispnetworking@setup
+PYTHON_DEPENDS=scapy==2.3.3 pexpect subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup
 SCAPY_SOURCE=$(PYTHON_VENV_PATH)/lib/python2.7/site-packages/
 BUILD_COV_DIR = $(BR)/test-cov
 
