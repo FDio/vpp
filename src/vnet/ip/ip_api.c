@@ -74,7 +74,6 @@ _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
 _(IP6ND_PROXY_ADD_DEL, ip6nd_proxy_add_del)                             \
 _(IP6ND_PROXY_DUMP, ip6nd_proxy_dump)                                   \
-_(IP6ND_PROXY_DETAILS, ip6nd_proxy_details)                             \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable )    \
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
   sw_interface_ip6_set_link_local_address)
@@ -1417,12 +1416,6 @@ send_ip6nd_proxy_details (unix_shared_memory_queue_t * q,
   memcpy (mp->address, addr, 16);
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-vl_api_ip6nd_proxy_details_t_handler (vl_api_ip_neighbor_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 typedef struct api_ip6nd_proxy_fib_table_walk_ctx_t_
