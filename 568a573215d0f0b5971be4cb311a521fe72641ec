@@ -1,0 +1,90 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_fe4b2957",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 683,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-08T12:35:57Z",
+      "side": 1,
+      "message": "vrf_id",
+      "range": {
+        "startLine": 683,
+        "startChar": 34,
+        "endLine": 683,
+        "endChar": 43
+      },
+      "revId": "568a573215d0f0b5971be4cb311a521fe72641ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_be75a199",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-08T12:35:57Z",
+      "side": 1,
+      "message": "\u0026vrf_id",
+      "range": {
+        "startLine": 684,
+        "startChar": 44,
+        "endLine": 684,
+        "endChar": 50
+      },
+      "revId": "568a573215d0f0b5971be4cb311a521fe72641ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_de462d4f",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-08T12:35:57Z",
+      "side": 1,
+      "message": "\u0026addr",
+      "range": {
+        "startLine": 684,
+        "startChar": 38,
+        "endLine": 684,
+        "endChar": 42
+      },
+      "revId": "568a573215d0f0b5971be4cb311a521fe72641ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9e78a590",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1119,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-08T12:35:57Z",
+      "side": 1,
+      "message": ":param is_ip:",
+      "revId": "568a573215d0f0b5971be4cb311a521fe72641ec",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
