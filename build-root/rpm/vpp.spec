@@ -285,7 +285,7 @@ fi
 
 %files api-python
 %defattr(644,root,root)
-%{python2_sitelib}/vpp_papi-*.egg
+%{python2_sitelib}/vpp_papi/
 
 %files devel
 %defattr(-,bin,bin)

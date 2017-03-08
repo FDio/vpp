@@ -11,52 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AUTOMAKE_OPTIONS = foreign
-ACLOCAL_AMFLAGS = -I m4
-AM_LIBTOOLFLAGS = --quiet
-AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir}
-
-BUILT_SOURCES =
-bin_PROGRAMS =
-CLEANFILES =
-lib_LTLIBRARIES =
-noinst_PROGRAMS =
-nobase_include_HEADERS = pneum/pneum.h
-
-#
-# Python / C extension
-#
-lib_LTLIBRARIES += libpneum.la
-libpneum_la_SOURCES = pneum/pneum.c
-libpneum_la_LIBADD = \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
-  $(top_builddir)/libsvm.la \
-  -lpthread -lm -lrt
-
-libpneum_la_LDFLAGS = -module
-libpneum_la_CPPFLAGS =
-
-# TODO: Support both Python 2 and 3.
-install-exec-local: $(lib_LTLIBRARIES)
-	cd $(srcdir);							\
-	mkdir -p $(pythondir);						\
-	mkdir -p $(pyexecdir); 						\
-	PYTHONUSERBASE=$(prefix)					\
-	python setup.py build_ext -L $(libdir)				\
-	-I $(prefix)/include/ install --user
-
-#
-# Test client
-#
-if ENABLE_TESTS
-noinst_PROGRAMS += test_pneum
-test_pneum_SOURCES = pneum/pneum.c pneum/test_pneum.c
-test_pneum_LDADD = \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
-  $(top_builddir)/libsvm.la \
-  -lpthread -lm -lrt
-endif
+install-exec-local:
+	(cd $(srcdir) ; $(PYTHON) $(srcdir)/setup.py build              \
+	--build-base $(shell readlink -f $(builddir))/build             \
+	install                                                         \
+	--root /                                                        \
+	--prefix $(DESTDIR)$(prefix)                                    \
+	--single-version-externally-managed                             \
+	--verbose)
