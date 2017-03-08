@@ -667,8 +667,11 @@ static void vl_api_snat_user_session_details_t_handler
 
 static int api_snat_user_session_dump(vat_main_t * vam)
 {
+  unformat_input_t* i = vam->input;
   vl_api_snat_user_session_dump_t * mp;
   vl_api_snat_control_ping_t *mp_ping;
+  ip4_address_t addr;
+  u32 vrf_id = ~0;
   int ret;
 
   if (vam->json_output)
@@ -677,11 +680,24 @@ static int api_snat_user_session_dump(vat_main_t * vam)
       return -99;
     }
 
+  if (unformat (i, "ip_address %U vrf_id %d",
+                unformat_ip4_address, &addr, &vrf_id))
+    ;
+  else
+    {
+      clib_warning("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
+
   M(SNAT_USER_SESSION_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
   M(SNAT_CONTROL_PING, mp_ping);
+  memset(mp->ip_address, 0, 16);
+  clib_memcpy(mp->ip_address, &addr, 4);
+  mp->vrf_id = htonl(vrf_id);
+  mp->is_ip4 = 1;
   S(mp_ping);
 
   W (ret);

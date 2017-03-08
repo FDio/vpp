@@ -1109,7 +1109,8 @@ class VppPapiProvider(object):
     def snat_user_session_dump(
             self,
             ip_address,
-            vrf_id):
+            vrf_id,
+            is_ip4=1):
         """Dump S-NAT user's sessions
 
         :param ip_address: ip adress of the user to be dumped
@@ -1120,7 +1121,8 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.snat_user_session_dump,
             {'ip_address': ip_address,
-             'vrf_id': vrf_id})
+             'vrf_id': vrf_id,
+             'is_ip4': is_ip4})
 
     def snat_user_dump(self):
         """Dump S-NAT users
