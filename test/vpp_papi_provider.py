@@ -1179,6 +1179,13 @@ class VppPapiProvider(object):
             {'out_addr': out_addr,
              'out_port': out_port})
 
+    def snat_det_map_dump(self):
+        """Dump S-NAT deterministic mappings
+
+        :return: Dictionary of S-NAT deterministic mappings
+        """
+        return self.api(self.papi.snat_det_map_dump, {})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 

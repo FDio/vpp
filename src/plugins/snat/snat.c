@@ -1703,6 +1703,55 @@ static void *vl_api_snat_det_reverse_t_print
   FINISH;
 }
 
+static void
+sent_snat_det_map_details
+(snat_det_map_t * m, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_det_map_details_t *rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_DET_MAP_DETAILS+sm->msg_id_base);
+  rmp->is_ip4 = 1;
+  clib_memcpy (rmp->in_addr, &m->in_addr, 4);
+  rmp->in_plen = m->in_plen;
+  clib_memcpy (rmp->out_addr, &m->out_addr, 4);
+  rmp->out_plen = m->out_plen;
+  rmp->sharing_ratio = htonl (m->sharing_ratio);
+  rmp->ports_per_host = htons (m->ports_per_host);
+  rmp->ses_num = htonl (m->ses_num);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_det_map_dump_t_handler
+(vl_api_snat_det_map_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  snat_det_map_t * m;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  vec_foreach(m, sm->det_maps)
+    sent_snat_det_map_details(m, q, mp->context);
+}
+
+static void * vl_api_snat_det_map_dump_t_print
+(vl_api_snat_det_map_dump_t *mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_det_map_dump ");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1722,7 +1771,8 @@ _(SNAT_USER_DUMP, snat_user_dump)                                       \
 _(SNAT_USER_SESSION_DUMP, snat_user_session_dump)                       \
 _(SNAT_ADD_DET_MAP, snat_add_det_map)                                   \
 _(SNAT_DET_FORWARD, snat_det_forward)                                   \
-_(SNAT_DET_REVERSE, snat_det_reverse)
+_(SNAT_DET_REVERSE, snat_det_reverse)                                   \
+_(SNAT_DET_MAP_DUMP, snat_det_map_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *

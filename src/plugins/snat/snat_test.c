@@ -110,7 +110,8 @@ _(SNAT_USER_DETAILS, snat_user_details)                         \
 _(SNAT_USER_SESSION_DETAILS, snat_user_session_details)         \
 _(SNAT_ADD_DET_MAP_REPLY, snat_add_det_map_reply)               \
 _(SNAT_DET_FORWARD_REPLY, snat_det_forward_reply)               \
-_(SNAT_DET_REVERSE_REPLY, snat_det_reverse_reply)
+_(SNAT_DET_REVERSE_REPLY, snat_det_reverse_reply)               \
+_(SNAT_DET_MAP_DETAILS, snat_det_map_details)
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -854,6 +855,44 @@ static int api_snat_det_reverse (vat_main_t * vam)
   return ret;
 }
 
+static void vl_api_snat_det_map_details_t_handler
+  (vl_api_snat_det_map_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat (vam->ofp, "Deterministic S-NAT mapping in %U/%d out %U/%d "
+                     "ports per host %d sharing ratio %d "
+                     "number of sessions %d",
+           format_ip4_address, mp->in_addr, mp->in_plen,
+           format_ip4_address, mp->out_addr, mp->out_plen,
+           ntohs(mp->ports_per_host), ntohl(mp->sharing_ratio),
+           ntohl(mp->ses_num));
+}
+
+static int api_snat_det_map_dump(vat_main_t * vam)
+{
+  vl_api_snat_det_map_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_det_map_dump");
+      return -99;
+    }
+
+  M(SNAT_DET_MAP_DUMP, mp);
+  S(mp);
+
+  /* Use a control ping for synchronization */
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -882,7 +921,8 @@ _(snat_user_session_dump, "ip_address <ip> vrf_id <table-id>")   \
 _(snat_add_det_map, "in <in_addr>/<in_plen> out "                \
   "<out_addr>/<out_plen> [del]")                                 \
 _(snat_det_forward, "<in_addr>")                                 \
-_(snat_det_reverse, "<out_addr> <out_port>")
+_(snat_det_reverse, "<out_addr> <out_port>")                     \
+_(snat_det_map_dump, "")
 
 static void 
 snat_vat_api_hookup (vat_main_t *vam)

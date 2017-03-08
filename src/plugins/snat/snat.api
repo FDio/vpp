@@ -514,3 +514,35 @@ define snat_det_reverse_reply {
   u8 is_ip4;
   u8 in_addr[16];
 };
+
+/** \brief Dump S-NAT deterministic mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_det_map_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief S-NAT users response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+    @param in_plen - inside IP address prefix length
+    @param out_addr - outside IP address
+    @param out_plen - outside IP address prefix length
+    @param sharing_ratio - outside to inside address sharing ratio
+    @param ports_per_host - number of ports available to a host
+    @param ses_num - number of sessions belonging to this mapping
+*/
+define snat_det_map_details {
+  u32 context;
+  u8 is_ip4;
+  u8 in_addr[16];
+  u8 in_plen;
+  u8 out_addr[16];
+  u8 out_plen;
+  u32 sharing_ratio;
+  u16 ports_per_host;
+  u32 ses_num;
+};
