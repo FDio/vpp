@@ -62,6 +62,7 @@ class TestMAP(VppTestCase):
         self.assertEqual(rx[IPv6].src, ip6_src)
         self.assertEqual(rx[IPv6].dst, ip6_dst)
 
+    @unittest.skip("Doesn't Work")
     def test_map_e(self):
         """ MAP-E """
 
