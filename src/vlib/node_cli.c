@@ -248,16 +248,11 @@ show_node_runtime (vlib_main_t * vm,
       if (unformat (input, "max") || unformat (input, "m"))
 	max = 1;
 
-      if (vec_len (vlib_mains) == 0)
-	vec_add1 (stat_vms, vm);
-      else
+      for (i = 0; i < vec_len (vlib_mains); i++)
 	{
-	  for (i = 0; i < vec_len (vlib_mains); i++)
-	    {
-	      stat_vm = vlib_mains[i];
-	      if (stat_vm)
-		vec_add1 (stat_vms, stat_vm);
-	    }
+	  stat_vm = vlib_mains[i];
+	  if (stat_vm)
+	    vec_add1 (stat_vms, stat_vm);
 	}
 
       /*
@@ -331,7 +326,7 @@ show_node_runtime (vlib_main_t * vm,
 		}
 	    }
 
-	  if (vec_len (vlib_mains))
+	  if (vec_len (vlib_mains) > 1)
 	    {
 	      vlib_worker_thread_t *w = vlib_worker_threads + j;
 	      if (j > 0)
@@ -404,16 +399,11 @@ clear_node_runtime (vlib_main_t * vm,
   vlib_main_t **stat_vms = 0, *stat_vm;
   vlib_node_runtime_t *r;
 
-  if (vec_len (vlib_mains) == 0)
-    vec_add1 (stat_vms, vm);
-  else
+  for (i = 0; i < vec_len (vlib_mains); i++)
     {
-      for (i = 0; i < vec_len (vlib_mains); i++)
-	{
-	  stat_vm = vlib_mains[i];
-	  if (stat_vm)
-	    vec_add1 (stat_vms, stat_vm);
-	}
+      stat_vm = vlib_mains[i];
+      if (stat_vm)
+	vec_add1 (stat_vms, stat_vm);
     }
 
   vlib_worker_thread_barrier_sync (vm);

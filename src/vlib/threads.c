@@ -570,9 +570,13 @@ start_workers (vlib_main_t * vm)
 
   if (n_vlib_mains > 1)
     {
-      vec_validate (vlib_mains, tm->n_vlib_mains - 1);
+      /* Replace hand-crafted length-1 vector with a real vector */
+      vlib_mains = 0;
+
+      vec_validate_aligned (vlib_mains, tm->n_vlib_mains - 1,
+			    CLIB_CACHE_LINE_BYTES);
       _vec_len (vlib_mains) = 0;
-      vec_add1 (vlib_mains, vm);
+      vec_add1_aligned (vlib_mains, vm, CLIB_CACHE_LINE_BYTES);
 
       vlib_worker_threads->wait_at_barrier =
 	clib_mem_alloc_aligned (sizeof (u32), CLIB_CACHE_LINE_BYTES);
@@ -685,7 +689,7 @@ start_workers (vlib_main_t * vm)
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 
 	      clib_mem_set_heap (oldheap);
-	      vec_add1 (vlib_mains, vm_clone);
+	      vec_add1_aligned (vlib_mains, vm_clone, CLIB_CACHE_LINE_BYTES);
 
 	      vm_clone->error_main.counters =
 		vec_dup (vlib_mains[0]->error_main.counters);
@@ -805,7 +809,7 @@ vlib_worker_thread_node_runtime_update (void)
 
   ASSERT (os_get_cpu_number () == 0);
 
-  if (vec_len (vlib_mains) == 0)
+  if (vec_len (vlib_mains) == 1)
     return;
 
   vm = vlib_mains[0];
@@ -1148,7 +1152,7 @@ vlib_worker_thread_barrier_sync (vlib_main_t * vm)
   f64 deadline;
   u32 count;
 
-  if (!vlib_mains)
+  if (vec_len (vlib_mains) < 2)
     return;
 
   count = vec_len (vlib_mains) - 1;
@@ -1179,7 +1183,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 {
   f64 deadline;
 
-  if (!vlib_mains)
+  if (vec_len (vlib_mains) < 2)
     return;
 
   if (--vlib_worker_threads[0].recursion_level > 0)

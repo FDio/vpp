@@ -374,8 +374,7 @@ vhost_user_rx_thread_placement ()
   for (i = vum->input_cpu_first_index;
        i < vum->input_cpu_first_index + vum->input_cpu_count; i++)
     {
-      vlib_node_set_state (vlib_mains ? vlib_mains[i] : &vlib_global_main,
-			   vhost_user_input_node.index,
+      vlib_node_set_state (vlib_mains[i], vhost_user_input_node.index,
 			   VLIB_NODE_STATE_DISABLED);
       vec_add1 (workers, i);
     }
@@ -406,9 +405,9 @@ vhost_user_rx_thread_placement ()
 	  iaq.qid = qid;
 	  iaq.vhost_iface_index = vui - vum->vhost_user_interfaces;
 	  vec_add1 (vhc->rx_queues, iaq);
-	  vlib_node_set_state (vlib_mains ? vlib_mains[cpu_index] :
-	      &vlib_global_main, vhost_user_input_node.index,
-	      VLIB_NODE_STATE_POLLING);
+	  vlib_node_set_state (vlib_mains[cpu_index],
+                               vhost_user_input_node.index,
+                               VLIB_NODE_STATE_POLLING);
 	}
   });
   /* *INDENT-ON* */
