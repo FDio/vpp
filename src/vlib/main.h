@@ -178,6 +178,8 @@ typedef struct vlib_main_t
 /* Global main structure. */
 extern vlib_main_t vlib_global_main;
 
+void vlib_worker_loop (vlib_main_t * vm);
+
 always_inline f64
 vlib_time_now (vlib_main_t * vm)
 {
