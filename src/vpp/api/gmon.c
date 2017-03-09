@@ -132,8 +132,7 @@ gmon_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       *gm->vector_rate_ptr = vector_rate;
       now = vlib_time_now (vm);
       dt = now - last_runtime;
-      // TODO
-      //input_packets = vnet_get_aggregate_rx_packets ();
+      input_packets = vnet_get_aggregate_rx_packets ();
       *gm->input_rate_ptr = (f64) (input_packets - last_input_packets) / dt;
       last_runtime = now;
       last_input_packets = input_packets;
