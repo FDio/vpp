@@ -19,6 +19,7 @@
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
+#include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 
@@ -2654,7 +2655,7 @@ lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
   return vni;
 }
 
-always_inline void
+void
 get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 				  gid_address_t * src, gid_address_t * dst)
 {
@@ -3602,7 +3603,57 @@ lisp_cp_init (vlib_main_t * vm)
 
   u64 now = clib_cpu_time_now ();
   timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
+  lcm->lisp_stats_index_by_key =
+    hash_create_mem (0, sizeof (lisp_stats_key_t), sizeof (uword));
   return 0;
+}
+
+static int
+lisp_stats_api_fill (lisp_cp_main_t *lcm, lisp_gpe_main_t *lgm,
+                     lisp_api_stats_t *stat, lisp_stats_key_t *key,
+                     u32 stats_index)
+{
+  lisp_stats_t *s;
+  lisp_gpe_fwd_entry_key_t fwd_key;
+  const lisp_gpe_tunnel_t *lgt;
+  mapping_t *dst_map, *src_map;
+
+  memset (stat, 0, sizeof (*stat));
+  memset (&fwd_key, 0, sizeof (fwd_key));
+
+  dst_map = pool_elt_at_index (lcm->mapping_pool, key->dst_mapping_index);
+  src_map = pool_elt_at_index (lcm->mapping_pool, key->src_mapping_index);
+
+  gid_to_dp_address (&dst_map->eid, &stat->deid);
+  gid_to_dp_address (&src_map->eid, &stat->seid);
+
+  lgt = lisp_gpe_tunnel_get (key->tunnel_index);
+  stat->loc_rloc = lgt->key->lcl;
+  stat->rmt_rloc = lgt->key->rmt;
+
+  s = pool_elt_at_index (lcm->lisp_stats_pool, stats_index);
+  stat->stats = *s;
+  return 1;
+}
+
+lisp_api_stats_t *
+vnet_lisp_get_stats (void)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_api_stats_t *stats = 0, stat;
+  lisp_stats_key_t *key;
+  u32 index;
+
+  /* *INDENT-OFF* */
+  hash_foreach_mem (key, index, lcm->lisp_stats_index_by_key,
+  {
+    if (lisp_stats_api_fill (lcm, lgm, &stat, key, index))
+      vec_add1 (stats, stat);
+  });
+  /* *INDENT-ON* */
+
+  return stats;
 }
 
 static void *

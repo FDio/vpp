@@ -359,6 +359,7 @@ void
 build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst);
 
 void gid_address_from_ip (gid_address_t * g, ip_address_t * ip);
+void gid_to_dp_address (gid_address_t * g, dp_address_t * d);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */
 

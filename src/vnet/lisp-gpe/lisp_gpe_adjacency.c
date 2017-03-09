@@ -19,6 +19,7 @@
  */
 
 #include <vnet/dpo/load_balance.h>
+#include <vnet/lisp-cp/control.h>
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_sub_interface.h>
 #include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
@@ -224,8 +225,95 @@ lisp_gpe_adj_proto_from_vnet_link_type (vnet_link_t linkt)
 #define is_v4_packet(_h) ((*(u8*) _h) & 0xF0) == 0x40
 
 static void
+lisp_gpe_increment_stats_counters (vlib_main_t * vm, ip_adjacency_t * adj,
+				   vlib_buffer_t * b)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_gpe_adjacency_t *ladj;
+  ip_address_t rloc;
+  index_t lai;
+  u32 si, di;
+  gid_address_t src, dst;
+  lisp_stats_t *stats;
+
+  ip46_address_to_ip_address (&adj->sub_type.nbr.next_hop, &rloc);
+  si = vnet_buffer (b)->sw_if_index[VLIB_TX];
+  lai = lisp_adj_find (&rloc, si);
+  ASSERT (INDEX_INVALID != lai);
+
+  ladj = pool_elt_at_index (lisp_adj_pool, lai);
+
+  u8 *lisp_data = (u8 *) vlib_buffer_get_current (b);
+
+  /* skip IP header */
+  if (lisp_data[0] == 0x45)
+    lisp_data += sizeof (ip4_header_t);
+  else
+    lisp_data += sizeof (ip6_header_t);
+
+  /* skip UDP header */
+  lisp_data += sizeof (udp_header_t);
+  // TODO: skip TCP?
+
+  /* skip LISP header */
+  lisp_data += sizeof (lisp_gpe_header_t);
+
+  clib_warning ("inner ip: 0x%x 0x%x", *(((u32 *) lisp_data) + 3),
+		*(((u32 *) lisp_data) + 4));
+
+  i16 saved_current_data = b->current_data;
+  b->current_data = lisp_data - b->data;
+
+  vnet_buffer (b)->lisp.overlay_afi = LISP_AFI_IP;
+  get_src_and_dst_eids_from_buffer (lcm, b, &src, &dst);
+  b->current_data = saved_current_data;
+  di = gid_dictionary_sd_lookup (&lcm->mapping_index_by_gid, &dst, &src);
+  if (~0 == di)
+    {
+      clib_warning ("DBG: dst mapping not found (%U, %U)", format_gid_address,
+		    &src, format_gid_address, &dst);
+      return;
+    }
+
+  si = gid_dictionary_lookup (&lcm->mapping_index_by_gid,
+                              &src);
+  if (~0 == si)
+    {
+      clib_warning ("DBG: src mapping not found (%U)", format_gid_address,
+		    &src);
+      return;
+    }
+
+  lisp_stats_key_t key;
+  memset (&key, 0, sizeof (key));
+  key.dst_mapping_index = di;
+  key.src_mapping_index = si;
+  key.tunnel_index = ladj->tunnel_index;
+
+  uword *p = hash_get_mem (lcm->lisp_stats_index_by_key, &key);
+  if (p)
+    {
+      stats = pool_elt_at_index (lcm->lisp_stats_pool, p[0]);
+    }
+  else
+    {
+      pool_get (lcm->lisp_stats_pool, stats);
+      memset (stats, 0, sizeof (*stats));
+
+      lisp_stats_key_t *key_copy = clib_mem_alloc (sizeof (*key_copy));
+      memcpy (key_copy, &key, sizeof (*key_copy));
+      hash_set_mem (lcm->lisp_stats_index_by_key, key_copy,
+		    stats - lcm->lisp_stats_pool);
+    }
+  stats->pkt_count++;
+  stats->bytes += b->current_length; // TODO: what's the data length?
+}
+
+static void
 lisp_gpe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b)
 {
+  lisp_gpe_increment_stats_counters (vm, adj, b);
+
   /* Fixup the checksum and len fields in the LISP tunnel encap
    * that was applied at the midchain node */
   ip_udp_fixup_one (vm, b, is_v4_packet (vlib_buffer_get_current (b)));

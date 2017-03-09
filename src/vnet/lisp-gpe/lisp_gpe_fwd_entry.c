@@ -329,28 +329,6 @@ delete_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 			    lfe->eid_fib_index, &lfe->key->rmt.ippref);
 }
 
-static void
-gid_to_dp_address (gid_address_t * g, dp_address_t * d)
-{
-  switch (gid_address_type (g))
-    {
-    case GID_ADDR_IP_PREFIX:
-    case GID_ADDR_SRC_DST:
-      ip_prefix_copy (&d->ippref, &gid_address_ippref (g));
-      d->type = FID_ADDR_IP_PREF;
-      break;
-    case GID_ADDR_MAC:
-      mac_copy (&d->mac, &gid_address_mac (g));
-      d->type = FID_ADDR_MAC;
-      break;
-    case GID_ADDR_NSH:
-    default:
-      d->nsh = gid_address_nsh (g).spi << 8 | gid_address_nsh (g).si;
-      d->type = FID_ADDR_NSH;
-      break;
-    }
-}
-
 static lisp_gpe_fwd_entry_t *
 find_fwd_entry (lisp_gpe_main_t * lgm,
 		vnet_lisp_gpe_add_del_fwd_entry_args_t * a,

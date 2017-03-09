@@ -113,6 +113,29 @@ typedef enum lisp_flags
 
 typedef struct
 {
+  u32 dst_mapping_index;
+  u32 src_mapping_index;
+  u32 tunnel_index;
+} lisp_stats_key_t;
+
+typedef struct
+{
+  u32 pkt_count;
+  u32 bytes;
+} lisp_stats_t;
+
+typedef struct
+{
+  dp_address_t deid;
+  dp_address_t seid;
+  ip_address_t loc_rloc;
+  ip_address_t rmt_rloc;
+
+  lisp_stats_t stats;
+} lisp_api_stats_t;
+
+typedef struct
+{
   u32 flags;
 
   /* LISP feature status */
@@ -213,6 +236,9 @@ typedef struct
   /* statistics */
   u8 stats_enabled;
 
+  lisp_stats_t *lisp_stats_pool;
+  uword *lisp_stats_index_by_key;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
@@ -234,6 +260,10 @@ vnet_lisp_cp_get_main ()
 {
   return &lisp_control_main;
 }
+
+void
+get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
+				  gid_address_t * src, gid_address_t * dst);
 
 typedef struct
 {
@@ -337,6 +367,7 @@ lisp_get_petr_mapping (lisp_cp_main_t * lcm)
 
 u8 vnet_lisp_stats_enable_disable_state (void);
 vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
+lisp_api_stats_t *vnet_lisp_get_stats (void);
 
 #endif /* VNET_CONTROL_H_ */
 
