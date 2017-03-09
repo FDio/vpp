@@ -235,6 +235,11 @@ vnet_lisp_cp_get_main ()
   return &lisp_control_main;
 }
 
+void
+get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
+				  gid_address_t * src, gid_address_t * dst,
+				  u16 type);
+
 typedef struct
 {
   u8 is_add;
@@ -334,9 +339,6 @@ lisp_get_petr_mapping (lisp_cp_main_t * lcm)
 {
   return pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
 }
-
-u8 vnet_lisp_stats_enable_disable_state (void);
-vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
 
 #endif /* VNET_CONTROL_H_ */
 
