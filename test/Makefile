@@ -62,10 +62,22 @@ define retest-func
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover $(UNITTEST_EXTRA_OPTS) -p test_\"*.py\""
 endef
 
-test: verify-python-path verify-no-running-vpp reset $(PAPI_INSTALL_DONE)
+.PHONY: sanity
+
+sanity: verify-no-running-vpp
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python sanity_import_vpp_papi.py ||\
+		(echo \"*******************************************************************\" &&\
+		 echo \"* Sanity check failed, cannot import vpp_papi\" &&\
+		 echo \"* to debug: \" &&\
+		 echo \"* 1. enter test shell:   make test-shell\" &&\
+		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_papi.py'\" &&\
+	         echo \"*******************************************************************\" &&\
+		 false)"
+
+test: verify-python-path $(PAPI_INSTALL_DONE) sanity reset 
 	$(call retest-func)
 
-retest: verify-python-path verify-no-running-vpp reset
+retest: verify-python-path sanity reset
 	$(call retest-func)
 
 shell: verify-python-path $(PAPI_INSTALL_DONE)
