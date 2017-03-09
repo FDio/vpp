@@ -44,6 +44,7 @@
  */
 
 #include <vlib/vlib.h>
+#include <vlib/unix/unix.h>
 
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
@@ -582,6 +583,11 @@ alloc_from_free_list (vlib_main_t * vm,
   uword n_filled;
 
   dst = alloc_buffers;
+
+  /* wait with buffer memory allocation as long as possible
+     in case external buffer manager takes over */
+  if (PREDICT_FALSE (vm->os_physmem_alloc_aligned == 0))
+    unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
 
   n_filled = fill_free_list (vm, free_list, n_alloc_buffers);
   if (n_filled == 0)

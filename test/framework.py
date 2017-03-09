@@ -157,7 +157,9 @@ class VppTestCase(unittest.TestCase):
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, coredump_size, "}",
                            "api-trace", "{", "on", "}",
-                           "api-segment", "{", "prefix", cls.shm_prefix, "}"]
+                           "api-segment", "{", "prefix", cls.shm_prefix, "}",
+                           "plugins", "{", "plugin", "dpdk_plugin.so", "{",
+                           "disable", "}", "}"]
         if cls.plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", cls.plugin_path])
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)

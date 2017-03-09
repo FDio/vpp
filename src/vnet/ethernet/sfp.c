@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/devices/nic/sfp.h>
+#include <vnet/ethernet/sfp.h>
 
 static u8 *
 format_space_terminated (u8 * s, va_list * args)
