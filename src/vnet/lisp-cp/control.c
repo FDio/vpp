@@ -1346,6 +1346,7 @@ vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
   if (is_add)
     {
       /* Create dummy petr locator-set */
+      memset (&loc, 0, sizeof (loc));
       gid_address_from_ip (&loc.address, ip);
       loc.priority = 1;
       loc.state = loc.weight = 1;
