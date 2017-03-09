@@ -47,6 +47,8 @@ api_main_init (vlib_main_t * vm)
 
   vam->vlib_main = vm;
   vam->my_client_index = (u32) ~ 0;
+  /* Ensure that vam->inbuf is never NULL */
+  vec_validate (vam->inbuf, 0);
   init_error_string_table (vam);
   rv = vat_plugin_init (vam);
   if (rv)
@@ -81,6 +83,14 @@ api_command_fn (vlib_main_t * vm,
   api_main_t *am = &api_main;
 
   vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
+
+#ifdef __COVERITY
+  /*
+   * Convince Coverity that it's not a NULL pointer...
+   * Done once for real below, since we never vec_free(vam->inbuf);
+   */
+  vec_validate (vam->inbuf, 0);
+#endif
 
   vec_reset_length (vam->inbuf);
   vam->input = &_input;
