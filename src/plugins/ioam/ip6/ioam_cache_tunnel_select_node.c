@@ -48,6 +48,7 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>
 
+vlib_node_registration_t ioam_cache_ts_node;
 typedef struct
 {
   u32 next_index;
