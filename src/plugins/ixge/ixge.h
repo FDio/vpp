@@ -19,7 +19,7 @@
 #include <vnet/vnet.h>
 #include <vlib/pci/pci.h>
 #include <vlib/i2c.h>
-#include <vnet/devices/nic/sfp.h>
+#include <vnet/ethernet/sfp.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
