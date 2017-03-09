@@ -436,9 +436,9 @@ ioam_cache_sr_rewrite_template_create (void)
 
   /* This nodes address and the original dest will be
    * filled when the packet is processed */
-  vec_add2 (segments, this_seg, 2);
-  memset (this_seg, 0xfe, 2 * sizeof (ip6_address_t));
-  cm->sr_rewrite_template = ip6_compute_rewrite_string_insert (segments);
+  vec_add2 (segments, this_seg, 1);
+  memset (this_seg, 0xfe, sizeof (ip6_address_t));
+  cm->sr_rewrite_template = ip6_sr_compute_rewrite_string_insert (segments);
   vec_free (segments);
 }
 

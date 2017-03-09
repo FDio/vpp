@@ -484,7 +484,7 @@ else                                                    \
   {                                                     \
     (p) = ip6_ext_next_header((p));                     \
   }                                                     \
-  if ( ip6_ext_hdr((p)->next_hdr) == (t))               \
+  if ( ((p)->next_hdr) == (t))                          \
   {                                                     \
     (m) = (void *)(ip6_ext_next_header((p)));           \
   }                                                     \

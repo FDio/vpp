@@ -827,6 +827,9 @@ end_psp_srh_processing (vlib_node_runtime_t * node,
 			ip6_sr_localsid_t * ls0, u32 * next0)
 {
   u32 new_l0, sr_len;
+  u64 *copy_dst0, *copy_src0;
+  u32 copy_len_u64s0 = 0;
+  int i;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
@@ -845,8 +848,25 @@ end_psp_srh_processing (vlib_node_runtime_t * node,
 	  vlib_buffer_advance (b0, sr_len);
 	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
-	  clib_memcpy ((void *) ip0 + sr_len, ip0,
-		       (void *) sr0 - (void *) ip0);
+	  copy_src0 = (u64 *) ip0;
+	  copy_dst0 = copy_src0 + (sr0->length + 1);
+	  /* number of 8 octet units to copy
+	   * By default in absence of extension headers it is equal to length of ip6 header
+	   * With extension headers it number of 8 octet units of ext headers preceding
+	   * SR header
+	   */
+	  copy_len_u64s0 =
+	    (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
+	  copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
+	  copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
+	  copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
+	  copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
+	  copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
+
+	  for (i = copy_len_u64s0 - 1; i >= 0; i--)
+	    {
+	      copy_dst0[i] = copy_src0[i];
+	    }
 
 	  if (ls0->behavior == SR_BEHAVIOR_X)
 	    {
