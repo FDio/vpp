@@ -19,6 +19,7 @@
 #include <vnet/lisp-cp/lisp_msg_serdes.h>
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
+#include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 
@@ -284,6 +285,7 @@ dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   if (fe->is_src_dst)
     gid_address_copy (&a->lcl_eid, &fe->leid);
 
+  vnet_lisp_del_fwd_stats (a, feip[0]);
   vnet_lisp_gpe_add_del_fwd_entry (a, &sw_if_index);
 
   /* delete entry in fwd table */
@@ -1228,9 +1230,6 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
 
   if (a->is_add)
     {
-      /* TODO 1) check if src/dst 2) once we have src/dst working, use it in
-       * delete*/
-
       /* check if source eid has an associated mapping. If pitr mode is on,
        * just use the pitr's mapping */
       local_mi = lcm->lisp_pitr ? lcm->pitr_map_index :
@@ -2654,16 +2653,15 @@ lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
   return vni;
 }
 
-always_inline void
+void
 get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
-				  gid_address_t * src, gid_address_t * dst)
+				  gid_address_t * src, gid_address_t * dst,
+				  u16 type)
 {
   u32 vni = 0;
-  u16 type;
 
   memset (src, 0, sizeof (*src));
   memset (dst, 0, sizeof (*dst));
-  type = vnet_buffer (b)->lisp.overlay_afi;
 
   if (LISP_AFI_IP == type || LISP_AFI_IP6 == type)
     {
@@ -2742,10 +2740,9 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, pi0);
 	  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
-	  vnet_buffer (b0)->lisp.overlay_afi = overlay;
 
 	  /* src/dst eid pair */
-	  get_src_and_dst_eids_from_buffer (lcm, b0, &src, &dst);
+	  get_src_and_dst_eids_from_buffer (lcm, b0, &src, &dst, overlay);
 
 	  /* if we have remote mapping for destination already in map-chache
 	     add forwarding tunnel directly. If not send a map-request */
@@ -3605,6 +3602,55 @@ lisp_cp_init (vlib_main_t * vm)
   return 0;
 }
 
+static int
+lisp_stats_api_fill (lisp_cp_main_t * lcm, lisp_gpe_main_t * lgm,
+		     lisp_api_stats_t * stat, lisp_stats_key_t * key,
+		     u32 stats_index)
+{
+  lisp_stats_t *s;
+  lisp_gpe_fwd_entry_key_t fwd_key;
+  const lisp_gpe_tunnel_t *lgt;
+  fwd_entry_t *fe;
+
+  memset (stat, 0, sizeof (*stat));
+  memset (&fwd_key, 0, sizeof (fwd_key));
+
+  fe = pool_elt_at_index (lcm->fwd_entry_pool, key->fwd_entry_index);
+  ASSERT (fe != 0);
+
+  gid_to_dp_address (&fe->reid, &stat->deid);
+  gid_to_dp_address (&fe->leid, &stat->seid);
+  stat->vni = gid_address_vni (&fe->reid);
+
+  lgt = lisp_gpe_tunnel_get (key->tunnel_index);
+  stat->loc_rloc = lgt->key->lcl;
+  stat->rmt_rloc = lgt->key->rmt;
+
+  s = pool_elt_at_index (lgm->lisp_stats_pool, stats_index);
+  stat->stats = *s;
+  return 1;
+}
+
+lisp_api_stats_t *
+vnet_lisp_get_stats (void)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_api_stats_t *stats = 0, stat;
+  lisp_stats_key_t *key;
+  u32 index;
+
+  /* *INDENT-OFF* */
+  hash_foreach_mem (key, index, lgm->lisp_stats_index_by_key,
+  {
+    if (lisp_stats_api_fill (lcm, lgm, &stat, key, index))
+      vec_add1 (stats, stat);
+  });
+  /* *INDENT-ON* */
+
+  return stats;
+}
+
 static void *
 send_map_request_thread_fn (void *arg)
 {
@@ -3810,7 +3856,11 @@ vnet_lisp_stats_enable_disable (u8 enable)
   if (vnet_lisp_enable_disable_status () == 0)
     return VNET_API_ERROR_LISP_DISABLED;
 
-  lcm->stats_enabled = enable;
+  if (enable)
+    lcm->flags |= LISP_FLAG_STATS_ENABLED;
+  else
+    lcm->flags &= ~LISP_FLAG_STATS_ENABLED;
+
   return 0;
 }
 
@@ -3822,7 +3872,7 @@ vnet_lisp_stats_enable_disable_state (void)
   if (vnet_lisp_enable_disable_status () == 0)
     return VNET_API_ERROR_LISP_DISABLED;
 
-  return lcm->stats_enabled;
+  return lcm->flags & LISP_FLAG_STATS_ENABLED;
 }
 
 /* *INDENT-OFF* */
