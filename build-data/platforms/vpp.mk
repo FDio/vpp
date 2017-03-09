@@ -35,11 +35,6 @@ vpp_uses_dpdk = yes
 
 vpp_root_packages = vpp gmod
 
-vpp_configure_args_vpp = --with-dpdk
-
-# Set these parameters carefully. The vlib_buffer_t is 128 bytes, i.e.
-vlib_configure_args_vpp = --with-pre-data=128
-
 # DPDK configuration parameters
 # vpp_uses_dpdk_cryptodev_sw = yes
 # vpp_uses_dpdk_mlx5_pmd = yes
