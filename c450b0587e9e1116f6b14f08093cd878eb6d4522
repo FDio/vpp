@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_2b6e1297",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-03-09T14:44:18Z",
+      "side": 1,
+      "message": "Probably more to the point: \"make test-debug-shell\"...",
+      "revId": "c450b0587e9e1116f6b14f08093cd878eb6d4522",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
