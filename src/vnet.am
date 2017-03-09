@@ -114,14 +114,16 @@ libvnet_la_SOURCES +=				\
  vnet/ethernet/init.c				\
  vnet/ethernet/interface.c			\
  vnet/ethernet/node.c				\
- vnet/ethernet/pg.c
+ vnet/ethernet/pg.c				\
+ vnet/ethernet/sfp.c
 
 nobase_include_HEADERS +=			\
  vnet/ethernet/arp_packet.h			\
  vnet/ethernet/error.def			\
  vnet/ethernet/ethernet.h			\
  vnet/ethernet/packet.h				\
- vnet/ethernet/types.def
+ vnet/ethernet/types.def			\
+ vnet/ethernet/sfp.h
 
 ########################################
 # Layer 2 protocol: Ethernet bridging
@@ -791,14 +793,6 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vnet/pg/pg.h					\
   vnet/pg/edit.h
-
-if !WITH_DPDK
-libvnet_la_SOURCES +=				\
-  vnet/devices/nic/ixge.c                       \
-  vnet/devices/nic/ixge.h                       \
-  vnet/devices/nic/sfp.c                        \
-  vnet/devices/nic/sfp.h
-endif
 
 ########################################
 # virtio

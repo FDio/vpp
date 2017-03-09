@@ -97,7 +97,6 @@ DISABLE_ARG(papi,	[Disable Python API bindings])
 DISABLE_ARG(japi,	[Disable Java API bindings])
 
 # --with-X
-WITH_ARG(dpdk,		[Use use DPDK])
 WITH_ARG(dpdk_crypto_sw,[Use DPDK cryptodev SW PMDs])
 WITH_ARG(dpdk_mlx5_pmd,	[Use DPDK with mlx5 PMD])
 
@@ -130,7 +129,6 @@ AC_ARG_WITH(pre-data,
 AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 
-AC_DEFINE_UNQUOTED(DPDK, 		[${n_with_dpdk}])
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
 AC_DEFINE_UNQUOTED(DPDK_CRYPTO_SW,	[${n_with_dpdk_crypto_sw}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
@@ -147,9 +145,11 @@ AC_SUBST(AR_FLAGS)
 
 # Please keep alphabetical order
 PLUGIN_ENABLED(acl)
+PLUGIN_ENABLED(dpdk)
 PLUGIN_ENABLED(flowperpkt)
 PLUGIN_ENABLED(ila)
 PLUGIN_ENABLED(ioam)
+PLUGIN_ENABLED(ixge)
 PLUGIN_ENABLED(lb)
 PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(snat)

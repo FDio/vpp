@@ -33,7 +33,7 @@ if ENABLE_ACL_PLUGIN
 include acl.am
 endif
 
-if WITH_DPDK
+if ENABLE_DPDK_PLUGIN
 include dpdk.am
 endif
 
@@ -47,6 +47,10 @@ endif
 
 if ENABLE_IOAM_PLUGIN
 include ioam.am
+endif
+
+if ENABLE_IXGE_PLUGIN
+include ixge.am
 endif
 
 if ENABLE_LB_PLUGIN
