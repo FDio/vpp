@@ -424,6 +424,8 @@ lisp_gpe_init (vlib_main_t * vm)
   udp_register_dst_port (vm, UDP_DST_PORT_lisp_gpe6,
 			 lisp_gpe_ip6_input_node.index, 0 /* is_ip4 */ );
 
+  lgm->lisp_stats_index_by_key =
+    hash_create_mem (0, sizeof (lisp_stats_key_t), sizeof (uword));
   return 0;
 }
 

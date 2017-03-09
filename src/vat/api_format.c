@@ -2611,6 +2611,92 @@ vl_api_one_eid_table_details_t_handler_json (vl_api_one_eid_table_details_t
 }
 
 static void
+vl_api_one_stats_details_t_handler (vl_api_one_stats_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u8 *seid = 0, *deid = 0;
+  u8 *(*format_ip_address_fcn) (u8 *, va_list *) = 0;
+
+  deid = format (0, "%U", format_lisp_eid_vat,
+		 mp->eid_type, mp->deid, mp->deid_pref_len, 0, 0, 0);
+
+  seid = format (0, "%U", format_lisp_eid_vat,
+		 mp->eid_type, mp->seid, mp->seid_pref_len, 0, 0, 0);
+
+  vec_add1 (deid, 0);
+  vec_add1 (seid, 0);
+
+  if (mp->is_ip4)
+    format_ip_address_fcn = format_ip4_address;
+  else
+    format_ip_address_fcn = format_ip6_address;
+
+
+  print (vam->ofp, "([%d] %s %s) (%U %U) %u %u",
+	 clib_net_to_host_u32 (mp->vni),
+	 seid, deid,
+	 format_ip_address_fcn, mp->lloc,
+	 format_ip_address_fcn, mp->rloc,
+	 clib_net_to_host_u32 (mp->pkt_count),
+	 clib_net_to_host_u32 (mp->bytes));
+
+  vec_free (deid);
+  vec_free (seid);
+}
+
+static void
+vl_api_one_stats_details_t_handler_json (vl_api_one_stats_details_t * mp)
+{
+  struct in6_addr ip6;
+  struct in_addr ip4;
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = 0;
+  u8 *deid = 0, *seid = 0;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  deid = format (0, "%U", format_lisp_eid_vat,
+		 mp->eid_type, mp->deid, mp->deid_pref_len, 0, 0, 0);
+
+  seid = format (0, "%U", format_lisp_eid_vat,
+		 mp->eid_type, mp->seid, mp->seid_pref_len, 0, 0, 0);
+
+  vec_add1 (deid, 0);
+  vec_add1 (seid, 0);
+
+  vat_json_object_add_string_copy (node, "seid", seid);
+  vat_json_object_add_string_copy (node, "deid", deid);
+  vat_json_object_add_uint (node, "vni", clib_net_to_host_u32 (mp->vni));
+
+  if (mp->is_ip4)
+    {
+      clib_memcpy (&ip4, mp->lloc, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "lloc", ip4);
+      clib_memcpy (&ip4, mp->rloc, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "rloc", ip4);
+    }
+  else
+    {
+      clib_memcpy (&ip6, mp->lloc, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "lloc", ip6);
+      clib_memcpy (&ip6, mp->rloc, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "rloc", ip6);
+    }
+  vat_json_object_add_uint (node, "pkt_count",
+			    clib_net_to_host_u32 (mp->pkt_count));
+  vat_json_object_add_uint (node, "bytes", clib_net_to_host_u32 (mp->bytes));
+
+  vec_free (deid);
+  vec_free (seid);
+}
+
+static void
   vl_api_one_eid_table_map_details_t_handler
   (vl_api_one_eid_table_map_details_t * mp)
 {
@@ -4263,6 +4349,7 @@ _(ONE_EID_TABLE_VNI_DETAILS, one_eid_table_vni_details)                 \
 _(ONE_MAP_RESOLVER_DETAILS, one_map_resolver_details)                   \
 _(ONE_MAP_SERVER_DETAILS, one_map_server_details)                       \
 _(ONE_ADJACENCIES_GET_REPLY, one_adjacencies_get_reply)                 \
+_(ONE_STATS_DETAILS, one_stats_details)                                 \
 _(GPE_SET_ENCAP_MODE_REPLY, gpe_set_encap_mode_reply)                   \
 _(GPE_GET_ENCAP_MODE_REPLY, gpe_get_encap_mode_reply)                   \
 _(GPE_ADD_DEL_IFACE_REPLY, gpe_add_del_iface_reply)                     \
@@ -15424,6 +15511,26 @@ api_one_map_resolver_dump (vat_main_t * vam)
 #define api_lisp_map_resolver_dump api_one_map_resolver_dump
 
 static int
+api_one_stats_dump (vat_main_t * vam)
+{
+  vl_api_one_stats_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  M (ONE_STATS_DUMP, mp);
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
 api_show_one_status (vat_main_t * vam)
 {
   vl_api_show_one_status_t *mp;
@@ -18399,6 +18506,7 @@ _(one_adjacencies_get, "vni <vni>")                                     \
 _(show_one_rloc_probe_state, "")                                        \
 _(show_one_map_register_state, "")                                      \
 _(show_one_status, "")                                                  \
+_(one_stats_dump, "")                                                   \
 _(one_get_map_request_itr_rlocs, "")                                    \
 _(show_one_pitr, "")                                                    \
 _(show_one_use_petr, "")                                                \
