@@ -199,9 +199,6 @@ defaulted:
     {
       vm->init_functions_called = hash_create (0, /* value bytes */ 0);
       vpe_main_init (vm);
-#if DPDK == 0
-      unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
-#endif
       return vlib_unix_main (argc, argv);
     }
   else

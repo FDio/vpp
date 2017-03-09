@@ -230,18 +230,18 @@ define test
 endef
 
 test: bootstrap
-	$(call test,vpp_lite,vpp_lite,test)
+	$(call test,vpp,vpp,test)
 
 test-debug: bootstrap
-	$(call test,vpp_lite,vpp_lite_debug,test)
+	$(call test,vpp,vpp_debug,test)
 
 test-all: bootstrap
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp_lite,vpp_lite,test)
+	$(call test,vpp,vpp,test)
 
 test-all-debug: bootstrap
 	$(eval EXTENDED_TESTS=yes)
-	$(call test,vpp_lite,vpp_lite_debug,test)
+	$(call test,vpp,vpp_debug,test)
 
 test-help:
 	@make -C test help
@@ -262,7 +262,7 @@ test-wipe-doc:
 	@make -C test wipe-doc
 
 test-cov: bootstrap
-	$(call test,vpp_lite,vpp_lite_gcov,cov)
+	$(call test,vpp,vpp_gcov,cov)
 
 test-wipe-cov:
 	@make -C test wipe-cov
@@ -271,10 +271,10 @@ test-checkstyle:
 	@make -C test checkstyle
 
 retest:
-	$(call test,vpp_lite,vpp_lite,retest)
+	$(call test,vpp,vpp,retest)
 
 retest-debug:
-	$(call test,vpp_lite,vpp_lite_debug,retest)
+	$(call test,vpp,vpp_debug,retest)
 
 STARTUP_DIR ?= $(PWD)
 ifeq ("$(wildcard $(STARTUP_CONF))","")
@@ -376,8 +376,6 @@ endef
 verify: install-dep $(BR)/.bootstrap.ok dpdk-install-dev
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
-	$(call banner,"Building for PLATFORM=vpp_lite using gcc")
-	@make -C build-root PLATFORM=vpp_lite TAG=vpp_lite wipe-all install-packages
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	$(call banner,"Installing dependencies")
 	@sudo -E apt-get update

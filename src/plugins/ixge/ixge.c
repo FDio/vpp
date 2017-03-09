@@ -32,8 +32,10 @@ typedef unsigned long long u32x4;
 #include <vlib/unix/unix.h>
 #include <vlib/pci/pci.h>
 #include <vnet/vnet.h>
-#include <vnet/devices/nic/ixge.h>
+#include <ixge/ixge.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/plugin/plugin.h>
+#include <vpp/app/version.h>
 
 #define IXGE_ALWAYS_POLL 0
 
@@ -2929,6 +2931,13 @@ ixge_set_next_node (ixge_rx_next_t next, char *name)
 }
 #endif
 
+/* *INDENT-OFF* */
+VLIB_PLUGIN_REGISTER () = {
+    .version = VPP_BUILD_VER,
+    .default_disabled = 1,
+};
+
+/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *
