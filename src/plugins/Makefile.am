@@ -49,6 +49,10 @@ if ENABLE_IOAM_PLUGIN
 include ioam.am
 endif
 
+if ENABLE_IXGE_PLUGIN
+include ixge.am
+endif
+
 if ENABLE_LB_PLUGIN
 include lb.am
 endif
