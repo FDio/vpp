@@ -235,9 +235,10 @@ pneum_rx_resume (void)
   pneum_main_t *pm = &pneum_main;
   if (!pm->rx_thread_handle) return;
   pthread_mutex_lock(&pm->queue_lock);
-  if (rx_is_running) return;
+  if (rx_is_running) goto unlock;
   pthread_cond_signal(&pm->resume_cv);
   rx_is_running = true;
+ unlock:
   pthread_mutex_unlock(&pm->queue_lock);
 }
 
