@@ -203,8 +203,8 @@ typedef struct
 
 ioam_cache_main_t ioam_cache_main;
 
-vlib_node_registration_t ioam_cache_node;
-vlib_node_registration_t ioam_cache_ts_node;
+extern vlib_node_registration_t ioam_cache_node;
+extern vlib_node_registration_t ioam_cache_ts_node;
 
 /*  Compute flow hash.  We'll use it to select which Sponge to use for this
  *  flow.  And other things.
@@ -436,9 +436,9 @@ ioam_cache_sr_rewrite_template_create (void)
 
   /* This nodes address and the original dest will be
    * filled when the packet is processed */
-  vec_add2 (segments, this_seg, 2);
-  memset (this_seg, 0xfe, 2 * sizeof (ip6_address_t));
-  cm->sr_rewrite_template = ip6_compute_rewrite_string_insert (segments);
+  vec_add2 (segments, this_seg, 1);
+  memset (this_seg, 0xfe, sizeof (ip6_address_t));
+  cm->sr_rewrite_template = ip6_sr_compute_rewrite_string_insert (segments);
   vec_free (segments);
 }
 

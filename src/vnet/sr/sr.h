@@ -297,7 +297,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
  * @return precomputed rewrite string for SRH insertion
  */
 static inline u8 *
-ip6_compute_rewrite_string_insert (ip6_address_t * sl)
+ip6_sr_compute_rewrite_string_insert (ip6_address_t * sl)
 {
   ip6_sr_header_t *srh;
   ip6_address_t *addrp, *this_address;
