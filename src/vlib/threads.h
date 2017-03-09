@@ -159,8 +159,8 @@ int vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 			      u32 frame_queue_index, vlib_frame_t * frame,
 			      vlib_frame_queue_msg_type_t type);
 
-int vlib_frame_queue_dequeue (int thread_id,
-			      vlib_main_t * vm, vlib_node_main_t * nm);
+int
+vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm);
 
 u64 dispatch_node (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,

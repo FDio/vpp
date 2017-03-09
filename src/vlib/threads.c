@@ -1208,9 +1208,8 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
  * If so, pull the packets off the frames and put them to
  * the handoff node.
  */
-static inline int
-vlib_frame_queue_dequeue_internal (vlib_main_t * vm,
-				   vlib_frame_queue_main_t * fqm)
+int
+vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 {
   u32 thread_id = vm->cpu_index;
   vlib_frame_queue_t *fq = fqm->vlib_frame_queues[thread_id];
@@ -1337,75 +1336,6 @@ vlib_frame_queue_dequeue_internal (vlib_main_t * vm,
   return processed;
 }
 
-static_always_inline void
-vlib_worker_thread_internal (vlib_main_t * vm)
-{
-  vlib_node_main_t *nm = &vm->node_main;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u64 cpu_time_now = clib_cpu_time_now ();
-  vlib_frame_queue_main_t *fqm;
-
-  vec_alloc (nm->pending_interrupt_node_runtime_indices, 32);
-
-  while (1)
-    {
-      vlib_worker_thread_barrier_check ();
-
-      vec_foreach (fqm, tm->frame_queue_mains)
-	vlib_frame_queue_dequeue_internal (vm, fqm);
-
-      vlib_node_runtime_t *n;
-      vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_INPUT])
-      {
-	cpu_time_now = dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
-				      VLIB_NODE_STATE_POLLING, /* frame */ 0,
-				      cpu_time_now);
-      }
-
-      /* Next handle interrupts. */
-      {
-	uword l = _vec_len (nm->pending_interrupt_node_runtime_indices);
-	uword i;
-	if (l > 0)
-	  {
-	    _vec_len (nm->pending_interrupt_node_runtime_indices) = 0;
-	    for (i = 0; i < l; i++)
-	      {
-		n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
-				      nm->
-				      pending_interrupt_node_runtime_indices
-				      [i]);
-		cpu_time_now =
-		  dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
-				 VLIB_NODE_STATE_INTERRUPT,
-				 /* frame */ 0,
-				 cpu_time_now);
-	      }
-	  }
-      }
-
-      if (_vec_len (nm->pending_frames))
-	{
-	  int i;
-	  cpu_time_now = clib_cpu_time_now ();
-	  for (i = 0; i < _vec_len (nm->pending_frames); i++)
-	    {
-	      vlib_pending_frame_t *p;
-
-	      p = nm->pending_frames + i;
-
-	      cpu_time_now = dispatch_pending_node (vm, p, cpu_time_now);
-	    }
-	  _vec_len (nm->pending_frames) = 0;
-	}
-      vlib_increment_main_loop_counter (vm);
-
-      /* Record time stamp in case there are no enabled nodes and above
-         calls do not update time stamp. */
-      cpu_time_now = clib_cpu_time_now ();
-    }
-}
-
 void
 vlib_worker_thread_fn (void *arg)
 {
@@ -1423,7 +1353,7 @@ vlib_worker_thread_fn (void *arg)
   while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
 
-  vlib_worker_thread_internal (vm);
+  vlib_worker_loop (vm);
 }
 
 /* *INDENT-OFF* */

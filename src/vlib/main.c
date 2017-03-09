@@ -1398,50 +1398,74 @@ dispatch_suspended_process (vlib_main_t * vm,
   return t;
 }
 
-static void
-vlib_main_loop (vlib_main_t * vm)
+static_always_inline void
+vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
   vlib_node_main_t *nm = &vm->node_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
   uword i;
   u64 cpu_time_now;
+  vlib_frame_queue_main_t *fqm;
 
   /* Initialize pending node vector. */
-  vec_resize (nm->pending_frames, 32);
-  _vec_len (nm->pending_frames) = 0;
+  if (is_main)
+    {
+      vec_resize (nm->pending_frames, 32);
+      _vec_len (nm->pending_frames) = 0;
+    }
 
   /* Mark time of main loop start. */
-  cpu_time_now = vm->clib_time.last_cpu_time;
-  vm->cpu_time_main_loop_start = cpu_time_now;
+  if (is_main)
+    {
+      cpu_time_now = vm->clib_time.last_cpu_time;
+      vm->cpu_time_main_loop_start = cpu_time_now;
+    }
+  else
+    cpu_time_now = clib_cpu_time_now ();
 
   /* Arrange for first level of timing wheel to cover times we care
      most about. */
-  nm->timing_wheel.min_sched_time = 10e-6;
-  nm->timing_wheel.max_sched_time = 10e-3;
-  timing_wheel_init (&nm->timing_wheel,
-		     cpu_time_now, vm->clib_time.clocks_per_second);
+  if (is_main)
+    {
+      nm->timing_wheel.min_sched_time = 10e-6;
+      nm->timing_wheel.max_sched_time = 10e-3;
+      timing_wheel_init (&nm->timing_wheel,
+			 cpu_time_now, vm->clib_time.clocks_per_second);
+      vec_alloc (nm->data_from_advancing_timing_wheel, 32);
+    }
 
   /* Pre-allocate expired nodes. */
-  vec_alloc (nm->data_from_advancing_timing_wheel, 32);
   vec_alloc (nm->pending_interrupt_node_runtime_indices, 32);
 
-  if (!nm->polling_threshold_vector_length)
-    nm->polling_threshold_vector_length = 10;
-  if (!nm->interrupt_threshold_vector_length)
-    nm->interrupt_threshold_vector_length = 5;
+  if (is_main)
+    {
+      if (!nm->polling_threshold_vector_length)
+	nm->polling_threshold_vector_length = 10;
+      if (!nm->interrupt_threshold_vector_length)
+	nm->interrupt_threshold_vector_length = 5;
 
-  nm->current_process_index = ~0;
+      nm->current_process_index = ~0;
+    }
 
   /* Start all processes. */
-  {
-    uword i;
-    for (i = 0; i < vec_len (nm->processes); i++)
-      cpu_time_now =
-	dispatch_process (vm, nm->processes[i], /* frame */ 0, cpu_time_now);
-  }
+  if (is_main)
+    {
+      uword i;
+      for (i = 0; i < vec_len (nm->processes); i++)
+	cpu_time_now = dispatch_process (vm, nm->processes[i], /* frame */ 0,
+					 cpu_time_now);
+    }
 
   while (1)
     {
       vlib_node_runtime_t *n;
+
+      if (!is_main)
+	{
+	  vlib_worker_thread_barrier_check ();
+	  vec_foreach (fqm, tm->frame_queue_mains)
+	    vlib_frame_queue_dequeue (vm, fqm);
+	}
 
       /* Process pre-input nodes. */
       vec_foreach (n, nm->nodes_by_type[VLIB_NODE_TYPE_PRE_INPUT])
@@ -1459,7 +1483,7 @@ vlib_main_loop (vlib_main_t * vm)
 				      /* frame */ 0,
 				      cpu_time_now);
 
-      if (PREDICT_TRUE (vm->queue_signal_pending == 0))
+      if (PREDICT_TRUE (is_main && vm->queue_signal_pending == 0))
 	vm->queue_signal_callback (vm);
 
       /* Next handle interrupts. */
@@ -1484,58 +1508,64 @@ vlib_main_loop (vlib_main_t * vm)
 	  }
       }
 
-      /* Check if process nodes have expired from timing wheel. */
-      nm->data_from_advancing_timing_wheel
-	= timing_wheel_advance (&nm->timing_wheel, cpu_time_now,
-				nm->data_from_advancing_timing_wheel,
-				&nm->cpu_time_next_process_ready);
-
-      ASSERT (nm->data_from_advancing_timing_wheel != 0);
-      if (PREDICT_FALSE (_vec_len (nm->data_from_advancing_timing_wheel) > 0))
+      if (is_main)
 	{
-	  uword i;
+	  /* Check if process nodes have expired from timing wheel. */
+	  nm->data_from_advancing_timing_wheel
+	    = timing_wheel_advance (&nm->timing_wheel, cpu_time_now,
+				    nm->data_from_advancing_timing_wheel,
+				    &nm->cpu_time_next_process_ready);
 
-	processes_timing_wheel_data:
-	  for (i = 0; i < _vec_len (nm->data_from_advancing_timing_wheel);
-	       i++)
+	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+	  if (PREDICT_FALSE
+	      (_vec_len (nm->data_from_advancing_timing_wheel) > 0))
 	    {
-	      u32 d = nm->data_from_advancing_timing_wheel[i];
-	      u32 di = vlib_timing_wheel_data_get_index (d);
+	      uword i;
 
-	      if (vlib_timing_wheel_data_is_timed_event (d))
+	    processes_timing_wheel_data:
+	      for (i = 0; i < _vec_len (nm->data_from_advancing_timing_wheel);
+		   i++)
 		{
-		  vlib_signal_timed_event_data_t *te =
-		    pool_elt_at_index (nm->signal_timed_event_data_pool, di);
-		  vlib_node_t *n = vlib_get_node (vm, te->process_node_index);
-		  vlib_process_t *p =
-		    vec_elt (nm->processes, n->runtime_index);
-		  void *data;
-		  data =
-		    vlib_process_signal_event_helper (nm, n, p,
-						      te->event_type_index,
-						      te->n_data_elts,
-						      te->n_data_elt_bytes);
-		  if (te->n_data_bytes < sizeof (te->inline_event_data))
-		    clib_memcpy (data, te->inline_event_data,
-				 te->n_data_bytes);
+		  u32 d = nm->data_from_advancing_timing_wheel[i];
+		  u32 di = vlib_timing_wheel_data_get_index (d);
+
+		  if (vlib_timing_wheel_data_is_timed_event (d))
+		    {
+		      vlib_signal_timed_event_data_t *te =
+			pool_elt_at_index (nm->signal_timed_event_data_pool,
+					   di);
+		      vlib_node_t *n =
+			vlib_get_node (vm, te->process_node_index);
+		      vlib_process_t *p =
+			vec_elt (nm->processes, n->runtime_index);
+		      void *data;
+		      data =
+			vlib_process_signal_event_helper (nm, n, p,
+							  te->event_type_index,
+							  te->n_data_elts,
+							  te->n_data_elt_bytes);
+		      if (te->n_data_bytes < sizeof (te->inline_event_data))
+			clib_memcpy (data, te->inline_event_data,
+				     te->n_data_bytes);
+		      else
+			{
+			  clib_memcpy (data, te->event_data_as_vector,
+				       te->n_data_bytes);
+			  vec_free (te->event_data_as_vector);
+			}
+		      pool_put (nm->signal_timed_event_data_pool, te);
+		    }
 		  else
 		    {
-		      clib_memcpy (data, te->event_data_as_vector,
-				   te->n_data_bytes);
-		      vec_free (te->event_data_as_vector);
+		      cpu_time_now = clib_cpu_time_now ();
+		      cpu_time_now =
+			dispatch_suspended_process (vm, di, cpu_time_now);
 		    }
-		  pool_put (nm->signal_timed_event_data_pool, te);
 		}
-	      else
-		{
-		  cpu_time_now = clib_cpu_time_now ();
-		  cpu_time_now =
-		    dispatch_suspended_process (vm, di, cpu_time_now);
-		}
-	    }
 
-	  /* Reset vector. */
-	  _vec_len (nm->data_from_advancing_timing_wheel) = 0;
+	      /* Reset vector. */
+	      _vec_len (nm->data_from_advancing_timing_wheel) = 0;
+	    }
 	}
 
       /* Input nodes may have added work to the pending vector.
@@ -1548,7 +1578,7 @@ vlib_main_loop (vlib_main_t * vm)
       _vec_len (nm->pending_frames) = 0;
 
       /* Pending internal nodes may resume processes. */
-      if (_vec_len (nm->data_from_advancing_timing_wheel) > 0)
+      if (is_main && _vec_len (nm->data_from_advancing_timing_wheel) > 0)
 	goto processes_timing_wheel_data;
 
       vlib_increment_main_loop_counter (vm);
@@ -1557,6 +1587,18 @@ vlib_main_loop (vlib_main_t * vm)
          calls do not update time stamp. */
       cpu_time_now = clib_cpu_time_now ();
     }
+}
+
+static void
+vlib_main_loop (vlib_main_t * vm)
+{
+  vlib_main_or_worker_loop (vm, /* is_main */ 1);
+}
+
+void
+vlib_worker_loop (vlib_main_t * vm)
+{
+  vlib_main_or_worker_loop (vm, /* is_main */ 0);
 }
 
 vlib_main_t vlib_global_main;
