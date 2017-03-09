@@ -14,7 +14,7 @@
 lib_LTLIBRARIES += libvlibmemory.la libvlibapi.la libvlibmemoryclient.la \
 	           libvlibsocket.la
 
-libvlibmemory_la_DEPENDENCIES = libvppinfra.la libsvm.la libvlib.la
+libvlibmemory_la_DEPENDENCIES = libvppinfra.la libsvm.la 
 libvlibmemory_la_LIBADD = $(libvlibmemory_la_DEPENDENCIES) -lpthread
 libvlibmemory_la_SOURCES =			\
 	vlibmemory/api.h			\
@@ -26,7 +26,7 @@ libvlibmemory_la_SOURCES =			\
 	vlibmemory/unix_shared_memory_queue.c	\
 	vlibmemory/unix_shared_memory_queue.h
 
-libvlibapi_la_DEPENDENCIES = libvppinfra.la libvlib.la libvlibmemory.la
+libvlibapi_la_DEPENDENCIES = libvppinfra.la 
 libvlibapi_la_LIBADD = $(libvlibapi_la_DEPENDENCIES)
 libvlibapi_la_SOURCES = 			\
 	vlibapi/api.h				\

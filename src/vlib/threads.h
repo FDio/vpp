@@ -222,30 +222,25 @@ vlib_worker_thread_barrier_check (void)
     }
 }
 
-#define foreach_vlib_main(body)			                        \
-do {                                                                    \
-    vlib_main_t ** __vlib_mains = 0, *this_vlib_main;                   \
-    int ii;                                                             \
-                                                                        \
-    if (vec_len (vlib_mains) == 0)                                      \
-        vec_add1 (__vlib_mains, &vlib_global_main);                     \
-    else                                                                \
-    {                                                                   \
-        for (ii = 0; ii < vec_len (vlib_mains); ii++)                   \
-        {                                                               \
-            this_vlib_main = vlib_mains[ii];                            \
-            if (this_vlib_main)                                         \
-                vec_add1 (__vlib_mains, this_vlib_main);                \
-        }                                                               \
-    }                                                                   \
-                                                                        \
-    for (ii = 0; ii < vec_len (__vlib_mains); ii++)                     \
-    {                                                                   \
-        this_vlib_main = __vlib_mains[ii];                              \
-        /* body uses this_vlib_main... */                               \
-        (body);                                                         \
-    }                                                                   \
-    vec_free (__vlib_mains);                                            \
+#define foreach_vlib_main(body)                         \
+do {                                                    \
+  vlib_main_t ** __vlib_mains = 0, *this_vlib_main;     \
+  int ii;                                               \
+                                                        \
+  for (ii = 0; ii < vec_len (vlib_mains); ii++)         \
+    {                                                   \
+      this_vlib_main = vlib_mains[ii];                  \
+      if (this_vlib_main)                               \
+        vec_add1 (__vlib_mains, this_vlib_main);        \
+    }                                                   \
+                                                        \
+  for (ii = 0; ii < vec_len (__vlib_mains); ii++)       \
+    {                                                   \
+      this_vlib_main = __vlib_mains[ii];                \
+      /* body uses this_vlib_main... */                 \
+      (body);                                           \
+    }                                                   \
+  vec_free (__vlib_mains);                              \
 } while (0);
 
 #define foreach_sched_policy \

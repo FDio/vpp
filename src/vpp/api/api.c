@@ -2143,7 +2143,6 @@ vpe_api_init (vlib_main_t * vm)
   am->oam_events_registration_hash = hash_create (0, sizeof (uword));
   am->bfd_events_registration_hash = hash_create (0, sizeof (uword));
 
-  vl_api_init (vm);
   vl_set_memory_region_name ("/vpe-api");
   vl_enable_disable_memory_api (vm, 1 /* enable it */ );
 

@@ -252,11 +252,13 @@ void vl_msg_api_queue_handler (unix_shared_memory_queue_t * q);
 vl_api_trace_t *vl_msg_api_trace_get (api_main_t * am,
 				      vl_api_trace_which_t which);
 
+void vl_msg_api_barrier_sync (void) __attribute__ ((weak));
+void vl_msg_api_barrier_release (void) __attribute__ ((weak));
 void vl_msg_api_free (void *);
 void vl_noop_handler (void *mp);
-clib_error_t *vl_api_init (vlib_main_t * vm);
 void vl_msg_api_increment_missing_client_counter (void);
 void vl_msg_api_post_mortem_dump (void);
+void vl_msg_api_post_mortem_dump_enable_disable (int enable);
 void vl_msg_api_register_pd_handler (void *handler,
 				     u16 msg_id_host_byte_order);
 int vl_msg_api_pd_handler (void *mp, int rv);
