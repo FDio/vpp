@@ -93,6 +93,7 @@ adj_l2_rewrite_inline (vlib_main_t * vm,
 	    /* Update packet buffer attributes/set output interface. */
 	    rw_len0 = adj0[0].rewrite_header.data_bytes;
 	    vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
+            vnet_buffer(p0)->sw_if_index[VLIB_TX] = adj0->rewrite_header.sw_if_index;
 
 	    vlib_increment_combined_counter(&adjacency_counters,
                                             cpu_index,

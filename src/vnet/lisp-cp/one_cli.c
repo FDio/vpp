@@ -352,7 +352,7 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (!eid_set)
+  if (!del_all && !eid_set)
     {
       clib_warning ("missing eid!");
       goto done;
@@ -371,8 +371,6 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
       vnet_lisp_clear_all_remote_adjacencies ();
       goto done;
     }
-
-  /* TODO build src/dst with seid */
 
   /* if it's a delete, clean forwarding */
   if (!is_add)
@@ -1654,9 +1652,43 @@ lisp_show_stats_command_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_show_stats_command) = {
-    .path = "show one stats",
-    .short_help = "show ONE statistics",
+    .path = "show one statistics status",
+    .short_help = "show ONE statistics enable/disable status",
     .function = lisp_show_stats_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_show_stats_details_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  lisp_api_stats_t *stat, *stats = vnet_lisp_get_stats ();
+
+  if (vec_len (stats) > 0)
+    vlib_cli_output (vm,
+		     "[src-EID, dst-EID] [loc-rloc, rmt-rloc] count bytes\n");
+  else
+    vlib_cli_output (vm, "No statistics found.\n");
+
+  vec_foreach (stat, stats)
+  {
+    vlib_cli_output (vm, "[%U, %U] [%U, %U] %7u %7u\n",
+		     format_fid_address, &stat->seid,
+		     format_fid_address, &stat->deid,
+		     format_ip_address, &stat->loc_rloc,
+		     format_ip_address, &stat->rmt_rloc,
+		     stat->stats.pkt_count, stat->stats.bytes);
+  }
+  vec_free (stats);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_show_stats_details_command) = {
+    .path = "show one statistics details",
+    .short_help = "show ONE statistics",
+    .function = lisp_show_stats_details_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -1692,9 +1724,26 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (one_stats_enable_disable_command) = {
-    .path = "one stats",
+    .path = "one statistics",
     .short_help = "enable/disable ONE statistics collecting",
     .function = lisp_stats_enable_disable_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_stats_flush_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  vnet_lisp_flush_stats ();
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_stats_flush_command) = {
+    .path = "one statistics flush",
+    .short_help = "Flush ONE statistics",
+    .function = lisp_stats_flush_command_fn,
 };
 /* *INDENT-ON* */
 

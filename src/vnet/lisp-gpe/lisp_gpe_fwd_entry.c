@@ -329,28 +329,6 @@ delete_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 			    lfe->eid_fib_index, &lfe->key->rmt.ippref);
 }
 
-static void
-gid_to_dp_address (gid_address_t * g, dp_address_t * d)
-{
-  switch (gid_address_type (g))
-    {
-    case GID_ADDR_IP_PREFIX:
-    case GID_ADDR_SRC_DST:
-      ip_prefix_copy (&d->ippref, &gid_address_ippref (g));
-      d->type = FID_ADDR_IP_PREF;
-      break;
-    case GID_ADDR_MAC:
-      mac_copy (&d->mac, &gid_address_mac (g));
-      d->type = FID_ADDR_MAC;
-      break;
-    case GID_ADDR_NSH:
-    default:
-      d->nsh = gid_address_nsh (g).spi << 8 | gid_address_nsh (g).si;
-      d->type = FID_ADDR_NSH;
-      break;
-    }
-}
-
 static lisp_gpe_fwd_entry_t *
 find_fwd_entry (lisp_gpe_main_t * lgm,
 		vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
@@ -1175,6 +1153,70 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
       clib_warning ("Forwarding entries for type %d not supported!", type);
       return -1;
     }
+}
+
+void
+vnet_lisp_flush_stats (void)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_stats_t *stat;
+
+  /* *INDENT-OFF* */
+  pool_foreach (stat, lgm->lisp_stats_pool,
+  {
+    stat->pkt_count = 0;
+    stat->bytes = 0;
+  });
+  /* *INDENT-ON* */
+}
+
+static void
+lisp_del_adj_stats (lisp_gpe_main_t * lgm, u32 fwd_entry_index, u32 ti)
+{
+  hash_pair_t *hp;
+  lisp_stats_key_t key;
+  void *key_copy;
+  uword *p;
+  lisp_stats_t *s;
+
+  memset (&key, 0, sizeof (key));
+  key.fwd_entry_index = fwd_entry_index;
+  key.tunnel_index = ti;
+
+  p = hash_get_mem (lgm->lisp_stats_index_by_key, &key);
+  if (p)
+    {
+      s = pool_elt_at_index (lgm->lisp_stats_pool, p[0]);
+      hp = hash_get_pair (lgm->lisp_stats_index_by_key, &key);
+      key_copy = (void *) (hp->key);
+      hash_unset_mem (lgm->lisp_stats_index_by_key, &key);
+      clib_mem_free (key_copy);
+      pool_put (lgm->lisp_stats_pool, s);
+    }
+}
+
+void
+vnet_lisp_del_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+			 u32 fwd_entry_index)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  lisp_gpe_fwd_entry_key_t fe_key;
+  lisp_gpe_fwd_entry_t *lfe;
+  lisp_fwd_path_t *path;
+  const lisp_gpe_adjacency_t *ladj;
+
+  lfe = find_fwd_entry (lgm, a, &fe_key);
+  if (!lfe)
+    return;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NORMAL != lfe->type)
+    return;
+
+  vec_foreach (path, lfe->paths)
+  {
+    ladj = lisp_gpe_adjacency_get (path->lisp_adj);
+    lisp_del_adj_stats (lgm, fwd_entry_index, ladj->tunnel_index);
+  }
 }
 
 /**

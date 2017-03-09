@@ -126,6 +126,8 @@ typedef struct
 typedef fid_address_t dp_address_t;
 
 #define fid_addr_ippref(_a) (_a)->ippref
+#define fid_addr_prefix_length(_a) ip_prefix_len(&fid_addr_ippref(_a))
+#define fid_addr_ip_version(_a) ip_prefix_version(&fid_addr_ippref(_a))
 #define fid_addr_mac(_a) (_a)->mac
 #define fid_addr_nsh(_a) (_a)->nsh
 #define fid_addr_type(_a) (_a)->type
@@ -359,6 +361,7 @@ void
 build_src_dst (gid_address_t * sd, gid_address_t * src, gid_address_t * dst);
 
 void gid_address_from_ip (gid_address_t * g, ip_address_t * ip);
+void gid_to_dp_address (gid_address_t * g, dp_address_t * d);
 
 #endif /* VNET_LISP_GPE_LISP_TYPES_H_ */
 

@@ -573,6 +573,44 @@ ip_address_parse (void *offset, u16 iana_afi, ip_address_t * dst)
   return (sizeof (u16) + size);
 }
 
+void
+gid_to_dp_address (gid_address_t * g, dp_address_t * d)
+{
+  switch (gid_address_type (g))
+    {
+    case GID_ADDR_SRC_DST:
+      switch (gid_address_sd_dst_type (g))
+	{
+	case FID_ADDR_IP_PREF:
+	  ip_prefix_copy (&d->ippref, &gid_address_sd_dst_ippref (g));
+	  d->type = FID_ADDR_IP_PREF;
+	  break;
+	case FID_ADDR_MAC:
+	  mac_copy (&d->mac, &gid_address_sd_dst_mac (g));
+	  d->type = FID_ADDR_MAC;
+	  break;
+	default:
+	  clib_warning ("Source/Dest address type %d not supported!",
+			gid_address_sd_dst_type (g));
+	  break;
+	}
+      break;
+    case GID_ADDR_IP_PREFIX:
+      ip_prefix_copy (&d->ippref, &gid_address_ippref (g));
+      d->type = FID_ADDR_IP_PREF;
+      break;
+    case GID_ADDR_MAC:
+      mac_copy (&d->mac, &gid_address_mac (g));
+      d->type = FID_ADDR_MAC;
+      break;
+    case GID_ADDR_NSH:
+    default:
+      d->nsh = gid_address_nsh (g).spi << 8 | gid_address_nsh (g).si;
+      d->type = FID_ADDR_NSH;
+      break;
+    }
+}
+
 u32
 lcaf_hdr_parse (void *offset, lcaf_t * lcaf)
 {

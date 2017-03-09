@@ -95,7 +95,8 @@ typedef enum
 } map_request_mode_t;
 
 #define foreach_lisp_flag_bit       \
-  _(USE_PETR, "Use Proxy-ETR")
+  _(USE_PETR, "Use Proxy-ETR")                  \
+  _(STATS_ENABLED, "Statistics enabled")
 
 typedef enum lisp_flag_bits
 {
@@ -210,9 +211,6 @@ typedef struct
   /* timing wheel for mappping timeouts */
   timing_wheel_t wheel;
 
-  /* statistics */
-  u8 stats_enabled;
-
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
@@ -234,6 +232,11 @@ vnet_lisp_cp_get_main ()
 {
   return &lisp_control_main;
 }
+
+void
+get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
+				  gid_address_t * src, gid_address_t * dst,
+				  u16 type);
 
 typedef struct
 {
@@ -334,9 +337,6 @@ lisp_get_petr_mapping (lisp_cp_main_t * lcm)
 {
   return pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
 }
-
-u8 vnet_lisp_stats_enable_disable_state (void);
-vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
 
 #endif /* VNET_CONTROL_H_ */
 

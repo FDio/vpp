@@ -58,6 +58,21 @@
 
 #include <vlibapi/api_helper_macros.h>
 
+#define REPLY_DETAILS(t, body)                                  \
+do {                                                            \
+    unix_shared_memory_queue_t * q;                             \
+    rv = vl_msg_api_pd_handler (mp, rv);                        \
+    q = vl_api_client_index_to_input_queue (mp->client_index);  \
+    if (!q)                                                     \
+        return;                                                 \
+                                                                \
+    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
+    rmp->_vl_msg_id = ntohs((t));                               \
+    rmp->context = mp->context;                                 \
+    do {body;} while (0);                                       \
+    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
+} while(0);
+
 #define foreach_vpe_api_msg                             \
 _(ONE_ADD_DEL_LOCATOR_SET, one_add_del_locator_set)                     \
 _(ONE_ADD_DEL_LOCATOR, one_add_del_locator)                             \
@@ -1301,9 +1316,61 @@ static void
 }
 
 static void
+lisp_fid_addr_to_api (fid_address_t * fid, u8 * dst, u8 * api_eid_type,
+		      u8 * prefix_length)
+{
+  switch (fid_addr_type (fid))
+    {
+    case FID_ADDR_IP_PREF:
+      *prefix_length = fid_addr_prefix_length (fid);
+      if (fid_addr_ip_version (fid) == IP4)
+	{
+	  *api_eid_type = 0;	/* ipv4 type */
+	  clib_memcpy (dst, &fid_addr_ippref (fid), 4);
+	}
+      else
+	{
+	  *api_eid_type = 1;	/* ipv6 type */
+	  clib_memcpy (dst, &fid_addr_ippref (fid), 16);
+	}
+      break;
+    case FID_ADDR_MAC:
+      *api_eid_type = 2;	/* l2 mac type */
+      mac_copy (dst, fid_addr_mac (fid));
+      break;
+    default:
+      ASSERT (0);
+    }
+}
+
+static void
 vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
 {
+  vl_api_one_stats_details_t *rmp;
+  lisp_api_stats_t *stats, *stat;
+  u8 rv = 0;
 
+  stats = vnet_lisp_get_stats ();
+  vec_foreach (stat, stats)
+  {
+      /* *INDENT-OFF* */
+      REPLY_DETAILS (VL_API_ONE_STATS_DETAILS,
+      ({
+        lisp_fid_addr_to_api (&stat->deid, rmp->deid, &rmp->eid_type,
+                              &rmp->deid_pref_len);
+        lisp_fid_addr_to_api (&stat->seid, rmp->seid, &rmp->eid_type,
+                              &rmp->seid_pref_len);
+        rmp->vni = clib_host_to_net_u32 (stat->vni);
+
+        rmp->is_ip4 = ip_addr_version (&stat->rmt_rloc) == IP4 ? 1 : 0;
+        ip_address_copy_addr (rmp->rloc, &stat->rmt_rloc);
+        ip_address_copy_addr (rmp->lloc, &stat->loc_rloc);
+
+        rmp->pkt_count = clib_host_to_net_u32 (stat->stats.pkt_count);
+        rmp->bytes = clib_host_to_net_u32 (stat->stats.bytes);
+      }));
+      /* *INDENT-ON* */
+  }
 }
 
 /*
