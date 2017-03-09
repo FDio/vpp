@@ -261,7 +261,28 @@ done:
   return result;
 }
 
-vlib_main_t **vlib_mains;
+/*
+ * Hand-craft a static vector w/ length 1, so vec_len(vlib_mains) =1
+ * and vlib_mains[0] = &vlib_global_main from the beginning of time.
+ *
+ * The only place which should ever expand vlib_mains is start_workers()
+ * in threads.c. It knows about the bootstrap vector.
+ */
+/* *INDENT-OFF* */
+static struct
+{
+  vec_header_t h;
+  vlib_main_t *vm;
+} __attribute__ ((packed)) __bootstrap_vlib_main_vector
+  __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) =
+{
+  .h.len = 1,
+  .vm = &vlib_global_main,
+};
+/* *INDENT-ON* */
+
+vlib_main_t **vlib_mains = &__bootstrap_vlib_main_vector.vm;
+
 
 /* When dubugging validate that given buffers are either known allocated
    or known free. */
@@ -280,7 +301,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
   ASSERT (os_get_cpu_number () == 0);
 
   /* smp disaster check */
-  if (vlib_mains)
+  if (vec_len (vlib_mains) > 1)
     ASSERT (vm == vlib_mains[0]);
 
   is_free = expected_state == VLIB_BUFFER_KNOWN_ALLOCATED;
@@ -956,7 +977,7 @@ show_buffers (vlib_main_t * vm,
 
   do
     {
-      curr_vm = vec_len (vlib_mains) ? vlib_mains[vm_index] : vm;
+      curr_vm = vlib_mains[vm_index];
       bm = curr_vm->buffer_main;
 
     /* *INDENT-OFF* */

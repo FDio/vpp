@@ -380,13 +380,9 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   im->cb.check_support_cb = dpdk_ipsec_check_support;
   im->cb.add_del_sa_sess_cb = add_del_sa_sess;
 
-  if (vec_len (vlib_mains) == 0)
-    vlib_node_set_state (&vlib_global_main, dpdk_crypto_input_node.index,
+  for (i = 1; i < tm->n_vlib_mains; i++)
+    vlib_node_set_state (vlib_mains[i], dpdk_crypto_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
-  else
-    for (i = 1; i < tm->n_vlib_mains; i++)
-      vlib_node_set_state (vlib_mains[i], dpdk_crypto_input_node.index,
-			   VLIB_NODE_STATE_POLLING);
 
   /* TODO cryptodev counters */
 

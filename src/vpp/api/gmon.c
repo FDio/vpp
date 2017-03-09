@@ -122,13 +122,8 @@ gmon_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   /* Initial wait for the world to settle down */
   vlib_process_suspend (vm, 5.0);
 
-  if (vec_len (vlib_mains) == 0)
-    vec_add1 (gm->my_vlib_mains, &vlib_global_main);
-  else
-    {
-      for (i = 0; i < vec_len (vlib_mains); i++)
-	vec_add1 (gm->my_vlib_mains, vlib_mains[i]);
-    }
+  for (i = 0; i < vec_len (vlib_mains); i++)
+    vec_add1 (gm->my_vlib_mains, vlib_mains[i]);
 
   while (1)
     {
