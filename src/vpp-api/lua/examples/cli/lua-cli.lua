@@ -557,12 +557,12 @@ end
 
 function init_vpp(vpp)
   local root_dir = "/home/ubuntu/vpp"
-  local pneum_path = root_dir .. "/build-root/install-vpp_lite_debug-native/vpp-api/lib64/libpneum.so"
+  local pneum_path = root_dir .. "/build-root/install-vpp_debug-native/vpp-api/lib64/libpneum.so"
 
   vpp:init({ pneum_path = pneum_path })
 
   vpp:init({ pneum_path = pneum_path })
-  vpp:json_api(root_dir .. "/build-root/install-vpp_lite_debug-native/vpp/vpp-api/vpe.api.json")
+  vpp:json_api(root_dir .. "/build-root/install-vpp_debug-native/vpp/vpp-api/vpe.api.json")
 
 
 
