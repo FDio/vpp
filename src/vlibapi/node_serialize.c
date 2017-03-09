@@ -73,16 +73,11 @@ vlib_node_serialize (vlib_node_main_t * nm, u8 * vector,
 
   if (vec_len (stat_vms) == 0)
     {
-      if (vec_len (vlib_mains) == 0)
-	vec_add1 (stat_vms, vm);
-      else
+      for (i = 0; i < vec_len (vlib_mains); i++)
 	{
-	  for (i = 0; i < vec_len (vlib_mains); i++)
-	    {
-	      stat_vm = vlib_mains[i];
-	      if (stat_vm)
-		vec_add1 (stat_vms, stat_vm);
-	    }
+	  stat_vm = vlib_mains[i];
+	  if (stat_vm)
+	    vec_add1 (stat_vms, stat_vm);
 	}
     }
 
@@ -286,7 +281,7 @@ vlib_node_unserialize (u8 * vector)
   return nodes_by_thread;
 }
 
-#if CLIB_DEBUG > 0
+#if TEST_CODE
 
 static clib_error_t *
 test_node_serialize_command_fn (vlib_main_t * vm,

@@ -34,14 +34,12 @@ vpp_json_test_SOURCES = \
   vat/json_test.c
 
 vpp_api_test_LDADD = \
-  libvlib.la				\
   libvlibmemoryclient.la		\
   libsvm.la				\
   libvatplugin.la			\
   libvppinfra.la 			\
   libvlibapi.la				\
   libvlibmemory.la			\
-  libvnet.la				\
   -lpthread -lm -lrt -ldl -lcrypto
 
 vpp_api_test_LDFLAGS = -Wl,--export-dynamic

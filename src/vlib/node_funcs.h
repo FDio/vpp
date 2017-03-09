@@ -201,7 +201,7 @@ vlib_get_frame_no_check (vlib_main_t * vm, uword frame_index)
   vlib_frame_t *f;
   u32 cpu_index = frame_index & VLIB_CPU_MASK;
   u32 offset = frame_index & VLIB_OFFSET_MASK;
-  vm = vlib_mains ? vlib_mains[cpu_index] : vm;
+  vm = vlib_mains[cpu_index];
   f = vm->heap_base + offset;
   return f;
 }
@@ -213,7 +213,7 @@ vlib_frame_index_no_check (vlib_main_t * vm, vlib_frame_t * f)
 
   ASSERT (((uword) f & VLIB_CPU_MASK) == 0);
 
-  vm = vlib_mains ? vlib_mains[f->cpu_index] : vm;
+  vm = vlib_mains[f->cpu_index];
 
   i = ((u8 *) f - (u8 *) vm->heap_base);
   return i | f->cpu_index;
