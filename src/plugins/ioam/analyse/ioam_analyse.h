@@ -127,7 +127,8 @@ always_inline f64
 ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
 			     u8 oneway)
 {
-  u16 size_of_traceopt_per_node, size_of_all_traceopts;
+  u16 size_of_all_traceopts;
+  u8 size_of_traceopt_per_node;
   u8 num_nodes;
   u32 *start_elt, *end_elt, *uturn_elt;;
   u32 start_time, end_time;
@@ -140,13 +141,15 @@ ip6_ioam_analyse_calc_delay (ioam_trace_hdr_t * trace, u16 trace_len,
   size_of_all_traceopts = trace_len;	/*ioam_trace_type,data_list_elts_left */
 
   num_nodes = (u8) (size_of_all_traceopts / size_of_traceopt_per_node);
+  if ((num_nodes == 0) || (num_nodes <= trace->data_list_elts_left))
+    return 0;
 
   num_nodes -= trace->data_list_elts_left;
 
   start_elt = trace->elts;
   end_elt =
     trace->elts +
-    (u32) (size_of_traceopt_per_node * (num_nodes - 1) / sizeof (u32));
+    (u32) ((size_of_traceopt_per_node / sizeof (u32)) * (num_nodes - 1));
 
   if (oneway && (trace->ioam_trace_type & BIT_TTL_NODEID))
     {
@@ -225,6 +228,9 @@ ip6_ioam_analyse_hbh_trace_loopback (ioam_analyser_data_t * data,
   trace_data = &data->trace_data;
 
   size_of_traceopt_per_node = fetch_trace_data_size (trace->ioam_trace_type);
+  if (0 == size_of_traceopt_per_node)
+    goto end;
+
   size_of_all_traceopts = trace_len;
 
   ptr = (u8 *) trace->elts;
