@@ -209,8 +209,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
   sa.crypto_key_len = mp->crypto_key_length;
   clib_memcpy (&sa.crypto_key, mp->crypto_key, sizeof (sa.crypto_key));
   /* check for unsupported integ-alg */
-  if (mp->integrity_algorithm < IPSEC_INTEG_ALG_NONE ||
-      mp->integrity_algorithm >= IPSEC_INTEG_N_ALG)
+  if (mp->integrity_algorithm >= IPSEC_INTEG_N_ALG)
     {
       clib_warning ("unsupported integ-alg: '%U'", format_ipsec_integ_alg,
 		    mp->integrity_algorithm);

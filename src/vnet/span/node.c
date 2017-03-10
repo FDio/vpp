@@ -69,8 +69,6 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
   u32 i;
 
   si0 = vec_elt_at_index (sm->interfaces, sw_if_index0);
-  if (!si0)
-    return;
 
   if (is_rx != 0 && si0->num_rx_mirror_ports == 0)
     return;
