@@ -1060,6 +1060,7 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_echo(self):
         """ echo function """
         bfd_session_up(self)
