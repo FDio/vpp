@@ -3557,6 +3557,73 @@ fib_test_v4 (void)
     fib_table_entry_delete(fib_index, &pfx_4_1_1_1_s_32, FIB_SOURCE_URPF_EXEMPT);
 
     /*
+     * An adj-fib that fails the refinement criteria - no connected cover
+     */
+    fib_prefix_t pfx_12_10_10_2_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    /* 12.10.10.2 */
+	    .ip4.as_u32 = clib_host_to_net_u32(0x0c0a0a02),
+	},
+    };
+
+    fib_table_entry_update_one_path(fib_index,
+				    &pfx_12_10_10_2_s_32,
+				    FIB_SOURCE_ADJ,
+				    FIB_ENTRY_FLAG_ATTACHED,
+				    FIB_PROTOCOL_IP4,
+				    &pfx_12_10_10_2_s_32.fp_addr,
+				    tm->hw[0]->sw_if_index,
+				    ~0, // invalid fib index
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_12_10_10_2_s_32);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_id_is_valid(dpo),
+	     "no connected cover adj-fib fails refinement");
+
+    fib_table_entry_delete(fib_index,
+			   &pfx_12_10_10_2_s_32,
+			   FIB_SOURCE_ADJ);
+
+    /*
+     * An adj-fib that fails the refinement criteria - cover is connected
+     * but on a different interface
+     */
+    fib_prefix_t pfx_10_10_10_127_s_32 = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr = {
+	    /* 10.10.10.127 */
+	    .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a7f),
+	},
+    };
+
+    fib_table_entry_update_one_path(fib_index,
+				    &pfx_10_10_10_127_s_32,
+				    FIB_SOURCE_ADJ,
+				    FIB_ENTRY_FLAG_ATTACHED,
+				    FIB_PROTOCOL_IP4,
+				    &pfx_10_10_10_127_s_32.fp_addr,
+				    tm->hw[1]->sw_if_index,
+				    ~0, // invalid fib index
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_127_s_32);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_id_is_valid(dpo),
+	     "wrong interface adj-fib fails refinement");
+
+    fib_table_entry_delete(fib_index,
+			   &pfx_10_10_10_127_s_32,
+			   FIB_SOURCE_ADJ);
+
+    /*
      * CLEANUP
      *    remove adj-fibs: 
      */

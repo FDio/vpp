@@ -115,7 +115,7 @@ class ARPTestCase(VppTestCase):
         #
         # Generate some hosts on the LAN
         #
-        self.pg1.generate_remote_hosts(5)
+        self.pg1.generate_remote_hosts(6)
 
         #
         # Send IP traffic to one of these unresolved hosts.
@@ -251,6 +251,57 @@ class ARPTestCase(VppTestCase):
                                  self.pg1._remote_hosts[3].ip4))
 
         #
+        # A neighbor entry that has no associated FIB-entry
+        #
+        arp_no_fib = VppNeighbor(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1.remote_hosts[4].mac,
+                                 self.pg1.remote_hosts[4].ip4,
+                                 is_no_fib_entry=1)
+        arp_no_fib.add_vpp_config()
+
+        #
+        # check we have the neighbor, but no route
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg1._remote_hosts[4].ip4))
+        self.assertFalse(find_route(self,
+                                    self.pg1._remote_hosts[4].ip4,
+                                    32))
+        #
+        # Unnumbered pg2 to pg1
+        #
+        self.pg2.set_unnumbered(self.pg1.sw_if_index)
+
+        #
+        # now we can form adjacencies out of pg2 from within pg1's subnet
+        #
+        arp_unnum = VppNeighbor(self,
+                                self.pg2.sw_if_index,
+                                self.pg1.remote_hosts[5].mac,
+                                self.pg1.remote_hosts[5].ip4)
+        arp_unnum.add_vpp_config()
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4,
+                dst=self.pg1._remote_hosts[5].ip4) /
+             UDP(sport=1234, dport=1234) /
+             Raw())
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+
+        self.verify_ip(rx[0],
+                       self.pg2.local_mac,
+                       self.pg1.remote_hosts[5].mac,
+                       self.pg0.remote_ip4,
+                       self.pg1._remote_hosts[5].ip4)
+
+        #
         # ERROR Cases
         #  1 - don't respond to ARP request for address not within the
         #      interface's sub-net
@@ -301,29 +352,11 @@ class ARPTestCase(VppTestCase):
                                         "ARP req for non-local source")
 
         #
-        # A neighbor entry that has no associated FIB-entry
-        #
-        arp_no_fib = VppNeighbor(self,
-                                 self.pg1.sw_if_index,
-                                 self.pg1.remote_hosts[4].mac,
-                                 self.pg1.remote_hosts[4].ip4,
-                                 is_no_fib_entry=1)
-        arp_no_fib.add_vpp_config()
-
-        #
-        # check we have the neighbor, but no route
-        #
-        self.assertTrue(find_nbr(self,
-                                 self.pg1.sw_if_index,
-                                 self.pg1._remote_hosts[4].ip4))
-        self.assertFalse(find_route(self,
-                                    self.pg1._remote_hosts[4].ip4,
-                                    32))
-        #
         # cleanup
         #
         dyn_arp.remove_vpp_config()
         static_arp.remove_vpp_config()
+        self.pg2.unset_unnumbered(self.pg1.sw_if_index)
 
     def test_proxy_arp(self):
         """ Proxy ARP """

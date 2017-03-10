@@ -48,7 +48,7 @@ fib_entry_src_adj_remove (fib_entry_src_t *src)
 
 /*
  * Source activate. 
- * Called when the source is teh new longer best source on the entry
+ * Called when the source is the new longer best source on the entry
  */
 static int
 fib_entry_src_adj_activate (fib_entry_src_t *src,
@@ -75,8 +75,8 @@ fib_entry_src_adj_activate (fib_entry_src_t *src,
 			      fib_entry_get_index(fib_entry));
 
     /*
-     * if the ocver is attached then this adj source entry can install, 
-     * via the adj. otherwise install a drop.
+     * if the cover is attached on the same interface as this adj source then
+     * install the FIB entry via the adj. otherwise install a drop.
      * This prevents ARP/ND entries that on interface X that do not belong
      * on X's subnet from being added to the FIB. To do so would allow
      * nefarious gratuitous ARP requests from attracting traffic to the sender.
@@ -86,7 +86,33 @@ fib_entry_src_adj_activate (fib_entry_src_t *src,
      *   ip route add 10.0.0.0/24 Eth0
      * is attached. and we want adj-fibs to install on Eth0.
      */
-    return (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover));
+    if (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover))
+    {
+        u32 cover_itf = fib_entry_get_resolving_interface(src->adj.fesa_cover);
+        u32 adj_itf = fib_path_list_get_resolving_interface(src->fes_pl);
+
+        if (cover_itf == adj_itf)
+        {
+            return (1);
+        }
+        else
+        {
+            /*
+             * if the interface the adj is on is unnumbered to the
+             * cover's, then allow that too.
+             */
+            vnet_sw_interface_t *swif;
+
+            swif = vnet_get_sw_interface (vnet_get_main(), adj_itf);
+
+            if (swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED &&
+                cover_itf == swif->unnumbered_sw_if_index)
+            {
+                return (1);
+            }
+        }
+    }
+    return (0);
 }
 
 /*
