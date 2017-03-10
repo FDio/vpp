@@ -445,9 +445,24 @@ vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_SHOW_LISP_USE_PETR_REPLY,
   {
-      rmp->status = status;
-      gid_address_put (rmp->address, &addr);
-      rmp->is_ip4 = (gid_address_ip_version (&addr) == IP4);
+    rmp->status = status;
+    ip_address_t *ip = &gid_address_ip (&addr);
+    switch (ip_addr_version (ip))
+      {
+      case IP4:
+        clib_memcpy (rmp->address, &ip_addr_v4 (ip),
+                     sizeof (ip_addr_v4 (ip)));
+        break;
+
+      case IP6:
+        clib_memcpy (rmp->address, &ip_addr_v6 (ip),
+                     sizeof (ip_addr_v6 (ip)));
+        break;
+
+      default:
+        ASSERT (0);
+      }
+    rmp->is_ip4 = (gid_address_ip_version (&addr) == IP4);
   });
   /* *INDENT-ON* */
 }
