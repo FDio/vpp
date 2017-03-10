@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_6eeb08b1",
+        "filename": "src/plugins/snat/in2out.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-10T06:04:51Z",
+      "side": 1,
+      "message": "void ** d",
+      "range": {
+        "startLine": 603,
+        "startChar": 31,
+        "endLine": 603,
+        "endChar": 53
+      },
+      "revId": "055cacd946742f636cebf1fe0c55a3ea54aa3c19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6eb428d1",
+        "filename": "src/plugins/snat/out2in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-10T06:04:51Z",
+      "side": 1,
+      "message": "is_interface_addr",
+      "range": {
+        "startLine": 271,
+        "startChar": 0,
+        "endLine": 271,
+        "endChar": 22
+      },
+      "revId": "055cacd946742f636cebf1fe0c55a3ea54aa3c19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4ecbac53",
+        "filename": "src/plugins/snat/out2in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 436,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-10T06:04:51Z",
+      "side": 1,
+      "message": "void ** d",
+      "range": {
+        "startLine": 436,
+        "startChar": 31,
+        "endLine": 436,
+        "endChar": 53
+      },
+      "revId": "055cacd946742f636cebf1fe0c55a3ea54aa3c19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eebff8a8",
+        "filename": "src/plugins/snat/snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-10T06:04:51Z",
+      "side": 1,
+      "message": "add documentation, it is not obvious what is p_key or p_value",
+      "revId": "055cacd946742f636cebf1fe0c55a3ea54aa3c19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2ec6204a",
+        "filename": "src/plugins/snat/snat.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 228,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-10T06:04:51Z",
+      "side": 1,
+      "message": "void **d",
+      "range": {
+        "startLine": 228,
+        "startChar": 40,
+        "endLine": 228,
+        "endChar": 61
+      },
+      "revId": "055cacd946742f636cebf1fe0c55a3ea54aa3c19",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
