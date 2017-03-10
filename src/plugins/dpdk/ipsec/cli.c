@@ -136,11 +136,72 @@ done:
   return error;
 }
 
+/*?
+ * This command is used to display the DPDK Crypto device data. See
+ * @ref dpdk_crypto_ipsec_doc for more details on initializing the
+ * DPDK Crypto device.
+ *
+ * @cliexpar
+ * Example of displaying the DPDK Crypto device data when disabled:
+ * @cliexstart{show crypto device mapping}
+ * DPDK Cryptodev support is disabled
+ * @cliexend
+ * Example of displaying the DPDK Crypto device data when enabled:
+ * @cliexstart{show crypto device mapping}
+ * worker  crypto device id(type)
+ * 1       1(SW)
+ * 2       1(SW)
+ * @cliexend
+ * Example of displaying the DPDK Crypto device data when enabled with verbose:
+ * @cliexstart{show crypto device mapping verbose}
+ * worker      cipher                 auth dir     dev     qp
+ * 1          AES_CTR         AES-XCBC-MAC  in     1       0
+ * 1          AES_CTR          HMAC-SHA384  in     1       0
+ * 1          AES_CTR          HMAC-SHA384 out     1       1
+ * 1          AES_CBC          HMAC-SHA512  in     1       0
+ * 1          AES_CBC          HMAC-SHA256  in     1       0
+ * 1          AES_CBC         AES-XCBC-MAC out     1       1
+ * 1          AES_CTR         AES-XCBC-MAC out     1       1
+ * 1          AES_CBC          HMAC-SHA256 out     1       1
+ * 1          AES_CTR          HMAC-SHA512 out     1       1
+ * 1          AES_CTR          HMAC-SHA256  in     1       0
+ * 1          AES_CTR            HMAC-SHA1  in     1       0
+ * 1          AES_CBC          HMAC-SHA512 out     1       1
+ * 1          AES_CBC          HMAC-SHA384 out     1       1
+ * 1          AES_CTR            HMAC-SHA1 out     1       1
+ * 1          AES_CTR          HMAC-SHA256 out     1       1
+ * 1          AES_CBC            HMAC-SHA1  in     1       0
+ * 1          AES_CBC         AES-XCBC-MAC  in     1       0
+ * 1          AES_CTR          HMAC-SHA512  in     1       0
+ * 1          AES_CBC            HMAC-SHA1 out     1       1
+ * 1          AES_CBC          HMAC-SHA384  in     1       0
+ * 2          AES_CTR         AES-XCBC-MAC  in     1       2
+ * 2          AES_CTR          HMAC-SHA384  in     1       2
+ * 2          AES_CTR          HMAC-SHA384 out     1       3
+ * 2          AES_CBC          HMAC-SHA512  in     1       2
+ * 2          AES_CBC          HMAC-SHA256  in     1       2
+ * 2          AES_CBC         AES-XCBC-MAC out     1       3
+ * 2          AES_CTR         AES-XCBC-MAC out     1       3
+ * 2          AES_CBC          HMAC-SHA256 out     1       3
+ * 2          AES_CTR          HMAC-SHA512 out     1       3
+ * 2          AES_CTR          HMAC-SHA256  in     1       2
+ * 2          AES_CTR            HMAC-SHA1  in     1       2
+ * 2          AES_CBC          HMAC-SHA512 out     1       3
+ * 2          AES_CBC          HMAC-SHA384 out     1       3
+ * 2          AES_CTR            HMAC-SHA1 out     1       3
+ * 2          AES_CTR          HMAC-SHA256 out     1       3
+ * 2          AES_CBC            HMAC-SHA1  in     1       2
+ * 2          AES_CBC         AES-XCBC-MAC  in     1       2
+ * 2          AES_CTR          HMAC-SHA512  in     1       2
+ * 2          AES_CBC            HMAC-SHA1 out     1       3
+ * 2          AES_CBC          HMAC-SHA384  in     1       2
+ * @cliexend
+?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (lcore_cryptodev_map, static) = {
     .path = "show crypto device mapping",
     .short_help =
-    "show cryptodev device mapping <verbose>",
+    "show cryptodev device mapping [verbose]",
     .function = lcore_cryptodev_map_fn,
 };
 /* *INDENT-ON* */

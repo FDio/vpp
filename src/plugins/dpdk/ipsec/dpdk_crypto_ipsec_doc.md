@@ -40,7 +40,7 @@ A couple of ways to achive this:
 * uncomment/add it in the platforms config (ie. build-data/platforms/vpp.mk)
 * set the option when building vpp (ie. make vpp_uses_dpdk_cryptodev_sw=yes build-release)
 
-When enabling SW Cryptodev support, it means that you need to pre-build the required crypto libraries needed by those SW Cryptodev PMDs.
+When enabling SW Cryptodev support, it means that you need to pre-build the required crypto libraries needed by those SW Cryptodev PMDs. This requires nasm, see nasm section below.
 
 
 ### Crypto Resources allocation
@@ -84,3 +84,22 @@ For further details refer to [DPDK Crypto Device Driver documentation](http://dp
 The following CLI command displays the Cryptodev/Worker mapping:
 
     show crypto device mapping [verbose]
+
+
+### nasm
+
+Building the DPDK Crypto Libraries requires the open source project nasm (The Netwide
+Assembler) to be installed. Recommended version of nasm is 2.12.02. Minimum supported
+version of nasm is 2.11.06. Use the following command to determine the current nasm version:
+
+    nasm -v
+
+CentOS 7.3 and earlier and Fedora 21 and earlier use unsupported versions
+of nasm. Use the following set of commands to build a supported version:
+
+    wget http://www.nasm.us/pub/nasm/releasebuilds/2.12.02/nasm-2.12.02.tar.bz2
+    tar -xjvf nasm-2.12.02.tar.bz2
+    cd nasm-2.12.02/
+    ./configure
+    make
+    sudo make install
