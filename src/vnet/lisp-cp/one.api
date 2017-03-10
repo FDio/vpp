@@ -225,7 +225,7 @@ define one_pitr_set_locator_set_reply
     @param context - sender context, to match reply w/ request
     @param is_ip4 - Address is IPv4 if set and IPv6 otherwise
     @param address - PETR IP address
-    @param is_add - add locator set if non-zero, else disable pitr
+    @param is_add - add locator set if non-zero, else disable PETR
 */
 define one_use_petr
 {
@@ -236,7 +236,7 @@ define one_use_petr
   u8 is_add;
 };
 
-/** \brief Reply for one_pitr_set_locator_set
+/** \brief Reply for one_use_petr
     @param context - returned sender context, to match reply w/ request
     @param retval - return code
 */

@@ -3235,6 +3235,66 @@ static void
 }
 
 static void
+  vl_api_show_one_use_petr_reply_t_handler
+  (vl_api_show_one_use_petr_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (0 <= retval)
+    {
+      print (vam->ofp, "%s\n", mp->status ? "enabled" : "disabled");
+      if (mp->status)
+	{
+	  print (vam->ofp, "Proxy-ETR address; %U",
+		 mp->is_ip4 ? format_ip4_address : format_ip6_address,
+		 mp->address);
+	}
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_show_one_use_petr_reply_t_handler_json
+  (vl_api_show_one_use_petr_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *status = 0;
+  struct in_addr ip4;
+  struct in6_addr ip6;
+
+  status = format (0, "%s", mp->status ? "enabled" : "disabled");
+  vec_add1 (status, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "status", status);
+  if (mp->status)
+    {
+      if (mp->is_ip4)
+	{
+	  clib_memcpy (&ip6, mp->address, sizeof (ip6));
+	  vat_json_object_add_ip6 (&node, "address", ip6);
+	}
+      else
+	{
+	  clib_memcpy (&ip4, mp->address, sizeof (ip4));
+	  vat_json_object_add_ip4 (&node, "address", ip4);
+	}
+    }
+
+  vec_free (status);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
 vl_api_show_one_pitr_reply_t_handler (vl_api_show_one_pitr_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
@@ -3979,6 +4039,7 @@ _(one_pitr_set_locator_set_reply)                       \
 _(one_map_request_mode_reply)                           \
 _(one_add_del_map_request_itr_rlocs_reply)              \
 _(one_eid_table_add_del_map_reply)                      \
+_(one_use_petr_reply)                                   \
 _(gpe_add_del_fwd_entry_reply)                          \
 _(gpe_enable_disable_reply)                             \
 _(gpe_set_encap_mode_reply)                             \
@@ -4191,6 +4252,7 @@ _(ONE_MAP_REGISTER_ENABLE_DISABLE_REPLY,                                \
 _(ONE_RLOC_PROBE_ENABLE_DISABLE_REPLY,                                  \
   one_rloc_probe_enable_disable_reply)                                  \
 _(ONE_PITR_SET_LOCATOR_SET_REPLY, one_pitr_set_locator_set_reply)       \
+_(ONE_USE_PETR_REPLY, one_use_petr_reply)                               \
 _(ONE_MAP_REQUEST_MODE_REPLY, one_map_request_mode_reply)               \
 _(ONE_EID_TABLE_ADD_DEL_MAP_REPLY, one_eid_table_add_del_map_reply)     \
 _(ONE_LOCATOR_SET_DETAILS, one_locator_set_details)                     \
@@ -4215,6 +4277,7 @@ _(ONE_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                              \
 _(ONE_GET_MAP_REQUEST_ITR_RLOCS_REPLY,                                  \
   one_get_map_request_itr_rlocs_reply)                                  \
 _(SHOW_ONE_PITR_REPLY, show_one_pitr_reply)                             \
+_(SHOW_ONE_USE_PETR_REPLY, show_one_use_petr_reply)                     \
 _(SHOW_ONE_MAP_REQUEST_MODE_REPLY, show_one_map_request_mode_reply)     \
 _(SHOW_ONE_RLOC_PROBE_STATE_REPLY, show_one_rloc_probe_state_reply)     \
 _(SHOW_ONE_MAP_REGISTER_STATE_REPLY,                                    \
@@ -14281,6 +14344,85 @@ api_show_one_pitr (vat_main_t * vam)
 
 #define api_show_lisp_pitr api_show_one_pitr
 
+static int
+api_one_use_petr (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_one_use_petr_t *mp;
+  u8 is_add = 0;
+  ip_address_t ip;
+  int ret;
+
+  memset (&ip, 0, sizeof (ip));
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "disable"))
+	is_add = 0;
+      else
+	if (unformat (input, "%U", unformat_ip4_address, &ip_addr_v4 (&ip)))
+	{
+	  is_add = 1;
+	  ip_addr_version (&ip) = IP4;
+	}
+      else
+	if (unformat (input, "%U", unformat_ip6_address, &ip_addr_v6 (&ip)))
+	{
+	  is_add = 1;
+	  ip_addr_version (&ip) = IP6;
+	}
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  M (ONE_USE_PETR, mp);
+
+  mp->is_add = is_add;
+  if (is_add)
+    {
+      mp->is_ip4 = ip_addr_version (&ip) == IP4 ? 1 : 0;
+      if (mp->is_ip4)
+	clib_memcpy (mp->address, &ip, 4);
+      else
+	clib_memcpy (mp->address, &ip, 16);
+    }
+
+  /* send */
+  S (mp);
+
+  /* wait for reply */
+  W (ret);
+  return ret;
+}
+
+#define api_lisp_use_petr api_one_use_petr
+
+static int
+api_show_one_use_petr (vat_main_t * vam)
+{
+  vl_api_show_one_use_petr_t *mp;
+  int ret;
+
+  if (!vam->json_output)
+    {
+      print (vam->ofp, "%=20s", "Proxy-ETR status:");
+    }
+
+  M (SHOW_ONE_USE_PETR, mp);
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+#define api_show_lisp_use_petr api_show_one_use_petr
+
 /**
  * Add/delete mapping between vni and vrf
  */
@@ -18241,6 +18383,7 @@ _(one_add_del_remote_mapping, "add|del vni <vni> eid <dest-eid> "       \
 _(one_add_del_adjacency, "add|del vni <vni> reid <remote-eid> leid "    \
                           "<local-eid>")                                \
 _(one_pitr_set_locator_set, "locator-set <loc-set-name> | del")         \
+_(one_use_petr, "ip-address> | disable")                                \
 _(one_map_request_mode, "src-dst|dst-only")                             \
 _(one_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")            \
 _(one_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")               \
@@ -18258,6 +18401,7 @@ _(show_one_map_register_state, "")                                      \
 _(show_one_status, "")                                                  \
 _(one_get_map_request_itr_rlocs, "")                                    \
 _(show_one_pitr, "")                                                    \
+_(show_one_use_petr, "")                                                \
 _(show_one_map_request_mode, "")                                        \
 _(lisp_add_del_locator_set, "locator-set <locator_name> [iface <intf> |"\
                             " sw_if_index <sw_if_index> p <priority> "  \
@@ -18282,6 +18426,7 @@ _(lisp_add_del_remote_mapping, "add|del vni <vni> eid <dest-eid> "      \
 _(lisp_add_del_adjacency, "add|del vni <vni> reid <remote-eid> leid "   \
                           "<local-eid>")                                \
 _(lisp_pitr_set_locator_set, "locator-set <loc-set-name> | del")        \
+_(lisp_use_petr, "<ip-address> | disable")                              \
 _(lisp_map_request_mode, "src-dst|dst-only")                            \
 _(lisp_add_del_map_request_itr_rlocs, "<loc-set-name> [del]")           \
 _(lisp_eid_table_add_del_map, "[del] vni <vni> vrf <vrf>")              \
@@ -18307,6 +18452,7 @@ _(show_lisp_map_register_state, "")                                     \
 _(show_lisp_status, "")                                                 \
 _(lisp_get_map_request_itr_rlocs, "")                                   \
 _(show_lisp_pitr, "")                                                   \
+_(show_lisp_use_petr, "")                                               \
 _(show_lisp_map_request_mode, "")                                       \
 _(af_packet_create, "name <host interface name> [hw_addr <mac>]")       \
 _(af_packet_delete, "name <host interface name>")                       \
