@@ -584,7 +584,6 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
     }
   if (vring->errfd != -1)
     close (vring->errfd);
-  vhost_user_vring_init (vui, qid);
 }
 
 static inline void
@@ -604,8 +603,10 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
   vui->is_up = 0;
 
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
-    vhost_user_vring_close (vui, q);
-
+    {
+      vhost_user_vring_close (vui, q);
+      vhost_user_vring_init (vui, q);
+    }
   unmap_all_mem_regions (vui);
   DBG_SOCK ("interface ifindex %d disconnected", vui->sw_if_index);
 }
@@ -1032,6 +1033,7 @@ vhost_user_socket_read (unix_file_t * uf)
       msg.state.num = vui->vrings[msg.state.index].last_avail_idx;
       msg.flags |= 4;
       msg.size = sizeof (msg.state);
+      vhost_user_vring_init (vui, msg.state.index);
       break;
 
     case VHOST_USER_NONE:
