@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_c49c1bc3",
+        "filename": "src/scripts/version",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-10T15:29:38Z",
+      "side": 1,
+      "message": "please don\u0027t go out of src/",
+      "range": {
+        "startLine": 11,
+        "startChar": 7,
+        "endLine": 11,
+        "endChar": 31
+      },
+      "revId": "2a0197f1167c43450aa2fa50a8e75b9d6fe6eb9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
