@@ -1060,6 +1060,7 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
 
+    @unittest.skip("Bad MACs used in BFD_VPP_ECHO packets")
     def test_echo(self):
         """ echo function """
         bfd_session_up(self)
@@ -1523,7 +1524,8 @@ class BFD6TestCase(VppTestCase):
         self.assert_equal(udp_sport_tx, udp_sport_rx, "UDP source port (== "
                           "ECHO packet identifier for test purposes)")
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    #@unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    @unittest.skip("Bad MACs used in BFD_VPP_ECHO packets")
     def test_echo(self):
         """ echo function used """
         bfd_session_up(self)
