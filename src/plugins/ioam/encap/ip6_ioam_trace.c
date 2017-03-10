@@ -27,6 +27,8 @@
 #include <vppinfra/elog.h>
 #include <vnet/plugin/plugin.h>
 
+#include <ioam/lib-trace/trace_util.h>
+#include <ioam/lib-trace/trace_config.h>
 #include <ioam/encap/ip6_ioam_trace.h>
 #include <ioam/udp-ping/udp_ping.h>
 #include <ioam/udp-ping/udp_ping_packet.h>

@@ -21,6 +21,7 @@
 #include <vppinfra/types.h>
 #include <ioam/lib-e2e/e2e_util.h>
 #include <ioam/lib-trace/trace_util.h>
+#include <ioam/lib-trace/trace_config.h>
 
 #define IOAM_FLOW_TEMPLATE_ID    260
 #define IOAM_TRACE_MAX_NODES      10

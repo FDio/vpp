@@ -22,6 +22,7 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <ioam/lib-trace/trace_util.h>
+#include <ioam/lib-trace/trace_config.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>

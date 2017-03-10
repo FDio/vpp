@@ -25,6 +25,7 @@
 #include <vppinfra/elog.h>
 
 #include <ioam/lib-trace/trace_util.h>
+#include <ioam/lib-trace/trace_config.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 
 /* Timestamp precision multipliers for seconds, milliseconds, microseconds
