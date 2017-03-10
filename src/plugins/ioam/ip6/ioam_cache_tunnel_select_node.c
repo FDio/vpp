@@ -67,8 +67,6 @@ format_cache_ts_trace (u8 * s, va_list * args)
   return s;
 }
 
-vlib_node_registration_t ioam_cache_ts_node;
-
 #define foreach_cache_ts_error \
 _(RECORDED, "ip6 iOAM headers cached")
 
