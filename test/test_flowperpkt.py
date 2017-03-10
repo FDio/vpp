@@ -43,7 +43,7 @@ class TestFlowperpkt(VppTestCase):
         for size in packet_sizes:
             info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(info)
-            p = (Ether(src=src_if.local_mac, dst=dst_if.remote_mac) /
+            p = (Ether(src=src_if.remote_mac, dst=src_if.local_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
                  UDP(sport=1234, dport=4321) /
                  Raw(payload))
