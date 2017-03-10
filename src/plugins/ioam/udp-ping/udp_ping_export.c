@@ -85,7 +85,6 @@ udp_ping_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 
 		  tp = vlib_buffer_get_current (b0);
 		  ip = &tp->ip4;
-		  udp = &tp->udp;
 		  h = &tp->ipfix.h;
 		  s = &tp->ipfix.s;
 
@@ -228,10 +227,12 @@ udp_ping_flow_create (u8 del)
   u32 domain_id = 0;
   flow_report_main_t *frm = &flow_report_main;
 
+  memset (&args, 0, sizeof (args));
   args.rewrite_callback = udp_ping_template_rewrite;
   args.flow_data_callback = udp_ping_send_flows;
   del ? (args.is_add = 0) : (args.is_add = 1);
   args.domain_id = domain_id;
+  args.src_port = UDP_DST_PORT_ipfix;
 
   rv = vnet_flow_report_add_del (frm, &args);
 
