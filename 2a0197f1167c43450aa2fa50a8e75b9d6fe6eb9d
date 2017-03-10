@@ -22,6 +22,30 @@
       "revId": "2a0197f1167c43450aa2fa50a8e75b9d6fe6eb9d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_046d8398",
+        "filename": "src/scripts/version",
+        "patchSetId": 1
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-03-10T17:02:42Z",
+      "side": 1,
+      "message": "What\u0027s so bad about going out of src tree. Both build-root and src are permanent parts of the source distribution?",
+      "parentUuid": "3a3291f1_c49c1bc3",
+      "range": {
+        "startLine": 11,
+        "startChar": 7,
+        "endLine": 11,
+        "endChar": 31
+      },
+      "revId": "2a0197f1167c43450aa2fa50a8e75b9d6fe6eb9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
