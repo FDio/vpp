@@ -214,8 +214,8 @@ _(udp_ping_add_del_req, "src <local IPv6 address>  start-src-port <first local p
 _(udp_ping_export_req, "export [disable]")                                         \
 
 
-void
-vat_api_hookup (vat_main_t * vam)
+static void
+udp_ping_test_api_hookup (vat_main_t * vam)
 {
   udp_ping_test_main_t *sm = &udp_ping_test_main;
   /* Hook up handlers for replies from the data plane plug-in */
@@ -253,7 +253,7 @@ vat_plugin_register (vat_main_t * vam)
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~ 0)
-    vat_api_hookup (vam);
+    udp_ping_test_api_hookup (vam);
 
   vec_free (name);
 
