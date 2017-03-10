@@ -23,7 +23,7 @@ cd ${BASE}/tmp
 tar -xzf ${BASE}/${verstring}.tar.gz
 rm ${BASE}/${verstring}.tar.gz
 
-cp ${BR}/scripts/.version ${BASE}/tmp/${prefix}/build-root/scripts
+cp ${BR}/../src/scripts/.version ${BASE}/tmp/${prefix}/src/scripts
 tar -c ${prefix} | gzip -9 > ${verstring}.tar.gz
 mv ${verstring}.tar.gz ${BASE}
 

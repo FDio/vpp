@@ -182,17 +182,17 @@ define make
 	@make -C $(BR) PLATFORM=$(PLATFORM) TAG=$(1) $(2)
 endef
 
-$(BR)/scripts/.version:
+src/scripts/.version:
 ifneq ("$(wildcard /etc/redhat-release)","")
-	$(shell $(BR)/scripts/version rpm-string > $(BR)/scripts/.version)
+	$(shell $(BR)/scripts/version rpm-string > src/scripts/.version)
 else
-	$(shell $(BR)/scripts/version > $(BR)/scripts/.version)
+	$(shell $(BR)/scripts/version > src/scripts/.version)
 endif
 
-dist:	$(BR)/scripts/.version
-	$(MAKE) verstring=$(PLATFORM)-$(shell cat $(BR)/scripts/.version) prefix=$(PLATFORM) distversion
+dist:	src/scripts/.version
+	$(MAKE) verstring=$(PLATFORM)-$(shell cat src/scripts/.version) prefix=$(PLATFORM) distversion
 
-distversion:	$(BR)/scripts/.version
+distversion:	src/scripts/.version
 	$(BR)/scripts/verdist ${BR} ${prefix}-$(shell $(BR)/scripts/version rpm-version) ${verstring}
 	mv $(verstring).tar.gz $(BR)/rpm
 
@@ -200,7 +200,7 @@ build: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-install)
 
 wipedist:
-	$(RM) $(BR)/scripts/.version $(BR)/rpm/*.tar.gz
+	$(RM) src/scripts/.version $(BR)/rpm/*.tar.gz
 
 wipe: wipedist $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-wipe)

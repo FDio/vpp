@@ -1,6 +1,6 @@
 #!/bin/bash
 
-path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
+path="$(dirname "$(readlink -f "$0")")"
 
 cd "$path"
 
