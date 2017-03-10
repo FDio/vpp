@@ -429,7 +429,18 @@ udp_ping_analyse_hbh (vlib_buffer_t * b0,
   ioam_e2e_option_t *e2e;
   ioam_trace_option_t *trace;
 
+  /* If the packet doesnt match UDP session then return */
+  if (PREDICT_FALSE (pool_is_free_index (udp_ping_main.ip46_flow, flow_id)))
+    return;
+
   ip46_flow = udp_ping_main.ip46_flow + flow_id;
+  /* Check port is within range */
+  if (PREDICT_FALSE ((src_port < ip46_flow->udp_data.start_src_port) ||
+		     (src_port > ip46_flow->udp_data.end_src_port) ||
+		     (dst_port < ip46_flow->udp_data.start_dst_port) ||
+		     (dst_port > ip46_flow->udp_data.end_dst_port)))
+    return;
+
   flow_index = (src_port - ip46_flow->udp_data.start_src_port) *
     (ip46_flow->udp_data.end_dst_port - ip46_flow->udp_data.start_dst_port +
      1);
