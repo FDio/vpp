@@ -32,6 +32,8 @@
 #include <ioam/udp-ping/udp_ping_packet.h>
 #include <ioam/udp-ping/udp_ping_util.h>
 
+#define IP6_IOAM_LOOPBACK_PKT_MAX_SIZE (1500 - sizeof (ip6_header_t))
+
 /* Timestamp precision multipliers for seconds, milliseconds, microseconds
  * and nanoseconds respectively.
  */
@@ -219,6 +221,7 @@ ip6_hbh_ioam_loopback_handler (vlib_buffer_t * b, ip6_header_t * ip,
   ip6_hop_by_hop_header_t *hbh;
   ioam_trace_option_t *opt;
   u16 ip6_len;
+  u16 payload_len;
   udp_ping_t *udp;
 
   next_node = vlib_get_node_by_name (hm->vlib_main, (u8 *) "ip6-lookup");
@@ -231,7 +234,11 @@ ip6_hbh_ioam_loopback_handler (vlib_buffer_t * b, ip6_header_t * ip,
 
   b0 = vlib_get_buffer (hm->vlib_main, buffers);
   ip6_len = clib_net_to_host_u16 (ip->payload_length);
-  clib_memcpy (b0->data, ip, (ip6_len + sizeof (ip6_header_t)));
+  payload_len =
+    (ip6_len >
+     IP6_IOAM_LOOPBACK_PKT_MAX_SIZE) ? IP6_IOAM_LOOPBACK_PKT_MAX_SIZE :
+    ip6_len;
+  clib_memcpy (b0->data, ip, (payload_len + sizeof (ip6_header_t)));
   b0->current_data = 0;
   b0->current_length = ip6_len + sizeof (ip6_header_t);
   b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
