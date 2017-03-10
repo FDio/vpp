@@ -18,6 +18,7 @@
 #include <string.h>
 #include <vppinfra/mem.h>
 #include "trace_util.h"
+#include "trace_config.h"
 
 trace_main_t trace_main;
 
