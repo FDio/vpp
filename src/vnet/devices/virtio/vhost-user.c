@@ -583,7 +583,10 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
       vring->callfd_idx = ~0;
     }
   if (vring->errfd != -1)
-    close (vring->errfd);
+    {
+      close (vring->errfd);
+      vring->errfd = -1;
+    }
   vhost_user_vring_init (vui, qid);
 }
 
@@ -1026,12 +1029,16 @@ vhost_user_socket_read (unix_file_t * uf)
 	  goto close_socket;
 	}
 
-      /* Spec says: Client must [...] stop ring upon receiving VHOST_USER_GET_VRING_BASE. */
-      vhost_user_vring_close (vui, msg.state.index);
-
+      /*
+       * Copy last_avail_idx from the vring before closing it because
+       * closing the vring also initializes the vring last_avail_idx
+       */
       msg.state.num = vui->vrings[msg.state.index].last_avail_idx;
       msg.flags |= 4;
       msg.size = sizeof (msg.state);
+
+      /* Spec says: Client must [...] stop ring upon receiving VHOST_USER_GET_VRING_BASE. */
+      vhost_user_vring_close (vui, msg.state.index);
       break;
 
     case VHOST_USER_NONE:
