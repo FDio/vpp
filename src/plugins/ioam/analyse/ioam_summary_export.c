@@ -318,7 +318,6 @@ ioam_send_flows (flow_report_main_t * frm, flow_report_t * fr,
 
 	    tp = vlib_buffer_get_current (b0);
 	    ip = &tp->ip4;
-	    udp = &tp->udp;
 	    h = &tp->ipfix.h;
 	    s = &tp->ipfix.s;
 

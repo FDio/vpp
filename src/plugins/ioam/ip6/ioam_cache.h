@@ -203,8 +203,8 @@ typedef struct
 
 ioam_cache_main_t ioam_cache_main;
 
-vlib_node_registration_t ioam_cache_node;
-vlib_node_registration_t ioam_cache_ts_node;
+extern vlib_node_registration_t ioam_cache_node;
+extern vlib_node_registration_t ioam_cache_ts_node;
 
 /*  Compute flow hash.  We'll use it to select which Sponge to use for this
  *  flow.  And other things.
@@ -484,16 +484,21 @@ format_ioam_cache_entry (u8 * s, va_list * args)
 {
   ioam_cache_entry_t *e = va_arg (*args, ioam_cache_entry_t *);
   ioam_cache_main_t *cm = &ioam_cache_main;
+  int rewrite_len = vec_len (e->ioam_rewrite_string);
 
   s = format (s, "%d: %U:%d to  %U:%d seq_no %lu\n",
 	      (e - cm->ioam_rewrite_pool),
 	      format_ip6_address, &e->src_address,
 	      e->src_port,
 	      format_ip6_address, &e->dst_address, e->dst_port, e->seq_no);
-  s = format (s, "  %U",
-	      format_ip6_hop_by_hop_ext_hdr,
-	      (ip6_hop_by_hop_header_t *) e->ioam_rewrite_string,
-	      vec_len (e->ioam_rewrite_string) - 1);
+
+  if (rewrite_len)
+    {
+      s = format (s, "  %U",
+		  format_ip6_hop_by_hop_ext_hdr,
+		  (ip6_hop_by_hop_header_t *) e->ioam_rewrite_string,
+		  rewrite_len - 1);
+    }
   return s;
 }
 
@@ -795,7 +800,10 @@ format_ioam_cache_ts_entry (u8 * s, va_list * args)
   vlib_main_t *vm = cm->vlib_main;
   clib_time_t *ct = &vm->clib_time;
 
-  if (e && e->hbh)
+  if (!e)
+    goto end;
+
+  if (e->hbh)
     {
       e2e =
 	ip6_ioam_find_hbh_option (e->hbh,
@@ -826,6 +834,8 @@ format_ioam_cache_ts_entry (u8 * s, va_list * args)
 		 vm->cpu_time_main_loop_start) * ct->seconds_per_clock,
 		e->response_received);
     }
+
+end:
   return s;
 }
 
