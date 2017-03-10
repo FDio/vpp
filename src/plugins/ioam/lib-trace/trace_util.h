@@ -62,25 +62,11 @@ typedef struct
   vnet_main_t *vnet_main;
 } trace_main_t;
 
-extern trace_main_t trace_main;
 
 /*
  * Initialize Trace profile
  */
 int trace_util_init (void);
-
-
-/*
- * Find a trace profile
- */
-
-always_inline trace_profile *
-trace_profile_find (void)
-{
-  trace_main_t *sm = &trace_main;
-
-  return (&(sm->profile));
-}
 
 
 /* setup and clean up profile */
@@ -94,9 +80,11 @@ typedef CLIB_PACKED (struct
 {
   u8 ioam_trace_type;
   u8 data_list_elts_left;
-  u32 elts[0];	/* Variable type. So keep it generic */
+  u32 elts[0]; /* Variable type. So keep it generic */
 }) ioam_trace_hdr_t;
 /* *INDENT-ON* */
+
+
 
 #define    BIT_TTL_NODEID       (1<<0)
 #define    BIT_ING_INTERFACE    (1<<1)
@@ -218,7 +206,7 @@ typedef struct
 } ioam_trace_ts_app_t;
 
 static inline u8
-fetch_trace_data_size (u8 trace_type)
+fetch_trace_data_size (u16 trace_type)
 {
   u8 trace_data_size = 0;
 
