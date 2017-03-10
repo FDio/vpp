@@ -62,7 +62,6 @@ class TestMAP(VppTestCase):
         self.assertEqual(rx[IPv6].src, ip6_src)
         self.assertEqual(rx[IPv6].dst, ip6_dst)
 
-    @unittest.skip("Doesn't Work")
     def test_map_e(self):
         """ MAP-E """
 
@@ -155,18 +154,21 @@ class TestMAP(VppTestCase):
         #
         # change the route to the pre-solved next-hop
         #
-        pre_res_route1 = VppIpRoute(self,
-                                    "4001::1",
-                                    128,
-                                    [VppRoutePath(self.pg1.remote_hosts[3].ip6,
-                                                  self.pg1.sw_if_index,
-                                                  is_ip6=1)],
-                                    is_ip6=1)
-        pre_res_route1.add_vpp_config()
+        pre_res_route.modify([VppRoutePath(self.pg1.remote_hosts[3].ip6,
+                                           self.pg1.sw_if_index,
+                                           is_ip6=1)])
+        pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, map_src,
                                       "2001::c0a8:0:0",
                                       dmac=self.pg1.remote_hosts[3].mac)
+
+        #
+        # cleanup. The test infra's object registry will ensure
+        # the route is really gone and thus that the unresolve worked.
+        #
+        pre_res_route.remove_vpp_config()
+        self.vapi.ppcli("map params pre-resolve del ip6-nh 4001::1")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

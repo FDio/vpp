@@ -556,23 +556,51 @@ map_fib_resolve (map_main_pre_resolved_t * pr,
 }
 
 static void
-map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6)
+map_fib_unresolve (map_main_pre_resolved_t * pr,
+		   fib_protocol_t proto, u8 len, const ip46_address_t * addr)
+{
+  fib_prefix_t pfx = {
+    .fp_proto = proto,
+    .fp_len = len,
+    .fp_addr = *addr,
+  };
+
+  fib_entry_child_remove (pr->fei, pr->sibling);
+
+  fib_table_entry_special_remove (0,	// default fib
+				  &pfx, FIB_SOURCE_RR);
+  dpo_reset (&pr->dpo);
+
+  pr->fei = FIB_NODE_INDEX_INVALID;
+  pr->sibling = FIB_NODE_INDEX_INVALID;
+}
+
+static void
+map_pre_resolve (ip4_address_t * ip4, ip6_address_t * ip6, int is_del)
 {
   if (ip6 && (ip6->as_u64[0] != 0 || ip6->as_u64[1] != 0))
     {
       ip46_address_t addr = {
 	.ip6 = *ip6,
       };
-      map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP6],
-		       FIB_PROTOCOL_IP6, 128, &addr);
+      if (is_del)
+	map_fib_unresolve (&pre_resolved[FIB_PROTOCOL_IP6],
+			   FIB_PROTOCOL_IP6, 128, &addr);
+      else
+	map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP6],
+			 FIB_PROTOCOL_IP6, 128, &addr);
     }
   if (ip4 && (ip4->as_u32 != 0))
     {
       ip46_address_t addr = {
 	.ip4 = *ip4,
       };
-      map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP4],
-		       FIB_PROTOCOL_IP4, 32, &addr);
+      if (is_del)
+	map_fib_unresolve (&pre_resolved[FIB_PROTOCOL_IP4],
+			   FIB_PROTOCOL_IP4, 32, &addr);
+      else
+	map_fib_resolve (&pre_resolved[FIB_PROTOCOL_IP4],
+			 FIB_PROTOCOL_IP4, 32, &addr);
     }
 }
 #endif
@@ -817,6 +845,7 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
   ip4_address_t ip4nh, *p_v4 = NULL;
   ip6_address_t ip6nh, *p_v6 = NULL;
   clib_error_t *error = NULL;
+  int is_del = 0;
 
   memset (&ip4nh, 0, sizeof (ip4nh));
   memset (&ip6nh, 0, sizeof (ip6nh));
@@ -832,6 +861,8 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
       else
 	if (unformat (line_input, "ip6-nh %U", unformat_ip6_address, &ip6nh))
 	p_v6 = &ip6nh;
+      else if (unformat (line_input, "del"))
+	is_del = 1;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -840,7 +871,7 @@ map_pre_resolve_command_fn (vlib_main_t * vm,
 	}
     }
 
-  map_pre_resolve (p_v4, p_v6);
+  map_pre_resolve (p_v4, p_v6, is_del);
 
 done:
   unformat_free (line_input);

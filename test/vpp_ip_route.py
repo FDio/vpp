@@ -79,6 +79,13 @@ class VppIpRoute(VppObject):
         else:
             self.dest_addr = inet_pton(AF_INET, dest_addr)
 
+    def modify(self, paths, is_local=0,
+               is_unreach=0, is_prohibit=0):
+        self.paths = paths
+        self.is_local = is_local
+        self.is_unreach = is_unreach
+        self.is_prohibit = is_prohibit
+
     def add_vpp_config(self):
         if self.is_local or self.is_unreach or self.is_prohibit:
             self._test.vapi.ip_add_del_route(
@@ -126,7 +133,8 @@ class VppIpRoute(VppObject):
                                                  path.nh_addr,
                                                  path.nh_itf,
                                                  table_id=self.table_id,
-                                                 is_add=0)
+                                                 is_add=0,
+                                                 is_ipv6=self.is_ip6)
 
     def query_vpp_config(self):
         return find_route(self._test,
