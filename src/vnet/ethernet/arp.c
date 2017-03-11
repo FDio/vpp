@@ -1016,7 +1016,6 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vnet_hw_interface_t *hw_if0;
 	  ethernet_arp_header_t *arp0;
 	  ethernet_header_t *eth0;
-	  ip_adjacency_t *adj0;
 	  ip4_address_t *if_addr0, proxy_src;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
 	  u8 is_request0, dst_is_local0, is_unnum0;
@@ -1073,6 +1072,11 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 					  32);
 	  dst_flags = fib_entry_get_flags (dst_fei);
 
+	  src_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
+					  &arp0->ip4_over_ethernet[0].ip4,
+					  32);
+	  src_flags = fib_entry_get_flags (src_fei);
+
 	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
 
 	  if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
@@ -1085,11 +1089,6 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  is_unnum0 = sw_if_index0 != conn_sw_if_index0;
 
 	  /* Source must also be local to subnet of matching interface address. */
-	  src_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
-					  &arp0->ip4_over_ethernet[0].ip4,
-					  32);
-	  src_flags = fib_entry_get_flags (src_fei);
-
 	  if (!((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
 		(FIB_ENTRY_FLAG_CONNECTED & src_flags)))
 	    {
@@ -1187,25 +1186,62 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* get the adj from the destination's covering connected */
 	  if (NULL == pa)
 	    {
-	      adj0 =
-		adj_get (fib_entry_get_adj_for_source
-			 (ip4_fib_table_lookup
-			  (ip4_fib_get (fib_index0),
-			   &arp0->ip4_over_ethernet[1].ip4, 31),
-			  FIB_SOURCE_INTERFACE));
-	      if (adj0->lookup_next_index != IP_LOOKUP_NEXT_GLEAN)
-		{
-		  error0 = ETHERNET_ARP_ERROR_missing_interface_address;
-		  goto drop2;
-		}
 	      if (is_unnum0)
 		{
 		  if (!arp_unnumbered (p0, pi0, eth0, conn_sw_if_index0))
 		    goto drop2;
 		}
 	      else
-		vlib_buffer_advance (p0, -adj0->rewrite_header.data_bytes);
+		{
+		  ip_adjacency_t *adj0 = NULL;
+		  adj_index_t ai;
+
+		  if (FIB_ENTRY_FLAG_ATTACHED & src_flags)
+		    {
+		      /*
+		       * If the source is attached use the adj from that source.
+		       */
+		      ai = fib_entry_get_adj (src_fei);
+		      if (ADJ_INDEX_INVALID != ai)
+			{
+			  adj0 = adj_get (ai);
+			}
+		    }
+		  else
+		    {
+		      /*
+		       * Get the glean adj from the cover. This is presumably interface
+		       * sourced, and therefre needs to be a glean adj.
+		       */
+		      ai = fib_entry_get_adj_for_source
+			(ip4_fib_table_lookup
+			 (ip4_fib_get (fib_index0),
+			  &arp0->ip4_over_ethernet[1].ip4, 31),
+			 FIB_SOURCE_INTERFACE);
+
+		      if (ADJ_INDEX_INVALID != ai)
+			{
+			  adj0 = adj_get (ai);
+
+			  if (adj0->lookup_next_index == IP_LOOKUP_NEXT_GLEAN)
+			    {
+			      adj0 = NULL;
+			    }
+			}
+		    }
+		  if (NULL != adj0)
+		    {
+		      vlib_buffer_advance (p0,
+					   -adj0->rewrite_header.data_bytes);
+		    }
+		  else
+		    {
+		      error0 = ETHERNET_ARP_ERROR_missing_interface_address;
+		      goto drop2;
+		    }
+		}
 	    }
+
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
 

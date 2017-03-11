@@ -459,11 +459,26 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
     {
       si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
       si->unnumbered_sw_if_index = sw_if_index;
+
+      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] =
+	ip4_main.
+	lookup_main.if_address_pool_index_by_sw_if_index[sw_if_index];
+      ip6_main.
+	lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] =
+	ip6_main.
+	lookup_main.if_address_pool_index_by_sw_if_index[sw_if_index];
     }
   else
     {
       si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
       si->unnumbered_sw_if_index = (u32) ~ 0;
+
+      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] = ~0;
+      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] = ~0;
     }
   ip4_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
   ip6_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
