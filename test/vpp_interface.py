@@ -336,7 +336,7 @@ class VppInterface(object):
             ip_sw_if_index)
 
     def unset_unnumbered(self, ip_sw_if_index):
-        """ Unaet the interface to unnumbered via ip_sw_if_index """
+        """ Unset the interface to unnumbered via ip_sw_if_index """
         self.test.vapi.sw_interface_set_unnumbered(
             self.sw_if_index,
             ip_sw_if_index,
