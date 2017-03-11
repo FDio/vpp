@@ -864,6 +864,10 @@ set_unnumbered (vlib_main_t * vm,
       si->unnumbered_sw_if_index = (u32) ~ 0;
       ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
       ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
+      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] = ~0;
+      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] = ~0;
     }
   else if (is_set)
     {
@@ -871,6 +875,14 @@ set_unnumbered (vlib_main_t * vm,
       si->unnumbered_sw_if_index = inherit_from_sw_if_index;
       ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
       ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
+      ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] =
+	ip4_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[inherit_from_sw_if_index];
+      ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[unnumbered_sw_if_index] =
+	ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
+	[inherit_from_sw_if_index];
     }
 
   return 0;

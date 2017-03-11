@@ -63,6 +63,10 @@ typedef enum fib_path_cfg_attribute_t_ {
      */
     FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED,
     /**
+     * The path is attached
+     */
+    FIB_PATH_CFG_ATTRIBUTE_ATTACHED,
+    /**
      * The path is a for-us path
      */
     FIB_PATH_CFG_ATTRIBUTE_LOCAL,
@@ -83,6 +87,7 @@ typedef enum fib_path_cfg_attribute_t_ {
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST] = "resolve-host", \
     [FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED] = "resolve-attached", \
     [FIB_PATH_CFG_ATTRIBUTE_LOCAL] = "local",	        \
+    [FIB_PATH_CFG_ATTRIBUTE_ATTACHED] = "attached",	\
 }
 
 #define FOR_EACH_FIB_PATH_CFG_ATTRIBUTE(_item) \
@@ -100,6 +105,7 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_RESOLVE_HOST = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_HOST),
     FIB_PATH_CFG_FLAG_RESOLVE_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_RESOLVE_ATTACHED),
     FIB_PATH_CFG_FLAG_LOCAL = (1 << FIB_PATH_CFG_ATTRIBUTE_LOCAL),
+    FIB_PATH_CFG_FLAG_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_ATTACHED),
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
 
