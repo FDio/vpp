@@ -480,6 +480,7 @@ fib_table_route_path_fixup (const fib_prefix_t *prefix,
 	path->frp_sw_if_index != ~0)
     {
 	path->frp_addr = prefix->fp_addr;
+        path->frp_flags |= FIB_ROUTE_PATH_ATTACHED;
     }
 }		  
 

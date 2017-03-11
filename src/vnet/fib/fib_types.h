@@ -282,6 +282,10 @@ typedef enum fib_route_path_flags_t_
      * A for-us/local path
      */
     FIB_ROUTE_PATH_LOCAL = (1 << 2),
+    /**
+     * Attached path
+     */
+    FIB_ROUTE_PATH_ATTACHED = (1 << 3),
 } fib_route_path_flags_t;
 
 /**

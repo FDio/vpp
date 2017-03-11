@@ -946,6 +946,10 @@ fib_path_is_attached (const fib_route_path_t *rpath)
     {
 	return (!0);
     }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_ATTACHED)
+    {
+        return (!0);
+    }
     return (0);
 }
 
