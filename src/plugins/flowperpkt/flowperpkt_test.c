@@ -19,6 +19,7 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
+#include <flowperpkt/flowperpkt.h>
 
 #define __plugin_msg_base flowperpkt_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -65,7 +66,8 @@ typedef struct
 flowperpkt_test_main_t flowperpkt_test_main;
 
 #define foreach_standard_reply_retval_handler   \
-_(flowperpkt_tx_interface_add_del_reply)
+_(flowperpkt_tx_interface_add_del_reply)        \
+_(flowperpkt_params_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -89,14 +91,15 @@ foreach_standard_reply_retval_handler;
  */
 #define foreach_vpe_api_reply_msg               \
 _(FLOWPERPKT_TX_INTERFACE_ADD_DEL_REPLY,        \
-  flowperpkt_tx_interface_add_del_reply)
+  flowperpkt_tx_interface_add_del_reply)        \
+_(FLOWPERPKT_PARAMS_REPLY, flowperpkt_params_reply)
 
 static int
 api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   int enable_disable = 1;
-  u8 which = 0;			/* ipv4 by default */
+  u8 which = FLOW_VARIANT_IP4;
   u32 sw_if_index = ~0;
   vl_api_flowperpkt_tx_interface_add_del_t *mp;
   int ret;
@@ -110,8 +113,12 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "disable"))
 	enable_disable = 0;
+      else if (unformat (i, "ip4"))
+	which = FLOW_VARIANT_IP4;
+      else if (unformat (i, "ip6"))
+	which = FLOW_VARIANT_IP6;
       else if (unformat (i, "l2"))
-	which = 1;
+	which = FLOW_VARIANT_L2;
       else
 	break;
     }
@@ -136,12 +143,68 @@ api_flowperpkt_tx_interface_add_del (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_flowperpkt_params (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  u8 record_l2 = 0, record_l3 = 0, record_l4 = 0;
+  u32 active_timer = ~0;
+  u32 passive_timer = ~0;
+  vl_api_flowperpkt_params_t *mp;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "active %d", &active_timer))
+	;
+      else if (unformat (i, "passive %d", &passive_timer))
+	;
+      else if (unformat (i, "record"))
+	while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+	  {
+	    if (unformat (i, "l2"))
+	      record_l2 = 1;
+	    else if (unformat (i, "l3"))
+	      record_l3 = 1;
+	    else if (unformat (i, "l4"))
+	      record_l4 = 1;
+	    else
+	      break;
+	  }
+      else
+	break;
+    }
+
+  if (passive_timer > 0 && active_timer > passive_timer)
+    {
+      errmsg ("Passive timer has to be greater than active one...\n");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (FLOWPERPKT_PARAMS, mp);
+  mp->record_l2 = record_l2;
+  mp->record_l3 = record_l3;
+  mp->record_l4 = record_l4;
+  mp->active_timer = ntohl (active_timer);
+  mp->passive_timer = ntohl (passive_timer);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+
+  return ret;
+}
+
 /*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg \
-_(flowperpkt_tx_interface_add_del, "<intfc> [disable]")
+_(flowperpkt_tx_interface_add_del, "<intfc> [disable]") \
+_(flowperpkt_params, "record <[l2] [l3] [l4]> [active <timer> passive <timer>]")
 
 static void
 flowperpkt_vat_api_hookup (vat_main_t * vam)
