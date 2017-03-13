@@ -15,8 +15,8 @@
 #ifndef __included_ssvm_fifo_segment_h__
 #define __included_ssvm_fifo_segment_h__
 
-#include "svm_fifo.h"
-#include "ssvm.h"
+#include <svm/svm_fifo.h>
+#include <svm/ssvm.h>
 
 typedef struct
 {
@@ -66,6 +66,8 @@ typedef enum
 } ssvm_fifo_segment_api_error_enum_t;
 
 int svm_fifo_segment_create (svm_fifo_segment_create_args_t * a);
+int svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t 
+                                             * a);
 int svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a);
 void svm_fifo_segment_delete (svm_fifo_segment_private_t * s);
 

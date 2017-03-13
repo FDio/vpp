@@ -33,6 +33,7 @@ typedef enum
   FIFO_EVENT_SERVER_TX,
   FIFO_EVENT_TIMEOUT,
   FIFO_EVENT_SERVER_EXIT,
+  FIFO_EVENT_BUILTIN_RX
 } fifo_event_type_t;
 
 #define foreach_session_input_error                                         \
@@ -91,14 +92,13 @@ typedef enum
   SESSION_STATE_N_STATES,
 } stream_session_state_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     svm_fifo_t * fifo;
-		     u8 event_type;
-		     /* $$$$ for event logging */
-		     u16 event_id;
-		     u32 enqueue_length;
-		     }) session_fifo_event_t;
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  svm_fifo_t * fifo;
+  u8 event_type;
+  u16 event_id;
+}) session_fifo_event_t;
+/* *INDENT-ON* */
 
 typedef struct _stream_session_t
 {
@@ -212,6 +212,9 @@ struct _session_manager_main
 
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
+
+  /** Segment index of the hand-crafted process-private segment */
+  u32 builtin_segment_index;
 
   u8 is_enabled;
 
@@ -333,7 +336,7 @@ stream_session_get_index (stream_session_t * s)
 }
 
 always_inline u32
-stream_session_max_enqueue (transport_connection_t * tc)
+stream_session_max_rx_enqueue (transport_connection_t * tc)
 {
   stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_enqueue (s->server_rx_fifo);
@@ -345,7 +348,6 @@ stream_session_fifo_size (transport_connection_t * tc)
   stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
   return s->server_rx_fifo->nitems;
 }
-
 
 int
 stream_session_enqueue_data (transport_connection_t * tc, u8 * data, u16 len,

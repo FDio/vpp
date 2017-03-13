@@ -101,7 +101,7 @@ always_inline u8
 tcp_segment_in_rcv_wnd (tcp_connection_t * tc, u32 seq, u32 end_seq)
 {
   return seq_leq (end_seq, tc->rcv_las + tc->rcv_wnd)
-    && seq_geq (seq, tc->rcv_nxt);
+    && seq_geq (seq, tc->rcv_las);
 }
 
 void
@@ -326,13 +326,13 @@ tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
 
       /* XXX Drop in RTT results in RTTVAR increase and bigger RTO.
        * The increase should be bound */
-      tc->rttvar += (clib_abs (err) - tc->rttvar) >> 2;
+      tc->rttvar += ((int)clib_abs (err) -(int) tc->rttvar) >> 2;
     }
   else
     {
       /* First measurement. */
       tc->srtt = mrtt;
-      tc->rttvar = mrtt << 1;
+      tc->rttvar = mrtt >> 1;
     }
 }
 
@@ -394,7 +394,11 @@ tcp_dequeue_acked (tcp_connection_t * tc, u32 ack)
     }
 }
 
-/** Check if dupack as per RFC5681 Sec. 2 */
+/**
+ * Check if dupack as per RFC5681 Sec. 2
+ *
+ * This works only if called before updating snd_wnd.
+ * */
 always_inline u8
 tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 new_snd_wnd)
 {
@@ -429,10 +433,10 @@ scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
 }
 
 sack_scoreboard_hole_t *
-scoreboard_insert_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * prev,
+scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 			u32 start, u32 end)
 {
-  sack_scoreboard_hole_t *hole, *next;
+  sack_scoreboard_hole_t *hole, *next, *prev;
   u32 hole_index;
 
   pool_get (sb->holes, hole);
@@ -442,6 +446,7 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * prev,
   hole->end = end;
   hole_index = hole - sb->holes;
 
+  prev = scoreboard_get_hole (sb, prev_index);
   if (prev)
     {
       hole->prev = prev - sb->holes;
@@ -462,28 +467,35 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * prev,
   return hole;
 }
 
-static void
+void
 tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, tmp;
-  sack_scoreboard_hole_t *hole, *next_hole;
-  u32 blk_index = 0;
+  sack_scoreboard_hole_t *hole, *next_hole, *last_hole, *new_hole;
+  u32 blk_index = 0, old_sacked_bytes, hole_index;
   int i, j;
 
-  if (!tcp_opts_sack (tc) && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
+  sb->last_sacked_bytes = 0;
+  old_sacked_bytes = sb->sacked_bytes;
+
+  if (!tcp_opts_sack (&tc->opt) && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     return;
 
   /* Remove invalid blocks */
-  vec_foreach (blk, tc->opt.sacks)
-  {
-    if (seq_lt (blk->start, blk->end)
-	&& seq_gt (blk->start, tc->snd_una)
-	&& seq_gt (blk->start, ack) && seq_lt (blk->end, tc->snd_nxt))
-      continue;
-
-    vec_del1 (tc->opt.sacks, blk - tc->opt.sacks);
-  }
+  blk = tc->opt.sacks;
+  while (blk < vec_end(tc->opt.sacks))
+    {
+      if (seq_lt (blk->start, blk->end)
+  	&& seq_gt (blk->start, tc->snd_una)
+  	&& seq_gt (blk->start, ack)
+  	&& seq_leq (blk->end, tc->snd_nxt))
+	{
+	  blk++;
+	  continue;
+	}
+      vec_del1 (tc->opt.sacks, blk - tc->opt.sacks);
+    }
 
   /* Add block for cumulative ack */
   if (seq_gt (ack, tc->snd_una))
@@ -498,7 +510,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 
   /* Make sure blocks are ordered */
   for (i = 0; i < vec_len (tc->opt.sacks); i++)
-    for (j = i; j < vec_len (tc->opt.sacks); j++)
+    for (j = i + 1; j < vec_len (tc->opt.sacks); j++)
       if (seq_lt (tc->opt.sacks[j].start, tc->opt.sacks[i].start))
 	{
 	  tmp = tc->opt.sacks[i];
@@ -506,10 +518,21 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  tc->opt.sacks[j] = tmp;
 	}
 
-  /* If no holes, insert the first that covers all outstanding bytes */
   if (sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     {
-      scoreboard_insert_hole (sb, 0, tc->snd_una, tc->snd_una_max);
+      /* If no holes, insert the first that covers all outstanding bytes */
+      last_hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX,
+					  tc->snd_una, tc->snd_una_max);
+      sb->tail = scoreboard_hole_index (sb, last_hole);
+    }
+  else
+    {
+      /* If we have holes but last sack blk is beyond the last hole, update
+       * last hole end */
+      tmp = tc->opt.sacks[vec_len(tc->opt.sacks) - 1];
+      last_hole = scoreboard_last_hole (sb);
+      if (seq_gt(tmp.start, last_hole->end))
+	last_hole->end = tmp.start;
     }
 
   /* Walk the holes with the SACK blocks */
@@ -526,10 +549,10 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	      next_hole = scoreboard_next_hole (sb, hole);
 
 	      /* Byte accounting */
-	      if (seq_lt (hole->end, ack))
+	      if (seq_leq (hole->end, ack))
 		{
-		  /* Bytes lost because snd wnd left edge advances */
-		  if (seq_lt (next_hole->start, ack))
+		  /* Bytes lost because snd_wnd left edge advances */
+		  if (next_hole && seq_leq (next_hole->start, ack))
 		    sb->sacked_bytes -= next_hole->start - hole->end;
 		  else
 		    sb->sacked_bytes -= ack - hole->end;
@@ -539,35 +562,61 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		  sb->sacked_bytes += scoreboard_hole_bytes (hole);
 		}
 
+	      /* About to remove last hole */
+	      if (hole == last_hole)
+		{
+		  sb->tail = hole->prev;
+		  last_hole = scoreboard_last_hole (sb);
+		}
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
 	  /* Partial overlap */
 	  else
 	    {
-	      sb->sacked_bytes += blk->end - hole->start;
-	      hole->start = blk->end;
+	      if (seq_gt(blk->end, hole->start))
+		{
+		  sb->sacked_bytes += blk->end - hole->start;
+		  hole->start = blk->end;
+		}
 	      blk_index++;
 	    }
 	}
       else
 	{
 	  /* Hole must be split */
-	  if (seq_leq (blk->end, hole->end))
+	  if (seq_lt (blk->end, hole->end))
 	    {
 	      sb->sacked_bytes += blk->end - blk->start;
-	      scoreboard_insert_hole (sb, hole, blk->end, hole->end);
-	      hole->end = blk->start - 1;
+	      hole_index = scoreboard_hole_index (sb, hole);
+	      new_hole = scoreboard_insert_hole (sb, hole_index, blk->end,
+						 hole->end);
+
+	      /* Pool might've moved */
+	      hole = scoreboard_get_hole (sb, hole_index);
+	      hole->end = blk->start;
+
+	      /* New or split of tail */
+	      if ((last_hole->end == new_hole->end)
+		  || seq_lt(last_hole->end, new_hole->start))
+		{
+		  last_hole = new_hole;
+		  sb->tail = scoreboard_hole_index (sb, new_hole);
+		}
+
 	      blk_index++;
+	      hole = scoreboard_next_hole (sb, hole);
 	    }
 	  else
 	    {
-	      sb->sacked_bytes += hole->end - blk->start + 1;
-	      hole->end = blk->start - 1;
+	      sb->sacked_bytes += hole->end - blk->start;
+	      hole->end = blk->start;
 	      hole = scoreboard_next_hole (sb, hole);
 	    }
 	}
     }
+
+  sb->last_sacked_bytes = sb->sacked_bytes - old_sacked_bytes;
 }
 
 /** Update snd_wnd
@@ -577,72 +626,91 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 static void
 tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
 {
-  if (tc->snd_wl1 < seq || (tc->snd_wl1 == seq && tc->snd_wl2 <= ack))
+  if (seq_lt(tc->snd_wl1, seq)
+      || (tc->snd_wl1 == seq && seq_leq(tc->snd_wl2, ack)))
     {
       tc->snd_wnd = snd_wnd;
       tc->snd_wl1 = seq;
       tc->snd_wl2 = ack;
+      TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
     }
 }
 
-static void
+void
 tcp_cc_congestion (tcp_connection_t * tc)
 {
+  tc->snd_congestion = tc->snd_nxt;
   tc->cc_algo->congestion (tc);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 4);
 }
 
-static void
+void
 tcp_cc_recover (tcp_connection_t * tc)
 {
-  if (tcp_in_fastrecovery (tc))
-    {
-      tc->cc_algo->recovered (tc);
-      tcp_recovery_off (tc);
-    }
-  else if (tcp_in_recovery (tc))
-    {
-      tcp_recovery_off (tc);
-      tc->cwnd = tcp_loss_wnd (tc);
-    }
+  tc->cc_algo->recovered (tc);
+
+  tc->rtx_bytes = 0;
+  tc->rcv_dupacks = 0;
+  tc->snd_nxt = tc->snd_una;
+
+  tc->cc_algo->rcv_ack (tc);
+  tc->tsecr_last_ack = tc->opt.tsecr;
+
+  tcp_fastrecovery_1_smss_off (tc);
+  tcp_fastrecovery_off(tc);
+
+  TCP_EVT_DBG(TCP_EVT_CC_EVT, tc, 3);
 }
 
 static void
-tcp_cc_rcv_ack (tcp_connection_t * tc)
+tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   u8 partial_ack;
 
+  /* We've seen this before, no progress. */
+  if (tc->bytes_acked == 0)
+    return;
+
   if (tcp_in_recovery (tc))
     {
-      partial_ack = seq_lt (tc->snd_una, tc->snd_una_max);
+      partial_ack = seq_lt (tc->snd_una, tc->snd_congestion);
       if (!partial_ack)
 	{
 	  /* Clear retransmitted bytes. */
-	  tc->rtx_bytes = 0;
 	  tcp_cc_recover (tc);
 	}
       else
 	{
+	  TCP_EVT_DBG (TCP_EVT_CC_PACK, tc);
+
 	  /* Clear retransmitted bytes. XXX should we clear all? */
 	  tc->rtx_bytes = 0;
 	  tc->cc_algo->rcv_cong_ack (tc, TCP_CC_PARTIALACK);
 
-	  /* Retransmit first unacked segment */
-	  tcp_retransmit_first_unacked (tc);
+	  /* XXX need proper RFC6675 support */
+	  if (tc->sack_sb.last_sacked_bytes)
+	    {
+	      tcp_fast_retransmit (tc);
+	    }
+	  else
+	    {
+	      /* Retransmit first unacked segment */
+	      tcp_retransmit_first_unacked (tc);
+	    }
 	}
     }
   else
     {
       tc->cc_algo->rcv_ack (tc);
+      tc->tsecr_last_ack = tc->opt.tsecr;
+      tc->rcv_dupacks = 0;
     }
-
-  tc->rcv_dupacks = 0;
-  tc->tsecr_last_ack = tc->opt.tsecr;
 }
 
 static void
 tcp_cc_rcv_dupack (tcp_connection_t * tc, u32 ack)
 {
-  ASSERT (tc->snd_una == ack);
+  ASSERT (seq_geq(tc->snd_una, ack));
 
   tc->rcv_dupacks++;
   if (tc->rcv_dupacks == TCP_DUPACK_THRESHOLD)
@@ -687,22 +755,32 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 	     tcp_header_t * th, u32 * next, u32 * error)
 {
   u32 new_snd_wnd;
+  u8 should_drop = 0, old_dup_ack = 0;
 
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) then send an
    * ACK, drop the segment, and return  */
   if (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt))
     {
-      tcp_make_ack (tc, b);
-      *next = tcp_next_output (tc->c_is_ip4);
-      *error = TCP_ERROR_ACK_INVALID;
-      return -1;
+      /* If we have outstanding data and this is within the window, accept it,
+       * probably retransmit has timed out, otherwise drop  */
+      if (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_una_max))
+	{
+	  tcp_make_ack (tc, b);
+	  *next = tcp_next_output (tc->c_is_ip4);
+	  *error = TCP_ERROR_ACK_INVALID;
+	  return -1;
+	}
+      should_drop = 1;
     }
 
   /* If old ACK, discard */
   if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
     {
+      /* XXX this filters out dup acks. If we get a burst that advances
+       * snd_una only the first is allowed to pass */
       *error = TCP_ERROR_ACK_OLD;
-      return -1;
+//      return -1;
+      old_dup_ack = 1;
     }
 
   if (tcp_opts_sack_permitted (&tc->opt))
@@ -710,10 +788,12 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 
   new_snd_wnd = clib_net_to_host_u16 (th->window) << tc->snd_wscale;
 
-  if (tcp_ack_is_dupack (tc, b, new_snd_wnd))
+  if (old_dup_ack || tcp_ack_is_dupack (tc, b, new_snd_wnd))
     {
+      TCP_EVT_DBG (TCP_EVT_DUPACK_RCVD, tc, 1);
       tcp_cc_rcv_dupack (tc, vnet_buffer (b)->tcp.ack_number);
       *error = TCP_ERROR_ACK_DUP;
+
       return -1;
     }
 
@@ -721,23 +801,30 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   tc->bytes_acked = vnet_buffer (b)->tcp.ack_number - tc->snd_una;
   tc->snd_una = vnet_buffer (b)->tcp.ack_number;
 
-  /* Dequeue ACKed packet and update RTT */
+  /* Dequeue ACKed data and update RTT */
   tcp_dequeue_acked (tc, vnet_buffer (b)->tcp.ack_number);
 
   tcp_update_snd_wnd (tc, vnet_buffer (b)->tcp.seq_number,
 		      vnet_buffer (b)->tcp.ack_number, new_snd_wnd);
 
   /* Updates congestion control (slow start/congestion avoidance) */
-  tcp_cc_rcv_ack (tc);
+  tcp_cc_rcv_ack (tc, b);
 
   TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
 
-  /* If everything has been acked, stop retransmit timer
-   * otherwise update */
-  if (tc->snd_una == tc->snd_una_max)
-    tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
-  else
-    tcp_timer_update (tc, TCP_TIMER_RETRANSMIT, tc->rto);
+  /* If some of our sent bytes have been acked, update retransmit timer. */
+  if (tc->bytes_acked)
+    {
+      /* If everything has been acked, stop retransmit timer
+       * otherwise update */
+      if (tc->snd_una == tc->snd_una_max)
+	tcp_retransmit_timer_reset (tc);
+      else
+	tcp_retransmit_timer_update (tc);
+    }
+
+  if (should_drop)
+    return -1;
 
   return 0;
 }
@@ -757,9 +844,7 @@ static void
 tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 {
   sack_block_t *new_list = 0, block;
-  u32 n_elts;
   int i;
-  u8 new_head = 0;
 
   /* If the first segment is ooo add it to the list. Last write might've moved
    * rcv_nxt over the first segment. */
@@ -768,7 +853,6 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
       block.start = start;
       block.end = end;
       vec_add1 (new_list, block);
-      new_head = 1;
     }
 
   /* Find the blocks still worth keeping. */
@@ -782,12 +866,11 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 	  || seq_leq (tc->snd_sacks[i].start, end))
 	continue;
 
-      /* Save subsequent segments to new SACK list. */
-      n_elts = clib_min (vec_len (tc->snd_sacks) - i,
-			 TCP_MAX_SACK_BLOCKS - new_head);
-      vec_insert_elts (new_list, &tc->snd_sacks[i], n_elts, new_head);
-      break;
+      /* Save to new SACK list. */
+      vec_add1 (new_list, tc->snd_sacks[i]);
     }
+
+  ASSERT (vec_len (new_list) < TCP_MAX_SACK_BLOCKS);
 
   /* Replace old vector with new one */
   vec_free (tc->snd_sacks);
@@ -795,7 +878,7 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 }
 
 /** Enqueue data for delivery to application */
-always_inline u32
+always_inline int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 			  u16 data_len)
 {
@@ -812,6 +895,8 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 					 vlib_buffer_get_current (b),
 					 data_len, 1 /* queue event */ );
 
+  TCP_EVT_DBG (TCP_EVT_INPUT, tc, 0, data_len, written);
+
   /* Update rcv_nxt */
   if (PREDICT_TRUE (written == data_len))
     {
@@ -824,38 +909,61 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 
       /* Send ACK confirming the update */
       tc->flags |= TCP_CONN_SNDACK;
+    }
+  else if (written > 0)
+    {
+      /* We've written something but FIFO is probably full now */
+      tc->rcv_nxt += written;
 
-      /* Update SACK list if need be */
-      if (tcp_opts_sack_permitted (&tc->opt))
-	{
-	  /* Remove SACK blocks that have been delivered */
-	  tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt);
-	}
+      /* Depending on how fast the app is, all remaining buffers in burst will
+       * not be enqueued. Should we inform peer of the damage? XXX */
+      return TCP_ERROR_PARTIALLY_ENQUEUED;
     }
   else
     {
-      ASSERT (0);
       return TCP_ERROR_FIFO_FULL;
+    }
+
+  /* Update SACK list if need be */
+  if (tcp_opts_sack_permitted(&tc->opt))
+    {
+      /* Remove SACK blocks that have been delivered */
+      tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt);
     }
 
   return TCP_ERROR_ENQUEUED;
 }
 
 /** Enqueue out-of-order data */
-always_inline u32
+always_inline int
 tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
   stream_session_t *s0;
   u32 offset, seq;
+  int rv;
+
+  /* Pure ACK. Do nothing */
+  if (PREDICT_FALSE (data_len == 0))
+    {
+      return TCP_ERROR_PURE_ACK;
+    }
 
   s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
   seq = vnet_buffer (b)->tcp.seq_number;
   offset = seq - tc->rcv_nxt;
 
-  if (svm_fifo_enqueue_with_offset (s0->server_rx_fifo, s0->pid, offset,
-				    data_len, vlib_buffer_get_current (b)))
-    return TCP_ERROR_FIFO_FULL;
+  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, s0->pid, offset,
+				    data_len, vlib_buffer_get_current (b));
+
+  /* Nothing written */
+  if (rv)
+    {
+      TCP_EVT_DBG (TCP_EVT_INPUT, tc, 1, data_len, 0);
+      return TCP_ERROR_FIFO_FULL;
+    }
+
+  TCP_EVT_DBG (TCP_EVT_INPUT, tc, 1, data_len, data_len);
 
   /* Update SACK list if in use */
   if (tcp_opts_sack_permitted (&tc->opt))
@@ -885,7 +993,8 @@ tcp_can_delack (tcp_connection_t * tc)
    * can safely delay. */
   if (!tcp_timer_is_active (tc, TCP_TIMER_DELACK)
       && (tc->flags & TCP_CONN_SENT_RCV_WND0) == 0
-      && (tc->flags & TCP_CONN_SNDACK) == 0)
+      && (tc->flags & TCP_CONN_SNDACK) == 0
+      && tcp_available_snd_space (tc) > 2*tc->snd_mss)
     return 1;
 
   return 0;
@@ -900,31 +1009,34 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
   /* Handle out-of-order data */
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt))
     {
+      ASSERT (seq_geq(vnet_buffer (b)->tcp.seq_number, tc->rcv_las));
+
+      /* Old sequence numbers allowed through because they were gt rcv_las*/
+      if (seq_lt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt))
+	goto done;
+
       error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
 
-      /* Don't send more than 3 dupacks per burst
-       * XXX decide if this is good */
-      if (tc->snt_dupacks < 3)
-	{
-	  /* RFC2581: Send DUPACK for fast retransmit */
-	  tcp_make_ack (tc, b);
-	  *next0 = tcp_next_output (tc->c_is_ip4);
+      /* N.B. Should not filter burst of dupacks. Two issues 1) dupacks open
+       * cwnd on remote peer when congested 2) acks leaving should have the
+       * latest rcv_wnd since the burst may eaten up all of it
+       */
 
-	  /* Mark as DUPACK. We may filter these in output if
-	   * the burst fills the holes. */
-	  vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_DUPACK;
+      /* RFC2581: Send DUPACK for fast retransmit */
+      tcp_make_ack (tc, b);
+      *next0 = tcp_next_output(tc->c_is_ip4);
 
-	  tc->snt_dupacks++;
-	}
+      /* Mark as DUPACK. We may filter these in output if
+       * the burst fills the holes. */
+//      vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_DUPACK;
 
+      TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc);
       goto done;
     }
 
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
   error = tcp_session_enqueue_data (tc, b, n_data_bytes);
-
-  TCP_EVT_DBG (TCP_EVT_INPUT, tc, n_data_bytes);
 
   /* Check if ACK can be delayed */
   if (tcp_can_delack (tc))
@@ -944,18 +1056,9 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
     }
   else
     {
-      /* Check if a packet has already been enqueued to output for burst.
-       * If yes, then drop this one, otherwise, let it pass through to
-       * output */
-      if ((tc->flags & TCP_CONN_BURSTACK) == 0)
-	{
-	  *next0 = tcp_next_output (tc->c_is_ip4);
-	  tcp_make_ack (tc, b);
-	  error = TCP_ERROR_ENQUEUED;
-
-	  /* TODO: maybe add counter to ensure N acks will be sent/burst */
-	  tc->flags |= TCP_CONN_BURSTACK;
-	}
+      *next0 = tcp_next_output(tc->c_is_ip4);
+      tcp_make_ack (tc, b);
+      error = TCP_ERROR_ENQUEUED;
     }
 
 done:
@@ -990,6 +1093,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->cpu_index, errors = 0;
   tcp_main_t *tm = vnet_get_tcp_main ();
+  u32 invalid_segments = 0, invalid_acks = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1060,6 +1164,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* 1-4: check SEQ, RST, SYN */
 	  if (PREDICT_FALSE (tcp_segment_validate (vm, tc0, b0, th0, &next0)))
 	    {
+	      invalid_segments++;
 	      error0 = TCP_ERROR_SEGMENT_INVALID;
 	      goto drop;
 	    }
@@ -1067,6 +1172,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* 5: check the ACK field  */
 	  if (tcp_rcv_ack (tc0, b0, th0, &next0, &error0))
 	    {
+	      if (error0 == TCP_ERROR_ACK_INVALID)
+		invalid_acks++;
 	      goto drop;
 	    }
 
@@ -1114,6 +1221,31 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   delack_timers_init (tm, my_thread_index);
+
+  if (invalid_segments)
+    {
+      if (is_ip4)
+	vlib_node_increment_counter (vm, tcp4_established_node.index,
+				     TCP_ERROR_SEGMENT_INVALID,
+				     invalid_segments);
+      else
+	vlib_node_increment_counter (vm, tcp6_established_node.index,
+				     TCP_ERROR_SEGMENT_INVALID,
+				     invalid_segments);
+    }
+
+  if (invalid_acks)
+    {
+      if (is_ip4)
+	vlib_node_increment_counter (vm, tcp4_established_node.index,
+				     TCP_ERROR_ACK_INVALID,
+				     invalid_acks);
+      else
+	vlib_node_increment_counter (vm, tcp6_established_node.index,
+				     TCP_ERROR_ACK_INVALID,
+				     invalid_acks);
+    }
+
 
   return from_frame->n_vectors;
 }
@@ -1602,7 +1734,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      stream_session_accept_notify (&tc0->connection);
 
 	      /* Reset SYN-ACK retransmit timer */
-	      tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT);
+	      tcp_retransmit_timer_reset (tc0);
 	      break;
 	    case TCP_STATE_ESTABLISHED:
 	      /* We can get packets in established state here because they
@@ -1668,7 +1800,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 
 	      /* Stop retransmit */
-	      tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT);
+	      tcp_retransmit_timer_reset (tc0);
 
 	      goto drop;
 

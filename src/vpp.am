@@ -58,7 +58,7 @@ VPP_VERSION = $(shell $(srcdir)/scripts/version)
 # unnecessary re-linking of vpp binary
 
 .version:
-	@if [ "$$(cat .version 2> /dev/null)" != "$(VPP_VERSION)" ] ; then		\
+	@if [ "$$(cat .version 2> /dev/null)" != "moo$(VPP_VERSION)" ] ; then		\
 	  f="vpp/app/version.h" 							;\
 	  echo "  VERSION  $$f ($(VPP_VERSION))"					;\
 	  echo $(VPP_VERSION) > .version						;\

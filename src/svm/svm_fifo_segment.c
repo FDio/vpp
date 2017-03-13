@@ -70,6 +70,44 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   return (0);
 }
 
+/** Create an svm fifo segment in process-private memory */
+int svm_fifo_segment_create_process_private
+(svm_fifo_segment_create_args_t * a)
+{
+  svm_fifo_segment_private_t *s;
+  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
+  ssvm_shared_header_t *sh;
+  svm_fifo_segment_header_t *fsh;
+
+  /* Allocate a fresh segment */
+  pool_get (sm->segments, s);
+  memset (s, 0, sizeof (*s));
+
+  s->ssvm.ssvm_size = ~0;
+  s->ssvm.i_am_master = 1;
+  s->ssvm.my_pid = getpid ();
+  s->ssvm.name = (u8 *) a->segment_name;
+  s->ssvm.requested_va = ~0;
+
+  /* Allocate a [sic] shared memory header, in process memory... */
+  sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
+  s->ssvm.sh = sh;
+
+  memset (sh, 0, sizeof (*sh));
+  sh->heap = clib_mem_get_heap();
+
+  /* Set up svm_fifo_segment shared header */
+  fsh = clib_mem_alloc (sizeof (*fsh));
+  memset (fsh, 0, sizeof (*fsh));
+  sh->opaque[0] = fsh;
+  s->h = fsh;
+  fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
+
+  sh->ready = 1;
+  a->new_segment_index = s - sm->segments;
+  return (0);
+}
+
 /** (slave) attach to an svm fifo segment */
 int
 svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
