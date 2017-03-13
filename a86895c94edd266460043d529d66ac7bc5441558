@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_3a91b652",
+        "filename": "src/plugins/dpdk/ipsec/dpdk_crypto_ipsec_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-03-13T08:28:12Z",
+      "side": 1,
+      "message": "I\u0027m ok with have this type on doc in here. Initially we decided not to put such info and just reference to the DPDK docs to avoid getting out of sync, but I agree that it can save some headaches.",
+      "revId": "a86895c94edd266460043d529d66ac7bc5441558",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
