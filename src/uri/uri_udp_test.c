@@ -742,17 +742,20 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
   /* Fabricate TX event, send to vpp */
   evt.fifo = tx_fifo;
   evt.event_type = FIFO_EVENT_SERVER_TX;
-  /* $$$$ for event logging */
-  evt.enqueue_length = nbytes;
   evt.event_id = e->event_id;
-  q = utm->vpp_event_queue;
-  unix_shared_memory_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
+
+  if (svm_fifo_set_event (tx_fifo))
+    {
+      q = utm->vpp_event_queue;
+      unix_shared_memory_queue_add (q, (u8 *) & evt,
+				    0 /* do wait for mutex */ );
+    }
 }
 
 void
 server_handle_event_queue (uri_udp_test_main_t * utm)
 {
-  session_fifo_event_t _e, *e = &_e;;
+  session_fifo_event_t _e, *e = &_e;
 
   while (1)
     {

@@ -244,44 +244,53 @@ udp4_uri_input_node_fn (vlib_main_t * vm,
       /* Get session's server */
       server0 = application_get (s0->app_index);
 
-      /* Fabricate event */
-      evt.fifo = s0->server_rx_fifo;
-      evt.event_type = FIFO_EVENT_SERVER_RX;
-      evt.event_id = serial_number++;
-      evt.enqueue_length = svm_fifo_max_dequeue (s0->server_rx_fifo);
-
       /* Built-in server? Deliver the goods... */
       if (server0->cb_fns.builtin_server_rx_callback)
 	{
-	  server0->cb_fns.builtin_server_rx_callback (s0, &evt);
+	  server0->cb_fns.builtin_server_rx_callback (s0);
 	  continue;
 	}
 
-      /* Add event to server's event queue */
-      q = server0->event_queue;
-
-      /* Don't block for lack of space */
-      if (PREDICT_TRUE (q->cursize < q->maxsize))
-	unix_shared_memory_queue_add (server0->event_queue, (u8 *) & evt,
-				      0 /* do wait for mutex */ );
-      else
+      if (svm_fifo_set_event (s0->server_rx_fifo))
 	{
-	  vlib_node_increment_counter (vm, udp4_uri_input_node.index,
-				       SESSION_ERROR_FIFO_FULL, 1);
+	  /* Fabricate event */
+	  evt.fifo = s0->server_rx_fifo;
+	  evt.event_type = FIFO_EVENT_SERVER_RX;
+	  evt.event_id = serial_number++;
+
+	  /* Add event to server's event queue */
+	  q = server0->event_queue;
+
+	  /* Don't block for lack of space */
+	  if (PREDICT_TRUE (q->cursize < q->maxsize))
+	    {
+	      unix_shared_memory_queue_add (server0->event_queue,
+					    (u8 *) & evt,
+					    0 /* do wait for mutex */ );
+	    }
+	  else
+	    {
+	      vlib_node_increment_counter (vm, udp4_uri_input_node.index,
+					   SESSION_ERROR_FIFO_FULL, 1);
+	    }
 	}
+      /* *INDENT-OFF* */
       if (1)
 	{
 	  ELOG_TYPE_DECLARE (e) =
 	  {
-	  .format = "evt-enqueue: id %d length %d",.format_args = "i4i4",};
+	      .format = "evt-enqueue: id %d length %d",
+	      .format_args = "i4i4",};
 	  struct
 	  {
 	    u32 data[2];
 	  } *ed;
 	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
 	  ed->data[0] = evt.event_id;
-	  ed->data[1] = evt.enqueue_length;
+	  ed->data[1] = svm_fifo_max_dequeue (s0->server_rx_fifo);
 	}
+      /* *INDENT-ON* */
+
     }
 
   vec_reset_length (session_indices_to_enqueue);

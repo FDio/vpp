@@ -22,6 +22,7 @@ typedef struct
 {
   u8 *rx_buf;
   unix_shared_memory_queue_t **vpp_queue;
+  u32 byte_index;
   vlib_main_t *vlib_main;
 } builtin_server_main_t;
 
@@ -37,6 +38,7 @@ builtin_session_accept_callback (stream_session_t * s)
   bsm->vpp_queue[s->thread_index] =
     session_manager_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
+  bsm->byte_index = 0;
   return 0;
 }
 
@@ -80,57 +82,94 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
   return -1;
 }
 
-int
-builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * e)
+void
+test_bytes (builtin_server_main_t * bsm, int actual_transfer)
 {
-  int n_written, bytes, total_copy_bytes;
-  int n_read;
-  svm_fifo_t *tx_fifo;
+  int i;
+
+  for (i = 0; i < actual_transfer; i++)
+    {
+      if (bsm->rx_buf[i] != ((bsm->byte_index + i) & 0xff))
+	{
+	  clib_warning ("at %d expected %d got %d", bsm->byte_index + i,
+			(bsm->byte_index + i) & 0xff, bsm->rx_buf[i]);
+	}
+    }
+  bsm->byte_index += actual_transfer;
+}
+
+int
+builtin_server_rx_callback (stream_session_t * s)
+{
+  u32 n_written, max_dequeue, max_enqueue, max_transfer;
+  int actual_transfer;
+  svm_fifo_t *tx_fifo, *rx_fifo;
   builtin_server_main_t *bsm = &builtin_server_main;
   session_fifo_event_t evt;
   static int serial_number = 0;
 
-  bytes = e->enqueue_length;
-  if (PREDICT_FALSE (bytes <= 0))
+  max_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
+  max_enqueue = svm_fifo_max_enqueue (s->server_tx_fifo);
+
+  if (PREDICT_FALSE (max_dequeue == 0))
     {
-      clib_warning ("bizarre rx callback: bytes %d", bytes);
       return 0;
     }
 
   tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->server_rx_fifo;
 
   /* Number of bytes we're going to copy */
-  total_copy_bytes = (bytes < (tx_fifo->nitems - tx_fifo->cursize)) ? bytes :
-    tx_fifo->nitems - tx_fifo->cursize;
+  max_transfer = (max_dequeue < max_enqueue) ? max_dequeue : max_enqueue;
 
-  if (PREDICT_FALSE (total_copy_bytes <= 0))
+  /* No space in tx fifo */
+  if (PREDICT_FALSE (max_transfer == 0))
     {
-      clib_warning ("no space in tx fifo, event had %d bytes", bytes);
+      /* XXX timeout for session that are stuck */
+
+      /* Program self-tap to retry */
+      if (svm_fifo_set_event (rx_fifo))
+	{
+	  evt.fifo = rx_fifo;
+	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
+	  evt.event_id = 0;
+	  unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
+					(u8 *) & evt,
+					0 /* do wait for mutex */ );
+	}
+
       return 0;
     }
 
-  vec_validate (bsm->rx_buf, total_copy_bytes - 1);
-  _vec_len (bsm->rx_buf) = total_copy_bytes;
+  svm_fifo_unset_event (rx_fifo);
 
-  n_read = svm_fifo_dequeue_nowait (s->server_rx_fifo, 0, total_copy_bytes,
-				    bsm->rx_buf);
-  ASSERT (n_read == total_copy_bytes);
+  vec_validate (bsm->rx_buf, max_transfer - 1);
+  _vec_len (bsm->rx_buf) = max_transfer;
+
+  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, 0, max_transfer,
+					     bsm->rx_buf);
+  ASSERT (actual_transfer == max_transfer);
+
+//  test_bytes (bsm, actual_transfer);
 
   /*
    * Echo back
    */
 
-  n_written = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, bsm->rx_buf);
-  ASSERT (n_written == total_copy_bytes);
+  n_written =
+    svm_fifo_enqueue_nowait (tx_fifo, 0, actual_transfer, bsm->rx_buf);
+  ASSERT (n_written == max_transfer);
 
-  /* Fabricate TX event, send to vpp */
-  evt.fifo = tx_fifo;
-  evt.event_type = FIFO_EVENT_SERVER_TX;
-  evt.enqueue_length = total_copy_bytes;
-  evt.event_id = serial_number++;
+  if (svm_fifo_set_event (tx_fifo))
+    {
+      /* Fabricate TX event, send to vpp */
+      evt.fifo = tx_fifo;
+      evt.event_type = FIFO_EVENT_SERVER_TX;
+      evt.event_id = serial_number++;
 
-  unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index], (u8 *) & evt,
-				0 /* do wait for mutex */ );
+      unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
+				    (u8 *) & evt, 0 /* do wait for mutex */ );
+    }
 
   return 0;
 }
@@ -164,7 +203,7 @@ server_create (vlib_main_t * vm)
   a->api_client_index = ~0;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
-  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 256 << 10;
+  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
   a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 64 << 10;
   a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 64 << 10;
   a->segment_name = segment_name;

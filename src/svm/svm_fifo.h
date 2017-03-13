@@ -46,9 +46,11 @@ typedef struct
 {
   pthread_mutex_t mutex;	/* 8 bytes */
   pthread_cond_t condvar;	/* 8 bytes */
-  u32 owner_pid;
   svm_lock_tag_t tag;
-  volatile u32 cursize;
+
+  volatile u32 cursize;		/**< current fifo size */
+  volatile u8 has_event;	/**< non-zero if deq event exists */
+  u32 owner_pid;
   u32 nitems;
 
   /* Backpointers */
@@ -110,6 +112,28 @@ static inline u8
 svm_fifo_has_ooo_data (svm_fifo_t * f)
 {
   return f->ooos_list_head != OOO_SEGMENT_INVALID_INDEX;
+}
+
+/**
+ * Sets fifo event flag.
+ *
+ * @return 1 if flag was not set.
+ */
+always_inline u8
+svm_fifo_set_event (svm_fifo_t * f)
+{
+  /* Probably doesn't need to be atomic. Still, better avoid surprises */
+  return __sync_lock_test_and_set (&f->has_event, 1) == 0;
+}
+
+/**
+ * Unsets fifo event flag.
+ */
+always_inline void
+svm_fifo_unset_event (svm_fifo_t * f)
+{
+  /* Probably doesn't need to be atomic. Still, better avoid surprises */
+  __sync_lock_test_and_set (&f->has_event, 0);
 }
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
