@@ -238,7 +238,8 @@ VLIB_REGISTER_NODE (flow_report_process_node) = {
 };
 
 int vnet_flow_report_add_del (flow_report_main_t *frm, 
-                              vnet_flow_report_add_del_args_t *a)
+                              vnet_flow_report_add_del_args_t *a,
+			      u16 *template_id)
 {
   int i;
   int found_index = ~0;
@@ -304,7 +305,10 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
   fr->opaque = a->opaque;
   fr->rewrite_callback = a->rewrite_callback;
   fr->flow_data_callback = a->flow_data_callback;
-  
+
+  if (template_id)
+    *template_id = fr->template_id;
+
   return 0;
 }
 
@@ -415,9 +419,6 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
       break;
   }
   
-  if (collector.as_u32 == 0)
-    return clib_error_return (0, "collector address required");
-
   if (src.as_u32 == 0)
     return clib_error_return (0, "src address required");
 
@@ -441,7 +442,8 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
   frm->template_interval = template_interval;
   frm->udp_checksum = udp_checksum;
   
-  vlib_cli_output (vm, "Collector %U, src address %U, "
+  if (collector.as_u32)
+    vlib_cli_output (vm, "Collector %U, src address %U, "
 		           "fib index %d, path MTU %u, "
 		           "template resend interval %us, "
 		           "udp checksum %s",
@@ -449,6 +451,8 @@ set_ipfix_exporter_command_fn (vlib_main_t * vm,
                    format_ip4_address, &frm->src_address,
                    fib_index, path_mtu, template_interval,
                    udp_checksum ? "enabled" : "disabled");
+  else
+    vlib_cli_output (vm, "IPFIX Collector is disabled");
 
   /* Turn on the flow reporting process */
   vlib_process_signal_event (vm, flow_report_process_node.index,
