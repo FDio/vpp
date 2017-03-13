@@ -112,10 +112,10 @@ VNET VXLAN
 M:	John Lo <loj@cisco.com>
 F:	src/vnet/vxlan/
 
-Plugin - flowperpkt
-M:	Dave Barach <dave@barachs.net>
-F:	src/plugins/flowperpkt/
-F:	src/plugins/flowperpkt.am
+Plugin - flowprobe
+M:	Ole Troan <otroan@employees.org>
+F:	src/plugins/flowprobe/
+F:	src/plugins/flowprobe.am
 
 Plugin - SIXRD
 M:	Ole Troan <ot@cisco.com>
