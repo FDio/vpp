@@ -613,7 +613,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
   a.domain_id = domain_id ? domain_id : 1;
   a.src_port = src_port ? src_port : UDP_DST_PORT_ipfix;
 
-  rv = vnet_flow_report_add_del (frm, &a);
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
   if (rv)
     {
       clib_warning ("vnet_flow_report_add_del returned %d", rv);
@@ -623,7 +623,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
   a.rewrite_callback = snat_template_rewrite_addr_exhausted;
   a.flow_data_callback = snat_data_callback_addr_exhausted;
 
-  rv = vnet_flow_report_add_del (frm, &a);
+  rv = vnet_flow_report_add_del (frm, &a, NULL);
   if (rv)
     {
       clib_warning ("vnet_flow_report_add_del returned %d", rv);
