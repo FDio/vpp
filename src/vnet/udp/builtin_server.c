@@ -39,10 +39,10 @@ builtin_session_disconnect_callback (stream_session_t * s)
 }
 
 static int
-builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * ep)
+builtin_server_rx_callback (stream_session_t * s)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
-  u32 this_transfer;
+  u32 this_transfer, max_deq, max_enq;
   int actual_transfer;
   u8 *my_copy_buffer;
   session_fifo_event_t evt;
@@ -52,9 +52,9 @@ builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * ep)
   rx_fifo = s->server_rx_fifo;
   tx_fifo = s->server_tx_fifo;
 
-  this_transfer = svm_fifo_max_enqueue (tx_fifo)
-    < svm_fifo_max_dequeue (rx_fifo) ?
-    svm_fifo_max_enqueue (tx_fifo) : svm_fifo_max_dequeue (rx_fifo);
+  max_deq = svm_fifo_max_dequeue (rx_fifo);
+  max_enq = svm_fifo_max_enqueue (tx_fifo);
+  this_transfer = max_enq < max_deq ? max_enq : max_deq;
 
   vec_validate (my_copy_buffer, this_transfer - 1);
   _vec_len (my_copy_buffer) = this_transfer;
@@ -64,17 +64,20 @@ builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * ep)
   ASSERT (actual_transfer == this_transfer);
   actual_transfer = svm_fifo_enqueue_nowait (tx_fifo, 0, this_transfer,
 					     my_copy_buffer);
+  ASSERT (actual_transfer == this_transfer);
 
   copy_buffers[s->thread_index] = my_copy_buffer;
 
-  /* Fabricate TX event, send to ourselves */
-  evt.fifo = tx_fifo;
-  evt.event_type = FIFO_EVENT_SERVER_TX;
-  /* $$$$ for event logging */
-  evt.enqueue_length = actual_transfer;
-  evt.event_id = 0;
-  q = session_manager_get_vpp_event_queue (s->thread_index);
-  unix_shared_memory_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
+  if (svm_fifo_set_event (tx_fifo))
+    {
+      /* Fabricate TX event, send to ourselves */
+      evt.fifo = tx_fifo;
+      evt.event_type = FIFO_EVENT_SERVER_TX;
+      evt.event_id = 0;
+      q = session_manager_get_vpp_event_queue (s->thread_index);
+      unix_shared_memory_queue_add (q, (u8 *) & evt,
+				    0 /* do wait for mutex */ );
+    }
 
   return 0;
 }

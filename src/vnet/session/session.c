@@ -804,30 +804,36 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
   /* Get session's server */
   app = application_get (s->app_index);
 
-  /* Fabricate event */
-  evt.fifo = s->server_rx_fifo;
-  evt.event_type = FIFO_EVENT_SERVER_RX;
-  evt.event_id = serial_number++;
-  evt.enqueue_length = svm_fifo_max_dequeue (s->server_rx_fifo);
-
   /* Built-in server? Hand event to the callback... */
   if (app->cb_fns.builtin_server_rx_callback)
-    return app->cb_fns.builtin_server_rx_callback (s, &evt);
+    return app->cb_fns.builtin_server_rx_callback (s);
 
-  /* Add event to server's event queue */
-  q = app->event_queue;
+  /* If no event, send one */
+  if (svm_fifo_set_event (s->server_rx_fifo))
+    {
+      /* Fabricate event */
+      evt.fifo = s->server_rx_fifo;
+      evt.event_type = FIFO_EVENT_SERVER_RX;
+      evt.event_id = serial_number++;
 
-  /* Based on request block (or not) for lack of space */
-  if (block || PREDICT_TRUE (q->cursize < q->maxsize))
-    unix_shared_memory_queue_add (app->event_queue, (u8 *) & evt,
-				  0 /* do wait for mutex */ );
-  else
-    return -1;
+      /* Add event to server's event queue */
+      q = app->event_queue;
+
+      /* Based on request block (or not) for lack of space */
+      if (block || PREDICT_TRUE (q->cursize < q->maxsize))
+	unix_shared_memory_queue_add (app->event_queue, (u8 *) & evt,
+				      0 /* do wait for mutex */ );
+      else
+	{
+	  clib_warning ("fifo full");
+	  return -1;
+	}
+    }
 
   /* *INDENT-OFF* */
-  SESSION_EVT_DBG(s, SESSION_EVT_ENQ, ({
+  SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
       ed->data[0] = evt.event_id;
-      ed->data[1] = evt.enqueue_length;
+      ed->data[1] = svm_fifo_max_dequeue (s->server_rx_fifo);
   }));
   /* *INDENT-ON* */
 
@@ -1192,8 +1198,29 @@ stream_session_open (u8 sst, ip46_address_t * addr, u16 port_host_byte_order,
 void
 stream_session_disconnect (stream_session_t * s)
 {
+//  session_fifo_event_t evt;
+
   s->session_state = SESSION_STATE_CLOSED;
+  /* RPC to vpp evt queue in the right thread */
+
   tp_vfts[s->session_type].close (s->connection_index, s->thread_index);
+
+//  {
+//  /* Fabricate event */
+//  evt.fifo = s->server_rx_fifo;
+//  evt.event_type = FIFO_EVENT_SERVER_RX;
+//  evt.event_id = serial_number++;
+//
+//  /* Based on request block (or not) for lack of space */
+//  if (PREDICT_TRUE(q->cursize < q->maxsize))
+//    unix_shared_memory_queue_add (app->event_queue, (u8 *) &evt,
+//                                0 /* do wait for mutex */);
+//  else
+//    {
+//      clib_warning("fifo full");
+//      return -1;
+//    }
+//  }
 }
 
 /**

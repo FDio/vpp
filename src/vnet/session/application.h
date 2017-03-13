@@ -45,8 +45,7 @@ typedef struct _stream_session_cb_vft
   void (*session_reset_callback) (stream_session_t * s);
 
   /* Direct RX callback, for built-in servers */
-  int (*builtin_server_rx_callback) (stream_session_t * session,
-				     session_fifo_event_t * ep);
+  int (*builtin_server_rx_callback) (stream_session_t * session);
 
   /* Redirect connection to local server */
   int (*redirect_connect_callback) (u32 api_client_index, void *mp);

@@ -328,7 +328,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 {
   tcp_connection_timers_init (tc);
   tcp_set_snd_mss (tc);
-  tc->sack_sb.head = TCP_INVALID_SACK_HOLE_INDEX;
+  scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
 }
 
@@ -558,17 +558,48 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
   return tc->snd_mss;
 }
 
+/**
+ * Compute tx window session is allowed to fill.
+ */
 u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
+  u32 snd_space;
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return tcp_available_snd_space (tc);
+
+  /* If we haven't gotten dupacks or if we did and have gotten sacked bytes
+   * then we can still send */
+  if (PREDICT_TRUE (tcp_in_fastrecovery (tc) == 0
+		    && (tc->rcv_dupacks == 0
+			|| tc->sack_sb.last_sacked_bytes)))
+    {
+      snd_space = tcp_available_snd_space (tc);
+
+      /* If we can't write at least a segment, don't try at all */
+      if (snd_space < tc->snd_mss)
+	return 0;
+      return snd_space;
+    }
+
+  /* If in fast recovery, send 1 SMSS if wnd allows */
+  if (tcp_in_fastrecovery (tc) && tcp_available_snd_space (tc)
+      && tcp_fastrecovery_sent_1_smss (tc))
+    {
+      tcp_fastrecovery_1_smss_on (tc);
+      return tc->snd_mss;
+    }
+
+  return 0;
 }
 
 u32
 tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
+
+  ASSERT (seq_geq (tc->snd_nxt, tc->snd_una));
+
+  /* This still works if fast retransmit is on */
   return (tc->snd_nxt - tc->snd_una);
 }
 
@@ -762,7 +793,7 @@ tcp_main_enable (vlib_main_t * vm)
   vec_validate (tm->timer_wheels, num_threads - 1);
   tcp_initialize_timer_wheels (tm);
 
-  vec_validate (tm->delack_connections, num_threads - 1);
+//  vec_validate (tm->delack_connections, num_threads - 1);
 
   /* Initialize clocks per tick for TCP timestamp. Used to compute
    * monotonically increasing timestamps. */
