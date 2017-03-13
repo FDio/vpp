@@ -37,7 +37,9 @@
   _(RST_RCVD, "RST rcvd")		\
   _(PKTIZE, "packetize")		\
   _(INPUT, "in")			\
-  _(TIMER_POP, "timer pop")
+  _(TIMER_POP, "timer pop")		\
+  _(CC_RTX, "retransmit")		\
+  _(CC_EVT, "cc event")			\
 
 typedef enum _tcp_dbg
 {
@@ -73,10 +75,10 @@ typedef enum _tcp_dbg_evt
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
 			_e, _tc->c_elog_track)
 
-#define TCP_EVT_INIT_HANDLER(_tc, ...)					\
+#define TCP_EVT_INIT_HANDLER(_tc, _fmt, ...)				\
 {									\
   _tc->c_elog_track.name = 						\
-	(char *) format (0, "%d%c", _tc->c_c_index, 0);			\
+	(char *) format (0, _fmt, _tc->c_c_index, 0);			\
   elog_track_register (&vlib_global_main.elog_main, &_tc->c_elog_track);\
 }
 
@@ -87,7 +89,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_OPEN_HANDLER(_tc, ...)					\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc);						\
+  TCP_EVT_INIT_HANDLER(_tc, "s%d%c");					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "open: index %d",						\
@@ -110,7 +112,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_BIND_HANDLER(_tc, ...)					\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc);						\
+  TCP_EVT_INIT_HANDLER(_tc, "l%d%c");					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "bind: listener %d",					\
@@ -180,7 +182,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_SYN_RCVD_HANDLER(_tc, ...)				\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc);						\
+  TCP_EVT_INIT_HANDLER(_tc, "s%d%c");					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "SYN rcvd: irs %d",					\
@@ -296,9 +298,39 @@ typedef enum _tcp_dbg_evt
   ed->data[1] = _timer_id;                                      	\
 }
 
+#define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)		\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "rtx: snd_nxt %u offset %u bytes %u",			\
+    .format_args = "i4i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 3);						\
+  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[1] = offset;							\
+  ed->data[2] = n_bytes;						\
+}
+
+#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, _snd_space, ...)		\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "cc %s: wnd %u",						\
+    .format_args = "t4i4",						\
+    .n_enum_strings = 3,						\
+    .enum_strings = {                                           	\
+      "fast-rtx",	                                             	\
+      "rtx-timeout",                                                 	\
+      "first-rtx",                                                 	\
+    },  								\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _sub_evt;						\
+  ed->data[1] = _snd_space;						\
+}
+
 #define CONCAT_HELPER(_a, _b) _a##_b
 #define CC(_a, _b) CONCAT_HELPER(_a, _b)
-
 #define TCP_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
 
 #else
