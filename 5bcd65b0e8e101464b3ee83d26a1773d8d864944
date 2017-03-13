@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_755bcf2e",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:52:21Z",
+      "side": 1,
+      "message": "based on the tunnel encap type, not based on the adj link type.",
+      "parentUuid": "3a3291f1_3a73f6e8",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_5a26c2cf",
         "filename": "src/vnet/gre/gre.h",
         "patchSetId": 4
