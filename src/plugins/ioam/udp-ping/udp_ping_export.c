@@ -227,13 +227,14 @@ udp_ping_flow_create (u8 del)
   int rv;
   u32 domain_id = 0;
   flow_report_main_t *frm = &flow_report_main;
+  u16 template_id;
 
   args.rewrite_callback = udp_ping_template_rewrite;
   args.flow_data_callback = udp_ping_send_flows;
   del ? (args.is_add = 0) : (args.is_add = 1);
   args.domain_id = domain_id;
 
-  rv = vnet_flow_report_add_del (frm, &args);
+  rv = vnet_flow_report_add_del (frm, &args, &template_id);
 
   switch (rv)
     {

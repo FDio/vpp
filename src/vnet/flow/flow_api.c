@@ -296,7 +296,7 @@ static void
   args.domain_id = fcm->domain_id;
   args.src_port = fcm->src_port;
 
-  rv = vnet_flow_report_add_del (frm, &args);
+  rv = vnet_flow_report_add_del (frm, &args, NULL);
 
   /* If deleting, or add failed */
   if (is_add == 0 || (rv && is_add))

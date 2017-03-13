@@ -238,7 +238,8 @@ VLIB_REGISTER_NODE (flow_report_process_node) = {
 };
 
 int vnet_flow_report_add_del (flow_report_main_t *frm, 
-                              vnet_flow_report_add_del_args_t *a)
+                              vnet_flow_report_add_del_args_t *a,
+			      u16 *template_id)
 {
   int i;
   int found_index = ~0;
@@ -304,7 +305,10 @@ int vnet_flow_report_add_del (flow_report_main_t *frm,
   fr->opaque = a->opaque;
   fr->rewrite_callback = a->rewrite_callback;
   fr->flow_data_callback = a->flow_data_callback;
-  
+
+  if (template_id)
+    *template_id = fr->template_id;
+
   return 0;
 }
 
