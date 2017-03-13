@@ -130,7 +130,8 @@ typedef struct {
 } vnet_flow_report_add_del_args_t;  
 
 int vnet_flow_report_add_del (flow_report_main_t *frm, 
-                              vnet_flow_report_add_del_args_t *a);
+                              vnet_flow_report_add_del_args_t *a,
+			      u16 *template_id);
 
 clib_error_t * flow_report_add_del_error_to_clib_error (int error);
 
