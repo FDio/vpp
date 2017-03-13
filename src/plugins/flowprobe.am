@@ -12,27 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vppplugins_LTLIBRARIES += flowperpkt_plugin.la
-vppapitestplugins_LTLIBRARIES += flowperpkt_test_plugin.la
+vppplugins_LTLIBRARIES += flowprobe_plugin.la
+vppapitestplugins_LTLIBRARIES += flowprobe_test_plugin.la
 
-flowperpkt_plugin_la_SOURCES = flowperpkt/flowperpkt.c  \
-        flowperpkt/l2_node.c \
-        flowperpkt/node.c \
-	flowperpkt/flowperpkt_plugin.api.h
+flowprobe_plugin_la_SOURCES = flowprobe/flowprobe.c	\
+        flowprobe/node.c				\
+	flowprobe/flowprobe_plugin.api.h
 
 BUILT_SOURCES +=				\
-	flowperpkt/flowperpkt.api.h		\
-	flowperpkt/flowperpkt.api.json
+	flowprobe/flowprobe.api.h		\
+	flowprobe/flowprobe.api.json
 
 noinst_HEADERS +=				\
-  flowperpkt/flowperpkt_all_api_h.h		\
-  flowperpkt/flowperpkt_msg_enum.h		\
-  flowperpkt/flowperpkt.api.h
+  flowprobe/flowprobe_all_api_h.h		\
+  flowprobe/flowprobe_msg_enum.h		\
+  flowprobe/flowprobe.api.h
 
-flowperpkt_test_plugin_la_SOURCES = \
-  flowperpkt/flowperpkt_test.c			\
-  flowperpkt/flowperpkt_plugin.api.h
+flowprobe_test_plugin_la_SOURCES = \
+  flowprobe/flowprobe_test.c			\
+  flowprobe/flowprobe_plugin.api.h
 
-API_FILES += flowperpkt/flowperpkt.api
+API_FILES += flowprobe/flowprobe.api
 
 # vi:syntax=automake
