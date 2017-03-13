@@ -21,7 +21,8 @@
 
 #define foreach_session_dbg_evt		\
   _(ENQ, "enqueue")			\
-  _(DEQ, "dequeue")
+  _(DEQ, "dequeue")			\
+  _(DEQ_NODE, "dequeue")
 
 typedef enum _session_evt_dbg
 {
@@ -44,6 +45,12 @@ typedef enum _session_evt_dbg
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
 			_e, _tc->elog_track)
 
+#define DEC_SESSION_ED(_e, _size)					\
+  struct								\
+  {									\
+    u32 data[_size];							\
+  } * ed;								\
+  ed = ELOG_DATA (&vlib_global_main.elog_main, _e)
 
 #define SESSION_EVT_DEQ_HANDLER(_s, _body)				\
 {									\
@@ -67,13 +74,29 @@ typedef enum _session_evt_dbg
   do { _body; } while (0);						\
 }
 
+#define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "deq-node: %s",						\
+    .format_args = "t4",                                      		\
+    .n_enum_strings = 2,                                        	\
+    .enum_strings = {                                           	\
+      "start",                                             		\
+      "end",                                              		\
+    },									\
+  };									\
+  DEC_SESSION_ED(_e, 1);						\
+  ed->data[0] = _node_evt;						\
+}
+
 #define CONCAT_HELPER(_a, _b) _a##_b
 #define CC(_a, _b) CONCAT_HELPER(_a, _b)
 
-#define SESSION_EVT_DBG(_s, _evt, _body) CC(_evt, _HANDLER)(_s, _body)
+#define SESSION_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
 
 #else
-#define SESSION_EVT_DBG(_s, _evt, _body)
+#define SESSION_EVT_DBG(_evt, _args...)
 #endif
 
 #endif /* SRC_VNET_SESSION_SESSION_DEBUG_H_ */

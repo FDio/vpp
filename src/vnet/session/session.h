@@ -91,14 +91,13 @@ typedef enum
   SESSION_STATE_N_STATES,
 } stream_session_state_t;
 
-typedef CLIB_PACKED (struct
-		     {
-		     svm_fifo_t * fifo;
-		     u8 event_type;
-		     /* $$$$ for event logging */
-		     u16 event_id;
-		     u32 enqueue_length;
-		     }) session_fifo_event_t;
+/* *INDENT-OFF* */
+typedef CLIB_PACKED (struct {
+  svm_fifo_t * fifo;
+  u8 event_type;
+  u16 event_id;
+}) session_fifo_event_t;
+/* *INDENT-ON* */
 
 typedef struct _stream_session_t
 {

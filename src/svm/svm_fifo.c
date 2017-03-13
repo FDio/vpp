@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "svm_fifo.h"
+#include <svm/svm_fifo.h>
 
 /** create an svm fifo, in the current heap. Fails vs blow up the process */
 svm_fifo_t *
@@ -369,7 +369,7 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f,
  */
 
 static int
-svm_fifo_enqueue_with_offset_internal2 (svm_fifo_t * f,
+svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
 					int pid,
 					u32 offset,
 					u32 required_bytes,
@@ -424,13 +424,13 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f,
 			      u32 offset,
 			      u32 required_bytes, u8 * copy_from_here)
 {
-  return svm_fifo_enqueue_with_offset_internal2
+  return svm_fifo_enqueue_with_offset_internal
     (f, pid, offset, required_bytes, copy_from_here);
 }
 
 
 static int
-svm_fifo_dequeue_internal2 (svm_fifo_t * f,
+svm_fifo_dequeue_internal (svm_fifo_t * f,
 			    int pid, u32 max_bytes, u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
@@ -484,7 +484,7 @@ int
 svm_fifo_dequeue_nowait (svm_fifo_t * f,
 			 int pid, u32 max_bytes, u8 * copy_here)
 {
-  return svm_fifo_dequeue_internal2 (f, pid, max_bytes, copy_here);
+  return svm_fifo_dequeue_internal (f, pid, max_bytes, copy_here);
 }
 
 int

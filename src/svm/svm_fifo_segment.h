@@ -15,8 +15,8 @@
 #ifndef __included_ssvm_fifo_segment_h__
 #define __included_ssvm_fifo_segment_h__
 
-#include "svm_fifo.h"
-#include "ssvm.h"
+#include <svm/svm_fifo.h>
+#include <svm/ssvm.h>
 
 typedef struct
 {

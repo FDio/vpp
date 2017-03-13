@@ -73,10 +73,10 @@ typedef enum _tcp_dbg_evt
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
 			_e, _tc->c_elog_track)
 
-#define TCP_EVT_INIT_HANDLER(_tc, ...)					\
+#define TCP_EVT_INIT_HANDLER(_tc, _fmt, ...)				\
 {									\
   _tc->c_elog_track.name = 						\
-	(char *) format (0, "%d%c", _tc->c_c_index, 0);			\
+	(char *) format (0, _fmt, _tc->c_c_index, 0);			\
   elog_track_register (&vlib_global_main.elog_main, &_tc->c_elog_track);\
 }
 
@@ -87,7 +87,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_OPEN_HANDLER(_tc, ...)					\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc);						\
+  TCP_EVT_INIT_HANDLER(_tc, "s%d%c");					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "open: index %d",						\
@@ -110,7 +110,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_BIND_HANDLER(_tc, ...)					\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc);						\
+  TCP_EVT_INIT_HANDLER(_tc, "l%d%c");					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "bind: listener %d",					\
@@ -180,7 +180,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_SYN_RCVD_HANDLER(_tc, ...)				\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc);						\
+  TCP_EVT_INIT_HANDLER(_tc, "s%d%c");					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "SYN rcvd: irs %d",					\

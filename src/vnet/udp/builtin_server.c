@@ -39,7 +39,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
 }
 
 static int
-builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * ep)
+builtin_server_rx_callback (stream_session_t * s)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   u32 this_transfer;
@@ -67,14 +67,15 @@ builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * ep)
 
   copy_buffers[s->thread_index] = my_copy_buffer;
 
-  /* Fabricate TX event, send to ourselves */
-  evt.fifo = tx_fifo;
-  evt.event_type = FIFO_EVENT_SERVER_TX;
-  /* $$$$ for event logging */
-  evt.enqueue_length = actual_transfer;
-  evt.event_id = 0;
-  q = session_manager_get_vpp_event_queue (s->thread_index);
-  unix_shared_memory_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
+  if (__sync_lock_test_and_set (&s->server_tx_fifo->has_event, 1) == 0)
+    {
+      /* Fabricate TX event, send to ourselves */
+      evt.fifo = tx_fifo;
+      evt.event_type = FIFO_EVENT_SERVER_TX;
+      evt.event_id = 0;
+      q = session_manager_get_vpp_event_queue (s->thread_index);
+      unix_shared_memory_queue_add (q, (u8 *) &evt, 0 /* do wait for mutex */);
+    }
 
   return 0;
 }

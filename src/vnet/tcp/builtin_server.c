@@ -81,7 +81,7 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
 }
 
 int
-builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * e)
+builtin_server_rx_callback (stream_session_t * s)
 {
   int n_written, bytes, total_copy_bytes;
   int n_read;
@@ -90,7 +90,7 @@ builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * e)
   session_fifo_event_t evt;
   static int serial_number = 0;
 
-  bytes = e->enqueue_length;
+  bytes = svm_fifo_max_dequeue (s->server_rx_fifo);
   if (PREDICT_FALSE (bytes <= 0))
     {
       clib_warning ("bizarre rx callback: bytes %d", bytes);
@@ -123,14 +123,16 @@ builtin_server_rx_callback (stream_session_t * s, session_fifo_event_t * e)
   n_written = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, bsm->rx_buf);
   ASSERT (n_written == total_copy_bytes);
 
-  /* Fabricate TX event, send to vpp */
-  evt.fifo = tx_fifo;
-  evt.event_type = FIFO_EVENT_SERVER_TX;
-  evt.enqueue_length = total_copy_bytes;
-  evt.event_id = serial_number++;
+  if (__sync_lock_test_and_set (&tx_fifo->has_event, 1) == 0)
+    {
+      /* Fabricate TX event, send to vpp */
+      evt.fifo = tx_fifo;
+      evt.event_type = FIFO_EVENT_SERVER_TX;
+      evt.event_id = serial_number++;
 
-  unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index], (u8 *) & evt,
-				0 /* do wait for mutex */ );
+      unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
+				    (u8 *) &evt, 0 /* do wait for mutex */);
+    }
 
   return 0;
 }
