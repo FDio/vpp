@@ -22,6 +22,30 @@
       "revId": "0b98d2e64ba9fe49ab4f1eb338cc1cb6de5c7fd6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_75e18ffd",
+        "filename": "src/plugins/ioam/encap/ip6_ioam_trace.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 518
+      },
+      "writtenOn": "2017-03-13T14:21:38Z",
+      "side": 1,
+      "message": "Yes, using vlib_buffer_copy() is better. Fixed in patch 3.",
+      "parentUuid": "3a3291f1_1a4f1abf",
+      "range": {
+        "startLine": 235,
+        "startChar": 2,
+        "endLine": 244,
+        "endChar": 46
+      },
+      "revId": "0b98d2e64ba9fe49ab4f1eb338cc1cb6de5c7fd6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
