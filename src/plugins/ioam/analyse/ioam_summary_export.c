@@ -398,6 +398,7 @@ ioam_flow_create (u8 del)
   int rv;
   u32 domain_id = 0;
   flow_report_main_t *frm = &flow_report_main;
+  u16 template_id;
 
   memset (&args, 0, sizeof (args));
   args.rewrite_callback = ioam_template_rewrite;
@@ -405,7 +406,7 @@ ioam_flow_create (u8 del)
   del ? (args.is_add = 0) : (args.is_add = 1);
   args.domain_id = domain_id;
 
-  rv = vnet_flow_report_add_del (frm, &args);
+  rv = vnet_flow_report_add_del (frm, &args, &template_id);
 
   switch (rv)
     {

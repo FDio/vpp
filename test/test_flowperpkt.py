@@ -131,6 +131,7 @@ class TestFlowperpkt(VppTestCase):
         self.assertTrue(found_l2_template_packet,
                         "L2 template packet not found")
 
+    @unittest.skip('')
     def test_L3_fpp(self):
         """ Flow per packet L3 test """
 
