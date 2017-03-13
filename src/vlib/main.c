@@ -1661,7 +1661,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 
   /* Turn on event log. */
   if (!vm->elog_main.event_ring_size)
-    vm->elog_main.event_ring_size = 128 << 10;
+    vm->elog_main.event_ring_size = 128 << 13;
   elog_init (&vm->elog_main, vm->elog_main.event_ring_size);
   elog_enable_disable (&vm->elog_main, 1);
 
