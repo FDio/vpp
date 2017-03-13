@@ -37,8 +37,8 @@ if ENABLE_DPDK_PLUGIN
 include dpdk.am
 endif
 
-if ENABLE_FLOWPERPKT_PLUGIN
-include flowperpkt.am
+if ENABLE_FLOWPROBE_PLUGIN
+include flowprobe.am
 endif
 
 
