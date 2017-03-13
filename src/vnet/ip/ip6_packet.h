@@ -341,6 +341,12 @@ typedef struct
   ip6_address_t src_address, dst_address;
 } ip6_header_t;
 
+always_inline u8
+ip6_traffic_class (ip6_header_t * i)
+{
+  return (i->ip_version_traffic_class_and_flow_label & 0x0FF00000) >> 20;
+}
+
 always_inline void *
 ip6_next_header (ip6_header_t * i)
 {
