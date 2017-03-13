@@ -784,7 +784,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       a.rewrite_callback = snat_template_rewrite_max_entries_per_usr;
       a.flow_data_callback = snat_data_callback_max_entries_per_usr;
 
-      rv = vnet_flow_report_add_del (frm, &a);
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
         {
           clib_warning ("vnet_flow_report_add_del returned %d", rv);
@@ -796,7 +796,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       a.rewrite_callback = snat_template_rewrite_nat44_session;
       a.flow_data_callback = snat_data_callback_nat44_session;
 
-      rv = vnet_flow_report_add_del (frm, &a);
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
         {
           clib_warning ("vnet_flow_report_add_del returned %d", rv);
@@ -806,7 +806,7 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
       a.rewrite_callback = snat_template_rewrite_addr_exhausted;
       a.flow_data_callback = snat_data_callback_addr_exhausted;
 
-      rv = vnet_flow_report_add_del (frm, &a);
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)
         {
           clib_warning ("vnet_flow_report_add_del returned %d", rv);

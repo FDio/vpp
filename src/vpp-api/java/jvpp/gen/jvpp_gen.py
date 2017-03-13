@@ -30,7 +30,7 @@ from jvppgen import jvpp_impl_gen
 from jvppgen import jvpp_c_gen
 from jvppgen import util
 
-blacklist = [ "memclnt.api", "flowperpkt.api" ]
+blacklist = [ "memclnt.api", "flowprobe.api" ]
 
 # Invocation:
 # ~/Projects/vpp/vpp-api/jvpp/gen$ mkdir -p java/io/fd/vpp/jvpp && cd java/io/fd/vpp/jvpp
