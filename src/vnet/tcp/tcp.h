@@ -224,6 +224,7 @@ typedef struct _tcp_connection
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
   u32 rtx_bytes;	/**< Retransmitted bytes */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
+  u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
 
   /* RTT and RTO */
@@ -248,9 +249,10 @@ struct _tcp_cc_algorithm
 
 #define tcp_fastrecovery_on(tc) (tc)->flags |= TCP_CONN_FAST_RECOVERY
 #define tcp_fastrecovery_off(tc) (tc)->flags &= ~TCP_CONN_FAST_RECOVERY
+#define tcp_recovery_on(tc) (tc)->flags |= TCP_CONN_RECOVERY
+#define tcp_recovery_off(tc) ((tc)->flags &= ~(TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
 #define tcp_in_fastrecovery(tc) ((tc)->flags & TCP_CONN_FAST_RECOVERY)
 #define tcp_in_recovery(tc) ((tc)->flags & (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
-#define tcp_recovery_off(tc) ((tc)->flags &= ~(TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
 #define tcp_in_slowstart(tc) (tc->cwnd < tc->ssthresh)
 
 typedef enum
@@ -442,6 +444,7 @@ tcp_available_snd_space (const tcp_connection_t * tc)
 void tcp_retransmit_first_unacked (tcp_connection_t * tc);
 
 void tcp_fast_retransmit (tcp_connection_t * tc);
+void tcp_cc_congestion (tcp_connection_t * tc);
 
 always_inline u32
 tcp_time_now (void)
@@ -477,14 +480,6 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 }
 
 always_inline void
-tcp_retransmit_timer_set (tcp_connection_t * tc)
-{
-  /* XXX Switch to faster TW */
-  tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
-		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
-}
-
-always_inline void
 tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
 {
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
@@ -504,6 +499,27 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
   tc->timers[timer_id] =
     tw_timer_start_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
 				 tc->c_c_index, timer_id, interval);
+}
+
+/* XXX Switch retransmit to faster TW */
+always_inline void
+tcp_retransmit_timer_set (tcp_connection_t * tc)
+{
+  tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
+		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+}
+
+always_inline void
+tcp_retransmit_timer_update (tcp_connection_t * tc)
+{
+  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
+		    clib_max(tc->rto * TCP_TO_TIMER_TICK, 1));
+}
+
+always_inline void
+tcp_retransmit_timer_reset (tcp_connection_t * tc)
+{
+  tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
 }
 
 always_inline u8

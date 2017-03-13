@@ -562,13 +562,23 @@ u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return tcp_available_snd_space (tc);
+  if (PREDICT_TRUE(tcp_in_recovery (tc) == 0))
+    return tcp_available_snd_space (tc);
+
+  /* If in fast recovery, allow 1 SMSS if wnd allows */
+  /* XXX if no new SACK blocks we should probably not send anything */
+  if (tcp_in_fastrecovery(tc) && tcp_available_snd_space (tc))
+    return tc->snd_mss;
+
+  return 0;
 }
 
 u32
 tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
+
+  /* This still works if fast retransmit is on */
   return (tc->snd_nxt - tc->snd_una);
 }
 
