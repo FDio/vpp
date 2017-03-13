@@ -477,14 +477,6 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 }
 
 always_inline void
-tcp_retransmit_timer_set (tcp_connection_t * tc)
-{
-  /* XXX Switch to faster TW */
-  tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
-		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
-}
-
-always_inline void
 tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
 {
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
@@ -504,6 +496,27 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
   tc->timers[timer_id] =
     tw_timer_start_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
 				 tc->c_c_index, timer_id, interval);
+}
+
+/* XXX Switch retransmit to faster TW */
+always_inline void
+tcp_retransmit_timer_set (tcp_connection_t * tc)
+{
+  tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
+		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+}
+
+always_inline void
+tcp_retransmit_timer_update (tcp_connection_t * tc)
+{
+  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
+		    clib_max(tc->rto * TCP_TO_TIMER_TICK, 1));
+}
+
+always_inline void
+tcp_retransmit_timer_reset (tcp_connection_t * tc)
+{
+  tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
 }
 
 always_inline u8

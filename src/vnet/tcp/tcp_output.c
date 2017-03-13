@@ -125,7 +125,8 @@ tcp_initial_window_to_advertise (tcp_connection_t * tc)
 u32
 tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
 {
-  u32 available_space, max_fifo, observed_wnd;
+  i32 observed_wnd;
+  u32 available_space, max_fifo, wnd;
 
   if (state < TCP_STATE_ESTABLISHED)
     return tcp_initial_window_to_advertise (tc);
@@ -133,7 +134,7 @@ tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
   /*
    * Figure out how much space we have available
    */
-  available_space = stream_session_max_enqueue (&tc->connection);
+  available_space = stream_session_max_rx_enqueue (&tc->connection);
   max_fifo = stream_session_fifo_size (&tc->connection);
 
   ASSERT (tc->opt.mss < max_fifo);
@@ -146,15 +147,24 @@ tcp_window_to_advertise (tcp_connection_t * tc, tcp_state_t state)
    * to compute the new window
    */
   observed_wnd = tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
+  if (observed_wnd < 0 )
+    observed_wnd = 0;
 
   /* Bad. Thou shalt not shrink */
   if (available_space < observed_wnd)
     {
-      if (available_space == 0)
-	clib_warning ("Didn't shrink rcv window despite not having space");
+      clib_warning("Attempted to shrink window");
+      wnd = observed_wnd;
+    }
+  else
+    {
+      wnd = available_space;
     }
 
-  tc->rcv_wnd = clib_min (available_space, TCP_WND_MAX << tc->rcv_wscale);
+  if (wnd && ((wnd << tc->rcv_wscale) >> tc->rcv_wscale != wnd))
+    wnd += 1 << tc->rcv_wscale;
+
+  tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
 
   if (tc->rcv_wnd == 0)
     {
@@ -363,7 +373,7 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 #define tcp_get_free_buffer_index(tm, bidx)                             \
 do {                                                                    \
   u32 *my_tx_buffers, n_free_buffers;                                   \
-  u32 cpu_index = tm->vlib_main->cpu_index;                             \
+  u32 cpu_index = os_get_cpu_number();                             	\
   my_tx_buffers = tm->tx_buffers[cpu_index];                            \
   if (PREDICT_FALSE(vec_len (my_tx_buffers) == 0))                      \
     {                                                                   \
@@ -795,9 +805,9 @@ tcp_enqueue_to_output (vlib_main_t * vm, vlib_buffer_t * b, u32 bi, u8 is_ip4)
 
   /* Decide where to send the packet */
   next_index = is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
-  f = vlib_get_frame_to_node (vm, next_index);
 
   /* Enqueue the packet */
+  f = vlib_get_frame_to_node (vm, next_index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi;
   f->n_vectors = 1;
@@ -924,7 +934,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = tm->vlib_main;
-  u32 n_bytes, offset = 0;
+  u32 n_bytes = 0, offset = 0;
   sack_scoreboard_hole_t *hole;
   u32 hole_size;
 
@@ -938,7 +948,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
       /* XXX get first hole not retransmitted yet  */
       hole = scoreboard_first_hole (&tc->sack_sb);
       if (!hole)
-	return 0;
+	goto done;
 
       offset = hole->start - tc->snd_una;
       hole_size = hole->end - hole->start;
@@ -951,16 +961,18 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
   else
     {
       if (seq_geq (tc->snd_nxt, tc->snd_una_max))
-	return 0;
+	goto done;
     }
 
   n_bytes = stream_session_peek_bytes (&tc->connection,
 				       vlib_buffer_get_current (b), offset,
 				       max_bytes);
   ASSERT (n_bytes != 0);
-
+  b->current_length = n_bytes;
   tcp_push_hdr_i (tc, b, tc->state);
 
+done:
+  TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
   return n_bytes;
 }
 
@@ -968,7 +980,7 @@ static void
 tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  vlib_main_t *vm = tm->vlib_main;
+  vlib_main_t *vm = vlib_get_main ();
   u32 thread_index = os_get_cpu_number ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
@@ -1006,6 +1018,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Figure out what and how many bytes we can send */
       snd_space = tcp_available_snd_space (tc);
       max_bytes = clib_min (tc->snd_mss, snd_space);
+
+      TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1, snd_space);
 
       if (max_bytes == 0)
 	{
@@ -1077,6 +1091,7 @@ void
 tcp_retransmit_first_unacked (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
+  vlib_main_t *vm = vlib_get_main ();
   u32 snd_nxt = tc->snd_nxt;
   vlib_buffer_t *b;
   u32 bi;
@@ -1085,10 +1100,12 @@ tcp_retransmit_first_unacked (tcp_connection_t * tc)
 
   /* Get buffer */
   tcp_get_free_buffer_index (tm, &bi);
-  b = vlib_get_buffer (tm->vlib_main, bi);
+  b = vlib_get_buffer (vm, bi);
+
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 2, tc->snd_mss);
 
   tcp_prepare_retransmit_segment (tc, b, tc->snd_mss);
-  tcp_enqueue_to_output (tm->vlib_main, b, bi, tc->c_is_ip4);
+  tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
   tc->snd_nxt = snd_nxt;
   tc->rtx_bytes += tc->snd_mss;
@@ -1098,6 +1115,7 @@ void
 tcp_fast_retransmit (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
+  vlib_main_t *vm = vlib_get_main ();
   u32 snd_space, max_bytes, n_bytes, bi;
   vlib_buffer_t *b;
 
@@ -1109,11 +1127,12 @@ tcp_fast_retransmit (tcp_connection_t * tc)
   tc->snd_nxt = tc->snd_una;
 
   snd_space = tcp_available_snd_space (tc);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0, snd_space);
 
   while (snd_space)
     {
       tcp_get_free_buffer_index (tm, &bi);
-      b = vlib_get_buffer (tm->vlib_main, bi);
+      b = vlib_get_buffer (vm, bi);
 
       max_bytes = clib_min (tc->snd_mss, snd_space);
       n_bytes = tcp_prepare_retransmit_segment (tc, b, max_bytes);
@@ -1122,7 +1141,8 @@ tcp_fast_retransmit (tcp_connection_t * tc)
       if (n_bytes == 0)
 	return;
 
-      tcp_enqueue_to_output (tm->vlib_main, b, bi, tc->c_is_ip4);
+      tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+      tc->rtx_bytes += n_bytes;
 
       snd_space -= n_bytes;
     }
@@ -1209,8 +1229,8 @@ tcp46_output_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE
 	      (vnet_buffer (b0)->tcp.flags & TCP_BUF_FLAG_DUPACK))
 	    {
-	      ASSERT (tc0->snt_dupacks > 0);
-	      tc0->snt_dupacks--;
+//	      ASSERT (tc0->snt_dupacks > 0);
+//	      tc0->snt_dupacks--;
 	      if (!tcp_session_has_ooo_data (tc0))
 		{
 		  error0 = TCP_ERROR_FILTERED_DUPACKS;

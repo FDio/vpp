@@ -569,6 +569,8 @@ u32
 tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
+
+  /* This still works if fast retransmit is on */
   return (tc->snd_nxt - tc->snd_una);
 }
 
