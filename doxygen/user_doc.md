@@ -11,7 +11,7 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage lldp_doc
 - @subpage map_doc
 - @subpage dpdk_crypto_ipsec_doc
-- @subpage flowperpkt_plugin_doc
+- @subpage flowprobe_plugin_doc
 - @subpage qos_doc
 - @subpage span_doc
 - @subpage srv6_doc
