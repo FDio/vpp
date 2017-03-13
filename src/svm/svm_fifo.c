@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "svm_fifo.h"
+#include <svm/svm_fifo.h>
 
 /** create an svm fifo, in the current heap. Fails vs blow up the process */
 svm_fifo_t *
@@ -362,18 +362,19 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f,
   return svm_fifo_enqueue_internal (f, pid, max_bytes, copy_from_here);
 }
 
-/** Enqueue a future segment.
+/**
+ * Enqueue a future segment.
+ *
  * Two choices: either copies the entire segment, or copies nothing
  * Returns 0 of the entire segment was copied
  * Returns -1 if none of the segment was copied due to lack of space
  */
-
 static int
-svm_fifo_enqueue_with_offset_internal2 (svm_fifo_t * f,
-					int pid,
-					u32 offset,
-					u32 required_bytes,
-					u8 * copy_from_here)
+svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
+				       int pid,
+				       u32 offset,
+				       u32 required_bytes,
+				       u8 * copy_from_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -424,14 +425,14 @@ svm_fifo_enqueue_with_offset (svm_fifo_t * f,
 			      u32 offset,
 			      u32 required_bytes, u8 * copy_from_here)
 {
-  return svm_fifo_enqueue_with_offset_internal2
+  return svm_fifo_enqueue_with_offset_internal
     (f, pid, offset, required_bytes, copy_from_here);
 }
 
 
 static int
-svm_fifo_dequeue_internal2 (svm_fifo_t * f,
-			    int pid, u32 max_bytes, u8 * copy_here)
+svm_fifo_dequeue_internal (svm_fifo_t * f,
+			   int pid, u32 max_bytes, u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -484,7 +485,7 @@ int
 svm_fifo_dequeue_nowait (svm_fifo_t * f,
 			 int pid, u32 max_bytes, u8 * copy_here)
 {
-  return svm_fifo_dequeue_internal2 (f, pid, max_bytes, copy_here);
+  return svm_fifo_dequeue_internal (f, pid, max_bytes, copy_here);
 }
 
 int
@@ -492,7 +493,7 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
 	       u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
-  u32 cursize, nitems;
+  u32 cursize, nitems, real_head;
 
   if (PREDICT_FALSE (f->cursize == 0))
     return -2;			/* nothing in the fifo */
@@ -500,6 +501,8 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
   /* read cursize, which can only increase while we're working */
   cursize = f->cursize;
   nitems = f->nitems;
+  real_head = f->head + offset;
+  real_head = real_head >= nitems ? real_head - nitems : real_head;
 
   /* Number of bytes we're going to copy */
   total_copy_bytes = (cursize < max_bytes) ? cursize : max_bytes;
@@ -508,9 +511,9 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
     {
       /* Number of bytes in first copy segment */
       first_copy_bytes =
-	((nitems - f->head + offset) < total_copy_bytes) ?
-	(nitems - f->head + offset) : total_copy_bytes;
-      clib_memcpy (copy_here, &f->data[f->head + offset], first_copy_bytes);
+	((nitems - real_head) < total_copy_bytes) ?
+	(nitems - real_head) : total_copy_bytes;
+      clib_memcpy (copy_here, &f->data[real_head], first_copy_bytes);
 
       /* Number of bytes in second copy segment, if any */
       second_copy_bytes = total_copy_bytes - first_copy_bytes;

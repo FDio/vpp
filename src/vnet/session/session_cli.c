@@ -107,7 +107,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    {
 	      if (once_per_pool)
 		{
-		  str = format (str, "%-40s%-20s%-20s%-15s",
+		  str = format (str, "%-50s%-20s%-20s%-15s",
 				"Connection", "Rx fifo", "Tx fifo",
 				"Session Index");
 		  vlib_cli_output (vm, "%v", str);
