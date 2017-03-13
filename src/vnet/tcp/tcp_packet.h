@@ -137,7 +137,7 @@ enum
 typedef struct _sack_block
 {
   u32 start;		/**< Start sequence number */
-  u32 end;		/**< End sequence number */
+  u32 end;		/**< End sequence number (first outside) */
 } sack_block_t;
 
 typedef struct
