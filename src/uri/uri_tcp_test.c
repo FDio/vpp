@@ -313,7 +313,11 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 
   rx_fifo = e->fifo;
 
-  bytes = e->enqueue_length;
+  bytes = svm_fifo_max_dequeue (rx_fifo);
+  /* Allow enqueuing of new event */
+  __sync_lock_test_and_set (&rx_fifo->has_event, 0);
+
+  /* Read the bytes */
   do
     {
       n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (utm->rx_buf),
@@ -499,7 +503,7 @@ client_send_data (uri_tcp_test_main_t * utm)
 
   vec_validate (utm->rx_buf, vec_len (test_data) - 1);
 
-  for (i = 0; i < 1; i++)
+  for (i = 0; i < 10; i++)
     {
       bytes_to_send = vec_len (test_data);
       buffer_offset = 0;
@@ -515,16 +519,17 @@ client_send_data (uri_tcp_test_main_t * utm)
 	      buffer_offset += rv;
 	      bytes_sent += rv;
 
-	      /* Fabricate TX event, send to vpp */
-	      evt.fifo = tx_fifo;
-	      evt.event_type = FIFO_EVENT_SERVER_TX;
-	      /* $$$$ for event logging */
-	      evt.enqueue_length = rv;
-	      evt.event_id = serial_number++;
+	      if (__sync_lock_test_and_set (&tx_fifo->has_event, 1) == 0)
+		{
+		  /* Fabricate TX event, send to vpp */
+		  evt.fifo = tx_fifo;
+		  evt.event_type = FIFO_EVENT_SERVER_TX;
+		  evt.event_id = serial_number++;
 
-	      unix_shared_memory_queue_add (utm->vpp_event_queue,
-					    (u8 *) & evt,
-					    0 /* do wait for mutex */ );
+		  unix_shared_memory_queue_add (utm->vpp_event_queue,
+						(u8 *) &evt,
+						0 /* do wait for mutex */);
+		}
 	    }
 	}
     }
@@ -542,9 +547,8 @@ client_send_data (uri_tcp_test_main_t * utm)
 	      break;
 	    }
 	}
-
-      utm->time_to_stop = 1;
     }
+  utm->time_to_stop = 1;
 }
 
 void
@@ -599,6 +603,11 @@ client_test (uri_tcp_test_main_t * utm)
 
   /* Disconnect */
   client_disconnect (utm);
+
+  if (wait_for_state_change (utm, STATE_START))
+    {
+      return;
+    }
 }
 
 static void
@@ -714,7 +723,6 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   int n_read;
-
   session_fifo_event_t evt;
   unix_shared_memory_queue_t *q;
   int rv, bytes;
@@ -722,34 +730,46 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   rx_fifo = e->fifo;
   tx_fifo = utm->sessions[rx_fifo->client_session_index].server_tx_fifo;
 
-  bytes = e->enqueue_length;
+  bytes = svm_fifo_max_dequeue (rx_fifo);
+  /* Allow enqueuing of a new event */
+  __sync_lock_test_and_set (&rx_fifo->has_event, 0);
+
+  if (bytes == 0)
+    return;
+
+  /* Read the bytes */
   do
     {
       n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (utm->rx_buf),
 					utm->rx_buf);
+      if (n_read > 0)
+	bytes -= n_read;
+
+      if (utm->drop_packets)
+	continue;
 
       /* Reflect if a non-drop session */
-      if (!utm->drop_packets && n_read > 0)
+      if (n_read > 0)
 	{
 	  do
 	    {
 	      rv = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, utm->rx_buf);
 	    }
-	  while (rv == -2 && !utm->time_to_stop);
+	  while (rv <= 0 && !utm->time_to_stop);
 
-	  /* Fabricate TX event, send to vpp */
-	  evt.fifo = tx_fifo;
-	  evt.event_type = FIFO_EVENT_SERVER_TX;
-	  /* $$$$ for event logging */
-	  evt.enqueue_length = n_read;
-	  evt.event_id = e->event_id;
-	  q = utm->vpp_event_queue;
-	  unix_shared_memory_queue_add (q, (u8 *) & evt,
-					0 /* do wait for mutex */ );
+	  /* If event wasn't set, add one */
+	  if (__sync_lock_test_and_set (&tx_fifo->has_event, 1) == 0)
+	    {
+	      /* Fabricate TX event, send to vpp */
+	      evt.fifo = tx_fifo;
+	      evt.event_type = FIFO_EVENT_SERVER_TX;
+	      evt.event_id = e->event_id;
+
+	      q = utm->vpp_event_queue;
+	      unix_shared_memory_queue_add (q, (u8 *) &evt,
+					    0 /* do wait for mutex */);
+	    }
 	}
-
-      if (n_read > 0)
-	bytes -= n_read;
     }
   while ((n_read < 0 || bytes > 0) && !utm->time_to_stop);
 }
@@ -852,7 +872,10 @@ static void
 vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 					   mp)
 {
+  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+
   clib_warning ("retval %d", ntohl (mp->retval));
+  utm->state = STATE_START;
 }
 
 #define foreach_uri_msg                                 \

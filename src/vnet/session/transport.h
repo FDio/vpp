@@ -38,7 +38,7 @@ typedef struct _transport_connection
   u32 thread_index;		/**< Worker-thread index */
 
 #if TRANSPORT_DEBUG
-  elog_track_t elog_track;	/**< Debug purposes */
+  elog_track_t elog_track;	/**< Event logging */
 #endif
 
   /** Macros for 'derived classes' where base is named "connection" */

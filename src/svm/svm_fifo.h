@@ -46,9 +46,11 @@ typedef struct
 {
   pthread_mutex_t mutex;	/* 8 bytes */
   pthread_cond_t condvar;	/* 8 bytes */
-  u32 owner_pid;
   svm_lock_tag_t tag;
-  volatile u32 cursize;
+
+  volatile u32 cursize;		/**< current fifo size */
+  volatile u8 has_event;	/**< non-zero if deq event exists */
+  u32 owner_pid;
   u32 nitems;
 
   /* Backpointers */

@@ -91,10 +91,10 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   transport_proto_vft_t *transport_vft;
   u32 next_index, next0, *to_next, n_left_to_next, bi0;
   vlib_buffer_t *b0;
-  u32 rx_offset;
+  u32 rx_offset = 0, max_dequeue0;
   u16 snd_mss0;
   u8 *data0;
-  int i;
+  int i, n_bytes_read, error = 0;
 
   next_index = next0 = session_type_to_next[s0->session_type];
 
@@ -106,23 +106,29 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   snd_mss0 = transport_vft->send_mss (tc0);
 
   /* Can't make any progress */
-  if (snd_space0 == 0 || svm_fifo_max_dequeue (s0->server_tx_fifo) == 0
-      || snd_mss0 == 0)
+  if (snd_space0 == 0 || snd_mss0 == 0)
     {
       vec_add1 (smm->evts_partially_read[thread_index], *e0);
       return 0;
     }
-
-  ASSERT (e0->enqueue_length > 0);
-
-  /* Ensure we're not writing more than transport window allows */
-  max_len_to_snd0 = clib_min (e0->enqueue_length, snd_space0);
 
   if (peek_data)
     {
       /* Offset in rx fifo from where to peek data  */
       rx_offset = transport_vft->tx_fifo_offset (tc0);
     }
+
+  /* Check how much we can pull. If buffering, subtract the offset */
+  max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo) - rx_offset;
+
+  /* Allow enqueuing of a new event */
+  __sync_lock_test_and_set (&s0->server_tx_fifo->has_event, 0);
+
+  if (max_dequeue0 == 0)
+    return 0;
+
+  /* Ensure we're not writing more than transport window allows */
+  max_len_to_snd0 = clib_min (max_dequeue0, snd_space0);
 
   /* TODO check if transport is willing to send len_to_snd0
    * bytes (Nagle) */
@@ -147,13 +153,10 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * XXX 0.9 because when debugging we might not get a full frame */
 	  if (PREDICT_FALSE (n_bufs < 0.9 * VLIB_FRAME_SIZE))
 	    {
-	      /* Keep track of how much we've dequeued and exit */
-	      if (left_to_snd0 != max_len_to_snd0)
+	      if (__sync_lock_test_and_set (&s0->server_tx_fifo->has_event, 1) == 0)
 		{
-		  e0->enqueue_length -= max_len_to_snd0 - left_to_snd0;
-		  vec_add1 (smm->evts_partially_read[thread_index], *e0);
+		  vec_add1(smm->evts_partially_read[thread_index], *e0);
 		}
-
 	      return -1;
 	    }
 
@@ -198,9 +201,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  len_to_deq0 = (left_to_snd0 < snd_mss0) ? left_to_snd0 : snd_mss0;
 
 	  /* *INDENT-OFF* */
-	  SESSION_EVT_DBG(s0, SESSION_EVT_DEQ, ({
+	  SESSION_EVT_DBG(SESSION_EVT_DEQ, s0, ({
 	      ed->data[0] = e0->event_id;
-	      ed->data[1] = e0->enqueue_length;
+	      ed->data[1] = max_dequeue0;
 	      ed->data[2] = len_to_deq0;
 	      ed->data[3] = left_to_snd0;
 	  }));
@@ -214,10 +217,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   *      2) buffer chains */
 	  if (peek_data)
 	    {
-	      int n_bytes_read;
 	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, s0->pid,
 					    rx_offset, len_to_deq0, data0);
-	      if (n_bytes_read < 0)
+	      if (n_bytes_read <= 0)
 		goto dequeue_fail;
 
 	      /* Keep track of progress locally, transport is also supposed to
@@ -226,17 +228,19 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if (svm_fifo_dequeue_nowait (s0->server_tx_fifo, s0->pid,
-					   len_to_deq0, data0) < 0)
+	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
+						      s0->pid, len_to_deq0,
+						      data0);
+	      if (n_bytes_read <= 0)
 		goto dequeue_fail;
 	    }
 
-	  b0->current_length = len_to_deq0;
+	  b0->current_length = n_bytes_read;
 
 	  /* Ask transport to push header */
 	  transport_vft->push_header (tc0, b0);
 
-	  left_to_snd0 -= len_to_deq0;
+	  left_to_snd0 -= n_bytes_read;
 	  *n_tx_packets = *n_tx_packets + 1;
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -246,19 +250,26 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  /* If we couldn't dequeue all bytes store progress */
-  if (max_len_to_snd0 < e0->enqueue_length)
+  /* If we couldn't dequeue all bytes mark as partially read */
+  if (max_len_to_snd0 < max_dequeue0)
     {
-      e0->enqueue_length -= max_len_to_snd0;
-      vec_add1 (smm->evts_partially_read[thread_index], *e0);
+      /* If we don't already have new event */
+      if (__sync_lock_test_and_set (&s0->server_tx_fifo->has_event, 1) == 0)
+	{
+	  vec_add1(smm->evts_partially_read[thread_index], *e0);
+	}
     }
-  return 0;
+  return error;
 
 dequeue_fail:
-  /* Can't read from fifo. Store event rx progress, save as partially read,
-   * return buff to free list and return  */
-  e0->enqueue_length -= max_len_to_snd0 - left_to_snd0;
-  vec_add1 (smm->evts_partially_read[thread_index], *e0);
+  /*
+   * Can't read from fifo. If we don't already have avent, save as partially
+   * read, return buff to free list and return
+   */
+  if (__sync_lock_test_and_set (&s0->server_tx_fifo->has_event, 1) == 0)
+    {
+      vec_add1(smm->evts_partially_read[thread_index], *e0);
+    }
 
   to_next -= 1;
   n_left_to_next += 1;
@@ -321,13 +332,18 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (n_to_dequeue == 0 && vec_len (my_fifo_events) == 0)
     return 0;
 
+  SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 0);
+
   /*
    * If we didn't manage to process previous events try going
    * over them again without dequeuing new ones.
    */
   /* XXX: Block senders to sessions that can't keep up */
   if (vec_len (my_fifo_events) >= 100)
-    goto skip_dequeue;
+    {
+      clib_warning ("too many fifo events unsolved");
+      goto skip_dequeue;
+    }
 
   /* See you in the next life, don't be late */
   if (pthread_mutex_trylock (&q->mutex))
@@ -352,18 +368,17 @@ skip_dequeue:
     {
       svm_fifo_t *f0;		/* $$$ prefetch 1 ahead maybe */
       stream_session_t *s0;
-      u32 server_session_index0, server_thread_index0;
+      u32 session_index0;
       session_fifo_event_t *e0;
 
       e0 = &my_fifo_events[i];
       f0 = e0->fifo;
-      server_session_index0 = f0->server_session_index;
-      server_thread_index0 = f0->server_thread_index;
+      session_index0 = f0->server_session_index;
 
       /* $$$ add multiple event queues, per vpp worker thread */
-      ASSERT (server_thread_index0 == my_thread_index);
+      ASSERT (f0->server_thread_index == my_thread_index);
 
-      s0 = stream_session_get_if_valid (server_session_index0,
+      s0 = stream_session_get_if_valid (session_index0,
 					my_thread_index);
 
       if (CLIB_DEBUG && !s0)
@@ -388,6 +403,9 @@ skip_dequeue:
 	  if (rv < 0)
 	    goto done;
 
+	  break;
+	case FIFO_EVENT_SERVER_EXIT:
+	  stream_session_disconnect (s0);
 	  break;
 
 	default:
@@ -417,6 +435,8 @@ done:
 
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);
+
+  SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 1);
 
   return n_tx_packets;
 }
