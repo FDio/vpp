@@ -458,7 +458,7 @@ ipfix_classify_table_add_del_command_fn (vlib_main_t * vm,
   args.domain_id = fcm->domain_id;
   args.src_port = fcm->src_port;
 
-  rv = vnet_flow_report_add_del (frm, &args);
+  rv = vnet_flow_report_add_del (frm, &args, NULL);
 
   error = flow_report_add_del_error_to_clib_error(rv);
 

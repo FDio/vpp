@@ -146,7 +146,7 @@ AC_SUBST(AR_FLAGS)
 # Please keep alphabetical order
 PLUGIN_ENABLED(acl)
 PLUGIN_ENABLED(dpdk)
-PLUGIN_ENABLED(flowperpkt)
+PLUGIN_ENABLED(flowprobe)
 PLUGIN_ENABLED(gtpu)
 PLUGIN_ENABLED(ila)
 PLUGIN_ENABLED(ioam)
