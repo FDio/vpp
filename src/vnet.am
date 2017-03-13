@@ -462,7 +462,9 @@ libvnet_la_SOURCES +=				\
  vnet/tcp/tcp_output.c				\
  vnet/tcp/tcp_input.c				\
  vnet/tcp/tcp_newreno.c				\
+ vnet/tcp/builtin_client.c			\
  vnet/tcp/builtin_server.c			\
+ vnet/tcp/tcp_test.c				\
  vnet/tcp/tcp.c
 
 nobase_include_HEADERS +=			\
