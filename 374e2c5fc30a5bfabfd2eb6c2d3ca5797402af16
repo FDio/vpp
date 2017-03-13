@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_3a21b6b4",
+        "filename": "test/test_gre.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 0,
+      "message": "why are these deleted?\n\nplease add more tests for IPv6 encapsulation.",
+      "revId": "374e2c5fc30a5bfabfd2eb6c2d3ca5797402af16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

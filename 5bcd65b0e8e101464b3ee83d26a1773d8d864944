@@ -1,0 +1,140 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_7a3f3ed7",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "you\u0027re not printing t-\u003eis_ipv6, which implies it is not needed...\nThe ip46_address_t is identifiable as 4 or 6 is all cases except when the address is all zeros. all zeros should never be the case for a tunnel endpoint. So if this is checked when the tunnel is created, then we can use ip46_address_is_ip4() thereafter.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3a73f6e8",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "make a v4 nd a v6 fixup function and pass the appropriate one to the midhcain_update function based on the adjacency link type.\nthis saves the unnecessary switch time protocol check.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5a26c2cf",
+        "filename": "src/vnet/gre/gre.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "i\u0027d suggest using a fib_prefix_t here instead. then we can use t-\u003etunnel_dst.fp_proto in the protocol independent FIB APIs. And the is_ipv6 member is not required.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5a5fe241",
+        "filename": "src/vnet/gre/gre_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "fib_table_find",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_da32b20f",
+        "filename": "src/vnet/gre/gre_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "fib_table_get",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7a485e87",
+        "filename": "src/vnet/gre/interface.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "this needs to be the full v6 address not just the first 4 bytes thereof.\nsee vxlan6_gpe_tunnel_by_key DB as an example.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1a303a00",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "the key is the full address.\nsee vxlan_gpe_input() as an example.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_fa2a0e8f",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-13T12:17:43Z",
+      "side": 1,
+      "message": "the protocol passed as argument is the payload protocol, but this is using that protocol to chose the transport decap node. Instead vlib_node_add_net should be called for both gre4 and gre6 input nodes.\nSame for get_runtime below.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
