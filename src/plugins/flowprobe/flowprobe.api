@@ -2,7 +2,7 @@
 
 /** \file
     This file defines the vpp control-plane API messages
-    used to control the flowperpkt plugin
+    used to control the flowprobe plugin
 */
 
 /** \brief Enable / disable per-packet IPFIX recording on an interface
@@ -12,7 +12,7 @@
     @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param sw_if_index - index of the interface
 */
-autoreply manual_print define flowperpkt_tx_interface_add_del
+autoreply manual_print define flowprobe_tx_interface_add_del
 {
   /* Client identifier, set from api_main.my_client_index */
   u32 client_index;
@@ -28,7 +28,7 @@ autoreply manual_print define flowperpkt_tx_interface_add_del
   u32 sw_if_index;
 };
 
-autoreply define flowperpkt_params
+autoreply define flowprobe_params
 {
   u32 client_index;
   u32 context;
