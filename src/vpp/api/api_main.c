@@ -84,7 +84,7 @@ api_command_fn (vlib_main_t * vm,
 
   vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
-#ifdef __COVERITY
+#ifdef __COVERITY__
   /*
    * Convince Coverity that it's not a NULL pointer...
    * Done once for real below, since we never vec_free(vam->inbuf);
