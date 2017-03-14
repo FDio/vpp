@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_599fedb4",
+        "filename": "src/plugins/snat/snat_det.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-14T19:59:40Z",
+      "side": 1,
+      "message": "VNET_API_ERROR_VALUE_EXIST",
+      "revId": "5e9c8ef4800860f860662b4dade2ddd5b4acc3d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f9afb9e1",
+        "filename": "src/plugins/snat/snat_det.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-03-14T19:59:40Z",
+      "side": 1,
+      "message": "VNET_API_ERROR_NO_SUCH_ENTRY",
+      "revId": "5e9c8ef4800860f860662b4dade2ddd5b4acc3d1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
