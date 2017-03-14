@@ -203,8 +203,8 @@ typedef struct
 
 ioam_cache_main_t ioam_cache_main;
 
-vlib_node_registration_t ioam_cache_node;
-vlib_node_registration_t ioam_cache_ts_node;
+extern vlib_node_registration_t ioam_cache_node;
+extern vlib_node_registration_t ioam_cache_ts_node;
 
 /*  Compute flow hash.  We'll use it to select which Sponge to use for this
  *  flow.  And other things.
