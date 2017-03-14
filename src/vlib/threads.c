@@ -633,6 +633,8 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->cpu_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
 	      vm_clone->mbuf_alloc_list = 0;
+	      vm_clone->init_functions_called =
+		hash_create (0, /* value bytes */ 0);
 	      memset (&vm_clone->random_buffer, 0,
 		      sizeof (vm_clone->random_buffer));
 
@@ -674,11 +676,33 @@ start_workers (vlib_main_t * vm)
 		}
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
 		vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
+	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+	      {
+		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+		rt->cpu_index = vm_clone->cpu_index;
+		/* copy initial runtime_data from node */
+		if (n->runtime_data_bytes > 0)
+		  clib_memcpy (rt->runtime_data, n->runtime_data,
+			       VLIB_NODE_RUNTIME_DATA_SIZE);
+		else if (CLIB_DEBUG > 0)
+		  memset (rt->runtime_data, 0xfe,
+			  VLIB_NODE_RUNTIME_DATA_SIZE);
+	      }
 
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
 		vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT]);
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+	      {
+		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 		rt->cpu_index = vm_clone->cpu_index;
+		/* copy initial runtime_data from node */
+		if (n->runtime_data_bytes > 0)
+		  clib_memcpy (rt->runtime_data, n->runtime_data,
+			       VLIB_NODE_RUNTIME_DATA_SIZE);
+		else if (CLIB_DEBUG > 0)
+		  memset (rt->runtime_data, 0xfe,
+			  VLIB_NODE_RUNTIME_DATA_SIZE);
+	      }
 
 	      nm_clone->processes = vec_dup (nm->processes);
 
@@ -926,26 +950,51 @@ vlib_worker_thread_node_runtime_update (void)
 	clib_mem_free (old_nodes_clone[j]);
       vec_free (old_nodes_clone);
 
-      vec_free (nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
 
+      /* re-clone internal nodes */
+      old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL];
       nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
 	vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
 
-      /* clone input node runtime */
-      old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT];
-
-      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
-	vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT]);
-
-      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
       {
+	vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 	rt->cpu_index = vm_clone->cpu_index;
+	/* copy runtime_data, will be overwritten later for existing rt */
+	clib_memcpy (rt->runtime_data, n->runtime_data,
+		     VLIB_NODE_RUNTIME_DATA_SIZE);
       }
 
       for (j = 0; j < vec_len (old_rt); j++)
 	{
 	  rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
 	  rt->state = old_rt[j].state;
+	  clib_memcpy (rt->runtime_data, old_rt[j].runtime_data,
+		       VLIB_NODE_RUNTIME_DATA_SIZE);
+	}
+
+      vec_free (old_rt);
+
+      /* re-clone input nodes */
+      old_rt = nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT];
+      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
+	vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT]);
+
+      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+      {
+	vlib_node_t *n = vlib_get_node (vm, rt->node_index);
+	rt->cpu_index = vm_clone->cpu_index;
+	/* copy runtime_data, will be overwritten later for existing rt */
+	clib_memcpy (rt->runtime_data, n->runtime_data,
+		     VLIB_NODE_RUNTIME_DATA_SIZE);
+      }
+
+      for (j = 0; j < vec_len (old_rt); j++)
+	{
+	  rt = vlib_node_get_runtime (vm_clone, old_rt[j].node_index);
+	  rt->state = old_rt[j].state;
+	  clib_memcpy (rt->runtime_data, old_rt[j].runtime_data,
+		       VLIB_NODE_RUNTIME_DATA_SIZE);
 	}
 
       vec_free (old_rt);
@@ -1342,12 +1391,18 @@ vlib_worker_thread_fn (void *arg)
   vlib_worker_thread_t *w = (vlib_worker_thread_t *) arg;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vlib_main_t *vm = vlib_get_main ();
+  clib_error_t *e;
 
   ASSERT (vm->cpu_index == os_get_cpu_number ());
 
   vlib_worker_thread_init (w);
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
+
+  e = vlib_call_init_exit_functions
+    (vm, vm->worker_init_function_registrations, 1 /* call_once */ );
+  if (e)
+    clib_error_report (e);
 
   /* Wait until the dpdk init sequence is complete */
   while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)

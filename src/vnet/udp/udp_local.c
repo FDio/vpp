@@ -520,11 +520,15 @@ udp_register_dst_port (vlib_main_t * vm,
 				       : udp6_input_node.index, node_index);
 
   /* Setup udp protocol -> next index sparse vector mapping. */
-  rt = vlib_node_get_runtime_data
-    (vm, is_ip4 ? udp4_input_node.index : udp6_input_node.index);
-  n = sparse_vec_validate (rt->next_by_dst_port,
-			   clib_host_to_net_u16 (dst_port));
-  n[0] = pi->next_index;
+  /* *INDENT-OFF* */
+  foreach_vlib_main({
+    rt = vlib_node_get_runtime_data
+      (this_vlib_main, is_ip4 ? udp4_input_node.index : udp6_input_node.index);
+    n = sparse_vec_validate (rt->next_by_dst_port,
+			     clib_host_to_net_u16 (dst_port));
+    n[0] = pi->next_index;
+  });
+  /* *INDENT-ON* */
 }
 
 void
@@ -541,11 +545,15 @@ udp_unregister_dst_port (vlib_main_t * vm, udp_dst_port_t dst_port, u8 is_ip4)
     return;
 
   /* Kill the mapping. Don't bother killing the pi, it may be back. */
-  rt = vlib_node_get_runtime_data
-    (vm, is_ip4 ? udp4_input_node.index : udp6_input_node.index);
-  n = sparse_vec_validate (rt->next_by_dst_port,
-			   clib_host_to_net_u16 (dst_port));
-  n[0] = SPARSE_VEC_INVALID_INDEX;
+  /* *INDENT-OFF* */
+  foreach_vlib_main({
+    rt = vlib_node_get_runtime_data
+      (this_vlib_main, is_ip4 ? udp4_input_node.index : udp6_input_node.index);
+    n = sparse_vec_validate (rt->next_by_dst_port,
+			     clib_host_to_net_u16 (dst_port));
+    n[0] = SPARSE_VEC_INVALID_INDEX;
+  });
+  /* *INDENT-ON* */
 }
 
 void
@@ -604,10 +612,27 @@ udp_setup_node (vlib_main_t * vm, u32 node_index)
   pn->unformat_edit = unformat_pg_udp_header;
 }
 
+static void
+udp_local_node_runtime_init (vlib_main_t * vm)
+{
+  udp_input_runtime_t *rt;
+
+  rt = vlib_node_get_runtime_data (vm, udp4_input_node.index);
+  rt->next_by_dst_port = sparse_vec_new
+    ( /* elt bytes */ sizeof (rt->next_by_dst_port[0]),
+     /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
+  rt->punt_unknown = 0;
+
+  rt = vlib_node_get_runtime_data (vm, udp6_input_node.index);
+  rt->next_by_dst_port = sparse_vec_new
+    ( /* elt bytes */ sizeof (rt->next_by_dst_port[0]),
+     /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
+  rt->punt_unknown = 0;
+}
+
 clib_error_t *
 udp_local_init (vlib_main_t * vm)
 {
-  udp_input_runtime_t *rt;
   udp_main_t *um = &udp_main;
   int i;
 
@@ -628,27 +653,13 @@ udp_local_init (vlib_main_t * vm)
   udp_setup_node (vm, udp4_input_node.index);
   udp_setup_node (vm, udp6_input_node.index);
 
-  rt = vlib_node_get_runtime_data (vm, udp4_input_node.index);
-
-  rt->next_by_dst_port = sparse_vec_new
-    ( /* elt bytes */ sizeof (rt->next_by_dst_port[0]),
-     /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
-
-  rt->punt_unknown = 0;
+  udp_local_node_runtime_init (vm);
 
 #define _(n,s) add_dst_port (um, UDP_DST_PORT_##s, #s, 1 /* is_ip4 */);
   foreach_udp4_dst_port
 #undef _
-    rt = vlib_node_get_runtime_data (vm, udp6_input_node.index);
-
-  rt->next_by_dst_port = sparse_vec_new
-    ( /* elt bytes */ sizeof (rt->next_by_dst_port[0]),
-     /* bits in index */ BITS (((udp_header_t *) 0)->dst_port));
-
-  rt->punt_unknown = 0;
-
 #define _(n,s) add_dst_port (um, UDP_DST_PORT_##s, #s, 0 /* is_ip4 */);
-  foreach_udp6_dst_port
+    foreach_udp6_dst_port
 #undef _
     ip4_register_protocol (IP_PROTOCOL_UDP, udp4_input_node.index);
   /* Note: ip6 differs from ip4, UDP is hotwired to ip6-udp-lookup */
@@ -656,6 +667,15 @@ udp_local_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (udp_local_init);
+
+clib_error_t *
+udp_local_worker_init (vlib_main_t * vm)
+{
+  udp_local_node_runtime_init (vm);
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (udp_local_worker_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

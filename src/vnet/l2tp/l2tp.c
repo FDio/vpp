@@ -747,6 +747,16 @@ l2tp_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2tp_init);
 
+clib_error_t *
+l2tp_worker_init (vlib_main_t * vm)
+{
+  l2tp_encap_init (vm);
+
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (l2tp_worker_init);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

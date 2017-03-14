@@ -295,17 +295,9 @@ VLIB_REGISTER_NODE (ppp_input_node) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-ppp_input_init (vlib_main_t * vm)
+ppp_input_runtime_init (vlib_main_t * vm)
 {
   ppp_input_runtime_t *rt;
-
-  {
-    clib_error_t *error = vlib_call_init_function (vm, ppp_init);
-    if (error)
-      clib_error_report (error);
-  }
-
-  ppp_setup_node (vm, ppp_input_node.index);
 
   rt = vlib_node_get_runtime_data (vm, ppp_input_node.index);
 
@@ -323,7 +315,24 @@ ppp_input_init (vlib_main_t * vm)
   return 0;
 }
 
+static clib_error_t *
+ppp_input_init (vlib_main_t * vm)
+{
+
+  {
+    clib_error_t *error = vlib_call_init_function (vm, ppp_init);
+    if (error)
+      clib_error_report (error);
+  }
+
+  ppp_setup_node (vm, ppp_input_node.index);
+  ppp_input_runtime_init (vm);
+
+  return 0;
+}
+
 VLIB_INIT_FUNCTION (ppp_input_init);
+VLIB_WORKER_INIT_FUNCTION (ppp_input_runtime_init);
 
 void
 ppp_register_input_protocol (vlib_main_t * vm,
