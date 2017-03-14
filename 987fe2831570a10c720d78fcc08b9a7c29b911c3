@@ -16,6 +16,24 @@
       "revId": "987fe2831570a10c720d78fcc08b9a7c29b911c3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_100499be",
+        "filename": "src/plugins/ioam/ip6/ioam_cache.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 75
+      },
+      "writtenOn": "2017-03-14T06:23:46Z",
+      "side": 1,
+      "message": "Hi Neale, do you mean 2 definitions - one created via MACRO VLIB_REGISTER_NODE and another by defining plicit vlib_node_registration_t ioam_cache_node; ?",
+      "parentUuid": "3a3291f1_1035b9d9",
+      "revId": "987fe2831570a10c720d78fcc08b9a7c29b911c3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
