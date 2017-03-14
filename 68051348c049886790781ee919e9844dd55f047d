@@ -22,6 +22,30 @@
       "revId": "68051348c049886790781ee919e9844dd55f047d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f0722d10",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 28,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-03-14T08:59:13Z",
+      "side": 1,
+      "message": "what are the conditions/rules to bump PKG version?",
+      "parentUuid": "3a3291f1_8b6e2600",
+      "range": {
+        "startLine": 28,
+        "startChar": 0,
+        "endLine": 28,
+        "endChar": 18
+      },
+      "revId": "68051348c049886790781ee919e9844dd55f047d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
