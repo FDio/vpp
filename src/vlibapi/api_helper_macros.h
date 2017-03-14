@@ -103,11 +103,15 @@ do {                                                            \
 
 /* "trust, but verify" */
 
+static inline uword
+vnet_sw_if_index_is_api_valid (u32 sw_if_index)
+{
+  return vnet_sw_interface_is_api_valid (vnet_get_main (), sw_if_index);
+}
+
 #define VALIDATE_SW_IF_INDEX(mp)				\
  do { u32 __sw_if_index = ntohl(mp->sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __sw_if_index)) {                    \
+    if (!vnet_sw_if_index_is_api_valid(__sw_if_index)) {        \
         rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
         goto bad_sw_if_index;                                   \
     }                                                           \
@@ -121,9 +125,7 @@ bad_sw_if_index:                                \
 
 #define VALIDATE_RX_SW_IF_INDEX(mp)				\
  do { u32 __rx_sw_if_index = ntohl(mp->rx_sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __rx_sw_if_index)) {			\
+    if (!vnet_sw_if_index_is_api_valid(__rx_sw_if_index)) {     \
         rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
         goto bad_rx_sw_if_index;				\
     }                                                           \
@@ -137,9 +139,7 @@ bad_rx_sw_if_index:				\
 
 #define VALIDATE_TX_SW_IF_INDEX(mp)				\
  do { u32 __tx_sw_if_index = ntohl(mp->tx_sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __tx_sw_if_index)) {			\
+    if (!vnet_sw_if_index_is_api_valid(__tx_sw_if_index)) {     \
         rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
         goto bad_tx_sw_if_index;				\
     }                                                           \
