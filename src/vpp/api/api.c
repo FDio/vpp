@@ -164,8 +164,8 @@ static int arp_change_delete_callback (u32 pool_index, u8 * notused);
 static int nd_change_delete_callback (u32 pool_index, u8 * notused);
 
 /* Clean up all registrations belonging to the indicated client */
-int
-vl_api_memclnt_delete_callback (u32 client_index)
+static clib_error_t *
+memclnt_delete_callback (u32 client_index)
 {
   vpe_api_main_t *vam = &vpe_api_main;
   vpe_client_registration_t *rp;
@@ -185,6 +185,8 @@ vl_api_memclnt_delete_callback (u32 client_index)
 #undef _
   return 0;
 }
+
+VL_MSG_API_REAPER_FUNCTION (memclnt_delete_callback);
 
 pub_sub_handler (oam_events, OAM_EVENTS);
 

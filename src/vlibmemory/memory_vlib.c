@@ -221,12 +221,20 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rp);
 }
 
-/* Application callback to clean up leftover registrations from this client */
-int vl_api_memclnt_delete_callback (u32 client_index) __attribute__ ((weak));
-
-int
-vl_api_memclnt_delete_callback (u32 client_index)
+static int
+call_reaper_functions (u32 client_index)
 {
+  clib_error_t *error = 0;
+  _vl_msg_api_function_list_elt_t *i;
+
+  i = api_main.reaper_function_registrations;
+  while (i)
+    {
+      error = i->f (client_index);
+      if (error)
+	clib_error_report (error);
+      i = i->next_init_function;
+    }
   return 0;
 }
 
@@ -246,7 +254,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
 
   handle = mp->index;
 
-  if (vl_api_memclnt_delete_callback (handle))
+  if (call_reaper_functions (handle))
     return;
 
   epoch = vl_msg_api_handle_get_epoch (handle);
@@ -621,7 +629,7 @@ memclnt_process (vlib_main_t * vm,
 
 		      handle = vl_msg_api_handle_from_index_and_epoch
 			(dead_indices[i], shm->application_restarts);
-		      (void) vl_api_memclnt_delete_callback (handle);
+		      (void) call_reaper_functions (handle);
 		    }
 		}
 

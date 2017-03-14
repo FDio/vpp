@@ -112,6 +112,14 @@ typedef struct
   u16 last_msg_id;
 } vl_api_msg_range_t;
 
+typedef clib_error_t *(vl_msg_api_init_function_t) (u32 client_index);
+
+typedef struct _vl_msg_api_init_function_list_elt
+{
+  struct _vl_msg_api_init_function_list_elt *next_init_function;
+  vl_msg_api_init_function_t *f;
+} _vl_msg_api_function_list_elt_t;
+
 typedef struct
 {
   void (**msg_handlers) (void *);
@@ -192,6 +200,10 @@ typedef struct
 
   /* Replay in progress? */
   int replay_in_progress;
+
+  /* List of API client reaper functions */
+  _vl_msg_api_function_list_elt_t *reaper_function_registrations;
+
 } api_main_t;
 
 extern api_main_t api_main;
@@ -290,6 +302,38 @@ vlib_node_t **vlib_node_unserialize (u8 * vector);
     _error;                                                             \
   })
 
+
+#define _VL_MSG_API_FUNCTION_SYMBOL(x, type)	\
+  _vl_msg_api_##type##_function_##x
+
+#define VL_MSG_API_FUNCTION_SYMBOL(x)		\
+  _VL_MSG_API_FUNCTION_SYMBOL(x, reaper)
+
+#define VLIB_DECLARE_REAPER_FUNCTION(x, tag)                            \
+vl_msg_api_init_function_t * _VL_MSG_API_FUNCTION_SYMBOL (x, tag) = x;  \
+static void __vl_msg_api_add_##tag##_function_##x (void)                \
+    __attribute__((__constructor__)) ;                                  \
+                                                                        \
+static void __vl_msg_api_add_##tag##_function_##x (void)                \
+{                                                                       \
+ api_main_t * am = &api_main;                                           \
+ static _vl_msg_api_function_list_elt_t _vl_msg_api_function;           \
+ _vl_msg_api_function.next_init_function                                \
+    = am->tag##_function_registrations;                                 \
+  am->tag##_function_registrations = &_vl_msg_api_function;             \
+ _vl_msg_api_function.f = &x;                                           \
+}
+
+#define VL_MSG_API_REAPER_FUNCTION(x) VLIB_DECLARE_REAPER_FUNCTION(x,reaper)
+
+/* Call reaper function with client index */
+#define vl_msg_api_call_reaper_function(ci)                             \
+  ({                                                                    \
+    extern vlib_init_function_t * VLIB_INIT_FUNCTION_SYMBOL (reaper);   \
+    vlib_init_function_t * _f = VLIB_INIT_FUNCTION_SYMBOL (reaper);     \
+    clib_error_t * _error = 0;                                          \
+    _error = _f (ci);                                                   \
+  })
 
 #endif /* included_api_h */
 
