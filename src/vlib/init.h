@@ -109,6 +109,7 @@ static void __vlib_add_##tag##_function_##x (void)              \
 }
 
 #define VLIB_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,init)
+#define VLIB_WORKER_INIT_FUNCTION(x) VLIB_DECLARE_INIT_FUNCTION(x,worker_init)
 
 #define VLIB_MAIN_LOOP_ENTER_FUNCTION(x) \
   VLIB_DECLARE_INIT_FUNCTION(x,main_loop_enter)

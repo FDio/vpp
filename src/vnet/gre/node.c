@@ -448,7 +448,6 @@ gre_register_input_protocol (vlib_main_t * vm,
 {
   gre_main_t * em = &gre_main;
   gre_protocol_info_t * pi;
-  gre_input_runtime_t * rt;
   u16 * n;
 
   {
@@ -464,10 +463,13 @@ gre_register_input_protocol (vlib_main_t * vm,
 				       node_index);
 
   /* Setup gre protocol -> next index sparse vector mapping. */
-  rt = vlib_node_get_runtime_data (vm, gre_input_node.index);
-  n = sparse_vec_validate (rt->next_by_protocol, 
-                           clib_host_to_net_u16 (protocol));
-  n[0] = pi->next_index;
+  foreach_vlib_main ({
+    gre_input_runtime_t * rt;
+    rt = vlib_node_get_runtime_data (this_vlib_main, gre_input_node.index);
+    n = sparse_vec_validate (rt->next_by_protocol,
+                             clib_host_to_net_u16 (protocol));
+    n[0] = pi->next_index;
+  });
 }
 
 static void
@@ -529,3 +531,17 @@ static clib_error_t * gre_input_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (gre_input_init);
+
+static clib_error_t * gre_input_worker_init (vlib_main_t * vm)
+{
+  gre_input_runtime_t * rt;
+
+  rt = vlib_node_get_runtime_data (vm, gre_input_node.index);
+
+  rt->next_by_protocol = sparse_vec_new
+    (/* elt bytes */ sizeof (rt->next_by_protocol[0]),
+     /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (gre_input_worker_init);
