@@ -477,7 +477,6 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
   uword *p;
   vnet_interface_main_t *im = &vnm->interface_main;
   u64 sup_and_sub_key;
-  u64 *kp;
   unix_shared_memory_queue_t *q;
   clib_error_t *error;
 
@@ -507,9 +506,6 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
       goto out;
     }
 
-  kp = clib_mem_alloc (sizeof (*kp));
-  *kp = sup_and_sub_key;
-
   memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_SUB;
   template.sup_sw_if_index = hi->sw_if_index;
@@ -526,6 +522,10 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
       rv = VNET_API_ERROR_INVALID_REGISTRATION;
       goto out;
     }
+
+  u64 *kp = clib_mem_alloc (sizeof (*kp));
+  *kp = sup_and_sub_key;
+
   hash_set (hi->sub_interface_sw_if_index_by_id, id, sw_if_index);
   hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
 
@@ -537,10 +537,10 @@ out:
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_CREATE_VLAN_SUBIF_REPLY);
+  rmp->_vl_msg_id = htons (VL_API_CREATE_VLAN_SUBIF_REPLY);
   rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
-  rmp->sw_if_index = ntohl (sw_if_index);
+  rmp->retval = htonl (rv);
+  rmp->sw_if_index = htonl (sw_if_index);
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
@@ -558,7 +558,6 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
   uword *p;
   vnet_interface_main_t *im = &vnm->interface_main;
   u64 sup_and_sub_key;
-  u64 *kp;
   clib_error_t *error;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -587,9 +586,6 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
       goto out;
     }
 
-  kp = clib_mem_alloc (sizeof (*kp));
-  *kp = sup_and_sub_key;
-
   memset (&template, 0, sizeof (template));
   template.type = VNET_SW_INTERFACE_TYPE_SUB;
   template.sup_sw_if_index = sw_if_index;
@@ -612,6 +608,9 @@ vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
       rv = VNET_API_ERROR_SUBIF_CREATE_FAILED;
       goto out;
     }
+
+  u64 *kp = clib_mem_alloc (sizeof (*kp));
+  *kp = sup_and_sub_key;
 
   hash_set (hi->sub_interface_sw_if_index_by_id, sub_id, sw_if_index);
   hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
@@ -669,20 +668,11 @@ static void
   int rv = 0;
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_proxy_arp_intfc_enable_disable_reply_t *rmp;
-  vnet_sw_interface_t *si;
-  u32 sw_if_index;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  sw_if_index = ntohl (mp->sw_if_index);
-
-  if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
-    {
-      rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-      goto out;
-    }
-
-  si = vnet_get_sw_interface (vnm, sw_if_index);
+  vnet_sw_interface_t *si =
+    vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
 
   ASSERT (si);
 
@@ -1223,12 +1213,11 @@ static void vl_api_classify_set_interface_ip_table_t_handler
   vlib_main_t *vm = vlib_get_main ();
   vl_api_classify_set_interface_ip_table_reply_t *rmp;
   int rv;
-  u32 table_index, sw_if_index;
-
-  table_index = ntohl (mp->table_index);
-  sw_if_index = ntohl (mp->sw_if_index);
 
   VALIDATE_SW_IF_INDEX (mp);
+
+  u32 table_index = ntohl (mp->table_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
 
   if (mp->is_ipv6)
     rv = vnet_set_ip6_classify_intfc (vm, sw_if_index, table_index);
@@ -1658,14 +1647,13 @@ static void vl_api_input_acl_set_interface_t_handler
   vlib_main_t *vm = vlib_get_main ();
   vl_api_input_acl_set_interface_reply_t *rmp;
   int rv;
-  u32 sw_if_index, ip4_table_index, ip6_table_index, l2_table_index;
-
-  ip4_table_index = ntohl (mp->ip4_table_index);
-  ip6_table_index = ntohl (mp->ip6_table_index);
-  l2_table_index = ntohl (mp->l2_table_index);
-  sw_if_index = ntohl (mp->sw_if_index);
 
   VALIDATE_SW_IF_INDEX (mp);
+
+  u32 ip4_table_index = ntohl (mp->ip4_table_index);
+  u32 ip6_table_index = ntohl (mp->ip6_table_index);
+  u32 l2_table_index = ntohl (mp->l2_table_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
 
   rv = vnet_set_input_acl_intfc (vm, sw_if_index, ip4_table_index,
 				 ip6_table_index, l2_table_index, mp->is_add);
@@ -2013,25 +2001,22 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 {
   vl_api_feature_enable_disable_reply_t *rmp;
   int rv = 0;
-  u8 *arc_name, *feature_name;
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  arc_name = format (0, "%s%c", mp->arc_name, 0);
-  feature_name = format (0, "%s%c", mp->feature_name, 0);
+  u8 *arc_name = format (0, "%s%c", mp->arc_name, 0);
+  u8 *feature_name = format (0, "%s%c", mp->feature_name, 0);
 
-  vnet_feature_registration_t *reg;
-  reg =
+  vnet_feature_registration_t *reg =
     vnet_get_feature_reg ((const char *) arc_name,
 			  (const char *) feature_name);
   if (reg == 0)
     rv = VNET_API_ERROR_INVALID_VALUE;
   else
     {
-      u32 sw_if_index;
+      u32 sw_if_index = ntohl (mp->sw_if_index);
       clib_error_t *error = 0;
 
-      sw_if_index = ntohl (mp->sw_if_index);
       if (reg->enable_disable_cb)
 	error = reg->enable_disable_cb (sw_if_index, mp->enable);
       if (!error)

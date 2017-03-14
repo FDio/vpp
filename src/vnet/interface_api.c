@@ -133,14 +133,10 @@ send_sw_interface_details (vpe_api_main_t * am,
 			   vnet_sw_interface_t * swif,
 			   u8 * interface_name, u32 context)
 {
-  vl_api_sw_interface_details_t *mp;
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hi;
-  u8 *tag;
+  vnet_hw_interface_t *hi =
+    vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
 
-  hi = vnet_get_sup_hw_interface (am->vnet_main, swif->sw_if_index);
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  vl_api_sw_interface_details_t *mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_DETAILS);
   mp->sw_if_index = ntohl (swif->sw_if_index);
@@ -224,7 +220,7 @@ send_sw_interface_details (vpe_api_main_t * am,
       mp->i_sid = i_sid;
     }
 
-  tag = vnet_get_sw_interface_tag (vnm, swif->sw_if_index);
+  u8 *tag = vnet_get_sw_interface_tag (vnet_get_main (), swif->sw_if_index);
   if (tag)
     strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
@@ -237,39 +233,38 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   vpe_api_main_t *am = &vpe_api_main;
   vnet_sw_interface_t *swif;
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
-  u8 *filter_string = 0, *name_string = 0;
-  unix_shared_memory_queue_t *q;
-  char *strcasestr (char *, char *);	/* lnx hdr file botch */
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-
+  unix_shared_memory_queue_t *q =
+    vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
 
+  u8 *filter = 0, *name = 0;
   if (mp->name_filter_valid)
     {
       mp->name_filter[ARRAY_LEN (mp->name_filter) - 1] = 0;
-      filter_string = format (0, "%s%c", mp->name_filter, 0);
+      filter = format (0, "%s%c", mp->name_filter, 0);
     }
 
+  char *strcasestr (char *, char *);	/* lnx hdr file botch */
   /* *INDENT-OFF* */
   pool_foreach (swif, im->sw_interfaces,
   ({
-    name_string = format (name_string, "%U%c",
-                          format_vnet_sw_interface_name,
-                          am->vnet_main, swif, 0);
+    if (!vnet_swif_is_api_visible (swif))
+        continue;
+    vec_reset_length(name);
+    name = format (name, "%U%c", format_vnet_sw_interface_name, am->vnet_main,
+                   swif, 0);
 
-    if (mp->name_filter_valid == 0 ||
-        strcasestr((char *) name_string, (char *) filter_string)) {
+    if (filter && !strcasestr((char *) name, (char *) filter))
+	continue;
 
-      send_sw_interface_details (am, q, swif, name_string, mp->context);
-    }
-    _vec_len (name_string) = 0;
+    send_sw_interface_details (am, q, swif, name, mp->context);
   }));
   /* *INDENT-ON* */
 
-  vec_free (name_string);
-  vec_free (filter_string);
+  vec_free (name);
+  vec_free (filter);
 }
 
 static void
@@ -435,49 +430,43 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
 {
   vl_api_sw_interface_set_unnumbered_reply_t *rmp;
   int rv = 0;
-  vnet_sw_interface_t *si;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index, unnumbered_sw_if_index;
-
-  sw_if_index = ntohl (mp->sw_if_index);
-  unnumbered_sw_if_index = ntohl (mp->unnumbered_sw_if_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u32 unnumbered_sw_if_index = ntohl (mp->unnumbered_sw_if_index);
 
   /*
    * The API message field names are backwards from
    * the underlying data structure names.
    * It's not worth changing them now.
    */
-  if (pool_is_free_index (vnm->interface_main.sw_interfaces,
-			  unnumbered_sw_if_index))
+  if (!vnet_sw_interface_is_api_valid (vnm, unnumbered_sw_if_index))
     {
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
       goto done;
     }
 
   /* Only check the "use loop0" field when setting the binding */
-  if (mp->is_add &&
-      pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
+  if (mp->is_add && !vnet_sw_interface_is_api_valid (vnm, sw_if_index))
     {
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX_2;
       goto done;
     }
 
-  si = vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
+  vnet_sw_interface_t *si =
+    vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
 
   if (mp->is_add)
     {
       si->flags |= VNET_SW_INTERFACE_FLAG_UNNUMBERED;
       si->unnumbered_sw_if_index = sw_if_index;
-      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
-      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 1);
     }
   else
     {
       si->flags &= ~(VNET_SW_INTERFACE_FLAG_UNNUMBERED);
       si->unnumbered_sw_if_index = (u32) ~ 0;
-      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
-      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, 0);
     }
+  ip4_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
+  ip6_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
 
 done:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_UNNUMBERED_REPLY);
