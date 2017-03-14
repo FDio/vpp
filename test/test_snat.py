@@ -1330,6 +1330,10 @@ class TestDeterministicNAT(VppTestCase):
         self.assertEqual(out_addr_n, dsm.out_addr[:4])
         self.assertEqual(out_plen, dsm.out_plen)
 
+        self.clear_snat()
+        deterministic_mappings = self.vapi.snat_det_map_dump()
+        self.assertEqual(len(deterministic_mappings), 0)
+
     def clear_snat(self):
         """
         Clear SNAT configuration.
