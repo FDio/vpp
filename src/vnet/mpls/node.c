@@ -301,3 +301,16 @@ static clib_error_t * mpls_input_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (mpls_input_init);
+
+static clib_error_t * mpls_input_worker_init (vlib_main_t * vm)
+{
+  mpls_input_runtime_t * rt;
+  rt = vlib_node_get_runtime_data (vm, mpls_input_node.index);
+  rt->last_label = (u32) ~0;
+  rt->last_inner_fib_index = 0;
+  rt->last_outer_fib_index = 0;
+  rt->mpls_main = &mpls_main;
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (mpls_input_worker_init);

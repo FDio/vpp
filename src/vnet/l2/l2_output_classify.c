@@ -505,6 +505,22 @@ l2_output_classify_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (l2_output_classify_init);
 
+clib_error_t *
+l2_output_classify_worker_init (vlib_main_t * vm)
+{
+  l2_output_classify_main_t *cm = &l2_output_classify_main;
+  l2_output_classify_runtime_t *rt;
+
+  rt = vlib_node_get_runtime_data (vm, l2_output_classify_node.index);
+
+  rt->l2cm = cm;
+  rt->vcm = cm->vnet_classify_main;
+
+  return 0;
+}
+
+VLIB_WORKER_INIT_FUNCTION (l2_output_classify_worker_init);
+
 /** Enable/disable l2 input classification on a specific interface. */
 void
 vnet_l2_output_classify_enable_disable (u32 sw_if_index, int enable_disable)
