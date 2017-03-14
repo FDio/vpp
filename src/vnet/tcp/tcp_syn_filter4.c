@@ -450,18 +450,21 @@ syn_filter_enable_disable (u32 sw_if_index, int enable_disable)
 
   if (enable_disable)
     {
-      vlib_main_t *vm = vlib_get_main ();
       syn_filter4_runtime_t *rt;
 
-      rt = vlib_node_get_runtime_data (vm, syn_filter4_node.index);
-      vec_validate (rt->syn_counts, 1023);
-      /*
-       * Given perfect disperson / optimal hashing results:
-       * Allow 128k (successful) syns/sec. 1024, buckets each of which
-       * absorb 128 syns before filtering. Reset table once a second.
-       * Reality bites, lets try resetting once every 100ms.
-       */
-      rt->reset_interval = 0.1;	/* reset interval in seconds */
+      /* *INDENT-OFF* */
+      foreach_vlib_main ({
+	rt = vlib_node_get_runtime_data (this_vlib_main, syn_filter4_node.index);
+	vec_validate (rt->syn_counts, 1023);
+	/*
+	 * Given perfect disperson / optimal hashing results:
+	 * Allow 128k (successful) syns/sec. 1024, buckets each of which
+	 * absorb 128 syns before filtering. Reset table once a second.
+	 * Reality bites, lets try resetting once every 100ms.
+	 */
+	rt->reset_interval = 0.1;	/* reset interval in seconds */
+      });
+      /* *INDENT-ON* */
     }
 
   rv = vnet_feature_enable_disable ("ip4-local", "syn-filter-4",
