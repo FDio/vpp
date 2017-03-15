@@ -82,21 +82,23 @@ typedef CLIB_PACKED (union {
 #define ip46_address_is_equal(a1, a2)	(((a1)->as_u64[0] == (a2)->as_u64[0]) \
                                          && ((a1)->as_u64[1] == (a2)->as_u64[1]))
 
-always_inline void
-ip46_from_addr_buf (u32 is_ipv6, u8 * buf, ip46_address_t * ip)
+always_inline ip46_address_t
+to_ip46 (u32 is_ipv6, u8 * buf)
 {
+  ip46_address_t ip;
   if (is_ipv6)
-    ip->ip6 = *((ip6_address_t *) buf);
+    ip.ip6 = *((ip6_address_t *) buf);
   else
-    ip46_address_set_ip4 (ip, (ip4_address_t *) buf);
+    ip46_address_set_ip4 (&ip, (ip4_address_t *) buf);
+  return ip;
 }
+
 
 always_inline void
 ip6_addr_fib_init (ip6_address_fib_t * addr_fib, ip6_address_t * address,
 		   u32 fib_index)
 {
-  addr_fib->ip6_addr.as_u64[0] = address->as_u64[0];
-  addr_fib->ip6_addr.as_u64[1] = address->as_u64[1];
+  addr_fib->ip6_addr = *address;
   addr_fib->fib_index = fib_index;
 }
 
