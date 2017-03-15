@@ -42,7 +42,7 @@ libvnet_la_SOURCES +=				\
   vnet/interface_format.c			\
   vnet/interface_output.c			\
   vnet/misc.c					\
-  vnet/replication.c				\
+  vnet/replication.c                            \
   vnet/rewrite.c
 
 nobase_include_HEADERS +=			\
@@ -58,7 +58,6 @@ nobase_include_HEADERS +=			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
   vnet/replication.h				\
-  vnet/rewrite.h				\
   vnet/vnet.h					\
   vnet/vnet_all_api_h.h				\
   vnet/vnet_msg_enum.h				\

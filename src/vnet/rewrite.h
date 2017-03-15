@@ -72,20 +72,18 @@ typedef CLIB_PACKED (struct {
      Used for MTU check after packet rewrite. */
   u16 max_l3_packet_bytes;
 
-  u16 unused1;
-  u8  unused2;
-
+  /* Data-plane flags on the adjacency/rewrite */
   vnet_rewrite_flags_t flags;
 
   /* When dynamically writing a multicast destination L2 addresss
-   * this is the offset within the address to start writing n
-   * bytes of the IP mcast address */
+   * this is the offset from the IP address at which to write in the
+   * IP->MAC address translation.
+   */
   u8 dst_mcast_offset;
 
-  /* When dynamically writing a multicast destination L2 addresss
-   * this is the number of bytes of the dest IP address to write into
-   * the MAC rewrite */
-  u8 dst_mcast_n_bytes;
+  /* The mask to apply to the lower 4 bytes of the IP address before ORing
+   * into the destinaiton MAC address */
+  u32 dst_mcast_mask;
 
   /* Rewrite string starting at end and going backwards. */
   u8 data[0];
@@ -293,24 +291,24 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 
 always_inline void
 _vnet_fixup_one_header (vnet_rewrite_header_t * h0,
-			u8 * addr, u32 addr_len,
-			u8 * packet0, int clear_first_bit)
+			u8 * addr, u32 addr_len, u8 * packet0)
 {
-  /* location to write to in the packet */
-  u8 *p0 = packet0 - h0->dst_mcast_offset;
-  u8 *p1 = p0;
-  /* location to write from in the L3 dest address */
-  u8 *a0 = addr + addr_len - h0->dst_mcast_n_bytes;
+  if (PREDICT_TRUE (h0->dst_mcast_mask))
+    {
+      /* location to write to in the packet */
+      u8 *p0 = packet0 - h0->dst_mcast_offset;
+      u32 *p1 = (u32 *) p0;
+      /* location to copy from in the L3 dest address */
+      u32 *a0 = (u32 *) (addr + addr_len - sizeof (h0->dst_mcast_mask));
 
-  clib_memcpy (p0, a0, h0->dst_mcast_n_bytes);
-  if (clear_first_bit)
-    *p1 &= 0x7f;
+      *p1 |= (*a0 & h0->dst_mcast_mask);
+    }
 }
 
-#define vnet_fixup_one_header(rw0,addr,p0,clear_first_bit)              \
+#define vnet_fixup_one_header(rw0,addr,p0)              \
   _vnet_fixup_one_header (&((rw0).rewrite_header),                      \
                           (u8*)(addr), sizeof((*addr)),                 \
-                          (u8*)(p0), (clear_first_bit))
+                          (u8*)(p0))
 
 #define VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST ((void *) 0)
 /** Deprecated */

@@ -55,6 +55,7 @@
 #include <vnet/fib/fib_node.h>
 #include <vnet/dpo/dpo.h>
 #include <vnet/feature/feature.h>
+#include <vnet/rewrite.h>
 
 /** @brief Common (IP4/IP6) next index stored in adjacency. */
 typedef enum

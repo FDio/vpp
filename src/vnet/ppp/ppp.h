@@ -93,9 +93,6 @@ void
 ppp_register_input_type (vlib_main_t * vm,
 			 ppp_protocol_t protocol, u32 node_index);
 
-void ppp_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes, ppp_protocol_t protocol);
-
 format_function_t format_ppp_protocol;
 format_function_t format_ppp_header;
 format_function_t format_ppp_header_with_length;

@@ -360,7 +360,7 @@ adj_get_sw_if_index (adj_index_t ai)
 }
 
 /**
- * @brief Return the link type of the adjacency
+ * @brief Return the rewrite string of the adjacency
  */
 const u8*
 adj_get_rewrite (adj_index_t ai)

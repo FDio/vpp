@@ -46,7 +46,6 @@
 #include <vnet/buffer.h>
 #include <vnet/config.h>
 #include <vnet/interface.h>
-#include <vnet/rewrite.h>
 #include <vnet/api_errno.h>
 
 typedef struct vnet_main_t
