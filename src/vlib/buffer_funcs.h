@@ -476,7 +476,6 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
 {
   vlib_buffer_t *s, *d, *fd;
   uword n_alloc, n_buffers = 1;
-  u32 *new_buffers = 0;
   u32 flag_mask = VLIB_BUFFER_NEXT_PRESENT | VLIB_BUFFER_TOTAL_LENGTH_VALID;
   int i;
 
@@ -486,8 +485,8 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
       n_buffers++;
       s = vlib_get_buffer (vm, s->next_buffer);
     }
+  u32 new_buffers[n_buffers];
 
-  vec_validate (new_buffers, n_buffers - 1);
   n_alloc = vlib_buffer_alloc (vm, new_buffers, n_buffers);
 
   /* No guarantee that we'll get all the buffers we asked for */
@@ -495,7 +494,6 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
     {
       if (n_alloc > 0)
 	vlib_buffer_free (vm, new_buffers, n_alloc);
-      vec_free (new_buffers);
       return 0;
     }
 
@@ -526,7 +524,6 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
       d->flags = s->flags & flag_mask;
     }
 
-  vec_free (new_buffers);
   return fd;
 }
 

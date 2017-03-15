@@ -28,9 +28,7 @@
 static inline mpls_fib_t*
 mpls_fib_get (fib_node_index_t index)
 {
-    if (!pool_is_free_index(mpls_main.fibs, index))
-	return (&(pool_elt_at_index(mpls_main.fibs, index)->mpls));
-    return (NULL);
+    return (&(pool_elt_at_index(mpls_main.fibs, index)->mpls));
 }
 
 extern u32 mpls_fib_table_find_or_create_and_lock(u32 table_id);
