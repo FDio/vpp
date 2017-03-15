@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_1c13930e",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 900,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-03-15T13:04:16Z",
+      "side": 1,
+      "message": "We do not really care about this from the point of view of skipping the headers, I think.",
+      "revId": "b7747166c285ccc5dc0bd9e8aa853de160ac12e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7c2df745",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 917,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-03-15T13:04:16Z",
+      "side": 1,
+      "message": "seems like we assume the first header we don\u0027t know about would be TCP/UDP ? That might cause unexpected behaviour...",
+      "revId": "b7747166c285ccc5dc0bd9e8aa853de160ac12e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
