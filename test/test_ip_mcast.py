@@ -8,7 +8,7 @@ from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP, getmacbyip
+from scapy.layers.inet import IP, UDP, getmacbyip, ICMP
 from scapy.layers.inet6 import IPv6, getmacbyip6
 from util import ppp
 
@@ -70,16 +70,17 @@ class TestIPMcast(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
-    def create_stream_ip4(self, src_if, src_ip, dst_ip):
+    def create_stream_ip4(self, src_if, src_ip, dst_ip, payload_size=0):
         pkts = []
+        # default to small packet sizes
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             IP(src=src_ip, dst=dst_ip) /
+             UDP(sport=1234, dport=1234))
+        if not payload_size:
+            payload_size = 64 - len(p)
+            p = p / Raw('\xa5' * payload_size)
+
         for i in range(0, N_PKTS_IN_STREAM):
-            info = self.create_packet_info(src_if, src_if)
-            payload = self.info_to_payload(info)
-            p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=src_ip, dst=dst_ip) /
-                 UDP(sport=1234, dport=1234) /
-                 Raw(payload))
-            info.data = p.copy()
             pkts.append(p)
         return pkts
 
@@ -237,9 +238,37 @@ class TestIPMcast(VppTestCase):
 
         #
         # a stream that matches the route for (1.1.1.1,232.1.1.1)
+        #  small packets
         #
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1->7
+        self.verify_capture_ip4(self.pg1, tx)
+        self.verify_capture_ip4(self.pg2, tx)
+        self.verify_capture_ip4(self.pg3, tx)
+        self.verify_capture_ip4(self.pg4, tx)
+        self.verify_capture_ip4(self.pg5, tx)
+        self.verify_capture_ip4(self.pg6, tx)
+        self.verify_capture_ip4(self.pg7, tx)
+
+        # no replications on Pg0
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+        self.pg3.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG3")
+
+        #
+        # a stream that matches the route for (1.1.1.1,232.1.1.1)
+        #  large packets
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1",
+                                    payload_size=1024)
         self.pg0.add_stream(tx)
 
         self.pg_enable_capture(self.pg_interfaces)
