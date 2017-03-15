@@ -10671,10 +10671,8 @@ static void vl_api_vxlan_tunnel_details_t_handler
   (vl_api_vxlan_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
-  ip46_address_t src, dst;
-
-  ip46_from_addr_buf (mp->is_ipv6, mp->src_address, &src);
-  ip46_from_addr_buf (mp->is_ipv6, mp->dst_address, &dst);
+  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->dst_address);
+  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->src_address);
 
   print (vam->ofp, "%11d%24U%24U%14d%18d%13d%19d",
 	 ntohl (mp->sw_if_index),

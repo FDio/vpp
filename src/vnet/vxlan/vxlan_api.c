@@ -70,47 +70,41 @@ static void vl_api_vxlan_add_del_tunnel_t_handler
 {
   vl_api_vxlan_add_del_tunnel_reply_t *rmp;
   int rv = 0;
-  vnet_vxlan_add_del_tunnel_args_t _a, *a = &_a;
-  u32 encap_fib_index;
-  uword *p;
   ip4_main_t *im = &ip4_main;
-  vnet_main_t *vnm = vnet_get_main ();
-  u32 sw_if_index = ~0;
 
-  p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
+  uword *p = hash_get (im->fib_index_by_table_id, ntohl (mp->encap_vrf_id));
   if (!p)
     {
       rv = VNET_API_ERROR_NO_SUCH_FIB;
       goto out;
     }
-  encap_fib_index = p[0];
-  memset (a, 0, sizeof (*a));
 
-  a->is_add = mp->is_add;
-  a->is_ip6 = mp->is_ipv6;
-
-  /* ip addresses sent in network byte order */
-  ip46_from_addr_buf (mp->is_ipv6, mp->dst_address, &a->dst);
-  ip46_from_addr_buf (mp->is_ipv6, mp->src_address, &a->src);
+  vnet_vxlan_add_del_tunnel_args_t a = {
+    .is_add = mp->is_add,
+    .is_ip6 = mp->is_ipv6,
+    .mcast_sw_if_index = ntohl (mp->mcast_sw_if_index),
+    .encap_fib_index = p[0],
+    .decap_next_index = ntohl (mp->decap_next_index),
+    .vni = ntohl (mp->vni),
+    .dst = to_ip46 (mp->is_ipv6, mp->dst_address),
+    .src = to_ip46 (mp->is_ipv6, mp->src_address),
+  };
 
   /* Check src & dst are different */
-  if (ip46_address_cmp (&a->dst, &a->src) == 0)
+  if (ip46_address_cmp (&a.dst, &a.src) == 0)
     {
       rv = VNET_API_ERROR_SAME_SRC_DST;
       goto out;
     }
-  a->mcast_sw_if_index = ntohl (mp->mcast_sw_if_index);
-  if (ip46_address_is_multicast (&a->dst) &&
-      pool_is_free_index (vnm->interface_main.sw_interfaces,
-			  a->mcast_sw_if_index))
+  if (ip46_address_is_multicast (&a.dst) &&
+      !vnet_sw_if_index_is_api_valid (a.mcast_sw_if_index))
     {
       rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
       goto out;
     }
-  a->encap_fib_index = encap_fib_index;
-  a->decap_next_index = ntohl (mp->decap_next_index);
-  a->vni = ntohl (mp->vni);
-  rv = vnet_vxlan_add_del_tunnel (a, &sw_if_index);
+
+  u32 sw_if_index = ~0;
+  rv = vnet_vxlan_add_del_tunnel (&a, &sw_if_index);
 
 out:
   /* *INDENT-OFF* */
