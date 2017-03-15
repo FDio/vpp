@@ -22,6 +22,30 @@
       "revId": "da65e331dce308eaa9c124ccf07dbf90eafdfb1e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_dc9e2b54",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-03-15T14:24:49Z",
+      "side": 1,
+      "message": "OK. I will submit new series.",
+      "parentUuid": "3a3291f1_9cb9c317",
+      "range": {
+        "startLine": 185,
+        "startChar": 0,
+        "endLine": 203,
+        "endChar": 46
+      },
+      "revId": "da65e331dce308eaa9c124ccf07dbf90eafdfb1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
