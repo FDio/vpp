@@ -433,7 +433,6 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 	vnet_rewrite_clear_data_internal(&adj->rewrite_header,
 					 sizeof(adj->rewrite_data));
     }
-    adj->rewrite_header.node_index = this_node;
     adj->rewrite_header.next_index = vlib_node_add_next(vlib_get_main(),
                                                         this_node,
                                                         next_node);

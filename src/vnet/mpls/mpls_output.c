@@ -35,7 +35,6 @@ format_mpls_output_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpls_output_trace_t * t = va_arg (*args, mpls_output_trace_t *);
-  vnet_main_t * vnm = vnet_get_main();
   uword indent = format_get_indent (s);
 
   s = format (s, "adj-idx %d : %U flow hash: 0x%08x",
@@ -45,8 +44,7 @@ format_mpls_output_trace (u8 * s, va_list * args)
   s = format (s, "\n%U%U",
               format_white_space, indent,
               format_ip_adjacency_packet_data,
-              vnm, t->adj_index,
-              t->packet_data, sizeof (t->packet_data));
+              t->adj_index, t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
@@ -59,12 +57,14 @@ mpls_output_inline (vlib_main_t * vm,
   u32 n_left_from, next_index, * from, * to_next, cpu_index;
   vlib_node_runtime_t * error_node;
   u32 n_left_to_next;
+  mpls_main_t *mm;
 
   cpu_index = os_get_cpu_number();
   error_node = vlib_node_get_runtime (vm, mpls_output_node.index);
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   next_index = node->cached_next_index;
+  mm = &mpls_main;
 
   while (n_left_from > 0)
     {
@@ -154,10 +154,10 @@ mpls_output_inline (vlib_main_t * vm,
               next0 = adj0[0].rewrite_header.next_index;
               error0 = IP4_ERROR_NONE;
 
-              if (is_midchain)
-                {
-                  adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
-                }
+              if (PREDICT_FALSE(adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
+                vnet_feature_arc_start (mm->output_feature_arc_index,
+                                        adj0[0].rewrite_header.sw_if_index,
+                                        &next0, p0);
             }
           else
             {
@@ -175,16 +175,21 @@ mpls_output_inline (vlib_main_t * vm,
               next1 = adj1[0].rewrite_header.next_index;
               error1 = IP4_ERROR_NONE;
 
-              if (is_midchain)
-                {
-                  adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
-                }
+              if (PREDICT_FALSE(adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
+                vnet_feature_arc_start (mm->output_feature_arc_index,
+                                        adj1[0].rewrite_header.sw_if_index,
+                                        &next1, p1);
             }
           else
             {
               error1 = IP4_ERROR_MTU_EXCEEDED;
               next1 = MPLS_OUTPUT_NEXT_DROP;
             }
+          if (is_midchain)
+          {
+              adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+              adj1->sub_type.midchain.fixup_func(vm, adj1, p1);
+          }
 
           p0->error = error_node->errors[error0];
           p1->error = error_node->errors[error1];
@@ -254,17 +259,22 @@ mpls_output_inline (vlib_main_t * vm,
               next0 = adj0[0].rewrite_header.next_index;
               error0 = IP4_ERROR_NONE;
 
-	      if (is_midchain)
-	        {
-		  adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
-		}
+              if (PREDICT_FALSE(adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
+                vnet_feature_arc_start (mm->output_feature_arc_index,
+                                        adj0[0].rewrite_header.sw_if_index,
+                                        &next0, p0);
             }
           else
             {
               error0 = IP4_ERROR_MTU_EXCEEDED;
               next0 = MPLS_OUTPUT_NEXT_DROP;
             }
-	  p0->error = error_node->errors[error0];
+          if (is_midchain)
+          {
+              adj0->sub_type.midchain.fixup_func(vm, adj0, p0);
+          }
+
+          p0->error = error_node->errors[error0];
 
 	  from += 1;
 	  n_left_from -= 1;

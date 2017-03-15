@@ -291,7 +291,6 @@ format_ip_lookup_next (u8 * s, va_list * args)
 u8 *
 format_ip_adjacency_packet_data (u8 * s, va_list * args)
 {
-  vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   u32 adj_index = va_arg (*args, u32);
   u8 *packet_data = va_arg (*args, u8 *);
   u32 n_packet_data_bytes = va_arg (*args, u32);
@@ -300,10 +299,9 @@ format_ip_adjacency_packet_data (u8 * s, va_list * args)
   switch (adj->lookup_next_index)
     {
     case IP_LOOKUP_NEXT_REWRITE:
-      s = format (s, "%U",
-		  format_vnet_rewrite_header,
-		  vnm->vlib_main, &adj->rewrite_header, packet_data,
-		  n_packet_data_bytes);
+    case IP_LOOKUP_NEXT_MCAST:
+      s =
+	format (s, "%U", format_hex_bytes, packet_data, n_packet_data_bytes);
       break;
 
     default:
