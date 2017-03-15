@@ -46,13 +46,21 @@
 /* Consider using vector types for speed? */
 typedef uword vnet_rewrite_data_t;
 
+/**
+ * Flags associated with the rewrite/adjacency
+ */
+typedef enum vnet_rewrite_flags_t_
+{
+  /**
+   * This adjacency/interface has output features configured
+   */
+  VNET_REWRITE_HAS_FEATURES = (1 << 0),
+} __attribute__ ((packed)) vnet_rewrite_flags_t;
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /* Interface to mark re-written packets with. */
   u32 sw_if_index;
-
-  /* Packet processing node where rewrite happens. */
-  u32 node_index;
 
   /* Next node to feed after packet rewrite is done. */
   u16 next_index;
@@ -63,6 +71,11 @@ typedef CLIB_PACKED (struct {
   /* Max packet size layer 3 (MTU) for output interface.
      Used for MTU check after packet rewrite. */
   u16 max_l3_packet_bytes;
+
+  u16 unused1;
+  u8  unused2;
+
+  vnet_rewrite_flags_t flags;
 
   /* When dynamically writing a multicast destination L2 addresss
    * this is the offset within the address to start writing n
@@ -78,6 +91,13 @@ typedef CLIB_PACKED (struct {
   u8 data[0];
 }) vnet_rewrite_header_t;
 /* *INDENT-ON* */
+
+/**
+ * At 16 bytes of rewrite herader we have enought space left for a IPv6
+ * (40 bytes) + LISP-GPE (8 bytes) in the cache line
+ */
+STATIC_ASSERT (sizeof (vnet_rewrite_header_t) <= 16,
+	       "Rewrite header too big");
 
 /*
   Helper macro for declaring rewrite string w/ given max-size.
@@ -317,11 +337,7 @@ u8 *vnet_build_rewrite_for_sw_interface (struct vnet_main_t *vnm,
 void vnet_update_adjacency_for_sw_interface (struct vnet_main_t *vnm,
 					     u32 sw_if_index, u32 ai);
 
-/* Parser for unformat header & rewrite string. */
-unformat_function_t unformat_vnet_rewrite;
-
 format_function_t format_vnet_rewrite;
-format_function_t format_vnet_rewrite_header;
 
 serialize_function_t serialize_vnet_rewrite, unserialize_vnet_rewrite;
 
