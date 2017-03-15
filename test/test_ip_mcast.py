@@ -101,7 +101,6 @@ class TestIPMcast(VppTestCase):
                 tx = sent[i]
                 rx = capture[i]
 
-                # the rx'd packet has the MPLS label popped
                 eth = rx[Ether]
                 self.assertEqual(eth.type, 0x800)
 
@@ -128,7 +127,6 @@ class TestIPMcast(VppTestCase):
             tx = sent[i]
             rx = capture[i]
 
-            # the rx'd packet has the MPLS label popped
             eth = rx[Ether]
             self.assertEqual(eth.type, 0x86DD)
 

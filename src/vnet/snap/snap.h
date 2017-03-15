@@ -173,9 +173,6 @@ snap_register_input_protocol (vlib_main_t * vm,
 			      char *name,
 			      u32 ieee_oui, u16 protocol, u32 node_index);
 
-void snap_set_adjacency (vnet_rewrite_header_t * rw,
-			 uword max_data_bytes, u32 ieee_oui, u16 protocol);
-
 format_function_t format_snap_protocol;
 format_function_t format_snap_header;
 format_function_t format_snap_header_with_length;

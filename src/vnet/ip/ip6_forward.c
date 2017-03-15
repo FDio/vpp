@@ -2087,8 +2087,8 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	      /*
 	       * copy bytes from the IP address into the MAC rewrite
 	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0, 0);
-	      vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1, 0);
+	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+	      vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -2197,7 +2197,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 	  if (is_mcast)
 	    {
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0, 0);
+	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
 	    }
 
 	  p0->error = error_node->errors[error0];

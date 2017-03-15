@@ -158,9 +158,6 @@ void
 llc_register_input_protocol (vlib_main_t * vm,
 			     llc_protocol_t protocol, u32 node_index);
 
-void llc_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes, llc_protocol_t protocol);
-
 format_function_t format_llc_protocol;
 format_function_t format_llc_header;
 format_function_t format_llc_header_with_length;
