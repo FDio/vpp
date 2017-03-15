@@ -135,16 +135,6 @@ format_ip_adjacency (u8 * s, va_list * args)
         vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
         s = format (s, "\n counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n locks:%d", adj->ia_node.fn_locks);
-	s = format (s, " node:[%d]:%U",
-		    adj->rewrite_header.node_index,
-		    format_vlib_node_name, vlib_get_main(),
-		    adj->rewrite_header.node_index);
-	s = format (s, " next:[%d]:%U",
-		    adj->rewrite_header.next_index,
-		    format_vlib_next_node_name,
-		    vlib_get_main(),
-		    adj->rewrite_header.node_index,
-		    adj->rewrite_header.next_index);
 	s = format(s, "\n children:\n  ");
 	s = fib_node_children_format(adj->ia_node.fn_children, s);
     }
@@ -269,6 +259,78 @@ adj_child_remove (adj_index_t adj_index,
     fib_node_child_remove(FIB_NODE_TYPE_ADJ,
                           adj_index,
                           sibling_index);
+}
+
+/*
+ * Context for the walk to update the cached feture flags.
+ */
+typedef struct adj_feature_update_t_
+{
+    u8 arc;
+    u8 enable;
+} adj_feature_update_ctx_t;
+
+static adj_walk_rc_t
+adj_feature_update_walk_cb (adj_index_t ai,
+                            void *arg)
+{
+    adj_feature_update_ctx_t *ctx = arg;
+    ip_adjacency_t *adj;
+
+    adj = adj_get(ai);
+
+    /*
+     * this ugly mess matches the feature arc that is changing with affected
+     * adjacencies
+     */
+    if (((ctx->arc == ip6_main.lookup_main.output_feature_arc_index) &&
+         (VNET_LINK_IP6 == adj->ia_link)) ||
+        ((ctx->arc == ip4_main.lookup_main.output_feature_arc_index) &&
+         (VNET_LINK_IP4 == adj->ia_link)) ||
+        ((ctx->arc == mpls_main.output_feature_arc_index) &&
+         (VNET_LINK_MPLS == adj->ia_link)))
+    {
+        if (ctx->enable)
+            adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
+        else
+            adj->rewrite_header.flags &= ~VNET_REWRITE_HAS_FEATURES;
+    }
+    return (ADJ_WALK_RC_CONTINUE);
+}
+
+void
+adj_feature_update (u32 sw_if_index,
+                    u8 arc_index,
+                    u8 is_enable)
+{
+    /*
+     * Walk all the adjacencies on the interface to update the cached
+     * 'has-features' flag
+     */
+    adj_feature_update_ctx_t ctx = {
+        .arc = arc_index,
+        .enable = is_enable,
+    };
+    adj_walk (sw_if_index, adj_feature_update_walk_cb, &ctx);
+}
+
+/**
+ * @brief Walk the Adjacencies on a given interface
+ */
+void
+adj_walk (u32 sw_if_index,
+          adj_walk_cb_t cb,
+          void *ctx)
+{
+    /*
+     * walk all the neighbor adjacencies
+     */
+    fib_protocol_t proto;
+
+    FOR_EACH_FIB_IP_PROTOCOL(proto)
+    {
+        adj_nbr_walk(sw_if_index, proto, cb, ctx);
+    }
 }
 
 /**
