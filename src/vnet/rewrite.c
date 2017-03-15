@@ -83,7 +83,7 @@ format_vnet_rewrite (u8 * s, va_list * args)
       if (NULL != si)
 	s = format (s, "%U: ", format_vnet_sw_interface_name, vnm, si);
       else
-	s = format (s, "DELETED");
+	s = format (s, "DELETED:%d", rw->sw_if_index);
     }
   else
     s = format (s, "%v: ", next->name);
