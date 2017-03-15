@@ -67,14 +67,10 @@ vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,
 u8 *
 format_vnet_rewrite (u8 * s, va_list * args)
 {
-  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*args, u32);
   CLIB_UNUSED (uword indent) = va_arg (*args, u32);
   vnet_main_t *vnm = vnet_get_main ();
-  vlib_node_t *next;
-
-  next = vlib_get_next_node (vm, rw->node_index, rw->next_index);
 
   if (rw->sw_if_index != ~0)
     {
@@ -85,106 +81,15 @@ format_vnet_rewrite (u8 * s, va_list * args)
       else
 	s = format (s, "DELETED");
     }
-  else
-    s = format (s, "%v: ", next->name);
 
   /* Format rewrite string. */
   if (rw->data_bytes > 0)
 
     s = format (s, "%U",
-		next->format_buffer ? next->format_buffer : format_hex_bytes,
+		format_hex_bytes,
 		rw->data + max_data_bytes - rw->data_bytes, rw->data_bytes);
 
   return s;
-}
-
-u8 *
-format_vnet_rewrite_header (u8 * s, va_list * args)
-{
-  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
-  vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
-  u8 *packet_data = va_arg (*args, u8 *);
-  u32 packet_data_bytes = va_arg (*args, u32);
-  vlib_node_t *next;
-
-  next = vlib_get_next_node (vm, rw->node_index, rw->next_index);
-
-  /* Format rewrite string. */
-  s = format (s, "%U",
-	      next->format_buffer ? next->format_buffer : format_hex_bytes,
-	      packet_data, packet_data_bytes);
-
-  return s;
-}
-
-uword
-unformat_vnet_rewrite (unformat_input_t * input, va_list * args)
-{
-  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
-  vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
-  u32 max_data_bytes = va_arg (*args, u32);
-  vnet_main_t *vnm = vnet_get_main ();
-  vlib_node_t *next;
-  u32 next_index, sw_if_index, max_packet_bytes, error;
-  u8 *rw_data;
-
-  rw_data = 0;
-  sw_if_index = ~0;
-  max_packet_bytes = ~0;
-  error = 1;
-
-  /* Parse sw interface. */
-  if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-    {
-      vnet_hw_interface_t *hi;
-
-      hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-
-      next_index = hi->output_node_index;
-      max_packet_bytes = hi->max_l3_packet_bytes[VLIB_RX];
-    }
-
-  else if (unformat (input, "%U", unformat_vlib_node, vm, &next_index))
-    ;
-
-  else
-    goto done;
-
-  next = vlib_get_node (vm, next_index);
-
-  if (next->unformat_buffer
-      && unformat_user (input, next->unformat_buffer, &rw_data))
-    ;
-
-  else if (unformat_user (input, unformat_hex_string, &rw_data)
-	   || unformat (input, "0x%U", unformat_hex_string, &rw_data))
-    ;
-
-  else
-    goto done;
-
-  /* Re-write does not fit. */
-  if (vec_len (rw_data) >= max_data_bytes)
-    goto done;
-
-  {
-    u32 tmp;
-
-    if (unformat (input, "mtu %d", &tmp)
-	&& tmp < (1 << BITS (rw->max_l3_packet_bytes)))
-      max_packet_bytes = tmp;
-  }
-
-  error = 0;
-  rw->sw_if_index = sw_if_index;
-  rw->max_l3_packet_bytes = max_packet_bytes;
-  rw->next_index = vlib_node_add_next (vm, rw->node_index, next_index);
-  vnet_rewrite_set_data_internal (rw, max_data_bytes, rw_data,
-				  vec_len (rw_data));
-
-done:
-  vec_free (rw_data);
-  return error == 0;
 }
 
 u32
@@ -200,7 +105,6 @@ vnet_rewrite_init (vnet_main_t * vnm,
 		   u32 this_node, u32 next_node, vnet_rewrite_header_t * rw)
 {
   rw->sw_if_index = sw_if_index;
-  rw->node_index = this_node;
   rw->next_index = vlib_node_add_next (vnm->vlib_main, this_node, next_node);
   rw->max_l3_packet_bytes =
     vnet_sw_interface_get_mtu (vnm, sw_if_index, VLIB_TX);
@@ -249,7 +153,6 @@ vnet_rewrite_for_tunnel (vnet_main_t * vnm,
    * ipX-forward, this will be interpreted as a FIB number.
    */
   rw->sw_if_index = tx_sw_if_index;
-  rw->node_index = rewrite_node_index;
   rw->next_index = vlib_node_add_next (vnm->vlib_main, rewrite_node_index,
 				       post_rewrite_node_index);
   rw->max_l3_packet_bytes = (u16) ~ 0;	/* we can't know at this point */
@@ -284,7 +187,6 @@ unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
   u8 *p;
 
   /* It is up to user to fill these in. */
-  rw->node_index = ~0;
   rw->next_index = ~0;
 
   unserialize_integer (m, &rw->sw_if_index, sizeof (rw->sw_if_index));

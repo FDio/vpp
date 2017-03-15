@@ -501,7 +501,6 @@ format_adj_midchain (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
     u32 indent = va_arg(*ap, u32);
-    vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
     s = format (s, "%U", format_vnet_link, adj->ia_link);
@@ -509,8 +508,7 @@ format_adj_midchain (u8* s, va_list *ap)
 		format_ip46_address, &adj->sub_type.nbr.next_hop);
     s = format (s, " %U",
 		format_vnet_rewrite,
-		vnm->vlib_main, &adj->rewrite_header,
-		sizeof (adj->rewrite_data), indent);
+		&adj->rewrite_header, sizeof (adj->rewrite_data), indent);
     s = format (s, "\n%Ustacked-on:\n%U%U",
 		format_white_space, indent,
 		format_white_space, indent+2,

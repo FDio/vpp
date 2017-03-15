@@ -433,7 +433,6 @@ adj_nbr_update_rewrite_internal (ip_adjacency_t *adj,
 	vnet_rewrite_clear_data_internal(&adj->rewrite_header,
 					 sizeof(adj->rewrite_data));
     }
-    adj->rewrite_header.node_index = this_node;
     adj->rewrite_header.next_index = vlib_node_add_next(vlib_get_main(),
                                                         this_node,
                                                         next_node);
@@ -971,7 +970,6 @@ format_adj_nbr (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
-    vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
     s = format (s, "%U", format_vnet_link, adj->ia_link);
@@ -980,7 +978,7 @@ format_adj_nbr (u8* s, va_list *ap)
 		adj_proto_to_46(adj->ia_nh_proto));
     s = format (s, "%U",
 		format_vnet_rewrite,
-		vnm->vlib_main, &adj->rewrite_header, sizeof (adj->rewrite_data), 0);
+		&adj->rewrite_header, sizeof (adj->rewrite_data), 0);
 
     return (s);
 }

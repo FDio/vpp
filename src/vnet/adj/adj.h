@@ -97,6 +97,12 @@ extern u32 adj_get_sw_if_index (adj_index_t ai);
 extern const u8* adj_get_rewrite (adj_index_t ai);
 
 /**
+ * @brief Notify the adjacency subsystem that the features settings for
+ * an interface have changed
+ */
+extern void adj_feature_update (u32 sw_if_index, u8 arc_index, u8 is_enable);
+
+/**
  * @brief
  * The global adjacnecy pool. Exposed for fast/inline data-plane access
  */

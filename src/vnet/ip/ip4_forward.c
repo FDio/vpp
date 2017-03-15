@@ -1232,7 +1232,6 @@ format_ip4_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t *t = va_arg (*args, ip4_forward_next_trace_t *);
-  vnet_main_t *vnm = vnet_get_main ();
   uword indent = format_get_indent (s);
 
   s = format (s, "tx_sw_if_index %d dpo-idx %d : %U flow hash: 0x%08x",
@@ -1241,7 +1240,7 @@ format_ip4_rewrite_trace (u8 * s, va_list * args)
   s = format (s, "\n%U%U",
 	      format_white_space, indent,
 	      format_ip_adjacency_packet_data,
-	      vnm, t->dpo_index, t->packet_data, sizeof (t->packet_data));
+	      t->dpo_index, t->packet_data, sizeof (t->packet_data));
   return s;
 }
 
@@ -2507,8 +2506,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      tx_sw_if_index0 = adj0[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = tx_sw_if_index0;
 
-	      vnet_feature_arc_start (lm->output_feature_arc_index,
-				      tx_sw_if_index0, &next0, p0);
+	      if (PREDICT_FALSE
+		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
+		vnet_feature_arc_start (lm->output_feature_arc_index,
+					tx_sw_if_index0, &next0, p0);
 	    }
 	  if (PREDICT_TRUE (error1 == IP4_ERROR_NONE))
 	    {
@@ -2519,8 +2520,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      tx_sw_if_index1 = adj1[0].rewrite_header.sw_if_index;
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = tx_sw_if_index1;
 
-	      vnet_feature_arc_start (lm->output_feature_arc_index,
-				      tx_sw_if_index1, &next1, p1);
+	      if (PREDICT_FALSE
+		  (adj1[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
+		vnet_feature_arc_start (lm->output_feature_arc_index,
+					tx_sw_if_index1, &next1, p1);
 	    }
 
 	  /* Guess we are only writing on simple Ethernet header. */
@@ -2671,8 +2674,10 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		  adj0->sub_type.midchain.fixup_func (vm, adj0, p0);
 		}
 
-	      vnet_feature_arc_start (lm->output_feature_arc_index,
-				      tx_sw_if_index0, &next0, p0);
+	      if (PREDICT_FALSE
+		  (adj0[0].rewrite_header.flags & VNET_REWRITE_HAS_FEATURES))
+		vnet_feature_arc_start (lm->output_feature_arc_index,
+					tx_sw_if_index0, &next0, p0);
 
 	    }
 
