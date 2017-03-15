@@ -19,7 +19,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip4.h>
 #include <vnet/plugin/plugin.h>
-#include <vlibapi/api.h>
 #include <snat/snat.h>
 #include <snat/snat_ipfix_logging.h>
 #include <snat/snat_det.h>
@@ -48,6 +47,9 @@ snat_main_t snat_main;
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
+#define REPLY_MSG_ID_BASE (sm->msg_id_base)
+#include <vlibapi/api_helper_macros.h>
+
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
 #include <snat/snat_all_api_h.h>
@@ -59,45 +61,6 @@ snat_main_t snat_main;
     vl_print (handle, (char *)s);               \
     vec_free (s);                               \
     return handle;
-
-/* 
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO2(t, body)                                   \
-do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
 
 /* Hook up input features */
 VNET_FEATURE_INIT (ip4_snat_in2out, static) = {
@@ -146,68 +109,6 @@ VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
 };
 /* *INDENT-ON* */
-
-/*$$$$$ move to an installed header file */
-#if (1 || CLIB_DEBUG > 0)       /* "trust, but verify" */
-
-#define VALIDATE_SW_IF_INDEX(mp)				\
- do { u32 __sw_if_index = ntohl(mp->sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __sw_if_index)) {                    \
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_sw_if_index;                                   \
-    }                                                           \
-} while(0);
-
-#define BAD_SW_IF_INDEX_LABEL                   \
-do {                                            \
-bad_sw_if_index:                                \
-    ;                                           \
-} while (0);
-
-#define VALIDATE_RX_SW_IF_INDEX(mp)				\
- do { u32 __rx_sw_if_index = ntohl(mp->rx_sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __rx_sw_if_index)) {			\
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_rx_sw_if_index;				\
-    }                                                           \
-} while(0);
-
-#define BAD_RX_SW_IF_INDEX_LABEL		\
-do {                                            \
-bad_rx_sw_if_index:				\
-    ;                                           \
-} while (0);
-
-#define VALIDATE_TX_SW_IF_INDEX(mp)				\
- do { u32 __tx_sw_if_index = ntohl(mp->tx_sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __tx_sw_if_index)) {			\
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_tx_sw_if_index;				\
-    }                                                           \
-} while(0);
-
-#define BAD_TX_SW_IF_INDEX_LABEL		\
-do {                                            \
-bad_tx_sw_if_index:				\
-    ;                                           \
-} while (0);
-
-#else
-
-#define VALIDATE_SW_IF_INDEX(mp)
-#define BAD_SW_IF_INDEX_LABEL
-#define VALIDATE_RX_SW_IF_INDEX(mp)
-#define BAD_RX_SW_IF_INDEX_LABEL
-#define VALIDATE_TX_SW_IF_INDEX(mp)
-#define BAD_TX_SW_IF_INDEX_LABEL
-
-#endif  /* CLIB_DEBUG > 0 */
 
 /**
  * @brief Add/del NAT address to FIB.
