@@ -530,28 +530,32 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	}
       break;
     case IP_LOOKUP_NEXT_MCAST:
+    {
       /*
        * Construct a partial rewrite from the known ethernet mcast dest MAC
        */
-      adj_mcast_update_rewrite
-	(ai,
-	 ethernet_build_rewrite (vnm,
-				 sw_if_index,
-				 adj->ia_link,
-				 ethernet_ip6_mcast_dst_addr ()));
+      u8 *rewrite;
+      u8 offset;
+
+      rewrite = ethernet_build_rewrite (vnm,
+                                        sw_if_index,
+                                        adj->ia_link,
+                                        ethernet_ip6_mcast_dst_addr ());
+
+      offset = vec_len(rewrite) - 2;
+      adj_mcast_update_rewrite (ai, rewrite);
 
       /*
        * Complete the remaining fields of the adj's rewrite to direct the
        * complete of the rewrite at switch time by copying in the IP
        * dst address's bytes.
-       * Ofset is 12 bytes from the end of the MAC header - which is 2
-       * bytes into the desintation address. And we write 4 bytes.
+       * Ofset is 2 bytes into the desintation address. And we write 4 bytes.
        */
-      adj->rewrite_header.dst_mcast_offset = 12;
-      adj->rewrite_header.dst_mcast_n_bytes = 4;
+      adj->rewrite_header.dst_mcast_offset = offset;
+      adj->rewrite_header.dst_mcast_mask = clib_host_to_net_u32(0xffffffff);
 
       break;
-
+    }
     case IP_LOOKUP_NEXT_DROP:
     case IP_LOOKUP_NEXT_PUNT:
     case IP_LOOKUP_NEXT_LOCAL:

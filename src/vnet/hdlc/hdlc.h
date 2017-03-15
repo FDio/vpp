@@ -91,10 +91,6 @@ hdlc_register_input_type (vlib_main_t * vm,
 			 hdlc_protocol_t protocol,
 			 u32 node_index);
 
-void hdlc_set_adjacency (vnet_rewrite_header_t * rw,
-			uword max_data_bytes,
-			hdlc_protocol_t protocol);
-
 format_function_t format_hdlc_protocol;
 format_function_t format_hdlc_header;
 format_function_t format_hdlc_header_with_length;
