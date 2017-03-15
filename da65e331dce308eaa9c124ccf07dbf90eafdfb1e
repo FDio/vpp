@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_9cb9c317",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-15T12:41:17Z",
+      "side": 1,
+      "message": "It looks to me like this whole thing can be made much simpler. In other words all this can be handled inside src/script/version in very simple way.\n\ngit describe \u003e .version to save version\n\n\"cat .version\" instead \"git describe\" to load version from .version file",
+      "range": {
+        "startLine": 185,
+        "startChar": 0,
+        "endLine": 203,
+        "endChar": 46
+      },
+      "revId": "da65e331dce308eaa9c124ccf07dbf90eafdfb1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
