@@ -42,55 +42,35 @@
 void
 vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)
 {
+  counter_t *my_counters;
   uword i, j;
-  u16 *my_minis;
 
-  for (i = 0; i < vec_len (cm->minis); i++)
+  for (i = 0; i < vec_len (cm->counters); i++)
     {
-      my_minis = cm->minis[i];
+      my_counters = cm->counters[i];
 
-      for (j = 0; j < vec_len (my_minis); j++)
+      for (j = 0; j < vec_len (my_counters); j++)
 	{
-	  cm->maxi[j] += my_minis[j];
-	  my_minis[j] = 0;
+	  my_counters[j] = 0;
 	}
     }
-
-  j = vec_len (cm->maxi);
-  if (j > 0)
-    vec_validate (cm->value_at_last_clear, j - 1);
-  for (i = 0; i < j; i++)
-    cm->value_at_last_clear[i] = cm->maxi[i];
 }
 
 void
 vlib_clear_combined_counters (vlib_combined_counter_main_t * cm)
 {
+  vlib_counter_t *my_counters;
   uword i, j;
-  vlib_mini_counter_t *my_minis;
 
-  for (i = 0; i < vec_len (cm->minis); i++)
+  for (i = 0; i < vec_len (cm->counters); i++)
     {
-      my_minis = cm->minis[i];
+      my_counters = cm->counters[i];
 
-      for (j = 0; j < vec_len (my_minis); j++)
+      for (j = 0; j < vec_len (my_counters); j++)
 	{
-	  cm->maxi[j].packets += my_minis[j].packets;
-	  cm->maxi[j].bytes += my_minis[j].bytes;
-	  my_minis[j].packets = 0;
-	  my_minis[j].bytes = 0;
+	  my_counters[j].packets = 0;
+	  my_counters[j].bytes = 0;
 	}
-    }
-
-  j = vec_len (cm->maxi);
-  if (j > 0)
-    vec_validate (cm->value_at_last_clear, j - 1);
-
-  for (i = 0; i < j; i++)
-    {
-      vlib_counter_t *c = vec_elt_at_index (cm->value_at_last_clear, i);
-
-      c[0] = cm->maxi[i];
     }
 }
 
@@ -100,10 +80,9 @@ vlib_validate_simple_counter (vlib_simple_counter_main_t * cm, u32 index)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
 
-  vec_validate (cm->minis, tm->n_vlib_mains - 1);
+  vec_validate (cm->counters, tm->n_vlib_mains - 1);
   for (i = 0; i < tm->n_vlib_mains; i++)
-    vec_validate_aligned (cm->minis[i], index, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->maxi, index, CLIB_CACHE_LINE_BYTES);
+    vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
 }
 
 void
@@ -112,10 +91,23 @@ vlib_validate_combined_counter (vlib_combined_counter_main_t * cm, u32 index)
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   int i;
 
-  vec_validate (cm->minis, tm->n_vlib_mains - 1);
+  vec_validate (cm->counters, tm->n_vlib_mains - 1);
   for (i = 0; i < tm->n_vlib_mains; i++)
-    vec_validate_aligned (cm->minis[i], index, CLIB_CACHE_LINE_BYTES);
-  vec_validate_aligned (cm->maxi, index, CLIB_CACHE_LINE_BYTES);
+    vec_validate_aligned (cm->counters[i], index, CLIB_CACHE_LINE_BYTES);
+}
+
+u32
+vlib_combined_counter_n_counters (const vlib_combined_counter_main_t * cm)
+{
+  ASSERT (cm->counters);
+  return (vec_len (cm->counters[0]));
+}
+
+u32
+vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm)
+{
+  ASSERT (cm->counters);
+  return (vec_len (cm->counters[0]));
 }
 
 void

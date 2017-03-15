@@ -849,7 +849,7 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
   {
     which = cm - im->combined_sw_if_counters;
 
-    for (i = 0; i < vec_len (cm->maxi); i++)
+    for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
       {
 	vlib_get_combined_counter (cm, i, &v);
 	total_pkts[which] += v.packets;

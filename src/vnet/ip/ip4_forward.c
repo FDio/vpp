@@ -2375,6 +2375,17 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
+	  /*
+	   * pre-fetch the per-adjacency counters
+	   */
+	  if (do_counters)
+	    {
+	      vlib_prefetch_combined_counter (&adjacency_counters,
+					      cpu_index, adj_index0);
+	      vlib_prefetch_combined_counter (&adjacency_counters,
+					      cpu_index, adj_index1);
+	    }
+
 	  /* We should never rewrite a pkt using the MISS adjacency */
 	  ASSERT (adj_index0 && adj_index1);
 
@@ -2479,17 +2490,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	     adj1[0].
 	     rewrite_header.max_l3_packet_bytes ? IP4_ERROR_MTU_EXCEEDED :
 	     error1);
-
-	  /*
-	   * pre-fetch the per-adjacency counters
-	   */
-	  if (do_counters)
-	    {
-	      vlib_prefetch_combined_counter (&adjacency_counters,
-					      cpu_index, adj_index0);
-	      vlib_prefetch_combined_counter (&adjacency_counters,
-					      cpu_index, adj_index1);
-	    }
 
 	  /* Don't adjust the buffer for ttl issue; icmp-error node wants
 	   * to see the IP headerr */
@@ -2624,8 +2624,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
 	    }
 
-	  vlib_prefetch_combined_counter (&adjacency_counters,
-					  cpu_index, adj_index0);
+	  if (do_counters)
+	    vlib_prefetch_combined_counter (&adjacency_counters,
+					    cpu_index, adj_index0);
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
@@ -2641,10 +2642,11 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  vnet_buffer (p0)->ip.save_rewrite_length = rw_len0;
 
-	  vlib_increment_combined_counter
-	    (&adjacency_counters,
-	     cpu_index,
-	     adj_index0, 1, vlib_buffer_length_in_chain (vm, p0) + rw_len0);
+	  if (do_counters)
+	    vlib_increment_combined_counter
+	      (&adjacency_counters,
+	       cpu_index, adj_index0, 1,
+	       vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */
 	  error0 = (vlib_buffer_length_in_chain (vm, p0)
