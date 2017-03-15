@@ -134,7 +134,7 @@ do_simple_interface_counters (stats_main_t * sm)
   vlib_simple_counter_main_t *cm;
   u32 items_this_message = 0;
   u64 v, *vp = 0;
-  int i;
+  int i, n_counts;
 
   /*
    * Prevent interface registration from expanding / moving the vectors...
@@ -144,13 +144,13 @@ do_simple_interface_counters (stats_main_t * sm)
 
   vec_foreach (cm, im->sw_if_counters)
   {
-
-    for (i = 0; i < vec_len (cm->maxi); i++)
+    n_counts = vlib_simple_counter_n_counters (cm);
+    for (i = 0; i < n_counts; i++)
       {
 	if (mp == 0)
 	  {
 	    items_this_message = clib_min (SIMPLE_COUNTER_BATCH_SIZE,
-					   vec_len (cm->maxi) - i);
+					   n_counts - i);
 
 	    mp = vl_msg_api_alloc_as_if_client
 	      (sizeof (*mp) + items_this_message * sizeof (v));
@@ -189,19 +189,19 @@ do_combined_interface_counters (stats_main_t * sm)
   vlib_combined_counter_main_t *cm;
   u32 items_this_message = 0;
   vlib_counter_t v, *vp = 0;
-  int i;
+  int i, n_counts;
 
   vnet_interface_counter_lock (im);
 
   vec_foreach (cm, im->combined_sw_if_counters)
   {
-
-    for (i = 0; i < vec_len (cm->maxi); i++)
+    n_counts = vlib_combined_counter_n_counters (cm);
+    for (i = 0; i < n_counts; i++)
       {
 	if (mp == 0)
 	  {
 	    items_this_message = clib_min (COMBINED_COUNTER_BATCH_SIZE,
-					   vec_len (cm->maxi) - i);
+					   n_counts - i);
 
 	    mp = vl_msg_api_alloc_as_if_client
 	      (sizeof (*mp) + items_this_message * sizeof (v));
