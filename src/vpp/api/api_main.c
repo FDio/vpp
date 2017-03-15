@@ -84,25 +84,20 @@ api_command_fn (vlib_main_t * vm,
 
   vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
-#ifdef __COVERITY__
-  /*
-   * Convince Coverity that it's not a NULL pointer...
-   * Done once for real below, since we never vec_free(vam->inbuf);
-   */
-  vec_validate (vam->inbuf, 0);
-#endif
+  /* vec_validated in the init routine */
+  _vec_len (vam->inbuf) = 0;
 
-  vec_reset_length (vam->inbuf);
   vam->input = &_input;
 
   while (((c = unformat_get_input (input)) != '\n') &&
 	 (c != UNFORMAT_END_OF_INPUT))
     vec_add1 (vam->inbuf, c);
 
-  /* Add 1 octet's worth of extra space in case there are no args... */
+  /* Null-terminate the command */
   vec_add1 (vam->inbuf, 0);
 
-  /*$$$$ reinstall macro evaluator */
+  /* In case no args given */
+  vec_add1 (vam->inbuf, 0);
 
   /* Split input into cmd + args */
   this_cmd = cmdp = vam->inbuf;
@@ -123,7 +118,7 @@ api_command_fn (vlib_main_t * vm,
   /* Advance past the command */
   while (argsp < (this_cmd + vec_len (this_cmd)))
     {
-      if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n' && argsp != 0)
+      if (*argsp != ' ' && *argsp != '\t' && *argsp != '\n' && *argsp != 0)
 	{
 	  argsp++;
 	}
@@ -133,15 +128,19 @@ api_command_fn (vlib_main_t * vm,
   /* NULL terminate the command */
   *argsp++ = 0;
 
-  while (argsp < (this_cmd + vec_len (this_cmd)))
-    {
-      if (*argsp == ' ' || *argsp == '\t' || *argsp == '\n')
-	{
-	  argsp++;
-	}
-      else
-	break;
-    }
+  /* No arguments? Ensure that argsp points to a proper (empty) string */
+  if (argsp == (this_cmd + vec_len (this_cmd) - 1))
+    argsp[0] = 0;
+  else
+    while (argsp < (this_cmd + vec_len (this_cmd)))
+      {
+	if (*argsp == ' ' || *argsp == '\t' || *argsp == '\n')
+	  {
+	    argsp++;
+	  }
+	else
+	  break;
+      }
 
   /* Blank input line? */
   if (*cmdp == 0)
