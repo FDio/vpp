@@ -1304,7 +1304,7 @@ show_map_stats_command_fn (vlib_main_t * vm, unformat_input_t * input,
   {
     which = cm - mm->domain_counters;
 
-    for (i = 0; i < vec_len (cm->maxi); i++)
+    for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
       {
 	vlib_get_combined_counter (cm, i, &v);
 	total_pkts[which] += v.packets;
