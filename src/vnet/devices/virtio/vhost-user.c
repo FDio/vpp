@@ -368,6 +368,8 @@ vhost_user_rx_thread_placement ()
   vhost_user_intf_t *vui;
   vhost_cpu_t *vhc;
   u32 *workers = 0;
+  u32 cpu_index;
+  vlib_main_t *vm;
 
   //Let's list all workers cpu indexes
   u32 i;
@@ -398,19 +400,59 @@ vhost_user_rx_thread_placement ()
 	    continue;
 
 	  i %= vec_len (vui_workers);
-	  u32 cpu_index = vui_workers[i];
+	  cpu_index = vui_workers[i];
 	  i++;
 	  vhc = &vum->cpus[cpu_index];
 
 	  iaq.qid = qid;
 	  iaq.vhost_iface_index = vui - vum->vhost_user_interfaces;
 	  vec_add1 (vhc->rx_queues, iaq);
-	  vlib_node_set_state (vlib_mains[cpu_index],
-                               vhost_user_input_node.index,
-                               VLIB_NODE_STATE_POLLING);
 	}
   });
   /* *INDENT-ON* */
+
+  vec_foreach (vhc, vum->cpus)
+  {
+    vhost_iface_and_queue_t *vhiq;
+    u8 mode = VHOST_USER_INTERRUPT_MODE;
+
+    vec_foreach (vhiq, vhc->rx_queues)
+    {
+      vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
+      if (vui->operation_mode == VHOST_USER_POLLING_MODE)
+	{
+	  /* At least one interface is polling, cpu is set to polling */
+	  mode = VHOST_USER_POLLING_MODE;
+	  break;
+	}
+    }
+    vhc->operation_mode = mode;
+  }
+
+  for (cpu_index = vum->input_cpu_first_index;
+       cpu_index < vum->input_cpu_first_index + vum->input_cpu_count;
+       cpu_index++)
+    {
+      vlib_node_state_t state = VLIB_NODE_STATE_POLLING;
+
+      vhc = &vum->cpus[cpu_index];
+      vm = vlib_mains ? vlib_mains[cpu_index] : &vlib_global_main;
+      switch (vhc->operation_mode)
+	{
+	case VHOST_USER_INTERRUPT_MODE:
+	  state = VLIB_NODE_STATE_INTERRUPT;
+	  break;
+	case VHOST_USER_POLLING_MODE:
+	  state = VLIB_NODE_STATE_POLLING;
+	  break;
+	default:
+	  clib_warning ("BUG: bad operation mode %d", vhc->operation_mode);
+	  break;
+	}
+      vlib_node_set_state (vm, vhost_user_input_node.index, state);
+    }
+
+  vec_free (workers);
 }
 
 static int
@@ -485,12 +527,68 @@ vhost_user_update_iface_state (vhost_user_intf_t * vui)
   vhost_user_tx_thread_placement (vui);
 }
 
+static void
+vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
+{
+  vhost_user_main_t *vum = &vhost_user_main;
+  vhost_cpu_t *vhc;
+  u32 cpu_index;
+  vhost_iface_and_queue_t *vhiq;
+  vlib_main_t *vm;
+  u32 ifq2;
+  u8 done = 0;
+
+  if (vhost_user_intf_ready (vui))
+    {
+      vec_foreach (vhc, vum->cpus)
+      {
+	if (vhc->operation_mode == VHOST_USER_POLLING_MODE)
+	  continue;
+
+	vec_foreach (vhiq, vhc->rx_queues)
+	{
+	  /*
+	   * Match the interface and the virtqueue number
+	   */
+	  if ((vhiq->vhost_iface_index == (ifq >> 8)) &&
+	      (VHOST_VRING_IDX_TX (vhiq->qid) == (ifq & 0xff)))
+	    {
+	      cpu_index = vhc - vum->cpus;
+	      vm = vlib_mains ? vlib_mains[cpu_index] : &vlib_global_main;
+	      /*
+	       * Convert RX virtqueue number in the lower byte to vring
+	       * queue index for the input node process. Top bytes contain
+	       * the interface, lower byte contains the queue index.
+	       */
+	      ifq2 = ((ifq >> 8) << 8) | vhiq->qid;
+	      vhc->pending_input_bitmap =
+		clib_bitmap_set (vhc->pending_input_bitmap, ifq2, 1);
+	      vlib_node_set_interrupt_pending (vm,
+					       vhost_user_input_node.index);
+	      done = 1;
+	      break;
+	    }
+	}
+	if (done)
+	  break;
+      }
+    }
+}
+
 static clib_error_t *
 vhost_user_callfd_read_ready (unix_file_t * uf)
 {
   __attribute__ ((unused)) int n;
   u8 buff[8];
+  vhost_user_intf_t *vui =
+    pool_elt_at_index (vhost_user_main.vhost_user_interfaces,
+		       uf->private_data >> 8);
+
   n = read (uf->file_descriptor, ((char *) &buff), 8);
+  DBG_SOCK ("if %d CALL queue %d", uf->private_data >> 8,
+	    uf->private_data & 0xff);
+  vhost_user_set_interrupt_pending (vui, uf->private_data);
+
   return 0;
 }
 
@@ -503,13 +601,20 @@ vhost_user_kickfd_read_ready (unix_file_t * uf)
     pool_elt_at_index (vhost_user_main.vhost_user_interfaces,
 		       uf->private_data >> 8);
   u32 qid = uf->private_data & 0xff;
+
   n = read (uf->file_descriptor, ((char *) &buff), 8);
   DBG_SOCK ("if %d KICK queue %d", uf->private_data >> 8, qid);
 
   vlib_worker_thread_barrier_sync (vlib_get_main ());
-  vui->vrings[qid].started = 1;
-  vhost_user_update_iface_state (vui);
+  if (!vui->vrings[qid].started ||
+      (vhost_user_intf_ready (vui) != vui->is_up))
+    {
+      vui->vrings[qid].started = 1;
+      vhost_user_update_iface_state (vui);
+    }
   vlib_worker_thread_barrier_release (vlib_get_main ());
+
+  vhost_user_set_interrupt_pending (vui, uf->private_data);
   return 0;
 }
 
@@ -907,8 +1012,12 @@ vhost_user_socket_read (unix_file_t * uf)
 	vui->vrings[msg.state.index].last_avail_idx =
 	vui->vrings[msg.state.index].used->idx;
 
-      /* tell driver that we don't want interrupts */
-      vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
+      if (vui->operation_mode == VHOST_USER_POLLING_MODE)
+	/* tell driver that we don't want interrupts */
+	vui->vrings[msg.state.index].used->flags = VRING_USED_F_NO_NOTIFY;
+      else
+	/* tell driver that we want interrupts */
+	vui->vrings[msg.state.index].used->flags = 0;
       break;
 
     case VHOST_USER_SET_OWNER:
@@ -1811,7 +1920,8 @@ vhost_user_if_input (vlib_main_t * vm,
   vhost_user_log_dirty_ring (vui, txvq, idx);
 
   /* interrupt (call) handling */
-  if ((txvq->callfd_idx != ~0) && !(txvq->avail->flags & 1))
+  if ((txvq->callfd_idx != ~0) &&
+      !(txvq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
     {
       txvq->n_since_last_int += n_rx_packets;
 
@@ -1837,16 +1947,33 @@ vhost_user_input (vlib_main_t * vm,
   vhost_user_main_t *vum = &vhost_user_main;
   uword n_rx_packets = 0;
   u32 cpu_index = os_get_cpu_number ();
-
-
   vhost_iface_and_queue_t *vhiq;
-  vec_foreach (vhiq, vum->cpus[cpu_index].rx_queues)
-  {
-    vhost_user_intf_t *vui =
-      &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
-    n_rx_packets += vhost_user_if_input (vm, vum, vui, vhiq->qid, node);
-  }
+  vhost_user_intf_t *vui;
+  vhost_cpu_t *vhc;
 
+  vhc = &vum->cpus[cpu_index];
+  if (PREDICT_TRUE (vhc->operation_mode == VHOST_USER_POLLING_MODE))
+    {
+      vec_foreach (vhiq, vum->cpus[cpu_index].rx_queues)
+      {
+	vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
+	n_rx_packets += vhost_user_if_input (vm, vum, vui, vhiq->qid, node);
+      }
+    }
+  else
+    {
+      int i;
+
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (i, vhc->pending_input_bitmap, ({
+	int qid = i & 0xff;
+
+	clib_bitmap_set (vhc->pending_input_bitmap, i, 0);
+	vui = pool_elt_at_index (vum->vhost_user_interfaces, i >> 8);
+	n_rx_packets += vhost_user_if_input (vm, vum, vui, qid, node);
+      }));
+      /* *INDENT-ON* */
+    }
   return n_rx_packets;
 }
 
@@ -2241,7 +2368,8 @@ done:
     }
 
   /* interrupt (call) handling */
-  if ((rxvq->callfd_idx != ~0) && !(rxvq->avail->flags & 1))
+  if ((rxvq->callfd_idx != ~0) &&
+      !(rxvq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
     {
       rxvq->n_since_last_int += frame->n_vectors - n_left;
 
@@ -2595,6 +2723,95 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vhost_user_tx_thread_placement (vui);
 }
 
+static uword
+vhost_user_send_interrupt_process (vlib_main_t * vm,
+				   vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  vhost_user_intf_t *vui;
+  f64 timeout = 3153600000.0 /* 100 years */ ;
+  uword event_type, *event_data = 0;
+  vhost_user_main_t *vum = &vhost_user_main;
+  vhost_iface_and_queue_t *vhiq;
+  vhost_cpu_t *vhc;
+  f64 now, poll_time_remaining;
+
+  while (1)
+    {
+      poll_time_remaining =
+	vlib_process_wait_for_event_or_clock (vm, timeout);
+      event_type = vlib_process_get_events (vm, &event_data);
+      vec_reset_length (event_data);
+
+      /*
+       * Use the remaining timeout if it is less than coalesce time to avoid
+       * resetting the existing timer in the middle of expiration
+       */
+      timeout = poll_time_remaining;
+      if (vlib_process_suspend_time_is_zero (timeout) ||
+	  (timeout > vum->coalesce_time))
+	timeout = vum->coalesce_time;
+
+      now = vlib_time_now (vm);
+      switch (event_type)
+	{
+	case VHOST_USER_EVENT_START_TIMER:
+	  if (!vlib_process_suspend_time_is_zero (poll_time_remaining))
+	    break;
+	  /* fall through */
+
+	case ~0:
+	  vec_foreach (vhc, vum->cpus)
+	  {
+	    u32 cpu_index = vhc - vum->cpus;
+	    f64 next_timeout;
+
+	    next_timeout = timeout;
+	    vec_foreach (vhiq, vum->cpus[cpu_index].rx_queues)
+	    {
+	      vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
+	      vhost_user_vring_t *rxvq =
+		&vui->vrings[VHOST_VRING_IDX_RX (vhiq->qid)];
+	      vhost_user_vring_t *txvq =
+		&vui->vrings[VHOST_VRING_IDX_TX (vhiq->qid)];
+
+	      if (txvq->n_since_last_int)
+		{
+		  if (now >= txvq->int_deadline)
+		    vhost_user_send_call (vm, txvq);
+		  else
+		    next_timeout = txvq->int_deadline - now;
+		}
+
+	      if (rxvq->n_since_last_int)
+		{
+		  if (now >= rxvq->int_deadline)
+		    vhost_user_send_call (vm, rxvq);
+		  else
+		    next_timeout = rxvq->int_deadline - now;
+		}
+
+	      if ((next_timeout < timeout) && (next_timeout > 0.0))
+		timeout = next_timeout;
+	    }
+	  }
+	  break;
+
+	default:
+	  clib_warning ("BUG: unhandled event type %d", event_type);
+	  break;
+	}
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (vhost_user_send_interrupt_node,static) = {
+    .function = vhost_user_send_interrupt_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "vhost-user-send-interrupt-process",
+};
+/* *INDENT-ON* */
+
 int
 vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 		      const char *sock_filename,
@@ -2608,8 +2825,10 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   u32 sw_if_idx = ~0;
   int rv = 0;
   int server_sock_fd = -1;
+  vhost_user_main_t *vum = &vhost_user_main;
 
-  if (operation_mode != VHOST_USER_POLLING_MODE)
+  if ((operation_mode != VHOST_USER_POLLING_MODE) &&
+      (operation_mode != VHOST_USER_INTERRUPT_MODE))
     return VNET_API_ERROR_UNIMPLEMENTED;
 
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
@@ -2640,6 +2859,15 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   // Process node must connect
   vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
+
+  if ((operation_mode == VHOST_USER_INTERRUPT_MODE) &&
+      !vum->interrupt_mode && (vum->coalesce_time > 0.0) &&
+      (vum->coalesce_frames > 0))
+    {
+      vum->interrupt_mode = 1;
+      vlib_process_signal_event (vm, vhost_user_send_interrupt_node.index,
+				 VHOST_USER_EVENT_START_TIMER, 0);
+    }
   return rv;
 }
 
@@ -2658,7 +2886,8 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
   vnet_hw_interface_t *hwif;
 
-  if (operation_mode != VHOST_USER_POLLING_MODE)
+  if ((operation_mode != VHOST_USER_POLLING_MODE) &&
+      (operation_mode != VHOST_USER_INTERRUPT_MODE))
     return VNET_API_ERROR_UNIMPLEMENTED;
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
       hwif->dev_class_index != vhost_user_dev_class.index)
@@ -2682,7 +2911,32 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 
   // Process node must connect
   vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
+
+  if ((operation_mode == VHOST_USER_INTERRUPT_MODE) &&
+      !vum->interrupt_mode && (vum->coalesce_time > 0.0) &&
+      (vum->coalesce_frames > 0))
+    {
+      vum->interrupt_mode = 1;
+      vlib_process_signal_event (vm, vhost_user_send_interrupt_node.index,
+				 VHOST_USER_EVENT_START_TIMER, 0);
+    }
   return rv;
+}
+
+static uword
+unformat_vhost_user_operation_mode (unformat_input_t * input, va_list * args)
+{
+  u8 *operation_mode = va_arg (*args, u8 *);
+  uword rc = 1;
+
+  if (unformat (input, "interrupt"))
+    *operation_mode = VHOST_USER_INTERRUPT_MODE;
+  else if (unformat (input, "polling"))
+    *operation_mode = VHOST_USER_POLLING_MODE;
+  else
+    rc = 0;
+
+  return rc;
 }
 
 clib_error_t *
@@ -2722,6 +2976,9 @@ vhost_user_connect_command_fn (vlib_main_t * vm,
 	{
 	  renumber = 1;
 	}
+      else if (unformat (line_input, "mode %U",
+			 unformat_vhost_user_operation_mode, &operation_mode))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -2851,6 +3108,25 @@ vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,
   return rv;
 }
 
+static u8 *
+format_vhost_user_operation_mode (u8 * s, va_list * va)
+{
+  int operation_mode = va_arg (*va, int);
+
+  switch (operation_mode)
+    {
+    case VHOST_USER_POLLING_MODE:
+      s = format (s, "%s", "polling");
+      break;
+    case VHOST_USER_INTERRUPT_MODE:
+      s = format (s, "%s", "interrupt");
+      break;
+    default:
+      s = format (s, "%s", "invalid");
+    }
+  return s;
+}
+
 clib_error_t *
 show_vhost_user_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
@@ -2959,14 +3235,22 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 		       (vui->unix_server_index != ~0) ? "server" : "client",
 		       strerror (vui->sock_errno));
 
+      vlib_cli_output (vm, " configured mode: %U\n",
+		       format_vhost_user_operation_mode, vui->operation_mode);
       vlib_cli_output (vm, " rx placement: ");
       vec_foreach (vhc, vum->cpus)
       {
 	vec_foreach (vhiq, vhc->rx_queues)
 	{
 	  if (vhiq->vhost_iface_index == vui - vum->vhost_user_interfaces)
-	    vlib_cli_output (vm, "   thread %d on vring %d\n",
-			     vhc - vum->cpus, VHOST_VRING_IDX_TX (vhiq->qid));
+	    {
+	      vlib_cli_output (vm, "   thread %d on vring %d\n",
+			       vhc - vum->cpus,
+			       VHOST_VRING_IDX_TX (vhiq->qid));
+	      vlib_cli_output (vm, "   mode: %U\n",
+			       format_vhost_user_operation_mode,
+			       vhc->operation_mode);
+	    }
 	}
       }
 
@@ -3096,6 +3380,9 @@ done:
  * in the name to be specified. If instance already exists, name will be used
  * anyway and multiple instances will have the same name. Use with caution.
  *
+ * - <b>mode [interrupt | polling]</b> - Optional parameter specifying
+ * the input thread polling policy.
+ *
  * @cliexpar
  * Example of how to create a vhost interface with VPP as the client and all features enabled:
  * @cliexstart{create vhost-user socket /tmp/vhost1.sock}
@@ -3112,7 +3399,9 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
-    .short_help = "create vhost-user socket <socket-filename> [server] [feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>]",
+    .short_help = "create vhost-user socket <socket-filename> [server] "
+    "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] "
+    "[mode {interrupt | polling}]",
     .function = vhost_user_connect_command_fn,
 };
 /* *INDENT-ON* */

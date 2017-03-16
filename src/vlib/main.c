@@ -1032,15 +1032,14 @@ dispatch_node (vlib_main_t * vm,
 	  vlib_worker_thread_t *w = vlib_worker_threads + vm->cpu_index;
 #endif
 
-	  if (dispatch_state == VLIB_NODE_STATE_INTERRUPT
-	      && v >= nm->polling_threshold_vector_length)
+	  if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT
+	       && v >= nm->polling_threshold_vector_length) &&
+	      !(node->flags &
+		VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
 	    {
 	      vlib_node_t *n = vlib_get_node (vm, node->node_index);
 	      n->state = VLIB_NODE_STATE_POLLING;
 	      node->state = VLIB_NODE_STATE_POLLING;
-	      ASSERT (!
-		      (node->flags &
-		       VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE));
 	      node->flags &=
 		~VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE;
 	      node->flags |=
@@ -1445,6 +1444,10 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 
   /* Pre-allocate expired nodes. */
   vec_alloc (nm->pending_interrupt_node_runtime_indices, 32);
+  if (!nm->polling_threshold_vector_length)
+    nm->polling_threshold_vector_length = 10;
+  if (!nm->interrupt_threshold_vector_length)
+    nm->interrupt_threshold_vector_length = 5;
 
   if (is_main)
     {
