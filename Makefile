@@ -222,6 +222,7 @@ export VPP_PYTHON_PREFIX=$(BR)/python
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
 	make -C test \
+	  TEST_DIR=$(WS_ROOT)/test \
 	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
 	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(2)-native/vpp/lib64/vpp_plugins \
@@ -252,10 +253,10 @@ test-wipe:
 	@make -C test wipe
 
 test-shell: bootstrap
-	$(call test,vpp_lite,vpp_lite,shell)
+	$(call test,vpp,vpp,shell)
 
 test-shell-debug: bootstrap
-	$(call test,vpp_lite,vpp_lite_debug,shell)
+	$(call test,vpp,vpp_debug,shell)
 
 test-doc:
 	@make -C test doc
