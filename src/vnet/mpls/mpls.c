@@ -161,6 +161,14 @@ u8 * format_mpls_unicast_header_net_byte_order (u8 * s, va_list * args)
                  &h_host);
 }
 
+typedef struct {
+  u32 fib_index;
+  u32 entry_index;
+  u32 dest;
+  u32 s_bit;
+  u32 label;
+} show_mpls_fib_t;
+
 int
 mpls_dest_cmp(void * a1, void * a2)
 {
