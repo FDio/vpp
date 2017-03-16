@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_aa0311b7",
+        "filename": "src/vlib/main.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 177,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-03-16T15:44:44Z",
+      "side": 1,
+      "message": "Does it make sense to define the variable all the time, to avoid issues mixing debug and non-debug images? Or, are they so different already it doesn\u0027t matter?",
+      "revId": "5f64422076559b48b181f93c853485cff9fc74c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
