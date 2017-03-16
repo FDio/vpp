@@ -32,6 +32,7 @@ typedef enum
   SEND_PING_ALLOC_FAIL,
   SEND_PING_NO_INTERFACE,
   SEND_PING_NO_TABLE,
+  SEND_PING_NO_SRC_ADDRESS,
 } send_ip46_ping_result_t;
 
 /*
