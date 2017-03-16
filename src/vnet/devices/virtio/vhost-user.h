@@ -216,6 +216,8 @@ typedef struct
 #define VHOST_USER_INTERRUPT_MODE 1
 #define VHOST_USER_ADAPTIVE_MODE  2
 
+#define VHOST_USER_EVENT_START_TIMER 1
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -298,6 +300,12 @@ typedef struct
   /* This is here so it doesn't end-up
    * using stack or registers. */
   vhost_trace_t *current_trace;
+
+  /* bitmap of pending rx interfaces */
+  uword *pending_input_bitmap;
+
+  /* The operation mode computed per cpu based on interface setting */
+  u8 operation_mode;
 } vhost_cpu_t;
 
 typedef struct
@@ -320,6 +328,9 @@ typedef struct
 
   /** Pseudo random iterator */
   u32 random;
+
+  /* Node is in interrupt mode */
+  u8 interrupt_mode;
 } vhost_user_main_t;
 
 typedef struct
