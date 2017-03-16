@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_fcca074e",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Can you please clarify which part is not needed? I think the type needs to stay otherwise format_ip46 will assume v4 which won\u0027t always be the case.",
+      "parentUuid": "3a3291f1_7a3f3ed7",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_3a73f6e8",
         "filename": "src/vnet/gre/gre.c",
         "patchSetId": 4
@@ -54,6 +72,65 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_15aecb85",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_3a73f6e8",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f5a8df78",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_755bcf2e",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_15ba4b23",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Should be !is_ipv6",
+      "range": {
+        "startLine": 354,
+        "startChar": 25,
+        "endLine": 354,
+        "endChar": 26
+      },
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_5a26c2cf",
         "filename": "src/vnet/gre/gre.h",
         "patchSetId": 4
@@ -65,6 +142,24 @@
       "writtenOn": "2017-03-13T12:17:43Z",
       "side": 1,
       "message": "i\u0027d suggest using a fib_prefix_t here instead. then we can use t-\u003etunnel_dst.fp_proto in the protocol independent FIB APIs. And the is_ipv6 member is not required.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_b5a5b7b6",
+        "filename": "src/vnet/gre/gre.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_5a26c2cf",
       "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -88,6 +183,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_b5c017e1",
+        "filename": "src/vnet/gre/gre_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_5a5fe241",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_da32b20f",
         "filename": "src/vnet/gre/gre_api.c",
         "patchSetId": 4
@@ -99,6 +212,24 @@
       "writtenOn": "2017-03-13T12:17:43Z",
       "side": 1,
       "message": "fib_table_get",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_35ac2735",
+        "filename": "src/vnet/gre/gre_api.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_da32b20f",
       "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -122,6 +253,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_76d19656",
+        "filename": "src/vnet/gre/interface.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_7a485e87",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_1a303a00",
         "filename": "src/vnet/gre/node.c",
         "patchSetId": 4
@@ -139,6 +288,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_96e2c22d",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 214,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_1a303a00",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_fa2a0e8f",
         "filename": "src/vnet/gre/node.c",
         "patchSetId": 4
@@ -150,6 +317,24 @@
       "writtenOn": "2017-03-13T12:17:43Z",
       "side": 1,
       "message": "the protocol passed as argument is the payload protocol, but this is using that protocol to chose the transport decap node. Instead vlib_node_add_net should be called for both gre4 and gre6 input nodes.\nSame for get_runtime below.",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_594ecd97",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 602,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_fa2a0e8f",
       "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false

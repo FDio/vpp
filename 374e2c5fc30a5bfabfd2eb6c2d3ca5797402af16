@@ -16,6 +16,24 @@
       "revId": "374e2c5fc30a5bfabfd2eb6c2d3ca5797402af16",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0a86a513",
+        "filename": "test/test_gre.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 385,
+      "author": {
+        "id": 146
+      },
+      "writtenOn": "2017-03-16T16:21:50Z",
+      "side": 0,
+      "message": "Ok - I\u0027m publishing a new version with these re-added as they shouldn\u0027t have been removed. I\u0027ll look into adding v6 encap tests too.",
+      "parentUuid": "3a3291f1_3a21b6b4",
+      "revId": "374e2c5fc30a5bfabfd2eb6c2d3ca5797402af16",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
