@@ -23,10 +23,15 @@ verify-no-running-vpp:
 		false; \
 	fi
 
-UNITTEST_EXTRA_OPTS=""
+UNITTEST_EXTRA_OPTS=
+UNITTEST_FAILFAST_OPTS=
 
 ifeq ($(FAILFAST),1)
-UNITTEST_EXTRA_OPTS="-f"
+UNITTEST_EXTRA_OPTS=-f
+endif
+
+ifneq ($(EXTERN_TESTS),)
+UNITTEST_EXTRA_OPTS=$(UNITTEST_FAILFAST_OPTS) -d $(EXTERN_TESTS)
 endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
@@ -59,7 +64,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py discover $(UNITTEST_EXTRA_OPTS) -p test_\"*.py\""
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)"
 endef
 
 .PHONY: sanity
