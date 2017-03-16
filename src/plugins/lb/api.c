@@ -51,6 +51,10 @@ typedef enum {
 #include <lb/lb.api.h>
 #undef vl_msg_name_crc_list
 
+
+#define REPLY_MSG_ID_BASE lbm->msg_id_base
+#include <vlibapi/api_helper_macros.h>
+
 static void
 setup_message_id_table (lb_main_t * lbm, api_main_t * am)
 {
@@ -66,29 +70,6 @@ setup_message_id_table (lb_main_t * lbm, api_main_t * am)
     vl_print (handle, (char *)s);               \
     vec_free (s);                               \
     return handle;
-
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+lbm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
 
 static void
 vl_api_lb_conf_t_handler

@@ -36,7 +36,7 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = htons((t)+REPLY_MSG_ID_BASE);             \
+    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));           \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
                                                                 \
@@ -52,7 +52,7 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = htons((t)+REPLY_MSG_ID_BASE);             \
+    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));           \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
     do {body;} while (0);                                       \
@@ -68,7 +68,7 @@ do {                                                            \
         return;                                                 \
                                                                 \
     rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                 \
-    rmp->_vl_msg_id = htons((t)+REPLY_MSG_ID_BASE);             \
+    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));           \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
     do {body;} while (0);                                       \
@@ -97,7 +97,7 @@ do {                                                            \
         rv = VNET_API_ERROR_TABLE_TOO_BIG;                      \
         is_error = 1;                                           \
       }                                                         \
-    rmp->_vl_msg_id = htons((t)+REPLY_MSG_ID_BASE);             \
+    rmp->_vl_msg_id = htons((t)+(REPLY_MSG_ID_BASE));           \
     rmp->context = mp->context;                                 \
     rmp->retval = ntohl(rv);                                    \
     if (!is_error)                                              \

@@ -47,7 +47,7 @@ snat_main_t snat_main;
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
-#define REPLY_MSG_ID_BASE (sm->msg_id_base)
+#define REPLY_MSG_ID_BASE sm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
 /* Get the API version number */
