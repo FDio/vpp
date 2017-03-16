@@ -847,9 +847,8 @@ ip4_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 			       !is_enable, 0, 0);
 
 
-  vnet_feature_enable_disable ("ip4-multicast",
-			       "ip4-mfib-forward-lookup",
-			       sw_if_index, is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-multicast", "ip4-drop",
+			       sw_if_index, !is_enable, 0, 0);
 }
 
 static clib_error_t *
@@ -1021,27 +1020,26 @@ VNET_FEATURE_INIT (ip4_vxlan_bypass, static) =
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
-VNET_FEATURE_INIT (ip4_lookup, static) =
-{
-  .arc_name = "ip4-unicast",
-  .node_name = "ip4-lookup",
-  .runs_before = VNET_FEATURES ("ip4-drop"),
-};
-
 VNET_FEATURE_INIT (ip4_drop, static) =
 {
   .arc_name = "ip4-unicast",
   .node_name = "ip4-drop",
-  .runs_before = 0,	/* not before any other features */
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
+VNET_FEATURE_INIT (ip4_lookup, static) =
+{
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-lookup",
+  .runs_before = 0,	/* not before any other features */
+};
 
 /* Built-in ip4 multicast rx feature path definition */
 VNET_FEATURE_ARC_INIT (ip4_multicast, static) =
 {
   .arc_name = "ip4-multicast",
   .start_nodes = VNET_FEATURES ("ip4-input", "ip4-input-no-checksum"),
-  .end_node = "ip4-lookup-multicast",
+  .end_node = "ip4-mfib-forward-lookup",
   .arc_index_ptr = &ip4_main.lookup_main.mcast_feature_arc_index,
 };
 
@@ -1052,17 +1050,17 @@ VNET_FEATURE_INIT (ip4_vpath_mc, static) =
   .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
 };
 
-VNET_FEATURE_INIT (ip4_lookup_mc, static) =
-{
-  .arc_name = "ip4-multicast",
-  .node_name = "ip4-mfib-forward-lookup",
-  .runs_before = VNET_FEATURES ("ip4-drop"),
-};
-
 VNET_FEATURE_INIT (ip4_mc_drop, static) =
 {
   .arc_name = "ip4-multicast",
   .node_name = "ip4-drop",
+  .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
+};
+
+VNET_FEATURE_INIT (ip4_lookup_mc, static) =
+{
+  .arc_name = "ip4-multicast",
+  .node_name = "ip4-mfib-forward-lookup",
   .runs_before = 0,	/* last feature */
 };
 
