@@ -72,18 +72,16 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   int rv;
 
   ip6_sr_localsid_t *ls = 0;
-  ip6_address_t *key_copy;
 
   dpo_id_t dpo = DPO_INVALID;
 
   /* Search for the item */
-  p = hash_get_mem (sm->localsids_index_by_key, localsid_addr);
+  p = mhash_get (&sm->sr_localsids_index_hash, localsid_addr);
 
   if (p)
     {
       if (is_del)
 	{
-	  hash_pair_t *hp;
 	  /* Retrieve localsid */
 	  ls = pool_elt_at_index (sm->localsids, p[0]);
 	  /* Delete FIB entry */
@@ -116,10 +114,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 
 	  /* Delete localsid registry */
 	  pool_put (sm->localsids, ls);
-	  hp = hash_get_pair (sm->localsids_index_by_key, localsid_addr);
-	  key_copy = (void *) (hp->key);
-	  hash_unset_mem (sm->localsids_index_by_key, localsid_addr);
-	  vec_free (key_copy);
+	  mhash_unset (&sm->sr_localsids_index_hash, localsid_addr, NULL);
 	  return 1;
 	}
       else			/* create with function already existing; complain */
@@ -232,9 +227,8 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
     }
 
   /* Set hash key for searching localsid by address */
-  key_copy = vec_new (ip6_address_t, 1);
-  clib_memcpy (key_copy, localsid_addr, sizeof (ip6_address_t));
-  hash_set_mem (sm->localsids_index_by_key, key_copy, ls - sm->localsids);
+  mhash_set (&sm->sr_localsids_index_hash, localsid_addr, ls - sm->localsids,
+	     NULL);
 
   fib_table_entry_special_dpo_add (fib_index, &pfx, FIB_SOURCE_SR,
 				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
@@ -1476,8 +1470,8 @@ sr_localsids_init (vlib_main_t * vm)
 {
   /* Init memory for function keys */
   ip6_sr_main_t *sm = &sr_main;
-  sm->localsids_index_by_key =
-    hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
+  mhash_init (&sm->sr_localsids_index_hash, sizeof (uword),
+	      sizeof (ip6_address_t));
   /* Init SR behaviors DPO type */
   sr_localsid_dpo_type = dpo_register_new_type (&sr_loc_vft, sr_loc_nodes);
   /* Init SR behaviors DPO type */
