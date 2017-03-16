@@ -1258,7 +1258,6 @@ VNET_FEATURE_ARC_INIT (interface_output, static) =
 {
   .arc_name  = "interface-output",
   .start_nodes = VNET_FEATURES (0),
-  .end_node = "interface-tx",
   .arc_index_ptr = &vnet_main.interface_main.output_feature_arc_index,
 };
 

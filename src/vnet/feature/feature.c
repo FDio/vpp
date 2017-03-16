@@ -109,9 +109,6 @@ vnet_feature_init (vlib_main_t * vm)
 	  freg = freg->next;
 	}
 
-      cm->end_feature_index =
-	vnet_get_feature_index (arc_index, areg->end_node);
-
       /* next */
       areg = areg->next;
       arc_index++;
@@ -185,7 +182,6 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   vnet_feature_main_t *fm = &feature_main;
   vnet_feature_config_main_t *cm;
   i16 feature_count;
-  int is_first_or_last;
   u32 ci;
 
   if (arc_index == (u8) ~ 0)
@@ -214,18 +210,7 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   /* update feature count */
   enable_disable = (enable_disable > 0);
   feature_count += enable_disable ? 1 : -1;
-  is_first_or_last = (feature_count == enable_disable);
   ASSERT (feature_count >= 0);
-
-  if (is_first_or_last && cm->end_feature_index != ~0)
-    {
-      /*register end node */
-      ci = (enable_disable
-	    ? vnet_config_add_feature
-	    : vnet_config_del_feature)
-	(vlib_get_main (), &cm->config_main, ci, cm->end_feature_index, 0, 0);
-      cm->config_index_by_sw_if_index[sw_if_index] = ci;
-    }
 
   fm->sw_if_index_has_features[arc_index] =
     clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
