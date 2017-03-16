@@ -1,12 +1,4 @@
-# SRv6 Sample LocalSID documentation    {#srv6_plugin_doc}
-
-## Disclaimer
-
-This is a memo intended to contain documentation for the sample SRv6 LocalSID behavior plugin
-Everything that is not directly obvious should come here.
-For any feedback on content that should be explained please mailto:pcamaril@cisco.com
- 
-This plugin refers to Segment Routing. Please read the SR documentation first.
+# Sample SRv6 LocalSID documentation    {#srv6_plugin_doc}
 
 ## Introduction
 

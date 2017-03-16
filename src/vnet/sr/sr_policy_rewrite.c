@@ -349,6 +349,7 @@ update_lb (ip6_sr_policy_t * sr_policy)
   ip6_sr_sl_t *segment_list;
   ip6_sr_main_t *sm = &sr_main;
   load_balance_path_t path;
+  path.path_index = FIB_NODE_INDEX_INVALID;
   load_balance_path_t *ip4_path_vector = 0;
   load_balance_path_t *ip6_path_vector = 0;
   load_balance_path_t *b_path_vector = 0;
@@ -447,6 +448,7 @@ update_replicate (ip6_sr_policy_t * sr_policy)
   ip6_sr_sl_t *segment_list;
   ip6_sr_main_t *sm = &sr_main;
   load_balance_path_t path;
+  path.path_index = FIB_NODE_INDEX_INVALID;
   load_balance_path_t *b_path_vector = 0;
   load_balance_path_t *ip6_path_vector = 0;
   load_balance_path_t *ip4_path_vector = 0;
@@ -548,11 +550,10 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
-  ip6_address_t *key_copy;
   uword *p;
 
   /* Search for existing keys (BSID) */
-  p = hash_get_mem (sm->sr_policy_index_by_key, bsid);
+  p = mhash_get (&sm->sr_policies_index_hash, bsid);
   if (p)
     {
       /* Add SR policy that already exists; complain */
@@ -592,10 +593,8 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
   sr_policy->is_encap = is_encap;
 
   /* Copy the key */
-  key_copy = vec_new (ip6_address_t, 1);
-  clib_memcpy (key_copy, bsid, sizeof (ip6_address_t));
-  hash_set_mem (sm->sr_policy_index_by_key, key_copy,
-		sr_policy - sm->sr_policies);
+  mhash_set (&sm->sr_policies_index_hash, bsid, sr_policy - sm->sr_policies,
+	     NULL);
 
   /* Create a segment list and add the index to the SR policy */
   create_sl (sr_policy, segments, weight, is_encap);
@@ -635,14 +634,12 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
   ip6_sr_sl_t *segment_list;
-  ip6_address_t *key_copy;
   u32 *sl_index;
   uword *p;
 
-  hash_pair_t *hp;
   if (bsid)
     {
-      p = hash_get_mem (sm->sr_policy_index_by_key, bsid);
+      p = mhash_get (&sm->sr_policies_index_hash, bsid);
       if (p)
 	sr_policy = pool_elt_at_index (sm->sr_policies, p[0]);
       else
@@ -692,14 +689,11 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
   }
 
   /* Remove SR policy entry */
-  hp = hash_get_pair (sm->sr_policy_index_by_key, &sr_policy->bsid);
-  key_copy = (void *) (hp->key);
-  hash_unset_mem (sm->sr_policy_index_by_key, &sr_policy->bsid);
-  vec_free (key_copy);
+  mhash_unset (&sm->sr_policies_index_hash, &sr_policy->bsid, NULL);
   pool_put (sm->sr_policies, sr_policy);
 
   /* If FIB empty unlock it */
-  if (!pool_elts (sm->sr_policies))
+  if (!pool_elts (sm->sr_policies) && !pool_elts (sm->steer_policies))
     {
       fib_table_unlock (sm->fib_table_ip6, FIB_PROTOCOL_IP6);
       fib_table_unlock (sm->fib_table_ip4, FIB_PROTOCOL_IP6);
@@ -741,7 +735,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 
   if (bsid)
     {
-      p = hash_get_mem (sm->sr_policy_index_by_key, bsid);
+      p = mhash_get (&sm->sr_policies_index_hash, bsid);
       if (p)
 	sr_policy = pool_elt_at_index (sm->sr_policies, p[0]);
       else
@@ -3208,8 +3202,8 @@ sr_policy_rewrite_init (vlib_main_t * vm)
   ip6_sr_main_t *sm = &sr_main;
 
   /* Init memory for sr policy keys (bsid <-> ip6_address_t) */
-  sm->sr_policy_index_by_key = hash_create_mem (0, sizeof (ip6_address_t),
-						sizeof (uword));
+  mhash_init (&sm->sr_policies_index_hash, sizeof (uword),
+	      sizeof (ip6_address_t));
 
   /* Init SR VPO DPOs type */
   sr_pr_encaps_dpo_type =
