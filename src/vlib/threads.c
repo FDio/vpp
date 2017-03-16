@@ -681,9 +681,10 @@ start_workers (vlib_main_t * vm)
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 		rt->cpu_index = vm_clone->cpu_index;
 		/* copy initial runtime_data from node */
-		if (n->runtime_data_bytes > 0)
+		if (n->runtime_data && n->runtime_data_bytes > 0)
 		  clib_memcpy (rt->runtime_data, n->runtime_data,
-			       VLIB_NODE_RUNTIME_DATA_SIZE);
+			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					 n->runtime_data_bytes));
 		else if (CLIB_DEBUG > 0)
 		  memset (rt->runtime_data, 0xfe,
 			  VLIB_NODE_RUNTIME_DATA_SIZE);
@@ -696,9 +697,10 @@ start_workers (vlib_main_t * vm)
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 		rt->cpu_index = vm_clone->cpu_index;
 		/* copy initial runtime_data from node */
-		if (n->runtime_data_bytes > 0)
+		if (n->runtime_data && n->runtime_data_bytes > 0)
 		  clib_memcpy (rt->runtime_data, n->runtime_data,
-			       VLIB_NODE_RUNTIME_DATA_SIZE);
+			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+					 n->runtime_data_bytes));
 		else if (CLIB_DEBUG > 0)
 		  memset (rt->runtime_data, 0xfe,
 			  VLIB_NODE_RUNTIME_DATA_SIZE);
@@ -961,8 +963,10 @@ vlib_worker_thread_node_runtime_update (void)
 	vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 	rt->cpu_index = vm_clone->cpu_index;
 	/* copy runtime_data, will be overwritten later for existing rt */
-	clib_memcpy (rt->runtime_data, n->runtime_data,
-		     VLIB_NODE_RUNTIME_DATA_SIZE);
+	if (n->runtime_data && n->runtime_data_bytes > 0)
+	  clib_memcpy (rt->runtime_data, n->runtime_data,
+		       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+				 n->runtime_data_bytes));
       }
 
       for (j = 0; j < vec_len (old_rt); j++)
@@ -985,8 +989,10 @@ vlib_worker_thread_node_runtime_update (void)
 	vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 	rt->cpu_index = vm_clone->cpu_index;
 	/* copy runtime_data, will be overwritten later for existing rt */
-	clib_memcpy (rt->runtime_data, n->runtime_data,
-		     VLIB_NODE_RUNTIME_DATA_SIZE);
+	if (n->runtime_data && n->runtime_data_bytes > 0)
+	  clib_memcpy (rt->runtime_data, n->runtime_data,
+		       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
+				 n->runtime_data_bytes));
       }
 
       for (j = 0; j < vec_len (old_rt); j++)
