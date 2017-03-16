@@ -61,8 +61,8 @@ typedef struct mpls_label_dpo_t
  * Should this get any bigger then we will need to reconsider how many labels
  * can be pushed in one object.
  */
-_Static_assert((sizeof(mpls_label_dpo_t) <= CLIB_CACHE_LINE_BYTES),
-	       "MPLS label DPO is larger than one cache line.");
+STATIC_ASSERT((sizeof(mpls_label_dpo_t) <= CLIB_CACHE_LINE_BYTES),
+              "MPLS label DPO is larger than one cache line.");
 
 /**
  * @brief Create an MPLS label object
