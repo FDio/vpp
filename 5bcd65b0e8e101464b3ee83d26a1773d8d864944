@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_6a2c0903",
+        "filename": "src/vnet/gre/gre.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-16T17:49:37Z",
+      "side": 1,
+      "message": "t-\u003eis_ipv6 is not needed.",
+      "parentUuid": "3a3291f1_fcca074e",
+      "revId": "5bcd65b0e8e101464b3ee83d26a1773d8d864944",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_3a73f6e8",
         "filename": "src/vnet/gre/gre.c",
         "patchSetId": 4
