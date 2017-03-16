@@ -434,9 +434,7 @@ register_node (vlib_main_t * vm, vlib_node_registration_t * r)
       rt->errors[i] = vlib_error_set (n->index, i);
 
     STATIC_ASSERT_SIZEOF (vlib_node_runtime_t, 128);
-    ASSERT (vec_len (n->runtime_data) <=
-	    sizeof (vlib_node_runtime_t) -
-	    STRUCT_OFFSET_OF (vlib_node_runtime_t, runtime_data));
+    ASSERT (vec_len (n->runtime_data) <= VLIB_NODE_RUNTIME_DATA_SIZE);
 
     if (vec_len (n->runtime_data) > 0)
       clib_memcpy (rt->runtime_data, n->runtime_data,
