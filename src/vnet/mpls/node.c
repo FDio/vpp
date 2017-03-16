@@ -206,6 +206,7 @@ mpls_input_inline (vlib_main_t * vm,
             }
 	  else
             {
+              next0 = MPLS_INPUT_NEXT_LOOKUP;
 	      vnet_feature_arc_start(mm->input_feature_arc_index, sw_if_index0, &next0, b0);
               vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
             }

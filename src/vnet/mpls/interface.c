@@ -66,8 +66,8 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
 		       FIB_PROTOCOL_MPLS);
     }
 
-  vnet_feature_enable_disable ("mpls-input", "mpls-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("mpls-input", "mpls-not-enabled",
+                               sw_if_index, !is_enable, 0, 0);
 
 }
 
