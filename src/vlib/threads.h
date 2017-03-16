@@ -201,18 +201,6 @@ typedef enum
 
 void vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which);
 
-static inline void
-vlib_worker_thread_barrier_check (void)
-{
-  if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
-    {
-      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
-      while (*vlib_worker_threads->wait_at_barrier)
-	;
-      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
-    }
-}
-
 #define foreach_vlib_main(body)                         \
 do {                                                    \
   vlib_main_t ** __vlib_mains = 0, *this_vlib_main;     \
@@ -221,6 +209,8 @@ do {                                                    \
   for (ii = 0; ii < vec_len (vlib_mains); ii++)         \
     {                                                   \
       this_vlib_main = vlib_mains[ii];                  \
+      ASSERT (ii == 0 ||                                \
+	      this_vlib_main->parked_at_barrier == 1);  \
       if (this_vlib_main)                               \
         vec_add1 (__vlib_mains, this_vlib_main);        \
     }                                                   \
@@ -320,6 +310,8 @@ typedef struct
 
 extern vlib_thread_main_t vlib_thread_main;
 
+#include <vlib/global_funcs.h>
+
 #define VLIB_REGISTER_THREAD(x,...)                     \
   __VA_ARGS__ vlib_thread_registration_t x;             \
 static void __vlib_add_thread_registration_##x (void)   \
@@ -354,6 +346,26 @@ always_inline u32
 vlib_get_current_worker_index ()
 {
   return os_get_cpu_number () - 1;
+}
+
+static inline void
+vlib_worker_thread_barrier_check (void)
+{
+  if (PREDICT_FALSE (*vlib_worker_threads->wait_at_barrier))
+    {
+      vlib_main_t *vm;
+      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, 1);
+      if (CLIB_DEBUG > 0)
+	{
+	  vm = vlib_get_main ();
+	  vm->parked_at_barrier = 1;
+	}
+      while (*vlib_worker_threads->wait_at_barrier)
+	;
+      if (CLIB_DEBUG > 0)
+	vm->parked_at_barrier = 0;
+      clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
+    }
 }
 
 always_inline vlib_main_t *
