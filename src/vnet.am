@@ -531,7 +531,7 @@ libvnet_la_SOURCES +=				\
  vnet/mpls/mpls_lookup.c			\
  vnet/mpls/mpls_output.c			\
  vnet/mpls/mpls_features.c			\
- vnet/mpls/node.c				\
+ vnet/mpls/mpls_input.c				\
  vnet/mpls/interface.c			        \
  vnet/mpls/mpls_tunnel.c		        \
  vnet/mpls/pg.c			        \
