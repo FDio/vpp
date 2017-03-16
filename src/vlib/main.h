@@ -174,6 +174,11 @@ typedef struct vlib_main_t
   volatile u32 api_queue_nonempty;
   void (*queue_signal_callback) (struct vlib_main_t *);
   u8 **argv;
+
+  /* debugging */
+#if CLIB_DEBUG > 0
+  volatile int parked_at_barrier;
+#endif
 } vlib_main_t;
 
 /* Global main structure. */
