@@ -173,6 +173,7 @@ typedef struct
     } l2;
   };
   u8 traffic_type;					/**< Traffic type (IPv4, IPv6, L2) */
+  u8 padding[3];
 } sr_steering_key_t;
 
 typedef struct
@@ -186,25 +187,8 @@ typedef struct
  */
 typedef struct
 {
-  /* ip6-lookup next index for imposition FIB entries */
-  u32 ip6_lookup_sr_next_index;
-
-  /* ip6-replicate next index for multicast tunnel */
-  u32 ip6_lookup_sr_spray_index;
-
-  /* IP4-lookup -> SR rewrite next index */
-  u32 ip4_lookup_sr_policy_rewrite_encaps_index;
-  u32 ip4_lookup_sr_policy_rewrite_insert_index;
-
-  /* IP6-lookup -> SR rewrite next index */
-  u32 ip6_lookup_sr_policy_rewrite_encaps_index;
-  u32 ip6_lookup_sr_policy_rewrite_insert_index;
-
   /* L2-input -> SR rewrite next index */
   u32 l2_sr_policy_rewrite_index;
-
-  /* IP6-lookup -> SR LocalSID (SR End processing) index */
-  u32 ip6_lookup_sr_localsid_index;
 
   /* SR SID lists */
   ip6_sr_sl_t *sid_lists;
@@ -212,20 +196,20 @@ typedef struct
   /* SR policies */
   ip6_sr_policy_t *sr_policies;
 
-  /* Find an SR policy by its BindingSID */
-  ip6_address_t *sr_policy_index_by_key;
+  /* Hash table mapping BindingSID to SR policy */
+  mhash_t sr_policies_index_hash;
 
   /* Pool of SR localsid instances */
   ip6_sr_localsid_t *localsids;
 
-  /* Find a SR localsid instance based on its functionID */
-  ip6_address_t *localsids_index_by_key;
+  /* Hash table mapping LOC:FUNC to SR LocalSID instance */
+  mhash_t sr_localsids_index_hash;
 
   /* Pool of SR steer policies instances */
   ip6_sr_steering_policy_t *steer_policies;
 
-  /* Find a steer policy based on its classifier */
-  sr_steering_key_t *steer_policies_index_by_key;
+  /* Hash table mapping steering rules to SR steer instance */
+  mhash_t sr_steer_policies_hash;
 
   /* L2 steering ifaces - sr_policies */
   u32 *sw_iface_sr_policies;
