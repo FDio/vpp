@@ -57,61 +57,8 @@
 
 acl_main_t acl_main;
 
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+sm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO2(t, body)                                   \
-do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+am->msg_id_base);                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
-#define REPLY_MACRO3(t, n, body)                                \
-do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp) + n);                 \
-    rmp->_vl_msg_id = ntohs((t)+am->msg_id_base);                               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
+#define REPLY_MSG_ID_BASE am->msg_id_base
+#include <vlibapi/api_helper_macros.h>
 
 /* List of message types that this plugin understands */
 
@@ -1409,7 +1356,7 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
 static void
 vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
 {
-  acl_main_t *sm = &acl_main;
+  acl_main_t *am = &acl_main;
   vl_api_acl_del_reply_t *rmp;
   int rv;
 
@@ -1421,8 +1368,8 @@ vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
 static void
 vl_api_acl_interface_add_del_t_handler (vl_api_acl_interface_add_del_t * mp)
 {
-  acl_main_t *sm = &acl_main;
-  vnet_interface_main_t *im = &sm->vnet_main->interface_main;
+  acl_main_t *am = &acl_main;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   vl_api_acl_interface_add_del_reply_t *rmp;
   int rv = -1;
@@ -1441,11 +1388,11 @@ static void
 vl_api_acl_interface_set_acl_list_t_handler
   (vl_api_acl_interface_set_acl_list_t * mp)
 {
-  acl_main_t *sm = &acl_main;
+  acl_main_t *am = &acl_main;
   vl_api_acl_interface_set_acl_list_reply_t *rmp;
   int rv = 0;
   int i;
-  vnet_interface_main_t *im = &sm->vnet_main->interface_main;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   if (pool_is_free_index(im->sw_interfaces, sw_if_index))
@@ -1667,7 +1614,7 @@ vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
 static void
 vl_api_macip_acl_del_t_handler (vl_api_macip_acl_del_t * mp)
 {
-  acl_main_t *sm = &acl_main;
+  acl_main_t *am = &acl_main;
   vl_api_macip_acl_del_reply_t *rmp;
   int rv;
 
@@ -1680,10 +1627,10 @@ static void
 vl_api_macip_acl_interface_add_del_t_handler
   (vl_api_macip_acl_interface_add_del_t * mp)
 {
-  acl_main_t *sm = &acl_main;
+  acl_main_t *am = &acl_main;
   vl_api_macip_acl_interface_add_del_reply_t *rmp;
   int rv = -1;
-  vnet_interface_main_t *im = &sm->vnet_main->interface_main;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   if (pool_is_free_index(im->sw_interfaces, sw_if_index))
@@ -1819,9 +1766,9 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
 static clib_error_t *
 acl_plugin_api_hookup (vlib_main_t * vm)
 {
-  acl_main_t *sm = &acl_main;
+  acl_main_t *am = &acl_main;
 #define _(N,n)                                                  \
-    vl_msg_api_set_handlers((VL_API_##N + sm->msg_id_base),     \
+    vl_msg_api_set_handlers((VL_API_##N + am->msg_id_base),     \
                            #n,					\
                            vl_api_##n##_t_handler,              \
                            vl_noop_handler,                     \
@@ -1839,10 +1786,10 @@ acl_plugin_api_hookup (vlib_main_t * vm)
 #undef vl_msg_name_crc_list
 
 static void
-setup_message_id_table (acl_main_t * sm, api_main_t * am)
+setup_message_id_table (acl_main_t * am, api_main_t * apim)
 {
 #define _(id,n,crc) \
-  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  vl_msg_api_add_msg_name_crc (apim, #n "_" #crc, id + am->msg_id_base);
   foreach_vl_msg_name_crc_acl;
 #undef _
 }
@@ -1852,11 +1799,11 @@ register_match_action_nexts (u32 next_in_ip4, u32 next_in_ip6,
 			     u32 next_out_ip4, u32 next_out_ip6)
 {
   acl_main_t *am = &acl_main;
-  u32 act = am->n_match_actions;
   if (am->n_match_actions == 255)
     {
       return ~0;
     }
+  u32 act = am->n_match_actions;
   am->n_match_actions++;
   am->acl_in_ip4_match_next[act] = next_in_ip4;
   am->acl_in_ip6_match_next[act] = next_in_ip6;

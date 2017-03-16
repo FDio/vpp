@@ -58,6 +58,9 @@ flowperpkt_main_t flowperpkt_main;
 #include <flowperpkt/flowperpkt_all_api_h.h>
 #undef vl_api_version
 
+#define REPLY_MSG_ID_BASE fm->msg_id_base
+#include <vlibapi/api_helper_macros.h>
+
 /* Define the per-interface configurable features */
 /* *INDENT-OFF* */
 VNET_FEATURE_INIT (flow_perpacket_ipv4, static) =
@@ -75,50 +78,12 @@ VNET_FEATURE_INIT (flow_perpacket_l2, static) =
 };
 /* *INDENT-ON* */
 
-/*
- * A handy macro to set up a message reply.
- * Assumes that the following variables are available:
- * mp - pointer to request message
- * rmp - pointer to reply message type
- * rv - return value
- */
-#define REPLY_MACRO(t)                                          \
-do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
-    vl_api_client_index_to_input_queue (mp->client_index);      \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t)+fm->msg_id_base);               \
-    rmp->context = mp->context;                                 \
-    rmp->retval = ntohl(rv);                                    \
-                                                                \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
-} while(0);
-
 /* Macro to finish up custom dump fns */
 #define FINISH                                  \
     vec_add1 (s, 0);                            \
     vl_print (handle, (char *)s);               \
     vec_free (s);                               \
     return handle;
-
-#define VALIDATE_SW_IF_INDEX(mp)				\
- do { u32 __sw_if_index = ntohl(mp->sw_if_index);		\
-    vnet_main_t *__vnm = vnet_get_main();                       \
-    if (pool_is_free_index(__vnm->interface_main.sw_interfaces, \
-                           __sw_if_index)) {                    \
-        rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;                \
-        goto bad_sw_if_index;                                   \
-    }                                                           \
-} while(0);
-
-#define BAD_SW_IF_INDEX_LABEL                   \
-do {                                            \
-bad_sw_if_index:                                \
-    ;                                           \
-} while (0);
 
 /**
  * @brief Create an IPFIX template packet rewrite string
