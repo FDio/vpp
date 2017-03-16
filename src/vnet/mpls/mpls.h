@@ -86,16 +86,12 @@ extern mpls_main_t mpls_main;
 
 extern clib_error_t * mpls_feature_init(vlib_main_t * vm);
 
-format_function_t format_mpls_protocol;
-format_function_t format_mpls_encap_index;
-
 format_function_t format_mpls_eos_bit;
 format_function_t format_mpls_unicast_header_net_byte_order;
 format_function_t format_mpls_unicast_label;
 format_function_t format_mpls_header;
 
 extern vlib_node_registration_t mpls_input_node;
-extern vlib_node_registration_t mpls_policy_encap_node;
 extern vlib_node_registration_t mpls_output_node;
 extern vlib_node_registration_t mpls_midchain_node;
 
@@ -117,48 +113,6 @@ void mpls_sw_interface_enable_disable (mpls_main_t * mm,
 u8 mpls_sw_interface_is_enabled (u32 sw_if_index);
 
 int mpls_fib_reset_labels (u32 fib_id);
-
-#define foreach_mpls_input_next			\
-_(DROP, "error-drop")                           \
-_(LOOKUP, "mpls-lookup")
-
-typedef enum {
-#define _(s,n) MPLS_INPUT_NEXT_##s,
-  foreach_mpls_input_next
-#undef _
-  MPLS_INPUT_N_NEXT,
-} mpls_input_next_t;
-
-#define foreach_mpls_lookup_next        	\
-_(DROP, "error-drop")                           \
-_(IP4_INPUT, "ip4-input")                       \
-_(L2_OUTPUT, "l2-output")
-
-// FIXME remove.
-typedef enum {
-#define _(s,n) MPLS_LOOKUP_NEXT_##s,
-  foreach_mpls_lookup_next
-#undef _
-  MPLS_LOOKUP_N_NEXT,
-} mpls_lookup_next_t;
-
-#define foreach_mpls_output_next        	\
-_(DROP, "error-drop")
-
-typedef enum {
-#define _(s,n) MPLS_OUTPUT_NEXT_##s,
-  foreach_mpls_output_next
-#undef _
-  MPLS_OUTPUT_N_NEXT,
-} mpls_output_next_t;
-
-typedef struct {
-  u32 fib_index;
-  u32 entry_index;
-  u32 dest;
-  u32 s_bit;
-  u32 label;
-} show_mpls_fib_t;
 
 int
 mpls_dest_cmp(void * a1, void * a2);
