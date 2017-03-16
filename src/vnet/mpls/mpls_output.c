@@ -29,6 +29,16 @@ typedef struct {
   u8 packet_data[64 - 1*sizeof(u32)];
 } mpls_output_trace_t;
 
+#define foreach_mpls_output_next        	\
+_(DROP, "error-drop")
+
+typedef enum {
+#define _(s,n) MPLS_OUTPUT_NEXT_##s,
+  foreach_mpls_output_next
+#undef _
+  MPLS_OUTPUT_N_NEXT,
+} mpls_output_next_t;
+
 static u8 *
 format_mpls_output_trace (u8 * s, va_list * args)
 {

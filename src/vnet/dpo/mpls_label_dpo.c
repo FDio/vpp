@@ -160,6 +160,33 @@ typedef struct mpls_label_imposition_trace_t_
     mpls_unicast_header_t hdr;
 } mpls_label_imposition_trace_t;
 
+always_inline mpls_unicast_header_t *
+mpls_label_paint (vlib_buffer_t * b0,
+                  mpls_label_dpo_t *mld0,
+                  u8 ttl0)
+{
+    mpls_unicast_header_t *hdr0;
+
+    vlib_buffer_advance(b0, -(mld0->mld_n_hdr_bytes));
+
+    hdr0 = vlib_buffer_get_current(b0);
+
+    if (PREDICT_TRUE(1 == mld0->mld_n_labels))
+    {
+        /* optimise for the common case of one label */
+        *hdr0 = mld0->mld_hdr[0];
+    }
+    else
+    {
+        clib_memcpy(hdr0, mld0->mld_hdr, mld0->mld_n_hdr_bytes);
+        hdr0 = hdr0 + (mld0->mld_n_labels - 1);
+    }
+    /* fixup the TTL for the inner most label */
+    ((char*)hdr0)[3] = ttl0;
+
+    return (hdr0);
+}
+
 always_inline uword
 mpls_label_imposition_inline (vlib_main_t * vm,
                               vlib_node_runtime_t * node,
@@ -180,45 +207,59 @@ mpls_label_imposition_inline (vlib_main_t * vm,
 
         vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
 
-        while (n_left_from >= 4 && n_left_to_next >= 2)
+        while (n_left_from >= 8 && n_left_to_next >= 4)
         {
-            mpls_unicast_header_t *hdr0, *hdr1;
-            mpls_label_dpo_t *mld0, *mld1;
-            u32 bi0, mldi0, bi1, mldi1;
-            vlib_buffer_t * b0, *b1;
-            u32 next0, next1;
-            u8 ttl0, ttl1;
+            u32 bi0, mldi0, bi1, mldi1, bi2, mldi2, bi3, mldi3;
+            mpls_unicast_header_t *hdr0, *hdr1, *hdr2, *hdr3;
+            mpls_label_dpo_t *mld0, *mld1, *mld2, *mld3;
+            vlib_buffer_t * b0, *b1, * b2, *b3;
+            u32 next0, next1, next2, next3;
+            u8 ttl0, ttl1,ttl2, ttl3 ;
 
             bi0 = to_next[0] = from[0];
             bi1 = to_next[1] = from[1];
+            bi2 = to_next[2] = from[2];
+            bi3 = to_next[3] = from[3];
 
             /* Prefetch next iteration. */
             {
-                vlib_buffer_t * p2, * p3;
+                vlib_buffer_t * p2, * p3, *p4, *p5;
 
                 p2 = vlib_get_buffer (vm, from[2]);
                 p3 = vlib_get_buffer (vm, from[3]);
+                p4 = vlib_get_buffer (vm, from[4]);
+                p5 = vlib_get_buffer (vm, from[5]);
 
                 vlib_prefetch_buffer_header (p2, STORE);
                 vlib_prefetch_buffer_header (p3, STORE);
+                vlib_prefetch_buffer_header (p4, STORE);
+                vlib_prefetch_buffer_header (p5, STORE);
 
                 CLIB_PREFETCH (p2->data, sizeof (hdr0[0]), STORE);
                 CLIB_PREFETCH (p3->data, sizeof (hdr0[0]), STORE);
+                CLIB_PREFETCH (p4->data, sizeof (hdr0[0]), STORE);
+                CLIB_PREFETCH (p5->data, sizeof (hdr0[0]), STORE);
             }
 
-            from += 2;
-            to_next += 2;
-            n_left_from -= 2;
-            n_left_to_next -= 2;
+            from += 4;
+            to_next += 4;
+            n_left_from -= 4;
+            n_left_to_next -= 4;
 
             b0 = vlib_get_buffer (vm, bi0);
             b1 = vlib_get_buffer (vm, bi1);
+            b2 = vlib_get_buffer (vm, bi2);
+            b3 = vlib_get_buffer (vm, bi3);
 
             /* dst lookup was done by ip4 lookup */
             mldi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             mldi1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+            mldi2 = vnet_buffer(b2)->ip.adj_index[VLIB_TX];
+            mldi3 = vnet_buffer(b3)->ip.adj_index[VLIB_TX];
             mld0 = mpls_label_dpo_get(mldi0);
             mld1 = mpls_label_dpo_get(mldi1);
+            mld2 = mpls_label_dpo_get(mldi2);
+            mld3 = mpls_label_dpo_get(mldi3);
 
             if (payload_is_ip4)
             {
@@ -227,23 +268,37 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                  */
                 ip4_header_t * ip0 = vlib_buffer_get_current(b0);
                 ip4_header_t * ip1 = vlib_buffer_get_current(b1);
+                ip4_header_t * ip2 = vlib_buffer_get_current(b2);
+                ip4_header_t * ip3 = vlib_buffer_get_current(b3);
                 u32 checksum0;
                 u32 checksum1;
+                u32 checksum2;
+                u32 checksum3;
 
                 checksum0 = ip0->checksum + clib_host_to_net_u16 (0x0100);
                 checksum1 = ip1->checksum + clib_host_to_net_u16 (0x0100);
+                checksum2 = ip2->checksum + clib_host_to_net_u16 (0x0100);
+                checksum3 = ip3->checksum + clib_host_to_net_u16 (0x0100);
 
                 checksum0 += checksum0 >= 0xffff;
                 checksum1 += checksum1 >= 0xffff;
+                checksum2 += checksum2 >= 0xffff;
+                checksum3 += checksum3 >= 0xffff;
 
                 ip0->checksum = checksum0;
                 ip1->checksum = checksum1;
+                ip2->checksum = checksum2;
+                ip3->checksum = checksum3;
 
                 ip0->ttl -= 1;
                 ip1->ttl -= 1;
+                ip2->ttl -= 1;
+                ip3->ttl -= 1;
 
                 ttl1 = ip1->ttl;
                 ttl0 = ip0->ttl;
+                ttl3 = ip3->ttl;
+                ttl2 = ip2->ttl;
             }
             else if (payload_is_ip6)
             {
@@ -252,13 +307,18 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                  */
                 ip6_header_t * ip0 = vlib_buffer_get_current(b0);
                 ip6_header_t * ip1 = vlib_buffer_get_current(b1);
-
+                ip6_header_t * ip2 = vlib_buffer_get_current(b2);
+                ip6_header_t * ip3 = vlib_buffer_get_current(b3);
 
                 ip0->hop_limit -= 1;
                 ip1->hop_limit -= 1;
+                ip2->hop_limit -= 1;
+                ip3->hop_limit -= 1;
 
                 ttl0 = ip0->hop_limit;
                 ttl1 = ip1->hop_limit;
+                ttl2 = ip2->hop_limit;
+                ttl3 = ip3->hop_limit;
             }
             else
             {
@@ -294,30 +354,45 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                 {
                     ttl1 = 255;
                 }
+                if (PREDICT_TRUE(vnet_buffer(b2)->mpls.first))
+                {
+                    ASSERT(2 != vnet_buffer (b2)->mpls.ttl);
+
+                    ttl2 = vnet_buffer(b2)->mpls.ttl - 1;
+                }
+                else
+                {
+                    ttl2 = 255;
+                }
+                if (PREDICT_TRUE(vnet_buffer(b3)->mpls.first))
+                {
+                    ASSERT(1 != vnet_buffer (b3)->mpls.ttl);
+                    ttl3 = vnet_buffer(b3)->mpls.ttl - 1;
+                }
+                else
+                {
+                    ttl3 = 255;
+                }
             }
             vnet_buffer(b0)->mpls.first = 0;
             vnet_buffer(b1)->mpls.first = 0;
+            vnet_buffer(b2)->mpls.first = 0;
+            vnet_buffer(b3)->mpls.first = 0;
 
             /* Paint the MPLS header */
-            vlib_buffer_advance(b0, -(mld0->mld_n_hdr_bytes));
-            vlib_buffer_advance(b1, -(mld1->mld_n_hdr_bytes));
-
-            hdr0 = vlib_buffer_get_current(b0);
-            hdr1 = vlib_buffer_get_current(b1);
-
-            clib_memcpy(hdr0, mld0->mld_hdr, mld0->mld_n_hdr_bytes);
-            clib_memcpy(hdr1, mld1->mld_hdr, mld1->mld_n_hdr_bytes);
-
-            /* fixup the TTL for the inner most label */
-            hdr0 = hdr0 + (mld0->mld_n_labels - 1);
-            hdr1 = hdr1 + (mld1->mld_n_labels - 1);
-            ((char*)hdr0)[3] = ttl0;
-            ((char*)hdr1)[3] = ttl1;
+            hdr0 = mpls_label_paint(b0, mld0, ttl0);
+            hdr1 = mpls_label_paint(b1, mld1, ttl1);
+            hdr2 = mpls_label_paint(b2, mld2, ttl2);
+            hdr3 = mpls_label_paint(b3, mld3, ttl3);
 
             next0 = mld0->mld_dpo.dpoi_next_node;
             next1 = mld1->mld_dpo.dpoi_next_node;
+            next2 = mld2->mld_dpo.dpoi_next_node;
+            next3 = mld3->mld_dpo.dpoi_next_node;
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mld0->mld_dpo.dpoi_index;
             vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mld1->mld_dpo.dpoi_index;
+            vnet_buffer(b2)->ip.adj_index[VLIB_TX] = mld2->mld_dpo.dpoi_index;
+            vnet_buffer(b3)->ip.adj_index[VLIB_TX] = mld3->mld_dpo.dpoi_index;
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -331,10 +406,23 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                     vlib_add_trace (vm, node, b1, sizeof (*tr));
                 tr->hdr = *hdr1;
             }
+            if (PREDICT_FALSE(b2->flags & VLIB_BUFFER_IS_TRACED))
+            {
+                mpls_label_imposition_trace_t *tr =
+                    vlib_add_trace (vm, node, b2, sizeof (*tr));
+                tr->hdr = *hdr2;
+            }
+            if (PREDICT_FALSE(b3->flags & VLIB_BUFFER_IS_TRACED))
+            {
+                mpls_label_imposition_trace_t *tr =
+                    vlib_add_trace (vm, node, b3, sizeof (*tr));
+                tr->hdr = *hdr3;
+            }
 
-            vlib_validate_buffer_enqueue_x2(vm, node, next_index, to_next,
+            vlib_validate_buffer_enqueue_x4(vm, node, next_index, to_next,
                                             n_left_to_next,
-                                            bi0, bi1, next0, next1);
+                                            bi0, bi1, bi2, bi3,
+                                            next0, next1, next2, next3);
         }
 
         while (n_left_from > 0 && n_left_to_next > 0)
