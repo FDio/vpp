@@ -6,7 +6,8 @@ from socket import AF_INET6
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
-from vpp_ip_route import VppIpRoute, VppRoutePath, find_route
+from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
+    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -979,6 +980,103 @@ class TestIPNull(VppTestCase):
 
         # 1 = "Communication with destination administratively prohibited"
         self.assertEqual(icmp.code, 1)
+
+
+class TestIPDisabled(VppTestCase):
+    """ IPv6 disabled """
+
+    def setUp(self):
+        super(TestIPDisabled, self).setUp()
+
+        # create 2 pg interfaces
+        self.create_pg_interfaces(range(2))
+
+        # PG0 is IP enalbed
+        self.pg0.admin_up()
+        self.pg0.config_ip6()
+        self.pg0.resolve_ndp()
+
+        # PG 1 is not IP enabled
+        self.pg1.admin_up()
+
+    def tearDown(self):
+        super(TestIPDisabled, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def send_and_assert_no_replies(self, intf, pkts, remark):
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        for i in self.pg_interfaces:
+            i.get_capture(0)
+            i.assert_nothing_captured(remark=remark)
+
+    def test_ip_disabled(self):
+        """ IP Disabled """
+
+        #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        #
+        route_ff_01 = VppIpMRoute(
+            self,
+            "::",
+            "ffef::1", 128,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)],
+            is_ip6=1)
+        route_ff_01.add_vpp_config()
+
+        pu = (Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac) /
+              IPv6(src="2001::1", dst=self.pg0.remote_ip6) /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 100))
+        pm = (Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac) /
+              IPv6(src="2001::1", dst="ffef::1") /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 100))
+
+        #
+        # PG1 does not forward IP traffic
+        #
+        self.send_and_assert_no_replies(self.pg1, pu, "IPv6 disabled")
+        self.send_and_assert_no_replies(self.pg1, pm, "IPv6 disabled")
+
+        #
+        # IP enable PG1
+        #
+        self.pg1.config_ip6()
+
+        #
+        # Now we get packets through
+        #
+        self.pg1.add_stream(pu)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0.get_capture(1)
+
+        self.pg1.add_stream(pm)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0.get_capture(1)
+
+        #
+        # Disable PG1
+        #
+        self.pg1.unconfig_ip6()
+
+        #
+        # PG1 does not forward IP traffic
+        #
+        self.send_and_assert_no_replies(self.pg1, pu, "IPv6 disabled")
+        self.send_and_assert_no_replies(self.pg1, pm, "IPv6 disabled")
 
 
 if __name__ == '__main__':

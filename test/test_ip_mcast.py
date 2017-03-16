@@ -4,30 +4,14 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal
+from vpp_ip_route import VppIpMRoute, VppMRoutePath, VppMFibSignal, \
+    MRouteItfFlags, MRouteEntryFlags
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, getmacbyip, ICMP
 from scapy.layers.inet6 import IPv6, getmacbyip6
 from util import ppp
-
-
-class MRouteItfFlags:
-    MFIB_ITF_FLAG_NONE = 0
-    MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
-    MFIB_ITF_FLAG_ACCEPT = 2
-    MFIB_ITF_FLAG_FORWARD = 4
-    MFIB_ITF_FLAG_SIGNAL_PRESENT = 8
-    MFIB_ITF_FLAG_INTERNAL_COPY = 16
-
-
-class MRouteEntryFlags:
-    MFIB_ENTRY_FLAG_NONE = 0
-    MFIB_ENTRY_FLAG_SIGNAL = 1
-    MFIB_ENTRY_FLAG_DROP = 2
-    MFIB_ENTRY_FLAG_CONNECTED = 4
-    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
 
 #
 # The number of packets sent is set to 90 so that when we replicate more than 3

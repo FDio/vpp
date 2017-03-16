@@ -5,7 +5,8 @@ import unittest
 
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
+    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
@@ -544,6 +545,102 @@ class TestIPNull(VppTestCase):
         self.assertEqual(icmpcodes[icmp.type][icmp.code], "host-prohibited")
         self.assertEqual(icmp.src, self.pg0.remote_ip4)
         self.assertEqual(icmp.dst, "10.0.0.2")
+
+
+class TestIPDisabled(VppTestCase):
+    """ IPv4 disabled """
+
+    def setUp(self):
+        super(TestIPDisabled, self).setUp()
+
+        # create 2 pg interfaces
+        self.create_pg_interfaces(range(2))
+
+        # PG0 is IP enalbed
+        self.pg0.admin_up()
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+
+        # PG 1 is not IP enabled
+        self.pg1.admin_up()
+
+    def tearDown(self):
+        super(TestIPDisabled, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def send_and_assert_no_replies(self, intf, pkts, remark):
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        for i in self.pg_interfaces:
+            i.get_capture(0)
+            i.assert_nothing_captured(remark=remark)
+
+    def test_ip_disabled(self):
+        """ IP Disabled """
+
+        #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        #
+        route_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232_1_1_1.add_vpp_config()
+
+        pu = (Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac) /
+              IP(src="10.10.10.10", dst=self.pg0.remote_ip4) /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 100))
+        pm = (Ether(src=self.pg1.remote_mac,
+                    dst=self.pg1.local_mac) /
+              IP(src="10.10.10.10", dst="232.1.1.1") /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 100))
+
+        #
+        # PG1 does not forward IP traffic
+        #
+        self.send_and_assert_no_replies(self.pg1, pu, "IP disabled")
+        self.send_and_assert_no_replies(self.pg1, pm, "IP disabled")
+
+        #
+        # IP enable PG1
+        #
+        self.pg1.config_ip4()
+
+        #
+        # Now we get packets through
+        #
+        self.pg1.add_stream(pu)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0.get_capture(1)
+
+        self.pg1.add_stream(pm)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0.get_capture(1)
+
+        #
+        # Disable PG1
+        #
+        self.pg1.unconfig_ip4()
+
+        #
+        # PG1 does not forward IP traffic
+        #
+        self.send_and_assert_no_replies(self.pg1, pu, "IP disabled")
+        self.send_and_assert_no_replies(self.pg1, pm, "IP disabled")
 
 
 if __name__ == '__main__':

@@ -223,10 +223,6 @@ pg_interface_add_or_get (pg_main_t * pg, uword if_id)
 					      CLIB_CACHE_LINE_BYTES);
 	  *pi->lockp = 0;
 	}
-
-      ip4_sw_interface_enable_disable (pi->hw_if_index, 1);
-      ip6_sw_interface_enable_disable (pi->hw_if_index, 1);
-      mpls_sw_interface_enable_disable (&mpls_main, pi->hw_if_index, 1);
     }
 
   return i;

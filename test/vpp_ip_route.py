@@ -12,6 +12,23 @@ MPLS_IETF_MAX_LABEL = 0xfffff
 MPLS_LABEL_INVALID = MPLS_IETF_MAX_LABEL + 1
 
 
+class MRouteItfFlags:
+    MFIB_ITF_FLAG_NONE = 0
+    MFIB_ITF_FLAG_NEGATE_SIGNAL = 1
+    MFIB_ITF_FLAG_ACCEPT = 2
+    MFIB_ITF_FLAG_FORWARD = 4
+    MFIB_ITF_FLAG_SIGNAL_PRESENT = 8
+    MFIB_ITF_FLAG_INTERNAL_COPY = 16
+
+
+class MRouteEntryFlags:
+    MFIB_ENTRY_FLAG_NONE = 0
+    MFIB_ENTRY_FLAG_SIGNAL = 1
+    MFIB_ENTRY_FLAG_DROP = 2
+    MFIB_ENTRY_FLAG_CONNECTED = 4
+    MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
+
+
 def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     if inet == AF_INET:
         s = 4
