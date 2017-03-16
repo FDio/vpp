@@ -69,10 +69,6 @@ if ENABLE_SNAT_PLUGIN
 include snat.am
 endif
 
-if ENABLE_SRV6SAMPLE_PLUGIN
-include sample_srv6_localsid.am
-endif
-
 include ../suffix-rules.mk
 
 # Remove *.la files
