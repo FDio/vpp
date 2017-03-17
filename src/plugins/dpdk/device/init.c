@@ -516,6 +516,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
   u32 next_cpu = 0, next_hqos_cpu = 0;
   u8 af_packet_port_id = 0;
+  u8 bond_ether_port_id = 0;
   last_pci_addr.as_u32 = ~0;
 
   dm->input_cpu_first_index = 0;
@@ -862,12 +863,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_AF_PACKET:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_AF_PACKET;
-	      xd->af_packet_port_id = af_packet_port_id++;
+	      xd->port_id = af_packet_port_id++;
 	      break;
 
 	    case VNET_DPDK_PMD_BOND:
 	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_BOND;
+	      xd->port_id = bond_ether_port_id++;
 	      break;
 
 	    default:

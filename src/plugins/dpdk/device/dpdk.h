@@ -220,8 +220,8 @@ typedef struct
   dpdk_device_hqos_per_worker_thread_t *hqos_wt;
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
 
-  /* af_packet */
-  u8 af_packet_port_id;
+  /* af_packet or BondEthernet instance number */
+  u8 port_id;
 
   struct rte_eth_link link;
   f64 time_last_link_update;
