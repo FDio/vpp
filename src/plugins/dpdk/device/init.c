@@ -1872,13 +1872,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
       {
 	for (i = 0; i < nports; i++)
 	  {
-	    struct rte_eth_dev_info dev_info;
-	    rte_eth_dev_info_get (i, &dev_info);
-	    if (!dev_info.driver_name)
-	      dev_info.driver_name = dev_info.pci_dev->driver->driver.name;
-
-	    ASSERT (dev_info.driver_name);
-	    if (strncmp (dev_info.driver_name, "rte_bond_pmd", 12) == 0)
+	    xd = &dm->devices[i];
+	    ASSERT (i == xd->device_index);
+	    if (xd->pmd == VNET_DPDK_PMD_BOND)
 	      {
 		u8 addr[6];
 		u8 slink[16];
