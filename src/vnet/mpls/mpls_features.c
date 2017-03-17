@@ -104,7 +104,6 @@ VNET_FEATURE_ARC_INIT (mpls_input, static) =
 {
   .arc_name  = "mpls-input",
   .start_nodes = VNET_FEATURES ("mpls-input"),
-  .end_node = "mpls-lookup",
   .arc_index_ptr = &mpls_main.input_feature_arc_index,
 };
 
