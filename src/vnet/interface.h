@@ -464,6 +464,12 @@ typedef struct vnet_hw_interface_t
 #define VNET_HW_INTERFACE_BOND_INFO_NONE ((uword *) 0)
 #define VNET_HW_INTERFACE_BOND_INFO_SLAVE ((uword *) ~0)
 
+  /* Input node */
+  u32 input_node_index;
+
+  /* input node cpu index by queue */
+  u32 *input_node_cpu_index_by_queue;
+
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;

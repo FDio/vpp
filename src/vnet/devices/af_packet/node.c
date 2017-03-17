@@ -246,20 +246,18 @@ static uword
 af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * frame)
 {
-  int i;
   u32 n_rx_packets = 0;
-  u32 cpu_index = os_get_cpu_number ();
   af_packet_main_t *apm = &af_packet_main;
-  af_packet_if_t *apif;
+  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
+  vnet_device_and_queue_t *dq;
 
-  for (i = 0; i < vec_len (apm->interfaces); i++)
-    {
-      apif = vec_elt_at_index (apm->interfaces, i);
-      if (apif->is_admin_up &&
-	  (i % apm->input_cpu_count) ==
-	  (cpu_index - apm->input_cpu_first_index))
-	n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
-    }
+  vec_foreach (dq, rt->devices_and_queues)
+  {
+    af_packet_if_t *apif;
+    apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
+    if (apif->is_admin_up)
+      n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
+  }
 
   return n_rx_packets;
 }
@@ -271,9 +269,6 @@ VLIB_REGISTER_NODE (af_packet_input_node) = {
   .sibling_of = "device-input",
   .format_trace = format_af_packet_input_trace,
   .type = VLIB_NODE_TYPE_INPUT,
-  /**
-   * default state is INTERRUPT mode, switch to POLLING if worker threads are enabled
-   */
   .state = VLIB_NODE_STATE_INTERRUPT,
   .n_errors = AF_PACKET_INPUT_N_ERROR,
   .error_strings = af_packet_input_error_strings,
