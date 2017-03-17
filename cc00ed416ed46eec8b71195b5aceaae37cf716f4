@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_2a3cc1e1",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1214,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2017-03-17T08:19:09Z",
+      "side": 1,
+      "message": "s/therefre/therefore",
+      "range": {
+        "startLine": 1214,
+        "startChar": 24,
+        "endLine": 1214,
+        "endChar": 32
+      },
+      "revId": "cc00ed416ed46eec8b71195b5aceaae37cf716f4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
