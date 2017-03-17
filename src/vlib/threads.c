@@ -685,9 +685,6 @@ start_workers (vlib_main_t * vm)
 		  clib_memcpy (rt->runtime_data, n->runtime_data,
 			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
 					 n->runtime_data_bytes));
-		else if (CLIB_DEBUG > 0)
-		  memset (rt->runtime_data, 0xfe,
-			  VLIB_NODE_RUNTIME_DATA_SIZE);
 	      }
 
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT] =
@@ -701,9 +698,6 @@ start_workers (vlib_main_t * vm)
 		  clib_memcpy (rt->runtime_data, n->runtime_data,
 			       clib_min (VLIB_NODE_RUNTIME_DATA_SIZE,
 					 n->runtime_data_bytes));
-		else if (CLIB_DEBUG > 0)
-		  memset (rt->runtime_data, 0xfe,
-			  VLIB_NODE_RUNTIME_DATA_SIZE);
 	      }
 
 	      nm_clone->processes = vec_dup (nm->processes);
@@ -1405,14 +1399,14 @@ vlib_worker_thread_fn (void *arg)
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
 
+  /* Wait until the dpdk init sequence is complete */
+  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
+    vlib_worker_thread_barrier_check ();
+
   e = vlib_call_init_exit_functions
     (vm, vm->worker_init_function_registrations, 1 /* call_once */ );
   if (e)
     clib_error_report (e);
-
-  /* Wait until the dpdk init sequence is complete */
-  while (tm->extern_thread_mgmt && tm->worker_thread_release == 0)
-    vlib_worker_thread_barrier_check ();
 
   vlib_worker_loop (vm);
 }
