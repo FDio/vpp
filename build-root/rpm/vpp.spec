@@ -89,7 +89,7 @@ This package contains the java bindings for the vpp api
 %package api-python
 Summary: VPP api python bindings
 Group: Development/Libraries
-Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools libffi-devel
 
 %description api-python
 This package contains the python bindings for the vpp api
@@ -100,6 +100,9 @@ This package contains the python bindings for the vpp api
 %pre
 # Add the vpp group
 groupadd -f -r vpp
+
+%build
+cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
 
 %install
 #
@@ -162,8 +165,7 @@ do
 done
 
 # Python bindings
-cd %{_mu_build_dir}/../src/vpp-api/python
-%py2_install
+cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
 
 #
 # devel
@@ -279,7 +281,7 @@ fi
 
 %files api-python
 %defattr(644,root,root)
-%{python2_sitelib}/*
+%{python2_sitelib}/vpp_papi*
 
 %files devel
 %defattr(-,bin,bin)
