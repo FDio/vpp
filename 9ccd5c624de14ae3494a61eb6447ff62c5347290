@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_45625eae",
+        "filename": "src/vlib/counter.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 223,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-17T11:38:39Z",
+      "side": 1,
+      "message": "Can you convert this to inline function?",
+      "range": {
+        "startLine": 223,
+        "startChar": 0,
+        "endLine": 223,
+        "endChar": 66
+      },
+      "revId": "9ccd5c624de14ae3494a61eb6447ff62c5347290",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_255992fe",
+        "filename": "src/vlib/counter.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-17T11:38:39Z",
+      "side": 1,
+      "message": "CLIB_CACHE_LINE_BYTES should be enough, sizeof is a bit misleading here...",
+      "range": {
+        "startLine": 232,
+        "startChar": 18,
+        "endLine": 232,
+        "endChar": 41
+      },
+      "revId": "9ccd5c624de14ae3494a61eb6447ff62c5347290",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
