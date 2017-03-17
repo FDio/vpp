@@ -52,7 +52,7 @@ RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
 RPM_DEPENDS += python-devel python-virtualenv lcov chrpath libffi-devel
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
-EPEL_DEPENDS = libconfuse-devel ganglia-devel
+EPEL_DEPENDS = libconfuse-devel ganglia-devel epel-rpm-macros
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
