@@ -433,6 +433,7 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ntohl (mp->sw_if_index);
   u32 unnumbered_sw_if_index = ntohl (mp->unnumbered_sw_if_index);
+  u32 was_unnum;
 
   /*
    * The API message field names are backwards from
@@ -454,6 +455,7 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
 
   vnet_sw_interface_t *si =
     vnet_get_sw_interface (vnm, unnumbered_sw_if_index);
+  was_unnum = (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED);
 
   if (mp->is_add)
     {
@@ -480,8 +482,12 @@ static void vl_api_sw_interface_set_unnumbered_t_handler
       ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
 	[unnumbered_sw_if_index] = ~0;
     }
-  ip4_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
-  ip6_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
+
+  if (was_unnum != (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
+    {
+      ip4_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
+      ip6_sw_interface_enable_disable (unnumbered_sw_if_index, mp->is_add);
+    }
 
 done:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_UNNUMBERED_REPLY);
