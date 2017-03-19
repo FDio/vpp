@@ -48,7 +48,6 @@ mfib_forward_lookup_trace (vlib_main_t * vm,
                            vlib_frame_t * frame)
 {
     u32 * from, n_left;
-    ip4_main_t * im = &ip4_main;
 
     n_left = frame->n_vectors;
     from = vlib_frame_vector_args (frame);
@@ -73,15 +72,13 @@ mfib_forward_lookup_trace (vlib_main_t * vm,
         {
             t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
             t0->entry_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-            t0->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
-                                     vnet_buffer(b1)->sw_if_index[VLIB_RX]);
+            t0->fib_index = vnet_buffer(b1)->sw_if_index[VLIB_TX];
         }
         if (b1->flags & VLIB_BUFFER_IS_TRACED)
         {
             t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
             t1->entry_index = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-            t1->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
-                                     vnet_buffer(b1)->sw_if_index[VLIB_RX]);
+            t1->fib_index = vnet_buffer(b1)->sw_if_index[VLIB_TX];
         }
         from += 2;
         n_left -= 2;
@@ -101,8 +98,7 @@ mfib_forward_lookup_trace (vlib_main_t * vm,
         {
             t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
             t0->entry_index = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-            t0->fib_index = vec_elt (im->mfib_index_by_sw_if_index,
-                                     vnet_buffer(b0)->sw_if_index[VLIB_RX]);
+            t0->fib_index = vnet_buffer(b0)->sw_if_index[VLIB_TX];
         }
         from += 1;
         n_left -= 1;
@@ -150,8 +146,7 @@ mfib_forward_lookup (vlib_main_t * vm,
             {
                 ip4_header_t * ip0;
 
-                fib_index0 = vec_elt (ip4_main.mfib_index_by_sw_if_index,
-                                      vnet_buffer(p0)->sw_if_index[VLIB_RX]);
+                fib_index0 = vnet_buffer(p0)->sw_if_index[VLIB_TX];
                 ip0 = vlib_buffer_get_current (p0);
                 mfei0 = ip4_mfib_table_lookup(ip4_mfib_get(fib_index0),
                                               &ip0->src_address,
@@ -162,8 +157,7 @@ mfib_forward_lookup (vlib_main_t * vm,
             {
                 ip6_header_t * ip0;
 
-                fib_index0 = vec_elt (ip6_main.mfib_index_by_sw_if_index,
-                                      vnet_buffer(p0)->sw_if_index[VLIB_RX]);
+                fib_index0 = vnet_buffer(p0)->sw_if_index[VLIB_TX];
                 ip0 = vlib_buffer_get_current (p0);
                 mfei0 = ip6_mfib_table_lookup2(ip6_mfib_get(fib_index0),
                                                &ip0->src_address,

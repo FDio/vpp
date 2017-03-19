@@ -82,14 +82,6 @@ ip4_fib_get (u32 index)
     return (&(pool_elt_at_index(ip4_main.fibs, index)->v4));
 }
 
-always_inline u32
-ip4_fib_lookup (ip4_main_t * im, u32 sw_if_index, ip4_address_t * dst)
-{
-    return (ip4_fib_table_lookup_lb(
-		ip4_fib_get(vec_elt (im->fib_index_by_sw_if_index, sw_if_index)),
-		dst));
-}
-
 /**
  * @brief Get or create an IPv4 fib.
  *

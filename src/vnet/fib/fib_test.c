@@ -138,12 +138,6 @@ fib_test_mk_intf (u32 ninterfaces)
                                             VNET_HW_INTERFACE_FLAG_LINK_UP);
         tm->hw[i] = vnet_get_hw_interface(vnet_get_main(),
 					  tm->hw_if_indicies[i]);
-	vec_validate (ip4_main.fib_index_by_sw_if_index,
-                      tm->hw[i]->sw_if_index);
-	vec_validate (ip6_main.fib_index_by_sw_if_index,
-                      tm->hw[i]->sw_if_index);
-	ip4_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
-	ip6_main.fib_index_by_sw_if_index[tm->hw[i]->sw_if_index] = 0;
 
 	error = vnet_sw_interface_set_flags(vnet_get_main(),
 					    tm->hw[i]->sw_if_index,
@@ -603,7 +597,11 @@ fib_test_v4 (void)
 
     for (ii = 0; ii < 4; ii++)
     {
-	ip4_main.fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = fib_index;
+        vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                           tm->hw[ii]->sw_if_index,
+                                           FIB_PROTOCOL_IP4,
+                                           VNET_UNICAST,
+                                           fib_index);
     }
 
     fib_prefix_t pfx_0_0_0_0_s_0 = {
@@ -3759,7 +3757,11 @@ fib_test_v6 (void)
 
     for (ii = 0; ii < 4; ii++)
     {
-	ip6_main.fib_index_by_sw_if_index[tm->hw[ii]->sw_if_index] = fib_index;
+        vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                           tm->hw[ii]->sw_if_index,
+                                           FIB_PROTOCOL_IP6,
+                                           VNET_UNICAST,
+                                           fib_index);
     }
 
     fib_prefix_t pfx_0_0 = {
@@ -4617,10 +4619,8 @@ fib_test_ae (void)
     const u32 fib_index = 0;
     fib_node_index_t fei;
     test_main_t *tm;
-    ip4_main_t *im;
 
     tm = &test_main;
-    im = &ip4_main;
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
@@ -4640,8 +4640,11 @@ fib_test_ae (void)
 	},
     };
 
-    vec_validate(im->fib_index_by_sw_if_index, tm->hw[0]->sw_if_index);
-    im->fib_index_by_sw_if_index[tm->hw[0]->sw_if_index] = fib_index;
+    vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                       tm->hw[0]->sw_if_index,
+                                       FIB_PROTOCOL_IP4,
+                                       VNET_UNICAST,
+                                       fib_index);
 
     dpo_drop = drop_dpo_get(DPO_PROTO_IP4);
 
@@ -5168,12 +5171,10 @@ fib_test_label (void)
     fib_node_index_t fei, ai_mpls_10_10_10_1, ai_v4_10_10_11_1, ai_v4_10_10_11_2, ai_mpls_10_10_11_2, ai_mpls_10_10_11_1;
     const u32 fib_index = 0;
     test_main_t *tm;
-    ip4_main_t *im;
     int lb_count, ii;
 
     lb_count = pool_elts(load_balance_pool);
     tm = &test_main;
-    im = &ip4_main;
 
     /*
      * add interface routes. We'll assume this works. It's more rigorously
@@ -5193,8 +5194,11 @@ fib_test_label (void)
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
 
-    vec_validate(im->fib_index_by_sw_if_index, tm->hw[0]->sw_if_index);
-    im->fib_index_by_sw_if_index[tm->hw[0]->sw_if_index] = fib_index;
+    vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                       tm->hw[0]->sw_if_index,
+                                       FIB_PROTOCOL_IP4,
+                                       VNET_UNICAST,
+                                       fib_index);
 
     fib_table_entry_update_one_path(fib_index, &local0_pfx,
 				    FIB_SOURCE_INTERFACE,
@@ -5239,8 +5243,11 @@ fib_test_label (void)
 	},
     };
 
-    vec_validate(im->fib_index_by_sw_if_index, tm->hw[1]->sw_if_index);
-    im->fib_index_by_sw_if_index[tm->hw[1]->sw_if_index] = fib_index;
+    vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                       tm->hw[1]->sw_if_index,
+                                       FIB_PROTOCOL_IP4,
+                                       VNET_UNICAST,
+                                       fib_index);
 
     fib_table_entry_update_one_path(fib_index, &local1_pfx,
 				    FIB_SOURCE_INTERFACE,

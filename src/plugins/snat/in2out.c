@@ -950,8 +950,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           icmp0 = (icmp46_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
-                                   sw_if_index0);
+	  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
 
           next0 = next1 = SNAT_IN2OUT_NEXT_LOOKUP;
 
@@ -1092,8 +1091,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           icmp1 = (icmp46_header_t *) udp1;
 
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
-	  rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
-                                   sw_if_index1);
+	  rx_fib_index1 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index1);
 
           proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
@@ -1267,8 +1265,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           icmp0 = (icmp46_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
-                                   sw_if_index0);
+	  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
