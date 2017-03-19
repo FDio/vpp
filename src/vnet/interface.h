@@ -42,6 +42,8 @@
 
 #include <vnet/unix/pcap.h>
 #include <vnet/l3_types.h>
+#include <vnet/interface_types.h>
+#include <vnet/fib/fib_types.h>
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;
@@ -223,45 +225,6 @@ __VA_ARGS__ vnet_device_class_t x
   __vlib_device_tx_function_multiarch_select_##dev (void)		\
   { dev.tx_function = fn ## _multiarch_select(); }
 #endif
-
-/**
- * Link Type: A description of the protocol of packets on the link.
- * On an ethernet link this maps directly into the ethertype. On a GRE tunnel
- * it maps to the GRE-proto, etc for other lnk types.
- */
-typedef enum vnet_link_t_
-{
-#if CLIB_DEBUG > 0
-  VNET_LINK_IP4 = 1,
-#else
-  VNET_LINK_IP4 = 0,
-#endif
-  VNET_LINK_IP6,
-  VNET_LINK_MPLS,
-  VNET_LINK_ETHERNET,
-  VNET_LINK_ARP,
-  VNET_LINK_NSH,
-} __attribute__ ((packed)) vnet_link_t;
-
-#define VNET_LINKS {                   \
-    [VNET_LINK_ETHERNET] = "ethernet", \
-    [VNET_LINK_IP4] = "ipv4",          \
-    [VNET_LINK_IP6] = "ipv6",          \
-    [VNET_LINK_MPLS] = "mpls",         \
-    [VNET_LINK_ARP] = "arp",	       \
-    [VNET_LINK_NSH] = "nsh",           \
-}
-
-/**
- * @brief Number of link types. Not part of the enum so it does not have to be included in
- * switch statements
- */
-#define VNET_LINK_NUM (VNET_LINK_NSH+1)
-
-/**
- * @brief Convert a link to to an Ethertype
- */
-extern vnet_l3_packet_type_t vnet_link_to_l3_proto (vnet_link_t link);
 
 /**
  * @brief Attributes assignable to a HW interface Class.
@@ -528,6 +491,25 @@ typedef enum
    software interface. */
 typedef struct
 {
+  /**
+   * On Cache-line 0 we place the data used in the data-plane path
+   * in the ingress direction
+   */
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /**
+   * A FIB index per-L3 protocol
+   */
+  u32 fib_index[FIB_PROTOCOL_MAX][VNET_CAST_NUM];
+
+  /**
+   * A bit per-L3 protocol indicating if there are features configured
+   *  This is a byte on a bit to avoid the bit-wise operations. Should
+   *  cache space become an iusse this can be sacraficed.
+   */
+  u8 has_input_features[FIB_PROTOCOL_MAX][VNET_CAST_NUM];
+
+    CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+
   vnet_sw_interface_type_t type:16;
 
   u16 flags;
@@ -571,6 +553,10 @@ typedef struct
 
   vnet_flood_class_t flood_class;
 } vnet_sw_interface_t;
+
+STATIC_ASSERT (STRUCT_OFFSET_OF (vnet_sw_interface_t,
+				 cacheline1) == CLIB_CACHE_LINE_BYTES,
+	       "SW interface cahce line1");
 
 typedef enum
 {

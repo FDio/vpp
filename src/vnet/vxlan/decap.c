@@ -51,20 +51,7 @@ static u8 * format_vxlan_rx_trace (u8 * s, va_list * args)
 always_inline u32
 validate_vxlan_fib (vlib_buffer_t *b, vxlan_tunnel_t *t, u32 is_ip4)
 {
-  u32 fib_index, sw_if_index;
-
-  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
-
-  if (is_ip4)
-    fib_index = (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	vec_elt (ip4_main.fib_index_by_sw_if_index, sw_if_index) :
-	vnet_buffer (b)->sw_if_index[VLIB_TX];
-  else
-    fib_index = (vnet_buffer (b)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	vec_elt (ip6_main.fib_index_by_sw_if_index, sw_if_index) :
-	vnet_buffer (b)->sw_if_index[VLIB_TX];
-
-  return (fib_index == t->encap_fib_index);
+  return (vnet_buffer (b)->sw_if_index[VLIB_TX] == t->encap_fib_index);
 }
 
 always_inline uword

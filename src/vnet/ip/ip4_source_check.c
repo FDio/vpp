@@ -360,7 +360,6 @@ set_ip_source_check (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  ip4_main_t *im = &ip4_main;
   clib_error_t *error = 0;
   u32 sw_if_index, is_del;
   ip4_source_check_config_t config;
@@ -395,7 +394,11 @@ set_ip_source_check (vlib_main_t * vm,
       goto done;
     }
 
-  config.fib_index = im->fib_index_by_sw_if_index[sw_if_index];
+  config.fib_index = vnet_sw_interface_get_fib_index(vnm,
+                                                     sw_if_index,
+                                                     FIB_PROTOCOL_IP4,
+                                                     VNET_UNICAST);
+
   vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
 			       is_del == 0, &config, sizeof (config));
 done:

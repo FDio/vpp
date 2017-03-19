@@ -71,7 +71,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 		   vlib_frame_t * frame,
 		   int lookup_for_responses_to_locally_received_packets)
 {
-  ip4_main_t *im = &ip4_main;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
@@ -153,31 +152,10 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  dst_addr2 = &ip2->dst_address;
 	  dst_addr3 = &ip3->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index1 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  fib_index2 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p2)->sw_if_index[VLIB_RX]);
-	  fib_index3 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p3)->sw_if_index[VLIB_RX]);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-	  fib_index1 =
-	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
-	  fib_index2 =
-	    (vnet_buffer (p2)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index2 : vnet_buffer (p2)->sw_if_index[VLIB_TX];
-	  fib_index3 =
-	    (vnet_buffer (p3)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index3 : vnet_buffer (p3)->sw_if_index[VLIB_TX];
-
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index1 = vnet_buffer (p1)->sw_if_index[VLIB_TX];
+	  fib_index2 = vnet_buffer (p2)->sw_if_index[VLIB_TX];
+	  fib_index3 = vnet_buffer (p3)->sw_if_index[VLIB_TX];
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {
@@ -373,12 +351,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  dst_addr0 = &ip0->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {
@@ -864,9 +837,11 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   u32 if_address_index, elts_before;
   ip4_address_fib_t ip4_af, *addr_fib = 0;
 
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   ip4_addr_fib_init (&ip4_af, address,
-		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
+                     vnet_sw_interface_get_fib_index(vnm,
+                                                     sw_if_index,
+                                                     FIB_PROTOCOL_IP4,
+                                                     VNET_UNICAST));
   vec_add1 (addr_fib, ip4_af);
 
   /* FIXME-LATER
@@ -1096,12 +1071,6 @@ VNET_FEATURE_INIT (ip4_interface_output, static) =
 static clib_error_t *
 ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
-  ip4_main_t *im = &ip4_main;
-
-  /* Fill in lookup tables with default table (0). */
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
-
   vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
 			       is_add, 0, 0);
 
@@ -1246,7 +1215,6 @@ ip4_forward_next_trace (vlib_main_t * vm,
 			vlib_frame_t * frame, vlib_rx_or_tx_t which_adj_index)
 {
   u32 *from, n_left;
-  ip4_main_t *im = &ip4_main;
 
   n_left = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
@@ -1272,11 +1240,7 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  clib_memcpy (t0->packet_data,
 		       vlib_buffer_get_current (b0),
@@ -1287,12 +1251,10 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->dpo_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
-	  t1->fib_index =
-	    (vnet_buffer (b1)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b1)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
-	  clib_memcpy (t1->packet_data, vlib_buffer_get_current (b1),
+	  t1->fib_index =vnet_buffer (b1)->sw_if_index[VLIB_TX];
+
+	  clib_memcpy (t1->packet_data,
+                       vlib_buffer_get_current (b1),
 		       sizeof (t1->packet_data));
 	}
       from += 2;
@@ -1314,12 +1276,9 @@ ip4_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->dpo_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-	  clib_memcpy (t0->packet_data, vlib_buffer_get_current (b0),
+	  t0->fib_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  clib_memcpy (t0->packet_data,
+                       vlib_buffer_get_current (b0),
 		       sizeof (t0->packet_data));
 	}
       from += 1;
@@ -1540,19 +1499,8 @@ ip4_local_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
-
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
-	  fib_index1 =
-	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
-
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index1 = vnet_buffer (p1)->sw_if_index[VLIB_TX];
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 	  mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
 
@@ -1756,11 +1704,7 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
@@ -2846,17 +2790,21 @@ add_del_interface_table (vlib_main_t * vm,
    /* *INDENT-ON* */
 
 {
-  ip4_main_t *im = &ip4_main;
   u32 fib_index;
 
   fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
-
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  im->fib_index_by_sw_if_index[sw_if_index] = fib_index;
+  vnet_sw_interface_update_fib_index(vnm,
+                                     sw_if_index,
+                                     FIB_PROTOCOL_IP4,
+                                     VNET_UNICAST,
+                                     fib_index);
 
   fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
-  im->mfib_index_by_sw_if_index[sw_if_index] = fib_index;
+  vnet_sw_interface_update_fib_index(vnm,
+                                     sw_if_index,
+                                     FIB_PROTOCOL_IP4,
+                                     VNET_MULTICAST,
+                                     fib_index);
 }
 
 done:

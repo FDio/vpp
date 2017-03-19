@@ -92,24 +92,35 @@ lisp_gpe_sub_interface_set_table (u32 sw_if_index, u32 table_id)
   fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
   ASSERT (FIB_NODE_INDEX_INVALID != fib_index);
 
-  vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
-  ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+  vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                     sw_if_index,
+                                     FIB_PROTOCOL_IP4,
+                                     VNET_UNICAST,
+                                     fib_index);
 
   fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id);
   ASSERT (FIB_NODE_INDEX_INVALID != fib_index);
 
-  vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
-  ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+  vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                     sw_if_index,
+                                     FIB_PROTOCOL_IP6,
+                                     VNET_UNICAST,
+                                     fib_index);
 }
 
 static void
 lisp_gpe_sub_interface_unset_table (u32 sw_if_index, u32 table_id)
 {
-  ip4_main.fib_index_by_sw_if_index[sw_if_index] = 0;
-  ip4_sw_interface_enable_disable (sw_if_index, 0);
-
-  ip6_main.fib_index_by_sw_if_index[sw_if_index] = 0;
-  ip6_sw_interface_enable_disable (sw_if_index, 0);
+  vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                     sw_if_index,
+                                     FIB_PROTOCOL_IP4,
+                                     VNET_UNICAST,
+                                     0);
+  vnet_sw_interface_update_fib_index(vnet_get_main(),
+                                     sw_if_index,
+                                     FIB_PROTOCOL_IP6,
+                                     VNET_UNICAST,
+                                     0);
 }
 
 index_t

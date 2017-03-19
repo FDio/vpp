@@ -311,13 +311,8 @@ show_sw_interfaces (vlib_main_t * vm,
 	ip6_fib_t *fib6;
 	l2_input_config_t *config;
 
-	if (vec_len (im4->fib_index_by_sw_if_index) > si->sw_if_index)
-	  fib_index4 = vec_elt (im4->fib_index_by_sw_if_index,
-				si->sw_if_index);
-
-	if (vec_len (im6->fib_index_by_sw_if_index) > si->sw_if_index)
-	  fib_index6 = vec_elt (im6->fib_index_by_sw_if_index,
-				si->sw_if_index);
+        fib_index4 = si->fib_index[FIB_PROTOCOL_IP4][VNET_UNICAST];
+        fib_index6 = si->fib_index[FIB_PROTOCOL_IP6][VNET_UNICAST];
 
 	fib4 = ip4_fib_get (fib_index4);
 	fib6 = ip6_fib_get (fib_index6);

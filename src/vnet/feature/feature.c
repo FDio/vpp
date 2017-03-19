@@ -215,7 +215,10 @@ vnet_feature_enable_disable_with_index (u8 arc_index, u32 feature_index,
   fm->sw_if_index_has_features[arc_index] =
     clib_bitmap_set (fm->sw_if_index_has_features[arc_index], sw_if_index,
 		     (feature_count > 0));
+
   adj_feature_update (sw_if_index, arc_index, (feature_count > 0));
+  vnet_sw_interface_update_feature_arc (sw_if_index, arc_index,
+					(feature_count > 0));
 
   fm->feature_count_by_sw_if_index[arc_index][sw_if_index] = feature_count;
   return 0;

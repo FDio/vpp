@@ -104,6 +104,7 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
+	  vnet_sw_interface_t *si0, *si1;
 	  vlib_buffer_t *p0, *p1;
 	  ip6_header_t *ip0, *ip1;
 	  u32 pi0, sw_if_index0, next0 = 0;
@@ -143,33 +144,46 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
+	  si0 = vnet_get_sw_interface (vnm, sw_if_index0);
+	  si1 = vnet_get_sw_interface (vnm, sw_if_index1);
+
 	  if (PREDICT_FALSE (ip6_address_is_multicast (&ip0->dst_address)))
 	    {
 	      arc0 = lm->mcast_feature_arc_index;
 	      next0 = IP6_INPUT_NEXT_LOOKUP_MULTICAST;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP6][VNET_MULTICAST];
 	    }
 	  else
 	    {
 	      arc0 = lm->ucast_feature_arc_index;
 	      next0 = IP6_INPUT_NEXT_LOOKUP;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP6][VNET_UNICAST];
 	    }
 
 	  if (PREDICT_FALSE (ip6_address_is_multicast (&ip1->dst_address)))
 	    {
 	      arc1 = lm->mcast_feature_arc_index;
 	      next1 = IP6_INPUT_NEXT_LOOKUP_MULTICAST;
+	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+		si1->fib_index[FIB_PROTOCOL_IP6][VNET_MULTICAST];
 	    }
 	  else
 	    {
 	      arc1 = lm->ucast_feature_arc_index;
 	      next1 = IP6_INPUT_NEXT_LOOKUP;
+	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+		si1->fib_index[FIB_PROTOCOL_IP6][VNET_UNICAST];
 	    }
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
 
-	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
-	  vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
+	  if (si0->has_input_features[FIB_PROTOCOL_IP6])
+            vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
+	  if (si0->has_input_features[FIB_PROTOCOL_IP6])
+            vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index1, 1);
@@ -240,6 +254,7 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  vnet_sw_interface_t *si0;
 	  vlib_buffer_t *p0;
 	  ip6_header_t *ip0;
 	  u32 pi0, sw_if_index0, next0 = 0;
@@ -256,19 +271,26 @@ ip6_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
+	  si0 = vnet_get_sw_interface (vnm, sw_if_index0);
+
 	  if (PREDICT_FALSE (ip6_address_is_multicast (&ip0->dst_address)))
 	    {
 	      arc0 = lm->mcast_feature_arc_index;
 	      next0 = IP6_INPUT_NEXT_LOOKUP_MULTICAST;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP6][VNET_MULTICAST];
 	    }
 	  else
 	    {
 	      arc0 = lm->ucast_feature_arc_index;
 	      next0 = IP6_INPUT_NEXT_LOOKUP;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP6][VNET_UNICAST];
 	    }
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
+	  if (si0->has_input_features[FIB_PROTOCOL_IP6])
+            vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 	  error0 = IP6_ERROR_NONE;

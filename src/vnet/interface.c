@@ -542,6 +542,67 @@ vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
      VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE);
 }
 
+void
+vnet_sw_interface_update_feature_arc (u32 sw_if_index, u32 arc, u32 enable)
+{
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface (vnet_get_main (), sw_if_index);
+    
+  /*
+   * this ugly mess matches the feature arc that is changing with affected
+   * array entry
+   */
+  if (arc == ip4_main.lookup_main.ucast_feature_arc_index)
+    {
+      if (enable)
+        si->has_input_features[FIB_PROTOCOL_IP4][VNET_UNICAST] = !0;
+      else
+        si->has_input_features[FIB_PROTOCOL_IP4][VNET_UNICAST] = 0;
+    }
+  if (arc == ip4_main.lookup_main.mcast_feature_arc_index)
+    {
+      if (enable)
+        si->has_input_features[FIB_PROTOCOL_IP4][VNET_MULTICAST] = !0;
+      else
+        si->has_input_features[FIB_PROTOCOL_IP4][VNET_MULTICAST] = 0;
+    }
+  if (arc == ip6_main.lookup_main.mcast_feature_arc_index)
+    {
+      if (enable)
+        si->has_input_features[FIB_PROTOCOL_IP6][VNET_MULTICAST] = !0;
+      else
+        si->has_input_features[FIB_PROTOCOL_IP6][VNET_MULTICAST] = 0;
+    }
+  if (arc == ip6_main.lookup_main.ucast_feature_arc_index)
+    {
+      if (enable)
+        si->has_input_features[FIB_PROTOCOL_IP6][VNET_UNICAST] = !0;
+      else
+        si->has_input_features[FIB_PROTOCOL_IP6][VNET_UNICAST] = 0;
+    }
+  if (arc == mpls_main.input_feature_arc_index)
+    {
+      if (enable)
+        si->has_input_features[FIB_PROTOCOL_MPLS][VNET_UNICAST] = !0;
+      else
+        si->has_input_features[FIB_PROTOCOL_MPLS][VNET_UNICAST] = 0;
+    }
+}
+
+void
+vnet_sw_interface_update_fib_index (vnet_main_t * vnm,
+                                    u32 sw_if_index,
+				    fib_protocol_t proto,
+				    vnet_cast_t cast, u32 fib_index)
+{
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+
+  si->fib_index[proto][cast] = fib_index;
+}
+
 static u32
 vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 				       vnet_sw_interface_t * template)
@@ -554,6 +615,20 @@ vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
   sw_if_index = sw - im->sw_interfaces;
 
   sw[0] = template[0];
+
+  /* Set each of the FIB indices to default tables */
+  {
+    fib_protocol_t proto;
+    vnet_cast_t cast;
+    
+    FOR_EACH_FIB_PROTOCOL(proto)
+    {
+      FOR_EACH_VNET_CAST(cast)
+      {
+        sw->fib_index[proto][cast] = 0;
+      }
+    }
+  }
 
   sw->flags = 0;
   sw->sw_if_index = sw_if_index;

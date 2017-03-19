@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <vpp/oam/oam.h>
+#include <vnet/fib/ip4_fib.h>
 
 oam_main_t oam_main;
 
@@ -506,8 +507,8 @@ oam_node_fn (vlib_main_t * vm,
 
 	  oam0 = vlib_buffer_get_current (b0);
 	  oam1 = vlib_buffer_get_current (b1);
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
+	  fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
+	  fib_index1 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index1);
 
 	  key0 = ((u64) fib_index0 << 32) | oam0->ip4.src_address.as_u32;
 	  u0 = hash_get (om->target_by_address_and_fib_id, key0);
@@ -577,7 +578,7 @@ oam_node_fn (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
 	  oam0 = vlib_buffer_get_current (b0);
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
+	  fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
 
 	  key0 = ((u64) fib_index0 << 32) | oam0->ip4.src_address.as_u32;
 	  u0 = hash_get (om->target_by_address_and_fib_id, key0);
