@@ -291,7 +291,6 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	  ip6_address_t tmp0, tmp1;
 	  ip_csum_t sum0, sum1;
 	  u32 bi0, bi1;
-	  u32 fib_index0, fib_index1;
 	  u32 next0 = ICMP6_ECHO_REQUEST_NEXT_LOOKUP;
 	  u32 next1 = ICMP6_ECHO_REQUEST_NEXT_LOOKUP;
 
@@ -357,13 +356,6 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 		vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
 	    }
-	  else
-	    {
-	      /* Determine the correct lookup fib indices... */
-	      fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				    vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
-	    }
 
 	  if (ip6_address_is_link_local_unicast (&ip1->dst_address))
 	    {
@@ -380,13 +372,6 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
 		vnet_buffer (p1)->sw_if_index[VLIB_RX];
 	      next1 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
-	    }
-	  else
-	    {
-	      /* Determine the correct lookup fib indices... */
-	      fib_index1 = vec_elt (im->fib_index_by_sw_if_index,
-				    vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	      vnet_buffer (p1)->sw_if_index[VLIB_TX] = fib_index1;
 	    }
 
 	  vnet_buffer (p0)->sw_if_index[VLIB_RX]
@@ -409,7 +394,6 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	  u32 bi0;
 	  ip6_address_t tmp0;
 	  ip_csum_t sum0;
-	  u32 fib_index0;
 	  u32 next0 = ICMP6_ECHO_REQUEST_NEXT_LOOKUP;
 
 	  bi0 = to_next[0] = from[0];
@@ -457,12 +441,7 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 		vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      next0 = ICMP6_ECHO_REQUEST_NEXT_OUTPUT;
 	    }
-	  else
-	    {
-	      fib_index0 = vec_elt (im->fib_index_by_sw_if_index,
-				    vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	      vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index0;
-	    }
+
 	  vnet_buffer (p0)->sw_if_index[VLIB_RX]
 	    = vnet_main.local_interface_sw_if_index;
 

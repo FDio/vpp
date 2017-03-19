@@ -626,10 +626,10 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 	  };
 	  u32 fib_index;
 
-	  fib_index = ip6_main.fib_index_by_sw_if_index[n->key.sw_if_index];
+	  fib_index =
+	    ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index);
 	  n->fib_entry_index =
-	    fib_table_entry_update_one_path (fib_index, &pfx,
-					     FIB_SOURCE_ADJ,
+	    fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_ADJ,
 					     FIB_ENTRY_FLAG_NONE,
 					     FIB_PROTOCOL_IP6, &pfx.fp_addr,
 					     n->key.sw_if_index, ~0, 1, NULL,

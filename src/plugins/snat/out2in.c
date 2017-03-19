@@ -690,8 +690,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
           icmp0 = (icmp46_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
-                                   sw_if_index0);
+	  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
@@ -700,7 +699,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
-              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
               icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
                                            ICMP4_time_exceeded_ttl_exceeded_in_transit,
                                            0);
@@ -825,8 +823,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
           icmp1 = (icmp46_header_t *) udp1;
 
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
-	  rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
-                                   sw_if_index1);
+	  rx_fib_index1 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index1);
 
           proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
@@ -835,7 +832,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
-              vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
               icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
                                            ICMP4_time_exceeded_ttl_exceeded_in_transit,
                                            0);
@@ -994,8 +990,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
           icmp0 = (icmp46_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
-	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
-                                   sw_if_index0);
+	  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
@@ -1004,7 +999,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
-              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
               icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
                                            ICMP4_time_exceeded_ttl_exceeded_in_transit,
                                            0);

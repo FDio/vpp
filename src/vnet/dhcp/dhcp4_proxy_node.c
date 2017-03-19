@@ -109,7 +109,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
   u32 pkts_to_server=0, pkts_to_client=0, pkts_no_server=0;
   u32 pkts_no_interface_address=0;
   u32 pkts_too_big=0;
-  ip4_main_t * im = &ip4_main;
+  vnet_main_t *vnm = vnet_get_main ();
 
   next_index = node->cached_next_index;
 
@@ -170,7 +170,10 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 
           rx_sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
-          fib_index = im->fib_index_by_sw_if_index [rx_sw_if_index];
+          fib_index = vnet_sw_interface_get_fib_index(vnm,
+                                                      rx_sw_if_index,
+                                                      FIB_PROTOCOL_IP4,
+                                                      VNET_UNICAST);
           proxy = dhcp_get_proxy(dpm, fib_index, FIB_PROTOCOL_IP4);
 
           if (PREDICT_FALSE (NULL == proxy))
@@ -214,8 +217,11 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
 
           o = (dhcp_option_t *) h0->options;
               
-          fib_index = im->fib_index_by_sw_if_index 
-              [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
+          fib_index = vnet_sw_interface_get_fib_index(
+                          vnm,
+                          vnet_buffer(b0)->sw_if_index[VLIB_RX],
+                          FIB_PROTOCOL_IP4,
+                          VNET_UNICAST);
 
           end = b0->data + b0->current_data + b0->current_length;
           /* TLVs are not performance-friendly... */
@@ -485,7 +491,6 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
   ethernet_main_t *em = ethernet_get_main (vm);
   dhcp_proxy_main_t * dpm = &dhcp_proxy_main;
   vnet_main_t * vnm = vnet_get_main();
-  ip4_main_t * im = &ip4_main;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -614,13 +619,14 @@ dhcp_proxy_to_client_input (vlib_main_t * vm,
           goto drop_packet;
         }
 
-      if (sw_if_index >= vec_len (im->fib_index_by_sw_if_index))
+      if (pool_is_free_index(vnm->interface_main.sw_interfaces,
+                             sw_if_index))
         {
           error0 = DHCP_PROXY_ERROR_BAD_OPTION_82_ITF;
           goto drop_packet;
         }
 
-      fib_index = im->fib_index_by_sw_if_index [sw_if_index];
+      fib_index = ip4_fib_table_get_index_for_sw_if_index(sw_if_index);
       proxy = dhcp_get_proxy(dpm, fib_index, FIB_PROTOCOL_IP4);
 
       if (PREDICT_FALSE (NULL == proxy))

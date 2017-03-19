@@ -137,7 +137,6 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
   u32 pkts_no_src_address=0;
   u32 pkts_wrong_msg_type=0;
   u32 pkts_too_big=0;
-  ip6_main_t * im = &ip6_main;
   ip6_address_t * src;
   int bogus_length;
   dhcp_proxy_t *proxy;
@@ -224,8 +223,8 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           }
 
           /* Send to DHCPV6 server via the configured FIB */
-          rx_sw_if_index = sw_if_index =  vnet_buffer(b0)->sw_if_index[VLIB_RX];
-          rx_fib_idx = im->mfib_index_by_sw_if_index [rx_sw_if_index];
+          rx_sw_if_index = sw_if_index = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+          rx_fib_idx = ip6_mfib_table_get_index_for_sw_if_index(rx_sw_if_index);
           proxy = dhcp_get_proxy(dpm, rx_fib_idx, FIB_PROTOCOL_IP6);
 
           if (PREDICT_FALSE (NULL == proxy))
@@ -571,7 +570,6 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       u16 len = 0;
       u8 interface_opt_flag = 0;
       u8 relay_msg_opt_flag = 0;
-      ip6_main_t * im = &ip6_main;
       u32 server_fib_idx, client_fib_idx;
 
       bi0 = from[0];
@@ -621,7 +619,8 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
                 interface_opt_flag = 1;
                 if (clib_net_to_host_u16(o->length) == sizeof(sw_if_index))
                     sw_if_index = clib_net_to_host_u32(((dhcpv6_int_id_t*)o)->int_idx);
-                if (sw_if_index >= vec_len (im->fib_index_by_sw_if_index))
+                if (pool_is_free_index(vnm->interface_main.sw_interfaces,
+                                       sw_if_index))
                   {
                     error0 = DHCPV6_PROXY_ERROR_WRONG_INTERFACE_ID_OPTION;
                     goto drop_packet;
@@ -653,7 +652,7 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       //Advance buffer to start of encapsulated DHCPv6 message
       vlib_buffer_advance (b0, sizeof(*r0));
 
-      client_fib_idx = im->mfib_index_by_sw_if_index[sw_if_index];
+      client_fib_idx = ip6_mfib_table_get_index_for_sw_if_index(sw_if_index);
       proxy = dhcp_get_proxy(dm, client_fib_idx, FIB_PROTOCOL_IP6);
 
       if (NULL == proxy)
@@ -662,8 +661,8 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
           goto drop_packet;
       }
 
-      server_fib_idx = im->fib_index_by_sw_if_index
-          [vnet_buffer(b0)->sw_if_index[VLIB_RX]];
+      server_fib_idx = ip6_fib_table_get_index_for_sw_if_index(
+          vnet_buffer(b0)->sw_if_index[VLIB_RX]);
 
       vec_foreach(server, proxy->dhcp_servers)
       {

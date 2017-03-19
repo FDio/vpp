@@ -19,6 +19,7 @@
 
 #include "map.h"
 #include "../ip/ip_frag.h"
+#include <vnet/fib/ip6_fib.h>
 
 vlib_node_registration_t ip4_map_reass_node;
 
@@ -339,8 +340,15 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vlib_buffer_advance (p1, -sizeof (ip6_header_t));
 	  ip6h0 = vlib_buffer_get_current (p0);
 	  ip6h1 = vlib_buffer_get_current (p1);
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  vnet_buffer (p1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+
+          /* Post encap the IPv6 lookup will occur in the input interface's
+           * IPv6 table */
+	  vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+            ip6_fib_table_get_index_for_sw_if_index
+            (vnet_buffer (p0)->sw_if_index[VLIB_RX]);
+	  vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+            ip6_fib_table_get_index_for_sw_if_index
+            (vnet_buffer (p1)->sw_if_index[VLIB_RX]);
 
 	  ip6h0->ip_version_traffic_class_and_flow_label =
 	    ip4_map_vtcfl (ip40, p0);
@@ -492,7 +500,9 @@ ip4_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* construct ipv6 header */
 	  vlib_buffer_advance (p0, -(sizeof (ip6_header_t)));
 	  ip6h0 = vlib_buffer_get_current (p0);
-	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+            ip6_fib_table_get_index_for_sw_if_index
+            (vnet_buffer (p0)->sw_if_index[VLIB_RX]);
 
 	  ip6h0->ip_version_traffic_class_and_flow_label =
 	    ip4_map_vtcfl (ip40, p0);

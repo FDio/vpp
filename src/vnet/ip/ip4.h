@@ -116,12 +116,6 @@ typedef struct ip4_main_t
 
   u32 fib_masks[33];
 
-  /** Table index indexed by software interface. */
-  u32 *fib_index_by_sw_if_index;
-
-  /** Table index indexed by software interface. */
-  u32 *mfib_index_by_sw_if_index;
-
   /* IP4 enabled count by software interface */
   u8 *ip_enabled_by_sw_if_index;
 

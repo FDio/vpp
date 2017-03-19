@@ -236,7 +236,6 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
 {
   gre_main_t * gm = &gre_main;
   vnet_main_t * vnm = gm->vnet_main;
-  ip4_main_t * im = &ip4_main;
   gre_tunnel_t * t;
   vnet_hw_interface_t * hi;
   u32 hw_if_index, sw_if_index;
@@ -335,8 +334,6 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
 
   vec_validate_init_empty (gm->tunnel_index_by_sw_if_index, sw_if_index, ~0);
   gm->tunnel_index_by_sw_if_index[sw_if_index] = t - gm->tunnels;
-
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
 
   hi->min_packet_bytes = 64 + sizeof (gre_header_t) + sizeof (ip4_header_t);
   hi->per_packet_overhead_bytes =
