@@ -43,6 +43,8 @@
 #include <vlib/vlib.h>
 #include <vnet/l3_types.h>
 
+struct vnet_main_t;
+
 /* Consider using vector types for speed? */
 typedef uword vnet_rewrite_data_t;
 

@@ -542,6 +542,23 @@ vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
      VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE);
 }
 
+void
+vnet_sw_interface_update_feature_arc (u32 sw_if_index, u32 arc, u32 is_enable)
+{
+}
+
+void
+vnet_sw_interface_update_fib_index (u32 sw_if_index,
+				    fib_protocol_t proto,
+				    vnet_cast_t cast, u32 fib_index)
+{
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface (vnet_get_main (), sw_if_index);
+
+  si->fib_index[proto][cast] = fib_index;
+}
+
 static u32
 vnet_create_sw_interface_no_callbacks (vnet_main_t * vnm,
 				       vnet_sw_interface_t * template)

@@ -255,6 +255,19 @@ clib_error_t *vnet_hw_interface_set_flags (vnet_main_t * vnm, u32 hw_if_index,
 clib_error_t *vnet_sw_interface_set_flags (vnet_main_t * vnm, u32 sw_if_index,
 					   u32 flags);
 
+/**
+ * Update the feature arc state on the interface
+ */
+void vnet_sw_interface_update_feature_arc (u32 sw_if_index,
+					   u32 arc, u32 is_enable);
+
+/**
+ * Update the feature arc state on the interface
+ */
+void vnet_sw_interface_update_fib_index (u32 sw_if_index,
+					 fib_protocol_t proto,
+					 vnet_cast_t cast, u32 fib_index);
+
 /* Change interface class. */
 clib_error_t *vnet_hw_interface_set_class (vnet_main_t * vnm, u32 hw_if_index,
 					   u32 new_hw_class_index);
