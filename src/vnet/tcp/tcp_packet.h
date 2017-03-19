@@ -16,7 +16,7 @@
 #ifndef included_tcp_packet_h
 #define included_tcp_packet_h
 
-#include <vnet/vnet.h>
+#include <vppinfra/types.h>
 
 /* TCP flags bit 0 first. */
 #define foreach_tcp_flag                                \

@@ -27,7 +27,10 @@
 #ifndef __DPO_H__
 #define __DPO_H__
 
-#include <vnet/vnet.h>
+#include <vlib/vlib.h>
+#include <vppinfra/types.h>
+#include <vppinfra/error_bootstrap.h>
+#include <vnet/interface_types.h>
 
 /**
  * @brief An index for adjacencies.
