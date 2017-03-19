@@ -331,9 +331,6 @@ typedef struct ip_lookup_main_t
   /* Adjacency heap. */
   ip_adjacency_t *adjacency_heap;
 
-  /** load-balance  packet/byte counters indexed by LB index. */
-  vlib_combined_counter_main_t load_balance_counters;
-
   /** Pool of addresses that are assigned to interfaces. */
   ip_interface_address_t *if_address_pool;
 

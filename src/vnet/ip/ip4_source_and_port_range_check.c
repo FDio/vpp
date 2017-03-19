@@ -154,7 +154,6 @@ ip4_source_and_port_range_check_inline (vlib_main_t * vm,
 					vlib_node_runtime_t * node,
 					vlib_frame_t * frame, int is_tx)
 {
-  ip4_main_t *im = &ip4_main;
   u32 n_left_from, *from, *to_next;
   u32 next_index;
   vlib_node_runtime_t *error_node = node;
@@ -441,7 +440,7 @@ ip4_source_and_port_range_check_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
+	  fib_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  if (is_tx)
 	    vlib_buffer_advance (b0, sizeof (ethernet_header_t));

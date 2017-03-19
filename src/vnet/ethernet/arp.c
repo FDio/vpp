@@ -1271,8 +1271,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      if (!(si->flags & VNET_SW_INTERFACE_FLAG_PROXY_ARP))
 		goto drop2;
 
-	      fib_index0 = vec_elt (im4->fib_index_by_sw_if_index,
-				    sw_if_index0);
+	      fib_index0 = si->fib_index[FIB_PROTOCOL_IP4][VNET_UNICAST];
 
 	      vec_foreach (pa, am->proxy_arps)
 	      {

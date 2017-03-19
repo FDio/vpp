@@ -121,17 +121,8 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  dst_addr0 = &ip0->dst_address;
 	  dst_addr1 = &ip1->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index1 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-
-	  fib_index0 = (vnet_buffer (p0)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	    fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-	  fib_index1 = (vnet_buffer (p1)->sw_if_index[VLIB_TX] == (u32) ~ 0) ?
-	    fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index1 = vnet_buffer (p1)->sw_if_index[VLIB_TX];
 
 	  lbi0 = ip6_fib_table_fwding_lookup (im, fib_index0, dst_addr0);
 	  lbi1 = ip6_fib_table_fwding_lookup (im, fib_index1, dst_addr1);
@@ -252,12 +243,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 
 	  dst_addr0 = &ip0->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
 	  flow_hash_config0 = ip6_fib_get (fib_index0)->flow_hash_config;
 
@@ -337,9 +323,15 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
     {
       fib_node_index_t fei;
 
-      fei = fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_INTERFACE, (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_ATTACHED), FIB_PROTOCOL_IP6, NULL,	/* No next-hop address */
-					     sw_if_index, ~0,	// invalid FIB index
-					     1, NULL,	// no label stack
+      fei = fib_table_entry_update_one_path (fib_index,
+					     &pfx,
+					     FIB_SOURCE_INTERFACE,
+					     (FIB_ENTRY_FLAG_CONNECTED |
+					      FIB_ENTRY_FLAG_ATTACHED),
+					     FIB_PROTOCOL_IP6,
+					     NULL,
+					     sw_if_index, ~0,
+					     1, NULL,
 					     FIB_ROUTE_PATH_FLAG_NONE);
       a->neighbor_probe_adj_index = fib_entry_get_adj (fei);
     }
@@ -456,11 +448,8 @@ ip6_add_del_interface_address (vlib_main_t * vm,
   u32 if_address_index;
   ip6_address_fib_t ip6_af, *addr_fib = 0;
 
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
-
   ip6_addr_fib_init (&ip6_af, address,
-		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
+		     ip6_fib_table_get_index_for_sw_if_index (sw_if_index));
   vec_add1 (addr_fib, ip6_af);
 
   {
@@ -506,16 +495,13 @@ ip6_sw_interface_admin_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
   ip6_address_t *a;
   u32 is_admin_up, fib_index;
 
-  /* Fill in lookup tables with default table (0). */
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-
   vec_validate_init_empty (im->
 			   lookup_main.if_address_pool_index_by_sw_if_index,
 			   sw_if_index, ~0);
 
   is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
 
-  fib_index = vec_elt (im->fib_index_by_sw_if_index, sw_if_index);
+  fib_index = ip6_fib_table_get_index_for_sw_if_index (sw_if_index);
 
   /* *INDENT-OFF* */
   foreach_ip_interface_address (&im->lookup_main, ia, sw_if_index,
@@ -980,7 +966,6 @@ ip6_forward_next_trace (vlib_main_t * vm,
 			vlib_frame_t * frame, vlib_rx_or_tx_t which_adj_index)
 {
   u32 *from, n_left;
-  ip6_main_t *im = &ip6_main;
 
   n_left = frame->n_vectors;
   from = vlib_frame_vector_args (frame);
@@ -1006,11 +991,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  clib_memcpy (t0->packet_data,
 		       vlib_buffer_get_current (b0),
@@ -1021,11 +1002,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t1 = vlib_add_trace (vm, node, b1, sizeof (t1[0]));
 	  t1->adj_index = vnet_buffer (b1)->ip.adj_index[which_adj_index];
 	  t1->flow_hash = vnet_buffer (b1)->ip.flow_hash;
-	  t1->fib_index =
-	    (vnet_buffer (b1)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b1)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b1)->sw_if_index[VLIB_RX]);
+	  t1->fib_index = vnet_buffer (b1)->sw_if_index[VLIB_TX];
 
 	  clib_memcpy (t1->packet_data,
 		       vlib_buffer_get_current (b1),
@@ -1050,11 +1027,7 @@ ip6_forward_next_trace (vlib_main_t * vm,
 	  t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
 	  t0->adj_index = vnet_buffer (b0)->ip.adj_index[which_adj_index];
 	  t0->flow_hash = vnet_buffer (b0)->ip.flow_hash;
-	  t0->fib_index =
-	    (vnet_buffer (b0)->sw_if_index[VLIB_TX] !=
-	     (u32) ~ 0) ? vnet_buffer (b0)->sw_if_index[VLIB_TX] :
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (b0)->sw_if_index[VLIB_RX]);
+	  t0->fib_index = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
 	  clib_memcpy (t0->packet_data,
 		       vlib_buffer_get_current (b0),
@@ -2980,19 +2953,22 @@ add_del_ip6_interface_table (vlib_main_t * vm,
   /* *INDENT-ON* */
 
   {
-    u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-						       table_id);
+    u32 fib_index;
 
-    vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
-    ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+    fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+						   table_id);
+    vnet_sw_interface_update_fib_index (vnm,
+					sw_if_index,
+					FIB_PROTOCOL_IP6,
+					VNET_UNICAST, fib_index);
 
     fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
 						    table_id);
-
-    vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
-    ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
+    vnet_sw_interface_update_fib_index (vnm,
+					sw_if_index,
+					FIB_PROTOCOL_IP6,
+					VNET_MULTICAST, fib_index);
   }
-
 
 done:
   return error;

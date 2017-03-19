@@ -380,7 +380,10 @@ u32 ip6_fib_table_fwding_lookup_with_if_index (ip6_main_t * im,
 					       u32 sw_if_index,
 					       const ip6_address_t * dst)
 {
-    u32 fib_index = vec_elt (im->fib_index_by_sw_if_index, sw_if_index);
+    u32 fib_index;
+
+    fib_index = ip6_fib_table_get_index_for_sw_if_index(sw_if_index);
+
     return ip6_fib_table_fwding_lookup(im, fib_index, dst);
 }
 
@@ -393,15 +396,10 @@ ip6_fib_table_get_flow_hash_config (u32 fib_index)
 u32
 ip6_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
 {
-    if (sw_if_index >= vec_len(ip6_main.fib_index_by_sw_if_index))
-    {
-	/*
-	 * This is the case for interfaces that are not yet mapped to
-	 * a IP table
-	 */
-	return (~0);
-    }
-    return (ip6_main.fib_index_by_sw_if_index[sw_if_index]);
+    return (vnet_sw_interface_get_fib_index(vnet_get_main(),
+                                            sw_if_index,
+                                            FIB_PROTOCOL_IP6,
+                                            VNET_UNICAST));
 }
 
 void

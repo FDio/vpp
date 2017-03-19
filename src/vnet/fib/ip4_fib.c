@@ -211,15 +211,10 @@ ip4_fib_table_create_and_lock (void)
 u32
 ip4_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
 {
-    if (sw_if_index >= vec_len(ip4_main.fib_index_by_sw_if_index))
-    {
-	/*
-	 * This is the case for interfaces that are not yet mapped to
-	 * a IP table
-	 */
-	return (~0);
-    }
-    return (ip4_main.fib_index_by_sw_if_index[sw_if_index]);
+    return (vnet_sw_interface_get_fib_index(vnet_get_main(),
+                                            sw_if_index,
+                                            FIB_PROTOCOL_IP4,
+                                            VNET_UNICAST));
 }
 
 flow_hash_config_t

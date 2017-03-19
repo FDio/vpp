@@ -159,12 +159,6 @@ typedef struct ip6_main_t
   /* Network byte orders subnet mask for each prefix length */
   ip6_address_t fib_masks[129];
 
-  /* Table index indexed by software interface. */
-  u32 *fib_index_by_sw_if_index;
-
-  /** Table index indexed by software interface. */
-  u32 *mfib_index_by_sw_if_index;
-
   /* IP6 enabled count by software interface */
   u8 *ip_enabled_by_sw_if_index;
 
