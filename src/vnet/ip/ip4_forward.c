@@ -71,7 +71,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 		   vlib_frame_t * frame,
 		   int lookup_for_responses_to_locally_received_packets)
 {
-  ip4_main_t *im = &ip4_main;
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
@@ -153,31 +152,10 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  dst_addr2 = &ip2->dst_address;
 	  dst_addr3 = &ip3->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index1 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p1)->sw_if_index[VLIB_RX]);
-	  fib_index2 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p2)->sw_if_index[VLIB_RX]);
-	  fib_index3 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p3)->sw_if_index[VLIB_RX]);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-	  fib_index1 =
-	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
-	  fib_index2 =
-	    (vnet_buffer (p2)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index2 : vnet_buffer (p2)->sw_if_index[VLIB_TX];
-	  fib_index3 =
-	    (vnet_buffer (p3)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index3 : vnet_buffer (p3)->sw_if_index[VLIB_TX];
-
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index1 = vnet_buffer (p1)->sw_if_index[VLIB_TX];
+	  fib_index2 = vnet_buffer (p2)->sw_if_index[VLIB_TX];
+	  fib_index3 = vnet_buffer (p3)->sw_if_index[VLIB_TX];
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {
@@ -373,12 +351,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 
 	  dst_addr0 = &ip0->dst_address;
 
-	  fib_index0 =
-	    vec_elt (im->fib_index_by_sw_if_index,
-		     vnet_buffer (p0)->sw_if_index[VLIB_RX]);
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  fib_index0 = vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {

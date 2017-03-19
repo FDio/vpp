@@ -107,12 +107,14 @@ ip4_input_inline (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
+	  vnet_sw_interface_t *si0, *si1;
 	  vlib_buffer_t *p0, *p1;
 	  ip4_header_t *ip0, *ip1;
 	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
 	  u32 sw_if_index1, pi1, ip_len1, cur_len1, next1;
 	  i32 len_diff0, len_diff1;
 	  u8 error0, error1, arc0, arc1;
+	  vnet_cast_t cast0, cast1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -144,17 +146,26 @@ ip4_input_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
+	  si0 = vnet_get_sw_interface (vnm, sw_if_index0);
+	  si1 = vnet_get_sw_interface (vnm, sw_if_index1);
+
 	  error0 = error1 = IP4_ERROR_NONE;
 
 	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip0->dst_address)))
 	    {
 	      arc0 = lm->mcast_feature_arc_index;
+	      cast0 = VNET_MULTICAST;
 	      next0 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP4][VNET_MULTICAST];
 	    }
 	  else
 	    {
 	      arc0 = lm->ucast_feature_arc_index;
+	      cast0 = VNET_UNICAST;
 	      next0 = IP4_INPUT_NEXT_LOOKUP;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP4][VNET_UNICAST];
 	      if (PREDICT_FALSE (ip0->ttl < 1))
 		error0 = IP4_ERROR_TIME_EXPIRED;
 	    }
@@ -162,12 +173,18 @@ ip4_input_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip1->dst_address)))
 	    {
 	      arc1 = lm->mcast_feature_arc_index;
+	      cast1 = VNET_MULTICAST;
 	      next1 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+		si1->fib_index[FIB_PROTOCOL_IP4][VNET_MULTICAST];
 	    }
 	  else
 	    {
 	      arc1 = lm->ucast_feature_arc_index;
+	      cast1 = VNET_UNICAST;
 	      next1 = IP4_INPUT_NEXT_LOOKUP;
+	      vnet_buffer (p1)->sw_if_index[VLIB_TX] =
+		si1->fib_index[FIB_PROTOCOL_IP4][VNET_UNICAST];
 	      if (PREDICT_FALSE (ip1->ttl < 1))
 		error1 = IP4_ERROR_TIME_EXPIRED;
 	    }
@@ -175,8 +192,10 @@ ip4_input_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = ~0;
 
-	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
-	  vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);
+	  if (si0->has_input_features[FIB_PROTOCOL_IP4][cast0])
+	    vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
+	  if (si1->has_input_features[FIB_PROTOCOL_IP4][cast1])
+	    vnet_feature_arc_start (arc1, sw_if_index1, &next1, p1);;
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index1, 1);
@@ -263,11 +282,13 @@ ip4_input_inline (vlib_main_t * vm,
 	}
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  vnet_sw_interface_t *si0;
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
 	  u32 sw_if_index0, pi0, ip_len0, cur_len0, next0;
 	  i32 len_diff0;
 	  u8 error0, arc0;
+	  vnet_cast_t cast0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -281,23 +302,32 @@ ip4_input_inline (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
+	  si0 = vnet_get_sw_interface (vnm, sw_if_index0);
+
 	  error0 = IP4_ERROR_NONE;
 
 	  if (PREDICT_FALSE (ip4_address_is_multicast (&ip0->dst_address)))
 	    {
 	      arc0 = lm->mcast_feature_arc_index;
+	      cast0 = VNET_MULTICAST;
 	      next0 = IP4_INPUT_NEXT_LOOKUP_MULTICAST;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP4][VNET_MULTICAST];
 	    }
 	  else
 	    {
 	      arc0 = lm->ucast_feature_arc_index;
+	      cast0 = VNET_UNICAST;
 	      next0 = IP4_INPUT_NEXT_LOOKUP;
 	      if (PREDICT_FALSE (ip0->ttl < 1))
 		error0 = IP4_ERROR_TIME_EXPIRED;
+	      vnet_buffer (p0)->sw_if_index[VLIB_TX] =
+		si0->fib_index[FIB_PROTOCOL_IP4][VNET_UNICAST];
 	    }
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = ~0;
-	  vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
+	  if (si0->has_input_features[FIB_PROTOCOL_IP4][cast0])
+	    vnet_feature_arc_start (arc0, sw_if_index0, &next0, p0);
 
 	  vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
 

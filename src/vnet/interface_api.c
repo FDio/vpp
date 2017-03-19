@@ -338,11 +338,18 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 						     table_id);
       vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
       ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+      vnet_sw_interface_update_fib_index (sw_if_index, FIB_PROTOCOL_IP6,
+					  VNET_UNICAST, fib_index);
 
       fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
 						      table_id);
       vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
       ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
+
+      vnet_sw_interface_update_fib_index (sw_if_index, FIB_PROTOCOL_IP6,
+					  VNET_UNICAST, fib_index);
+      vnet_sw_interface_update_fib_index (sw_if_index, FIB_PROTOCOL_IP6,
+					  VNET_MULTICAST, fib_index);
     }
   else
     {
@@ -360,11 +367,15 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 						     table_id);
       vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
       ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
+      vnet_sw_interface_update_fib_index (sw_if_index, FIB_PROTOCOL_IP4,
+					  VNET_UNICAST, fib_index);
 
       fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
 						      table_id);
       vec_validate (ip4_main.mfib_index_by_sw_if_index, sw_if_index);
       ip4_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
+      vnet_sw_interface_update_fib_index (sw_if_index, FIB_PROTOCOL_IP4,
+					  VNET_MULTICAST, fib_index);
     }
 
 done:
