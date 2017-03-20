@@ -16,9 +16,15 @@ include /usr/share/dpkg/default.mk
 # package maintainers to append LDFLAGS
 #export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
+export PYBUILD_NAME = vpp-api-python
+export PYBUILD_DIR = ../../src/vpp-api/python
+export PYBUILD_DESTDIR_python2=debian/vpp-api-python/
+export PYBUILD_DISABLE_python2=test
+export PYBUILD_SYSTEM=distutils
+
 # main packaging script based on dh7 syntax
 %:
-	dh $@ --with systemd,python2
+	dh $@ --with systemd,python2 --buildsystem=pybuild
 
 override_dh_install:
 	dh_install --exclude .git
