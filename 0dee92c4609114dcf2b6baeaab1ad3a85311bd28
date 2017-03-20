@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_306e6e02",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-03-20T17:47:03Z",
+      "side": 1,
+      "message": "This is doing something quite different from what proceeds.\nFor Ubuntu lines 138-145 *check* to see if we have the right dependencies installed and exits complaining if we don\u0027t.  This simply installs them.\n\nCould we do a similar check for RPM?",
+      "revId": "0dee92c4609114dcf2b6baeaab1ad3a85311bd28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
