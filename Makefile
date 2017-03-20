@@ -143,6 +143,8 @@ ifeq ($(OS_ID),ubuntu)
 	  exit 1 ; \
 	fi ; \
 	exit 0
+else ifneq ("$(wildcard /etc/redhat-release)","")
+	$(MAKE) install-dep
 endif
 	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
 	@echo "#!/bin/bash\n"                              > $(BR)/path_setup
