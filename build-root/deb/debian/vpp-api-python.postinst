@@ -1,5 +1,0 @@
-#!/bin/sh -e
-
-# after installing python-api files
-python2_sitedir=$(python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")
-easy_install --install-dir=$python2_sitedir  -z $python2_sitedir/vpp_papi/vpp_papi-*.egg
