@@ -16,6 +16,24 @@
       "revId": "0dee92c4609114dcf2b6baeaab1ad3a85311bd28",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f077c6d2",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-03-20T17:52:00Z",
+      "side": 1,
+      "message": "I thought it would be sufficient to let yum do the work of checking the dependencies. If there are no rpms required, yum won\u0027t download them.",
+      "parentUuid": "3a3291f1_306e6e02",
+      "revId": "0dee92c4609114dcf2b6baeaab1ad3a85311bd28",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
