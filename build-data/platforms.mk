@@ -59,10 +59,6 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	./scripts/find-vpp-api-java-contents $(INSTALL_PREFIX)$(ARCH)	\
 	 deb/debian/vpp-api-java.install ;				\
 									\
-	: vpp-api-python package ;					\
-	./scripts/find-vpp-api-python-contents $(INSTALL_PREFIX)$(ARCH)	\
-	 deb/debian/vpp-api-python.install ;				\
-									\
 	: bin package needs startup config ; 				\
 	echo ../../src/vpp/conf/startup.conf /etc/vpp 			\
 	   >> deb/debian/vpp.install ;					\
