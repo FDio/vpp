@@ -1,0 +1,285 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_cb0e5f32",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "Can those bugs be encountered outside of the context of this patch ? If so, I guess it would make sense to put them as different commits ? I don\u0027t mind so much about that though, so it is not blocking for me.",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 59
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ab1d5368",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "I don\u0027t see where save_state is used.",
+      "range": {
+        "startLine": 410,
+        "startChar": 16,
+        "endLine": 410,
+        "endChar": 26
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b276bb7",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 452,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "vhost_user_update_vhc_operation_mode is only called here, and I think it is verbose and confusing that it is in a different function, which actually only updates a value in the vhost_cpu structure that is used later. Could you just inline the function and try to reduce the number of line of codes a bit ?",
+      "range": {
+        "startLine": 447,
+        "startChar": 2,
+        "endLine": 452,
+        "endChar": 19
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8b185776",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "I guess i was used before with save_state. But I don\u0027t see where anymore.",
+      "range": {
+        "startLine": 470,
+        "startChar": 6,
+        "endLine": 470,
+        "endChar": 10
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4b514f0d",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 568,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "There should be a better way than a double iteration every-time a call is received to find what CPU we should wake-up. I think there is only a single CPU on a given rx node, so there could be the CPU index in the rx queue structure in order to get the mapping faster.",
+      "range": {
+        "startLine": 563,
+        "startChar": 6,
+        "endLine": 568,
+        "endChar": 35
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2b584331",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 636,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "I am really surprised that this is necessary here. At this stage, there shouldn\u0027t be any packets pending to be read.",
+      "range": {
+        "startLine": 636,
+        "startChar": 2,
+        "endLine": 636,
+        "endChar": 34
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0b2467ad",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1973,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "Some of those interfaces might be in interrupt mode. I am not sure it actually matters so much though. But just for the record, that means that as soon as a single interface is in polling mode, we are going to loop over all interfaces on the given core, even if they are all in interrupt mode but one.",
+      "range": {
+        "startLine": 1969,
+        "startChar": 6,
+        "endLine": 1973,
+        "endChar": 7
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2b21639f",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1981,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "Using this encoding, 256 bits is used in the bitmap per interface. For now, there are at most 16 queues per interfaces, so this could be \u0027qid \u003d i \u0026 0xf\u0027 instead. (given right change to who is setting the bit as well).",
+      "range": {
+        "startLine": 1981,
+        "startChar": 1,
+        "endLine": 1981,
+        "endChar": 20
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eb3a3bcc",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2781,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "It is not true that a core that is in polling node will not have to send interrupts. The fact that we send interrupts depends on the driver running in the VM (and whether the interrupt flag was set).",
+      "range": {
+        "startLine": 2780,
+        "startChar": 5,
+        "endLine": 2781,
+        "endChar": 16
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6b4e4b71",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2885,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "So you start the timer process only when the first interrupt-mode interface is created, but do not stop the timer when the last one is removed. This is not blocking for me, but I think it could be cleaner.",
+      "range": {
+        "startLine": 2878,
+        "startChar": 2,
+        "endLine": 2885,
+        "endChar": 5
+      },
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8b2f3788",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 2923,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "In the case the operation_mode is changed here, you do not start the process timer.",
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ab3433de",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3244,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "missing tabulation",
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cb353fdc",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3256,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-20T23:39:27Z",
+      "side": 1,
+      "message": "please add the tabulation.",
+      "revId": "2cbf281fe395b6029e42eae627454ced0d3229a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
