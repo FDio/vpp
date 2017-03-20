@@ -143,6 +143,21 @@ ifeq ($(OS_ID),ubuntu)
 	  exit 1 ; \
 	fi ; \
 	exit 0
+else ifneq ("$(wildcard /etc/redhat-release)","")
+	@for i in $(RPM_DEPENDS) $(EPEL_DEPENDS) ; do \
+	    RPM=$$(basename -s .rpm "$${i##*/}" | cut -d- -f1,2,3)  ;	\
+	    if [[ "$$RPM" =~ "epel-release-latest" ]] ; then		\
+	        MISSING+=$$(rpm -q epel-release | grep "^package") ;	\
+	    else							\
+		MISSING+=$$(rpm -q $$RPM | grep "^package")	   ;    \
+	    fi							   ;    \
+	done							   ;	\
+	if [ -n "$$MISSING" ] ; then \
+	  echo "Please install missing RPMs: \n$$MISSING\n" ; \
+	  echo "by executing \"make install-dep\"\n" ; \
+	  exit 1 ; \
+	fi ; \
+	exit 0
 endif
 	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
 	@echo "#!/bin/bash\n"                              > $(BR)/path_setup
