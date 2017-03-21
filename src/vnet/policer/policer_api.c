@@ -105,8 +105,8 @@ send_policer_details (u8 * name,
   mp->context = context;
   mp->cir = htonl (config->rb.kbps.cir_kbps);
   mp->eir = htonl (config->rb.kbps.eir_kbps);
-  mp->cb = htonl (config->rb.kbps.cb_bytes);
-  mp->eb = htonl (config->rb.kbps.eb_bytes);
+  mp->cb = clib_host_to_net_u64 (config->rb.kbps.cb_bytes);
+  mp->eb = clib_host_to_net_u64 (config->rb.kbps.eb_bytes);
   mp->rate_type = config->rate_type;
   mp->round_type = config->rnd_type;
   mp->type = config->rfc;

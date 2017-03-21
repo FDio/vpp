@@ -3630,8 +3630,8 @@ static void vl_api_policer_details_t_handler_json
   vat_json_object_add_string_copy (node, "name", mp->name);
   vat_json_object_add_uint (node, "cir", ntohl (mp->cir));
   vat_json_object_add_uint (node, "eir", ntohl (mp->eir));
-  vat_json_object_add_uint (node, "cb", ntohl (mp->cb));
-  vat_json_object_add_uint (node, "eb", ntohl (mp->eb));
+  vat_json_object_add_uint (node, "cb", clib_net_to_host_u64 (mp->cb));
+  vat_json_object_add_uint (node, "eb", clib_net_to_host_u64 (mp->eb));
   vat_json_object_add_string_copy (node, "rate_type", rate_type_str);
   vat_json_object_add_string_copy (node, "round_type", round_type_str);
   vat_json_object_add_string_copy (node, "type", type_str);
