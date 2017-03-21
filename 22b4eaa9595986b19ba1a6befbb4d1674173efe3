@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_8b717746",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1904,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2017-03-21T10:59:36Z",
+      "side": 1,
+      "message": "The protocol field is 8 bits (256 entries), just use a vector or a bitmap. I don\u0027t think you need a table.",
+      "range": {
+        "startLine": 1901,
+        "startChar": 1,
+        "endLine": 1904,
+        "endChar": 8
+      },
+      "revId": "22b4eaa9595986b19ba1a6befbb4d1674173efe3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
