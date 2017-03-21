@@ -20,6 +20,7 @@
 #include <vnet/ip/ip.h>
 #include <ioam/ipfixcollector/ipfixcollector.h>
 
+extern ioam_export_main_t ioam_export_main;
 static clib_error_t *
 ioam_analyse_enable_disable (vlib_main_t * vm,
 			     int is_add, int is_export, int remote_listen)

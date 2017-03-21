@@ -87,7 +87,8 @@ ioam_trace_test_plugin_la_SOURCES =		\
 vppapitestplugins_LTLIBRARIES += ioam_trace_test_plugin.la
 
 nobase_include_HEADERS +=                       \
-       ioam/lib-trace/trace_util.h
+       ioam/lib-trace/trace_util.h		\
+       ioam/export-common/ioam_export.h
 
 ########################################
 # VxLAN-GPE

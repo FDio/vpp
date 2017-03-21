@@ -76,11 +76,13 @@ typedef struct
   u32 export_process_node_index;
 } ioam_export_main_t;
 
+#if 0
 extern ioam_export_main_t ioam_export_main;
 extern ioam_export_main_t vxlan_gpe_ioam_export_main;
 
 extern vlib_node_registration_t export_node;
 extern vlib_node_registration_t vxlan_export_node;
+#endif
 
 #define DEFAULT_EXPORT_SIZE (3 * CLIB_CACHE_LINE_BYTES)
 /*

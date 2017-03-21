@@ -20,6 +20,7 @@
 #include <ioam/export-common/ioam_export.h>
 
 static vlib_node_registration_t vxlan_gpe_ioam_export_process_node;
+extern ioam_export_main_t vxlan_gpe_ioam_export_main;
 
 static uword
 vxlan_gpe_ioam_export_process (vlib_main_t * vm,
