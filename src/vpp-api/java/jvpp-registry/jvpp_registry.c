@@ -283,11 +283,11 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
     /*
      * Bail out now if we're not running as root
      */
-    if (geteuid() != 0) {
+   /* if (geteuid() != 0) {
         return (*env)->NewObject(env, connectionInfoClass,
                 connectionInfoConstructor, 0, 0,
                 VNET_API_ERROR_NOT_RUNNING_AS_ROOT);
-    }
+    }*/
 
     if (rm->is_connected) {
         return (*env)->NewObject(env, connectionInfoClass,
