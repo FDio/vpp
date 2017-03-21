@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_eb411b3a",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_adjacency.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-03-21T00:03:27Z",
+      "side": 1,
+      "message": "Move the needed functions to somewhere else, don\u0027t import control.h here.",
+      "range": {
+        "startLine": 22,
+        "startChar": 16,
+        "endLine": 22,
+        "endChar": 33
+      },
+      "revId": "e474339a60f70fecd0e6bd7088ab51286e673ff6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_cb3c1fc2",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1159,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-03-21T00:03:27Z",
+      "side": 1,
+      "message": "I\u0027d add another one of these for stats flushing. That is, resetting them all to 0.",
+      "range": {
+        "startLine": 1159,
+        "startChar": 1,
+        "endLine": 1159,
+        "endChar": 18
+      },
+      "revId": "e474339a60f70fecd0e6bd7088ab51286e673ff6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
