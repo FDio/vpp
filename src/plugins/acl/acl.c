@@ -54,6 +54,7 @@
 
 #include "node_in.h"
 #include "node_out.h"
+#include "fa_node.h"
 
 acl_main_t acl_main;
 
@@ -382,7 +383,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
       am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
       acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_input_classify_next_acl,
+				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
     }
   if (am->acl_ip6_input_classify_table_by_sw_if_index[sw_if_index] != ~0)
@@ -392,7 +393,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
       am->acl_ip6_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
       acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
-				  am->l2_input_classify_next_acl,
+				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
     }
 
@@ -420,7 +421,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
       am->acl_ip4_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
       acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_output_classify_next_acl,
+				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
     }
   if (am->acl_ip6_output_classify_table_by_sw_if_index[sw_if_index] != ~0)
@@ -430,7 +431,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
       am->acl_ip6_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
       acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
-				  am->l2_output_classify_next_acl,
+				  am->l2_output_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
     }
 
@@ -450,20 +451,20 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   rv =
     acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				sizeof (ip4_5tuple_mask) - 1, ~0,
-				am->l2_input_classify_next_acl,
+				am->l2_input_classify_next_acl_ip4,
 				&ip4_table_index, 1);
   if (rv)
     return rv;
   rv =
     acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
-				am->l2_input_classify_next_acl,
+				am->l2_input_classify_next_acl_ip6,
 				&ip6_table_index, 1);
   if (rv)
     {
       acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_input_classify_next_acl,
+				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
       return rv;
     }
@@ -477,11 +478,11 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
     {
       acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
-				  am->l2_input_classify_next_acl,
+				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
       acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_input_classify_next_acl,
+				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
       return rv;
     }
@@ -508,20 +509,20 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   rv =
     acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				sizeof (ip4_5tuple_mask) - 1, ~0,
-				am->l2_output_classify_next_acl,
+				am->l2_output_classify_next_acl_ip4,
 				&ip4_table_index, 1);
   if (rv)
     return rv;
   rv =
     acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
-				am->l2_output_classify_next_acl,
+				am->l2_output_classify_next_acl_ip6,
 				&ip6_table_index, 1);
   if (rv)
     {
       acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_output_classify_next_acl,
+				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
       return rv;
     }
@@ -535,11 +536,11 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
     {
       acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
-				  am->l2_output_classify_next_acl,
+				  am->l2_output_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
       acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_output_classify_next_acl,
+				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
       return rv;
     }
@@ -554,6 +555,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 }
 
 
+
 int
 acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
 				 int enable_disable)
@@ -564,6 +566,8 @@ acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
   if (pool_is_free_index (am->vnet_main->interface_main.sw_interfaces,
 			  sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  acl_fa_enable_disable(sw_if_index, 1, enable_disable);
 
   if (enable_disable)
     {
@@ -587,6 +591,8 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
   if (pool_is_free_index (am->vnet_main->interface_main.sw_interfaces,
 			  sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
+
+  acl_fa_enable_disable(sw_if_index, 0, enable_disable);
 
   if (enable_disable)
     {
@@ -1820,10 +1826,10 @@ acl_setup_nodes (void)
   vlib_node_t *n;
 
   n = vlib_get_node_by_name (vm, (u8 *) "l2-input-classify");
-  am->l2_input_classify_next_acl =
+  am->l2_input_classify_next_acl_old =
     vlib_node_add_next_with_slot (vm, n->index, acl_in_node.index, ~0);
   n = vlib_get_node_by_name (vm, (u8 *) "l2-output-classify");
-  am->l2_output_classify_next_acl =
+  am->l2_output_classify_next_acl_old =
     vlib_node_add_next_with_slot (vm, n->index, acl_out_node.index, ~0);
 
   feat_bitmap_init_next_nodes (vm, acl_in_node.index, L2INPUT_N_FEAT,
@@ -1844,10 +1850,298 @@ acl_setup_nodes (void)
 	  sizeof (am->acl_out_ip6_match_next));
   am->n_match_actions = 0;
 
+  am->l2_input_classify_next_acl_ip4 = am->l2_input_classify_next_acl_old;
+  am->l2_input_classify_next_acl_ip6 = am->l2_input_classify_next_acl_old;
+  am->l2_output_classify_next_acl_ip4 = am->l2_output_classify_next_acl_old;
+  am->l2_output_classify_next_acl_ip6 = am->l2_output_classify_next_acl_old;
+
   register_match_action_nexts (0, 0, 0, 0);	/* drop */
   register_match_action_nexts (~0, ~0, ~0, ~0);	/* permit */
   register_match_action_nexts (ACL_IN_L2S_INPUT_IP4_ADD, ACL_IN_L2S_INPUT_IP6_ADD, ACL_OUT_L2S_OUTPUT_IP4_ADD, ACL_OUT_L2S_OUTPUT_IP6_ADD);	/* permit + create session */
 }
+
+void
+acl_setup_fa_nodes (void)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  acl_main_t *am = &acl_main;
+  vlib_node_t *n, *n4, *n6;
+
+  n = vlib_get_node_by_name (vm, (u8 *) "l2-input-classify");
+  n4 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-in-ip4-l2");
+  n6 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-in-ip6-l2");
+
+
+  am->fa_l2_input_classify_next_acl_ip4 =
+    vlib_node_add_next_with_slot (vm, n->index, n4->index, ~0);
+  am->fa_l2_input_classify_next_acl_ip6 =
+    vlib_node_add_next_with_slot (vm, n->index, n6->index, ~0);
+
+  feat_bitmap_init_next_nodes (vm, n4->index, L2INPUT_N_FEAT,
+                               l2input_get_feat_names (),
+                               am->fa_acl_in_ip4_l2_node_feat_next_node_index);
+
+  feat_bitmap_init_next_nodes (vm, n6->index, L2INPUT_N_FEAT,
+                               l2input_get_feat_names (),
+                               am->fa_acl_in_ip6_l2_node_feat_next_node_index);
+
+
+  n = vlib_get_node_by_name (vm, (u8 *) "l2-output-classify");
+  n4 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-out-ip4-l2");
+  n6 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-out-ip6-l2");
+
+  am->fa_l2_output_classify_next_acl_ip4 =
+    vlib_node_add_next_with_slot (vm, n->index, n4->index, ~0);
+  am->fa_l2_output_classify_next_acl_ip6 =
+    vlib_node_add_next_with_slot (vm, n->index, n6->index, ~0);
+
+  feat_bitmap_init_next_nodes (vm, n4->index, L2OUTPUT_N_FEAT,
+                               l2output_get_feat_names (),
+                               am->fa_acl_out_ip4_l2_node_feat_next_node_index);
+
+  feat_bitmap_init_next_nodes (vm, n6->index, L2OUTPUT_N_FEAT,
+                               l2output_get_feat_names (),
+                               am->fa_acl_out_ip6_l2_node_feat_next_node_index);
+
+  am->l2_input_classify_next_acl_ip4 = am->fa_l2_input_classify_next_acl_ip4;
+  am->l2_input_classify_next_acl_ip6 = am->fa_l2_input_classify_next_acl_ip6;
+  am->l2_output_classify_next_acl_ip4 = am->fa_l2_output_classify_next_acl_ip4;
+  am->l2_output_classify_next_acl_ip6 = am->fa_l2_output_classify_next_acl_ip6;
+
+}
+
+void
+acl_set_timeout_sec(int timeout_type, u32 value)
+{
+  acl_main_t *am = &acl_main;
+  l2sess_main_t *sm = &l2sess_main;
+  clib_time_t *ct = &am->vlib_main->clib_time;
+
+  if (timeout_type < ACL_N_TIMEOUTS) {
+    am->session_timeout_sec[timeout_type] = value;
+  } else {
+    clib_warning("Unknown timeout type %d", timeout_type);
+    return;
+  }
+
+  switch(timeout_type) {
+    case ACL_TIMEOUT_UDP_IDLE:
+      sm->udp_session_idle_timeout = (u64)(((f64)value)/ct->seconds_per_clock);
+      break;
+    case ACL_TIMEOUT_TCP_IDLE:
+      sm->tcp_session_idle_timeout = (u64)(((f64)value)/ct->seconds_per_clock);
+      break;
+    case ACL_TIMEOUT_TCP_TRANSIENT:
+      sm->tcp_session_transient_timeout = (u64)(((f64)value)/ct->seconds_per_clock);
+      break;
+    default:
+      clib_warning("Unknown timeout type %d", timeout_type);
+  }
+}
+
+void
+acl_set_session_max_entries(u32 value)
+{
+  acl_main_t *am = &acl_main;
+  am->fa_conn_table_max_entries = value;
+}
+
+int
+acl_set_skip_ipv6_eh(u32 eh, u32 value)
+{
+  acl_main_t *am = &acl_main;
+  if ((eh < 256) && (value < 2))
+    {
+      am->fa_ipv6_known_eh_bitmap = clib_bitmap_set(am->fa_ipv6_known_eh_bitmap, eh, value);
+      return 1;
+    }
+  else
+    return 0;
+}
+
+
+static clib_error_t *
+acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
+{
+  acl_main_t *am = &acl_main;
+  if (0 == is_add) {
+    vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
+                               ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX, sw_if_index);
+  }
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (acl_sw_interface_add_del);
+
+static clib_error_t *
+acl_set_aclplugin_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  u32 timeout = 0;
+  u32 val = 0;
+  u32 eh_val = 0;
+  uword memory_size = 0;
+  acl_main_t *am = &acl_main;
+
+  /* The new datapath is the default. This command exists out of precaution and for comparing the two */
+  if (unformat (input, "l2-datapath")) {
+    if (unformat(input, "old")) {
+      am->l2_input_classify_next_acl_ip4 = am->l2_input_classify_next_acl_old;
+      am->l2_input_classify_next_acl_ip6 = am->l2_input_classify_next_acl_old;
+      am->l2_output_classify_next_acl_ip4 = am->l2_output_classify_next_acl_old;
+      am->l2_output_classify_next_acl_ip6 = am->l2_output_classify_next_acl_old;
+      goto done;
+    }
+    if (unformat(input, "new")) {
+      am->l2_input_classify_next_acl_ip4 = am->fa_l2_input_classify_next_acl_ip4;
+      am->l2_input_classify_next_acl_ip6 = am->fa_l2_input_classify_next_acl_ip6;
+      am->l2_output_classify_next_acl_ip4 = am->fa_l2_output_classify_next_acl_ip4;
+      am->l2_output_classify_next_acl_ip6 = am->fa_l2_output_classify_next_acl_ip6;
+      goto done;
+    }
+    goto done;
+  }
+  if (unformat (input, "skip-ipv6-extension-header %u %u", &eh_val, &val)) {
+    if(!acl_set_skip_ipv6_eh(eh_val, val)) {
+      error = clib_error_return(0, "expecting eh=0..255, value=0..1");
+    }
+    goto done;
+  }
+  if (unformat (input, "session")) {
+    if (unformat (input, "clear")) {
+      acl_main_t *am = &acl_main;
+      vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
+                               ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX, ~0);
+	  goto done;
+    }
+    if (unformat (input, "table")) {
+      /* The commands here are for tuning/testing. No user-serviceable parts inside */
+      if (unformat (input, "max-entries")) {
+	if (!unformat(input, "%u", &val)) {
+	  error = clib_error_return(0,
+				    "expecting maximum number of entries, got `%U`",
+				    format_unformat_error, input);
+	  goto done;
+	} else {
+	  acl_set_session_max_entries(val);
+          goto done;
+	}
+      }
+      if (unformat (input, "hash-table-buckets")) {
+	if (!unformat(input, "%u", &val)) {
+	  error = clib_error_return(0,
+				    "expecting maximum number of hash table buckets, got `%U`",
+				    format_unformat_error, input);
+	  goto done;
+	} else {
+          am->fa_conn_table_hash_num_buckets = val;
+          goto done;
+	}
+      }
+      if (unformat (input, "hash-table-memory")) {
+	if (!unformat(input, "%U", unformat_memory_size, &memory_size)) {
+	  error = clib_error_return(0,
+				    "expecting maximum amount of hash table memory, got `%U`",
+				    format_unformat_error, input);
+	  goto done;
+	} else {
+          am->fa_conn_table_hash_memory_size = memory_size;
+          goto done;
+	}
+      }
+      goto done;
+    }
+    if (unformat (input, "timeout")) {
+      if (unformat(input, "udp")) {
+	if(unformat(input, "idle")) {
+	  if (!unformat(input, "%u", &timeout)) {
+	    error = clib_error_return(0,
+				      "expecting timeout value in seconds, got `%U`",
+				      format_unformat_error, input);
+	    goto done;
+	  } else {
+	    acl_set_timeout_sec(ACL_TIMEOUT_UDP_IDLE, timeout);
+            goto done;
+	  }
+	}
+      }
+      if (unformat(input, "tcp")) {
+	if(unformat(input, "idle")) {
+	  if (!unformat(input, "%u", &timeout)) {
+	    error = clib_error_return(0,
+				      "expecting timeout value in seconds, got `%U`",
+				      format_unformat_error, input);
+	    goto done;
+	  } else {
+	    acl_set_timeout_sec(ACL_TIMEOUT_TCP_IDLE, timeout);
+            goto done;
+	  }
+	}
+	if(unformat(input, "transient")) {
+	  if (!unformat(input, "%u", &timeout)) {
+	    error = clib_error_return(0,
+				      "expecting timeout value in seconds, got `%U`",
+				      format_unformat_error, input);
+	    goto done;
+	  } else {
+	    acl_set_timeout_sec(ACL_TIMEOUT_TCP_TRANSIENT, timeout);
+            goto done;
+	  }
+	}
+      }
+      goto done;
+    }
+  }
+done:
+  return error;
+}
+
+static clib_error_t *
+acl_show_aclplugin_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
+
+  vnet_sw_interface_t *swif;
+
+  if (unformat (input, "sessions"))
+    {
+      u8 * out0 = 0;
+      pool_foreach (swif, im->sw_interfaces,
+      ({
+        u32 sw_if_index =  swif->sw_if_index;
+        u64 n_adds = sw_if_index < vec_len(am->fa_session_adds_by_sw_if_index) ? am->fa_session_adds_by_sw_if_index[sw_if_index] : 0;
+        u64 n_dels = sw_if_index < vec_len(am->fa_session_dels_by_sw_if_index) ? am->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
+        out0 = format(out0, "sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
+      }));
+      vlib_cli_output(vm, "\n\n%s\n\n", out0);
+      vlib_cli_output(vm, "Sessions per interval: min %lu max %lu increment: %f ms current: %f ms",
+              am->fa_min_deleted_sessions_per_interval, am->fa_max_deleted_sessions_per_interval,
+              am->fa_cleaner_wait_time_increment * 1000.0, ((f64)am->fa_current_cleaner_timer_wait_interval) * 1000.0/(f64)vm->clib_time.clocks_per_second);
+      vec_free(out0);
+    }
+  return error;
+}
+
+
+ /* *INDENT-OFF* */
+VLIB_CLI_COMMAND (aclplugin_set_command, static) = {
+    .path = "set acl-plugin",
+    .short_help = "set acl-plugin session timeout {{udp idle}|tcp {idle|transient}} <seconds>",
+    .function = acl_set_aclplugin_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_show_command, static) = {
+    .path = "show acl-plugin",
+    .short_help = "show acl-plugin sessions",
+    .function = acl_show_aclplugin_fn,
+};
+/* *INDENT-ON* */
 
 
 
@@ -1873,6 +2167,31 @@ acl_init (vlib_main_t * vm)
   setup_message_id_table (am, &api_main);
 
   vec_free (name);
+
+  acl_setup_fa_nodes();
+  am->session_timeout_sec[ACL_TIMEOUT_TCP_TRANSIENT] = TCP_SESSION_TRANSIENT_TIMEOUT_SEC;
+  am->session_timeout_sec[ACL_TIMEOUT_TCP_IDLE] = TCP_SESSION_IDLE_TIMEOUT_SEC;
+  am->session_timeout_sec[ACL_TIMEOUT_UDP_IDLE] = UDP_SESSION_IDLE_TIMEOUT_SEC;
+
+  am->fa_conn_table_hash_num_buckets = ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS;
+  am->fa_conn_table_hash_memory_size = ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
+  am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
+
+  {
+    u8 tt;
+    for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
+       am->fa_conn_list_head[tt] = ~0;
+       am->fa_conn_list_tail[tt] = ~0;
+    }
+  }
+
+  am->fa_min_deleted_sessions_per_interval = ACL_FA_DEFAULT_MIN_DELETED_SESSIONS_PER_INTERVAL;
+  am->fa_max_deleted_sessions_per_interval = ACL_FA_DEFAULT_MAX_DELETED_SESSIONS_PER_INTERVAL;
+  am->fa_cleaner_wait_time_increment = ACL_FA_DEFAULT_CLEANER_WAIT_TIME_INCREMENT;
+
+#define _(N, v, s) am->fa_ipv6_known_eh_bitmap = clib_bitmap_set(am->fa_ipv6_known_eh_bitmap, v, 1);
+  foreach_acl_eh
+#undef _
 
   return error;
 }
