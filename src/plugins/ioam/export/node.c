@@ -41,6 +41,7 @@ format_export_trace (u8 * s, va_list * args)
 }
 
 vlib_node_registration_t export_node;
+extern ioam_export_main_t ioam_export_main;
 
 #define foreach_export_error \
 _(RECORDED, "Packets recorded for export")
