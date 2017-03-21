@@ -265,6 +265,7 @@ test-wipe-doc:
 	@make -C test wipe-doc
 
 test-cov: bootstrap
+	$(eval EXTENDED_TESTS=yes)
 	$(call test,vpp,vpp_gcov,cov)
 
 test-wipe-cov:
