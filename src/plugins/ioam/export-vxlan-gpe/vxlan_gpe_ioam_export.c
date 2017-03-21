@@ -61,6 +61,7 @@
 _(VXLAN_GPE_IOAM_EXPORT_ENABLE_DISABLE, vxlan_gpe_ioam_export_enable_disable)
 
 ioam_export_main_t vxlan_gpe_ioam_export_main;
+extern vlib_node_registration_t vxlan_export_node;
 
 extern void vxlan_gpe_set_next_override (uword next);
 /* Action function shared between message handler and debug CLI */
