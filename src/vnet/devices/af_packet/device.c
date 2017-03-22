@@ -231,6 +231,27 @@ af_packet_subif_add_del_function (vnet_main_t * vnm,
   return 0;
 }
 
+static clib_error_t *
+af_packet_set_mac_address (vnet_hw_interface_t * hi, char *mac_address)
+{
+  ethernet_interface_t *ei;
+  ethernet_main_t *em;
+
+  em = &ethernet_main;
+  ei = pool_elt_at_index (em->interfaces, hi->dev_instance);
+
+  vec_validate (hi->hw_address,
+		STRUCT_SIZE_OF (ethernet_header_t, src_address) - 1);
+
+  clib_memcpy (hi->hw_address, mac_address, vec_len (hi->hw_address));
+  clib_memcpy (ei->address, (u8 *) mac_address, sizeof (ei->address));
+
+  ethernet_arp_change_mac (hi->sw_if_index);
+  ethernet_ndp_change_mac (hi->sw_if_index);
+
+  return NULL;
+}
+
 /* *INDENT-OFF* */
 VNET_DEVICE_CLASS (af_packet_device_class) = {
   .name = "af-packet",
@@ -244,6 +265,7 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .clear_counters = af_packet_clear_hw_interface_counters,
   .admin_up_down_function = af_packet_interface_admin_up_down,
   .subif_add_del_function = af_packet_subif_add_del_function,
+  .mac_addr_change_function = af_packet_set_mac_address,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (af_packet_device_class,
