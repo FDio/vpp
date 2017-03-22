@@ -20,12 +20,11 @@
 static void
 dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)
 {
-  dpdk_config_main_t *conf = &dpdk_config_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 i, skip_master;
 
-  if (!conf->cryptodev)
+  if (!dcm->enabled)
     {
       vlib_cli_output (vm, "DPDK Cryptodev support is disabled\n");
       return;

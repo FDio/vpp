@@ -995,9 +995,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "no-multi-seg"))
 	conf->no_multi_seg = 1;
 
-      else if (unformat (input, "enable-cryptodev"))
-	conf->cryptodev = 1;
-
       else if (unformat (input, "dev default %U", unformat_vlib_cli_sub_input,
 			 &sub_input))
 	{
