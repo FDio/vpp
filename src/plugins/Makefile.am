@@ -57,6 +57,10 @@ if ENABLE_LB_PLUGIN
 include lb.am
 endif
 
+if ENABLE_MEMIF_PLUGIN
+include memif.am
+endif
+
 if ENABLE_SIXRD_PLUGIN
 include sixrd.am
 endif

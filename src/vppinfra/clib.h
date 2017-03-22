@@ -100,6 +100,12 @@
 /* Full memory barrier (read and write). */
 #define CLIB_MEMORY_BARRIER() __sync_synchronize ()
 
+#if __x86_64__
+#define CLIB_MEMORY_STORE_BARRIER() __builtin_ia32_sfence ()
+#else
+#define CLIB_MEMORY_STORE_BARRIER() __sync_synchronize ()
+#endif
+
 /* Arranges for function to be called before main. */
 #define INIT_FUNCTION(decl)			\
   decl __attribute ((constructor));		\
