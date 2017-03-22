@@ -226,6 +226,8 @@ typedef enum
 /** */
 typedef struct
 {
+  u8 is_src_dst;
+
   u8 is_add;
 
   /** type of mapping */

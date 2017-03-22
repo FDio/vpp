@@ -284,6 +284,14 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 {
   dpo_proto_t dproto;
 
+  if (!lfe->is_src_dst)
+    {
+      /* install normal destination route if not src/dst and be done */
+      ip_src_fib_add_route (lfe->eid_fib_index,
+			    &lfe->key->rmt.ippref, lfe->paths);
+      return;
+    }
+
   dproto = (ip_prefix_version (&lfe->key->rmt.ippref) == IP4 ?
 	    DPO_PROTO_IP4 : DPO_PROTO_IP6);
 
@@ -324,9 +332,18 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 static void
 delete_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 {
-  ip_src_dst_fib_del_route (lfe->src_fib_index,
-			    &lfe->key->lcl.ippref,
-			    lfe->eid_fib_index, &lfe->key->rmt.ippref);
+  fib_prefix_t dst_fib_prefix;
+
+  if (lfe->is_src_dst)
+    ip_src_dst_fib_del_route (lfe->src_fib_index,
+			      &lfe->key->lcl.ippref,
+			      lfe->eid_fib_index, &lfe->key->rmt.ippref);
+  else
+    {
+      ip_prefix_to_fib_prefix (&lfe->key->rmt.ippref, &dst_fib_prefix);
+      fib_table_entry_delete (lfe->src_fib_index, &dst_fib_prefix,
+			      FIB_SOURCE_LISP);
+    }
 }
 
 static lisp_gpe_fwd_entry_t *
@@ -435,6 +452,7 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
   lfe->eid_table_id = a->table_id;
   lfe->eid_fib_index = fib_table_find_or_create_and_lock (fproto,
 							  lfe->eid_table_id);
+  lfe->is_src_dst = a->is_src_dst;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
     {
@@ -442,7 +460,6 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
     }
 
   create_fib_entries (lfe);
-
   return (0);
 }
 

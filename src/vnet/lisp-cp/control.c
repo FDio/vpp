@@ -489,6 +489,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
     gid_address_copy (&a->rmt_eid, rmt_eid);
 
   a->vni = gid_address_vni (&a->rmt_eid);
+  a->is_src_dst = is_src_dst;
 
   /* get vrf or bd_index associated to vni */
   type = gid_address_type (&a->rmt_eid);
