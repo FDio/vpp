@@ -83,6 +83,7 @@ typedef struct
 {
   struct rte_mempool **cop_pools;
   crypto_worker_main_t *workers_main;
+  u8 enabled;
 } dpdk_crypto_main_t;
 
 dpdk_crypto_main_t dpdk_crypto_main;

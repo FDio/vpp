@@ -224,7 +224,6 @@ static uword
 dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		    vlib_frame_t * f)
 {
-  dpdk_config_main_t *conf = &dpdk_config_main;
   ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -235,19 +234,12 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   i32 dev_id, ret;
   u32 i, skip_master;
 
-  if (!conf->cryptodev)
-    {
-      clib_warning ("DPDK Cryptodev support is disabled, "
-		    "default to OpenSSL IPsec");
-      return 0;
-    }
-
   if (check_cryptodev_queues () < 0)
     {
-      conf->cryptodev = 0;
       clib_warning ("not enough Cryptodevs, default to OpenSSL IPsec");
       return 0;
     }
+  dcm->enabled = 1;
 
   vec_alloc (dcm->workers_main, tm->n_vlib_mains);
   _vec_len (dcm->workers_main) = tm->n_vlib_mains;
