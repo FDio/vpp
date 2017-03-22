@@ -234,7 +234,7 @@ static send_ip46_ping_result_t
 send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
 	       u32 table_id, ip6_address_t * pa6,
 	       u32 sw_if_index, u16 seq_host, u16 id_host, u16 data_len,
-	       u8 verbose)
+	       u32 burst, u8 verbose)
 {
   icmp6_echo_request_header_t *h0;
   u32 bi0 = 0;
@@ -339,7 +339,15 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
   f = vlib_get_frame_to_node (vm, ip6_lookup_node.index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi0;
-  f->n_vectors = 1;
+
+  ASSERT (burst <= VLIB_FRAME_SIZE);
+  f->n_vectors = burst;
+  while (--burst)
+    {
+      vlib_buffer_t *c0 = vlib_buffer_copy (vm, p0);
+      to_next++;
+      to_next[0] = vlib_get_buffer_index (vm, c0);
+    }
   vlib_put_frame_to_node (vm, ip6_lookup_node.index, f);
 
   return SEND_PING_OK;
@@ -351,7 +359,7 @@ send_ip4_ping (vlib_main_t * vm,
 	       u32 table_id,
 	       ip4_address_t * pa4,
 	       u32 sw_if_index,
-	       u16 seq_host, u16 id_host, u16 data_len, u8 verbose)
+	       u16 seq_host, u16 id_host, u16 data_len, u32 burst, u8 verbose)
 {
   icmp4_echo_request_header_t *h0;
   u32 bi0 = 0;
@@ -469,7 +477,15 @@ send_ip4_ping (vlib_main_t * vm,
   f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
   to_next = vlib_frame_vector_args (f);
   to_next[0] = bi0;
-  f->n_vectors = 1;
+
+  ASSERT (burst <= VLIB_FRAME_SIZE);
+  f->n_vectors = burst;
+  while (--burst)
+    {
+      vlib_buffer_t *c0 = vlib_buffer_copy (vm, p0);
+      to_next++;
+      to_next[0] = vlib_get_buffer_index (vm, c0);
+    }
   vlib_put_frame_to_node (vm, ip4_lookup_node.index, f);
 
   return SEND_PING_OK;
@@ -523,7 +539,7 @@ static void
 run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 		       ip6_address_t * pa6, u32 sw_if_index,
 		       f64 ping_interval, u32 ping_repeat, u32 data_len,
-		       u32 verbose)
+		       u32 ping_burst, u32 verbose)
 {
   int i;
   ping_main_t *pm = &ping_main;
@@ -561,16 +577,16 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
       if (pa6 &&
 	  (SEND_PING_OK ==
 	   send_ip6_ping (vm, ping_main.ip6_main, table_id, pa6, sw_if_index,
-			  i, icmp_id, data_len, verbose)))
+			  i, icmp_id, data_len, ping_burst, verbose)))
 	{
-	  n_requests++;
+	  n_requests += ping_burst;
 	}
       if (pa4 &&
 	  (SEND_PING_OK ==
 	   send_ip4_ping (vm, ping_main.ip4_main, table_id, pa4, sw_if_index,
-			  i, icmp_id, data_len, verbose)))
+			  i, icmp_id, data_len, ping_burst, verbose)))
 	{
-	  n_requests++;
+	  n_requests += ping_burst;
 	}
       while ((i <= ping_repeat)
 	     &&
@@ -650,6 +666,7 @@ ping_ip_address (vlib_main_t * vm,
   ip6_address_t a6;
   clib_error_t *error = 0;
   u32 ping_repeat = 5;
+  u32 ping_burst = 1;
   u8 ping_ip4, ping_ip6;
   vnet_main_t *vnm = vnet_get_main ();
   u32 data_len = PING_DEFAULT_DATA_LEN;
@@ -789,6 +806,17 @@ ping_ip_address (vlib_main_t * vm,
 	      goto done;
 	    }
 	}
+      else if (unformat (input, "burst"))
+	{
+	  if (!unformat (input, "%u", &ping_burst))
+	    {
+	      error =
+		clib_error_return (0,
+				   "expecting burst count but got `%U'",
+				   format_unformat_error, input);
+	      goto done;
+	    }
+	}
       else if (unformat (input, "verbose"))
 	{
 	  verbose = 1;
@@ -801,9 +829,13 @@ ping_ip_address (vlib_main_t * vm,
 	}
     }
 
+  if (ping_burst < 1 || ping_burst > VLIB_FRAME_SIZE)
+    return clib_error_return (0, "burst size must be between 1 and %u",
+			      VLIB_FRAME_SIZE);
+
   run_ping_ip46_address (vm, table_id, ping_ip4 ? &a4 : NULL,
 			 ping_ip6 ? &a6 : NULL, sw_if_index, ping_interval,
-			 ping_repeat, data_len, verbose);
+			 ping_repeat, ping_burst, data_len, verbose);
 done:
   return error;
 }
