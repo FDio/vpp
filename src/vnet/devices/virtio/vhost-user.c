@@ -2440,13 +2440,10 @@ vhost_user_process (vlib_main_t * vm,
   f64 timeout = 3153600000.0 /* 100 years */ ;
   uword *event_data = 0;
 
-  sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+  sockfd = -1;
   sun.sun_family = AF_UNIX;
   template.read_function = vhost_user_socket_read;
   template.error_function = vhost_user_socket_error;
-
-  if (sockfd < 0)
-    return 0;
 
   while (1)
     {
@@ -2462,6 +2459,23 @@ vhost_user_process (vlib_main_t * vm,
 	  if (vui->unix_server_index == ~0) { //Nothing to do for server sockets
 	      if (vui->unix_file_index == ~0)
 		{
+		  if ((sockfd < 0) &&
+		      ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0))
+		    {
+		      /*
+		       * 1st time error or new error for this interface,
+		       * spit out the message and record the error
+		       */
+		      if (!vui->sock_errno || (vui->sock_errno != errno))
+			{
+			  clib_unix_warning
+			    ("Error: Could not open unix socket for %s",
+			     vui->sock_filename);
+			  vui->sock_errno = errno;
+			}
+		      continue;
+		    }
+
 		  /* try to connect */
 		  strncpy (sun.sun_path, (char *) vui->sock_filename,
 			   sizeof (sun.sun_path) - 1);
@@ -2483,11 +2497,8 @@ vhost_user_process (vlib_main_t * vm,
 			  vui - vhost_user_main.vhost_user_interfaces;
 		      vui->unix_file_index = unix_file_add (&unix_main, &template);
 
-		      //Re-open for next connect
-		      if ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
-			  clib_warning("Critical: Could not open unix socket");
-			  return 0;
-		      }
+		      /* This sockfd is considered consumed */
+		      sockfd = -1;
 		    }
 		  else
 		    {
