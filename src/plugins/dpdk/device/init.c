@@ -1888,24 +1888,24 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		    int rv;
 
 		    /* Get MAC of 1st slave link */
-		    rte_eth_macaddr_get (slink[0],
-					 (struct ether_addr *) addr);
+		    rte_eth_macaddr_get
+		      (slink[0], (struct ether_addr *) addr);
+
 		    /* Set MAC of bounded interface to that of 1st slave link */
-		    rv =
-		      rte_eth_bond_mac_address_set (i,
-						    (struct ether_addr *)
-						    addr);
-		    if (rv < 0)
-		      clib_warning ("Failed to set MAC address");
+		    clib_warning ("Set MAC for bond dev# %d", i);
+		    rv = rte_eth_bond_mac_address_set
+		      (i, (struct ether_addr *) addr);
+		    if (rv)
+		      clib_warning ("Set MAC addr failure rv=%d", rv);
 
 		    /* Populate MAC of bonded interface in VPP hw tables */
-		    bhi =
-		      vnet_get_hw_interface (vnm,
-					     dm->devices[i].vlib_hw_if_index);
-		    bei =
-		      pool_elt_at_index (em->interfaces, bhi->hw_instance);
+		    bhi = vnet_get_hw_interface
+		      (vnm, dm->devices[i].vlib_hw_if_index);
+		    bei = pool_elt_at_index
+		      (em->interfaces, bhi->hw_instance);
 		    clib_memcpy (bhi->hw_address, addr, 6);
 		    clib_memcpy (bei->address, addr, 6);
+
 		    /* Init l3 packet size allowed on bonded interface */
 		    bhi->max_packet_bytes = ETHERNET_MAX_PACKET_BYTES;
 		    bhi->max_l3_packet_bytes[VLIB_RX] =
@@ -1917,22 +1917,31 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			dpdk_device_t *sdev = &dm->devices[slave];
 			vnet_hw_interface_t *shi;
 			vnet_sw_interface_t *ssi;
+			ethernet_interface_t *sei;
 			/* Add MAC to all slave links except the first one */
 			if (nlink)
-			  rte_eth_dev_mac_addr_add (slave,
-						    (struct ether_addr *)
-						    addr, 0);
+			  {
+			    clib_warning ("Add MAC for slave dev# %d", slave);
+			    rv = rte_eth_dev_mac_addr_add
+			      (slave, (struct ether_addr *) addr, 0);
+			    if (rv)
+			      clib_warning ("Add MAC addr failure rv=%d", rv);
+			  }
 			/* Set slaves bitmap for bonded interface */
-			bhi->bond_info =
-			  clib_bitmap_set (bhi->bond_info,
-					   sdev->vlib_hw_if_index, 1);
+			bhi->bond_info = clib_bitmap_set
+			  (bhi->bond_info, sdev->vlib_hw_if_index, 1);
 			/* Set slave link flags on slave interface */
-			shi =
-			  vnet_get_hw_interface (vnm, sdev->vlib_hw_if_index);
-			ssi =
-			  vnet_get_sw_interface (vnm, sdev->vlib_sw_if_index);
+			shi = vnet_get_hw_interface
+			  (vnm, sdev->vlib_hw_if_index);
+			ssi = vnet_get_sw_interface
+			  (vnm, sdev->vlib_sw_if_index);
+			sei = pool_elt_at_index
+			  (em->interfaces, shi->hw_instance);
+
 			shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
 			ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
+			clib_memcpy (shi->hw_address, addr, 6);
+			clib_memcpy (sei->address, addr, 6);
 
 			/* Set l3 packet size allowed as the lowest of slave */
 			if (bhi->max_l3_packet_bytes[VLIB_RX] >
