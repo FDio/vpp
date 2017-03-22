@@ -75,6 +75,11 @@ typedef struct lisp_gpe_fwd_entry_key_t_
 typedef struct lisp_gpe_fwd_entry_t_
 {
   /**
+   * Follows src/dst or dst only forwarding policy
+   */
+  u8 is_src_dst;
+
+  /**
    * This object joins the FIB control plane graph to receive updates to
    * for changes to the graph.
    */
