@@ -52,6 +52,24 @@
       "revId": "970128b5b0bf5609640b9092999a1c0bad96f2e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_16fa47bd",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 144
+      },
+      "writtenOn": "2017-03-22T17:06:26Z",
+      "side": 1,
+      "message": "OK, Tom. I say it is a trade-off: surgical fixes are less likely to lead to losing friends. But more likely to lead to multiple methods that accomplish the same purpose. C\u0027est la vie or do i mean c\u0027est toujours la meme chose. (Regardless, I\u0027m fine with the fix.)",
+      "parentUuid": "3a3291f1_f6357bdb",
+      "revId": "970128b5b0bf5609640b9092999a1c0bad96f2e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
