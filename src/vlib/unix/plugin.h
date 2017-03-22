@@ -62,6 +62,7 @@ typedef CLIB_PACKED(struct {
   const char version[32];
   const char version_required[32];
   const char *early_init;
+  const char *description;
 }) vlib_plugin_registration_t;
 /* *INDENT-ON* */
 

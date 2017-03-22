@@ -61,6 +61,7 @@ _(SAMPLE_MACSWAP_ENABLE_DISABLE, sample_macswap_enable_disable)
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = SAMPLE_PLUGIN_BUILD_VER,
+    .description = "Sample of VPP Plugin",
 };
 /* *INDENT-ON* */
 

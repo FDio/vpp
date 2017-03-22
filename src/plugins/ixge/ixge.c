@@ -2935,6 +2935,7 @@ ixge_set_next_node (ixge_rx_next_t next, char *name)
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
     .default_disabled = 1,
+    .description = "Intel 82599 Family Native Driver (experimental)",
 };
 
 /* *INDENT-ON* */
