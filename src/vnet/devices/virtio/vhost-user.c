@@ -2439,6 +2439,7 @@ vhost_user_process (vlib_main_t * vm,
   unix_file_t template = { 0 };
   f64 timeout = 3153600000.0 /* 100 years */ ;
   uword *event_data = 0;
+  int retry_count = 0;
 
   sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
   sun.sun_family = AF_UNIX;
@@ -2446,7 +2447,10 @@ vhost_user_process (vlib_main_t * vm,
   template.error_function = vhost_user_socket_error;
 
   if (sockfd < 0)
-    return 0;
+    {
+      clib_warning ("Fatal: Bad sockfd -- vhost is disabled");
+      return 0;
+    }
 
   while (1)
     {
@@ -2456,12 +2460,29 @@ vhost_user_process (vlib_main_t * vm,
 
       timeout = 3.0;
 
+      /* Retry socket call for the next connect if we don't have a valid sockfd */
+      if (PREDICT_FALSE (sockfd < 0 &&
+			 (sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0))
+	{
+	  /* Rate limit the warning message to every 1 minute */
+	  if (PREDICT_FALSE ((retry_count % 20) == 0))
+	    {
+	      clib_unix_warning ("Critical: Could not open unix socket");
+	      retry_count = 1;
+	    }
+	  else
+	    retry_count++;
+	}
+
       /* *INDENT-OFF* */
       pool_foreach (vui, vum->vhost_user_interfaces, {
 
 	  if (vui->unix_server_index == ~0) { //Nothing to do for server sockets
 	      if (vui->unix_file_index == ~0)
 		{
+		  if (PREDICT_FALSE (sockfd < 0))
+		    continue;
+
 		  /* try to connect */
 		  strncpy (sun.sun_path, (char *) vui->sock_filename,
 			   sizeof (sun.sun_path) - 1);
@@ -2484,10 +2505,17 @@ vhost_user_process (vlib_main_t * vm,
 		      vui->unix_file_index = unix_file_add (&unix_main, &template);
 
 		      //Re-open for next connect
-		      if ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0) {
-			  clib_warning("Critical: Could not open unix socket");
-			  return 0;
-		      }
+		      if (PREDICT_FALSE ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0))
+			{
+			  /* Rate limit the warning message to every 1 minute */
+			  if (PREDICT_FALSE ((retry_count % 20) == 0))
+			    {
+			      clib_unix_warning ("Critical: Could not open unix socket");
+			      retry_count = 1;
+			    }
+			  else
+			    retry_count++;
+			}
 		    }
 		  else
 		    {
