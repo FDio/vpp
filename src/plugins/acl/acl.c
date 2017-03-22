@@ -80,6 +80,7 @@ _(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get)
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
+    .description = "Access Control Lists",
 };
 /* *INDENT-ON* */
 

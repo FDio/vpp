@@ -105,13 +105,13 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 	}
       if (reg->default_disabled && pc->is_enabled == 0)
 	{
-	  clib_warning ("Plugin disabled: %s (default)", pi->name);
+	  clib_warning ("Plugin disabled (default): %s", pi->name);
 	  goto error;
 	}
     }
   else if (reg->default_disabled)
     {
-      clib_warning ("Plugin disabled: %s (default)", pi->name);
+      clib_warning ("Plugin disabled (default): %s", pi->name);
       goto error;
     }
 
@@ -184,7 +184,10 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 		      (char *) pi->name, reg->early_init);
     }
 
-  clib_warning ("Loaded plugin: %s", pi->name);
+  if (reg->description)
+    clib_warning ("Loaded plugin: %s (%s)", pi->name, reg->description);
+  else
+    clib_warning ("Loaded plugin: %s", pi->name);
 
   return 0;
 error:
@@ -374,7 +377,7 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
   plugin_info_t *pi;
 
   s = format (s, " Plugin path is: %s\n\n", pm->plugin_path);
-  s = format (s, "     %-41s%s\n", "Plugin", "Version");
+  s = format (s, "     %-41s%-33s%s\n", "Plugin", "Version", "Description");
 
   /* *INDENT-OFF* */
   hash_foreach_mem (key, value, pm->plugin_by_name_hash,
@@ -382,7 +385,8 @@ vlib_plugins_show_cmd_fn (vlib_main_t * vm,
       if (key != 0)
         {
           pi = vec_elt_at_index (pm->plugin_info, value);
-          s = format (s, "%3d. %-40s %s\n", index, key, pi->version);
+          s = format (s, "%3d. %-40s %-32s %s\n", index, key, pi->version,
+		      pi->reg->description ? pi->reg->description : "");
 	  index++;
         }
     });

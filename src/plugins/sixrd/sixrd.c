@@ -356,8 +356,9 @@ VLIB_CLI_COMMAND(show_sixrd_stats_command, static) = {
 };
 
 /* *INDENT-OFF* */
-VLIB_PLUGIN_REGISTER () = {
+VLIB_PLUGIN_REGISTER () ={
     .version = VPP_BUILD_VER,
+    .description = "IPv6 Rapid Deployment on IPv4 Infrastructure (RFC5969)",
 };
 /* *INDENT-ON* */
 

@@ -107,6 +107,7 @@ VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
+    .description = "Network Address Translation",
 };
 /* *INDENT-ON* */
 
