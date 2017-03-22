@@ -1,0 +1,127 @@
+/*
+ * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \brief Create memory interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param role - role of the interface in the connection (master/slave)
+    @param key - 64bit integer used to authenticate and match opposite sides
+           of the connection
+    @param socket_filename - filename of the socket to be used for connection
+           establishment
+    @param ring_size - the number of entries of RX/TX rings
+    @param buffer_size - size of the buffer allocated for each ring entry
+    @param hw_addr - interface MAC address
+*/
+define memif_create
+{
+  u32 client_index;
+  u32 context;
+
+  u8 role; /* 0 = master, 1 = slave */
+  u64 key; /* optional, default is 0 */
+  u8 socket_filename[128]; /* optional, default is "/var/vpp/memif.sock"
+                              and can be changed in VPP startup config */
+
+  u32 ring_size; /* optional, default is 1024 entries, must be power of 2 */
+  u16 buffer_size; /* optional, default is 2048 bytes */
+  u8 hw_addr[6]; /* optional, randomly generated if not defined */
+};
+
+/** \brief Create memory interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+    @param sw_if_index - software index of the newly created interface
+*/
+define memif_create_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete memory interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface to delete
+*/
+define memif_delete
+{
+  u32 client_index;
+  u32 context;
+
+  u32 sw_if_index;
+};
+
+/** \brief Delete host-interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return value for request
+*/
+define memif_delete_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Memory interface details structure
+    @param context - sender context, to match reply w/ request (memif_dump)
+    @param sw_if_index - index of the interface
+    @param if_name - name of the interface
+    @param hw_addr - interface MAC address
+    @param key - key associated with the interface
+    @param role - role of the interface in the connection (master/slave)
+    @param socket_filename - name of the socket used by this interface
+           to establish new connections
+    @param ring_size - the number of entries of RX/TX rings
+    @param buffer_size - size of the buffer allocated for each ring entry
+    @param admin_up_down - interface administrative status
+    @param link_up_down - interface link status
+
+*/
+define memif_details
+{
+  u32 context;
+
+  u32 sw_if_index;
+  u8 if_name[64];
+  u8 hw_addr[6];
+
+  /* memif specific parameters */
+  u64 key;
+  u8 role; /* 0 = master, 1 = slave */
+  u8 socket_filename[128];
+  u32 ring_size;
+  u16 buffer_size; /* optional, default is 2048 bytes */
+
+  /* 1 = up, 0 = down */
+  u8 admin_up_down;
+  u8 link_up_down;
+};
+
+/** \brief Dump all memory interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define memif_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
