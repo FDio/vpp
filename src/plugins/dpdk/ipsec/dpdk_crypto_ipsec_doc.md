@@ -23,15 +23,7 @@ Set new default next nodes:
 
 ### How to enable VPP IPSec with DPDK Cryptodev support
 
-DPDK Cryptodev is supported in DPDK enabled VPP.
-By default, only HW Cryptodev is supported but needs to be explicetly enabled with the following config option:
-
-```
-dpdk {
-    enable-cryptodev
-}
-```
-
+DPDK Cryptodev is supported in DPDK enabled VPP and by default only HW Cryptodev is supported.
 To enable SW Cryptodev support (AESNI-MB-PMD and GCM-PMD), we need the following env option:
 
     vpp_uses_dpdk_cryptodev_sw=yes
@@ -47,15 +39,15 @@ When enabling SW Cryptodev support, it means that you need to pre-build the requ
 
 VPP allocates crypto resources based on a best effort approach:
 * first allocate Hardware crypto resources, then Software.
-* if there are not enough crypto resources for all workers, the graph node is not modifed, therefore the default VPP IPsec implementation based in OpenSSL is used. The following message is displayed:
+* if there are not enough crypto resources for all workers, the graph node is not modifed and the default VPP IPsec implementation based in OpenSSL is used. The following message is displayed:
 
-      0: dpdk_ipsec_init: not enough cryptodevs for ipsec
+      0: dpdk_ipsec_init: not enough Cryptodevs, default to OpenSSL IPsec
 
 
 ### Configuration example
 
-To enable DPDK Cryptodev the user just need to provide the startup.conf option
-as mentioned previously.
+To enable DPDK Cryptodev the user just need to provide cryptodevs int the
+startup.conf.
 
 Example startup.conf:
 
