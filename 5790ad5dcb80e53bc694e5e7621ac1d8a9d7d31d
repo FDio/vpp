@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_f3910d9b",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2017-03-22T11:02:36Z",
+      "side": 1,
+      "message": "Isn\u0027t this really vlib_counter_t not u64?",
+      "range": {
+        "startLine": 259,
+        "startChar": 2,
+        "endLine": 259,
+        "endChar": 18
+      },
+      "revId": "5790ad5dcb80e53bc694e5e7621ac1d8a9d7d31d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
