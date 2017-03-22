@@ -95,14 +95,10 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_t *mtrie0, *mtrie1, *mtrie2, *mtrie3;
 	  ip4_fib_mtrie_leaf_t leaf0, leaf1, leaf2, leaf3;
 	  ip4_address_t *dst_addr0, *dst_addr1, *dst_addr2, *dst_addr3;
-	  __attribute__ ((unused)) u32 pi0, fib_index0, lb_index0,
-	    is_tcp_udp0;
-	  __attribute__ ((unused)) u32 pi1, fib_index1, lb_index1,
-	    is_tcp_udp1;
-	  __attribute__ ((unused)) u32 pi2, fib_index2, lb_index2,
-	    is_tcp_udp2;
-	  __attribute__ ((unused)) u32 pi3, fib_index3, lb_index3,
-	    is_tcp_udp3;
+	  u32 pi0, fib_index0, lb_index0;
+	  u32 pi1, fib_index1, lb_index1;
+	  u32 pi2, fib_index2, lb_index2;
+	  u32 pi3, fib_index3, lb_index3;
 	  flow_hash_config_t flow_hash_config0, flow_hash_config1;
 	  flow_hash_config_t flow_hash_config2, flow_hash_config3;
 	  u32 hash_c0, hash_c1, hash_c2, hash_c3;
@@ -197,15 +193,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  tcp1 = (void *) (ip1 + 1);
 	  tcp2 = (void *) (ip2 + 1);
 	  tcp3 = (void *) (ip3 + 1);
-
-	  is_tcp_udp0 = (ip0->protocol == IP_PROTOCOL_TCP
-			 || ip0->protocol == IP_PROTOCOL_UDP);
-	  is_tcp_udp1 = (ip1->protocol == IP_PROTOCOL_TCP
-			 || ip1->protocol == IP_PROTOCOL_UDP);
-	  is_tcp_udp2 = (ip2->protocol == IP_PROTOCOL_TCP
-			 || ip2->protocol == IP_PROTOCOL_UDP);
-	  is_tcp_udp3 = (ip1->protocol == IP_PROTOCOL_TCP
-			 || ip1->protocol == IP_PROTOCOL_UDP);
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {
@@ -346,7 +333,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_t *mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
 	  ip4_address_t *dst_addr0;
-	  __attribute__ ((unused)) u32 pi0, fib_index0, is_tcp_udp0, lbi0;
+	  u32 pi0, fib_index0, lbi0;
 	  flow_hash_config_t flow_hash_config0;
 	  const dpo_id_t *dpo0;
 	  u32 hash_c0;
@@ -375,9 +362,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 	    }
 
 	  tcp0 = (void *) (ip0 + 1);
-
-	  is_tcp_udp0 = (ip0->protocol == IP_PROTOCOL_TCP
-			 || ip0->protocol == IP_PROTOCOL_UDP);
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
