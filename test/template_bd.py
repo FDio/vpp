@@ -132,7 +132,8 @@ class BridgeDomain(object):
         # Pick first received frame and check if it's corectly encapsulated.
         out = self.pg0.get_capture(1)
         pkt = out[0]
-        self.check_encapsulation(pkt, self.mcast_flood_bd, True)
+        self.check_encapsulation(pkt, self.mcast_flood_bd,
+                                 local_only=False, mcast_pkt=True)
 
         payload = self.decapsulate(pkt)
         self.assert_eq_pkts(payload, self.frame_reply)
