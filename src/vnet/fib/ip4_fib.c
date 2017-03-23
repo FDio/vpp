@@ -158,8 +158,9 @@ ip4_fib_table_destroy (ip4_fib_t *fib)
 
     /*
      * remove all the specials we added when the table was created.
+     * In reverse order so the default route is last.
      */
-    for (ii = 0; ii < ARRAY_LEN(ip4_specials); ii++)
+    for (ii = ARRAY_LEN(ip4_specials) - 1; ii >= 0; ii--)
     {
 	fib_prefix_t prefix = ip4_specials[ii].ift_prefix;
 
