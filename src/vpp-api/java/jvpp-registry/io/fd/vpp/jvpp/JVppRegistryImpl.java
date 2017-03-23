@@ -48,6 +48,13 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
         pingCalls = new HashMap<>();
     }
 
+    public JVppRegistryImpl(final String clientName, final String shmPrefix) throws IOException {
+        connection = new VppJNIConnection(clientName, shmPrefix);
+        connection.connect();
+        pluginRegistry = new ConcurrentHashMap<>();
+        pingCalls = new HashMap<>();
+    }
+
     @Override
     public VppConnection getConnection() {
         return connection;

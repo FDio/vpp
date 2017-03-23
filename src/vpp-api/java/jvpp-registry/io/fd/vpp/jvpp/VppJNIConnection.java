@@ -30,6 +30,7 @@ import java.util.logging.Logger;
  */
 public final class VppJNIConnection implements VppConnection {
     private static final Logger LOG = Logger.getLogger(VppJNIConnection.class.getName());
+    private static final String DEFAULT_SHM_PREFIX = "/vpe-api";
 
     static {
         final String libName = "libjvpp_registry.so";
@@ -44,6 +45,7 @@ public final class VppJNIConnection implements VppConnection {
     private ConnectionInfo connectionInfo;
 
     private final String clientName;
+    private final String shmPrefix;
     private volatile boolean disconnected = false;
 
     /**
@@ -54,6 +56,12 @@ public final class VppJNIConnection implements VppConnection {
      */
     public VppJNIConnection(final String clientName) {
         this.clientName = Objects.requireNonNull(clientName, "Null clientName");
+        this.shmPrefix = DEFAULT_SHM_PREFIX;
+    }
+
+    public VppJNIConnection(final String clientName, final String shmPrefix) {
+        this.clientName = Objects.requireNonNull(clientName, "Null clientName");
+        this.shmPrefix = Objects.requireNonNull(shmPrefix, "Null shmPrefix");
     }
 
     /**
@@ -73,16 +81,18 @@ public final class VppJNIConnection implements VppConnection {
 
     @Override
     public void connect() throws IOException {
-        _connect();
+        _connect(shmPrefix);
     }
 
-    private void _connect() throws IOException {
+    private void _connect(final String shmPrefix) throws IOException {
+        Objects.requireNonNull(shmPrefix, "Shared memory prefix must be defined");
+
         synchronized (VppJNIConnection.class) {
             if (connections.containsKey(clientName)) {
                 throw new IOException("Client " + clientName + " already connected");
             }
 
-            connectionInfo = clientConnect(clientName);
+            connectionInfo = clientConnect(shmPrefix, clientName);
             if (connectionInfo.status != 0) {
                 throw new IOException("Connection returned error " + connectionInfo.status);
             }
@@ -122,15 +132,17 @@ public final class VppJNIConnection implements VppConnection {
         public final long queueAddress;
         public final int clientIndex;
         public final int status; // FIXME throw exception instead
+        public final String memoryRegion;
 
-        public ConnectionInfo(long queueAddress, int clientIndex, int status) {
+        public ConnectionInfo(long queueAddress, int clientIndex, int status, String memoryRegion) {
             this.queueAddress = queueAddress;
             this.clientIndex = clientIndex;
             this.status = status;
+            this.memoryRegion = memoryRegion;
         }
     }
 
-    private static native ConnectionInfo clientConnect(String clientName);
+    private static native ConnectionInfo clientConnect(String shmPrefix, String clientName);
 
     private static native void clientDisconnect();
 

@@ -243,12 +243,12 @@ static int send_initial_control_ping() {
     return rv;
 }
 
-static int connect_to_vpe(char *name) {
+static int connect_to_vpe(char *shm_prefix, char *name) {
     jvpp_main_t * jm = &jvpp_main;
     api_main_t * am = &api_main;
     jvpp_registry_main_t * rm = &jvpp_registry_main;
 
-    if (vl_client_connect_to_vlib("/vpe-api", name, 32) < 0)
+    if (vl_client_connect_to_vlib(shm_prefix, name, 32) < 0)
         return -1;
 
     jm->my_client_index = am->my_client_index;
@@ -268,9 +268,10 @@ static int connect_to_vpe(char *name) {
 }
 
 JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
-        JNIEnv *env, jclass obj, jstring clientName) {
+        JNIEnv *env, jclass obj, jstring shmPrefix, jstring clientName) {
     int rv;
     const char *client_name;
+    const char *shm_prefix;
     void vl_msg_reply_handler_hookup(void);
     jvpp_main_t * jm = &jvpp_main;
     jvpp_registry_main_t * rm = &jvpp_registry_main;
@@ -280,15 +281,6 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
     jmethodID connectionInfoConstructor = (*env)->GetMethodID(env,
             connectionInfoClass, "<init>", "(JII)V");
 
-    /*
-     * Bail out now if we're not running as root
-     */
-    if (geteuid() != 0) {
-        return (*env)->NewObject(env, connectionInfoClass,
-                connectionInfoConstructor, 0, 0,
-                VNET_API_ERROR_NOT_RUNNING_AS_ROOT);
-    }
-
     if (rm->is_connected) {
         return (*env)->NewObject(env, connectionInfoClass,
                 connectionInfoConstructor, 0, 0,
@@ -296,21 +288,29 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
     }
 
     client_name = (*env)->GetStringUTFChars(env, clientName, 0);
+    shm_prefix = (*env)->GetStringUTFChars(env, shmPrefix, 0);
+
     if (!client_name) {
         return (*env)->NewObject(env, connectionInfoClass,
-                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE);
+                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE, shmPrefix);
     }
 
-    rv = connect_to_vpe((char *) client_name);
+    if (!shm_prefix) {
+        return (*env)->NewObject(env, connectionInfoClass,
+                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE, shmPrefix);
+    }
+
+    rv = connect_to_vpe((char *) shm_prefix, (char *) client_name);
 
     if (rv < 0)
         clib_warning("connection failed, rv %d", rv);
 
     (*env)->ReleaseStringUTFChars(env, clientName, client_name);
+    (*env)->ReleaseStringUTFChars(env, shmPrefix, shm_prefix);
 
     return (*env)->NewObject(env, connectionInfoClass,
             connectionInfoConstructor, (jlong) jm->vl_input_queue,
-            (jint) jm->my_client_index, (jint) rv);
+            (jint) jm->my_client_index, (jint) rv, shmPrefix);
 }
 
 JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_JVppRegistryImpl_controlPing0(
