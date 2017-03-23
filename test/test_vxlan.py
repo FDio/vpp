@@ -51,17 +51,23 @@ class TestVxlan(BridgeDomain, VppTestCase):
 
     # Method for checking VXLAN encapsulation.
     #
-    def check_encapsulation(self, pkt, vni, local_only=False):
+    def check_encapsulation(self, pkt, vni, local_only=False, mcast_pkt=False):
         # TODO: add error messages
         # Verify source MAC is VPP_MAC and destination MAC is MY_MAC resolved
         #  by VPP using ARP.
         self.assertEqual(pkt[Ether].src, self.pg0.local_mac)
         if not local_only:
-            self.assertEqual(pkt[Ether].dst, self.pg0.remote_mac)
+            if not mcast_pkt:
+                self.assertEqual(pkt[Ether].dst, self.pg0.remote_mac)
+            else:
+                self.assertEqual(pkt[Ether].dst, type(self).mcast_mac)
         # Verify VXLAN tunnel source IP is VPP_IP and destination IP is MY_IP.
         self.assertEqual(pkt[IP].src, self.pg0.local_ip4)
         if not local_only:
-            self.assertEqual(pkt[IP].dst, self.pg0.remote_ip4)
+            if not mcast_pkt:
+                self.assertEqual(pkt[IP].dst, self.pg0.remote_ip4)
+            else:
+                self.assertEqual(pkt[IP].dst, type(self).mcast_ip4)
         # Verify UDP destination port is VXLAN 4789, source UDP port could be
         #  arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
