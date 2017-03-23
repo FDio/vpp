@@ -20,13 +20,6 @@
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/fib/fib_node_list.h>
 
-/*
- * Special Adj with index zero. we need to define this since the v4 mtrie
- * assumes an index of 0 implies the ply is empty. therefore all 'real'
- * adjs need a non-zero index.
- */
-static ip_adjacency_t *special_v4_miss_adj_with_index_zero;
-
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t adjacency_counters;
 
@@ -425,11 +418,6 @@ adj_module_init (vlib_main_t * vm)
     adj_glean_module_init();
     adj_midchain_module_init();
     adj_mcast_module_init();
-
-    /*
-     * one special adj to reserve index 0
-     */
-    special_v4_miss_adj_with_index_zero = adj_alloc(FIB_PROTOCOL_IP4);
 
     return (NULL);
 }
