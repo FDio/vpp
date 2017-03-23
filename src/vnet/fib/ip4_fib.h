@@ -133,15 +133,11 @@ ip4_fib_forwarding_lookup (u32 fib_index,
 
     mtrie = &ip4_fib_get(fib_index)->mtrie;
 
-    leaf = IP4_FIB_MTRIE_LEAF_ROOT;
-    leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 0);
+    leaf = ip4_fib_mtrie_lookup_step_one (mtrie, addr);
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 1);
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 2);
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 3);
 
-    /* Handle default route. */
-    leaf = (leaf == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie->default_leaf : leaf);
-    
     return (ip4_fib_mtrie_leaf_get_adj_index(leaf));
 }
 

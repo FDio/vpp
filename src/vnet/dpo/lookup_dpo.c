@@ -205,19 +205,16 @@ ip4_src_fib_lookup_one (u32 src_fib_index0,
                         const ip4_address_t * addr0,
                         u32 * src_adj_index0)
 {
-    ip4_fib_mtrie_leaf_t leaf0, leaf1;
+    ip4_fib_mtrie_leaf_t leaf0;
     ip4_fib_mtrie_t * mtrie0;
 
     mtrie0 = &ip4_fib_get (src_fib_index0)->mtrie;
 
-    leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
-    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
+    leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, addr0);
     leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
     leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 2);
     leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
 
-    /* Handle default route. */
-    leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
     src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 }
 
@@ -235,10 +232,8 @@ ip4_src_fib_lookup_two (u32 src_fib_index0,
     mtrie0 = &ip4_fib_get (src_fib_index0)->mtrie;
     mtrie1 = &ip4_fib_get (src_fib_index1)->mtrie;
 
-    leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 0);
-    leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 0);
+    leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, addr0);
+    leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, addr1);
 
     leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 1);
     leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 1);
@@ -249,9 +244,6 @@ ip4_src_fib_lookup_two (u32 src_fib_index0,
     leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, addr0, 3);
     leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, addr1, 3);
 
-    /* Handle default route. */
-    leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-    leaf1 = (leaf1 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
     src_adj_index0[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
     src_adj_index1[0] = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 }
