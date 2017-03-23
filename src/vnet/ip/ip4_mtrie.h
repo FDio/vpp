@@ -140,9 +140,6 @@ typedef struct
 {
   /* Pool of plies.  Index zero is root ply. */
   ip4_fib_mtrie_ply_t *ply_pool;
-
-  /* Special case leaf for default route 0.0.0.0/0. */
-  ip4_fib_mtrie_leaf_t default_leaf;
 } ip4_fib_mtrie_t;
 
 void ip4_fib_mtrie_init (ip4_fib_mtrie_t * m);
@@ -161,18 +158,33 @@ format_function_t format_ip4_fib_mtrie;
 
 /* Lookup step.  Processes 1 byte of 4 byte ip4 address. */
 always_inline ip4_fib_mtrie_leaf_t
-ip4_fib_mtrie_lookup_step (ip4_fib_mtrie_t * m,
+ip4_fib_mtrie_lookup_step (const ip4_fib_mtrie_t * m,
 			   ip4_fib_mtrie_leaf_t current_leaf,
 			   const ip4_address_t * dst_address,
 			   u32 dst_address_byte_index)
 {
-  ip4_fib_mtrie_leaf_t next_leaf;
   ip4_fib_mtrie_ply_t *ply;
   uword current_is_terminal = ip4_fib_mtrie_leaf_is_terminal (current_leaf);
 
-  ply = m->ply_pool + (current_is_terminal ? 0 : (current_leaf >> 1));
-  next_leaf = ply->leaves[dst_address->as_u8[dst_address_byte_index]];
-  next_leaf = current_is_terminal ? current_leaf : next_leaf;
+  if (!current_is_terminal)
+    {
+      ply = m->ply_pool + (current_leaf >> 1);
+      return (ply->leaves[dst_address->as_u8[dst_address_byte_index]]);
+    }
+
+  return current_leaf;
+}
+
+/* Lookup step.  Processes 1 byte of 4 byte ip4 address. */
+always_inline ip4_fib_mtrie_leaf_t
+ip4_fib_mtrie_lookup_step_one (const ip4_fib_mtrie_t * m,
+			       const ip4_address_t * dst_address)
+{
+  ip4_fib_mtrie_leaf_t next_leaf;
+  ip4_fib_mtrie_ply_t *ply;
+
+  ply = m->ply_pool;
+  next_leaf = ply->leaves[dst_address->as_u8[0]];
 
   return next_leaf;
 }

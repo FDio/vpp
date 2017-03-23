@@ -829,6 +829,13 @@ load_balance_module_init (void)
 {
     dpo_register(DPO_LOAD_BALANCE, &lb_vft, load_balance_nodes);
 
+    /*
+     * Special LB with index zero. we need to define this since the v4 mtrie
+     * assumes an index of 0 implies the ply is empty. therefore all 'real'
+     * adjs need a non-zero index.
+     */
+    load_balance_create(0, DPO_PROTO_IP4, 0);
+
     load_balance_map_module_init();
 }
 

@@ -139,9 +139,6 @@ ip4_fib_forwarding_lookup (u32 fib_index,
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 2);
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 3);
 
-    /* Handle default route. */
-    leaf = (leaf == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie->default_leaf : leaf);
-    
     return (ip4_fib_mtrie_leaf_get_adj_index(leaf));
 }
 
