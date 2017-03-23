@@ -219,7 +219,7 @@ set_leaf (ip4_fib_mtrie_t * m,
   i32 n_dst_bits_next_plies;
   u8 dst_byte;
 
-  ASSERT (a->dst_address_length > 0 && a->dst_address_length <= 32);
+  ASSERT (a->dst_address_length >= 0 && a->dst_address_length <= 32);
   ASSERT (dst_address_byte_index < ARRAY_LEN (a->dst_address.as_u8));
 
   n_dst_bits_next_plies =
@@ -325,7 +325,7 @@ unset_leaf (ip4_fib_mtrie_t * m,
   i32 i, n_dst_bits_this_ply, old_leaf_is_terminal;
   u8 dst_byte;
 
-  ASSERT (a->dst_address_length > 0 && a->dst_address_length <= 32);
+  ASSERT (a->dst_address_length >= 0 && a->dst_address_length <= 32);
   ASSERT (dst_address_byte_index < ARRAY_LEN (a->dst_address.as_u8));
 
   n_dst_bits_next_plies =
@@ -377,7 +377,6 @@ ip4_mtrie_init (ip4_fib_mtrie_t * m)
 {
   ip4_fib_mtrie_leaf_t root;
   memset (m, 0, sizeof (m[0]));
-  m->default_leaf = IP4_FIB_MTRIE_LEAF_EMPTY;
   root = ply_create (m, IP4_FIB_MTRIE_LEAF_EMPTY,	/* dst_address_bits_of_leaves */
 		     0);
   ASSERT (ip4_fib_mtrie_leaf_get_next_ply_index (root) == 0);
@@ -406,25 +405,23 @@ ip4_fib_mtrie_add_del_route (ip4_fib_t * fib,
 
   if (!is_del)
     {
-      if (dst_address_length == 0)
-	m->default_leaf = ip4_fib_mtrie_leaf_set_adj_index (adj_index);
-      else
-	set_leaf (m, &a, /* ply_index */ 0, /* dst_address_byte_index */ 0);
+      set_leaf (m, &a, /* ply_index */ 0, /* dst_address_byte_index */ 0);
     }
   else
     {
-      if (dst_address_length == 0)
-	m->default_leaf = IP4_FIB_MTRIE_LEAF_EMPTY;
+      ip4_main_t *im = &ip4_main;
+      word i;
 
-      else
+      /* the top level ply is never removed, so we can ignore the return code */
+      unset_leaf (m, &a, root_ply, 0);
+
+      if (dst_address_length)
 	{
-	  ip4_main_t *im = &ip4_main;
-	  uword i;
-
-	  unset_leaf (m, &a, root_ply, 0);
-
-	  /* Find next less specific route and insert into mtrie. */
-	  for (i = dst_address_length - 1; i >= 1; i--)
+	  /* If the ply was not deleted, then we need to fill the
+	   * bucket just reset will the leaf from the less specfic
+	   * cover.
+	   * Find next less specific route and insert into mtrie. */
+	  for (i = dst_address_length - 1; i >= 0; i--)
 	    {
 	      uword *p;
 	      index_t lbi;
