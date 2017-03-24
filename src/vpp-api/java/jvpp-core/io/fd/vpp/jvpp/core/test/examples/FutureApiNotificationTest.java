@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.test.examples;
 
 import static io.fd.vpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState;
 import static io.fd.vpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
@@ -24,12 +24,13 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
+import io.fd.vpp.jvpp.core.test.NotificationUtils;
 
 public class FutureApiNotificationTest {
 
-    private static void testFutureApi() throws Exception {
+    private static void testFutureApi(String[] args) throws Exception {
         System.out.println("Testing Java future API for notifications");
-        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationTest", args[0]);
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl());
              final AutoCloseable notificationListenerReg =
                  jvppFacade.getNotificationRegistry()
@@ -50,6 +51,6 @@ public class FutureApiNotificationTest {
     }
 
     public static void main(String[] args) throws Exception {
-        testFutureApi();
+        testFutureApi(args);
     }
 }

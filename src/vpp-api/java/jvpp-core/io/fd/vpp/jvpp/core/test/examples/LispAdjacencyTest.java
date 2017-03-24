@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.test.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -108,9 +108,9 @@ public class LispAdjacencyTest {
         showAdjacencies(jvpp);
     }
 
-    private static void testFutureApi() throws Exception {
+    private static void testFutureApi(String[] args) throws Exception {
         LOG.info("Create lisp adjacency test");
-        try (final JVppRegistry registry = new JVppRegistryImpl("LispAdjacencyTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("LispAdjacencyTest", args[0]);
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
             LOG.info("Successfully connected to VPP");
 
@@ -120,6 +120,6 @@ public class LispAdjacencyTest {
     }
 
     public static void main(String[] args) throws Exception {
-        testFutureApi();
+        testFutureApi(args);
     }
 }

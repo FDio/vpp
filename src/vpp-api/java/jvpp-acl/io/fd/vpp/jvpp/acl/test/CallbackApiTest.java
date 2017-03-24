@@ -14,34 +14,39 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.acl.test;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
+import io.fd.vpp.jvpp.acl.JVppAclImpl;
 import io.fd.vpp.jvpp.callback.ControlPingCallback;
-import io.fd.vpp.jvpp.core.JVppCoreImpl;
 import io.fd.vpp.jvpp.dto.ControlPing;
 import io.fd.vpp.jvpp.dto.ControlPingReply;
 
-public class ControlPingTest {
+public class CallbackApiTest {
 
-    private static void testControlPing() throws Exception {
+    private static int receivedPingCount = 0;
+    private static int errorPingCount = 0;
+
+    private static void testControlPing(String[] args) throws Exception {
         System.out.println("Testing ControlPing using Java callback API");
-        try (JVppRegistry registry = new JVppRegistryImpl("ControlPingTest");
-             JVpp jvpp = new JVppCoreImpl()) {
+        try (JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest", args[0]);
+             JVpp jvpp = new JVppAclImpl()) {
 
             registry.register(jvpp, new ControlPingCallback() {
                 @Override
                 public void onControlPingReply(final ControlPingReply reply) {
                     System.out.printf("Received ControlPingReply: %s%n", reply);
+                    receivedPingCount++;
                 }
 
                 @Override
                 public void onError(VppCallbackException ex) {
                     System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(),
                         ex.getErrorCode(), ex.getCtxId());
+                    errorPingCount++;
                 }
 
             });
@@ -58,11 +63,18 @@ public class ControlPingTest {
 
             Thread.sleep(2000);
             System.out.println("Disconnecting...");
+            assertEquals(2, receivedPingCount);
+            assertEquals(0, errorPingCount);
         }
-        Thread.sleep(1000);
+    }
+
+    private static void assertEquals(final int expected, final int actual) {
+        if (expected != actual) {
+            throw new IllegalArgumentException(String.format("Expected[%s]/Actual[%s]", expected, actual));
+        }
     }
 
     public static void main(String[] args) throws Exception {
-        testControlPing();
+        testControlPing(args);
     }
 }

@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.snat.test;
 
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
-import io.fd.vpp.jvpp.acl.JVppAclImpl;
-import io.fd.vpp.jvpp.acl.dto.AclDetailsReplyDump;
-import io.fd.vpp.jvpp.acl.dto.AclDump;
-import io.fd.vpp.jvpp.acl.future.FutureJVppAclFacade;
+import io.fd.vpp.jvpp.snat.JVppSnatImpl;
+import io.fd.vpp.jvpp.snat.dto.SnatAddressDetailsReplyDump;
+import io.fd.vpp.jvpp.snat.dto.SnatAddressDump;
+import io.fd.vpp.jvpp.snat.future.FutureJVppSnatFacade;
 
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 public class FutureApiTest {
 
-    private static final Logger LOG = Logger.getLogger(io.fd.vpp.jvpp.acl.test.FutureApiTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(io.fd.vpp.jvpp.snat.test.FutureApiTest.class.getName());
 
     public static void main(String[] args) throws Exception {
         testCallbackApi(args);
@@ -38,7 +38,7 @@ public class FutureApiTest {
     private static void testCallbackApi(String[] args) throws Exception {
         System.out.println("Testing Java callback API for acl plugin");
         try (final JVppRegistry registry = new JVppRegistryImpl("macipAclAddTest", args[0]);
-             final FutureJVppAclFacade jvpp = new FutureJVppAclFacade(registry, new JVppAclImpl())) {
+             final FutureJVppSnatFacade jvpp = new FutureJVppSnatFacade(registry, new JVppSnatImpl())) {
             LOG.info("Successfully connected to VPP");
 
             testAclDump(jvpp);
@@ -47,13 +47,20 @@ public class FutureApiTest {
         }
     }
 
-    private static void testAclDump(FutureJVppAclFacade jvpp) throws Exception {
+    private static void testAclDump(FutureJVppSnatFacade jvpp) throws Exception {
         LOG.info("Sending ShowVersion request...");
-        final AclDump request = new AclDump();
+        final SnatAddressDump request = new SnatAddressDump();
 
-        final Future<AclDetailsReplyDump> replyFuture = jvpp.aclDump(request).toCompletableFuture();
-        final AclDetailsReplyDump reply = replyFuture.get();
+        final Future<SnatAddressDetailsReplyDump> replyFuture = jvpp.snatAddressDump(request).toCompletableFuture();
+        final SnatAddressDetailsReplyDump reply = replyFuture.get();
 
-        assert(reply != null);
+        if (reply == null || reply.snatAddressDetails == null) {
+            throw new IllegalStateException("Received null response for empty dump: " + reply);
+        } else {
+            LOG.info(
+                    String.format(
+                            "Received bridge-domain dump reply with list of bridge-domains: %s",
+                            reply.snatAddressDetails));
+        }
     }
 }

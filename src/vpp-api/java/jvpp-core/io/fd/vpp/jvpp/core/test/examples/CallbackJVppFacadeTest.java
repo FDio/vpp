@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.test.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -84,10 +84,10 @@ public class CallbackJVppFacadeTest {
         }
     };
 
-    private static void testCallbackFacade() throws Exception {
+    private static void testCallbackFacade(String[] args) throws Exception {
         System.out.println("Testing CallbackJVppFacade");
 
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeTest", args[0]);
              final CallbackJVppCoreFacade callbackFacade = new CallbackJVppCoreFacade(registry, new JVppCoreImpl())) {
             System.out.println("Successfully connected to VPP");
 
@@ -105,6 +105,6 @@ public class CallbackJVppFacadeTest {
     }
 
     public static void main(String[] args) throws Exception {
-        testCallbackFacade();
+        testCallbackFacade(args);
     }
 }
