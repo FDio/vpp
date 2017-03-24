@@ -152,6 +152,8 @@ class VppTestCase(unittest.TestCase):
             if cls.extern_plugin_path is not None:
                 plugin_path = "%s:%s" % (
                     cls.plugin_path, cls.extern_plugin_path)
+            else:
+                plugin_path = cls.plugin_path
         elif cls.extern_plugin_path is not None:
             plugin_path = cls.extern_plugin_path
         debug_cli = ""
