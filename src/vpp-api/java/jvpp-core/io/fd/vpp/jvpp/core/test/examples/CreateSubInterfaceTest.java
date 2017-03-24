@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.test.examples;
 
 import static java.util.Objects.requireNonNull;
 
@@ -80,14 +80,14 @@ public class CreateSubInterfaceTest {
         System.out.printf("CreateSubifReply: %s%n", reply);
     }
 
-    private static void testCreateSubInterface() throws Exception {
+    private static void testCreateSubInterface(String[] args) throws Exception {
         System.out.println("Testing sub-interface creation using Java callback API");
-        try (final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterface");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterface", args[0]);
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
             System.out.println("Successfully connected to VPP");
             Thread.sleep(1000);
 
-            final String ifaceName = "GigabitEthernet0/8/0";
+            final String ifaceName = "pg0";
 
             final SwInterfaceDetailsReplyDump swInterfaceDetails =
                 jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
@@ -103,7 +103,7 @@ public class CreateSubInterfaceTest {
                 jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
             print(createSubifReply);
 
-            final String subIfaceName = "GigabitEthernet0/8/0." + subId;
+            final String subIfaceName = "pg0." + subId;
             final SwInterfaceDetailsReplyDump subIface =
                 jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
             requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
@@ -116,6 +116,6 @@ public class CreateSubInterfaceTest {
     }
 
     public static void main(String[] args) throws Exception {
-        testCreateSubInterface();
+        testCreateSubInterface(args);
     }
 }

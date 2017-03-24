@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.ioamtrace.test;
 
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
-import io.fd.vpp.jvpp.acl.JVppAclImpl;
-import io.fd.vpp.jvpp.acl.dto.AclDetailsReplyDump;
-import io.fd.vpp.jvpp.acl.dto.AclDump;
-import io.fd.vpp.jvpp.acl.future.FutureJVppAclFacade;
+import io.fd.vpp.jvpp.ioamtrace.JVppIoamtraceImpl;
+import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfig;
+import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfigReply;
+import io.fd.vpp.jvpp.ioamtrace.future.FutureJVppIoamtraceFacade;
 
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 public class FutureApiTest {
 
-    private static final Logger LOG = Logger.getLogger(io.fd.vpp.jvpp.acl.test.FutureApiTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(io.fd.vpp.jvpp.ioamtrace.test.FutureApiTest.class.getName());
 
     public static void main(String[] args) throws Exception {
         testCallbackApi(args);
@@ -38,21 +38,21 @@ public class FutureApiTest {
     private static void testCallbackApi(String[] args) throws Exception {
         System.out.println("Testing Java callback API for acl plugin");
         try (final JVppRegistry registry = new JVppRegistryImpl("macipAclAddTest", args[0]);
-             final FutureJVppAclFacade jvpp = new FutureJVppAclFacade(registry, new JVppAclImpl())) {
+             final FutureJVppIoamtraceFacade jvpp = new FutureJVppIoamtraceFacade(registry, new JVppIoamtraceImpl())) {
             LOG.info("Successfully connected to VPP");
 
-            testAclDump(jvpp);
+            testTraceProfileShowConfig(jvpp);
 
             System.out.println("Disconnecting...");
         }
     }
 
-    private static void testAclDump(FutureJVppAclFacade jvpp) throws Exception {
+    private static void testTraceProfileShowConfig(FutureJVppIoamtraceFacade jvpp) throws Exception {
         LOG.info("Sending ShowVersion request...");
-        final AclDump request = new AclDump();
+        final TraceProfileShowConfig request = new TraceProfileShowConfig();
 
-        final Future<AclDetailsReplyDump> replyFuture = jvpp.aclDump(request).toCompletableFuture();
-        final AclDetailsReplyDump reply = replyFuture.get();
+        final Future<TraceProfileShowConfigReply> replyFuture = jvpp.traceProfileShowConfig(request).toCompletableFuture();
+        final TraceProfileShowConfigReply reply = replyFuture.get();
 
         assert(reply != null);
     }

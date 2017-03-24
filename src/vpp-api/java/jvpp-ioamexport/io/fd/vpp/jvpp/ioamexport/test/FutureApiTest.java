@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.ioamexport.test;
 
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
-import io.fd.vpp.jvpp.acl.JVppAclImpl;
-import io.fd.vpp.jvpp.acl.dto.AclDetailsReplyDump;
-import io.fd.vpp.jvpp.acl.dto.AclDump;
-import io.fd.vpp.jvpp.acl.future.FutureJVppAclFacade;
+import io.fd.vpp.jvpp.ioamexport.JVppIoamexportImpl;
+import io.fd.vpp.jvpp.ioamexport.dto.IoamExportIp6EnableDisable;
+import io.fd.vpp.jvpp.ioamexport.dto.IoamExportIp6EnableDisableReply;
+import io.fd.vpp.jvpp.ioamexport.future.FutureJVppIoamexportFacade;
 
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 
 public class FutureApiTest {
 
-    private static final Logger LOG = Logger.getLogger(io.fd.vpp.jvpp.acl.test.FutureApiTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(io.fd.vpp.jvpp.ioamexport.test.FutureApiTest.class.getName());
 
     public static void main(String[] args) throws Exception {
         testCallbackApi(args);
@@ -38,21 +38,21 @@ public class FutureApiTest {
     private static void testCallbackApi(String[] args) throws Exception {
         System.out.println("Testing Java callback API for acl plugin");
         try (final JVppRegistry registry = new JVppRegistryImpl("macipAclAddTest", args[0]);
-             final FutureJVppAclFacade jvpp = new FutureJVppAclFacade(registry, new JVppAclImpl())) {
+             final FutureJVppIoamexportFacade jvpp = new FutureJVppIoamexportFacade(registry, new JVppIoamexportImpl())) {
             LOG.info("Successfully connected to VPP");
 
-            testAclDump(jvpp);
+            testIoamExportIp6EnableDisable(jvpp);
 
             System.out.println("Disconnecting...");
         }
     }
 
-    private static void testAclDump(FutureJVppAclFacade jvpp) throws Exception {
+    private static void testIoamExportIp6EnableDisable(FutureJVppIoamexportFacade jvpp) throws Exception {
         LOG.info("Sending ShowVersion request...");
-        final AclDump request = new AclDump();
+        final IoamExportIp6EnableDisable request = new IoamExportIp6EnableDisable();
 
-        final Future<AclDetailsReplyDump> replyFuture = jvpp.aclDump(request).toCompletableFuture();
-        final AclDetailsReplyDump reply = replyFuture.get();
+        final Future<IoamExportIp6EnableDisableReply> replyFuture = jvpp.ioamExportIp6EnableDisable(request).toCompletableFuture();
+        final IoamExportIp6EnableDisableReply reply = replyFuture.get();
 
         assert(reply != null);
     }

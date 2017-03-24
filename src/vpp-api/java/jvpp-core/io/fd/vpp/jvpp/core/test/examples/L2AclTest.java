@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.test.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -144,9 +144,9 @@ public class L2AclTest {
         System.out.printf("ClassifyAddDelTableReply: %s%n", reply);
     }
 
-    private static void testL2Acl() throws Exception {
+    private static void testL2Acl(String[] args) throws Exception {
         System.out.println("Testing L2 ACLs using Java callback API");
-        try (final JVppRegistry registry = new JVppRegistryImpl("L2AclTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("L2AclTest", args[0]);
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
 
             System.out.println("Successfully connected to VPP");
@@ -190,6 +190,6 @@ public class L2AclTest {
     }
 
     public static void main(String[] args) throws Exception {
-        testL2Acl();
+        testL2Acl(args);
     }
 }

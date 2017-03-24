@@ -40,19 +40,6 @@ public class FutureApiTest {
 
     private static final Logger LOG = Logger.getLogger(FutureApiTest.class.getName());
 
-    private static void testShowVersion(final FutureJVppCoreFacade jvpp) throws Exception {
-        LOG.info("Sending ShowVersion request...");
-        final Future<ShowVersionReply> replyFuture = jvpp.showVersion(new ShowVersion()).toCompletableFuture();
-        final ShowVersionReply reply = replyFuture.get();
-        LOG.info(
-            String.format(
-                "Received ShowVersionReply: context=%d, program=%s, version=%s, buildDate=%s, buildDirectory=%s%n",
-                reply.context, new String(reply.program, StandardCharsets.UTF_8),
-                new String(reply.version, StandardCharsets.UTF_8),
-                new String(reply.buildDate, StandardCharsets.UTF_8),
-                new String(reply.buildDirectory, StandardCharsets.UTF_8)));
-    }
-
     private static void testEmptyBridgeDomainDump(final FutureJVppCoreFacade jvpp) throws Exception {
         LOG.info("Sending ShowVersion request...");
         final BridgeDomainDump request = new BridgeDomainDump();
@@ -63,7 +50,7 @@ public class FutureApiTest {
         final BridgeDomainDetailsReplyDump reply = replyFuture.get();
 
         if (reply == null || reply.bridgeDomainDetails == null) {
-            LOG.severe("Received null response for empty dump: " + reply);
+            throw new IllegalStateException("Received null response for empty dump: " + reply);
         } else {
             LOG.info(
                 String.format(
@@ -72,56 +59,19 @@ public class FutureApiTest {
         }
     }
 
-    private static void testGetNodeIndex(final FutureJVppCoreFacade jvpp) {
-        LOG.info("Sending GetNodeIndex request...");
-        final GetNodeIndex request = new GetNodeIndex();
-        request.nodeName = "non-existing-node".getBytes(StandardCharsets.UTF_8);
-        final Future<GetNodeIndexReply> replyFuture = jvpp.getNodeIndex(request).toCompletableFuture();
-        try {
-            final GetNodeIndexReply reply = replyFuture.get();
-            LOG.info(
-                String.format(
-                    "Received GetNodeIndexReply: context=%d, nodeIndex=%d%n", reply.context, reply.nodeIndex));
-        } catch (Exception e) {
-            LOG.log(Level.SEVERE, "GetNodeIndex request failed", e);
-        }
-    }
-
-    private static void testSwInterfaceDump(final FutureJVppCoreFacade jvpp) throws Exception {
-        LOG.info("Sending SwInterfaceDump request...");
-        final SwInterfaceDump request = new SwInterfaceDump();
-        request.nameFilterValid = 0;
-        request.nameFilter = "".getBytes(StandardCharsets.UTF_8);
-
-        final Future<SwInterfaceDetailsReplyDump> replyFuture = jvpp.swInterfaceDump(request).toCompletableFuture();
-        final SwInterfaceDetailsReplyDump reply = replyFuture.get();
-        for (SwInterfaceDetails details : reply.swInterfaceDetails) {
-            Objects.requireNonNull(details, "reply.swInterfaceDetails contains null element!");
-            LOG.info(
-                String.format("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                        + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                    new String(details.interfaceName, StandardCharsets.UTF_8),
-                    details.l2AddressLength, details.adminUpDown,
-                    details.linkUpDown, details.linkSpeed, (int) details.linkMtu));
-        }
-    }
-
-    private static void testFutureApi() throws Exception {
+    private static void testFutureApi(String[] args) throws Exception {
         LOG.info("Testing Java future API");
-        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest", args[0]);
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
             LOG.info("Successfully connected to VPP");
 
             testEmptyBridgeDomainDump(jvppFacade);
-            testShowVersion(jvppFacade);
-            testGetNodeIndex(jvppFacade);
-            testSwInterfaceDump(jvppFacade);
 
             LOG.info("Disconnecting...");
         }
     }
 
     public static void main(String[] args) throws Exception {
-        testFutureApi();
+        testFutureApi(args);
     }
 }

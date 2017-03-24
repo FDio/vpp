@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.ioamexport.test;
+package io.fd.vpp.jvpp.ioamexport.test.examples;
 
 import java.net.InetAddress;
 

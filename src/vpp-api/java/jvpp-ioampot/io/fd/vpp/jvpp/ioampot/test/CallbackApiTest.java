@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.snat.test;
+package io.fd.vpp.jvpp.ioampot.test;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
@@ -23,7 +23,7 @@ import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.callback.ControlPingCallback;
 import io.fd.vpp.jvpp.dto.ControlPing;
 import io.fd.vpp.jvpp.dto.ControlPingReply;
-import io.fd.vpp.jvpp.snat.JVppSnatImpl;
+import io.fd.vpp.jvpp.ioampot.JVppIoampotImpl;
 
 public class CallbackApiTest {
 
@@ -33,7 +33,7 @@ public class CallbackApiTest {
     private static void testControlPing(String[] args) throws Exception {
         System.out.println("Testing ControlPing using Java callback API");
         try (JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest", args[0]);
-             JVpp jvpp = new JVppSnatImpl()) {
+             JVpp jvpp = new JVppIoampotImpl()) {
 
             registry.register(jvpp, new ControlPingCallback() {
                 @Override
@@ -45,7 +45,7 @@ public class CallbackApiTest {
                 @Override
                 public void onError(VppCallbackException ex) {
                     System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(),
-                            ex.getErrorCode(), ex.getCtxId());
+                        ex.getErrorCode(), ex.getCtxId());
                     errorPingCount++;
                 }
 

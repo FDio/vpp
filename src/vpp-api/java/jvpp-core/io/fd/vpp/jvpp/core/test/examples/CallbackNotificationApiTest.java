@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.test.examples;
 
 import static io.fd.vpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState;
 import static io.fd.vpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
@@ -35,9 +35,9 @@ import io.fd.vpp.jvpp.core.dto.WantInterfaceEventsReply;
 
 public class CallbackNotificationApiTest {
 
-    private static void testCallbackApi() throws Exception {
+    private static void testCallbackApi(String[] args) throws Exception {
         System.out.println("Testing Java callback API for notifications");
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationTest", args[0]);
              final JVpp jvpp = new JVppCoreImpl()) {
             registry.register(jvpp, new TestCallback());
             System.out.println("Successfully connected to VPP");
@@ -62,7 +62,7 @@ public class CallbackNotificationApiTest {
     }
 
     public static void main(String[] args) throws Exception {
-        testCallbackApi();
+        testCallbackApi(args);
     }
 
     private static class TestCallback implements SwInterfaceSetFlagsNotificationCallback,

@@ -20,81 +20,61 @@ import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
+import io.fd.vpp.jvpp.callback.ControlPingCallback;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.GetNodeIndexCallback;
-import io.fd.vpp.jvpp.core.callback.ShowVersionCallback;
-import io.fd.vpp.jvpp.core.callback.SwInterfaceCallback;
-import io.fd.vpp.jvpp.core.dto.GetNodeIndex;
-import io.fd.vpp.jvpp.core.dto.GetNodeIndexReply;
-import io.fd.vpp.jvpp.core.dto.ShowVersion;
-import io.fd.vpp.jvpp.core.dto.ShowVersionReply;
-import io.fd.vpp.jvpp.core.dto.SwInterfaceDetails;
-import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
-import java.nio.charset.StandardCharsets;
+import io.fd.vpp.jvpp.dto.ControlPing;
+import io.fd.vpp.jvpp.dto.ControlPingReply;
 
 public class CallbackApiTest {
 
-    public static void main(String[] args) throws Exception {
-        testCallbackApi();
-    }
+    private static int receivedPingCount = 0;
+    private static int errorPingCount = 0;
 
-    private static void testCallbackApi() throws Exception {
-        System.out.println("Testing Java callback API with JVppRegistry");
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest");
-             final JVpp jvpp = new JVppCoreImpl()) {
-            registry.register(jvpp, new TestCallback());
+    private static void testControlPing(String[] args) throws Exception {
+        System.out.println("Testing ControlPing using Java callback API");
+        try (JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest", args[0]);
+             JVpp jvpp = new JVppCoreImpl()) {
 
-            System.out.println("Sending ShowVersion request...");
-            final int result = jvpp.send(new ShowVersion());
-            System.out.printf("ShowVersion send result = %d%n", result);
+            registry.register(jvpp, new ControlPingCallback() {
+                @Override
+                public void onControlPingReply(final ControlPingReply reply) {
+                    System.out.printf("Received ControlPingReply: %s%n", reply);
+                    receivedPingCount++;
+                }
 
-            System.out.println("Sending GetNodeIndex request...");
-            GetNodeIndex getNodeIndexRequest = new GetNodeIndex();
-            getNodeIndexRequest.nodeName = "non-existing-node".getBytes(StandardCharsets.UTF_8);
-            jvpp.send(getNodeIndexRequest);
+                @Override
+                public void onError(VppCallbackException ex) {
+                    System.out.printf("Received onError exception: call=%s, reply=%d, context=%d ", ex.getMethodName(),
+                        ex.getErrorCode(), ex.getCtxId());
+                    errorPingCount++;
+                }
 
-            System.out.println("Sending SwInterfaceDump request...");
-            SwInterfaceDump swInterfaceDumpRequest = new SwInterfaceDump();
-            swInterfaceDumpRequest.nameFilterValid = 0;
-            swInterfaceDumpRequest.nameFilter = "".getBytes(StandardCharsets.UTF_8);
-            jvpp.send(swInterfaceDumpRequest);
-
+            });
+            System.out.println("Successfully connected to VPP");
             Thread.sleep(1000);
+
+            System.out.println("Sending control ping using JVppRegistry");
+            registry.controlPing(jvpp.getClass());
+
+            Thread.sleep(2000);
+
+            System.out.println("Sending control ping using JVpp plugin");
+            jvpp.send(new ControlPing());
+
+            Thread.sleep(2000);
             System.out.println("Disconnecting...");
+            assertEquals(2, receivedPingCount);
+            assertEquals(0, errorPingCount);
         }
-        Thread.sleep(1000);
     }
 
-    static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
-
-        @Override
-        public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
-            System.out.printf("Received GetNodeIndexReply: %s%n", msg);
+    private static void assertEquals(final int expected, final int actual) {
+        if (expected != actual) {
+            throw new IllegalArgumentException(String.format("Expected[%s]/Actual[%s]", expected, actual));
         }
+    }
 
-        @Override
-        public void onShowVersionReply(final ShowVersionReply msg) {
-            System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
-                    + "buildDate=%s, buildDirectory=%s%n",
-                msg.context,
-                new String(msg.program, StandardCharsets.UTF_8),
-                new String(msg.version, StandardCharsets.UTF_8),
-                new String(msg.buildDate, StandardCharsets.UTF_8),
-                new String(msg.buildDirectory, StandardCharsets.UTF_8));
-        }
-
-        @Override
-        public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
-            System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
-                    + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
-                new String(msg.interfaceName, StandardCharsets.UTF_8), msg.l2AddressLength, msg.adminUpDown,
-                msg.linkUpDown, msg.linkSpeed, (int) msg.linkMtu);
-        }
-
-        @Override
-        public void onError(VppCallbackException ex) {
-            System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
-                ex.getCtxId(), ex.getErrorCode());
-        }
+    public static void main(String[] args) throws Exception {
+        testControlPing(args);
     }
 }

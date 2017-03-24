@@ -21,15 +21,15 @@ import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlags;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlagsNotification;
 import io.fd.vpp.jvpp.core.dto.WantInterfaceEvents;
 
-final class NotificationUtils {
+public final class NotificationUtils {
 
-    private NotificationUtils() {}
+    public NotificationUtils() {}
 
-    static PrintStream printNotification(final SwInterfaceSetFlagsNotification msg) {
+    public static PrintStream printNotification(final SwInterfaceSetFlagsNotification msg) {
         return System.out.printf("Received interface notification: ifc: %s%n", msg);
     }
 
-    static SwInterfaceSetFlags getChangeInterfaceState() {
+    public static SwInterfaceSetFlags getChangeInterfaceState() {
         final SwInterfaceSetFlags swInterfaceSetFlags = new SwInterfaceSetFlags();
         swInterfaceSetFlags.swIfIndex = 0;
         swInterfaceSetFlags.adminUpDown = 1;
@@ -37,14 +37,14 @@ final class NotificationUtils {
         return swInterfaceSetFlags;
     }
 
-    static WantInterfaceEvents getEnableInterfaceNotificationsReq() {
+    public static WantInterfaceEvents getEnableInterfaceNotificationsReq() {
         WantInterfaceEvents wantInterfaceEvents = new WantInterfaceEvents();
         wantInterfaceEvents.pid = 1;
         wantInterfaceEvents.enableDisable = 1;
         return wantInterfaceEvents;
     }
 
-    static WantInterfaceEvents getDisableInterfaceNotificationsReq() {
+    public static WantInterfaceEvents getDisableInterfaceNotificationsReq() {
         WantInterfaceEvents wantInterfaceEvents = new WantInterfaceEvents();
         wantInterfaceEvents.pid = 1;
         wantInterfaceEvents.enableDisable = 0;
