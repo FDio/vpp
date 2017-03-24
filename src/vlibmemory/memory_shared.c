@@ -341,12 +341,25 @@ vl_map_shmem (const char *region_name, int is_vlib)
   struct timespec ts, tsrem;
   u32 vlib_input_queue_length;
 
+  memset (a, 0, sizeof (*a));
+
+  if (strstr (region_name, "-vpe-api"))
+    {
+      char root_path[strlen (region_name)];
+      strncpy (root_path, region_name, strlen (region_name) - 8);
+      a->root_path = root_path;
+      am->root_path = root_path;
+    }
+
   if (is_vlib == 0)
     svm_region_init_chroot (am->root_path);
 
-  memset (a, 0, sizeof (*a));
-
-  a->name = region_name;
+  if (a->root_path != NULL)
+    {
+      a->name = "/vpe-api";
+    }
+  else
+    a->name = region_name;
   a->size = am->api_size ? am->api_size : (16 << 20);
   a->flags = SVM_FLAGS_MHEAP;
   a->uid = am->api_uid;
