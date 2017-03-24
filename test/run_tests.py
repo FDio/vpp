@@ -58,4 +58,5 @@ if __name__ == '__main__':
     for d in args.dir:
         print("Adding tests from directory tree %s" % d)
         add_from_dir(suite, d)
-    VppTestRunner(verbosity=verbose, failfast=failfast).run(suite)
+    sys.exit(not VppTestRunner(verbosity=verbose,
+                               failfast=failfast).run(suite).wasSuccessful())
