@@ -862,7 +862,8 @@ svm_region_find_or_create (svm_map_region_args_t * a)
   ASSERT (mp);
 
   /* Map the named region from the correct chroot environment */
-  a->root_path = (char *) mp->root_path;
+  if (a->root_path == NULL)
+    a->root_path = (char *) mp->root_path;
 
   /*
    * See if this region is already known. If it is, we're
