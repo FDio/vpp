@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_87d4c320",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2494,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-24T13:57:58Z",
+      "side": 1,
+      "message": "Just a proposal here (not a priority nor a blocker to this patch), but instead of showing up a critical error without much information and doing some rate-limitation, it could be useful to rather use vui-\u003esock_errno to record the error, and also deal with the rate limiting. So it would be possible to show up the error only once per interface, and also register the error status in this variable (The value also is displayed by \u0027show vhost\u0027).\nI think this behavior would be beneficial, but again, it can be done later if you have other priorities.",
+      "range": {
+        "startLine": 2494,
+        "startChar": 8,
+        "endLine": 2494,
+        "endChar": 28
+      },
+      "revId": "bbf8a0c6bb75634c72f332ed54099497387acc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4727fb64",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2504,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-03-24T13:57:58Z",
+      "side": 1,
+      "message": "I am fine with keeping the retry_count \u003e\u003d 20.\nBut you also need the retry_count \u003d\u003d 0 test here. Otherwise the message will not show up if it is encountered here on the first time.",
+      "range": {
+        "startLine": 2504,
+        "startChar": 9,
+        "endLine": 2504,
+        "endChar": 26
+      },
+      "revId": "bbf8a0c6bb75634c72f332ed54099497387acc92",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
