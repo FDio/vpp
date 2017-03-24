@@ -835,7 +835,7 @@ ping_ip_address (vlib_main_t * vm,
 
   run_ping_ip46_address (vm, table_id, ping_ip4 ? &a4 : NULL,
 			 ping_ip6 ? &a6 : NULL, sw_if_index, ping_interval,
-			 ping_repeat, ping_burst, data_len, verbose);
+			 ping_repeat, data_len, ping_burst, verbose);
 done:
   return error;
 }
