@@ -140,7 +140,11 @@ l2learn_process (vlib_node_runtime_t * node,
       counter_base[L2LEARN_ERROR_HIT] += 1;
       if (PREDICT_FALSE (result0->fields.timestamp != timestamp))
 	result0->fields.timestamp = timestamp;
-
+      if (PREDICT_FALSE
+	  (result0->fields.int_sn != vnet_buffer (b0)->l2.int_sn))
+	result0->fields.int_sn = vnet_buffer (b0)->l2.int_sn;
+      if (PREDICT_FALSE (result0->fields.bd_sn != vnet_buffer (b0)->l2.bd_sn))
+	result0->fields.bd_sn = vnet_buffer (b0)->l2.bd_sn;
     }
   else if (result0->raw == ~0)
     {
@@ -167,6 +171,8 @@ l2learn_process (vlib_node_runtime_t * node,
 	  result0->raw = 0;	/* clear all fields */
 	  result0->fields.sw_if_index = sw_if_index0;
 	  result0->fields.timestamp = timestamp;
+	  result0->fields.bd_sn = vnet_buffer (b0)->l2.bd_sn;
+	  result0->fields.int_sn = vnet_buffer (b0)->l2.int_sn;
 	  kv.key = key0->raw;
 	  kv.value = result0->raw;
 
@@ -204,6 +210,8 @@ l2learn_process (vlib_node_runtime_t * node,
 	  result0->raw = 0;	/* clear all fields */
 	  result0->fields.sw_if_index = sw_if_index0;
 	  result0->fields.timestamp = timestamp;
+	  result0->fields.bd_sn = vnet_buffer (b0)->l2.bd_sn;
+	  result0->fields.int_sn = vnet_buffer (b0)->l2.int_sn;
 
 	  kv.key = key0->raw;
 	  kv.value = result0->raw;

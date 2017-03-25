@@ -169,9 +169,11 @@ typedef struct
     struct
     {
       u32 feature_bitmap;
-      u16 bd_index;		// bridge-domain index
-      u8 l2_len;		// ethernet header length
-      u8 shg;			// split-horizon group
+      u16 bd_index;		/* bridge-domain index */
+      u8 l2_len;		/* ethernet header length */
+      u8 shg;			/* split-horizon group */
+      u8 bd_sn;			/* bridge domain seq# */
+      u8 int_sn;		/* interface seq# */
     } l2;
 
     /* l2tpv3 softwire encap, only valid there */

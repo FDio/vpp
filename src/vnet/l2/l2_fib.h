@@ -66,7 +66,8 @@ typedef struct
       u8 filter:1;		/* drop packets to/from this mac */
       u8 unused1:5;
       u8 timestamp;		/* timestamp for aging */
-      u16 unused2;
+      u8 int_sn;		/* interface seq num */
+      u8 bd_sn;			/* bridge domain seq num */
     } fields;
     u64 raw;
   };
@@ -313,22 +314,28 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
     }
 }
 
+void l2fib_clear_table (uint keep_static);
+
+void
+l2fib_add_entry (u64 mac,
+		 u32 bd_index,
+		 u32 sw_if_index, u32 static_mac, u32 drop_mac, u32 bvi_mac);
+
+u32 l2fib_del_entry (u64 mac, u32 bd_index);
+
+void l2fib_start_ager_scan (vlib_main_t * vm);
+
+void l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index);
+
+void l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index);
+
+void
+l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,
+		  l2fib_entry_result_t ** l2fe_res);
+
+u8 *format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args);
+
 BVT (clib_bihash) * get_mac_table (void);
-     void
-     l2fib_clear_table (uint keep_static);
-     void
-     l2fib_add_entry (u64 mac,
-		      u32 bd_index,
-		      u32 sw_if_index,
-		      u32 static_mac, u32 drop_mac, u32 bvi_mac);
-u32
-l2fib_del_entry (u64 mac, u32 bd_index);
-
-     void
-       l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,
-			 l2fib_entry_result_t ** l2fe_res);
-
-     u8 *format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args);
 
 #endif
 
