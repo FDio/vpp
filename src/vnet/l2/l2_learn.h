@@ -51,6 +51,7 @@ enum
 {
   L2_MAC_AGE_PROCESS_EVENT_START = 1,
   L2_MAC_AGE_PROCESS_EVENT_STOP = 2,
+  L2_MAC_AGE_PROCESS_EVENT_ONE_PASS = 3,
 } l2_mac_age_process_event_t;
 
 #endif
