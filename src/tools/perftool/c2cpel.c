@@ -28,6 +28,7 @@
 #include <vppinfra/vec.h>
 #include <vppinfra/hash.h>
 #include <vppinfra/elog.h>
+#include <vppinfra/mem.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <time.h>
@@ -196,6 +197,8 @@ int main (int argc, char **argv)
         
     if (vec_len(inputfiles) > 1)
         goto usage;
+
+    clib_mem_init (0, ((uword)3<<30));
 
     cpel_util_init();
 

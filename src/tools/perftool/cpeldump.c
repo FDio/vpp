@@ -28,6 +28,7 @@
 #include <vppinfra/clib.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/hash.h>
+#include <vppinfra/mem.h>
 #include <pwd.h>
 #include <stdarg.h>
 #include <time.h>
@@ -592,6 +593,8 @@ int main (int argc, char **argv)
 
     if (cpel_file == 0)
         goto usage;
+
+    clib_mem_init (0, ((uword)3<<30));
 
     cpel = mapfile(cpel_file);
     if (cpel == 0) {

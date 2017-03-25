@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <vppinfra/mem.h>
 
 /*
  * globals
@@ -62,6 +63,8 @@ int main (int argc, char **argv)
     int curarg=1;
     char *homedir;
     
+    clib_mem_init (0, ((uword)3<<30));
+
     gtk_init(&argc, &argv);
 
     homedir = getenv ("HOME");
