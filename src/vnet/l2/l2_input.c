@@ -29,6 +29,7 @@
 #include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_bvi.h>
 #include <vnet/l2/l2_fib.h>
+#include <vnet/l2/l2_bd.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
@@ -201,6 +202,9 @@ classify_and_dispatch (vlib_main_t * vm,
       /* Get config for the bridge domain interface */
       bd_config = vec_elt_at_index (msm->bd_configs, bd_index0);
 
+      /* Save bridge domain seq_num */
+      vnet_buffer (b0)->l2.bd_sn = bd_config->seq_num;
+
       /*
        * Process bridge domain feature enables.
        * To perform learning/flooding/forwarding, the corresponding bit
@@ -213,6 +217,9 @@ classify_and_dispatch (vlib_main_t * vm,
 
   /* mask out features from bitmap using packet type and bd config */
   feature_bitmap = config->feature_bitmap & feat_mask;
+
+  /* Save interface seq_num */
+  vnet_buffer (b0)->l2.int_sn = config->seq_num;
 
   /* save for next feature graph nodes */
   vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
@@ -561,6 +568,12 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 						VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	  ASSERT (slot == VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT);
 	}
+
+      /* Clear MACs learned on the interface */
+      if ((config->feature_bitmap | L2INPUT_FEAT_LEARN) ||
+	  (bd_config->feature_bitmap | L2INPUT_FEAT_LEARN))
+	l2fib_flush_int_mac (vm, sw_if_index);
+
       l2_if_adjust--;
     }
   else if (config->xconnect)
@@ -632,6 +645,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->xconnect = 0;
 	  config->bridge = 1;
 	  config->bd_index = bd_index;
+	  config->seq_num += 1;
 
 	  /*
 	   * Enable forwarding, flooding, learning and ARP termination by default
