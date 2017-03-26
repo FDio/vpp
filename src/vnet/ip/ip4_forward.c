@@ -745,8 +745,9 @@ ip4_add_interface_routes (u32 sw_if_index,
 
   a->neighbor_probe_adj_index = ~0;
 
-  if (pfx.fp_len < 32)
+  if (pfx.fp_len <= 30)
     {
+      /* a /30 or shorter - add a glean for the network address */
       fib_node_index_t fei;
 
       fei = fib_table_entry_update_one_path (fib_index, &pfx,
@@ -764,8 +765,50 @@ ip4_add_interface_routes (u32 sw_if_index,
                                              NULL,
 					     FIB_ROUTE_PATH_FLAG_NONE);
       a->neighbor_probe_adj_index = fib_entry_get_adj (fei);
-    }
 
+      /* Add the two broadcast addresses as drop */
+      fib_prefix_t net_pfx = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr.ip4.as_u32 = address->as_u32 & im->fib_masks[pfx.fp_len],
+      };
+      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
+        fib_table_entry_special_add(fib_index,
+                                    &net_pfx,
+                                    FIB_SOURCE_INTERFACE,
+                                    (FIB_ENTRY_FLAG_DROP |
+                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
+                                    ADJ_INDEX_INVALID);
+      net_pfx.fp_addr.ip4.as_u32 |= ~im->fib_masks[pfx.fp_len];
+      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
+        fib_table_entry_special_add(fib_index,
+                                    &net_pfx,
+                                    FIB_SOURCE_INTERFACE,
+                                    (FIB_ENTRY_FLAG_DROP |
+                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
+                                    ADJ_INDEX_INVALID);
+    }
+  else if (pfx.fp_len == 31)
+    {
+      u32 mask = clib_host_to_net_u32(1);
+      fib_prefix_t net_pfx = pfx;
+
+      net_pfx.fp_len = 32;
+      net_pfx.fp_addr.ip4.as_u32 ^= mask;
+
+      /* a /31 - add the other end as an attached host */
+      fib_table_entry_update_one_path (fib_index, &net_pfx,
+                                       FIB_SOURCE_INTERFACE,
+                                       (FIB_ENTRY_FLAG_ATTACHED),
+                                       FIB_PROTOCOL_IP4,
+                                       &net_pfx.fp_addr,
+                                       sw_if_index,
+                                       // invalid FIB index
+                                       ~0,
+                                       1,
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
+    }
   pfx.fp_len = 32;
 
   if (sw_if_index < vec_len (lm->classify_table_index_by_sw_if_index))
@@ -813,9 +856,33 @@ ip4_del_interface_routes (ip4_main_t * im,
     .fp_addr.ip4 = *address,
   };
 
-  if (pfx.fp_len < 32)
+  if (pfx.fp_len <= 30)
     {
+      fib_prefix_t net_pfx = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr.ip4.as_u32 = address->as_u32 & im->fib_masks[pfx.fp_len],
+      };
+      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
+        fib_table_entry_special_remove(fib_index,
+                                       &net_pfx,
+                                       FIB_SOURCE_INTERFACE);
+      net_pfx.fp_addr.ip4.as_u32 |= ~im->fib_masks[pfx.fp_len];
+      if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
+        fib_table_entry_special_remove(fib_index,
+                                       &net_pfx,
+                                       FIB_SOURCE_INTERFACE);
       fib_table_entry_delete (fib_index, &pfx, FIB_SOURCE_INTERFACE);
+    }
+    else if (pfx.fp_len == 31)
+    {
+      u32 mask = clib_host_to_net_u32(1);
+      fib_prefix_t net_pfx = pfx;
+
+      net_pfx.fp_len = 32;
+      net_pfx.fp_addr.ip4.as_u32 ^= mask;
+
+      fib_table_entry_delete (fib_index, &net_pfx, FIB_SOURCE_INTERFACE);
     }
 
   pfx.fp_len = 32;

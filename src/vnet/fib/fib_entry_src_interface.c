@@ -32,6 +32,25 @@ fib_entry_src_interface_init (fib_entry_src_t *src)
 }
 
 static void
+fib_entry_src_interface_add (fib_entry_src_t *src,
+                             const fib_entry_t *entry,
+                             fib_entry_flag_t flags,
+                             fib_protocol_t proto,
+                             const dpo_id_t *dpo)
+{
+    src->fes_pl = fib_path_list_create_special(
+                      proto,
+                      fib_entry_src_flags_2_path_list_flags(flags),
+                      dpo);
+}
+
+static void
+fib_entry_src_interface_remove (fib_entry_src_t *src)
+{
+    src->fes_pl = FIB_NODE_INDEX_INVALID;
+}
+
+static void
 fib_entry_src_interface_path_swap (fib_entry_src_t *src,
 				   const fib_entry_t *entry,
 				   fib_path_list_flags_t pl_flags,
@@ -176,6 +195,8 @@ fib_entry_src_interface_format (fib_entry_src_t *src,
 
 const static fib_entry_src_vft_t interface_src_vft = {
     .fesv_init = fib_entry_src_interface_init,
+    .fesv_add = fib_entry_src_interface_add,
+    .fesv_remove = fib_entry_src_interface_remove,
     .fesv_path_swap = fib_entry_src_interface_path_swap,
     .fesv_activate = fib_entry_src_interface_activate,
     .fesv_deactivate = fib_entry_src_interface_deactivate,

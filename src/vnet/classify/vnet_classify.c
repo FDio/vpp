@@ -1499,7 +1499,7 @@ static u8 * format_vnet_classify_table (u8 * s, va_list * args)
   s = format (s, "%10u%10d%10d%10d", index, t->active_elements,
               t->next_table_index, t->miss_next_index);
 
-  s = format (s, "\n  Heap: %U", format_mheap, t->mheap, 0 /*verbose*/); 
+  s = format (s, "\n  Heap: %U", format_mheap, t->mheap, 0 /*verbose*/);
 
   s = format (s, "\n  nbuckets %d, skip %d match %d flag %d offset %d",
               t->nbuckets, t->skip_n_vectors, t->match_n_vectors,
