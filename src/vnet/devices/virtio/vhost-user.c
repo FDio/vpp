@@ -3408,7 +3408,7 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
 
 /*?
  * Delete a vHost User interface using the interface name or the
- * software interface index. Use the '<em>show interfaces</em>'
+ * software interface index. Use the '<em>show interface</em>'
  * command to determine the software interface index. On deletion,
  * the linux socket will not be deleted.
  *
