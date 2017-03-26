@@ -113,7 +113,7 @@ done:
  * exist. Once created, a new host interface will exist in VPP
  * with the name '<em>host-<ifname></em>', where '<em><ifname></em>'
  * is the name of the specified veth pair. Use the
- * '<em>show interfaces</em>' command to display host interface details.
+ * '<em>show interface</em>' command to display host interface details.
  *
  * This command has the following optional parameters:
  *

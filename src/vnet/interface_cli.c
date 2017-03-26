@@ -416,8 +416,8 @@ done:
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_sw_interfaces_command, static) = {
-  .path = "show interfaces",
-  .short_help = "show interfaces [address|addr|features|feat] [<if-name1> <if-name2> ...]",
+  .path = "show interface",
+  .short_help = "show interface [address|addr|features|feat] [<if-name1> <if-name2> ...]",
   .function = show_sw_interfaces,
 };
 /* *INDENT-ON* */
