@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_22d5fdb8",
+        "filename": "src/vnet/adj/adj_nbr.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 139,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-27T09:27:44Z",
+      "side": 1,
+      "message": "all the functions in this file begin with adj_nbr_XXX",
+      "revId": "1bf19c24c691c2134decab674c82cabda83cab82",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
