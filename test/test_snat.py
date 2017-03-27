@@ -13,57 +13,15 @@ from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 
 
-class TestSNAT(VppTestCase):
-    """ SNAT Test Cases """
+class MethodHolder(VppTestCase):
+    """ SNAT create capture and verify method holder """
 
     @classmethod
     def setUpClass(cls):
-        super(TestSNAT, cls).setUpClass()
+        super(MethodHolder, cls).setUpClass()
 
-        try:
-            cls.tcp_port_in = 6303
-            cls.tcp_port_out = 6303
-            cls.udp_port_in = 6304
-            cls.udp_port_out = 6304
-            cls.icmp_id_in = 6305
-            cls.icmp_id_out = 6305
-            cls.snat_addr = '10.0.0.3'
-
-            cls.create_pg_interfaces(range(8))
-            cls.interfaces = list(cls.pg_interfaces[0:4])
-
-            for i in cls.interfaces:
-                i.admin_up()
-                i.config_ip4()
-                i.resolve_arp()
-
-            cls.pg0.generate_remote_hosts(2)
-            cls.pg0.configure_ipv4_neighbors()
-
-            cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
-
-            cls.pg4._local_ip4 = "172.16.255.1"
-            cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
-            cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
-            cls.pg4.set_table_ip4(10)
-            cls.pg5._local_ip4 = "172.16.255.3"
-            cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
-            cls.pg5._remote_hosts[0]._ip4 = "172.16.255.4"
-            cls.pg5.set_table_ip4(10)
-            cls.pg6._local_ip4 = "172.16.255.1"
-            cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
-            cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
-            cls.pg6.set_table_ip4(20)
-            for i in cls.overlapping_interfaces:
-                i.config_ip4()
-                i.admin_up()
-                i.resolve_arp()
-
-            cls.pg7.admin_up()
-
-        except Exception:
-            super(TestSNAT, cls).tearDownClass()
-            raise
+    def tearDown(self):
+        super(MethodHolder, self).tearDown()
 
     def create_stream_in(self, in_if, out_if, ttl=64):
         """
@@ -336,6 +294,59 @@ class TestSNAT(VppTestCase):
         self.assertEqual(ord(record[230]), 3)
         # natPoolID
         self.assertEqual(struct.pack("!I", 0), record[283])
+
+
+class TestSNAT(MethodHolder):
+    """ SNAT Test Cases """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSNAT, cls).setUpClass()
+
+        try:
+            cls.tcp_port_in = 6303
+            cls.tcp_port_out = 6303
+            cls.udp_port_in = 6304
+            cls.udp_port_out = 6304
+            cls.icmp_id_in = 6305
+            cls.icmp_id_out = 6305
+            cls.snat_addr = '10.0.0.3'
+
+            cls.create_pg_interfaces(range(8))
+            cls.interfaces = list(cls.pg_interfaces[0:4])
+
+            for i in cls.interfaces:
+                i.admin_up()
+                i.config_ip4()
+                i.resolve_arp()
+
+            cls.pg0.generate_remote_hosts(2)
+            cls.pg0.configure_ipv4_neighbors()
+
+            cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
+
+            cls.pg4._local_ip4 = "172.16.255.1"
+            cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
+            cls.pg4.set_table_ip4(10)
+            cls.pg5._local_ip4 = "172.16.255.3"
+            cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg5._remote_hosts[0]._ip4 = "172.16.255.4"
+            cls.pg5.set_table_ip4(10)
+            cls.pg6._local_ip4 = "172.16.255.1"
+            cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
+            cls.pg6._remote_hosts[0]._ip4 = "172.16.255.2"
+            cls.pg6.set_table_ip4(20)
+            for i in cls.overlapping_interfaces:
+                i.config_ip4()
+                i.admin_up()
+                i.resolve_arp()
+
+            cls.pg7.admin_up()
+
+        except Exception:
+            super(TestSNAT, cls).tearDownClass()
+            raise
 
     def clear_snat(self):
         """
@@ -1276,7 +1287,7 @@ class TestSNAT(VppTestCase):
             self.clear_snat()
 
 
-class TestDeterministicNAT(VppTestCase):
+class TestDeterministicNAT(MethodHolder):
     """ Deterministic NAT Test Cases """
 
     @classmethod
