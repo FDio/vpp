@@ -132,6 +132,47 @@ adj_get_nd_node (fib_protocol_t proto)
     return (ip4_arp_node.index);
 }
 
+/**
+ * @brief Check and set feature flags if o/p interface has any o/p features.
+ */
+static void
+adj_nbr_evaluate_feature (adj_index_t ai)
+{
+    ip_adjacency_t *adj;
+    vnet_feature_main_t *fm = &feature_main;
+    i16 feature_count;
+    u8 arc_index;
+    u32 sw_if_index;
+
+    adj = adj_get(ai);
+
+    switch (adj->ia_link)
+    {
+    case VNET_LINK_IP4:
+        arc_index = ip4_main.lookup_main.output_feature_arc_index;
+        break;
+    case VNET_LINK_IP6:
+        arc_index = ip6_main.lookup_main.output_feature_arc_index;
+        break;
+    case VNET_LINK_MPLS:
+        arc_index = mpls_main.output_feature_arc_index;
+        break;
+    default:
+        return;
+    }
+
+    sw_if_index = adj->rewrite_header.sw_if_index;
+    vec_validate (fm->feature_count_by_sw_if_index[arc_index], sw_if_index);
+    feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
+
+    if (feature_count > 0)
+        adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
+    else
+        adj->rewrite_header.flags &= ~VNET_REWRITE_HAS_FEATURES;
+
+    return;
+}
+
 static ip_adjacency_t*
 adj_nbr_alloc (fib_protocol_t nh_proto,
 	       vnet_link_t link_type,
@@ -158,6 +199,7 @@ adj_nbr_alloc (fib_protocol_t nh_proto,
     memset(&adj->sub_type.midchain.next_dpo, 0,
            sizeof(adj->sub_type.midchain.next_dpo));
 
+    adj_nbr_evaluate_feature (adj_get_index(adj));
     return (adj);
 }
 
