@@ -716,11 +716,7 @@ memif_close_if (memif_main_t * mm, memif_if_t * mif)
 	}
     }
 
-  if (mif->lockp != 0)
-    {
-      clib_mem_free ((void *) mif->lockp);
-      mif->lockp = 0;
-    }
+  clib_spinlock_free (&mif->lockp);
 
   mhash_unset (&mm->if_index_by_key, &mif->key, &mif->if_index);
   vec_free (mif->socket_filename);
@@ -783,11 +779,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   mif->connection.fd = mif->interrupt_line.fd = -1;
 
   if (tm->n_vlib_mains > 1)
-    {
-      mif->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					   CLIB_CACHE_LINE_BYTES);
-      memset ((void *) mif->lockp, 0, CLIB_CACHE_LINE_BYTES);
-    }
+    clib_spinlock_init (&mif->lockp);
 
   if (!args->hw_addr_set)
     {
