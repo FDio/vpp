@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_cb96554c",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 723,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-03-27T22:57:02Z",
+      "side": 1,
+      "message": "consider renaming enable -\u003e one_pass",
+      "revId": "e3d70536d0d4c71a006724fa24473c574b4d7291",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0bad7d9c",
+        "filename": "src/vnet/l2/l2_input.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 56,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-03-27T22:57:02Z",
+      "side": 1,
+      "message": "consider renaming seq_num -\u003e learn_seq",
+      "revId": "e3d70536d0d4c71a006724fa24473c574b4d7291",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
