@@ -162,13 +162,12 @@ adj_nbr_evaluate_feature (adj_index_t ai)
     }
 
     sw_if_index = adj->rewrite_header.sw_if_index;
-    vec_validate (fm->feature_count_by_sw_if_index[arc_index], sw_if_index);
-    feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
-
-    if (feature_count > 0)
-        adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
-    else
-        adj->rewrite_header.flags &= ~VNET_REWRITE_HAS_FEATURES;
+    if (vec_len(fm->feature_count_by_sw_if_index[arc_index]) > sw_if_index)
+    {
+        feature_count = fm->feature_count_by_sw_if_index[arc_index][sw_if_index];
+        if (feature_count > 0)
+            adj->rewrite_header.flags |= VNET_REWRITE_HAS_FEATURES;
+    }
 
     return;
 }
