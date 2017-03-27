@@ -229,11 +229,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   apif->next_rx_frame = 0;
 
   if (tm->n_vlib_mains > 1)
-    {
-      apif->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					    CLIB_CACHE_LINE_BYTES);
-      memset ((void *) apif->lockp, 0, CLIB_CACHE_LINE_BYTES);
-    }
+    clib_spinlock_init (&apif->lockp);
 
   {
     unix_file_t template = { 0 };

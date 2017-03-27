@@ -17,10 +17,12 @@
  *------------------------------------------------------------------
  */
 
+#include <vppinfra/lock.h>
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 *lockp;
+  clib_spinlock_t lockp;
   u8 *host_if_name;
   int fd;
   struct tpacket_req *rx_req;
