@@ -185,11 +185,7 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   nif->per_interface_next_index = ~0;
 
   if (tm->n_vlib_mains > 1)
-    {
-      nif->lockp = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
-					   CLIB_CACHE_LINE_BYTES);
-      memset ((void *) nif->lockp, 0, CLIB_CACHE_LINE_BYTES);
-    }
+    clib_spinlock_init (&nif->lockp);
 
   {
     unix_file_t template = { 0 };
