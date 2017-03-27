@@ -40,10 +40,12 @@
  * SUCH DAMAGE.
  */
 
+#include <vppinfra/lock.h>
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 *lockp;
+  clib_spinlock_t lockp;
   u8 *host_if_name;
   uword if_index;
   u32 hw_if_index;

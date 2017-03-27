@@ -180,6 +180,7 @@ nobase_include_HEADERS = \
   vppinfra/graph.h \
   vppinfra/hash.h \
   vppinfra/heap.h \
+  vppinfra/lock.h \
   vppinfra/longjmp.h \
   vppinfra/macros.h \
   vppinfra/math.h \

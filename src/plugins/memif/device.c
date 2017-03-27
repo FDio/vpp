@@ -79,23 +79,6 @@ format_memif_tx_trace (u8 * s, va_list * args)
 }
 
 static_always_inline void
-memif_interface_lock (memif_if_t * mif)
-{
-  if (PREDICT_FALSE (mif->lockp != 0))
-    {
-      while (__sync_lock_test_and_set (mif->lockp, 1))
-	;
-    }
-}
-
-static_always_inline void
-memif_interface_unlock (memif_if_t * mif)
-{
-  if (PREDICT_FALSE (mif->lockp != 0))
-    *mif->lockp = 0;
-}
-
-static_always_inline void
 memif_prefetch_buffer_and_data (vlib_main_t * vm, u32 bi)
 {
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
@@ -117,7 +100,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 head, tail;
   u16 free_slots;
 
-  memif_interface_lock (mif);
+  clib_spinlock_lock_if_init (&mif->lockp);
 
   /* free consumed buffers */
 
@@ -210,7 +193,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   CLIB_MEMORY_STORE_BARRIER ();
   ring->head = head;
 
-  memif_interface_unlock (mif);
+  clib_spinlock_unlock (&mif->lockp);
 
   if (n_left)
     {
