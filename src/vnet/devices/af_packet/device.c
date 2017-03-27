@@ -125,7 +125,8 @@ af_packet_interface_tx (vlib_main_t * vm,
 		       vlib_buffer_get_current (b0), len);
 	  offset += len;
 	}
-      while ((bi = b0->next_buffer));
+      while ((bi =
+	      (b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? b0->next_buffer : 0));
 
       tph->tp_len = tph->tp_snaplen = offset;
       tph->tp_status = TP_STATUS_SEND_REQUEST;
