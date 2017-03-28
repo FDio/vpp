@@ -240,6 +240,21 @@ send_ip_fib_details (vpe_api_main_t * am,
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
+typedef struct vl_api_ip_fib_dump_walk_ctx_t_
+{
+  fib_node_index_t *feis;
+} vl_api_ip_fib_dump_walk_ctx_t;
+
+static int
+vl_api_ip_fib_dump_walk (fib_node_index_t fei, void *arg)
+{
+  vl_api_ip_fib_dump_walk_ctx_t *ctx = arg;
+
+  vec_add1 (ctx->feis, fei);
+
+  return (1);
+}
+
 static void
 vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
 {
@@ -247,12 +262,13 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
   unix_shared_memory_queue_t *q;
   ip4_main_t *im = &ip4_main;
   fib_table_t *fib_table;
-  fib_node_index_t lfei, *lfeip, *lfeis = NULL;
-  mpls_label_t key;
+  fib_node_index_t *lfeip;
   fib_prefix_t pfx;
   u32 fib_index;
   fib_route_path_encode_t *api_rpaths;
-  int i;
+  vl_api_ip_fib_dump_walk_ctx_t ctx = {
+    .feis = NULL,
+  };
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -261,19 +277,16 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im->fibs,
   ({
-    for (i = 0; i < ARRAY_LEN (fib_table->v4.fib_entry_by_dst_address); i++)
-      {
-        hash_foreach(key, lfei, fib_table->v4.fib_entry_by_dst_address[i],
-        ({
-          vec_add1(lfeis, lfei);
-        }));
-      }
+    fib_table_walk(fib_table->ft_index,
+                   FIB_PROTOCOL_IP4,
+                   vl_api_ip_fib_dump_walk,
+                   &ctx);
   }));
   /* *INDENT-ON* */
 
-  vec_sort_with_function (lfeis, fib_entry_cmp_for_sort);
+  vec_sort_with_function (ctx.feis, fib_entry_cmp_for_sort);
 
-  vec_foreach (lfeip, lfeis)
+  vec_foreach (lfeip, ctx.feis)
   {
     fib_entry_get_prefix (*lfeip, &pfx);
     fib_index = fib_entry_get_fib_index (*lfeip);
@@ -286,7 +299,7 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
     vec_free (api_rpaths);
   }
 
-  vec_free (lfeis);
+  vec_free (ctx.feis);
 }
 
 static void
@@ -377,10 +390,10 @@ api_ip6_fib_table_get_all (unix_shared_memory_queue_t * q,
 {
   vpe_api_main_t *am = &vpe_api_main;
   ip6_main_t *im6 = &ip6_main;
-  ip6_fib_t *fib = &fib_table->v6;
   fib_node_index_t *fib_entry_index;
   api_ip6_fib_show_ctx_t ctx = {
-    .fib_index = fib->index,.entries = NULL,
+    .fib_index = fib_table->ft_index,
+    .entries = NULL,
   };
   fib_route_path_encode_t *api_rpaths;
   fib_prefix_t pfx;

@@ -924,10 +924,10 @@ fib_entry_path_remove (fib_node_index_t fib_entry_index,
 		/*
 		 * no more sources left. this entry is toast.
 		 */
-		fib_entry_src_action_uninstall(fib_entry);
 		fib_entry = fib_entry_post_flag_update_actions(fib_entry,
                                                                source,
                                                                bflags);
+		fib_entry_src_action_uninstall(fib_entry);
 
 		return (FIB_ENTRY_SRC_FLAG_NONE);
 	    }
@@ -1014,10 +1014,10 @@ fib_entry_special_remove (fib_node_index_t fib_entry_index,
 		/*
 		 * no more sources left. this entry is toast.
 		 */
-		fib_entry_src_action_uninstall(fib_entry);
 		fib_entry = fib_entry_post_flag_update_actions(fib_entry,
                                                                source,
                                                                bflags);
+		fib_entry_src_action_uninstall(fib_entry);
 
 		return (FIB_ENTRY_SRC_FLAG_NONE);
 	    }

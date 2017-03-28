@@ -182,7 +182,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 	      mtrie2 = &ip4_fib_get (fib_index2)->mtrie;
 	      mtrie3 = &ip4_fib_get (fib_index3)->mtrie;
 
-
 	      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
 	      leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, dst_addr1);
 	      leaf2 = ip4_fib_mtrie_lookup_step_one (mtrie2, dst_addr2);
@@ -193,14 +192,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  tcp1 = (void *) (ip1 + 1);
 	  tcp2 = (void *) (ip2 + 1);
 	  tcp3 = (void *) (ip3 + 1);
-
-	  if (!lookup_for_responses_to_locally_received_packets)
-	    {
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 1);
-	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 1);
-	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 1);
-	    }
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {
@@ -362,9 +353,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 	    }
 
 	  tcp0 = (void *) (ip0 + 1);
-
-	  if (!lookup_for_responses_to_locally_received_packets)
-	    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
@@ -1622,11 +1610,6 @@ ip4_local_inline (vlib_main_t * vm,
 	  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
 	  good_tcp_udp1 |= is_udp1 && udp1->checksum == 0;
 
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
-	  leaf1 =
-	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 1);
-
 	  /* Verify UDP length. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
 	  ip_len1 = clib_net_to_host_u16 (ip1->length);
@@ -1811,9 +1794,6 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
 
 	  /* Verify UDP length. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -2913,7 +2893,6 @@ ip4_lookup_validate (ip4_address_t * a, u32 fib_index0)
   mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
   leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, a);
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 1);
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 2);
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 3);
 

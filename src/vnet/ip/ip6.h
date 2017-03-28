@@ -153,6 +153,9 @@ typedef struct ip6_main_t
   /* Pool of FIBs. */
   struct fib_table_t_ *fibs;
 
+  /* Pool of V6 FIBs. */
+  ip6_fib_t *v6_fibs;
+
   /** Vector of MFIBs. */
   struct mfib_table_t_ *mfibs;
 

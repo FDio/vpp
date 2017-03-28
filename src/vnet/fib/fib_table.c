@@ -47,7 +47,7 @@ fib_table_lookup_i (fib_table_t *fib_table,
     switch (prefix->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-	return (ip4_fib_table_lookup(&fib_table->v4,
+	return (ip4_fib_table_lookup(ip4_fib_get(fib_table->ft_index),
 				     &prefix->fp_addr.ip4,
 				     prefix->fp_len));
     case FIB_PROTOCOL_IP6:
@@ -55,7 +55,7 @@ fib_table_lookup_i (fib_table_t *fib_table,
 				     &prefix->fp_addr.ip6,
 				     prefix->fp_len));
     case FIB_PROTOCOL_MPLS:
-	return (mpls_fib_table_lookup(&fib_table->mpls,
+	return (mpls_fib_table_lookup(mpls_fib_get(fib_table->ft_index),
 				      prefix->fp_label,
 				      prefix->fp_eos));
     }
@@ -76,7 +76,7 @@ fib_table_lookup_exact_match_i (const fib_table_t *fib_table,
     switch (prefix->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-	return (ip4_fib_table_lookup_exact_match(&fib_table->v4,
+	return (ip4_fib_table_lookup_exact_match(ip4_fib_get(fib_table->ft_index),
 						 &prefix->fp_addr.ip4,
 						 prefix->fp_len));
     case FIB_PROTOCOL_IP6:
@@ -84,7 +84,7 @@ fib_table_lookup_exact_match_i (const fib_table_t *fib_table,
 						 &prefix->fp_addr.ip6,
 						 prefix->fp_len));
     case FIB_PROTOCOL_MPLS:
-	return (mpls_fib_table_lookup(&fib_table->mpls,
+	return (mpls_fib_table_lookup(mpls_fib_get(fib_table->ft_index),
 				      prefix->fp_label,
 				      prefix->fp_eos));
     }
@@ -148,7 +148,7 @@ fib_table_entry_remove (fib_table_t *fib_table,
     switch (prefix->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-	ip4_fib_table_entry_remove(&fib_table->v4,
+	ip4_fib_table_entry_remove(ip4_fib_get(fib_table->ft_index),
 				   &prefix->fp_addr.ip4,
 				   prefix->fp_len);
 	break;
@@ -158,7 +158,7 @@ fib_table_entry_remove (fib_table_t *fib_table,
 				   prefix->fp_len);
 	break;
     case FIB_PROTOCOL_MPLS:
-	mpls_fib_table_entry_remove(&fib_table->mpls,
+	mpls_fib_table_entry_remove(mpls_fib_get(fib_table->ft_index),
 				    prefix->fp_label,
 				    prefix->fp_eos);
 	break;
@@ -208,7 +208,7 @@ fib_table_entry_insert (fib_table_t *fib_table,
     switch (prefix->fp_proto)
     {
     case FIB_PROTOCOL_IP4:
-	ip4_fib_table_entry_insert(&fib_table->v4,
+	ip4_fib_table_entry_insert(ip4_fib_get(fib_table->ft_index),
 				   &prefix->fp_addr.ip4,
 				   prefix->fp_len,
 				   fib_entry_index);
@@ -220,7 +220,7 @@ fib_table_entry_insert (fib_table_t *fib_table,
 				   fib_entry_index);
 	break;
     case FIB_PROTOCOL_MPLS:
-	mpls_fib_table_entry_insert(&fib_table->mpls,
+	mpls_fib_table_entry_insert(mpls_fib_get(fib_table->ft_index),
 				    prefix->fp_label,
 				    prefix->fp_eos,
 				    fib_entry_index);
@@ -270,7 +270,9 @@ fib_table_fwding_dpo_remove (u32 fib_index,
 	return (ip4_fib_table_fwding_dpo_remove(ip4_fib_get(fib_index),
 						&prefix->fp_addr.ip4,
 						prefix->fp_len,
-						dpo));
+						dpo,
+                                                fib_table_get_less_specific(fib_index,
+                                                                            prefix)));
     case FIB_PROTOCOL_IP6:
 	return (ip6_fib_table_fwding_dpo_remove(fib_index,
 						&prefix->fp_addr.ip6,
@@ -1034,13 +1036,13 @@ fib_table_destroy (fib_table_t *fib_table)
     switch (fib_table->ft_proto)
     {
     case FIB_PROTOCOL_IP4:
-	ip4_fib_table_destroy(&fib_table->v4);
+	ip4_fib_table_destroy(fib_table->ft_index);
 	break;
     case FIB_PROTOCOL_IP6:
 	ip6_fib_table_destroy(fib_table->ft_index);
 	break;
     case FIB_PROTOCOL_MPLS:
-	mpls_fib_table_destroy(&fib_table->mpls);
+	mpls_fib_table_destroy(fib_table->ft_index);
 	break;
     }
 }
