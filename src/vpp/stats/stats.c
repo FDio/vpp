@@ -17,6 +17,7 @@
 #include <vlib/threads.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/ip4_fib.h>
 #include <vnet/dpo/load_balance.h>
 
 #define STATS_DEBUG 0
@@ -576,6 +577,7 @@ do_ip4_fibs (stats_main_t * sm)
   static ip4_route_t *routes;
   ip4_route_t *r;
   fib_table_t *fib;
+  ip4_fib_t *v4_fib;
   ip_lookup_main_t *lm = &im4->lookup_main;
   static uword *results;
   vl_api_vnet_ip4_fib_counters_t *mp = 0;
@@ -591,6 +593,8 @@ again:
     /* We may have bailed out due to control-plane activity */
     while ((fib - im4->fibs) < start_at_fib_index)
       continue;
+
+    v4_fib = pool_elt_at_index (im4->v4_fibs, fib->ft_index);
 
     if (mp == 0)
       {
@@ -615,9 +619,9 @@ again:
     vec_reset_length (routes);
     vec_reset_length (results);
 
-    for (i = 0; i < ARRAY_LEN (fib->v4.fib_entry_by_dst_address); i++)
+    for (i = 0; i < ARRAY_LEN (v4_fib->fib_entry_by_dst_address); i++)
       {
-	uword *hash = fib->v4.fib_entry_by_dst_address[i];
+	uword *hash = v4_fib->fib_entry_by_dst_address[i];
 	hash_pair_t *p;
 	ip4_route_t x;
 

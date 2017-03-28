@@ -827,14 +827,18 @@ const static char* const * const load_balance_nodes[DPO_PROTO_NUM] =
 void
 load_balance_module_init (void)
 {
+    index_t lbi;
+
     dpo_register(DPO_LOAD_BALANCE, &lb_vft, load_balance_nodes);
 
     /*
      * Special LB with index zero. we need to define this since the v4 mtrie
      * assumes an index of 0 implies the ply is empty. therefore all 'real'
      * adjs need a non-zero index.
+     * This should never be used, but just in case, stack it on a drop.
      */
-    load_balance_create(0, DPO_PROTO_IP4, 0);
+    lbi = load_balance_create(1, DPO_PROTO_IP4, 0);
+    load_balance_set_bucket(lbi, 0, drop_dpo_get(DPO_PROTO_IP4));
 
     load_balance_map_module_init();
 }

@@ -104,29 +104,35 @@ static u32
 ip4_create_fib_with_table_id (u32 table_id)
 {
     fib_table_t *fib_table;
+    ip4_fib_t *v4_fib;
 
     pool_get_aligned(ip4_main.fibs, fib_table, CLIB_CACHE_LINE_BYTES);
     memset(fib_table, 0, sizeof(*fib_table));
 
+    pool_get_aligned(ip4_main.v4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
+
+    ASSERT((fib_table - ip4_main.fibs) ==
+           (v4_fib - ip4_main.v4_fibs));
+
     fib_table->ft_proto = FIB_PROTOCOL_IP4;
     fib_table->ft_index =
-	fib_table->v4.index =
+	v4_fib->index =
 	    (fib_table - ip4_main.fibs);
 
     hash_set (ip4_main.fib_index_by_table_id, table_id, fib_table->ft_index);
 
     fib_table->ft_table_id =
-	fib_table->v4.table_id =
+	v4_fib->table_id =
 	    table_id;
     fib_table->ft_flow_hash_config = 
-	fib_table->v4.flow_hash_config =
+	v4_fib->flow_hash_config =
 	    IP_FLOW_HASH_DEFAULT;
-    fib_table->v4.fwd_classify_table_index = ~0;
-    fib_table->v4.rev_classify_table_index = ~0;
+    v4_fib->fwd_classify_table_index = ~0;
+    v4_fib->rev_classify_table_index = ~0;
     
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP4);
 
-    ip4_mtrie_init(&fib_table->v4.mtrie);
+    ip4_mtrie_init(&v4_fib->mtrie);
 
     /*
      * add the special entries into the new FIB
@@ -151,9 +157,10 @@ ip4_create_fib_with_table_id (u32 table_id)
 }
 
 void
-ip4_fib_table_destroy (ip4_fib_t *fib)
+ip4_fib_table_destroy (u32 fib_index)
 {
-    fib_table_t *fib_table = (fib_table_t*)fib;
+    fib_table_t *fib_table = pool_elt_at_index(ip4_main.fibs, fib_index);
+    ip4_fib_t *v4_fib = pool_elt_at_index(ip4_main.v4_fibs, fib_index);
     int ii;
 
     /*
@@ -185,6 +192,10 @@ ip4_fib_table_destroy (ip4_fib_t *fib)
     {
 	hash_unset (ip4_main.fib_index_by_table_id, fib_table->ft_table_id);
     }
+
+    ip4_mtrie_free(&v4_fib->mtrie);
+
+    pool_put(ip4_main.v4_fibs, v4_fib);
     pool_put(ip4_main.fibs, fib_table);
 }
 
@@ -367,16 +378,33 @@ ip4_fib_table_fwding_dpo_update (ip4_fib_t *fib,
 				 u32 len,
 				 const dpo_id_t *dpo)
 {
-    ip4_fib_mtrie_add_del_route(fib, *addr, len, dpo->dpoi_index, 0); // ADD
+    ip4_fib_mtrie_route_add(&fib->mtrie, addr, len, dpo->dpoi_index);
 }
 
 void
 ip4_fib_table_fwding_dpo_remove (ip4_fib_t *fib,
 				 const ip4_address_t *addr,
 				 u32 len,
-				 const dpo_id_t *dpo)
+				 const dpo_id_t *dpo,
+                                 u32 cover_index)
 {
-    ip4_fib_mtrie_add_del_route(fib, *addr, len, dpo->dpoi_index, 1); // DELETE
+    fib_prefix_t cover_prefix = {
+        .fp_len = 0,
+    };
+    const dpo_id_t *cover_dpo;
+
+    /*
+     * We need to pass the MTRIE the LB index and address length of the
+     * covering prefix, so it can fill the plys with the correct replacement
+     * for the entry being removed
+     */
+    fib_entry_get_prefix(cover_index, &cover_prefix);
+    cover_dpo = fib_entry_contribute_ip_forwarding(cover_index);
+
+    ip4_fib_mtrie_route_del(&fib->mtrie,
+                            addr, len, dpo->dpoi_index,
+                            cover_prefix.fp_len,
+                            cover_dpo->dpoi_index);
 }
 
 void
@@ -498,7 +526,7 @@ ip4_show_fib (vlib_main_t * vm,
 
     pool_foreach (fib_table, im4->fibs,
     ({
-	ip4_fib_t *fib = &fib_table->v4;
+	ip4_fib_t *fib = pool_elt_at_index(im4->v4_fibs, fib_table->ft_index);
 
 	if (table_id >= 0 && table_id != (int)fib->table_id)
 	    continue;
@@ -523,6 +551,11 @@ ip4_show_fib (vlib_main_t * vm,
 	    }
 	    continue;
 	}
+	if (mtrie)
+        {
+	    vlib_cli_output (vm, "%U", format_ip4_fib_mtrie, &fib->mtrie);
+            continue;
+        }
 
 	if (!matching)
 	{
@@ -532,9 +565,6 @@ ip4_show_fib (vlib_main_t * vm,
 	{
 	    ip4_fib_table_show_one(fib, vm, &matching_address, matching_mask);
 	}
-
-	if (mtrie)
-	    vlib_cli_output (vm, "%U", format_ip4_fib_mtrie, &fib->mtrie);
     }));
 
     return 0;

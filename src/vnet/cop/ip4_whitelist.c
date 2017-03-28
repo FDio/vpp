@@ -128,9 +128,6 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
           leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 
       	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
-                                             &ip0->src_address, 1);
-
-      	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
                                              &ip0->src_address, 2);
 
       	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0,
@@ -165,9 +162,6 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
 	  mtrie1 = &ip4_fib_get (c1->fib_index)->mtrie;
 
           leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, &ip1->src_address);
-
-      	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
-                                             &ip1->src_address, 1);
 
       	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1,
                                              &ip1->src_address, 2);
@@ -262,9 +256,6 @@ ip4_cop_whitelist_node_fn (vlib_main_t * vm,
 	  mtrie0 = &ip4_fib_get (c0->fib_index)->mtrie;
 
           leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
-
-	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
-                                             &ip0->src_address, 1);
 
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, 
                                              &ip0->src_address, 2);

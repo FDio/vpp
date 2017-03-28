@@ -34,6 +34,33 @@
 #include <vnet/ip/ip.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ip/ip4_mtrie.h>
+
+typedef struct ip4_fib_t_
+{
+  /**
+   * Mtrie for fast lookups. Hash is used to maintain overlapping prefixes.
+   * First member so it's in the first cacheline.
+   */
+  ip4_fib_mtrie_t mtrie;
+
+  /* Hash table for each prefix length mapping. */
+  uword *fib_entry_by_dst_address[33];
+
+  /* Table ID (hash key) for this FIB. */
+  u32 table_id;
+
+  /* Index into FIB vector. */
+  u32 index;
+
+  /* flow hash configuration */
+  flow_hash_config_t flow_hash_config;
+
+  /* N-tuple classifier indices */
+  u32 fwd_classify_table_index;
+  u32 rev_classify_table_index;
+
+} ip4_fib_t;
 
 extern fib_node_index_t ip4_fib_table_lookup(const ip4_fib_t *fib,
 					     const ip4_address_t *addr,
@@ -50,7 +77,7 @@ extern void ip4_fib_table_entry_insert(ip4_fib_t *fib,
 				       const ip4_address_t *addr,
 				       u32 len,
 				       fib_node_index_t fib_entry_index);
-extern void ip4_fib_table_destroy(ip4_fib_t *fib);
+extern void ip4_fib_table_destroy(u32 fib_index);
 
 extern void ip4_fib_table_fwding_dpo_update(ip4_fib_t *fib,
 					    const ip4_address_t *addr,
@@ -60,7 +87,8 @@ extern void ip4_fib_table_fwding_dpo_update(ip4_fib_t *fib,
 extern void ip4_fib_table_fwding_dpo_remove(ip4_fib_t *fib,
 					    const ip4_address_t *addr,
 					    u32 len,
-					    const dpo_id_t *dpo);
+					    const dpo_id_t *dpo,
+                                            fib_node_index_t cover_index);
 extern u32 ip4_fib_table_lookup_lb (ip4_fib_t *fib,
 				    const ip4_address_t * dst);
 
@@ -79,7 +107,7 @@ extern void ip4_fib_table_walk(ip4_fib_t *fib,
 static inline ip4_fib_t *
 ip4_fib_get (u32 index)
 {
-    return (&(pool_elt_at_index(ip4_main.fibs, index)->v4));
+    return (pool_elt_at_index(ip4_main.v4_fibs, index));
 }
 
 always_inline u32
@@ -134,7 +162,6 @@ ip4_fib_forwarding_lookup (u32 fib_index,
     mtrie = &ip4_fib_get(fib_index)->mtrie;
 
     leaf = ip4_fib_mtrie_lookup_step_one (mtrie, addr);
-    leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 1);
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 2);
     leaf = ip4_fib_mtrie_lookup_step (mtrie, leaf, addr, 3);
 

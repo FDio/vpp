@@ -26,6 +26,7 @@
 #include <vnet/mpls/mpls_tunnel.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_api.h>
+#include <vnet/fib/mpls_fib.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -369,6 +370,21 @@ send_mpls_fib_details (vpe_api_main_t * am,
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
+typedef struct vl_api_mpls_fib_dump_table_walk_ctx_t_
+{
+  fib_node_index_t *lfeis;
+} vl_api_mpls_fib_dump_table_walk_ctx_t;
+
+static int
+vl_api_mpls_fib_dump_table_walk (fib_node_index_t fei, void *arg)
+{
+  vl_api_mpls_fib_dump_table_walk_ctx_t *ctx = arg;
+
+  vec_add1 (ctx->lfeis, fei);
+
+  return (1);
+}
+
 static void
 vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
 {
@@ -376,28 +392,30 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
   unix_shared_memory_queue_t *q;
   mpls_main_t *mm = &mpls_main;
   fib_table_t *fib_table;
-  fib_node_index_t lfei, *lfeip, *lfeis = NULL;
-  mpls_label_t key;
+  mpls_fib_t *mpls_fib;
+  fib_node_index_t *lfeip = NULL;
   fib_prefix_t pfx;
   u32 fib_index;
   fib_route_path_encode_t *api_rpaths;
+  vl_api_mpls_fib_dump_table_walk_ctx_t ctx = {
+    .lfeis = NULL,
+  };
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
 
   /* *INDENT-OFF* */
-  pool_foreach (fib_table, mm->fibs,
+  pool_foreach (mpls_fib, mm->mpls_fibs,
   ({
-    hash_foreach(key, lfei, fib_table->mpls.mf_entries,
-    ({
-  vec_add1(lfeis, lfei);
-    }));
+    mpls_fib_table_walk (mpls_fib,
+                         vl_api_mpls_fib_dump_table_walk,
+                         &ctx);
   }));
   /* *INDENT-ON* */
-  vec_sort_with_function (lfeis, fib_entry_cmp_for_sort);
+  vec_sort_with_function (ctx.lfeis, fib_entry_cmp_for_sort);
 
-  vec_foreach (lfeip, lfeis)
+  vec_foreach (lfeip, ctx.lfeis)
   {
     fib_entry_get_prefix (*lfeip, &pfx);
     fib_index = fib_entry_get_fib_index (*lfeip);
@@ -410,7 +428,7 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
     vec_free (api_rpaths);
   }
 
-  vec_free (lfeis);
+  vec_free (ctx.lfeis);
 }
 
 /*

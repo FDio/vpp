@@ -40,8 +40,6 @@
 	fformat(stderr, "FAIL:%d: " _comment "\n",		\
 		__LINE__, ##_args);				\
     } else {							\
-	fformat(stderr, "PASS:%d: " _comment "\n",		\
-		__LINE__, ##_args);				\
     }								\
     _evald;							\
 })
@@ -5727,7 +5725,7 @@ fib_test_label (void)
 				     &a_o_10_10_11_1,
 				     &adj_o_10_10_11_2),
 	     "1.1.1.1/32 LB 2 buckets via: "
-	     "adj over 10.10.11.1",
+	     "adj over 10.10.11.1, "
 	     "adj-v4 over 10.10.11.2");
 
     fei = fib_table_lookup(MPLS_FIB_DEFAULT_TABLE_ID,
@@ -5738,7 +5736,7 @@ fib_test_label (void)
 				     &a_o_10_10_11_1,
 				     &adj_o_10_10_11_2),
 	     "24001/eos LB 2 buckets via: "
-	     "adj over 10.10.11.1",
+	     "adj over 10.10.11.1, "
 	     "adj-v4 over 10.10.11.2");
 
     fei = fib_table_lookup(MPLS_FIB_DEFAULT_TABLE_ID,
