@@ -183,7 +183,9 @@ vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n = vec_elt (nm->nodes, node_index);
   ASSERT (n->type == VLIB_NODE_TYPE_INPUT);
+  clib_spinlock_lock_if_init (&nm->pending_interrupt_lock);
   vec_add1 (nm->pending_interrupt_node_runtime_indices, n->runtime_index);
+  clib_spinlock_unlock_if_init (&nm->pending_interrupt_lock);
 }
 
 always_inline vlib_process_t *
