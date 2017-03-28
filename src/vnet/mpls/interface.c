@@ -18,6 +18,7 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/fib/mpls_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/dpo/classify_dpo.h>

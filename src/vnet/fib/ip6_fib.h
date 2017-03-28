@@ -115,7 +115,7 @@ static inline ip6_fib_t *
 ip6_fib_get (fib_node_index_t index)
 {
     ASSERT(!pool_is_free_index(ip6_main.fibs, index));
-    return (&pool_elt_at_index (ip6_main.fibs, index)->v6);
+    return (pool_elt_at_index (ip6_main.v6_fibs, index));
 }
 
 static inline 

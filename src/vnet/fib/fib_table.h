@@ -29,18 +29,6 @@
 typedef struct fib_table_t_
 {
     /**
-     * A union of the protocol specific FIBs that provide the
-     * underlying LPM mechanism.
-     * This element is first in the struct so that it is in the
-     * first cache line.
-     */
-    union {
-	ip4_fib_t v4;
-	ip6_fib_t v6;
-	mpls_fib_t mpls;
-    };
-
-    /**
      * Which protocol this table serves. Used to switch on the union above.
      */
     fib_protocol_t ft_proto;

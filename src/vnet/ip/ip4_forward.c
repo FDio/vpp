@@ -186,12 +186,10 @@ ip4_lookup_inline (vlib_main_t * vm,
 	      mtrie2 = &ip4_fib_get (fib_index2)->mtrie;
 	      mtrie3 = &ip4_fib_get (fib_index3)->mtrie;
 
-	      leaf0 = leaf1 = leaf2 = leaf3 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 0);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 0);
-	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 0);
-	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 0);
+	      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
+	      leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, dst_addr1);
+	      leaf2 = ip4_fib_mtrie_lookup_step_one (mtrie2, dst_addr2);
+	      leaf3 = ip4_fib_mtrie_lookup_step_one (mtrie3, dst_addr3);
 	    }
 
 	  tcp0 = (void *) (ip0 + 1);
@@ -207,14 +205,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 			 || ip2->protocol == IP_PROTOCOL_UDP);
 	  is_tcp_udp3 = (ip1->protocol == IP_PROTOCOL_TCP
 			 || ip1->protocol == IP_PROTOCOL_UDP);
-
-	  if (!lookup_for_responses_to_locally_received_packets)
-	    {
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
-	      leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, dst_addr1, 1);
-	      leaf2 = ip4_fib_mtrie_lookup_step (mtrie2, leaf2, dst_addr2, 1);
-	      leaf3 = ip4_fib_mtrie_lookup_step (mtrie3, leaf3, dst_addr3, 1);
-	    }
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    {
@@ -241,25 +231,13 @@ ip4_lookup_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      /* Handle default route. */
-	      leaf0 =
-		(leaf0 ==
-		 IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-	      leaf1 =
-		(leaf1 ==
-		 IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
-	      leaf2 =
-		(leaf2 ==
-		 IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie2->default_leaf : leaf2);
-	      leaf3 =
-		(leaf3 ==
-		 IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie3->default_leaf : leaf3);
 	      lb_index0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 	      lb_index1 = ip4_fib_mtrie_leaf_get_adj_index (leaf1);
 	      lb_index2 = ip4_fib_mtrie_leaf_get_adj_index (leaf2);
 	      lb_index3 = ip4_fib_mtrie_leaf_get_adj_index (leaf3);
 	    }
 
+	  ASSERT (lb_index0 && lb_index1 && lb_index2 && lb_index3);
 	  lb0 = load_balance_get (lb_index0);
 	  lb1 = load_balance_get (lb_index1);
 	  lb2 = load_balance_get (lb_index2);
@@ -384,18 +362,13 @@ ip4_lookup_inline (vlib_main_t * vm,
 	    {
 	      mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
-	      leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	      leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 0);
+	      leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, dst_addr0);
 	    }
 
 	  tcp0 = (void *) (ip0 + 1);
 
 	  is_tcp_udp0 = (ip0->protocol == IP_PROTOCOL_TCP
 			 || ip0->protocol == IP_PROTOCOL_UDP);
-
-	  if (!lookup_for_responses_to_locally_received_packets)
-	    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 1);
 
 	  if (!lookup_for_responses_to_locally_received_packets)
 	    leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, dst_addr0, 2);
@@ -408,12 +381,10 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  else
 	    {
 	      /* Handle default route. */
-	      leaf0 =
-		(leaf0 ==
-		 IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
 	      lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 	    }
 
+	  ASSERT (lbi0);
 	  lb0 = load_balance_get (lbi0);
 
 	  /* Use flow hash to compute multipath adjacency. */
@@ -1556,12 +1527,8 @@ ip4_local_inline (vlib_main_t * vm,
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 	  mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
 
-	  leaf0 = leaf1 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
-	  leaf1 =
-	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 0);
+	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
+	  leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, &ip1->src_address);
 
 	  /* Treat IP frag packets as "experimental" protocol for now
 	     until support of IP frag reassembly is implemented */
@@ -1591,11 +1558,6 @@ ip4_local_inline (vlib_main_t * vm,
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
 	  good_tcp_udp1 |= is_udp1 && udp1->checksum == 0;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
-	  leaf1 =
-	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 1);
 
 	  /* Verify UDP length. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -1655,12 +1617,6 @@ ip4_local_inline (vlib_main_t * vm,
 	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
 	  leaf1 =
 	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 3);
-	  leaf0 =
-	    (leaf0 ==
-	     IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
-	  leaf1 =
-	    (leaf1 ==
-	     IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie1->default_leaf : leaf1);
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0 =
 	    ip4_fib_mtrie_leaf_get_adj_index (leaf0);
@@ -1764,10 +1720,7 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
-	  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 0);
+	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 
 	  /* Treat IP frag packets as "experimental" protocol for now
 	     until support of IP frag reassembly is implemented */
@@ -1790,9 +1743,6 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 1);
 
 	  /* Verify UDP length. */
 	  ip_len0 = clib_net_to_host_u16 (ip0->length);
@@ -1830,9 +1780,6 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  leaf0 =
 	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
-	  leaf0 =
-	    (leaf0 ==
-	     IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
 
 	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
@@ -2386,9 +2333,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 					      cpu_index, adj_index1);
 	    }
 
-	  /* We should never rewrite a pkt using the MISS adjacency */
-	  ASSERT (adj_index0 && adj_index1);
-
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
@@ -2575,9 +2519,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-
-	  /* We should never rewrite a pkt using the MISS adjacency */
-	  ASSERT (adj_index0);
 
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 
@@ -2900,14 +2841,9 @@ ip4_lookup_validate (ip4_address_t * a, u32 fib_index0)
 
   mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 
-  leaf0 = IP4_FIB_MTRIE_LEAF_ROOT;
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 0);
-  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 1);
+  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, a);
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 2);
   leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, a, 3);
-
-  /* Handle default route. */
-  leaf0 = (leaf0 == IP4_FIB_MTRIE_LEAF_EMPTY ? mtrie0->default_leaf : leaf0);
 
   lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 

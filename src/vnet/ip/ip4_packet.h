@@ -52,6 +52,7 @@ typedef union
   u32 data_u32;
   /* Aliases. */
   u8 as_u8[4];
+  u16 as_u16[2];
   u32 as_u32;
 } ip4_address_t;
 

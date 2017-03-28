@@ -25,10 +25,33 @@
 #include <vnet/mpls/mpls.h>
 #include <vnet/fib/fib_table.h>
 
+#define MPLS_FIB_DEFAULT_TABLE_ID 0
+
+/**
+ * Type exposure is to allow the DP fast/inlined access
+ */
+#define MPLS_FIB_KEY_SIZE 21
+#define MPLS_FIB_DB_SIZE (1 << (MPLS_FIB_KEY_SIZE-1))
+
+typedef struct mpls_fib_t_
+{
+  /**
+   * A hash table of entries. 21 bit key
+   * Hash table for reduced memory footprint
+   */
+  uword * mf_entries;
+
+  /**
+   * The load-balance indices keyed by 21 bit label+eos bit.
+   * A flat array for maximum lookup performace.
+   */
+  index_t mf_lbs[MPLS_FIB_DB_SIZE];
+} mpls_fib_t;
+
 static inline mpls_fib_t*
 mpls_fib_get (fib_node_index_t index)
 {
-    return (&(pool_elt_at_index(mpls_main.fibs, index)->mpls));
+    return (pool_elt_at_index(mpls_main.mpls_fibs, index));
 }
 
 extern u32 mpls_fib_table_find_or_create_and_lock(u32 table_id);
@@ -56,8 +79,7 @@ extern void mpls_fib_table_entry_insert(mpls_fib_t *mf,
 					mpls_label_t label,
 					mpls_eos_bit_t eos,
 					fib_node_index_t fei);
-extern void mpls_fib_table_destroy(mpls_fib_t *mf);
-
+extern void mpls_fib_table_destroy(u32 fib_index);
 
 
 extern void mpls_fib_forwarding_table_update(mpls_fib_t *mf,

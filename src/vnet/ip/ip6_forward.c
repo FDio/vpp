@@ -1943,9 +1943,6 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 	  adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
-	  /* We should never rewrite a pkt using the MISS adjacency */
-	  ASSERT (adj_index0 && adj_index1);
-
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
@@ -2110,9 +2107,6 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-
-	  /* We should never rewrite a pkt using the MISS adjacency */
-	  ASSERT (adj_index0);
 
 	  adj0 = ip_get_adjacency (lm, adj_index0);
 

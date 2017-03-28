@@ -896,8 +896,9 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im4->fibs,
   ({
-    fib = &fib_table->v4;
     vnet_sw_interface_t * si;
+
+    fib = pool_elt_at_index (im4->v4_fibs, fib_table->ft_index);
 
     if (fib->table_id != target_fib_id)
       continue;
@@ -964,7 +965,8 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   pool_foreach (fib_table, im6->fibs,
   ({
     vnet_sw_interface_t * si;
-    fib = &(fib_table->v6);
+
+    fib = pool_elt_at_index (im6->v6_fibs, fib_table->ft_index);
 
     if (fib->table_id != target_fib_id)
       continue;
