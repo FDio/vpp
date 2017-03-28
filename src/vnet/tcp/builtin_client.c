@@ -47,7 +47,7 @@ static void
 send_test_chunk (tclient_main_t * tm, session_t * s)
 {
   u8 *test_data = tm->connect_test_data;
-  int test_buf_offset = 0;
+  int test_buf_offset;
   u32 bytes_this_chunk;
   session_fifo_event_t evt;
   static int serial_number = 0;
@@ -55,8 +55,12 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 
   while (s->bytes_to_send > 0)
     {
-      bytes_this_chunk = vec_len (test_data) < s->bytes_to_send
-	? vec_len (test_data) : s->bytes_to_send;
+
+      test_buf_offset = s->bytes_sent % vec_len (test_data);
+      bytes_this_chunk = vec_len (test_data) - test_buf_offset;
+
+      bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
+	? bytes_this_chunk : s->bytes_to_send;
 
       rv = svm_fifo_enqueue_nowait (s->server_tx_fifo, 0 /*pid */ ,
 				    bytes_this_chunk,
@@ -65,7 +69,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
       if (rv > 0)
 	{
 	  s->bytes_to_send -= rv;
-	  test_buf_offset += rv;
+	  s->bytes_sent += rv;
 
 	  if (svm_fifo_set_event (s->server_tx_fifo))
 	    {
