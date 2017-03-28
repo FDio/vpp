@@ -162,15 +162,6 @@ int vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 int
 vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm);
 
-u64 dispatch_node (vlib_main_t * vm,
-		   vlib_node_runtime_t * node,
-		   vlib_node_type_t type,
-		   vlib_node_state_t dispatch_state,
-		   vlib_frame_t * frame, u64 last_time_stamp);
-
-u64 dispatch_pending_node (vlib_main_t * vm,
-			   vlib_pending_frame_t * p, u64 last_time_stamp);
-
 void vlib_worker_thread_node_runtime_update (void);
 
 void vlib_create_worker_threads (vlib_main_t * vm, int n,

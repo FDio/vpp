@@ -917,7 +917,7 @@ vlib_dump_context_trace (vlib_main_t * vm, u32 bi)
 }
 
 
-/* static_always_inline */ u64
+static_always_inline u64
 dispatch_node (vlib_main_t * vm,
 	       vlib_node_runtime_t * node,
 	       vlib_node_type_t type,
@@ -1093,7 +1093,7 @@ dispatch_node (vlib_main_t * vm,
   return t;
 }
 
-/* static */ u64
+static u64
 dispatch_pending_node (vlib_main_t * vm,
 		       vlib_pending_frame_t * p, u64 last_time_stamp)
 {
