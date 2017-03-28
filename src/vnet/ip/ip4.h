@@ -40,33 +40,9 @@
 #ifndef included_ip_ip4_h
 #define included_ip_ip4_h
 
-#include <vnet/ip/ip4_mtrie.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/lookup.h>
 #include <vnet/feature/feature.h>
-
-typedef struct ip4_fib_t
-{
-  /* Hash table for each prefix length mapping. */
-  uword *fib_entry_by_dst_address[33];
-
-  /* Mtrie for fast lookups.  Hash is used to maintain overlapping prefixes. */
-  ip4_fib_mtrie_t mtrie;
-
-  /* Table ID (hash key) for this FIB. */
-  u32 table_id;
-
-  /* Index into FIB vector. */
-  u32 index;
-
-  /* flow hash configuration */
-  flow_hash_config_t flow_hash_config;
-
-  /* N-tuple classifier indices */
-  u32 fwd_classify_table_index;
-  u32 rev_classify_table_index;
-
-} ip4_fib_t;
 
 typedef struct ip4_mfib_t
 {
@@ -110,6 +86,9 @@ typedef struct ip4_main_t
 
   /** Vector of FIBs. */
   struct fib_table_t_ *fibs;
+
+  /** Vector of MTries. */
+  struct ip4_fib_t_ *v4_fibs;
 
   /** Vector of MFIBs. */
   struct mfib_table_t_ *mfibs;
@@ -283,8 +262,6 @@ serialize_function_t serialize_vnet_ip4_main, unserialize_vnet_ip4_main;
 
 int vnet_set_ip4_flow_hash (u32 table_id,
 			    flow_hash_config_t flow_hash_config);
-
-void ip4_mtrie_init (ip4_fib_mtrie_t * m);
 
 int vnet_set_ip4_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);

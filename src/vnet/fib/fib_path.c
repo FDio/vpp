@@ -32,6 +32,7 @@
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_urpf_list.h>
+#include <vnet/fib/mpls_fib.h>
 
 /**
  * Enurmeration of path types

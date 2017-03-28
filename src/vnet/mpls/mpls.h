@@ -30,29 +30,6 @@ typedef enum {
   MPLS_N_ERROR,
 } mpls_error_t;
 
-#define MPLS_FIB_DEFAULT_TABLE_ID 0
-
-/**
- * Type exposure is to allow the DP fast/inlined access
- */
-#define MPLS_FIB_KEY_SIZE 21
-#define MPLS_FIB_DB_SIZE (1 << (MPLS_FIB_KEY_SIZE-1))
-
-typedef struct mpls_fib_t_
-{
-  /**
-   * A hash table of entries. 21 bit key
-   * Hash table for reduced memory footprint
-   */
-  uword * mf_entries;
-
-  /**
-   * The load-balance indeices keyed by 21 bit label+eos bit.
-   * A flat array for maximum lookup performace.
-   */
-  index_t mf_lbs[MPLS_FIB_DB_SIZE];
-} mpls_fib_t;
-
 /**
  * @brief Definition of a callback for receiving MPLS interface state change
  * notifications
@@ -66,6 +43,9 @@ typedef struct {
 
   /**  A pool of all the MPLS FIBs */
   struct fib_table_t_ *fibs;
+
+  /**  A pool of all the MPLS FIBs */
+  struct mpls_fib_t_ *mpls_fibs;
 
   /** A hash table to lookup the mpls_fib by table ID */
   uword *fib_index_by_table_id;
