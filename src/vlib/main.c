@@ -1414,6 +1414,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   uword i;
   u64 cpu_time_now;
   vlib_frame_queue_main_t *fqm;
+  u32 *last_node_runtime_indices = 0;
 
   /* Initialize pending node vector. */
   if (is_main)
@@ -1442,8 +1443,13 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       vec_alloc (nm->data_from_advancing_timing_wheel, 32);
     }
 
-  /* Pre-allocate expired nodes. */
+  /* Pre-allocate interupt runtime indices and lock. */
   vec_alloc (nm->pending_interrupt_node_runtime_indices, 32);
+  vec_alloc (last_node_runtime_indices, 32);
+  if (!is_main)
+    clib_spinlock_init (&nm->pending_interrupt_lock);
+
+  /* Pre-allocate expired nodes. */
   if (!nm->polling_threshold_vector_length)
     nm->polling_threshold_vector_length = 10;
   if (!nm->interrupt_threshold_vector_length)
@@ -1505,13 +1511,20 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 	uword i;
 	if (l > 0)
 	  {
-	    _vec_len (nm->pending_interrupt_node_runtime_indices) = 0;
+	    u32 *tmp;
+	    if (!is_main)
+	      clib_spinlock_lock (&nm->pending_interrupt_lock);
+	    tmp = nm->pending_interrupt_node_runtime_indices;
+	    nm->pending_interrupt_node_runtime_indices =
+	      last_node_runtime_indices;
+	    last_node_runtime_indices = tmp;
+	    _vec_len (last_node_runtime_indices) = 0;
+	    if (!is_main)
+	      clib_spinlock_unlock (&nm->pending_interrupt_lock);
 	    for (i = 0; i < l; i++)
 	      {
 		n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INPUT],
-				      nm->
-				      pending_interrupt_node_runtime_indices
-				      [i]);
+				      last_node_runtime_indices[i]);
 		cpu_time_now =
 		  dispatch_node (vm, n, VLIB_NODE_TYPE_INPUT,
 				 VLIB_NODE_STATE_INTERRUPT,
