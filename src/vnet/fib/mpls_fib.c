@@ -97,11 +97,15 @@ mpls_fib_create_with_table_id (u32 table_id)
     int i;
 
     pool_get_aligned(mpls_main.fibs, fib_table, CLIB_CACHE_LINE_BYTES);
+    pool_get_aligned(mpls_main.mpls_fibs, mf, CLIB_CACHE_LINE_BYTES);
+
+    ASSERT((fib_table - mpls_main.fibs) ==
+           (mf - mpls_main.mpls_fibs));
+
     memset(fib_table, 0, sizeof(*fib_table));
 
     fib_table->ft_proto = FIB_PROTOCOL_MPLS;
-    fib_table->ft_index =
-	(fib_table - mpls_main.fibs);
+    fib_table->ft_index = (fib_table - mpls_main.fibs);
 
     hash_set (mpls_main.fib_index_by_table_id, table_id, fib_table->ft_index);
 
@@ -109,8 +113,6 @@ mpls_fib_create_with_table_id (u32 table_id)
 	table_id;
     fib_table->ft_flow_hash_config = 
 	MPLS_FLOW_HASH_DEFAULT;
-    fib_table->v4.fwd_classify_table_index = ~0;
-    fib_table->v4.rev_classify_table_index = ~0;
     
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_MPLS);
 
@@ -122,7 +124,6 @@ mpls_fib_create_with_table_id (u32 table_id)
                                 drop_dpo_get(DPO_PROTO_MPLS));
     }
 
-    mf = &fib_table->mpls;
     mf->mf_entries = hash_create(0, sizeof(fib_node_index_t));
     for (i = 0; i < MPLS_FIB_DB_SIZE; i++)
     {
@@ -241,9 +242,10 @@ mpls_fib_table_create_and_lock (void)
 }
 
 void
-mpls_fib_table_destroy (mpls_fib_t *mf)
+mpls_fib_table_destroy (u32 fib_index)
 {
-    fib_table_t *fib_table = (fib_table_t*)mf;
+    fib_table_t *fib_table = pool_elt_at_index(mpls_main.fibs, fib_index);
+    mpls_fib_t *mf = pool_elt_at_index(mpls_main.mpls_fibs, fib_index);
     fib_prefix_t prefix = {
 	.fp_proto = FIB_PROTOCOL_MPLS,
     };
@@ -274,6 +276,7 @@ mpls_fib_table_destroy (mpls_fib_t *mf)
     }
     hash_free(mf->mf_entries);
 
+    pool_put(mpls_main.mpls_fibs, mf);
     pool_put(mpls_main.fibs, fib_table);
 }
 
@@ -436,11 +439,11 @@ mpls_fib_show (vlib_main_t * vm,
 
 	if (MPLS_LABEL_INVALID == label)
 	{
-	    mpls_fib_table_show_all(&(fib_table->mpls), vm);
+	    mpls_fib_table_show_all(mpls_fib_get(fib_table->ft_index), vm);
 	}
 	else
 	{
-	    mpls_fib_table_show_one(&(fib_table->mpls), label, vm);
+	    mpls_fib_table_show_one(mpls_fib_get(fib_table->ft_index), label, vm);
 	}
     }));
 
