@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_ae08b72d",
+        "filename": "test/test_ping.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-03-28T15:19:47Z",
+      "side": 1,
+      "message": "please replace all the ipv4 addresses by already defined per-interface addresses\n\nself.pg0.local_ip4 is the (looking from vpp side) local interface address\nself.pg0.remote_ip4 is the (looking from vpp side) remote \"peer\" address\n\nby default each interface has one remote peer address generated, more can be had by calling generate_remote_hosts()\n\nthis will make the test resistant to any possible address scheme changes ...",
+      "range": {
+        "startLine": 52,
+        "startChar": 38,
+        "endLine": 52,
+        "endChar": 48
+      },
+      "revId": "736f01e003ea5378417827596cd671958f339f24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
