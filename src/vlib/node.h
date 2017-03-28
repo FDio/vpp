@@ -42,6 +42,7 @@
 
 #include <vppinfra/cpu.h>
 #include <vppinfra/longjmp.h>
+#include <vppinfra/lock.h>
 #include <vppinfra/timing_wheel.h>
 #include <vlib/trace.h>		/* for vlib_trace_filter_t */
 
@@ -644,6 +645,7 @@ typedef struct
 
   /* Node runtime indices for input nodes with pending interrupts. */
   u32 *pending_interrupt_node_runtime_indices;
+  clib_spinlock_t pending_interrupt_lock;
 
   /* Input nodes are switched from/to interrupt to/from polling mode
      when average vector length goes above/below polling/interrupt
