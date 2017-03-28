@@ -2268,7 +2268,7 @@ format_arp_event (u8 * s, va_list * args)
 {
   vl_api_ip4_arp_event_t *event = va_arg (*args, vl_api_ip4_arp_event_t *);
 
-  s = format (s, "pid %d: ", event->pid);
+  s = format (s, "pid %d: ", ntohl (event->pid));
   if (event->mac_ip)
     s = format (s, "bd mac/ip4 binding events");
   else
@@ -2281,7 +2281,7 @@ format_nd_event (u8 * s, va_list * args)
 {
   vl_api_ip6_nd_event_t *event = va_arg (*args, vl_api_ip6_nd_event_t *);
 
-  s = format (s, "pid %d: ", event->pid);
+  s = format (s, "pid %d: ", ntohl (event->pid));
   if (event->mac_ip)
     s = format (s, "bd mac/ip6 binding events");
   else

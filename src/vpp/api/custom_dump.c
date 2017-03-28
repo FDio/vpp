@@ -792,7 +792,7 @@ static void *vl_api_dhcp_client_config_t_print
 
   s = format (s, "want_dhcp_event %d ", mp->want_dhcp_event);
 
-  s = format (s, "pid %d ", mp->pid);
+  s = format (s, "pid %d ", ntohl (mp->pid));
 
   if (mp->is_add == 0)
     s = format (s, "del ");
@@ -1710,7 +1710,7 @@ static void *vl_api_want_ip4_arp_events_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: want_ip4_arp_events ");
-  s = format (s, "pid %d address %U ", mp->pid,
+  s = format (s, "pid %d address %U ", ntohl (mp->pid),
 	      format_ip4_address, &mp->address);
   if (mp->enable_disable == 0)
     s = format (s, "del ");
@@ -1724,7 +1724,7 @@ static void *vl_api_want_ip6_nd_events_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: want_ip6_nd_events ");
-  s = format (s, "pid %d address %U ", mp->pid,
+  s = format (s, "pid %d address %U ", ntohl (mp->pid),
 	      format_ip6_address, mp->address);
   if (mp->enable_disable == 0)
     s = format (s, "del ");
