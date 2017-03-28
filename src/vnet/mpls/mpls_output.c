@@ -121,10 +121,6 @@ mpls_output_inline (vlib_main_t * vm,
           adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
           adj_index1 = vnet_buffer (p1)->ip.adj_index[VLIB_TX];
 
-          /* We should never rewrite a pkt using the MISS adjacency */
-          ASSERT(adj_index0);
-          ASSERT(adj_index1);
-
           adj0 = adj_get(adj_index0);
           adj1 = adj_get(adj_index1);
           hdr0 = vlib_buffer_get_current (p0);
@@ -236,9 +232,6 @@ mpls_output_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-
-          /* We should never rewrite a pkt using the MISS adjacency */
-          ASSERT(adj_index0);
 
 	  adj0 = adj_get(adj_index0);
       	  hdr0 = vlib_buffer_get_current (p0);
@@ -431,7 +424,6 @@ mpls_adj_incomplete (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
           adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-          ASSERT(adj_index0);
 
 	  adj0 = adj_get(adj_index0);
 
