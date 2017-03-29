@@ -185,7 +185,8 @@ format_lisp_gpe_header_with_length (u8 * s, va_list * args)
 
   s = format (s, "\n  ver_res %d res %d next_protocol %d iid %d(%x)",
 	      h->ver_res, h->res, h->next_protocol,
-	      clib_net_to_host_u32 (h->iid), clib_net_to_host_u32 (h->iid));
+	      clib_net_to_host_u32 (h->iid << 8),
+	      clib_net_to_host_u32 (h->iid << 8));
   return s;
 }
 
