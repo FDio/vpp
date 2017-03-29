@@ -20,6 +20,9 @@ dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a
 dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libisal_crypto.a,-l:libisal_crypto.a
 endif
 dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
+if WITH_DPDK_MLX5_PMD
+dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
+endif
 
 dpdk_plugin_la_SOURCES =					\
   dpdk/main.c							\
