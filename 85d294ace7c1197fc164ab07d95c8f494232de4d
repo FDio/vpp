@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_376896f4",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 253,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-03-29T21:55:15Z",
+      "side": 1,
+      "message": "Why is this needed? Why is af_packet so specific that it needs customized code dealing with ethernet data structures?",
+      "range": {
+        "startLine": 235,
+        "startChar": 0,
+        "endLine": 253,
+        "endChar": 1
+      },
+      "revId": "85d294ace7c1197fc164ab07d95c8f494232de4d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
