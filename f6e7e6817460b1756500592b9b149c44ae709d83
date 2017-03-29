@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_7ca9657a",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 157,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-29T11:39:11Z",
+      "side": 1,
+      "message": "clib_spinlock_unlock_if_init",
+      "revId": "f6e7e6817460b1756500592b9b149c44ae709d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5cb8e9c7",
+        "filename": "src/vnet/devices/netmap/device.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-29T11:39:11Z",
+      "side": 1,
+      "message": "clib_spinlock_unlock_if_init",
+      "revId": "f6e7e6817460b1756500592b9b149c44ae709d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3cbbddc5",
+        "filename": "src/vppinfra/lock.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-29T11:39:11Z",
+      "side": 1,
+      "message": "unnecessary new line.",
+      "revId": "f6e7e6817460b1756500592b9b149c44ae709d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
