@@ -2120,10 +2120,15 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
         u64 n_dels = sw_if_index < vec_len(am->fa_session_dels_by_sw_if_index) ? am->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
         out0 = format(out0, "sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
       }));
+      out0 = format(out0, "\n\nConn cleaner thread counters:\n");
+#define _(cnt, desc) out0 = format(out0, "             %20lu: %s\n", am->cnt, desc);
+      foreach_fa_cleaner_counter;
+#undef _
       vlib_cli_output(vm, "\n\n%s\n\n", out0);
       vlib_cli_output(vm, "Sessions per interval: min %lu max %lu increment: %f ms current: %f ms",
               am->fa_min_deleted_sessions_per_interval, am->fa_max_deleted_sessions_per_interval,
               am->fa_cleaner_wait_time_increment * 1000.0, ((f64)am->fa_current_cleaner_timer_wait_interval) * 1000.0/(f64)vm->clib_time.clocks_per_second);
+
       vec_free(out0);
     }
   return error;
@@ -2189,6 +2194,14 @@ acl_init (vlib_main_t * vm)
   am->fa_min_deleted_sessions_per_interval = ACL_FA_DEFAULT_MIN_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_max_deleted_sessions_per_interval = ACL_FA_DEFAULT_MAX_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_cleaner_wait_time_increment = ACL_FA_DEFAULT_CLEANER_WAIT_TIME_INCREMENT;
+
+  am->fa_cleaner_cnt_delete_by_sw_index = 0;
+  am->fa_cleaner_cnt_delete_by_sw_index_ok = 0;
+  am->fa_cleaner_cnt_unknown_event = 0;
+  am->fa_cleaner_cnt_deleted_sessions = 0;
+  am->fa_cleaner_cnt_timer_restarted = 0;
+  am->fa_cleaner_cnt_wait_with_timeout = 0;
+
 
 #define _(N, v, s) am->fa_ipv6_known_eh_bitmap = clib_bitmap_set(am->fa_ipv6_known_eh_bitmap, v, 1);
   foreach_acl_eh
