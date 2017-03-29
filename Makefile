@@ -32,7 +32,7 @@ endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
@@ -50,7 +50,15 @@ endif
 RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += python-devel python-virtualenv lcov chrpath libffi-devel
+RPM_DEPENDS += python-devel
+ifeq ($(OS_ID)),fedora)
+ifeq ($(OS_VERSION_ID),25)
+	RPM_DEPENDS += python2-virtualenv
+else
+	RPM_DEPENDS += python-virtualenv
+endif
+endif
+RPM_DEPENDS += lcov chrpath libffi-devel
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 EPEL_DEPENDS = libconfuse-devel ganglia-devel epel-rpm-macros
 
