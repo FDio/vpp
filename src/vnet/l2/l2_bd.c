@@ -1081,6 +1081,99 @@ VLIB_CLI_COMMAND (bd_show_cli, static) = {
 };
 /* *INDENT-ON* */
 
+/**
+   create bridge-domain.
+   The CLI format is:
+   create bridge-domain <bd_index> [learn] [forward] [uu-flood] [flood] [arp--term]
+*/
+static clib_error_t *
+bd_create (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  bd_main_t *bdm = &bd_main;
+  clib_error_t *error = 0;
+  u32 enable_flags = 0, disable_flags = 0;
+  u32 bd_id = ~0;
+  u32 bd_index;
+
+  if (unformat (input, "%d", &bd_id))
+    {
+      bd_index = bd_find_or_add_bd_index(bdm, bd_id);
+      if (bd_index <= 0) {
+      	vlib_cli_output (vm, "cannot create bridge-domain %d", bd_id);
+      	goto done;
+      }
+      if (unformat (input, "learn"))
+        enable_flags |= L2_LEARN;
+      else
+        disable_flags |=  L2_LEARN;
+      if (unformat (input, "forward"))
+        enable_flags |= L2_FWD;
+      else
+        disable_flags |= L2_FWD;
+      if (unformat (input, "uu-flood"))
+        enable_flags |= L2_UU_FLOOD;
+      else
+        disable_flags |= L2_UU_FLOOD;
+      if (unformat (input, "flood"))
+        enable_flags |= L2_FLOOD; 
+      else
+        disable_flags |= L2_FLOOD;
+      if (unformat (input, "arp-term"))
+        enable_flags |= L2_ARP_TERM; 
+      else
+        disable_flags |= L2_ARP_TERM;
+
+      if (enable_flags)
+        bd_set_flags(vm, bd_index, enable_flags, 1 /* enable */ );
+
+      if (disable_flags)
+        bd_set_flags(vm, bd_index, disable_flags, 0 /* disable */ );
+
+      vlib_cli_output (vm, "bridge-domain %d", bd_index);
+    }
+  else
+    {
+        return clib_error_return (0, "please spcifify bridge-domain id");
+    } 
+done:
+  return error;
+}
+
+
+/*?
+ * Create new bridge-domain instance
+ *
+ * @cliexpar
+ * @parblock
+ * Example of creating bridge-domain 1:
+ * @cliexstart{create bridge-domain 1}
+ * bridge-domain 1
+ * @cliexend
+ *
+ * Example of creating bridge-domain 2 with enable learning, flooding:
+ * @cliexstart{create bridge-domain 2 learn flood}
+ * bridge-domain 2
+ *
+ * vpp# show bridge-domain
+ *   ID   Index   BSN  Age(min)  Learning  U-Forwrd  UU-Flood  Flooding  ARP-Term  BVI-Intf
+ *     0      0      0     off       off       off       off       off       off      local0 
+ *     1      1      0     off       off       off       off       off       off       N/A   
+ *     2      2      0     off        on       off       off        on       off       N/A  
+ *
+ * @cliexend
+ * @endparblock
+?*/
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (bd_create_cli, static) = {
+  .path = "create bridge-domain",
+  .short_help = "create bridge-domain <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term]",
+  .function = bd_create,
+};
+/* *INDENT-ON* */
+
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
