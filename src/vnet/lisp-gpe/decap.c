@@ -256,9 +256,9 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* map iid/vni to lisp-gpe sw_if_index which is used by ipx_input to
 	   * decide the rx vrf and the input features to be applied */
 	  si0 = hash_get (tl0->sw_if_index_by_vni,
-			  clib_net_to_host_u32 (lh0->iid));
+			  clib_net_to_host_u32 (lh0->iid << 8));
 	  si1 = hash_get (tl1->sw_if_index_by_vni,
-			  clib_net_to_host_u32 (lh1->iid));
+			  clib_net_to_host_u32 (lh1->iid << 8));
 
 
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
