@@ -38,7 +38,6 @@ vpp_api_test_LDADD = \
   libsvm.la				\
   libvatplugin.la			\
   libvppinfra.la 			\
-  libvlibapi.la				\
   -lpthread -lm -lrt -ldl -lcrypto
 
 vpp_api_test_LDFLAGS = -Wl,--export-dynamic

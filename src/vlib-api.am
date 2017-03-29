@@ -11,42 +11,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-lib_LTLIBRARIES += libvlibmemory.la libvlibapi.la libvlibmemoryclient.la \
+lib_LTLIBRARIES += libvlibmemory.la libvlibmemoryclient.la \
 	           libvlibsocket.la
 
-libvlibmemory_la_DEPENDENCIES = libvppinfra.la libsvm.la 
+libvlibmemory_la_DEPENDENCIES = libvppinfra.la libsvm.la libvlib.la
 libvlibmemory_la_LIBADD = $(libvlibmemory_la_DEPENDENCIES) -lpthread
 libvlibmemory_la_SOURCES =			\
+	vlibapi/api.h				\
+        vlibapi/api_helper_macros.h		\
+	vlibapi/api_shared.c			\
+	vlibapi/node_serialize.c		\
 	vlibmemory/api.h			\
 	vlibmemory/memclnt.api			\
 	vlibmemory/memory_shared.c		\
 	vlibmemory/memory_vlib.c		\
-	vlibmemory/vl_memory_api_h.h		\
-	vlibmemory/vl_memory_msg_enum.h		\
 	vlibmemory/unix_shared_memory_queue.c	\
-	vlibmemory/unix_shared_memory_queue.h
-
-libvlibapi_la_DEPENDENCIES = libvppinfra.la 
-libvlibapi_la_LIBADD = $(libvlibapi_la_DEPENDENCIES)
-libvlibapi_la_SOURCES = 			\
-	vlibapi/api.h				\
-        vlibapi/api_helper_macros.h		\
-	vlibapi/api_shared.c			\
-	vlibapi/node_serialize.c
+	vlibmemory/unix_shared_memory_queue.h	\
+	vlibmemory/vl_memory_api_h.h		\
+	vlibmemory/vl_memory_msg_enum.h
 
 nobase_include_HEADERS += vlibapi/api.h vlibapi/api_helper_macros.h vlibapi/vat_helper_macros.h
 
-libvlibmemoryclient_la_DEPENDENCIES = libvppinfra.la libsvm.la libvlibapi.la
+libvlibmemoryclient_la_DEPENDENCIES = libvppinfra.la libsvm.la
 libvlibmemoryclient_la_LIBADD = $(libvlibmemoryclient_la_DEPENDENCIES) -lpthread
 libvlibmemoryclient_la_SOURCES = 		\
+        vlibapi/api_helper_macros.h		\
+	vlibapi/api_shared.c			\
+	vlibapi/node_unserialize.c		\
 	vlibmemory/api.h			\
 	vlibmemory/memclnt.api			\
-	vlibmemory/memory_shared.c		\
 	vlibmemory/memory_client.c		\
-	vlibmemory/vl_memory_api_h.h		\
-	vlibmemory/vl_memory_msg_enum.h		\
+	vlibmemory/memory_shared.c		\
 	vlibmemory/unix_shared_memory_queue.c	\
-	vlibmemory/unix_shared_memory_queue.h
+	vlibmemory/unix_shared_memory_queue.h	\
+	vlibmemory/vl_memory_api_h.h		\
+	vlibmemory/vl_memory_msg_enum.h
 
 nobase_include_HEADERS +=			\
 	vlibmemory/api.h			\
@@ -55,7 +54,7 @@ nobase_include_HEADERS +=			\
 	vlibmemory/unix_shared_memory_queue.h 	\
 	vlibmemory/memclnt.api.h
 
-libvlibsocket_la_DEPENDENCIES = libvppinfra.la libvlib.la libvlibmemory.la libvlibapi.la
+libvlibsocket_la_DEPENDENCIES = libvppinfra.la libvlib.la libvlibmemory.la
 libvlibsocket_la_LIBADD = $(libvlibsocket_la_DEPENDENCIES)
 libvlibsocket_la_SOURCES =			\
 	vlibsocket/api.h			\
@@ -71,7 +70,7 @@ nobase_include_HEADERS +=			\
 	vlibsocket/vl_socket_msg_enum.h		\
 	vlibsocket/sockclnt.api.h
 
-BUILT_SOURCES +=					\
+BUILT_SOURCES +=				\
 	vlibsocket/sockclnt.api.h		\
 	vlibmemory/memclnt.api.h		\
 	vlibmemory/memclnt.api.json
