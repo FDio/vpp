@@ -518,11 +518,6 @@ update_replicate (ip6_sr_policy_t * sr_policy)
   replicate_multipath_update (&sr_policy->ip6_dpo, ip6_path_vector);
   if (sr_policy->is_encap)
     replicate_multipath_update (&sr_policy->ip4_dpo, ip4_path_vector);
-
-  /* Cleanup */
-  vec_free (b_path_vector);
-  vec_free (ip6_path_vector);
-  vec_free (ip4_path_vector);
 }
 
 /******************************* SR rewrite API *******************************/
@@ -606,10 +601,6 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 						     "SRv6 steering of IP6 prefixes through BSIDs");
       sm->fib_table_ip4 = fib_table_create_and_lock (FIB_PROTOCOL_IP6,
 						     "SRv6 steering of IP4 prefixes through BSIDs");
-      fib_table_flush (sm->fib_table_ip6, FIB_PROTOCOL_IP6,
-		       FIB_SOURCE_SPECIAL);
-      fib_table_flush (sm->fib_table_ip4, FIB_PROTOCOL_IP6,
-		       FIB_SOURCE_SPECIAL);
     }
 
   /* Create IPv6 FIB for the BindingSID attached to the DPO of the only SL */
