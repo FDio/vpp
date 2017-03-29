@@ -885,10 +885,6 @@ set_unnumbered (vlib_main_t * vm,
 	ip6_main.lookup_main.if_address_pool_index_by_sw_if_index
 	[inherit_from_sw_if_index];
     }
-  else
-    {
-      return (0);
-    }
 
   if (was_unnum != (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED))
     {
