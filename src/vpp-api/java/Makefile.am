@@ -42,7 +42,6 @@ JVPP_LIBS = \
   libjvpp_common.la \
   $(top_builddir)/libvppinfra.la \
   $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
   $(top_builddir)/libsvm.la \
   -lpthread -lm -lrt
 

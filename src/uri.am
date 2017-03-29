@@ -14,11 +14,11 @@
 noinst_PROGRAMS += uri_udp_test uri_tcp_test uri_socket_test
 
 uri_udp_test_SOURCES = uri/uri_udp_test.c
-uri_udp_test_LDADD = libvlibmemoryclient.la libvlibapi.la libsvm.la \
+uri_udp_test_LDADD = libvlibmemoryclient.la libsvm.la \
 	libvppinfra.la -lpthread -lm -lrt
 
 uri_tcp_test_SOURCES = uri/uri_tcp_test.c
-uri_tcp_test_LDADD = libvlibmemoryclient.la libvlibapi.la libsvm.la \
+uri_tcp_test_LDADD = libvlibmemoryclient.la libsvm.la \
 	libvppinfra.la -lpthread -lm -lrt
 
 uri_socket_test_SOURCES = uri/uri_socket_test.c

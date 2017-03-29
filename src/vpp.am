@@ -71,7 +71,6 @@ VPP_VERSION = $(shell $(srcdir)/scripts/version)
 	fi
 
 bin_vpp_LDADD = \
-  libvlibapi.la \
   libvlibmemory.la \
   libvlib.la \
   libvnet.la \
@@ -90,7 +89,6 @@ bin_test_client_SOURCES = \
 
 bin_test_client_LDADD = \
   libvlibmemoryclient.la \
-  libvlibapi.la \
   libsvm.la \
   libvppinfra.la \
   -lpthread -lm -lrt
@@ -103,7 +101,6 @@ bin_test_ha_SOURCES = \
 bin_test_ha_LDADD = \
   libvlibmemoryclient.la \
   libvlibapi.la \
-  libsvmdb.la \
   libsvm.la \
   libvppinfra.la \
   -lpthread -lm -lrt
@@ -116,7 +113,6 @@ bin_summary_stats_client_SOURCES = \
 
 bin_summary_stats_client_LDADD = \
   libvlibmemoryclient.la \
-  libvlibapi.la \
   libsvm.la \
   libvppinfra.la \
   -lpthread -lm -lrt

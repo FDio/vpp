@@ -19,9 +19,7 @@ libvnet_la_DEPENDENCIES = \
 	libvlib.la		\
 	libsvmdb.la		\
 	libsvm.la 		\
-	libvlibapi.la		\
-	libvlibmemory.la	\
-	libvlibmemoryclient.la
+	libvlibmemory.la
 
 libvnet_la_LIBADD = $(libvnet_la_DEPENDENCIES) -lm -lpthread -ldl -lrt
 
@@ -446,8 +444,7 @@ test_map_SOURCES =                             \
 test_map_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_map_LDADD = libvnet.la libvppinfra.la libvlib.la	\
-  -lpthread -lvlibmemory -lvlibapi \
-  -ldl -lsvm -lrt
+  -lpthread -lvlibmemory -ldl -lsvm -lrt
 
 test_map_LDFLAGS = -static
 endif
@@ -618,7 +615,6 @@ LDS = \
   libvlib.la  \
   libsvm.la \
   libsvmdb.la \
-  libvlibapi.la \
   libvlibmemory.la \
   -lpthread -ldl -lrt -lm
 

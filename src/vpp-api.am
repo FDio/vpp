@@ -19,7 +19,6 @@ libpneum_la_SOURCES = vpp-api/pneum/pneum.c
 libpneum_la_LIBADD = \
   $(top_builddir)/libvppinfra.la \
   $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
   $(top_builddir)/libsvm.la \
   -lpthread -lm -lrt
 
@@ -37,7 +36,6 @@ test_pneum_SOURCES = vpp-api/pneum/pneum.c vpp-api/pneum/test_pneum.c
 test_pneum_LDADD = \
   $(top_builddir)/libvppinfra.la \
   $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libvlibapi.la \
   $(top_builddir)/libsvm.la \
   -lpthread -lm -lrt
 endif
