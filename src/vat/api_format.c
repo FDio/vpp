@@ -1295,9 +1295,9 @@ static void
 vl_api_ip4_arp_event_t_handler (vl_api_ip4_arp_event_t * mp)
 {
   u32 sw_if_index = ntohl (mp->sw_if_index);
-  errmsg ("arp %s event: address %U new mac %U sw_if_index %d",
+  errmsg ("arp %s event: pid %d address %U new mac %U sw_if_index %d\n",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
-	  format_ip4_address, &mp->address,
+	  ntohl (mp->pid), format_ip4_address, &mp->address,
 	  format_ethernet_address, mp->new_mac, sw_if_index);
 }
 
@@ -1311,9 +1311,9 @@ static void
 vl_api_ip6_nd_event_t_handler (vl_api_ip6_nd_event_t * mp)
 {
   u32 sw_if_index = ntohl (mp->sw_if_index);
-  errmsg ("ip6 nd %s event: address %U new mac %U sw_if_index %d",
+  errmsg ("ip6 nd %s event: pid %d address %U new mac %U sw_if_index %d\n",
 	  mp->mac_ip ? "mac/ip binding" : "address resolution",
-	  format_ip6_address, mp->address,
+	  ntohl (mp->pid), format_ip6_address, mp->address,
 	  format_ethernet_address, mp->new_mac, sw_if_index);
 }
 
@@ -2025,7 +2025,7 @@ vl_api_dhcp_compl_event_t_handler (vl_api_dhcp_compl_event_t * mp)
 {
   errmsg ("DHCP compl event: pid %d %s hostname %s host_addr %U "
 	  "router_addr %U host_mac %U",
-	  mp->pid, mp->is_ipv6 ? "ipv6" : "ipv4", mp->hostname,
+	  ntohl (mp->pid), mp->is_ipv6 ? "ipv6" : "ipv4", mp->hostname,
 	  format_ip4_address, &mp->host_address,
 	  format_ip4_address, &mp->router_address,
 	  format_ethernet_address, mp->host_mac);
@@ -8035,12 +8035,12 @@ api_dhcp_client_config (vat_main_t * vam)
   /* Construct the API message */
   M (DHCP_CLIENT_CONFIG, mp);
 
-  mp->sw_if_index = ntohl (sw_if_index);
+  mp->sw_if_index = htonl (sw_if_index);
   clib_memcpy (mp->hostname, hostname, vec_len (hostname));
   vec_free (hostname);
   mp->is_add = is_add;
   mp->want_dhcp_event = disable_event ? 0 : 1;
-  mp->pid = getpid ();
+  mp->pid = htonl (getpid ());
 
   /* send it... */
   S (mp);
@@ -11833,7 +11833,7 @@ api_want_ip4_arp_events (vat_main_t * vam)
 
   M (WANT_IP4_ARP_EVENTS, mp);
   mp->enable_disable = enable_disable;
-  mp->pid = getpid ();
+  mp->pid = htonl (getpid ());
   mp->address = address.as_u32;
 
   S (mp);
@@ -11869,7 +11869,7 @@ api_want_ip6_nd_events (vat_main_t * vam)
 
   M (WANT_IP6_ND_EVENTS, mp);
   mp->enable_disable = enable_disable;
-  mp->pid = getpid ();
+  mp->pid = htonl (getpid ());
   clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
 
   S (mp);
