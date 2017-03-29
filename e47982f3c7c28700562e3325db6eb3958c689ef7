@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_bccd8d5f",
+        "filename": "src/vnet/sr/sr_steering.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 309,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-29T11:48:16Z",
+      "side": 1,
+      "message": "these prefixes should be FIB_SOURCE_SR too - they were not added on the CLI.\nTo make this work move the line:\n fib_entry_src_register(FIB_SOURCE_SR, \u0026special_src_vft);\nfrom fib_entry_src_special.c to fib_entry_src_api.c (and change the argument appropriately).",
+      "revId": "e47982f3c7c28700562e3325db6eb3958c689ef7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9cdc1114",
+        "filename": "src/vnet/sr/sr_steering.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 326,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-03-29T11:48:16Z",
+      "side": 1,
+      "message": "as above.",
+      "revId": "e47982f3c7c28700562e3325db6eb3958c689ef7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
