@@ -72,16 +72,14 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
   memset (&key, 0, sizeof (sr_steering_key_t));
 
   /* Compute the steer policy key */
-  if (prefix)
+  if (traffic_type == SR_STEER_IPV4 || traffic_type == SR_STEER_IPV6)
     {
       key.l3.prefix.as_u64[0] = prefix->as_u64[0];
       key.l3.prefix.as_u64[1] = prefix->as_u64[1];
       key.l3.mask_width = mask_width;
       key.l3.fib_table = (table_id != (u32) ~ 0 ? table_id : 0);
-      if (traffic_type != SR_STEER_IPV4 && traffic_type != SR_STEER_IPV6)
-	return -1;
     }
-  else
+  else if (traffic_type == SR_STEER_L2)
     {
       key.l2.sw_if_index = sw_if_index;
 
@@ -94,9 +92,9 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	vnet_get_sw_interface (sm->vnet_main, sw_if_index);
       if (sw->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
 	return -3;
-      if (traffic_type != SR_STEER_L2)
-	return -1;
     }
+  else
+    return -1;
 
   key.traffic_type = traffic_type;
 
@@ -280,8 +278,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	goto cleanup_error_encap;
 
       if (vnet_feature_enable_disable
-	  ("device-input", "sr-policy-rewrite-encaps-l2", sw_if_index, 1, 0,
-	   0))
+	  ("device-input", "sr-pl-rewrite-encaps-l2", sw_if_index, 1, 0, 0))
 	goto cleanup_error_redirection;
 
       /* Set promiscous mode on interface */
@@ -552,13 +549,18 @@ sr_steering_init (vlib_main_t * vm)
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_INIT_FUNCTION (sr_steering_init);
+/* *INDENT-ON* */
 
-VNET_FEATURE_INIT (sr_policy_rewrite_encaps_l2, static) =
+/* *INDENT-OFF* */
+VNET_FEATURE_INIT (sr_pl_rewrite_encaps_l2, static) =
 {
-.arc_name = "device-input",.node_name =
-    "sr-pl-rewrite-encaps-l2",.runs_before =
-    VNET_FEATURES ("ethernet-input"),};
+  .arc_name = "device-input",
+  .node_name = "sr-pl-rewrite-encaps-l2",
+  .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+/* *INDENT-ON* */
 
 /*
 * fd.io coding-style-patch-verification: ON
