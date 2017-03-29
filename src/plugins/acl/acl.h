@@ -209,6 +209,22 @@ typedef struct {
   u32 fa_conn_list_head[ACL_N_TIMEOUTS];
   u32 fa_conn_list_tail[ACL_N_TIMEOUTS];
 
+  /* Counters for the cleaner thread */
+
+#define foreach_fa_cleaner_counter                                         \
+  _(fa_cleaner_cnt_delete_by_sw_index, "delete_by_sw_index events")        \
+  _(fa_cleaner_cnt_delete_by_sw_index_ok, "delete_by_sw_index handled ok") \
+  _(fa_cleaner_cnt_unknown_event, "unknown events received")               \
+  _(fa_cleaner_cnt_deleted_sessions, "sessions deleted")                   \
+  _(fa_cleaner_cnt_timer_restarted, "session idle timers restarted")       \
+  _(fa_cleaner_cnt_wait_with_timeout, "event wait with timeout called")    \
+  _(fa_cleaner_cnt_wait_without_timeout, "event wait w/o timeout called")  \
+  _(fa_cleaner_cnt_event_cycles, "total event cycles")                     \
+  _(fa_cleaner_cnt_already_deleted, "try to delete already deleted conn")  \
+/* end of counters */
+#define _(id, desc) u32 id;
+  foreach_fa_cleaner_counter
+#undef _
 
   /* convenience */
   vlib_main_t * vlib_main;

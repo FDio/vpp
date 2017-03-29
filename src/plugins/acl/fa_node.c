@@ -533,6 +533,10 @@ acl_fa_conn_list_add_session (acl_main_t * am, u32 sess_id)
 
   if (~0 == am->fa_conn_list_head[list_id]) {
     am->fa_conn_list_head[list_id] = sess_id;
+    /* If it is a first conn in any list, kick off the cleaner */
+    vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
+                                 ACL_FA_CLEANER_RESCHEDULE, 0);
+
   }
 }
 
@@ -556,7 +560,7 @@ acl_fa_conn_list_delete_session (acl_main_t *am, u32 sess_id)
     am->fa_conn_list_head[sess->link_list_id] = sess->link_next_idx;
   }
   if (am->fa_conn_list_tail[sess->link_list_id] == sess_id) {
-    am->fa_conn_list_tail[sess->link_list_id] = sess->link_next_idx;
+    am->fa_conn_list_tail[sess->link_list_id] = sess->link_prev_idx;
   }
 }
 
@@ -982,14 +986,6 @@ acl_out_ip4_fa_node_fn (vlib_main_t * vm,
 
 /* *INDENT-OFF* */
 #define foreach_acl_fa_cleaner_error \
-_(EVENT_CYCLE, "event processing cycle")  \
-_(TIMER_RESTARTED, "restarted session timers")  \
-_(DELETED_SESSIONS, "deleted sessions")  \
-_(ALREADY_DELETED, "timer event for already deleted session")  \
-_(DELETE_BY_SW_IF_INDEX, "delete by sw_if_index event")  \
-_(DELETE_BY_SW_IF_INDEX_OK, "delete by sw_if_index completed ok")  \
-_(WAIT_WITHOUT_TIMEOUT, "process waits without timeout")  \
-_(WAIT_WITH_TIMEOUT, "process waits with timeout")  \
 _(UNKNOWN_EVENT, "unknown event received")  \
 /* end  of errors */
 
@@ -1067,7 +1063,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   f64 cpu_cps = vm->clib_time.clocks_per_second;
   u64 next_expire;
   /* We should call timer wheel at least twice a second */
-  u64 max_timer_wait_interval = cpu_cps / 2; 
+  u64 max_timer_wait_interval = cpu_cps / 2;
   am->fa_current_cleaner_timer_wait_interval = max_timer_wait_interval;
 
   u32 *expired = NULL;
@@ -1079,10 +1075,24 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       u32 count_deleted_sessions = 0;
       u32 count_already_deleted = 0;
-      u32 count_timer_restarted = 0;
       now = clib_cpu_time_now ();
       next_expire = now + am->fa_current_cleaner_timer_wait_interval;
+      int has_pending_conns = 0;
+      u8 tt;
+      for(tt = 0; tt < ACL_N_TIMEOUTS; tt++)
+        {
+          if (~0 != am->fa_conn_list_head[tt])
+            has_pending_conns = 1;
+        }
 
+      /* If no pending connections then no point in timing out */
+      if (!has_pending_conns)
+        {
+          am->fa_cleaner_cnt_wait_without_timeout++;
+          (void) vlib_process_wait_for_event (vm);
+          event_type = vlib_process_get_events (vm, &event_data);
+        }
+      else
 	{
 	  f64 timeout = ((i64) next_expire - (i64) now) / cpu_cps;
 	  if (timeout <= 0)
@@ -1095,11 +1105,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      /* Timing wheel code is happier if it is called regularly */
 	      if (timeout > 0.5)
 		timeout = 0.5;
-	      vlib_node_increment_counter (vm,
-					   acl_fa_session_cleaner_process_node.
-					   index,
-					   ACL_FA_CLEANER_ERROR_WAIT_WITH_TIMEOUT,
-					   1);
+              am->fa_cleaner_cnt_wait_with_timeout++;
 	      (void) vlib_process_wait_for_event_or_clock (vm, timeout);
 	      event_type = vlib_process_get_events (vm, &event_data);
 	    }
@@ -1119,11 +1125,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    uword *sw_if_index0;
 	    vec_foreach (sw_if_index0, event_data)
 	    {
-	      vlib_node_increment_counter (vm,
-					   acl_fa_session_cleaner_process_node.
-					   index,
-					   ACL_FA_CLEANER_ERROR_DELETE_BY_SW_IF_INDEX,
-					   1);
+              am->fa_cleaner_cnt_delete_by_sw_index++;
 #ifdef FA_NODE_VERBOSE_DEBUG
 	      clib_warning
 		("ACL_FA_NODE_CLEAN: ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX: %d",
@@ -1134,11 +1136,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		acl_fa_clean_sessions_by_sw_if_index (am, *sw_if_index0,
 						      &count);
 	      count_deleted_sessions += count;
-	      vlib_node_increment_counter (vm,
-					   acl_fa_session_cleaner_process_node.
-					   index,
-					   ACL_FA_CLEANER_ERROR_DELETE_BY_SW_IF_INDEX_OK,
-					   result);
+              am->fa_cleaner_cnt_delete_by_sw_index_ok += result;
 	    }
 	  }
 	  break;
@@ -1147,24 +1145,27 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  clib_warning ("ACL plugin connection cleaner: unknown event %u",
 			event_type);
 #endif
-	  vlib_node_increment_counter (vm,
-				       acl_fa_session_cleaner_process_node.
-				       index,
-				       ACL_FA_CLEANER_ERROR_UNKNOWN_EVENT, 1);
+          vlib_node_increment_counter (vm,
+                                       acl_fa_session_cleaner_process_node.
+                                       index,
+                                       ACL_FA_CLEANER_ERROR_UNKNOWN_EVENT, 1);
+          am->fa_cleaner_cnt_unknown_event++;
 	  break;
 	}
 
       {
         u8 tt = 0;
         for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
-          while((vec_len(expired) < 2*am->fa_max_deleted_sessions_per_interval) && (~0 != am->fa_conn_list_head[tt]) && (acl_fa_conn_has_timed_out(am, now, am->fa_conn_list_head[tt]))) {
+          while((vec_len(expired) < 2*am->fa_max_deleted_sessions_per_interval)
+                && (~0 != am->fa_conn_list_head[tt])
+                && (acl_fa_conn_has_timed_out(am, now,
+                                              am->fa_conn_list_head[tt]))) {
             u32 sess_id = am->fa_conn_list_head[tt];
             vec_add1(expired, sess_id);
             acl_fa_conn_list_delete_session(am, sess_id);
           }
         }
       }
-
 
       u32 *psid = NULL;
       vec_foreach (psid, expired)
@@ -1181,15 +1182,22 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		/* clib_warning ("ACL_FA_NODE_CLEAN: Restarting timer for session %d",
 		   (int) session_index); */
 
-		/* Pretend we did this in the past, at last_active moment */
-		count_timer_restarted++;
+                /* There was activity on the session, so the idle timeout
+                   has not passed. Enqueue for another time period. */
+
+                acl_fa_conn_list_add_session(am, session_index);
+
+		/* FIXME: When/if moving to timer wheel,
+                   pretend we did this in the past,
+                   at last_active moment, so the timer is accurate */
+                am->fa_cleaner_cnt_timer_restarted++;
 	      }
 	    else
 	      {
 		/* clib_warning ("ACL_FA_NODE_CLEAN: Deleting session %d",
 		   (int) session_index); */
 		acl_fa_delete_session (am, sw_if_index, session_index);
-		count_deleted_sessions++;
+                count_deleted_sessions++;
 	      }
 	  }
 	else
@@ -1210,22 +1218,9 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
         if (am->fa_current_cleaner_timer_wait_interval < max_timer_wait_interval)
           am->fa_current_cleaner_timer_wait_interval += cpu_cps * am->fa_cleaner_wait_time_increment;
       }
-
-      vlib_node_increment_counter (vm,
-				   acl_fa_session_cleaner_process_node.index,
-				   ACL_FA_CLEANER_ERROR_EVENT_CYCLE, 1);
-      vlib_node_increment_counter (vm,
-				   acl_fa_session_cleaner_process_node.index,
-				   ACL_FA_CLEANER_ERROR_TIMER_RESTARTED,
-				   count_timer_restarted);
-      vlib_node_increment_counter (vm,
-				   acl_fa_session_cleaner_process_node.index,
-				   ACL_FA_CLEANER_ERROR_DELETED_SESSIONS,
-				   count_deleted_sessions);
-      vlib_node_increment_counter (vm,
-				   acl_fa_session_cleaner_process_node.index,
-				   ACL_FA_CLEANER_ERROR_ALREADY_DELETED,
-				   count_already_deleted);
+      am->fa_cleaner_cnt_event_cycles++;
+      am->fa_cleaner_cnt_deleted_sessions += count_deleted_sessions;
+      am->fa_cleaner_cnt_already_deleted += count_already_deleted;
     }
   /* NOT REACHED */
   return 0;
