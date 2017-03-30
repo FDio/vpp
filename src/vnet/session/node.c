@@ -119,15 +119,20 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Nothing to read return */
   if (max_dequeue0 == 0)
-    {
-      return 0;
-    }
+    return 0;
 
   /* Ensure we're not writing more than transport window allows */
-  max_len_to_snd0 = clib_min (max_dequeue0, snd_space0);
-
-  /* TODO check if transport is willing to send len_to_snd0
-   * bytes (Nagle) */
+  if (max_dequeue0 < snd_space0)
+    {
+      /* Constrained by tx queue. Try to send only fully formed segments */
+      max_len_to_snd0 = (max_dequeue0 > snd_mss0) ?
+	  max_dequeue0 - max_dequeue0 % snd_mss0 : max_dequeue0;
+      /* TODO Nagle ? */
+    }
+  else
+    {
+      max_len_to_snd0 = snd_space0;
+    }
 
   n_frame_bytes = snd_mss0 * VLIB_FRAME_SIZE;
   n_frames_per_evt = ceil ((double) max_len_to_snd0 / n_frame_bytes);

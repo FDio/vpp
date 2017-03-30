@@ -99,12 +99,14 @@ svm_fifo_unlock (svm_fifo_t * f)
 static inline u32
 svm_fifo_max_dequeue (svm_fifo_t * f)
 {
+  CLIB_MEMORY_BARRIER();
   return f->cursize;
 }
 
 static inline u32
 svm_fifo_max_enqueue (svm_fifo_t * f)
 {
+  CLIB_MEMORY_BARRIER();
   return f->nitems - f->cursize;
 }
 
