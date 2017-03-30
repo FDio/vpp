@@ -37,14 +37,14 @@ static int vpp_metric_init (apr_pool_t *p)
     int i;
 
     if (str_params) {
-        debug_msg("[mod_vpp]Received string params: %s", str_params);
+        clib_warning("[mod_vpp]Received string params: %s", str_params);
     }
     /* Multiple name/value pair parameters. */
     if (list_params) {
-        debug_msg("[mod_vpp]Received following params list: ");
+        clib_warning("[mod_vpp]Received following params list: ");
         params = (mmparam*) list_params->elts;
         for(i=0; i< list_params->nelts; i++) {
-            debug_msg("\tParam: %s = %s", params[i].name, params[i].value);
+            clib_warning("\tParam: %s = %s", params[i].name, params[i].value);
         }
     }
 

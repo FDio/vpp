@@ -158,7 +158,7 @@ typedef enum
 } resolve_t;
 
 static vlib_node_registration_t vpe_resolver_process_node;
-vpe_api_main_t vpe_api_main;
+extern vpe_api_main_t vpe_api_main;
 
 static int arp_change_delete_callback (u32 pool_index, u8 * notused);
 static int nd_change_delete_callback (u32 pool_index, u8 * notused);

@@ -19,7 +19,6 @@
 vat_main_t vat_main;
 
 #include <vlibapi/api_helper_macros.h>
-vpe_api_main_t vpe_api_main;
 
 void
 vat_suspend (vlib_main_t * vm, f64 interval)
