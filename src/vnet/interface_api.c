@@ -58,7 +58,8 @@ _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)               \
 _(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)     \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)           \
-_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)
+_(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)           \
+_(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -724,6 +725,38 @@ static void vl_api_sw_interface_tag_add_del_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_TAG_ADD_DEL_REPLY);
+}
+
+static void vl_api_sw_interface_set_mac_address_t_handler
+  (vl_api_sw_interface_set_mac_address_t * mp)
+{
+  vl_api_sw_interface_set_mac_address_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  u64 mac;
+  clib_error_t *error;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  mac = ((u64) mp->mac_address[0] << (8 * 0)
+	 | (u64) mp->mac_address[1] << (8 * 1)
+	 | (u64) mp->mac_address[2] << (8 * 2)
+	 | (u64) mp->mac_address[3] << (8 * 3)
+	 | (u64) mp->mac_address[4] << (8 * 4)
+	 | (u64) mp->mac_address[5] << (8 * 5));
+
+  error = vnet_hw_interface_change_mac_address (vnm, sw_if_index, mac);
+  if (error)
+    {
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      clib_error_report (error);
+      goto out;
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+out:
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_MAC_ADDRESS_REPLY);
 }
 
 /*
