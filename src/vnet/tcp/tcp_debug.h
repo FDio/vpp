@@ -159,35 +159,37 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "ack_prep: acked %u rcv_nxt %u rcv_wnd %u snd_nxt %u",	\
-    .format_args = "i4i4i4i4",						\
+    .format = "ack_tx: acked %u rcv_nxt %u rcv_wnd %u snd_nxt %u snd_wnd %u",\
+    .format_args = "i4i4i4i4i4",					\
   };									\
-  DECLARE_ETD(_tc, _e, 4);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->rcv_nxt - _tc->rcv_las;				\
   ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
   ed->data[2] = _tc->rcv_wnd;						\
   ed->data[3] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[4] = _tc->snd_wnd;						\
 }
 
 #define TCP_EVT_DUPACK_SENT_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "dack_tx: rcv_nxt %u rcv_wnd %u snd_nxt %u av-wnd %u",	\
-    .format_args = "i4i4i4i4",						\
+    .format = "dack_tx: rcv_nxt %u rcv_wnd %u snd_nxt %u av_wnd %u snd_wnd %u",\
+    .format_args = "i4i4i4i4i4",					\
   };									\
-  DECLARE_ETD(_tc, _e, 4);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->rcv_nxt - _tc->irs;				\
   ed->data[1] = _tc->rcv_wnd;						\
   ed->data[2] = _tc->snd_nxt - _tc->iss;				\
   ed->data[3] = tcp_available_wnd(_tc);					\
+  ed->data[4] = _tc->snd_wnd;						\
 }
 
 #define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "SYNtx: iss %u",					\
+    .format = "SYNtx: iss %u",						\
     .format_args = "i4",						\
   };									\
   DECLARE_ETD(_tc, _e, 1);						\
@@ -254,17 +256,17 @@ typedef enum _tcp_dbg_evt
   ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
 }
 
-#define TCP_EVT_ACK_RCVD_HANDLER(_tc, _ack, ...)			\
+#define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "acked: %u snd_una %u ack %u cwnd %u inflight %u",	\
+    .format = "acked: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->bytes_acked;					\
   ed->data[1] = _tc->snd_una - _tc->iss;				\
-  ed->data[2] = _ack - _tc->iss;					\
+  ed->data[2] = _tc->snd_wnd;						\
   ed->data[3] = _tc->cwnd;						\
   ed->data[4] = tcp_flight_size(_tc);					\
 }
@@ -273,14 +275,15 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "dack_rx: snd_una %u cwnd %u snd_wnd %u inflight %u",	\
-    .format_args = "i4i4i4i4",						\
+    .format = "dack_rx: snd_una %u cwnd %u snd_wnd %u flight %u rcv_wnd %u",\
+    .format_args = "i4i4i4i4i4",					\
   };									\
-  DECLARE_ETD(_tc, _e, 4);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->cwnd;						\
   ed->data[2] = _tc->snd_wnd;						\
   ed->data[3] = tcp_flight_size(_tc);					\
+  ed->data[3] = _tc->rcv_wnd;						\
 }
 
 #define TCP_EVT_PKTIZE_HANDLER(_tc, ...)				\
@@ -302,7 +305,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "in: %s len %u written %d rcv_nxt %u free wnd %d",	\
+    .format = "in: %s len %u written %d rcv_nxt %u rcv_wnd(o) %d",	\
     .format_args = "t4i4i4i4i4",					\
     .n_enum_strings = 2,                                        	\
     .enum_strings = {                                           	\
@@ -338,7 +341,7 @@ typedef enum _tcp_dbg_evt
     .enum_strings = {                                           	\
       "retransmit",                                             	\
       "delack",                                                 	\
-      "BUG",                                                    	\
+      "persist",                                                    	\
       "keep",                                                   	\
       "waitclose",                                              	\
       "retransmit syn",                                         	\
@@ -354,7 +357,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "seg-inv: seq %u end %u rcv_las %u rcv_nxt %u wnd %u",	\
+    .format = "seg-inv: seq %u end %u rcv_las %u rcv_nxt %u rcv_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
