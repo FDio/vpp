@@ -346,9 +346,33 @@ define sw_interface_tag_add_del_reply
     u32 context;
     i32 retval;
 };
+
+/** \brief Set an interface's MAC address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose MAC will be set
+    @param mac_addr - the new MAC address
+*/
+define sw_interface_set_mac_address
+{
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u8 mac_address[6];
+};
+
+/** \brief Reply to setting an interface MAC address request
+    @param context - sender context which was passed in the request
+    @param retval - return code for the request
+*/
+define sw_interface_set_mac_address_reply
+{
+    u32 context;
+    i32 retval;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
  * End:
  */
-
