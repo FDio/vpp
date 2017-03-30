@@ -1,0 +1,13 @@
+diff --git a/drivers/net/mlx5/mlx5_stats.c b/drivers/net/mlx5/mlx5_stats.c
+index 1953293..703f48c 100644
+--- a/drivers/net/mlx5/mlx5_stats.c
++++ b/drivers/net/mlx5/mlx5_stats.c
+@@ -253,7 +253,7 @@ struct mlx5_counter_ctrl {
+ 		}
+ 	}
+ 	for (j = 0; j != xstats_n; ++j) {
+-		if (priv_is_ib_cntr(mlx5_counters_init[i].ctr_name))
++		if (priv_is_ib_cntr(mlx5_counters_init[j].ctr_name))
+ 			continue;
+ 		if (xstats_ctrl->dev_table_idx[j] >= dev_stats_n) {
+ 			WARN("counter \"%s\" is not recognized",

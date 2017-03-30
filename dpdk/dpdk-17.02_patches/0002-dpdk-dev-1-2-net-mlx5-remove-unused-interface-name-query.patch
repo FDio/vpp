@@ -1,0 +1,22 @@
+diff --git a/drivers/net/mlx5/mlx5_stats.c b/drivers/net/mlx5/mlx5_stats.c
+index 20c957e..0c80e4f 100644
+--- a/drivers/net/mlx5/mlx5_stats.c
++++ b/drivers/net/mlx5/mlx5_stats.c
+@@ -177,17 +177,12 @@ struct mlx5_counter_ctrl {
+ 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+ 	unsigned int i;
+ 	unsigned int j;
+-	char ifname[IF_NAMESIZE];
+ 	struct ifreq ifr;
+ 	struct ethtool_drvinfo drvinfo;
+ 	struct ethtool_gstrings *strings = NULL;
+ 	unsigned int dev_stats_n;
+ 	unsigned int str_sz;
+ 
+-	if (priv_get_ifname(priv, &ifname)) {
+-		WARN("unable to get interface name");
+-		return;
+-	}
+ 	/* How many statistics are available. */
+ 	drvinfo.cmd = ETHTOOL_GDRVINFO;
+ 	ifr.ifr_data = (caddr_t)&drvinfo;
