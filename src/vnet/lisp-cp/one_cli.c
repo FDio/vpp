@@ -822,6 +822,9 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       /* *INDENT-OFF* */
       pool_foreach (mapit, lcm->mapping_pool,
       ({
+        if (mapit->pitr_set)
+          continue;
+
         locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,
                                                 mapit->locator_set_index);
         if (filter && !((1 == filter && ls->local) ||

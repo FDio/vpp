@@ -772,6 +772,9 @@ send_one_eid_table_details (mapping_t * mapit,
   u8 *mac = 0;
   ip_prefix_t *ip_prefix = NULL;
 
+  if (mapit->pitr_set)
+    return;
+
   switch (filter)
     {
     case 0:			/* all mappings */
