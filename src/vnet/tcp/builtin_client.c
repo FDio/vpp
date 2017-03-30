@@ -43,6 +43,10 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#define TCP_BUILTIN_CLIENT_DBG (1)
+#define TCP_BUILTIN_CLIENT_VPP_THREAD (0)
+#define TCP_BUILTIN_CLIENT_PTHREAD (!TCP_BUILTIN_CLIENT_VPP_THREAD)
+
 static void
 send_test_chunk (tclient_main_t * tm, session_t * s)
 {
@@ -52,35 +56,50 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
   session_fifo_event_t evt;
   static int serial_number = 0;
   int rv;
+  test_buf_offset = s->bytes_sent % vec_len (test_data);
+  bytes_this_chunk = vec_len (test_data) - test_buf_offset;
 
-  while (s->bytes_to_send > 0)
+  bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
+    ? bytes_this_chunk : s->bytes_to_send;
+
+  rv = svm_fifo_enqueue_nowait (s->server_tx_fifo, 0 /*pid */ ,
+				bytes_this_chunk,
+				test_data + test_buf_offset);
+
+  /* If we managed to enqueue data... */
+  if (rv > 0)
     {
-
-      test_buf_offset = s->bytes_sent % vec_len (test_data);
-      bytes_this_chunk = vec_len (test_data) - test_buf_offset;
-
-      bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
-	? bytes_this_chunk : s->bytes_to_send;
-
-      rv = svm_fifo_enqueue_nowait (s->server_tx_fifo, 0 /*pid */ ,
-				    bytes_this_chunk,
-				    test_data + test_buf_offset);
-
-      if (rv > 0)
+      if (TCP_BUILTIN_CLIENT_DBG)
 	{
-	  s->bytes_to_send -= rv;
-	  s->bytes_sent += rv;
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE (e) =
+            {
+              .format = "tx-enq: %d bytes",
+              .format_args = "i4",
+            };
+          /* *INDENT-ON* */
+	  struct
+	  {
+	    u32 data[1];
+	  } *ed;
+	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+	  ed->data[0] = rv;
+	}
 
-	  if (svm_fifo_set_event (s->server_tx_fifo))
-	    {
-	      /* Fabricate TX event, send to vpp */
-	      evt.fifo = s->server_tx_fifo;
-	      evt.event_type = FIFO_EVENT_SERVER_TX;
-	      evt.event_id = serial_number++;
+      /* Account for it... */
+      s->bytes_to_send -= rv;
+      s->bytes_sent += rv;
 
-	      unix_shared_memory_queue_add (tm->vpp_event_queue, (u8 *) & evt,
-					    0 /* do wait for mutex */ );
-	    }
+      /* Poke the TCP state machine */
+      if (svm_fifo_set_event (s->server_tx_fifo))
+	{
+	  /* Fabricate TX event, send to vpp */
+	  evt.fifo = s->server_tx_fifo;
+	  evt.event_type = FIFO_EVENT_SERVER_TX;
+	  evt.event_id = serial_number++;
+
+	  unix_shared_memory_queue_add (tm->vpp_event_queue, (u8 *) & evt,
+					0 /* do wait for mutex */ );
 	}
     }
 }
@@ -89,39 +108,55 @@ static void
 receive_test_chunk (tclient_main_t * tm, session_t * s)
 {
   svm_fifo_t *rx_fifo = s->server_rx_fifo;
-  int n_read, bytes, i;
+  int n_read, test_bytes = 0;
 
-  bytes = svm_fifo_max_dequeue (rx_fifo);
   /* Allow enqueuing of new event */
-  svm_fifo_unset_event (rx_fifo);
+  // svm_fifo_unset_event (rx_fifo);
 
-  /* Read the bytes */
-  do
+  n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (tm->rx_buf),
+				    tm->rx_buf);
+  if (n_read > 0)
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (tm->rx_buf),
-					tm->rx_buf);
-      if (n_read > 0)
+      if (TCP_BUILTIN_CLIENT_DBG)
 	{
-	  bytes -= n_read;
+          /* *INDENT-OFF* */
+          ELOG_TYPE_DECLARE (e) =
+            {
+              .format = "rx-deq: %d bytes",
+              .format_args = "i4",
+            };
+          /* *INDENT-ON* */
+	  struct
+	  {
+	    u32 data[1];
+	  } *ed;
+	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
+	  ed->data[0] = n_read;
+	}
+
+      if (test_bytes)
+	{
+	  int i;
 	  for (i = 0; i < n_read; i++)
 	    {
 	      if (tm->rx_buf[i] != ((s->bytes_received + i) & 0xff))
 		{
 		  clib_warning ("read %d error at byte %lld, 0x%x not 0x%x",
-				n_read, s->bytes_received + i,
-				tm->rx_buf[i],
+				n_read, s->bytes_received + i, tm->rx_buf[i],
 				((s->bytes_received + i) & 0xff));
 		}
 	    }
-	  s->bytes_to_receive -= n_read;
-	  s->bytes_received += n_read;
 	}
-
+      s->bytes_to_receive -= n_read;
+      s->bytes_received += n_read;
     }
-  while (n_read < 0 || bytes > 0);
 }
 
+#if TCP_BUILTIN_CLIENT_VPP_THREAD
+static void
+#else
 static void *
+#endif
 tclient_thread_fn (void *arg)
 {
   tclient_main_t *tm = &tclient_main;
@@ -138,6 +173,8 @@ tclient_thread_fn (void *arg)
     sigfillset (&s);
     pthread_sigmask (SIG_SETMASK, &s, 0);
   }
+
+  clib_per_cpu_mheaps[os_get_cpu_number ()] = clib_per_cpu_mheaps[0];
 
   while (1)
     {
@@ -186,12 +223,12 @@ tclient_thread_fn (void *arg)
 
       /* Disconnect sessions... */
       vec_reset_length (session_indices);
-      pool_foreach (sp, tm->sessions, (
-					{
-					vec_add1 (session_indices,
-						  sp - tm->sessions);
-					}
-		    ));
+
+      /* *INDENT-OFF* */
+      pool_foreach (sp, tm->sessions, ({
+	vec_add1 (session_indices, sp - tm->sessions);
+      }));
+      /* *INDENT-ON* */
 
       for (i = 0; i < vec_len (session_indices); i++)
 	{
@@ -207,7 +244,9 @@ tclient_thread_fn (void *arg)
 	}
     }
   /* NOTREACHED */
+#if TCP_BUILTIN_CLIENT_PTHREAD
   return 0;
+#endif
 }
 
 /* So we don't get "no handler for... " msgs */
@@ -333,7 +372,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
-  u8 *connect_uri = (u8 *) "tcp://6.0.1.2/1234";
+  u8 *connect_uri = (u8 *) "tcp://6.0.1.1/1234";
   u8 *uri;
   tclient_main_t *tm = &tclient_main;
   int i;
@@ -349,7 +388,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "iterations %d", &tm->n_iterations))
 	;
-      else if (unformat (input, "bytes %d", &tm->bytes_to_send))
+      else if (unformat (input, "bytes %lld", &tm->bytes_to_send))
 	;
       else if (unformat (input, "uri %s", &tm->connect_uri))
 	;
@@ -366,17 +405,20 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   create_api_loopback (tm);
 
+#if TCP_BUILTIN_CLIENT_PTHREAD
   /* Start a transmit thread */
   if (tm->client_thread_handle == 0)
     {
       int rv = pthread_create (&tm->client_thread_handle,
-			       NULL /*attr */ , tclient_thread_fn, 0);
+			       NULL /*attr */ ,
+			       tclient_thread_fn, 0);
       if (rv)
 	{
 	  tm->client_thread_handle = 0;
 	  return clib_error_return (0, "pthread_create returned %d", rv);
 	}
     }
+#endif
 
   /* Fire off connect requests, in something approaching a normal manner */
   for (i = 0; i < n_clients; i++)
@@ -396,6 +438,18 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   return 0;
 }
+
+#if TCP_BUILTIN_CLIENT_VPP_THREAD
+/* *INDENT-OFF* */
+VLIB_REGISTER_THREAD (builtin_client_reg, static) = {
+  .name = "tcp-builtin-client",
+  .function = tclient_thread_fn,
+  .fixed_count = 1,
+  .count = 1,
+  .no_data_structure_clone = 1,
+};
+/* *INDENT-ON* */
+#endif
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_clients_command, static) =

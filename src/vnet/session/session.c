@@ -556,7 +556,7 @@ session_manager_allocate_session_fifos (session_manager_main_t * smm,
 					u8 * added_a_segment)
 {
   svm_fifo_segment_private_t *fifo_segment;
-  u32 fifo_size, default_fifo_size = 128 << 10;	/* TODO config */
+  u32 fifo_size, default_fifo_size = 1 << 16;	/* TODO config */
   int i;
 
   *added_a_segment = 0;
@@ -1292,6 +1292,10 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->evts_partially_read, num_threads - 1);
   vec_validate (smm->current_enqueue_epoch, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
+
+#if SESSION_DBG
+  vec_validate (smm->last_event_poll_by_thread, num_threads - 1);
+#endif
 
   /* $$$$ preallocate hack config parameter */
   for (i = 0; i < 200000; i++)

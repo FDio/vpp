@@ -276,8 +276,7 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
       if (tc0->rcv_wnd == 0
 	  && tc0->rcv_nxt == vnet_buffer (b0)->tcp.seq_number)
 	{
-	  /* Make it look as if there's nothing to dequeue */
-	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number;
+	  /* TODO Should segment be tagged?  */
 	}
       else
 	{
@@ -375,7 +374,6 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
   if (tc->rtt_seq && seq_gt (ack, tc->rtt_seq) && !tc->rto_boff)
     {
       mrtt = tcp_time_now () - tc->rtt_ts;
-      tc->rtt_seq = 0;
     }
 
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
@@ -395,6 +393,10 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 
   tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
 
+  /* Allow measuring of RTT and make sure boff is 0 */
+  tc->rtt_seq = 0;
+  tc->rto_boff = 0;
+
   return 1;
 }
 
@@ -408,11 +410,7 @@ tcp_dequeue_acked (tcp_connection_t * tc, u32 ack)
   stream_session_dequeue_drop (&tc->connection, tc->bytes_acked);
 
   /* Update rtt and rto */
-  if (tcp_update_rtt (tc, ack))
-    {
-      /* Good ACK received and valid RTT, make sure retransmit backoff is 0 */
-      tc->rto_boff = 0;
-    }
+  tcp_update_rtt (tc, ack);
 }
 
 /**
@@ -672,6 +670,13 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       tc->snd_wl1 = seq;
       tc->snd_wl2 = ack;
       TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
+
+      /* Set probe timer if we just got 0 wnd */
+      if (tc->snd_wnd < tc->snd_mss
+	  && !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	tcp_persist_timer_set (tc);
+      else
+	tcp_persist_timer_reset (tc);
     }
 }
 
@@ -686,6 +691,10 @@ tcp_cc_congestion (tcp_connection_t * tc)
 void
 tcp_cc_recover (tcp_connection_t * tc)
 {
+  /* TODO: check if time to recover was small. It might be that RTO popped
+   * too soon.
+   */
+
   tc->cc_algo->recovered (tc);
 
   tc->rtx_bytes = 0;
@@ -695,8 +704,7 @@ tcp_cc_recover (tcp_connection_t * tc)
   tc->cc_algo->rcv_ack (tc);
   tc->tsecr_last_ack = tc->opt.tsecr;
 
-  tcp_fastrecovery_1_smss_off (tc);
-  tcp_fastrecovery_off (tc);
+  tcp_cong_recovery_off (tc);
 
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
@@ -706,7 +714,7 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   u8 partial_ack;
 
-  if (tcp_in_recovery (tc))
+  if (tcp_in_cong_recovery (tc))
     {
       partial_ack = seq_lt (tc->snd_una, tc->snd_congestion);
       if (!partial_ack)
@@ -724,10 +732,10 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 
 	  /* In case snd_nxt is still in the past and output tries to
 	   * shove some new bytes */
-	  tc->snd_nxt = tc->snd_una;
+	  tc->snd_nxt = tc->snd_una_max;
 
 	  /* XXX need proper RFC6675 support */
-	  if (tc->sack_sb.last_sacked_bytes)
+	  if (tc->sack_sb.last_sacked_bytes && !tcp_in_recovery (tc))
 	    {
 	      tcp_fast_retransmit (tc);
 	    }
@@ -735,9 +743,6 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 	    {
 	      /* Retransmit first unacked segment */
 	      tcp_retransmit_first_unacked (tc);
-	      /* If window allows, send 1 SMSS of new data */
-	      if (seq_lt (tc->snd_nxt, tc->snd_congestion))
-		tc->snd_nxt = tc->snd_congestion;
 	    }
 	}
     }
@@ -814,10 +819,11 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 	  return -1;
 	}
 
-      tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
-      *error = TCP_ERROR_ACK_FUTURE;
       TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 2,
 		   vnet_buffer (b)->tcp.ack_number);
+
+      tc->snd_nxt = vnet_buffer (b)->tcp.ack_number;
+      *error = TCP_ERROR_ACK_FUTURE;
     }
 
   /* If old ACK, probably it's an old dupack */
@@ -863,7 +869,7 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
    * timer. */
   if (tc->bytes_acked)
     {
-      TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc, vnet_buffer (b)->tcp.ack_number);
+      TCP_EVT_DBG (TCP_EVT_ACK_RCVD, tc);
 
       /* Updates congestion control (slow start/congestion avoidance) */
       tcp_cc_rcv_ack (tc, b);
@@ -966,11 +972,14 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       tc->rcv_nxt += written;
 
       /* Depending on how fast the app is, all remaining buffers in burst will
-       * not be enqueued. Should we inform peer of the damage? XXX */
+       * not be enqueued. Inform peer */
+      tc->flags |= TCP_CONN_SNDACK;
+
       return TCP_ERROR_PARTIALLY_ENQUEUED;
     }
   else
     {
+      tc->flags |= TCP_CONN_SNDACK;
       return TCP_ERROR_FIFO_FULL;
     }
 
@@ -1101,24 +1110,16 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
       goto done;
     }
 
-  if (PREDICT_FALSE (error == TCP_ERROR_FIFO_FULL))
-    *next0 = TCP_NEXT_DROP;
-
   /* Check if ACK can be delayed */
-  if (!tcp_can_delack (tc))
-    {
-      /* Nothing to do for pure ACKs XXX */
-      if (n_data_bytes == 0)
-	goto done;
-
-      *next0 = tcp_next_output (tc->c_is_ip4);
-      tcp_make_ack (tc, b);
-    }
-  else
+  if (tcp_can_delack (tc))
     {
       if (!tcp_timer_is_active (tc, TCP_TIMER_DELACK))
 	tcp_timer_set (tc, TCP_TIMER_DELACK, TCP_DELACK_TIME);
+      goto done;
     }
+
+  *next0 = tcp_next_output (tc->c_is_ip4);
+  tcp_make_ack (tc, b);
 
 done:
   return error;
@@ -2084,6 +2085,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  child0->irs = vnet_buffer (b0)->tcp.seq_number;
 	  child0->rcv_nxt = vnet_buffer (b0)->tcp.seq_number + 1;
+	  child0->rcv_las = child0->rcv_nxt;
 	  child0->state = TCP_STATE_SYN_RCVD;
 
 	  /* RFC1323: TSval timestamps sent on {SYN} and {SYN,ACK}
