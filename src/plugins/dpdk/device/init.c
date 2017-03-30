@@ -790,7 +790,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_MLX5:
 	      {
-		char *pn_100g[] = { "MCX415A-CCAT", "MCX416A-CCAT", 0 };
+		char *pn_100g[] = { "MCX415A-CCAT", "MCX416A-CCAT",
+		  "MCX556A-ECAT", "MCX556A-EDAT", "MCX555A-ECAT",
+		  "MCX515A-CCAT", "MCX516A-CCAT", "MCX516A-CDAT", 0
+		};
 		char *pn_40g[] = { "MCX413A-BCAT", "MCX414A-BCAT",
 		  "MCX415A-BCAT", "MCX416A-BCAT", "MCX4131A-BCAT", 0
 		};

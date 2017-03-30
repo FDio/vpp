@@ -1,0 +1,57 @@
+From 0866d640e42d6c54b2b3f15ebde9930e756ba4d5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?N=C3=A9lio=20Laranjeiro?= <nelio.laranjeiro@6wind.com>
+Date: Wed, 22 Feb 2017 10:57:52 +0100
+Subject: [PATCH] net/mlx5: fix startup when flow cannot be applied
+
+When flows cannot be re-applied due to configuration modifications, the
+start function should rollback the configuration done.
+
+Fixes: 2097d0d1e2cc ("net/mlx5: support basic flow items and actions")
+Cc: stable@dpdk.org
+
+Signed-off-by: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
+---
+ drivers/net/mlx5/mlx5_trigger.c | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/net/mlx5/mlx5_trigger.c b/drivers/net/mlx5/mlx5_trigger.c
+index 30addd2..0acbf28 100644
+--- a/drivers/net/mlx5/mlx5_trigger.c
++++ b/drivers/net/mlx5/mlx5_trigger.c
+@@ -82,17 +82,28 @@ mlx5_dev_start(struct rte_eth_dev *dev)
+ 		ERROR("%p: an error occurred while configuring hash RX queues:"
+ 		      " %s",
+ 		      (void *)priv, strerror(err));
+-		/* Rollback. */
+-		priv_special_flow_disable_all(priv);
+-		priv_mac_addrs_disable(priv);
+-		priv_destroy_hash_rxqs(priv);
++		goto error;
+ 	}
+ 	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE)
+ 		priv_fdir_enable(priv);
+-	priv_dev_interrupt_handler_install(priv, dev);
+ 	err = priv_flow_start(priv);
++	if (err) {
++		priv->started = 0;
++		ERROR("%p: an error occurred while configuring flows:"
++		      " %s",
++		      (void *)priv, strerror(err));
++		goto error;
++	}
++	priv_dev_interrupt_handler_install(priv, dev);
+ 	priv_xstats_init(priv);
+ 	priv_unlock(priv);
++	return 0;
++error:
++	/* Rollback. */
++	priv_special_flow_disable_all(priv);
++	priv_mac_addrs_disable(priv);
++	priv_destroy_hash_rxqs(priv);
++	priv_flow_stop(priv);
+ 	return -err;
+ }
+ 
+-- 
+2.7.4
+
