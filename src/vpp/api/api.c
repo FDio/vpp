@@ -1574,6 +1574,14 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 
   if (mp->enable_disable)
     {
+      rv = vnet_add_del_ip4_arp_change_event
+	(vnm, arp_change_data_callback,
+	 mp->pid, &mp->address /* addr, in net byte order */ ,
+	 vpe_resolver_process_node.index,
+	 IP4_ARP_EVENT, event - am->arp_events, 1 /* is_add */ );
+
+      if (rv)
+	goto out;
       pool_get (am->arp_events, event);
       memset (event, 0, sizeof (*event));
 
@@ -1584,12 +1592,6 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
       event->pid = mp->pid;
       if (mp->address == 0)
 	event->mac_ip = 1;
-
-      rv = vnet_add_del_ip4_arp_change_event
-	(vnm, arp_change_data_callback,
-	 mp->pid, &mp->address /* addr, in net byte order */ ,
-	 vpe_resolver_process_node.index,
-	 IP4_ARP_EVENT, event - am->arp_events, 1 /* is_add */ );
     }
   else
     {
@@ -1599,6 +1601,7 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 	 vpe_resolver_process_node.index,
 	 IP4_ARP_EVENT, ~0 /* pool index */ , 0 /* is_add */ );
     }
+out:
   REPLY_MACRO (VL_API_WANT_IP4_ARP_EVENTS_REPLY);
 }
 
