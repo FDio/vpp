@@ -16,13 +16,13 @@
 #define SRC_VNET_SESSION_SESSION_DEBUG_H_
 
 #include <vnet/session/transport.h>
-#include <vnet/session/session.h>
 #include <vlib/vlib.h>
 
 #define foreach_session_dbg_evt		\
   _(ENQ, "enqueue")			\
   _(DEQ, "dequeue")			\
-  _(DEQ_NODE, "dequeue")
+  _(DEQ_NODE, "dequeue")		\
+  _(POLL_GAP_TRACK, "poll gap track")	\
 
 typedef enum _session_evt_dbg
 {
@@ -33,6 +33,7 @@ typedef enum _session_evt_dbg
 
 #define SESSION_DBG (0)
 #define SESSION_DEQ_NODE_EVTS (0)
+#define SESSION_EVT_POLL_DBG (1)
 
 #if TRANSPORT_DEBUG && SESSION_DBG
 
@@ -97,9 +98,34 @@ typedef enum _session_evt_dbg
 #define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)
 #endif
 
+#if SESSION_DBG && SESSION_EVT_POLL_DBG
+#define SESSION_EVT_POLL_GAP(_smm, _my_thread_index)			\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "nixon-gap: %d MS",					\
+    .format_args = "i4",						\
+  };									\
+  DEC_SESSION_ED(_e, 1);						\
+  ed->data[0] =	(u32) ((now -						\
+    _smm->last_event_poll_by_thread[my_thread_index])*1000.0);		\
+}
+#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _my_thread_index)	\
+{									\
+  if (PREDICT_TRUE(							\
+	      smm->last_event_poll_by_thread[my_thread_index] != 0.0))	\
+    if (now > smm->last_event_poll_by_thread[_my_thread_index] + 500e-6)\
+	SESSION_EVT_POLL_GAP(smm, my_thread_index);			\
+  _smm->last_event_poll_by_thread[my_thread_index] = now;		\
+}
+
+#else
+#define SESSION_EVT_POLL_GAP(_smm, _my_thread_index)
+#define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _my_thread_index)
+#endif
+
 #define CONCAT_HELPER(_a, _b) _a##_b
 #define CC(_a, _b) CONCAT_HELPER(_a, _b)
-
 #define SESSION_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
 
 #else
