@@ -81,6 +81,7 @@ typedef void (timer_expiration_handler) (u32 index);
 
 extern timer_expiration_handler tcp_timer_delack_handler;
 extern timer_expiration_handler tcp_timer_retransmit_handler;
+extern timer_expiration_handler tcp_timer_persist_handler;
 extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 
 #define TCP_TIMER_HANDLE_INVALID ((u32) ~0)
@@ -253,12 +254,24 @@ struct _tcp_cc_algorithm
 
 #define tcp_fastrecovery_on(tc) (tc)->flags |= TCP_CONN_FAST_RECOVERY
 #define tcp_fastrecovery_off(tc) (tc)->flags &= ~TCP_CONN_FAST_RECOVERY
+#define tcp_recovery_on(tc) (tc)->flags |= TCP_CONN_RECOVERY
+#define tcp_recovery_off(tc) (tc)->flags &= ~TCP_CONN_RECOVERY
 #define tcp_in_fastrecovery(tc) ((tc)->flags & TCP_CONN_FAST_RECOVERY)
-#define tcp_in_recovery(tc) ((tc)->flags & (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
+#define tcp_in_recovery(tc) ((tc)->flags & (TCP_CONN_RECOVERY))
 #define tcp_in_slowstart(tc) (tc->cwnd < tc->ssthresh)
 #define tcp_fastrecovery_sent_1_smss(tc) ((tc)->flags & TCP_CONN_FR_1_SMSS)
 #define tcp_fastrecovery_1_smss_on(tc) ((tc)->flags |= TCP_CONN_FR_1_SMSS)
 #define tcp_fastrecovery_1_smss_off(tc) ((tc)->flags &= ~TCP_CONN_FR_1_SMSS)
+
+#define tcp_in_cong_recovery(tc) ((tc)->flags & 		\
+	  (TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY))
+
+always_inline void
+tcp_cong_recovery_off (tcp_connection_t * tc)
+{
+  tc->flags &= ~(TCP_CONN_FAST_RECOVERY | TCP_CONN_RECOVERY);
+  tcp_fastrecovery_1_smss_off (tc);
+}
 
 typedef enum
 {
@@ -536,6 +549,27 @@ always_inline void
 tcp_retransmit_timer_reset (tcp_connection_t * tc)
 {
   tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
+}
+
+always_inline void
+tcp_persist_timer_set (tcp_connection_t * tc)
+{
+  /* Reuse RTO. It's backed off in handler */
+  tcp_timer_set (tc, TCP_TIMER_PERSIST,
+		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+}
+
+always_inline void
+tcp_persist_timer_update (tcp_connection_t * tc)
+{
+  tcp_timer_update (tc, TCP_TIMER_PERSIST,
+		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+}
+
+always_inline void
+tcp_persist_timer_reset (tcp_connection_t * tc)
+{
+  tcp_timer_reset (tc, TCP_TIMER_PERSIST);
 }
 
 always_inline u8
