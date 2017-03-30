@@ -46,6 +46,7 @@
 #undef vl_printfun
 
 #include <vlibapi/api_helper_macros.h>
+vpe_api_main_t vpe_api_main;
 
 #define foreach_vpe_api_msg                                     \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)               \

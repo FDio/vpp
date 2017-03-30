@@ -21,7 +21,7 @@ libgmodvpp_la_SOURCES = gmod/mod_vpp.c
 
 libgmodvpp_la_LDFLAGS = -module -avoid-version
 
-libgmodvpp_la_LIBADD = -lsvm -lsvmdb -lvppinfra
+libgmodvpp_la_LIBADD = -lsvm -lsvmdb -lvppinfra -lapr-1
 
 gconfdir = $(prefix)/etc/conf.d
 gconf_DATA = gmod/vpp.conf
