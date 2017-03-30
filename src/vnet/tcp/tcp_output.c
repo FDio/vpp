@@ -155,8 +155,7 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
   max_fifo = stream_session_fifo_size (&tc->connection);
 
   ASSERT (tc->opt.mss < max_fifo);
-
-  if (available_space < tc->opt.mss && available_space < max_fifo / 8)
+  if (available_space < tc->opt.mss && available_space < max_fifo >> 3)
     available_space = 0;
 
   /*
@@ -170,16 +169,21 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
   /* Bad. Thou shalt not shrink */
   if (available_space < observed_wnd)
     {
-      /* Does happen! */
       wnd = observed_wnd;
+      TCP_EVT_DBG (TCP_EVT_RCV_WND_SHRUNK, tc, observed_wnd, available_space);
     }
   else
     {
       wnd = available_space;
     }
 
-  if (wnd && ((wnd << tc->rcv_wscale) >> tc->rcv_wscale != wnd))
-    wnd += 1 << tc->rcv_wscale;
+  /* Make sure we have a multiple of rcv_wscale */
+  if (wnd && tc->rcv_wscale)
+    {
+      wnd &= ~(1 << tc->rcv_wscale);
+      if (wnd == 0)
+	wnd = 1 << tc->rcv_wscale;
+    }
 
   tc->rcv_wnd = clib_min (wnd, TCP_WND_MAX << tc->rcv_wscale);
 }
@@ -462,8 +466,9 @@ tcp_make_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 
   tcp_reuse_buffer (vm, b);
   tcp_make_ack_i (tc, b, TCP_STATE_ESTABLISHED, TCP_FLAG_ACK);
-  vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
   TCP_EVT_DBG (TCP_EVT_ACK_SENT, tc);
+  vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
+  tc->rcv_las = tc->rcv_nxt;
 }
 
 /**
@@ -908,6 +913,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   tc->snd_nxt += data_len;
+
   /* TODO this is updated in output as well ... */
   if (tc->snd_nxt > tc->snd_una_max)
     tc->snd_una_max = tc->snd_nxt;
@@ -929,7 +935,6 @@ tcp_send_ack (tcp_connection_t * tc)
 
   /* Fill in the ACK */
   tcp_make_ack (tc, b);
-
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 }
 
@@ -942,7 +947,6 @@ tcp_timer_delack_handler (u32 index)
 
   tc = tcp_connection_get (index, thread_index);
   tc->timers[TCP_TIMER_DELACK] = TCP_TIMER_HANDLE_INVALID;
-//  tc->flags &= ~TCP_CONN_DELACK;
   tcp_send_ack (tc);
 }
 
@@ -995,7 +999,7 @@ done:
  * Reset congestion control, switch cwnd to loss window and try again.
  */
 static void
-tcp_rtx_timeout_cc_recover (tcp_connection_t * tc)
+tcp_rtx_timeout_cc (tcp_connection_t * tc)
 {
   /* Cleanly recover cc (also clears up fast retransmit) */
   if (tcp_in_fastrecovery (tc))
@@ -1008,6 +1012,7 @@ tcp_rtx_timeout_cc_recover (tcp_connection_t * tc)
     }
 
   /* Start again from the beginning */
+  tcp_recovery_on (tc);
   tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_una_max;
 }
@@ -1048,7 +1053,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
     {
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
-	tcp_rtx_timeout_cc_recover (tc);
+	tcp_rtx_timeout_cc (tc);
 
       /* Exponential backoff */
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
@@ -1114,6 +1119,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
     {
       ASSERT (tc->state == TCP_STATE_SYN_SENT);
 
+      TCP_EVT_DBG (TCP_EVT_SYN_RTX, tc);
+
       /* This goes straight to ipx_lookup */
       tcp_push_ip_hdr (tm, tc, b);
       tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4);
@@ -1134,6 +1141,55 @@ void
 tcp_timer_retransmit_syn_handler (u32 index)
 {
   tcp_timer_retransmit_handler_i (index, 1);
+}
+
+/**
+ * Got 0 snd_wnd from peer, try to do something about it.
+ *
+ */
+void
+tcp_timer_persist_handler (u32 index)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u32 thread_index = os_get_cpu_number ();
+  tcp_connection_t *tc;
+  vlib_buffer_t *b;
+  u32 bi, n_bytes;
+
+  tc = tcp_connection_get (index, thread_index);
+
+  /* Make sure timer handle is set to invalid */
+  tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
+
+  /* Problem already solved or worse */
+  if (tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
+    return;
+
+  /* Increment RTO backoff */
+  tc->rto_boff += 1;
+  tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
+
+  /* Try to force the first unsent segment  */
+  tcp_get_free_buffer_index (tm, &bi);
+  b = vlib_get_buffer (vm, bi);
+  n_bytes = stream_session_peek_bytes (&tc->connection,
+				       vlib_buffer_get_current (b),
+				       tc->snd_una_max - tc->snd_una,
+				       tc->snd_mss);
+  /* Nothing to send */
+  if (n_bytes == 0)
+    {
+      tcp_return_buffer (tm);
+      return;
+    }
+
+  b->current_length = n_bytes;
+  tcp_push_hdr_i (tc, b, tc->state);
+  tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+
+  /* Re-enable persist timer */
+  tcp_persist_timer_set (tc);
 }
 
 /**
@@ -1328,9 +1384,6 @@ tcp46_output_inline (vlib_main_t * vm,
 		  goto done;
 		}
 	    }
-
-	  /* Retransmitted SYNs do reach this but it should be harmless */
-	  tc0->rcv_las = tc0->rcv_nxt;
 
 	  /* Stop DELACK timer and fix flags */
 	  tc0->flags &= ~(TCP_CONN_SNDACK);

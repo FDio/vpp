@@ -254,6 +254,10 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
 {
   ooo_segment_t *s;
   u32 index, bytes = 0, diff;
+  u32 cursize;
+
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
 
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 
@@ -286,8 +290,8 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
   /* If tail is adjacent to an ooo segment, 'consume' it */
   if (diff == 0)
     {
-      bytes = ((f->nitems - f->cursize) >= s->length) ? s->length :
-	f->nitems - f->cursize;
+      bytes = ((f->nitems - cursize) >= s->length) ? s->length :
+	f->nitems - cursize;
 
       f->tail += bytes;
       f->tail %= f->nitems;
@@ -305,11 +309,12 @@ svm_fifo_enqueue_internal (svm_fifo_t * f,
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
 
-  if (PREDICT_FALSE (f->cursize == f->nitems))
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
+
+  if (PREDICT_FALSE (cursize == f->nitems))
     return -2;			/* fifo stuffed */
 
-  /* read cursize, which can only decrease while we're working */
-  cursize = f->cursize;
   nitems = f->nitems;
 
   /* Number of bytes we're going to copy */
@@ -382,8 +387,8 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
 
   ASSERT (offset > 0);
 
-  /* read cursize, which can only decrease while we're working */
-  cursize = f->cursize;
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
   nitems = f->nitems;
 
   /* Will this request fit? */
@@ -437,11 +442,11 @@ svm_fifo_dequeue_internal (svm_fifo_t * f,
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
 
-  if (PREDICT_FALSE (f->cursize == 0))
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
+  if (PREDICT_FALSE (cursize == 0))
     return -2;			/* nothing in the fifo */
 
-  /* read cursize, which can only increase while we're working */
-  cursize = f->cursize;
   nitems = f->nitems;
 
   /* Number of bytes we're going to copy */
@@ -495,11 +500,11 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems, real_head;
 
-  if (PREDICT_FALSE (f->cursize == 0))
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
+  if (PREDICT_FALSE (cursize == 0))
     return -2;			/* nothing in the fifo */
 
-  /* read cursize, which can only increase while we're working */
-  cursize = f->cursize;
   nitems = f->nitems;
   real_head = f->head + offset;
   real_head = real_head >= nitems ? real_head - nitems : real_head;
@@ -532,11 +537,11 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes)
   u32 total_drop_bytes, first_drop_bytes, second_drop_bytes;
   u32 cursize, nitems;
 
-  if (PREDICT_FALSE (f->cursize == 0))
+  /* read cursize, which can only increase while we're working */
+  cursize = svm_fifo_max_dequeue (f);
+  if (PREDICT_FALSE (cursize == 0))
     return -2;			/* nothing in the fifo */
 
-  /* read cursize, which can only increase while we're working */
-  cursize = f->cursize;
   nitems = f->nitems;
 
   /* Number of bytes we're going to drop */
