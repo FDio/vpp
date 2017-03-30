@@ -3987,12 +3987,11 @@ vnet_ip6_nd_term (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
 		  vlib_buffer_t * p0,
 		  ethernet_header_t * eth,
-		  ip6_header_t * ip, u32 sw_if_index, u16 bd_index, u8 shg)
+		  ip6_header_t * ip, u32 sw_if_index, u16 bd_index)
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   icmp6_neighbor_solicitation_or_advertisement_header_t *ndh;
   pending_resolution_t *mc;
-  uword *p;
 
   ndh = ip6_next_header (ip);
   if (ndh->icmp.type != ICMP6_neighbor_solicitation &&
@@ -4008,9 +4007,8 @@ vnet_ip6_nd_term (vlib_main_t * vm,
     }
 
   /* Check if anyone want ND events for L2 BDs */
-  p = mhash_get (&nm->mac_changes_by_address, &ip6a_zero);
-  if (p && shg == 0 &&		/* Only SHG 0 interface which is more likely local */
-      !ip6_address_is_link_local_unicast (&ip->src_address))
+  uword *p = mhash_get (&nm->mac_changes_by_address, &ip6a_zero);
+  if (p && !ip6_address_is_link_local_unicast (&ip->src_address))
     {
       u32 next_index = p[0];
       while (next_index != (u32) ~ 0)
