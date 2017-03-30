@@ -22,6 +22,30 @@
       "revId": "d65bd28b3f2c4299c40e4250e2301be34dc76cfe",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2f915e47",
+        "filename": "src/vnet/interface_api.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-03-30T19:26:10Z",
+      "side": 1,
+      "message": "Sure, we can do that.  But it applies to tap, af_packet, ether, etc.  If that\u0027s all fine with you, I\u0027ll resubmit with a sw_interface_ prefix rename.",
+      "parentUuid": "3a3291f1_0f0a22d2",
+      "range": {
+        "startLine": 61,
+        "startChar": 2,
+        "endLine": 61,
+        "endChar": 34
+      },
+      "revId": "d65bd28b3f2c4299c40e4250e2301be34dc76cfe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
