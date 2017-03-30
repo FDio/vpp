@@ -56,6 +56,7 @@ nobase_include_HEADERS +=			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
   vnet/replication.h				\
+  vnet/rewrite.h				\
   vnet/vnet.h					\
   vnet/vnet_all_api_h.h				\
   vnet/vnet_msg_enum.h				\
