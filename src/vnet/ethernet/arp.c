@@ -2222,6 +2222,10 @@ arp_term_l2bd (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  p0 = vlib_get_buffer (vm, pi0);
+	  // Terminate only local (SHG == 0) ARP
+	  if (vnet_buffer (p0)->l2.shg != 0)
+	    goto next_l2_feature;
+
 	  eth0 = vlib_buffer_get_current (p0);
 	  l3h0 = (u8 *) eth0 + vnet_buffer (p0)->l2.l2_len;
 	  ethertype0 = clib_net_to_host_u16 (*(u16 *) (l3h0 - 2));
@@ -2273,8 +2277,8 @@ arp_term_l2bd (vlib_main_t * vm,
 	    pending_resolution_t *mc;
 	    ethernet_arp_main_t *am = &ethernet_arp_main;
 	    uword *p = hash_get (am->mac_changes_by_address, 0);
-	    if (p && (vnet_buffer (p0)->l2.shg == 0))
-	      {			// Only SHG 0 interface which is more likely local
+	    if (p)
+	      {
 		u32 next_index = p[0];
 		while (next_index != (u32) ~ 0)
 		  {
@@ -2335,11 +2339,6 @@ arp_term_l2bd (vlib_main_t * vm,
 	  /* Send ARP/ND reply back out input interface through l2-output */
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 	  next0 = ARP_TERM_NEXT_L2_OUTPUT;
-	  /* Note that output to VXLAN tunnel will fail due to SHG which
-	     is probably desireable since ARP termination is not intended
-	     for ARP requests from other hosts. If output to VXLAN tunnel is
-	     required, however, can just clear the SHG in packet as follows:
-	     vnet_buffer(p0)->l2.shg = 0;         */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next, pi0,
 					   next0);
@@ -2357,7 +2356,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	      sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	      if (vnet_ip6_nd_term
 		  (vm, node, p0, eth0, iph0, sw_if_index0,
-		   vnet_buffer (p0)->l2.bd_index, vnet_buffer (p0)->l2.shg))
+		   vnet_buffer (p0)->l2.bd_index))
 		goto output_response;
 	    }
 
