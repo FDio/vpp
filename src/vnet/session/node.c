@@ -119,15 +119,20 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Nothing to read return */
   if (max_dequeue0 == 0)
-    {
-      return 0;
-    }
+    return 0;
 
   /* Ensure we're not writing more than transport window allows */
-  max_len_to_snd0 = clib_min (max_dequeue0, snd_space0);
-
-  /* TODO check if transport is willing to send len_to_snd0
-   * bytes (Nagle) */
+  if (max_dequeue0 < snd_space0)
+    {
+      /* Constrained by tx queue. Try to send only fully formed segments */
+      max_len_to_snd0 = (max_dequeue0 > snd_mss0) ?
+	max_dequeue0 - max_dequeue0 % snd_mss0 : max_dequeue0;
+      /* TODO Nagle ? */
+    }
+  else
+    {
+      max_len_to_snd0 = snd_space0;
+    }
 
   n_frame_bytes = snd_mss0 * VLIB_FRAME_SIZE;
   n_frames_per_evt = ceil ((double) max_len_to_snd0 / n_frame_bytes);
@@ -308,11 +313,14 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   int n_tx_packets = 0;
   u32 my_thread_index = vm->cpu_index;
   int i, rv;
+  f64 now = vlib_time_now (vm);
+
+  SESSION_EVT_DBG (SESSION_EVT_POLL_GAP_TRACK, smm, my_thread_index);
 
   /*
    *  Update TCP time
    */
-  tcp_update_time (vlib_time_now (vm), my_thread_index);
+  tcp_update_time (now, my_thread_index);
 
   /*
    * Get vpp queue events

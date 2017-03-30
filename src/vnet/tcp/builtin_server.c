@@ -127,6 +127,7 @@ builtin_server_rx_callback (stream_session_t * s)
     {
       /* XXX timeout for session that are stuck */
 
+    rx_event:
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
@@ -158,7 +159,9 @@ builtin_server_rx_callback (stream_session_t * s)
 
   n_written =
     svm_fifo_enqueue_nowait (tx_fifo, 0, actual_transfer, bsm->rx_buf);
-  ASSERT (n_written == max_transfer);
+
+  if (n_written != max_transfer)
+    clib_warning ("short trout!");
 
   if (svm_fifo_set_event (tx_fifo))
     {
@@ -170,6 +173,9 @@ builtin_server_rx_callback (stream_session_t * s)
       unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
 				    (u8 *) & evt, 0 /* do wait for mutex */ );
     }
+
+  if (PREDICT_FALSE (max_enqueue < max_dequeue))
+    goto rx_event;
 
   return 0;
 }
@@ -204,8 +210,8 @@ server_create (vlib_main_t * vm)
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 64 << 10;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 64 << 10;
+  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 1 << 16;
+  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 1 << 16;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
