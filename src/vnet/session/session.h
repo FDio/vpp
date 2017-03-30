@@ -20,6 +20,7 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/sparse_vec.h>
 #include <svm/svm_fifo_segment.h>
+#include <vnet/session/session_debug.h>
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
@@ -36,7 +37,7 @@ typedef enum
   FIFO_EVENT_BUILTIN_RX
 } fifo_event_type_t;
 
-#define foreach_session_input_error                                         \
+#define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
 _(NO_LISTENER, "No listener for dst port drops")                        \
 _(ENQUEUED, "Packets pushed into rx fifo")                              \
@@ -218,6 +219,15 @@ struct _session_manager_main
   /* Convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
+
+#if SESSION_DBG
+  /**
+   * last event poll time by thread
+   * Debug only. Will cause false cache-line sharing as-is
+   */
+  f64 *last_event_poll_by_thread;
+#endif
+
 };
 
 extern session_manager_main_t session_manager_main;

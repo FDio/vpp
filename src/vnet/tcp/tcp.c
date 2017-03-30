@@ -578,7 +578,9 @@ tcp_session_send_space (transport_connection_t * trans_conn)
       /* If we can't write at least a segment, don't try at all */
       if (snd_space < tc->snd_mss)
 	return 0;
-      return snd_space;
+
+      /* round down to mss multiple */
+      return snd_space - (snd_space % tc->snd_mss);
     }
 
   /* If in fast recovery, send 1 SMSS if wnd allows */
@@ -706,7 +708,7 @@ static timer_expiration_handler *timer_expiration_handlers[TCP_N_TIMERS] =
 {
     tcp_timer_retransmit_handler,
     tcp_timer_delack_handler,
-    0,
+    tcp_timer_persist_handler,
     tcp_timer_keep_handler,
     tcp_timer_waitclose_handler,
     tcp_timer_retransmit_syn_handler,
