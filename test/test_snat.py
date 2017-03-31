@@ -1300,6 +1300,14 @@ class TestDeterministicNAT(MethodHolder):
         super(TestDeterministicNAT, cls).setUpClass()
 
         try:
+            cls.tcp_port_in = 6303
+            cls.tcp_port_out = 6303
+            cls.udp_port_in = 6304
+            cls.udp_port_out = 6304
+            cls.icmp_id_in = 6305
+            cls.icmp_id_out = 6305
+            cls.snat_addr = '10.0.0.3'
+
             cls.create_pg_interfaces(range(2))
             cls.interfaces = list(cls.pg_interfaces)
 
@@ -1308,9 +1316,72 @@ class TestDeterministicNAT(MethodHolder):
                 i.config_ip4()
                 i.resolve_arp()
 
+            cls.pg0.generate_remote_hosts(2)
+            cls.pg0.configure_ipv4_neighbors()
+
         except Exception:
             super(TestDeterministicNAT, cls).tearDownClass()
             raise
+
+    def create_stream_in(self, in_if, out_if, ttl=64):
+        """
+        Create packet stream for inside network
+
+        :param in_if: Inside interface
+        :param out_if: Outside interface
+        :param ttl: TTL of generated packets
+        """
+        pkts = []
+        # TCP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             TCP(sport=self.tcp_port_in, dport=self.tcp_external_port))
+        pkts.append(p)
+
+        # UDP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             UDP(sport=self.udp_port_in, dport=self.udp_external_port))
+        pkts.append(p)
+
+        # ICMP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             ICMP(id=self.icmp_id_in, type='echo-request'))
+        pkts.append(p)
+
+        return pkts
+
+    def create_stream_out(self, out_if, dst_ip=None, ttl=64):
+        """
+        Create packet stream for outside network
+
+        :param out_if: Outside interface
+        :param dst_ip: Destination IP address (Default use global SNAT address)
+        :param ttl: TTL of generated packets
+        """
+        if dst_ip is None:
+            dst_ip = self.snat_addr
+        pkts = []
+        # TCP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             TCP(dport=self.tcp_port_out, sport=self.tcp_external_port))
+        pkts.append(p)
+
+        # UDP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             UDP(dport=self.udp_port_out, sport=self.udp_external_port))
+        pkts.append(p)
+
+        # ICMP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             ICMP(id=self.icmp_id_out, type='echo-reply'))
+        pkts.append(p)
+
+        return pkts
 
     def test_deterministic_mode(self):
         """ S-NAT run deterministic mode """
@@ -1363,6 +1434,143 @@ class TestDeterministicNAT(MethodHolder):
         self.assertNotEqual(timeouts_before.tcp_transitory,
                             timeouts_after.tcp_transitory)
 
+    def test_det_in(self):
+        """ CGNAT 1:1 deterministic NAT initialized from inside network """
+
+        nat_ip = "10.0.0.10"
+        self.tcp_port_out = 6303
+        self.udp_port_out = 6304
+        self.icmp_id_in = 6305
+        self.tcp_external_port = 7303
+        self.udp_external_port = 7304
+        self.icmp_id_out = 7305
+
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                              32,
+                              socket.inet_aton(nat_ip),
+                              32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # in2out
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip)
+
+        # out2in
+        pkts = self.create_stream_out(self.pg1, nat_ip)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg0)
+
+    def test_multiple_users(self):
+        """ CGNAT multiple users inside """
+
+        nat_ip = "10.0.0.10"
+        port_in = 80
+        port_out = 6303
+
+        host0 = self.pg0.remote_hosts[0]
+        host1 = self.pg0.remote_hosts[1]
+
+        self.vapi.snat_add_det_map(host0.ip4n,
+                                   24,
+                                   socket.inet_aton(nat_ip),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # host0 to out
+        p = (Ether(src=host0.mac, dst=self.pg0.local_mac) /
+             IP(src=host0.ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=port_in, dport=port_out))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, nat_ip)
+            self.assertEqual(ip.dst, self.pg1.remote_ip4)
+            self.assertEqual(tcp.dport, port_out)
+            external_port0 = tcp.sport
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # host1 to out
+        p = (Ether(src=host1.mac, dst=self.pg0.local_mac) /
+             IP(src=host1.ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=port_in, dport=port_out))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, nat_ip)
+            self.assertEqual(ip.dst, self.pg1.remote_ip4)
+            self.assertEqual(tcp.dport, port_out)
+            external_port1 = tcp.sport
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        dms = self.vapi.snat_det_map_dump()
+        self.assertEqual(1, len(dms))
+        self.assertEqual(2, dms[0].ses_num)
+
+        # out to host0
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=nat_ip) /
+             TCP(sport=port_out, dport=external_port0))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.pg1.remote_ip4)
+            self.assertEqual(ip.dst, host0.ip4)
+            self.assertEqual(tcp.dport, port_in)
+            self.assertEqual(tcp.sport, port_out)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # out to host1
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=nat_ip) /
+             TCP(sport=port_out, dport=external_port1))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.pg1.remote_ip4)
+            self.assertEqual(ip.dst, host1.ip4)
+            self.assertEqual(tcp.dport, port_in)
+            self.assertEqual(tcp.sport, port_out)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet", p))
+            raise
+
     def clear_snat(self):
         """
         Clear SNAT configuration.
@@ -1375,6 +1583,12 @@ class TestDeterministicNAT(MethodHolder):
                                        dsm.out_addr,
                                        dsm.out_plen,
                                        is_add=0)
+
+        interfaces = self.vapi.snat_interface_dump()
+        for intf in interfaces:
+            self.vapi.snat_interface_add_del_feature(intf.sw_if_index,
+                                                     intf.is_inside,
+                                                     is_add=0)
 
     def tearDown(self):
         super(TestDeterministicNAT, self).tearDown()
