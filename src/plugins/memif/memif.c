@@ -85,7 +85,7 @@ memif_connect (vlib_main_t * vm, memif_if_t * mif)
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 }
 
-static void
+void
 memif_disconnect (vlib_main_t * vm, memif_if_t * mif)
 {
   vnet_main_t *vnm = vnet_get_main ();
@@ -248,7 +248,12 @@ response:
   resp.version = MEMIF_VERSION;
   resp.type = MEMIF_MSG_TYPE_CONNECT_RESP;
   resp.retval = retval;
-  send (fd, &resp, sizeof (resp), 0);
+  if (send (fd, &resp, sizeof (resp), 0) < 0)
+    {
+      DEBUG_UNIX_LOG ("Failed to send connection response");
+      error = clib_error_return_unix (0, "send fd %d", fd);
+      memif_disconnect (vm, mif);
+    }
   return error;
 }
 
@@ -511,7 +516,8 @@ memif_connect_master (vlib_main_t * vm, memif_if_t * mif)
 	{
 	  u16 slot = i * (1 << mif->log2_ring_size) + j;
 	  ring->desc[j].region = 0;
-	  ring->desc[j].offset = buffer_offset + (slot * mif->buffer_size);
+	  ring->desc[j].offset =
+	    buffer_offset + (u32) (slot * mif->buffer_size);
 	  ring->desc[j].buffer_length = mif->buffer_size;
 	}
     }
@@ -524,7 +530,8 @@ memif_connect_master (vlib_main_t * vm, memif_if_t * mif)
 	  u16 slot =
 	    (i + mif->num_s2m_rings) * (1 << mif->log2_ring_size) + j;
 	  ring->desc[j].region = 0;
-	  ring->desc[j].offset = buffer_offset + (slot * mif->buffer_size);
+	  ring->desc[j].offset =
+	    buffer_offset + (u32) (slot * mif->buffer_size);
 	  ring->desc[j].buffer_length = mif->buffer_size;
 	}
     }
@@ -595,6 +602,11 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   f64 start_time, last_run_duration = 0, now;
 
   sockfd = socket (AF_UNIX, SOCK_STREAM, 0);
+  if (sockfd < 0)
+    {
+      DEBUG_UNIX_LOG ("socket AF_UNIX");
+      return 0;
+    }
   sun.sun_family = AF_UNIX;
   template.read_function = memif_conn_fd_read_ready;
 
@@ -730,26 +742,28 @@ int
 memif_worker_thread_enable ()
 {
   /* if worker threads are enabled, switch to polling mode */
+  /* *INDENT-OFF* */
   foreach_vlib_main ((
 		       {
 		       vlib_node_set_state (this_vlib_main,
 					    memif_input_node.index,
 					    VLIB_NODE_STATE_POLLING);
 		       }));
-
+  /* *INDENT-ON* */
   return 0;
 }
 
 int
 memif_worker_thread_disable ()
 {
+  /* *INDENT-OFF* */
   foreach_vlib_main ((
 		       {
 		       vlib_node_set_state (this_vlib_main,
 					    memif_input_node.index,
 					    VLIB_NODE_STATE_INTERRUPT);
 		       }));
-
+  /* *INDENT-ON* */
   return 0;
 }
 
