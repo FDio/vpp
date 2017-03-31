@@ -4,13 +4,14 @@ import socket
 import unittest
 import struct
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_extended_tests
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.l2 import Ether, ARP
 from scapy.data import IP_PROTOS
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
+from time import sleep
 
 
 class MethodHolder(VppTestCase):
@@ -1300,6 +1301,13 @@ class TestDeterministicNAT(MethodHolder):
         super(TestDeterministicNAT, cls).setUpClass()
 
         try:
+            cls.tcp_port_in = 6303
+            cls.tcp_port_out = 6303
+            cls.udp_port_in = 6304
+            cls.udp_port_out = 6304
+            cls.icmp_id_in = 6305
+            cls.snat_addr = '10.0.0.3'
+
             cls.create_pg_interfaces(range(2))
             cls.interfaces = list(cls.pg_interfaces)
 
@@ -1308,8 +1316,141 @@ class TestDeterministicNAT(MethodHolder):
                 i.config_ip4()
                 i.resolve_arp()
 
+            cls.pg0.generate_remote_hosts(2)
+            cls.pg0.configure_ipv4_neighbors()
+
         except Exception:
             super(TestDeterministicNAT, cls).tearDownClass()
+            raise
+
+    def create_stream_in(self, in_if, out_if, ttl=64):
+        """
+        Create packet stream for inside network
+
+        :param in_if: Inside interface
+        :param out_if: Outside interface
+        :param ttl: TTL of generated packets
+        """
+        pkts = []
+        # TCP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             TCP(sport=self.tcp_port_in, dport=self.tcp_port_out))
+        pkts.append(p)
+
+        # UDP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             UDP(sport=self.udp_port_in, dport=self.udp_port_out))
+        pkts.append(p)
+
+        # ICMP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=out_if.remote_ip4, ttl=ttl) /
+             ICMP(id=self.icmp_id_in, type='echo-request'))
+        pkts.append(p)
+
+        return pkts
+
+    def create_stream_out(self, out_if, dst_ip=None, ttl=64):
+        """
+        Create packet stream for outside network
+
+        :param out_if: Outside interface
+        :param dst_ip: Destination IP address (Default use global SNAT address)
+        :param ttl: TTL of generated packets
+        """
+        if dst_ip is None:
+            dst_ip = self.snat_addr
+        pkts = []
+        # TCP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             TCP(dport=self.tcp_external_port, sport=self.tcp_port_out))
+        pkts.append(p)
+
+        # UDP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             UDP(dport=self.udp_external_port, sport=self.udp_port_out))
+        pkts.append(p)
+
+        # ICMP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             ICMP(id=self.icmp_external_id, type='echo-reply'))
+        pkts.append(p)
+
+        return pkts
+
+    def verify_capture_out(self, capture, nat_ip=None, packet_num=3):
+        """
+        Verify captured packets on outside network
+
+        :param capture: Captured packets
+        :param nat_ip: Translated IP address (Default use global SNAT address)
+        :param same_port: Sorce port number is not translated (Default False)
+        :param packet_num: Expected number of packets (Default 3)
+        """
+        if nat_ip is None:
+            nat_ip = self.snat_addr
+        self.assertEqual(packet_num, len(capture))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IP].src, nat_ip)
+                if packet.haslayer(TCP):
+                    self.tcp_external_port = packet[TCP].sport
+                elif packet.haslayer(UDP):
+                    self.udp_external_port = packet[UDP].sport
+                else:
+                    self.icmp_external_id = packet[ICMP].id
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(outside network):", packet))
+                raise
+
+    def initiate_tcp_session(self, in_if, out_if):
+        """
+        Initiates TCP session
+
+        :param in_if: Inside interface
+        :param out_if: Outside interface
+        """
+        try:
+            # SYN packet in->out
+            p = (Ether(src=in_if.remote_mac, dst=in_if.local_mac) /
+                 IP(src=in_if.remote_ip4, dst=out_if.remote_ip4) /
+                 TCP(sport=self.tcp_port_in, dport=self.tcp_port_out,
+                     flags="S"))
+            in_if.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = out_if.get_capture(1)
+            p = capture[0]
+            self.tcp_external_port = p[TCP].sport
+
+            # SYN + ACK packet out->in
+            p = (Ether(src=out_if.remote_mac, dst=out_if.local_mac) /
+                 IP(src=out_if.remote_ip4, dst=self.snat_addr) /
+                 TCP(sport=self.tcp_port_out, dport=self.tcp_external_port,
+                     flags="SA"))
+            out_if.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            in_if.get_capture(1)
+
+            # ACK packet in->out
+            p = (Ether(src=in_if.remote_mac, dst=in_if.local_mac) /
+                 IP(src=in_if.remote_ip4, dst=out_if.remote_ip4) /
+                 TCP(sport=self.tcp_port_in, dport=self.tcp_port_out,
+                     flags="A"))
+            in_if.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            out_if.get_capture(1)
+
+        except:
+            self.logger.error("TCP 3 way handshake failed")
             raise
 
     def test_deterministic_mode(self):
@@ -1363,6 +1504,324 @@ class TestDeterministicNAT(MethodHolder):
         self.assertNotEqual(timeouts_before.tcp_transitory,
                             timeouts_after.tcp_transitory)
 
+    def test_det_in(self):
+        """ CGNAT translation test (TCP, UDP, ICMP) """
+
+        nat_ip = "10.0.0.10"
+        self.tcp_port_out = 6303
+        self.udp_port_out = 6304
+        self.icmp_id_in = 6305
+        self.tcp_external_port = 7303
+        self.udp_external_port = 7304
+        self.icmp_id_out = 7305
+
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                                   32,
+                                   socket.inet_aton(nat_ip),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # in2out
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip)
+
+        # out2in
+        pkts = self.create_stream_out(self.pg1, nat_ip)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg0)
+
+    def test_multiple_users(self):
+        """ CGNAT multiple users """
+
+        nat_ip = "10.0.0.10"
+        port_in = 80
+        port_out = 6303
+
+        host0 = self.pg0.remote_hosts[0]
+        host1 = self.pg0.remote_hosts[1]
+
+        self.vapi.snat_add_det_map(host0.ip4n,
+                                   24,
+                                   socket.inet_aton(nat_ip),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # host0 to out
+        p = (Ether(src=host0.mac, dst=self.pg0.local_mac) /
+             IP(src=host0.ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=port_in, dport=port_out))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, nat_ip)
+            self.assertEqual(ip.dst, self.pg1.remote_ip4)
+            self.assertEqual(tcp.dport, port_out)
+            external_port0 = tcp.sport
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # host1 to out
+        p = (Ether(src=host1.mac, dst=self.pg0.local_mac) /
+             IP(src=host1.ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=port_in, dport=port_out))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, nat_ip)
+            self.assertEqual(ip.dst, self.pg1.remote_ip4)
+            self.assertEqual(tcp.dport, port_out)
+            external_port1 = tcp.sport
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        dms = self.vapi.snat_det_map_dump()
+        self.assertEqual(1, len(dms))
+        self.assertEqual(2, dms[0].ses_num)
+
+        # out to host0
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=nat_ip) /
+             TCP(sport=port_out, dport=external_port0))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.pg1.remote_ip4)
+            self.assertEqual(ip.dst, host0.ip4)
+            self.assertEqual(tcp.dport, port_in)
+            self.assertEqual(tcp.sport, port_out)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # out to host1
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=nat_ip) /
+             TCP(sport=port_out, dport=external_port1))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.pg1.remote_ip4)
+            self.assertEqual(ip.dst, host1.ip4)
+            self.assertEqual(tcp.dport, port_in)
+            self.assertEqual(tcp.sport, port_out)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet", p))
+            raise
+
+    def test_tcp_session_close_detection_in(self):
+        """ CGNAT TCP session close initiated from inside network """
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                                   32,
+                                   socket.inet_aton(self.snat_addr),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        self.initiate_tcp_session(self.pg0, self.pg1)
+
+        # close the session from inside
+        try:
+            # FIN packet in -> out
+            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 TCP(sport=self.tcp_port_in, dport=self.tcp_port_out,
+                     flags="F"))
+            self.pg0.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(1)
+
+            pkts = []
+
+            # ACK packet out -> in
+            p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                 IP(src=self.pg1.remote_ip4, dst=self.snat_addr) /
+                 TCP(sport=self.tcp_port_out, dport=self.tcp_external_port,
+                     flags="A"))
+            pkts.append(p)
+
+            # FIN packet out -> in
+            p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                 IP(src=self.pg1.remote_ip4, dst=self.snat_addr) /
+                 TCP(sport=self.tcp_port_out, dport=self.tcp_external_port,
+                     flags="F"))
+            pkts.append(p)
+
+            self.pg1.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg0.get_capture(2)
+
+            # ACK packet in -> out
+            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 TCP(sport=self.tcp_port_in, dport=self.tcp_port_out,
+                     flags="A"))
+            self.pg0.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(1)
+
+            # Check if snat closed the session
+            dms = self.vapi.snat_det_map_dump()
+            self.assertEqual(0, dms[0].ses_num)
+        except:
+            self.logger.error("TCP session termination failed")
+            raise
+
+    def test_tcp_session_close_detection_out(self):
+        """ CGNAT TCP session close initiated from outside network """
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                                   32,
+                                   socket.inet_aton(self.snat_addr),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        self.initiate_tcp_session(self.pg0, self.pg1)
+
+        # close the session from outside
+        try:
+            # FIN packet out -> in
+            p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                 IP(src=self.pg1.remote_ip4, dst=self.snat_addr) /
+                 TCP(sport=self.tcp_port_out, dport=self.tcp_external_port,
+                     flags="F"))
+            self.pg1.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg0.get_capture(1)
+
+            pkts = []
+
+            # ACK packet in -> out
+            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 TCP(sport=self.tcp_port_in, dport=self.tcp_port_out,
+                     flags="A"))
+            pkts.append(p)
+
+            # ACK packet in -> out
+            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 TCP(sport=self.tcp_port_in, dport=self.tcp_port_out,
+                     flags="F"))
+            pkts.append(p)
+
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg1.get_capture(2)
+
+            # ACK packet out -> in
+            p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                 IP(src=self.pg1.remote_ip4, dst=self.snat_addr) /
+                 TCP(sport=self.tcp_port_out, dport=self.tcp_external_port,
+                     flags="A"))
+            self.pg1.add_stream(p)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            self.pg0.get_capture(1)
+
+            # Check if snat closed the session
+            dms = self.vapi.snat_det_map_dump()
+            self.assertEqual(0, dms[0].ses_num)
+        except:
+            self.logger.error("TCP session termination failed")
+            raise
+
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_session_timeout(self):
+        """ CGNAT session timeouts """
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                                   32,
+                                   socket.inet_aton(self.snat_addr),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        self.initiate_tcp_session(self.pg0, self.pg1)
+        self.vapi.snat_det_set_timeouts(5, 5, 5, 5)
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        sleep(15)
+
+        dms = self.vapi.snat_det_map_dump()
+        self.assertEqual(0, dms[0].ses_num)
+
+    def test_session_limit_per_user(self):
+        """ CGNAT maximum 1000 sessions per user should be created """
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                                   32,
+                                   socket.inet_aton(self.snat_addr),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        pkts = []
+        for port in range(1025, 2025):
+            p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 UDP(sport=port, dport=port))
+            pkts.append(p)
+
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             UDP(sport=3000, dport=3000))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.assert_nothing_captured()
+
+        dms = self.vapi.snat_det_map_dump()
+
+        self.assertEqual(1000, dms[0].ses_num)
+
     def clear_snat(self):
         """
         Clear SNAT configuration.
@@ -1375,6 +1834,12 @@ class TestDeterministicNAT(MethodHolder):
                                        dsm.out_addr,
                                        dsm.out_plen,
                                        is_add=0)
+
+        interfaces = self.vapi.snat_interface_dump()
+        for intf in interfaces:
+            self.vapi.snat_interface_add_del_feature(intf.sw_if_index,
+                                                     intf.is_inside,
+                                                     is_add=0)
 
     def tearDown(self):
         super(TestDeterministicNAT, self).tearDown()
