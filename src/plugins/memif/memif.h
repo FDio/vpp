@@ -196,6 +196,7 @@ typedef struct
 
 int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
 int memif_delete_if (vlib_main_t * vm, u64 key);
+void memif_disconnect (vlib_main_t * vm, memif_if_t * mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
 
 #ifndef __NR_memfd_create
