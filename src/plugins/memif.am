@@ -12,6 +12,7 @@
 # limitations under the License.
 
 vppplugins_LTLIBRARIES += memif_plugin.la
+vppapitestplugins_LTLIBRARIES += memif_test_plugin.la
 
 memif_plugin_la_SOURCES = memif/memif.c   \
 	memif/memif_api.c                 \
@@ -19,6 +20,9 @@ memif_plugin_la_SOURCES = memif/memif.c   \
 	memif/node.c                      \
 	memif/device.c                    \
 	memif/memif_plugin.api.h
+
+memif_test_plugin_la_SOURCES = \
+  memif/memif_test.c memif/memif_plugin.api.h
 
 noinst_HEADERS += memif/memif.h
 
