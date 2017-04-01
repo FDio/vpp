@@ -77,6 +77,7 @@ new_event_type (elog_main_t * em, uword i)
     em->event_type_by_format =
       hash_create_vec ( /* size */ 0, sizeof (u8), sizeof (uword));
 
+  t->type_index_plus_one = i + 1;
   hash_set_mem (em->event_type_by_format, t->format, i);
 }
 
@@ -400,14 +401,15 @@ void
 elog_time_now (elog_time_stamp_t * et)
 {
   u64 cpu_time_now, os_time_now_nsec;
+  struct timespec ts;
 
 #ifdef CLIB_UNIX
   {
 #include <sys/syscall.h>
-    struct timespec ts;
     syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
     cpu_time_now = clib_cpu_time_now ();
-    os_time_now_nsec = 1e9 * ts.tv_sec + ts.tv_nsec;
+    /* Subtract 3/30/2017's worth of seconds to retain precision */
+    os_time_now_nsec = 1e9 * (ts.tv_sec - 1490885108) + ts.tv_nsec;
   }
 #else
   cpu_time_now = clib_cpu_time_now ();
@@ -600,11 +602,21 @@ elog_cmp (void *a1, void *a2)
   elog_event_t *e1 = a1;
   elog_event_t *e2 = a2;
 
-  return e1->time - e2->time;
+  if (e1->time < e2->time)
+    return -1;
+
+  if (e1->time > e2->time)
+    return 1;
+
+  return 0;
 }
 
+/*
+ * merge two event logs. Complicated and cranky.
+ */
 void
-elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
+elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag,
+	    f64 align_tweak)
 {
   elog_event_t *e;
   uword l;
@@ -615,6 +627,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
 
   memset (&newt, 0, sizeof (newt));
 
+  /* Acquire src and dst events */
   elog_get_events (src);
   elog_get_events (dst);
 
@@ -622,7 +635,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
   vec_append (dst->string_table, src->string_table);
 
   l = vec_len (dst->events);
-  vec_add (dst->events, src->events, vec_len (src->events));
+  vec_append (dst->events, src->events);
 
   /* Prepend the supplied tag (if any) to all dst track names */
   if (dst_tag)
@@ -638,6 +651,9 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
 	}
     }
 
+  /*
+   * Remember where we started allocating new tracks while merging
+   */
   track_offset_for_src_tracks = vec_len (dst->tracks);
 
   /* Copy / tag source tracks */
@@ -688,10 +704,18 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
       (elog_time_stamp_diff_cpu (&src->init_time, &dst->init_time) * .5 *
        (dst->nsec_per_cpu_clock + src->nsec_per_cpu_clock));
 
-    /* Heuristic to see if src/dst came from same time source.
-       If frequencies are "the same" and os clock and cpu clock agree
-       to within 100e-9 secs about time difference between src/dst
-       init_time, then we use cpu clock.  Otherwise we use OS clock. */
+    /*
+     * Heuristic to see if src/dst came from same time source.
+     * If frequencies are "the same" and os clock and cpu clock agree
+     * to within 100e-9 secs about time difference between src/dst
+     * init_time, then we use cpu clock.  Otherwise we use OS clock.
+     *
+     * When merging event logs from different systems, time paradoxes
+     * at the O(1ms) level are to be expected. Hence, the "align_tweak"
+     * parameter. If two events logged on different processors are known
+     * to occur in a specific order - and with a reasonably-estimated
+     * interval - supply a non-zero "align_tweak" parameter
+     */
     if (fabs (src->nsec_per_cpu_clock - dst->nsec_per_cpu_clock) < 1e-2
 	&& fabs (dt_os_nsec - dt_clock_nsec) < 100)
       dt_event = dt_clock_nsec;
@@ -699,22 +723,44 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
     /* Convert to seconds. */
     dt_event *= 1e-9;
 
+    /*
+     * Move the earlier set of events later, to avoid creating
+     * events which preceed the Big Bang (aka have negative timestamps).
+     *
+     * Not to any scale, we have something like the following picture:
+     *
+     * DST capture start point
+     *       ^
+     *       +--- dt_event --+
+     *                       v
+     *                 SRC capture start point
+     *
+     * In this case dt_event is positive, src started after dst,
+     * to put src events onto a common timebase we have to move them
+     * forward in time. Naturally, the opposite case is
+     * possible, too: dt_event will be negative, and so we have to
+     * move dst events forward in time by the |dt_event|.
+     * In both cases, we add align_tweak.
+     */
     if (dt_event > 0)
       {
 	/* Src started after dst. */
 	for (e = dst->events + l; e < vec_end (dst->events); e++)
-	  e->time += dt_event;
+	  e->time += dt_event + align_tweak;
       }
     else
       {
 	/* Dst started after src. */
+	dt_event = -dt_event;
 	for (e = dst->events + 0; e < dst->events + l; e++)
-	  e->time += dt_event;
+	  e->time += dt_event + align_tweak;
       }
   }
 
   /* Sort events by increasing time. */
   vec_sort_with_function (dst->events, elog_cmp);
+
+  dst->n_total_events = vec_len (dst->events);
 
   /* Recreate the event ring or the results won't serialize */
   {
@@ -731,12 +777,7 @@ elog_merge (elog_main_t * dst, u8 * dst_tag, elog_main_t * src, u8 * src_tag)
 	ed = dst->event_ring + i;
 
 	ed[0] = es[0];
-
-	/* Invert elog_peek_events calculation */
-	ed->time_cycles =
-	  (es->time / dst->cpu_timer.seconds_per_clock) + dst->init_time.cpu;
       }
-    dst->n_total_events = vec_len (dst->events);
   }
 }
 
@@ -990,6 +1031,7 @@ void
 serialize_elog_main (serialize_main_t * m, va_list * va)
 {
   elog_main_t *em = va_arg (*va, elog_main_t *);
+  int flush_ring = va_arg (*va, int);
   elog_event_t *e;
 
   serialize_magic (m, elog_serialize_magic, strlen (elog_serialize_magic));
@@ -1005,8 +1047,11 @@ serialize_elog_main (serialize_main_t * m, va_list * va)
   vec_serialize (m, em->string_table, serialize_vec_8);
 
   /* Free old events (cached) in case they have changed. */
-  vec_free (em->events);
-  elog_get_events (em);
+  if (flush_ring)
+    {
+      vec_free (em->events);
+      elog_get_events (em);
+    }
 
   serialize_integer (m, vec_len (em->events), sizeof (u32));
 

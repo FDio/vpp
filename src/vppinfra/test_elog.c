@@ -52,6 +52,8 @@ test_elog_main (unformat_input_t * input)
   f64 min_sample_time;
   char *dump_file, *load_file, *merge_file, **merge_files;
   u8 *tag, **tags;
+  f64 align_tweak;
+  f64 *align_tweaks;
 
   n_iter = 100;
   max_events = 100000;
@@ -61,6 +63,7 @@ test_elog_main (unformat_input_t * input)
   load_file = 0;
   merge_files = 0;
   tags = 0;
+  align_tweaks = 0;
   min_sample_time = 2;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -83,6 +86,8 @@ test_elog_main (unformat_input_t * input)
 	;
       else if (unformat (input, "sample-time %f", &min_sample_time))
 	;
+      else if (unformat (input, "align-tweak %f", &align_tweak))
+	vec_add1 (align_tweaks, align_tweak);
       else
 	{
 	  error = clib_error_create ("unknown input `%U'\n",
@@ -102,8 +107,14 @@ test_elog_main (unformat_input_t * input)
     {
       uword i;
       elog_main_t *ems;
-
       vec_clone (ems, merge_files);
+
+      /* Supply default tags as needed */
+      if (vec_len (tags) < vec_len (ems))
+	{
+	  for (i = vec_len (tags); i < vec_len (ems); i++)
+	    vec_add1 (tags, format (0, "F%d%c", i, 0));
+	}
 
       elog_init (em, max_events);
       for (i = 0; i < vec_len (ems); i++)
@@ -113,7 +124,10 @@ test_elog_main (unformat_input_t * input)
 	    goto done;
 	  if (i > 0)
 	    {
-	      elog_merge (em, tags[0], &ems[i], tags[i]);
+	      align_tweak = 0.0;
+	      if (i <= vec_len (align_tweaks))
+		align_tweak = align_tweaks[i - 1];
+	      elog_merge (em, tags[0], &ems[i], tags[i], align_tweak);
 	      tags[0] = 0;
 	    }
 	}
@@ -217,7 +231,8 @@ test_elog_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (dump_file)
     {
-      if ((error = elog_write_file (em, dump_file)))
+      if ((error =
+	   elog_write_file (em, dump_file, 0 /* do not flush ring */ )))
 	goto done;
     }
 #endif
@@ -246,12 +261,50 @@ main (int argc, char *argv[])
   unformat_input_t i;
   int r;
 
+  clib_mem_init (0, 3ULL << 30);
+
   unformat_init_command_line (&i, argv);
   r = test_elog_main (&i);
   unformat_free (&i);
   return r;
 }
 #endif
+
+/**
+ * @brief GDB callable function: vl - Return vector length of vector
+ *
+ * @param *p - void - address of vector
+ *
+ * @return length - u32
+ *
+ */
+u32
+vl (void *p)
+{
+  return vec_len (p);
+}
+
+/**
+ * @brief GDB callable function: pe - call pool_elts - number of elements in a pool
+ *
+ * @param *v - void - address of pool
+ *
+ * @return number - uword
+ *
+ */
+#include <vppinfra/pool.h>
+uword
+pe (void *v)
+{
+  return (pool_elts (v));
+}
+
+#include <vppinfra/hash.h>
+uword
+he (void *v)
+{
+  return (hash_elts (v));
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
