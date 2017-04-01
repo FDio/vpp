@@ -3910,76 +3910,59 @@ vnet_add_del_ip6_nd_change_event (vnet_main_t * vnm,
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   ip6_address_t *address = address_arg;
-  uword *p;
-  pending_resolution_t *mc;
-  void (*fp) (u32, u8 *) = data_callback;
 
+  /* Try to find an existing entry */
+  u32 *first = (u32 *) mhash_get (&nm->mac_changes_by_address, address);
+  u32 *p = first;
+  pending_resolution_t *mc;
+  while (p && *p != ~0)
+    {
+      mc = pool_elt_at_index (nm->mac_changes, *p);
+      if (mc->node_index == node_index && mc->type_opaque == type_opaque
+	  && mc->pid == pid)
+	break;
+      p = &mc->next_index;
+    }
+
+  int found = p && *p != ~0;
   if (is_add)
     {
+      if (found)
+	return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+
       pool_get (nm->mac_changes, mc);
+      *mc = (pending_resolution_t)
+      {
+      .next_index = ~0,.node_index = node_index,.type_opaque =
+	  type_opaque,.data = data,.data_callback = data_callback,.pid =
+	  pid,};
 
-      mc->next_index = ~0;
-      mc->node_index = node_index;
-      mc->type_opaque = type_opaque;
-      mc->data = data;
-      mc->data_callback = data_callback;
-      mc->pid = pid;
-
-      p = mhash_get (&nm->mac_changes_by_address, address);
+      /* Insert new resolution at the end of the list */
+      u32 new_idx = mc - nm->mac_changes;
       if (p)
-	{
-	  /* Insert new resolution at the head of the list */
-	  mc->next_index = p[0];
-	  mhash_unset (&nm->mac_changes_by_address, address, 0);
-	}
-
-      mhash_set (&nm->mac_changes_by_address, address,
-		 mc - nm->mac_changes, 0);
-      return 0;
+	p[0] = new_idx;
+      else
+	mhash_set (&nm->mac_changes_by_address, address, new_idx, 0);
     }
   else
     {
-      u32 index;
-      pending_resolution_t *mc_last = 0;
-
-      p = mhash_get (&nm->mac_changes_by_address, address);
-      if (p == 0)
+      if (!found)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      index = p[0];
+      /* Clients may need to clean up pool entries, too */
+      void (*fp) (u32, u8 *) = data_callback;
+      if (fp)
+	(*fp) (mc->data, 0 /* no new mac addrs */ );
 
-      while (index != (u32) ~ 0)
-	{
-	  mc = pool_elt_at_index (nm->mac_changes, index);
-	  if (mc->node_index == node_index &&
-	      mc->type_opaque == type_opaque && mc->pid == pid)
-	    {
-	      /* Clients may need to clean up pool entries, too */
-	      if (fp)
-		(*fp) (mc->data, 0 /* no new mac addrs */ );
-	      if (index == p[0])
-		{
-		  mhash_unset (&nm->mac_changes_by_address, address, 0);
-		  if (mc->next_index != ~0)
-		    mhash_set (&nm->mac_changes_by_address, address,
-			       mc->next_index, 0);
-		  pool_put (nm->mac_changes, mc);
-		  return 0;
-		}
-	      else
-		{
-		  ASSERT (mc_last);
-		  mc_last->next_index = mc->next_index;
-		  pool_put (nm->mac_changes, mc);
-		  return 0;
-		}
-	    }
-	  mc_last = mc;
-	  index = mc->next_index;
-	}
+      /* Remove the entry from the list and delete the entry */
+      *p = mc->next_index;
+      pool_put (nm->mac_changes, mc);
 
-      return VNET_API_ERROR_NO_SUCH_ENTRY;
+      /* Remove from hash if we deleted the last entry */
+      if (*p == ~0 && p == first)
+	mhash_unset (&nm->mac_changes_by_address, address, 0);
     }
+  return 0;
 }
 
 int
