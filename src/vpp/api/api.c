@@ -199,7 +199,7 @@ int ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
 
 int ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp);
 
-void
+static void
 handle_ip4_arp_event (u32 pool_index)
 {
   vpe_api_main_t *vam = &vpe_api_main;
@@ -1571,11 +1571,12 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
   vpe_api_main_t *am = &vpe_api_main;
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_want_ip4_arp_events_reply_t *rmp;
-  vl_api_ip4_arp_event_t *event;
   int rv;
 
   if (mp->enable_disable)
     {
+      vl_api_ip4_arp_event_t *event;
+      pool_get (am->arp_events, event);
       rv = vnet_add_del_ip4_arp_change_event
 	(vnm, arp_change_data_callback,
 	 mp->pid, &mp->address /* addr, in net byte order */ ,
@@ -1583,8 +1584,10 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 	 IP4_ARP_EVENT, event - am->arp_events, 1 /* is_add */ );
 
       if (rv)
-	goto out;
-      pool_get (am->arp_events, event);
+	{
+	  pool_put (am->arp_events, event);
+	  goto out;
+	}
       memset (event, 0, sizeof (*event));
 
       event->_vl_msg_id = ntohs (VL_API_IP4_ARP_EVENT);
@@ -1613,12 +1616,24 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
   vpe_api_main_t *am = &vpe_api_main;
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_want_ip6_nd_events_reply_t *rmp;
-  vl_api_ip6_nd_event_t *event;
   int rv;
 
   if (mp->enable_disable)
     {
+      vl_api_ip6_nd_event_t *event;
       pool_get (am->nd_events, event);
+
+      rv = vnet_add_del_ip6_nd_change_event
+	(vnm, nd_change_data_callback,
+	 mp->pid, mp->address /* addr, in net byte order */ ,
+	 vpe_resolver_process_node.index,
+	 IP6_ND_EVENT, event - am->nd_events, 1 /* is_add */ );
+
+      if (rv)
+	{
+	  pool_put (am->nd_events, event);
+	  goto out;
+	}
       memset (event, 0, sizeof (*event));
 
       event->_vl_msg_id = ntohs (VL_API_IP6_ND_EVENT);
@@ -1629,11 +1644,6 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
       if (ip6_address_is_zero ((ip6_address_t *) mp->address))
 	event->mac_ip = 1;
 
-      rv = vnet_add_del_ip6_nd_change_event
-	(vnm, nd_change_data_callback,
-	 mp->pid, mp->address /* addr, in net byte order */ ,
-	 vpe_resolver_process_node.index,
-	 IP6_ND_EVENT, event - am->nd_events, 1 /* is_add */ );
     }
   else
     {
@@ -1643,6 +1653,7 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
 	 vpe_resolver_process_node.index,
 	 IP6_ND_EVENT, ~0 /* pool index */ , 0 /* is_add */ );
     }
+out:
   REPLY_MACRO (VL_API_WANT_IP6_ND_EVENTS_REPLY);
 }
 
