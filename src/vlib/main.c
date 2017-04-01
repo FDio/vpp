@@ -701,7 +701,7 @@ elog_save_buffer (vlib_main_t * vm,
 		   elog_buffer_capacity (em), chroot_file);
 
   vlib_worker_thread_barrier_sync (vm);
-  error = elog_write_file (em, chroot_file);
+  error = elog_write_file (em, chroot_file, 1 /* flush ring */ );
   vlib_worker_thread_barrier_release (vm);
   vec_free (chroot_file);
   return error;

@@ -130,8 +130,6 @@ int read_clib_file(char *clib_file)
 
     finalize_events();
 
-    em->events = elog_get_events (em);
-
     cpel_event_init(vec_len(em->events));
 
     starttime = em->events[0].time;
@@ -151,4 +149,9 @@ int read_clib_file(char *clib_file)
     set_pid_ax_width(8*widest_track_format);
 
     return(0);
+}
+
+unsigned int vl(void *a)
+{
+    return vec_len (a);
 }
