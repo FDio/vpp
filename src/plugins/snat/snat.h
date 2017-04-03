@@ -223,7 +223,7 @@ typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
                                         vlib_node_runtime_t *node,
                                         u32 thread_index,
                                         vlib_buffer_t *b0,
-                                        snat_session_key_t *p_key,
+                                        u8 *p_proto,
                                         snat_session_key_t *p_value,
                                         u8 *p_dont_translate,
                                         void *d);
@@ -402,23 +402,19 @@ typedef struct {
 } tcp_udp_header_t;
 
 u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0,
-                           snat_session_key_t *p_key,
+                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0,
-                           snat_session_key_t *p_key,
+                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0,
-                           snat_session_key_t *p_key,
+                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0,
-                           snat_session_key_t *p_key,
+                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 
@@ -436,6 +432,31 @@ icmp_is_error_message (icmp46_header_t * icmp)
       return 1;
     }
   return 0;
+}
+
+static_always_inline u8
+is_interface_addr(snat_main_t *sm, vlib_node_runtime_t *node, u32 sw_if_index0,
+                  u32 ip4_addr)
+{
+  snat_runtime_t *rt = (snat_runtime_t *) node->runtime_data;
+  ip4_address_t * first_int_addr;
+
+  if (PREDICT_FALSE(rt->cached_sw_if_index != sw_if_index0))
+    {
+      first_int_addr =
+        ip4_interface_first_address (sm->ip4_main, sw_if_index0,
+                                     0 /* just want the address */);
+      rt->cached_sw_if_index = sw_if_index0;
+      if (first_int_addr)
+        rt->cached_ip4_address = first_int_addr->as_u32;
+      else
+        rt->cached_ip4_address = 0;
+    }
+
+  if (PREDICT_FALSE(ip4_addr == rt->cached_ip4_address))
+    return 1;
+  else
+    return 0;
 }
 
 #endif /* __included_snat_h__ */
