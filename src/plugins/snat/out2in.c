@@ -1236,6 +1236,16 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
 
+          if (PREDICT_FALSE(ip0->ttl == 1))
+            {
+              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
+              goto trace0;
+            }
+
           key0.ext_host_addr = ip0->src_address;
           key0.ext_host_port = tcp0->src;
           key0.out_port = tcp0->dst;
@@ -1330,6 +1340,16 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
           tcp1 = (tcp_header_t *) udp1;
 
           sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_RX];
+
+          if (PREDICT_FALSE(ip1->ttl == 1))
+            {
+              vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next1 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
+              goto trace1;
+            }
 
           key1.ext_host_addr = ip1->src_address;
           key1.ext_host_port = tcp1->src;
@@ -1456,6 +1476,16 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
           tcp0 = (tcp_header_t *) udp0;
 
           sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
+
+          if (PREDICT_FALSE(ip0->ttl == 1))
+            {
+              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
+              goto trace00;
+            }
 
           key0.ext_host_addr = ip0->src_address;
           key0.ext_host_port = tcp0->src;
@@ -1801,6 +1831,16 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
 	  rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index(sw_if_index0);
 
 	  vnet_feature_next (sw_if_index0, &next0, b0);
+
+          if (PREDICT_FALSE(ip0->ttl == 1))
+            {
+              vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+              icmp4_error_set_vnet_buffer (b0, ICMP4_time_exceeded,
+                                           ICMP4_time_exceeded_ttl_exceeded_in_transit,
+                                           0);
+              next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
+              goto trace00;
+            }
 
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
