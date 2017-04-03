@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-bin_PROGRAMS += c2cpel cpelatency cpeldump cpelinreg cpelstate
+bin_PROGRAMS += c2cpel cpelatency cpeldump cpelinreg cpelstate elog_merge
 
 lib_LTLIBRARIES += libcperf.la
 
@@ -37,5 +37,8 @@ cpelinreg_LDADD = $(PERFTOOL_LIBS)
 
 cpelstate_SOURCES = tools/perftool/cpelstate.c
 cpelstate_LDADD = $(PERFTOOL_LIBS)
+
+elog_merge_SOURCES = tools/perftool/elog_merge.c
+elog_merge_LDADD = $(PERFTOOL_LIBS)
 
 # vi:syntax=automake

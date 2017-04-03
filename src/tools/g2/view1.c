@@ -63,10 +63,12 @@
  */
 
 GdkFont *g_font;                /* a fixed-width font to use */
+/* color format: 0 (for static colors), r (0-64k), g (0-64k), b (0-64k) */
 GdkColor fg_black = {0, 0, 0, 0};
+GdkColor fg_red   = {0, 65535, 0, 0};
 GdkColor bg_white = {0, 65535, 65535, 65535};
 static boolean summary_mode = TRUE; /* start out in summary mode */
-static boolean color_mode   = FALSE; /* start out in color mode   */
+static boolean color_mode   = FALSE; /* start out in monochrome mode   */
 
 /*
  * Locals
@@ -98,6 +100,8 @@ enum view1_button_click {
     BACKWARD_BUTTON,
     SUMMARY_BUTTON,
     NOSUMMARY_BUTTON,
+    SLEW_LEFT_BUTTON,
+    SLEW_RIGHT_BUTTON,
 };
 
 enum chase_mode {
@@ -139,6 +143,7 @@ typedef struct v1_geometry {
     int event_offset;           /* Vertical offset of the event boxes */
     int total_height;           /* total height of da, see configure_event */
     int total_width;            /* ditto, for width */
+    double last_time_interval;  /* last time interval, in f64 seconds */
     
     /* Derived values */
     int first_pid_index;        /* Index of first displayed PID */
@@ -209,6 +214,9 @@ static GtkWidget *s_view1_backward_button;
 
 static GtkWidget *s_view1_summary_button;
 static GtkWidget *s_view1_nosummary_button;
+
+static GtkWidget *s_view1_time_slew_right_button;
+static GtkWidget *s_view1_time_slew_left_button;
 
 static GtkWidget *s_view1_hscroll;
 static GtkObject *s_view1_hsadj;
@@ -774,7 +782,13 @@ static void read_snapshot(void)
 #define COLOR_DEFAULT (-1)
 static void set_color(int pid_index)
 {
-    if (pid_index == COLOR_DEFAULT || !color_mode) {
+    pid_sort_t *psp;
+
+    psp = (g_pids + pid_index);
+    
+    if (psp->selected)
+        gdk_gc_set_foreground(da->style->black_gc, &s_color[0]);
+    else if (pid_index == COLOR_DEFAULT || !color_mode) {
         gdk_gc_set_foreground(da->style->black_gc, &fg_black);
     } else {
         gdk_gc_set_foreground(da->style->black_gc, 
@@ -786,7 +800,7 @@ static void set_color(int pid_index)
 * toggle_event_select
 ****************************************************************************/
 
-static void toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
+static int toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
 {
     int pid_index, start_index;
     int x, y;
@@ -799,7 +813,7 @@ static void toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
     double time_per_pixel;
 
     if (g_nevents == 0)
-        return;
+        return 0;
 
     time_per_pixel = dtime_per_pixel(vp);
 
@@ -807,7 +821,7 @@ static void toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
 
     /* Too far right? */
     if (start_index >= g_nevents)
-        return;
+        return 0;
     
     /* 
      * To see if the mouse hit a visible event, use a variant
@@ -864,7 +878,7 @@ static void toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
             if (gdk_rectangle_intersect(rp, &hit_rect, &dummy)) {
                 ep->flags &= ~EVENT_FLAG_SELECT;
                 view1_display_when_idle();
-                break;
+                return 0;
             }
         } 
 
@@ -878,7 +892,7 @@ static void toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
             if (ep->flags & EVENT_FLAG_SELECT) {
                 ep->flags &= ~EVENT_FLAG_SELECT;
                 view1_display_when_idle();
-                break;
+                return 0;
             } else {
                 set_color(ep->pid->pid_index);
 
@@ -890,11 +904,61 @@ static void toggle_event_select(GdkEventButton *event, v1_geometry_t *vp)
                 ep->flags &= ~EVENT_FLAG_SEARCHRSLT;
                 s_last_selected_event = ep;
             }
-            break;
+            return 0;
         }
         ep++;
     }
+    return -1;
 }
+
+/****************************************************************************
+* toggle_track_select
+****************************************************************************/
+
+static void toggle_track_select (GdkEventButton *event, 
+                                 v1_geometry_t  *vp)
+{
+    int i;
+    int pid_index;
+    int y, delta_y;
+    pid_sort_t *psp;
+    
+    if (g_nevents == 0)
+        return;
+
+    /* Scan pid/track axis locations, looking for a match */
+    for (i = 0; i < vp->npids; i++) {
+        y = i*vp->strip_height + vp->pid_ax_offset;
+        delta_y = y - event->y;
+        if (delta_y < 0)
+            delta_y = -delta_y;
+        if (delta_y < 10) {
+            goto found;
+        }
+
+    }
+    infobox("NOTE", "\nNo PID/Track In Range\nPlease Try Again");
+    return;
+    
+ found:
+    pid_index = i + vp->first_pid_index;
+    psp = (g_pids + pid_index);
+    psp->selected ^= 1;
+    view1_display_when_idle();
+}
+
+/****************************************************************************
+* deselect_tracks
+****************************************************************************/
+static void deselect_tracks (void)
+{
+    int i;
+
+    for (i = 0; i < g_npids; i++)
+        g_pids[i].selected = 0;
+
+}
+
 
 /****************************************************************************
 * move_current_track
@@ -1241,8 +1305,9 @@ button_press_event (GtkWidget *widget, GdkEventButton *event)
                            GDK_SHIFT_MASK) {
                     move_current_track(event, s_v1, MOVE_TOP);
                 } else {
-                    /* No modifiers: toggle the event */
-                    toggle_event_select(event, s_v1);
+                    /* No modifiers: toggle the event / select track */
+                    if (toggle_event_select(event, s_v1))
+                        toggle_track_select(event, s_v1);
                 }
                 /* Repaint to get rid of the zoom bar */
                 if (zoom_bar_up) {
@@ -1332,6 +1397,7 @@ button_press_event (GtkWidget *widget, GdkEventButton *event)
             } else {
                 sprintf(tmpbuf, "%8.0f nsec", nsec);
             }
+            s_v1->last_time_interval = nsec;
             tbox(tmpbuf, (int)(press3_event.x), s_v1->pop_offset,
                  TBOX_DRAW_BOXED);
             return(TRUE);
@@ -1575,13 +1641,16 @@ static void init_track_colors(void)
         /*
          * First time through: allocate the array to hold the GCs.
          */
-        s_color = g_malloc(sizeof(GdkColor) * g_npids);
+        s_color = g_malloc(sizeof(GdkColor) * (g_npids+1));
     }
 
     /*
      * Go through and assign a color for each track.
      */
-    for (i = 0; i < g_npids; i++) {
+    /* Setup entry 0 in the colormap as pure red (for selection) */
+    s_color[0] = fg_red;
+
+    for (i = 1; i < g_npids; i++) {
         /*
          * We compute the color from a hash of the thread name. That way we get
          * a distribution of different colors, and the same thread has the same
@@ -1633,7 +1702,7 @@ static void init_track_colors(void)
      * values.
      */
     gdk_colormap_alloc_colors(gtk_widget_get_colormap(da), 
-                              s_color, g_npids, FALSE, TRUE, dont_care);
+                              s_color, g_npids+1, FALSE, TRUE, dont_care);
 }
 
 
@@ -1892,6 +1961,69 @@ static boolean print_screen_callback(char *filename)
     return(TRUE);
 }
 
+int event_time_cmp (const void *a, const void *b)
+{
+    const event_t *e1 = a;
+    const event_t *e2 = b;
+
+    if (e1->time < e2->time)
+        return -1;
+    else if (e1->time > e2->time)
+        return 1;
+    return 0;
+}
+
+/****************************************************************************
+* slew_tracks
+****************************************************************************/
+static void slew_tracks (v1_geometry_t *vp, enum view1_button_click which)
+{
+    event_t *ep;
+    pid_sort_t *pp;
+    int pid_index;
+    ulonglong delta;
+    
+    delta = (ulonglong) (vp->last_time_interval);
+
+    /* Make sure we don't push events to the left of the big bang */
+    if (which == SLEW_LEFT_BUTTON) {
+        for (ep = g_events; ep < (g_events + g_nevents); ep++) {
+            pid_index = ep->pid->pid_index;
+            pp = (g_pids + pid_index);
+            
+            if (pp->selected) {
+                if (ep->time < delta) {
+                    infobox("Slew Range Error", 
+                            "\nCan't slew selected data left that far..."
+                            "\nEvents would preceed the Big Bang (t=0)...");
+                    goto out;
+                }
+            }
+        }
+    }
+
+    for (ep = g_events; ep < (g_events + g_nevents); ep++) {
+        pid_index = ep->pid->pid_index;
+        pp = (g_pids + pid_index);
+
+        if (pp->selected) {
+            if (which == SLEW_LEFT_BUTTON)
+                ep->time -= delta;
+            else
+                ep->time += delta;
+        }
+    }
+
+    /* Re-sort the events, to avoid screwing up the event display */
+    qsort (g_events, g_nevents, sizeof(event_t), event_time_cmp);
+
+    /* De-select tracks */
+    deselect_tracks();
+
+out:
+    view1_display_when_idle();
+}
+
 /****************************************************************************
 * view1_button_click_callback 
 ****************************************************************************/
@@ -1903,7 +2035,6 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
     ulonglong event_incdec;
     ulonglong current_width;
     ulonglong zoom_delta;
-
 
     current_width = s_v1->maxvistime - s_v1->minvistime;
     event_incdec = (current_width) / 3;
@@ -2059,6 +2190,15 @@ static void view1_button_click_callback(GtkButton *item, gpointer data)
         summary_mode = FALSE;
         gtk_widget_show (s_view1_summary_button);
         gtk_widget_hide (s_view1_nosummary_button);
+        break;
+
+    case SLEW_LEFT_BUTTON:
+    case SLEW_RIGHT_BUTTON:
+        if (s_v1->last_time_interval < 10e-9) {
+            infobox("slew", "\nNo time interval set...\n");        
+            break;
+        }
+        slew_tracks (s_v1, click);
         break;
     }
 
@@ -2351,6 +2491,9 @@ void view1_init(void)
     s_view1_summary_button = gtk_button_new_with_label("Summary");
     s_view1_nosummary_button = gtk_button_new_with_label("NoSummary");
 
+    s_view1_time_slew_left_button = gtk_button_new_with_label("<-TimeSlew");
+    s_view1_time_slew_right_button = gtk_button_new_with_label("TimeSlew->");
+
     gtk_signal_connect (GTK_OBJECT(s_view1_snapbutton), "clicked",
                         GTK_SIGNAL_FUNC(view1_button_click_callback), 
                         (gpointer) SNAP_BUTTON);
@@ -2395,6 +2538,14 @@ void view1_init(void)
                         GTK_SIGNAL_FUNC(view1_button_click_callback), 
                         (gpointer) NOSUMMARY_BUTTON);
 
+    gtk_signal_connect (GTK_OBJECT(s_view1_time_slew_left_button), "clicked",
+                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        (gpointer) SLEW_LEFT_BUTTON);
+
+    gtk_signal_connect (GTK_OBJECT(s_view1_time_slew_right_button), "clicked",
+                        GTK_SIGNAL_FUNC(view1_button_click_callback), 
+                        (gpointer) SLEW_RIGHT_BUTTON);
+
     gtk_box_pack_start (GTK_BOX(s_view1_vbox), s_view1_hmenubox2,
                         FALSE, FALSE, 0);
     
@@ -2429,6 +2580,14 @@ void view1_init(void)
                         FALSE, FALSE, 0);
 
     gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), s_view1_nosummary_button,
+                        FALSE, FALSE, 0);
+
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), 
+                        s_view1_time_slew_left_button,
+                        FALSE, FALSE, 0);
+
+    gtk_box_pack_start (GTK_BOX(s_view1_hmenubox2), 
+                        s_view1_time_slew_right_button,
                         FALSE, FALSE, 0);
 
     s_view1_label = gtk_label_new(NULL);
@@ -2750,8 +2909,9 @@ static void display_pid_axis(v1_geometry_t *vp)
         if (pid_index >= g_npids)
             break;
 
-        set_color(pid_index);
         pp = (g_pids + pid_index);
+
+        set_color(pid_index);
 
         label_fmt = get_track_label(pp->pid_value);
         snprintf(tmpbuf, sizeof(tmpbuf)-1, label_fmt, pp->pid_value);

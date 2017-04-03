@@ -157,6 +157,7 @@ typedef struct pid_sort {
      * This is a bit of a hack, since this is used only by the view:
      */
     unsigned color_index;
+    int selected;
 } pid_sort_t;
 
 typedef struct event {
