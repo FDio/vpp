@@ -2549,6 +2549,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
     {
       sm->in2out_node_index = snat_det_in2out_node.index;
       sm->out2in_node_index = snat_det_out2in_node.index;
+      sm->icmp_match_in2out_cb = icmp_match_in2out_det;
+      sm->icmp_match_out2in_cb = icmp_match_out2in_det;
     }
   else
     {
