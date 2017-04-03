@@ -56,19 +56,12 @@ u8 * format_gre_rx_trace (u8 * s, va_list * args)
   return s;
 }
 
-typedef struct {
-  /* Sparse vector mapping gre protocol in network byte order
-     to next index. */
-  u16 * next_by_protocol;
-} gre_input_runtime_t;
-
 static uword
 gre_input (vlib_main_t * vm,
 	   vlib_node_runtime_t * node,
 	   vlib_frame_t * from_frame)
 {
   gre_main_t * gm = &gre_main;
-  gre_input_runtime_t * rt = (void *) node->runtime_data;
   __attribute__((unused)) u32 n_left_from, next_index, * from, * to_next;
   u64 cached_tunnel_key = (u64) ~0;
   u32 cached_tunnel_sw_if_index = 0, tunnel_sw_if_index = 0;
@@ -144,10 +137,10 @@ gre_input (vlib_main_t * vm,
 	  /* Index sparse array with network byte order. */
 	  protocol0 = h0->protocol;
 	  protocol1 = h1->protocol;
-	  sparse_vec_index2 (rt->next_by_protocol, protocol0, protocol1,
+	  sparse_vec_index2 (gm->next_by_protocol, protocol0, protocol1,
                              &i0, &i1);
-          next0 = vec_elt(rt->next_by_protocol, i0);
-          next1 = vec_elt(rt->next_by_protocol, i1);
+          next0 = vec_elt(gm->next_by_protocol, i0);
+          next1 = vec_elt(gm->next_by_protocol, i1);
 
 	  b0->error = node->errors[i0 == SPARSE_VEC_INVALID_INDEX ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
 	  b1->error = node->errors[i1 == SPARSE_VEC_INVALID_INDEX ? GRE_ERROR_UNKNOWN_PROTOCOL : GRE_ERROR_NONE];
@@ -319,8 +312,8 @@ drop1:
 
 	  h0 = vlib_buffer_get_current (b0);
 
-	  i0 = sparse_vec_index (rt->next_by_protocol, h0->protocol);
-          next0 = vec_elt(rt->next_by_protocol, i0);
+	  i0 = sparse_vec_index (gm->next_by_protocol, h0->protocol);
+          next0 = vec_elt(gm->next_by_protocol, i0);
 
 	  b0->error = 
               node->errors[i0 == SPARSE_VEC_INVALID_INDEX 
@@ -422,8 +415,6 @@ VLIB_REGISTER_NODE (gre_input_node) = {
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
 
-  .runtime_data_bytes = sizeof (gre_input_runtime_t),
-
   .n_errors = GRE_N_ERROR,
   .error_strings = gre_error_strings,
 
@@ -463,13 +454,9 @@ gre_register_input_protocol (vlib_main_t * vm,
 				       node_index);
 
   /* Setup gre protocol -> next index sparse vector mapping. */
-  foreach_vlib_main ({
-    gre_input_runtime_t * rt;
-    rt = vlib_node_get_runtime_data (this_vlib_main, gre_input_node.index);
-    n = sparse_vec_validate (rt->next_by_protocol,
-                             clib_host_to_net_u16 (protocol));
-    n[0] = pi->next_index;
-  });
+  n = sparse_vec_validate (em->next_by_protocol,
+                           clib_host_to_net_u16 (protocol));
+  n[0] = pi->next_index;
 }
 
 static void
@@ -485,7 +472,7 @@ gre_setup_node (vlib_main_t * vm, u32 node_index)
 
 static clib_error_t * gre_input_init (vlib_main_t * vm)
 {
-  gre_input_runtime_t * rt;
+  gre_main_t * gm = &gre_main;
   vlib_node_t *ethernet_input, *ip4_input, *ip6_input, *mpls_unicast_input;
 
   {
@@ -497,10 +484,8 @@ static clib_error_t * gre_input_init (vlib_main_t * vm)
 
   gre_setup_node (vm, gre_input_node.index);
 
-  rt = vlib_node_get_runtime_data (vm, gre_input_node.index);
-
-  rt->next_by_protocol = sparse_vec_new
-    (/* elt bytes */ sizeof (rt->next_by_protocol[0]),
+  gm->next_by_protocol = sparse_vec_new
+    (/* elt bytes */ sizeof (gm->next_by_protocol[0]),
      /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
 
   /* These could be moved to the supported protocol input node defn's */
@@ -532,16 +517,3 @@ static clib_error_t * gre_input_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (gre_input_init);
 
-static clib_error_t * gre_input_worker_init (vlib_main_t * vm)
-{
-  gre_input_runtime_t * rt;
-
-  rt = vlib_node_get_runtime_data (vm, gre_input_node.index);
-
-  rt->next_by_protocol = sparse_vec_new
-    (/* elt bytes */ sizeof (rt->next_by_protocol[0]),
-     /* bits in index */ BITS (((gre_header_t *) 0)->protocol));
-  return 0;
-}
-
-VLIB_WORKER_INIT_FUNCTION (gre_input_worker_init);
