@@ -227,20 +227,23 @@ create_session_for_static_mapping (snat_main_t *sm,
 }
 
 static_always_inline
-snat_out2in_error_t icmp_get_key(icmp46_header_t *icmp0,
+snat_out2in_error_t icmp_get_key(ip4_header_t *ip0,
                                  snat_session_key_t *p_key0)
 {
+  icmp46_header_t *icmp0;
   snat_session_key_t key0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0;
   void *l4_header = 0;
   icmp46_header_t *inner_icmp0;
 
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
   if (!icmp_is_error_message (icmp0))
     {
       key0.protocol = SNAT_PROTOCOL_ICMP;
+      key0.addr = ip0->dst_address;
       key0.port = echo0->identifier;
     }
   else
@@ -248,6 +251,7 @@ snat_out2in_error_t icmp_get_key(icmp46_header_t *icmp0,
       inner_ip0 = (ip4_header_t *)(echo0+1);
       l4_header = ip4_next_header (inner_ip0);
       key0.protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      key0.addr = inner_ip0->src_address;
       switch (key0.protocol)
         {
         case SNAT_PROTOCOL_ICMP:
@@ -328,14 +332,13 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 
-  err = icmp_get_key (icmp0, &key0);
+  err = icmp_get_key (ip0, &key0);
   if (err != -1)
     {
       b0->error = node->errors[SNAT_OUT2IN_ERROR_UNSUPPORTED_PROTOCOL];
       next0 = SNAT_OUT2IN_NEXT_DROP;
       goto out;
     }
-  key0.addr = ip0->dst_address;
   key0.fib_index = rx_fib_index0;
 
   kv0.key = key0.as_u64;
@@ -407,7 +410,6 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
                            u8 *p_dont_translate, void *d)
 {
   ip4_header_t *ip0;
-  icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u32 rx_fib_index0;
   snat_session_key_t key0;
@@ -417,18 +419,16 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
   int err;
 
   ip0 = vlib_buffer_get_current (b0);
-  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 
-  err = icmp_get_key (icmp0, &key0);
+  err = icmp_get_key (ip0, &key0);
   if (err != -1)
     {
       b0->error = node->errors[err];
       next0 = SNAT_OUT2IN_NEXT_DROP;
       goto out2;
     }
-  key0.addr = ip0->dst_address;
   key0.fib_index = rx_fib_index0;
 
   if (snat_static_mapping_match(sm, key0, &sm0, 1))
@@ -693,11 +693,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index0);
 
-          proto0 = ip_proto_to_snat_proto (ip0->protocol);
-
-          if (PREDICT_FALSE (proto0 == ~0))
-              goto trace0;
-
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
               vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
@@ -707,6 +702,11 @@ snat_out2in_node_fn (vlib_main_t * vm,
               next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
               goto trace0;
             }
+
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
+
+          if (PREDICT_FALSE (proto0 == ~0))
+              goto trace0;
 
           if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
             {
@@ -828,20 +828,20 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index1);
 
-          proto1 = ip_proto_to_snat_proto (ip1->protocol);
-
-          if (PREDICT_FALSE (proto1 == ~0))
-              goto trace1;
-
-          if (PREDICT_FALSE(ip0->ttl == 1))
+          if (PREDICT_FALSE(ip1->ttl == 1))
             {
               vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
               icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
                                            ICMP4_time_exceeded_ttl_exceeded_in_transit,
                                            0);
-              next0 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
+              next1 = SNAT_OUT2IN_NEXT_ICMP_ERROR;
               goto trace1;
             }
+
+          proto1 = ip_proto_to_snat_proto (ip1->protocol);
+
+          if (PREDICT_FALSE (proto1 == ~0))
+              goto trace1;
 
           if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
             {
