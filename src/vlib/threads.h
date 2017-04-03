@@ -19,6 +19,7 @@
 #include <linux/sched.h>
 
 extern vlib_main_t **vlib_mains;
+extern __thread uword vlib_thread_index;
 
 void vlib_set_thread_name (char *name);
 
@@ -152,8 +153,6 @@ typedef struct
 
 /* Called early, in thread 0's context */
 clib_error_t *vlib_thread_init (vlib_main_t * vm);
-
-vlib_worker_thread_t *vlib_alloc_thread (vlib_main_t * vm);
 
 int vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 			      u32 frame_queue_index, vlib_frame_t * frame,

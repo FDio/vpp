@@ -35,27 +35,12 @@ vl (void *p)
 vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
 
+__thread uword vlib_thread_index = 0;
+
 uword
 os_get_cpu_number (void)
 {
-  void *sp;
-  uword n;
-  u32 len;
-
-  len = vec_len (vlib_thread_stacks);
-  if (len == 0)
-    return 0;
-
-  /* Get any old stack address. */
-  sp = &sp;
-
-  n = ((uword) sp - (uword) vlib_thread_stacks[0])
-    >> VLIB_LOG2_THREAD_STACK_SIZE;
-
-  /* "processes" have their own stacks, and they always run in thread 0 */
-  n = n >= len ? 0 : n;
-
-  return n;
+  return vlib_thread_index;
 }
 
 uword
@@ -275,21 +260,6 @@ vlib_thread_init (vlib_main_t * vm)
   return 0;
 }
 
-vlib_worker_thread_t *
-vlib_alloc_thread (vlib_main_t * vm)
-{
-  vlib_worker_thread_t *w;
-
-  if (vec_len (vlib_worker_threads) >= vec_len (vlib_thread_stacks))
-    {
-      clib_warning ("out of worker threads... Quitting...");
-      exit (1);
-    }
-  vec_add2 (vlib_worker_threads, w, 1);
-  w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
-  return w;
-}
-
 vlib_frame_queue_t *
 vlib_frame_queue_alloc (int nelts)
 {
@@ -497,6 +467,8 @@ vlib_worker_thread_bootstrap_fn (void *arg)
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
 
+  vlib_thread_index = w - vlib_worker_threads;
+
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
      (uword) arg, w->thread_stack + VLIB_THREAD_STACK_SIZE);
@@ -610,6 +582,15 @@ start_workers (vlib_main_t * vm)
 		  mheap_alloc (0 /* use VM */ , tr->mheap_size);
 	      else
 		w->thread_mheap = main_heap;
+
+	      vec_validate (vlib_thread_stacks, worker_thread_index);
+	      vlib_thread_stacks[worker_thread_index] =
+		clib_mem_alloc_aligned (VLIB_THREAD_STACK_SIZE,
+					VLIB_THREAD_STACK_SIZE);
+	      if (mprotect
+		  (vlib_thread_stacks[worker_thread_index],
+		   clib_mem_get_page_size (), PROT_READ) < 0)
+		clib_unix_warning ("thread stack");
 	      w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
 	      w->thread_function = tr->function;
 	      w->thread_function_arg = w;
