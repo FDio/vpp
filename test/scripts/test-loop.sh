@@ -94,7 +94,7 @@ do
 	if [[ "$PRE_EXEC_CMD" != "" ]]
 	then
 		echo "Executing \`$PRE_EXEC_CMD' before test.."
-		if ! ($PRE_EXEC_CMD 2>$TMP 1>$TMP)
+		if ! ($PRE_EXEC_CMD 2>&1 | tee $TMP)
 		then
 			echo "\`$PRE_EXEC_CMD' failed!" >&2
 			REASON="$PRE_EXEC_CMD failed"
@@ -102,7 +102,7 @@ do
 		fi
 	fi
 	echo -n "Running test iteration #$COUNT..."
-	if ! ($CMD 2>$TMP 1>$TMP)
+	if ! ($CMD >$TMP 2>&1)
 	then
 		AFTER=`date +%s`
 		RUNTIME=$((AFTER-BEFORE))
