@@ -267,8 +267,8 @@ class BFDTestSession(object):
             self.our_seq_number = our_seq_number
         self.vpp_seq_number = None
         self.my_discriminator = 0
-        self.desired_min_tx = 100000
-        self.required_min_rx = 100000
+        self.desired_min_tx = 300000
+        self.required_min_rx = 300000
         self.required_min_echo_rx = None
         self.detect_mult = detect_mult
         self.diag = BFDDiagCode.no_diagnostic
@@ -735,7 +735,7 @@ class BFD4TestCase(VppTestCase):
                 pass
         self.assert_equal(
             len(self.vapi.collect_events()), 0, "number of bfd events")
-        self.test_session.update(required_min_rx=100000)
+        self.test_session.update(required_min_rx=300000)
         for dummy in range(3):
             self.test_session.send_packet()
             wait_for_bfd_packet(
@@ -864,7 +864,8 @@ class BFD4TestCase(VppTestCase):
             required_min_rx=0.5 * self.vpp_session.required_min_rx)
         # now we wait 0.8*3*old-req-min-rx and the session should still be up
         self.sleep(0.8 * self.vpp_session.detect_mult *
-                   old_required_min_rx / USEC_IN_SEC)
+                   old_required_min_rx / USEC_IN_SEC,
+                   "wait before finishing poll sequence")
         self.assert_equal(len(self.vapi.collect_events()), 0,
                           "number of bfd events")
         p = wait_for_bfd_packet(self)
@@ -876,11 +877,12 @@ class BFD4TestCase(VppTestCase):
         final[BFD].flags = "F"
         self.test_session.send_packet(final)
         # now the session should time out under new conditions
-        before = time.time()
-        e = self.vapi.wait_for_event(1, "bfd_udp_session_details")
-        after = time.time()
         detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
+        before = time.time()
+        e = self.vapi.wait_for_event(
+            2 * detection_time, "bfd_udp_session_details")
+        after = time.time()
         self.assert_in_range(after - before,
                              0.9 * detection_time,
                              1.1 * detection_time,

@@ -237,7 +237,7 @@ class VppBFDUDPSession(VppObject):
     """ Represents BFD UDP session in VPP """
 
     def __init__(self, test, interface, peer_addr, local_addr=None, af=AF_INET,
-                 desired_min_tx=100000, required_min_rx=100000, detect_mult=3,
+                 desired_min_tx=300000, required_min_rx=300000, detect_mult=3,
                  sha1_key=None, bfd_key_id=None):
         self._test = test
         self._interface = interface
