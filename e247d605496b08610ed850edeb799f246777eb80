@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_035af9f2",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-04-03T17:38:26Z",
+      "side": 0,
+      "message": "Since next_by_dst_port in node runtime data does not work for multi-thread, won\u0027t there be an issue for the punt_known flag as well? I wonder if we should also put this in udp_main or separate ip4/6_punt_unknown flags?",
+      "range": {
+        "startLine": 66,
+        "startChar": 5,
+        "endLine": 66,
+        "endChar": 17
+      },
+      "revId": "e247d605496b08610ed850edeb799f246777eb80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
