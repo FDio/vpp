@@ -417,15 +417,17 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
 }
 
 static_always_inline
-snat_in2out_error_t icmp_get_key(icmp46_header_t *icmp0,
+snat_in2out_error_t icmp_get_key(ip4_header_t *ip0,
                                  snat_session_key_t *p_key0)
 {
+  icmp46_header_t *icmp0;
   snat_session_key_t key0;
   icmp_echo_header_t *echo0, *inner_echo0 = 0;
   ip4_header_t *inner_ip0 = 0;
   void *l4_header = 0;
   icmp46_header_t *inner_icmp0;
 
+  icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
   if (!icmp_is_error_message (icmp0))
@@ -433,6 +435,7 @@ snat_in2out_error_t icmp_get_key(icmp46_header_t *icmp0,
       if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
         return SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE;
       key0.protocol = SNAT_PROTOCOL_ICMP;
+      key0.addr = ip0->src_address;
       key0.port = echo0->identifier;
     }
   else
@@ -440,6 +443,7 @@ snat_in2out_error_t icmp_get_key(icmp46_header_t *icmp0,
       inner_ip0 = (ip4_header_t *)(echo0+1);
       l4_header = ip4_next_header (inner_ip0);
       key0.protocol = ip_proto_to_snat_proto (inner_ip0->protocol);
+      key0.addr = inner_ip0->dst_address;
       switch (key0.protocol)
         {
         case SNAT_PROTOCOL_ICMP:
@@ -496,14 +500,13 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 
-  err = icmp_get_key (icmp0, &key0);
+  err = icmp_get_key (ip0, &key0);
   if (err != -1)
     {
       b0->error = node->errors[err];
       next0 = SNAT_IN2OUT_NEXT_DROP;
       goto out;
     }
-  key0.addr = ip0->src_address;
   key0.fib_index = rx_fib_index0;
 
   kv0.key = key0.as_u64;
@@ -578,14 +581,13 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 
-  err = icmp_get_key (icmp0, &key0);
+  err = icmp_get_key (ip0, &key0);
   if (err != -1)
     {
       b0->error = node->errors[err];
       next0 = SNAT_IN2OUT_NEXT_DROP;
       goto out2;
     }
-  key0.addr = ip0->src_address;
   key0.fib_index = rx_fib_index0;
 
   if (snat_static_mapping_match(sm, key0, &sm0, 0))
@@ -694,7 +696,7 @@ static inline u32 icmp_in2out (snat_main_t *sm,
 
       old_addr0 = inner_ip0->dst_address.as_u32;
       inner_ip0->dst_address = sm0.addr;
-      new_addr0 = inner_ip0->src_address.as_u32;
+      new_addr0 = inner_ip0->dst_address.as_u32;
 
       sum0 = icmp0->checksum;
       sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
@@ -955,8 +957,6 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           next0 = next1 = SNAT_IN2OUT_NEXT_LOOKUP;
 
-          proto0 = ip_proto_to_snat_proto (ip0->protocol);
-
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
               vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
@@ -966,6 +966,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
               goto trace00;
             }
+
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           /* Next configured feature, probably ip4-lookup */
           if (is_slow_path)
@@ -1095,17 +1097,17 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  rx_fib_index1 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index1);
 
-          proto1 = ip_proto_to_snat_proto (ip1->protocol);
-
-          if (PREDICT_FALSE(ip0->ttl == 1))
+          if (PREDICT_FALSE(ip1->ttl == 1))
             {
               vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
               icmp4_error_set_vnet_buffer (b1, ICMP4_time_exceeded,
                                            ICMP4_time_exceeded_ttl_exceeded_in_transit,
                                            0);
-              next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
+              next1 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
               goto trace01;
             }
+
+          proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
           /* Next configured feature, probably ip4-lookup */
           if (is_slow_path)
@@ -1270,8 +1272,6 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  rx_fib_index0 = vec_elt (sm->ip4_main->fib_index_by_sw_if_index, 
                                    sw_if_index0);
 
-          proto0 = ip_proto_to_snat_proto (ip0->protocol);
-
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
               vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
@@ -1281,6 +1281,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
               goto trace0;
             }
+
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           /* Next configured feature, probably ip4-lookup */
           if (is_slow_path)
@@ -1565,6 +1567,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               clib_warning("no match for internal host %U",
                            format_ip4_address, &ip0->src_address);
+              next0 = SNAT_IN2OUT_NEXT_DROP;
               b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace0;
             }
@@ -1587,12 +1590,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                   ses0 = snat_det_ses_create(dm0, &ip0->src_address, tcp0->src, &key0);
                   break;
                 }
-                if (PREDICT_FALSE(!ses0))
-                  {
-                    next0 = SNAT_IN2OUT_NEXT_DROP;
-                    b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
-                    goto trace0;
-                  }
+              if (PREDICT_FALSE(!ses0))
+                {
+                  next0 = SNAT_IN2OUT_NEXT_DROP;
+                  b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
+                  goto trace0;
+                }
             }
 
           new_port0 = ses0->out.out_port;
@@ -1686,12 +1689,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               clib_warning("no match for internal host %U",
                            format_ip4_address, &ip0->src_address);
+              next1 = SNAT_IN2OUT_NEXT_DROP;
               b1->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace1;
             }
 
           snat_det_forward(dm1, &ip1->src_address, &new_addr1, &lo_port1);
-
 
           ses1 = snat_det_find_ses_by_in(dm1, &ip1->src_address, tcp1->src);
           if (PREDICT_FALSE(!ses1))
@@ -1709,12 +1712,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                   ses1 = snat_det_ses_create(dm1, &ip1->src_address, tcp1->src, &key1);
                   break;
                 }
-                if (PREDICT_FALSE(!ses1))
-                  {
-                    next1 = SNAT_IN2OUT_NEXT_DROP;
-                    b1->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
-                    goto trace1;
-                  }
+              if (PREDICT_FALSE(!ses1))
+                {
+                  next1 = SNAT_IN2OUT_NEXT_DROP;
+                  b1->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
+                  goto trace1;
+                }
             }
 
           new_port1 = ses1->out.out_port;
@@ -1842,6 +1845,7 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
             {
               clib_warning("no match for internal host %U",
                            format_ip4_address, &ip0->src_address);
+              next0 = SNAT_IN2OUT_NEXT_DROP;
               b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               goto trace00;
             }
@@ -1864,12 +1868,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                   ses0 = snat_det_ses_create(dm0, &ip0->src_address, tcp0->src, &key0);
                   break;
                 }
-                if (PREDICT_FALSE(!ses0))
-                  {
-                    next0 = SNAT_IN2OUT_NEXT_DROP;
-                    b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
-                    goto trace00;
-                  }
+              if (PREDICT_FALSE(!ses0))
+                {
+                  next0 = SNAT_IN2OUT_NEXT_DROP;
+                  b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
+                  goto trace00;
+                }
             }
 
           new_port0 = ses0->out.out_port;
