@@ -510,13 +510,28 @@ thread0 (uword arg)
   return i;
 }
 
+u8 *
+vlib_thread_stack_init (uword thread_index)
+{
+  vec_validate (vlib_thread_stacks, thread_index);
+  vlib_thread_stacks[thread_index] = clib_mem_alloc_aligned
+    (VLIB_THREAD_STACK_SIZE, VLIB_THREAD_STACK_SIZE);
+
+  /*
+   * Disallow writes to the bottom page of the stack, to
+   * catch stack overflows.
+   */
+  if (mprotect (vlib_thread_stacks[thread_index],
+		clib_mem_get_page_size (), PROT_READ) < 0)
+    clib_unix_warning ("thread stack");
+  return vlib_thread_stacks[thread_index];
+}
+
 int
 vlib_unix_main (int argc, char *argv[])
 {
   vlib_main_t *vm = &vlib_global_main;	/* one and only time for this! */
-  vlib_thread_main_t *tm = &vlib_thread_main;
   unformat_input_t input;
-  u8 *thread_stacks;
   clib_error_t *e;
   int i;
 
@@ -548,29 +563,9 @@ vlib_unix_main (int argc, char *argv[])
     }
   unformat_free (&input);
 
-  /*
-   * allocate n x VLIB_THREAD_STACK_SIZE stacks, aligned to a
-   * VLIB_THREAD_STACK_SIZE boundary
-   * See also: os_get_cpu_number() in vlib/vlib/threads.c
-   */
-  thread_stacks = clib_mem_alloc_aligned
-    ((uword) tm->n_thread_stacks * VLIB_THREAD_STACK_SIZE,
-     VLIB_THREAD_STACK_SIZE);
+  vlib_thread_stack_init (0);
 
-  vec_validate (vlib_thread_stacks, tm->n_thread_stacks - 1);
-  for (i = 0; i < vec_len (vlib_thread_stacks); i++)
-    {
-      vlib_thread_stacks[i] = thread_stacks;
-
-      /*
-       * Disallow writes to the bottom page of the stack, to
-       * catch stack overflows.
-       */
-      if (mprotect (thread_stacks, clib_mem_get_page_size (), PROT_READ) < 0)
-	clib_unix_warning ("thread stack");
-
-      thread_stacks += VLIB_THREAD_STACK_SIZE;
-    }
+  vlib_thread_index = 0;
 
   i = clib_calljmp (thread0, (uword) vm,
 		    (void *) (vlib_thread_stacks[0] +
