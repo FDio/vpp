@@ -146,6 +146,13 @@ typedef struct
   uword *dst_port_info_by_name[N_UDP_AF];
   uword *dst_port_info_by_dst_port[N_UDP_AF];
 
+  /* Sparse vector mapping udp dst_port in network byte order
+     to next index. */
+  u16 *next_by_dst_port4;
+  u16 *next_by_dst_port6;
+  u8 punt_unknown4;
+  u8 punt_unknown6;
+
   /* convenience */
   vlib_main_t *vlib_main;
 } udp_main_t;
