@@ -32,6 +32,7 @@
 #define SNAT_UDP_TIMEOUT 300
 #define SNAT_TCP_TRANSITORY_TIMEOUT 240
 #define SNAT_TCP_ESTABLISHED_TIMEOUT 7440
+#define SNAT_ICMP_TIMEOUT 60
 
 /* Key */
 typedef struct {
@@ -106,7 +107,8 @@ typedef enum {
   _(3, TCP_ESTABLISHED, "tcp-established") \
   _(4, TCP_FIN_WAIT, "tcp-fin-wait")       \
   _(5, TCP_CLOSE_WAIT, "tcp-close-wait")   \
-  _(6, TCP_LAST_ACK, "tcp-last-ack")
+  _(6, TCP_LAST_ACK, "tcp-last-ack")       \
+  _(7, ICMP_ACTIVE, "icmp-active")
 
 typedef enum {
 #define _(v, N, s) SNAT_SESSION_##N = v,

@@ -2215,6 +2215,11 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
       goto out;
     }
 
+  u32 now = (u32) vlib_time_now (sm->vlib_main);
+
+  ses0->state = SNAT_SESSION_ICMP_ACTIVE;
+  ses0->expire = now + SNAT_ICMP_TIMEOUT;
+
 out:
   *p_proto = protocol;
   if (ses0)
