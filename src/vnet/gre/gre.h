@@ -159,6 +159,10 @@ typedef struct {
    */
   u32 * tunnel_index_by_sw_if_index;
 
+  /* Sparse vector mapping gre protocol in network byte order
+     to next index. */
+  u16 * next_by_protocol;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;
