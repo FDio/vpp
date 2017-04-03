@@ -226,7 +226,8 @@ typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
                                         u8 *p_proto,
                                         snat_session_key_t *p_value,
                                         u8 *p_dont_translate,
-                                        void *d);
+                                        void *d,
+                                        void *e);
 
 typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip, u32 rx_fib_index);
 
@@ -404,19 +405,27 @@ typedef struct {
 u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d);
+                           u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d);
+                           u8 *p_dont_translate, void *d, void *e);
+u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
+                          u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                          snat_session_key_t *p_value,
+                          u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d);
+                           u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
                            u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                            snat_session_key_t *p_value,
-                           u8 *p_dont_translate, void *d);
+                           u8 *p_dont_translate, void *d, void *e);
+u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
+                          u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                          snat_session_key_t *p_value,
+                          u8 *p_dont_translate, void *d, void *e);
 
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)
