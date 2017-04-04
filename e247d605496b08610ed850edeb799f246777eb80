@@ -22,6 +22,30 @@
       "revId": "e247d605496b08610ed850edeb799f246777eb80",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_b9fa34bb",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-04-04T19:32:26Z",
+      "side": 0,
+      "message": "You cannot memcpy runtime data from main to worker and expect that pointer there is still valid so this was broken from day one.\n\nIf you need to init worker runtime_data then you can use VLIB_WORKER_INIT_FUNCTION which is called when worker is initialized. Problem is that this is too late so main sparse vector is already populated with some entries \nso here I had 2 options. Duplicate sparse vector on each worker or simply keep single sparse vector for all threads.\n\npunt_unknown was also broken before, as it was modified only on main core. Let e submit another patch  and also move punt_unknown to udp_main_t",
+      "parentUuid": "3a3291f1_035af9f2",
+      "range": {
+        "startLine": 66,
+        "startChar": 5,
+        "endLine": 66,
+        "endChar": 17
+      },
+      "revId": "e247d605496b08610ed850edeb799f246777eb80",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
