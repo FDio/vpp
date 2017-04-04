@@ -57,11 +57,12 @@ struct bfd_session_s;
 /**
  * @brief add the necessary transport layer by prepending it to existing data
  *
+ *
  * @param is_echo 1 if this is echo packet, 0 if control frame
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
+int bfd_add_udp4_transport (vlib_main_t * vm, u32 bi,
 			    const struct bfd_session_s *bs, int is_echo);
 
 /**
@@ -71,8 +72,28 @@ int bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
  *
  * @return 1 on success, 0 on failure
  */
-int bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
+int bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
 			    const struct bfd_session_s *bs, int is_echo);
+
+/**
+ * @brief transport packet over udpv4
+ *
+ * @param is_echo 1 if this is echo packet, 0 if control frame
+ *
+ * @return 1 on success, 0 on failure
+ */
+int bfd_transport_udp4 (vlib_main_t * vm, u32 bi,
+			const struct bfd_session_s *bs);
+
+/**
+ * @brief transport packet over udpv6
+ *
+ * @param is_echo 1 if this is echo packet, 0 if control frame
+ *
+ * @return 1 on success, 0 on failure
+ */
+int bfd_transport_udp6 (vlib_main_t * vm, u32 bi,
+			const struct bfd_session_s *bs);
 
 /**
  * @brief check if the bfd udp layer is echo-capable at this time

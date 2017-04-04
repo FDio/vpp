@@ -316,7 +316,8 @@ int bfd_verify_pkt_auth (const bfd_pkt_t * pkt, u16 pkt_size,
 			 bfd_session_t * bs);
 void bfd_event (bfd_main_t * bm, bfd_session_t * bs);
 void bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
-				   bfd_main_t * bm, bfd_session_t * bs);
+				   bfd_main_t * bm, bfd_session_t * bs,
+				   int is_local);
 u8 *format_bfd_session (u8 * s, va_list * args);
 u8 *format_bfd_auth_key (u8 * s, va_list * args);
 void bfd_session_set_flags (bfd_session_t * bs, u8 admin_up_down);
