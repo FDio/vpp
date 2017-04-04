@@ -1384,8 +1384,8 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   u8 *s;
   s = format (0, "SCRIPT: vxlan_add_del_tunnel ");
 
-  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->dst_address);
-  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->src_address);
+  ip46_address_t src = to_ip46 (mp->is_ipv6, mp->src_address);
+  ip46_address_t dst = to_ip46 (mp->is_ipv6, mp->dst_address);
 
   u8 is_grp = ip46_address_is_multicast (&dst);
   char *dst_name = is_grp ? "group" : "dst";
@@ -1403,9 +1403,6 @@ static void *vl_api_vxlan_add_del_tunnel_t_print
   s = format (s, "decap-next %d ", ntohl (mp->decap_next_index));
 
   s = format (s, "vni %d ", ntohl (mp->vni));
-
-  if (mp->is_add == 0)
-    s = format (s, "del ");
 
   if (mp->is_add == 0)
     s = format (s, "del ");
