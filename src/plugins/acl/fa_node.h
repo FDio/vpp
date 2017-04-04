@@ -22,10 +22,12 @@
 typedef union {
   u64 as_u64;
   struct {
-    u8 tcp_flags_valid;
     u8 tcp_flags;
-    u8 is_input;
-    u8 l4_valid;
+    u8 tcp_flags_valid:1;
+    u8 is_input:1;
+    u8 l4_valid:1;
+    u8 is_nonfirst_fragment:1;
+    u8 flags_reserved:4;
   };
 } fa_packet_info_t;
 

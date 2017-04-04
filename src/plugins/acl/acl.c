@@ -2008,6 +2008,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
     }
     goto done;
   }
+  if (unformat (input, "l4-match-nonfirst-fragment %u", &val))
+    {
+      am->l4_match_nonfirst_fragment = (val != 0);
+      goto done;
+    }
   if (unformat (input, "session")) {
     if (unformat (input, "clear")) {
       acl_main_t *am = &acl_main;
@@ -2204,6 +2209,8 @@ acl_init (vlib_main_t * vm)
 #define _(N, v, s) am->fa_ipv6_known_eh_bitmap = clib_bitmap_set(am->fa_ipv6_known_eh_bitmap, v, 1);
   foreach_acl_eh
 #undef _
+
+  am->l4_match_nonfirst_fragment = 1;
 
   return error;
 }
