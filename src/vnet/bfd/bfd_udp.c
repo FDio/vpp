@@ -51,6 +51,14 @@ typedef struct
   int echo_source_is_set;
   /* loopback interface used to get echo source ip */
   u32 echo_source_sw_if_index;
+  /* node index of "ip4-arp" node */
+  u32 ip4_arp_idx;
+  /* node index of "ip6-discover-neighbor" node */
+  u32 ip6_ndp_idx;
+  /* node index of "ip4-rewrite" node */
+  u32 ip4_rewrite_idx;
+  /* node index of "ip6-rewrite" node */
+  u32 ip6_rewrite_idx;
 } bfd_udp_main_t;
 
 static vlib_node_registration_t bfd_udp4_input_node;
@@ -231,15 +239,18 @@ bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index, int *have_usable_ip4,
 }
 
 int
-bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
+bfd_add_udp4_transport (vlib_main_t * vm, u32 bi,
 			const bfd_session_t * bs, int is_echo)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 
   b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
   vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
   typedef struct
   {
     ip4_header_t ip4;
@@ -283,15 +294,18 @@ bfd_add_udp4_transport (vlib_main_t * vm, vlib_buffer_t * b,
 }
 
 int
-bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
+bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
 			const bfd_session_t * bs, int is_echo)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
 
   b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
   vnet_buffer (b)->ip.adj_index[VLIB_RX] = bus->adj_index;
   vnet_buffer (b)->ip.adj_index[VLIB_TX] = bus->adj_index;
+  vnet_buffer (b)->sw_if_index[VLIB_RX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
   typedef struct
   {
     ip6_header_t ip6;
@@ -342,6 +356,76 @@ bfd_add_udp6_transport (vlib_main_t * vm, vlib_buffer_t * b,
   if (headers->udp.checksum == 0)
     {
       headers->udp.checksum = 0xffff;
+    }
+  return 1;
+}
+
+static void
+bfd_create_frame_to_next_node (vlib_main_t * vm, u32 bi, u32 next_node)
+{
+  vlib_frame_t *f = vlib_get_frame_to_node (vm, next_node);
+  u32 *to_next = vlib_frame_vector_args (f);
+  to_next[0] = bi;
+  f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, next_node, f);
+}
+
+int
+bfd_udp_calc_next_node (const struct bfd_session_s *bs, u32 * next_node)
+{
+  const bfd_udp_session_t *bus = &bs->udp;
+  ip_adjacency_t *adj = adj_get (bus->adj_index);
+  switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_ARP:
+      switch (bs->transport)
+	{
+	case BFD_TRANSPORT_UDP4:
+	  *next_node = bfd_udp_main.ip4_arp_idx;
+	  return 1;
+	case BFD_TRANSPORT_UDP6:
+	  *next_node = bfd_udp_main.ip6_ndp_idx;
+	  return 1;
+	}
+      break;
+    case IP_LOOKUP_NEXT_REWRITE:
+      switch (bs->transport)
+	{
+	case BFD_TRANSPORT_UDP4:
+	  *next_node = bfd_udp_main.ip4_rewrite_idx;
+	  return 1;
+	case BFD_TRANSPORT_UDP6:
+	  *next_node = bfd_udp_main.ip6_rewrite_idx;
+	  return 1;
+	}
+      break;
+    default:
+      /* drop */
+      break;
+    }
+  return 0;
+}
+
+int
+bfd_transport_udp4 (vlib_main_t * vm, u32 bi, const struct bfd_session_s *bs)
+{
+  u32 next_node;
+  int rv = bfd_udp_calc_next_node (bs, &next_node);
+  if (rv)
+    {
+      bfd_create_frame_to_next_node (vm, bi, next_node);
+    }
+  return rv;
+}
+
+int
+bfd_transport_udp6 (vlib_main_t * vm, u32 bi, const struct bfd_session_s *bs)
+{
+  u32 next_node;
+  int rv = bfd_udp_calc_next_node (bs, &next_node);
+  if (rv)
+    {
+      bfd_create_frame_to_next_node (vm, bi, next_node);
     }
   return 1;
 }
@@ -703,7 +787,8 @@ bfd_udp_auth_deactivate (u32 sw_if_index,
 typedef enum
 {
   BFD_UDP_INPUT_NEXT_NORMAL,
-  BFD_UDP_INPUT_NEXT_REPLY,
+  BFD_UDP_INPUT_NEXT_REPLY_ARP,
+  BFD_UDP_INPUT_NEXT_REPLY_REWRITE,
   BFD_UDP_INPUT_N_NEXT,
 } bfd_udp_input_next_t;
 
@@ -1112,8 +1197,11 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  const bfd_pkt_t *pkt = vlib_buffer_get_current (b0);
 	  if (bfd_pkt_get_poll (pkt))
 	    {
+	      b0->current_data = 0;
+	      b0->current_length = 0;
+	      memset (vnet_buffer (b0), 0, sizeof (*vnet_buffer (b0)));
 	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main,
-					    bs);
+					    bs, 0);
 	      if (is_ipv6)
 		{
 		  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
@@ -1124,7 +1212,20 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  vlib_node_increment_counter (vm, bfd_udp4_input_node.index,
 					       b0->error, 1);
 		}
-	      next0 = BFD_UDP_INPUT_NEXT_REPLY;
+	      const bfd_udp_session_t *bus = &bs->udp;
+	      ip_adjacency_t *adj = adj_get (bus->adj_index);
+	      switch (adj->lookup_next_index)
+		{
+		case IP_LOOKUP_NEXT_ARP:
+		  next0 = BFD_UDP_INPUT_NEXT_REPLY_ARP;
+		  break;
+		case IP_LOOKUP_NEXT_REWRITE:
+		  next0 = BFD_UDP_INPUT_NEXT_REPLY_REWRITE;
+		  break;
+		default:
+		  /* drop */
+		  break;
+		}
 	    }
 	}
       vlib_set_next_frame_buffer (vm, rt, next0, bi0);
@@ -1161,7 +1262,8 @@ VLIB_REGISTER_NODE (bfd_udp4_input_node, static) = {
   .next_nodes =
       {
               [BFD_UDP_INPUT_NEXT_NORMAL] = "error-drop",
-              [BFD_UDP_INPUT_NEXT_REPLY] = "ip4-lookup",
+              [BFD_UDP_INPUT_NEXT_REPLY_ARP] = "ip4-arp",
+              [BFD_UDP_INPUT_NEXT_REPLY_REWRITE] = "ip4-lookup",
       },
 };
 /* *INDENT-ON* */
@@ -1188,7 +1290,8 @@ VLIB_REGISTER_NODE (bfd_udp6_input_node, static) = {
   .next_nodes =
       {
               [BFD_UDP_INPUT_NEXT_NORMAL] = "error-drop",
-              [BFD_UDP_INPUT_NEXT_REPLY] = "ip6-lookup",
+              [BFD_UDP_INPUT_NEXT_REPLY_ARP] = "ip6-discover-neighbor",
+              [BFD_UDP_INPUT_NEXT_REPLY_REWRITE] = "ip6-lookup",
       },
 };
 /* *INDENT-ON* */
@@ -1246,7 +1349,7 @@ bfd_udp_echo_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      vlib_node_increment_counter (vm, bfd_udp_echo4_input_node.index,
 					   b0->error, 1);
 	    }
-	  next0 = BFD_UDP_INPUT_NEXT_REPLY;
+	  next0 = BFD_UDP_INPUT_NEXT_REPLY_REWRITE;
 	}
 
       vlib_set_next_frame_buffer (vm, rt, next0, bi0);
@@ -1300,7 +1403,8 @@ VLIB_REGISTER_NODE (bfd_udp_echo4_input_node, static) = {
   .next_nodes =
       {
               [BFD_UDP_INPUT_NEXT_NORMAL] = "error-drop",
-              [BFD_UDP_INPUT_NEXT_REPLY] = "ip4-lookup",
+              [BFD_UDP_INPUT_NEXT_REPLY_ARP] = "ip4-arp",
+              [BFD_UDP_INPUT_NEXT_REPLY_REWRITE] = "ip4-lookup",
       },
 };
 /* *INDENT-ON* */
@@ -1328,7 +1432,8 @@ VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
   .next_nodes =
       {
               [BFD_UDP_INPUT_NEXT_NORMAL] = "error-drop",
-              [BFD_UDP_INPUT_NEXT_REPLY] = "ip6-lookup",
+              [BFD_UDP_INPUT_NEXT_REPLY_ARP] = "ip6-discover-neighbor",
+              [BFD_UDP_INPUT_NEXT_REPLY_REWRITE] = "ip6-lookup",
       },
 };
 
@@ -1375,6 +1480,19 @@ bfd_udp_init (vlib_main_t * vm)
 			 bfd_udp_echo4_input_node.index, 1);
   udp_register_dst_port (vm, UDP_DST_PORT_bfd_echo6,
 			 bfd_udp_echo6_input_node.index, 0);
+  vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip4-arp");
+  ASSERT (node);
+  bfd_udp_main.ip4_arp_idx = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-discover-neighbor");
+  ASSERT (node);
+  bfd_udp_main.ip6_ndp_idx = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "ip4-rewrite");
+  ASSERT (node);
+  bfd_udp_main.ip4_rewrite_idx = node->index;
+  node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite");
+  ASSERT (node);
+  bfd_udp_main.ip6_rewrite_idx = node->index;
+
   return 0;
 }
 

@@ -63,13 +63,6 @@ bfd_clocks_to_usec (const bfd_main_t * bm, u64 clocks)
 
 static vlib_node_registration_t bfd_process_node;
 
-/* set to 0 here, real values filled at startup */
-static u32 bfd_node_index_by_transport[] = {
-#define F(t, n) [BFD_TRANSPORT_##t] = 0,
-  foreach_bfd_transport (F)
-#undef F
-};
-
 u8 *
 format_bfd_auth_key (u8 * s, va_list * args)
 {
@@ -560,51 +553,70 @@ bfd_on_config_change (vlib_main_t * vm, vlib_node_runtime_t * rt,
 }
 
 static void
-bfd_add_transport_layer (vlib_main_t * vm, vlib_buffer_t * b,
-			 bfd_session_t * bs)
+bfd_add_transport_layer (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
 {
   switch (bs->transport)
     {
     case BFD_TRANSPORT_UDP4:
       BFD_DBG ("Transport bfd via udp4, bs_idx=%u", bs->bs_idx);
-      bfd_add_udp4_transport (vm, b, bs, 0 /* is_echo */ );
+      bfd_add_udp4_transport (vm, bi, bs, 0 /* is_echo */ );
       break;
     case BFD_TRANSPORT_UDP6:
       BFD_DBG ("Transport bfd via udp6, bs_idx=%u", bs->bs_idx);
-      bfd_add_udp6_transport (vm, b, bs, 0 /* is_echo */ );
+      bfd_add_udp6_transport (vm, bi, bs, 0 /* is_echo */ );
       break;
     }
 }
 
 static int
-bfd_echo_add_transport_layer (vlib_main_t * vm, vlib_buffer_t * b,
-			      bfd_session_t * bs)
+bfd_transport_control_frame (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
 {
   switch (bs->transport)
     {
     case BFD_TRANSPORT_UDP4:
-      BFD_DBG ("Transport bfd echo via udp4, bs_idx=%u", bs->bs_idx);
-      return bfd_add_udp4_transport (vm, b, bs, 1 /* is_echo */ );
+      BFD_DBG ("Transport bfd via udp4, bs_idx=%u", bs->bs_idx);
+      return bfd_transport_udp4 (vm, bi, bs);
       break;
     case BFD_TRANSPORT_UDP6:
-      BFD_DBG ("Transport bfd echo via udp6, bs_idx=%u", bs->bs_idx);
-      return bfd_add_udp6_transport (vm, b, bs, 1 /* is_echo */ );
+      BFD_DBG ("Transport bfd via udp6, bs_idx=%u", bs->bs_idx);
+      return bfd_transport_udp6 (vm, bi, bs);
       break;
     }
   return 0;
 }
 
-static void
-bfd_create_frame_to_next_node (vlib_main_t * vm, bfd_session_t * bs, u32 bi)
+static int
+bfd_echo_add_transport_layer (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
 {
+  switch (bs->transport)
+    {
+    case BFD_TRANSPORT_UDP4:
+      BFD_DBG ("Transport bfd echo via udp4, bs_idx=%u", bs->bs_idx);
+      return bfd_add_udp4_transport (vm, bi, bs, 1 /* is_echo */ );
+      break;
+    case BFD_TRANSPORT_UDP6:
+      BFD_DBG ("Transport bfd echo via udp6, bs_idx=%u", bs->bs_idx);
+      return bfd_add_udp6_transport (vm, bi, bs, 1 /* is_echo */ );
+      break;
+    }
+  return 0;
+}
 
-  vlib_frame_t *f =
-    vlib_get_frame_to_node (vm, bfd_node_index_by_transport[bs->transport]);
-
-  u32 *to_next = vlib_frame_vector_args (f);
-  to_next[0] = bi;
-  f->n_vectors = 1;
-  vlib_put_frame_to_node (vm, bfd_node_index_by_transport[bs->transport], f);
+static int
+bfd_transport_echo (vlib_main_t * vm, u32 bi, bfd_session_t * bs)
+{
+  switch (bs->transport)
+    {
+    case BFD_TRANSPORT_UDP4:
+      BFD_DBG ("Transport bfd echo via udp4, bs_idx=%u", bs->bs_idx);
+      return bfd_transport_udp4 (vm, bi, bs);
+      break;
+    case BFD_TRANSPORT_UDP6:
+      BFD_DBG ("Transport bfd echo via udp6, bs_idx=%u", bs->bs_idx);
+      return bfd_transport_udp6 (vm, bi, bs);
+      break;
+    }
+  return 0;
 }
 
 #if WITH_LIBSSL > 0
@@ -704,7 +716,7 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
   bfd_pkt_set_diag_code (pkt, bs->local_diag);
   bfd_pkt_set_state (pkt, bs->local_state);
   pkt->head.detect_mult = bs->local_detect_mult;
-  pkt->head.length = clib_host_to_net_u32 (bfd_length);
+  pkt->head.length = bfd_length;
   pkt->my_disc = bs->local_discr;
   pkt->your_disc = bs->remote_discr;
   pkt->des_min_tx = clib_host_to_net_u32 (bs->config_desired_min_tx_usec);
@@ -725,8 +737,7 @@ bfd_init_control_frame (bfd_main_t * bm, bfd_session_t * bs,
 
 static void
 bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
-	       bfd_main_t * bm, bfd_session_t * bs, u64 now,
-	       int handling_wakeup)
+	       bfd_main_t * bm, bfd_session_t * bs, u64 now)
 {
   if (!bfd_is_echo_possible (bs))
     {
@@ -734,7 +745,8 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
       bs->echo = 0;
       return;
     }
-  /* sometimes the wheel expires an event a bit sooner than requested, account
+  /* sometimes the wheel expires an event a bit sooner than requested,
+     account
      for that here */
   if (now + bm->wheel_inaccuracy >= bs->echo_tx_timeout_clocks)
     {
@@ -747,6 +759,8 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       ASSERT (b->current_data == 0);
+      memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       bfd_echo_pkt_t *pkt = vlib_buffer_get_current (b);
       memset (pkt, 0, sizeof (*pkt));
       pkt->discriminator = bs->local_discr;
@@ -756,7 +770,14 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	bfd_calc_echo_checksum (bs->local_discr, pkt->expire_time_clocks,
 				bs->echo_secret);
       b->current_length = sizeof (*pkt);
-      if (!bfd_echo_add_transport_layer (vm, b, bs))
+      if (!bfd_echo_add_transport_layer (vm, bi, bs))
+	{
+	  BFD_ERR ("cannot send echo packet out, turning echo off");
+	  bs->echo = 0;
+	  vlib_buffer_free_one (vm, bi);
+	  return;
+	}
+      if (!bfd_transport_echo (vm, bi, bs))
 	{
 	  BFD_ERR ("cannot send echo packet out, turning echo off");
 	  bs->echo = 0;
@@ -765,7 +786,6 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       bs->echo_last_tx_clocks = now;
       bfd_calc_next_echo_tx (bm, bs, now);
-      bfd_create_frame_to_next_node (vm, bs, bi);
     }
   else
     {
@@ -777,8 +797,7 @@ bfd_send_echo (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 static void
 bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
-		   bfd_main_t * bm, bfd_session_t * bs, u64 now,
-		   int handling_wakeup)
+		   bfd_main_t * bm, bfd_session_t * bs, u64 now)
 {
   if (!bs->remote_min_rx_usec && BFD_POLL_NOT_NEEDED == bs->poll_state)
     {
@@ -798,8 +817,10 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
       BFD_DBG ("Remote demand is set, not sending periodic control frame");
       return;
     }
-  /* sometimes the wheel expires an event a bit sooner than requested, account
-     for that here */
+  /*
+   * sometimes the wheel expires an event a bit sooner than requested, account
+   * for that here
+   */
   if (now + bm->wheel_inaccuracy >= bs->tx_timeout_clocks)
     {
       BFD_DBG ("\nSending periodic control frame: %U", format_bfd_session,
@@ -812,6 +833,8 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
       vlib_buffer_t *b = vlib_get_buffer (vm, bi);
       ASSERT (b->current_data == 0);
+      memset (vnet_buffer (b), 0, sizeof (*vnet_buffer (b)));
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       bfd_init_control_frame (bm, bs, b);
       switch (bs->poll_state)
 	{
@@ -837,10 +860,13 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  break;
 	}
       bfd_add_auth_section (b, bs);
-      bfd_add_transport_layer (vm, b, bs);
+      bfd_add_transport_layer (vm, bi, bs);
+      if (!bfd_transport_control_frame (vm, bi, bs))
+	{
+	  vlib_buffer_free_one (vm, bi);
+	}
       bs->last_tx_clocks = now;
       bfd_calc_next_tx (bm, bs, now);
-      bfd_create_frame_to_next_node (vm, bs, bi);
     }
   else
     {
@@ -852,13 +878,15 @@ bfd_send_periodic (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 void
 bfd_init_final_control_frame (vlib_main_t * vm, vlib_buffer_t * b,
-			      bfd_main_t * bm, bfd_session_t * bs)
+			      bfd_main_t * bm, bfd_session_t * bs,
+			      int is_local)
 {
   BFD_DBG ("Send final control frame for bs_idx=%lu", bs->bs_idx);
   bfd_init_control_frame (bm, bs, b);
   bfd_pkt_set_final (vlib_buffer_get_current (b));
   bfd_add_auth_section (b, bs);
-  bfd_add_transport_layer (vm, b, bs);
+  u32 bi = vlib_get_buffer_index (vm, b);
+  bfd_add_transport_layer (vm, bi, bs);
   bs->last_tx_clocks = clib_cpu_time_now ();
   /*
    * RFC allows to include changes in final frame, so if there were any
@@ -871,8 +899,10 @@ static void
 bfd_check_rx_timeout (bfd_main_t * bm, bfd_session_t * bs, u64 now,
 		      int handling_wakeup)
 {
-  /* sometimes the wheel expires an event a bit sooner than requested, account
-     for that here */
+  /*
+   * sometimes the wheel expires an event a bit sooner than requested, account
+   * for that here
+   */
   if (bs->last_rx_clocks + bs->detection_time_clocks <=
       now + bm->wheel_inaccuracy)
     {
@@ -907,14 +937,14 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
   switch (bs->local_state)
     {
     case BFD_STATE_admin_down:
-      bfd_send_periodic (vm, rt, bm, bs, now, 1);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_down:
-      bfd_send_periodic (vm, rt, bm, bs, now, 1);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_init:
       bfd_check_rx_timeout (bm, bs, now, 1);
-      bfd_send_periodic (vm, rt, bm, bs, now, 1);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       break;
     case BFD_STATE_up:
       bfd_check_rx_timeout (bm, bs, now, 1);
@@ -932,10 +962,10 @@ bfd_on_timeout (vlib_main_t * vm, vlib_node_runtime_t * rt, bfd_main_t * bm,
 					      bs->config_required_min_rx_clocks));
 	  bfd_set_poll_state (bs, BFD_POLL_NEEDED);
 	}
-      bfd_send_periodic (vm, rt, bm, bs, now, 1);
+      bfd_send_periodic (vm, rt, bm, bs, now);
       if (bs->echo)
 	{
-	  bfd_send_echo (vm, rt, bm, bs, now, 1);
+	  bfd_send_echo (vm, rt, bm, bs, now);
 	}
       break;
     }
@@ -996,7 +1026,8 @@ bfd_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    {
 	      bfd_session_t *bs =
 		pool_elt_at_index (bm->sessions, *event_data);
-	      bfd_send_periodic (vm, rt, bm, bs, now, 1);
+	      bfd_send_periodic (vm, rt, bm, bs, now);
+	      bfd_set_timer (bm, bs, now, 1);
 	    }
 	  else
 	    {
@@ -1113,14 +1144,6 @@ bfd_main_init (vlib_main_t * vm)
   const u64 now = clib_cpu_time_now ();
   timing_wheel_init (&bm->wheel, now, bm->cpu_cps);
   bm->wheel_inaccuracy = 2 << bm->wheel.log2_clocks_per_bin;
-
-  vlib_node_t *node = NULL;
-#define F(t, n)                                                 \
-  node = vlib_get_node_by_name (vm, (u8 *)n);                   \
-  bfd_node_index_by_transport[BFD_TRANSPORT_##t] = node->index; \
-  BFD_DBG ("node '%s' has index %u", n, node->index);
-  foreach_bfd_transport (F);
-#undef F
   return 0;
 }
 
@@ -1654,10 +1677,12 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
     {
       if (BFD_STATE_down == bs->remote_state)
 	{
+	  bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
 	  bfd_set_state (bm, bs, BFD_STATE_init, 0);
 	}
       else if (BFD_STATE_init == bs->remote_state)
 	{
+	  bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
 	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
 	}
     }
@@ -1666,6 +1691,7 @@ bfd_consume_pkt (bfd_main_t * bm, const bfd_pkt_t * pkt, u32 bs_idx)
       if (BFD_STATE_up == bs->remote_state ||
 	  BFD_STATE_init == bs->remote_state)
 	{
+	  bfd_set_diag (bs, BFD_DIAG_CODE_no_diag);
 	  bfd_set_state (bm, bs, BFD_STATE_up, 0);
 	}
     }
