@@ -142,7 +142,7 @@ static void make_sorted_pid_vector(void)
     pid_sort_t *psp;
     int i;
 
-    psp = g_pids = g_malloc(sizeof(pid_sort_t)*g_npids);
+    psp = g_pids = g_malloc0(sizeof(pid_sort_t)*g_npids);
 
     for (i = 0; i < PIDHASH_NBUCKETS; i++) {
         pp = s_pidhash[i];
@@ -191,7 +191,7 @@ static void make_sorted_pid_vector(void)
      * toggle between "chase" mode, snapshots, and the original
      * display method on short notice 
      */
-    g_original_pids = g_malloc(sizeof(pid_sort_t)*g_npids);
+    g_original_pids = g_malloc0(sizeof(pid_sort_t)*g_npids);
     memcpy (g_original_pids, g_pids, sizeof(pid_sort_t)*g_npids); 
 }
 
