@@ -146,6 +146,30 @@ define l2_flags_reply
   u32 resulting_feature_bitmap;
 };
 
+/** \brief L2 bridge domain set mac age
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the bridge domain to create
+    @param mac_age - mac aging time in min, 0 for disabled
+*/
+define bridge_domain_set_mac_age
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+  u8 mac_age;
+};
+
+/** \brief Set bridge domain response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the set l2 bits request
+*/
+define bridge_domain_set_mac_age_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief L2 bridge domain add or delete request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
