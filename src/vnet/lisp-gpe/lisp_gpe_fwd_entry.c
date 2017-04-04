@@ -283,20 +283,21 @@ static void
 create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 {
   dpo_proto_t dproto;
-
-  if (!lfe->is_src_dst)
-    {
-      /* install normal destination route if not src/dst and be done */
-      ip_src_fib_add_route (lfe->eid_fib_index,
-			    &lfe->key->rmt.ippref, lfe->paths);
-      return;
-    }
-
+  ip_prefix_t ippref;
   dproto = (ip_prefix_version (&lfe->key->rmt.ippref) == IP4 ?
 	    DPO_PROTO_IP4 : DPO_PROTO_IP6);
 
-  lfe->src_fib_index = ip_dst_fib_add_route (lfe->eid_fib_index,
-					     &lfe->key->rmt.ippref);
+  if (lfe->is_src_dst)
+    {
+      lfe->src_fib_index = ip_dst_fib_add_route (lfe->eid_fib_index,
+						 &lfe->key->rmt.ippref);
+      memcpy (&ippref, &lfe->key->lcl.ippref, sizeof (ippref));
+    }
+  else
+    {
+      lfe->src_fib_index = lfe->eid_fib_index;
+      memcpy (&ippref, &lfe->key->rmt.ippref, sizeof (ippref));
+    }
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
     {
@@ -318,14 +319,12 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 	  dpo_copy (&dpo, drop_dpo_get (dproto));
 	  break;
 	}
-      ip_src_fib_add_route_w_dpo (lfe->src_fib_index,
-				  &lfe->key->lcl.ippref, &dpo);
+      ip_src_fib_add_route_w_dpo (lfe->src_fib_index, &ippref, &dpo);
       dpo_reset (&dpo);
     }
   else
     {
-      ip_src_fib_add_route (lfe->src_fib_index,
-			    &lfe->key->lcl.ippref, lfe->paths);
+      ip_src_fib_add_route (lfe->src_fib_index, &ippref, lfe->paths);
     }
 }
 
