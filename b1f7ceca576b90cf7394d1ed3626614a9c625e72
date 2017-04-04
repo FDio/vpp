@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_f9f43cf3",
+        "filename": "src/vnet/gre/node.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-04-04T17:11:11Z",
+      "side": 1,
+      "message": "this should be declared; always_inline, to benefit from the const-folding optimisation.",
+      "revId": "b1f7ceca576b90cf7394d1ed3626614a9c625e72",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
