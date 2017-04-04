@@ -1767,8 +1767,6 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
-
-
 /* Set up the API message handling tables */
 static clib_error_t *
 acl_plugin_api_hookup (vlib_main_t * vm)
