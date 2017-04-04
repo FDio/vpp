@@ -130,7 +130,7 @@ linux_epoll_input (vlib_main_t * vm,
 	   * vm->clib_time.seconds_per_clock)
 	  /* subtract off some slop time */  - 50e-6;
 
-	if (timeout < 1e3)
+	if (timeout < 1e-3)
 	  {
 	    /* We have event happenning in less than 1 ms so
 	       don't allow epoll to wait */
