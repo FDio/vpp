@@ -993,6 +993,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
   ASSERT (n_bytes != 0);
   b->current_length = n_bytes;
   tcp_push_hdr_i (tc, b, tc->state);
+  tc->rtx_bytes += n_bytes;
 
 done:
   TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
@@ -1089,8 +1090,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
 	  if (n_bytes == 0)
 	    return;
-
-	  tc->rtx_bytes += n_bytes;
 	}
     }
   else
@@ -1217,10 +1216,12 @@ tcp_retransmit_first_unacked (tcp_connection_t * tc)
 
   n_bytes = tcp_prepare_retransmit_segment (tc, b, 0, tc->snd_mss);
   if (n_bytes == 0)
-    return;
+    goto done;
 
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
-  tc->rtx_bytes += n_bytes;
+
+done:
+  tc->snd_nxt = tc->snd_una_max;
 }
 
 sack_scoreboard_hole_t *
@@ -1294,7 +1295,6 @@ tcp_fast_retransmit (tcp_connection_t * tc)
 	}
 
       tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
-      tc->rtx_bytes += n_written;
       snd_space -= n_written;
     }
 

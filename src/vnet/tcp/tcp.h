@@ -94,6 +94,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_2MSL_TIME           300	/* 30s */
 #define TCP_CLOSEWAIT_TIME	1	/* 0.1s */
 #define TCP_CLEANUP_TIME	5	/* 0.5s Time to wait before cleanup */
+#define TCP_TIMER_PERSIST_MIN	2	/* 0.2s */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
 #define TCP_RTT_MAX 30 * THZ	/* 30s (probably too much) */
@@ -561,14 +562,16 @@ tcp_persist_timer_set (tcp_connection_t * tc)
 {
   /* Reuse RTO. It's backed off in handler */
   tcp_timer_set (tc, TCP_TIMER_PERSIST,
-		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+		 clib_max (tc->rto * TCP_TO_TIMER_TICK,
+			   TCP_TIMER_PERSIST_MIN));
 }
 
 always_inline void
 tcp_persist_timer_update (tcp_connection_t * tc)
 {
   tcp_timer_update (tc, TCP_TIMER_PERSIST,
-		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
+		    clib_max (tc->rto * TCP_TO_TIMER_TICK,
+			      TCP_TIMER_PERSIST_MIN));
 }
 
 always_inline void
