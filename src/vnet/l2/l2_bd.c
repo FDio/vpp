@@ -284,8 +284,7 @@ bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
 
   /* check if there is at least one bd with mac aging enabled */
   vec_foreach (bd_config, l2input_main.bd_configs)
-    if (bd_config->bd_id != ~0 && bd_config->mac_age != 0)
-    enable = 1;
+    enable |= bd_config->bd_id != ~0 && bd_config->mac_age != 0;
 
   vlib_process_signal_event (vm, l2fib_mac_age_scanner_process_node.index,
 			     enable ? L2_MAC_AGE_PROCESS_EVENT_START :
