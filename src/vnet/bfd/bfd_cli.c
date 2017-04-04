@@ -28,6 +28,7 @@
 static u8 *
 format_bfd_session_cli (u8 * s, va_list * args)
 {
+  vlib_main_t *vm = va_arg (*args, vlib_main_t *);
   bfd_main_t *bm = va_arg (*args, bfd_main_t *);
   bfd_session_t *bs = va_arg (*args, bfd_session_t *);
   switch (bs->transport)
@@ -51,7 +52,7 @@ format_bfd_session_cli (u8 * s, va_list * args)
 	      bfd_diag_code_string (bs->remote_diag));
   s = format (s, "%10s %-32s %20u %20u\n", "", "Detect multiplier",
 	      bs->local_detect_mult, bs->remote_detect_mult);
-  s = format (s, "%10s %-32s %20u %20u\n", "",
+  s = format (s, "%10s %-32s %20u %20llu\n", "",
 	      "Required Min Rx Interval (usec)",
 	      bs->config_required_min_rx_usec, bs->remote_min_rx_usec);
   s = format (s, "%10s %-32s %20u %20u\n", "",
@@ -61,18 +62,54 @@ format_bfd_session_cli (u8 * s, va_list * args)
   s =
     format (s, "%10s %-32s %20u\n", "", "Transmit interval",
 	    bfd_clocks_to_usec (bm, bs->transmit_interval_clocks));
+  u64 now = clib_cpu_time_now ();
+  u8 *tmp = NULL;
+  if (bs->last_tx_clocks > 0)
+    {
+      tmp = format (tmp, "%.2fs ago", (now - bs->last_tx_clocks) *
+		    vm->clib_time.seconds_per_clock);
+      s = format (s, "%10s %-32s %20v\n", "", "Last control frame tx", tmp);
+      vec_reset_length (tmp);
+    }
+  if (bs->last_rx_clocks)
+    {
+      tmp = format (tmp, "%.2fs ago", (now - bs->last_rx_clocks) *
+		    vm->clib_time.seconds_per_clock);
+      s = format (s, "%10s %-32s %20v\n", "", "Last control frame rx", tmp);
+      vec_reset_length (tmp);
+    }
   s =
-    format (s, "%10s %-32s %20s %20s\n", "", "Demand mode", "no",
-	    bs->remote_demand ? "yes" : "no");
-  s =
-    format (s, "%10s %-32s %20s\n", "", "Poll state",
-	    bfd_poll_state_string (bs->poll_state));
+    format (s, "%10s %-32s %20u %20llu\n", "", "Min Echo Rx Interval (usec)",
+	    1, bs->remote_min_echo_rx_usec);
+  if (bs->echo)
+    {
+      s = format (s, "%10s %-32s %20u\n", "", "Echo transmit interval",
+		  bfd_clocks_to_usec (bm, bs->echo_transmit_interval_clocks));
+      tmp = format (tmp, "%.2fs ago", (now - bs->echo_last_tx_clocks) *
+		    vm->clib_time.seconds_per_clock);
+      s = format (s, "%10s %-32s %20v\n", "", "Last echo frame tx", tmp);
+      vec_reset_length (tmp);
+      tmp = format (tmp, "%.6fs",
+		    (bs->echo_last_rx_clocks - bs->echo_last_tx_clocks) *
+		    vm->clib_time.seconds_per_clock);
+      s =
+	format (s, "%10s %-32s %20v\n", "", "Last echo frame roundtrip time",
+		tmp);
+    }
+  vec_free (tmp);
+  tmp = NULL;
+  s = format (s, "%10s %-32s %20s %20s\n", "", "Demand mode", "no",
+	      bs->remote_demand ? "yes" : "no");
+  s = format (s, "%10s %-32s %20s\n", "", "Poll state",
+	      bfd_poll_state_string (bs->poll_state));
   if (bs->auth.curr_key)
     {
       s = format (s, "%10s %-32s %20u\n", "", "Authentication config key ID",
 		  bs->auth.curr_key->conf_key_id);
       s = format (s, "%10s %-32s %20u\n", "", "Authentication BFD key ID",
 		  bs->auth.curr_bfd_key_id);
+      s = format (s, "%10s %-32s %20u %20u\n", "", "Sequence number",
+		  bs->auth.local_seq_number, bs->auth.remote_seq_number);
     }
   return s;
 }
@@ -96,6 +133,7 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       });
       /* *INDENT-ON* */
       vlib_cli_output (vm, "%v\n", s);
+      vec_free (s);
       vlib_cli_output (vm, "Number of configured BFD keys: %lu\n",
 		       (u64) pool_elts (bm->auth_keys));
     }
@@ -104,8 +142,9 @@ show_bfd (vlib_main_t * vm, unformat_input_t * input,
       u8 *s = format (NULL, "%=10s %=32s %=20s %=20s\n", "Index", "Property",
 		      "Local value", "Remote value");
       /* *INDENT-OFF* */
-      pool_foreach (bs, bm->sessions,
-                    { s = format (s, "%U", format_bfd_session_cli, bm, bs); });
+      pool_foreach (bs, bm->sessions, {
+        s = format (s, "%U", format_bfd_session_cli, vm, bm, bs);
+      });
       /* *INDENT-ON* */
       vlib_cli_output (vm, "%v", s);
       vec_free (s);
@@ -349,7 +388,7 @@ static const unsigned optional = 0;
 #define CHECK_MANDATORY(t, n, s, r, ...)                                  \
   if (mandatory == r && !have_##n)                                        \
     {                                                                     \
-      ret = clib_error_return (0, "Required parameter `%s' missing.", n); \
+      ret = clib_error_return (0, "Required parameter `%s' missing.", s); \
       goto out;                                                           \
     }
 
