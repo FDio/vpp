@@ -191,7 +191,21 @@ acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
 	{
 	  if (pkt_5tuple->l4.proto != r->proto)
 	    continue;
-	  /* A sanity check just to ensure what we jave just matched was a valid L4 extracted from the packet */
+
+          if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment &&
+                     am->l4_match_nonfirst_fragment))
+          {
+            /* non-initial fragment with frag match configured - match this rule */
+            *trace_bitmap |= 0x80000000;
+            *r_action = r->is_permit;
+            if (r_acl_match_p)
+	      *r_acl_match_p = acl_index;
+            if (r_rule_match_p)
+	      *r_rule_match_p = i;
+            return 1;
+          }
+
+	  /* A sanity check just to ensure we are about to match the ports extracted from the packet */
 	  if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
 	    continue;
 
@@ -312,6 +326,10 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
       l3_offset = 0;
     }
 
+  /* key[0..3] contains src/dst address and is cleared/set below */
+  /* Remainder of the key and per-packet non-key data */
+  p5tuple_pkt->kv.key[4] = 0;
+  p5tuple_pkt->kv.value = 0;
 
   if (is_ip6)
     {
@@ -333,12 +351,33 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
       int need_skip_eh = clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
       if (PREDICT_FALSE (need_skip_eh))
 	{
-	  /* FIXME: add fragment header special handling. Currently causes treated as unknown header. */
 	  while (need_skip_eh && offset_within_packet (b0, l4_offset))
 	    {
-	      u8 nwords = *(u8 *) get_ptr_to_offset (b0, 1 + l4_offset);
-	      proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
-	      l4_offset += 8 * (1 + (u16) nwords);
+	      /* Fragment header needs special handling */
+	      if (PREDICT_FALSE(ACL_EH_FRAGMENT == proto))
+	        {
+	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
+		  u16 frag_offset;
+		  clib_memcpy (&frag_offset, get_ptr_to_offset (b0, 2 + l4_offset), sizeof(frag_offset));
+		  frag_offset = ntohs(frag_offset) >> 3;
+		  if (frag_offset)
+		    {
+                      p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
+                      /* invalidate L4 offset so we don't try to find L4 info */
+                      l4_offset += b0->current_length;
+		    }
+		  else
+		    {
+		      /* First fragment: skip the frag header and move on. */
+		      l4_offset += 8;
+		    }
+		}
+              else
+                {
+	          u8 nwords = *(u8 *) get_ptr_to_offset (b0, 1 + l4_offset);
+	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
+	          l4_offset += 8 * (1 + (u16) nwords);
+                }
 #ifdef FA_NODE_VERBOSE_DEBUG
 	      clib_warning ("ACL_FA_NODE_DBG: new proto: %d, new offset: %d",
 			    proto, l4_offset);
@@ -369,13 +408,26 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 				   offsetof (ip4_header_t,
 					     protocol) + l3_offset);
       l4_offset = l3_offset + sizeof (ip4_header_t);
+      u16 flags_and_fragment_offset;
+      clib_memcpy (&flags_and_fragment_offset,
+                   get_ptr_to_offset (b0,
+                                      offsetof (ip4_header_t,
+                                                flags_and_fragment_offset)) + l3_offset,
+                                                sizeof(flags_and_fragment_offset));
+      flags_and_fragment_offset = ntohs (flags_and_fragment_offset);
+
+      /* non-initial fragments have non-zero offset */
+      if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
+        {
+          p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
+          /* invalidate L4 offset so we don't try to find L4 info */
+          l4_offset += b0->current_length;
+        }
+
     }
-  /* Remainder of the key and per-packet non-key data */
-  p5tuple_pkt->kv.key[4] = 0;
-  p5tuple_pkt->kv.value = 0;
+  p5tuple_pkt->l4.proto = proto;
   if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
     {
-      p5tuple_pkt->l4.proto = proto;
       p5tuple_pkt->pkt.l4_valid = 1;
       if (icmp_protos[is_ip6] == proto)
 	{
