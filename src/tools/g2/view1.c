@@ -998,7 +998,7 @@ static void move_current_track(GdkEventButton *event,
  found:
     pid_index = i + vp->first_pid_index;
 
-    new_pidvec = g_malloc(sizeof(pid_sort_t)*g_npids);
+    new_pidvec = g_malloc0(sizeof(pid_sort_t)*g_npids);
     pold = g_pids;
     pnew = new_pidvec;
 
@@ -1743,7 +1743,7 @@ static void chase_event_etc(enum chase_mode mode)
     datum_to_chase = ep->datum;
     pid_to_chase = ep->pid->pid_value;
     pids_mapped = 0;
-    new_pidvec = g_malloc(sizeof(pid_sort_t)*g_npids);
+    new_pidvec = g_malloc0(sizeof(pid_sort_t)*g_npids);
 
     while (1) {
         if (srch_chase_dir == SRCH_CHASE_FORWARD) {
