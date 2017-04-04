@@ -33,6 +33,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP
 from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
 from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
+from scapy.layers.inet6 import IPv6ExtHdrFragment
 
 from framework import VppTestCase, VppTestRunner
 import time
@@ -203,7 +204,7 @@ class TestIpIrb(VppTestCase):
                     if add_extension_header:
                         # prepend some extension headers
                         ulp = (IPv6ExtHdrRouting() / IPv6ExtHdrRouting() /
-                               IPv6ExtHdrRouting() / ulp_l4)
+                               IPv6ExtHdrFragment(offset=0, m=1) / ulp_l4)
                         # uncomment below to test invalid ones
                         # ulp = IPv6ExtHdrRouting(len = 200) / ulp_l4
                     else:
@@ -214,10 +215,12 @@ class TestIpIrb(VppTestCase):
                          Raw(payload))
                 else:
                     ulp_l4 = UDP(sport=src_l4, dport=dst_l4)
-                    # IPv4 does not allow extension headers
+                    # IPv4 does not allow extension headers,
+                    # but we rather make it a first fragment
+                    flags = 1 if add_extension_header else 0
                     ulp = ulp_l4
                     p = (Ether(dst=dst_mac, src=src_mac) /
-                         IP(src=src_ip4, dst=dst_ip4) /
+                         IP(src=src_ip4, dst=dst_ip4, frag=0, flags=flags) /
                          ulp /
                          Raw(payload))
             elif modulo == 1:
@@ -668,6 +671,48 @@ class TestIpIrb(VppTestCase):
     def test_1112_ip6_irb_1(self):
         """ ACL IPv6+EH bridged -> routed, L3 ACL permit+reflect"""
         self.run_test_ip46_bridged_to_routed_and_back(False, True,
+                                                      self.WITH_EH)
+
+    # IPv4 with "MF" bit set
+
+    def test_1201_ip6_irb_1(self):
+        """ ACL IPv4+MF routed -> bridged, L2 ACL deny"""
+        self.run_test_ip46_routed_to_bridged(True, False, False,
+                                             self.WITH_EH)
+
+    def test_1202_ip6_irb_1(self):
+        """ ACL IPv4+MF routed -> bridged, L3 ACL deny"""
+        self.run_test_ip46_routed_to_bridged(False, False, False,
+                                             self.WITH_EH)
+
+    def test_1205_ip6_irb_1(self):
+        """ ACL IPv4+MF bridged -> routed, L2 ACL deny """
+        self.run_test_ip46_bridged_to_routed(True, False, False,
+                                             self.WITH_EH)
+
+    def test_1206_ip6_irb_1(self):
+        """ ACL IPv4+MF bridged -> routed, L3 ACL deny """
+        self.run_test_ip46_bridged_to_routed(False, False, False,
+                                             self.WITH_EH)
+
+    def test_1301_ip6_irb_1(self):
+        """ ACL IPv4+MF routed -> bridged, L2 ACL permit+reflect"""
+        self.run_test_ip46_routed_to_bridged_and_back(True, False,
+                                                      self.WITH_EH)
+
+    def test_1302_ip6_irb_1(self):
+        """ ACL IPv4+MF bridged -> routed, L2 ACL permit+reflect"""
+        self.run_test_ip46_bridged_to_routed_and_back(True, False,
+                                                      self.WITH_EH)
+
+    def test_1311_ip6_irb_1(self):
+        """ ACL IPv4+MF routed -> bridged, L3 ACL permit+reflect"""
+        self.run_test_ip46_routed_to_bridged_and_back(False, False,
+                                                      self.WITH_EH)
+
+    def test_1312_ip6_irb_1(self):
+        """ ACL IPv4+MF bridged -> routed, L3 ACL permit+reflect"""
+        self.run_test_ip46_bridged_to_routed_and_back(False, False,
                                                       self.WITH_EH)
 
     # Old datapath group

@@ -181,6 +181,9 @@ typedef struct {
   /* EH values that we can skip over */
   uword *fa_ipv6_known_eh_bitmap;
 
+  /* whether to match L4 ACEs with ports on the non-initial fragment */
+  int l4_match_nonfirst_fragment;
+
   /* conn table per-interface conn table parameters */
   u32 fa_conn_table_hash_num_buckets;
   uword fa_conn_table_hash_memory_size;
@@ -235,6 +238,7 @@ typedef struct {
    _(HOPBYHOP , 0  , "IPv6ExtHdrHopByHop")                      \
    _(ROUTING  , 43 , "IPv6ExtHdrRouting")                       \
    _(DESTOPT  , 60 , "IPv6ExtHdrDestOpt")                       \
+   _(FRAGMENT , 44 , "IPv6ExtHdrFragment")                      \
    _(MOBILITY , 135, "Mobility Header")                         \
    _(HIP      , 139, "Experimental use Host Identity Protocol") \
    _(SHIM6    , 140, "Shim6 Protocol")                          \
@@ -247,7 +251,6 @@ typedef struct {
  Also, Fragment header needs special processing.
 
    _(NONEXT   , 59 , "NoNextHdr")                               \
-   _(FRAGMENT , 44 , "IPv6ExtHdrFragment")                      \
 
 
 ESP is hiding its internal format, so no point in trying to go past it.
