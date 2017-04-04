@@ -200,7 +200,7 @@ static void *vl_api_sw_interface_set_vxlan_bypass_t_print
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
   if (mp->is_ipv6)
-    s = format (s, "ip6");
+    s = format (s, "ip6 ");
 
   if (mp->enable)
     s = format (s, "enable ");
@@ -260,12 +260,26 @@ static void *vl_api_bridge_domain_add_del_t_print
 
   if (mp->is_add)
     {
-      s = format (s, "flood %d uu-flood %d forward %d learn %d arp-term %d",
-		  mp->flood, mp->uu_flood, mp->forward, mp->learn,
-		  mp->arp_term);
+      s = format (s, "flood %d uu-flood %d ", mp->flood, mp->uu_flood);
+      s = format (s, "forward %d learn %d ", mp->forward, mp->learn);
+      s = format (s, "arp-term %d mac-age %d", mp->arp_term, mp->mac_age);
     }
   else
     s = format (s, "del ");
+
+  FINISH;
+}
+
+static void *vl_api_bridge_domain_set_mac_age_t_print
+  (vl_api_bridge_domain_set_mac_age_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: bridge_domain_set_mac_age ");
+
+  s = format (s, "bd_id %d ", ntohl (mp->bd_id));
+
+  s = format (s, "mac-age %d", mp->mac_age);
 
   FINISH;
 }
@@ -2948,6 +2962,7 @@ _(CLASSIFY_ADD_DEL_SESSION, classify_add_del_session)			\
 _(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)		\
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                         \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                               \
+_(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)                 \
 _(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)	\
 _(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)	\
 _(ADD_NODE_NEXT, add_node_next)						\

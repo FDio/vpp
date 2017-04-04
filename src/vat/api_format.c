@@ -1459,6 +1459,39 @@ static void vl_api_control_ping_reply_t_handler_json
 }
 
 static void
+  vl_api_bridge_domain_set_mac_age_reply_t_handler
+  (vl_api_bridge_domain_set_mac_age_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_bridge_domain_set_mac_age_reply_t_handler_json
+  (vl_api_bridge_domain_set_mac_age_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
 vl_api_l2_flags_reply_t_handler (vl_api_l2_flags_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
@@ -4285,6 +4318,7 @@ _(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
 _(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
+_(BRIDGE_DOMAIN_SET_MAC_AGE_REPLY, bridge_domain_set_mac_age_reply)     \
 _(L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                             \
 _(L2_FLAGS_REPLY, l2_flags_reply)                                       \
 _(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
@@ -6028,6 +6062,46 @@ api_l2fib_add_del (vat_main_t * vam)
     }
   /* Return the good/bad news */
   return (vam->retval);
+}
+
+static int
+api_bridge_domain_set_mac_age (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bridge_domain_set_mac_age_t *mp;
+  u32 bd_id = ~0;
+  u32 mac_age = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "bd_id %d", &bd_id));
+      else if (unformat (i, "mac-age %d", &mac_age));
+      else
+	break;
+    }
+
+  if (bd_id == ~0)
+    {
+      errmsg ("missing bridge domain");
+      return -99;
+    }
+
+  if (mac_age > 255)
+    {
+      errmsg ("mac age must be less than 256 ");
+      return -99;
+    }
+
+  M (BRIDGE_DOMAIN_SET_MAC_AGE, mp);
+
+  mp->bd_id = htonl (bd_id);
+  mp->mac_age = (u8) mac_age;
+
+  S (mp);
+  W (ret);
+  return ret;
 }
 
 static int
@@ -18419,8 +18493,9 @@ _(sw_interface_set_l2_bridge,                                           \
   "<intfc> | sw_if_index <id> bd_id <bridge-domain-id>\n"               \
   "[shg <split-horizon-group>] [bvi]\n"                                 \
   "enable | disable")                                                   \
+_(bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255\n")\
 _(bridge_domain_add_del,                                                \
-  "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [del]\n") \
+  "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [mac-age 0-255] [del]\n") \
 _(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                   \
 _(l2fib_add_del,                                                        \
   "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
