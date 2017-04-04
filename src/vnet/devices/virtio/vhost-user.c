@@ -404,6 +404,7 @@ vhost_user_rx_thread_placement ()
 	  thread_index = vui_workers[i];
 	  i++;
 	  vhc = &vum->cpus[thread_index];
+	  txvq->interrupt_thread_index = thread_index;
 
 	  iaq.qid = qid;
 	  iaq.vhost_iface_index = vui - vum->vhost_user_interfaces;
@@ -534,45 +535,33 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_cpu_t *vhc;
   u32 thread_index;
-  vhost_iface_and_queue_t *vhiq;
   vlib_main_t *vm;
-  u32 ifq2;
-  u8 done = 0;
+  u32 ifq2, qid;
+  vhost_user_vring_t *txvq;
+
+  qid = ifq & 0xff;
+  if ((qid % 2) == 0)
+    /* Only care about the odd number virtqueue which is TX */
+    return;
 
   if (vhost_user_intf_ready (vui))
     {
-      vec_foreach (vhc, vum->cpus)
-      {
-	if (vhc->operation_mode == VHOST_USER_POLLING_MODE)
-	  continue;
-
-	vec_foreach (vhiq, vhc->rx_queues)
+      txvq = &vui->vrings[qid];
+      thread_index = txvq->interrupt_thread_index;
+      vhc = &vum->cpus[thread_index];
+      if (vhc->operation_mode == VHOST_USER_INTERRUPT_MODE)
 	{
+	  vm = vlib_mains ? vlib_mains[thread_index] : &vlib_global_main;
 	  /*
-	   * Match the interface and the virtqueue number
+	   * Convert virtqueue number in the lower byte to vring
+	   * queue index for the input node process. Top bytes contain
+	   * the interface, lower byte contains the queue index.
 	   */
-	  if ((vhiq->vhost_iface_index == (ifq >> 8)) &&
-	      (VHOST_VRING_IDX_TX (vhiq->qid) == (ifq & 0xff)))
-	    {
-	      thread_index = vhc - vum->cpus;
-	      vm = vlib_mains ? vlib_mains[thread_index] : &vlib_global_main;
-	      /*
-	       * Convert RX virtqueue number in the lower byte to vring
-	       * queue index for the input node process. Top bytes contain
-	       * the interface, lower byte contains the queue index.
-	       */
-	      ifq2 = ((ifq >> 8) << 8) | vhiq->qid;
-	      vhc->pending_input_bitmap =
-		clib_bitmap_set (vhc->pending_input_bitmap, ifq2, 1);
-	      vlib_node_set_interrupt_pending (vm,
-					       vhost_user_input_node.index);
-	      done = 1;
-	      break;
-	    }
+	  ifq2 = ((ifq >> 8) << 8) | qid / 2;
+	  vhc->pending_input_bitmap =
+	    clib_bitmap_set (vhc->pending_input_bitmap, ifq2, 1);
+	  vlib_node_set_interrupt_pending (vm, vhost_user_input_node.index);
 	}
-	if (done)
-	  break;
-      }
     }
 }
 
@@ -605,15 +594,14 @@ vhost_user_kickfd_read_ready (unix_file_t * uf)
 
   n = read (uf->file_descriptor, ((char *) &buff), 8);
   DBG_SOCK ("if %d KICK queue %d", uf->private_data >> 8, qid);
-
-  vlib_worker_thread_barrier_sync (vlib_get_main ());
   if (!vui->vrings[qid].started ||
       (vhost_user_intf_ready (vui) != vui->is_up))
     {
+      vlib_worker_thread_barrier_sync (vlib_get_main ());
       vui->vrings[qid].started = 1;
       vhost_user_update_iface_state (vui);
+      vlib_worker_thread_barrier_release (vlib_get_main ());
     }
-  vlib_worker_thread_barrier_release (vlib_get_main ());
 
   vhost_user_set_interrupt_pending (vui, uf->private_data);
   return 0;
@@ -2814,6 +2802,9 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	  clib_warning ("BUG: unhandled event type %d", event_type);
 	  break;
 	}
+      /* No less than 1 millisecond */
+      if (timeout < 1e-3)
+	timeout = 1e-3;
     }
   return 0;
 }

@@ -210,6 +210,7 @@ typedef struct
   u32 callfd_idx;
   u32 kickfd_idx;
   u64 log_guest_addr;
+  u32 interrupt_thread_index;
 } vhost_user_vring_t;
 
 #define VHOST_USER_POLLING_MODE   0
