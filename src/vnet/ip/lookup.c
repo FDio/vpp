@@ -74,7 +74,8 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
 
   /* Verify given length. */
   if ((a && (address_length != a->address_length)) || (address_length == 0)
-       || (lm->is_ip6 && address_length > 128) || (!lm->is_ip6 && address_length > 32))
+      || (lm->is_ip6 && address_length > 128) || (!lm->is_ip6
+						  && address_length > 32))
     {
       vnm->api_errno = VNET_API_ERROR_ADDRESS_LENGTH_MISMATCH;
       return clib_error_create
