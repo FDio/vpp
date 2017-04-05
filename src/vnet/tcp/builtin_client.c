@@ -237,8 +237,7 @@ tclient_thread_fn (void *arg)
 	  memset (dmp, 0, sizeof (*dmp));
 	  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
 	  dmp->client_index = tm->my_client_index;
-	  dmp->session_index = sp->vpp_session_index;
-	  dmp->session_thread_index = sp->vpp_session_thread;
+	  dmp->handle = sp->vpp_session_handle;
 	  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & dmp);
 	  pool_put (tm->sessions, sp);
 	}
@@ -253,9 +252,10 @@ tclient_thread_fn (void *arg)
 static void
 vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
 {
+  vlib_main_t *vm = vlib_get_main ();
   tclient_main_t *tm = &tclient_main;
-
   tm->my_client_index = mp->index;
+  vlib_process_signal_event (vm, tm->node_index, 1 /* evt */ , 0 /* data */ );
 }
 
 static void
@@ -264,7 +264,6 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
   tclient_main_t *tm = &tclient_main;
   session_t *session;
   u32 session_index;
-  u64 key;
   i32 retval = /* clib_net_to_host_u32 ( */ mp->retval /*) */ ;
 
   if (retval < 0)
@@ -291,24 +290,24 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
   session->server_rx_fifo->client_session_index = session_index;
   session->server_tx_fifo = (svm_fifo_t *) mp->server_tx_fifo;
   session->server_tx_fifo->client_session_index = session_index;
-
-  session->vpp_session_index = mp->session_index;
-  session->vpp_session_thread = mp->session_thread_index;
+  session->vpp_session_handle = mp->handle;
 
   /* Add it to the session lookup table */
-  key = (((u64) mp->session_thread_index) << 32) | (u64) mp->session_index;
-  hash_set (tm->session_index_by_vpp_handles, key, session_index);
+  hash_set (tm->session_index_by_vpp_handles, mp->handle, session_index);
 
   tm->ready_connections++;
 }
 
-static void
+static int
 create_api_loopback (tclient_main_t * tm)
 {
+  vlib_main_t *vm = vlib_get_main ();
   vl_api_memclnt_create_t _m, *mp = &_m;
   extern void vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t *);
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr;
+  uword *event_data = 0, event_type;
+  int resolved = 0;
 
   /*
    * Create a "loopback" API client connection
@@ -324,6 +323,25 @@ create_api_loopback (tclient_main_t * tm)
   strncpy ((char *) mp->name, "tcp_tester", sizeof (mp->name) - 1);
 
   vl_api_memclnt_create_t_handler (mp);
+
+  /* Wait for reply */
+  tm->node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+  vlib_process_wait_for_event_or_clock (vm, 1.0);
+  event_type = vlib_process_get_events (vm, &event_data);
+  switch (event_type)
+    {
+    case 1:
+      resolved = 1;
+      break;
+    case ~0:
+      /* timed out */
+      break;
+    default:
+      clib_warning ("unknown event_type %d", event_type);
+    }
+  if (!resolved)
+    return -1;
+  return 0;
 }
 
 #define foreach_tclient_static_api_msg       	\
@@ -333,17 +351,7 @@ _(CONNECT_URI_REPLY, connect_uri_reply)
 static clib_error_t *
 tclient_api_hookup (vlib_main_t * vm)
 {
-  tclient_main_t *tm = &tclient_main;
   vl_msg_api_msg_config_t _c, *c = &_c;
-  int i;
-
-  /* Init test data */
-  vec_validate (tm->connect_test_data, 64 * 1024 - 1);
-  for (i = 0; i < vec_len (tm->connect_test_data); i++)
-    tm->connect_test_data[i] = i & 0xff;
-
-  tm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-  vec_validate (tm->rx_buf, vec_len (tm->connect_test_data) - 1);
 
   /* Hook up client-side static APIs to our handlers */
 #define _(N,n) do {                                             \
@@ -365,18 +373,105 @@ tclient_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_API_INIT_FUNCTION (tclient_api_hookup);
+static int
+tcp_test_clients_init (vlib_main_t * vm)
+{
+  tclient_main_t *tm = &tclient_main;
+  int i;
+
+  tclient_api_hookup (vm);
+  if (create_api_loopback (tm))
+    return -1;
+
+  /* Init test data */
+  vec_validate (tm->connect_test_data, 64 * 1024 - 1);
+  for (i = 0; i < vec_len (tm->connect_test_data); i++)
+    tm->connect_test_data[i] = i & 0xff;
+
+  tm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
+  vec_validate (tm->rx_buf, vec_len (tm->connect_test_data) - 1);
+
+  tm->is_init = 1;
+
+  return 0;
+}
+
+static void
+builtin_session_reset_callback (stream_session_t * s)
+{
+  return;
+}
+
+static int
+builtin_session_connected_callback (u32 app_index, u32 api_context,
+				    stream_session_t * s, u8 code)
+{
+  return 0;
+}
+
+static int
+builtin_session_create_callback (stream_session_t * s)
+{
+  return 0;
+}
+
+static void
+builtin_session_disconnect_callback (stream_session_t * s)
+{
+  return;
+}
+
+static int
+builtin_server_rx_callback (stream_session_t * s)
+{
+  return 0;
+}
+
+/* *INDENT-OFF* */
+static session_cb_vft_t builtin_clients = {
+    .session_reset_callback = builtin_session_reset_callback,
+    .session_connected_callback = builtin_session_connected_callback,
+    .session_accept_callback = builtin_session_create_callback,
+    .session_disconnect_callback = builtin_session_disconnect_callback,
+    .builtin_server_rx_callback = builtin_server_rx_callback
+};
+/* *INDENT-ON* */
+
+static int
+attach_builtin_test_clients ()
+{
+  vnet_app_attach_args_t _a, *a = &_a;
+  u8 segment_name[128];
+  u32 segment_name_length;
+  u64 options[16];
+
+  segment_name_length = ARRAY_LEN (segment_name);
+
+  memset (a, 0, sizeof (*a));
+  memset (options, 0, sizeof (options));
+
+  a->api_client_index = ~0;
+  a->segment_name = segment_name;
+  a->segment_name_length = segment_name_length;
+  a->session_cb_vft = &builtin_clients;
+
+  options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
+  options[SESSION_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
+  a->options = options;
+
+  return vnet_application_attach (a);
+}
 
 static clib_error_t *
 test_tcp_clients_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
 			     vlib_cli_command_t * cmd)
 {
+  tclient_main_t *tm = &tclient_main;
   u8 *connect_uri = (u8 *) "tcp://6.0.1.1/1234";
   u8 *uri;
-  tclient_main_t *tm = &tclient_main;
-  int i;
   u32 n_clients = 1;
+  int i;
 
   tm->bytes_to_send = 8192;
   tm->n_iterations = 1;
@@ -397,13 +492,18 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 				  format_unformat_error, input);
     }
 
+  if (tm->is_init == 0)
+    {
+      if (tcp_test_clients_init (vm))
+	return clib_error_return (0, "failed init");
+    }
+
   tm->ready_connections = 0;
   tm->expected_connections = n_clients;
+
   uri = connect_uri;
   if (tm->connect_uri)
     uri = tm->connect_uri;
-
-  create_api_loopback (tm);
 
 #if TCP_BUILTIN_CLIENT_PTHREAD
   /* Start a transmit thread */
@@ -420,6 +520,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
     }
 #endif
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+  attach_builtin_test_clients ();
 
   /* Fire off connect requests, in something approaching a normal manner */
   for (i = 0; i < n_clients; i++)
@@ -460,6 +561,16 @@ VLIB_CLI_COMMAND (test_clients_command, static) =
   .function = test_tcp_clients_command_fn,
 };
 /* *INDENT-ON* */
+
+clib_error_t *
+tcp_test_clients_main_init (vlib_main_t * vm)
+{
+  tclient_main_t *tm = &tclient_main;
+  tm->is_init = 0;
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (tcp_test_clients_main_init);
 
 /*
  * fd.io coding-style-patch-verification: ON

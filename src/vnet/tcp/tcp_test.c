@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <vnet/tcp/tcp.h>
 
 #define TCP_TEST_I(_cond, _comment, _args...)			\
@@ -174,6 +173,118 @@ tcp_test_sack ()
   return 0;
 }
 
+static int
+tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
+{
+  svm_fifo_t *f;
+  u32 fifo_size = 1 << 20;
+  u32 *test_data = 0;
+  u32 offset;
+  int i, rv;
+  u32 data_word, test_data_len;
+
+  /* $$$ parse args */
+  test_data_len = fifo_size / sizeof (u32);
+  vec_validate (test_data, test_data_len - 1);
+
+  for (i = 0; i < vec_len (test_data); i++)
+    test_data[i] = i;
+
+  f = svm_fifo_create (fifo_size);
+
+  /* Paint fifo data vector with -1's */
+  memset (f->data, 0xFF, test_data_len);
+
+  /* Enqueue an initial (un-dequeued) chunk */
+  rv = svm_fifo_enqueue_nowait (f, 0 /* pid */ ,
+				sizeof (u32), (u8 *) test_data);
+
+  if (rv != sizeof (u32))
+    {
+      clib_warning ("enqueue returned %d", rv);
+      goto out;
+    }
+
+  /*
+   * Create 3 chunks in the future. The offsets are relative
+   * to the current fifo tail
+   */
+  for (i = 0; i < 3; i++)
+    {
+      offset = (2 * i + 1) * sizeof (u32);
+      vlib_cli_output (vm, "add offset %d", offset);
+
+      rv = svm_fifo_enqueue_with_offset
+	(f, 0 /* pid */ , offset, sizeof (u32),
+	 (u8 *) (test_data + ((offset + sizeof (u32)) / sizeof (u32))));
+
+      if (rv)
+	{
+	  clib_warning ("enqueue returned %d", rv);
+	  goto out;
+	}
+    }
+
+  /* Paint missing data backwards */
+  for (i = 3; i > 0; i--)
+    {
+      offset = (2 * i + 0) * sizeof (u32);
+
+      vlib_cli_output (vm, "add offset %d", offset);
+
+      rv = svm_fifo_enqueue_with_offset
+	(f, 0 /* pid */ , offset, sizeof (u32),
+	 (u8 *) (test_data + ((offset + sizeof (u32)) / sizeof (u32))));
+
+      if (rv)
+	{
+	  clib_warning ("enqueue returned %d", rv);
+	  goto out;
+	}
+    }
+
+  vlib_cli_output (vm, "fifo before missing link: %U",
+		   format_svm_fifo, f, 1 /* verbose */ );
+
+  /* Enqueue the missing u32 */
+  rv = svm_fifo_enqueue_nowait (f, 0 /* pid */ ,
+				sizeof (u32), (u8 *) (test_data + 1));
+  if (rv != 7 * sizeof (u32))
+    {
+      clib_warning ("enqueue returned %d", rv);
+      goto out;
+    }
+
+  vlib_cli_output (vm, "fifo after missing link: %U",
+		   format_svm_fifo, f, 1 /* verbose */ );
+
+  /* Collect results */
+  for (i = 0; i < 7; i++)
+    {
+      rv = svm_fifo_dequeue_nowait (f, 0 /* pid */ , sizeof (u32),
+				    (u8 *) & data_word);
+      if (rv != sizeof (u32))
+	{
+	  clib_warning ("dequeue returned %d", rv);
+	  goto out;
+	}
+      if (data_word != test_data[i])
+	{
+	  clib_warning ("recovered data %d not %d", data_word, test_data[i]);
+	  goto out;
+	}
+    }
+
+  clib_warning ("test complete...");
+
+out:
+  svm_fifo_free (f);
+  vec_free (test_data);
+  return 0;
+}
+
+
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -185,6 +296,10 @@ tcp_test (vlib_main_t * vm,
       if (unformat (input, "sack"))
 	{
 	  res = tcp_test_sack ();
+	}
+      else if (unformat (input, "fifo"))
+	{
+	  res = tcp_test_fifo (vm, input);
 	}
       else
 	{
@@ -203,10 +318,16 @@ tcp_test (vlib_main_t * vm,
     }
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tcp_test_command, static) =
 {
-.path = "test tcp",.short_help = "internal tcp unit tests",.function =
-    tcp_test,};
+  .path = "test tcp",
+  .short_help = "internal tcp unit tests",
+  .function = tcp_test,
+};
+/* *INDENT-ON* */
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

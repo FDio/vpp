@@ -18,16 +18,45 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 
+/* define message IDs */
+#include <vpp/api/vpe_msg_enum.h>
+
+/* define message structures */
+#define vl_typedefs
+#include <vpp/api/vpe_all_api_h.h>
+#undef vl_typedefs
+
+/* define generated endian-swappers */
+#define vl_endianfun
+#include <vpp/api/vpe_all_api_h.h>
+#undef vl_endianfun
+
+/* instantiate all the print functions we know about */
+#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
+#define vl_printfun
+#include <vpp/api/vpe_all_api_h.h>
+#undef vl_printfun
+
 typedef struct
 {
   u8 *rx_buf;
   unix_shared_memory_queue_t **vpp_queue;
-  u32 byte_index;
+  u64 byte_index;
+
+  /* Sever's event queue */
+  unix_shared_memory_queue_t *vl_input_queue;
+
+  /* API client handle */
+  u32 my_client_index;
+
+  u32 app_index;
+
+  /* process node index for evnt scheduling */
+  u32 node_index;
   vlib_main_t *vlib_main;
 } builtin_server_main_t;
 
 builtin_server_main_t builtin_server_main;
-
 
 int
 builtin_session_accept_callback (stream_session_t * s)
@@ -45,9 +74,13 @@ builtin_session_accept_callback (stream_session_t * s)
 void
 builtin_session_disconnect_callback (stream_session_t * s)
 {
+  builtin_server_main_t *bsm = &builtin_server_main;
+  vnet_disconnect_args_t _a, *a = &_a;
   clib_warning ("called...");
 
-  vnet_disconnect_session (s->session_index, s->thread_index);
+  a->handle = stream_session_handle (s);
+  a->app_index = bsm->app_index;
+  vnet_disconnect_session (a);
 }
 
 void
@@ -60,7 +93,7 @@ builtin_session_reset_callback (stream_session_t * s)
 
 
 int
-builtin_session_connected_callback (u32 client_index,
+builtin_session_connected_callback (u32 app_index, u32 api_context,
 				    stream_session_t * s, u8 is_fail)
 {
   clib_warning ("called...");
@@ -91,7 +124,7 @@ test_bytes (builtin_server_main_t * bsm, int actual_transfer)
     {
       if (bsm->rx_buf[i] != ((bsm->byte_index + i) & 0xff))
 	{
-	  clib_warning ("at %d expected %d got %d", bsm->byte_index + i,
+	  clib_warning ("at %lld expected %d got %d", bsm->byte_index + i,
 			(bsm->byte_index + i) & 0xff, bsm->rx_buf[i]);
 	}
     }
@@ -190,23 +223,66 @@ static session_cb_vft_t builtin_session_cb_vft = {
   .session_reset_callback = builtin_session_reset_callback
 };
 
+/* Abuse VPP's input queue */
 static int
-server_create (vlib_main_t * vm)
+create_api_loopback (vlib_main_t * vm)
 {
-  vnet_bind_args_t _a, *a = &_a;
-  u64 options[SESSION_OPTIONS_N_OPTIONS];
-  char segment_name[128];
-  u32 num_threads;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  builtin_server_main_t *bsm = &builtin_server_main;
+  vl_api_memclnt_create_t _m, *mp = &_m;
+  extern void vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t *);
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr;
+  uword *event_data = 0, event_type;
+  int resolved = 0;
 
-  num_threads = 1 /* main thread */  + vtm->n_threads;
-  vec_validate (builtin_server_main.vpp_queue, num_threads - 1);
+  /*
+   * Create a "loopback" API client connection
+   * Don't do things like this unless you know what you're doing...
+   */
+
+  shmem_hdr = am->shmem_hdr;
+  bsm->vl_input_queue = shmem_hdr->vl_input_queue;
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = VL_API_MEMCLNT_CREATE;
+  mp->context = 0xFEEDFACE;
+  mp->input_queue = (u64) bsm->vl_input_queue;
+  strncpy ((char *) mp->name, "tcp_test_server", sizeof (mp->name) - 1);
+
+  vl_api_memclnt_create_t_handler (mp);
+
+  /* Wait for reply */
+  bsm->node_index = vlib_get_current_process (vm)->node_runtime.node_index;
+  vlib_process_wait_for_event_or_clock (vm, 1.0);
+  event_type = vlib_process_get_events (vm, &event_data);
+  switch (event_type)
+    {
+    case 1:
+      resolved = 1;
+      break;
+    case ~0:
+      /* timed out */
+      break;
+    default:
+      clib_warning ("unknown event_type %d", event_type);
+    }
+  if (!resolved)
+    return -1;
+
+  return 0;
+}
+
+static int
+server_attach ()
+{
+  builtin_server_main_t *bsm = &builtin_server_main;
+  u8 segment_name[128];
+  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  vnet_app_attach_args_t _a, *a = &_a;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
-  a->uri = "tcp://0.0.0.0/1234";
-  a->api_client_index = ~0;
+  a->api_client_index = bsm->my_client_index;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
@@ -215,7 +291,92 @@ server_create (vlib_main_t * vm)
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
+  if (vnet_application_attach (a))
+    {
+      clib_warning ("failed to attach server");
+      return -1;
+    }
+  bsm->app_index = a->app_index;
+  return 0;
+}
+
+static int
+server_listen ()
+{
+  builtin_server_main_t *bsm = &builtin_server_main;
+  vnet_bind_args_t _a, *a = &_a;
+  memset (a, 0, sizeof (*a));
+  a->app_index = bsm->app_index;
+  a->uri = "tcp://0.0.0.0/1234";
   return vnet_bind_uri (a);
+}
+
+static int
+server_create (vlib_main_t * vm)
+{
+  builtin_server_main_t *bsm = &builtin_server_main;
+  u32 num_threads;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+
+  if (bsm->my_client_index == (u32) ~ 0)
+    {
+      if (create_api_loopback (vm))
+	return -1;
+    }
+
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  vec_validate (builtin_server_main.vpp_queue, num_threads - 1);
+
+  if (server_attach ())
+    {
+      clib_warning ("failed to attach server");
+      return -1;
+    }
+  if (server_listen ())
+    {
+      clib_warning ("failed to start listening");
+      return -1;
+    }
+  return 0;
+}
+
+/* Get our api client index */
+static void
+vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  builtin_server_main_t *bsm = &builtin_server_main;
+  bsm->my_client_index = mp->index;
+  vlib_process_signal_event (vm, bsm->node_index, 1 /* evt */ ,
+			     0 /* data */ );
+}
+
+#define foreach_tcp_builtin_server_api_msg      		\
+_(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   		\
+
+static clib_error_t *
+tcp_builtin_server_api_hookup (vlib_main_t * vm)
+{
+  vl_msg_api_msg_config_t _c, *c = &_c;
+
+  /* Hook up client-side static APIs to our handlers */
+#define _(N,n) do {                                             \
+    c->id = VL_API_##N;                                         \
+    c->name = #n;                                               \
+    c->handler = vl_api_##n##_t_handler;                        \
+    c->cleanup = vl_noop_handler;                               \
+    c->endian = vl_api_##n##_t_endian;                          \
+    c->print = vl_api_##n##_t_print;                            \
+    c->size = sizeof(vl_api_##n##_t);                           \
+    c->traced = 1; /* trace, so these msgs print */             \
+    c->replay = 0; /* don't replay client create/delete msgs */ \
+    c->message_bounce = 0; /* don't bounce this message */	\
+    vl_msg_api_config(c);} while (0);
+
+  foreach_tcp_builtin_server_api_msg;
+#undef _
+
+  return 0;
 }
 
 static clib_error_t *
@@ -234,6 +395,7 @@ server_create_command_fn (vlib_main_t * vm,
     }
 #endif
 
+  tcp_builtin_server_api_hookup (vm);
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
   rv = server_create (vm);
   switch (rv)
@@ -249,11 +411,21 @@ server_create_command_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (server_create_command, static) =
 {
-  .path = "test server",
-  .short_help = "test server",
+  .path = "test tcp server",
+  .short_help = "test tcp server",
   .function = server_create_command_fn,
 };
 /* *INDENT-ON* */
+
+clib_error_t *
+builtin_tcp_server_main_init (vlib_main_t * vm)
+{
+  builtin_server_main_t *bsm = &builtin_server_main;
+  bsm->my_client_index = ~0;
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (builtin_tcp_server_main_init);
 
 /*
 * fd.io coding-style-patch-verification: ON

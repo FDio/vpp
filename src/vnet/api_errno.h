@@ -105,7 +105,9 @@ _(INVALID_GPE_MODE, -112, "Invalid GPE mode")                           \
 _(LISP_GPE_ENTRIES_PRESENT, -113, "LISP GPE entries are present")       \
 _(ADDRESS_FOUND_FOR_INTERFACE, -114, "Address found for interface")	\
 _(SESSION_CONNECT_FAIL, -115, "Session failed to connect")              \
-_(ENTRY_ALREADY_EXISTS, -116, "Entry already exists")
+_(ENTRY_ALREADY_EXISTS, -116, "Entry already exists")			\
+_(SVM_SEGMENT_CREATE_FAIL, -117, "svm segment create fail")		\
+_(APPLICATION_NOT_ATTACHED, -118, "application not attached")
 
 typedef enum
 {

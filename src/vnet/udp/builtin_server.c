@@ -91,12 +91,11 @@ static session_cb_vft_t builtin_server = {
 /* *INDENT-ON* */
 
 static int
-bind_builtin_uri_server (u8 * uri)
+attach_builtin_uri_server ()
 {
-  vnet_bind_args_t _a, *a = &_a;
-  char segment_name[128];
+  vnet_app_attach_args_t _a, *a = &_a;
+  u8 segment_name[128];
   u32 segment_name_length;
-  int rv;
   u64 options[16];
 
   segment_name_length = ARRAY_LEN (segment_name);
@@ -104,8 +103,7 @@ bind_builtin_uri_server (u8 * uri)
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
-  a->uri = (char *) uri;
-  a->api_client_index = ~0;	/* built-in server */
+  a->api_client_index = ~0;
   a->segment_name = segment_name;
   a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_server;
@@ -113,6 +111,23 @@ bind_builtin_uri_server (u8 * uri)
   options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[SESSION_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
   a->options = options;
+
+  return vnet_application_attach (a);
+}
+
+static int
+bind_builtin_uri_server (u8 * uri)
+{
+  vnet_bind_args_t _a, *a = &_a;
+  int rv;
+
+  rv = attach_builtin_uri_server ();
+  if (rv)
+    return rv;
+
+  memset (a, 0, sizeof (*a));
+  a->uri = (char *) uri;
+  a->app_index = ~0;		/* built-in server */
 
   rv = vnet_bind_uri (a);
 
@@ -122,11 +137,12 @@ bind_builtin_uri_server (u8 * uri)
 static int
 unbind_builtin_uri_server (u8 * uri)
 {
-  int rv;
+  vnet_unbind_args_t _a, *a = &_a;
 
-  rv = vnet_unbind_uri ((char *) uri, ~0 /* client_index */ );
+  a->app_index = ~0;
+  a->uri = (char *) uri;
 
-  return rv;
+  return vnet_unbind_uri (a);
 }
 
 static clib_error_t *

@@ -48,10 +48,6 @@ typedef struct
   u32 nitems;
     CLIB_CACHE_LINE_ALIGN_MARK (end_cursize);
 
-  pthread_mutex_t mutex;	/* 8 bytes */
-  pthread_cond_t condvar;	/* 8 bytes */
-  svm_lock_tag_t tag;
-
   volatile u8 has_event;	/**< non-zero if deq event exists */
   u32 owner_pid;
 
@@ -60,6 +56,7 @@ typedef struct
   u32 client_session_index;
   u8 server_thread_index;
   u8 client_thread_index;
+  u32 segment_manager;
     CLIB_CACHE_LINE_ALIGN_MARK (end_shared);
   u32 head;
     CLIB_CACHE_LINE_ALIGN_MARK (end_consumer);
@@ -73,30 +70,6 @@ typedef struct
 
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
-
-static inline int
-svm_fifo_lock (svm_fifo_t * f, u32 pid, u32 tag, int nowait)
-{
-  if (PREDICT_TRUE (nowait == 0))
-    pthread_mutex_lock (&f->mutex);
-  else
-    {
-      if (pthread_mutex_trylock (&f->mutex))
-	return -1;
-    }
-  f->owner_pid = pid;
-  f->tag = tag;
-  return 0;
-}
-
-static inline void
-svm_fifo_unlock (svm_fifo_t * f)
-{
-  f->owner_pid = 0;
-  f->tag = 0;
-  CLIB_MEMORY_BARRIER ();
-  pthread_mutex_unlock (&f->mutex);
-}
 
 static inline u32
 svm_fifo_max_dequeue (svm_fifo_t * f)
@@ -139,6 +112,7 @@ svm_fifo_unset_event (svm_fifo_t * f)
 }
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
+void svm_fifo_free (svm_fifo_t * f);
 
 int svm_fifo_enqueue_nowait (svm_fifo_t * f, int pid, u32 max_bytes,
 			     u8 * copy_from_here);
@@ -153,6 +127,8 @@ int svm_fifo_dequeue_nowait (svm_fifo_t * f, int pid, u32 max_bytes,
 int svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
 		   u8 * copy_here);
 int svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes);
+
+format_function_t format_svm_fifo;
 
 always_inline ooo_segment_t *
 svm_fifo_newest_ooo_segment (svm_fifo_t * f)
