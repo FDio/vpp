@@ -34,14 +34,19 @@ tcp_connection_bind (u32 session_index, ip46_address_t * ip,
   listener->c_lcl_port = clib_host_to_net_u16 (port_host_byte_order);
 
   if (is_ip4)
-    listener->c_lcl_ip4.as_u32 = ip->ip4.as_u32;
+    {
+      listener->c_lcl_ip4.as_u32 = ip->ip4.as_u32;
+      listener->c_is_ip4 = 1;
+      listener->c_proto = SESSION_TYPE_IP4_TCP;
+    }
   else
-    clib_memcpy (&listener->c_lcl_ip6, &ip->ip6, sizeof (ip6_address_t));
+    {
+      clib_memcpy (&listener->c_lcl_ip6, &ip->ip6, sizeof (ip6_address_t));
+      listener->c_proto = SESSION_TYPE_IP6_TCP;
+    }
 
   listener->c_s_index = session_index;
-  listener->c_proto = SESSION_TYPE_IP4_TCP;
   listener->state = TCP_STATE_LISTEN;
-  listener->c_is_ip4 = 1;
 
   tcp_connection_timers_init (listener);
 
@@ -62,7 +67,6 @@ tcp_session_bind_ip6 (u32 session_index, ip46_address_t * ip,
 		      u16 port_host_byte_order)
 {
   return tcp_connection_bind (session_index, ip, port_host_byte_order, 0);
-
 }
 
 static void
@@ -397,6 +401,7 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_c_index = tc - tm->half_open_connections;
   tc->c_is_ip4 = is_ip4;
+  tc->c_proto = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
@@ -518,7 +523,10 @@ format_tcp_session (u8 * s, va_list * args)
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (tci, thread_index);
-  return format (s, "%U", format_tcp_connection, tc);
+  if (tc)
+    return format (s, "%U", format_tcp_connection, tc);
+  else
+    return format (s, "empty");
 }
 
 u8 *

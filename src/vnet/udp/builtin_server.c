@@ -105,7 +105,7 @@ bind_builtin_uri_server (u8 * uri)
   memset (options, 0, sizeof (options));
 
   a->uri = (char *) uri;
-  a->api_client_index = ~0;	/* built-in server */
+  a->app_index = ~0;	/* built-in server */
   a->segment_name = segment_name;
   a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_server;
@@ -122,11 +122,12 @@ bind_builtin_uri_server (u8 * uri)
 static int
 unbind_builtin_uri_server (u8 * uri)
 {
-  int rv;
+  vnet_unbind_args_t _a, *a = &_a;
 
-  rv = vnet_unbind_uri ((char *) uri, ~0 /* client_index */ );
+  a->app_index = ~0;
+  a->uri = (char *) uri;
 
-  return rv;
+  return  vnet_unbind_uri (a);
 }
 
 static clib_error_t *

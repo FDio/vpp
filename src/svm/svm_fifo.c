@@ -20,8 +20,6 @@ svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
 {
   svm_fifo_t *f;
-  pthread_mutexattr_t attr;
-  pthread_condattr_t cattr;
 
   f = clib_mem_alloc_aligned_or_null (sizeof (*f) + data_size_in_bytes,
 				      CLIB_CACHE_LINE_BYTES);
@@ -31,26 +29,6 @@ svm_fifo_create (u32 data_size_in_bytes)
   memset (f, 0, sizeof (*f) + data_size_in_bytes);
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
-
-  memset (&attr, 0, sizeof (attr));
-  memset (&cattr, 0, sizeof (cattr));
-
-  if (pthread_mutexattr_init (&attr))
-    clib_unix_warning ("mutexattr_init");
-  if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
-    clib_unix_warning ("pthread_mutexattr_setpshared");
-  if (pthread_mutex_init (&f->mutex, &attr))
-    clib_unix_warning ("mutex_init");
-  if (pthread_mutexattr_destroy (&attr))
-    clib_unix_warning ("mutexattr_destroy");
-  if (pthread_condattr_init (&cattr))
-    clib_unix_warning ("condattr_init");
-  if (pthread_condattr_setpshared (&cattr, PTHREAD_PROCESS_SHARED))
-    clib_unix_warning ("condattr_setpshared");
-  if (pthread_cond_init (&f->condvar, &cattr))
-    clib_unix_warning ("cond_init1");
-  if (pthread_condattr_destroy (&cattr))
-    clib_unix_warning ("cond_init2");
 
   return (f);
 }

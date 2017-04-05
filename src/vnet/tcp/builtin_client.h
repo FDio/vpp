@@ -39,8 +39,7 @@ typedef struct
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  u32 vpp_session_index;
-  u32 vpp_session_thread;
+  u64 vpp_session_handle;
 } session_t;
 
 typedef struct
@@ -109,6 +108,10 @@ typedef struct
   pthread_t client_thread_handle;
   u32 client_bytes_received;
   u8 test_return_packets;
+
+  u8 is_init;
+
+  u32 node_index;
 
   /* convenience */
   vlib_main_t *vlib_main;
