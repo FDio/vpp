@@ -4151,6 +4151,8 @@ _(sw_interface_set_l2_bridge_reply)                     \
 _(bridge_domain_add_del_reply)                          \
 _(sw_interface_set_l2_xconnect_reply)                   \
 _(l2fib_add_del_reply)                                  \
+_(l2fib_flush_int_reply)                                \
+_(l2fib_flush_bd_reply)                                 \
 _(ip_add_del_route_reply)                               \
 _(ip_mroute_add_del_reply)                              \
 _(mpls_route_add_del_reply)                             \
@@ -4320,6 +4322,8 @@ _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
 _(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
 _(BRIDGE_DOMAIN_SET_MAC_AGE_REPLY, bridge_domain_set_mac_age_reply)     \
 _(L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                             \
+_(L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                         \
+_(L2FIB_FLUSH_BD_REPLY, l2fib_flush_bd_reply)                           \
 _(L2_FLAGS_REPLY, l2_flags_reply)                                       \
 _(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
 _(TAP_CONNECT_REPLY, tap_connect_reply)					\
@@ -5908,6 +5912,70 @@ api_bridge_domain_add_del (vat_main_t * vam)
   mp->arp_term = arp_term;
   mp->is_add = is_add;
   mp->mac_age = (u8) mac_age;
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_l2fib_flush_bd (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_l2fib_flush_bd_t *mp;
+  u32 bd_id = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "bd_id %d", &bd_id));
+      else
+	break;
+    }
+
+  if (bd_id == ~0)
+    {
+      errmsg ("missing bridge domain");
+      return -99;
+    }
+
+  M (L2FIB_FLUSH_BD, mp);
+
+  mp->bd_id = htonl (bd_id);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_l2fib_flush_int (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_l2fib_flush_int_t *mp;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sw_if_index %d", &sw_if_index));
+      else
+	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index));
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  M (L2FIB_FLUSH_INT, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
 
   S (mp);
   W (ret);
@@ -18542,15 +18610,17 @@ _(sw_interface_set_l2_xconnect,                                         \
   "rx <intfc> | rx_sw_if_index <id> tx <intfc> | tx_sw_if_index <id>\n" \
   "enable | disable")                                                   \
 _(sw_interface_set_l2_bridge,                                           \
-  "<intfc> | sw_if_index <id> bd_id <bridge-domain-id>\n"               \
+  "{<intfc> | sw_if_index <id>} bd_id <bridge-domain-id>\n"             \
   "[shg <split-horizon-group>] [bvi]\n"                                 \
   "enable | disable")                                                   \
-_(bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255\n")\
+_(bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255")  \
 _(bridge_domain_add_del,                                                \
   "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [mac-age 0-255] [del]\n") \
 _(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                   \
 _(l2fib_add_del,                                                        \
   "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
+_(l2fib_flush_bd, "bd_id <bridge-domain-id>")                           \
+_(l2fib_flush_int, "<intfc> | sw_if_index <id>")                        \
 _(l2_flags,                                                             \
   "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood]\n") \
 _(bridge_flags,                                                         \
