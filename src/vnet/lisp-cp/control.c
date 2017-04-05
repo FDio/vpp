@@ -866,11 +866,11 @@ vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
 			"mapping!", vni, dp_id);
 	  return -1;
 	}
-      hash_unset (dp_table_by_vni[0], vni);
-      hash_unset (vni_by_dp_table[0], dp_id);
-
       /* remove dp iface */
       dp_add_del_iface (lcm, vni, is_l2, 0);
+
+      hash_unset (dp_table_by_vni[0], vni);
+      hash_unset (vni_by_dp_table[0], dp_id);
     }
   return 0;
 
