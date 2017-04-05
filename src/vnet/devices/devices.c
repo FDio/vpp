@@ -102,11 +102,26 @@ vnet_device_queue_sort (void *a1, void *a2)
     return 0;
 }
 
+static void
+vnet_device_queue_update (vnet_main_t * vnm, vnet_device_input_runtime_t * rt)
+{
+  vnet_device_and_queue_t *dq;
+  vnet_hw_interface_t *hw;
+
+  vec_sort_with_function (rt->devices_and_queues, vnet_device_queue_sort);
+
+  vec_foreach (dq, rt->devices_and_queues)
+  {
+    hw = vnet_get_hw_interface (vnm, dq->hw_if_index);
+    vec_validate (hw->dq_runtime_index_by_queue, dq->queue_id);
+    hw->dq_runtime_index_by_queue[dq->queue_id] = dq - rt->devices_and_queues;
+  }
+}
+
 void
-vnet_device_input_assign_thread (u32 hw_if_index,
+vnet_device_input_assign_thread (vnet_main_t * vnm, u32 hw_if_index,
 				 u16 queue_id, uword thread_index)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
   vlib_main_t *vm;
   vnet_device_input_runtime_t *rt;
@@ -135,16 +150,17 @@ vnet_device_input_assign_thread (u32 hw_if_index,
   dq->dev_instance = hw->dev_instance;
   dq->queue_id = queue_id;
 
-  vec_sort_with_function (rt->devices_and_queues, vnet_device_queue_sort);
+  vnet_device_queue_update (vnm, rt);
   vec_validate (hw->input_node_thread_index_by_queue, queue_id);
   hw->input_node_thread_index_by_queue[queue_id] = thread_index;
+  vlib_node_set_state (vm, hw->input_node_index, rt->enabled_node_state);
 }
 
-static int
-vnet_device_input_unassign_thread (u32 hw_if_index, u16 queue_id,
-				   uword thread_index)
+int
+vnet_device_input_unassign_thread (vnet_main_t * vnm, u32 hw_if_index,
+				   u16 queue_id, uword thread_index)
 {
-  vnet_main_t *vnm = vnet_get_main ();
+  vlib_main_t *vm;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_device_input_runtime_t *rt;
   vnet_device_and_queue_t *dq;
@@ -161,9 +177,9 @@ vnet_device_input_unassign_thread (u32 hw_if_index, u16 queue_id,
   if (old_thread_index == thread_index)
     return 0;
 
-  rt =
-    vlib_node_get_runtime_data (vlib_mains[old_thread_index],
-				hw->input_node_index);
+  vm = vlib_mains[old_thread_index];
+
+  rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
 
   vec_foreach (dq, rt->devices_and_queues)
     if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
@@ -175,9 +191,87 @@ vnet_device_input_unassign_thread (u32 hw_if_index, u16 queue_id,
   return VNET_API_ERROR_INVALID_INTERFACE;
 
 deleted:
-  vec_sort_with_function (rt->devices_and_queues, vnet_device_queue_sort);
+
+  vnet_device_queue_update (vnm, rt);
+
+  if (vec_len (rt->devices_and_queues) == 0)
+    vlib_node_set_state (vm, hw->input_node_index, VLIB_NODE_STATE_DISABLED);
 
   return 0;
+}
+
+
+int
+vnet_device_input_set_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
+			    vnet_device_input_mode_t mode)
+{
+  vlib_main_t *vm;
+  uword thread_index;
+  vnet_device_and_queue_t *dq;
+  vlib_node_state_t enabled_node_state;
+  ASSERT (mode < VNET_DEVICE_INPUT_N_MODES);
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_device_input_runtime_t *rt;
+  int is_polling = 0;
+
+  if (hw->input_node_thread_index_by_queue == 0)
+    return VNET_API_ERROR_INVALID_INTERFACE;
+
+  thread_index = hw->input_node_thread_index_by_queue[queue_id];
+  vm = vlib_mains[thread_index];
+
+  rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
+
+  vec_foreach (dq, rt->devices_and_queues)
+  {
+    if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
+      dq->mode = mode;
+    if (dq->mode == VNET_DEVICE_INPUT_MODE_POLLING)
+      is_polling = 1;
+  }
+
+  if (is_polling)
+    enabled_node_state = VLIB_NODE_STATE_POLLING;
+  else
+    enabled_node_state = VLIB_NODE_STATE_INTERRUPT;
+
+  if (rt->enabled_node_state != enabled_node_state)
+    {
+      rt->enabled_node_state = enabled_node_state;
+      if (vlib_node_get_state (vm, hw->input_node_index) !=
+	  VLIB_NODE_STATE_DISABLED)
+	vlib_node_set_state (vm, hw->input_node_index, enabled_node_state);
+    }
+
+  return 0;
+}
+
+int
+vnet_device_input_get_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
+			    vnet_device_input_mode_t * mode)
+{
+  vlib_main_t *vm;
+  uword thread_index;
+  vnet_device_and_queue_t *dq;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_device_input_runtime_t *rt;
+
+  if (hw->input_node_thread_index_by_queue == 0)
+    return VNET_API_ERROR_INVALID_INTERFACE;
+
+  thread_index = hw->input_node_thread_index_by_queue[queue_id];
+  vm = vlib_mains[thread_index];
+
+  rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
+
+  vec_foreach (dq, rt->devices_and_queues)
+    if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
+    {
+      *mode = dq->mode;
+      return 0;
+    }
+
+  return VNET_API_ERROR_INVALID_INTERFACE;
 }
 
 static clib_error_t *
@@ -203,9 +297,11 @@ show_device_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 
         vec_foreach (dq, rt->devices_and_queues)
 	  {
-	    s = format (s, "    %U queue %u\n",
+	    s = format (s, "    %U queue %u (%s)\n",
 			format_vnet_sw_if_index_name, vnm, dq->hw_if_index,
-			dq->queue_id);
+			dq->queue_id,
+			dq->mode == VNET_DEVICE_INPUT_MODE_POLLING ?
+			"polling" : "interrupt");
 	  }
       }));
     if (vec_len (s) > 0)
@@ -238,6 +334,7 @@ set_device_placement (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_device_input_mode_t mode;
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) 0;
   u32 thread_index = (u32) ~ 0;
@@ -275,13 +372,19 @@ set_device_placement (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "please specify valid worker thread or main");
 
-  rv =
-    vnet_device_input_unassign_thread (hw_if_index, queue_id, thread_index);
+  rv = vnet_device_input_get_mode (vnm, hw_if_index, queue_id, &mode);
 
   if (rv)
     return clib_error_return (0, "not found");
 
-  vnet_device_input_assign_thread (hw_if_index, queue_id, thread_index);
+  rv = vnet_device_input_unassign_thread (vnm, hw_if_index, queue_id,
+					  thread_index);
+
+  if (rv)
+    return clib_error_return (0, "not found");
+
+  vnet_device_input_assign_thread (vnm, hw_if_index, queue_id, thread_index);
+  vnet_device_input_set_mode (vnm, hw_if_index, queue_id, mode);
 
   return 0;
 }
