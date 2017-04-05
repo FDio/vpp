@@ -328,7 +328,7 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
-      vnet_hw_interface_set_flags (dm->vnet_main, xd->vlib_hw_if_index, 0);
+      vnet_hw_interface_set_flags (dm->vnet_main, xd->hw_if_index, 0);
       rte_eth_dev_stop (xd->device_index);
     }
 
@@ -359,20 +359,20 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
 
   for (j = 0; j < xd->rx_q_used; j++)
     {
+      uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
+						       xd->hw_if_index, j);
+      unsigned lcore = vlib_worker_threads[tidx].lcore_id;
+      u16 socket_id = rte_lcore_to_socket_id (lcore);
 
       rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
 				   xd->cpu_socket, 0,
-				   dm->
-				   pktmbuf_pools[xd->cpu_socket_id_by_queue
-						 [j]]);
+				   dm->pktmbuf_pools[socket_id]);
 
       /* retry with any other CPU socket */
       if (rv < 0)
 	rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
 				     SOCKET_ID_ANY, 0,
-				     dm->
-				     pktmbuf_pools[xd->cpu_socket_id_by_queue
-						   [j]]);
+				     dm->pktmbuf_pools[socket_id]);
       if (rv < 0)
 	return clib_error_return (0, "rte_eth_rx_queue_setup[%d]: err %d",
 				  xd->device_index, rv);
@@ -485,34 +485,19 @@ dpdk_lib_init (dpdk_main_t * dm)
   clib_error_t *error;
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vnet_device_main_t *vdm = &vnet_device_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hi;
   dpdk_device_t *xd;
   vlib_pci_addr_t last_pci_addr;
   u32 last_pci_addr_port = 0;
-  vlib_thread_registration_t *tr, *tr_hqos;
-  uword *p, *p_hqos;
+  vlib_thread_registration_t *tr_hqos;
+  uword *p_hqos;
 
-  u32 next_cpu = 0, next_hqos_cpu = 0;
+  u32 next_hqos_cpu = 0;
   u8 af_packet_port_id = 0;
   u8 bond_ether_port_id = 0;
   last_pci_addr.as_u32 = ~0;
-
-  dm->input_cpu_first_index = 0;
-  dm->input_cpu_count = 1;
-
-  /* find out which cpus will be used for input */
-  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
-
-  if (tr && tr->count > 0)
-    {
-      dm->input_cpu_first_index = tr->first_index;
-      dm->input_cpu_count = tr->count;
-    }
-
-  vec_validate_aligned (dm->devices_by_cpu, tm->n_vlib_mains - 1,
-			CLIB_CACHE_LINE_BYTES);
 
   dm->hqos_cpu_first_index = 0;
   dm->hqos_cpu_count = 0;
@@ -924,48 +909,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       dpdk_device_and_queue_t *dq;
       int q;
 
-      if (devconf->workers)
-	{
-	  int i;
-	  q = 0;
-	  /* *INDENT-OFF* */
-	  clib_bitmap_foreach (i, devconf->workers, ({
-	    int cpu = dm->input_cpu_first_index + i;
-	    unsigned lcore = vlib_worker_threads[cpu].lcore_id;
-	    vec_validate(xd->cpu_socket_id_by_queue, q);
-	    xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id(lcore);
-	    vec_add2(dm->devices_by_cpu[cpu], dq, 1);
-	    dq->device = xd->device_index;
-	    dq->queue_id = q++;
-	  }));
-	  /* *INDENT-ON* */
-	}
-      else
-	for (q = 0; q < xd->rx_q_used; q++)
-	  {
-	    int cpu = dm->input_cpu_first_index + next_cpu;
-	    unsigned lcore = vlib_worker_threads[cpu].lcore_id;
-
-	    /*
-	     * numa node for worker thread handling this queue
-	     * needed for taking buffers from the right mempool
-	     */
-	    vec_validate (xd->cpu_socket_id_by_queue, q);
-	    xd->cpu_socket_id_by_queue[q] = rte_lcore_to_socket_id (lcore);
-
-	    /*
-	     * construct vector of (device,queue) pairs for each worker thread
-	     */
-	    vec_add2 (dm->devices_by_cpu[cpu], dq, 1);
-	    dq->device = xd->device_index;
-	    dq->queue_id = q;
-
-	    next_cpu++;
-	    if (next_cpu == dm->input_cpu_count)
-	      next_cpu = 0;
-	  }
-
-
       if (devconf->hqos_enabled)
 	{
 	  xd->flags |= DPDK_DEVICE_FLAG_HQOS;
@@ -1022,6 +965,42 @@ dpdk_lib_init (dpdk_main_t * dm)
       vec_validate_aligned (xd->d_trace_buffers, tm->n_vlib_mains,
 			    CLIB_CACHE_LINE_BYTES);
 
+
+      /* count the number of descriptors used for this device */
+      nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
+
+      error = ethernet_register_interface
+	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
+	 /* ethernet address */ addr,
+	 &xd->hw_if_index, dpdk_flag_change);
+      if (error)
+	return error;
+
+      sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
+      xd->vlib_sw_if_index = sw->sw_if_index;
+      vnet_set_device_input_node (dm->vnet_main, xd->hw_if_index,
+				  dpdk_input_node.index);
+
+      if (devconf->workers)
+	{
+	  int i;
+	  q = 0;
+	  /* *INDENT-OFF* */
+	  clib_bitmap_foreach (i, devconf->workers, ({
+	    vnet_device_input_assign_thread (dm->vnet_main, xd->hw_if_index, q++,
+					     vdm->first_worker_thread_index + i);
+	  }));
+	  /* *INDENT-ON* */
+	}
+      else
+	for (q = 0; q < xd->rx_q_used; q++)
+	  {
+	    vnet_device_input_assign_thread (dm->vnet_main, xd->hw_if_index, q,	/* any */
+					     ~1);
+	  }
+
+      hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+
       rv = dpdk_port_setup (dm, xd);
 
       if (rv)
@@ -1033,20 +1012,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  if (rv)
 	    return rv;
 	}
-
-      /* count the number of descriptors used for this device */
-      nb_desc += xd->nb_rx_desc + xd->nb_tx_desc * xd->tx_q_used;
-
-      error = ethernet_register_interface
-	(dm->vnet_main, dpdk_device_class.index, xd->device_index,
-	 /* ethernet address */ addr,
-	 &xd->vlib_hw_if_index, dpdk_flag_change);
-      if (error)
-	return error;
-
-      sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->vlib_hw_if_index);
-      xd->vlib_sw_if_index = sw->sw_if_index;
-      hi = vnet_get_hw_interface (dm->vnet_main, xd->vlib_hw_if_index);
 
       /*
        * For cisco VIC vNIC, set default to VLAN strip enabled, unless
@@ -1723,13 +1688,13 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       ed->sw_if_index = xd->vlib_sw_if_index;
       ed->admin_up = (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0;
       ed->old_link_state = (u8)
-	vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index);
+	vnet_hw_interface_is_link_up (vnm, xd->hw_if_index);
       ed->new_link_state = (u8) xd->link.link_status;
     }
 
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) &&
       ((xd->link.link_status != 0) ^
-       vnet_hw_interface_is_link_up (vnm, xd->vlib_hw_if_index)))
+       vnet_hw_interface_is_link_up (vnm, xd->hw_if_index)))
     {
       hw_flags_chg = 1;
       hw_flags |= (xd->link.link_status ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
@@ -1798,7 +1763,7 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	  ed->sw_if_index = xd->vlib_sw_if_index;
 	  ed->flags = hw_flags;
 	}
-      vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, hw_flags);
+      vnet_hw_interface_set_flags (vnm, xd->hw_if_index, hw_flags);
     }
 }
 
@@ -1814,23 +1779,6 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
   int i;
 
   error = dpdk_lib_init (dm);
-
-  /*
-   * Turn on the input node if we found some devices to drive
-   * and we're not running worker threads or i/o threads
-   */
-
-  if (error == 0 && vec_len (dm->devices) > 0)
-    {
-      if (tm->n_vlib_mains == 1)
-	vlib_node_set_state (vm, dpdk_input_node.index,
-			     VLIB_NODE_STATE_POLLING);
-      else
-	for (i = 0; i < tm->n_vlib_mains; i++)
-	  if (vec_len (dm->devices_by_cpu[i]) > 0)
-	    vlib_node_set_state (vlib_mains[i], dpdk_input_node.index,
-				 VLIB_NODE_STATE_POLLING);
-    }
 
   if (error)
     clib_error_report (error);
@@ -1881,7 +1829,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 		    /* Populate MAC of bonded interface in VPP hw tables */
 		    bhi = vnet_get_hw_interface
-		      (vnm, dm->devices[i].vlib_hw_if_index);
+		      (vnm, dm->devices[i].hw_if_index);
 		    bei = pool_elt_at_index
 		      (em->interfaces, bhi->hw_instance);
 		    clib_memcpy (bhi->hw_address, addr, 6);
@@ -1910,10 +1858,9 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			  }
 			/* Set slaves bitmap for bonded interface */
 			bhi->bond_info = clib_bitmap_set
-			  (bhi->bond_info, sdev->vlib_hw_if_index, 1);
+			  (bhi->bond_info, sdev->hw_if_index, 1);
 			/* Set slave link flags on slave interface */
-			shi = vnet_get_hw_interface
-			  (vnm, sdev->vlib_hw_if_index);
+			shi = vnet_get_hw_interface (vnm, sdev->hw_if_index);
 			ssi = vnet_get_sw_interface
 			  (vnm, sdev->vlib_sw_if_index);
 			sei = pool_elt_at_index
