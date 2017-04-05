@@ -301,7 +301,7 @@ static_always_inline
 	  u32 node_index;
 
 	  node_index = vec_elt_at_index (im->hw_interfaces,
-					 xd->vlib_hw_if_index)->tx_node_index;
+					 xd->hw_if_index)->tx_node_index;
 
 	  vlib_error_count (vm, node_index, DPDK_TX_FUNC_ERROR_BAD_RETVAL, 1);
 	  clib_warning ("rte_eth_tx_burst[%d]: error %d", xd->device_index,
@@ -658,7 +658,7 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
       xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
 
       rte_eth_allmulticast_disable (xd->device_index);
-      vnet_hw_interface_set_flags (vnm, xd->vlib_hw_if_index, 0);
+      vnet_hw_interface_set_flags (vnm, xd->hw_if_index, 0);
       rte_eth_dev_stop (xd->device_index);
 
       /* For bonded interface, stop slave links */
