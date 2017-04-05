@@ -30,7 +30,7 @@ typedef struct _transport_connection
   ip46_address_t lcl_ip;	/**< Local IP */
   u16 lcl_port;			/**< Local port */
   u16 rmt_port;			/**< Remote port */
-  u8 proto;			/**< Transport protocol id */
+  u8 proto;			/**< Transport protocol id (also session type) */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
@@ -103,7 +103,8 @@ typedef CLIB_PACKED (struct {
     {
       struct
 	{
-	  ip4_address_t src; ip4_address_t dst;
+	  ip4_address_t src;
+	  ip4_address_t dst;
 	  u16 src_port;
 	  u16 dst_port;
 	  /* align by making this 4 octets even though its a 1-bit field
@@ -122,10 +123,14 @@ typedef CLIB_PACKED (struct {
       struct
 	{
 	  /* 48 octets */
-	  ip6_address_t src; ip6_address_t dst;
+	  ip6_address_t src;
+	  ip6_address_t dst;
 	  u16 src_port;
-	  u16 dst_port; u32 proto; u8 unused_for_now[8];
-	}; u64 as_u64[6];
+	  u16 dst_port;
+	  u32 proto;
+	  u8 unused_for_now[8];
+	};
+      u64 as_u64[6];
     };
 }) v6_connection_key_t;
 /* *INDENT-ON* */
@@ -233,10 +238,10 @@ make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 
 typedef struct _transport_endpoint
 {
-  ip46_address_t ip;
-  u16 port;
-  u8 is_ip4;
-  u32 vrf;
+  ip46_address_t ip;	/** ip address */
+  u16 port;		/** port in host order */
+  u8 is_ip4;		/** 1 if ip4 */
+  u32 vrf;		/** fib table the endpoint is associated with */
 } transport_endpoint_t;
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;

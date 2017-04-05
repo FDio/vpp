@@ -2410,12 +2410,6 @@ VLIB_REGISTER_NODE (tcp6_input_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (tcp6_input_node, tcp6_input);
-void
-tcp_update_time (f64 now, u32 thread_index)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  tw_timer_expire_timers_16t_2w_512sl (&tm->timer_wheels[thread_index], now);
-}
 
 static void
 tcp_dispatch_table_init (tcp_main_t * tm)

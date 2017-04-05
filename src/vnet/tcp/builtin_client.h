@@ -110,6 +110,10 @@ typedef struct
   u32 client_bytes_received;
   u8 test_return_packets;
 
+  u8 is_init;
+
+  u32 node_index;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
