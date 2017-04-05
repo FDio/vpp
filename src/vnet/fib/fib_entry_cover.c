@@ -106,51 +106,6 @@ fib_entry_cover_walk (fib_entry_t *cover,
                        &ctx);
 }
 
-u32
-fib_entry_cover_get_size (fib_entry_t *cover)
-{
-    fib_entry_delegate_t *fed;
-
-    fed = fib_entry_delegate_get(cover, FIB_ENTRY_DELEGATE_COVERED);
-
-    if (NULL == fed)
-        return (0);
-
-    return (fib_node_list_get_size(fed->fd_list));
-}
-
-typedef struct fib_entry_cover_list_format_ctx_t_ {
-    u8 *s;
-} fib_entry_cover_list_format_ctx_t;
-
-static int
-fib_entry_covered_list_format_one (fib_entry_t *cover,
-				   fib_node_index_t covered,
-				   void *args)
-{
-    fib_entry_cover_list_format_ctx_t * ctx = args;
-
-    ctx->s = format(ctx->s, "%d, ", covered);
-
-    /* continue */
-    return (1);
-}
-
-u8*
-fib_entry_cover_list_format (fib_entry_t *fib_entry,
-			     u8 *s)
-{
-    fib_entry_cover_list_format_ctx_t ctx = {
-	.s = s,
-    };
-
-    fib_entry_cover_walk(fib_entry, 
-			 fib_entry_covered_list_format_one,
-			 &ctx);
-
-    return (ctx.s);
-}
-
 static int
 fib_entry_cover_change_one (fib_entry_t *cover,
 			    fib_node_index_t covered,

@@ -18,6 +18,7 @@
 #include <vnet/adj/adj_glean.h>
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_mcast.h>
+#include <vnet/adj/adj_delegate.h>
 #include <vnet/fib/fib_node_list.h>
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
@@ -57,13 +58,14 @@ adj_alloc (fib_protocol_t proto)
     vlib_validate_combined_counter(&adjacency_counters,
                                    adj_get_index(adj));
 
-    adj->rewrite_header.sw_if_index = ~0;
-    adj->lookup_next_index = 0;
-
     fib_node_init(&adj->ia_node,
                   FIB_NODE_TYPE_ADJ);
+
     adj->ia_nh_proto = proto;
     adj->ia_flags = 0;
+    adj->rewrite_header.sw_if_index = ~0;
+    adj->lookup_next_index = 0;
+    adj->ia_delegates = NULL;
 
     ip4_main.lookup_main.adjacency_heap = adj_pool;
     ip6_main.lookup_main.adjacency_heap = adj_pool;
@@ -122,11 +124,19 @@ format_ip_adjacency (u8 * s, va_list * args)
 
     if (fiaf & FORMAT_IP_ADJACENCY_DETAIL)
     {
+        adj_delegate_type_t adt;
+        adj_delegate_t *aed;
         vlib_counter_t counts;
 
         vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
         s = format (s, "\n counts:[%Ld:%Ld]", counts.packets, counts.bytes);
 	s = format (s, "\n locks:%d", adj->ia_node.fn_locks);
+	s = format(s, "\n delegates:\n  ");
+        FOR_EACH_ADJ_DELEGATE(adj, adt, aed,
+        {
+            s = format(s, "  %U\n", format_adj_deletegate, aed);
+        });
+
 	s = format(s, "\n children:\n  ");
 	s = fib_node_children_format(adj->ia_node.fn_children, s);
     }
@@ -173,7 +183,11 @@ adj_last_lock_gone (ip_adjacency_t *adj)
 	adj_mcast_remove(adj->ia_nh_proto,
 			 adj->rewrite_header.sw_if_index);
 	break;
-    default:
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
 	/*
 	 * type not stored in any DB from which we need to remove it
 	 */
@@ -183,6 +197,8 @@ adj_last_lock_gone (ip_adjacency_t *adj)
     vlib_worker_thread_barrier_release(vm);
 
     fib_node_deinit(&adj->ia_node);
+    ASSERT(0 == vec_len(adj->ia_delegates));
+    vec_free(adj->ia_delegates);
     pool_put(adj_pool, adj);
 }
 
@@ -349,6 +365,33 @@ adj_get_sw_if_index (adj_index_t ai)
     adj = adj_get(ai);
 
     return (adj->rewrite_header.sw_if_index);
+}
+
+/**
+ * @brief Return true if the adjacency is 'UP', i.e. can be used for forwarding
+ * 0 is down, !0 is up.
+ */
+int
+adj_is_up (adj_index_t ai)
+{
+    const adj_delegate_t *aed;
+
+    aed = adj_delegate_get(adj_get(ai), ADJ_DELEGATE_BFD);
+
+    if (NULL == aed)
+    {
+        /*
+         * no BFD tracking - resolved
+         */
+        return (!0);
+    }
+    else
+    {
+        /*
+         * defer to the state of the BFD tracking
+         */
+        return (ADJ_BFD_STATE_UP == aed->ad_bfd_state);
+    }
 }
 
 /**
