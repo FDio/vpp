@@ -1,5 +1,5 @@
 loop create
-set int ip address loop0 10.0.0.1/32
+set int ip address loop0 6.0.0.1/32
 set int state loop0 up
 
 packet-generator new {
@@ -17,3 +17,4 @@ packet-generator new {
     incrementing 100
   }
 }
+session enable

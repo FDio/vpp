@@ -13,6 +13,68 @@
  * limitations under the License.
  */
  
+/** \brief client->vpp, attach application to session layer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param initial_segment_size - size of the initial shm segment to be 
+    							  allocated
+    @param options - segment size, fifo sizes, etc.
+*/
+ define application_attach {
+    u32 client_index;
+    u32 context;
+    u32 initial_segment_size;
+    u64 options[16];
+ };
+ 
+ /** \brief Application attach reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param app_event_queue_address - vpp event queue address or 0 if this 
+                                 	 connection shouldn't send events
+    @param segment_size - size of first shm segment
+    @param segment_name_length - length of segment name 
+    @param segment_name - name of segment client needs to attach to
+*/
+define application_attach_reply {
+    u32 context;
+    i32 retval;
+    u64 app_event_queue_address;
+    u32 segment_size;
+    u8 segment_name_length;
+    u8 segment_name[128];
+};
+
+ /** \brief client->vpp, attach application to session layer
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+ define application_detach {
+    u32 client_index;
+    u32 context;
+ };
+ 
+ /** \brief detach reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define application_detach_reply {
+    u32 context;
+    i32 retval;
+};
+ 
+/** \brief vpp->client, please map an additional shared memory segment
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param segment_name - 
+*/
+define map_another_segment {
+    u32 client_index;
+    u32 context;
+    u32 segment_size;
+    u8 segment_name[128];
+};
+
  /** \brief Bind to a given URI
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -25,9 +87,7 @@ define bind_uri {
   u32 client_index;
   u32 context;
   u32 accept_cookie;
-  u32 initial_segment_size;
   u8 uri[128];
-  u64 options[16];
 };
 
 /** \brief Unbind a given URI
@@ -62,18 +122,10 @@ define connect_uri {
 /** \brief Bind reply
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
-    @param event_queue_address - vpp event queue address or 0 if this 
-                                 connection shouldn't send events
-    @param segment_name_length - length of segment name 
-    @param segment_name - name of segment client needs to attach to
 */
 define bind_uri_reply {
     u32 context;
     i32 retval;
-    u64 server_event_queue_address;
-    u8 segment_name_length;
-    u32 segment_size;
-    u8 segment_name[128];
 };
 
 /** \brief unbind reply
@@ -94,35 +146,23 @@ define unbind_uri_reply {
     @param session_thread_index - session thread index
     @param session_type - session thread type
     @param vpp_event_queue_address - vpp's event queue address
-    @param client_event_queue_address - client's event queue address
     @param segment_name_length - non-zero if the client needs to attach to 
-                                 the fifo segment
+                                 the fifo segment. This should only happen 
+                                 if session was redirected.
     @param segment_name - set if the client needs to attach to the segment
 */
 define connect_uri_reply {
   u32 context;
   i32 retval;
+  u8 session_type;
   u64 server_rx_fifo;
   u64 server_tx_fifo;
   u32 session_index;
   u32 session_thread_index;
-  u8 session_type;
-  u64 client_event_queue_address;
   u64 vpp_event_queue_address;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[128];
-};
-
-/** \brief vpp->client, please map an additional shared memory segment
-    @param context - sender context, to match reply w/ request
-    @param segment_name - 
-*/
-define map_another_segment {
-    u32 client_index;
-    u32 context;
-    u32 segment_size;
-    u8 segment_name[128];
 };
 
 /** \brief client->vpp
@@ -137,24 +177,23 @@ define map_another_segment_reply {
 /** \brief vpp->client, accept this session
     @param context - sender context, to match reply w/ request
     @param accept_cookie - tells client which bind flavor just occurred
-    @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
-    @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
+    @param session_type - type of session
     @param session_index - index of new session
     @param session_thread_index - thread index of new session
+    @param rx_fifo_address - rx (vpp -> vpp-client) fifo address 
+    @param tx_fifo_address - tx (vpp-client -> vpp) fifo address 
     @param vpp_event_queue_address - vpp's event queue address
-    @param session_type - type of session
-    
 */
 define accept_session {
   u32 client_index;
   u32 context;
   u32 accept_cookie;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
+  u8 session_type;
   u32 session_index;
   u32 session_thread_index;
+  u64 server_rx_fifo;
+  u64 server_tx_fifo;
   u64 vpp_event_queue_address;
-  u8 session_type;
 };
 
 /** \brief client->vpp, reply to an accept message

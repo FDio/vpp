@@ -38,6 +38,8 @@
 
 #define foreach_session_api_msg                                         \
 _(MAP_ANOTHER_SEGMENT_REPLY, map_another_segment_reply)                 \
+_(APPLICATION_ATTACH, application_attach)				\
+_(APPLICATION_DETACH, application_detach)				\
 _(BIND_URI, bind_uri)                                                   \
 _(UNBIND_URI, unbind_uri)                                               \
 _(CONNECT_URI, connect_uri)                                             \
@@ -152,15 +154,15 @@ send_session_reset_uri_callback (stream_session_t * s)
 }
 
 static int
-send_session_connected_uri_callback (u32 api_client_index,
+send_session_connected_uri_callback (u32 app_index, u32 api_context,
 				     stream_session_t * s, u8 is_fail)
 {
   vl_api_connect_uri_reply_t *mp;
   unix_shared_memory_queue_t *q;
-  application_t *app = application_lookup (api_client_index);
-  u8 *seg_name;
+  application_t *app;
   unix_shared_memory_queue_t *vpp_queue;
 
+  app = application_get (app_index);
   q = vl_api_client_index_to_input_queue (app->api_client_index);
 
   if (!q)
@@ -168,7 +170,7 @@ send_session_connected_uri_callback (u32 api_client_index,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_URI_REPLY);
-  mp->context = app->api_context;
+  mp->context = api_context;
   if (!is_fail)
     {
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
@@ -178,14 +180,7 @@ send_session_connected_uri_callback (u32 api_client_index,
       mp->session_index = s->session_index;
       mp->session_type = s->session_type;
       mp->vpp_event_queue_address = (u64) vpp_queue;
-      mp->client_event_queue_address = (u64) app->event_queue;
       mp->retval = 0;
-
-      session_manager_get_segment_info (s->server_segment_index, &seg_name,
-					&mp->segment_size);
-      mp->segment_name_length = vec_len (seg_name);
-      if (mp->segment_name_length)
-	clib_memcpy (mp->segment_name, seg_name, mp->segment_name_length);
     }
   else
     {
@@ -195,11 +190,7 @@ send_session_connected_uri_callback (u32 api_client_index,
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 
   /* Remove client if connect failed */
-  if (is_fail)
-    {
-      application_del (app);
-    }
-  else
+  if (!is_fail)
     {
       s->session_state = SESSION_STATE_READY;
     }
@@ -305,15 +296,16 @@ send_session_accept_callback (stream_session_t * s)
 }
 
 static int
-send_session_connected_callback (u32 api_client_index, stream_session_t * s,
-				 u8 is_fail)
+send_session_connected_callback (u32 app_index, u32 api_context,
+				 stream_session_t * s, u8 is_fail)
 {
   vl_api_connect_sock_reply_t *mp;
   unix_shared_memory_queue_t *q;
-  application_t *app = application_lookup (api_client_index);
+  application_t *app;
   u8 *seg_name;
   unix_shared_memory_queue_t *vpp_queue;
 
+  app = application_get (app_index);
   q = vl_api_client_index_to_input_queue (app->api_client_index);
 
   if (!q)
@@ -321,7 +313,7 @@ send_session_connected_callback (u32 api_client_index, stream_session_t * s,
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_SOCK_REPLY);
-  mp->context = app->api_context;
+  mp->context = api_context;
   mp->retval = is_fail;
   if (!is_fail)
     {
@@ -332,7 +324,7 @@ send_session_connected_callback (u32 api_client_index, stream_session_t * s,
       mp->vpp_event_queue_address = (u64) vpp_queue;
       mp->client_event_queue_address = (u64) app->event_queue;
 
-      session_manager_get_segment_info (s->server_segment_index, &seg_name,
+      segment_manager_get_segment_info (s->svm_segment_index, &seg_name,
 					&mp->segment_size);
       mp->segment_name_length = vec_len (seg_name);
       if (mp->segment_name_length)
@@ -340,10 +332,6 @@ send_session_connected_callback (u32 api_client_index, stream_session_t * s,
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
-
-  /* Remove client if connect failed */
-  if (is_fail)
-    application_del (app);
 
   return 0;
 }
@@ -498,50 +486,69 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 }
 
 static void
-vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
+vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 {
-  vl_api_bind_uri_reply_t *rmp;
-  vnet_bind_args_t _a, *a = &_a;
-  char segment_name[128];
-  u32 segment_name_length;
+  vl_api_application_attach_reply_t *rmp;
+  vnet_app_attach_args_t _a, *a = &_a;
   int rv;
 
-  _Static_assert (sizeof (u64) * SESSION_OPTIONS_N_OPTIONS <=
-		  sizeof (mp->options),
-		  "Out of options, fix api message definition");
-
-  segment_name_length = ARRAY_LEN (segment_name);
+  STATIC_ASSERT (sizeof (u64) * SESSION_OPTIONS_N_OPTIONS <=
+		 sizeof (mp->options),
+		 "Out of options, fix api message definition");
 
   memset (a, 0, sizeof (*a));
 
-  a->uri = (char *) mp->uri;
   a->api_client_index = mp->client_index;
   a->options = mp->options;
-  a->segment_name = segment_name;
-  a->segment_name_length = segment_name_length;
   a->session_cb_vft = &uri_session_cb_vft;
 
-  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = mp->initial_segment_size;
-  a->options[SESSION_OPTIONS_ACCEPT_COOKIE] = mp->accept_cookie;
-  rv = vnet_bind_uri (a);
+  rv = vnet_application_attach (a);
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2 (VL_API_BIND_URI_REPLY, ({
+  REPLY_MACRO2 (VL_API_APPLICATION_ATTACH_REPLY, ({
     rmp->retval = rv;
     if (!rv)
       {
 	rmp->segment_name_length = 0;
 	/* $$$$ policy? */
-	rmp->segment_size = mp->initial_segment_size;
-	if (segment_name_length)
+	rmp->segment_size = a->segment_size;
+	if (a->segment_name_length)
 	  {
-	    memcpy (rmp->segment_name, segment_name, segment_name_length);
-	    rmp->segment_name_length = segment_name_length;
+	    memcpy (rmp->segment_name, a->segment_name,
+		    a->segment_name_length);
+	    rmp->segment_name_length = a->segment_name_length;
 	  }
-	rmp->server_event_queue_address = a->server_event_queue_address;
+	rmp->app_event_queue_address = a->app_event_queue_address;
       }
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_application_detach_t_handler (vl_api_application_detach_t * mp)
+{
+  vl_api_application_detach_reply_t *rmp;
+  int rv;
+
+  rv = vnet_application_detach (mp->client_index);
+
+  REPLY_MACRO (VL_API_APPLICATION_DETACH_REPLY);
+}
+
+static void
+vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
+{
+  vl_api_bind_uri_reply_t *rmp;
+  vnet_bind_args_t _a, *a = &_a;
+  int rv;
+
+  memset (a, 0, sizeof (*a));
+
+  a->uri = (char *) mp->uri;
+  a->api_client_index = mp->client_index;
+  rv = vnet_bind_uri (a);
+
+  REPLY_MACRO (VL_API_BIND_URI_REPLY);
 }
 
 static void
@@ -565,7 +572,6 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   a->uri = (char *) mp->uri;
   a->api_client_index = mp->client_index;
   a->api_context = mp->context;
-  a->options = mp->options;
   a->session_cb_vft = &uri_session_cb_vft;
   a->mp = mp;
 
@@ -850,6 +856,16 @@ vl_api_accept_sock_reply_t_handler (vl_api_accept_sock_reply_t * mp)
   s->session_state = SESSION_STATE_READY;
 }
 
+static clib_error_t *
+application_reaper_cb (u32 client_index)
+{
+  if (application_lookup (client_index))
+    vnet_application_detach (client_index);
+  return 0;
+}
+
+VL_MSG_API_REAPER_FUNCTION (application_reaper_cb);
+
 #define vl_msg_name_crc_list
 #include <vnet/vnet_all_api_h.h>
 #undef vl_msg_name_crc_list
@@ -903,6 +919,7 @@ session_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (session_api_hookup);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
