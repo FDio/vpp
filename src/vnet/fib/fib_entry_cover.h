@@ -39,9 +39,4 @@ extern void fib_entry_cover_change_notify(fib_node_index_t cover_index,
 					  fib_node_index_t covered_index);
 extern void fib_entry_cover_update_notify(fib_entry_t *cover);
 
-extern u32 fib_entry_cover_get_size(fib_entry_t *cover);
-
-extern u8* fib_entry_cover_list_format(fib_entry_t *fib_entry,
-				       u8 *s);
-
 #endif

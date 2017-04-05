@@ -152,8 +152,9 @@ class VppPapiProvider(object):
                 raise UnexpectedApiReturnValueError(msg)
         elif self._expect_api_retval == self._zero:
             if hasattr(reply, 'retval') and reply.retval != expected_retval:
-                msg = "API call failed, expected zero return value instead "\
-                    "of %d in %s" % (expected_retval, repr(reply))
+                msg = "API call failed, expected %d return value instead "\
+                    "of %d in %s" % (expected_retval, reply.retval,
+                                     repr(reply))
                 self.test_class.logger.info(msg)
                 raise UnexpectedApiReturnValueError(msg)
         else:

@@ -558,12 +558,6 @@ fib_path_attached_next_hop_set (fib_path_t *path)
      * resolve directly via the adjacnecy discribed by the
      * interface and next-hop
      */
-    if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-				      path->attached_next_hop.fp_interface))
-    {
-	path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-    }
-
     dpo_set(&path->fp_dpo,
 	    DPO_ADJACENCY,
 	    fib_proto_to_dpo(path->fp_nh_proto),
@@ -578,6 +572,13 @@ fib_path_attached_next_hop_set (fib_path_t *path)
     path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
 				     FIB_NODE_TYPE_PATH,
 				     fib_path_get_index(path));
+
+    if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
+				      path->attached_next_hop.fp_interface) ||
+        !adj_is_up(path->fp_dpo.dpoi_index))
+    {
+	path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
+    }
 }
 
 /*
@@ -652,6 +653,19 @@ fib_path_recursive_adj_update (fib_path_t *path,
              */
             load_balance_map_path_state_change(fib_path_get_index(path));
 	}
+    }
+    /*
+     * check for over-riding factors on the FIB entry itself
+     */
+    if (!fib_entry_is_resolved(path->fp_via_fib))
+    {
+        path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
+        dpo_copy(&via_dpo, drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+
+        /*
+         * PIC edge trigger. let the load-balance maps know
+         */
+        load_balance_map_path_state_change(fib_path_get_index(path));
     }
 
     /*
@@ -855,14 +869,15 @@ FIXME comment
                            vnet_get_main(),
                            path->attached_next_hop.fp_interface);
 
-            if (if_is_up)
-            {
-                path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
-            }
-
             ai = fib_path_attached_next_hop_get_adj(
                      path,
                      fib_proto_to_link(path->fp_nh_proto));
+
+            path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
+            if (if_is_up && adj_is_up(ai))
+            {
+                path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
+            }
 
             dpo_set(&path->fp_dpo, DPO_ADJACENCY,
                     fib_proto_to_dpo(path->fp_nh_proto),
@@ -1684,11 +1699,11 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
 {
     fib_path_t *path;
 
-    if (!fib_path_is_resolved(path_index))
-	return;
-
     path = fib_path_get(path_index);
 
+    /*
+     * resolved and unresolved paths contribute to the RPF list.
+     */
     switch (path->fp_type)
     {
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
@@ -1700,7 +1715,14 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
 	break;
 
     case FIB_PATH_TYPE_RECURSIVE:
-	fib_entry_contribute_urpf(path->fp_via_fib, urpf);
+        if (FIB_NODE_INDEX_INVALID != path->fp_via_fib)
+        {
+            /*
+             * there's unresolved due to constraints, and there's unresolved
+             * due to ain't go no via. can't do nowt w'out via.
+             */
+            fib_entry_contribute_urpf(path->fp_via_fib, urpf);
+        }
 	break;
 
     case FIB_PATH_TYPE_EXCLUSIVE:

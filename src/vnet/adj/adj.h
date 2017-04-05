@@ -255,6 +255,15 @@ typedef struct ip_adjacency_t_
 
   /* Rewrite in second/third cache lines */
   vnet_declare_rewrite (VLIB_BUFFER_PRE_DATA_SIZE);
+
+  /**
+   * more control plane members that do not fit on the first cacheline
+   */
+  /**
+   * A sorted vector of delegates
+   */
+  struct adj_delegate_t_ *ia_delegates;
+
 } ip_adjacency_t;
 
 STATIC_ASSERT ((STRUCT_OFFSET_OF (ip_adjacency_t, cacheline0) == 0),
@@ -306,6 +315,12 @@ extern vnet_link_t adj_get_link_type (adj_index_t ai);
  * @brief Return the sw interface index of the adjacency.
  */
 extern u32 adj_get_sw_if_index (adj_index_t ai);
+
+/**
+ * @brief Return true if the adjacency is 'UP', i.e. can be used for forwarding.
+ * 0 is down, !0 is up.
+ */
+extern int adj_is_up (adj_index_t ai);
 
 /**
  * @brief Return the link type of the adjacency
