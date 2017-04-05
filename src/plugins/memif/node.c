@@ -94,7 +94,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_rx_bytes = 0;
   u32 *to_next = 0;
   u32 n_free_bufs;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 bi0, bi1;
   vlib_buffer_t *b0, *b1;
   u16 ring_size = 1 << mif->log2_ring_size;
@@ -105,14 +105,15 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (mif->per_interface_next_index != ~0)
     next_index = mif->per_interface_next_index;
 
-  n_free_bufs = vec_len (nm->rx_buffers[cpu_index]);
+  n_free_bufs = vec_len (nm->rx_buffers[thread_index]);
   if (PREDICT_FALSE (n_free_bufs < ring_size))
     {
-      vec_validate (nm->rx_buffers[cpu_index], ring_size + n_free_bufs - 1);
+      vec_validate (nm->rx_buffers[thread_index],
+		    ring_size + n_free_bufs - 1);
       n_free_bufs +=
-	vlib_buffer_alloc (vm, &nm->rx_buffers[cpu_index][n_free_bufs],
+	vlib_buffer_alloc (vm, &nm->rx_buffers[thread_index][n_free_bufs],
 			   ring_size);
-      _vec_len (nm->rx_buffers[cpu_index]) = n_free_bufs;
+      _vec_len (nm->rx_buffers[thread_index]) = n_free_bufs;
     }
 
   head = ring->head;
@@ -158,15 +159,15 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			     CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
 	  /* get empty buffer */
-	  u32 last_buf = vec_len (nm->rx_buffers[cpu_index]) - 1;
-	  bi0 = nm->rx_buffers[cpu_index][last_buf];
-	  bi1 = nm->rx_buffers[cpu_index][last_buf - 1];
-	  _vec_len (nm->rx_buffers[cpu_index]) -= 2;
+	  u32 last_buf = vec_len (nm->rx_buffers[thread_index]) - 1;
+	  bi0 = nm->rx_buffers[thread_index][last_buf];
+	  bi1 = nm->rx_buffers[thread_index][last_buf - 1];
+	  _vec_len (nm->rx_buffers[thread_index]) -= 2;
 
 	  if (last_buf > 4)
 	    {
-	      memif_prefetch (vm, nm->rx_buffers[cpu_index][last_buf - 2]);
-	      memif_prefetch (vm, nm->rx_buffers[cpu_index][last_buf - 3]);
+	      memif_prefetch (vm, nm->rx_buffers[thread_index][last_buf - 2]);
+	      memif_prefetch (vm, nm->rx_buffers[thread_index][last_buf - 3]);
 	    }
 
 	  /* enqueue buffer */
@@ -256,9 +257,9 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (num_slots && n_left_to_next)
 	{
 	  /* get empty buffer */
-	  u32 last_buf = vec_len (nm->rx_buffers[cpu_index]) - 1;
-	  bi0 = nm->rx_buffers[cpu_index][last_buf];
-	  _vec_len (nm->rx_buffers[cpu_index]) = last_buf;
+	  u32 last_buf = vec_len (nm->rx_buffers[thread_index]) - 1;
+	  bi0 = nm->rx_buffers[thread_index][last_buf];
+	  _vec_len (nm->rx_buffers[thread_index]) = last_buf;
 
 	  /* enqueue buffer */
 	  to_next[0] = bi0;
@@ -315,7 +316,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ring->tail = head;
 
   vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
-				   + VNET_INTERFACE_COUNTER_RX, cpu_index,
+				   + VNET_INTERFACE_COUNTER_RX, thread_index,
 				   mif->hw_if_index, n_rx_packets,
 				   n_rx_bytes);
 
@@ -327,7 +328,7 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
   u32 n_rx_packets = 0;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   memif_main_t *nm = &memif_main;
   memif_if_t *mif;
 
@@ -337,7 +338,7 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (mif->flags & MEMIF_IF_FLAG_ADMIN_UP &&
 	  mif->flags & MEMIF_IF_FLAG_CONNECTED &&
 	  (mif->if_index % nm->input_cpu_count) ==
-	  (cpu_index - nm->input_cpu_first_index))
+	  (thread_index - nm->input_cpu_first_index))
 	{
 	  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
 	    n_rx_packets +=

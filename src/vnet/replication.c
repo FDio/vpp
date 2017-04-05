@@ -31,16 +31,16 @@ replication_prep (vlib_main_t * vm,
 {
   replication_main_t *rm = &replication_main;
   replication_context_t *ctx;
-  uword cpu_number = vm->cpu_index;
+  uword thread_index = vm->thread_index;
   ip4_header_t *ip;
   u32 ctx_id;
 
   /* Allocate a context, reserve context 0 */
-  if (PREDICT_FALSE (rm->contexts[cpu_number] == 0))
-    pool_get_aligned (rm->contexts[cpu_number], ctx, CLIB_CACHE_LINE_BYTES);
+  if (PREDICT_FALSE (rm->contexts[thread_index] == 0))
+    pool_get_aligned (rm->contexts[thread_index], ctx, CLIB_CACHE_LINE_BYTES);
 
-  pool_get_aligned (rm->contexts[cpu_number], ctx, CLIB_CACHE_LINE_BYTES);
-  ctx_id = ctx - rm->contexts[cpu_number];
+  pool_get_aligned (rm->contexts[thread_index], ctx, CLIB_CACHE_LINE_BYTES);
+  ctx_id = ctx - rm->contexts[thread_index];
 
   /* Save state from vlib buffer */
   ctx->saved_free_list_index = b0->free_list_index;
@@ -94,11 +94,11 @@ replication_recycle (vlib_main_t * vm, vlib_buffer_t * b0, u32 is_last)
 {
   replication_main_t *rm = &replication_main;
   replication_context_t *ctx;
-  uword cpu_number = vm->cpu_index;
+  uword thread_index = vm->thread_index;
   ip4_header_t *ip;
 
   /* Get access to the replication context */
-  ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->recycle_count);
+  ctx = pool_elt_at_index (rm->contexts[thread_index], b0->recycle_count);
 
   /* Restore vnet buffer state */
   clib_memcpy (vnet_buffer (b0), ctx->vnet_buffer,
@@ -133,7 +133,7 @@ replication_recycle (vlib_main_t * vm, vlib_buffer_t * b0, u32 is_last)
       b0->flags &= ~VLIB_BUFFER_RECYCLE;
 
       /* Free context back to its pool */
-      pool_put (rm->contexts[cpu_number], ctx);
+      pool_put (rm->contexts[thread_index], ctx);
     }
 
   return ctx;
@@ -160,7 +160,7 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
   replication_main_t *rm = &replication_main;
   replication_context_t *ctx;
   u32 feature_node_index = 0;
-  uword cpu_number = vm->cpu_index;
+  uword thread_index = vm->thread_index;
 
   /*
    * All buffers in the list are destined to the same recycle node.
@@ -172,7 +172,7 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
     {
       bi0 = fl->buffers[0];
       b0 = vlib_get_buffer (vm, bi0);
-      ctx = pool_elt_at_index (rm->contexts[cpu_number], b0->recycle_count);
+      ctx = pool_elt_at_index (rm->contexts[thread_index], b0->recycle_count);
       feature_node_index = ctx->recycle_node_index;
     }
 

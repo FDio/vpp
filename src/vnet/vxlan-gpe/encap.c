@@ -151,7 +151,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
   vnet_main_t * vnm = ngm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   from = vlib_frame_vector_args (from_frame);
@@ -253,7 +253,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
           if (stats_n_packets)
             vlib_increment_combined_counter (
                 im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-                cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+                thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
           stats_sw_if_index = sw_if_index0;
           stats_n_packets = 2;
           stats_n_bytes = len0 + len1;
@@ -262,10 +262,10 @@ vxlan_gpe_encap (vlib_main_t * vm,
         {
           vlib_increment_combined_counter (
               im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-              cpu_index, sw_if_index0, 1, len0);
+              thread_index, sw_if_index0, 1, len0);
           vlib_increment_combined_counter (
               im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-              cpu_index, sw_if_index1, 1, len1);
+              thread_index, sw_if_index1, 1, len1);
         }
       }
 
@@ -335,7 +335,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
         if (stats_n_packets)
           vlib_increment_combined_counter (
               im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-              cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+              thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
         stats_n_packets = 1;
         stats_n_bytes = len0;
         stats_sw_if_index = sw_if_index0;
@@ -359,7 +359,7 @@ vxlan_gpe_encap (vlib_main_t * vm,
   if (stats_n_packets)
   {
     vlib_increment_combined_counter (
-        im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, cpu_index,
+        im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX, thread_index,
         stats_sw_if_index, stats_n_packets, stats_n_bytes);
     node->runtime_data[0] = stats_sw_if_index;
   }

@@ -64,12 +64,12 @@ mpls_output_inline (vlib_main_t * vm,
                     vlib_frame_t * from_frame,
 		    int is_midchain)
 {
-  u32 n_left_from, next_index, * from, * to_next, cpu_index;
+  u32 n_left_from, next_index, * from, * to_next, thread_index;
   vlib_node_runtime_t * error_node;
   u32 n_left_to_next;
   mpls_main_t *mm;
 
-  cpu_index = os_get_cpu_number();
+  thread_index = vlib_get_thread_index();
   error_node = vlib_node_get_runtime (vm, mpls_output_node.index);
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -137,13 +137,13 @@ mpls_output_inline (vlib_main_t * vm,
           /* Bump the adj counters for packet and bytes */
           vlib_increment_combined_counter
               (&adjacency_counters,
-               cpu_index,
+               thread_index,
                adj_index0,
                1,
                vlib_buffer_length_in_chain (vm, p0) + rw_len0);
           vlib_increment_combined_counter
               (&adjacency_counters,
-               cpu_index,
+               thread_index,
                adj_index1,
                1,
                vlib_buffer_length_in_chain (vm, p1) + rw_len1);
@@ -245,7 +245,7 @@ mpls_output_inline (vlib_main_t * vm,
           
           vlib_increment_combined_counter
               (&adjacency_counters,
-               cpu_index,
+               thread_index,
                adj_index0,
                1,
                vlib_buffer_length_in_chain (vm, p0) + rw_len0);

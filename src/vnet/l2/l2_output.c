@@ -643,11 +643,11 @@ l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet
 
   hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
-  uword cpu_number;
+  uword thread_index;
 
-  cpu_number = os_get_cpu_number ();
+  thread_index = vlib_get_thread_index ();
 
-  if (cpu_number)
+  if (thread_index)
     {
       u32 oldflags;
 

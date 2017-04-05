@@ -174,7 +174,7 @@ tclient_thread_fn (void *arg)
     pthread_sigmask (SIG_SETMASK, &s, 0);
   }
 
-  clib_per_cpu_mheaps[os_get_cpu_number ()] = clib_per_cpu_mheaps[0];
+  clib_per_cpu_mheaps[vlib_get_thread_index ()] = clib_per_cpu_mheaps[0];
 
   while (1)
     {

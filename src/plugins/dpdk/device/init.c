@@ -324,7 +324,7 @@ dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
   int rv;
   int j;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {

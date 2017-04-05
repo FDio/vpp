@@ -81,7 +81,7 @@ vxlan_input (vlib_main_t * vm,
   vxlan4_tunnel_key_t last_key4;
   vxlan6_tunnel_key_t last_key6;
   u32 pkts_decapsulated = 0;
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
 
   if (is_ip4)
@@ -314,7 +314,7 @@ vxlan_input (vlib_main_t * vm,
 	      if (stats_n_packets)
 		vlib_increment_combined_counter 
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   cpu_index, stats_sw_if_index, 
+		   thread_index, stats_sw_if_index, 
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len0;
@@ -468,7 +468,7 @@ vxlan_input (vlib_main_t * vm,
 	      if (stats_n_packets)
 		vlib_increment_combined_counter 
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   cpu_index, stats_sw_if_index, 
+		   thread_index, stats_sw_if_index, 
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len1;
@@ -674,7 +674,7 @@ vxlan_input (vlib_main_t * vm,
 	      if (stats_n_packets)
 		vlib_increment_combined_counter 
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   cpu_index, stats_sw_if_index, 
+		   thread_index, stats_sw_if_index, 
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len0;
@@ -711,7 +711,7 @@ vxlan_input (vlib_main_t * vm,
     {
       vlib_increment_combined_counter 
 	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	 cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
     }
 

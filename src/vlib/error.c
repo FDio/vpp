@@ -149,7 +149,7 @@ vlib_register_errors (vlib_main_t * vm,
   vlib_node_t *n = vlib_get_node (vm, node_index);
   uword l;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   /* Free up any previous error strings. */
   if (n->n_errors > 0)

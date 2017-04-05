@@ -282,8 +282,8 @@ hmac_calc (ipsec_integ_alg_t alg,
 	   u8 * data, int data_len, u8 * signature, u8 use_esn, u32 seq_hi)
 {
   esp_main_t *em = &esp_main;
-  u32 cpu_index = os_get_cpu_number ();
-  HMAC_CTX *ctx = &(em->per_thread_data[cpu_index].hmac_ctx);
+  u32 thread_index = vlib_get_thread_index ();
+  HMAC_CTX *ctx = &(em->per_thread_data[thread_index].hmac_ctx);
   const EVP_MD *md = NULL;
   unsigned int len;
 
@@ -292,10 +292,10 @@ hmac_calc (ipsec_integ_alg_t alg,
   if (PREDICT_FALSE (em->esp_integ_algs[alg].md == 0))
     return 0;
 
-  if (PREDICT_FALSE (alg != em->per_thread_data[cpu_index].last_integ_alg))
+  if (PREDICT_FALSE (alg != em->per_thread_data[thread_index].last_integ_alg))
     {
       md = em->esp_integ_algs[alg].md;
-      em->per_thread_data[cpu_index].last_integ_alg = alg;
+      em->per_thread_data[thread_index].last_integ_alg = alg;
     }
 
   HMAC_Init (ctx, key, key_len, md);

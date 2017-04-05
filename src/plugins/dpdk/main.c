@@ -39,7 +39,7 @@ rte_delay_us_override (unsigned us)
    * thread then do not intercept. (Must not be called from an
    * independent pthread).
    */
-  if (os_get_cpu_number () == 0)
+  if (vlib_get_thread_index () == 0)
     {
       /*
        * We're in the vlib main thread or a vlib process. Make sure

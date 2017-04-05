@@ -89,7 +89,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
   ethernet_header_t *eh0;
   u16 type0;
   u32 n_rx_bytes = 0, l3_offset0;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 trace_cnt __attribute__ ((unused)) = vlib_get_trace_count (vm, node);
   volatile u32 *lock;
   u32 *elt_indices;
@@ -284,10 +284,10 @@ out:
 
   vlib_increment_combined_counter
     (vnet_get_main ()->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX, cpu_index,
+     + VNET_INTERFACE_COUNTER_RX, thread_index,
      intfc->vlib_hw_if_index, rx_queue_index, n_rx_bytes);
 
-  vnet_device_increment_rx_packets (cpu_index, rx_queue_index);
+  vnet_device_increment_rx_packets (thread_index, rx_queue_index);
 
   return rx_queue_index;
 }

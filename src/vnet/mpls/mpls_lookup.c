@@ -67,7 +67,7 @@ mpls_lookup (vlib_main_t * vm,
   vlib_combined_counter_main_t * cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, next_index, * from, * to_next;
   mpls_main_t * mm = &mpls_main;
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -220,16 +220,16 @@ mpls_lookup (vlib_main_t * vm,
           vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
 
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi0, 1,
+              (cm, thread_index, lbi0, 1,
                vlib_buffer_length_in_chain (vm, b0));
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi1, 1,
+              (cm, thread_index, lbi1, 1,
                vlib_buffer_length_in_chain (vm, b1));
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi2, 1,
+              (cm, thread_index, lbi2, 1,
                vlib_buffer_length_in_chain (vm, b2));
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi3, 1,
+              (cm, thread_index, lbi3, 1,
                vlib_buffer_length_in_chain (vm, b3));
 
           /*
@@ -351,7 +351,7 @@ mpls_lookup (vlib_main_t * vm,
           vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi0, 1,
+              (cm, thread_index, lbi0, 1,
                vlib_buffer_length_in_chain (vm, b0));
 
           /*
@@ -440,7 +440,7 @@ mpls_load_balance (vlib_main_t * vm,
 {
   vlib_combined_counter_main_t * cm = &load_balance_main.lbm_via_counters;
   u32 n_left_from, n_left_to_next, * from, * to_next;
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   u32 next;
 
   from = vlib_frame_vector_args (frame);
@@ -536,10 +536,10 @@ mpls_load_balance (vlib_main_t * vm,
           vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi0, 1,
+              (cm, thread_index, lbi0, 1,
                vlib_buffer_length_in_chain (vm, p0));
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi1, 1,
+              (cm, thread_index, lbi1, 1,
                vlib_buffer_length_in_chain (vm, p1));
 
           if (PREDICT_FALSE(p0->flags & VLIB_BUFFER_IS_TRACED))
@@ -597,7 +597,7 @@ mpls_load_balance (vlib_main_t * vm,
           vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
           vlib_increment_combined_counter
-              (cm, cpu_index, lbi0, 1,
+              (cm, thread_index, lbi0, 1,
                vlib_buffer_length_in_chain (vm, p0));
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next,

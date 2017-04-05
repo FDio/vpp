@@ -1771,7 +1771,7 @@ set_ip4_over_ethernet_rpc_callback (vnet_arp_set_ip4_over_ethernet_rpc_args_t
 				    * a)
 {
   vnet_main_t *vm = vnet_get_main ();
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   if (a->flags & ETHERNET_ARP_ARGS_REMOVE)
     vnet_arp_unset_ip4_over_ethernet_internal (vm, a);

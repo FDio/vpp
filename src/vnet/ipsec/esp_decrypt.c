@@ -85,8 +85,8 @@ esp_decrypt_aes_cbc (ipsec_crypto_alg_t alg,
 		     u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
   esp_main_t *em = &esp_main;
-  u32 cpu_index = os_get_cpu_number ();
-  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[cpu_index].decrypt_ctx);
+  u32 thread_index = vlib_get_thread_index ();
+  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].decrypt_ctx);
   const EVP_CIPHER *cipher = NULL;
   int out_len;
 
@@ -95,10 +95,11 @@ esp_decrypt_aes_cbc (ipsec_crypto_alg_t alg,
   if (PREDICT_FALSE (em->esp_crypto_algs[alg].type == 0))
     return;
 
-  if (PREDICT_FALSE (alg != em->per_thread_data[cpu_index].last_decrypt_alg))
+  if (PREDICT_FALSE
+      (alg != em->per_thread_data[thread_index].last_decrypt_alg))
     {
       cipher = em->esp_crypto_algs[alg].type;
-      em->per_thread_data[cpu_index].last_decrypt_alg = alg;
+      em->per_thread_data[thread_index].last_decrypt_alg = alg;
     }
 
   EVP_DecryptInit_ex (ctx, cipher, NULL, key, iv);
@@ -117,11 +118,11 @@ esp_decrypt_node_fn (vlib_main_t * vm,
   u32 *recycle = 0;
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   ipsec_alloc_empty_buffers (vm, im);
 
-  u32 *empty_buffers = im->empty_buffers[cpu_index];
+  u32 *empty_buffers = im->empty_buffers[thread_index];
 
   if (PREDICT_FALSE (vec_len (empty_buffers) < n_left_from))
     {

@@ -243,7 +243,7 @@ static_always_inline
   ASSERT (ring->tx_tail == 0);
 
   n_retry = 16;
-  queue_id = vm->cpu_index;
+  queue_id = vm->thread_index;
 
   do
     {
@@ -266,7 +266,7 @@ static_always_inline
 	{
 	  /* no wrap, transmit in one burst */
 	  dpdk_device_hqos_per_worker_thread_t *hqos =
-	    &xd->hqos_wt[vm->cpu_index];
+	    &xd->hqos_wt[vm->thread_index];
 
 	  ASSERT (hqos->swq != NULL);
 
@@ -332,7 +332,7 @@ dpdk_buffer_recycle (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_buffer_t * b, u32 bi, struct rte_mbuf **mbp)
 {
   dpdk_main_t *dm = &dpdk_main;
-  u32 my_cpu = vm->cpu_index;
+  u32 my_cpu = vm->thread_index;
   struct rte_mbuf *mb_new;
 
   if (PREDICT_FALSE (b->flags & VLIB_BUFFER_RECYCLE) == 0)
@@ -376,7 +376,7 @@ dpdk_interface_tx (vlib_main_t * vm,
   tx_ring_hdr_t *ring;
   u32 n_on_ring;
 
-  my_cpu = vm->cpu_index;
+  my_cpu = vm->thread_index;
 
   queue_id = my_cpu;
 

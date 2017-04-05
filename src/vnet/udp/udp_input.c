@@ -70,7 +70,7 @@ udp4_uri_input_node_fn (vlib_main_t * vm,
   udp4_uri_input_next_t next_index;
   udp_uri_main_t *um = vnet_get_udp_main ();
   session_manager_main_t *smm = vnet_get_session_manager_main ();
-  u32 my_thread_index = vm->cpu_index;
+  u32 my_thread_index = vm->thread_index;
   u8 my_enqueue_epoch;
   u32 *session_indices_to_enqueue;
   static u32 serial_number;

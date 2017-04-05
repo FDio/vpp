@@ -48,7 +48,7 @@ cj_log (u32 type, void *data0, void *data1)
 
   r = (cj_record_t *) & (cjm->records[new_tail & (cjm->num_records - 1)]);
   r->time = vlib_time_now (cjm->vlib_main);
-  r->cpu = os_get_cpu_number ();
+  r->thread_index = vlib_get_thread_index ();
   r->type = type;
   r->data[0] = pointer_to_uword (data0);
   r->data[1] = pointer_to_uword (data1);
@@ -133,7 +133,8 @@ static inline void
 cj_dump_one_record (cj_record_t * r)
 {
   fprintf (stderr, "[%d]: %10.6f T%02d %llx %llx\n",
-	   r->cpu, r->time, r->type, (long long unsigned int) r->data[0],
+	   r->thread_index, r->time, r->type,
+	   (long long unsigned int) r->data[0],
 	   (long long unsigned int) r->data[1]);
 }
 
@@ -161,7 +162,7 @@ cj_dump_internal (u8 filter0_enable, u64 filter0,
   index = (cjm->tail + 1) & (cjm->num_records - 1);
   r = &(cjm->records[index]);
 
-  if (r->cpu != (u32) ~ 0)
+  if (r->thread_index != (u32) ~ 0)
     {
       /* Yes, dump from tail + 1 to the end */
       for (i = index; i < cjm->num_records; i++)

@@ -103,7 +103,7 @@ next_index_to_iface (lisp_gpe_main_t * lgm, u32 next_index)
 }
 
 static_always_inline void
-incr_decap_stats (vnet_main_t * vnm, u32 cpu_index, u32 length,
+incr_decap_stats (vnet_main_t * vnm, u32 thread_index, u32 length,
 		  u32 sw_if_index, u32 * last_sw_if_index, u32 * n_packets,
 		  u32 * n_bytes)
 {
@@ -122,7 +122,7 @@ incr_decap_stats (vnet_main_t * vnm, u32 cpu_index, u32 length,
 
 	  vlib_increment_combined_counter (im->combined_sw_if_counters +
 					   VNET_INTERFACE_COUNTER_RX,
-					   cpu_index, *last_sw_if_index,
+					   thread_index, *last_sw_if_index,
 					   *n_packets, *n_bytes);
 	}
       *last_sw_if_index = sw_if_index;
@@ -150,11 +150,11 @@ static uword
 lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, u8 is_v4)
 {
-  u32 n_left_from, next_index, *from, *to_next, cpu_index;
+  u32 n_left_from, next_index, *from, *to_next, thread_index;
   u32 n_bytes = 0, n_packets = 0, last_sw_if_index = ~0, drops = 0;
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
 
-  cpu_index = os_get_cpu_number ();
+  thread_index = vlib_get_thread_index ();
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
@@ -267,7 +267,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (si0)
 	    {
-	      incr_decap_stats (lgm->vnet_main, cpu_index,
+	      incr_decap_stats (lgm->vnet_main, thread_index,
 				vlib_buffer_length_in_chain (vm, b0), si0[0],
 				&last_sw_if_index, &n_packets, &n_bytes);
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = si0[0];
@@ -282,7 +282,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (si1)
 	    {
-	      incr_decap_stats (lgm->vnet_main, cpu_index,
+	      incr_decap_stats (lgm->vnet_main, thread_index,
 				vlib_buffer_length_in_chain (vm, b1), si1[0],
 				&last_sw_if_index, &n_packets, &n_bytes);
 	      vnet_buffer (b1)->sw_if_index[VLIB_RX] = si1[0];
@@ -397,7 +397,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (si0)
 	    {
-	      incr_decap_stats (lgm->vnet_main, cpu_index,
+	      incr_decap_stats (lgm->vnet_main, thread_index,
 				vlib_buffer_length_in_chain (vm, b0), si0[0],
 				&last_sw_if_index, &n_packets, &n_bytes);
 	      vnet_buffer (b0)->sw_if_index[VLIB_RX] = si0[0];
@@ -430,7 +430,7 @@ lisp_gpe_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   /* flush iface stats */
-  incr_decap_stats (lgm->vnet_main, cpu_index, 0, ~0, &last_sw_if_index,
+  incr_decap_stats (lgm->vnet_main, thread_index, 0, ~0, &last_sw_if_index,
 		    &n_packets, &n_bytes);
   vlib_node_increment_counter (vm, lisp_gpe_ip4_input_node.index,
 			       LISP_GPE_ERROR_NO_TUNNEL, drops);

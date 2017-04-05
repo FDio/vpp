@@ -63,11 +63,11 @@ u8 *format_lb_main (u8 * s, va_list * args)
   s = format(s, " #vips: %u\n", pool_elts(lbm->vips));
   s = format(s, " #ass: %u\n", pool_elts(lbm->ass) - 1);
 
-  u32 cpu_index;
-  for(cpu_index = 0; cpu_index < tm->n_vlib_mains; cpu_index++ ) {
-    lb_hash_t *h = lbm->per_cpu[cpu_index].sticky_ht;
+  u32 thread_index;
+  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
+    lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
     if (h) {
-      s = format(s, "core %d\n", cpu_index);
+      s = format(s, "core %d\n", thread_index);
       s = format(s, "  timeout: %ds\n", h->timeout);
       s = format(s, "  usage: %d / %d\n", lb_hash_elts(h, lb_hash_time_now(vlib_get_main())),  lb_hash_size(h));
     }

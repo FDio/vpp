@@ -1142,7 +1142,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  vlib_frame_t * from_frame, int is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index, errors = 0;
+  u32 my_thread_index = vm->thread_index, errors = 0;
   tcp_main_t *tm = vnet_get_tcp_main ();
 
   from = vlib_frame_vector_args (from_frame);
@@ -1332,7 +1332,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index, errors = 0;
+  u32 my_thread_index = vm->thread_index, errors = 0;
   u8 sst = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   from = vlib_frame_vector_args (from_frame);
@@ -1634,7 +1634,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index, errors = 0;
+  u32 my_thread_index = vm->thread_index, errors = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1989,7 +1989,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		     vlib_frame_t * from_frame, int is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index;
+  u32 my_thread_index = vm->thread_index;
   tcp_main_t *tm = vnet_get_tcp_main ();
   u8 sst = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
@@ -2243,7 +2243,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		    vlib_frame_t * from_frame, int is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index;
+  u32 my_thread_index = vm->thread_index;
   tcp_main_t *tm = vnet_get_tcp_main ();
 
   from = vlib_frame_vector_args (from_frame);

@@ -23,7 +23,7 @@ always_inline vlib_main_t *
 vlib_get_main (void)
 {
   vlib_main_t *vm;
-  vm = vlib_mains[os_get_cpu_number ()];
+  vm = vlib_mains[vlib_get_thread_index ()];
   ASSERT (vm);
   return vm;
 }

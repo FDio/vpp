@@ -209,7 +209,7 @@ always_inline vlib_buffer_known_state_t
 vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   uword *p = hash_get (bm->buffer_known_hash, buffer_index);
   return p ? p[0] : VLIB_BUFFER_UNKNOWN;
@@ -221,7 +221,7 @@ vlib_buffer_set_known_state (vlib_main_t * vm,
 			     vlib_buffer_known_state_t state)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
   hash_set (bm->buffer_known_hash, buffer_index, state);
 }
 

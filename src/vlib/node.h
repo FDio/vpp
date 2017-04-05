@@ -344,8 +344,8 @@ typedef struct vlib_frame_t
   /* Number of vector elements currently in frame. */
   u16 n_vectors;
 
-  /* Owner cpuid / heap id */
-  u16 cpu_index;
+  /* Owner thread / heap id */
+  u16 thread_index;
 
   /* Scalar and vector arguments to next node. */
   u8 arguments[0];
@@ -459,7 +459,7 @@ typedef struct vlib_node_runtime_t
 					  zero before first run of this
 					  node. */
 
-  u16 cpu_index;			/**< CPU this node runs on */
+  u16 thread_index;			/**< thread this node runs on */
 
   u8 runtime_data[0];			/**< Function dependent
 					  node-runtime data. This data is

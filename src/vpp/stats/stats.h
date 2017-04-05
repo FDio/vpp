@@ -30,7 +30,7 @@ typedef struct
 {
   volatile u32 lock;
   volatile u32 release_hint;
-  u32 thread_id;
+  u32 thread_index;
   u32 count;
   int tag;
 } data_structure_lock_t;

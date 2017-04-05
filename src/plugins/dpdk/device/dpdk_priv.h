@@ -79,7 +79,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
 {
   vlib_simple_counter_main_t *cm;
   vnet_main_t *vnm = vnet_get_main ();
-  u32 my_cpu = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u64 rxerrors, last_rxerrors;
 
   /* only update counters for PMD interfaces */
@@ -96,7 +96,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
       cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			     VNET_INTERFACE_COUNTER_RX_NO_BUF);
 
-      vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
+      vlib_increment_simple_counter (cm, thread_index, xd->vlib_sw_if_index,
 				     xd->stats.rx_nombuf -
 				     xd->last_stats.rx_nombuf);
     }
@@ -107,7 +107,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
       cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			     VNET_INTERFACE_COUNTER_RX_MISS);
 
-      vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
+      vlib_increment_simple_counter (cm, thread_index, xd->vlib_sw_if_index,
 				     xd->stats.imissed -
 				     xd->last_stats.imissed);
     }
@@ -119,7 +119,7 @@ dpdk_update_counters (dpdk_device_t * xd, f64 now)
       cm = vec_elt_at_index (vnm->interface_main.sw_if_counters,
 			     VNET_INTERFACE_COUNTER_RX_ERROR);
 
-      vlib_increment_simple_counter (cm, my_cpu, xd->vlib_sw_if_index,
+      vlib_increment_simple_counter (cm, thread_index, xd->vlib_sw_if_index,
 				     rxerrors - last_rxerrors);
     }
 

@@ -366,7 +366,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
       vlib_increment_combined_counter (
           vnet_main.interface_main.combined_sw_if_counters
           + VNET_INTERFACE_COUNTER_RX,
-          os_get_cpu_number(), ti->sw_if_index,
+          vlib_get_thread_index(), ti->sw_if_index,
           1, n_bytes_in_packet);
 
       if (PREDICT_FALSE(n_trace > 0)) {

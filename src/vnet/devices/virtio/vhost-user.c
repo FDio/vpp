@@ -331,7 +331,7 @@ vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
 {
   //Let's try to assign one queue to each thread
   u32 qid = 0;
-  u32 cpu_index = 0;
+  u32 thread_index = 0;
   vui->use_tx_spinlock = 0;
   while (1)
     {
@@ -341,20 +341,21 @@ vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
 	  if (!rxvq->started || !rxvq->enabled)
 	    continue;
 
-	  vui->per_cpu_tx_qid[cpu_index] = qid;
-	  cpu_index++;
-	  if (cpu_index == vlib_get_thread_main ()->n_vlib_mains)
+	  vui->per_cpu_tx_qid[thread_index] = qid;
+	  thread_index++;
+	  if (thread_index == vlib_get_thread_main ()->n_vlib_mains)
 	    return;
 	}
       //We need to loop, meaning the spinlock has to be used
       vui->use_tx_spinlock = 1;
-      if (cpu_index == 0)
+      if (thread_index == 0)
 	{
 	  //Could not find a single valid one
-	  for (cpu_index = 0;
-	       cpu_index < vlib_get_thread_main ()->n_vlib_mains; cpu_index++)
+	  for (thread_index = 0;
+	       thread_index < vlib_get_thread_main ()->n_vlib_mains;
+	       thread_index++)
 	    {
-	      vui->per_cpu_tx_qid[cpu_index] = 0;
+	      vui->per_cpu_tx_qid[thread_index] = 0;
 	    }
 	  return;
 	}
@@ -368,7 +369,7 @@ vhost_user_rx_thread_placement ()
   vhost_user_intf_t *vui;
   vhost_cpu_t *vhc;
   u32 *workers = 0;
-  u32 cpu_index;
+  u32 thread_index;
   vlib_main_t *vm;
 
   //Let's list all workers cpu indexes
@@ -400,9 +401,9 @@ vhost_user_rx_thread_placement ()
 	    continue;
 
 	  i %= vec_len (vui_workers);
-	  cpu_index = vui_workers[i];
+	  thread_index = vui_workers[i];
 	  i++;
-	  vhc = &vum->cpus[cpu_index];
+	  vhc = &vum->cpus[thread_index];
 
 	  iaq.qid = qid;
 	  iaq.vhost_iface_index = vui - vum->vhost_user_interfaces;
@@ -429,14 +430,14 @@ vhost_user_rx_thread_placement ()
     vhc->operation_mode = mode;
   }
 
-  for (cpu_index = vum->input_cpu_first_index;
-       cpu_index < vum->input_cpu_first_index + vum->input_cpu_count;
-       cpu_index++)
+  for (thread_index = vum->input_cpu_first_index;
+       thread_index < vum->input_cpu_first_index + vum->input_cpu_count;
+       thread_index++)
     {
       vlib_node_state_t state = VLIB_NODE_STATE_POLLING;
 
-      vhc = &vum->cpus[cpu_index];
-      vm = vlib_mains ? vlib_mains[cpu_index] : &vlib_global_main;
+      vhc = &vum->cpus[thread_index];
+      vm = vlib_mains ? vlib_mains[thread_index] : &vlib_global_main;
       switch (vhc->operation_mode)
 	{
 	case VHOST_USER_INTERRUPT_MODE:
@@ -532,7 +533,7 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_cpu_t *vhc;
-  u32 cpu_index;
+  u32 thread_index;
   vhost_iface_and_queue_t *vhiq;
   vlib_main_t *vm;
   u32 ifq2;
@@ -553,8 +554,8 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 	  if ((vhiq->vhost_iface_index == (ifq >> 8)) &&
 	      (VHOST_VRING_IDX_TX (vhiq->qid) == (ifq & 0xff)))
 	    {
-	      cpu_index = vhc - vum->cpus;
-	      vm = vlib_mains ? vlib_mains[cpu_index] : &vlib_global_main;
+	      thread_index = vhc - vum->cpus;
+	      vm = vlib_mains ? vlib_mains[thread_index] : &vlib_global_main;
 	      /*
 	       * Convert RX virtqueue number in the lower byte to vring
 	       * queue index for the input node process. Top bytes contain
@@ -1592,7 +1593,7 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 n_trace = vlib_get_trace_count (vm, node);
   u16 qsz_mask;
   u32 map_hint = 0;
-  u16 cpu_index = os_get_cpu_number ();
+  u16 thread_index = vlib_get_thread_index ();
   u16 copy_len = 0;
 
   {
@@ -1651,32 +1652,32 @@ vhost_user_if_input (vlib_main_t * vm,
    * in the loop and come back later. This is not an issue as for big packet,
    * processing cost really comes from the memory copy.
    */
-  if (PREDICT_FALSE (vum->cpus[cpu_index].rx_buffers_len < n_left + 1))
+  if (PREDICT_FALSE (vum->cpus[thread_index].rx_buffers_len < n_left + 1))
     {
-      u32 curr_len = vum->cpus[cpu_index].rx_buffers_len;
-      vum->cpus[cpu_index].rx_buffers_len +=
+      u32 curr_len = vum->cpus[thread_index].rx_buffers_len;
+      vum->cpus[thread_index].rx_buffers_len +=
 	vlib_buffer_alloc_from_free_list (vm,
-					  vum->cpus[cpu_index].rx_buffers +
+					  vum->cpus[thread_index].rx_buffers +
 					  curr_len,
 					  VHOST_USER_RX_BUFFERS_N - curr_len,
 					  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
       if (PREDICT_FALSE
-	  (vum->cpus[cpu_index].rx_buffers_len <
+	  (vum->cpus[thread_index].rx_buffers_len <
 	   VHOST_USER_RX_BUFFER_STARVATION))
 	{
 	  /* In case of buffer starvation, discard some packets from the queue
 	   * and log the event.
 	   * We keep doing best effort for the remaining packets. */
-	  u32 flush = (n_left + 1 > vum->cpus[cpu_index].rx_buffers_len) ?
-	    n_left + 1 - vum->cpus[cpu_index].rx_buffers_len : 1;
+	  u32 flush = (n_left + 1 > vum->cpus[thread_index].rx_buffers_len) ?
+	    n_left + 1 - vum->cpus[thread_index].rx_buffers_len : 1;
 	  flush = vhost_user_rx_discard_packet (vm, vui, txvq, flush);
 
 	  n_left -= flush;
 	  vlib_increment_simple_counter (vnet_main.
 					 interface_main.sw_if_counters +
 					 VNET_INTERFACE_COUNTER_DROP,
-					 os_get_cpu_number (),
+					 vlib_get_thread_index (),
 					 vui->sw_if_index, flush);
 
 	  vlib_error_count (vm, vhost_user_input_node.index,
@@ -1696,7 +1697,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  u32 desc_data_offset;
 	  vring_desc_t *desc_table = txvq->desc;
 
-	  if (PREDICT_FALSE (vum->cpus[cpu_index].rx_buffers_len <= 1))
+	  if (PREDICT_FALSE (vum->cpus[thread_index].rx_buffers_len <= 1))
 	    {
 	      /* Not enough rx_buffers
 	       * Note: We yeld on 1 so we don't need to do an additional
@@ -1707,17 +1708,18 @@ vhost_user_if_input (vlib_main_t * vm,
 	    }
 
 	  desc_current = txvq->avail->ring[txvq->last_avail_idx & qsz_mask];
-	  vum->cpus[cpu_index].rx_buffers_len--;
-	  bi_current = (vum->cpus[cpu_index].rx_buffers)
-	    [vum->cpus[cpu_index].rx_buffers_len];
+	  vum->cpus[thread_index].rx_buffers_len--;
+	  bi_current = (vum->cpus[thread_index].rx_buffers)
+	    [vum->cpus[thread_index].rx_buffers_len];
 	  b_head = b_current = vlib_get_buffer (vm, bi_current);
 	  to_next[0] = bi_current;	//We do that now so we can forget about bi_current
 	  to_next++;
 	  n_left_to_next--;
 
 	  vlib_prefetch_buffer_with_index (vm,
-					   (vum->cpus[cpu_index].rx_buffers)
-					   [vum->cpus[cpu_index].
+					   (vum->
+					    cpus[thread_index].rx_buffers)
+					   [vum->cpus[thread_index].
 					    rx_buffers_len - 1], LOAD);
 
 	  /* Just preset the used descriptor id and length for later */
@@ -1791,7 +1793,7 @@ vhost_user_if_input (vlib_main_t * vm,
 		  (b_current->current_length == VLIB_BUFFER_DATA_SIZE))
 		{
 		  if (PREDICT_FALSE
-		      (vum->cpus[cpu_index].rx_buffers_len == 0))
+		      (vum->cpus[thread_index].rx_buffers_len == 0))
 		    {
 		      /* Cancel speculation */
 		      to_next--;
@@ -1805,17 +1807,18 @@ vhost_user_if_input (vlib_main_t * vm,
 		       * but valid.
 		       */
 		      vhost_user_input_rewind_buffers (vm,
-						       &vum->cpus[cpu_index],
+						       &vum->cpus
+						       [thread_index],
 						       b_head);
 		      n_left = 0;
 		      goto stop;
 		    }
 
 		  /* Get next output */
-		  vum->cpus[cpu_index].rx_buffers_len--;
+		  vum->cpus[thread_index].rx_buffers_len--;
 		  u32 bi_next =
-		    (vum->cpus[cpu_index].rx_buffers)[vum->cpus
-						      [cpu_index].rx_buffers_len];
+		    (vum->cpus[thread_index].rx_buffers)[vum->cpus
+							 [thread_index].rx_buffers_len];
 		  b_current->next_buffer = bi_next;
 		  b_current->flags |= VLIB_BUFFER_NEXT_PRESENT;
 		  bi_current = bi_next;
@@ -1823,7 +1826,7 @@ vhost_user_if_input (vlib_main_t * vm,
 		}
 
 	      /* Prepare a copy order executed later for the data */
-	      vhost_copy_t *cpy = &vum->cpus[cpu_index].copy[copy_len];
+	      vhost_copy_t *cpy = &vum->cpus[thread_index].copy[copy_len];
 	      copy_len++;
 	      u32 desc_data_l =
 		desc_table[desc_current].len - desc_data_offset;
@@ -1880,7 +1883,7 @@ vhost_user_if_input (vlib_main_t * vm,
 	  if (PREDICT_FALSE (copy_len >= VHOST_USER_RX_COPY_THRESHOLD))
 	    {
 	      if (PREDICT_FALSE
-		  (vhost_user_input_copy (vui, vum->cpus[cpu_index].copy,
+		  (vhost_user_input_copy (vui, vum->cpus[thread_index].copy,
 					  copy_len, &map_hint)))
 		{
 		  clib_warning
@@ -1905,7 +1908,7 @@ vhost_user_if_input (vlib_main_t * vm,
 
   /* Do the memory copies */
   if (PREDICT_FALSE
-      (vhost_user_input_copy (vui, vum->cpus[cpu_index].copy,
+      (vhost_user_input_copy (vui, vum->cpus[thread_index].copy,
 			      copy_len, &map_hint)))
     {
       clib_warning ("Memory mapping error on interface hw_if_index=%d "
@@ -1933,9 +1936,9 @@ vhost_user_if_input (vlib_main_t * vm,
   vlib_increment_combined_counter
     (vnet_main.interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
-     os_get_cpu_number (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
+     vlib_get_thread_index (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
 
-  vnet_device_increment_rx_packets (cpu_index, n_rx_packets);
+  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
 
   return n_rx_packets;
 }
@@ -1946,15 +1949,15 @@ vhost_user_input (vlib_main_t * vm,
 {
   vhost_user_main_t *vum = &vhost_user_main;
   uword n_rx_packets = 0;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   vhost_iface_and_queue_t *vhiq;
   vhost_user_intf_t *vui;
   vhost_cpu_t *vhc;
 
-  vhc = &vum->cpus[cpu_index];
+  vhc = &vum->cpus[thread_index];
   if (PREDICT_TRUE (vhc->operation_mode == VHOST_USER_POLLING_MODE))
     {
-      vec_foreach (vhiq, vum->cpus[cpu_index].rx_queues)
+      vec_foreach (vhiq, vum->cpus[thread_index].rx_queues)
       {
 	vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
 	n_rx_packets += vhost_user_if_input (vm, vum, vui, vhiq->qid, node);
@@ -2096,7 +2099,7 @@ vhost_user_tx (vlib_main_t * vm,
   vhost_user_vring_t *rxvq;
   u16 qsz_mask;
   u8 error;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 map_hint = 0;
   u8 retry = 8;
   u16 copy_len;
@@ -2116,7 +2119,7 @@ vhost_user_tx (vlib_main_t * vm,
 
   qid =
     VHOST_VRING_IDX_RX (*vec_elt_at_index
-			(vui->per_cpu_tx_qid, os_get_cpu_number ()));
+			(vui->per_cpu_tx_qid, vlib_get_thread_index ()));
   rxvq = &vui->vrings[qid];
   if (PREDICT_FALSE (vui->use_tx_spinlock))
     vhost_user_vring_lock (vui, qid);
@@ -2143,10 +2146,10 @@ retry:
 
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  vum->cpus[cpu_index].current_trace =
+	  vum->cpus[thread_index].current_trace =
 	    vlib_add_trace (vm, node, b0,
-			    sizeof (*vum->cpus[cpu_index].current_trace));
-	  vhost_user_tx_trace (vum->cpus[cpu_index].current_trace,
+			    sizeof (*vum->cpus[thread_index].current_trace));
+	  vhost_user_tx_trace (vum->cpus[thread_index].current_trace,
 			       vui, qid / 2, b0, rxvq);
 	}
 
@@ -2188,14 +2191,14 @@ retry:
       {
 	// Get a header from the header array
 	virtio_net_hdr_mrg_rxbuf_t *hdr =
-	  &vum->cpus[cpu_index].tx_headers[tx_headers_len];
+	  &vum->cpus[thread_index].tx_headers[tx_headers_len];
 	tx_headers_len++;
 	hdr->hdr.flags = 0;
 	hdr->hdr.gso_type = 0;
 	hdr->num_buffers = 1;	//This is local, no need to check
 
 	// Prepare a copy order executed later for the header
-	vhost_copy_t *cpy = &vum->cpus[cpu_index].copy[copy_len];
+	vhost_copy_t *cpy = &vum->cpus[thread_index].copy[copy_len];
 	copy_len++;
 	cpy->len = vui->virtio_net_hdr_sz;
 	cpy->dst = buffer_map_addr;
@@ -2220,7 +2223,7 @@ retry:
 	      else if (vui->virtio_net_hdr_sz == 12)	//MRG is available
 		{
 		  virtio_net_hdr_mrg_rxbuf_t *hdr =
-		    &vum->cpus[cpu_index].tx_headers[tx_headers_len - 1];
+		    &vum->cpus[thread_index].tx_headers[tx_headers_len - 1];
 
 		  //Move from available to used buffer
 		  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id =
@@ -2282,7 +2285,7 @@ retry:
 	    }
 
 	  {
-	    vhost_copy_t *cpy = &vum->cpus[cpu_index].copy[copy_len];
+	    vhost_copy_t *cpy = &vum->cpus[thread_index].copy[copy_len];
 	    copy_len++;
 	    cpy->len = bytes_left;
 	    cpy->len = (cpy->len > buffer_len) ? buffer_len : cpy->len;
@@ -2325,8 +2328,8 @@ retry:
 
       if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  vum->cpus[cpu_index].current_trace->hdr =
-	    vum->cpus[cpu_index].tx_headers[tx_headers_len - 1];
+	  vum->cpus[thread_index].current_trace->hdr =
+	    vum->cpus[thread_index].tx_headers[tx_headers_len - 1];
 	}
 
       n_left--;			//At the end for error counting when 'goto done' is invoked
@@ -2336,7 +2339,7 @@ retry:
 done:
   //Do the memory copies
   if (PREDICT_FALSE
-      (vhost_user_tx_copy (vui, vum->cpus[cpu_index].copy,
+      (vhost_user_tx_copy (vui, vum->cpus[thread_index].copy,
 			   copy_len, &map_hint)))
     {
       clib_warning ("Memory mapping error on interface hw_if_index=%d "
@@ -2386,7 +2389,7 @@ done3:
       vlib_increment_simple_counter
 	(vnet_main.interface_main.sw_if_counters
 	 + VNET_INTERFACE_COUNTER_DROP,
-	 os_get_cpu_number (), vui->sw_if_index, n_left);
+	 vlib_get_thread_index (), vui->sw_if_index, n_left);
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
@@ -2773,11 +2776,11 @@ vhost_user_send_interrupt_process (vlib_main_t * vm,
 	case ~0:
 	  vec_foreach (vhc, vum->cpus)
 	  {
-	    u32 cpu_index = vhc - vum->cpus;
+	    u32 thread_index = vhc - vum->cpus;
 	    f64 next_timeout;
 
 	    next_timeout = timeout;
-	    vec_foreach (vhiq, vum->cpus[cpu_index].rx_queues)
+	    vec_foreach (vhiq, vum->cpus[thread_index].rx_queues)
 	    {
 	      vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
 	      vhost_user_vring_t *rxvq =

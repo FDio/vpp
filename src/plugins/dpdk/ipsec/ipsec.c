@@ -289,7 +289,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      if (!map)
 		{
 		  clib_warning ("unable to create hash table for worker %u",
-				vlib_mains[i]->cpu_index);
+				vlib_mains[i]->thread_index);
 		  goto error;
 		}
 	      cwm->algo_qp_map = map;

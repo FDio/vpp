@@ -23,7 +23,7 @@
 typedef struct
 {
   f64 time;
-  u32 cpu;
+  u32 thread_index;
   u32 type;
   u64 data[2];
 } cj_record_t;

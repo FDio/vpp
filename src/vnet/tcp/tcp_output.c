@@ -387,8 +387,8 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 #define tcp_get_free_buffer_index(tm, bidx)                             \
 do {                                                                    \
   u32 *my_tx_buffers, n_free_buffers;                                   \
-  u32 cpu_index = os_get_cpu_number();                             	\
-  my_tx_buffers = tm->tx_buffers[cpu_index];                            \
+  u32 thread_index = vlib_get_thread_index();                             	\
+  my_tx_buffers = tm->tx_buffers[thread_index];                            \
   if (PREDICT_FALSE(vec_len (my_tx_buffers) == 0))                      \
     {                                                                   \
       n_free_buffers = 32;      /* TODO config or macro */              \
@@ -396,7 +396,7 @@ do {                                                                    \
       _vec_len(my_tx_buffers) = vlib_buffer_alloc_from_free_list (      \
           tm->vlib_main, my_tx_buffers, n_free_buffers,                 \
           VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);                         \
-      tm->tx_buffers[cpu_index] = my_tx_buffers;                        \
+      tm->tx_buffers[thread_index] = my_tx_buffers;                        \
     }                                                                   \
   /* buffer shortage */                                                 \
   if (PREDICT_FALSE (vec_len (my_tx_buffers) == 0))                     \
@@ -408,8 +408,8 @@ do {                                                                    \
 #define tcp_return_buffer(tm)						\
 do {									\
   u32 *my_tx_buffers;							\
-  u32 cpu_index = os_get_cpu_number();                             	\
-  my_tx_buffers = tm->tx_buffers[cpu_index];                          	\
+  u32 thread_index = vlib_get_thread_index();                             	\
+  my_tx_buffers = tm->tx_buffers[thread_index];                          	\
   _vec_len (my_tx_buffers) +=1;						\
 } while (0)
 
@@ -942,7 +942,7 @@ tcp_send_ack (tcp_connection_t * tc)
 void
 tcp_timer_delack_handler (u32 index)
 {
-  u32 thread_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (index, thread_index);
@@ -1022,7 +1022,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
-  u32 thread_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
   u32 bi, snd_space, n_bytes;
@@ -1152,7 +1152,7 @@ tcp_timer_persist_handler (u32 index)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
-  u32 thread_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
   u32 bi, n_bytes;
@@ -1313,7 +1313,7 @@ tcp46_output_inline (vlib_main_t * vm,
 		     vlib_frame_t * from_frame, int is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index;
+  u32 my_thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1524,7 +1524,7 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 vlib_frame_t * from_frame, u8 is_ip4)
 {
   u32 n_left_from, next_index, *from, *to_next;
-  u32 my_thread_index = vm->cpu_index;
+  u32 my_thread_index = vm->thread_index;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;

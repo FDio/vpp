@@ -99,7 +99,7 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
   vlib_pending_frame_t *pf;
   i32 i, j, n_insert;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   vlib_worker_thread_barrier_sync (vm);
 

@@ -149,7 +149,7 @@ last_stage (vlib_main_t * vm, vlib_node_runtime_t * node, u32 bi)
 
   /* per-mapping byte stats include the ethernet header */
   vlib_increment_combined_counter (&lm->counter_main,
-				   os_get_cpu_number (),
+				   vlib_get_thread_index (),
 				   counter_index, 1 /* packet_increment */ ,
 				   vlib_buffer_length_in_chain (vm, b) +
 				   sizeof (ethernet_header_t));

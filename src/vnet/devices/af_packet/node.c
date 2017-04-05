@@ -124,7 +124,7 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 frame_num = apif->rx_req->tp_frame_nr;
   u8 *block_start = apif->rx_ring + block * block_size;
   uword n_trace = vlib_get_trace_count (vm, node);
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
 							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   u32 min_bufs = apif->rx_req->tp_frame_size / n_buffer_bytes;
@@ -132,15 +132,15 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (apif->per_interface_next_index != ~0)
     next_index = apif->per_interface_next_index;
 
-  n_free_bufs = vec_len (apm->rx_buffers[cpu_index]);
+  n_free_bufs = vec_len (apm->rx_buffers[thread_index]);
   if (PREDICT_FALSE (n_free_bufs < VLIB_FRAME_SIZE))
     {
-      vec_validate (apm->rx_buffers[cpu_index],
+      vec_validate (apm->rx_buffers[thread_index],
 		    VLIB_FRAME_SIZE + n_free_bufs - 1);
       n_free_bufs +=
-	vlib_buffer_alloc (vm, &apm->rx_buffers[cpu_index][n_free_bufs],
+	vlib_buffer_alloc (vm, &apm->rx_buffers[thread_index][n_free_bufs],
 			   VLIB_FRAME_SIZE);
-      _vec_len (apm->rx_buffers[cpu_index]) = n_free_bufs;
+      _vec_len (apm->rx_buffers[thread_index]) = n_free_bufs;
     }
 
   rx_frame = apif->next_rx_frame;
@@ -163,11 +163,11 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      /* grab free buffer */
 	      u32 last_empty_buffer =
-		vec_len (apm->rx_buffers[cpu_index]) - 1;
+		vec_len (apm->rx_buffers[thread_index]) - 1;
 	      prev_bi0 = bi0;
-	      bi0 = apm->rx_buffers[cpu_index][last_empty_buffer];
+	      bi0 = apm->rx_buffers[thread_index][last_empty_buffer];
 	      b0 = vlib_get_buffer (vm, bi0);
-	      _vec_len (apm->rx_buffers[cpu_index]) = last_empty_buffer;
+	      _vec_len (apm->rx_buffers[thread_index]) = last_empty_buffer;
 	      n_free_bufs--;
 
 	      /* copy data */
@@ -236,9 +236,9 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vlib_increment_combined_counter
     (vnet_get_main ()->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
-     os_get_cpu_number (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
+     vlib_get_thread_index (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
 
-  vnet_device_increment_rx_packets (cpu_index, n_rx_packets);
+  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
   return n_rx_packets;
 }
 

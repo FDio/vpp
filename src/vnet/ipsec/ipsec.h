@@ -324,21 +324,21 @@ int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 always_inline void
 ipsec_alloc_empty_buffers (vlib_main_t * vm, ipsec_main_t * im)
 {
-  u32 cpu_index = os_get_cpu_number ();
-  uword l = vec_len (im->empty_buffers[cpu_index]);
+  u32 thread_index = vlib_get_thread_index ();
+  uword l = vec_len (im->empty_buffers[thread_index]);
   uword n_alloc = 0;
 
   if (PREDICT_FALSE (l < VLIB_FRAME_SIZE))
     {
-      if (!im->empty_buffers[cpu_index])
+      if (!im->empty_buffers[thread_index])
 	{
-	  vec_alloc (im->empty_buffers[cpu_index], 2 * VLIB_FRAME_SIZE);
+	  vec_alloc (im->empty_buffers[thread_index], 2 * VLIB_FRAME_SIZE);
 	}
 
-      n_alloc = vlib_buffer_alloc (vm, im->empty_buffers[cpu_index] + l,
+      n_alloc = vlib_buffer_alloc (vm, im->empty_buffers[thread_index] + l,
 				   2 * VLIB_FRAME_SIZE - l);
 
-      _vec_len (im->empty_buffers[cpu_index]) = l + n_alloc;
+      _vec_len (im->empty_buffers[thread_index]) = l + n_alloc;
     }
 }
 

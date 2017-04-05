@@ -156,7 +156,7 @@ typedef struct vlib_main_t
   uword *init_functions_called;
 
   /* to compare with node runtime */
-  u32 cpu_index;
+  u32 thread_index;
 
   void **mbuf_alloc_list;
 

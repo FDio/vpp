@@ -35,7 +35,7 @@ typedef struct
 static void
 lldp_rpc_update_peer_cb (const lldp_intf_update_t * a)
 {
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   lldp_intf_t *n = lldp_get_intf (&lldp_main, a->hw_if_index);
   if (!n)

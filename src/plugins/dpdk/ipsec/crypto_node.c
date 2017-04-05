@@ -171,9 +171,9 @@ static uword
 dpdk_crypto_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * frame)
 {
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  crypto_worker_main_t *cwm = &dcm->workers_main[cpu_index];
+  crypto_worker_main_t *cwm = &dcm->workers_main[thread_index];
   crypto_qp_data_t *qpd;
   u32 n_deq = 0;
 

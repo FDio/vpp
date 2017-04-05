@@ -646,10 +646,10 @@ const static transport_proto_vft_t tcp6_proto = {
 void
 tcp_timer_keep_handler (u32 conn_index)
 {
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
-  tc = tcp_connection_get (conn_index, cpu_index);
+  tc = tcp_connection_get (conn_index, thread_index);
   tc->timers[TCP_TIMER_KEEP] = TCP_TIMER_HANDLE_INVALID;
 
   tcp_connection_close (tc);
@@ -675,10 +675,10 @@ tcp_timer_establish_handler (u32 conn_index)
 void
 tcp_timer_waitclose_handler (u32 conn_index)
 {
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
 
-  tc = tcp_connection_get (conn_index, cpu_index);
+  tc = tcp_connection_get (conn_index, thread_index);
   tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
 
   /* Session didn't come back with a close(). Send FIN either way

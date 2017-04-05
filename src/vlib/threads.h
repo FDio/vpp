@@ -153,8 +153,6 @@ typedef struct
 /* Called early, in thread 0's context */
 clib_error_t *vlib_thread_init (vlib_main_t * vm);
 
-vlib_worker_thread_t *vlib_alloc_thread (vlib_main_t * vm);
-
 int vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
 			      u32 frame_queue_index, vlib_frame_t * frame,
 			      vlib_frame_queue_msg_type_t type);
@@ -183,12 +181,19 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 void vlib_worker_thread_barrier_sync (vlib_main_t * vm);
 void vlib_worker_thread_barrier_release (vlib_main_t * vm);
 
+extern __thread uword vlib_thread_index;
+static_always_inline uword
+vlib_get_thread_index (void)
+{
+  return vlib_thread_index;
+}
+
 always_inline void
 vlib_smp_unsafe_warning (void)
 {
   if (CLIB_DEBUG > 0)
     {
-      if (os_get_cpu_number ())
+      if (vlib_get_thread_index ())
 	fformat (stderr, "%s: SMP unsafe warning...\n", __FUNCTION__);
     }
 }
@@ -331,21 +336,21 @@ vlib_num_workers ()
 }
 
 always_inline u32
-vlib_get_worker_cpu_index (u32 worker_index)
+vlib_get_worker_thread_index (u32 worker_index)
 {
   return worker_index + 1;
 }
 
 always_inline u32
-vlib_get_worker_index (u32 cpu_index)
+vlib_get_worker_index (u32 thread_index)
 {
-  return cpu_index - 1;
+  return thread_index - 1;
 }
 
 always_inline u32
 vlib_get_current_worker_index ()
 {
-  return os_get_cpu_number () - 1;
+  return vlib_get_thread_index () - 1;
 }
 
 static inline void
@@ -466,6 +471,8 @@ vlib_get_worker_handoff_queue_elt (u32 frame_queue_index,
 
   return elt;
 }
+
+u8 *vlib_thread_stack_init (uword thread_index);
 
 int vlib_thread_cb_register (struct vlib_main_t *vm,
 			     vlib_thread_callbacks_t * cb);

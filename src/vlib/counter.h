@@ -70,17 +70,17 @@ u32 vlib_simple_counter_n_counters (const vlib_simple_counter_main_t * cm);
 
 /** Increment a simple counter
     @param cm - (vlib_simple_counter_main_t *) simple counter main pointer
-    @param cpu_index - (u32) the current cpu index
+    @param thread_index - (u32) the current cpu index
     @param index - (u32) index of the counter to increment
     @param increment - (u64) quantitiy to add to the counter
 */
 always_inline void
 vlib_increment_simple_counter (vlib_simple_counter_main_t * cm,
-			       u32 cpu_index, u32 index, u64 increment)
+			       u32 thread_index, u32 index, u64 increment)
 {
   counter_t *my_counters;
 
-  my_counters = cm->counters[cpu_index];
+  my_counters = cm->counters[thread_index];
   my_counters[index] += increment;
 }
 
@@ -201,7 +201,7 @@ void vlib_clear_combined_counters (vlib_combined_counter_main_t * cm);
 
 /** Increment a combined counter
     @param cm - (vlib_combined_counter_main_t *) comined counter main pointer
-    @param cpu_index - (u32) the current cpu index
+    @param thread_index - (u32) the current cpu index
     @param index - (u32) index of the counter to increment
     @param packet_increment - (u64) number of packets to add to the counter
     @param byte_increment - (u64) number of bytes to add to the counter
@@ -209,13 +209,13 @@ void vlib_clear_combined_counters (vlib_combined_counter_main_t * cm);
 
 always_inline void
 vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
-				 u32 cpu_index,
+				 u32 thread_index,
 				 u32 index, u64 n_packets, u64 n_bytes)
 {
   vlib_counter_t *my_counters;
 
   /* Use this CPU's counter array */
-  my_counters = cm->counters[cpu_index];
+  my_counters = cm->counters[thread_index];
 
   my_counters[index].packets += n_packets;
   my_counters[index].bytes += n_bytes;
@@ -224,14 +224,14 @@ vlib_increment_combined_counter (vlib_combined_counter_main_t * cm,
 /** Pre-fetch a per-thread combined counter for the given object index */
 always_inline void
 vlib_prefetch_combined_counter (const vlib_combined_counter_main_t * cm,
-				u32 cpu_index, u32 index)
+				u32 thread_index, u32 index)
 {
   vlib_counter_t *cpu_counters;
 
   /*
    * This CPU's index is assumed to already be in cache
    */
-  cpu_counters = cm->counters[cpu_index];
+  cpu_counters = cm->counters[thread_index];
   CLIB_PREFETCH (cpu_counters + index, CLIB_CACHE_LINE_BYTES, STORE);
 }
 
