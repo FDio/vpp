@@ -214,20 +214,19 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
-	      if (b0)
-		{
-		  memif_input_trace_t *tr;
-		  vlib_trace_buffer (vm, node, next0, b0,
-				     /* follow_chain */ 0);
-		  vlib_set_trace_count (vm, node, --n_trace);
-		  tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  tr->next_index = next0;
-		  tr->hw_if_index = mif->hw_if_index;
-		  tr->ring = rid;
-		}
+	      /* b0 */
+	      memif_input_trace_t *tr;
+	      vlib_trace_buffer (vm, node, next0, b0,
+				 /* follow_chain */ 0);
+	      vlib_set_trace_count (vm, node, --n_trace);
+	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->next_index = next0;
+	      tr->hw_if_index = mif->hw_if_index;
+	      tr->ring = rid;
 
-	      if (n_trace && b1)
+	      if (n_trace)
 		{
+		  /* b1 */
 		  memif_input_trace_t *tr;
 		  vlib_trace_buffer (vm, node, next1, b1,
 				     /* follow_chain */ 0);
@@ -286,17 +285,14 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
-	      if (b0)
-		{
-		  memif_input_trace_t *tr;
-		  vlib_trace_buffer (vm, node, next0, b0,
-				     /* follow_chain */ 0);
-		  vlib_set_trace_count (vm, node, --n_trace);
-		  tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-		  tr->next_index = next0;
-		  tr->hw_if_index = mif->hw_if_index;
-		  tr->ring = rid;
-		}
+	      memif_input_trace_t *tr;
+	      vlib_trace_buffer (vm, node, next0, b0,
+				 /* follow_chain */ 0);
+	      vlib_set_trace_count (vm, node, --n_trace);
+	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->next_index = next0;
+	      tr->hw_if_index = mif->hw_if_index;
+	      tr->ring = rid;
 	    }
 
 

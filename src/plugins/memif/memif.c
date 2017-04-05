@@ -241,6 +241,7 @@ memif_process_connect_req (memif_pending_conn_t * pending_conn,
   uf->private_data = mif->if_index << 1;
   mif->connection = pending_conn->connection;
   pool_put (mm->pending_conns, pending_conn);
+  pending_conn = 0;
 
   memif_connect (vm, mif);
 
@@ -252,7 +253,17 @@ response:
     {
       DEBUG_UNIX_LOG ("Failed to send connection response");
       error = clib_error_return_unix (0, "send fd %d", fd);
-      memif_disconnect (vm, mif);
+      if (pending_conn)
+	memif_remove_pending_conn (pending_conn);
+      else
+	memif_disconnect (vm, mif);
+    }
+  if (retval > 0)
+    {
+      if (shm_fd >= 0)
+	close (shm_fd);
+      if (int_fd >= 0)
+	close (int_fd);
     }
   return error;
 }
