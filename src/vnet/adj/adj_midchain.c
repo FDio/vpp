@@ -49,7 +49,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
     u32 next_index;
     vnet_main_t *vnm = vnet_get_main ();
     vnet_interface_main_t *im = &vnm->interface_main;
-    u32 cpu_index = vm->cpu_index;
+    u32 thread_index = vm->thread_index;
 
     /* Vector of buffer / pkt indices we're supposed to process */
     from = vlib_frame_vector_args (frame);
@@ -124,13 +124,13 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    {
 		vlib_increment_combined_counter (im->combined_sw_if_counters
 						 + VNET_INTERFACE_COUNTER_TX,
-						 cpu_index,
+						 thread_index,
 						 adj0->rewrite_header.sw_if_index,
 						 1,
 						 vlib_buffer_length_in_chain (vm, b0));
 		vlib_increment_combined_counter (im->combined_sw_if_counters
 						 + VNET_INTERFACE_COUNTER_TX,
-						 cpu_index,
+						 thread_index,
 						 adj1->rewrite_header.sw_if_index,
 						 1,
 						 vlib_buffer_length_in_chain (vm, b1));
@@ -181,7 +181,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    {
 		vlib_increment_combined_counter (im->combined_sw_if_counters
 						 + VNET_INTERFACE_COUNTER_TX,
-						 cpu_index,
+						 thread_index,
 						 adj0->rewrite_header.sw_if_index,
 						 1,
 						 vlib_buffer_length_in_chain (vm, b0));

@@ -66,14 +66,14 @@ _(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
 void
 dslock (stats_main_t * sm, int release_hint, int tag)
 {
-  u32 thread_id;
+  u32 thread_index;
   data_structure_lock_t *l = sm->data_structure_lock;
 
   if (PREDICT_FALSE (l == 0))
     return;
 
-  thread_id = os_get_cpu_number ();
-  if (l->lock && l->thread_id == thread_id)
+  thread_index = vlib_get_thread_index ();
+  if (l->lock && l->thread_index == thread_index)
     {
       l->count++;
       return;
@@ -85,7 +85,7 @@ dslock (stats_main_t * sm, int release_hint, int tag)
   while (__sync_lock_test_and_set (&l->lock, 1))
     /* zzzz */ ;
   l->tag = tag;
-  l->thread_id = thread_id;
+  l->thread_index = thread_index;
   l->count = 1;
 }
 
@@ -99,14 +99,14 @@ stats_dslock_with_hint (int hint, int tag)
 void
 dsunlock (stats_main_t * sm)
 {
-  u32 thread_id;
+  u32 thread_index;
   data_structure_lock_t *l = sm->data_structure_lock;
 
   if (PREDICT_FALSE (l == 0))
     return;
 
-  thread_id = os_get_cpu_number ();
-  ASSERT (l->lock && l->thread_id == thread_id);
+  thread_index = vlib_get_thread_index ();
+  ASSERT (l->lock && l->thread_index == thread_index);
   l->count--;
   if (l->count == 0)
     {

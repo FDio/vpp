@@ -42,8 +42,8 @@ dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)
   for (i = 0; i < tm->n_vlib_mains; i++)
     {
       uword key, data;
-      u32 cpu_index = vlib_mains[i]->cpu_index;
-      crypto_worker_main_t *cwm = &dcm->workers_main[cpu_index];
+      u32 thread_index = vlib_mains[i]->thread_index;
+      crypto_worker_main_t *cwm = &dcm->workers_main[thread_index];
       u8 *s = 0;
 
       if (skip_master)
@@ -57,7 +57,7 @@ dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)
 	  i32 last_cdev = -1;
 	  crypto_qp_data_t *qpd;
 
-	  s = format (s, "%u\t", cpu_index);
+	  s = format (s, "%u\t", thread_index);
 
 	  /* *INDENT-OFF* */
 	  vec_foreach (qpd, cwm->qp_data)
@@ -95,7 +95,7 @@ dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)
 	    cap.sym.auth.algo = p_key->auth_algo;
 	    check_algo_is_supported (&cap, auth_str);
 	    vlib_cli_output (vm, "%u\t%10s\t%15s\t%3s\t%u\t%u\n",
-			     vlib_mains[i]->cpu_index, cipher_str, auth_str,
+			     vlib_mains[i]->thread_index, cipher_str, auth_str,
 			     p_key->is_outbound ? "out" : "in",
 			     cwm->qp_data[data].dev_id,
 			     cwm->qp_data[data].qp_id);

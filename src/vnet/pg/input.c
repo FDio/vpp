@@ -893,7 +893,7 @@ pg_generate_set_lengths (pg_main_t * pg,
 
     vlib_increment_combined_counter (im->combined_sw_if_counters
 				     + VNET_INTERFACE_COUNTER_RX,
-				     os_get_cpu_number (),
+				     vlib_get_thread_index (),
 				     si->sw_if_index, n_buffers, length_sum);
   }
 
@@ -1266,7 +1266,7 @@ pg_stream_fill_helper (pg_main_t * pg,
 	    l += vlib_buffer_index_length_in_chain (vm, buffers[i]);
 	  vlib_increment_combined_counter (im->combined_sw_if_counters
 					   + VNET_INTERFACE_COUNTER_RX,
-					   os_get_cpu_number (),
+					   vlib_get_thread_index (),
 					   si->sw_if_index, n_alloc, l);
 	  s->current_replay_packet_index += n_alloc;
 	  s->current_replay_packet_index %=

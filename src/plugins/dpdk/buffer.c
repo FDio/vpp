@@ -132,7 +132,7 @@ dpdk_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
   u32 merge_index;
   int i;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   f = vlib_buffer_get_free_list (vm, free_list_index);
 

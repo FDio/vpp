@@ -74,7 +74,7 @@ ip6_lookup_inline (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -185,9 +185,9 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
+	    (cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
 
 	  from += 2;
 	  to_next += 2;
@@ -291,7 +291,7 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 
 	  from += 1;
 	  to_next += 1;
@@ -703,7 +703,7 @@ ip6_load_balance (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   ip6_main_t *im = &ip6_main;
 
   from = vlib_frame_vector_args (frame);
@@ -824,9 +824,9 @@ ip6_load_balance (vlib_main_t * vm,
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
+	    (cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next,
 					   to_next, n_left_to_next,
@@ -886,7 +886,7 @@ ip6_load_balance (vlib_main_t * vm,
 	    }
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next,
 					   to_next, n_left_to_next,
@@ -1897,7 +1897,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   while (n_left_from > 0)
     {
@@ -2019,11 +2019,11 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    {
 	      vlib_increment_combined_counter
 		(&adjacency_counters,
-		 cpu_index, adj_index0, 1,
+		 thread_index, adj_index0, 1,
 		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 	      vlib_increment_combined_counter
 		(&adjacency_counters,
-		 cpu_index, adj_index1, 1,
+		 thread_index, adj_index1, 1,
 		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
 	    }
 
@@ -2156,7 +2156,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    {
 	      vlib_increment_combined_counter
 		(&adjacency_counters,
-		 cpu_index, adj_index0, 1,
+		 thread_index, adj_index0, 1,
 		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 	    }
 

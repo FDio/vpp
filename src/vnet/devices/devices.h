@@ -50,9 +50,9 @@ typedef struct
 typedef struct
 {
   vnet_device_per_worker_data_t *workers;
-  uword first_worker_cpu_index;
-  uword last_worker_cpu_index;
-  uword next_worker_cpu_index;
+  uword first_worker_thread_index;
+  uword last_worker_thread_index;
+  uword next_worker_thread_index;
 } vnet_device_main_t;
 
 typedef struct
@@ -80,7 +80,7 @@ vnet_set_device_input_node (u32 hw_if_index, u32 node_index)
 }
 
 void vnet_device_input_assign_thread (u32 hw_if_index, u16 queue_id,
-				      uword cpu_index);
+				      uword thread_index);
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
@@ -95,12 +95,12 @@ vnet_get_aggregate_rx_packets (void)
 }
 
 static inline void
-vnet_device_increment_rx_packets (u32 cpu_index, u64 count)
+vnet_device_increment_rx_packets (u32 thread_index, u64 count)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
   vnet_device_per_worker_data_t *pwd;
 
-  pwd = vec_elt_at_index (vdm->workers, cpu_index);
+  pwd = vec_elt_at_index (vdm->workers, thread_index);
   pwd->aggregate_rx_packets += count;
 }
 
@@ -117,9 +117,9 @@ vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
 
-  ASSERT (queue_id < vec_len (hw->input_node_cpu_index_by_queue));
-  u32 cpu_index = hw->input_node_cpu_index_by_queue[queue_id];
-  vlib_node_set_interrupt_pending (vlib_mains[cpu_index],
+  ASSERT (queue_id < vec_len (hw->input_node_thread_index_by_queue));
+  u32 thread_index = hw->input_node_thread_index_by_queue[queue_id];
+  vlib_node_set_interrupt_pending (vlib_mains[thread_index],
 				   hw->input_node_index);
 }
 

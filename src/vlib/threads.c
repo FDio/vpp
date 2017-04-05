@@ -35,27 +35,12 @@ vl (void *p)
 vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
 
+__thread uword vlib_thread_index = 0;
+
 uword
 os_get_cpu_number (void)
 {
-  void *sp;
-  uword n;
-  u32 len;
-
-  len = vec_len (vlib_thread_stacks);
-  if (len == 0)
-    return 0;
-
-  /* Get any old stack address. */
-  sp = &sp;
-
-  n = ((uword) sp - (uword) vlib_thread_stacks[0])
-    >> VLIB_LOG2_THREAD_STACK_SIZE;
-
-  /* "processes" have their own stacks, and they always run in thread 0 */
-  n = n >= len ? 0 : n;
-
-  return n;
+  return vlib_thread_index;
 }
 
 uword
@@ -275,21 +260,6 @@ vlib_thread_init (vlib_main_t * vm)
   return 0;
 }
 
-vlib_worker_thread_t *
-vlib_alloc_thread (vlib_main_t * vm)
-{
-  vlib_worker_thread_t *w;
-
-  if (vec_len (vlib_worker_threads) >= vec_len (vlib_thread_stacks))
-    {
-      clib_warning ("out of worker threads... Quitting...");
-      exit (1);
-    }
-  vec_add2 (vlib_worker_threads, w, 1);
-  w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
-  return w;
-}
-
 vlib_frame_queue_t *
 vlib_frame_queue_alloc (int nelts)
 {
@@ -427,7 +397,7 @@ vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
       f64 b4 = vlib_time_now_ticks (vm, before);
       vlib_worker_thread_barrier_check (vm, b4);
       /* Bad idea. Dequeue -> enqueue -> dequeue -> trouble */
-      // vlib_frame_queue_dequeue (vm->cpu_index, vm, nm);
+      // vlib_frame_queue_dequeue (vm->thread_index, vm, nm);
     }
 
   elt = fq->elts + (new_tail & (fq->nelts - 1));
@@ -496,6 +466,8 @@ vlib_worker_thread_bootstrap_fn (void *arg)
 
   w->lwp = syscall (SYS_gettid);
   w->thread_id = pthread_self ();
+
+  vlib_thread_index = w - vlib_worker_threads;
 
   rv = (void *) clib_calljmp
     ((uword (*)(uword)) w->thread_function,
@@ -610,7 +582,9 @@ start_workers (vlib_main_t * vm)
 		  mheap_alloc (0 /* use VM */ , tr->mheap_size);
 	      else
 		w->thread_mheap = main_heap;
-	      w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
+
+	      w->thread_stack =
+		vlib_thread_stack_init (w - vlib_worker_threads);
 	      w->thread_function = tr->function;
 	      w->thread_function_arg = w;
 	      w->instance_id = k;
@@ -630,7 +604,7 @@ start_workers (vlib_main_t * vm)
 	      vm_clone = clib_mem_alloc (sizeof (*vm_clone));
 	      clib_memcpy (vm_clone, vlib_mains[0], sizeof (*vm_clone));
 
-	      vm_clone->cpu_index = worker_thread_index;
+	      vm_clone->thread_index = worker_thread_index;
 	      vm_clone->heap_base = w->thread_mheap;
 	      vm_clone->mbuf_alloc_list = 0;
 	      vm_clone->init_functions_called =
@@ -679,7 +653,7 @@ start_workers (vlib_main_t * vm)
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-		rt->cpu_index = vm_clone->cpu_index;
+		rt->thread_index = vm_clone->thread_index;
 		/* copy initial runtime_data from node */
 		if (n->runtime_data && n->runtime_data_bytes > 0)
 		  clib_memcpy (rt->runtime_data, n->runtime_data,
@@ -692,7 +666,7 @@ start_workers (vlib_main_t * vm)
 	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-		rt->cpu_index = vm_clone->cpu_index;
+		rt->thread_index = vm_clone->thread_index;
 		/* copy initial runtime_data from node */
 		if (n->runtime_data && n->runtime_data_bytes > 0)
 		  clib_memcpy (rt->runtime_data, n->runtime_data,
@@ -756,7 +730,8 @@ start_workers (vlib_main_t * vm)
 		  mheap_alloc (0 /* use VM */ , tr->mheap_size);
 	      else
 		w->thread_mheap = main_heap;
-	      w->thread_stack = vlib_thread_stacks[w - vlib_worker_threads];
+	      w->thread_stack =
+		vlib_thread_stack_init (w - vlib_worker_threads);
 	      w->thread_function = tr->function;
 	      w->thread_function_arg = w;
 	      w->instance_id = j;
@@ -827,7 +802,7 @@ vlib_worker_thread_node_runtime_update (void)
 				  uword n_calls,
 				  uword n_vectors, uword n_clocks);
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   if (vec_len (vlib_mains) == 1)
     return;
@@ -835,7 +810,7 @@ vlib_worker_thread_node_runtime_update (void)
   vm = vlib_mains[0];
   nm = &vm->node_main;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
   ASSERT (*vlib_worker_threads->wait_at_barrier == 1);
 
   /*
@@ -955,7 +930,7 @@ vlib_worker_thread_node_runtime_update (void)
       vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
       {
 	vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-	rt->cpu_index = vm_clone->cpu_index;
+	rt->thread_index = vm_clone->thread_index;
 	/* copy runtime_data, will be overwritten later for existing rt */
 	if (n->runtime_data && n->runtime_data_bytes > 0)
 	  clib_memcpy (rt->runtime_data, n->runtime_data,
@@ -981,7 +956,7 @@ vlib_worker_thread_node_runtime_update (void)
       vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
       {
 	vlib_node_t *n = vlib_get_node (vm, rt->node_index);
-	rt->cpu_index = vm_clone->cpu_index;
+	rt->thread_index = vm_clone->thread_index;
 	/* copy runtime_data, will be overwritten later for existing rt */
 	if (n->runtime_data && n->runtime_data_bytes > 0)
 	  clib_memcpy (rt->runtime_data, n->runtime_data,
@@ -1180,7 +1155,7 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
   if (vlib_mains == 0)
     return;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
   vlib_worker_thread_barrier_sync (vm);
 
   switch (which)
@@ -1212,7 +1187,7 @@ vlib_worker_thread_barrier_sync (vlib_main_t * vm)
 
   vlib_worker_threads[0].barrier_sync_count++;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
 
@@ -1260,7 +1235,7 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 int
 vlib_frame_queue_dequeue (vlib_main_t * vm, vlib_frame_queue_main_t * fqm)
 {
-  u32 thread_id = vm->cpu_index;
+  u32 thread_id = vm->thread_index;
   vlib_frame_queue_t *fq = fqm->vlib_frame_queues[thread_id];
   vlib_frame_queue_elt_t *elt;
   u32 *from, *to;
@@ -1393,7 +1368,7 @@ vlib_worker_thread_fn (void *arg)
   vlib_main_t *vm = vlib_get_main ();
   clib_error_t *e;
 
-  ASSERT (vm->cpu_index == os_get_cpu_number ());
+  ASSERT (vm->thread_index == vlib_get_thread_index ());
 
   vlib_worker_thread_init (w);
   clib_time_init (&vm->clib_time);

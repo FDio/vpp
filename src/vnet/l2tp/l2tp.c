@@ -157,7 +157,7 @@ test_counters_command_fn (vlib_main_t * vm,
   u32 session_index;
   u32 counter_index;
   u32 nincr = 0;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions,
@@ -167,11 +167,11 @@ test_counters_command_fn (vlib_main_t * vm,
       session_index_to_counter_index (session_index,
                                       SESSION_COUNTER_USER_TO_NETWORK);
     vlib_increment_combined_counter (&lm->counter_main,
-                                     cpu_index,
+                                     thread_index,
                                      counter_index,
                                      1/*pkt*/, 1111 /*bytes*/);
     vlib_increment_combined_counter (&lm->counter_main,
-                                     cpu_index,
+                                     thread_index,
                                      counter_index+1,
                                      1/*pkt*/, 2222 /*bytes*/);
     nincr++;

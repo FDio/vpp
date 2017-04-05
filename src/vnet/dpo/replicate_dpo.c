@@ -627,7 +627,7 @@ replicate_inline (vlib_main_t * vm,
     vlib_combined_counter_main_t * cm = &replicate_main.repm_counters;
     replicate_main_t * rm = &replicate_main;
     u32 n_left_from, * from, * to_next, next_index;
-    u32 cpu_index = os_get_cpu_number();
+    u32 thread_index = vlib_get_thread_index();
 
     from = vlib_frame_vector_args (frame);
     n_left_from = frame->n_vectors;
@@ -657,12 +657,12 @@ replicate_inline (vlib_main_t * vm,
             rep0 = replicate_get(repi0);
 
             vlib_increment_combined_counter(
-                cm, cpu_index, repi0, 1,
+                cm, thread_index, repi0, 1,
                 vlib_buffer_length_in_chain(vm, b0));
 
-	    vec_validate (rm->clones[cpu_index], rep0->rep_n_buckets - 1);
+	    vec_validate (rm->clones[thread_index], rep0->rep_n_buckets - 1);
 
-	    num_cloned = vlib_buffer_clone (vm, bi0, rm->clones[cpu_index], rep0->rep_n_buckets, 128);
+	    num_cloned = vlib_buffer_clone (vm, bi0, rm->clones[thread_index], rep0->rep_n_buckets, 128);
 
 	    if (num_cloned != rep0->rep_n_buckets)
 	      {
@@ -673,7 +673,7 @@ replicate_inline (vlib_main_t * vm,
 
             for (bucket = 0; bucket < num_cloned; bucket++)
             {
-                ci0 = rm->clones[cpu_index][bucket];
+                ci0 = rm->clones[thread_index][bucket];
                 c0 = vlib_get_buffer(vm, ci0);
 
                 to_next[0] = ci0;
@@ -700,7 +700,7 @@ replicate_inline (vlib_main_t * vm,
 		    vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 		  }
             }
-	    vec_reset_length (rm->clones[cpu_index]);
+	    vec_reset_length (rm->clones[thread_index]);
         }
 
         vlib_put_next_frame (vm, node, next_index, n_left_to_next);

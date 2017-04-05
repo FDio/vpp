@@ -709,7 +709,7 @@ test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
     {
         /* *INDENT-OFF* */
         foreach_vlib_main({
-          heap = clib_per_cpu_mheaps[this_vlib_main->cpu_index];
+          heap = clib_per_cpu_mheaps[this_vlib_main->thread_index];
           mheap = mheap_header(heap);
           mheap->flags |= MHEAP_FLAG_VALIDATE;
           // Turn off small object cache because it delays detection of errors
@@ -722,7 +722,7 @@ test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
     {
         /* *INDENT-OFF* */
         foreach_vlib_main({
-          heap = clib_per_cpu_mheaps[this_vlib_main->cpu_index];
+          heap = clib_per_cpu_mheaps[this_vlib_main->thread_index];
           mheap = mheap_header(heap);
           mheap->flags &= ~MHEAP_FLAG_VALIDATE;
           mheap->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
@@ -733,7 +733,7 @@ test_heap_validate (vlib_main_t * vm, unformat_input_t * input,
     {
         /* *INDENT-OFF* */
         foreach_vlib_main({
-          heap = clib_per_cpu_mheaps[this_vlib_main->cpu_index];
+          heap = clib_per_cpu_mheaps[this_vlib_main->thread_index];
           mheap = mheap_header(heap);
           mheap_validate(heap);
         });

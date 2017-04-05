@@ -283,7 +283,7 @@ dpdk_buffer_init_from_template (void *d0, void *d1, void *d2, void *d3,
  */
 static_always_inline u32
 dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
-		   vlib_node_runtime_t * node, u32 cpu_index, u16 queue_id,
+		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id,
 		   int maybe_multiseg)
 {
   u32 n_buffers;
@@ -294,7 +294,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   uword n_rx_bytes = 0;
   u32 n_trace, trace_cnt __attribute__ ((unused));
   vlib_buffer_free_list_t *fl;
-  vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, cpu_index);
+  vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, thread_index);
 
   if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
     return 0;
@@ -306,7 +306,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
       return 0;
     }
 
-  vec_reset_length (xd->d_trace_buffers[cpu_index]);
+  vec_reset_length (xd->d_trace_buffers[thread_index]);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
 
   if (n_trace > 0)
@@ -318,7 +318,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	{
 	  struct rte_mbuf *mb = xd->rx_vectors[queue_id][mb_index++];
 	  vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
-	  vec_add1 (xd->d_trace_buffers[cpu_index],
+	  vec_add1 (xd->d_trace_buffers[thread_index],
 		    vlib_get_buffer_index (vm, b));
 	}
     }
@@ -546,20 +546,22 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  if (PREDICT_FALSE (vec_len (xd->d_trace_buffers[cpu_index]) > 0))
+  if (PREDICT_FALSE (vec_len (xd->d_trace_buffers[thread_index]) > 0))
     {
-      dpdk_rx_trace (dm, node, xd, queue_id, xd->d_trace_buffers[cpu_index],
-		     vec_len (xd->d_trace_buffers[cpu_index]));
-      vlib_set_trace_count (vm, node, n_trace -
-			    vec_len (xd->d_trace_buffers[cpu_index]));
+      dpdk_rx_trace (dm, node, xd, queue_id,
+		     xd->d_trace_buffers[thread_index],
+		     vec_len (xd->d_trace_buffers[thread_index]));
+      vlib_set_trace_count (vm, node,
+			    n_trace -
+			    vec_len (xd->d_trace_buffers[thread_index]));
     }
 
   vlib_increment_combined_counter
     (vnet_get_main ()->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
-     cpu_index, xd->vlib_sw_if_index, mb_index, n_rx_bytes);
+     thread_index, xd->vlib_sw_if_index, mb_index, n_rx_bytes);
 
-  vnet_device_increment_rx_packets (cpu_index, mb_index);
+  vnet_device_increment_rx_packets (thread_index, mb_index);
 
   return mb_index;
 }
@@ -630,19 +632,19 @@ dpdk_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   dpdk_device_t *xd;
   uword n_rx_packets = 0;
   dpdk_device_and_queue_t *dq;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   /*
    * Poll all devices on this cpu for input/interrupts.
    */
   /* *INDENT-OFF* */
-  vec_foreach (dq, dm->devices_by_cpu[cpu_index])
+  vec_foreach (dq, dm->devices_by_cpu[thread_index])
     {
       xd = vec_elt_at_index(dm->devices, dq->device);
       if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
-        n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, /* maybe_multiseg */ 1);
+        n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, /* maybe_multiseg */ 1);
       else
-        n_rx_packets += dpdk_device_input (dm, xd, node, cpu_index, dq->queue_id, /* maybe_multiseg */ 0);
+        n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, /* maybe_multiseg */ 0);
     }
   /* *INDENT-ON* */
 

@@ -343,7 +343,7 @@ typedef enum _tcp_dbg_evt
     }                                                           	\
   else                                                          	\
     {                                                           	\
-      u32 _thread_index = os_get_cpu_number ();                 	\
+      u32 _thread_index = vlib_get_thread_index ();                 	\
       _tc = tcp_connection_get (_tc_index, _thread_index);      	\
     }                                                           	\
   ELOG_TYPE_DECLARE (_e) =                                      	\

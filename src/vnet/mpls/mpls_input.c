@@ -76,7 +76,7 @@ mpls_input_inline (vlib_main_t * vm,
   u32 n_left_from, next_index, * from, * to_next;
   mpls_input_runtime_t * rt;
   mpls_main_t * mm;
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   vlib_simple_counter_main_t * cm;
   vnet_main_t * vnm = vnet_get_main();
 
@@ -151,7 +151,7 @@ mpls_input_inline (vlib_main_t * vm,
               next0 = MPLS_INPUT_NEXT_LOOKUP;
               vnet_feature_arc_start(mm->input_feature_arc_index,
                                      sw_if_index0, &next0, b0);
-              vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
+              vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
           }
 
           if (PREDICT_FALSE(h1[3] == 0))
@@ -164,7 +164,7 @@ mpls_input_inline (vlib_main_t * vm,
               next1 = MPLS_INPUT_NEXT_LOOKUP;
               vnet_feature_arc_start(mm->input_feature_arc_index,
                                      sw_if_index1, &next1, b1);
-              vlib_increment_simple_counter (cm, cpu_index, sw_if_index1, 1);
+              vlib_increment_simple_counter (cm, thread_index, sw_if_index1, 1);
           }
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -215,7 +215,7 @@ mpls_input_inline (vlib_main_t * vm,
             {
               next0 = MPLS_INPUT_NEXT_LOOKUP;
 	      vnet_feature_arc_start(mm->input_feature_arc_index, sw_if_index0, &next0, b0);
-              vlib_increment_simple_counter (cm, cpu_index, sw_if_index0, 1);
+              vlib_increment_simple_counter (cm, thread_index, sw_if_index0, 1);
             }
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 

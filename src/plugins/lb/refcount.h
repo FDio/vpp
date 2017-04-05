@@ -45,9 +45,9 @@ typedef struct {
 void __vlib_refcount_resize(vlib_refcount_per_cpu_t *per_cpu, u32 size);
 
 static_always_inline
-void vlib_refcount_add(vlib_refcount_t *r, u32 cpu_index, u32 counter_index, i32 v)
+void vlib_refcount_add(vlib_refcount_t *r, u32 thread_index, u32 counter_index, i32 v)
 {
-  vlib_refcount_per_cpu_t *per_cpu = &r->per_cpu[cpu_index];
+  vlib_refcount_per_cpu_t *per_cpu = &r->per_cpu[thread_index];
   if (PREDICT_FALSE(counter_index >= per_cpu->length))
     __vlib_refcount_resize(per_cpu, clib_max(counter_index + 16, per_cpu->length * 2));
 

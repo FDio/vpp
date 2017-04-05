@@ -251,12 +251,12 @@ static inline void make_working_copy
   vnet_classify_entry_##size##_t * working_copy##size = 0;
   foreach_size_in_u32x4;
 #undef _
-  u32 cpu_number = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
 
-  if (cpu_number >= vec_len (t->working_copies))
+  if (thread_index >= vec_len (t->working_copies))
     {
       oldheap = clib_mem_set_heap (t->mheap);
-      vec_validate (t->working_copies, cpu_number);
+      vec_validate (t->working_copies, thread_index);
       clib_mem_set_heap (oldheap);
     }
 
@@ -265,7 +265,7 @@ static inline void make_working_copy
    * updates from multiple threads will not result in sporadic, spurious
    * lookup failures. 
    */
-  working_copy = t->working_copies[cpu_number];
+  working_copy = t->working_copies[thread_index];
 
   t->saved_bucket.as_u64 = b->as_u64;
   oldheap = clib_mem_set_heap (t->mheap);
@@ -290,7 +290,7 @@ static inline void make_working_copy
         default:
           abort();
         }
-      t->working_copies[cpu_number] = working_copy;
+      t->working_copies[thread_index] = working_copy;
     }
 
   _vec_len(working_copy) = (1<<b->log2_pages)*t->entries_per_page;
@@ -318,7 +318,7 @@ static inline void make_working_copy
   working_bucket.offset = vnet_classify_get_offset (t, working_copy);
   CLIB_MEMORY_BARRIER();
   b->as_u64 = working_bucket.as_u64;
-  t->working_copies[cpu_number] = working_copy;
+  t->working_copies[thread_index] = working_copy;
 }
 
 static vnet_classify_entry_t *
@@ -387,7 +387,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
   int i;
   u64 hash, new_hash;
   u32 new_log2_pages;
-  u32 cpu_number = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   u8 * key_minus_skip;
 
   ASSERT ((add_v->flags & VNET_CLASSIFY_ENTRY_FREE) == 0);
@@ -498,7 +498,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
   new_log2_pages = t->saved_bucket.log2_pages + 1;
 
  expand_again:
-  working_copy = t->working_copies[cpu_number];
+  working_copy = t->working_copies[thread_index];
   new_v = split_and_rehash (t, working_copy, new_log2_pages);
 
   if (new_v == 0)

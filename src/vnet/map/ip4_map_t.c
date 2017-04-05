@@ -477,7 +477,7 @@ ip4_map_t_icmp (vlib_main_t * vm,
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   while (n_left_from > 0)
     {
@@ -520,7 +520,7 @@ ip4_map_t_icmp (vlib_main_t * vm,
 	  if (PREDICT_TRUE (error0 == MAP_ERROR_NONE))
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
-					       cpu_index,
+					       thread_index,
 					       vnet_buffer (p0)->map_t.
 					       map_domain_index, 1, len0);
 	    }
@@ -1051,7 +1051,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
   vlib_combined_counter_main_t *cm = map_main.domain_counters;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   while (n_left_from > 0)
     {
@@ -1158,7 +1158,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (error0 == MAP_ERROR_NONE && next0 != IP4_MAPT_NEXT_MAPT_ICMP))
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
-					       cpu_index,
+					       thread_index,
 					       vnet_buffer (p0)->map_t.
 					       map_domain_index, 1,
 					       clib_net_to_host_u16 (ip40->
@@ -1169,7 +1169,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (error1 == MAP_ERROR_NONE && next1 != IP4_MAPT_NEXT_MAPT_ICMP))
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
-					       cpu_index,
+					       thread_index,
 					       vnet_buffer (p1)->map_t.
 					       map_domain_index, 1,
 					       clib_net_to_host_u16 (ip41->
@@ -1252,7 +1252,7 @@ ip4_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      (error0 == MAP_ERROR_NONE && next0 != IP4_MAPT_NEXT_MAPT_ICMP))
 	    {
 	      vlib_increment_combined_counter (cm + MAP_DOMAIN_COUNTER_TX,
-					       cpu_index,
+					       thread_index,
 					       vnet_buffer (p0)->map_t.
 					       map_domain_index, 1,
 					       clib_net_to_host_u16 (ip40->

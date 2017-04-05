@@ -97,7 +97,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
   vlib_increment_combined_counter
     (vnet_main->interface_main.combined_sw_if_counters
      + VNET_INTERFACE_COUNTER_RX,
-     vlib_main->cpu_index,
+     vlib_main->thread_index,
      vnet_buffer (b0)->sw_if_index[VLIB_RX],
      1, vlib_buffer_length_in_chain (vlib_main, b0));
   return TO_BVI_ERR_OK;

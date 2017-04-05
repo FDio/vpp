@@ -101,7 +101,7 @@ add_to_flow_record_ipv4 (vlib_main_t * vm,
 			 u32 src_address, u32 dst_address,
 			 u8 tos, u64 timestamp, u16 length, int do_flush)
 {
-  u32 my_cpu_number = vm->cpu_index;
+  u32 my_cpu_number = vm->thread_index;
   flow_report_main_t *frm = &flow_report_main;
   ip4_header_t *ip;
   udp_header_t *udp;

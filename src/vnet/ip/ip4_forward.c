@@ -75,7 +75,7 @@ ip4_lookup_inline (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -292,19 +292,19 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  vnet_buffer (p3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lb_index0, 1,
+	    (cm, thread_index, lb_index0, 1,
 	     vlib_buffer_length_in_chain (vm, p0)
 	     + sizeof (ethernet_header_t));
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lb_index1, 1,
+	    (cm, thread_index, lb_index1, 1,
 	     vlib_buffer_length_in_chain (vm, p1)
 	     + sizeof (ethernet_header_t));
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lb_index2, 1,
+	    (cm, thread_index, lb_index2, 1,
 	     vlib_buffer_length_in_chain (vm, p2)
 	     + sizeof (ethernet_header_t));
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lb_index3, 1,
+	    (cm, thread_index, lb_index3, 1,
 	     vlib_buffer_length_in_chain (vm, p3)
 	     + sizeof (ethernet_header_t));
 
@@ -392,7 +392,7 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 
 	  from += 1;
 	  to_next += 1;
@@ -479,7 +479,7 @@ ip4_load_balance (vlib_main_t * vm,
   vlib_combined_counter_main_t *cm = &load_balance_main.lbm_via_counters;
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -584,9 +584,9 @@ ip4_load_balance (vlib_main_t * vm,
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
+	    (cm, thread_index, lbi1, 1, vlib_buffer_length_in_chain (vm, p1));
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next,
 					   to_next, n_left_to_next,
@@ -639,7 +639,7 @@ ip4_load_balance (vlib_main_t * vm,
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
-	    (cm, cpu_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
+	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next,
 					   to_next, n_left_to_next,
@@ -2330,7 +2330,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   while (n_left_from > 0)
     {
@@ -2379,9 +2379,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  if (do_counters)
 	    {
 	      vlib_prefetch_combined_counter (&adjacency_counters,
-					      cpu_index, adj_index0);
+					      thread_index, adj_index0);
 	      vlib_prefetch_combined_counter (&adjacency_counters,
-					      cpu_index, adj_index1);
+					      thread_index, adj_index1);
 	    }
 
 	  ip0 = vlib_buffer_get_current (p0);
@@ -2527,13 +2527,13 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    {
 	      vlib_increment_combined_counter
 		(&adjacency_counters,
-		 cpu_index,
+		 thread_index,
 		 adj_index0, 1,
 		 vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	      vlib_increment_combined_counter
 		(&adjacency_counters,
-		 cpu_index,
+		 thread_index,
 		 adj_index1, 1,
 		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
 	    }
@@ -2618,7 +2618,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  if (do_counters)
 	    vlib_prefetch_combined_counter (&adjacency_counters,
-					    cpu_index, adj_index0);
+					    thread_index, adj_index0);
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
@@ -2637,7 +2637,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  if (do_counters)
 	    vlib_increment_combined_counter
 	      (&adjacency_counters,
-	       cpu_index, adj_index0, 1,
+	       thread_index, adj_index0, 1,
 	       vlib_buffer_length_in_chain (vm, p0) + rw_len0);
 
 	  /* Check MTU of outgoing interface. */

@@ -31,10 +31,10 @@ u64 vlib_refcount_get(vlib_refcount_t *r, u32 index)
 {
   u64 count = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  u32 cpu_index;
-  for (cpu_index = 0; cpu_index < tm->n_vlib_mains; cpu_index++) {
-    if (r->per_cpu[cpu_index].length > index)
-      count += r->per_cpu[cpu_index].counters[index];
+  u32 thread_index;
+  for (thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++) {
+    if (r->per_cpu[thread_index].length > index)
+      count += r->per_cpu[thread_index].counters[index];
   }
   return count;
 }

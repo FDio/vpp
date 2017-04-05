@@ -581,7 +581,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   u32 next_index;
   pending_resolution_t *pr, *mc;
 
-  if (os_get_cpu_number ())
+  if (vlib_get_thread_index ())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
 				  1 /* set new neighbor */ , is_static,
@@ -722,7 +722,7 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   uword *p;
   int rv = 0;
 
-  if (os_get_cpu_number ())
+  if (vlib_get_thread_index ())
     {
       set_unset_ip6_neighbor_rpc (vm, sw_if_index, a, link_layer_address,
 				  0 /* unset */ , 0, 0);

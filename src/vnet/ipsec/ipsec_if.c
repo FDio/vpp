@@ -99,7 +99,7 @@ static int
 ipsec_add_del_tunnel_if_rpc_callback (ipsec_add_del_tunnel_args_t * a)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   return ipsec_add_del_tunnel_if_internal (vnm, a);
 }

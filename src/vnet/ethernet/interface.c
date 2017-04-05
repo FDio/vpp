@@ -362,7 +362,7 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
   u32 next_index = VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
   u32 i, next_node_index, bvi_flag, sw_if_index;
   u32 n_pkts = 0, n_bytes = 0;
-  u32 cpu_index = vm->cpu_index;
+  u32 thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_node_main_t *nm = &vm->node_main;
@@ -420,8 +420,9 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 
       /* increment TX interface stat */
       vlib_increment_combined_counter (im->combined_sw_if_counters +
-				       VNET_INTERFACE_COUNTER_TX, cpu_index,
-				       sw_if_index, n_pkts, n_bytes);
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index, sw_if_index, n_pkts,
+				       n_bytes);
     }
 
   return n_left_from;

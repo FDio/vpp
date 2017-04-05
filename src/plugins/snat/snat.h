@@ -221,7 +221,7 @@ struct snat_main_s;
 
 typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
                                         vlib_node_runtime_t *node,
-                                        u32 cpu_index,
+                                        u32 thread_index,
                                         vlib_buffer_t *b0,
                                         snat_session_key_t *p_key,
                                         snat_session_key_t *p_value,
@@ -402,22 +402,22 @@ typedef struct {
 } tcp_udp_header_t;
 
 u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 cpu_index, vlib_buffer_t *b0,
+                           u32 thread_index, vlib_buffer_t *b0,
                            snat_session_key_t *p_key,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 cpu_index, vlib_buffer_t *b0,
+                           u32 thread_index, vlib_buffer_t *b0,
                            snat_session_key_t *p_key,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 cpu_index, vlib_buffer_t *b0,
+                           u32 thread_index, vlib_buffer_t *b0,
                            snat_session_key_t *p_key,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);
 u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 cpu_index, vlib_buffer_t *b0,
+                           u32 thread_index, vlib_buffer_t *b0,
                            snat_session_key_t *p_key,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d);

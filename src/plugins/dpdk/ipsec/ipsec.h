@@ -95,8 +95,8 @@ static_always_inline void
 crypto_alloc_cops ()
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  u32 cpu_index = os_get_cpu_number ();
-  crypto_worker_main_t *cwm = &dcm->workers_main[cpu_index];
+  u32 thread_index = vlib_get_thread_index ();
+  crypto_worker_main_t *cwm = &dcm->workers_main[thread_index];
   unsigned socket_id = rte_socket_id ();
   crypto_qp_data_t *qpd;
 

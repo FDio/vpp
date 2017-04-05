@@ -53,7 +53,7 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
 {
     u32 * from = vlib_frame_vector_args (frame);
     u32 n_left_from, n_left_to_next, * to_next, next_index;
-    u32 cpu_index = os_get_cpu_number();
+    u32 thread_index = vlib_get_thread_index();
 
     n_left_from = frame->n_vectors;
     next_index = node->cached_next_index;
@@ -94,7 +94,7 @@ adj_nsh_rewrite_inline (vlib_main_t * vm,
             vnet_buffer(p0)->ip.save_rewrite_length = rw_len0;
 
             vlib_increment_combined_counter(&adjacency_counters,
-                                            cpu_index,
+                                            thread_index,
                                             adj_index0,
                                             /* packet increment */ 0,
                                             /* byte increment */ rw_len0);

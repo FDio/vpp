@@ -397,7 +397,7 @@ static_always_inline void
 dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
 {
   dpdk_main_t *dm = &dpdk_main;
-  u32 cpu_index = vm->cpu_index;
+  u32 thread_index = vm->thread_index;
   u32 dev_pos;
 
   dev_pos = 0;
@@ -405,12 +405,12 @@ dpdk_hqos_thread_internal_hqos_dbg_bypass (vlib_main_t * vm)
     {
       vlib_worker_thread_barrier_check ();
 
-      u32 n_devs = vec_len (dm->devices_by_hqos_cpu[cpu_index]);
+      u32 n_devs = vec_len (dm->devices_by_hqos_cpu[thread_index]);
       if (dev_pos >= n_devs)
 	dev_pos = 0;
 
       dpdk_device_and_queue_t *dq =
-	vec_elt_at_index (dm->devices_by_hqos_cpu[cpu_index], dev_pos);
+	vec_elt_at_index (dm->devices_by_hqos_cpu[thread_index], dev_pos);
       dpdk_device_t *xd = vec_elt_at_index (dm->devices, dq->device);
 
       dpdk_device_hqos_per_hqos_thread_t *hqos = xd->hqos_ht;
@@ -479,7 +479,7 @@ static_always_inline void
 dpdk_hqos_thread_internal (vlib_main_t * vm)
 {
   dpdk_main_t *dm = &dpdk_main;
-  u32 cpu_index = vm->cpu_index;
+  u32 thread_index = vm->thread_index;
   u32 dev_pos;
 
   dev_pos = 0;
@@ -487,7 +487,7 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
     {
       vlib_worker_thread_barrier_check ();
 
-      u32 n_devs = vec_len (dm->devices_by_hqos_cpu[cpu_index]);
+      u32 n_devs = vec_len (dm->devices_by_hqos_cpu[thread_index]);
       if (PREDICT_FALSE (n_devs == 0))
 	{
 	  dev_pos = 0;
@@ -497,7 +497,7 @@ dpdk_hqos_thread_internal (vlib_main_t * vm)
 	dev_pos = 0;
 
       dpdk_device_and_queue_t *dq =
-	vec_elt_at_index (dm->devices_by_hqos_cpu[cpu_index], dev_pos);
+	vec_elt_at_index (dm->devices_by_hqos_cpu[thread_index], dev_pos);
       dpdk_device_t *xd = vec_elt_at_index (dm->devices, dq->device);
 
       dpdk_device_hqos_per_hqos_thread_t *hqos = xd->hqos_ht;
@@ -586,7 +586,7 @@ dpdk_hqos_thread (vlib_worker_thread_t * w)
 
   vm = vlib_get_main ();
 
-  ASSERT (vm->cpu_index == os_get_cpu_number ());
+  ASSERT (vm->thread_index == vlib_get_thread_index ());
 
   clib_time_init (&vm->clib_time);
   clib_mem_set_heap (w->thread_mheap);
@@ -595,7 +595,7 @@ dpdk_hqos_thread (vlib_worker_thread_t * w)
   while (tm->worker_thread_release == 0)
     vlib_worker_thread_barrier_check ();
 
-  if (vec_len (dm->devices_by_hqos_cpu[vm->cpu_index]) == 0)
+  if (vec_len (dm->devices_by_hqos_cpu[vm->thread_index]) == 0)
     return
       clib_error
       ("current I/O TX thread does not have any devices assigned to it");

@@ -117,7 +117,7 @@ typedef enum
 static_always_inline void
 classify_and_dispatch (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
-		       u32 cpu_index,
+		       u32 thread_index,
 		       l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
 {
   /*
@@ -237,7 +237,7 @@ l2input_node_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2input_next_t next_index;
   l2input_main_t *msm = &l2input_main;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -350,10 +350,10 @@ l2input_node_inline (vlib_main_t * vm,
 	  vlib_node_increment_counter (vm, l2input_node.index,
 				       L2INPUT_ERROR_L2INPUT, 4);
 
-	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
-	  classify_and_dispatch (vm, node, cpu_index, msm, b1, &next1);
-	  classify_and_dispatch (vm, node, cpu_index, msm, b2, &next2);
-	  classify_and_dispatch (vm, node, cpu_index, msm, b3, &next3);
+	  classify_and_dispatch (vm, node, thread_index, msm, b0, &next0);
+	  classify_and_dispatch (vm, node, thread_index, msm, b1, &next1);
+	  classify_and_dispatch (vm, node, thread_index, msm, b2, &next2);
+	  classify_and_dispatch (vm, node, thread_index, msm, b3, &next3);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -393,7 +393,7 @@ l2input_node_inline (vlib_main_t * vm,
 	  vlib_node_increment_counter (vm, l2input_node.index,
 				       L2INPUT_ERROR_L2INPUT, 1);
 
-	  classify_and_dispatch (vm, node, cpu_index, msm, b0, &next0);
+	  classify_and_dispatch (vm, node, thread_index, msm, b0, &next0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

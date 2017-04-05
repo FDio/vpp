@@ -299,7 +299,7 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
   if (CLIB_DEBUG == 0)
     return;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   /* smp disaster check */
   if (vec_len (vlib_mains) > 1)
@@ -355,7 +355,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
   vlib_buffer_free_list_t *f;
   int i;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   if (!is_default && pool_elts (bm->buffer_free_list_pool) == 0)
     {
@@ -474,7 +474,7 @@ vlib_buffer_delete_free_list_internal (vlib_main_t * vm, u32 free_list_index)
   u32 merge_index;
   int i;
 
-  ASSERT (os_get_cpu_number () == 0);
+  ASSERT (vlib_get_thread_index () == 0);
 
   f = vlib_buffer_get_free_list (vm, free_list_index);
 

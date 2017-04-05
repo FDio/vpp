@@ -102,7 +102,7 @@ add_to_flow_record_l2 (vlib_main_t * vm,
 		       u8 * src_mac, u8 * dst_mac,
 		       u16 ethertype, u64 timestamp, u16 length, int do_flush)
 {
-  u32 my_cpu_number = vm->cpu_index;
+  u32 my_cpu_number = vm->thread_index;
   flow_report_main_t *frm = &flow_report_main;
   ip4_header_t *ip;
   udp_header_t *udp;

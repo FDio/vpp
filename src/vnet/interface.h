@@ -468,7 +468,7 @@ typedef struct vnet_hw_interface_t
   u32 input_node_index;
 
   /* input node cpu index by queue */
-  u32 *input_node_cpu_index_by_queue;
+  u32 *input_node_thread_index_by_queue;
 
 } vnet_hw_interface_t;
 

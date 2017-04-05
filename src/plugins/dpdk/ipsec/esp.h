@@ -170,9 +170,9 @@ static_always_inline int
 create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
 		 u8 is_outbound)
 {
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  crypto_worker_main_t *cwm = &dcm->workers_main[cpu_index];
+  crypto_worker_main_t *cwm = &dcm->workers_main[thread_index];
   struct rte_crypto_sym_xform cipher_xform = { 0 };
   struct rte_crypto_sym_xform auth_xform = { 0 };
   struct rte_crypto_sym_xform *xfs;

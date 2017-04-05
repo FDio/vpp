@@ -303,16 +303,16 @@ static void
 ikev2_delete_sa (ikev2_sa_t * sa)
 {
   ikev2_main_t *km = &ikev2_main;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   uword *p;
 
   ikev2_sa_free_all_vec (sa);
 
-  p = hash_get (km->per_thread_data[cpu_index].sa_by_rspi, sa->rspi);
+  p = hash_get (km->per_thread_data[thread_index].sa_by_rspi, sa->rspi);
   if (p)
     {
-      hash_unset (km->per_thread_data[cpu_index].sa_by_rspi, sa->rspi);
-      pool_put (km->per_thread_data[cpu_index].sas, sa);
+      hash_unset (km->per_thread_data[thread_index].sa_by_rspi, sa->rspi);
+      pool_put (km->per_thread_data[thread_index].sas, sa);
     }
 }
 
@@ -776,29 +776,31 @@ ikev2_initial_contact_cleanup (ikev2_sa_t * sa)
   ikev2_sa_t *tmp;
   u32 i, *delete = 0;
   ikev2_child_sa_t *c;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   if (!sa->initial_contact)
     return;
 
   /* find old IKE SAs with the same authenticated identity */
   /* *INDENT-OFF* */
-  pool_foreach (tmp, km->per_thread_data[cpu_index].sas, ({
+  pool_foreach (tmp, km->per_thread_data[thread_index].sas, ({
         if (tmp->i_id.type != sa->i_id.type ||
             vec_len(tmp->i_id.data) != vec_len(sa->i_id.data) ||
             memcmp(sa->i_id.data, tmp->i_id.data, vec_len(sa->i_id.data)))
           continue;
 
         if (sa->rspi != tmp->rspi)
-          vec_add1(delete, tmp - km->per_thread_data[cpu_index].sas);
+          vec_add1(delete, tmp - km->per_thread_data[thread_index].sas);
   }));
   /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (delete); i++)
     {
-      tmp = pool_elt_at_index (km->per_thread_data[cpu_index].sas, delete[i]);
-      vec_foreach (c, tmp->childs)
-	ikev2_delete_tunnel_interface (km->vnet_main, tmp, c);
+      tmp =
+	pool_elt_at_index (km->per_thread_data[thread_index].sas, delete[i]);
+      vec_foreach (c,
+		   tmp->childs) ikev2_delete_tunnel_interface (km->vnet_main,
+							       tmp, c);
       ikev2_delete_sa (tmp);
     }
 
@@ -1922,10 +1924,10 @@ ikev2_retransmit_sa_init (ike_header_t * ike,
 {
   ikev2_main_t *km = &ikev2_main;
   ikev2_sa_t *sa;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   /* *INDENT-OFF* */
-  pool_foreach (sa, km->per_thread_data[cpu_index].sas, ({
+  pool_foreach (sa, km->per_thread_data[thread_index].sas, ({
     if (sa->ispi == clib_net_to_host_u64(ike->ispi) &&
         sa->iaddr.as_u32 == iaddr.as_u32 &&
         sa->raddr.as_u32 == raddr.as_u32)
@@ -2036,7 +2038,7 @@ ikev2_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   ikev2_next_t next_index;
   ikev2_main_t *km = &ikev2_main;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2134,11 +2136,14 @@ ikev2_node_fn (vlib_main_t * vm,
 		      if (sa0->state == IKEV2_STATE_SA_INIT)
 			{
 			  /* add SA to the pool */
-			  pool_get (km->per_thread_data[cpu_index].sas, sa0);
+			  pool_get (km->per_thread_data[thread_index].sas,
+				    sa0);
 			  clib_memcpy (sa0, &sa, sizeof (*sa0));
-			  hash_set (km->per_thread_data[cpu_index].sa_by_rspi,
+			  hash_set (km->
+				    per_thread_data[thread_index].sa_by_rspi,
 				    sa0->rspi,
-				    sa0 - km->per_thread_data[cpu_index].sas);
+				    sa0 -
+				    km->per_thread_data[thread_index].sas);
 			}
 		      else
 			{
@@ -2169,11 +2174,11 @@ ikev2_node_fn (vlib_main_t * vm,
 		  if (sa0->state == IKEV2_STATE_SA_INIT)
 		    {
 		      /* add SA to the pool */
-		      pool_get (km->per_thread_data[cpu_index].sas, sa0);
+		      pool_get (km->per_thread_data[thread_index].sas, sa0);
 		      clib_memcpy (sa0, &sa, sizeof (*sa0));
-		      hash_set (km->per_thread_data[cpu_index].sa_by_rspi,
+		      hash_set (km->per_thread_data[thread_index].sa_by_rspi,
 				sa0->rspi,
-				sa0 - km->per_thread_data[cpu_index].sas);
+				sa0 - km->per_thread_data[thread_index].sas);
 		    }
 		  else
 		    {
@@ -2184,12 +2189,13 @@ ikev2_node_fn (vlib_main_t * vm,
 	  else if (ike0->exchange == IKEV2_EXCHANGE_IKE_AUTH)
 	    {
 	      uword *p;
-	      p = hash_get (km->per_thread_data[cpu_index].sa_by_rspi,
+	      p = hash_get (km->per_thread_data[thread_index].sa_by_rspi,
 			    clib_net_to_host_u64 (ike0->rspi));
 	      if (p)
 		{
-		  sa0 = pool_elt_at_index (km->per_thread_data[cpu_index].sas,
-					   p[0]);
+		  sa0 =
+		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
+				       p[0]);
 
 		  r = ikev2_retransmit_resp (sa0, ike0);
 		  if (r == 1)
@@ -2240,12 +2246,13 @@ ikev2_node_fn (vlib_main_t * vm,
 	  else if (ike0->exchange == IKEV2_EXCHANGE_INFORMATIONAL)
 	    {
 	      uword *p;
-	      p = hash_get (km->per_thread_data[cpu_index].sa_by_rspi,
+	      p = hash_get (km->per_thread_data[thread_index].sa_by_rspi,
 			    clib_net_to_host_u64 (ike0->rspi));
 	      if (p)
 		{
-		  sa0 = pool_elt_at_index (km->per_thread_data[cpu_index].sas,
-					   p[0]);
+		  sa0 =
+		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
+				       p[0]);
 
 		  r = ikev2_retransmit_resp (sa0, ike0);
 		  if (r == 1)
@@ -2305,12 +2312,13 @@ ikev2_node_fn (vlib_main_t * vm,
 	  else if (ike0->exchange == IKEV2_EXCHANGE_CREATE_CHILD_SA)
 	    {
 	      uword *p;
-	      p = hash_get (km->per_thread_data[cpu_index].sa_by_rspi,
+	      p = hash_get (km->per_thread_data[thread_index].sa_by_rspi,
 			    clib_net_to_host_u64 (ike0->rspi));
 	      if (p)
 		{
-		  sa0 = pool_elt_at_index (km->per_thread_data[cpu_index].sas,
-					   p[0]);
+		  sa0 =
+		    pool_elt_at_index (km->per_thread_data[thread_index].sas,
+				       p[0]);
 
 		  r = ikev2_retransmit_resp (sa0, ike0);
 		  if (r == 1)

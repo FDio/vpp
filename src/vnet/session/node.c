@@ -311,7 +311,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   unix_shared_memory_queue_t *q;
   application_t *app;
   int n_tx_packets = 0;
-  u32 my_thread_index = vm->cpu_index;
+  u32 my_thread_index = vm->thread_index;
   int i, rv;
   f64 now = vlib_time_now (vm);
 

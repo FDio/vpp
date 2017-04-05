@@ -291,7 +291,7 @@ ethernet_input_inline (vlib_main_t * vm,
   vlib_node_runtime_t *error_node;
   u32 n_left_from, next_index, *from, *to_next;
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
-  u32 cpu_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 cached_sw_if_index = ~0;
   u32 cached_is_l2 = 0;		/* shut up gcc */
   vnet_hw_interface_t *hi = NULL;	/* used for main interface only */
@@ -510,7 +510,7 @@ ethernet_input_inline (vlib_main_t * vm,
 						     interface_main.combined_sw_if_counters
 						     +
 						     VNET_INTERFACE_COUNTER_RX,
-						     cpu_index,
+						     thread_index,
 						     new_sw_if_index0, 1,
 						     len0);
 		  if (new_sw_if_index1 != old_sw_if_index1
@@ -519,7 +519,7 @@ ethernet_input_inline (vlib_main_t * vm,
 						     interface_main.combined_sw_if_counters
 						     +
 						     VNET_INTERFACE_COUNTER_RX,
-						     cpu_index,
+						     thread_index,
 						     new_sw_if_index1, 1,
 						     len1);
 
@@ -530,7 +530,7 @@ ethernet_input_inline (vlib_main_t * vm,
 			  vlib_increment_combined_counter
 			    (vnm->interface_main.combined_sw_if_counters
 			     + VNET_INTERFACE_COUNTER_RX,
-			     cpu_index,
+			     thread_index,
 			     stats_sw_if_index,
 			     stats_n_packets, stats_n_bytes);
 			  stats_n_packets = stats_n_bytes = 0;
@@ -696,13 +696,13 @@ ethernet_input_inline (vlib_main_t * vm,
 		    vlib_increment_combined_counter
 		      (vnm->interface_main.combined_sw_if_counters
 		       + VNET_INTERFACE_COUNTER_RX,
-		       cpu_index, new_sw_if_index0, 1, len0);
+		       thread_index, new_sw_if_index0, 1, len0);
 		  if (stats_n_packets > 0)
 		    {
 		      vlib_increment_combined_counter
 			(vnm->interface_main.combined_sw_if_counters
 			 + VNET_INTERFACE_COUNTER_RX,
-			 cpu_index,
+			 thread_index,
 			 stats_sw_if_index, stats_n_packets, stats_n_bytes);
 		      stats_n_packets = stats_n_bytes = 0;
 		    }
@@ -734,7 +734,7 @@ ethernet_input_inline (vlib_main_t * vm,
       vlib_increment_combined_counter
 	(vnm->interface_main.combined_sw_if_counters
 	 + VNET_INTERFACE_COUNTER_RX,
-	 cpu_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
     }
 

@@ -136,18 +136,18 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   else
     {
       f = clib_mem_alloc_aligned_no_fail (n, VLIB_FRAME_ALIGN);
-      f->cpu_index = vm->cpu_index;
+      f->thread_index = vm->thread_index;
       fi = vlib_frame_index_no_check (vm, f);
     }
 
   /* Poison frame when debugging. */
   if (CLIB_DEBUG > 0)
     {
-      u32 save_cpu_index = f->cpu_index;
+      u32 save_thread_index = f->thread_index;
 
       memset (f, 0xfe, n);
 
-      f->cpu_index = save_cpu_index;
+      f->thread_index = save_thread_index;
     }
 
   /* Insert magic number. */
@@ -517,7 +517,7 @@ vlib_put_next_frame (vlib_main_t * vm,
 	   * a dangling frame reference. Each thread has its own copy of
 	   * the next_frames vector.
 	   */
-	  if (0 && r->cpu_index != next_runtime->cpu_index)
+	  if (0 && r->thread_index != next_runtime->thread_index)
 	    {
 	      nf->frame_index = ~0;
 	      nf->flags &= ~(VLIB_FRAME_PENDING | VLIB_FRAME_IS_ALLOCATED);
@@ -866,7 +866,7 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 				  : evm->node_call_elog_event_types,
 				  node_index),
 		/* track */
-		(vm->cpu_index ? &vlib_worker_threads[vm->cpu_index].
+		(vm->thread_index ? &vlib_worker_threads[vm->thread_index].
 		 elog_track : &em->default_track),
 		/* data to log */ n_vectors);
 }
@@ -963,7 +963,7 @@ dispatch_node (vlib_main_t * vm,
 
   vm->cpu_time_last_node_dispatch = last_time_stamp;
 
-  if (1 /* || vm->cpu_index == node->cpu_index */ )
+  if (1 /* || vm->thread_index == node->thread_index */ )
     {
       vlib_main_t *stat_vm;
 
@@ -1029,7 +1029,7 @@ dispatch_node (vlib_main_t * vm,
 	  {
 	    u32 node_name, vector_length, is_polling;
 	  } *ed;
-	  vlib_worker_thread_t *w = vlib_worker_threads + vm->cpu_index;
+	  vlib_worker_thread_t *w = vlib_worker_threads + vm->thread_index;
 #endif
 
 	  if ((dispatch_state == VLIB_NODE_STATE_INTERRUPT

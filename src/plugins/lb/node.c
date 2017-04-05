@@ -60,10 +60,10 @@ format_lb_trace (u8 * s, va_list * args)
   return s;
 }
 
-lb_hash_t *lb_get_sticky_table(u32 cpu_index)
+lb_hash_t *lb_get_sticky_table(u32 thread_index)
 {
   lb_main_t *lbm = &lb_main;
-  lb_hash_t *sticky_ht = lbm->per_cpu[cpu_index].sticky_ht;
+  lb_hash_t *sticky_ht = lbm->per_cpu[thread_index].sticky_ht;
   //Check if size changed
   if (PREDICT_FALSE(sticky_ht && (lbm->per_cpu_sticky_buckets != lb_hash_nbuckets(sticky_ht))))
     {
@@ -71,8 +71,8 @@ lb_hash_t *lb_get_sticky_table(u32 cpu_index)
       lb_hash_bucket_t *b;
       u32 i;
       lb_hash_foreach_entry(sticky_ht, b, i) {
-	vlib_refcount_add(&lbm->as_refcount, cpu_index, b->value[i], -1);
-	vlib_refcount_add(&lbm->as_refcount, cpu_index, 0, 1);
+	vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
+	vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
       }
 
       lb_hash_free(sticky_ht);
@@ -81,8 +81,8 @@ lb_hash_t *lb_get_sticky_table(u32 cpu_index)
 
   //Create if necessary
   if (PREDICT_FALSE(sticky_ht == NULL)) {
-    lbm->per_cpu[cpu_index].sticky_ht = lb_hash_alloc(lbm->per_cpu_sticky_buckets, lbm->flow_timeout);
-    sticky_ht = lbm->per_cpu[cpu_index].sticky_ht;
+    lbm->per_cpu[thread_index].sticky_ht = lb_hash_alloc(lbm->per_cpu_sticky_buckets, lbm->flow_timeout);
+    sticky_ht = lbm->per_cpu[thread_index].sticky_ht;
     clib_warning("Regenerated sticky table %p", sticky_ht);
   }
 
@@ -153,10 +153,10 @@ lb_node_fn (vlib_main_t * vm,
 {
   lb_main_t *lbm = &lb_main;
   u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   u32 lb_time = lb_hash_time_now(vm);
 
-  lb_hash_t *sticky_ht = lb_get_sticky_table(cpu_index);
+  lb_hash_t *sticky_ht = lb_get_sticky_table(thread_index);
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
   next_index = node->cached_next_index;
@@ -240,9 +240,9 @@ lb_node_fn (vlib_main_t * vm,
 	  //Configuration may be changed, vectors resized, etc...
 
 	  //Dereference previously used
-	  vlib_refcount_add(&lbm->as_refcount, cpu_index,
+	  vlib_refcount_add(&lbm->as_refcount, thread_index,
 			    lb_hash_available_value(sticky_ht, hash0, available_index0), -1);
-	  vlib_refcount_add(&lbm->as_refcount, cpu_index,
+	  vlib_refcount_add(&lbm->as_refcount, thread_index,
 			    asindex0, 1);
 
 	  //Add sticky entry
@@ -260,7 +260,7 @@ lb_node_fn (vlib_main_t * vm,
 	}
 
       vlib_increment_simple_counter(&lbm->vip_counters[counter],
-				    cpu_index,
+				    thread_index,
 				    vnet_buffer (p0)->ip.adj_index[VLIB_TX],
 				    1);
 

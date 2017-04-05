@@ -88,7 +88,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next, next_index;
   ipsec_main_t *im = &ipsec_main;
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   dpdk_crypto_main_t * dcm = &dpdk_crypto_main;
   dpdk_esp_main_t * em = &dpdk_esp_main;
   u32 i;
@@ -104,7 +104,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
       return n_left_from;
     }
 
-  crypto_worker_main_t *cwm = vec_elt_at_index(dcm->workers_main, cpu_index);
+  crypto_worker_main_t *cwm = vec_elt_at_index(dcm->workers_main, thread_index);
   u32 n_qps = vec_len(cwm->qp_data);
   struct rte_crypto_op ** cops_to_enq[n_qps];
   u32 n_cop_qp[n_qps], * bi_to_enq[n_qps];

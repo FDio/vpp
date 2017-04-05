@@ -75,7 +75,7 @@ gre_input (vlib_main_t * vm,
   u64 cached_tunnel_key6[4];
   u32 cached_tunnel_sw_if_index = 0, tunnel_sw_if_index = 0;
 
-  u32 cpu_index = os_get_cpu_number();
+  u32 thread_index = vlib_get_thread_index();
   u32 len;
   vnet_interface_main_t *im = &gm->vnet_main->interface_main;
 
@@ -257,7 +257,7 @@ gre_input (vlib_main_t * vm,
           len = vlib_buffer_length_in_chain (vm, b0);
           vlib_increment_combined_counter (im->combined_sw_if_counters
                                            + VNET_INTERFACE_COUNTER_RX,
-                                           cpu_index,
+                                           thread_index,
                                            tunnel_sw_if_index,
                                            1 /* packets */,
                                            len /* bytes */);
@@ -324,7 +324,7 @@ drop0:
           len = vlib_buffer_length_in_chain (vm, b1);
           vlib_increment_combined_counter (im->combined_sw_if_counters
                                            + VNET_INTERFACE_COUNTER_RX,
-                                           cpu_index,
+                                           thread_index,
                                            tunnel_sw_if_index,
                                            1 /* packets */,
                                            len /* bytes */);
@@ -502,7 +502,7 @@ drop1:
           len = vlib_buffer_length_in_chain (vm, b0);
           vlib_increment_combined_counter (im->combined_sw_if_counters
                                            + VNET_INTERFACE_COUNTER_RX,
-                                           cpu_index,
+                                           thread_index,
                                            tunnel_sw_if_index,
                                            1 /* packets */,
                                            len /* bytes */);
