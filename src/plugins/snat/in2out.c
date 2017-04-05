@@ -1613,11 +1613,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 
           snat_det_forward(dm0, &ip0->src_address, &new_addr0, &lo_port0);
 
-          ses0 = snat_det_find_ses_by_in(dm0, &ip0->src_address, tcp0->src);
+          key0.ext_host_addr = ip0->dst_address;
+          key0.ext_host_port = tcp0->dst;
+
+          ses0 = snat_det_find_ses_by_in(dm0, &ip0->src_address, tcp0->src, key0);
           if (PREDICT_FALSE(!ses0))
             {
-              key0.ext_host_addr = ip0->dst_address;
-              key0.ext_host_port = tcp0->dst;
               for (i0 = 0; i0 < dm0->ports_per_host; i0++)
                 {
                   key0.out_port = clib_host_to_net_u16 (lo_port0 +
@@ -1757,11 +1758,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 
           snat_det_forward(dm1, &ip1->src_address, &new_addr1, &lo_port1);
 
-          ses1 = snat_det_find_ses_by_in(dm1, &ip1->src_address, tcp1->src);
+          key1.ext_host_addr = ip1->dst_address;
+          key1.ext_host_port = tcp1->dst;
+
+          ses1 = snat_det_find_ses_by_in(dm1, &ip1->src_address, tcp1->src, key1);
           if (PREDICT_FALSE(!ses1))
             {
-              key1.ext_host_addr = ip1->dst_address;
-              key1.ext_host_port = tcp1->dst;
               for (i1 = 0; i1 < dm1->ports_per_host; i1++)
                 {
                   key1.out_port = clib_host_to_net_u16 (lo_port1 +
@@ -1937,11 +1939,12 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
 
           snat_det_forward(dm0, &ip0->src_address, &new_addr0, &lo_port0);
 
-          ses0 = snat_det_find_ses_by_in(dm0, &ip0->src_address, tcp0->src);
+          key0.ext_host_addr = ip0->dst_address;
+          key0.ext_host_port = tcp0->dst;
+
+          ses0 = snat_det_find_ses_by_in(dm0, &ip0->src_address, tcp0->src, key0);
           if (PREDICT_FALSE(!ses0))
             {
-              key0.ext_host_addr = ip0->dst_address;
-              key0.ext_host_port = tcp0->dst;
               for (i0 = 0; i0 < dm0->ports_per_host; i0++)
                 {
                   key0.out_port = clib_host_to_net_u16 (lo_port0 +
@@ -2171,7 +2174,10 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
 
   snat_det_forward(dm0, &in_addr, &new_addr0, &lo_port0);
 
-  ses0 = snat_det_find_ses_by_in(dm0, &in_addr, in_port);
+  key0.ext_host_addr = ip0->dst_address;
+  key0.ext_host_port = 0;
+
+  ses0 = snat_det_find_ses_by_in(dm0, &in_addr, in_port, key0);
   if (PREDICT_FALSE(!ses0))
     {
       if (PREDICT_FALSE(snat_not_translate_fast(sm, node, sw_if_index0, ip0,
@@ -2186,8 +2192,6 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
           next0 = SNAT_IN2OUT_NEXT_DROP;
           goto out;
         }
-      key0.ext_host_addr = ip0->dst_address;
-      key0.ext_host_port = 0;
       for (i0 = 0; i0 < dm0->ports_per_host; i0++)
         {
           key0.out_port = clib_host_to_net_u16 (lo_port0 +
