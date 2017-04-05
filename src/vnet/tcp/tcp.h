@@ -100,8 +100,6 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_RTO_SYN_RETRIES 3	/* SYN retries without doubling RTO */
 #define TCP_RTO_INIT 1 * THZ	/* Initial retransmit timer */
 
-void tcp_update_time (f64 now, u32 thread_index);
-
 /** TCP connection flags */
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
@@ -479,6 +477,13 @@ always_inline u32
 tcp_time_now (void)
 {
   return clib_cpu_time_now () * tcp_main.tstamp_ticks_per_clock;
+}
+
+always_inline void
+tcp_update_time (f64 now, u32 thread_index)
+{
+  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.timer_wheels[thread_index],
+				       now);
 }
 
 u32 tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
