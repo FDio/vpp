@@ -57,7 +57,7 @@ M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
 VNET Device Drivers - DPDK Crypto
-M:	Sergio Gonzales Monroy <sergio.gonzalez.monroy@intel.com>
+M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 F:	src/devices/dpdk/ipsec/
 
 VNET Feature Arcs
@@ -81,7 +81,7 @@ M:	Pablo Camarillo <pcamaril@cisco.com>
 F:	src/vnet/sr/
 
 VNET IPSec
-M:	Sergio Gonzales Monroy <sergio.gonzalez.monroy@intel.com>
+M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 M:	Matus Fabian <matfabia@cisco.com>
 F:	src/vnet/ipsec/
 
