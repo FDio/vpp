@@ -14,17 +14,23 @@
  */
 
 #include <vnet/session/application.h>
+#include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
-/*
+/**
  * Pool from which we allocate all applications
  */
 static application_t *app_pool;
 
-/*
+/**
  * Hash table of apps by api client index
  */
 static uword *app_by_api_client_index;
+
+/**
+ * Default application event queue size
+ */
+static u32 default_app_evt_queue_size = 128;
 
 int
 application_api_queue_is_full (application_t * app)
@@ -67,19 +73,37 @@ application_lookup (u32 api_client_index)
   return 0;
 }
 
+application_t *
+application_new ()
+{
+  application_t *app;
+  u8 mode, s_type;
+  pool_get (app_pool, app);
+  memset (app, 0, sizeof(*app));
+  app->index = application_get_index (app);
+
+  /* init segment manager indexes */
+  for (mode = 0; mode < APP_N_TYPES; mode++)
+    for (s_type = 0; s_type < SESSION_N_TYPES; s_type++)
+	app->segment_managers[mode][s_type] = (u32)~0;
+  return app;
+}
+
 void
 application_del (application_t * app)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
   api_main_t *am = &api_main;
   void *oldheap;
-  session_manager_t *sm;
+  segment_manager_t *sm;
+  u8 mode, s_type;
 
-  if (app->mode == APP_SERVER)
-    {
-      sm = session_manager_get (app->session_manager_index);
-      session_manager_del (smm, sm);
-    }
+  for (mode = 0; mode < APP_N_TYPES; mode++)
+    for (s_type = 0; s_type < SESSION_N_TYPES; s_type++)
+	if (app->segment_managers[mode][s_type] != (u32)~0)
+	  {
+	    sm = segment_manager_get (app->segment_managers[mode][s_type]);
+	    segment_manager_del (sm);
+	  }
 
   /* Free the event fifo in the /vpe-api shared-memory segment */
   oldheap = svm_push_data_heap (am->vlib_rp);
@@ -88,7 +112,6 @@ application_del (application_t * app)
   svm_pop_heap (oldheap);
 
   application_table_del (app);
-
   pool_put (app_pool, app);
 }
 
@@ -105,15 +128,69 @@ application_verify_cb_fns (application_type_t type, session_cb_vft_t * cb_fns)
     clib_warning ("No session reset callback function provided");
 }
 
+int
+application_init (application_t *app, u32 api_client_index, u64 *options,
+		  session_cb_vft_t * cb_fns)
+{
+  api_main_t *am = &api_main;
+  segment_manager_t *sm;
+  segment_manager_properties_t *props;
+  void *oldheap;
+  u32 app_evt_queue_size;
+  int rv;
+
+  app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
+      options[APP_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
+
+  /* Allocate event fifo in the /vpe-api shared-memory segment */
+  oldheap = svm_push_data_heap (am->vlib_rp);
+
+  /* Allocate server event queue */
+  app->event_queue =
+    unix_shared_memory_queue_init (app_evt_queue_size,
+				   sizeof (session_fifo_event_t),
+				   0 /* consumer pid */ ,
+				   0
+				   /* (do not) signal when queue non-empty */
+    );
+
+  svm_pop_heap (oldheap);
+
+  /* Setup segment manager */
+  sm = segment_manager_new ();
+  props = &app->sm_properties;
+  props->add_segment_size = options[SESSION_OPTIONS_ADD_SEGMENT_SIZE];
+  props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
+  props->tx_fifo_size = options[SESSION_OPTIONS_TX_FIFO_SIZE];
+  props->add_segment = props->add_segment_size != 0;
+
+  if ((rv = segment_manager_init (sm, props,
+				  options[SESSION_OPTIONS_SEGMENT_SIZE])))
+    return rv;
+
+  app->first_segment_manager = segment_manager_index (sm);
+  app->api_client_index = api_client_index;
+  app->flags = options[SESSION_OPTIONS_FLAGS];
+  app->cb_fns = *cb_fns;
+
+  /* Check that the obvious things are properly set up */
+//  application_verify_cb_fns (type, cb_fns);
+
+  /* Add app to lookup by api_client_index table */
+  application_table_add (app);
+
+  return 0;
+}
+
 application_t *
-application_new (application_type_t type, session_type_t sst,
+application_new_old (application_type_t type, session_type_t sst,
 		 u32 api_client_index, u32 flags, session_cb_vft_t * cb_fns)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   api_main_t *am = &api_main;
   application_t *app;
   void *oldheap;
-  session_manager_t *sm;
+  segment_manager_t *sm;
 
   pool_get (app_pool, app);
   memset (app, 0, sizeof (*app));
@@ -135,17 +212,15 @@ application_new (application_type_t type, session_type_t sst,
   /* If a server, allocate session manager */
   if (type == APP_SERVER)
     {
-      pool_get (smm->session_managers, sm);
-      memset (sm, 0, sizeof (*sm));
-
-      app->session_manager_index = sm - smm->session_managers;
+      sm = segment_manager_new ();
+      app->first_segment_manager = segment_manager_index (sm);
     }
   else if (type == APP_CLIENT)
     {
       /* Allocate connect session manager if needed */
       if (smm->connect_manager_index[sst] == INVALID_INDEX)
 	connects_session_manager_init (smm, sst);
-      app->session_manager_index = smm->connect_manager_index[sst];
+      app->first_segment_manager = smm->connect_manager_index[sst];
     }
 
   app->mode = type;
@@ -185,30 +260,41 @@ application_get_index (application_t * app)
   return app - app_pool;
 }
 
-int
-application_server_init (application_t * server, u32 segment_size,
-			 u32 add_segment_size, u32 rx_fifo_size,
-			 u32 tx_fifo_size, u8 ** segment_name)
+//int
+//application_server_init (application_t * server, u32 segment_size,
+//			 u32 add_segment_size, u32 rx_fifo_size,
+//			 u32 tx_fifo_size, u8 ** segment_name)
+//{
+//  segment_manager_t *sm;
+//  int rv;
+//
+//  sm = segment_manager_get (server->first_segment_manager);
+//
+//  /* Add first segment */
+//  if ((rv = session_manager_add_first_segment (sm, segment_size)))
+//    {
+//      return rv;
+//    }
+//
+//  /* Setup session manager */
+//  sm->add_segment_size = add_segment_size;
+//  sm->rx_fifo_size = rx_fifo_size;
+//  sm->tx_fifo_size = tx_fifo_size;
+//  sm->add_segment = sm->add_segment_size != 0;
+//  return 0;
+//}
+
+segment_manager_t *
+application_get_segment_manager (application_t *app, u8 session_type, u8 mode)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
-  session_manager_t *sm;
-  int rv;
-
-  sm = session_manager_get (server->session_manager_index);
-
-  /* Add first segment */
-  if ((rv = session_manager_add_first_segment (smm, sm, segment_size,
-					       segment_name)))
+  /* If we just started and the first segment is unassigned */
+  if (app->first_segment_manager != (u32) ~0)
     {
-      return rv;
+      app->segment_managers[mode][session_type] = app->first_segment_manager;
+      app->first_segment_manager = ~0;
     }
 
-  /* Setup session manager */
-  sm->add_segment_size = add_segment_size;
-  sm->rx_fifo_size = rx_fifo_size;
-  sm->tx_fifo_size = tx_fifo_size;
-  sm->add_segment = sm->add_segment_size != 0;
-  return 0;
+  return segment_manager_get (app->segment_managers[mode][session_type]);
 }
 
 u8 *
@@ -242,7 +328,7 @@ format_application_server (u8 * s, va_list * args)
 					  srv->session_index);
   str = format (0, "%U", format_stream_session, listener, verbose);
 
-  session_manager_get_segment_info (listener->server_segment_index, &seg_name,
+  segment_manager_get_segment_info (listener->svm_segment_index, &seg_name,
 				    &segment_size);
   if (verbose)
     {
@@ -278,7 +364,7 @@ format_application_client (u8 * s, va_list * args)
   session = stream_session_get (client->session_index, client->thread_index);
   str = format (0, "%U", format_stream_session, session, verbose);
 
-  session_manager_get_segment_info (session->server_segment_index, &seg_name,
+  segment_manager_get_segment_info (session->svm_segment_index, &seg_name,
 				    &segment_size);
   if (verbose)
     {

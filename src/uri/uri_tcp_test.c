@@ -152,6 +152,65 @@ wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
   return -1;
 }
 
+void
+application_attach (uri_tcp_test_main_t * utm)
+{
+  vl_api_application_attach_t *bmp;
+  u32 fifo_size = 3 << 20;
+  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
+
+  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
+  bmp->client_index = utm->my_client_index;
+  bmp->context = ntohl (0xfeedface);
+  bmp->options[SESSION_OPTIONS_FLAGS] =
+    SESSION_OPTIONS_FLAGS_USE_FIFO | SESSION_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
+  bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
+  bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = 256 << 20;
+  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+}
+
+static void
+vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t * mp)
+{
+  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  svm_fifo_segment_create_args_t _a, *a = &_a;
+  int rv;
+
+  if (mp->retval)
+    {
+      clib_warning ("attach failed: %d", mp->retval);
+      utm->state = STATE_FAILED;
+      return;
+    }
+
+  if (mp->segment_name_length == 0)
+    {
+      clib_warning ("segment_name_length zero");
+      return;
+    }
+
+  a->segment_name = (char *) mp->segment_name;
+  a->segment_size = mp->segment_size;
+
+  ASSERT (mp->app_event_queue_address);
+
+  /* Attach to the segment vpp created */
+  rv = svm_fifo_segment_attach (a);
+  if (rv)
+    {
+      clib_warning ("svm_fifo_segment_attach ('%s') failed",
+		    mp->segment_name);
+      return;
+    }
+
+  utm->our_event_queue =
+    (unix_shared_memory_queue_t *) mp->app_event_queue_address;
+
+}
+
 static void
 init_error_string_table (uri_tcp_test_main_t * utm)
 {
@@ -343,7 +402,7 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	{
 	  if (n_read == -2)
 	    {
-	      clib_warning ("weird!");
+//	      clib_warning ("weird!");
 	      break;
 	    }
 	}
@@ -616,6 +675,7 @@ client_test (uri_tcp_test_main_t * utm)
 {
   int i;
 
+  application_attach (utm);
   client_connect (utm);
 
   if (wait_for_state_change (utm, STATE_READY))
@@ -837,7 +897,7 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 }
 
 void
-server_bind (uri_tcp_test_main_t * utm)
+server_listen (uri_tcp_test_main_t * utm)
 {
   vl_api_bind_uri_t *bmp;
   u32 fifo_size = 3 << 20;
@@ -874,8 +934,10 @@ server_unbind (uri_tcp_test_main_t * utm)
 void
 server_test (uri_tcp_test_main_t * utm)
 {
+  application_attach (utm);
+
   /* Bind to uri */
-  server_bind (utm);
+  server_listen (utm);
 
   if (wait_for_state_change (utm, STATE_READY))
     {
@@ -916,6 +978,7 @@ _(CONNECT_URI_REPLY, connect_uri_reply)                 \
 _(DISCONNECT_SESSION, disconnect_session)               \
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   \
 _(RESET_SESSION, reset_session)                         \
+_(APPLICATION_ATTACH_REPLY, application_attach_reply)   \
 _(MAP_ANOTHER_SEGMENT, map_another_segment)
 
 void

@@ -18,11 +18,13 @@
 
 #include <vnet/vnet.h>
 #include <vnet/session/session.h>
+#include <vnet/session/segment_manager.h>
 
 typedef enum
 {
   APP_SERVER,
-  APP_CLIENT
+  APP_CLIENT,
+  APP_N_TYPES
 } application_type_t;
 
 typedef struct _stream_session_cb_vft
@@ -62,7 +64,7 @@ typedef struct _application
   /** Binary API connection index, ~0 if internal */
   u32 api_client_index;
 
-  /* */
+  /* API context needed for replying to client (in particular for connects) */
   u32 api_context;
 
   /** Application listens for events on this svm queue */
@@ -74,7 +76,13 @@ typedef struct _application
   /* Stream server mode: accept or connect */
   u8 mode;
 
-  u32 session_manager_index;
+  u32 first_segment_manager;
+
+  /** Per app and session type segment manager indexes */
+  u32 segment_managers[APP_N_TYPES][SESSION_N_TYPES];
+
+  /** Segment manager properties. Shared by all segment managers */
+  segment_manager_properties_t sm_properties;
 
   /*
    * Bind/Listen specific
@@ -95,7 +103,12 @@ typedef struct _application
   session_cb_vft_t cb_fns;
 } application_t;
 
-application_t *application_new (application_type_t type, session_type_t sst,
+application_t *
+application_new ();
+int
+application_init (application_t *app, u32 api_client_index, u64 *options,
+		  session_cb_vft_t * cb_fns);
+application_t *application_new_old (application_type_t type, session_type_t sst,
 				u32 api_client_index, u32 flags,
 				session_cb_vft_t * cb_fns);
 void application_del (application_t * app);
@@ -109,6 +122,10 @@ application_server_init (application_t * server, u32 segment_size,
 			 u32 add_segment_size, u32 rx_fifo_size,
 			 u32 tx_fifo_size, u8 ** segment_name);
 int application_api_queue_is_full (application_t * app);
+
+segment_manager_t *
+application_get_segment_manager (application_t *app, u8 session_type,
+				 u8 mode);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
