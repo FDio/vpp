@@ -175,7 +175,7 @@ typedef struct
   /* Instance ID */
   u32 device_index;
 
-  u32 vlib_hw_if_index;
+  u32 hw_if_index;
   u32 vlib_sw_if_index;
 
   /* next node index if we decide to steal the rx graph arc */
@@ -353,7 +353,6 @@ typedef struct
 
   /* Devices */
   dpdk_device_t *devices;
-  dpdk_device_and_queue_t **devices_by_cpu;
   dpdk_device_and_queue_t **devices_by_hqos_cpu;
 
   /* per-thread recycle lists */
@@ -391,10 +390,6 @@ typedef struct
   u8 admin_up_down_in_progress;
 
   u8 use_rss;
-
-  /* which cpus are running dpdk-input */
-  int input_cpu_first_index;
-  int input_cpu_count;
 
   /* which cpus are running I/O TX */
   int hqos_cpu_first_index;

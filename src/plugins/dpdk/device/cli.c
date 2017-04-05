@@ -563,61 +563,6 @@ VLIB_CLI_COMMAND (cmd_set_dpdk_if_desc,static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-show_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
-			vlib_cli_command_t * cmd)
-{
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_and_queue_t *dq;
-  int cpu;
-
-  if (tm->n_vlib_mains == 1)
-    vlib_cli_output (vm, "All interfaces are handled by main thread");
-
-  for (cpu = 0; cpu < vec_len (dm->devices_by_cpu); cpu++)
-    {
-      if (cpu >= dm->input_cpu_first_index &&
-	  cpu < (dm->input_cpu_first_index + dm->input_cpu_count))
-	vlib_cli_output (vm, "Thread %u (%s at lcore %u):", cpu,
-			 vlib_worker_threads[cpu].name,
-			 vlib_worker_threads[cpu].lcore_id);
-
-      /* *INDENT-OFF* */
-      vec_foreach(dq, dm->devices_by_cpu[cpu])
-        {
-          u32 hw_if_index = dm->devices[dq->device].vlib_hw_if_index;
-          vnet_hw_interface_t * hi =  vnet_get_hw_interface(dm->vnet_main, hw_if_index);
-          vlib_cli_output(vm, "  %v queue %u", hi->name, dq->queue_id);
-        }
-      /* *INDENT-ON* */
-    }
-  return 0;
-}
-
-/*?
- * This command is used to display the thread and core each
- * DPDK interface and queue is assigned too.
- *
- * @cliexpar
- * Example of how to display the DPDK interface placement:
- * @cliexstart{show dpdk interface placement}
- * Thread 1 (vpp_wk_0 at lcore 1):
- *   GigabitEthernet0/8/0 queue 0
- *   GigabitEthernet0/9/0 queue 0
- * Thread 2 (vpp_wk_1 at lcore 2):
- *   GigabitEthernet0/8/0 queue 1
- *   GigabitEthernet0/9/0 queue 1
- * @cliexend
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_show_dpdk_if_placement,static) = {
-    .path = "show dpdk interface placement",
-    .short_help = "show dpdk interface placement",
-    .function = show_dpdk_if_placement,
-};
-/* *INDENT-ON* */
-
 static int
 dpdk_device_queue_sort (void *a1, void *a2)
 {
@@ -636,131 +581,6 @@ dpdk_device_queue_sort (void *a1, void *a2)
     return 0;
 }
 
-static clib_error_t *
-set_dpdk_if_placement (vlib_main_t * vm, unformat_input_t * input,
-		       vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  dpdk_main_t *dm = &dpdk_main;
-  dpdk_device_and_queue_t *dq;
-  vnet_hw_interface_t *hw;
-  dpdk_device_t *xd;
-  u32 hw_if_index = (u32) ~ 0;
-  u32 queue = (u32) 0;
-  u32 cpu = (u32) ~ 0;
-  int i;
-  clib_error_t *error = NULL;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_hw_interface, dm->vnet_main,
-	   &hw_if_index))
-	;
-      else if (unformat (line_input, "queue %d", &queue))
-	;
-      else if (unformat (line_input, "thread %d", &cpu))
-	;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  goto done;
-	}
-    }
-
-  if (hw_if_index == (u32) ~ 0)
-    {
-      error = clib_error_return (0, "please specify valid interface name");
-      goto done;
-    }
-
-  if (cpu < dm->input_cpu_first_index ||
-      cpu >= (dm->input_cpu_first_index + dm->input_cpu_count))
-    {
-      error = clib_error_return (0, "please specify valid thread id");
-      goto done;
-    }
-
-  hw = vnet_get_hw_interface (dm->vnet_main, hw_if_index);
-  xd = vec_elt_at_index (dm->devices, hw->dev_instance);
-
-  for (i = 0; i < vec_len (dm->devices_by_cpu); i++)
-    {
-      /* *INDENT-OFF* */
-      vec_foreach(dq, dm->devices_by_cpu[i])
-        {
-          if (hw_if_index == dm->devices[dq->device].vlib_hw_if_index &&
-              queue == dq->queue_id)
-            {
-              if (cpu == i) /* nothing to do */
-                goto done;
-
-              vec_del1(dm->devices_by_cpu[i], dq - dm->devices_by_cpu[i]);
-              vec_add2(dm->devices_by_cpu[cpu], dq, 1);
-              dq->queue_id = queue;
-              dq->device = xd->device_index;
-              xd->cpu_socket_id_by_queue[queue] =
-                rte_lcore_to_socket_id(vlib_worker_threads[cpu].lcore_id);
-
-              vec_sort_with_function(dm->devices_by_cpu[i],
-		                     dpdk_device_queue_sort);
-
-              vec_sort_with_function(dm->devices_by_cpu[cpu],
-		                     dpdk_device_queue_sort);
-
-              if (vec_len(dm->devices_by_cpu[i]) == 0)
-                vlib_node_set_state (vlib_mains[i], dpdk_input_node.index,
-		                     VLIB_NODE_STATE_DISABLED);
-
-              if (vec_len(dm->devices_by_cpu[cpu]) == 1)
-                vlib_node_set_state (vlib_mains[cpu], dpdk_input_node.index,
-		                     VLIB_NODE_STATE_POLLING);
-
-              goto done;
-            }
-        }
-      /* *INDENT-ON* */
-    }
-
-  error = clib_error_return (0, "not found");
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-/*?
- * This command is used to assign a given interface, and optionally a
- * given queue, to a different thread. This will not create a thread,
- * so the thread must already exist. Use '<em>/etc/vpp/startup.conf</em>'
- * for the initial thread creation. If the '<em>queue</em>' is not provided,
- * it defaults to 0.
- *
- * @cliexpar
- * Example of how to display the DPDK interface placement:
- * @cliexstart{show dpdk interface placement}
- * Thread 1 (vpp_wk_0 at lcore 1):
- *   GigabitEthernet0/8/0 queue 0
- *   GigabitEthernet0/9/0 queue 0
- * Thread 2 (vpp_wk_1 at lcore 2):
- *   GigabitEthernet0/8/0 queue 1
- *   GigabitEthernet0/9/0 queue 1
- * @cliexend
- * Example of how to assign a DPDK interface and queue to a thread:
- * @cliexcmd{set dpdk interface placement GigabitEthernet0/8/0 queue 1 thread 1}
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_set_dpdk_if_placement,static) = {
-    .path = "set dpdk interface placement",
-    .short_help = "set dpdk interface placement <interface> [queue <n>] thread <n>",
-    .function = set_dpdk_if_placement,
-};
-/* *INDENT-ON* */
 
 static clib_error_t *
 show_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
@@ -784,7 +604,7 @@ show_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
 
       vec_foreach (dq, dm->devices_by_hqos_cpu[cpu])
       {
-	u32 hw_if_index = dm->devices[dq->device].vlib_hw_if_index;
+	u32 hw_if_index = dm->devices[dq->device].hw_if_index;
 	vnet_hw_interface_t *hi =
 	  vnet_get_hw_interface (dm->vnet_main, hw_if_index);
 	vlib_cli_output (vm, "  %v queue %u", hi->name, dq->queue_id);
@@ -864,7 +684,7 @@ set_dpdk_if_hqos_placement (vlib_main_t * vm, unformat_input_t * input,
     {
       vec_foreach (dq, dm->devices_by_hqos_cpu[i])
       {
-	if (hw_if_index == dm->devices[dq->device].vlib_hw_if_index)
+	if (hw_if_index == dm->devices[dq->device].hw_if_index)
 	  {
 	    if (cpu == i)	/* nothing to do */
 	      goto done;
