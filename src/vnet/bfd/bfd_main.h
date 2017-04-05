@@ -66,6 +66,20 @@ typedef enum
 #undef F
 } bfd_poll_state_e;
 
+/**
+ * hop types
+ */
+#define foreach_bfd_hop(F)                     \
+  F (SINGLE, "single")                         \
+  F (MULTI,  "multi")                          \
+
+typedef enum
+{
+#define F(sym, str) BFD_HOP_TYPE_##sym,
+  foreach_bfd_hop (F)
+#undef F
+} bfd_hop_type_e;
+
 typedef struct bfd_session_s
 {
   /** index in bfd_main.sessions pool */
@@ -76,6 +90,9 @@ typedef struct bfd_session_s
 
   /** remote session state */
   bfd_state_e remote_state;
+
+  /** BFD hop type */
+  bfd_hop_type_e hop_type;
 
   /** local diagnostics */
   bfd_diag_code_e local_diag;
@@ -220,6 +237,26 @@ typedef struct bfd_session_s
   };
 } bfd_session_t;
 
+/**
+ * listener events
+ */
+#define foreach_bfd_listen_event(F)            \
+  F (CREATE, "sesion-created")                 \
+  F (UPDATE, "session-updated")                \
+  F (DELETE, "session-deleted")
+
+typedef enum
+{
+#define F(sym, str) BFD_LISTEN_EVENT_##sym,
+  foreach_bfd_listen_event (F)
+#undef F
+} bfd_listen_event_e;
+
+/**
+ * session nitification call back function type
+ */
+typedef void (*bfd_notify_fn_t) (bfd_listen_event_e, const bfd_session_t *);
+
 typedef struct
 {
   /** pool of bfd sessions context data */
@@ -259,6 +296,8 @@ typedef struct
   /** hashmap - index in pool auth_keys by conf_key_id */
   u32 *auth_key_by_conf_key_id;
 
+  /** A vector of callback notification functions */
+  bfd_notify_fn_t *listeners;
 } bfd_main_t;
 
 extern bfd_main_t bfd_main;
@@ -344,6 +383,11 @@ const char *bfd_poll_state_string (bfd_poll_state_e state);
  * should be set to at least 1s
  */
 #define BFD_REQUIRED_MIN_RX_USEC_WHILE_ECHO USEC_PER_SECOND
+
+/**
+ * Register a callback function to receive session notifications.
+ */
+void bfd_register_listener (bfd_notify_fn_t fn);
 
 #endif /* __included_bfd_main_h__ */
 

@@ -101,6 +101,7 @@ bfd_set_defaults (bfd_main_t * bm, bfd_session_t * bs)
   bs->local_diag = BFD_DIAG_CODE_no_diag;
   bs->remote_state = BFD_STATE_down;
   bs->remote_discr = 0;
+  bs->hop_type = BFD_HOP_TYPE_SINGLE;
   bs->config_desired_min_tx_usec = BFD_DEFAULT_DESIRED_MIN_TX_USEC;
   bs->config_desired_min_tx_clocks = bm->default_desired_min_tx_clocks;
   bs->effective_desired_min_tx_clocks = bm->default_desired_min_tx_clocks;
@@ -387,6 +388,17 @@ bfd_set_remote_required_min_echo_rx (bfd_main_t * bm, bfd_session_t * bs,
     }
 }
 
+static void
+bfd_notify_listeners (bfd_main_t * bm,
+		      bfd_listen_event_e event, const bfd_session_t * bs)
+{
+  bfd_notify_fn_t *fn;
+  vec_foreach (fn, bm->listeners)
+  {
+    (*fn) (event, bs);
+  }
+}
+
 void
 bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
 {
@@ -396,6 +408,7 @@ bfd_session_start (bfd_main_t * bm, bfd_session_t * bs)
   bfd_recalc_tx_interval (bm, bs);
   vlib_process_signal_event (bm->vlib_main, bm->bfd_process_node_index,
 			     BFD_EVENT_NEW_SESSION, bs->bs_idx);
+  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_CREATE, bs);
 }
 
 void
@@ -533,6 +546,7 @@ bfd_on_state_change (bfd_main_t * bm, bfd_session_t * bs, u64 now,
       bfd_set_timer (bm, bs, now, handling_wakeup);
       break;
     }
+  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_UPDATE, bs);
 }
 
 static void
@@ -1121,6 +1135,14 @@ bfd_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
 VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (bfd_hw_interface_up_down);
 
+void
+bfd_register_listener (bfd_notify_fn_t fn)
+{
+  bfd_main_t *bm = &bfd_main;
+
+  vec_add1 (bm->listeners, fn);
+}
+
 /*
  * setup function
  */
@@ -1180,6 +1202,7 @@ bfd_get_session (bfd_main_t * bm, bfd_transport_e t)
 void
 bfd_put_session (bfd_main_t * bm, bfd_session_t * bs)
 {
+  bfd_notify_listeners (bm, BFD_LISTEN_EVENT_DELETE, bs);
   if (bs->auth.curr_key)
     {
       --bs->auth.curr_key->use_count;

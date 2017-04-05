@@ -477,12 +477,15 @@ static void
 ip4_fib_table_show_one (ip4_fib_t *fib,
 			vlib_main_t * vm,
 			ip4_address_t *address,
-			u32 mask_len)
+			u32 mask_len,
+                        int detail)
 {    
     vlib_cli_output(vm, "%U",
                     format_fib_entry,
                     ip4_fib_table_lookup(fib, address, mask_len),
-                    FIB_ENTRY_FORMAT_DETAIL);
+                    (detail ?
+                     FIB_ENTRY_FORMAT_DETAIL2 :
+                     FIB_ENTRY_FORMAT_DETAIL));
 }
 
 static clib_error_t *
@@ -496,6 +499,7 @@ ip4_show_fib (vlib_main_t * vm,
     ip4_address_t matching_address;
     u32 matching_mask = 32;
     int i, table_id = -1, fib_index = ~0;
+    int detail = 0;
 
     verbose = 1;
     matching = 0;
@@ -505,6 +509,9 @@ ip4_show_fib (vlib_main_t * vm,
 	if (unformat (input, "brief") || unformat (input, "summary")
 	    || unformat (input, "sum"))
 	    verbose = 0;
+
+	else if (unformat (input, "detail") || unformat (input, "det"))
+	    detail = 1;
 
 	else if (unformat (input, "mtrie"))
 	    mtrie = 1;
@@ -563,7 +570,8 @@ ip4_show_fib (vlib_main_t * vm,
 	}
 	else
 	{
-	    ip4_fib_table_show_one(fib, vm, &matching_address, matching_mask);
+	    ip4_fib_table_show_one(fib, vm, &matching_address,
+                                   matching_mask, detail);
 	}
     }));
 
@@ -717,7 +725,7 @@ ip4_show_fib (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .path = "show ip fib",
-    .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie]",
+    .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie] [detail]",
     .function = ip4_show_fib,
 };
 /* *INDENT-ON* */

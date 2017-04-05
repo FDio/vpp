@@ -525,6 +525,7 @@ extern int fib_entry_is_sourced(fib_node_index_t fib_entry_index,
                                 fib_source_t source);
 
 extern fib_node_index_t fib_entry_get_path_list(fib_node_index_t fib_entry_index);
+extern int fib_entry_is_resolved(fib_node_index_t fib_entry_index);
 
 extern void fib_entry_module_init(void);
 

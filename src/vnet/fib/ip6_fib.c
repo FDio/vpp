@@ -560,12 +560,15 @@ static void
 ip6_fib_table_show_one (ip6_fib_t *fib,
 			vlib_main_t * vm,
 			ip6_address_t *address,
-			u32 mask_len)
+			u32 mask_len,
+                        int detail)
 {
     vlib_cli_output(vm, "%U",
                     format_fib_entry,
                     ip6_fib_table_lookup(fib->index, address, mask_len),
-                    FIB_ENTRY_FORMAT_DETAIL);
+                    (detail ?
+                     FIB_ENTRY_FORMAT_DETAIL2:
+                     FIB_ENTRY_FORMAT_DETAIL));
 }
 
 typedef struct {
@@ -573,8 +576,9 @@ typedef struct {
   u64 count_by_prefix_length[129];
 } count_routes_in_fib_at_prefix_length_arg_t;
 
-static void count_routes_in_fib_at_prefix_length 
-(BVT(clib_bihash_kv) * kvp, void *arg)
+static void
+count_routes_in_fib_at_prefix_length (BVT(clib_bihash_kv) * kvp,
+                                      void *arg)
 {
   count_routes_in_fib_at_prefix_length_arg_t * ap = arg;
   int mask_width;
@@ -600,6 +604,7 @@ ip6_show_fib (vlib_main_t * vm,
     ip6_address_t matching_address;
     u32 mask_len  = 128;
     int table_id = -1, fib_index = ~0;
+    int detail = 0;
 
     verbose = 1;
     matching = 0;
@@ -610,6 +615,10 @@ ip6_show_fib (vlib_main_t * vm,
 	    unformat (input, "summary") ||
 	    unformat (input, "sum"))
 	    verbose = 0;
+ 
+	else if (unformat (input, "detail")   ||
+                 unformat (input, "det"))
+	    detail = 1;
 
 	else if (unformat (input, "%U/%d",
 			   unformat_ip6_address, &matching_address, &mask_len))
@@ -667,7 +676,7 @@ ip6_show_fib (vlib_main_t * vm,
 	}
 	else
 	{
-	    ip6_fib_table_show_one(fib, vm, &matching_address, mask_len);
+	    ip6_fib_table_show_one(fib, vm, &matching_address, mask_len, detail);
 	}
     }));
 
@@ -771,7 +780,7 @@ ip6_show_fib (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip6_show_fib_command, static) = {
     .path = "show ip6 fib",
-    .short_help = "show ip6 fib [summary] [table <table-id>] [index <fib-id>] [<ip6-addr>[/<width>]]",
+    .short_help = "show ip6 fib [summary] [table <table-id>] [index <fib-id>] [<ip6-addr>[/<width>]] [detail]",
     .function = ip6_show_fib,
 };
 /* *INDENT-ON* */
