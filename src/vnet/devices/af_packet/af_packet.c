@@ -270,9 +270,12 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
 
   sw = vnet_get_hw_sw_interface (vnm, apif->hw_if_index);
   apif->sw_if_index = sw->sw_if_index;
-  vnet_set_device_input_node (apif->hw_if_index, af_packet_input_node.index);
-  vnet_device_input_assign_thread (apif->hw_if_index, 0,	/* queue */
+  vnet_set_device_input_node (vnm, apif->hw_if_index,
+			      af_packet_input_node.index);
+  vnet_device_input_assign_thread (vnm, apif->hw_if_index, 0,	/* queue */
 				   ~0 /* any cpu */ );
+  vnet_device_input_set_mode (vnm, apif->hw_if_index, 0,
+			      VNET_DEVICE_INPUT_MODE_INTERRUPT);
 
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);

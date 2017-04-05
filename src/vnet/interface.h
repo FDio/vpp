@@ -470,6 +470,9 @@ typedef struct vnet_hw_interface_t
   /* input node cpu index by queue */
   u32 *input_node_thread_index_by_queue;
 
+  /* device input device_and_queue runtime index */
+  uword *dq_runtime_index_by_queue;
+
 } vnet_hw_interface_t;
 
 extern vnet_device_class_t vnet_local_interface_device_class;
