@@ -55,16 +55,25 @@ typedef struct
   uword next_worker_cpu_index;
 } vnet_device_main_t;
 
+typedef enum
+{
+  VNET_DEVICE_INPUT_MODE_POLLING = 0,
+  VNET_DEVICE_INPUT_MODE_INTERRUPT,
+  VNET_DEVICE_INPUT_N_MODES,
+} vnet_device_input_mode_t;
+
 typedef struct
 {
   u32 hw_if_index;
   u32 dev_instance;
   u16 queue_id;
+  vnet_device_input_mode_t mode;
 } vnet_device_and_queue_t;
 
 typedef struct
 {
   vnet_device_and_queue_t *devices_and_queues;
+  vlib_node_state_t enabled_node_state;
 } vnet_device_input_runtime_t;
 
 extern vnet_device_main_t vnet_device_main;
@@ -72,15 +81,22 @@ extern vlib_node_registration_t device_input_node;
 extern const u32 device_input_next_node_advance[];
 
 static inline void
-vnet_set_device_input_node (u32 hw_if_index, u32 node_index)
+vnet_set_device_input_node (vnet_main_t * vnm, u32 hw_if_index,
+			    u32 node_index)
 {
-  vnet_main_t *vnm = vnet_get_main ();
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   hw->input_node_index = node_index;
 }
 
-void vnet_device_input_assign_thread (u32 hw_if_index, u16 queue_id,
-				      uword cpu_index);
+void vnet_device_input_assign_thread (vnet_main_t * vnm, u32 hw_if_index,
+				      u16 queue_id, uword cpu_index);
+int vnet_device_input_unassign_thread (vnet_main_t * vnm, u32 hw_if_index,
+				       u16 queue_id, uword cpu_index);
+int vnet_device_input_set_mode (vnet_main_t * vnm, u32 hw_if_index,
+				u16 queue_id, vnet_device_input_mode_t mode);
+int vnet_device_input_get_mode (vnet_main_t * vnm, u32 hw_if_index,
+				u16 queue_id,
+				vnet_device_input_mode_t * mode);
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
@@ -111,15 +127,23 @@ vnet_get_device_and_queue (vlib_main_t * vm, vlib_node_runtime_t * node)
   return rt->devices_and_queues;
 }
 
+static_always_inline uword
+vnet_get_device_input_thread_index (vnet_main_t * vnm, u32 hw_if_index,
+				    u16 queue_id)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  ASSERT (queue_id < vec_len (hw->input_node_cpu_index_by_queue));
+  return hw->input_node_cpu_index_by_queue[queue_id];
+}
+
 static_always_inline void
 vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
 					 u16 queue_id)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-
-  ASSERT (queue_id < vec_len (hw->input_node_cpu_index_by_queue));
-  u32 cpu_index = hw->input_node_cpu_index_by_queue[queue_id];
-  vlib_node_set_interrupt_pending (vlib_mains[cpu_index],
+  uword thread_index =
+    vnet_get_device_input_thread_index (vnm, hw_if_index, queue_id);
+  vlib_node_set_interrupt_pending (vlib_mains[thread_index],
 				   hw->input_node_index);
 }
 
