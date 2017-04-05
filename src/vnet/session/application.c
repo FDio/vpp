@@ -14,17 +14,23 @@
  */
 
 #include <vnet/session/application.h>
+#include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
-/*
+/**
  * Pool from which we allocate all applications
  */
 static application_t *app_pool;
 
-/*
+/**
  * Hash table of apps by api client index
  */
 static uword *app_by_api_client_index;
+
+/**
+ * Default application event queue size
+ */
+static u32 default_app_evt_queue_size = 128;
 
 int
 application_api_queue_is_full (application_t * app)
@@ -67,37 +73,60 @@ application_lookup (u32 api_client_index)
   return 0;
 }
 
+application_t *
+application_new ()
+{
+  application_t *app;
+  pool_get (app_pool, app);
+  memset (app, 0, sizeof(*app));
+  app->index = application_get_index (app);
+  app->connects_seg_manager = ~0;
+  return app;
+}
+
 void
 application_del (application_t * app)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
   api_main_t *am = &api_main;
   void *oldheap;
-  session_manager_t *sm;
+  segment_manager_t *sm;
+  u32 handle, index;
 
-  if (app->mode == APP_SERVER)
+  /*
+   * Cleanup segment managers
+   */
+  if (app->connects_seg_manager != (u32)~0)
     {
-      sm = session_manager_get (app->session_manager_index);
-      session_manager_del (smm, sm);
+      sm = segment_manager_get (app->connects_seg_manager);
+      segment_manager_del (sm);
     }
 
-  /* Free the event fifo in the /vpe-api shared-memory segment */
+  /* *INDENT-OFF* */
+  hash_foreach (handle, index, app->listeners_table,
+  ({
+    sm = segment_manager_get (index);
+    segment_manager_del (sm);
+  }));
+  /* *INDENT-ON* */
+
+  /*
+   * Free the event fifo in the /vpe-api shared-memory segment
+   */
   oldheap = svm_push_data_heap (am->vlib_rp);
   if (app->event_queue)
     unix_shared_memory_queue_free (app->event_queue);
   svm_pop_heap (oldheap);
 
   application_table_del (app);
-
   pool_put (app_pool, app);
 }
 
 static void
-application_verify_cb_fns (application_type_t type, session_cb_vft_t * cb_fns)
+application_verify_cb_fns (session_cb_vft_t * cb_fns)
 {
-  if (type == APP_SERVER && cb_fns->session_accept_callback == 0)
+  if (cb_fns->session_accept_callback == 0)
     clib_warning ("No accept callback function provided");
-  if (type == APP_CLIENT && cb_fns->session_connected_callback == 0)
+  if (cb_fns->session_connected_callback == 0)
     clib_warning ("No session connected callback function provided");
   if (cb_fns->session_disconnect_callback == 0)
     clib_warning ("No session disconnect callback function provided");
@@ -105,25 +134,26 @@ application_verify_cb_fns (application_type_t type, session_cb_vft_t * cb_fns)
     clib_warning ("No session reset callback function provided");
 }
 
-application_t *
-application_new (application_type_t type, session_type_t sst,
-		 u32 api_client_index, u32 flags, session_cb_vft_t * cb_fns)
+int
+application_init (application_t *app, u32 api_client_index, u64 *options,
+		  session_cb_vft_t * cb_fns)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
   api_main_t *am = &api_main;
-  application_t *app;
+  segment_manager_t *sm;
+  segment_manager_properties_t *props;
   void *oldheap;
-  session_manager_t *sm;
+  u32 app_evt_queue_size;
+  int rv;
 
-  pool_get (app_pool, app);
-  memset (app, 0, sizeof (*app));
+  app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
+      options[APP_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
 
   /* Allocate event fifo in the /vpe-api shared-memory segment */
   oldheap = svm_push_data_heap (am->vlib_rp);
 
   /* Allocate server event queue */
   app->event_queue =
-    unix_shared_memory_queue_init (128 /* nels $$$$ config */ ,
+    unix_shared_memory_queue_init (app_evt_queue_size,
 				   sizeof (session_fifo_event_t),
 				   0 /* consumer pid */ ,
 				   0
@@ -132,36 +162,30 @@ application_new (application_type_t type, session_type_t sst,
 
   svm_pop_heap (oldheap);
 
-  /* If a server, allocate session manager */
-  if (type == APP_SERVER)
-    {
-      pool_get (smm->session_managers, sm);
-      memset (sm, 0, sizeof (*sm));
+  /* Setup segment manager */
+  sm = segment_manager_new ();
+  props = &app->sm_properties;
+  props->add_segment_size = options[SESSION_OPTIONS_ADD_SEGMENT_SIZE];
+  props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
+  props->tx_fifo_size = options[SESSION_OPTIONS_TX_FIFO_SIZE];
+  props->add_segment = props->add_segment_size != 0;
 
-      app->session_manager_index = sm - smm->session_managers;
-    }
-  else if (type == APP_CLIENT)
-    {
-      /* Allocate connect session manager if needed */
-      if (smm->connect_manager_index[sst] == INVALID_INDEX)
-	connects_session_manager_init (smm, sst);
-      app->session_manager_index = smm->connect_manager_index[sst];
-    }
+  if ((rv = segment_manager_init (sm, props,
+				  options[SESSION_OPTIONS_SEGMENT_SIZE])))
+    return rv;
 
-  app->mode = type;
-  app->index = application_get_index (app);
-  app->session_type = sst;
+  app->first_segment_manager = segment_manager_index (sm);
   app->api_client_index = api_client_index;
-  app->flags = flags;
+  app->flags = options[SESSION_OPTIONS_FLAGS];
   app->cb_fns = *cb_fns;
 
   /* Check that the obvious things are properly set up */
-  application_verify_cb_fns (type, cb_fns);
+  application_verify_cb_fns (cb_fns);
 
   /* Add app to lookup by api_client_index table */
   application_table_add (app);
 
-  return app;
+  return 0;
 }
 
 application_t *
@@ -185,30 +209,131 @@ application_get_index (application_t * app)
   return app - app_pool;
 }
 
-int
-application_server_init (application_t * server, u32 segment_size,
-			 u32 add_segment_size, u32 rx_fifo_size,
-			 u32 tx_fifo_size, u8 ** segment_name)
+static segment_manager_t *
+application_alloc_segment_manager (application_t *app)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
-  session_manager_t *sm;
-  int rv;
+  segment_manager_t *sm = 0;
 
-  sm = session_manager_get (server->session_manager_index);
-
-  /* Add first segment */
-  if ((rv = session_manager_add_first_segment (smm, sm, segment_size,
-					       segment_name)))
+  if (app->first_segment_manager != (u32) ~0)
     {
-      return rv;
+      sm = segment_manager_get (app->first_segment_manager);
+      app->first_segment_manager = ~0;
+      return sm;
     }
 
-  /* Setup session manager */
-  sm->add_segment_size = add_segment_size;
-  sm->rx_fifo_size = rx_fifo_size;
-  sm->tx_fifo_size = tx_fifo_size;
-  sm->add_segment = sm->add_segment_size != 0;
+  sm = segment_manager_new ();
+  if (segment_manager_init (sm, &app->sm_properties, 0))
+    return 0;
+  return sm;
+}
+
+/**
+ * Start listening local transport endpoint for requested transport.
+ *
+ * Creates a 'dummy' stream session with state LISTENING to be used in session
+ * lookups, prior to establishing connection. Requests transport to build
+ * it's own specific listening connection.
+ */
+int
+application_start_listen (application_t *srv, session_type_t session_type,
+			  transport_endpoint_t *tep, u64 *res)
+{
+  segment_manager_t *sm;
+  stream_session_t *s;
+  u64 handle;
+
+  s = listen_session_new (session_type);
+  s->app_index = srv->index;
+
+  if (stream_session_listen (s, tep))
+    goto err;
+
+  /* Allocate segment manager. All sessions derived out of a listen session
+   * have fifos allocated by the same segment manager. */
+  sm = application_alloc_segment_manager (srv);
+  if (sm == 0)
+    goto err;
+
+  /* Add to app's listener table. Useful to find all child listeners
+   * when app goes down, although, just for unbinding this is not needed */
+  handle = listen_session_get_handle (s);
+  hash_set (srv->listeners_table, handle, segment_manager_index (sm));
+
+  *res = handle;
   return 0;
+
+err:
+  listen_session_del (s);
+  return -1;
+}
+
+/**
+ * Stop listening session associated to handle
+ */
+int
+application_stop_listen (application_t *srv, u64 handle)
+{
+  stream_session_t *listener;
+
+  if (srv && hash_get (srv->listeners_table, handle) == 0)
+    {
+      clib_warning ("app doesn't own handle %llu!", handle);
+      return -1;
+    }
+
+  listener = listen_session_get_from_handle (handle);
+  stream_session_stop_listen (listener);
+
+  /* Might be that internal servers have no associated app */
+  if (srv)
+    hash_unset (srv->listeners_table, handle);
+  listen_session_del (listener);
+
+  return 0;
+}
+
+int
+application_open_session (application_t *app, session_type_t sst,
+			  transport_endpoint_t *tep, u32 api_context)
+{
+  segment_manager_t *sm;
+  transport_connection_t *tc=0;
+  int rv;
+
+  /* Make sure we have a segment manager for connects */
+  if (app->connects_seg_manager == (u32) ~0)
+    {
+      sm = application_alloc_segment_manager (app);
+      if (sm == 0)
+	return -1;
+      app->connects_seg_manager = segment_manager_index (sm);
+    }
+
+  if ((rv = stream_session_open (app->index, sst, tep, &tc)))
+    return rv;
+
+  /* Store api_context for when the reply comes. Not the nicest thing
+   * but better allocating a separate half-open pool.  */
+  tc->s_index = api_context;
+
+  return 0;
+}
+
+segment_manager_t *
+application_get_connect_segment_manager (application_t *app)
+{
+  ASSERT (app->connects_seg_manager != (u32)~0);
+  return segment_manager_get (app->connects_seg_manager);
+}
+
+segment_manager_t *
+application_get_listen_segment_manager (application_t *app,
+					stream_session_t *s)
+{
+  uword *smp;
+  smp = hash_get(app->listeners_table, listen_session_get_handle (s));
+  ASSERT(smp != 0);
+  return segment_manager_get (*smp);
 }
 
 u8 *
@@ -242,7 +367,7 @@ format_application_server (u8 * s, va_list * args)
 					  srv->session_index);
   str = format (0, "%U", format_stream_session, listener, verbose);
 
-  session_manager_get_segment_info (listener->server_segment_index, &seg_name,
+  segment_manager_get_segment_info (listener->svm_segment_index, &seg_name,
 				    &segment_size);
   if (verbose)
     {
@@ -278,7 +403,7 @@ format_application_client (u8 * s, va_list * args)
   session = stream_session_get (client->session_index, client->thread_index);
   str = format (0, "%U", format_stream_session, session, verbose);
 
-  session_manager_get_segment_info (session->server_segment_index, &seg_name,
+  segment_manager_get_segment_info (session->svm_segment_index, &seg_name,
 				    &segment_size);
   if (verbose)
     {

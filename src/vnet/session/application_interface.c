@@ -79,90 +79,69 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 }
 
 int
-vnet_bind_i (u32 api_client_index, ip46_address_t * ip46, u16 port_host_order,
-	     session_type_t sst, u64 * options, session_cb_vft_t * cb_fns,
-	     application_t ** app, u32 * len_seg_name, char *seg_name)
+vnet_bind_i (u32 api_client_index, session_type_t sst,
+	     transport_endpoint_t *tep, u64 *handle)
 {
-  u8 *segment_name = 0;
   application_t *server = 0;
   stream_session_t *listener;
-  u8 is_ip4;
 
-  listener =
-    stream_session_lookup_listener (ip46,
-				    clib_host_to_net_u16 (port_host_order),
-				    sst);
-
+  listener = stream_session_lookup_listener (&tep->ip,
+					     clib_host_to_net_u16 (tep->port),
+					     sst);
   if (listener)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
-  if (application_lookup (api_client_index))
-    {
-      clib_warning ("Only one connection supported for now");
-      return VNET_API_ERROR_ADDRESS_IN_USE;
-    }
-
-  is_ip4 = SESSION_TYPE_IP4_UDP == sst || SESSION_TYPE_IP4_TCP == sst;
-  if (!ip_is_zero (ip46, is_ip4) && !ip_is_local (ip46, is_ip4))
+  server = application_lookup (api_client_index);
+  if (server == 0)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  /* Allocate and initialize stream server */
-  server = application_new (APP_SERVER, sst, api_client_index,
-			    options[SESSION_OPTIONS_FLAGS], cb_fns);
-
-  application_server_init (server, options[SESSION_OPTIONS_SEGMENT_SIZE],
-			   options[SESSION_OPTIONS_ADD_SEGMENT_SIZE],
-			   options[SESSION_OPTIONS_RX_FIFO_SIZE],
-			   options[SESSION_OPTIONS_TX_FIFO_SIZE],
-			   &segment_name);
+  if (!ip_is_zero (&tep->ip, tep->is_ip4)
+      && !ip_is_local (&tep->ip, tep->is_ip4))
+    return VNET_API_ERROR_INVALID_VALUE_2;
 
   /* Setup listen path down to transport */
-  stream_session_start_listen (server->index, ip46, port_host_order);
-
-  /*
-   * Return values
-   */
-
-  ASSERT (vec_len (segment_name) <= 128);
-  *len_seg_name = vec_len (segment_name);
-  memcpy (seg_name, segment_name, *len_seg_name);
-  *app = server;
-
-  return 0;
+  return application_start_listen (server, sst, tep, handle);
 }
 
 int
-vnet_unbind_i (u32 api_client_index)
+vnet_unbind_i (u32 api_client_index, u64 handle)
 {
-  application_t *server;
+  application_t *app = 0;
 
   /*
-   * Find the stream_server_t corresponding to the api client
+   * Find the application corresponding to the api client
    */
-  server = application_lookup (api_client_index);
-  if (!server)
-    return VNET_API_ERROR_INVALID_VALUE_2;
+  if (api_client_index != ~0)
+    {
+      ASSERT (vl_api_client_index_to_registration (api_client_index));
+      app = application_lookup (api_client_index);
+      if (!app)
+	return VNET_API_ERROR_INVALID_VALUE;
+    }
 
   /* Clear the listener */
-  stream_session_stop_listen (server->index);
-  application_del (server);
-
-  return 0;
+  return application_stop_listen (app, handle);
 }
 
 int
 vnet_connect_i (u32 api_client_index, u32 api_context, session_type_t sst,
-		ip46_address_t * ip46, u16 port, u64 * options, void *mp,
-		session_cb_vft_t * cb_fns)
+		transport_endpoint_t *tep, void *mp)
 {
   stream_session_t *listener;
   application_t *server, *app;
 
+  app = application_lookup (api_client_index);
+  if (!app)
+    {
+      clib_warning ("Application did not attach!");
+      return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    }
+
   /*
    * Figure out if connecting to a local server
    */
-  listener = stream_session_lookup_listener (ip46,
-					     clib_host_to_net_u16 (port),
+  listener = stream_session_lookup_listener (&tep->ip,
+					     clib_host_to_net_u16 (tep->port),
 					     sst);
   if (listener)
     {
@@ -177,16 +156,10 @@ vnet_connect_i (u32 api_client_index, u32 api_context, session_type_t sst,
 	  redirect_connect_callback (server->api_client_index, mp);
     }
 
-  /* Create client app */
-  app = application_new (APP_CLIENT, sst, api_client_index,
-			 options[SESSION_OPTIONS_FLAGS], cb_fns);
-
-  app->api_context = api_context;
-
   /*
    * Not connecting to a local server. Create regular session
    */
-  return stream_session_open (sst, ip46, port, app->index);
+  return application_open_session (app, sst, tep, api_context);
 }
 
 /**
@@ -263,26 +236,54 @@ parse_uri (char *uri, session_type_t * sst, ip46_address_t * addr,
   return 0;
 }
 
+/**
+ * Attaches application.
+ *
+ * Allocates a vpp app, i.e., a structure that keeps back pointers
+ * to external app and a segment manager for shared memory fifo based
+ * communication with the external app.
+ */
 int
-vnet_bind_uri (vnet_bind_args_t * a)
+vnet_application_attach (vnet_app_attach_args_t * a)
 {
-  application_t *server = 0;
-  u16 port_host_order;
-  session_type_t sst = SESSION_N_TYPES;
-  ip46_address_t ip46;
+  application_t *app = 0;
+  segment_manager_t *sm;
+  u8 *seg_name;
   int rv;
 
-  memset (&ip46, 0, sizeof (ip46));
-  rv = parse_uri (a->uri, &sst, &ip46, &port_host_order);
-  if (rv)
+  app = application_new ();
+  if ((rv = application_init (app, a->api_client_index, a->options,
+			      a->session_cb_vft)))
     return rv;
 
-  if ((rv = vnet_bind_i (a->api_client_index, &ip46, port_host_order, sst,
-			 a->options, a->session_cb_vft, &server,
-			 &a->segment_name_length, a->segment_name)))
-    return rv;
+  a->app_event_queue_address = (u64) app->event_queue;
+  sm = segment_manager_get (app->first_segment_manager);
+  segment_manager_get_segment_info (sm->segment_indices[0],
+				    &seg_name, &a->segment_size);
 
-  a->server_event_queue_address = (u64) server->event_queue;
+  a->segment_name_length = vec_len (seg_name);
+  a->segment_name = seg_name;
+  ASSERT (vec_len (a->segment_name) <= 128);
+  return 0;
+}
+
+int
+vnet_application_detach (u32 api_client_index)
+{
+  application_t *app;
+
+  /* External client? */
+  if (api_client_index != ~0)
+    {
+      ASSERT (vl_api_client_index_to_registration (api_client_index));
+    }
+
+  app = application_lookup (api_client_index);
+  if (!app)
+    return VNET_API_ERROR_INVALID_VALUE_2;
+
+  application_del (app);
+
   return 0;
 }
 
@@ -308,59 +309,61 @@ session_type_from_proto_and_ip (session_api_proto_t proto, u8 is_ip4)
 }
 
 int
+vnet_bind_uri (vnet_bind_args_t * a)
+{
+  session_type_t sst = SESSION_N_TYPES;
+  transport_endpoint_t tep;
+  int rv;
+
+  memset (&tep, 0, sizeof (tep));
+  rv = parse_uri (a->uri, &sst, &tep.ip, &tep.port);
+  if (rv)
+    return rv;
+
+  if ((rv = vnet_bind_i (a->api_client_index, sst, &tep, &a->handle)))
+    return rv;
+
+  return 0;
+}
+
+int
 vnet_unbind_uri (char *uri, u32 api_client_index)
 {
-  u16 port_number_host_byte_order;
+  u16 port_host_order;
   session_type_t sst = SESSION_N_TYPES;
   ip46_address_t ip46_address;
   stream_session_t *listener;
   int rv;
 
-  rv = parse_uri (uri, &sst, &ip46_address, &port_number_host_byte_order);
+  rv = parse_uri (uri, &sst, &ip46_address, &port_host_order);
   if (rv)
     return rv;
 
-  listener =
-    stream_session_lookup_listener (&ip46_address,
-				    clib_host_to_net_u16
-				    (port_number_host_byte_order), sst);
+  listener = stream_session_lookup_listener (
+      &ip46_address, clib_host_to_net_u16 (port_host_order), sst);
 
   if (!listener)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
-  /* External client? */
-  if (api_client_index != ~0)
-    {
-      ASSERT (vl_api_client_index_to_registration (api_client_index));
-    }
-
-  return vnet_unbind_i (api_client_index);
+  return vnet_unbind_i (api_client_index,
+			listen_session_get_handle (listener));
 }
 
 int
 vnet_connect_uri (vnet_connect_args_t * a)
 {
-  ip46_address_t ip46_address;
-  u16 port;
+  transport_endpoint_t tep;
   session_type_t sst;
-  application_t *app;
   int rv;
 
-  app = application_lookup (a->api_client_index);
-  if (app)
-    {
-      clib_warning ("Already have a connect from this app");
-      return VNET_API_ERROR_INVALID_VALUE_2;
-    }
-
   /* Parse uri */
-  rv = parse_uri (a->uri, &sst, &ip46_address, &port);
+  memset (&tep, 0, sizeof (tep));
+  rv = parse_uri (a->uri, &sst, &tep.ip, &tep.port);
   if (rv)
     return rv;
 
   return vnet_connect_i (a->api_client_index, a->api_context, sst,
-			 &ip46_address, port, a->options, a->mp,
-			 a->session_cb_vft);
+			 &tep, a->mp);
 }
 
 int
@@ -374,41 +377,23 @@ vnet_disconnect_session (u32 session_index, u32 thread_index)
   return 0;
 }
 
-
 int
 vnet_bind (vnet_bind_args_t * a)
 {
-  application_t *server = 0;
   session_type_t sst = SESSION_N_TYPES;
   int rv;
 
   sst = session_type_from_proto_and_ip (a->proto, a->tep.is_ip4);
-  if ((rv = vnet_bind_i (a->api_client_index, &a->tep.ip, a->tep.port, sst,
-			 a->options, a->session_cb_vft, &server,
-			 &a->segment_name_length, a->segment_name)))
+  if ((rv = vnet_bind_i (a->api_client_index, sst, &a->tep, &a->handle)))
     return rv;
 
-  a->server_event_queue_address = (u64) server->event_queue;
-  a->handle = (u64) a->tep.vrf << 32 | (u64) server->session_index;
   return 0;
 }
 
 int
 vnet_unbind (vnet_unbind_args_t * a)
 {
-  application_t *server;
-
-  if (a->api_client_index != ~0)
-    {
-      ASSERT (vl_api_client_index_to_registration (a->api_client_index));
-    }
-
-  /* Make sure this is the right one */
-  server = application_lookup (a->api_client_index);
-  ASSERT (server->session_index == (0xFFFFFFFF & a->handle));
-
-  /* TODO use handle to disambiguate namespaces/vrfs */
-  return vnet_unbind_i (a->api_client_index);
+  return vnet_unbind_i (a->api_client_index, a->handle);
 }
 
 int
@@ -425,8 +410,8 @@ vnet_connect (vnet_connect_args_t * a)
     }
 
   sst = session_type_from_proto_and_ip (a->proto, a->tep.is_ip4);
-  return vnet_connect_i (a->api_client_index, a->api_context, sst, &a->tep.ip,
-			 a->tep.port, a->options, a->mp, a->session_cb_vft);
+  return vnet_connect_i (a->api_client_index, a->api_context, sst, &a->tep,
+			 a->mp);
 }
 
 int

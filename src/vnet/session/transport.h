@@ -30,7 +30,7 @@ typedef struct _transport_connection
   ip46_address_t lcl_ip;	/**< Local IP */
   u16 lcl_port;			/**< Local port */
   u16 rmt_port;			/**< Remote port */
-  u8 proto;			/**< Transport protocol id */
+  u8 proto;			/**< Transport protocol id (also session type) */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
@@ -233,10 +233,10 @@ make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 
 typedef struct _transport_endpoint
 {
-  ip46_address_t ip;
-  u16 port;
-  u8 is_ip4;
-  u32 vrf;
+  ip46_address_t ip;	/** ip address */
+  u16 port;		/** port in host order */
+  u8 is_ip4;		/** 1 if ip4 */
+  u32 vrf;		/** fib table the endpoint is associated with */
 } transport_endpoint_t;
 
 typedef clib_bihash_24_8_t transport_endpoint_table_t;

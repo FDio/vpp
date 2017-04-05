@@ -60,7 +60,7 @@ builtin_session_reset_callback (stream_session_t * s)
 
 
 int
-builtin_session_connected_callback (u32 client_index,
+builtin_session_connected_callback (u32 app_index, u32 api_context,
 				    stream_session_t * s, u8 is_fail)
 {
   clib_warning ("called...");
@@ -191,21 +191,15 @@ static session_cb_vft_t builtin_session_cb_vft = {
 };
 
 static int
-server_create (vlib_main_t * vm)
+server_attach ()
 {
-  vnet_bind_args_t _a, *a = &_a;
+  u8 segment_name[128];
   u64 options[SESSION_OPTIONS_N_OPTIONS];
-  char segment_name[128];
-  u32 num_threads;
-  vlib_thread_main_t *vtm = vlib_get_thread_main ();
-
-  num_threads = 1 /* main thread */  + vtm->n_threads;
-  vec_validate (builtin_server_main.vpp_queue, num_threads - 1);
+  vnet_app_attach_args_t _a, *a = &_a;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
-  a->uri = "tcp://0.0.0.0/1234";
   a->api_client_index = ~0;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
@@ -215,7 +209,39 @@ server_create (vlib_main_t * vm)
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
+  return vnet_application_attach (a);
+}
+
+static int
+server_listen ()
+{
+  vnet_bind_args_t _a, *a = &_a;
+  memset (a, 0, sizeof (*a));
+  a->api_client_index = ~0;
+  a->uri = "tcp://0.0.0.0/1234";
   return vnet_bind_uri (a);
+}
+
+static int
+server_create (vlib_main_t * vm)
+{
+  u32 num_threads;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  vec_validate (builtin_server_main.vpp_queue, num_threads - 1);
+
+  if (server_attach ())
+    {
+      clib_warning ("failed to attach server");
+      return -1;
+    }
+  if (server_listen ())
+    {
+      clib_warning ("failed to start listening");
+      return -1;
+    }
+  return 0;
 }
 
 static clib_error_t *
