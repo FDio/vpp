@@ -21,6 +21,7 @@
 #include <vppinfra/sparse_vec.h>
 #include <svm/svm_fifo_segment.h>
 #include <vnet/session/session_debug.h>
+#include <vnet/session/segment_manager.h>
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
@@ -134,25 +135,8 @@ typedef struct _stream_session_t
   u32 app_index;
 
   /** svm segment index */
-  u32 server_segment_index;
+  u32 svm_segment_index;
 } stream_session_t;
-
-typedef struct _session_manager
-{
-  /** segments mapped by this server */
-  u32 *segment_indices;
-
-  /** Session fifo sizes. They are provided for binds and take default
-   * values for connects */
-  u32 rx_fifo_size;
-  u32 tx_fifo_size;
-
-  /** Configured additional segment size */
-  u32 add_segment_size;
-
-  /** Flag that indicates if additional segments should be created */
-  u8 add_segment;
-} session_manager_t;
 
 /* Forward definition */
 typedef struct _session_manager_main session_manager_main_t;
@@ -209,8 +193,6 @@ struct _session_manager_main
   /* Connection manager used by incoming connects */
   u32 connect_manager_index[SESSION_N_TYPES];
 
-  session_manager_t *session_managers;
-
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
 
@@ -241,37 +223,6 @@ vnet_get_session_manager_main ()
 {
   return &session_manager_main;
 }
-
-always_inline session_manager_t *
-session_manager_get (u32 index)
-{
-  return pool_elt_at_index (session_manager_main.session_managers, index);
-}
-
-always_inline unix_shared_memory_queue_t *
-session_manager_get_vpp_event_queue (u32 thread_index)
-{
-  return session_manager_main.vpp_event_queues[thread_index];
-}
-
-always_inline session_manager_t *
-connects_session_manager_get (session_manager_main_t * smm,
-			      session_type_t session_type)
-{
-  return pool_elt_at_index (smm->session_managers,
-			    smm->connect_manager_index[session_type]);
-}
-
-void session_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
-int session_manager_flush_enqueue_events (u32 thread_index);
-int
-session_manager_add_first_segment (session_manager_main_t * smm,
-				   session_manager_t * sm, u32 segment_size,
-				   u8 ** segment_name);
-void
-session_manager_del (session_manager_main_t * smm, session_manager_t * sm);
-void
-connects_session_manager_init (session_manager_main_t * smm, u8 session_type);
 
 /*
  * Stream session functions
@@ -390,6 +341,23 @@ transport_proto_vft_t *session_get_transport_vft (u8 type);
 
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
+always_inline unix_shared_memory_queue_t *
+session_manager_get_vpp_event_queue (u32 thread_index)
+{
+  return session_manager_main.vpp_event_queues[thread_index];
+}
+
+int session_manager_flush_enqueue_events (u32 thread_index);
+void
+connects_session_manager_init (session_manager_main_t * smm, u8 session_type);
+
+always_inline segment_manager_t *
+connects_session_manager_get (session_manager_main_t * smm,
+			      session_type_t session_type)
+{
+  return pool_elt_at_index (segment_managers,
+			    smm->connect_manager_index[session_type]);
+}
 #endif /* __included_session_h__ */
 
 /*

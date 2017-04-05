@@ -107,14 +107,9 @@ vnet_bind_i (u32 api_client_index, ip46_address_t * ip46, u16 port_host_order,
     return VNET_API_ERROR_INVALID_VALUE;
 
   /* Allocate and initialize stream server */
-  server = application_new (APP_SERVER, sst, api_client_index,
-			    options[SESSION_OPTIONS_FLAGS], cb_fns);
-
-  application_server_init (server, options[SESSION_OPTIONS_SEGMENT_SIZE],
-			   options[SESSION_OPTIONS_ADD_SEGMENT_SIZE],
-			   options[SESSION_OPTIONS_RX_FIFO_SIZE],
-			   options[SESSION_OPTIONS_TX_FIFO_SIZE],
-			   &segment_name);
+  server = application_new ();
+  server->session_type = sst;
+  application_init (server, api_client_index, options, cb_fns);
 
   /* Setup listen path down to transport */
   stream_session_start_listen (server->index, ip46, port_host_order);
@@ -122,7 +117,6 @@ vnet_bind_i (u32 api_client_index, ip46_address_t * ip46, u16 port_host_order,
   /*
    * Return values
    */
-
   ASSERT (vec_len (segment_name) <= 128);
   *len_seg_name = vec_len (segment_name);
   memcpy (seg_name, segment_name, *len_seg_name);
@@ -158,6 +152,13 @@ vnet_connect_i (u32 api_client_index, u32 api_context, session_type_t sst,
   stream_session_t *listener;
   application_t *server, *app;
 
+  app = application_lookup (api_client_index);
+  if (!app)
+    {
+      clib_warning ("Application did not attach!");
+      return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+    }
+
   /*
    * Figure out if connecting to a local server
    */
@@ -178,9 +179,9 @@ vnet_connect_i (u32 api_client_index, u32 api_context, session_type_t sst,
     }
 
   /* Create client app */
-  app = application_new (APP_CLIENT, sst, api_client_index,
-			 options[SESSION_OPTIONS_FLAGS], cb_fns);
-
+//  app = application_new ();
+//  app->session_type = sst;
+//  application_init (app, api_client_index, options, cb_fns);
   app->api_context = api_context;
 
   /*
@@ -259,6 +260,57 @@ parse_uri (char *uri, session_type_t * sst, ip46_address_t * addr,
       return VNET_API_ERROR_INVALID_VALUE;
     }
   unformat_free (input);
+
+  return 0;
+}
+
+/**
+ * Attaches application.
+ *
+ * Allocates a vpp app, i.e., a structure that keeps back pointers
+ * to external app and a segment manager for shared memory fifo based
+ * communication with the external app.
+ */
+int
+vnet_application_attach (vnet_app_attach_args_t * a)
+{
+  application_t *app = 0;
+  segment_manager_t *sm;
+  u8 *seg_name;
+  int rv;
+
+  app = application_new ();
+  if ((rv = application_init (app, a->api_client_index, a->options,
+			      a->session_cb_vft)))
+    return rv;
+
+  a->app_event_queue_address = (u64) app->event_queue;
+  sm = segment_manager_get (app->first_segment_manager);
+  segment_manager_get_segment_info (sm->segment_indices[0],
+				    &seg_name, &a->segment_size);
+
+  a->segment_name_length = vec_len (seg_name);
+  a->segment_name = seg_name;
+  ASSERT (vec_len (a->segment_name) <= 128);
+  return 0;
+}
+
+int
+vnet_application_detach (u32 api_client_index)
+{
+  application_t *app;
+
+  /* External client? */
+  if (api_client_index != ~0)
+    {
+      ASSERT (vl_api_client_index_to_registration (api_client_index));
+    }
+
+  app = application_lookup (api_client_index);
+  if (!app)
+    return VNET_API_ERROR_INVALID_VALUE_2;
+
+  application_del (app);
 
   return 0;
 }
@@ -343,15 +395,15 @@ vnet_connect_uri (vnet_connect_args_t * a)
   ip46_address_t ip46_address;
   u16 port;
   session_type_t sst;
-  application_t *app;
+//  application_t *app;
   int rv;
 
-  app = application_lookup (a->api_client_index);
-  if (app)
-    {
-      clib_warning ("Already have a connect from this app");
-      return VNET_API_ERROR_INVALID_VALUE_2;
-    }
+//  app = application_lookup (a->api_client_index);
+//  if (app)
+//    {
+//      clib_warning ("Already have a connect from this app");
+//      return VNET_API_ERROR_INVALID_VALUE_2;
+//    }
 
   /* Parse uri */
   rv = parse_uri (a->uri, &sst, &ip46_address, &port);

@@ -30,7 +30,7 @@ typedef struct _transport_connection
   ip46_address_t lcl_ip;	/**< Local IP */
   u16 lcl_port;			/**< Local port */
   u16 rmt_port;			/**< Remote port */
-  u8 proto;			/**< Transport protocol id */
+  u8 proto;			/**< Transport protocol id (also session type) */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */

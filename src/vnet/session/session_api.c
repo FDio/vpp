@@ -38,6 +38,8 @@
 
 #define foreach_session_api_msg                                         \
 _(MAP_ANOTHER_SEGMENT_REPLY, map_another_segment_reply)                 \
+_(APPLICATION_ATTACH, application_attach)				\
+_(APPLICATION_DETACH, application_detach)				\
 _(BIND_URI, bind_uri)                                                   \
 _(UNBIND_URI, unbind_uri)                                               \
 _(CONNECT_URI, connect_uri)                                             \
@@ -181,7 +183,7 @@ send_session_connected_uri_callback (u32 api_client_index,
       mp->client_event_queue_address = (u64) app->event_queue;
       mp->retval = 0;
 
-      session_manager_get_segment_info (s->server_segment_index, &seg_name,
+      segment_manager_get_segment_info (s->svm_segment_index, &seg_name,
 					&mp->segment_size);
       mp->segment_name_length = vec_len (seg_name);
       if (mp->segment_name_length)
@@ -332,7 +334,7 @@ send_session_connected_callback (u32 api_client_index, stream_session_t * s,
       mp->vpp_event_queue_address = (u64) vpp_queue;
       mp->client_event_queue_address = (u64) app->event_queue;
 
-      session_manager_get_segment_info (s->server_segment_index, &seg_name,
+      segment_manager_get_segment_info (s->svm_segment_index, &seg_name,
 					&mp->segment_size);
       mp->segment_name_length = vec_len (seg_name);
       if (mp->segment_name_length)
@@ -498,6 +500,56 @@ vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 }
 
 static void
+vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
+{
+  vl_api_application_attach_reply_t *rmp;
+  vnet_app_attach_args_t _a, *a = &_a;
+  int rv;
+
+  STATIC_ASSERT (sizeof (u64) * SESSION_OPTIONS_N_OPTIONS <=
+		 sizeof (mp->options),
+		 "Out of options, fix api message definition");
+
+  memset (a, 0, sizeof (*a));
+
+  a->api_client_index = mp->client_index;
+  a->options = mp->options;
+  a->session_cb_vft = &uri_session_cb_vft;
+
+  rv = vnet_application_attach (a);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_APPLICATION_ATTACH_REPLY, ({
+    rmp->retval = rv;
+    if (!rv)
+      {
+	rmp->segment_name_length = 0;
+	/* $$$$ policy? */
+	rmp->segment_size = a->segment_size;
+	if (a->segment_name_length)
+	  {
+	    memcpy (rmp->segment_name, a->segment_name,
+		    a->segment_name_length);
+	    rmp->segment_name_length = a->segment_name_length;
+	  }
+	rmp->app_event_queue_address = a->app_event_queue_address;
+      }
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_application_detach_t_handler (vl_api_application_detach_t * mp)
+{
+  vl_api_application_detach_reply_t *rmp;
+  int rv;
+
+  rv = vnet_application_detach (mp->client_index);
+
+  REPLY_MACRO (VL_API_APPLICATION_DETACH_REPLY);
+}
+
+static void
 vl_api_bind_uri_t_handler (vl_api_bind_uri_t * mp)
 {
   vl_api_bind_uri_reply_t *rmp;
@@ -565,7 +617,6 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   a->uri = (char *) mp->uri;
   a->api_client_index = mp->client_index;
   a->api_context = mp->context;
-  a->options = mp->options;
   a->session_cb_vft = &uri_session_cb_vft;
   a->mp = mp;
 
@@ -850,6 +901,16 @@ vl_api_accept_sock_reply_t_handler (vl_api_accept_sock_reply_t * mp)
   s->session_state = SESSION_STATE_READY;
 }
 
+static clib_error_t *
+application_reaper_cb (u32 client_index)
+{
+  if (application_lookup (client_index))
+    vnet_application_detach (client_index);
+  return 0;
+}
+
+VL_MSG_API_REAPER_FUNCTION (application_reaper_cb);
+
 #define vl_msg_name_crc_list
 #include <vnet/vnet_all_api_h.h>
 #undef vl_msg_name_crc_list
@@ -903,6 +964,7 @@ session_api_hookup (vlib_main_t * vm)
 }
 
 VLIB_API_INIT_FUNCTION (session_api_hookup);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

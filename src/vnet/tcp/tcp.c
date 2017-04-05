@@ -397,6 +397,7 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_c_index = tc - tm->half_open_connections;
   tc->c_is_ip4 = is_ip4;
+  tc->c_proto = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
@@ -518,7 +519,10 @@ format_tcp_session (u8 * s, va_list * args)
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (tci, thread_index);
-  return format (s, "%U", format_tcp_connection, tc);
+  if (tc)
+    return format (s, "%U", format_tcp_connection, tc);
+  else
+    return format (s, "empty");
 }
 
 u8 *
