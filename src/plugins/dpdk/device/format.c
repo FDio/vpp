@@ -295,7 +295,7 @@ format_dpdk_link_status (u8 * s, va_list * args)
   dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
   struct rte_eth_link *l = &xd->link;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->vlib_hw_if_index);
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, xd->hw_if_index);
 
   s = format (s, "%s ", l->link_status ? "up" : "down");
   if (l->link_status)
