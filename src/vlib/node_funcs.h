@@ -177,6 +177,20 @@ vlib_node_set_state (vlib_main_t * vm, u32 node_index,
   r->state = new_state;
 }
 
+/** \brief Get node dispatch state.
+ @param vm vlib_main_t pointer, varies by thread
+ @param node_index index of the node
+ @return state for node, see vlib_node_state_t
+*/
+always_inline vlib_node_state_t
+vlib_node_get_state (vlib_main_t * vm, u32 node_index)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *n;
+  n = vec_elt (nm->nodes, node_index);
+  return n->state;
+}
+
 always_inline void
 vlib_node_set_interrupt_pending (vlib_main_t * vm, u32 node_index)
 {

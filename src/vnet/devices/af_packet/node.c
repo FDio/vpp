@@ -251,7 +251,7 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  vec_foreach (dq, rt->devices_and_queues)
+  foreach_device_and_queue (dq, rt->devices_and_queues)
   {
     af_packet_if_t *apif;
     apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
