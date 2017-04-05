@@ -298,6 +298,30 @@ static void *vl_api_bridge_domain_dump_t_print
   FINISH;
 }
 
+static void *vl_api_l2fib_flush_bd_t_print
+  (vl_api_l2fib_flush_bd_t * mp, void *handle)
+{
+  u8 *s;
+  u32 bd_id = ntohl (mp->bd_id);
+
+  s = format (0, "SCRIPT: l2fib_flush_bd ");
+  s = format (s, "bd_id %d ", bd_id);
+
+  FINISH;
+}
+
+static void *vl_api_l2fib_flush_int_t_print
+  (vl_api_l2fib_flush_int_t * mp, void *handle)
+{
+  u8 *s;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  s = format (0, "SCRIPT: l2fib_flush_int ");
+  s = format (s, "sw_if_index %d ", sw_if_index);
+
+  FINISH;
+}
+
 static void *vl_api_l2fib_add_del_t_print
   (vl_api_l2fib_add_del_t * mp, void *handle)
 {
@@ -2955,6 +2979,8 @@ _(SR_POLICY_MOD, sr_policy_mod)                                         \
 _(SR_POLICY_DEL, sr_policy_del)                                         \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
+_(L2FIB_FLUSH_BD, l2fib_flush_bd)                                       \
+_(L2FIB_FLUSH_INT, l2fib_flush_int)                                     \
 _(L2_FLAGS, l2_flags)                                                   \
 _(BRIDGE_FLAGS, bridge_flags)                                           \
 _(CLASSIFY_ADD_DEL_TABLE, classify_add_del_table)			\
