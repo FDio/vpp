@@ -125,16 +125,20 @@ snat_det_get_ses_by_out (snat_det_map_t * dm, ip4_address_t * in_addr,
 }
 
 always_inline snat_det_session_t *
-snat_det_find_ses_by_in (snat_det_map_t * dm,
-			 ip4_address_t * in_addr, u16 in_port)
+snat_det_find_ses_by_in (snat_det_map_t * dm, ip4_address_t * in_addr,
+			 u16 in_port, snat_det_out_key_t out_key)
 {
+  snat_det_session_t *ses;
   u32 user_offset;
   u16 i;
 
   user_offset = snat_det_user_ses_offset (in_addr, dm->in_plen);
   for (i = 0; i < SNAT_DET_SES_PER_USER; i++)
     {
-      if (dm->sessions[i + user_offset].in_port == in_port)
+      ses = &dm->sessions[i + user_offset];
+      if (ses->in_port == in_port &&
+	  ses->out.ext_host_addr.as_u32 == out_key.ext_host_addr.as_u32 &&
+	  ses->out.ext_host_port == out_key.ext_host_port)
 	return &dm->sessions[i + user_offset];
     }
 
