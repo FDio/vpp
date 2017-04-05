@@ -267,6 +267,7 @@ static_always_inline void
 dpdk_buffer_init_from_template (void *d0, void *d1, void *d2, void *d3,
 				void *s)
 {
+#if defined(CLIB_HAVE_VEC128)
   int i;
   for (i = 0; i < 2; i++)
     {
@@ -275,6 +276,18 @@ dpdk_buffer_init_from_template (void *d0, void *d1, void *d2, void *d3,
 	*(u8x32 *) (((u8 *) d2) + i * 32) =
 	*(u8x32 *) (((u8 *) d3) + i * 32) = *(u8x32 *) (((u8 *) s) + i * 32);
     }
+#elif defined(CLIB_HAVE_VEC64)
+  int i;
+  for (i = 0; i < 4; i++)
+    {
+      *(u8x16 *) (((u8 *) d0) + i * 16) =
+	*(u8x16 *) (((u8 *) d1) + i * 16) =
+	*(u8x16 *) (((u8 *) d2) + i * 16) =
+	*(u8x16 *) (((u8 *) d3) + i * 16) = *(u8x16 *) (((u8 *) s) + i * 16);
+    }
+#else
+#error "Either CLIB_HAVE_VEC128 or CLIB_HAVE_VEC64 has to be defined"
+#endif
 }
 
 /*
