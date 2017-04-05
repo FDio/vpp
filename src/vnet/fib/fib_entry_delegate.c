@@ -15,6 +15,7 @@
 
 #include <vnet/fib/fib_entry_delegate.h>
 #include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_attached_export.h>
 
 static fib_entry_delegate_t *
 fib_entry_delegate_find_i (const fib_entry_t *fib_entry,
@@ -149,8 +150,107 @@ fib_entry_delegate_type_to_chain_type (fib_entry_delegate_type_t fdt)
     case FIB_ENTRY_DELEGATE_COVERED:
     case FIB_ENTRY_DELEGATE_ATTACHED_IMPORT:
     case FIB_ENTRY_DELEGATE_ATTACHED_EXPORT:
+    case FIB_ENTRY_DELEGATE_BFD:
         break;
     }
     ASSERT(0);
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+}
+
+/**
+ * typedef for printing a delegate
+ */
+typedef u8 * (*fib_entry_delegate_format_t)(const fib_entry_delegate_t *fed,
+                                            u8 *s);
+
+/**
+ * Print a delegate that represents a forwarding chain
+ */
+static u8 *
+fib_entry_delegate_fmt_fwd_chain (const fib_entry_delegate_t *fed,
+                                  u8 *s)
+{
+    s = format(s, "%U-chain\n  %U",
+               format_fib_forw_chain_type,
+               fib_entry_delegate_type_to_chain_type(fed->fd_type),
+               format_dpo_id, &fed->fd_dpo, 2);
+
+    return (s);
+}
+
+/**
+ * Print a delegate that represents cover tracking
+ */
+static u8 *
+fib_entry_delegate_fmt_covered (const fib_entry_delegate_t *fed,
+                                  u8 *s)
+{
+    s = format(s, "covered:[");
+    s = fib_node_children_format(fed->fd_list, s);
+    s = format(s, "]");
+
+    return (s);
+}
+
+/**
+ * Print a delegate that represents attached-import tracking
+ */
+static u8 *
+fib_entry_delegate_fmt_import (const fib_entry_delegate_t *fed,
+                               u8 *s)
+{
+    s = format(s, "import:%U", fib_ae_import_format, fed->fd_index);
+
+    return (s);
+}
+
+/**
+ * Print a delegate that represents attached-export tracking
+ */
+static u8 *
+fib_entry_delegate_fmt_export (const fib_entry_delegate_t *fed,
+                               u8 *s)
+{
+    s = format(s, "export:%U", fib_ae_export_format, fed->fd_index);
+
+    return (s);
+}
+
+/**
+ * Print a delegate that represents BFD tracking
+ */
+static u8 *
+fib_entry_delegate_fmt_bfd (const fib_entry_delegate_t *fed,
+                               u8 *s)
+{
+    s = format(s, "BFD:%d", fed->fd_bfd_state);
+
+    return (s);
+}
+
+/**
+ * A delegate type to formatter map
+ */
+static fib_entry_delegate_format_t fed_formatters[] =
+{
+    [FIB_ENTRY_DELEGATE_CHAIN_UNICAST_IP4] = fib_entry_delegate_fmt_fwd_chain,
+    [FIB_ENTRY_DELEGATE_CHAIN_UNICAST_IP6] = fib_entry_delegate_fmt_fwd_chain,
+    [FIB_ENTRY_DELEGATE_CHAIN_MPLS_EOS] = fib_entry_delegate_fmt_fwd_chain,
+    [FIB_ENTRY_DELEGATE_CHAIN_MPLS_NON_EOS] = fib_entry_delegate_fmt_fwd_chain,
+    [FIB_ENTRY_DELEGATE_CHAIN_ETHERNET] = fib_entry_delegate_fmt_fwd_chain,
+    [FIB_ENTRY_DELEGATE_CHAIN_NSH] = fib_entry_delegate_fmt_fwd_chain,
+    [FIB_ENTRY_DELEGATE_COVERED] = fib_entry_delegate_fmt_covered,
+    [FIB_ENTRY_DELEGATE_ATTACHED_IMPORT] = fib_entry_delegate_fmt_import,
+    [FIB_ENTRY_DELEGATE_ATTACHED_EXPORT] = fib_entry_delegate_fmt_export,
+    [FIB_ENTRY_DELEGATE_BFD] = fib_entry_delegate_fmt_bfd,
+};
+
+u8 *
+format_fib_entry_deletegate (u8 * s, va_list * args)
+{
+    fib_entry_delegate_t *fed;
+
+    fed = va_arg (*args, fib_entry_delegate_t *);
+
+    return (fed_formatters[fed->fd_type](fed, s));
 }

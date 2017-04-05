@@ -514,67 +514,52 @@ fib_attached_export_cover_update (fib_entry_t *fib_entry)
 }
 
 u8*
-fib_ae_import_format (fib_entry_t *fib_entry,
+fib_ae_import_format (fib_node_index_t impi,
 		      u8* s)
 {
-    fib_entry_delegate_t *fed;
+    fib_node_index_t *index;
+    fib_ae_import_t *import;
 
-    fed = fib_entry_delegate_get(fib_entry,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_IMPORT);
+    import = pool_elt_at_index(fib_ae_import_pool, impi);
 
-    if (NULL != fed)
+    s = format(s, "\n  Attached-Import:%d:[", (import - fib_ae_import_pool));
+    s = format(s, "export-prefix:%U ", format_fib_prefix, &import->faei_prefix);
+    s = format(s, "export-entry:%d ", import->faei_export_entry);
+    s = format(s, "export-sibling:%d ", import->faei_export_sibling);
+    s = format(s, "exporter:%d ", import->faei_exporter);
+    s = format(s, "export-fib:%d ", import->faei_export_fib);
+ 
+    s = format(s, "import-entry:%d ", import->faei_import_entry);
+    s = format(s, "import-fib:%d ", import->faei_import_fib);
+
+    s = format(s, "importeds:[");
+    vec_foreach(index, import->faei_importeds)
     {
-	fib_node_index_t *index;
-	fib_ae_import_t *import;
-
-	import = pool_elt_at_index(fib_ae_import_pool, fed->fd_index);
-
-	s = format(s, "\n  Attached-Import:%d:[", (import - fib_ae_import_pool));
-	s = format(s, "export-prefix:%U ", format_fib_prefix, &import->faei_prefix);
-	s = format(s, "export-entry:%d ", import->faei_export_entry);
-	s = format(s, "export-sibling:%d ", import->faei_export_sibling);
-	s = format(s, "exporter:%d ", import->faei_exporter);
-	s = format(s, "export-fib:%d ", import->faei_export_fib);
-
-	s = format(s, "import-entry:%d ", import->faei_import_entry);
-	s = format(s, "import-fib:%d ", import->faei_import_fib);
-
-	s = format(s, "importeds:[");
-	vec_foreach(index, import->faei_importeds)
-	{
-	    s = format(s, "%d, ", *index);
-	}
-        s = format(s, "]]");
+        s = format(s, "%d, ", *index);
     }
+    s = format(s, "]]");
 
     return (s);
 }
 
 u8*
-fib_ae_export_format (fib_entry_t *fib_entry,
+fib_ae_export_format (fib_node_index_t expi,
 		      u8* s)
 {
-    fib_entry_delegate_t *fed;
+    fib_node_index_t *index;
+    fib_ae_export_t *export;
 
-    fed = fib_entry_delegate_get(fib_entry,
-                                 FIB_ENTRY_DELEGATE_ATTACHED_EXPORT);
-
-    if (NULL != fed)
-    {
-        fib_node_index_t *index;
-	fib_ae_export_t *export;
-
-	export = pool_elt_at_index(fib_ae_export_pool, fed->fd_list);
+    export = pool_elt_at_index(fib_ae_export_pool, expi);
     
-	s = format(s, "\n  Attached-Export:%d:[", (export - fib_ae_export_pool));
-	s = format(s, "export-entry:%d ", export->faee_ei);
+    s = format(s, "\n  Attached-Export:%d:[", (export - fib_ae_export_pool));
+    s = format(s, "export-entry:%d ", export->faee_ei);
 
-	s = format(s, "importers:[");
-	vec_foreach(index, export->faee_importers)
-	{
-	    s = format(s, "%d, ", *index);
-	}
-	s = format(s, "]]");
+    s = format(s, "importers:[");
+    vec_foreach(index, export->faee_importers)
+    {
+        s = format(s, "%d, ", *index);
     }
+    s = format(s, "]]");
+
     return (s);
 }

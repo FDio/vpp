@@ -19,6 +19,7 @@ from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
 from vpp_papi_provider import UnexpectedApiReturnValueError
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 USEC_IN_SEC = 1000000
 
@@ -1580,6 +1581,94 @@ class BFD6TestCase(VppTestCase):
                 self.assert_equal(len(self.vapi.collect_events()), 0,
                                   "number of bfd events")
             self.test_session.send_packet()
+
+
+class BFDFIBTestCase(VppTestCase):
+    """ BFD-FIB interactions (IPv6) """
+
+    vpp_session = None
+    test_session = None
+
+    def setUp(self):
+        super(BFDFIBTestCase, self).setUp()
+        self.create_pg_interfaces(range(1))
+
+        self.factory = AuthKeyFactory()
+        self.vapi.want_bfd_events()
+        self.pg0.enable_capture()
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.configure_ipv6_neighbors()
+
+    def tearDown(self):
+        if not self.vpp_dead:
+            self.vapi.want_bfd_events(enable_disable=0)
+
+        super(BFDFIBTestCase, self).tearDown()
+
+    def test_session_with_fib(self):
+        """ BFD-FIB interactions """
+
+        # packets to match against both of the routes
+        p = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src="3001::1", dst="2001::1") /
+             UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 100)),
+             (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IPv6(src="3001::1", dst="2002::1") /
+              UDP(sport=1234, dport=1234) /
+              Raw('\xa5' * 100))]
+
+        # A recursive and a non-recursive route via a next-hop that
+        # will have a BFD session
+        ip_2001_s_64 = VppIpRoute(self, "2001::", 64,
+                                  [VppRoutePath(self.pg0.remote_ip6,
+                                                self.pg0.sw_if_index,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        ip_2002_s_64 = VppIpRoute(self, "2002::", 64,
+                                  [VppRoutePath(self.pg0.remote_ip6,
+                                                0xffffffff,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        ip_2001_s_64.add_vpp_config()
+        ip_2002_s_64.add_vpp_config()
+
+        # bring the session up now the routes are present
+        self.vpp_session = VppBFDUDPSession(self,
+                                            self.pg0,
+                                            self.pg0.remote_ip6,
+                                            af=AF_INET6)
+        self.vpp_session.add_vpp_config()
+        self.vpp_session.admin_up()
+        self.test_session = BFDTestSession(self, self.pg0, AF_INET6)
+
+        # session is up - traffic passes
+        bfd_session_up(self)
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0.get_capture(2)
+
+        # session is up - traffic is dropped
+        bfd_session_down(self)
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.get_capture(0)
+        self.pg0.assert_nothing_captured("Traffic dropped when BFD down")
+
+        # session is up - traffic passes
+        bfd_session_up(self)
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg0.get_capture(2)
 
 
 class BFDSHA1TestCase(VppTestCase):

@@ -27,8 +27,12 @@
 /* *INDENT-OFF* */
 /** identifier of BFD session based on UDP transport only */
 typedef CLIB_PACKED (struct {
-  /** interface to which the session is tied */
-  u32 sw_if_index;
+  union {
+    /** interface to which the session is tied - single-hop */
+    u32 sw_if_index;
+    /** the FIB index the peer is in - multi-hop*/
+    u32 fib_index;
+  };
   /** local address */
   ip46_address_t local_addr;
   /** peer address */
