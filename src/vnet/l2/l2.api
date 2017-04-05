@@ -86,6 +86,50 @@ define l2_fib_clear_table_reply
   i32 retval;
 };
 
+/** \brief L2 FIB flush bridge domain entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the entry's bridge domain id
+*/
+define l2fib_flush_bd
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+};
+
+/** \brief L2 FIB flush bridge domain entries response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define l2fib_flush_bd_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief L2 FIB flush interface entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the entry's bridge domain id
+*/
+define l2fib_flush_int
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief L2 FIB flush interface entries response
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+*/
+define l2fib_flush_int_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 /** \brief L2 FIB add entry request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

@@ -48,6 +48,8 @@
 _(L2_XCONNECT_DUMP, l2_xconnect_dump)                       \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                   \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                     \
+_(L2FIB_FLUSH_INT, l2fib_flush_int)                         \
+_(L2FIB_FLUSH_BD, l2fib_flush_bd)                           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                             \
 _(L2_FLAGS, l2_flags)                                       \
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)             \
@@ -238,6 +240,42 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2FIB_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_l2fib_flush_int_t_handler (vl_api_l2fib_flush_int_t * mp)
+{
+  int rv = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_l2fib_flush_int_reply_t *rmp;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  l2fib_flush_int_mac (vm, sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_L2FIB_FLUSH_INT_REPLY);
+}
+
+static void
+vl_api_l2fib_flush_bd_t_handler (vl_api_l2fib_flush_bd_t * mp)
+{
+  int rv = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  bd_main_t *bdm = &bd_main;
+  vl_api_l2fib_flush_bd_reply_t *rmp;
+
+  u32 bd_id = ntohl (mp->bd_id);
+  uword *p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+  if (p == 0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto out;
+    }
+  l2fib_flush_bd_mac (vm, *p);
+out:
+  REPLY_MACRO (VL_API_L2FIB_FLUSH_BD_REPLY);
 }
 
 static void
