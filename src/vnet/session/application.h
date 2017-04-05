@@ -18,11 +18,13 @@
 
 #include <vnet/vnet.h>
 #include <vnet/session/session.h>
+#include <vnet/session/segment_manager.h>
 
 typedef enum
 {
   APP_SERVER,
-  APP_CLIENT
+  APP_CLIENT,
+  APP_N_TYPES
 } application_type_t;
 
 typedef struct _stream_session_cb_vft
@@ -35,7 +37,7 @@ typedef struct _stream_session_cb_vft
   int (*session_accept_callback) (stream_session_t * new_session);
 
   /* Connection request callback */
-  int (*session_connected_callback) (u32 api_client_index,
+  int (*session_connected_callback) (u32 app_index, u32 api_context,
 				     stream_session_t * s, u8 code);
 
   /** Notify app that session is closing */
@@ -59,45 +61,52 @@ typedef struct _application
   /** Flags */
   u32 flags;
 
+  /* Stream server mode: accept or connect
+   * TODO REMOVE*/
+  u8 mode;
+
+  /** Index of the listen session or connect session
+   * TODO REMOVE*/
+  u32 session_index;
+
+  /** Session thread index for client connect sessions
+   * TODO REMOVE */
+  u32 thread_index;
+
+  /*
+   * Binary API interface to external app
+   */
+
   /** Binary API connection index, ~0 if internal */
   u32 api_client_index;
-
-  /* */
-  u32 api_context;
 
   /** Application listens for events on this svm queue */
   unix_shared_memory_queue_t *event_queue;
 
-  /** Stream session type */
-  u8 session_type;
-
-  /* Stream server mode: accept or connect */
-  u8 mode;
-
-  u32 session_manager_index;
-
-  /*
-   * Bind/Listen specific
-   */
-
-  /** Accept cookie, for multiple session flavors ($$$ maybe) */
-  u32 accept_cookie;
-
-  /** Index of the listen session or connect session */
-  u32 session_index;
-
-  /** Session thread index for client connect sessions */
-  u32 thread_index;
-
   /*
    * Callbacks: shoulder-taps for the server/client
    */
+
   session_cb_vft_t cb_fns;
+
+  /*
+   * svm segment management
+   */
+  u32 connects_seg_manager;
+
+  /* Lookup tables for listeners. Value is segment manager index */
+  uword *listeners_table;
+
+  u32 first_segment_manager;
+
+  /** Segment manager properties. Shared by all segment managers */
+  segment_manager_properties_t sm_properties;
 } application_t;
 
-application_t *application_new (application_type_t type, session_type_t sst,
-				u32 api_client_index, u32 flags,
-				session_cb_vft_t * cb_fns);
+application_t *application_new ();
+int
+application_init (application_t * app, u32 api_client_index, u64 * options,
+		  session_cb_vft_t * cb_fns);
 void application_del (application_t * app);
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
@@ -105,10 +114,20 @@ application_t *application_lookup (u32 api_client_index);
 u32 application_get_index (application_t * app);
 
 int
-application_server_init (application_t * server, u32 segment_size,
-			 u32 add_segment_size, u32 rx_fifo_size,
-			 u32 tx_fifo_size, u8 ** segment_name);
+application_start_listen (application_t * app, session_type_t session_type,
+			  transport_endpoint_t * tep, u64 * handle);
+int application_stop_listen (application_t * srv, u64 handle);
+int
+application_open_session (application_t * app, session_type_t sst,
+			  transport_endpoint_t * tep, u32 api_context);
 int application_api_queue_is_full (application_t * app);
+
+segment_manager_t *application_get_listen_segment_manager (application_t *
+							   app,
+							   stream_session_t *
+							   s);
+segment_manager_t *application_get_connect_segment_manager (application_t *
+							    app);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

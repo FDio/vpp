@@ -20,8 +20,6 @@ svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
 {
   svm_fifo_t *f;
-  pthread_mutexattr_t attr;
-  pthread_condattr_t cattr;
 
   f = clib_mem_alloc_aligned_or_null (sizeof (*f) + data_size_in_bytes,
 				      CLIB_CACHE_LINE_BYTES);
@@ -32,27 +30,14 @@ svm_fifo_create (u32 data_size_in_bytes)
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
 
-  memset (&attr, 0, sizeof (attr));
-  memset (&cattr, 0, sizeof (cattr));
-
-  if (pthread_mutexattr_init (&attr))
-    clib_unix_warning ("mutexattr_init");
-  if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
-    clib_unix_warning ("pthread_mutexattr_setpshared");
-  if (pthread_mutex_init (&f->mutex, &attr))
-    clib_unix_warning ("mutex_init");
-  if (pthread_mutexattr_destroy (&attr))
-    clib_unix_warning ("mutexattr_destroy");
-  if (pthread_condattr_init (&cattr))
-    clib_unix_warning ("condattr_init");
-  if (pthread_condattr_setpshared (&cattr, PTHREAD_PROCESS_SHARED))
-    clib_unix_warning ("condattr_setpshared");
-  if (pthread_cond_init (&f->condvar, &cattr))
-    clib_unix_warning ("cond_init1");
-  if (pthread_condattr_destroy (&cattr))
-    clib_unix_warning ("cond_init2");
-
   return (f);
+}
+
+void
+svm_fifo_free (svm_fifo_t * f)
+{
+  pool_free (f->ooo_segments);
+  clib_mem_free (f);
 }
 
 always_inline ooo_segment_t *
@@ -565,6 +550,43 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes)
   __sync_fetch_and_sub (&f->cursize, total_drop_bytes);
 
   return total_drop_bytes;
+}
+
+u8 *
+format_svm_fifo (u8 * s, va_list * args)
+{
+  svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
+  int verbose = va_arg (*args, int);
+
+  s = format (s, "cursize %u nitems %u has_event %d\n",
+	      f->cursize, f->nitems, f->has_event);
+  s = format (s, "head %d tail %d\n", f->head, f->tail);
+
+  if (verbose > 1)
+    s = format
+      (s, "server session %d thread %d client session %d thread %d\n",
+       f->server_session_index, f->server_thread_index,
+       f->client_session_index, f->client_thread_index);
+
+  if (verbose)
+    {
+      ooo_segment_t *seg;
+      u32 seg_index;
+
+      s =
+	format (s, "ooo pool %d active elts\n", pool_elts (f->ooo_segments));
+
+      seg_index = f->ooos_list_head;
+
+      while (seg_index != OOO_SEGMENT_INVALID_INDEX)
+	{
+	  seg = pool_elt_at_index (f->ooo_segments, seg_index);
+	  s = format (s, "  pos %u, len %u next %d\n",
+		      seg->fifo_position, seg->length, seg->next);
+	  seg_index = seg->next;
+	}
+    }
+  return s;
 }
 
 /*

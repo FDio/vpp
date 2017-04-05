@@ -1841,6 +1841,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_ESTABLISHED:
 	    case TCP_STATE_FIN_WAIT_1:
 	    case TCP_STATE_FIN_WAIT_2:
+	      vlib_buffer_advance (b0, n_advance_bytes0);
 	      error0 = tcp_segment_rcv (tm, tc0, b0, n_data_bytes0, &next0);
 	      break;
 	    case TCP_STATE_CLOSE_WAIT:
@@ -2410,12 +2411,6 @@ VLIB_REGISTER_NODE (tcp6_input_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (tcp6_input_node, tcp6_input);
-void
-tcp_update_time (f64 now, u32 thread_index)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  tw_timer_expire_timers_16t_2w_512sl (&tm->timer_wheels[thread_index], now);
-}
 
 static void
 tcp_dispatch_table_init (tcp_main_t * tm)

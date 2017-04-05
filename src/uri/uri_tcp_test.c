@@ -15,8 +15,6 @@
 
 #include <stdio.h>
 #include <signal.h>
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
 #include <svm/svm_fifo_segment.h>
 #include <vlibmemory/api.h>
 #include <vpp/api/vpe_msg_enum.h>
@@ -47,8 +45,7 @@ typedef struct
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  u32 vpp_session_index;
-  u32 vpp_session_thread;
+  u32 vpp_session_handle;
 } session_t;
 
 typedef enum
@@ -116,7 +113,7 @@ typedef struct
   pthread_t client_rx_thread_handle;
   u32 client_bytes_received;
   u8 test_return_packets;
-  u32 bytes_to_send;
+  u64 bytes_to_send;
 
   /* convenience */
   svm_fifo_segment_main_t *segment_main;
@@ -150,6 +147,88 @@ wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
     }
   clib_warning ("timeout waiting for STATE_READY");
   return -1;
+}
+
+void
+application_attach (uri_tcp_test_main_t * utm)
+{
+  vl_api_application_attach_t *bmp;
+  u32 fifo_size = 3 << 20;
+  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
+
+  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
+  bmp->client_index = utm->my_client_index;
+  bmp->context = ntohl (0xfeedface);
+  bmp->options[SESSION_OPTIONS_FLAGS] =
+    SESSION_OPTIONS_FLAGS_USE_FIFO | SESSION_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
+  bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
+  bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = 256 << 20;
+  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+}
+
+void
+application_detach (uri_tcp_test_main_t * utm)
+{
+  vl_api_application_detach_t *bmp;
+  bmp = vl_msg_api_alloc (sizeof (*bmp));
+  memset (bmp, 0, sizeof (*bmp));
+
+  bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
+  bmp->client_index = utm->my_client_index;
+  bmp->context = ntohl (0xfeedface);
+  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+}
+
+static void
+vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
+					   mp)
+{
+  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  svm_fifo_segment_create_args_t _a, *a = &_a;
+  int rv;
+
+  if (mp->retval)
+    {
+      uword *errp = hash_get (utm->error_string_by_error_number, mp->retval);
+      clib_warning ("attach failed: %s", *errp);
+      utm->state = STATE_FAILED;
+      return;
+    }
+
+  if (mp->segment_name_length == 0)
+    {
+      clib_warning ("segment_name_length zero");
+      return;
+    }
+
+  a->segment_name = (char *) mp->segment_name;
+  a->segment_size = mp->segment_size;
+
+  ASSERT (mp->app_event_queue_address);
+
+  /* Attach to the segment vpp created */
+  rv = svm_fifo_segment_attach (a);
+  if (rv)
+    {
+      clib_warning ("svm_fifo_segment_attach ('%s') failed",
+		    mp->segment_name);
+      return;
+    }
+
+  utm->our_event_queue =
+    (unix_shared_memory_queue_t *) mp->app_event_queue_address;
+
+}
+
+static void
+vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
+					   mp)
+{
+  if (mp->retval)
+    clib_warning ("detach returned with err: %d", mp->retval);
 }
 
 static void
@@ -239,21 +318,18 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
   vl_api_disconnect_session_reply_t *rmp;
   uword *p;
   int rv = 0;
-  u64 key;
 
-  key = (((u64) mp->session_thread_index) << 32) | (u64) mp->session_index;
-
-  p = hash_get (utm->session_index_by_vpp_handles, key);
+  p = hash_get (utm->session_index_by_vpp_handles, mp->handle);
 
   if (p)
     {
       session = pool_elt_at_index (utm->sessions, p[0]);
-      hash_unset (utm->session_index_by_vpp_handles, key);
+      hash_unset (utm->session_index_by_vpp_handles, mp->handle);
       pool_put (utm->sessions, session);
     }
   else
     {
-      clib_warning ("couldn't find session key %llx", key);
+      clib_warning ("couldn't find session key %llx", mp->handle);
       rv = -11;
     }
 
@@ -264,8 +340,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
 
   rmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION_REPLY);
   rmp->retval = rv;
-  rmp->session_index = mp->session_index;
-  rmp->session_thread_index = mp->session_thread_index;
+  rmp->handle = mp->handle;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
 }
 
@@ -277,22 +352,19 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
   vl_api_reset_session_reply_t *rmp;
   uword *p;
   int rv = 0;
-  u64 key;
 
-  key = (((u64) mp->session_thread_index) << 32) | (u64) mp->session_index;
-
-  p = hash_get (utm->session_index_by_vpp_handles, key);
+  p = hash_get (utm->session_index_by_vpp_handles, mp->handle);
 
   if (p)
     {
       session = pool_elt_at_index (utm->sessions, p[0]);
-      hash_unset (utm->session_index_by_vpp_handles, key);
+      hash_unset (utm->session_index_by_vpp_handles, mp->handle);
       pool_put (utm->sessions, session);
       utm->time_to_stop = 1;
     }
   else
     {
-      clib_warning ("couldn't find session key %llx", key);
+      clib_warning ("couldn't find session key %llx", mp->handle);
       rv = -11;
     }
 
@@ -300,8 +372,7 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_RESET_SESSION_REPLY);
   rmp->retval = rv;
-  rmp->session_index = mp->session_index;
-  rmp->session_thread_index = mp->session_thread_index;
+  rmp->handle = mp->handle;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
 }
 
@@ -343,7 +414,7 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	{
 	  if (n_read == -2)
 	    {
-	      clib_warning ("weird!");
+//            clib_warning ("weird!");
 	      break;
 	    }
 	}
@@ -409,51 +480,18 @@ static void
 vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 {
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
-  svm_fifo_segment_create_args_t _a, *a = &_a;
   session_t *session;
   u32 session_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
   int rv;
-  u64 key;
 
   if (mp->retval)
     {
-      clib_warning ("connection failed with code: %d", mp->retval);
+      uword *errp = hash_get (utm->error_string_by_error_number, -mp->retval);
+      clib_warning ("connection failed with code: %s", *errp);
       utm->state = STATE_FAILED;
       return;
     }
-
-  /*
-   * Attatch to segment
-   */
-
-  if (mp->segment_name_length == 0)
-    {
-      clib_warning ("segment_name_length zero");
-      utm->state = STATE_FAILED;
-      return;
-    }
-
-  a->segment_name = (char *) mp->segment_name;
-  a->segment_size = mp->segment_size;
-
-  ASSERT (mp->client_event_queue_address);
-
-  /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
-  if (rv)
-    {
-      clib_warning ("svm_fifo_segment_attach ('%s') failed",
-		    mp->segment_name);
-      return;
-    }
-
-  /*
-   * Save the queues
-   */
-
-  utm->our_event_queue = (unix_shared_memory_queue_t *)
-    mp->client_event_queue_address;
 
   utm->vpp_event_queue = (unix_shared_memory_queue_t *)
     mp->vpp_event_queue_address;
@@ -472,16 +510,14 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 
   session->server_rx_fifo = rx_fifo;
   session->server_tx_fifo = tx_fifo;
-  session->vpp_session_index = mp->session_index;
-  session->vpp_session_thread = mp->session_thread_index;
+  session->vpp_session_handle = mp->handle;
 
   /* Save handle */
   utm->connected_session_index = session_index;
   utm->state = STATE_READY;
 
   /* Add it to lookup table */
-  key = (((u64) mp->session_thread_index) << 32) | (u64) mp->session_index;
-  hash_set (utm->session_index_by_vpp_handles, key, session_index);
+  hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
 
   /* Start RX thread */
   rv = pthread_create (&utm->client_rx_thread_handle,
@@ -606,8 +642,7 @@ client_disconnect (uri_tcp_test_main_t * utm)
   memset (dmp, 0, sizeof (*dmp));
   dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
   dmp->client_index = utm->my_client_index;
-  dmp->session_index = connected_session->vpp_session_index;
-  dmp->session_thread_index = connected_session->vpp_session_thread;
+  dmp->handle = connected_session->vpp_session_handle;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & dmp);
 }
 
@@ -616,6 +651,7 @@ client_test (uri_tcp_test_main_t * utm)
 {
   int i;
 
+  application_attach (utm);
   client_connect (utm);
 
   if (wait_for_state_change (utm, STATE_READY))
@@ -636,46 +672,25 @@ client_test (uri_tcp_test_main_t * utm)
 
   if (wait_for_state_change (utm, STATE_START))
     {
+      clib_warning ("Disconnect failed");
       return;
     }
+  application_detach (utm);
 }
 
 static void
 vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 {
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  int rv;
 
   if (mp->retval)
     {
-      clib_warning ("bind failed: %d", mp->retval);
+      uword *errp = hash_get (utm->error_string_by_error_number,
+			      -clib_net_to_host_u32 (mp->retval));
+      clib_warning ("bind failed: %s", (char *) *errp);
       utm->state = STATE_FAILED;
       return;
     }
-
-  if (mp->segment_name_length == 0)
-    {
-      clib_warning ("segment_name_length zero");
-      return;
-    }
-
-  a->segment_name = (char *) mp->segment_name;
-  a->segment_size = mp->segment_size;
-
-  ASSERT (mp->server_event_queue_address);
-
-  /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
-  if (rv)
-    {
-      clib_warning ("svm_fifo_segment_attach ('%s') failed",
-		    mp->segment_name);
-      return;
-    }
-
-  utm->our_event_queue =
-    (unix_shared_memory_queue_t *) mp->server_event_queue_address;
 
   utm->state = STATE_READY;
 }
@@ -691,6 +706,89 @@ vl_api_unbind_uri_reply_t_handler (vl_api_unbind_uri_reply_t * mp)
   utm->state = STATE_START;
 }
 
+u8 *
+format_ip4_address (u8 * s, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  return format (s, "%d.%d.%d.%d", a[0], a[1], a[2], a[3]);
+}
+
+u8 *
+format_ip6_address (u8 * s, va_list * args)
+{
+  ip6_address_t *a = va_arg (*args, ip6_address_t *);
+  u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
+
+  i_max_n_zero = ARRAY_LEN (a->as_u16);
+  max_n_zeros = 0;
+  i_first_zero = i_max_n_zero;
+  n_zeros = 0;
+  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
+    {
+      u32 is_zero = a->as_u16[i] == 0;
+      if (is_zero && i_first_zero >= ARRAY_LEN (a->as_u16))
+	{
+	  i_first_zero = i;
+	  n_zeros = 0;
+	}
+      n_zeros += is_zero;
+      if ((!is_zero && n_zeros > max_n_zeros)
+	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
+	{
+	  i_max_n_zero = i_first_zero;
+	  max_n_zeros = n_zeros;
+	  i_first_zero = ARRAY_LEN (a->as_u16);
+	  n_zeros = 0;
+	}
+    }
+
+  last_double_colon = 0;
+  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
+    {
+      if (i == i_max_n_zero && max_n_zeros > 1)
+	{
+	  s = format (s, "::");
+	  i += max_n_zeros - 1;
+	  last_double_colon = 1;
+	}
+      else
+	{
+	  s = format (s, "%s%x",
+		      (last_double_colon || i == 0) ? "" : ":",
+		      clib_net_to_host_u16 (a->as_u16[i]));
+	  last_double_colon = 0;
+	}
+    }
+
+  return s;
+}
+
+/* Format an IP46 address. */
+u8 *
+format_ip46_address (u8 * s, va_list * args)
+{
+  ip46_address_t *ip46 = va_arg (*args, ip46_address_t *);
+  ip46_type_t type = va_arg (*args, ip46_type_t);
+  int is_ip4 = 1;
+
+  switch (type)
+    {
+    case IP46_TYPE_ANY:
+      is_ip4 = ip46_address_is_ip4 (ip46);
+      break;
+    case IP46_TYPE_IP4:
+      is_ip4 = 1;
+      break;
+    case IP46_TYPE_IP6:
+      is_ip4 = 0;
+      break;
+    }
+
+  return is_ip4 ?
+    format (s, "%U", format_ip4_address, &ip46->ip4) :
+    format (s, "%U", format_ip6_address, &ip46->ip6);
+}
+
 static void
 vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 {
@@ -699,12 +797,15 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   svm_fifo_t *rx_fifo, *tx_fifo;
   session_t *session;
   static f64 start_time;
-  u64 key;
   u32 session_index;
+  u8 *ip_str;
 
   if (start_time == 0.0)
     start_time = clib_time_now (&utm->clib_time);
 
+  ip_str = format (0, "%U", format_ip46_address, &mp->ip, mp->is_ip4);
+  clib_warning ("Accepted session from: %s:%d", ip_str,
+		clib_net_to_host_u16 (mp->port));
   utm->vpp_event_queue = (unix_shared_memory_queue_t *)
     mp->vpp_event_queue_address;
 
@@ -721,8 +822,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->server_tx_fifo = tx_fifo;
 
   /* Add it to lookup table */
-  key = (((u64) mp->session_thread_index) << 32) | (u64) mp->session_index;
-  hash_set (utm->session_index_by_vpp_handles, key, session_index);
+  hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
 
   utm->state = STATE_READY;
 
@@ -741,9 +841,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
-  rmp->session_type = mp->session_type;
-  rmp->session_index = mp->session_index;
-  rmp->session_thread_index = mp->session_thread_index;
+  rmp->handle = mp->handle;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
 }
 
@@ -837,22 +935,15 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 }
 
 void
-server_bind (uri_tcp_test_main_t * utm)
+server_listen (uri_tcp_test_main_t * utm)
 {
   vl_api_bind_uri_t *bmp;
-  u32 fifo_size = 3 << 20;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
   bmp->client_index = utm->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  bmp->initial_segment_size = 256 << 20;	/* size of initial segment */
-  bmp->options[SESSION_OPTIONS_FLAGS] =
-    SESSION_OPTIONS_FLAGS_USE_FIFO | SESSION_OPTIONS_FLAGS_ADD_SEGMENT;
-  bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
-  bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   memcpy (bmp->uri, utm->uri, vec_len (utm->uri));
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
 }
@@ -874,8 +965,10 @@ server_unbind (uri_tcp_test_main_t * utm)
 void
 server_test (uri_tcp_test_main_t * utm)
 {
+  application_attach (utm);
+
   /* Bind to uri */
-  server_bind (utm);
+  server_listen (utm);
 
   if (wait_for_state_change (utm, STATE_READY))
     {
@@ -894,6 +987,8 @@ server_test (uri_tcp_test_main_t * utm)
       clib_warning ("timeout waiting for STATE_START");
       return;
     }
+
+  application_detach (utm);
 
   fformat (stdout, "Test complete...\n");
 }
@@ -916,7 +1011,9 @@ _(CONNECT_URI_REPLY, connect_uri_reply)                 \
 _(DISCONNECT_SESSION, disconnect_session)               \
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   \
 _(RESET_SESSION, reset_session)                         \
-_(MAP_ANOTHER_SEGMENT, map_another_segment)
+_(APPLICATION_ATTACH_REPLY, application_attach_reply)   \
+_(APPLICATION_DETACH_REPLY, application_detach_reply)	\
+_(MAP_ANOTHER_SEGMENT, map_another_segment)		\
 
 void
 uri_api_hookup (uri_tcp_test_main_t * utm)
@@ -941,7 +1038,7 @@ main (int argc, char **argv)
   u8 *heap, *uri = 0;
   u8 *bind_uri = (u8 *) "tcp://0.0.0.0/1234";
   u8 *connect_uri = (u8 *) "tcp://6.0.1.2/1234";
-  u32 bytes_to_send = 64 << 10, mbytes;
+  u64 bytes_to_send = 64 << 10, mbytes;
   u32 tmp;
   mheap_t *h;
   session_t *session;
@@ -988,9 +1085,13 @@ main (int argc, char **argv)
 	drop_packets = 1;
       else if (unformat (a, "test"))
 	test_return_packets = 1;
-      else if (unformat (a, "mbytes %d", &mbytes))
+      else if (unformat (a, "mbytes %lld", &mbytes))
 	{
 	  bytes_to_send = mbytes << 20;
+	}
+      else if (unformat (a, "gbytes %lld", &mbytes))
+	{
+	  bytes_to_send = mbytes << 30;
 	}
       else
 	{

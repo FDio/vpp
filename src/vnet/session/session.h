@@ -21,6 +21,7 @@
 #include <vppinfra/sparse_vec.h>
 #include <svm/svm_fifo_segment.h>
 #include <vnet/session/session_debug.h>
+#include <vnet/session/segment_manager.h>
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
@@ -107,6 +108,9 @@ typedef struct _stream_session_t
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
+  /** svm segment index where fifos were allocated */
+  u32 svm_segment_index;
+
   /** Type */
   u8 session_type;
 
@@ -133,26 +137,9 @@ typedef struct _stream_session_t
   /** stream server pool index */
   u32 app_index;
 
-  /** svm segment index */
-  u32 server_segment_index;
+  /** Parent listener session if the result of an accept */
+  u32 listener_index;
 } stream_session_t;
-
-typedef struct _session_manager
-{
-  /** segments mapped by this server */
-  u32 *segment_indices;
-
-  /** Session fifo sizes. They are provided for binds and take default
-   * values for connects */
-  u32 rx_fifo_size;
-  u32 tx_fifo_size;
-
-  /** Configured additional segment size */
-  u32 add_segment_size;
-
-  /** Flag that indicates if additional segments should be created */
-  u8 add_segment;
-} session_manager_t;
 
 /* Forward definition */
 typedef struct _session_manager_main session_manager_main_t;
@@ -206,11 +193,6 @@ struct _session_manager_main
   /** Unique segment name counter */
   u32 unique_segment_name_counter;
 
-  /* Connection manager used by incoming connects */
-  u32 connect_manager_index[SESSION_N_TYPES];
-
-  session_manager_t *session_managers;
-
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
 
@@ -242,37 +224,6 @@ vnet_get_session_manager_main ()
   return &session_manager_main;
 }
 
-always_inline session_manager_t *
-session_manager_get (u32 index)
-{
-  return pool_elt_at_index (session_manager_main.session_managers, index);
-}
-
-always_inline unix_shared_memory_queue_t *
-session_manager_get_vpp_event_queue (u32 thread_index)
-{
-  return session_manager_main.vpp_event_queues[thread_index];
-}
-
-always_inline session_manager_t *
-connects_session_manager_get (session_manager_main_t * smm,
-			      session_type_t session_type)
-{
-  return pool_elt_at_index (smm->session_managers,
-			    smm->connect_manager_index[session_type]);
-}
-
-void session_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
-int session_manager_flush_enqueue_events (u32 thread_index);
-int
-session_manager_add_first_segment (session_manager_main_t * smm,
-				   session_manager_t * sm, u32 segment_size,
-				   u8 ** segment_name);
-void
-session_manager_del (session_manager_main_t * smm, session_manager_t * sm);
-void
-connects_session_manager_init (session_manager_main_t * smm, u8 session_type);
-
 /*
  * Stream session functions
  */
@@ -300,6 +251,8 @@ transport_connection_t
 				      u32 thread_index);
 stream_session_t *stream_session_lookup_listener (ip46_address_t * lcl,
 						  u16 lcl_port, u8 proto);
+void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
+int stream_session_table_del_for_tc (transport_connection_t * tc);
 
 always_inline stream_session_t *
 stream_session_get_tsi (u64 ti_and_si, u32 thread_index)
@@ -310,7 +263,7 @@ stream_session_get_tsi (u64 ti_and_si, u32 thread_index)
 }
 
 always_inline stream_session_t *
-stream_session_get (u64 si, u32 thread_index)
+stream_session_get (u32 si, u32 thread_index)
 {
   return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
 }
@@ -325,6 +278,40 @@ stream_session_get_if_valid (u64 si, u32 thread_index)
     return 0;
 
   return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
+}
+
+always_inline u64
+stream_session_handle (stream_session_t * s)
+{
+  return ((u64) s->thread_index << 32) | (u64) s->session_index;
+}
+
+always_inline u32
+stream_session_index_from_handle (u64 handle)
+{
+  return handle & 0xFFFFFFFF;
+}
+
+always_inline u32
+stream_session_thread_from_handle (u64 handle)
+{
+  return handle >> 32;
+}
+
+always_inline void
+stream_session_parse_handle (u64 handle, u32 * index, u32 * thread_index)
+{
+  *index = stream_session_index_from_handle (handle);
+  *thread_index = stream_session_thread_from_handle (handle);
+}
+
+always_inline stream_session_t *
+stream_session_get_from_handle (u64 handle)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  return pool_elt_at_index (smm->sessions[stream_session_thread_from_handle
+					  (handle)],
+			    stream_session_index_from_handle (handle));
 }
 
 always_inline stream_session_t *
@@ -375,13 +362,14 @@ void stream_session_reset_notify (transport_connection_t * tc);
 int
 stream_session_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 sst, u8 notify);
-int stream_session_open (u8 sst, ip46_address_t * addr,
-			 u16 port_host_byte_order, u32 api_client_index);
+int
+stream_session_open (u32 app_index, session_type_t st,
+		     transport_endpoint_t * tep,
+		     transport_connection_t ** tc);
+int stream_session_listen (stream_session_t * s, transport_endpoint_t * tep);
+int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
-int
-stream_session_start_listen (u32 server_index, ip46_address_t * ip, u16 port);
-void stream_session_stop_listen (u32 server_index);
 
 u8 *format_stream_session (u8 * s, va_list * args);
 
@@ -389,6 +377,71 @@ void session_register_transport (u8 type, const transport_proto_vft_t * vft);
 transport_proto_vft_t *session_get_transport_vft (u8 type);
 
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
+
+always_inline unix_shared_memory_queue_t *
+session_manager_get_vpp_event_queue (u32 thread_index)
+{
+  return session_manager_main.vpp_event_queues[thread_index];
+}
+
+int session_manager_flush_enqueue_events (u32 thread_index);
+
+always_inline u64
+listen_session_get_handle (stream_session_t * s)
+{
+  ASSERT (s->session_state == SESSION_STATE_LISTENING);
+  return ((u64) s->session_type << 32) | s->session_index;
+}
+
+always_inline stream_session_t *
+listen_session_get_from_handle (u64 handle)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  stream_session_t *s;
+  u32 type, index;
+  type = handle >> 32;
+  index = handle & 0xFFFFFFFF;
+
+  if (pool_is_free_index (smm->listen_sessions[type], index))
+    return 0;
+
+  s = pool_elt_at_index (smm->listen_sessions[type], index);
+  ASSERT (s->session_state == SESSION_STATE_LISTENING);
+  return s;
+}
+
+always_inline stream_session_t *
+listen_session_new (session_type_t type)
+{
+  stream_session_t *s;
+  pool_get (session_manager_main.listen_sessions[type], s);
+  memset (s, 0, sizeof (*s));
+
+  s->session_type = type;
+  s->session_state = SESSION_STATE_LISTENING;
+  s->session_index = s - session_manager_main.listen_sessions[type];
+
+  return s;
+}
+
+always_inline stream_session_t *
+listen_session_get (session_type_t type, u32 index)
+{
+  return pool_elt_at_index (session_manager_main.listen_sessions[type],
+			    index);
+}
+
+always_inline void
+listen_session_del (stream_session_t * s)
+{
+  pool_put (session_manager_main.listen_sessions[s->session_type], s);
+}
+
+always_inline u8
+session_manager_is_enabled ()
+{
+  return session_manager_main.is_enabled == 1;
+}
 
 #endif /* __included_session_h__ */
 
