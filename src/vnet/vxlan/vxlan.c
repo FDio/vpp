@@ -576,6 +576,7 @@ int vnet_vxlan_add_del_tunnel
 
       t = pool_elt_at_index (vxm->tunnels, p[0]);
 
+      sw_if_index = t->sw_if_index;
       vnet_sw_interface_set_flags (vnm, t->sw_if_index, 0 /* down */);
       vnet_sw_interface_t * si = vnet_get_sw_interface (vnm, t->sw_if_index);
       si->flags |= VNET_SW_INTERFACE_FLAG_HIDDEN;
