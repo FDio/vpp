@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_c0398042",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-04-06T10:08:29Z",
+      "side": 1,
+      "message": "i appreciate this was probably not the formatting you chose, and fixstyle mangled it. but if each condition goes on its own line, then that gets passed the \u0027censors\u0027 too; e.g.;\n\n  if ((a \u0026\u0026 (address_length !\u003d a-\u003eaddress_length)) ||\n      (address_length \u003d\u003d 0) ||\n      (lm-\u003eis_ip6 \u0026\u0026 address_length \u003e 128) ||\n      (!lm-\u003eis_ip6 \u0026\u0026 address_length \u003e 32))\n    {\n\nwhich IMO is more humanly parsable.",
+      "revId": "d1ba13069e7827d201511dd45509eae675b59d18",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
