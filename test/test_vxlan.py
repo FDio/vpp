@@ -101,12 +101,14 @@ class TestVxlan(BridgeDomain, VppTestCase):
         vni_start = 10000
         vni_end = vni_start + n_shared_dst_tunnels
         for vni in range(vni_start, vni_end):
-            cls.vapi.vxlan_add_del_tunnel(
+            r = cls.vapi.vxlan_add_del_tunnel(
                 src_addr=cls.pg0.local_ip4n,
                 dst_addr=cls.mcast_ip4n,
                 mcast_sw_if_index=1,
                 vni=vni,
                 is_add=is_add)
+            if r.sw_if_index == 0xffffffff:
+                raise "bad sw_if_index"
 
     @classmethod
     def add_shared_mcast_dst_load(cls):
