@@ -24,11 +24,6 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_endianfun
 
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
-
 #include <vnet/api_errno.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>

@@ -24,11 +24,6 @@
 #include <acl/acl_all_api_h.h>
 #undef vl_endianfun
 
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <acl/acl_all_api_h.h>
-#undef vl_printfun
-
 #include <vnet/api_errno.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -72,7 +67,7 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_acl_JVppAclImpl_init0
               vl_api_##n##_t_handler,             \
               vl_noop_handler,                    \
               vl_api_##n##_t_endian,              \
-              vl_api_##n##_t_print,               \
+              vl_noop_handler,                    \
               sizeof(vl_api_##n##_t), 1);
       foreach_api_reply_handler;
   #undef _
