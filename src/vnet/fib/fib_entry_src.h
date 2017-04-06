@@ -60,6 +60,13 @@ typedef int (*fib_entry_src_activate_t)(fib_entry_src_t *src,
 					 const fib_entry_t *fib_entry);
 
 /**
+ * Source re-activation. Called when the source is updated and remains
+ * the best source.
+ */
+typedef int (*fib_entry_src_reactivate_t)(fib_entry_src_t *src,
+                                          const fib_entry_t *fib_entry);
+
+/**
  * Source Deactivate. 
  * Called when the source is no longer best source on the entry
  */
@@ -173,6 +180,7 @@ typedef struct fib_entry_src_vft_t_ {
     fib_entry_src_deinit_t fesv_deinit;
     fib_entry_src_activate_t fesv_activate;
     fib_entry_src_deactivate_t fesv_deactivate;
+    fib_entry_src_reactivate_t fesv_reactivate;
     fib_entry_src_add_t fesv_add;
     fib_entry_src_remove_t fesv_remove;
     fib_entry_src_path_swap_t fesv_path_swap;
@@ -240,6 +248,9 @@ extern fib_entry_t* fib_entry_src_action_update(fib_entry_t *fib_entry,
 
 extern fib_entry_src_flag_t fib_entry_src_action_remove(fib_entry_t *fib_entry,
 							fib_source_t source);
+extern fib_entry_src_flag_t
+fib_entry_src_action_remove_or_update_inherit(fib_entry_t *fib_entry,
+                                              fib_source_t source);
 
 extern void fib_entry_src_action_install(fib_entry_t *fib_entry,
 					 fib_source_t source);
@@ -262,10 +273,13 @@ extern fib_entry_src_flag_t fib_entry_src_action_path_remove(fib_entry_t *fib_en
 
 extern void fib_entry_src_action_installed(const fib_entry_t *fib_entry,
 					   fib_source_t source);
+extern void fib_entry_src_inherit (const fib_entry_t *cover,
+                                   fib_entry_t *covered);
 
 extern fib_forward_chain_type_t fib_entry_get_default_chain_type(
     const fib_entry_t *fib_entry);
 extern fib_entry_flag_t fib_entry_get_flags_i(const fib_entry_t *fib_entry);
+
 extern fib_path_list_flags_t fib_entry_src_flags_2_path_list_flags(
     fib_entry_flag_t eflags);
 
@@ -279,6 +293,10 @@ extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 
 extern fib_protocol_t fib_entry_get_proto(const fib_entry_t * fib_entry);
 extern dpo_proto_t fib_entry_get_dpo_proto(const fib_entry_t * fib_entry);
+
+extern void fib_entry_source_change(fib_entry_t *fib_entry,
+                                    fib_source_t old_source,
+                                    fib_source_t new_source);
 
 /*
  * Per-source registration. declared here so we save a separate .h file for each
