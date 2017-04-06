@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_4002300c",
+        "filename": "src/plugins/snat/in2out.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2221,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-06T12:23:51Z",
+      "side": 1,
+      "message": "ICMP_ACTIVE",
+      "range": {
+        "startLine": 2221,
+        "startChar": 29,
+        "endLine": 2221,
+        "endChar": 39
+      },
+      "revId": "70abb4073b6ff48d51658c5ecdc3cf7ba8f68873",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
