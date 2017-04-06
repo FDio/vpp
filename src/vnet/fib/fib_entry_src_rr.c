@@ -280,7 +280,7 @@ static u8*
 fib_entry_src_rr_format (fib_entry_src_t *src,
 			 u8* s)
 {
-    return (format(s, "cover:%d", src->rr.fesr_cover));
+    return (format(s, " cover:%d", src->rr.fesr_cover));
 }
 
 const static fib_entry_src_vft_t rr_src_vft = {

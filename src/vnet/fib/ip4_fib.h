@@ -99,6 +99,16 @@ extern void ip4_fib_table_walk(ip4_fib_t *fib,
                                void *ctx);
 
 /**
+ * @brief Walk all entries in a sub-tree of the FIB table
+ * N.B: This is NOT safe to deletes. If you need to delete walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void ip4_fib_table_sub_tree_walk(ip4_fib_t *fib,
+                                        const fib_prefix_t *root,
+                                        fib_table_walk_fn_t fn,
+                                        void *ctx);
+
+/**
  * @brief Get the FIB at the given index
  */
 static inline ip4_fib_t *
