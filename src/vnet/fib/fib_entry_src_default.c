@@ -95,7 +95,7 @@ fib_entry_src_default_add (fib_entry_src_t *src,
 }
 
 static void
-fib_entry_src_default_remove (fib_entry_src_t *src)			     
+fib_entry_src_default_remove (fib_entry_src_t *src)
 {
 }
 

@@ -437,6 +437,8 @@ typedef struct ip6_fib_walk_ctx_t_
     u32 i6w_fib_index;
     fib_table_walk_fn_t i6w_fn;
     void *i6w_ctx;
+    fib_prefix_t i6w_root;
+    fib_prefix_t *i6w_sub_trees;
 } ip6_fib_walk_ctx_t;
 
 static int
@@ -444,11 +446,58 @@ ip6_fib_walk_cb (clib_bihash_kv_24_8_t * kvp,
                  void *arg)
 {
     ip6_fib_walk_ctx_t *ctx = arg;
+    ip6_address_t key;
 
     if ((kvp->key[2] >> 32) == ctx->i6w_fib_index)
     {
-        ctx->i6w_fn(kvp->value, ctx->i6w_ctx);
+        key.as_u64[0] = kvp->key[0];
+        key.as_u64[1] = kvp->key[1];
+
+        if (ip6_destination_matches_route(&ip6_main,
+                                          &key,
+                                          &ctx->i6w_root.fp_addr.ip6,
+                                          ctx->i6w_root.fp_len))
+        {
+            const fib_prefix_t *sub_tree;
+            int skip = 0;
+
+            /*
+             * exclude sub-trees the walk does not want to explore
+             */
+            vec_foreach(sub_tree, ctx->i6w_sub_trees)
+            {
+                if (ip6_destination_matches_route(&ip6_main,
+                                                  &key,
+                                                  &sub_tree->fp_addr.ip6,
+                                                  sub_tree->fp_len))
+                {
+                    skip = 1;
+                    break;
+                }
+            }
+
+            if (!skip)
+            {
+                switch (ctx->i6w_fn(kvp->value, ctx->i6w_ctx))
+                {
+                case FIB_TABLE_WALK_CONTINUE:
+                    break;
+                case FIB_TABLE_WALK_SUB_TREE_STOP: {
+                    fib_prefix_t pfx = {
+                        .fp_proto = FIB_PROTOCOL_IP6,
+                        .fp_len = kvp->key[2] & 0xffffffff,
+                        .fp_addr.ip6 = key,
+                    };
+                    vec_add1(ctx->i6w_sub_trees, pfx);
+                    break;
+                }
+                case FIB_TABLE_WALK_STOP:
+                    goto done;
+                }
+            }
+        }
     }
+done:
 
     return (1);
 }
@@ -462,20 +511,44 @@ ip6_fib_table_walk (u32 fib_index,
         .i6w_fib_index = fib_index,
         .i6w_fn = fn,
         .i6w_ctx = arg,
+        .i6w_root = {
+            .fp_proto = FIB_PROTOCOL_IP6,
+        },
+        .i6w_sub_trees = NULL,
     };
-    ip6_main_t *im = &ip6_main;
 
-    BV(clib_bihash_foreach_key_value_pair)(&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
-					   ip6_fib_walk_cb,
-					   &ctx);
+    BV(clib_bihash_foreach_key_value_pair)(
+        &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+        ip6_fib_walk_cb,
+        &ctx);
 
+    vec_free(ctx.i6w_sub_trees);
+}
+
+void
+ip6_fib_table_sub_tree_walk (u32 fib_index,
+                             const fib_prefix_t *root,
+                             fib_table_walk_fn_t fn,
+                             void *arg)
+{
+    ip6_fib_walk_ctx_t ctx = {
+        .i6w_fib_index = fib_index,
+        .i6w_fn = fn,
+        .i6w_ctx = arg,
+        .i6w_root = *root,
+    };
+
+    BV(clib_bihash_foreach_key_value_pair)(
+        &ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+        ip6_fib_walk_cb,
+        &ctx);
 }
 
 typedef struct ip6_fib_show_ctx_t_ {
     fib_node_index_t *entries;
 } ip6_fib_show_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 ip6_fib_table_show_walk (fib_node_index_t fib_entry_index,
                          void *arg)
 {
@@ -483,7 +556,7 @@ ip6_fib_table_show_walk (fib_node_index_t fib_entry_index,
 
     vec_add1(ctx->entries, fib_entry_index);
 
-    return (1);
+    return (FIB_TABLE_WALK_CONTINUE);
 }
 
 static void

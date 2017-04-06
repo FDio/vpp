@@ -187,18 +187,6 @@ ip4_destination_matches_interface (ip4_main_t * im,
   return ip4_destination_matches_route (im, key, a, ia->address_length);
 }
 
-/* As above but allows for unaligned destinations (e.g. works right from IP header of packet). */
-always_inline uword
-ip4_unaligned_destination_matches_route (ip4_main_t * im,
-					 ip4_address_t * key,
-					 ip4_address_t * dest,
-					 uword dest_length)
-{
-  return 0 ==
-    ((clib_mem_unaligned (&key->data_u32, u32) ^ dest->
-      data_u32) & im->fib_masks[dest_length]);
-}
-
 always_inline int
 ip4_src_address_for_packet (ip_lookup_main_t * lm,
 			    u32 sw_if_index, ip4_address_t * src)

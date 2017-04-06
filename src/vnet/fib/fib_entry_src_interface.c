@@ -190,7 +190,7 @@ static u8*
 fib_entry_src_interface_format (fib_entry_src_t *src,
 				u8* s)
 {
-    return (format(s, "cover:%d", src->interface.fesi_cover));
+    return (format(s, " cover:%d", src->interface.fesi_cover));
 }
 
 const static fib_entry_src_vft_t interface_src_vft = {
