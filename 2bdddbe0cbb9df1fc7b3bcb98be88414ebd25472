@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_631e5665",
+        "filename": "src/plugins/snat/in2out.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1992,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-06T12:31:36Z",
+      "side": 1,
+      "message": "deterministic nat can\u0027t use this as next node",
+      "revId": "2bdddbe0cbb9df1fc7b3bcb98be88414ebd25472",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
