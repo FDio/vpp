@@ -264,7 +264,7 @@ typedef struct
     u32 table_id;
 
     /** bridge domain id */
-    u16 bd_id;
+    u32 bd_id;
 
     /** generic access */
     u32 dp_table;
