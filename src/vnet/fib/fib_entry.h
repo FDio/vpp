@@ -213,9 +213,14 @@ typedef enum fib_entry_attribute_t_ {
      */
     FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
     /**
+     * This FIB entry imposes its source information on all prefixes
+     * that is covers
+     */
+    FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT,
+    /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT,
 } fib_entry_attribute_t;
 
 #define FIB_ENTRY_ATTRIBUTES {		       		\
@@ -227,6 +232,7 @@ typedef enum fib_entry_attribute_t_ {
     [FIB_ENTRY_ATTRIBUTE_LOCAL]     = "local",		\
     [FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT] = "uRPF-exempt",  \
     [FIB_ENTRY_ATTRIBUTE_MULTICAST] = "multicast",	\
+    [FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT] = "covered-inherit",  \
 }
 
 #define FOR_EACH_FIB_ATTRIBUTE(_item)			\
@@ -244,6 +250,7 @@ typedef enum fib_entry_flag_t_ {
     FIB_ENTRY_FLAG_IMPORT    = (1 << FIB_ENTRY_ATTRIBUTE_IMPORT),
     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT = (1 << FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT),
     FIB_ENTRY_FLAG_MULTICAST = (1 << FIB_ENTRY_ATTRIBUTE_MULTICAST),
+    FIB_ENTRY_FLAG_COVERED_INHERIT = (1 << FIB_ENTRY_ATTRIBUTE_COVERED_INHERIT),
 } __attribute__((packed)) fib_entry_flag_t;
 
 /**
@@ -263,9 +270,13 @@ typedef enum fib_entry_src_attribute_t_ {
      */
     FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE,
     /**
+     * the source is inherited from its cover
+     */
+    FIB_ENTRY_SRC_ATTRIBUTE_INHERITED,
+    /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_SRC_ATTRIBUTE_LAST = FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE,
+    FIB_ENTRY_SRC_ATTRIBUTE_LAST = FIB_ENTRY_SRC_ATTRIBUTE_INHERITED,
 } fib_entry_src_attribute_t;
 
 #define FIB_ENTRY_SRC_ATTRIBUTE_MAX (FIB_ENTRY_SRC_ATTRIBUTE_LAST+1)
@@ -273,12 +284,19 @@ typedef enum fib_entry_src_attribute_t_ {
 #define FIB_ENTRY_SRC_ATTRIBUTES {		 \
     [FIB_ENTRY_SRC_ATTRIBUTE_ADDED]  = "added",	 \
     [FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE] = "active", \
+    [FIB_ENTRY_SRC_ATTRIBUTE_INHERITED] = "inherited", \
 }
+
+#define FOR_EACH_FIB_SRC_ATTRIBUTE(_item)      		\
+    for (_item = FIB_ENTRY_SRC_ATTRIBUTE_FIRST;		\
+	 _item < FIB_ENTRY_SRC_ATTRIBUTE_MAX;		\
+	 _item++)
 
 typedef enum fib_entry_src_flag_t_ {
     FIB_ENTRY_SRC_FLAG_NONE   = 0,
     FIB_ENTRY_SRC_FLAG_ADDED  = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ADDED),
     FIB_ENTRY_SRC_FLAG_ACTIVE = (1 << FIB_ENTRY_SRC_ATTRIBUTE_ACTIVE),
+    FIB_ENTRY_SRC_FLAG_INHERITED = (1 << FIB_ENTRY_SRC_ATTRIBUTE_INHERITED),
 } __attribute__ ((packed)) fib_entry_src_flag_t;
 
 /*
@@ -477,6 +495,10 @@ extern fib_entry_src_flag_t fib_entry_special_remove(fib_node_index_t fib_entry_
 extern fib_entry_src_flag_t fib_entry_path_remove(fib_node_index_t fib_entry_index,
 						  fib_source_t source,
 						  const fib_route_path_t *rpath);
+
+extern void fib_entry_inherit(fib_node_index_t cover,
+                              fib_node_index_t covered);
+
 extern fib_entry_src_flag_t fib_entry_delete(fib_node_index_t fib_entry_index,
 					     fib_source_t source);
 

@@ -493,14 +493,14 @@ typedef struct vl_api_mpls_fib_dump_table_walk_ctx_t_
   fib_node_index_t *lfeis;
 } vl_api_mpls_fib_dump_table_walk_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 vl_api_mpls_fib_dump_table_walk (fib_node_index_t fei, void *arg)
 {
   vl_api_mpls_fib_dump_table_walk_ctx_t *ctx = arg;
 
   vec_add1 (ctx->lfeis, fei);
 
-  return (1);
+  return (FIB_TABLE_WALK_CONTINUE);
 }
 
 static void

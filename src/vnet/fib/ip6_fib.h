@@ -103,6 +103,16 @@ ip6_fib_table_fwding_lookup (ip6_main_t * im,
 }
 
 /**
+ * @brief Walk all entries in a sub-tree of the FIB table
+ * N.B: This is NOT safe to deletes. If you need to delete walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void ip6_fib_table_sub_tree_walk(u32 fib_index,
+                                        const fib_prefix_t *root,
+                                        fib_table_walk_fn_t fn,
+                                        void *ctx);
+
+/**
  * @brief return the DPO that the LB stacks on.
  */
 always_inline u32
