@@ -20,15 +20,6 @@
 #include <ioam/lib-pot/pot_all_api_h.h>
 #undef vl_typedefs
 
-#define vl_endianfun
-#include <ioam/lib-pot/pot_all_api_h.h>
-#undef vl_endianfun
-
-#define vl_print(handle, ...)
-#define vl_printfun
-#include <ioam/lib-pot/pot_all_api_h.h>
-#undef vl_printfun
-
 #include <vnet/api_errno.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -71,8 +62,8 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_ioampot_JVppIoampotImpl_init0
       vl_msg_api_set_handlers(get_message_id(env, #N), #n,     \
               vl_api_##n##_t_handler,             \
               vl_noop_handler,                    \
-              vl_api_##n##_t_endian,              \
-              vl_api_##n##_t_print,               \
+              vl_noop_handler,                    \
+              vl_noop_handler,                    \
               sizeof(vl_api_##n##_t), 1);
       foreach_api_reply_handler;
   #undef _
