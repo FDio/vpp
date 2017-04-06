@@ -181,8 +181,7 @@ fib_table_post_insert_actions (fib_table_t *fib_table,
 	return;
 
     /*
-     * find and inform the covering entry that a new more specific
-     * has been inserted beneath it
+     * find  the covering entry
      */
     fib_entry_cover_index = fib_table_get_less_specific_i(fib_table, prefix);
     /*
@@ -190,6 +189,16 @@ fib_table_post_insert_actions (fib_table_t *fib_table,
      */
     if (fib_entry_cover_index != fib_entry_index)
     {
+        /*
+         * push any inherting sources from the cover onto the covered
+         */
+        fib_entry_inherit(fib_entry_cover_index,
+                          fib_entry_index);
+
+        /*
+         * inform the covering entry that a new more specific
+         * has been inserted beneath it
+         */
 	fib_entry_cover_change_notify(fib_entry_cover_index,
 				      fib_entry_index);
     }
@@ -982,7 +991,7 @@ typedef struct fib_table_set_flow_hash_config_ctx_t_
     flow_hash_config_t hash_config;
 } fib_table_set_flow_hash_config_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 fib_table_set_flow_hash_config_cb (fib_node_index_t fib_entry_index,
                                    void *arg)
 {
@@ -990,7 +999,7 @@ fib_table_set_flow_hash_config_cb (fib_node_index_t fib_entry_index,
 
     fib_entry_set_flow_hash_config(fib_entry_index, ctx->hash_config);
 
-    return (1);
+    return (FIB_TABLE_WALK_CONTINUE);
 }
 
 void
@@ -1177,6 +1186,26 @@ fib_table_walk (u32 fib_index,
 }
 
 void
+fib_table_sub_tree_walk (u32 fib_index,
+                         fib_protocol_t proto,
+                         const fib_prefix_t *root,
+                         fib_table_walk_fn_t fn,
+                         void *ctx)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+	ip4_fib_table_sub_tree_walk(ip4_fib_get(fib_index), root, fn, ctx);
+	break;
+    case FIB_PROTOCOL_IP6:
+	ip6_fib_table_sub_tree_walk(fib_index, root, fn, ctx);
+	break;
+    case FIB_PROTOCOL_MPLS:
+	break;
+    }
+}
+
+void
 fib_table_unlock (u32 fib_index,
 		  fib_protocol_t proto,
                   fib_source_t source)
@@ -1260,7 +1289,7 @@ typedef struct fib_table_flush_ctx_t_
     fib_source_t ftf_source;
 } fib_table_flush_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 fib_table_flush_cb (fib_node_index_t fib_entry_index,
                     void *arg)
 {
@@ -1270,7 +1299,7 @@ fib_table_flush_cb (fib_node_index_t fib_entry_index,
     {
         vec_add1(ctx->ftf_entries, fib_entry_index);
     }
-    return (1);
+    return (FIB_TABLE_WALK_CONTINUE);
 }
 
 

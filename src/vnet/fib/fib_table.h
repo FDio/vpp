@@ -793,10 +793,29 @@ extern fib_table_t *fib_table_get(fib_node_index_t index,
 				  fib_protocol_t proto);
 
 /**
+ * @brief return code controlling how a table walk proceeds
+ */
+typedef enum fib_table_walk_rc_t_
+{
+    /**
+     * Continue on to the next entry
+     */
+    FIB_TABLE_WALK_CONTINUE,
+    /**
+     * Do no traverse down this sub-tree
+     */
+    FIB_TABLE_WALK_SUB_TREE_STOP,
+    /**
+     * Stop the walk completely
+     */
+    FIB_TABLE_WALK_STOP,
+} fib_table_walk_rc_t;
+
+/**
  * @brief Call back function when walking entries in a FIB table
  */
-typedef int (*fib_table_walk_fn_t)(fib_node_index_t fei,
-                                   void *ctx);
+typedef fib_table_walk_rc_t (*fib_table_walk_fn_t)(fib_node_index_t fei,
+                                                   void *ctx);
 
 /**
  * @brief Walk all entries in a FIB table
@@ -807,6 +826,18 @@ extern void fib_table_walk(u32 fib_index,
                            fib_protocol_t proto,
                            fib_table_walk_fn_t fn,
                            void *ctx);
+
+/**
+ * @brief Walk all entries in a sub-tree FIB table. The 'root' paraneter
+ * is the prefix at the root of the sub-tree.
+ * N.B: This is NOT safe to deletes. If you need to delete walk the whole
+ * table and store elements in a vector, then delete the elements
+ */
+extern void fib_table_sub_tree_walk(u32 fib_index,
+                                    fib_protocol_t proto,
+                                    const fib_prefix_t *root,
+                                    fib_table_walk_fn_t fn,
+                                    void *ctx);
 
 /**
  * @brief format (display) the memory used by the FIB tables

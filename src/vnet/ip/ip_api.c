@@ -273,14 +273,14 @@ typedef struct vl_api_ip_fib_dump_walk_ctx_t_
   fib_node_index_t *feis;
 } vl_api_ip_fib_dump_walk_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 vl_api_ip_fib_dump_walk (fib_node_index_t fei, void *arg)
 {
   vl_api_ip_fib_dump_walk_ctx_t *ctx = arg;
 
   vec_add1 (ctx->feis, fei);
 
-  return (1);
+  return (FIB_TABLE_WALK_CONTINUE);
 }
 
 static void
@@ -1688,7 +1688,7 @@ typedef struct api_ip6nd_proxy_fib_table_walk_ctx_t_
   u32 *indices;
 } api_ip6nd_proxy_fib_table_walk_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 api_ip6nd_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
 {
   api_ip6nd_proxy_fib_table_walk_ctx_t *ctx = arg;
@@ -1698,7 +1698,7 @@ api_ip6nd_proxy_fib_table_walk (fib_node_index_t fei, void *arg)
       vec_add1 (ctx->indices, fei);
     }
 
-  return (1);
+  return (FIB_TABLE_WALK_CONTINUE);
 }
 
 static void

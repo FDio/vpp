@@ -417,22 +417,95 @@ ip4_fib_table_walk (ip4_fib_t *fib,
                     fib_table_walk_fn_t fn,
                     void *ctx)
 {
+    fib_prefix_t root = {
+        .fp_proto = FIB_PROTOCOL_IP4,
+        // address and length default to all 0
+    };
+
+    /*
+     * A full tree walk is the dengenerate case of a sub-tree from
+     * the very root
+     */
+    return (ip4_fib_table_sub_tree_walk(fib, &root, fn, ctx));
+}
+
+void
+ip4_fib_table_sub_tree_walk (ip4_fib_t *fib,
+                             const fib_prefix_t *root,
+                             fib_table_walk_fn_t fn,
+                             void *ctx)
+{
+    fib_prefix_t *sub_trees = NULL;
     int i;
 
-    for (i = 0; i < ARRAY_LEN (fib->fib_entry_by_dst_address); i++)
+    /*
+     * There is no efficent way to walk this array of hash tables.
+     * so we walk each table with a mask length greater than and equal to
+     * the required root and check it is covered by the root.
+     */
+    for (i = root->fp_len;
+         i < ARRAY_LEN (fib->fib_entry_by_dst_address);
+         i++)
     {
 	uword * hash = fib->fib_entry_by_dst_address[i];
 
 	if (NULL != hash)
 	{
+            ip4_address_t key;
 	    hash_pair_t * p;
 
 	    hash_foreach_pair (p, hash,
 	    ({
-		fn(p->value[0], ctx);
+                key.as_u32 = p->key;
+                if (ip4_destination_matches_route(&ip4_main,
+                                                  &key,
+                                                  &root->fp_addr.ip4,
+                                                  root->fp_len))
+                {
+                    const fib_prefix_t *sub_tree;
+                    int skip = 0;
+
+                    /*
+                     * exclude sub-trees the walk does not want to explore
+                     */
+                    vec_foreach(sub_tree, sub_trees)
+                    {
+                        if (ip4_destination_matches_route(&ip4_main,
+                                                          &key,
+                                                          &sub_tree->fp_addr.ip4,
+                                                          sub_tree->fp_len))
+                        {
+                            skip = 1;
+                            break;
+                        }
+                    }
+
+                    if (!skip)
+                    {
+                        switch (fn(p->value[0], ctx))
+                        {
+                        case FIB_TABLE_WALK_CONTINUE:
+                            break;
+                        case FIB_TABLE_WALK_SUB_TREE_STOP: {
+                            fib_prefix_t pfx = {
+                                .fp_proto = FIB_PROTOCOL_IP4,
+                                .fp_len = i,
+                                .fp_addr.ip4 = key,
+                            };
+                            vec_add1(sub_trees, pfx);
+                            break;
+                        }
+                        case FIB_TABLE_WALK_STOP:
+                            goto done;
+                        }
+                    }
+                }
 	    }));
 	}
     }
+done:
+    vec_free(sub_trees);
+    return;
 }
 
 /**
@@ -443,7 +516,7 @@ typedef struct ip4_fib_show_walk_ctx_t_
     fib_node_index_t *ifsw_indicies;
 } ip4_fib_show_walk_ctx_t;
 
-static int
+static fib_table_walk_rc_t
 ip4_fib_show_walk_cb (fib_node_index_t fib_entry_index,
                       void *arg)
 {
@@ -451,7 +524,7 @@ ip4_fib_show_walk_cb (fib_node_index_t fib_entry_index,
 
     vec_add1(ctx->ifsw_indicies, fib_entry_index);
 
-    return (1);
+    return (FIB_TABLE_WALK_CONTINUE);
 }
 
 static void
