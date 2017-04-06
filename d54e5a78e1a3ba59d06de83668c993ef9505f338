@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_601bec1b",
+        "filename": "src/vnet/bfd/bfd_main.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 258,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-04-06T08:54:11Z",
+      "side": 1,
+      "message": "-\u003e bfd_notify_fn_t",
+      "range": {
+        "startLine": 258,
+        "startChar": 15,
+        "endLine": 258,
+        "endChar": 29
+      },
+      "revId": "d54e5a78e1a3ba59d06de83668c993ef9505f338",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e027dc62",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1586,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-04-06T08:54:11Z",
+      "side": 1,
+      "message": "could we name this better? also, make it a static (decorate with @staticmethod) method of BFDFIBTestCase?",
+      "range": {
+        "startLine": 1586,
+        "startChar": 4,
+        "endLine": 1586,
+        "endChar": 14
+      },
+      "revId": "d54e5a78e1a3ba59d06de83668c993ef9505f338",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0031c8a1",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1603,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-04-06T08:54:11Z",
+      "side": 1,
+      "message": "this doesn\u0027t seem to be used/needed",
+      "range": {
+        "startLine": 1603,
+        "startChar": 7,
+        "endLine": 1603,
+        "endChar": 39
+      },
+      "revId": "d54e5a78e1a3ba59d06de83668c993ef9505f338",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_801c9814",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 1664,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-04-06T08:54:11Z",
+      "side": 1,
+      "message": "bfd_session_up/down uses the \"wait_for_packet\" API. Combining that with \"get_capture\" API is not guaranteed to work - I\u0027m a bit surprised it does work. Could we please replace this with:\n\nfor packet in p:  \n    captured \u003d self.pg0.wait_for_packet(1, filter_out_fn\u003dpkt_is_bfd)\n    \"assert(captured \u003d\u003d packet)\"\n\nalso the other get_capture(2, ... occurence similarly\n\nfor the assert_nothing_captured case use the following:\n\nwith self.assertRaises(CaptureTimeoutError): \n    self.pg0.wait_for_packet(1, filter_out_fn\u003dpkt_is_bfd)",
+      "range": {
+        "startLine": 1661,
+        "startChar": 1,
+        "endLine": 1664,
+        "endChar": 30
+      },
+      "revId": "d54e5a78e1a3ba59d06de83668c993ef9505f338",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
