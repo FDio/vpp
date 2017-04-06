@@ -201,10 +201,6 @@ fib_entry_src_adj_path_list_walk (fib_node_index_t pl_index,
     return (FIB_PATH_LIST_WALK_CONTINUE);
 }
 
-/*
- * Source activate.
- * Called when the source is the new longer best source on the entry
- */
 static int
 fib_entry_src_adj_activate (fib_entry_src_t *src,
                             const fib_entry_t *fib_entry)
@@ -262,6 +258,28 @@ fib_entry_src_adj_activate (fib_entry_src_t *src,
 }
 
 /*
+ * Source re-activate.
+ * Called when the source path lit has changed and the source is still
+ * the best source
+ */
+static int
+fib_entry_src_adj_reactivate (fib_entry_src_t *src,
+                              const fib_entry_t *fib_entry)
+{
+    fib_entry_src_path_list_walk_cxt_t ctx = {
+        .cover_itf = fib_entry_get_resolving_interface(src->adj.fesa_cover),
+        .flags = FIB_PATH_EXT_ADJ_FLAG_NONE,
+        .src = src,
+    };
+
+    fib_path_list_walk(src->fes_pl,
+                       fib_entry_src_adj_path_list_walk,
+                       &ctx);
+
+    return (FIB_PATH_EXT_ADJ_FLAG_REFINES_COVER & ctx.flags);
+}
+
+/*
  * Source Deactivate.
  * Called when the source is no longer best source on the entry
  */
@@ -291,7 +309,7 @@ static u8*
 fib_entry_src_adj_format (fib_entry_src_t *src,
                          u8* s)
 {
-    return (format(s, "cover:%d", src->adj.fesa_cover));
+    return (format(s, " cover:%d", src->adj.fesa_cover));
 }
 
 static void
@@ -368,6 +386,7 @@ const static fib_entry_src_vft_t adj_src_vft = {
     .fesv_remove = fib_entry_src_adj_remove,
     .fesv_activate = fib_entry_src_adj_activate,
     .fesv_deactivate = fib_entry_src_adj_deactivate,
+    .fesv_reactivate = fib_entry_src_adj_reactivate,
     .fesv_format = fib_entry_src_adj_format,
     .fesv_installed = fib_entry_src_adj_installed,
     .fesv_cover_change = fib_entry_src_adj_cover_change,

@@ -661,7 +661,8 @@ fib_test_validate_entry (fib_node_index_t fei,
         const load_balance_t *lb;
 
         FIB_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
-                    "Entry links to %U",
+                    "%U Entry links to %U",
+                    format_fib_prefix, &pfx,
                     format_dpo_type, dpo.dpoi_type);
 
         lb = load_balance_get(dpo.dpoi_index);
@@ -698,7 +699,7 @@ fib_test_validate_entry (fib_node_index_t fei,
                 fw_lbi = 0;
             }
             FIB_TEST_LB((fw_lbi == dpo.dpoi_index),
-                        "Contributed LB = FW LB: %U\n %U",
+                        "Contributed LB = FW LB:\n fwd:%U\n cont:%U",
                         format_load_balance, fw_lbi, 0,
                         format_load_balance, dpo.dpoi_index, 0);
         }
@@ -8781,6 +8782,796 @@ lfib_test (void)
     return (0);
 }
 
+static int
+fib_test_inherit (void)
+{
+    fib_node_index_t fei;
+    test_main_t *tm;
+    int n_feis;
+
+    n_feis = fib_entry_pool_size();
+    tm = &test_main;
+
+    const ip46_address_t nh_10_10_10_1 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),
+    };
+    const ip46_address_t nh_10_10_10_2 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02),
+    };
+    const ip46_address_t nh_10_10_10_16 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a10),
+    };
+    const ip46_address_t nh_10_10_10_20 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a14),
+    };
+    const ip46_address_t nh_10_10_10_21 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a15),
+    };
+    const ip46_address_t nh_10_10_10_22 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a16),
+    };
+    const ip46_address_t nh_10_10_10_255 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0aff),
+    };
+    const ip46_address_t nh_10_10_10_0 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a00),
+    };
+    const ip46_address_t nh_10_10_0_0 = {
+	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0000),
+    };
+
+    /*
+     * prefixes at the base of a sub-tree
+     */
+    const fib_prefix_t pfx_10_10_10_21_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_10_21,
+    };
+    const fib_prefix_t pfx_10_10_10_22_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_10_22,
+    };
+    const fib_prefix_t pfx_10_10_10_255_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_10_255,
+    };
+
+    fib_table_entry_special_add(0,
+				&pfx_10_10_10_21_s_32,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+    fib_table_entry_special_add(0,
+				&pfx_10_10_10_22_s_32,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+    fib_table_entry_special_add(0,
+				&pfx_10_10_10_255_s_32,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+
+    /*
+     * source an entry that pushes its state down the sub-tree
+     */
+    const fib_prefix_t pfx_10_10_10_16_s_28 = {
+        .fp_len = 28,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_10_16,
+    };
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_10_16_s_28,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+
+    /*
+     * this covering entry and all those below it should have
+     * the same forwarding information.
+     */
+    adj_index_t ai_10_10_10_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                                    VNET_LINK_IP4,
+                                                    &nh_10_10_10_1,
+                                                    tm->hw[0]->sw_if_index);
+    fib_test_lb_bucket_t adj_o_10_10_10_1 = {
+	.type = FT_LB_ADJ,
+	.adj = {
+	    .adj = ai_10_10_10_1,
+	},
+    };
+
+    fei = fib_table_lookup(0, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+
+    /*
+     * remove the inherting cover - covereds go back to drop
+     */
+    fib_table_entry_delete(0, &pfx_10_10_10_16_s_28, FIB_SOURCE_API);
+
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+
+    /*
+     * source an entry that pushes its state down the sub-tree
+     */
+    const fib_prefix_t pfx_10_10_10_0_s_24 = {
+        .fp_len = 24,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_10_0,
+    };
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_10_0_s_24,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+
+    /*
+     * whole sub-tree now covered
+     */
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+
+    /*
+     * insert a more specific into the sub-tree - expect inheritance
+     *  this one is directly covered by the root
+     */
+    fib_table_entry_special_add(0,
+				&pfx_10_10_10_16_s_28,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+
+    /*
+     * insert a more specific into the sub-tree - expect inheritance
+     *  this one is indirectly covered by the root
+     */
+    const fib_prefix_t pfx_10_10_10_20_s_30 = {
+        .fp_len = 30,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_10_20,
+    };
+    fib_table_entry_special_add(0,
+				&pfx_10_10_10_20_s_30,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_20_s_30);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_20_s_30);
+
+    /*
+     * remove the prefix from the middle of the sub-tree
+     *  the inherited source will be the only one remaining - expect
+     *  it to be withdrawn and hence the prefix is removed.
+     */
+    fib_table_entry_special_remove(0,
+                                   &pfx_10_10_10_20_s_30,
+                                   FIB_SOURCE_CLI);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_20_s_30);
+    FIB_TEST((FIB_NODE_INDEX_INVALID == fei),
+             "%U gone",
+             format_fib_prefix, &pfx_10_10_10_20_s_30);
+
+    /*
+     * inheriting source is modifed - expect the modification to be present
+     *  throughout the sub-tree
+     */
+    adj_index_t ai_10_10_10_2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                                    VNET_LINK_IP4,
+                                                    &nh_10_10_10_2,
+                                                    tm->hw[0]->sw_if_index);
+    fib_test_lb_bucket_t adj_o_10_10_10_2 = {
+	.type = FT_LB_ADJ,
+	.adj = {
+	    .adj = ai_10_10_10_2,
+	},
+    };
+
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_10_0_s_24,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_2,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+
+    /*
+     * add the source that replaces inherited state.
+     * inheriting source is not the best, so it doesn't push state.
+     */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_10_0_s_24,
+				    FIB_SOURCE_PLUGIN_HI,
+				    FIB_ENTRY_FLAG_NONE,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+        fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_16_s_28);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+
+    /*
+     * withdraw the higher priority source and expect the inherited to return
+     * throughout the sub-tree
+     */
+    fib_table_entry_delete(0, &pfx_10_10_10_0_s_24, FIB_SOURCE_PLUGIN_HI);
+
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+
+    /*
+     * source a covered entry in the sub-tree with the same inherting source
+     *  - expect that it now owns the sub-tree and thus over-rides its cover
+     */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_10_16_s_28,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+
+    /* these two unaffected by the sub-tree change */
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+
+    /*
+     * removes the more specific, expect the /24 to now re-owns the sub-tree
+     */
+    fib_table_entry_delete(0, &pfx_10_10_10_16_s_28, FIB_SOURCE_API);
+
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+    /*
+     * modify the /24. expect the new forwarding to be pushed down
+     */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_10_0_s_24,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+
+    /*
+     * add an entry less specific to /24. it should not own the /24's tree
+     */
+    const fib_prefix_t pfx_10_10_0_0_s_16 = {
+        .fp_len = 16,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = nh_10_10_0_0,
+    };
+    fib_table_entry_update_one_path(0,
+                                    &pfx_10_10_0_0_s_16,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP4,
+                                    &nh_10_10_10_2,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_21_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_16_s_28);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_21_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_22_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_22_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_255_s_32);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_255_s_32);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_10_0_s_24);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_1),
+	     "%U via 10.10.10.1",
+             format_fib_prefix, &pfx_10_10_10_0_s_24);
+    fei = fib_table_lookup_exact_match(0, &pfx_10_10_0_0_s_16);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+				     1,
+				     &adj_o_10_10_10_2),
+	     "%U via 10.10.10.2",
+             format_fib_prefix, &pfx_10_10_0_0_s_16);
+
+    /*
+     * cleanup
+     */
+    fib_table_entry_delete(0, &pfx_10_10_10_21_s_32, FIB_SOURCE_CLI);
+    fib_table_entry_delete(0, &pfx_10_10_10_22_s_32, FIB_SOURCE_CLI);
+    fib_table_entry_delete(0, &pfx_10_10_10_16_s_28, FIB_SOURCE_CLI);
+    fib_table_entry_delete(0, &pfx_10_10_10_255_s_32, FIB_SOURCE_CLI);
+    fib_table_entry_delete(0, &pfx_10_10_10_0_s_24, FIB_SOURCE_API);
+    fib_table_entry_delete(0, &pfx_10_10_0_0_s_16, FIB_SOURCE_API);
+    adj_unlock(ai_10_10_10_1);
+    adj_unlock(ai_10_10_10_2);
+
+    /*
+     * test the v6 tree walk.
+     * a /64 that covers everytinhg. a /96 that covers one /128
+     * a second /128 covered only by the /64.
+     */
+    const fib_prefix_t pfx_2001_s_64 = {
+        .fp_len = 64,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_addr = {
+            .ip6 = {
+		.as_u64 = {
+		    [0] = clib_host_to_net_u64(0x2001000000000000),
+		    [1] = clib_host_to_net_u64(0x0000000000000000),
+		},
+            },
+        },
+    };
+    const fib_prefix_t pfx_2001_1_s_96 = {
+        .fp_len = 96,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_addr = {
+            .ip6 = {
+		.as_u64 = {
+		    [0] = clib_host_to_net_u64(0x2001000000000000),
+		    [1] = clib_host_to_net_u64(0x1000000000000000),
+		},
+            },
+        },
+    };
+    const fib_prefix_t pfx_2001_1_1_s_128 = {
+        .fp_len = 128,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_addr = {
+            .ip6 = {
+		.as_u64 = {
+		    [0] = clib_host_to_net_u64(0x2001000000000000),
+		    [1] = clib_host_to_net_u64(0x1000000000000001),
+		},
+            },
+        },
+    };
+    const fib_prefix_t pfx_2001_0_1_s_128 = {
+        .fp_len = 128,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_addr = {
+            .ip6 = {
+		.as_u64 = {
+		    [0] = clib_host_to_net_u64(0x2001000000000000),
+		    [1] = clib_host_to_net_u64(0x0000000000000001),
+		},
+            },
+        },
+    };
+    const ip46_address_t nh_3000_1 = {
+        .ip6 = {
+            .as_u64 = {
+                [0] = clib_host_to_net_u64(0x3000000000000000),
+                [1] = clib_host_to_net_u64(0x0000000000000001),
+            },
+        },
+    };
+    const ip46_address_t nh_3000_2 = {
+        .ip6 = {
+            .as_u64 = {
+                [0] = clib_host_to_net_u64(0x3000000000000000),
+                [1] = clib_host_to_net_u64(0x0000000000000002),
+            },
+        },
+    };
+    adj_index_t ai_3000_1 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP6,
+                                                VNET_LINK_IP6,
+                                                &nh_3000_1,
+                                                tm->hw[0]->sw_if_index);
+    adj_index_t ai_3000_2 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP6,
+                                                VNET_LINK_IP6,
+                                                &nh_3000_2,
+                                                tm->hw[0]->sw_if_index);
+    fib_test_lb_bucket_t adj_o_3000_1 = {
+	.type = FT_LB_ADJ,
+	.adj = {
+	    .adj = ai_3000_1,
+	},
+    };
+    fib_test_lb_bucket_t adj_o_3000_2 = {
+	.type = FT_LB_ADJ,
+	.adj = {
+	    .adj = ai_3000_2,
+	},
+    };
+
+    fib_table_entry_special_add(0,
+				&pfx_2001_0_1_s_128,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+    fib_table_entry_special_add(0,
+				&pfx_2001_1_1_s_128,
+				FIB_SOURCE_CLI,
+				FIB_ENTRY_FLAG_DROP);
+
+    /*
+     * /96 has inherited forwarding pushed down to its covered /128
+     */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_2001_1_s_96,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP6,
+                                    &nh_3000_1,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_1_s_96);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP6,
+				     1,
+				     &adj_o_3000_1),
+	     "%U via 3000::1",
+             format_fib_prefix, &pfx_2001_1_s_96);
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_1_1_s_128);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP6,
+				     1,
+				     &adj_o_3000_1),
+	     "%U via 3000::1",
+             format_fib_prefix, &pfx_2001_1_1_s_128);
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_0_1_s_128);
+    FIB_TEST(load_balance_is_drop(fib_entry_contribute_ip_forwarding(fei)),
+             "%U resolves via drop",
+             format_fib_prefix, &pfx_2001_0_1_s_128);
+
+    /*
+     * /64 has inherited forwarding pushed down to all, but the /96
+     * and its sub-tree remain unaffected.
+     */
+    fib_table_entry_update_one_path(0,
+                                    &pfx_2001_s_64,
+				    FIB_SOURCE_API,
+				    FIB_ENTRY_FLAG_COVERED_INHERIT,
+				    DPO_PROTO_IP6,
+                                    &nh_3000_2,
+				    tm->hw[0]->sw_if_index,
+				    ~0,
+				    1,
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
+
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_s_64);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP6,
+				     1,
+				     &adj_o_3000_2),
+	     "%U via 3000::2",
+             format_fib_prefix, &pfx_2001_s_64);
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_0_1_s_128);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP6,
+				     1,
+				     &adj_o_3000_2),
+	     "%U via 3000::1",
+             format_fib_prefix, &pfx_2001_0_1_s_128);
+
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_1_s_96);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP6,
+				     1,
+				     &adj_o_3000_1),
+	     "%U via 3000::1",
+             format_fib_prefix, &pfx_2001_1_s_96);
+    fei = fib_table_lookup_exact_match(0, &pfx_2001_1_1_s_128);
+    FIB_TEST(fib_test_validate_entry(fei,
+				     FIB_FORW_CHAIN_TYPE_UNICAST_IP6,
+				     1,
+				     &adj_o_3000_1),
+	     "%U via 3000::1",
+             format_fib_prefix, &pfx_2001_1_1_s_128);
+
+    /*
+     * Cleanup
+     */
+    fib_table_entry_delete(0, &pfx_2001_0_1_s_128, FIB_SOURCE_CLI);
+    fib_table_entry_delete(0, &pfx_2001_1_1_s_128, FIB_SOURCE_CLI);
+    fib_table_entry_delete(0, &pfx_2001_s_64,      FIB_SOURCE_API);
+    fib_table_entry_delete(0, &pfx_2001_1_s_96,    FIB_SOURCE_API);
+    adj_unlock(ai_3000_1);
+    adj_unlock(ai_3000_2);
+
+    /*
+     * test no-one left behind
+     */
+    FIB_TEST((n_feis == fib_entry_pool_size()), "Entries gone");
+    FIB_TEST(0 == adj_nbr_db_size(), "All adjacencies removed");
+    return (0);
+}
+
 static clib_error_t *
 fib_test (vlib_main_t * vm, 
 	  unformat_input_t * input,
@@ -8825,6 +9616,10 @@ fib_test (vlib_main_t * vm,
     {
 	res += fib_test_bfd();
     }
+    else if (unformat (input, "inherit"))
+    {
+	res += fib_test_inherit();
+    }
     else
     {
 	res += fib_test_v4();
@@ -8833,6 +9628,7 @@ fib_test (vlib_main_t * vm,
 	res += fib_test_bfd();
 	res += fib_test_pref();
 	res += fib_test_label();
+        res += fib_test_inherit();
 	res += lfib_test();
 
         /*
