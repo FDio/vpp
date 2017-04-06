@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_6021acfa",
+        "filename": "test/test_bfd.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 1658,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-04-06T10:14:58Z",
+      "side": 1,
+      "message": "also don\u0027t need these pg_enable_capture statements... \n\nwait_for_packet only needs the first (which is already in setUp())",
+      "range": {
+        "startLine": 1658,
+        "startChar": 13,
+        "endLine": 1658,
+        "endChar": 30
+      },
+      "revId": "7e80816205583f534aca2ccb1ff8cbb9868ac5df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
