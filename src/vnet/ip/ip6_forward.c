@@ -47,7 +47,7 @@
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/dpo/classify_dpo.h>
-
+#include <vnet/ip/ip6_hop_by_hop.h>
 #include <vppinfra/bihash_template.c>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
@@ -168,19 +168,6 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  next0 = dpo0->dpoi_next_node;
 	  next1 = dpo1->dpoi_next_node;
 
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
-	    }
-	  if (PREDICT_FALSE
-	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next1 = (dpo_is_adj (dpo1) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next1;
-	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
@@ -281,13 +268,6 @@ ip6_lookup_inline (vlib_main_t * vm,
 					     lb0->lb_n_buckets_minus_1));
 	  next0 = dpo0->dpoi_next_node;
 
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
-	    }
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	  vlib_increment_combined_counter
@@ -421,6 +401,11 @@ ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
   vnet_feature_enable_disable ("ip6-multicast", "ip6-mfib-forward-lookup",
 			       sw_if_index, is_enable, 0, 0);
 
+  /* If hbh handling enabled then hbh feature needs to be handled here.
+   * If hbh not enabled then nothing to be done here and it would be
+   * handled when hbh processing gets enabled/disabled. */
+  if (im->hbh_enabled)
+    ip6_hbh_set_clear_output_feature_on_intf (sw_if_index, is_enable);
 }
 
 /* get first interface address */
@@ -643,6 +628,12 @@ VNET_FEATURE_ARC_INIT (ip6_output, static) =
   .arc_index_ptr = &ip6_main.lookup_main.output_feature_arc_index,
 };
 
+VNET_FEATURE_INIT (ip6_hbh_output, static) = {
+  .arc_name = "ip6-output",
+  .node_name = "ip6-hop-by-hop",
+  .runs_before = VNET_FEATURES ("ipsec-output-ip6"),
+};
+
 VNET_FEATURE_INIT (ip6_ipsec_output, static) = {
   .arc_name = "ip6-output",
   .node_name = "ipsec-output-ip6",
@@ -704,7 +695,6 @@ ip6_load_balance (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, *from, *to_next;
   ip_lookup_next_t next;
   u32 thread_index = vlib_get_thread_index ();
-  ip6_main_t *im = &ip6_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -805,21 +795,6 @@ ip6_load_balance (vlib_main_t * vm,
 	  next0 = dpo0->dpoi_next_node;
 	  next1 = dpo1->dpoi_next_node;
 
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
-	    }
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next1 = (dpo_is_adj (dpo1) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next1;
-	    }
-
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
 
@@ -876,14 +851,6 @@ ip6_load_balance (vlib_main_t * vm,
 
 	  next0 = dpo0->dpoi_next_node;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
-
-	  /* Only process the HBH Option Header if explicitly configured to do so */
-	  if (PREDICT_FALSE
-	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
-	    {
-	      next0 = (dpo_is_adj (dpo0) && im->hbh_enabled) ?
-		(ip_lookup_next_t) IP6_LOOKUP_NEXT_HOP_BY_HOP : next0;
-	    }
 
 	  vlib_increment_combined_counter
 	    (cm, thread_index, lbi0, 1, vlib_buffer_length_in_chain (vm, p0));
@@ -2385,6 +2352,14 @@ format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
 
   u8 type0;
 
+  /* If not hbh packet */
+  if (!t->trace_len)
+    {
+      s = format (s, "IP6_HOP_BY_HOP: next index %d len 0 traced 0",
+		  t->next_index);
+      goto done;
+    }
+
   hbh0 = (ip6_hop_by_hop_header_t *) t->option_data;
 
   s = format (s, "IP6_HOP_BY_HOP: next index %d len %d traced %d",
@@ -2419,6 +2394,8 @@ format_ip6_hop_by_hop_trace (u8 * s, va_list * args)
 	  break;
 	}
     }
+
+done:
   return s;
 }
 
@@ -2508,8 +2485,6 @@ ip6_hop_by_hop (vlib_main_t * vm,
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2527,9 +2502,10 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	  vlib_buffer_t *b0, *b1;
 	  u32 next0, next1;
 	  ip6_header_t *ip0, *ip1;
-	  ip6_hop_by_hop_header_t *hbh0, *hbh1;
+	  ip6_hop_by_hop_header_t *hbh0 = NULL, *hbh1 = NULL;
 	  ip6_hop_by_hop_option_t *opt0, *limit0, *opt1, *limit1;
 	  u8 error0 = 0, error1 = 0;
+	  u32 ip6h_offset0, ip6h_offset1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -2556,64 +2532,96 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-	  /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
-	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  ip_adjacency_t *adj0 = ip_get_adjacency (lm, adj_index0);
-	  u32 adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-	  ip_adjacency_t *adj1 = ip_get_adjacency (lm, adj_index1);
+	  ip6h_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+	  ip6h_offset1 = vnet_buffer (b1)->ip.save_rewrite_length;
+	  ip0 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+			      ip6h_offset0);
+	  ip1 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
+			      ip6h_offset1);
 
-	  /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
-	  next0 = adj0->lookup_next_index;
-	  next1 = adj1->lookup_next_index;
-
-	  ip0 = vlib_buffer_get_current (b0);
-	  ip1 = vlib_buffer_get_current (b1);
-	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
-	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
-	  opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
-	  opt1 = (ip6_hop_by_hop_option_t *) (hbh1 + 1);
-	  limit0 =
-	    (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
-					 ((hbh0->length + 1) << 3));
-	  limit1 =
-	    (ip6_hop_by_hop_option_t *) ((u8 *) hbh1 +
-					 ((hbh1->length + 1) << 3));
-
-	  /*
-	   * Basic validity checks
-	   */
-	  if ((hbh0->length + 1) << 3 >
-	      clib_net_to_host_u16 (ip0->payload_length))
-	    {
-	      error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
-	      next0 = IP_LOOKUP_NEXT_DROP;
-	      goto outdual;
-	    }
-	  /* Scan the set of h-b-h options, process ones that we understand */
-	  error0 = ip6_scan_hbh_options (b0, ip0, hbh0, opt0, limit0, &next0);
-
-	  if ((hbh1->length + 1) << 3 >
-	      clib_net_to_host_u16 (ip1->payload_length))
-	    {
-	      error1 = IP6_HOP_BY_HOP_ERROR_FORMAT;
-	      next1 = IP_LOOKUP_NEXT_DROP;
-	      goto outdual;
-	    }
-	  /* Scan the set of h-b-h options, process ones that we understand */
-	  error1 = ip6_scan_hbh_options (b1, ip1, hbh1, opt1, limit1, &next1);
-
-	outdual:
-	  /* Has the classifier flagged this buffer for special treatment? */
 	  if (PREDICT_FALSE
-	      ((error0 == 0)
-	       && (vnet_buffer (b0)->l2_classify.opaque_index & OI_DECAP)))
-	    next0 = hm->next_override;
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
+	      opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
+	      limit0 =
+		(ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
+					     ((hbh0->length + 1) << 3));
+	      /*
+	       * Basic validity checks
+	       */
+	      if ((hbh0->length + 1) << 3 >
+		  clib_net_to_host_u16 (ip0->payload_length))
+		{
+		  error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+		  next0 = IP_LOOKUP_NEXT_DROP;
+		  goto outdual0;
+		}
+	      /* Scan the set of h-b-h options, process ones that we understand */
+	      error0 =
+		ip6_scan_hbh_options (b0, ip0, hbh0, opt0, limit0, &next0);
 
-	  /* Has the classifier flagged this buffer for special treatment? */
+	    outdual0:
+	      /* Has the classifier flagged this buffer for special treatment? */
+	      if (PREDICT_TRUE (error0 == 0))
+		{
+		  if (PREDICT_FALSE
+		      (vnet_buffer (b0)->l2_classify.opaque_index & OI_DECAP))
+		    next0 = hm->next_override;
+		  else		/* Default use the next_index from feature arc config. A HBH option rarely redirects to a different node */
+		    vnet_get_config_data (hm->vnet_config_main,
+					  &b0->current_config_index,
+					  &next0,
+					  0 /* bytes of config data */ );
+		}
+	    }
+	  else
+	    vnet_get_config_data (hm->vnet_config_main,
+				  &b0->current_config_index,
+				  &next0, 0 /* bytes of config data */ );
+
 	  if (PREDICT_FALSE
-	      ((error1 == 0)
-	       && (vnet_buffer (b1)->l2_classify.opaque_index & OI_DECAP)))
-	    next1 = hm->next_override;
+	      (ip1->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+
+	      hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
+	      opt1 = (ip6_hop_by_hop_option_t *) (hbh1 + 1);
+	      limit1 =
+		(ip6_hop_by_hop_option_t *) ((u8 *) hbh1 +
+					     ((hbh1->length + 1) << 3));
+
+
+	      if ((hbh1->length + 1) << 3 >
+		  clib_net_to_host_u16 (ip1->payload_length))
+		{
+		  error1 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+		  next1 = IP_LOOKUP_NEXT_DROP;
+		  goto outdual1;
+		}
+	      /* Scan the set of h-b-h options, process ones that we understand */
+	      error1 =
+		ip6_scan_hbh_options (b1, ip1, hbh1, opt1, limit1, &next1);
+
+	    outdual1:
+	      /* Has the classifier flagged this buffer for special treatment? */
+	      if (PREDICT_TRUE (error1 == 0))
+		{
+		  if (PREDICT_FALSE
+		      (vnet_buffer (b1)->l2_classify.opaque_index & OI_DECAP))
+		    next1 = hm->next_override;
+		  else
+		    vnet_get_config_data (hm->vnet_config_main,
+					  &b1->current_config_index,
+					  &next1,
+					  0 /* bytes of config data */ );
+		}
+	    }
+	  else
+	    vnet_get_config_data (hm->vnet_config_main,
+				  &b1->current_config_index,
+				  &next1, 0 /* bytes of config data */ );
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -2621,40 +2629,47 @@ ip6_hop_by_hop (vlib_main_t * vm,
 		{
 		  ip6_hop_by_hop_trace_t *t =
 		    vlib_add_trace (vm, node, b0, sizeof (*t));
-		  u32 trace_len = (hbh0->length + 1) << 3;
 		  t->next_index = next0;
+		  t->trace_len = 0;
 		  /* Capture the h-b-h option verbatim */
-		  trace_len =
-		    trace_len <
-		    ARRAY_LEN (t->option_data) ? trace_len :
-		    ARRAY_LEN (t->option_data);
-		  t->trace_len = trace_len;
-		  clib_memcpy (t->option_data, hbh0, trace_len);
+		  if (hbh0)
+		    {
+		      u32 trace_len = (hbh0->length + 1) << 3;
+		      trace_len =
+			trace_len <
+			ARRAY_LEN (t->option_data) ? trace_len :
+			ARRAY_LEN (t->option_data);
+		      t->trace_len = trace_len;
+		      clib_memcpy (t->option_data, hbh0, trace_len);
+		    }
 		}
 	      if (b1->flags & VLIB_BUFFER_IS_TRACED)
 		{
 		  ip6_hop_by_hop_trace_t *t =
 		    vlib_add_trace (vm, node, b1, sizeof (*t));
-		  u32 trace_len = (hbh1->length + 1) << 3;
 		  t->next_index = next1;
+		  t->trace_len = 0;
 		  /* Capture the h-b-h option verbatim */
-		  trace_len =
-		    trace_len <
-		    ARRAY_LEN (t->option_data) ? trace_len :
-		    ARRAY_LEN (t->option_data);
-		  t->trace_len = trace_len;
-		  clib_memcpy (t->option_data, hbh1, trace_len);
+		  if (hbh1)
+		    {
+		      u32 trace_len = (hbh1->length + 1) << 3;
+		      trace_len =
+			trace_len <
+			ARRAY_LEN (t->option_data) ? trace_len :
+			ARRAY_LEN (t->option_data);
+		      t->trace_len = trace_len;
+		      clib_memcpy (t->option_data, hbh1, trace_len);
+		    }
 		}
 
 	    }
 
 	  b0->error = error_node->errors[error0];
 	  b1->error = error_node->errors[error1];
-
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, bi1, next0,
-					   next1);
+					   n_left_to_next, bi0, bi1,
+					   next0, next1);
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -2663,10 +2678,10 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  ip6_header_t *ip0;
-	  ip6_hop_by_hop_header_t *hbh0;
+	  ip6_hop_by_hop_header_t *hbh0 = NULL;
 	  ip6_hop_by_hop_option_t *opt0, *limit0;
 	  u8 error0 = 0;
-
+	  u32 ip6h_offset0;
 	  /* Speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2674,61 +2689,73 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_from -= 1;
 	  n_left_to_next -= 1;
-
 	  b0 = vlib_get_buffer (vm, bi0);
-	  /*
-	   * Default use the next_index from the adjacency.
-	   * A HBH option rarely redirects to a different node
-	   */
-	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  ip_adjacency_t *adj0 = ip_get_adjacency (lm, adj_index0);
-	  next0 = adj0->lookup_next_index;
-
-	  ip0 = vlib_buffer_get_current (b0);
-	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
-	  opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
-	  limit0 =
-	    (ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
-					 ((hbh0->length + 1) << 3));
-
-	  /*
-	   * Basic validity checks
-	   */
-	  if ((hbh0->length + 1) << 3 >
-	      clib_net_to_host_u16 (ip0->payload_length))
-	    {
-	      error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
-	      next0 = IP_LOOKUP_NEXT_DROP;
-	      goto out0;
-	    }
-
-	  /* Scan the set of h-b-h options, process ones that we understand */
-	  error0 = ip6_scan_hbh_options (b0, ip0, hbh0, opt0, limit0, &next0);
-
-	out0:
-	  /* Has the classifier flagged this buffer for special treatment? */
+	  ip6h_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+	  ip0 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+			      ip6h_offset0);
 	  if (PREDICT_FALSE
-	      ((error0 == 0)
-	       && (vnet_buffer (b0)->l2_classify.opaque_index & OI_DECAP)))
-	    next0 = hm->next_override;
+	      (ip0->protocol == IP_PROTOCOL_IP6_HOP_BY_HOP_OPTIONS))
+	    {
+	      hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
+	      opt0 = (ip6_hop_by_hop_option_t *) (hbh0 + 1);
+	      limit0 =
+		(ip6_hop_by_hop_option_t *) ((u8 *) hbh0 +
+					     ((hbh0->length + 1) << 3));
+	      /*
+	       * Basic validity checks
+	       */
+	      if ((hbh0->length + 1) << 3 >
+		  clib_net_to_host_u16 (ip0->payload_length))
+		{
+		  error0 = IP6_HOP_BY_HOP_ERROR_FORMAT;
+		  next0 = IP_LOOKUP_NEXT_DROP;
+		  goto out0;
+		}
+
+	      /* Scan the set of h-b-h options, process ones that we understand */
+	      error0 =
+		ip6_scan_hbh_options (b0, ip0, hbh0, opt0, limit0, &next0);
+
+	    out0:
+	      /* Has the classifier flagged this buffer for special treatment? */
+	      if (PREDICT_TRUE (error0 == 0))
+		{
+		  if (PREDICT_FALSE
+		      (vnet_buffer (b0)->l2_classify.opaque_index & OI_DECAP))
+		    next0 = hm->next_override;
+		  else
+		    vnet_get_config_data (hm->vnet_config_main,
+					  &b0->current_config_index,
+					  &next0,
+					  0 /* bytes of config data */ );
+		}
+	    }
+	  else
+	    vnet_get_config_data (hm->vnet_config_main,
+				  &b0->current_config_index,
+				  &next0, 0 /* bytes of config data */ );
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ip6_hop_by_hop_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
-	      u32 trace_len = (hbh0->length + 1) << 3;
 	      t->next_index = next0;
+	      t->trace_len = 0;
 	      /* Capture the h-b-h option verbatim */
-	      trace_len =
-		trace_len <
-		ARRAY_LEN (t->option_data) ? trace_len :
-		ARRAY_LEN (t->option_data);
-	      t->trace_len = trace_len;
-	      clib_memcpy (t->option_data, hbh0, trace_len);
+	      if (hbh0)
+		{
+		  u32 trace_len = (hbh0->length + 1) << 3;
+		  trace_len =
+		    trace_len <
+		    ARRAY_LEN (t->option_data) ? trace_len :
+		    ARRAY_LEN (t->option_data);
+		  t->trace_len = trace_len;
+		  clib_memcpy (t->option_data, hbh0, trace_len);
+		}
 	    }
 
 	  b0->error = error_node->errors[error0];
-
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -2743,7 +2770,7 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) =
 {
   .function = ip6_hop_by_hop,
   .name = "ip6-hop-by-hop",
-  .sibling_of = "ip6-lookup",
+  .sibling_of = "ip6-rewrite",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_hop_by_hop_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -2754,48 +2781,52 @@ VLIB_REGISTER_NODE (ip6_hop_by_hop_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_hop_by_hop_node, ip6_hop_by_hop);
-
 static clib_error_t *
 ip6_hop_by_hop_init (vlib_main_t * vm)
 {
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
+  vnet_feature_config_main_t *fcm;
+  u8 arc;
   memset (hm->options, 0, sizeof (hm->options));
   memset (hm->trace, 0, sizeof (hm->trace));
   hm->next_override = IP6_LOOKUP_NEXT_POP_HOP_BY_HOP;
+  arc = vnet_get_feature_arc_index ("ip6-output");
+  fcm = vnet_get_feature_arc_config_main (arc);
+  hm->vnet_config_main = &fcm->config_main;
   return (0);
 }
 
 VLIB_INIT_FUNCTION (ip6_hop_by_hop_init);
-
 void
 ip6_hbh_set_next_override (uword next)
 {
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
-
   hm->next_override = next;
 }
 
 int
 ip6_hbh_register_option (u8 option,
-			 int options (vlib_buffer_t * b, ip6_header_t * ip,
-				      ip6_hop_by_hop_option_t * opt),
-			 u8 * trace (u8 * s, ip6_hop_by_hop_option_t * opt))
+			 int options (vlib_buffer_t * b,
+				      ip6_header_t * ip,
+				      ip6_hop_by_hop_option_t *
+				      opt), u8 * trace (u8 * s,
+							ip6_hop_by_hop_option_t
+							* opt))
 {
   ip6_main_t *im = &ip6_main;
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
-
   ASSERT (option < ARRAY_LEN (hm->options));
-
   /* Already registered */
   if (hm->options[option])
     return (-1);
-
   hm->options[option] = options;
   hm->trace[option] = trace;
-
   /* Set global variable */
-  im->hbh_enabled = 1;
-
+  if (!im->hbh_enabled)
+    {
+      im->hbh_enabled = 1;
+      ip6_hbh_set_clear_output_feature_on_all_intfs (1);
+    }
   return (0);
 }
 
@@ -2804,16 +2835,12 @@ ip6_hbh_unregister_option (u8 option)
 {
   ip6_main_t *im = &ip6_main;
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
-
   ASSERT (option < ARRAY_LEN (hm->options));
-
   /* Not registered */
   if (!hm->options[option])
     return (-1);
-
   hm->options[option] = NULL;
   hm->trace[option] = NULL;
-
   /* Disable global knob if this was the last option configured */
   int i;
   bool found = false;
@@ -2825,61 +2852,55 @@ ip6_hbh_unregister_option (u8 option)
 	  break;
 	}
     }
-  if (!found)
-    im->hbh_enabled = 0;
+  if ((!found) && (im->hbh_enabled))
+    {
+      im->hbh_enabled = 0;
+      ip6_hbh_set_clear_output_feature_on_all_intfs (0);
+    }
 
   return (0);
 }
 
 /* Global IP6 main. */
 ip6_main_t ip6_main;
-
 static clib_error_t *
 ip6_lookup_init (vlib_main_t * vm)
 {
   ip6_main_t *im = &ip6_main;
   clib_error_t *error;
   uword i;
-
   if ((error = vlib_call_init_function (vm, vnet_feature_init)))
     return error;
-
   for (i = 0; i < ARRAY_LEN (im->fib_masks); i++)
     {
       u32 j, i0, i1;
-
       i0 = i / 32;
       i1 = i % 32;
-
       for (j = 0; j < i0; j++)
 	im->fib_masks[i].as_u32[j] = ~0;
-
       if (i1)
 	im->fib_masks[i].as_u32[i0] =
 	  clib_host_to_net_u32 (pow2_mask (i1) << (32 - i1));
     }
 
   ip_lookup_init (&im->lookup_main, /* is_ip6 */ 1);
-
   if (im->lookup_table_nbuckets == 0)
     im->lookup_table_nbuckets = IP6_FIB_DEFAULT_HASH_NUM_BUCKETS;
-
   im->lookup_table_nbuckets = 1 << max_log2 (im->lookup_table_nbuckets);
-
   if (im->lookup_table_size == 0)
     im->lookup_table_size = IP6_FIB_DEFAULT_HASH_MEMORY_SIZE;
-
-  BV (clib_bihash_init) (&(im->ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash),
+  BV (clib_bihash_init) (&
+			 (im->ip6_table
+			  [IP6_FIB_TABLE_FWDING].ip6_hash),
 			 "ip6 FIB fwding table",
 			 im->lookup_table_nbuckets, im->lookup_table_size);
-  BV (clib_bihash_init) (&im->ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash,
+  BV (clib_bihash_init) (&im->ip6_table
+			 [IP6_FIB_TABLE_NON_FWDING].ip6_hash,
 			 "ip6 FIB non-fwding table",
 			 im->lookup_table_nbuckets, im->lookup_table_size);
-
   /* Create FIB with index 0 and table id of 0. */
   fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, 0);
   mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, 0);
-
   {
     pg_node_t *pn;
     pn = pg_get_node (ip6_lookup_node.index);
@@ -2888,12 +2909,9 @@ ip6_lookup_init (vlib_main_t * vm)
 
   /* Unless explicitly configured, don't process HBH options */
   im->hbh_enabled = 0;
-
   {
     icmp6_neighbor_solicitation_header_t p;
-
     memset (&p, 0, sizeof (p));
-
     p.ip.ip_version_traffic_class_and_flow_label =
       clib_host_to_net_u32 (0x6 << 28);
     p.ip.payload_length =
@@ -2903,14 +2921,11 @@ ip6_lookup_init (vlib_main_t * vm)
     p.ip.protocol = IP_PROTOCOL_ICMP6;
     p.ip.hop_limit = 255;
     ip6_set_solicited_node_multicast_address (&p.ip.dst_address, 0);
-
     p.neighbor.icmp.type = ICMP6_neighbor_solicitation;
-
     p.link_layer_option.header.type =
       ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address;
     p.link_layer_option.header.n_data_u64s =
       sizeof (p.link_layer_option) / sizeof (u64);
-
     vlib_packet_template_init (vm,
 			       &im->discover_neighbor_packet_template,
 			       &p, sizeof (p),
@@ -2922,7 +2937,6 @@ ip6_lookup_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (ip6_lookup_init);
-
 static clib_error_t *
 add_del_ip6_interface_table (vlib_main_t * vm,
 			     unformat_input_t * input,
@@ -2932,9 +2946,7 @@ add_del_ip6_interface_table (vlib_main_t * vm,
   ip_interface_address_t *ia;
   clib_error_t *error = 0;
   u32 sw_if_index, table_id;
-
   sw_if_index = ~0;
-
   if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
       error = clib_error_return (0, "unknown interface `%U'",
@@ -2942,8 +2954,7 @@ add_del_ip6_interface_table (vlib_main_t * vm,
       goto done;
     }
 
-  if (unformat (input, "%d", &table_id))
-    ;
+  if (unformat (input, "%d", &table_id));
   else
     {
       error = clib_error_return (0, "expected table id `%U'",
@@ -2974,15 +2985,12 @@ add_del_ip6_interface_table (vlib_main_t * vm,
   /* *INDENT-ON* */
 
   {
-    u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-						       table_id);
-
+    u32 fib_index =
+      fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id);
     vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
     ip6_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
-
-    fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-						    table_id);
-
+    fib_index =
+      mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id);
     vec_validate (ip6_main.mfib_index_by_sw_if_index, sw_if_index);
     ip6_main.mfib_index_by_sw_if_index[sw_if_index] = fib_index;
   }
@@ -3021,8 +3029,8 @@ VLIB_CLI_COMMAND (set_interface_ip6_table_command, static) =
 /* *INDENT-ON* */
 
 void
-ip6_link_local_address_from_ethernet_mac_address (ip6_address_t * ip,
-						  u8 * mac)
+ip6_link_local_address_from_ethernet_mac_address (ip6_address_t
+						  * ip, u8 * mac)
 {
   ip->as_u64[0] = clib_host_to_net_u64 (0xFE80000000000000ULL);
   /* Invert the "u" bit */
@@ -3055,7 +3063,6 @@ test_ip6_link_command_fn (vlib_main_t * vm,
 {
   u8 mac[6];
   ip6_address_t _a, *a = &_a;
-
   if (unformat (input, "%U", unformat_ethernet_address, mac))
     {
       ip6_link_local_address_from_ethernet_mac_address (a, mac);
@@ -3094,12 +3101,9 @@ vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
   ip6_main_t *im6 = &ip6_main;
   ip6_fib_t *fib;
   uword *p = hash_get (im6->fib_index_by_table_id, table_id);
-
   if (p == 0)
     return -1;
-
   fib = ip6_fib_get (p[0]);
-
   fib->flow_hash_config = flow_hash_config;
   return 1;
 }
@@ -3113,7 +3117,6 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
   u32 table_id = 0;
   u32 flow_hash_config = 0;
   int rv;
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "table %d", &table_id))
@@ -3129,16 +3132,13 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
   if (matched == 0)
     return clib_error_return (0, "unknown input `%U'",
 			      format_unformat_error, input);
-
   rv = vnet_set_ip6_flow_hash (table_id, flow_hash_config);
   switch (rv)
     {
     case 1:
       break;
-
     case -1:
       return clib_error_return (0, "no such FIB table %d", table_id);
-
     default:
       clib_warning ("BUG: illegal flow hash config 0x%x", flow_hash_config);
       break;
@@ -3239,7 +3239,6 @@ show_ip6_local_command_fn (vlib_main_t * vm,
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
   int i;
-
   vlib_cli_output (vm, "Protocols handled by ip6_local");
   for (i = 0; i < ARRAY_LEN (lm->local_next_by_ip_protocol); i++)
     {
@@ -3283,40 +3282,28 @@ vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
   ip_lookup_main_t *lm = &ipm->lookup_main;
   vnet_classify_main_t *cm = &vnet_classify_main;
   ip6_address_t *if_addr;
-
   if (pool_is_free_index (im->sw_interfaces, sw_if_index))
     return VNET_API_ERROR_NO_MATCHING_INTERFACE;
-
   if (table_index != ~0 && pool_is_free_index (cm->tables, table_index))
     return VNET_API_ERROR_NO_SUCH_ENTRY;
-
   vec_validate (lm->classify_table_index_by_sw_if_index, sw_if_index);
   lm->classify_table_index_by_sw_if_index[sw_if_index] = table_index;
-
   if_addr = ip6_interface_first_address (ipm, sw_if_index);
-
   if (NULL != if_addr)
     {
       fib_prefix_t pfx = {
-	.fp_len = 128,
-	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_addr.ip6 = *if_addr,
+	.fp_len = 128,.fp_proto = FIB_PROTOCOL_IP6,.fp_addr.ip6 = *if_addr,
       };
       u32 fib_index;
-
-      fib_index = fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
-						       sw_if_index);
-
-
+      fib_index =
+	fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4, sw_if_index);
       if (table_index != (u32) ~ 0)
 	{
 	  dpo_id_t dpo = DPO_INVALID;
-
 	  dpo_set (&dpo,
 		   DPO_CLASSIFY,
 		   DPO_PROTO_IP6,
 		   classify_dpo_create (DPO_PROTO_IP6, table_index));
-
 	  fib_table_entry_special_dpo_add (fib_index,
 					   &pfx,
 					   FIB_SOURCE_CLASSIFY,
@@ -3342,34 +3329,28 @@ set_ip6_classify_command_fn (vlib_main_t * vm,
   int table_index_set = 0;
   u32 sw_if_index = ~0;
   int rv;
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "table-index %d", &table_index))
 	table_index_set = 1;
-      else if (unformat (input, "intfc %U", unformat_vnet_sw_interface,
-			 vnet_get_main (), &sw_if_index))
-	;
+      else
+	if (unformat (input, "intfc %U", unformat_vnet_sw_interface,
+		      vnet_get_main (), &sw_if_index));
       else
 	break;
     }
 
   if (table_index_set == 0)
     return clib_error_return (0, "classify table-index must be specified");
-
   if (sw_if_index == ~0)
     return clib_error_return (0, "interface / subif must be specified");
-
   rv = vnet_set_ip6_classify_intfc (vm, sw_if_index, table_index);
-
   switch (rv)
     {
     case 0:
       break;
-
     case VNET_API_ERROR_NO_MATCHING_INTERFACE:
       return clib_error_return (0, "No such interface");
-
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       return clib_error_return (0, "No such classifier table");
     }
@@ -3403,7 +3384,6 @@ ip6_config (vlib_main_t * vm, unformat_input_t * input)
   uword heapsize = 0;
   u32 tmp;
   u32 nbuckets = 0;
-
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "hash-buckets %d", &tmp))
@@ -3423,12 +3403,10 @@ ip6_config (vlib_main_t * vm, unformat_input_t * input)
 
   im->lookup_table_nbuckets = nbuckets;
   im->lookup_table_size = heapsize;
-
   return 0;
 }
 
 VLIB_EARLY_CONFIG_FUNCTION (ip6_config, "ip6");
-
 /*
  * fd.io coding-style-patch-verification: ON
  *

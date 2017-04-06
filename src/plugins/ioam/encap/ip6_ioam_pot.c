@@ -230,6 +230,31 @@ VLIB_CLI_COMMAND (ip6_show_ioam_pot_cmd, static) = {
   .function = ip6_show_ioam_pot_cmd_fn,
 };
 
+int 
+ip6_ioam_pot_config_handler (void *data, u8 disable)
+{
+  /* Register hanlders if enabled */
+  if (!disable)
+    {
+      if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT, ip6_hbh_ioam_proof_of_transit_handler,
+            ip6_hbh_ioam_proof_of_transit_trace_handler) < 0)
+      {
+          return -1;
+      }
+      if (ip6_hbh_pop_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT,
+          ip6_hbh_ioam_proof_of_transit_pop_handler) < 0)
+          {
+              return -1;
+    }
+
+      return 0;
+    }
+
+  /* UnRegister handlers */
+  (void) ip6_hbh_unregister_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT);
+    (void) ip6_hbh_pop_unregister_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT);
+  return 0;
+}
 
 static clib_error_t *
 ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
@@ -243,19 +268,18 @@ ip6_hop_by_hop_ioam_pot_init (vlib_main_t * vm)
   hm->vlib_main = vm;
   hm->vnet_main = vnet_get_main();
   memset(hm->counters, 0, sizeof(hm->counters));
-  
-  if (ip6_hbh_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT, ip6_hbh_ioam_proof_of_transit_handler,
-			      ip6_hbh_ioam_proof_of_transit_trace_handler) < 0)
-    return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT failed"));
+ 
+  if (ip6_hbh_config_handler_register(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT,
+                                      ip6_ioam_pot_config_handler) < 0)
+    {
+      return (clib_error_create("Registration of "
+          "HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE for rewrite failed"));
+    }
 
   if (ip6_hbh_add_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT,
 				  sizeof(ioam_pot_option_t),
 				  ip6_hop_by_hop_ioam_pot_rewrite_handler) < 0)
     return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT for rewrite failed"));
-
-  if (ip6_hbh_pop_register_option(HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT,
-				  ip6_hbh_ioam_proof_of_transit_pop_handler) < 0)
-    return (clib_error_create("registration of HBH_OPTION_TYPE_IOAM_PROOF_OF_TRANSIT POP failed"));
 
   return (0);
 }

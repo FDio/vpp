@@ -197,6 +197,43 @@ ip6_hbh_flow_handler_unregister (u8 option)
   return (0);
 }
 
+void
+ip6_hbh_set_clear_output_feature_on_intf (u32 sw_if_index0, u8 is_set)
+{
+  vnet_feature_enable_disable ("ip6-output", "ip6-hop-by-hop",
+			       sw_if_index0, is_set,
+			       0 /* void *feature_config */ ,
+			       0 /* u32 n_feature_config_bytes */ );
+  return;
+}
+
+void
+ip6_hbh_set_clear_output_feature_on_all_intfs (u8 is_set)
+{
+  vnet_sw_interface_t *si = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_main_t *im = &vnm->interface_main;
+  int i;
+  ip6_main_t *ip6m = &ip6_main;
+
+  for (i = 0; i < vec_len (im->sw_interfaces); i++)
+    {
+      if (pool_is_free_index (im->sw_interfaces, i))
+	continue;
+
+      si = pool_elt_at_index (im->sw_interfaces, i);
+      vec_validate_init_empty (ip6m->ip_enabled_by_sw_if_index,
+			       si->sw_if_index, 0);
+
+      /* If IPv6 is enabled then set/unset hbh feature, else it will
+       * be taken care in ip6_sw_interface_enable_disable() */
+      if (ip6m->ip_enabled_by_sw_if_index[si->sw_if_index])
+	ip6_hbh_set_clear_output_feature_on_intf (si->sw_if_index, is_set);
+    }
+
+  return;
+}
+
 typedef struct
 {
   u32 next_index;
@@ -437,20 +474,21 @@ ip6_add_hop_by_hop_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_add_hop_by_hop_node) =	/* *INDENT-OFF* */
 {
-  .function = ip6_add_hop_by_hop_node_fn,.name =
-    "ip6-add-hop-by-hop",.vector_size = sizeof (u32),.format_trace =
-    format_ip6_add_hop_by_hop_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (ip6_add_hop_by_hop_error_strings),.error_strings =
-    ip6_add_hop_by_hop_error_strings,
-    /* See ip/lookup.h */
-    .n_next_nodes = IP6_HBYH_IOAM_INPUT_N_NEXT,.next_nodes =
-  {
-#define _(s,n) [IP6_HBYH_IOAM_INPUT_NEXT_##s] = n,
-    foreach_ip6_hbyh_ioam_input_next
-#undef _
-  }
-,};
+  .function = ip6_add_hop_by_hop_node_fn,
+  .name = "ip6-add-hop-by-hop",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_add_hop_by_hop_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (ip6_add_hop_by_hop_error_strings),
+  .error_strings = ip6_add_hop_by_hop_error_strings,
+  /* See ip/lookup.h */
+  .n_next_nodes = IP6_HBYH_IOAM_INPUT_N_NEXT,.next_nodes =
+    {
+      #define _(s,n) [IP6_HBYH_IOAM_INPUT_NEXT_##s] = n,
+      foreach_ip6_hbyh_ioam_input_next
+      #undef _
+    },
+};
 /* *INDENT-ON* */
 
 /* *INDENT-ON* */
@@ -581,12 +619,11 @@ static uword
 ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 			    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
   u32 processed = 0;
   u32 no_header = 0;
+  ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -603,12 +640,13 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
 	  u32 next0, next1;
-	  u32 adj_index0, adj_index1;
 	  ip6_header_t *ip0, *ip1;
-	  ip_adjacency_t *adj0, *adj1;
 	  ip6_hop_by_hop_header_t *hbh0, *hbh1;
 	  u64 *copy_dst0, *copy_src0, *copy_dst1, *copy_src1;
 	  u16 new_l0, new_l1;
+	  u32 ip6h_offset0, ip6h_offset1;
+	  u8 *buf_start0, *buf_start1;
+	  u32 hbh_len0, hbh_len1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -636,29 +674,33 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  b1 = vlib_get_buffer (vm, bi1);
 
 	  /* $$$$$ Dual loop: process 2 x packets here $$$$$ */
-	  ip0 = vlib_buffer_get_current (b0);
-	  ip1 = vlib_buffer_get_current (b1);
-	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  ip6h_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+	  ip6h_offset1 = vnet_buffer (b1)->ip.save_rewrite_length;
+	  ip0 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+			      ip6h_offset0);
+	  ip1 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
+			      ip6h_offset1);
 
-	  next0 = adj0->lookup_next_index;
-	  next1 = adj1->lookup_next_index;
+	  vnet_get_config_data (hm->vnet_config_main,
+				&b0->current_config_index,
+				&next0, 0 /* bytes of config data */ );
+	  vnet_get_config_data (hm->vnet_config_main,
+				&b1->current_config_index,
+				&next1, 0 /* bytes of config data */ );
 
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
 	  hbh1 = (ip6_hop_by_hop_header_t *) (ip1 + 1);
 
+	  hbh_len0 = (hbh0->length + 1) << 3;
+	  hbh_len1 = (hbh1->length + 1) << 3;
+
 	  ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
 	  ioam_pop_hop_by_hop_processing (vm, ip1, hbh1, b1);
 
-	  vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
-	  vlib_buffer_advance (b1, (hbh1->length + 1) << 3);
-
-	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-	    ((hbh0->length + 1) << 3);
-	  new_l1 = clib_net_to_host_u16 (ip1->payload_length) -
-	    ((hbh1->length + 1) << 3);
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - hbh_len0;
+	  new_l1 = clib_net_to_host_u16 (ip1->payload_length) - hbh_len1;
 
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  ip1->payload_length = clib_host_to_net_u16 (new_l1);
@@ -680,8 +722,18 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  copy_dst1[2] = copy_src1[2];
 	  copy_dst1[1] = copy_src1[1];
 	  copy_dst1[0] = copy_src1[0];
+
+	  buf_start0 = vlib_buffer_get_current (b0);
+	  buf_start1 = vlib_buffer_get_current (b1);
+	  (void) memmove ((void *) (buf_start0 + hbh_len0),
+			  (void *) buf_start0, ip6h_offset0);
+	  (void) memmove ((void *) (buf_start1 + hbh_len1),
+			  (void *) buf_start1, ip6h_offset1);
 	  processed += 2;
 	  /* $$$$$ End of processing 2 x packets $$$$$ */
+
+	  vlib_buffer_advance (b0, hbh_len0);
+	  vlib_buffer_advance (b1, hbh_len1);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -710,12 +762,13 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  u32 next0;
-	  u32 adj_index0;
 	  ip6_header_t *ip0;
-	  ip_adjacency_t *adj0;
 	  ip6_hop_by_hop_header_t *hbh0;
 	  u64 *copy_dst0, *copy_src0;
 	  u16 new_l0;
+	  u32 ip6h_offset0;
+	  u8 *buf_start0;
+	  u32 hbh_len0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -727,22 +780,22 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-	  ip0 = vlib_buffer_get_current (b0);
-	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  ip6h_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+	  ip0 =
+	    (ip6_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+			      ip6h_offset0);
 
-	  /* Default use the next_index from the adjacency. */
-	  next0 = adj0->lookup_next_index;
+	  vnet_get_config_data (hm->vnet_config_main,
+				&b0->current_config_index,
+				&next0, 0 /* bytes of config data */ );
 
 	  /* Perfectly normal to end up here w/ out h-b-h header */
 	  hbh0 = (ip6_hop_by_hop_header_t *) (ip0 + 1);
+	  hbh_len0 = (hbh0->length + 1) << 3;
 
 	  /* TODO:Temporarily doing it here.. do this validation in end_of_path_cb */
 	  ioam_pop_hop_by_hop_processing (vm, ip0, hbh0, b0);
-	  /* Pop the trace data */
-	  vlib_buffer_advance (b0, (hbh0->length + 1) << 3);
-	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) -
-	    ((hbh0->length + 1) << 3);
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - hbh_len0;
 	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
 	  ip0->protocol = hbh0->protocol;
 	  copy_src0 = (u64 *) ip0;
@@ -752,7 +805,15 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  copy_dst0[2] = copy_src0[2];
 	  copy_dst0[1] = copy_src0[1];
 	  copy_dst0[0] = copy_src0[0];
+
+	  buf_start0 = vlib_buffer_get_current (b0);
+	  (void) memmove ((void *) (buf_start0 + hbh_len0),
+			  (void *) buf_start0, ip6h_offset0);
+
 	  processed++;
+
+	  /* Pop the trace data */
+	  vlib_buffer_advance (b0, hbh_len0);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -781,14 +842,17 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip6_pop_hop_by_hop_node) =
 {
-  .function = ip6_pop_hop_by_hop_node_fn,.name =
-    "ip6-pop-hop-by-hop",.vector_size = sizeof (u32),.format_trace =
-    format_ip6_pop_hop_by_hop_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.sibling_of = "ip6-lookup",.n_errors =
-    ARRAY_LEN (ip6_pop_hop_by_hop_error_strings),.error_strings =
-    ip6_pop_hop_by_hop_error_strings,
-    /* See ip/lookup.h */
-.n_next_nodes = 0,};
+  .function = ip6_pop_hop_by_hop_node_fn,
+  .name = "ip6-pop-hop-by-hop",
+  .sibling_of = "ip6-rewrite",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip6_pop_hop_by_hop_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (ip6_pop_hop_by_hop_error_strings),
+  .error_strings = ip6_pop_hop_by_hop_error_strings,
+  /* See ip/lookup.h */
+  .n_next_nodes = 0,
+};
 
 /* *INDENT-ON* */
 

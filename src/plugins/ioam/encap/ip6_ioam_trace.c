@@ -415,6 +415,27 @@ VLIB_PLUGIN_REGISTER () = {
 };
 /* *INDENT-ON* */
 
+int
+ip6_ioam_trace_config_handler (void *data, u8 disable)
+{
+  /* Register hanlders if enabled */
+  if (!disable)
+    {
+      if (ip6_hbh_register_option
+	  (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST,
+	   ip6_hbh_ioam_trace_data_list_handler,
+	   ip6_hbh_ioam_trace_data_list_trace_handler) < 0)
+	{
+	  return -1;
+	}
+      return 0;
+    }
+
+  /* UnRegister handlers */
+  (void) ip6_hbh_unregister_option (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST);
+  return 0;
+}
+
 static clib_error_t *
 ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
 {
@@ -434,14 +455,12 @@ ip6_hop_by_hop_ioam_trace_init (vlib_main_t * vm)
   hm->vnet_main = vnet_get_main ();
   memset (hm->counters, 0, sizeof (hm->counters));
 
-
-  if (ip6_hbh_register_option
-      (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST,
-       ip6_hbh_ioam_trace_data_list_handler,
-       ip6_hbh_ioam_trace_data_list_trace_handler) < 0)
-    return (clib_error_create
-	    ("registration of HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST failed"));
-
+  if (ip6_hbh_config_handler_register (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST,
+				       ip6_ioam_trace_config_handler) < 0)
+    {
+      return (clib_error_create ("Registration of "
+				 "HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE for rewrite failed"));
+    }
 
   if (ip6_hbh_add_register_option (HBH_OPTION_TYPE_IOAM_TRACE_DATA_LIST,
 				   sizeof (ioam_trace_option_t),

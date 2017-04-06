@@ -122,8 +122,8 @@ copy3cachelines (void *dst, const void *src, size_t n)
 #endif
 }
 
-static void
-ip6_export_fixup_func (vlib_buffer_t * export_buf, vlib_buffer_t * pak_buf)
+always_inline void
+ip6_export_fixup (vlib_buffer_t * export_buf, vlib_buffer_t * pak_buf)
 {
   ip6_header_t *ip6_temp =
       (ip6_header_t *) (export_buf->data + export_buf->current_length);
@@ -136,6 +136,16 @@ ip6_export_fixup_func (vlib_buffer_t * export_buf, vlib_buffer_t * pak_buf)
       clib_host_to_net_u32(flow_label_temp);
 }
 
+always_inline u8 *
+ip6_export_get_data (vlib_buffer_t *b)
+{
+  u32 ip6h_offset;
+
+  ip6h_offset = vnet_buffer (b)->ip.save_rewrite_length;
+
+  return ((u8 *) vlib_buffer_get_current (b) + ip6h_offset);
+}
+
 static uword
 ip6_export_node_fn (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -143,7 +153,8 @@ ip6_export_node_fn (vlib_main_t * vm,
   ioam_export_main_t *em = &ioam_export_main;
   ioam_export_node_common(em, vm, node, frame, ip6_header_t, payload_length,
                           ip_version_traffic_class_and_flow_label, 
-                          EXPORT_NEXT_POP_HBYH, ip6_export_fixup_func);
+                          EXPORT_NEXT_POP_HBYH, ip6_export_fixup,
+                          ip6_export_get_data);
   return frame->n_vectors;
 }
 

@@ -466,7 +466,8 @@ ioam_export_process_common (ioam_export_main_t * em, vlib_main_t * vm,
   return 0;			/* not so much */
 }
 
-#define ioam_export_node_common(EM, VM, N, F, HTYPE, L, V, NEXT, FIXUP_FUNC)   \
+#define ioam_export_node_common(EM, VM, N, F, HTYPE, L, V, NEXT, \
+                                                   FIXUP_FUNC, HTYPE_GET_FUNC) \
 do {                                                                           \
   u32 n_left_from, *from, *to_next;                                            \
   export_next_t next_index;                                                    \
@@ -509,8 +510,8 @@ do {                                                                           \
 	  n_left_to_next -= 2;                                                 \
 	  p0 = vlib_get_buffer (VM, bi0);                                      \
 	  p1 = vlib_get_buffer (VM, bi1);                                      \
-	  ip0 = vlib_buffer_get_current (p0);                                  \
-	  ip1 = vlib_buffer_get_current (p1);                                  \
+      ip0 = (HTYPE *) HTYPE_GET_FUNC (p0);                                 \
+      ip1 = (HTYPE *) HTYPE_GET_FUNC (p1);                                 \
 	  ip_len0 =                                                            \
 	    clib_net_to_host_u16 (ip0->L) + sizeof (HTYPE);                    \
 	  ip_len1 =                                                            \
@@ -584,7 +585,7 @@ do {                                                                           \
 	  n_left_from -= 1;                                                    \
 	  n_left_to_next -= 1;                                                 \
 	  p0 = vlib_get_buffer (VM, bi0);                                      \
-	  ip0 = vlib_buffer_get_current (p0);                                  \
+      ip0 = (HTYPE *) HTYPE_GET_FUNC (p0);                                 \
 	  ip_len0 =                                                            \
 	    clib_net_to_host_u16 (ip0->L) + sizeof (HTYPE);                    \
 	  ebi0 = my_buf->buffer_index;                                         \

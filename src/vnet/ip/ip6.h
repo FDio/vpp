@@ -528,6 +528,7 @@ typedef struct
 		       ip6_hop_by_hop_option_t * opt);
   u8 *(*trace[256]) (u8 * s, ip6_hop_by_hop_option_t * opt);
   uword next_override;
+  vnet_config_main_t *vnet_config_main;
 } ip6_hop_by_hop_main_t;
 
 extern ip6_hop_by_hop_main_t ip6_hop_by_hop_main;

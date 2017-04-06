@@ -136,6 +136,10 @@ is_zero_ip6_address (ip6_address_t * a)
   return ((a->as_u64[0] == 0) && (a->as_u64[1] == 0));
 }
 
+void ip6_hbh_set_clear_output_feature_on_intf (u32 sw_if_index0, u8 is_set);
+
+void ip6_hbh_set_clear_output_feature_on_all_intfs (u8 is_set);
+
 int ip6_hbh_add_register_option (u8 option,
 				 u8 size,
 				 int rewrite_options (u8 * rewrite_string,
