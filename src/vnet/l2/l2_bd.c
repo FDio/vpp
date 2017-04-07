@@ -50,42 +50,35 @@ bd_main_t bd_main;
 void
 bd_validate (l2_bridge_domain_t * bd_config)
 {
-  if (!bd_is_valid (bd_config))
-    {
-      bd_config->feature_bitmap = ~L2INPUT_FEAT_ARP_TERM;
-      bd_config->bvi_sw_if_index = ~0;
-      bd_config->members = 0;
-      bd_config->flood_count = 0;
-      bd_config->tun_master_count = 0;
-      bd_config->tun_normal_count = 0;
-      bd_config->mac_by_ip4 = 0;
-      bd_config->mac_by_ip6 = hash_create_mem (0, sizeof (ip6_address_t),
-					       sizeof (uword));
-    }
+  if (bd_is_valid (bd_config))
+    return;
+  bd_config->feature_bitmap = ~L2INPUT_FEAT_ARP_TERM;
+  bd_config->bvi_sw_if_index = ~0;
+  bd_config->members = 0;
+  bd_config->flood_count = 0;
+  bd_config->tun_master_count = 0;
+  bd_config->tun_normal_count = 0;
+  bd_config->mac_by_ip4 = 0;
+  bd_config->mac_by_ip6 = hash_create_mem (0, sizeof (ip6_address_t),
+					   sizeof (uword));
 }
 
 u32
-bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
+bd_find_index (bd_main_t * bdm, u32 bd_id)
 {
-  uword *p;
-  u32 rv;
+  u32 *p = (u32 *) hash_get (bdm->bd_index_by_bd_id, bd_id);
+  if (!p)
+    return ~0;
+  return p[0];
+}
 
-  if (bd_id == ~0)
-    {
-      bd_id = 0;
-      while (hash_get (bdm->bd_index_by_bd_id, bd_id))
-	bd_id++;
-    }
-  else
-    {
-      p = hash_get (bdm->bd_index_by_bd_id, bd_id);
-      if (p)
-	return (p[0]);
-    }
+u32
+bd_add_bd_index (bd_main_t * bdm, u32 bd_id)
+{
+  ASSERT (!hash_get (bdm->bd_index_by_bd_id, bd_id));
+  u32 rv = clib_bitmap_first_clear (bdm->bd_index_bitmap);
 
-  rv = clib_bitmap_first_clear (bdm->bd_index_bitmap);
-
-  /* mark this index busy */
+  /* mark this index taken */
   bdm->bd_index_bitmap = clib_bitmap_set (bdm->bd_index_bitmap, rv, 1);
 
   hash_set (bdm->bd_index_by_bd_id, bd_id, rv);
@@ -96,21 +89,14 @@ bd_find_or_add_bd_index (bd_main_t * bdm, u32 bd_id)
   return rv;
 }
 
-int
-bd_delete_bd_index (bd_main_t * bdm, u32 bd_id)
+static int
+bd_delete (bd_main_t * bdm, u32 bd_index)
 {
-  uword *p;
-  u32 bd_index;
-
-  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
-  if (p == 0)
-    return VNET_API_ERROR_NO_SUCH_ENTRY;
-
-  bd_index = p[0];
+  u32 bd_id = l2input_main.bd_configs[bd_index].bd_id;
+  hash_unset (bdm->bd_index_by_bd_id, bd_id);
 
   /* mark this index clear */
   bdm->bd_index_bitmap = clib_bitmap_set (bdm->bd_index_bitmap, bd_index, 0);
-  hash_unset (bdm->bd_index_by_bd_id, bd_id);
 
   l2input_main.bd_configs[bd_index].bd_id = ~0;
   l2input_main.bd_configs[bd_index].feature_bitmap = 0;
@@ -202,14 +188,13 @@ clib_error_t *
 l2bd_init (vlib_main_t * vm)
 {
   bd_main_t *bdm = &bd_main;
-  u32 bd_index;
   bdm->bd_index_by_bd_id = hash_create (0, sizeof (uword));
   /*
    * create a dummy bd with bd_id of 0 and bd_index of 0 with feature set
    * to packet drop only. Thus, packets received from any L2 interface with
    * uninitialized bd_index of 0 can be dropped safely.
    */
-  bd_index = bd_find_or_add_bd_index (bdm, 0);
+  u32 bd_index = bd_add_bd_index (bdm, 0);
   ASSERT (bd_index == 0);
   l2input_main.bd_configs[0].feature_bitmap = L2INPUT_FEAT_DROP;
 
@@ -1087,16 +1072,16 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
 {
   bd_main_t *bdm = &bd_main;
   vlib_main_t *vm = bdm->vlib_main;
-  u32 enable_flags = 0, disable_flags = 0;
-  u32 bd_index = ~0;
   int rv = 0;
 
+  u32 bd_index = bd_find_index (bdm, a->bd_id);
   if (a->is_add)
     {
-      bd_index = bd_find_or_add_bd_index (bdm, a->bd_id);
-      if (bd_index == ~0)
-	return bd_index;
+      if (bd_index != ~0)
+	return VNET_API_ERROR_BD_ALREADY_EXISTS;
+      bd_index = bd_add_bd_index (bdm, a->bd_id);
 
+      u32 enable_flags = 0, disable_flags = 0;
       if (a->flood)
 	enable_flags |= L2_FLOOD;
       else
@@ -1131,7 +1116,13 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
       bd_set_mac_age (vm, bd_index, a->mac_age);
     }
   else
-    rv = bd_delete_bd_index (bdm, a->bd_id);
+    {
+      if (bd_index == ~0)
+	return VNET_API_ERROR_NO_SUCH_ENTRY;
+      if (vec_len (l2input_main.bd_configs[bd_index].members))
+	return VNET_API_ERROR_BD_IN_USE;
+      rv = bd_delete (bdm, bd_index);
+    }
 
   return rv;
 }
@@ -1215,6 +1206,9 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
       if (is_add)
 	vlib_cli_output (vm, "bridge-domain %d", bd_id);
       break;
+    case VNET_API_ERROR_BD_IN_USE:
+      error = clib_error_return (0, "bridge domain in use - remove members");
+      goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "bridge domain id does not exist");
       goto done;

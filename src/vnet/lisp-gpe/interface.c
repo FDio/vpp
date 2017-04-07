@@ -705,11 +705,10 @@ void
 lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
 {
   tunnel_lookup_t *l2_ifaces = &lgm->l2_ifaces;
-  u16 bd_index;
-  uword *hip;
 
-  bd_index = bd_find_or_add_bd_index (&bd_main, bd_id);
-  hip = hash_get (l2_ifaces->hw_if_index_by_dp_table, bd_index);
+  u32 bd_index = bd_find_index (&bd_main, bd_id);
+  ASSERT (bd_index != ~0);
+  uword *hip = hash_get (l2_ifaces->hw_if_index_by_dp_table, bd_index);
 
   if (hip == 0)
     {
