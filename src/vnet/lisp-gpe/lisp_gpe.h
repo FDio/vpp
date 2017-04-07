@@ -98,19 +98,13 @@ typedef struct
 
 typedef struct
 {
-  u32 pkt_count;
-  u32 bytes;
-} lisp_stats_t;
-
-typedef struct
-{
   u32 vni;
   dp_address_t deid;
   dp_address_t seid;
   ip_address_t loc_rloc;
   ip_address_t rmt_rloc;
 
-  lisp_stats_t stats;
+  vlib_counter_t counters;
 } lisp_api_stats_t;
 
 typedef enum gpe_encap_mode_e
@@ -165,8 +159,9 @@ typedef struct lisp_gpe_main
 
   gpe_encap_mode_t encap_mode;
 
-  lisp_stats_t *lisp_stats_pool;
+  u8 *dummy_stats_pool;
   uword *lisp_stats_index_by_key;
+  vlib_combined_counter_main_t counters;
 
   /** convenience */
   vlib_main_t *vlib_main;
@@ -313,7 +308,7 @@ int vnet_gpe_set_encap_mode (gpe_encap_mode_t mode);
 u8 vnet_lisp_stats_enable_disable_state (void);
 vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
 lisp_api_stats_t *vnet_lisp_get_stats (void);
-void vnet_lisp_flush_stats (void);
+int vnet_lisp_flush_stats (void);
 
 #endif /* included_vnet_lisp_gpe_h */
 
