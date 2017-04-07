@@ -4238,6 +4238,7 @@ _(one_add_del_map_request_itr_rlocs_reply)              \
 _(one_eid_table_add_del_map_reply)                      \
 _(one_use_petr_reply)                                   \
 _(one_stats_enable_disable_reply)                       \
+_(one_stats_flush_reply)                                \
 _(gpe_add_del_fwd_entry_reply)                          \
 _(gpe_enable_disable_reply)                             \
 _(gpe_set_encap_mode_reply)                             \
@@ -4465,6 +4466,7 @@ _(ONE_MAP_RESOLVER_DETAILS, one_map_resolver_details)                   \
 _(ONE_MAP_SERVER_DETAILS, one_map_server_details)                       \
 _(ONE_ADJACENCIES_GET_REPLY, one_adjacencies_get_reply)                 \
 _(ONE_STATS_DETAILS, one_stats_details)                                 \
+_(ONE_STATS_FLUSH_REPLY, one_stats_flush_reply)                         \
 _(ONE_STATS_ENABLE_DISABLE_REPLY, one_stats_enable_disable_reply)       \
 _(SHOW_ONE_STATS_ENABLE_DISABLE_REPLY,                                  \
   show_one_stats_enable_disable_reply)                                  \
@@ -15856,6 +15858,18 @@ api_one_map_resolver_dump (vat_main_t * vam)
 #define api_lisp_map_resolver_dump api_one_map_resolver_dump
 
 static int
+api_one_stats_flush (vat_main_t * vam)
+{
+  vl_api_one_stats_flush_t *mp;
+  int ret = 0;
+
+  M (ONE_STATS_FLUSH, mp);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_one_stats_dump (vat_main_t * vam)
 {
   vl_api_one_stats_dump_t *mp;
@@ -18880,6 +18894,7 @@ _(show_one_rloc_probe_state, "")                                        \
 _(show_one_map_register_state, "")                                      \
 _(show_one_status, "")                                                  \
 _(one_stats_dump, "")                                                   \
+_(one_stats_flush, "")                                                  \
 _(one_get_map_request_itr_rlocs, "")                                    \
 _(show_one_pitr, "")                                                    \
 _(show_one_use_petr, "")                                                \

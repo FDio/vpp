@@ -410,6 +410,40 @@ lisp_gpe_fwd_entry_mk_paths (lisp_gpe_fwd_entry_t * lfe,
   vec_sort_with_function (lfe->paths, lisp_gpe_fwd_entry_path_sort);
 }
 
+void
+vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+				u32 fwd_entry_index)
+{
+  const lisp_gpe_adjacency_t *ladj;
+  lisp_fwd_path_t *path;
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_gpe_fwd_entry_t *lfe;
+  lisp_gpe_fwd_entry_key_t fe_key;
+  lisp_stats_key_t key, *pkey;
+
+  lfe = find_fwd_entry (lgm, a, &fe_key);
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NORMAL != lfe->type)
+    return;
+
+  memset (&key, 0, sizeof (key));
+  key.fwd_entry_index = fwd_entry_index;
+
+  vec_foreach (path, lfe->paths)
+  {
+    ladj = lisp_gpe_adjacency_get (path->lisp_adj);
+    key.tunnel_index = ladj->tunnel_index;
+    pool_get (lgm->stats_key_pool, pkey);
+    memcpy (pkey, &key, sizeof (key));
+    hash_set_mem (lgm->lisp_stats_index_by_key, &key,
+		  pkey - lgm->stats_key_pool);
+
+    vlib_validate_combined_counter (&lgm->counters,
+				    pkey - lgm->stats_key_pool);
+    vlib_zero_combined_counter (&lgm->counters, pkey - lgm->stats_key_pool);
+  }
+}
+
 /**
  * @brief Add/Delete LISP IP forwarding entry.
  *
@@ -1172,49 +1206,39 @@ vnet_lisp_gpe_add_del_fwd_entry (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
     }
 }
 
-void
+int
 vnet_lisp_flush_stats (void)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
-  lisp_stats_t *stat;
+  vlib_combined_counter_main_t *cm = &lgm->counters;
+  u32 i;
 
-  /* *INDENT-OFF* */
-  pool_foreach (stat, lgm->lisp_stats_pool,
-  {
-    stat->pkt_count = 0;
-    stat->bytes = 0;
-  });
-  /* *INDENT-ON* */
+  for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
+    vlib_zero_combined_counter (cm, i);
+
+  return 0;
 }
 
 static void
 lisp_del_adj_stats (lisp_gpe_main_t * lgm, u32 fwd_entry_index, u32 ti)
 {
-  hash_pair_t *hp;
   lisp_stats_key_t key;
-  void *key_copy;
   uword *p;
-  lisp_stats_t *s;
 
   memset (&key, 0, sizeof (key));
   key.fwd_entry_index = fwd_entry_index;
   key.tunnel_index = ti;
 
   p = hash_get_mem (lgm->lisp_stats_index_by_key, &key);
-  if (p)
-    {
-      s = pool_elt_at_index (lgm->lisp_stats_pool, p[0]);
-      hp = hash_get_pair (lgm->lisp_stats_index_by_key, &key);
-      key_copy = (void *) (hp->key);
-      hash_unset_mem (lgm->lisp_stats_index_by_key, &key);
-      clib_mem_free (key_copy);
-      pool_put (lgm->lisp_stats_pool, s);
-    }
+  ASSERT (p);
+
+  hash_unset_mem (lgm->lisp_stats_index_by_key, &key);
+  pool_put_index (lgm->stats_key_pool, p[0]);
 }
 
 void
-vnet_lisp_del_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-			 u32 fwd_entry_index)
+vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+				u32 fwd_entry_index)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
   lisp_gpe_fwd_entry_key_t fe_key;

@@ -108,6 +108,7 @@ _(SHOW_ONE_USE_PETR, show_one_use_petr)                                 \
 _(SHOW_ONE_STATS_ENABLE_DISABLE, show_one_stats_enable_disable)         \
 _(ONE_STATS_ENABLE_DISABLE, one_stats_enable_disable)                   \
 _(ONE_STATS_DUMP, one_stats_dump)                                       \
+_(ONE_STATS_FLUSH, one_stats_flush)                                     \
 
 
 static locator_t *
@@ -1347,6 +1348,16 @@ lisp_fid_addr_to_api (fid_address_t * fid, u8 * dst, u8 * api_eid_type,
 }
 
 static void
+vl_api_one_stats_flush_t_handler (vl_api_one_stats_flush_t * mp)
+{
+  vl_api_one_stats_flush_reply_t *rmp;
+  u8 rv;
+
+  rv = vnet_lisp_flush_stats ();
+  REPLY_MACRO (VL_API_ONE_STATS_FLUSH_REPLY);
+}
+
+static void
 vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
 {
   vl_api_one_stats_details_t *rmp;
@@ -1369,8 +1380,8 @@ vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
         ip_address_copy_addr (rmp->rloc, &stat->rmt_rloc);
         ip_address_copy_addr (rmp->lloc, &stat->loc_rloc);
 
-        rmp->pkt_count = clib_host_to_net_u32 (stat->stats.pkt_count);
-        rmp->bytes = clib_host_to_net_u32 (stat->stats.bytes);
+        rmp->pkt_count = clib_host_to_net_u32 (stat->counters.packets);
+        rmp->bytes = clib_host_to_net_u32 (stat->counters.bytes);
       }));
       /* *INDENT-ON* */
   }
