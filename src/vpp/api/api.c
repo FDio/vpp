@@ -410,21 +410,19 @@ static void
   bd_main_t *bdm = &bd_main;
   vl_api_sw_interface_set_l2_bridge_reply_t *rmp;
   int rv = 0;
-  u32 rx_sw_if_index = ntohl (mp->rx_sw_if_index);
-  u32 bd_id = ntohl (mp->bd_id);
-  u32 bd_index;
-  u32 bvi = mp->bvi;
-  u8 shg = mp->shg;
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
 
   VALIDATE_RX_SW_IF_INDEX (mp);
+  u32 rx_sw_if_index = ntohl (mp->rx_sw_if_index);
 
-  bd_index = bd_find_or_add_bd_index (bdm, bd_id);
 
   if (mp->enable)
     {
-      //VALIDATE_TX_SW_IF_INDEX(mp);
+      u32 bd_id = ntohl (mp->bd_id);
+      u32 bd_index = bd_find_or_add_bd_index (bdm, bd_id);
+      u32 bvi = mp->bvi;
+      u8 shg = mp->shg;
       rv = set_int_l2_mode (vm, vnm, MODE_L2_BRIDGE,
 			    rx_sw_if_index, bd_index, bvi, shg, 0);
     }
