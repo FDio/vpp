@@ -252,6 +252,7 @@ define test
 	  VPP_TEST_INSTALL_PATH=$(BR)/install-$(2)-native/ \
 	  LD_LIBRARY_PATH=$(BR)/install-$(2)-native/vpp/lib64/ \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
+	  PYTHON=$(PYTHON) \
 	  $(3)
 endef
 
