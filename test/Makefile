@@ -36,17 +36,29 @@ endif
 
 PYTHON_VENV_PATH=$(VPP_PYTHON_PREFIX)/virtualenv
 PYTHON_DEPENDS=scapy==2.3.3 pexpect subprocess32 cffi git+https://github.com/klement/py-lispnetworking@setup
-SCAPY_SOURCE=$(PYTHON_VENV_PATH)/lib/python2.7/site-packages/
-BUILD_COV_DIR = $(BR)/test-cov
+SCAPY_SOURCE=$(shell find $(PYTHON_VENV_PATH) -name site-packages)
+BUILD_COV_DIR=$(BR)/test-cov
 
+GET_PIP_SCRIPT=$(VPP_PYTHON_PREFIX)/get-pip.py
 PIP_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/pip-install.done
 PIP_PATCH_DONE=$(VPP_PYTHON_PREFIX)/pip-patch.done
 PAPI_INSTALL_DONE=$(VPP_PYTHON_PREFIX)/papi-install.done
 
 PAPI_INSTALL_FLAGS=$(PIP_INSTALL_DONE) $(PIP_PATCH_DONE) $(PAPI_INSTALL_DONE)
 
-$(PIP_INSTALL_DONE):
-	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
+ifeq ($(PYTHON),)
+PYTHON_INTERP=python2.7
+else
+PYTHON_INTERP=$(PYTHON)
+endif
+
+$(GET_PIP_SCRIPT):
+	@mkdir -p $(VPP_PYTHON_PREFIX)
+	@bash -c "cd $(VPP_PYTHON_PREFIX) && curl -O https://bootstrap.pypa.io/get-pip.py"
+
+$(PIP_INSTALL_DONE): $(GET_PIP_SCRIPT)
+	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python $(GET_PIP_SCRIPT)"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install $(PYTHON_DEPENDS)"
 	@touch $@
 
@@ -114,7 +126,7 @@ wipe: reset
 	@rm -f $(PAPI_INSTALL_FLAGS)
 
 doc: verify-python-path $(PIP_PATCH_DONE)
-	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
+	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install sphinx sphinx-rtd-theme"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && make -C doc WS_ROOT=$(WS_ROOT) BR=$(BR) NO_VPP_PAPI=1 html"
 
@@ -139,7 +151,7 @@ wipe-cov: wipe
 
 .PHONY: checkstyle
 checkstyle: verify-python-path
-	@virtualenv $(PYTHON_VENV_PATH) -p python2.7
+	@virtualenv $(PYTHON_VENV_PATH) -p $(PYTHON_INTERP)
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && pip install pep8"
 	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate &&\
 		pep8 --show-source -v $(WS_ROOT)/test/*.py ||\
