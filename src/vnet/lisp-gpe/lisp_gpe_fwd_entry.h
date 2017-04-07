@@ -212,8 +212,11 @@ extern u32 lisp_l2_fib_lookup (lisp_gpe_main_t * lgm,
 extern const dpo_id_t *lisp_nsh_fib_lookup (lisp_gpe_main_t * lgm,
 					    u32 spi_si);
 extern void
-vnet_lisp_del_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
-			 u32 fwd_entry_index);
+vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+				u32 fwd_entry_index);
+extern void
+vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+				u32 fwd_entry_index);
 #endif
 
 /*

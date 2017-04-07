@@ -426,6 +426,9 @@ lisp_gpe_init (vlib_main_t * vm)
 
   lgm->lisp_stats_index_by_key =
     hash_create_mem (0, sizeof (lisp_stats_key_t), sizeof (uword));
+  memset (&lgm->counters, 0, sizeof (lgm->counters));
+  lgm->counters.name = "LISP counters";
+
   return 0;
 }
 

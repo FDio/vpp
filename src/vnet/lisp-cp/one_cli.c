@@ -1682,7 +1682,7 @@ lisp_show_stats_details_command_fn (vlib_main_t * vm,
 		     format_fid_address, &stat->deid,
 		     format_ip_address, &stat->loc_rloc,
 		     format_ip_address, &stat->rmt_rloc,
-		     stat->stats.pkt_count, stat->stats.bytes);
+		     stat->counters.packets, stat->counters.bytes);
   }
   vec_free (stats);
   return 0;
