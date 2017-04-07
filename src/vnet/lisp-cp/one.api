@@ -901,6 +901,18 @@ define one_stats_details
   u32 bytes;
 };
 
+define one_stats_flush
+{
+  u32 client_index;
+  u32 context;
+};
+
+define one_stats_flush_reply
+{
+  u32 context;
+  i32 retval;
+};
+
 define one_stats_enable_disable
 {
   u32 client_index;
