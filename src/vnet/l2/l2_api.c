@@ -324,54 +324,20 @@ out:
 static void
 vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  bd_main_t *bdm = &bd_main;
+  l2_bridge_domain_add_del_args_t a = {
+    .is_add = mp->is_add,
+    .flood = mp->flood,
+    .uu_flood = mp->uu_flood,
+    .forward = mp->forward,
+    .learn = mp->learn,
+    .arp_term = mp->arp_term,
+    .mac_age = mp->mac_age,
+    .bd_id = ntohl (mp->bd_id),
+  };
+
+  int rv = bd_add_del (&a);
+
   vl_api_bridge_domain_add_del_reply_t *rmp;
-  int rv = 0;
-  u32 enable_flags = 0, disable_flags = 0;
-  u32 bd_id = ntohl (mp->bd_id);
-  u32 bd_index;
-
-  if (mp->is_add)
-    {
-      bd_index = bd_find_or_add_bd_index (bdm, bd_id);
-
-      if (mp->flood)
-	enable_flags |= L2_FLOOD;
-      else
-	disable_flags |= L2_FLOOD;
-
-      if (mp->uu_flood)
-	enable_flags |= L2_UU_FLOOD;
-      else
-	disable_flags |= L2_UU_FLOOD;
-
-      if (mp->forward)
-	enable_flags |= L2_FWD;
-      else
-	disable_flags |= L2_FWD;
-
-      if (mp->arp_term)
-	enable_flags |= L2_ARP_TERM;
-      else
-	disable_flags |= L2_ARP_TERM;
-
-      if (mp->learn)
-	enable_flags |= L2_LEARN;
-      else
-	disable_flags |= L2_LEARN;
-
-      if (enable_flags)
-	bd_set_flags (vm, bd_index, enable_flags, 1 /* enable */ );
-
-      if (disable_flags)
-	bd_set_flags (vm, bd_index, disable_flags, 0 /* disable */ );
-
-      bd_set_mac_age (vm, bd_index, mp->mac_age);
-    }
-  else
-    rv = bd_delete_bd_index (bdm, bd_id);
-
   REPLY_MACRO (VL_API_BRIDGE_DOMAIN_ADD_DEL_REPLY);
 }
 
@@ -436,7 +402,8 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
 
   bd_id = ntohl (mp->bd_id);
 
-  bd_index = (bd_id == ~0) ? 0 : bd_find_or_add_bd_index (bdm, bd_id);
+  bd_index = (bd_id == ~0) ? 0 : bd_find_index (bdm, bd_id);
+  ASSERT (bd_index != ~0);
   end = (bd_id == ~0) ? vec_len (l2im->bd_configs) : bd_index + 1;
   for (; bd_index < end; bd_index++)
     {
