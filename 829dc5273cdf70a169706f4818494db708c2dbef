@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_4935bbd8",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-04-08T04:43:42Z",
+      "side": 1,
+      "message": "Is there any call of this function with bd_id \u003d ~0? what would the following hash_get() return with bd_id of ~0? Why would we need this check anyway?",
+      "range": {
+        "startLine": 80,
+        "startChar": 15,
+        "endLine": 80,
+        "endChar": 16
+      },
+      "revId": "829dc5273cdf70a169706f4818494db708c2dbef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_693637e9",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1128,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-04-08T04:43:42Z",
+      "side": 1,
+      "message": "Can you check if there is any interface on this BD before allowing this BD to be deleted, please?",
+      "revId": "829dc5273cdf70a169706f4818494db708c2dbef",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
