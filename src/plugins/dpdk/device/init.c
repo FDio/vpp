@@ -419,56 +419,35 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
     }
   else if (ETHERNET_INTERFACE_FLAG_CONFIG_MTU (flags))
     {
-      /*
-       * DAW-FIXME: The Cisco VIC firmware does not provide an api for a
-       *            driver to dynamically change the mtu.  If/when the
-       *            VIC firmware gets fixed, then this should be removed.
-       */
-      if (xd->pmd == VNET_DPDK_PMD_ENIC)
+      int rv;
+
+      xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
+
+      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
+	rte_eth_dev_stop (xd->device_index);
+
+      rv = rte_eth_dev_configure
+	(xd->device_index, xd->rx_q_used, xd->tx_q_used, &xd->port_conf);
+
+      if (rv < 0)
+	vlib_cli_output (vlib_get_main (),
+			 "rte_eth_dev_configure[%d]: err %d",
+			 xd->device_index, rv);
+
+      rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
+
+      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	{
-	  struct rte_eth_dev_info dev_info;
-
-	  /*
-	   * Restore mtu to what has been set by CIMC in the firmware cfg.
-	   */
-	  rte_eth_dev_info_get (xd->device_index, &dev_info);
-	  hi->max_packet_bytes = dev_info.max_rx_pktlen;
-
-	  vlib_cli_output (vlib_get_main (),
-			   "Cisco VIC mtu can only be changed "
-			   "using CIMC then rebooting the server!");
-	}
-      else
-	{
-	  int rv;
-
-	  xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
-
-	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	    rte_eth_dev_stop (xd->device_index);
-
-	  rv = rte_eth_dev_configure
-	    (xd->device_index, xd->rx_q_used, xd->tx_q_used, &xd->port_conf);
-
+	  int rv = rte_eth_dev_start (xd->device_index);
+	  if (!rv && xd->default_mac_address)
+	    rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
+						   (struct ether_addr *)
+						   xd->default_mac_address);
 	  if (rv < 0)
-	    vlib_cli_output (vlib_get_main (),
-			     "rte_eth_dev_configure[%d]: err %d",
-			     xd->device_index, rv);
-
-	  rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
-
-	  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	    {
-	      int rv = rte_eth_dev_start (xd->device_index);
-	      if (!rv && xd->default_mac_address)
-		rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
-						       (struct ether_addr *)
-						       xd->default_mac_address);
-	      if (rv < 0)
-		clib_warning ("rte_eth_dev_start %d returned %d",
-			      xd->device_index, rv);
-	    }
+	    clib_warning ("rte_eth_dev_start %d returned %d",
+			  xd->device_index, rv);
 	}
+
     }
   return old;
 }
@@ -655,11 +634,13 @@ dpdk_lib_init (dpdk_main_t * dm)
 	{
 	  xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
 	  port_conf_template.rxmode.jumbo_frame = 0;
+	  port_conf_template.rxmode.enable_scatter = 0;
 	}
       else
 	{
 	  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOMULTSEGS;
 	  port_conf_template.rxmode.jumbo_frame = 1;
+	  port_conf_template.rxmode.enable_scatter = 1;
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
@@ -1068,16 +1049,13 @@ dpdk_lib_init (dpdk_main_t * dm)
       hi = vnet_get_hw_interface (dm->vnet_main, xd->vlib_hw_if_index);
 
       /*
-       * DAW-FIXME: The Cisco VIC firmware does not provide an api for a
-       *            driver to dynamically change the mtu.  If/when the
-       *            VIC firmware gets fixed, then this should be removed.
+       * For cisco VIC vNIC, set default to VLAN strip enabled, unless
+       * specified otherwise in the startup config.
+       * For other NICs default to VLAN strip disabled, unless specified
+       * otherwis in the startup config.
        */
       if (xd->pmd == VNET_DPDK_PMD_ENIC)
 	{
-	  /*
-	   * Initialize mtu to what has been set by CIMC in the firmware cfg.
-	   */
-	  hi->max_packet_bytes = dev_info.max_rx_pktlen;
 	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
 	    vlan_strip = 1;	/* remove vlan tag from VIC port by default */
 	  else
