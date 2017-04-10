@@ -1366,8 +1366,8 @@ vl_api_one_stats_dump_t_handler (vl_api_one_stats_dump_t * mp)
         ip_address_copy_addr (rmp->rloc, &stat->rmt_rloc);
         ip_address_copy_addr (rmp->lloc, &stat->loc_rloc);
 
-        rmp->pkt_count = clib_host_to_net_u32 (stat->stats.pkt_count);
-        rmp->bytes = clib_host_to_net_u32 (stat->stats.bytes);
+        rmp->pkt_count = clib_host_to_net_u32 (stat->counters.packets);
+        rmp->bytes = clib_host_to_net_u32 (stat->counters.bytes);
       }));
       /* *INDENT-ON* */
   }
