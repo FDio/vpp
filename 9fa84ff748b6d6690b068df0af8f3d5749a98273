@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_699f5751",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 437,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-04-10T05:52:18Z",
+      "side": 1,
+      "message": "Instead of allocating elements from a dummy pool, probably it would be better to allocate the key out of that pool and use its index?\nThis also avoids doing mem_allocs.",
+      "range": {
+        "startLine": 437,
+        "startChar": 4,
+        "endLine": 437,
+        "endChar": 69
+      },
+      "revId": "9fa84ff748b6d6690b068df0af8f3d5749a98273",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
