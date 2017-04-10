@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_afa9bfe0",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-04-10T11:45:28Z",
+      "side": 1,
+      "message": "Please move jira id to the end of line. Make whole subject line shorter.\n\nExample:\n\nSubject: Fix bug in configure \u0027pcap drop trace on file xx.cap\u0027 command (VPP-691)",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 8
+      },
+      "revId": "f232004c95a0f8f21eb80914df998d49db9c824e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2f5eef12",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1395,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-04-10T11:45:28Z",
+      "side": 1,
+      "message": "Why do you add another 0? Zero is already added 5 lines above.",
+      "range": {
+        "startLine": 1395,
+        "startChar": 3,
+        "endLine": 1395,
+        "endChar": 33
+      },
+      "revId": "f232004c95a0f8f21eb80914df998d49db9c824e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
