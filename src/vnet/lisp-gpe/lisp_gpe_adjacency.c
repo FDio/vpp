@@ -250,7 +250,6 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
   index_t lai;
   u32 si, di;
   gid_address_t src, dst;
-  lisp_stats_t *stats;
   uword *feip;
 
   ip46_address_to_ip_address (&adj->sub_type.nbr.next_hop, &rloc);
@@ -299,23 +298,12 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
   key.tunnel_index = ladj->tunnel_index;
 
   uword *p = hash_get_mem (lgm->lisp_stats_index_by_key, &key);
-  if (p)
-    {
-      stats = pool_elt_at_index (lgm->lisp_stats_pool, p[0]);
-    }
-  else
-    {
-      pool_get (lgm->lisp_stats_pool, stats);
-      memset (stats, 0, sizeof (*stats));
+  ASSERT (p);
 
-      lisp_stats_key_t *key_copy = clib_mem_alloc (sizeof (*key_copy));
-      memcpy (key_copy, &key, sizeof (*key_copy));
-      hash_set_mem (lgm->lisp_stats_index_by_key, key_copy,
-		    stats - lgm->lisp_stats_pool);
-    }
-  stats->pkt_count++;
   /* compute payload length starting after GPE */
-  stats->bytes += b->current_length - (lisp_data - b->data - b->current_data);
+  u32 bytes = b->current_length - (lisp_data - b->data - b->current_data);
+  vlib_increment_combined_counter (&lgm->counters, os_get_cpu_number (),
+				   p[0], 1, bytes);
 }
 
 static void
