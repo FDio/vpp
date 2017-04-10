@@ -1392,8 +1392,8 @@ pcap_drop_trace_command_fn (vlib_main_t * vm,
 
 	  if (im->pcap_filename)
 	    vec_free (im->pcap_filename);
-	  vec_add1 (filename, 0);
 	  im->pcap_filename = chroot_filename;
+	  im->pcap_main.file_name = (char *) im->pcap_filename;
 	  matched = 1;
 	}
       else if (unformat (input, "status"))
