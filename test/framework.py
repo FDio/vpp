@@ -255,6 +255,7 @@ class VppTestCase(unittest.TestCase):
         cls.verbose = 0
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
+        cls.vpp_startup_failed = False
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
@@ -273,7 +274,14 @@ class VppTestCase(unittest.TestCase):
                 hook = PollHook(cls)
             cls.vapi.register_hook(hook)
             cls.sleep(0.1, "after vpp startup, before initial poll")
-            hook.poll_vpp()
+            try:
+                hook.poll_vpp()
+            except:
+                cls.vpp_startup_failed = True
+                cls.logger.critical(
+                    "VPP died shortly after startup, check the"
+                    " output to standard error for possible cause")
+                raise
             try:
                 cls.vapi.connect()
             except:
@@ -325,27 +333,32 @@ class VppTestCase(unittest.TestCase):
                 cls.vpp.communicate()
             del cls.vpp
 
+        if cls.vpp_startup_failed:
+            stdout_log = cls.logger.info
+            stderr_log = cls.logger.critical
+        else:
+            stdout_log = cls.logger.info
+            stderr_log = cls.logger.info
+
         if hasattr(cls, 'vpp_stdout_deque'):
-            cls.logger.info(single_line_delim)
-            cls.logger.info('VPP output to stdout while running %s:',
-                            cls.__name__)
-            cls.logger.info(single_line_delim)
+            stdout_log(single_line_delim)
+            stdout_log('VPP output to stdout while running %s:', cls.__name__)
+            stdout_log(single_line_delim)
             f = open(cls.tempdir + '/vpp_stdout.txt', 'w')
             vpp_output = "".join(cls.vpp_stdout_deque)
             f.write(vpp_output)
-            cls.logger.info('\n%s', vpp_output)
-            cls.logger.info(single_line_delim)
+            stdout_log('\n%s', vpp_output)
+            stdout_log(single_line_delim)
 
         if hasattr(cls, 'vpp_stderr_deque'):
-            cls.logger.info(single_line_delim)
-            cls.logger.info('VPP output to stderr while running %s:',
-                            cls.__name__)
-            cls.logger.info(single_line_delim)
+            stderr_log(single_line_delim)
+            stderr_log('VPP output to stderr while running %s:', cls.__name__)
+            stderr_log(single_line_delim)
             f = open(cls.tempdir + '/vpp_stderr.txt', 'w')
             vpp_output = "".join(cls.vpp_stderr_deque)
             f.write(vpp_output)
-            cls.logger.info('\n%s', vpp_output)
-            cls.logger.info(single_line_delim)
+            stderr_log('\n%s', vpp_output)
+            stderr_log(single_line_delim)
 
     @classmethod
     def tearDownClass(cls):
@@ -925,4 +938,6 @@ class VppTestRunner(unittest.TextTestRunner):
                                      filter_func)
         print("%s out of %s tests match specified filters" % (
             filtered.countTestCases(), test.countTestCases()))
+        if not running_extended_tests():
+            print("Not running extended tests (some tests will be skipped)")
         return super(VppTestRunner, self).run(filtered)

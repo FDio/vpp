@@ -78,6 +78,11 @@ sanity: verify-no-running-vpp
 		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_papi.py'\" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python sanity_run_vpp.py ||\
+		(echo \"*******************************************************************\" &&\
+		 echo \"* Sanity check failed, cannot run vpp\" &&\
+	         echo \"*******************************************************************\" &&\
+		 false)"
 
 test: verify-python-path $(PAPI_INSTALL_DONE) sanity reset 
 	$(call retest-func)
