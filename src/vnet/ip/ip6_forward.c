@@ -2253,7 +2253,7 @@ ip6_mcast_midchain (vlib_main_t * vm,
   if (adj_are_counters_enabled ())
     return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
   else
-    return ip6_rewrite_inline (vm, node, frame, 1, 1, 1);
+    return ip6_rewrite_inline (vm, node, frame, 0, 1, 1);
 }
 
 /* *INDENT-OFF* */

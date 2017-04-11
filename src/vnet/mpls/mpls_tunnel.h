@@ -34,7 +34,7 @@ typedef enum mpls_tunnel_attribute_t_
 }
 #define FOR_EACH_MPLS_TUNNEL_ATTRIBUTE(_item)		\
     for (_item = MPLS_TUNNEL_ATTRIBUTE_FIRST;		\
-	 _item < MPLS_TUNNEL_ATTRIBUTE_LAST;		\
+	 _item <= MPLS_TUNNEL_ATTRIBUTE_LAST;		\
 	 _item++)
 
 typedef enum mpls_tunnel_flag_t_ {
