@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/mpls_fib.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/replicate_dpo.h>
+#include "mpls_types.h"
+#include "vnet/buffer.h"
+#include "vnet/fib/mpls_fib.h"
+#include "vnet/dpo/load_balance.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 /**
  * Static MPLS VLIB forwarding node

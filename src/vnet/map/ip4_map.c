@@ -18,7 +18,12 @@
 #define MAP_ENCAP_DUAL 0
 
 #include "map.h"
-#include "../ip/ip_frag.h"
+#include "vnet/buffer.h"
+#include "vnet/ip/ip_frag.h"
+#include "vnet/udp/udp_packet.h"
+#include "vnet/ip/ip4_error.h"
+#include "vnet/ip/icmp4.h"
+#include "vlib/global_funcs.h"
 
 vlib_node_registration_t ip4_map_reass_node;
 

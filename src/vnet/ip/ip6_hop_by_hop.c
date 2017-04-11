@@ -12,20 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
 
-#include <vnet/ip/ip.h>
+#include "ip6_hop_by_hop.h"
+#include "format.h"
 
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
-
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/classify/vnet_classify.h>
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/classify/vnet_classify.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 /**
  * @file

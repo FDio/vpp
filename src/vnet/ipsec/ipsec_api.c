@@ -17,35 +17,32 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
+#include "vlibmemory/api.h"
 
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-
-#include <vnet/vnet_msg_enum.h>
+#include "vnet/vnet_msg_enum.h"
 
 #if WITH_LIBSSL > 0
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
+#include "ipsec.h"
+#include "ikev2.h"
 #endif /* IPSEC */
 
+#include <arpa/inet.h>
+
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_printfun
 
-#include <vlibapi/api_helper_macros.h>
+#include "vlibapi/api_helper_macros.h"
 
 #define foreach_vpe_api_msg                                             \
 _(IPSEC_SPD_ADD_DEL, ipsec_spd_add_del)                                 \
@@ -660,7 +657,7 @@ static void
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_msg_name_crc_list
 
 static void

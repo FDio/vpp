@@ -15,6 +15,8 @@
 #ifndef __included_ip6_hop_by_hop_packet_h__
 #define __included_ip6_hop_by_hop_packet_h__
 
+#include "vppinfra/clib.h"
+
 typedef struct
 {
   /* Protocol for next header */

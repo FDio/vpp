@@ -15,20 +15,11 @@
 #ifndef included_vnet_vxlan_h
 #define included_vnet_vxlan_h
 
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/l2/l2_output.h>
-#include <vnet/l2/l2_bd.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan/vxlan_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/udp/udp.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/adj/adj_types.h>
+#include "vnet/fib/fib_node.h"
+#include "vnet/vnet.h"
+#include "vxlan_packet.h"
+#include "vnet/adj/adj_types.h"
+#include "vnet/udp/udp.h"
 
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;            /* 20 bytes */

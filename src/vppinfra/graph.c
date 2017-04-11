@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vppinfra/graph.h>
+#include "pool.h"
+#include "graph.h"
 
 /* Set link distance, creating link if not found. */
 u32

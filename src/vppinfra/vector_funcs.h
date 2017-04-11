@@ -38,7 +38,7 @@
 #ifndef included_vector_funcs_h
 #define included_vector_funcs_h
 
-#include <vppinfra/byte_order.h>
+#include "vector.h"
 
 /* Addition/subtraction. */
 #if CLIB_VECTOR_WORD_BITS == 128

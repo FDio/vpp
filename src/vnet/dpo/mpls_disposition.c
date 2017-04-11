@@ -13,9 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/mpls_disposition.h>
-#include <vnet/mpls/mpls.h>
+#include "vnet/buffer.h"
+#include "vnet/fib/fib_node.h"
+#include "vnet/ip/ip.h"
+#include "mpls_disposition.h"
+#include "vnet/mpls/mpls.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 /*
  * pool of all MPLS Label DPOs

@@ -20,16 +20,9 @@
 #ifndef included_vnet_vxlan_gpe_h
 #define included_vnet_vxlan_gpe_h
 
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/udp/udp.h>
+#include "vnet/ip/ip6_packet.h"
+#include "vxlan_gpe_packet.h"
+#include "vnet/udp/udp_packet.h"
 
 /**
  * @brief VXLAN GPE header struct
@@ -143,7 +136,7 @@ typedef enum {
 /** struct for VXLAN GPE errors */
 typedef enum {
 #define vxlan_gpe_error(n,s) VXLAN_GPE_ERROR_##n,
-#include <vnet/vxlan-gpe/vxlan_gpe_error.def>
+#include "vxlan_gpe_error.def"
 #undef vxlan_gpe_error
   VXLAN_GPE_N_ERROR,
 } vxlan_gpe_input_error_t;

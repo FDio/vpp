@@ -40,8 +40,9 @@
 #ifndef included_vnet_interface_h
 #define included_vnet_interface_h
 
-#include <vnet/unix/pcap.h>
-#include <vnet/l3_types.h>
+#include "unix/pcap.h"
+#include "vlib/counter.h"
+#include "l3_types.h"
 
 struct vnet_main_t;
 struct vnet_hw_interface_t;

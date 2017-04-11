@@ -38,6 +38,8 @@
 #ifndef included_clib_vec_bootstrap_h
 #define included_clib_vec_bootstrap_h
 
+#include "clib.h"
+
 /** \file
     Vector bootsrap header file
 */

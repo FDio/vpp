@@ -37,7 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
+#include "ip.h"
+#include "ip6_packet.h"
+#include "format.h"
+#include "vlib/format_funcs.h"
 
 /* Format an IP6 address. */
 u8 *

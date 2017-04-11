@@ -13,28 +13,26 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/format.h>
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/receive_dpo.h>
-#include <vnet/dpo/load_balance_map.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/interface_dpo.h>
-#include <vnet/dpo/mpls_disposition.h>
+#include "vlib/global_funcs.h"
+#include "vnet/ip/format.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/dpo/receive_dpo.h"
+#include "vnet/dpo/load_balance_map.h"
+#include "vnet/dpo/lookup_dpo.h"
 
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_mcast.h>
+#include "vnet/adj/adj.h"
+#include "vnet/adj/adj_glean.h"
+#include "vnet/adj/adj_mcast.h"
+#include "vnet/adj/adj_nbr.h"
 
-#include <vnet/fib/fib_path.h>
-#include <vnet/fib/fib_node.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_internal.h>
-#include <vnet/fib/fib_urpf_list.h>
-#include <vnet/fib/mpls_fib.h>
+#include "fib_path.h"
+#include "fib_table.h"
+#include "fib_path_list.h"
+#include "fib_internal.h"
+#include "fib_urpf_list.h"
+#include "mpls_fib.h"
+#include "vnet/dpo/interface_dpo.h"
+#include "vnet/dpo/mpls_disposition.h"
 
 /**
  * Enurmeration of path types

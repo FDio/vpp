@@ -43,7 +43,7 @@
 #ifndef included_vnet_pcap_h
 #define included_vnet_pcap_h
 
-#include <vlib/vlib.h>
+#include "vlib/buffer_funcs.h"
 
 /**
  * @brief Packet types supported by PCAP

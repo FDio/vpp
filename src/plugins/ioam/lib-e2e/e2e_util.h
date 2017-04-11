@@ -17,6 +17,7 @@
 #define PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_E2E_UTIL_H_
 
 #include <ioam/lib-e2e/ioam_seqno_lib.h>
+#include "vppinfra/clib.h"
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {

@@ -17,7 +17,6 @@
 #define __span_h__
 
 #include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
 
 typedef struct
 {

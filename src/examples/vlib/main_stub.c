@@ -12,8 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+
 #include <math.h>
 
 int

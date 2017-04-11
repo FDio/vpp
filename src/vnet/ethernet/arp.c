@@ -15,16 +15,18 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/arp_packet.h>
-#include <vnet/l2/l2_input.h>
-#include <vppinfra/mhash.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/adj/adj_nbr.h>
-#include <vnet/adj/adj_mcast.h>
-#include <vnet/mpls/mpls.h>
+#include "arp_packet.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/l2/feat_bitmap.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/adj/adj_nbr.h"
+#include "vnet/adj/adj_mcast.h"
+#include "vnet/adj/adj.h"
+#include "vnet/ip/format.h"
+#include "vlib/format_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
 
 /**
  * @file

@@ -12,19 +12,11 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/udp/udp.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/fib_entry.h>
+#include "vnet/feature/feature.h"
+#include "vnet/udp/udp.h"
+#include "vxlan_gpe_ioam_util.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 /* Statistics (not really errors) */
 #define foreach_vxlan_gpe_transit_ioam_error    \

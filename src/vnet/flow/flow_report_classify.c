@@ -12,9 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_classify.h>
-#include <vnet/api_errno.h>
+#include "vnet/buffer.h"
+#include "vnet/classify/vnet_classify.h"
+#include "vnet/ip/ip4.h"
+#include "flow_report_classify.h"
+#include "ipfix_info_elements.h"
+#include "vlib/global_funcs.h"
 
 /* Common prefix of tcp and udp headers
  * containing only source and destination port fields */

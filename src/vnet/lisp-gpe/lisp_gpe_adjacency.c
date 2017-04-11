@@ -18,16 +18,19 @@
  *
  */
 
-#include <vnet/dpo/load_balance.h>
-#include <vnet/lisp-cp/control.h>
-#include <vnet/lisp-cp/lisp_types.h>
-#include <vnet/lisp-gpe/lisp_gpe_sub_interface.h>
-#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
-#include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/adj/adj_midchain.h>
-#include <vppinfra/bihash_24_8.h>
-#include <vppinfra/bihash_template.h>
+#include "lisp_gpe_sub_interface.h"
+#include "lisp_gpe_adjacency.h"
+#include "lisp_gpe_tunnel.h"
+#include "lisp_gpe.h"
+
+#include "vnet/buffer.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/udp/udp.h"
+#include "vnet/adj/adj_midchain.h"
+#include "vnet/adj/adj_nbr.h"
+#include "vnet/lisp-cp/control.h"
+#include "vlib/global_funcs.h"
 
 /**
  * Memory pool of all adjacencies

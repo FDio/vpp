@@ -24,7 +24,7 @@
 #ifndef included_md5_h
 #define included_md5_h
 
-#include <vppinfra/clib.h>
+#include "types.h"
 
 typedef struct
 {

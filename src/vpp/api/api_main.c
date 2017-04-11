@@ -1,4 +1,10 @@
 #include "vat.h"
+#include "vlib/node_funcs.h"
+#include "vnet/api_errno.h"
+#include "vnet/vnet.h"
+#include "vlib/global_funcs.h"
+#include "vlibapi/api.h"
+#include "vlibmemory/api.h"
 
 vat_main_t vat_main;
 

@@ -19,9 +19,7 @@
 #ifndef included_macros_h
 #define included_macros_h
 
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/format.h>
+#include "types.h"
 
 #ifdef CLIB_UNIX
 #include <stdlib.h>

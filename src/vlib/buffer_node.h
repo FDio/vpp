@@ -40,6 +40,8 @@
 #ifndef included_vlib_buffer_node_h
 #define included_vlib_buffer_node_h
 
+#include "trace_funcs.h"
+
 /** \file
     vlib buffer/node functions
 */

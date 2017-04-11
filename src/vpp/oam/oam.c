@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 #include <vpp/oam/oam.h>
+#include "vnet/buffer.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/buffer_node.h"
 
 oam_main_t oam_main;
 

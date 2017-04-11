@@ -15,6 +15,8 @@
 #ifndef __ESP_H__
 #define __ESP_H__
 
+#include "ipsec.h"
+
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/evp.h>

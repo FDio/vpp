@@ -38,8 +38,7 @@
 #ifndef included_sparse_vec_h
 #define included_sparse_vec_h
 
-#include <vppinfra/vec.h>
-#include <vppinfra/bitops.h>
+#include "bitmap.h"
 
 /* Sparsely indexed vectors.  Basic idea taken from Hacker's delight.
    Eliot added ranges. */

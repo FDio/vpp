@@ -15,10 +15,16 @@
 #include <vpp/stats/stats.h>
 #include <signal.h>
 #include <vlib/threads.h>
+#include "vnet/adj/adj.h"
+#include "vnet/adj/adj_nbr.h"
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/dpo/load_balance.h>
+#include "vlibmemory/api.h"
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
 
 #define STATS_DEBUG 0
 

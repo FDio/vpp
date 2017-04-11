@@ -18,7 +18,6 @@
 #ifndef included_l2fwd_h
 #define included_l2fwd_h
 
-#include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
 
 

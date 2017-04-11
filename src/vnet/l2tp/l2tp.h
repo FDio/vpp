@@ -18,9 +18,8 @@
 #ifndef __included_l2tp_h__
 #define __included_l2tp_h__
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2tp/packet.h>
+#include "vnet/vnet.h"
+#include "vnet/ip/ip6_packet.h"
 
 typedef struct
 {

@@ -16,9 +16,9 @@
 #ifndef VNET_CONTROL_H_
 #define VNET_CONTROL_H_
 
-#include <vnet/vnet.h>
-#include <vnet/lisp-cp/gid_dictionary.h>
-#include <vnet/lisp-cp/lisp_types.h>
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip4.h"
+#include "gid_dictionary.h"
 
 #define NUMBER_OF_RETRIES                   1
 #define PENDING_MREQ_EXPIRATION_TIME        3.0	/* seconds */

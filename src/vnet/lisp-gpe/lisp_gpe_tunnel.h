@@ -21,8 +21,8 @@
 #ifndef LISP_GPE_TUNNEL_H__
 #define LISP_GPE_TUNNEL_H__
 
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe_packet.h>
+#include "vnet/lisp-cp/lisp_types.h"
+#include "lisp_gpe_packet.h"
 
 /**
  * Forward declaration

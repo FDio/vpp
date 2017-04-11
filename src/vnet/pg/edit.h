@@ -41,7 +41,6 @@
 #define included_packet_generator_pg_edit_h
 
 #include <vppinfra/format.h>
-#include <vppinfra/vec.h>
 
 typedef enum
 {

@@ -17,9 +17,10 @@
  * @brief L2 LISP-GPE decap code.
  *
  */
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "vnet/l2/l2_input.h"
+#include "lisp_gpe.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 typedef struct
 {

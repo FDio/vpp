@@ -16,18 +16,8 @@
 #ifndef __vnet_cop_h__
 #define __vnet_cop_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
+#include "vnet/vnet.h"
+#include "vnet/config.h"
 
 typedef enum {
   VNET_COP_IP4,

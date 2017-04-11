@@ -19,6 +19,8 @@
 #ifndef included_vnet_global_funcs_h_
 #define included_vnet_global_funcs_h_
 
+#include "vnet.h"
+
 vnet_main_t *vnet_get_main (void);
 
 #endif /* included_vnet_global_funcs_h_ */

@@ -12,12 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/session/application_interface.h>
+#include "application_interface.h"
 
-#include <vnet/session/session.h>
-#include <vlibmemory/api.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/fib/ip4_fib.h>
+#include "session.h"
+#include "vlibmemory/api.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/ip/format.h"
 
 /** @file
     VPP's application/session API bind/unbind/connect/disconnect calls

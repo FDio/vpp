@@ -15,12 +15,10 @@
 #ifndef __included_session_h__
 #define __included_session_h__
 
-#include <vnet/session/transport.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
-#include <vlibmemory/api.h>
-#include <vppinfra/sparse_vec.h>
-#include <svm/svm_fifo_segment.h>
-#include <vnet/session/session_debug.h>
+#include "vnet/vnet.h"
+#include "transport.h"
+#include "svm/svm_fifo.h"
+#include "vlibmemory/unix_shared_memory_queue.h"
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)

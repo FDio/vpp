@@ -18,6 +18,8 @@
  * limitations under the License.
  */
 
+#include "vppinfra/types.h"
+
 /**
  * A label value only, i.e. 20bits.
  */

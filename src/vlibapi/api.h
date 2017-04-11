@@ -20,11 +20,11 @@
 #ifndef included_api_h
 #define included_api_h
 
-#include <vppinfra/error.h>
+#include <vlib/main.h>
 #include <svm/svm.h>
-#include <vlib/vlib.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
-#include <vlib/unix/unix.h>
+
+#include <stdio.h>
 
 typedef enum
 {

@@ -38,7 +38,7 @@
 #ifndef included_clib_vector_h
 #define included_clib_vector_h
 
-#include <vppinfra/clib.h>
+#include "types.h"
 
 /* Vector types. */
 
@@ -238,23 +238,22 @@ _(i64, 2);
 #endif
 
 #if defined (__SSE2__) && __GNUC__ >= 4
-#include <vppinfra/vector_sse2.h>
+#include "vector_sse2.h"
 #endif
 
 #if defined (__ALTIVEC__)
-#include <vppinfra/vector_altivec.h>
+#include "vector_altivec.h"
 #endif
 
 #if defined (__IWMMXT__)
-#include <vppinfra/vector_iwmmxt.h>
+#include "vector_iwmmxt.h"
 #endif
 
 #if defined (__aarch64__)
-#include <vppinfra/vector_neon.h>
+#include "vector_neon.h"
 #endif
 
 #if (defined(CLIB_HAVE_VEC128) || defined(CLIB_HAVE_VEC64))
-#include <vppinfra/vector_funcs.h>
 #endif
 
 #endif /* included_clib_vector_h */

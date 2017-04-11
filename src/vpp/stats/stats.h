@@ -15,16 +15,11 @@
 #ifndef __included_stats_h__
 #define __included_stats_h__
 
+#include "vlibapi/api_helper_macros.h"
+#include "vlibapi/api.h"
+
 #include <time.h>
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/interface.h>
 #include <pthread.h>
-#include <vlib/threads.h>
-#include <vlib/unix/unix.h>
-#include <vlibmemory/api.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
-#include <vlibapi/api_helper_macros.h>
 
 typedef struct
 {

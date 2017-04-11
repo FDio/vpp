@@ -15,12 +15,9 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-#include <vnet/interface.h>
+#include "vnet/ip/format.h"
 
-#include <vnet/ipsec/ipsec.h>
+#include "ipsec.h"
 
 static clib_error_t *
 set_interface_spd_command_fn (vlib_main_t * vm,

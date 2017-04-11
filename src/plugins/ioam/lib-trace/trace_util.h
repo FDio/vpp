@@ -18,6 +18,8 @@
 #ifndef include_vnet_trace_util_h
 #define include_vnet_trace_util_h
 
+#include "vnet/vnet.h"
+
 #define debug_ioam debug_ioam_fn
 
 

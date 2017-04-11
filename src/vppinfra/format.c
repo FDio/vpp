@@ -47,11 +47,6 @@
 
 #include <stdarg.h>		/* va_start, etc */
 
-#ifdef CLIB_UNIX
-#include <unistd.h>
-#include <stdio.h>
-#endif
-
 #ifdef CLIB_STANDALONE
 #include <vppinfra/standalone_stdio.h>
 #endif
@@ -62,6 +57,11 @@
 #include <vppinfra/error.h>
 #include <vppinfra/string.h>
 #include <vppinfra/os.h>	/* os_puts */
+
+#ifdef CLIB_UNIX
+#include <unistd.h>
+#include <stdio.h>
+#endif
 
 typedef struct
 {

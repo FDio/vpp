@@ -19,17 +19,13 @@
  *------------------------------------------------------------------
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <vppinfra/format.h>
-#include <vppinfra/byte_order.h>
-#include <vppinfra/error.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibapi/api.h>
-#include <vppinfra/elog.h>
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+#include "api.h"
+
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /* *INDENT-OFF* */
 api_main_t api_main =

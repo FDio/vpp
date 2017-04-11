@@ -37,11 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/vnet.h>
-#include <vnet/feature/feature.h>
-#include <vnet/devices/devices.h>
+#include "pg.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
+#include "vlib/trace_funcs.h"
 
 static int
 validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,

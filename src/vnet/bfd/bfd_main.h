@@ -19,10 +19,9 @@
 #ifndef __included_bfd_main_h__
 #define __included_bfd_main_h__
 
-#include <vppinfra/timing_wheel.h>
-#include <vnet/vnet.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_udp.h>
+#include "vnet/vnet.h"
+#include "bfd_udp.h"
+#include "bfd_protocol.h"
 
 #define foreach_bfd_mode(F) \
   F (asynchronous)          \

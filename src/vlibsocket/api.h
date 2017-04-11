@@ -21,6 +21,7 @@
 #define included_vlibsocket_api_h
 
 #include <vlibapi/api.h>
+#include "vlib/unix/unix.h"
 
 typedef struct
 {

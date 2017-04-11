@@ -40,6 +40,8 @@
 #ifndef included_ip_format_h
 #define included_ip_format_h
 
+#include "vppinfra/format.h"
+
 /* IP4 or IP6. */
 
 format_function_t format_ip_protocol;

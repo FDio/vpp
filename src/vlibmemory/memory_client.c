@@ -17,48 +17,25 @@
  *------------------------------------------------------------------
  */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <setjmp.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
-#include <fcntl.h>
-#include <string.h>
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/bitmap.h>
-#include <vppinfra/fifo.h>
-#include <vppinfra/time.h>
-#include <vppinfra/mheap.h>
-#include <vppinfra/heap.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/format.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibmemory/api.h>
+#include "vlib/unix/unix.h"
+#include "api.h"
 
-#include <vlibmemory/vl_memory_msg_enum.h>
+#include "vl_memory_msg_enum.h"
 
 #define vl_typedefs		/* define message structures */
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vl_memory_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vl_memory_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) clib_warning (__VA_ARGS__)
 #define vl_printfun
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vl_memory_api_h.h"
 #undef vl_printfun
 
 typedef struct

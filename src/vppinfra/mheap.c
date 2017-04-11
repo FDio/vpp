@@ -46,6 +46,18 @@
 #include <vppinfra/elf_clib.h>
 #endif
 
+#ifdef CLIB_LINUX_KERNEL
+#include <vppinfra/vm_linux_kernel.h>
+#endif
+
+#ifdef CLIB_UNIX
+#include <vppinfra/vm_unix.h>
+#endif
+
+#ifdef CLIB_STANDALONE
+#include <vppinfra/vm_standalone.h>
+#endif
+
 static void mheap_get_trace (void *v, uword offset, uword size);
 static void mheap_put_trace (void *v, uword offset, uword size);
 static int mheap_trace_sort (const void *t1, const void *t2);

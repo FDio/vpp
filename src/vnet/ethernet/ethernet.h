@@ -40,10 +40,12 @@
 #ifndef included_ethernet_h
 #define included_ethernet_h
 
-#include <vnet/vnet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/feature/feature.h>
+#include "vnet/interface_funcs.h"
+#include "vnet/pg/pg.h"
+#include "vnet/buffer.h"
+#include "packet.h"
+
+#include <smmintrin.h>
 
 always_inline u64
 ethernet_mac_address_u64 (u8 * a)

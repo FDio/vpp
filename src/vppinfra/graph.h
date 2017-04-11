@@ -15,9 +15,7 @@
 #ifndef included_clib_graph_h
 #define included_clib_graph_h
 
-#include <vppinfra/format.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/pool.h>
+#include "hash.h"
 
 /* Generic graphs. */
 typedef struct

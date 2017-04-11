@@ -17,14 +17,7 @@
 #ifndef __included_flowperpkt_h__
 #define __included_flowperpkt_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vnet/flow/flow_report.h>
-#include <vnet/flow/flow_report_classify.h>
+#include "vnet/vnet.h"
 
 /**
  * @file

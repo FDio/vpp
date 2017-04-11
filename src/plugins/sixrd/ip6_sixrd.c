@@ -19,6 +19,8 @@
 #define SIXRD_ENCAP_DUAL 0
 
 #include "sixrd.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 static vlib_node_registration_t ip6_sixrd_node;
 

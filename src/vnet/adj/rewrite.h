@@ -40,8 +40,9 @@
 #ifndef included_vnet_rewrite_h
 #define included_vnet_rewrite_h
 
-#include <vlib/vlib.h>
-#include <vnet/l3_types.h>
+#include "vnet/interface.h"
+
+#include <string.h>
 
 /* Consider using vector types for speed? */
 typedef uword vnet_rewrite_data_t;

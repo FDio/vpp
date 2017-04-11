@@ -17,10 +17,12 @@
     udp state machine, etc.
 */
 
-#include <vnet/udp/udp.h>
-#include <vnet/session/session.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/fib/ip4_fib.h>
+#include "udp.h"
+#include "vnet/ip/format.h"
+#include "vnet/session/session.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vlib/global_funcs.h"
 
 udp_uri_main_t udp_uri_main;
 

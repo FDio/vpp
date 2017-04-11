@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-#include <vlib/unix/plugin.h>
-#include <vppinfra/elf.h>
+#include "vlib/global_funcs.h"
+#include "plugin.h"
+
 #include <dlfcn.h>
 #include <dirent.h>
 

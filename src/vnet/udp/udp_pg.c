@@ -37,8 +37,12 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/pg/pg.h>
-#include <vnet/ip/ip.h>		/* for unformat_udp_udp_port */
+#include "vnet/pg/pg.h"
+#include "vnet/ip/ip.h"		/* for unformat_udp_udp_port */
+#include "vnet/ip/ip4_packet.h"
+#include "udp_packet.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 #define UDP_PG_EDIT_LENGTH (1 << 0)
 #define UDP_PG_EDIT_CHECKSUM (1 << 1)

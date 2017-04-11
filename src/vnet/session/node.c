@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
+#include "application.h"
+#include "session_debug.h"
+
+#include "vnet/tcp/tcp.h"
+#include "vlibmemory/unix_shared_memory_queue.h"
+#include "vppinfra/elog.h"
+#include "vlib/buffer_node.h"
+
 #include <math.h>
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/tcp/tcp.h>
-#include <vppinfra/elog.h>
-#include <vnet/session/application.h>
-#include <vnet/session/session_debug.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 
 vlib_node_registration_t session_queue_node;
 

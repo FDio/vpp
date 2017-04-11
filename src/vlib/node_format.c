@@ -37,7 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
+#include "node_funcs.h"
 
 u8 *
 format_vlib_node_graph (u8 * s, va_list * va)

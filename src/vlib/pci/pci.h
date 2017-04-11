@@ -40,8 +40,8 @@
 #ifndef included_vlib_pci_h
 #define included_vlib_pci_h
 
-#include <vlib/vlib.h>
-#include <vlib/pci/pci_config.h>
+#include "vlib/main.h"
+#include "pci_config.h"
 
 typedef CLIB_PACKED (union
 		     {

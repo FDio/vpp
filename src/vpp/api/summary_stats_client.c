@@ -44,7 +44,6 @@
 #include <vppinfra/error.h>
 
 #include <vnet/vnet.h>
-#include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -52,6 +51,7 @@
 #include <vpp/api/vpe_msg_enum.h>
 
 #include <vnet/ip/ip.h>
+#include "vnet/ip/ip4.h"
 
 #define f64_endian(a)
 #define f64_print(a,b)

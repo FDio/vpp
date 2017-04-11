@@ -38,8 +38,8 @@
 #ifndef included_clib_smp_h
 #define included_clib_smp_h
 
-#include <vppinfra/cache.h>
-#include <vppinfra/os.h>	/* for os_panic */
+#include "clib.h"
+#include "types.h"
 
 #define clib_smp_compare_and_swap(addr,new,old) __sync_val_compare_and_swap(addr,old,new)
 #define clib_smp_swap(addr,new) __sync_lock_test_and_set(addr,new)

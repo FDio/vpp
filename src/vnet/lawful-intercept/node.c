@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vppinfra/error.h>
+#include "vnet/ip/ip4.h"
 
-#include <vnet/lawful-intercept/lawful_intercept.h>
+#include "lawful_intercept.h"
 
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 vlib_node_registration_t li_hit_node;
 

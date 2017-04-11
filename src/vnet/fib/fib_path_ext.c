@@ -13,16 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/mpls/mpls.h>
-#include <vnet/dpo/mpls_label_dpo.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/drop_dpo.h>
-
-#include <vnet/fib/fib_path_ext.h>
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_path.h>
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_internal.h>
+#include "vnet/mpls/mpls.h"
+#include "vnet/mpls/mpls_types.h"
+#include "vnet/dpo/mpls_label_dpo.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "fib_path_ext.h"
+#include "fib_entry_src.h"
+#include "fib_path.h"
+#include "fib_internal.h"
 
 u8 *
 format_fib_path_ext (u8 * s, va_list * args)

@@ -17,7 +17,7 @@
  * The data-path object representing puntping the packet
  */
 
-#include <vnet/dpo/dpo.h>
+#include "dpo.h"
 
 static dpo_id_t punt_dpos[DPO_PROTO_NUM];
 

@@ -35,11 +35,12 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <vppinfra/elf.h>
+#include "vppinfra/elf.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
 #ifndef CLIB_UNIX
 #error "unix only"

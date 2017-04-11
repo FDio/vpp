@@ -19,14 +19,14 @@
 
 #include <linux/if_packet.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/devices/devices.h"
+#include "vnet/feature/feature.h"
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include "af_packet.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_af_packet_input_error
 

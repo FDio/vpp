@@ -15,8 +15,11 @@
 /*
  * flow_report.c
  */
-#include <vnet/flow/flow_report.h>
-#include <vnet/api_errno.h>
+#include "vnet/buffer.h"
+#include "flow_report.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 flow_report_main_t flow_report_main;
 

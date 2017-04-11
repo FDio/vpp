@@ -13,13 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/mpls/mpls_types.h>
-#include <vnet/dpo/drop_dpo.h>
-
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/mpls_fib.h>
+#include "vnet/mpls/mpls_types.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "fib_entry_src.h"
+#include "mpls_fib.h"
 
 /**
  * Source initialisation Function 

@@ -25,7 +25,8 @@
 #ifndef L2_RW_H_
 #define L2_RW_H_
 
-#include <vnet/l2/l2_input.h>
+#include "vppinfra/clib.h"
+#include "vppinfra/vector.h"
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED(struct _l2_rw_entry {

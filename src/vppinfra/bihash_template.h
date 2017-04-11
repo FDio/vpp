@@ -23,10 +23,6 @@
 #ifndef __included_bihash_template_h__
 #define __included_bihash_template_h__
 
-#include <vppinfra/heap.h>
-#include <vppinfra/format.h>
-#include <vppinfra/pool.h>
-
 #ifndef BIHASH_TYPE
 #error BIHASH_TYPE not defined
 #endif

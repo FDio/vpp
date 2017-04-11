@@ -21,11 +21,13 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+#include "vlib/error_funcs.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vppinfra/cpu.h"
 
-#include <memif/memif.h>
+#include "memif.h"
 
 #define foreach_memif_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \

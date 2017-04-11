@@ -19,12 +19,13 @@
 
 #include <linux/if_packet.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vlib/global_funcs.h"
+#include "vlib/error_funcs.h"
+#include "vlib/unix/unix.h"
+#include "vnet/ethernet/ethernet.h"
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include "af_packet.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_af_packet_tx_func_error               \
 _(FRAME_NOT_READY, "tx frame not ready")              \

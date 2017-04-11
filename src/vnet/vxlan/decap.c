@@ -15,9 +15,16 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/vxlan/vxlan.h>
+#include "vxlan.h"
+#include "vnet/udp/udp.h"
+#include "vnet/ip/ip4_error.h"
+#include "vnet/ip/ip6_error.h"
+#include "vnet/ip/format.h"
+#include "vnet/l2/l2_input.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+#include "vnet/feature/feature.h"
 
 vlib_node_registration_t vxlan4_input_node;
 vlib_node_registration_t vxlan6_input_node;

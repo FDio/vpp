@@ -37,7 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
+#include "ip.h"
+#include "vlib/global_funcs.h"
 
 ip_main_t ip_main;
 

@@ -22,13 +22,11 @@
  * Provides a command line interface so humans can interact with VPP.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ipsec-gre/ipsec_gre.h>
-#include <vnet/ip/format.h>
-#include <vnet/ipsec/ipsec.h>
-
-#include <vnet/ipsec/esp.h>
+#include "vnet/gre/gre.h"
+#include "vnet/l2/l2_input.h"
+#include "ipsec_gre.h"
+#include "vnet/ip/format.h"
+#include "vnet/ipsec/esp.h"
 
 u8 *
 format_ipsec_gre_tunnel (u8 * s, va_list * args)

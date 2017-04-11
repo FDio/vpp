@@ -18,10 +18,15 @@
 #ifndef included_vlib_mc_h
 #define included_vlib_mc_h
 
-#include <vppinfra/elog.h>
-#include <vppinfra/fifo.h>
+#include "node.h"
 #include <vppinfra/mhash.h>
-#include <vlib/node.h>
+#include "vppinfra/pool.h"
+#include <vppinfra/elog.h>
+#include "buffer.h"
+#include <vppinfra/fifo.h>
+#include "defs.h"
+
+#include <string.h>
 
 #ifndef MC_EVENT_LOGGING
 #define MC_EVENT_LOGGING 1

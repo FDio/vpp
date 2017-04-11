@@ -16,11 +16,13 @@
 #ifndef VNET_VNET_URI_TRANSPORT_H_
 #define VNET_VNET_URI_TRANSPORT_H_
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vppinfra/bihash_16_8.h>
-#include <vppinfra/bihash_48_8.h>
-#include <vnet/tcp/tcp_debug.h>
+#include "vnet/vnet.h"
+#include "vnet/ip/ip.h"
+#include "vppinfra/bihash_16_8.h"
+#include "vppinfra/bihash_24_8.h"
+#include "vppinfra/bihash_48_8.h"
+#include "vnet/ip/ip6_packet.h"
+#include "vnet/tcp/tcp_debug.h"
 /*
  * Protocol independent transport properties associated to a session
  */

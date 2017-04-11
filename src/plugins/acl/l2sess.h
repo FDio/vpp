@@ -15,17 +15,8 @@
 #ifndef __included_l2sess_h__
 #define __included_l2sess_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
-#include <vppinfra/timing_wheel.h>
-
-#include <vnet/l2/l2_output.h>
-#include <vnet/l2/l2_input.h>
+#include "vnet/l2/l2_output.h"
+#include "vnet/ip/ip6_packet.h"
 
 #define _(node_name, node_var, is_out, is_ip6, is_track)
 #undef _

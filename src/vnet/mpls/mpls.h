@@ -16,12 +16,7 @@
 #define included_vnet_mpls_h
 
 #include <vnet/vnet.h>
-#include <vnet/mpls/packet.h>
-#include <vnet/mpls/mpls_types.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/fib/fib_node.h>
-#include <vnet/adj/adj.h>
+#include "vnet/dpo/dpo.h"
 
 typedef enum {
 #define mpls_error(n,s) MPLS_ERROR_##n,

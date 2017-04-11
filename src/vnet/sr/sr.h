@@ -22,13 +22,11 @@
 #ifndef included_vnet_sr_h
 #define included_vnet_sr_h
 
-#include <vnet/vnet.h>
-#include <vnet/sr/sr_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vnet/vnet.h"
+#include "vnet/dpo/dpo.h"
+#include "sr_packet.h"
 
-#include <stdlib.h>
-#include <string.h>
+#include <openssl/hmac.h>
 
 #define IPv6_DEFAULT_HEADER_LENGTH 40
 #define IPv6_DEFAULT_HOP_LIMIT 64

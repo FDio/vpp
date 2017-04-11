@@ -37,7 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
+#include "defs.h"
+#include "vppinfra/hash.h"
 
 u8 *
 format_vlib_rx_tx (u8 * s, va_list * args)

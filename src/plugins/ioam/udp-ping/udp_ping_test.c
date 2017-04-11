@@ -18,36 +18,37 @@
  *------------------------------------------------------------------
  */
 
-#include <vat/vat.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vppinfra/error.h>
-#include <vnet/ip/ip.h>
+#include "vat/vat.h"
+#include "vlibapi/api.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vppinfra/error.h"
+#include "vnet/ip/ip.h"
+#include "vnet/ip/ip6_packet.h"
 
 /* Declare message IDs */
-#include <ioam/udp-ping/udp_ping_msg_enum.h>
+#include "udp_ping_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
+#include "udp_ping_all_api_h.h"
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun		/* define message structures */
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
+#include "udp_ping_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
+#include "udp_ping_all_api_h.h"
 #undef vl_printfun
 
 /* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/udp-ping/udp_ping_all_api_h.h>
+#include "udp_ping_all_api_h.h"
 #undef vl_api_version
 
 

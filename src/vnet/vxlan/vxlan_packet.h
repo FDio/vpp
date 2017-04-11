@@ -15,6 +15,8 @@
 #ifndef __included_vxlan_packet_h__
 #define __included_vxlan_packet_h__ 1
 
+#include "vppinfra/byte_order.h"
+
 /* 
  * From RFC-7384
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

@@ -30,10 +30,8 @@
 #ifndef __FIB_PATH_H__
 #define __FIB_PATH_H__
 
-#include <vnet/ip/ip.h>
 #include <vnet/dpo/load_balance.h>
 
-#include <vnet/fib/fib_types.h>
 #include <vnet/adj/adj_types.h>
 
 /**

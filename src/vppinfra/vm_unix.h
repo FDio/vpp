@@ -38,6 +38,8 @@
 #ifndef included_vm_unix_h
 #define included_vm_unix_h
 
+#include "clib.h"
+
 #include <unistd.h>
 #include <sys/mman.h>
 

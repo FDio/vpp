@@ -37,8 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
+#include "ip.h"
+#include "ip6_packet.h"
+#include "format.h"
+#include "vnet/pg/pg.h"
+#include "vlib/global_funcs.h"
 
 static void
 ip6_pg_edit_function (pg_main_t * pg,

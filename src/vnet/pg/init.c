@@ -37,8 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
+#include "pg.h"
+#include "vlib/global_funcs.h"
 
 /* Global main structure. */
 pg_main_t pg_main;

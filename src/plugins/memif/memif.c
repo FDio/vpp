@@ -16,24 +16,19 @@
  */
 
 #define _GNU_SOURCE
-#include <stdint.h>
-#include <net/if.h>
-#include <sys/types.h>
 #include <fcntl.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/uio.h>
 #include <sys/mman.h>
-#include <sys/prctl.h>
 #include <inttypes.h>
+#include <sys/stat.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/plugin/plugin.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vpp/app/version.h>
-#include <memif/memif.h>
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+#include "vlib/unix/plugin.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vpp/app/version.h"
+#include "memif.h"
 
 #define MEMIF_DEBUG 1
 

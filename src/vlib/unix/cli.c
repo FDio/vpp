@@ -45,16 +45,14 @@
 /*? %%clicmd:group_label Command line session %% ?*/
 /*? %%syscfg:group_label Command line session %% ?*/
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vppinfra/timer.h>
+#include "vlib/node_funcs.h"
+#include "vlib/global_funcs.h"
+#include "unix.h"
+#include "vppinfra/timer.h"
 
 #include <ctype.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <termios.h>
-#include <signal.h>
-#include <unistd.h>
 #include <arpa/telnet.h>
 #include <sys/ioctl.h>
 

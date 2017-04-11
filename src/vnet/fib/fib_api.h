@@ -16,6 +16,7 @@
 #ifndef __FIB_API_H__
 #define __FIB_API_H__
 
+#include "fib_types.h"
 
 int
 add_del_route_check (fib_protocol_t table_proto,

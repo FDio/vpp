@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/l2tp/l2tp.h>
+#include "vnet/feature/feature.h"
+#include "vnet/ip/ip.h"
+#include "vnet/ip/format.h"
+#include "vnet/l2/l2_input.h"
+#include "l2tp.h"
+#include "packet.h"
+#include "vlib/global_funcs.h"
 
 l2t_main_t l2t_main;
 

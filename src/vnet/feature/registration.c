@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/mpls/mpls.h>
+#include "feature.h"
+#include "vppinfra/ptclosure.h"
 
 /**
  * @file

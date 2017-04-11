@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/lisp-cp/lisp_types.h>
+#include "lisp_types.h"
 
 #define IP_DF 0x4000		/* don't fragment */
 

@@ -17,11 +17,10 @@
  *------------------------------------------------------------------
 
 */
-#include <inttypes.h>
-#include <vat/json_format.h>
-#include <vnet/ip/ip.h>
-#include <vppinfra/vec.h>
+#include "json_format.h"
+#include "vnet/ip/ip6.h"
 
+#include <inttypes.h>
 #define VAT_TAB_WIDTH               2
 
 typedef struct vat_print_ctx_s

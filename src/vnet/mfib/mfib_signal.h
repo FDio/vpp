@@ -16,10 +16,7 @@
 #ifndef __MFIB_SIGNAL_H__
 #define __MFIB_SIGNAL_H__
 
-#include <vlib/vlib.h>
-#include <vnet/mfib/mfib_types.h>
-#include <vnet/mfib/mfib_itf.h>
-#include <vnet/mfib/mfib_entry.h>
+#include "mfib_entry.h"
 
 #define MFIB_SIGNAL_BUFFER_SIZE 255
 

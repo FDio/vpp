@@ -38,10 +38,8 @@
 #ifndef included_hash_h
 #define included_hash_h
 
-#include <vppinfra/error.h>
-#include <vppinfra/format.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/vector.h>
+#include "format.h"
+#include "error.h"
 
 struct hash_header;
 

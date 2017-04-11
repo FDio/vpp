@@ -16,9 +16,7 @@
 #ifndef __CLASSIFY_DPO_H__
 #define __CLASSIFY_DPO_H__
 
-#include <vnet/vnet.h>
-#include <vnet/mpls/packet.h>
-#include <vnet/dpo/dpo.h>
+#include "dpo.h"
 
 /**
  * A representation of an MPLS label for imposition in the data-path

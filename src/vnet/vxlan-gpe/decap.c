@@ -20,9 +20,11 @@
  *
 */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include "vnet/l2/l2_input.h"
+#include "vxlan_gpe.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 vlib_node_registration_t vxlan_gpe_input_node;
 

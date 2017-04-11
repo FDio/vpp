@@ -16,21 +16,12 @@
  */
 
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vlib/cli.h>
-
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/l2/l2_fib.h>
-#include <vnet/l2/l2_learn.h>
-#include <vnet/l2/l2_bd.h>
-
-#include <vppinfra/bihash_template.c>
-
+#include "vlib/global_funcs.h"
+#include "l2_input.h"
+#include "l2_fib.h"
+#include "l2_learn.h"
+#include "vppinfra/bihash_template.c"
+#include <stdbool.h>
 /**
  * @file
  * @brief Ethernet MAC Address FIB Table Management.

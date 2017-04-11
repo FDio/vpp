@@ -15,34 +15,34 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip4.h>
-#include <vnet/plugin/plugin.h>
-#include <snat/snat.h>
-#include <snat/snat_ipfix_logging.h>
-#include <snat/snat_det.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip4_fib.h>
+#include "snat_ipfix_logging.h"
+#include "snat_det.h"
 
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vpp/app/version.h>
+#include "vnet/feature/feature.h"
+#include "vnet/ip/format.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/udp/udp_packet.h"
+
+#include "vlib/unix/plugin.h"
+#include "vlib/global_funcs.h"
+
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vpp/app/version.h"
 
 snat_main_t snat_main;
 
 /* define message IDs */
-#include <snat/snat_msg_enum.h>
+#include "snat_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <snat/snat_all_api_h.h> 
+#include "snat_all_api_h.h" 
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <snat/snat_all_api_h.h> 
+#include "snat_all_api_h.h" 
 #undef vl_endianfun
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
@@ -52,7 +52,7 @@ snat_main_t snat_main;
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <snat/snat_all_api_h.h>
+#include "snat_all_api_h.h"
 #undef vl_api_version
 
 /* Macro to finish up custom dump fns */
@@ -1696,7 +1696,7 @@ snat_plugin_api_hookup (vlib_main_t *vm)
 }
 
 #define vl_msg_name_crc_list
-#include <snat/snat_all_api_h.h>
+#include "snat_all_api_h.h"
 #undef vl_msg_name_crc_list
 
 static void

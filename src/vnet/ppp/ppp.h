@@ -40,9 +40,10 @@
 #ifndef included_ppp_h
 #define included_ppp_h
 
-#include <vnet/vnet.h>
-#include <vnet/ppp/packet.h>
-#include <vnet/pg/pg.h>
+#include "vnet/adj/rewrite.h"
+#include "vnet/pg/pg.h"
+#include "vlib/node_funcs.h"
+#include "packet.h"
 
 extern vnet_hw_interface_class_t ppp_hw_interface_class;
 

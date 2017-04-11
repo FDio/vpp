@@ -15,16 +15,11 @@
 #ifndef __included_udp_h__
 #define __included_udp_h__
 
-#include <vnet/vnet.h>
-#include <vnet/udp/udp_packet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip4.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ip/format.h>
-
-#include <vnet/ip/ip.h>
-#include <vnet/session/transport.h>
+#include "vnet/ip/ip6.h"
+#include "udp_packet.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip.h"
+#include "vnet/session/transport.h"
 
 typedef struct
 {
@@ -72,7 +67,7 @@ udp_listener_get (u32 conn_index)
 typedef enum
 {
 #define udp_error(n,s) UDP_ERROR_##n,
-#include <vnet/udp/udp_error.def>
+#include "udp_error.def"
 #undef udp_error
   UDP_N_ERROR,
 } udp_error_t;

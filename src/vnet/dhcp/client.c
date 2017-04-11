@@ -12,10 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/dhcp/client.h>
-#include <vnet/dhcp/dhcp_proxy.h>
-#include <vnet/fib/fib_table.h>
+#include "vnet/buffer.h"
+#include "client.h"
+#include "vnet/fib/fib_table.h"
+#include "vnet/udp/udp.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 dhcp_client_main_t dhcp_client_main;
 static u8 * format_dhcp_client_state (u8 * s, va_list * va);

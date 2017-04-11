@@ -35,6 +35,7 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include "error.h"
 #include <vppinfra/format.h>
 #include <vppinfra/mheap.h>
 #include <vppinfra/os.h>
@@ -42,6 +43,8 @@
 /* Valgrind stuff. */
 #include <vppinfra/memcheck.h>
 #include <vppinfra/valgrind.h>
+
+#include <unistd.h>
 
 void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 

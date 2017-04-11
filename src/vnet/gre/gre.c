@@ -15,9 +15,15 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/gre/gre.h>
-#include <vnet/adj/adj_midchain.h>
+#include "vnet/buffer.h"
+#include "gre.h"
+#include "vnet/adj/adj_midchain.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/ip.h"
+#include "vlib/buffer_node.h"
+#include "vlib/format_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 gre_main_t gre_main;
 

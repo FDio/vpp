@@ -12,15 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/api_errno.h>
-#include <vnet/ipsec/ipsec.h>
-#include <vlib/node_funcs.h>
 
-#include <dpdk/device/dpdk.h>
-#include <dpdk/ipsec/ipsec.h>
-#include <dpdk/ipsec/esp.h>
+#include "esp.h"
+#include "dpdk/device/dpdk.h"
 
 #define DPDK_CRYPTO_NB_SESS_OBJS  20000
 #define DPDK_CRYPTO_CACHE_SIZE	  512

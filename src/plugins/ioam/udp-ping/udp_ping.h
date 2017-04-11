@@ -16,7 +16,8 @@
 #ifndef PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_H_
 #define PLUGINS_IOAM_PLUGIN_IOAM_UDP_PING_UDP_PING_H_
 
-#include <ioam/analyse/ioam_analyse.h>
+#include "ioam/analyse/ioam_analyse.h"
+#include "vnet/ip/ip6_packet.h"
 
 #define MAX_PING_RETRIES 5
 

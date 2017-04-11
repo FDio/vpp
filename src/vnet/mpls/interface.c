@@ -15,14 +15,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/mpls_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/adj/adj_midchain.h>
-#include <vnet/dpo/classify_dpo.h>
-
+#include "vnet/feature/feature.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vlib/global_funcs.h"
+#include "vnet/fib/mpls_fib.h"
 
 u8
 mpls_sw_interface_is_enabled (u32 sw_if_index)

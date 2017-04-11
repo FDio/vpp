@@ -17,13 +17,16 @@
  * @brief Session and session manager
  */
 
-#include <vnet/session/session.h>
-#include <vlibmemory/api.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/session/application.h>
-#include <vnet/tcp/tcp.h>
-#include <vnet/session/session_debug.h>
+#include "session.h"
+#include "session_debug.h"
+#include "application.h"
+
+#include "svm/svm_fifo_segment.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/tcp/tcp.h"
+#include "vlibmemory/api.h"
+#include "vlib/global_funcs.h"
 
 /**
  * Per-type vector of transport protocol virtual function tables

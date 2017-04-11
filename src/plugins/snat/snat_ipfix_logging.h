@@ -17,6 +17,8 @@
 #ifndef __included_snat_ipfix_logging_h__
 #define __included_snat_ipfix_logging_h__
 
+#include "snat.h"
+
 typedef enum {
   NAT_ADDRESSES_EXHAUTED = 3,
   NAT44_SESSION_CREATE = 4,

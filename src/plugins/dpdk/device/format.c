@@ -12,17 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/format.h>
-#include <vlib/unix/cj.h>
-#include <assert.h>
+#include "vnet/ethernet/ethernet.h"
 
-#include <vnet/ethernet/ethernet.h>
-#include <dpdk/device/dpdk.h>
-
-#include <dpdk/device/dpdk_priv.h>
-#include <vppinfra/error.h>
+#include "dpdk_priv.h"
 
 #define foreach_dpdk_counter                    \
   _ (tx_frames_ok, opackets)                    \

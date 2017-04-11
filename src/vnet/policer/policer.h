@@ -15,11 +15,8 @@
 #ifndef __included_policer_h__
 #define __included_policer_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-
-#include <vnet/policer/xlate.h>
-#include <vnet/policer/police.h>
+#include "vnet/vnet.h"
+#include "xlate.h"
 
 typedef struct
 {

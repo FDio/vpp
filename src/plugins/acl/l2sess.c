@@ -18,17 +18,10 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <acl/l2sess.h>
-
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vppinfra/timing_wheel.h>
-
-#include <vnet/l2/l2_output.h>
-#include <vnet/l2/l2_input.h>
+#include "acl/l2sess.h"
+#include "vnet/l2/l2_input.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ip/format.h"
 
 void
 l2sess_init_next_features (vlib_main_t * vm, l2sess_main_t * sm)

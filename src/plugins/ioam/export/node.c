@@ -12,13 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <ioam/export-common/ioam_export.h>
+#include "ioam/export-common/ioam_export.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ip/ip6_hop_by_hop.h"
 
 
 typedef struct

@@ -33,6 +33,8 @@
  *
  */
 
+#include "vlib/buffer_node.h"
+
 #ifndef NSTAGES
 #error files which #include <vnet/pipeline.h> must define NSTAGES
 #endif

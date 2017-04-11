@@ -26,8 +26,6 @@
 #ifndef included_clib_xy_h
 #define included_clib_xy_h
 
-#include <vppinfra/types.h>
-
 /* Basic definitions: coordinates and points. */
 typedef double xy_float_t;
 typedef __complex__ double xy_t;

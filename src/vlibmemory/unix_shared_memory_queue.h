@@ -20,8 +20,9 @@
 #ifndef included_unix_shared_memory_queue_h
 #define included_unix_shared_memory_queue_h
 
+#include "vppinfra/types.h"
+
 #include <pthread.h>
-#include <vppinfra/mem.h>
 
 typedef struct _unix_shared_memory_queue
 {

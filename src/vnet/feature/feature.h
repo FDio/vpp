@@ -16,9 +16,10 @@
 #ifndef included_features_h
 #define included_features_h
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/devices/devices.h>
+#include "vnet/vnet.h"
+#include "vnet/config.h"
+#include "vnet/buffer.h"
+#include "vnet/devices/devices.h"
 
 /** feature registration object */
 typedef struct _vnet_feature_arc_registration

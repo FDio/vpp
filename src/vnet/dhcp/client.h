@@ -19,8 +19,9 @@
 #ifndef included_dhcp_client_h
 #define included_dhcp_client_h
 
-#include <vnet/ip/ip.h>
-#include <vnet/dhcp/dhcp4_packet.h>
+#include "vnet/vnet.h"
+#include "vnet/udp/udp_packet.h"
+#include "dhcp4_packet.h"
 
 #define foreach_dhcp_client_state               \
 _(DHCP_DISCOVER)                                \

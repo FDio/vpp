@@ -12,18 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <vnet/ip/ip6.h>
 
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
-
-#include <ioam/encap/ip6_ioam_pot.h>
-#include <ioam/lib-pot/pot_util.h>
+#include "vnet/ip/ip6.h"
+#include "ioam/lib-pot/pot_util.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ip/ip6_hop_by_hop.h"
+#include "ip6_ioam_pot.h"
 
 #define foreach_ip6_hop_by_hop_ioam_pot_stats				\
   _(PROCESSED, "Pkts with ip6 hop-by-hop pot options")			\

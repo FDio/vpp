@@ -61,11 +61,8 @@
 #ifndef included_heap_h
 #define included_heap_h
 
-#include <vppinfra/clib.h>
-#include <vppinfra/cache.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/format.h>
-#include <vppinfra/bitmap.h>
+#include "bitmap.h"
+#include "cache.h"
 
 /* Doubly linked list of elements. */
 typedef struct

@@ -37,11 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/pci/pci.h>
-#include <vlib/unix/unix.h>
+#include "vlib/global_funcs.h"
+#include "pci.h"
+#include "vlib/unix/unix.h"
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
@@ -49,6 +48,7 @@
 #include <net/if.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#include <sys/mman.h>
 
 typedef struct
 {

@@ -15,17 +15,7 @@
 #ifndef __included_cdp_node_h__
 #define __included_cdp_node_h__
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-
-#include <vnet/snap/snap.h>
-#include <vnet/hdlc/hdlc.h>
-#include <vnet/hdlc/packet.h>
-
-#include <vppinfra/format.h>
-#include <vppinfra/hash.h>
-
-#include <vnet/cdp/cdp_protocol.h>
+#include "vnet/vnet.h"
 
 typedef enum
 {

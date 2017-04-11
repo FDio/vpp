@@ -16,10 +16,7 @@
  * @file
  * @brief Host utility functions
  */
-#include <vppinfra/format.h>
-#include <vlib/vlib.h>
-
-#include <vlib/threads.h>
+#include "vlib/global_funcs.h"
 
 
 

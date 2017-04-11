@@ -16,12 +16,12 @@
 #ifndef __ADJ_INTERNAL_H__
 #define __ADJ_INTERNAL_H__
 
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_mcast.h>
-#include <vnet/ip/ip.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/adj/adj_l2.h>
-#include <vnet/adj/adj_nsh.h>
+#include "adj.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/mpls/mpls.h"
+#include "adj_l2.h"
+#include "adj_nsh.h"
 
 /**
  * big switch to turn on Adjacency debugging

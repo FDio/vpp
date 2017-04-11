@@ -16,7 +16,9 @@
 #ifndef PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_
 #define PLUGINS_IOAM_PLUGIN_IOAM_LIB_E2E_IOAM_SEQNO_LIB_H_
 
-#include <vppinfra/types.h>
+#include "vppinfra/types.h"
+
+#include <string.h>
 
 #define SEQ_CHECK_VALUE 0x80000000	/* for seq number wraparound detection */
 

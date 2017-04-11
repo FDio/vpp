@@ -18,10 +18,6 @@
 #define included_clib_pfhash_h
 
 
-#include <vppinfra/clib.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/pool.h>
-
 #if defined(CLIB_HAVE_VEC128) && ! defined (__ALTIVEC__)
 
 typedef struct

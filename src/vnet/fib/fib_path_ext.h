@@ -16,9 +16,7 @@
 #ifndef __FIB_PATH_EXT_H__
 #define __FIB_PATH_EXT_H__
 
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/fib_types.h>
-#include <vnet/dpo/load_balance.h>
+#include "vnet/dpo/load_balance.h"
 
 /**
  * A path extension is a per-entry addition to the forwarding information

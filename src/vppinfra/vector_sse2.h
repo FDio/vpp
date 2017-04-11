@@ -38,7 +38,9 @@
 #ifndef included_vector_sse2_h
 #define included_vector_sse2_h
 
-#include <vppinfra/error_bootstrap.h>	/* for ASSERT */
+#include "vector.h"
+#include "error_bootstrap.h"	/* for ASSERT */
+#include "clib.h"
 #include <x86intrin.h>
 
 /* 128 bit interleaves. */

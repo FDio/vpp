@@ -37,8 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ethernet/ethernet.h>
+#include "ethernet.h"
+#include "vlib/format_funcs.h"
 
 u8 *
 format_ethernet_address (u8 * s, va_list * args)

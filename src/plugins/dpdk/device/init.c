@@ -12,26 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/error.h>
-#include <vppinfra/format.h>
-#include <vppinfra/bitmap.h>
+#include "vnet/devices/devices.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
 
-#include <vnet/ethernet/ethernet.h>
-#include <dpdk/device/dpdk.h>
-#include <vlib/unix/physmem.h>
-#include <vlib/pci/pci.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
-#include <string.h>
-#include <fcntl.h>
 
-#include <dpdk/device/dpdk_priv.h>
+#include "dpdk_priv.h"
 
 dpdk_main_t dpdk_main;
 

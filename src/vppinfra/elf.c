@@ -1321,6 +1321,7 @@ elf_parse_dynamic (elf_main_t * em)
   }
 }
 
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

@@ -38,9 +38,7 @@
 #ifndef included_random_h
 #define included_random_h
 
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>	/* for vec_resize */
-#include <vppinfra/format.h>	/* for unformat_input_t */
+#include "format.h"		/* for unformat_input_t */
 
 /** \file
     Linear Congruential Random Number Generator

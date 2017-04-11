@@ -12,14 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <netinet/in.h>
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <acl/l2sess.h>
-#include <vnet/l2/l2_classify.h>
+#include "acl/l2sess.h"
+#include "vnet/l2/l2_classify.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
+#include <netinet/in.h>
 
 typedef struct
 {

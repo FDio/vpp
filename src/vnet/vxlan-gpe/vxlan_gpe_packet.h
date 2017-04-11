@@ -20,6 +20,8 @@
 #ifndef included_vxlan_gpe_packet_h
 #define included_vxlan_gpe_packet_h
 
+#include "vppinfra/types.h"
+
 /**
  *   From draft-quinn-vxlan-gpe-03.txt
  *

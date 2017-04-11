@@ -21,8 +21,6 @@
 #ifndef __VL_MSG_ENUM_H__
 #define __VL_MSG_ENUM_H__
 
-#include <vppinfra/byte_order.h>
-
 #define vl_msg_id(n,h) n,
 typedef enum
 {

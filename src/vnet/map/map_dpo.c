@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/map/map_dpo.h>
+#include "map_dpo.h"
 
 /**
  * The register MAP DPO type

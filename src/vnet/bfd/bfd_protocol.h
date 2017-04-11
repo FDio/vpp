@@ -19,7 +19,6 @@
  * @brief BFD protocol declarations
  */
 
-#include <vppinfra/types.h>
 #include <vppinfra/clib.h>
 
 /* auth type value, max key length, name, description */

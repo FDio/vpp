@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/tcp/tcp.h>
-#include <vnet/session/session.h>
-#include <vnet/fib/fib.h>
+#include "tcp.h"
+#include "vnet/ip/format.h"
+#include "vnet/session/session.h"
+#include "vnet/fib/fib.h"
+#include "vlib/global_funcs.h"
+
 #include <math.h>
 
 tcp_main_t tcp_main;

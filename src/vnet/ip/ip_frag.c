@@ -20,8 +20,11 @@
  */
 
 #include "ip_frag.h"
-
-#include <vnet/ip/ip.h>
+#include "icmp4.h"
+#include "vnet/buffer.h"
+#include "vlib/error_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 
 typedef struct

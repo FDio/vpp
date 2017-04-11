@@ -12,7 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/classify/policer_classify.h>
+#include "policer_classify.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
 
 static void
 vnet_policer_classify_feature_enable (vlib_main_t * vnm,

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/i2c.h>
+#include "global_funcs.h"
+#include "i2c.h"
 
 static inline void
 i2c_delay (i2c_bus_t * b, f64 timeout)

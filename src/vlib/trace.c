@@ -37,8 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/threads.h>
+#include "trace_funcs.h"
+#include "global_funcs.h"
 
 /* Helper function for nodes which only trace buffer data. */
 void

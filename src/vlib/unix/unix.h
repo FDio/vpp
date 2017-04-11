@@ -40,7 +40,9 @@
 #ifndef included_unix_unix_h
 #define included_unix_unix_h
 
+#include "vlib/main.h"
 #include <vppinfra/socket.h>
+
 #include <termios.h>
 
 struct unix_file;

@@ -15,8 +15,9 @@
 #ifndef __included_ip6_hop_by_hop_ioam_h__
 #define __included_ip6_hop_by_hop_ioam_h__
 
-#include <vnet/ip/ip6_hop_by_hop_packet.h>
-#include <vnet/ip/ip.h>
+#include "vnet/vnet.h"
+#include "ip6_packet.h"
+#include "ip6_hop_by_hop_packet.h"
 
 
 #define MAX_IP6_HBH_OPTION      256

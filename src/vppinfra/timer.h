@@ -24,6 +24,8 @@
 #ifndef included_timer_h
 #define included_timer_h
 
+#include "types.h"
+
 #include <signal.h>
 
 typedef void (timer_func_t) (any arg, f64 delay);

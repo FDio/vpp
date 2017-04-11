@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-#include <lb/lb.h>
-#include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
-#include <vnet/api_errno.h>
+#include "lb.h"
+#include "vnet/fib/fib_table.h"
+#include "vnet/ip/format.h"
+#include "vlib/unix/plugin.h"
+#include "vpp/app/version.h"
+#include "vppinfra/xxhash.h"
 
 //GC runs at most once every so many seconds
 #define LB_GARBAGE_RUN 60

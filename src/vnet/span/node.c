@@ -13,14 +13,11 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vppinfra/error.h>
-
-#include <vnet/span/span.h>
-
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
+#include "vnet/feature/feature.h"
+#include "span.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 vlib_node_registration_t span_node;
 

@@ -23,26 +23,20 @@
 
 #include <fcntl.h>		/* for open */
 #include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
 #include <netinet/in.h>
-
 #include <linux/if_arp.h>
 #include <linux/if_tun.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/unix/unix.h"
 
-#include <vnet/ip/ip.h>
-
-#include <vnet/ethernet/ethernet.h>
-
-#include <vnet/feature/feature.h>
-#include <vnet/devices/devices.h>
-#include <vnet/unix/tuntap.h>
-#include <vnet/unix/tapcli.h>
+#include "vnet/ip/format.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
+#include "vnet/devices/devices.h"
+#include "tuntap.h"
+#include "tapcli.h"
 
 static vnet_device_class_t tapcli_dev_class;
 static vnet_hw_interface_class_t tapcli_interface_class;

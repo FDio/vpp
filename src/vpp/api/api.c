@@ -52,11 +52,12 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip6_neighbor.h>
+#include "vnet/ip/format.h"
 #if WITH_LIBSSL > 0
 #include <vnet/sr/sr.h>
 #endif
-#include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include "vlib/global_funcs.h"
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vnet/classify/input_acl.h>

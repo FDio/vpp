@@ -40,9 +40,11 @@
 #ifndef included_ip_ip4_h
 #define included_ip_ip4_h
 
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/feature/feature.h>
+#include "lookup.h"
+#include "vnet/global_funcs.h"
+#include "vnet/interface_funcs.h"
+#include "icmp46_packet.h"
+#include "ip4_mtrie.h"
 
 typedef struct ip4_mfib_t
 {

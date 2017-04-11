@@ -19,9 +19,7 @@
 #ifndef __LOAD_BALANCE_MAP_H__
 #define __LOAD_BALANCE_MAP_H__
 
-#include <vlib/vlib.h>
-#include <vnet/fib/fib_types.h>
-#include <vnet/dpo/load_balance.h>
+#include "load_balance.h"
 
 struct load_balance_map_path_t_;
 

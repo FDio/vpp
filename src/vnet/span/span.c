@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vppinfra/error.h>
-#include <vnet/feature/feature.h>
+#include "vnet/feature/feature.h"
 
-#include <vnet/span/span.h>
+#include "span.h"
+#include "vlib/global_funcs.h"
 
 int
 span_add_delete_entry (vlib_main_t * vm,

@@ -18,7 +18,6 @@
 #ifndef included_l2bd_h
 #define included_l2bd_h
 
-#include <vlib/vlib.h>
 #include <vnet/vnet.h>
 
 typedef struct

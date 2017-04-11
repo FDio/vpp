@@ -12,12 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/feature/feature.h>
-#include <vppinfra/error.h>
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
 
 typedef struct
 {

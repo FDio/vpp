@@ -12,7 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "vppinfra/mheap.h"
 #include "ssvm.h"
+#include "vppinfra/time.h"
+#include "vppinfra/error.h"
 
 int
 ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)

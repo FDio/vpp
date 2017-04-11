@@ -38,9 +38,8 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <vppinfra/format.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/heap.h>
+#include "hash.h"
+#include "heap.h"
 
 /* Hash table plus vector of keys. */
 typedef struct

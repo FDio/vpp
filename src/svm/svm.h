@@ -21,9 +21,9 @@
 #ifndef __included_svm_h__
 #define __included_svm_h__
 
-#include <pthread.h>
-#include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
+
+#include <pthread.h>
 
 #define MMAP_PAGESIZE (clib_mem_get_page_size())
 

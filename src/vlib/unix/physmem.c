@@ -37,7 +37,13 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/unix/physmem.h>
+#define _GNU_SOURCE
+#include "vlib/global_funcs.h"
+#include "vppinfra/mheap.h"
+#include "physmem.h"
+
+#include <sys/mman.h>
+
 
 static physmem_main_t physmem_main;
 

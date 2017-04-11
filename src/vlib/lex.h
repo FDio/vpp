@@ -15,10 +15,7 @@
 #ifndef included_vlib_lex_h
 #define included_vlib_lex_h
 
-#include <vppinfra/hash.h>
-#include <vppinfra/bitmap.h>
-#include <vppinfra/error.h>
-#include <vppinfra/pool.h>
+#include "vppinfra/format.h"
 
 #define foreach_vlib_lex_global_token           \
   _ (invalid)                                   \

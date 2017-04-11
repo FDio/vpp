@@ -12,7 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "vnet/ethernet/ethernet.h"
 #include "ssvm_eth.h"
+#include "vlibmemory/unix_shared_memory_queue.h"
+#include "vlib/global_funcs.h"
+#include "vlib/error_funcs.h"
+#include "vppinfra/cpu.h"
 
 ssvm_eth_main_t ssvm_eth_main;
 

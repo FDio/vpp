@@ -42,11 +42,12 @@
  * Interface CLI.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vppinfra/bitmap.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
+#include "ip/format.h"
+#include "l2/l2_input.h"
+#include "vlib/global_funcs.h"
+#include "fib/ip4_fib.h"
+#include "fib/ip6_fib.h"
+#include "feature/feature.h"
 
 static int
 compare_interface_names (void *a1, void *a2)

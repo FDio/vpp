@@ -21,13 +21,7 @@
 #define included_ipsec_gre_h
 
 #include <vnet/vnet.h>
-#include <vnet/gre/packet.h>
-#include <vnet/gre/gre.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip4.h>
 #include <vnet/ip/ip4_packet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ip/format.h>
 
 extern vnet_hw_interface_class_t ipsec_gre_hw_interface_class;
 

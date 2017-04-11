@@ -19,9 +19,7 @@
 #define included_replication_h
 
 
-#include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/replication.h>
 
 
 typedef struct

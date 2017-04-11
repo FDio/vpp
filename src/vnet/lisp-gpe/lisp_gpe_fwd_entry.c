@@ -13,19 +13,18 @@
  * limitations under the License.
  */
 
-#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
-#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
-#include <vnet/lisp-cp/lisp_cp_dpo.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/adj/adj_midchain.h>
+#include "lisp_gpe_fwd_entry.h"
+#include "lisp_gpe_adjacency.h"
+#include "lisp_gpe_tenant.h"
+#include "vnet/lisp-cp/lisp_cp_dpo.h"
+#include "vnet/lisp-cp/lisp_cp_messages.h"
+#include "vnet/fib/fib_path_list.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/dpo/lookup_dpo.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/l2/l2_bd.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @brief Add route to IP4 or IP6 Destination FIB.

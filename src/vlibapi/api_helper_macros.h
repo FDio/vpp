@@ -20,6 +20,8 @@
 #ifndef __api_helper_macros_h__
 #define __api_helper_macros_h__
 
+#include "vnet/vnet.h"
+
 #define f64_endian(a)
 #define f64_print(a,b)
 

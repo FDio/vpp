@@ -15,12 +15,7 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-#include <vnet/interface.h>
-
-#include <vnet/ipsec/ipsec.h>
+#include "ipsec.h"
 
 u8 *
 format_ipsec_policy_action (u8 * s, va_list * args)

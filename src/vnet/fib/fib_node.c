@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_node.h>
-#include <vnet/fib/fib_node_list.h>
+#include "fib_node_list.h"
+#include "vlib/global_funcs.h"
 
 /*
  * The per-type vector of virtual function tables

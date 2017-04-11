@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/adj/adj_nbr.h>
-#include <vnet/adj/adj_internal.h>
-#include <vnet/adj/adj_l2.h>
-#include <vnet/adj/adj_nsh.h>
-#include <vnet/adj/adj_midchain.h>
-#include <vnet/ethernet/arp_packet.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/fib/fib_walk.h>
+#include "adj_internal.h"
+#include "adj_midchain.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ip/format.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 /**
  * The two midchain tx feature node indices

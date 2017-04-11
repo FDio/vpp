@@ -13,28 +13,28 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/mpls_fib.h>
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/load_balance_map.h>
-#include <vnet/dpo/mpls_label_dpo.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/receive_dpo.h>
-#include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/bfd/bfd_main.h>
-#include <vnet/dpo/interface_dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
+#include "ip6_fib.h"
+#include "ip4_fib.h"
+#include "vnet/ethernet/ethernet.h"
+#include "mpls_fib.h"
+#include "vnet/adj/adj.h"
+#include "vnet/adj/adj_nbr.h"
+#include "vnet/dpo/load_balance_map.h"
+#include "vnet/dpo/mpls_label_dpo.h"
+#include "vnet/dpo/lookup_dpo.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/dpo/receive_dpo.h"
+#include "vnet/dpo/ip_null_dpo.h"
+#include "vnet/ip/format.h"
+#include "vnet/mpls/mpls_types.h"
 
-#include <vnet/mpls/mpls.h>
-
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_walk.h>
-#include <vnet/fib/fib_node_list.h>
-#include <vnet/fib/fib_urpf_list.h>
+#include "fib_entry_src.h"
+#include "fib_walk.h"
+#include "fib_node_list.h"
+#include "vlib/global_funcs.h"
+#include "vnet/bfd/bfd_main.h"
+#include "vnet/dpo/interface_dpo.h"
+#include "vnet/dpo/replicate_dpo.h"
 
 /*
  * Add debugs for passing tests

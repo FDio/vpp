@@ -38,10 +38,6 @@
 #ifndef included_zvec_h
 #define included_zvec_h
 
-#include <vppinfra/clib.h>
-#include <vppinfra/error.h>	/* for ASSERT */
-#include <vppinfra/format.h>
-
 /* zvec: compressed vectors.
 
    Data is entropy coded with 32 bit "codings".

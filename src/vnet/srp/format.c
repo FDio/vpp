@@ -37,9 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/srp/srp.h>
-#include <vnet/ethernet/ethernet.h>
+#include "srp.h"
+#include "vnet/ethernet/ethernet.h"
 
 static u8 * format_srp_mode (u8 * s, va_list * args)
 {

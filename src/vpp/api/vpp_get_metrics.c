@@ -40,7 +40,6 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
-#include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/api_errno.h>
 

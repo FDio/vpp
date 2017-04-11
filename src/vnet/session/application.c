@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/session/application.h>
-#include <vnet/session/session.h>
+#include "application.h"
+#include "session.h"
+#include "vlib/global_funcs.h"
+#include "vlibmemory/api.h"
 
 /*
  * Pool from which we allocate all applications

@@ -16,7 +16,7 @@
 #ifndef __ADJ_L2_H__
 #define __ADJ_L2_H__
 
-#include <vnet/adj/adj.h>
+#include "vlib/node.h"
 
 extern vlib_node_registration_t adj_l2_midchain_node;
 extern vlib_node_registration_t adj_l2_rewrite_node;

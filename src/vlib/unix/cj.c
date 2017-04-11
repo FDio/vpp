@@ -27,10 +27,8 @@
 /*? %%clicmd:group_label Circular Journal %% ?*/
 /*? %%syscfg:group_label Circular Journal %% ?*/
 
-#include <stdio.h>
-#include <vlib/vlib.h>
-
-#include <vlib/unix/cj.h>
+#include "vlib/global_funcs.h"
+#include "cj.h"
 
 cj_main_t cj_main;
 

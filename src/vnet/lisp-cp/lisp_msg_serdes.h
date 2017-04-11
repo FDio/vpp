@@ -16,9 +16,7 @@
 #ifndef VNET_LISP_GPE_LISP_MSG_BUILDER_H_
 #define VNET_LISP_GPE_LISP_MSG_BUILDER_H_
 
-#include <vnet/vnet.h>
-#include <vnet/lisp-cp/lisp_cp_messages.h>
-#include <vnet/lisp-cp/control.h>
+#include "control.h"
 
 void *lisp_msg_put_mreq (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 			 gid_address_t * seid, gid_address_t * deid,

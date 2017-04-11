@@ -18,8 +18,7 @@
 #ifndef included_vnet_l2_feat_bitmap_h
 #define included_vnet_l2_feat_bitmap_h
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
+#include <vlib/node_funcs.h>
 
 /*
  * The feature bitmap is a way of organizing input and output feature graph nodes.

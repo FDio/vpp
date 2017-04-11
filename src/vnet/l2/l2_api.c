@@ -17,32 +17,30 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
+#include "vlibmemory/api.h"
+#include "l2_input.h"
+#include "l2_fib.h"
+#include "l2_vtr.h"
+#include "vnet/vnet_msg_enum.h"
+#include "vlib/global_funcs.h"
 
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/l2/l2_fib.h>
-#include <vnet/l2/l2_vtr.h>
-
-#include <vnet/vnet_msg_enum.h>
+#include <arpa/inet.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_printfun
 
-#include <vlibapi/api_helper_macros.h>
+#include "vlibapi/api_helper_macros.h"
 
 #define foreach_vpe_api_msg                                 \
 _(L2_XCONNECT_DUMP, l2_xconnect_dump)                       \
@@ -576,7 +574,7 @@ static void
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_msg_name_crc_list
 
 static void

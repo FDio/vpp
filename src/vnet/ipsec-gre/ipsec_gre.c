@@ -19,8 +19,13 @@
  * Add GRE header to thr packet and send it to the esp-encrypt node.
 */
 
-#include <vnet/vnet.h>
-#include <vnet/ipsec-gre/ipsec_gre.h>
+#include "vnet/buffer.h"
+#include "ipsec_gre.h"
+#include "vnet/gre/gre.h"
+#include "vnet/ip/format.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 ipsec_gre_main_t ipsec_gre_main;
 

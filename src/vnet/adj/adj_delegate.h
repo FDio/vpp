@@ -16,7 +16,7 @@
 #ifndef __ADJ_DELEGATE_T__
 #define __ADJ_DELEGATE_T__
 
-#include <vnet/adj/adj.h>
+#include "adj.h"
 
 /**
  * Delegate types

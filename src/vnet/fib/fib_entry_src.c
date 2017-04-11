@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/mpls_label_dpo.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
-
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_path_ext.h>
-#include <vnet/fib/fib_urpf_list.h>
+#include "fib_entry_src.h"
+#include "fib_table.h"
+#include "fib_path_ext.h"
+#include "fib_urpf_list.h"
+#include "fib_path.h"
+#include "fib_internal.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/mpls/mpls_types.h"
+#include "vnet/dpo/replicate_dpo.h"
 
 /*
  * per-source type vft

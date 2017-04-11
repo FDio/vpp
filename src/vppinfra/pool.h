@@ -44,9 +44,7 @@
 #ifndef included_pool_h
 #define included_pool_h
 
-#include <vppinfra/bitmap.h>
-#include <vppinfra/error.h>
-#include <vppinfra/mheap.h>
+#include "bitmap.h"
 
 
 typedef struct

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
+#include "mfib_entry.h"
+#include "vnet/fib/fib_path_list.h"
+#include "vnet/fib/fib_path.h"
 
-#include <vnet/mfib/mfib_entry.h>
-#include <vnet/fib/fib_path_list.h>
-
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/dpo/replicate_dpo.h"
+#include "vlib/global_funcs.h"
 
 /**
  * Debug macro

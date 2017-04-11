@@ -25,10 +25,7 @@
 #ifndef __IP4_MFIB_H__
 #define __IP4_MFIB_H__
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-
-#include <vnet/mfib/mfib_table.h>
+#include "mfib_table.h"
 
 extern fib_node_index_t ip4_mfib_table_lookup(const ip4_mfib_t *fib,
                                               const ip4_address_t *src,

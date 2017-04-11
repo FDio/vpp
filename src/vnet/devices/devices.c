@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
+#include "devices.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlib/global_funcs.h"
 
 vnet_device_main_t vnet_device_main;
 

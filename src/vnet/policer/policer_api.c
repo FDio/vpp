@@ -17,30 +17,30 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
+#include "vlibmemory/api.h"
 
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
-#include <vnet/policer/policer.h>
+#include "vnet/policer/policer.h"
 
-#include <vnet/vnet_msg_enum.h>
+#include "vnet/vnet_msg_enum.h"
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_printfun
 
-#include <vlibapi/api_helper_macros.h>
+#include "vlibapi/api_helper_macros.h"
 
 #define foreach_vpe_api_msg                             \
 _(POLICER_ADD_DEL, policer_add_del)                     \
@@ -188,7 +188,7 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_msg_name_crc_list
 
 static void

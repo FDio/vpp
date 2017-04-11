@@ -15,6 +15,8 @@
 #ifndef __included_flow_report_classify_h__
 #define __included_flow_report_classify_h__
 
+#include "flow_report.h"
+
 #define foreach_ipfix_ip4_field                                             \
 _(ip->src_address.as_u32, ((u32[]){0xFFFFFFFF}), sourceIPv4Address, 4)      \
 _(ip->dst_address.as_u32, ((u32[]){0xFFFFFFFF}), destinationIPv4Address, 4) \

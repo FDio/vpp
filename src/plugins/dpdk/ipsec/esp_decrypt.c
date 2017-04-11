@@ -15,15 +15,11 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-
-#include <vnet/ipsec/ipsec.h>
-#include <dpdk/ipsec/ipsec.h>
-#include <dpdk/ipsec/esp.h>
-#include <dpdk/device/dpdk.h>
-#include <dpdk/device/dpdk_priv.h>
+#include "esp.h"
+#include "vnet/ethernet/packet.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
+#include "dpdk/device/dpdk_priv.h"
 
 #define foreach_esp_decrypt_next	       \
 _(DROP, "error-drop")			       \

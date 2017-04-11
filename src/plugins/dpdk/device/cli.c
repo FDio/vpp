@@ -12,18 +12,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/error.h>
-#include <vppinfra/format.h>
-#include <vppinfra/xxhash.h>
+#include "vnet/vnet.h"
+#include "vppinfra/vec.h"
+#include "vppinfra/error.h"
+#include "vppinfra/format.h"
+#include "vppinfra/xxhash.h"
 
-#include <vnet/ethernet/ethernet.h>
-#include <dpdk/device/dpdk.h>
-#include <vnet/classify/vnet_classify.h>
-#include <vnet/mpls/packet.h>
+#include "vnet/ethernet/ethernet.h"
+#include "dpdk.h"
+#include "vnet/classify/vnet_classify.h"
+#include "vnet/mpls/packet.h"
 
-#include <dpdk/device/dpdk_priv.h>
+#include "dpdk_priv.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @file

@@ -18,10 +18,7 @@
 #ifndef included_vnet_l2_input_vtr_h
 #define included_vnet_l2_input_vtr_h
 
-#include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/l2/feat_bitmap.h>
-#include <vnet/l2/l2_vtr.h>
 
 
 typedef struct

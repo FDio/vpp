@@ -16,8 +16,7 @@
 #ifndef __SIXRD_DPO_H__
 #define __SIXRD_DPO_H__
 
-#include <vnet/vnet.h>
-#include <vnet/dpo/dpo.h>
+#include "vnet/dpo/dpo.h"
 
 /**
  * A representation of a 6RD DPO

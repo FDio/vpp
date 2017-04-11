@@ -15,6 +15,8 @@
 #ifndef included_vnet_ppp_packet_h
 #define included_vnet_ppp_packet_h
 
+#include "vppinfra/types.h"
+
 /*
  * PPP packet format
  *

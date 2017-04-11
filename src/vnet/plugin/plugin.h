@@ -15,11 +15,6 @@
 #ifndef included_vnet_plugin_h
 #define included_vnet_plugin_h
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vppinfra/error.h>
-#include <vlib/unix/plugin.h>
+#include "vnet/ethernet/ethernet.h"
 
 #endif /* included_vnet_plugin_h */

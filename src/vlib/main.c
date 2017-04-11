@@ -37,12 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <math.h>
-#include <vppinfra/format.h>
-#include <vlib/vlib.h>
-#include <vlib/threads.h>
+#include "node_funcs.h"
+#include "global_funcs.h"
+#include "buffer_funcs.h"
 
-#include <vlib/unix/cj.h>
+#include "unix/cj.h"
 
 CJ_GLOBAL_LOG_PROTOTYPE;
 

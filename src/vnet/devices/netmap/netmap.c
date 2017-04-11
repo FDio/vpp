@@ -15,17 +15,17 @@
  *------------------------------------------------------------------
  */
 
-#include <stdint.h>
-#include <net/if.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
 #include <fcntl.h>
-#include <vnet/devices/netmap/net_netmap.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/netmap/netmap.h>
+#include "net_netmap.h"
+
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+#include "vnet/ethernet/ethernet.h"
+#include "netmap.h"
+
+#include <sys/mman.h>
 
 static u32
 netmap_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,

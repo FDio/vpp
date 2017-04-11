@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/mpls_fib.h>
+#include "mpls_types.h"
+#include "vnet/fib/mpls_fib.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 const static char* mpls_eos_bit_names[] = MPLS_EOS_BITS;
 

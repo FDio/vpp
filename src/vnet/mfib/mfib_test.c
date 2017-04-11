@@ -13,18 +13,20 @@
  * limitations under the License.
  */
 
-#include <vnet/mpls/mpls_types.h>
+#include "vnet/adj/adj.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/ip/format.h"
+#include "mfib_signal.h"
+#include "ip6_mfib.h"
+#include "vnet/fib/fib_path_list.h"
 
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/mfib/mfib_entry.h>
-#include <vnet/mfib/mfib_signal.h>
-#include <vnet/mfib/ip6_mfib.h>
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_test.h>
-#include <vnet/fib/fib_table.h>
-
-#include <vnet/dpo/replicate_dpo.h>
-#include <vnet/adj/adj_mcast.h>
+#include "vnet/dpo/replicate_dpo.h"
+#include "vnet/adj/adj_mcast.h"
+#include "vlib/global_funcs.h"
+#include "vnet/mpls/mpls.h"
+#include "vnet/fib/fib_test.h"
+#include "vnet/fib/fib_table.h"
+#include "vnet/adj/adj_nbr.h"
 
 #define MFIB_TEST_I(_cond, _comment, _args...)			\
 ({								\

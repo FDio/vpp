@@ -41,10 +41,10 @@
 #ifndef __ADJ_H__
 #define __ADJ_H__
 
-#include <vnet/adj/adj_types.h>
-#include <vnet/adj/adj_nbr.h>
-#include <vnet/adj/adj_glean.h>
-#include <vnet/adj/rewrite.h>
+#include "adj_types.h"
+#include "vlib/global_funcs.h"
+#include "vnet/fib/fib_node.h"
+#include "rewrite.h"
 
 /** @brief Common (IP4/IP6) next index stored in adjacency. */
 typedef enum

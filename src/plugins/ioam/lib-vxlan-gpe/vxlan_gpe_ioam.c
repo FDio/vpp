@@ -12,13 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
-#include <vnet/ip/format.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/fib_entry.h>
+#include "vnet/feature/feature.h"
+#include "vnet/ip/format.h"
+#include "vxlan_gpe_ioam.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vlib/global_funcs.h"
 
 vxlan_gpe_ioam_main_t vxlan_gpe_ioam_main;
 

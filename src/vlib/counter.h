@@ -40,6 +40,9 @@
 #ifndef included_vlib_counter_h
 #define included_vlib_counter_h
 
+#include "vppinfra/serialize.h"
+#include "vppinfra/cache.h"
+
 /** \file
 
     Optimized thread-safe counters.

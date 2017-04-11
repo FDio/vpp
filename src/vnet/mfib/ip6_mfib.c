@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include <vnet/mfib/ip6_mfib.h>
-
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/mfib/mfib_entry.h>
-#include <vnet/fib/ip6_fib.h>
+#include "ip6_mfib.h"
+#include "mfib_entry.h"
+#include "vnet/ip/format.h"
+#include "vnet/util/radix.h"
+#include "vlib/global_funcs.h"
 
 /**
  * The number of bytes in an address/ask key in the radix tree

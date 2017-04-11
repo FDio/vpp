@@ -18,10 +18,7 @@
 #ifndef included_vnet_l2_vtr_h
 #define included_vnet_l2_vtr_h
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/l2/l2_vtr.h>
+#include <vnet/ethernet/ethernet.h>
 
 /* VTR config options for API and CLI support */
 typedef enum

@@ -1,8 +1,9 @@
 #ifndef _FA_NODE_H_
 #define _FA_NODE_H_
 
-#include <stddef.h>
 #include "bihash_40_8.h"
+#include "vnet/ip/icmp46_packet.h"
+#include <stddef.h>
 
 #define TCP_FLAG_FIN    0x01
 #define TCP_FLAG_SYN    0x02

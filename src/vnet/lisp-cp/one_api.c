@@ -17,15 +17,16 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
+#include "vlibmemory/api.h"
 
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
-#include <vnet/lisp-cp/control.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "vnet/interface.h"
+#include "vnet/api_errno.h"
+#include "control.h"
+#include "vnet/lisp-gpe/lisp_gpe.h"
+#include "vnet/vnet_msg_enum.h"
+#include "vlib/global_funcs.h"
 
-#include <vnet/vnet_msg_enum.h>
+#include <arpa/inet.h>
 
 #define vl_api_one_remote_locator_t_endian vl_noop_handler
 #define vl_api_one_remote_locator_t_print vl_noop_handler

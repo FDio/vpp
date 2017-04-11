@@ -37,10 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip4_mtrie.h>
-#include <vnet/fib/ip4_fib.h>
-
+#include "ip4.h"
+#include "format.h"
+#include "vnet/fib/fib_entry.h"
 
 /**
  * Global pool of IPv4 8bit PLYs

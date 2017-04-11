@@ -37,10 +37,15 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/fib_urpf_list.h>
-#include <vnet/dpo/load_balance.h>
+#include "format.h"
+#include "ip4_error.h"
+#include "vnet/feature/feature.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/fib/fib_urpf_list.h"
+#include "vnet/dpo/load_balance.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 /**
  * @file

@@ -16,8 +16,9 @@
 #ifndef __lawful_intercept_h__
 #define __lawful_intercept_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
+#include "vnet/vnet.h"
+#include "vnet/ip/ip4_packet.h"
+#include "vnet/udp/udp_packet.h"
 
 typedef struct {
   /* LI collector info */

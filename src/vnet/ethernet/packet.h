@@ -40,6 +40,8 @@
 #ifndef included_ethernet_packet_h
 #define included_ethernet_packet_h
 
+#include "vppinfra/clib.h"
+
 typedef enum
 {
 #define ethernet_type(n,s) ETHERNET_TYPE_##s = n,

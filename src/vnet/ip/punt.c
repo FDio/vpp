@@ -21,10 +21,10 @@
  * commands in order to adjust and dispatch packets from the VPP data plane
  * to the local TCP/IP stack
  */
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/udp/udp.h>
-#include <vnet/ip/punt.h>
+#include "vnet/udp/udp.h"
+#include "punt.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_punt_next \
   _ (PUNT, "error-punt")

@@ -37,8 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
+#include "pg.h"
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
 
 static void
 pg_edit_set_value_helper (pg_edit_t * e, u64 value, u8 * result)

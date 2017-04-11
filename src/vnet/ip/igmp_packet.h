@@ -40,7 +40,6 @@
 #ifndef included_vnet_igmp_packet_h
 #define included_vnet_igmp_packet_h
 
-#include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
 #define foreach_igmp_type			\

@@ -16,8 +16,7 @@
 #ifndef __MFIB_ITF_H__
 #define __MFIB_ITF_H__
 
-#include <vlib/vlib.h>
-#include <vnet/mfib/mfib_types.h>
+#include "mfib_types.h"
 
 /**
  * @brief An interface associated with a particular MFIB entry

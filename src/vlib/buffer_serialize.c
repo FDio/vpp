@@ -37,7 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
+#include "node_funcs.h"
+#include "buffer_funcs.h"
 
 static void
 vlib_serialize_tx (serialize_main_header_t * m, serialize_stream_t * s)

@@ -15,18 +15,16 @@
  *------------------------------------------------------------------
  */
 
-#include <stdint.h>
-#include <net/if.h>
 #include <sys/ioctl.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vnet/devices/devices.h"
+#include "vnet/feature/feature.h"
 
-#include <vnet/devices/netmap/net_netmap.h>
-#include <vnet/devices/netmap/netmap.h>
+#include "net_netmap.h"
+#include "netmap.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_netmap_input_error
 

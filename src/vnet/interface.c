@@ -37,10 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/adj/adj.h>
+#include "adj/adj.h"
+#include "adj/adj_nbr.h"
+#include "l2/l2_input.h"
+#include "feature/feature.h"
+#include "vlib/global_funcs.h"
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)

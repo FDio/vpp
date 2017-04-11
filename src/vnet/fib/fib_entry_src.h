@@ -18,7 +18,6 @@
 
 #include "fib_entry.h"
 #include "fib_path_list.h"
-#include "fib_internal.h"
 
 /**
  * Debug macro

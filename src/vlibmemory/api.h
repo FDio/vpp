@@ -20,11 +20,6 @@
 #ifndef included_vlibmemory_api_h
 #define included_vlibmemory_api_h
 
-#include <vppinfra/error.h>
-#include <svm/svm.h>
-#include <vlib/vlib.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
-#include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 
 /* Allocated in shared memory */

@@ -37,19 +37,19 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/adj/adj.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/classify_dpo.h>
-#include <vnet/dpo/punt_dpo.h>
-#include <vnet/dpo/receive_dpo.h>
-#include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/ip/ip6_neighbor.h>
+#include "format.h"
+#include "vnet/adj/adj.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/mfib/mfib_table.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/dpo/classify_dpo.h"
+#include "vnet/dpo/punt_dpo.h"
+#include "vnet/dpo/receive_dpo.h"
+#include "vnet/dpo/ip_null_dpo.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/mpls/mpls_types.h"
+#include "vlib/global_funcs.h"
+#include "ip6_neighbor.h"
 
 /**
  * @file

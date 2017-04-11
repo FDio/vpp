@@ -37,10 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/llc/llc.h>
-#include <vnet/snap/snap.h>
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vnet/llc/llc.h"
+#include "snap.h"
 
 typedef enum
 {

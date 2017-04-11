@@ -13,9 +13,13 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/l2/feat_bitmap.h>
-#include <vnet/l2/l2_rw.h>
+#include "vnet/classify/vnet_classify.h"
+#include "feat_bitmap.h"
+#include "l2_rw.h"
+#include "l2_input.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 /**
  * @file

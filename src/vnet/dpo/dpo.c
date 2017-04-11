@@ -23,22 +23,19 @@
  * The VLIB graph nodes are graph of types, the DPO graph is a graph of instances.
  */
 
-#include <vnet/dpo/dpo.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/ip/format.h>
-#include <vnet/adj/adj.h>
-
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/mpls_label_dpo.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/receive_dpo.h>
-#include <vnet/dpo/punt_dpo.h>
-#include <vnet/dpo/classify_dpo.h>
-#include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
-#include <vnet/dpo/interface_dpo.h>
-#include <vnet/dpo/mpls_disposition.h>
+#include "mpls_label_dpo.h"
+#include "lookup_dpo.h"
+#include "drop_dpo.h"
+#include "receive_dpo.h"
+#include "punt_dpo.h"
+#include "classify_dpo.h"
+#include "ip_null_dpo.h"
+#include "replicate_dpo.h"
+#include "vnet/adj/adj.h"
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
+#include "interface_dpo.h"
+#include "mpls_disposition.h"
 
 /**
  * Array of char* names for the DPO types and protos

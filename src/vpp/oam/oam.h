@@ -15,10 +15,8 @@
 #ifndef __included_oam_h__
 #define __included_oam_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/interface.h>
+#include "vnet/vnet.h"
+#include "vnet/ip/icmp46_packet.h"
 
 /* 36 octets, make a note of it... */
 /* *INDENT-OFF* */

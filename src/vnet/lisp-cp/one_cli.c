@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/lisp-cp/control.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "control.h"
+#include "vnet/lisp-gpe/lisp_gpe.h"
+#include "vlib/global_funcs.h"
 
 static clib_error_t *
 lisp_show_adjacencies_command_fn (vlib_main_t * vm,

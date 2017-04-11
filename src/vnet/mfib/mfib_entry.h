@@ -16,11 +16,10 @@
 #ifndef __MFIB_ENTRY_H__
 #define __MFIB_ENTRY_H__
 
-#include <vnet/fib/fib_node.h>
-#include <vnet/mfib/mfib_types.h>
-#include <vnet/mfib/mfib_itf.h>
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/dpo.h>
+#include "mfib_itf.h"
+#include "vnet/fib/fib_node.h"
+
+#include <stdarg.h>
 
 /**
  * An entry in a FIB table.

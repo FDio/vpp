@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/lisp-cp/lisp_types.h>
+#include "lisp_types.h"
+#include "lisp_cp_messages.h"
+#include "vnet/ip/format.h"
 
 static u16 gid_address_put_no_vni (u8 * b, gid_address_t * gid);
 static u16 gid_address_size_to_put_no_vni (gid_address_t * gid);

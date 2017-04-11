@@ -40,6 +40,8 @@ documentation and/or software.
 #include <vppinfra/byte_order.h>
 #include <vppinfra/md5.h>
 
+#include <string.h>
+
 /* F, G, H and I are basic MD5 functions. */
 #define F(b, c, d) (d ^ (b & (c ^ d)))
 #define G(b, c, d) F (d, b, c)

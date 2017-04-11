@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/lisp-cp/lisp_msg_serdes.h>
-#include <vnet/lisp-cp/packets.h>
-#include <vppinfra/time.h>
+#include "lisp_msg_serdes.h"
+#include "packets.h"
+#include "lisp_cp_messages.h"
 
 void *lisp_msg_put_gid (vlib_buffer_t * b, gid_address_t * gid);
 

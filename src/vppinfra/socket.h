@@ -38,13 +38,12 @@
 #ifndef _clib_included_socket_h
 #define _clib_included_socket_h
 
+#include "format.h"
+#include "error.h"
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
-#include <vppinfra/clib.h>
-#include <vppinfra/error.h>
-#include <vppinfra/format.h>
 
 typedef struct _socket_t
 {

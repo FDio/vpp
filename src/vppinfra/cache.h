@@ -38,8 +38,6 @@
 #ifndef included_clib_cache_h
 #define included_clib_cache_h
 
-#include <vppinfra/error_bootstrap.h>
-
 /*
  * Allow CFLAGS to override the arch-specific cache line size
  */

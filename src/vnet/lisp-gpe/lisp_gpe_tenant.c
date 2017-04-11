@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
+#include "lisp_gpe_tenant.h"
+#include "lisp_gpe.h"
+#include "vlib/global_funcs.h"
 
 /**
  * The pool of all tenants

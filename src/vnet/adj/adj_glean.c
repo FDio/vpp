@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_internal.h>
-#include <vnet/fib/fib_walk.h>
+#include "adj_internal.h"
+#include "vnet/fib/fib_walk.h"
 
 /*
  * The 'DB' of all glean adjs.

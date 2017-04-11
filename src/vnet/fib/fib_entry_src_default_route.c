@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "fib_entry.h"
 #include "fib_entry_src.h"
 
 /**

@@ -34,7 +34,7 @@
 #ifndef _NET_RADIX_H_
 #define	_NET_RADIX_H_
 
-#include <vlib/vlib.h>
+#include "vppinfra/types.h"
 
 /*
  * Radix search tree node layout.

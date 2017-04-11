@@ -15,41 +15,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vat/vat.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vppinfra/error.h>
-#include <vnet/ip/ip.h>
+#include "vat/vat.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vnet/ip/ip4.h"
 
 #define __plugin_msg_base snat_test_main.msg_id_base
-#include <vlibapi/vat_helper_macros.h>
+#include "vlibapi/vat_helper_macros.h"
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);
 
 /* Declare message IDs */
-#include <snat/snat_msg_enum.h>
+#include "snat_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <snat/snat_all_api_h.h> 
+#include "snat_all_api_h.h" 
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <snat/snat_all_api_h.h> 
+#include "snat_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <snat/snat_all_api_h.h> 
+#include "snat_all_api_h.h"
 #undef vl_printfun
 
 /* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <snat/snat_all_api_h.h>
+#include "snat_all_api_h.h"
 #undef vl_api_version
 
 typedef struct {

@@ -20,12 +20,8 @@
 #ifndef __REPLICATE_DPO_H__
 #define __REPLICATE_DPO_H__
 
-#include <vlib/vlib.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/fib/fib_types.h>
-#include <vnet/mpls/mpls_types.h>
+#include "load_balance.h"
+#include "vnet/mpls/mpls_types.h"
 
 /**
  * replicate main

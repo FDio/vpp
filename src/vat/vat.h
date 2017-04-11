@@ -15,22 +15,13 @@
 #ifndef __included_vat_h__
 #define __included_vat_h__
 
-#include <stdio.h>
-#include <setjmp.h>
-#include <vppinfra/clib.h>
-#include <vppinfra/format.h>
-#include <vppinfra/error.h>
-#include <vppinfra/time.h>
-#include <vppinfra/macros.h>
-#include <vnet/vnet.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-
+#include "vnet/interface.h"
+#include "vlib/main.h"
 #include "vat/json_format.h"
+#include "vlibmemory/unix_shared_memory_queue.h"
+#include "vppinfra/macros.h"
 
-#include <vlib/vlib.h>
+#include <setjmp.h>
 
 typedef struct
 {

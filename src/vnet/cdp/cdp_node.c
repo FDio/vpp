@@ -12,8 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cdp/cdp_node.h>
-#include <vnet/ethernet/packet.h>
+#include "cdp_node.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vnet/snap/snap.h"
+#include "vnet/ethernet/ethernet.h"
 
 static vlib_node_registration_t cdp_process_node;
 

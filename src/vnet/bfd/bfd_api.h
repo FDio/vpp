@@ -19,9 +19,8 @@
 #ifndef __included_bfd_api_h__
 #define __included_bfd_api_h__
 
-#include <vnet/api_errno.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip6_packet.h>
+#include "vnet/ip/ip6_packet.h"
+#include "vnet/api_errno.h"
 
 #define foreach_bfd_transport(F) \
   F (UDP4, "ip4-rewrite")        \

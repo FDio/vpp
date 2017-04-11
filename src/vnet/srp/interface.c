@@ -37,9 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/srp/srp.h>
+#include "srp.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ethernet/ethernet.h"
 
 static u8*
 srp_build_rewrite (vnet_main_t * vnm,

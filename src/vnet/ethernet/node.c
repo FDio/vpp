@@ -37,11 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vppinfra/sparse_vec.h>
-#include <vnet/l2/l2_bvi.h>
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+#include "vnet/l2/l2_bvi.h"
 
 
 #define foreach_ethernet_input_next		\

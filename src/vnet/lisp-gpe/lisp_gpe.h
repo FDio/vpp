@@ -20,19 +20,11 @@
 #ifndef included_vnet_lisp_gpe_h
 #define included_vnet_lisp_gpe_h
 
-#include <vppinfra/error.h>
-#include <vppinfra/mhash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/udp/udp.h>
-#include <vnet/lisp-cp/lisp_types.h>
-#include <vnet/lisp-gpe/lisp_gpe_packet.h>
-#include <vnet/adj/adj_types.h>
-#include <vppinfra/bihash_24_8.h>
-#include <vppinfra/bihash_template.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/lisp-cp/lisp_types.h"
+#include "lisp_gpe_packet.h"
+#include "vnet/udp/udp_packet.h"
 
 /** IP4-UDP-LISP encap header */
 /* *INDENT-OFF* */

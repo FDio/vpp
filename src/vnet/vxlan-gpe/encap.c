@@ -17,12 +17,11 @@
  *  @brief Functions for encapsulating VXLAN GPE tunnels
  *
 */
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include "vnet/udp/udp.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vxlan_gpe.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 /** Statistics (not really errors) */
 #define foreach_vxlan_gpe_encap_error    \

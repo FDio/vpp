@@ -37,18 +37,25 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
-#include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
-#include <vppinfra/cache.h>
-#include <vnet/fib/fib_urpf_list.h>	/* for FIB uRPF check */
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/mfib/ip6_mfib.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/classify_dpo.h>
+#include "format.h"
+#include "ip6_error.h"
+#include "vnet/udp/udp_packet.h"
+#include "icmp6.h"
+#include "vnet/adj/adj.h"
+#include "vnet/classify/vnet_classify.h"
+#include "vnet/ethernet/ethernet.h"	/* for ethernet_header_t */
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/mfib/ip6_mfib.h"
+#include "vnet/dpo/classify_dpo.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
 
-#include <vppinfra/bihash_template.c>
+#include "vppinfra/cpu.h"
+#include "vppinfra/bihash_template.c"
+
+#include <stdbool.h>
 
 /* Flag used by IOAM code. Classifier sets it pop-hop-by-hop checks it */
 #define OI_DECAP   0x80000000

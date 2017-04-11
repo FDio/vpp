@@ -16,9 +16,7 @@
 #ifndef __LOOKUP_DPO_H__
 #define __LOOKUP_DPO_H__
 
-#include <vnet/vnet.h>
 #include <vnet/fib/fib_types.h>
-#include <vnet/dpo/dpo.h>
 
 /**
  * Switch to use the packet's source or destination address for lookup

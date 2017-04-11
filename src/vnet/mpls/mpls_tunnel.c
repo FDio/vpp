@@ -15,15 +15,20 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/mpls/mpls_tunnel.h>
-#include <vnet/mpls/mpls_types.h>
-#include <vnet/ip/ip.h>
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/adj/adj_midchain.h>
-#include <vnet/adj/adj_mcast.h>
-#include <vnet/dpo/replicate_dpo.h>
+#include "vnet/buffer.h"
+#include "mpls_tunnel.h"
+#include "mpls_types.h"
+#include "mpls.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/ip/format.h"
+#include "vnet/fib/fib_path_list.h"
+#include "vnet/fib/fib_path.h"
+#include "vnet/adj/adj_midchain.h"
+#include "vnet/adj/adj_nbr.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vnet/adj/adj_mcast.h"
+#include "vnet/dpo/replicate_dpo.h"
 
 /**
  * @brief pool of tunnel instances

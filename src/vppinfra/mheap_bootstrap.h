@@ -41,10 +41,10 @@
 /* Bootstrap include so that #include <vppinfra/mem.h> can include e.g.
    <vppinfra/mheap.h> which depends on <vppinfra/vec.h>. */
 
-#include <vppinfra/vec_bootstrap.h>
-#include <vppinfra/error_bootstrap.h>
-#include <vppinfra/os.h>
-#include <vppinfra/vector.h>
+#include "error_bootstrap.h"
+#include "vec_bootstrap.h"
+
+#include <stddef.h>
 
 /* Each element in heap is immediately followed by this struct. */
 typedef struct

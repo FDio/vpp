@@ -15,15 +15,8 @@
 #ifndef __included_ikev2_priv_h__
 #define __included_ikev2_priv_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vnet/ipsec/ikev2.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/elog.h>
-#include <vppinfra/error.h>
+#include "vnet/vnet.h"
+#include "ikev2.h"
 
 #include <openssl/rand.h>
 #include <openssl/dh.h>

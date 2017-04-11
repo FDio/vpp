@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip6_packet.h>
-#include <ioam/analyse/ioam_summary_export.h>
-#include <ioam/analyse/ip6/ip6_ioam_analyse.h>
+#include "vnet/buffer.h"
+#include "vnet/ip/ip6_packet.h"
+#include "ioam_summary_export.h"
+#include "ip6/ip6_ioam_analyse.h"
+#include "vnet/flow/ipfix_info_elements.h"
 
 u8 *
 ioam_template_rewrite (flow_report_main_t * frm, flow_report_t * fr,

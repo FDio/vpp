@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/tcp/tcp.h>
+#include "tcp.h"
 
 #define TCP_TEST_I(_cond, _comment, _args...)			\
 ({								\

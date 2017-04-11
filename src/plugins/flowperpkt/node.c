@@ -14,11 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <flowperpkt/flowperpkt.h>
+#include "vnet/flow/flow_report.h"
+#include "vnet/ip/ip4.h"
+#include "flowperpkt.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vnet/ip/format.h"
 
 /**
  * @file ipv4 flow record generator graph node

@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/adj/adj_l2.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip.h>
+#include "adj.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ip/format.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 /**
  * @brief Trace data for a L2 Midchain

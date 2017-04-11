@@ -38,8 +38,7 @@
 #ifndef included_os_h
 #define included_os_h
 
-#include <vppinfra/clib.h>
-#include <vppinfra/types.h>
+#include "types.h"
 
 /* External panic function. */
 void os_panic (void);
@@ -58,8 +57,6 @@ f64 os_cpu_clock_frequency (void);
 
 uword os_get_cpu_number (void);
 uword os_get_ncpus (void);
-
-#include <vppinfra/smp.h>
 
 #endif /* included_os_h */
 

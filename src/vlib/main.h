@@ -40,14 +40,15 @@
 #ifndef included_vlib_main_h
 #define included_vlib_main_h
 
-#include <vppinfra/elog.h>
-#include <vppinfra/format.h>
-#include <vppinfra/longjmp.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/random_buffer.h>
-#include <vppinfra/time.h>
-
-#include <pthread.h>
+#include "mc.h"
+#include "node.h"
+#include "vppinfra/random_buffer.h"
+#include "init.h"
+#include "buffer.h"
+#include "physmem.h"
+#include "vppinfra/time.h"
+#include "vppinfra/longjmp.h"
+#include "trace.h"
 
 
 /* By default turn off node/error event logging.

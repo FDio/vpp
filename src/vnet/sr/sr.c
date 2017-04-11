@@ -20,13 +20,17 @@
  * @brief Segment Routing initialization
  *
  */
+#include "vnet/adj/adj.h"
+#include "vnet/ip/format.h"
+#include "sr.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/mfib/mfib_table.h"
+#include "vnet/dpo/replicate_dpo.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
-#include <vnet/vnet.h>
-#include <vnet/sr/sr.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
+#include <openssl/sha.h>
 
 ip6_sr_main_t sr_main;
 

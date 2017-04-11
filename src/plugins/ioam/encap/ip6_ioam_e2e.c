@@ -13,19 +13,9 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-
-#include <vnet/ip/ip.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
-
-#include <vnet/ip/ip6_hop_by_hop.h>
+#include "vnet/ip/ip6.h"
 #include "ip6_ioam_e2e.h"
+#include "vlib/global_funcs.h"
 
 ioam_e2e_main_t ioam_e2e_main;
 

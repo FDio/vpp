@@ -13,17 +13,15 @@
  * limitations under the License.
  */
 
-#include <vnet/mfib/mfib_itf.h>
-#include <vnet/mfib/mfib_entry.h>
-#include <vnet/dpo/replicate_dpo.h>
-#include <vnet/mfib/ip4_mfib.h>
-#include <vnet/mfib/ip6_mfib.h>
-#include <vnet/mfib/mfib_signal.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
+#include "ip4_mfib.h"
+#include "ip6_mfib.h"
+#include "mfib_signal.h"
 
-#include <vnet/ip/ip4.h>
-#include <vnet/vnet.h>
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 typedef struct mfib_forward_lookup_trace_t_ {
     u32 entry_index;

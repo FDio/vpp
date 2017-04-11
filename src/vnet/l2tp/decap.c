@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/l2tp/l2tp.h>
+#include "vppinfra/cpu.h"
+#include "vnet/feature/feature.h"
+#include "vnet/l2/l2_input.h"
+#include "l2tp.h"
+#include "packet.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
 
 /* Statistics (not really errors) */
 #define foreach_l2t_decap_error                                 \

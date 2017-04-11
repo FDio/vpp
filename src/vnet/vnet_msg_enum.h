@@ -15,8 +15,6 @@
 #ifndef included_vnet_msg_enum_h
 #define included_vnet_msg_enum_h
 
-#include <vppinfra/byte_order.h>
-
 #define vl_msg_id(n,h) n,
 typedef enum
 {

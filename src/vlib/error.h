@@ -40,6 +40,10 @@
 #ifndef included_vlib_error_h
 #define included_vlib_error_h
 
+#include "vppinfra/clib.h"
+#include "vppinfra/error_bootstrap.h"
+
+struct vlib_main_t;
 /* Combined 16 bit node & 16 bit code as 32 bit number. */
 typedef u32 vlib_error_t;
 

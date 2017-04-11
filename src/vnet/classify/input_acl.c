@@ -12,9 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/ip/ip.h>
-#include <vnet/classify/vnet_classify.h>
-#include <vnet/classify/input_acl.h>
+#include "input_acl.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
 
 input_acl_main_t input_acl_main;
 

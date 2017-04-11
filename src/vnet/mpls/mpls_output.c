@@ -15,10 +15,15 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ip/ip.h>
-#include <vnet/mpls/mpls.h>
+#include "vnet/adj/adj.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ip/ip4_error.h"
+#include "vnet/ip/format.h"
+#include "mpls.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 typedef struct {
   /* Adjacency taken. */

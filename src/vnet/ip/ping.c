@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-#include <stddef.h>
-#include <vnet/ip/ping.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/fib_entry.h>
+#include "ping.h"
+#include "format.h"
+#include "icmp6.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @file

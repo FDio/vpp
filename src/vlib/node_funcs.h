@@ -45,7 +45,7 @@
 #ifndef included_vlib_node_funcs_h
 #define included_vlib_node_funcs_h
 
-#include <vppinfra/fifo.h>
+#include "global_funcs.h"
 
 /** \brief Get vlib node by index.
  @warning This function will ASSERT if @c i is out of range.

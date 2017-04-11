@@ -40,8 +40,9 @@
 #ifndef included_osi_h
 #define included_osi_h
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
+#include "vnet/pg/pg.h"
+#include "vnet/adj/rewrite.h"
+#include "vlib/node_funcs.h"
 
 #define foreach_osi_protocol			\
   _ (null, 0x0)					\

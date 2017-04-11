@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/classify/flow_classify.h>
+#include "flow_classify.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
 
 static void
 vnet_flow_classify_feature_enable (vlib_main_t * vnm,

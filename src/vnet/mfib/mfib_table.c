@@ -13,14 +13,10 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/dpo/drop_dpo.h>
-
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/mfib/ip4_mfib.h>
-#include <vnet/mfib/ip6_mfib.h>
-#include <vnet/mfib/mfib_entry.h>
-#include <vnet/mfib/mfib_signal.h>
+#include "ip4_mfib.h"
+#include "ip6_mfib.h"
+#include "mfib_signal.h"
+#include "vlib/global_funcs.h"
 
 mfib_table_t *
 mfib_table_get (fib_node_index_t index,

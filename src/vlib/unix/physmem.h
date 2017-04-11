@@ -17,15 +17,10 @@
 
 /* Manage I/O physical memory. */
 #define _GNU_SOURCE
+
+#include "vppinfra/types.h"
+
 #include <sched.h>
-#include <vppinfra/cache.h>
-#include <vppinfra/error.h>
-#include <vppinfra/mheap.h>
-#include <vppinfra/os.h>
-
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-
 #include <sys/fcntl.h>		/* for open */
 #include <sys/file.h>		/* for flock */
 #include <sys/ioctl.h>

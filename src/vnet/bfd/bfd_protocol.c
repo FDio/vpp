@@ -12,11 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "bfd_protocol.h"
 /**
  * @file
  * @brief BFD protocol implementation
  */
-#include <vnet/bfd/bfd_protocol.h>
 
 u8
 bfd_pkt_get_version (const bfd_pkt_t * pkt)

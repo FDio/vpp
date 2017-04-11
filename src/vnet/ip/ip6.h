@@ -40,16 +40,12 @@
 #ifndef included_ip_ip6_h
 #define included_ip_ip6_h
 
-#include <vlib/mc.h>
-#include <vlib/buffer.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_hop_by_hop_packet.h>
 #include <vnet/ip/lookup.h>
-#include <stdbool.h>
+#include "vnet/global_funcs.h"
+#include "vnet/interface_funcs.h"
 #include <vppinfra/bihash_24_8.h>
-#include <vppinfra/bihash_template.h>
-#include <vnet/util/radix.h>
+#include <vnet/ip/ip6_hop_by_hop_packet.h>
+#include <vnet/ethernet/packet.h>
 
 /*
  * Default size of the ip6 fib hash table

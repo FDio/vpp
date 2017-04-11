@@ -12,18 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <string.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <assert.h>
-#include <math.h>
-#include <stdint.h>
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-
-#include <vnet/policer/xlate.h>
-#include <vnet/policer/police.h>
+#include "vnet/vnet.h"
+#include "xlate.h"
 
 #define INTERNAL_SS 1
 

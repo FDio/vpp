@@ -18,7 +18,7 @@
 #ifndef included_l2fib_h
 #define included_l2fib_h
 
-#include <vlib/vlib.h>
+#include "vppinfra/hash.h"
 #include <vppinfra/bihash_8_8.h>
 
 /*

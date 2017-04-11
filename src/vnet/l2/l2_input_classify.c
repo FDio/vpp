@@ -16,8 +16,11 @@
  * l2_classify.c
  */
 
-#include <vnet/l2/l2_classify.h>
-#include <vnet/api_errno.h>
+#include "l2_classify.h"
+#include "l2_input.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 /**
  * @file

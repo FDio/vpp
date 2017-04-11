@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/lawful-intercept/lawful_intercept.h>
+#include "lawful_intercept.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 static clib_error_t *
 set_li_command_fn (vlib_main_t * vm,

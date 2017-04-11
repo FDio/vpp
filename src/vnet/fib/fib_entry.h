@@ -16,11 +16,8 @@
 #ifndef __FIB_ENTRY_H__
 #define __FIB_ENTRY_H__
 
-#include <vnet/fib/fib_node.h>
-#include <vnet/fib/fib_entry_delegate.h>
-#include <vnet/adj/adj.h>
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/dpo.h>
+#include "fib_entry_delegate.h"
+#include "vnet/adj/adj_types.h"
 
 /**
  * The different sources that can create a route.

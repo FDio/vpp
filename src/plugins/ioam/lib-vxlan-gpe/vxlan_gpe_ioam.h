@@ -15,10 +15,9 @@
 #ifndef __included_vxlan_gpe_ioam_h__
 #define __included_vxlan_gpe_ioam_h__
 
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
-#include <vnet/ip/ip.h>
+#include "vnet/fib/fib_node.h"
+#include "vnet/vxlan-gpe/vxlan_gpe.h"
+#include "vxlan_gpe_ioam_packet.h"
 
 
 typedef struct vxlan_gpe_sw_interface_

@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <dpdk/device/dpdk.h>
-#include <vpp/app/version.h>
+#include "vlib/global_funcs.h"
+#include "vlib/unix/plugin.h"
+
+#include "vnet/plugin/plugin.h"
+#include "device/dpdk.h"
+#include "vpp/app/version.h"
 
 /*
  * Called by the dpdk driver's rte_delay_us() function.

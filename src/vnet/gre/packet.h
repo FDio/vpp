@@ -18,6 +18,8 @@
  * limitations under the License.
  */
 
+#include "vppinfra/types.h"
+
 #define foreach_gre_protocol			\
 _ (0x0800, ip4)                                 \
 _ (0x86DD, ip6)                                 \

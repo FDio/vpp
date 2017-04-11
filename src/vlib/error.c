@@ -37,8 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vppinfra/heap.h>
+#include "node_funcs.h"
+#include "buffer_funcs.h"
+#include "global_funcs.h"
 
 uword
 vlib_error_drop_buffers (vlib_main_t * vm,

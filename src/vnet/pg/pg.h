@@ -40,11 +40,8 @@
 #ifndef included_vlib_pg_h
 #define included_vlib_pg_h
 
-#include <vlib/vlib.h>		/* for VLIB_N_RX_TX */
-#include <vnet/pg/edit.h>
-#include <vppinfra/fifo.h>	/* for buffer_fifo */
-#include <vnet/unix/pcap.h>
 #include <vnet/interface.h>
+#include <vnet/pg/edit.h>
 
 extern vnet_device_class_t pg_dev_class;
 

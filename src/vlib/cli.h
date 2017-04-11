@@ -41,8 +41,10 @@
 #define included_vlib_cli_h
 
 #include <vppinfra/format.h>
+#include "vppinfra/error.h"
 
 struct vlib_cli_command_t;
+struct vlib_main_t;
 
 typedef struct
 {

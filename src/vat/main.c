@@ -12,13 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "vat.h"
 #include "plugin.h"
-#include <signal.h>
+#include "vlibmemory/api.h"
 
 vat_main_t vat_main;
 
-#include <vlibapi/api_helper_macros.h>
+#include "vlibapi/api_helper_macros.h"
+
+#include <signal.h>
 
 void
 vat_suspend (vlib_main_t * vm, f64 interval)

@@ -13,17 +13,19 @@
  * limitations under the License.
  */
 
-#include <vlibmemory/api.h>
-#include <vnet/lisp-cp/control.h>
-#include <vnet/lisp-cp/packets.h>
-#include <vnet/lisp-cp/lisp_msg_serdes.h>
-#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
-#include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_table.h>
+#include "packets.h"
+#include "lisp_msg_serdes.h"
+#include "lisp_cp_messages.h"
+#include "vnet/udp/udp.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/lisp-gpe/lisp_gpe_fwd_entry.h"
+#include "vnet/lisp-gpe/lisp_gpe_tenant.h"
+#include "vnet/fib/fib_table.h"
+#include "vlibmemory/api.h"
+#include "vlib/global_funcs.h"
+#include "vlib/trace_funcs.h"
+#include "vnet/lisp-gpe/lisp_gpe_tunnel.h"
 
-#include <openssl/evp.h>
 #include <openssl/hmac.h>
 
 lisp_cp_main_t lisp_control_main;

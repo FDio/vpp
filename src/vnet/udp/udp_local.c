@@ -15,11 +15,17 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/udp/udp.h>
-#include <vnet/udp/udp_packet.h>
-#include <vppinfra/sparse_vec.h>
+#include "vnet/pg/pg.h"
+#include "udp.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/icmp4.h"
+#include "vnet/ip/icmp6.h"
+#include "vnet/ip/format.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+#include "vppinfra/sparse_vec.h"
 
 udp_main_t udp_main;
 

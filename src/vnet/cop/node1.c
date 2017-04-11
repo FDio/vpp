@@ -13,7 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/cop/cop.h>
+#include "cop.h"
+#include "vnet/ethernet/packet.h"
+#include "vnet/buffer.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 typedef struct {
   u32 next_index;

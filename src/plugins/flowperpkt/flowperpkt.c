@@ -23,39 +23,41 @@
  * debug CLI, and binary API handling.
  */
 
-#include <vnet/vnet.h>
-#include <vpp/app/version.h>
-#include <vnet/plugin/plugin.h>
-#include <flowperpkt/flowperpkt.h>
+#include "vpp/app/version.h"
+#include "vnet/flow/flow_report.h"
+#include "flowperpkt.h"
+#include "vnet/feature/feature.h"
 
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vlib/global_funcs.h"
+#include "vlib/unix/plugin.h"
+#include "vnet/flow/ipfix_info_elements.h"
 
 /* define message IDs */
-#include <flowperpkt/flowperpkt_msg_enum.h>
+#include "flowperpkt_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <flowperpkt/flowperpkt_all_api_h.h>
+#include "flowperpkt_all_api_h.h"
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <flowperpkt/flowperpkt_all_api_h.h>
+#include "flowperpkt_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <flowperpkt/flowperpkt_all_api_h.h>
+#include "flowperpkt_all_api_h.h"
 #undef vl_printfun
 
 flowperpkt_main_t flowperpkt_main;
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <flowperpkt/flowperpkt_all_api_h.h>
+#include "flowperpkt_all_api_h.h"
 #undef vl_api_version
 
 #define REPLY_MSG_ID_BASE fm->msg_id_base
@@ -549,7 +551,7 @@ flowperpkt_plugin_api_hookup (vlib_main_t * vm)
 }
 
 #define vl_msg_name_crc_list
-#include <flowperpkt/flowperpkt_all_api_h.h>
+#include "flowperpkt_all_api_h.h"
 #undef vl_msg_name_crc_list
 
 static void

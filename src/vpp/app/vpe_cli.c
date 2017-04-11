@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 #include <vnet/ip/ip.h>
+#include "vnet/ip/format.h"
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/adj/adj.h>
+#include "vnet/adj/adj_nbr.h"
 #include <vnet/fib/fib_table.h>
+#include "vlib/global_funcs.h"
 
 typedef struct
 {

@@ -37,7 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
+#include <vlib/main.h>
 
 clib_error_t *
 vlib_call_init_exit_functions (vlib_main_t * vm,

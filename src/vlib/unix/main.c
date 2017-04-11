@@ -36,15 +36,14 @@
  *  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlib/unix/plugin.h>
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
+#include "unix.h"
+#include "plugin.h"
 
-#include <signal.h>
 #include <sys/ucontext.h>
 #include <syslog.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <sys/resource.h>

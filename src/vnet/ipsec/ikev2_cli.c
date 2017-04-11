@@ -12,13 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <vnet/udp/udp.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include "vnet/ip/format.h"
+#include "ikev2_priv.h"
+#include "vlib/global_funcs.h"
 
 u8 *
 format_ikev2_id_type_and_data (u8 * s, va_list * args)

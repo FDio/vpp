@@ -14,7 +14,7 @@
  */
 
 #include <vppinfra/cpu.h>
-#include <vlib/vlib.h>
+#include "vlib/global_funcs.h"
 #include <vlib/unix/unix.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>

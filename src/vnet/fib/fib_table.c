@@ -13,15 +13,13 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/dpo/drop_dpo.h>
-
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_entry_cover.h>
-#include <vnet/fib/fib_internal.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/mpls_fib.h>
+#include "vnet/dpo/drop_dpo.h"
+#include "fib_entry_cover.h"
+#include "fib_internal.h"
+#include "ip4_fib.h"
+#include "ip6_fib.h"
+#include "mpls_fib.h"
+#include "vnet/mpls/mpls_types.h"
 
 fib_table_t *
 fib_table_get (fib_node_index_t index,

@@ -23,6 +23,9 @@
  */
 #ifndef include_vnet_math64_h
 #define include_vnet_math64_h
+
+#include "vppinfra/types.h"
+
 #include <stdint.h>
 
 /* 

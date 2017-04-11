@@ -12,9 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cop/cop.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/dpo/load_balance.h>
+#include "vnet/buffer.h"
+#include "cop.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/dpo/load_balance.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 typedef struct {
   u32 next_index;

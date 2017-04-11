@@ -12,16 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stdbool.h>
-#include <vppinfra/error.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vlib/vlib.h>
-#include <vnet/fib/fib_types.h>
 #include <vnet/fib/ip4_fib.h>
-#include <vnet/adj/adj.h>
-#include <vnet/map/map_dpo.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/map/map_dpo.h>
+#include <vlib/buffer_node.h>
+
+#include <stdbool.h>
 
 #define MAP_SKIP_IP6_LOOKUP 1
 

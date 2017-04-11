@@ -37,7 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
+#include "vnet.h"
+#include "config.h"
 
 static vnet_config_feature_t *
 duplicate_feature_vector (vnet_config_feature_t * feature_vector)

@@ -16,8 +16,7 @@
 #ifndef VNET_LISP_GPE_LISP_TYPES_H_
 #define VNET_LISP_GPE_LISP_TYPES_H_
 
-#include <vnet/ip/ip.h>
-#include <vnet/lisp-cp/lisp_cp_messages.h>
+#include "vnet/fib/fib_types.h"
 
 #define SHA1_AUTH_DATA_LEN                  20
 #define SHA256_AUTH_DATA_LEN                32

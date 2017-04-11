@@ -40,7 +40,7 @@
 #ifndef included_vlib_trace_h
 #define included_vlib_trace_h
 
-#include <vppinfra/pool.h>
+#include "vppinfra/types.h"
 
 typedef struct
 {

@@ -38,9 +38,8 @@
 #ifndef included_fifo_h
 #define included_fifo_h
 
-#include <vppinfra/cache.h>
-#include <vppinfra/error.h>	/* for ASSERT */
-#include <vppinfra/vec.h>
+#include "error_bootstrap.h"
+#include "vec_bootstrap.h"
 
 typedef struct
 {

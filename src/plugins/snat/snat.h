@@ -18,15 +18,11 @@
 #ifndef __included_snat_h__
 #define __included_snat_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/icmp46_packet.h>
-#include <vnet/api_errno.h>
-#include <vppinfra/bihash_8_8.h>
-#include <vppinfra/dlist.h>
-#include <vppinfra/error.h>
-#include <vlibapi/api.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlibapi/api.h"
+#include "vppinfra/dlist.h"
+#include "vppinfra/bihash_8_8.h"
 
 
 #define SNAT_UDP_TIMEOUT 300

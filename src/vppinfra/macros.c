@@ -16,6 +16,7 @@
  * limitations under the License.
 */
 
+#include "hash.h"
 #include <vppinfra/macros.h>
 
 static inline int

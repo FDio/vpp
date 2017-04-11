@@ -39,12 +39,10 @@
 
 #include <sys/stat.h>
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
+#include "vnet/vnet.h"
+#include "pg.h"
 
-#ifdef CLIB_UNIX
-#include <vnet/unix/pcap.h>
-#endif
+#include "vlib/global_funcs.h"
 
 /* Root of all packet generator cli commands. */
 /* *INDENT-OFF* */

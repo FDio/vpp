@@ -35,6 +35,7 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include "error.h"
 #include <vppinfra/vec.h>
 #include <vppinfra/mem.h>
 

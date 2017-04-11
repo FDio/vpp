@@ -37,9 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip.h>		// for feature registration
+#include "ethernet.h"
+#include "vlib/global_funcs.h"
+#include "vnet/feature/feature.h"
 
 /* Global main structure. */
 ethernet_main_t ethernet_main;

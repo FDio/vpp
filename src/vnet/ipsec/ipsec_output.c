@@ -15,11 +15,11 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
+#include "vnet/udp/udp_packet.h"
+#include "vlib/trace_funcs.h"
+#include "vppinfra/cpu.h"
 
-#include <vnet/ipsec/ipsec.h>
+#include "ipsec.h"
 
 #if WITH_LIBSSL > 0
 

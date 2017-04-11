@@ -40,6 +40,9 @@
 #ifndef included_vlib_format_h
 #define included_vlib_format_h
 
+#include "vppinfra/format.h"
+#include <stdarg.h>
+
 /* Format vlib_rx_or_tx_t/vlib_read_or_write_t enum as string. */
 u8 *format_vlib_rx_tx (u8 * s, va_list * args);
 u8 *format_vlib_read_write (u8 * s, va_list * args);

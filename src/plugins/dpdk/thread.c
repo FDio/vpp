@@ -13,37 +13,8 @@
  * limitations under the License.
  */
 
-#include <rte_config.h>
-
-#include <rte_common.h>
-#include <rte_log.h>
-#include <rte_memory.h>
-#include <rte_memzone.h>
-#include <rte_tailq.h>
-#include <rte_eal.h>
-#include <rte_per_lcore.h>
-#include <rte_launch.h>
-#include <rte_atomic.h>
-#include <rte_cycles.h>
-#include <rte_prefetch.h>
-#include <rte_lcore.h>
-#include <rte_per_lcore.h>
-#include <rte_branch_prediction.h>
-#include <rte_interrupts.h>
-#include <rte_pci.h>
-#include <rte_random.h>
-#include <rte_debug.h>
-#include <rte_ether.h>
-#include <rte_ethdev.h>
-#include <rte_ring.h>
-#include <rte_mempool.h>
-#include <rte_mbuf.h>
-#include <rte_version.h>
-
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <dpdk/device/dpdk.h>
-#include <dpdk/device/dpdk_priv.h>
+#include "vlib/global_funcs.h"
+#include "device/dpdk_priv.h"
 
 static clib_error_t *
 dpdk_launch_thread (void *fp, vlib_worker_thread_t * w, unsigned lcore_id)

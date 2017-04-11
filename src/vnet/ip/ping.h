@@ -16,9 +16,8 @@
 #define included_vnet_ping_h
 
 
-#include <vnet/ip/ip.h>
-
-#include <vnet/ip/lookup.h>
+#include <vnet/ip/ip6.h>
+#include <vnet/ip/ip4.h>
 
 typedef enum
 {

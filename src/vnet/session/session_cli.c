@@ -12,8 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/session/application.h>
-#include <vnet/session/session.h>
+#include "application.h"
+#include "session.h"
+#include "vlib/global_funcs.h"
 
 /**
  * Format stream session as per the following format

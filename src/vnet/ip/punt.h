@@ -20,6 +20,8 @@
 #ifndef included_punt_h
 #define included_punt_h
 
+#include "vlib/main.h"
+
 typedef enum
 {
 #define punt_error(n,s) PUNT_ERROR_##n,

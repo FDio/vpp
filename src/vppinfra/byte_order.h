@@ -38,7 +38,7 @@
 #ifndef included_clib_byte_order_h
 #define included_clib_byte_order_h
 
-#include <vppinfra/clib.h>
+#include "clib.h"
 
 #if (__BYTE_ORDER__)==( __ORDER_LITTLE_ENDIAN__)
 #define CLIB_ARCH_IS_BIG_ENDIAN (0)

@@ -37,8 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/threads.h>
+#include "node_funcs.h"
+#include "global_funcs.h"
 
 static int
 node_cmp (void *a1, void *a2)

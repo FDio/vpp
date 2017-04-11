@@ -16,9 +16,8 @@
 #ifndef __MPLS_LABEL_DPO_H__
 #define __MPLS_LABEL_DPO_H__
 
-#include <vnet/vnet.h>
-#include <vnet/mpls/packet.h>
 #include <vnet/dpo/dpo.h>
+#include <vnet/mpls/packet.h>
 
 /**
  * A representation of an MPLS label for imposition in the data-path

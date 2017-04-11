@@ -16,7 +16,7 @@
 #ifndef VNET_LISP_GPE_LISP_CP_MESSAGES_H_
 #define VNET_LISP_GPE_LISP_CP_MESSAGES_H_
 
-#include <vnet/vnet.h>
+#include "vppinfra/clib.h"
 
 #define MAX_IP_PKT_LEN 4096
 #define MAX_IP_HDR_LEN 40	/* without options or IPv6 hdr extensions */

@@ -37,12 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/adj/adj.h>
+#include "vnet/l2/l2_input.h"
+#include "vnet/adj/adj.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @file

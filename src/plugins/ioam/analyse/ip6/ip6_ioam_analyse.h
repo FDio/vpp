@@ -20,6 +20,8 @@
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <ioam/encap/ip6_ioam_trace.h>
 
+#include <stdbool.h>
+
 /** @brief IP6-iOAM analyser main structure.
     @note cache aligned.
 */

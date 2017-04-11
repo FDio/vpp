@@ -15,9 +15,7 @@
 #ifndef included_clib_ptclosure_h
 #define included_clib_ptclosure_h
 
-#include <vppinfra/vec.h>
-#include <vppinfra/format.h>
-#include <vppinfra/error.h>
+#include "types.h"
 
 /*
  * set r[i][j] if item i "bears the relation to" item j

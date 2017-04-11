@@ -37,7 +37,7 @@
 #ifndef __FIB_ATTACHED_EXPORT_H__
 #define __FIB_ATTACHED_EXPORT_H__
 
-#include <vnet/fib/fib_types.h>
+#include "fib_entry.h"
 
 extern void fib_attached_export_import(fib_entry_t *fib_entry,
 				       fib_node_index_t export_fib);

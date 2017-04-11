@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_internal.h>
-#include <vnet/adj/adj_glean.h>
-#include <vnet/adj/adj_midchain.h>
-#include <vnet/adj/adj_mcast.h>
-#include <vnet/adj/adj_delegate.h>
-#include <vnet/fib/fib_node_list.h>
+#include "adj_internal.h"
+#include "adj_glean.h"
+#include "adj_midchain.h"
+#include "adj_mcast.h"
+#include "adj_nbr.h"
+#include "vnet/fib/fib_node_list.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
+#include "adj_delegate.h"
 
 /* Adjacency packet/byte counters indexed by adjacency index. */
 vlib_combined_counter_main_t adjacency_counters;

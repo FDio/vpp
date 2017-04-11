@@ -40,8 +40,7 @@
 #ifndef included_ip6_packet_h
 #define included_ip6_packet_h
 
-#include <vnet/tcp/tcp_packet.h>
-#include <vnet/ip/ip4_packet.h>
+#include "ip4_packet.h"
 
 typedef union
 {

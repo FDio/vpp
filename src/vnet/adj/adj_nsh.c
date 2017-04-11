@@ -13,9 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/adj/adj_nsh.h>
-#include <vnet/ip/ip.h>
+#include "vnet/buffer.h"
+#include "adj_nsh.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/ip.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 nsh_main_dummy_t nsh_main_dummy;
 

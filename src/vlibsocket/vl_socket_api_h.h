@@ -21,7 +21,7 @@
  * Add to the bottom of the #include list, or elves will steal your
  * keyboard in the middle of the night!
  */
-#include <vlibmemory/vl_memory_api_h.h>
+//#include <vlibmemory/vl_memory_api_h.h>
 #include <vlibsocket/sockclnt.api.h>
 
 /*

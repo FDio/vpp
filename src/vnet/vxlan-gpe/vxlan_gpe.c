@@ -17,9 +17,11 @@
  *  @brief Common utility functions for IPv4 and IPv6 VXLAN GPE tunnels
  *
 */
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/fib/fib.h>
-#include <vnet/ip/format.h>
+#include "vxlan_gpe.h"
+#include "vnet/fib/fib.h"
+#include "vnet/ip/format.h"
+#include "vnet/udp/udp.h"
+#include "vlib/global_funcs.h"
 
 vxlan_gpe_main_t vxlan_gpe_main;
 

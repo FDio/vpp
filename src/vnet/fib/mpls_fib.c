@@ -47,13 +47,13 @@
  * VPP mantra - favour performance over memory. We choose a 21 bit key.
  */
 
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/mpls_fib.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/punt_dpo.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/mpls/mpls.h>
+#include "mpls_fib.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vnet/dpo/punt_dpo.h"
+#include "vnet/dpo/lookup_dpo.h"
+#include "vnet/mpls/mpls_types.h"
+#include "vlib/global_funcs.h"
 
 /**
  * All lookups in an MPLS_FIB table must result in a DPO of type load-balance.

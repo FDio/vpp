@@ -40,30 +40,8 @@
 #ifndef included_ip_main_h
 #define included_ip_main_h
 
-#include <vppinfra/hash.h>
-#include <vppinfra/heap.h>	/* adjacency heap */
-#include <vppinfra/ptclosure.h>
-
-#include <vnet/vnet.h>
-
-#include <vnet/ip/format.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/lookup.h>
-
-#include <vnet/tcp/tcp_packet.h>
-#include <vnet/udp/udp_packet.h>
-#include <vnet/ip/icmp46_packet.h>
-
-#include <vnet/ip/ip4.h>
-#include <vnet/ip/ip4_error.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/icmp4.h>
-
-#include <vnet/ip/ip6.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_error.h>
-#include <vnet/ip/icmp6.h>
-#include <vnet/classify/vnet_classify.h>
+#include "vlib/buffer_funcs.h"
+#include "ip_packet.h"
 
 /* Per protocol info. */
 typedef struct

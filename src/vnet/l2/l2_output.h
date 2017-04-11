@@ -18,10 +18,8 @@
 #ifndef included_vnet_l2_output_h
 #define included_vnet_l2_output_h
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/l2/feat_bitmap.h>
 #include <vnet/l2/l2_vtr.h>
+#include <vnet/l2/feat_bitmap.h>
 
 
 /* The L2 output feature configuration, a per-interface struct */

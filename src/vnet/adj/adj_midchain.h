@@ -22,7 +22,8 @@
 #ifndef __ADJ_MIDCHAIN_H__
 #define __ADJ_MIDCHAIN_H__
 
-#include <vnet/adj/adj.h>
+#include "vnet/ip/lookup.h"
+#include "adj.h"
 
 /**
  * @brief

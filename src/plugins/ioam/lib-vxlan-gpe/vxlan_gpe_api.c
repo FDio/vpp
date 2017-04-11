@@ -19,36 +19,33 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
-
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+#include "vxlan_gpe_ioam.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vlib/global_funcs.h"
 
 /* define message IDs */
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_msg_enum.h>
+#include "vxlan_gpe_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#include "vxlan_gpe_all_api_h.h"
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#include "vxlan_gpe_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#include "vxlan_gpe_all_api_h.h"
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#include "vxlan_gpe_all_api_h.h"
 #undef vl_api_version
 
 /*

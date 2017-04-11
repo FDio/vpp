@@ -37,6 +37,10 @@
 
 #include <vppinfra/format.h>
 
+#ifdef CLIB_UNIX
+#include <unistd.h>
+#endif
+
 /* Call user's function to fill input buffer. */
 uword
 _unformat_fill_input (unformat_input_t * i)

@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
+//#include <vlib/vlib.h>
+#include "vlib/main.h"
+#include "vlib/global_funcs.h"
 #include <vppinfra/cpu.h>
 #include <vpp/app/version.h>
 

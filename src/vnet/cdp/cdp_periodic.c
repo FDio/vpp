@@ -12,13 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cdp/cdp_node.h>
-#include <vppinfra/hash.h>
-#include <vnet/unix/pcap.h>
-#include <vnet/srp/srp.h>
-#include <vnet/ppp/ppp.h>
-#include <vnet/hdlc/hdlc.h>
-#include <vnet/srp/packet.h>
+#include "cdp_node.h"
+#include "cdp_protocol.h"
+#include "vnet/buffer.h"
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
 
 /*
  * Generate a set of specific CDP TLVs.

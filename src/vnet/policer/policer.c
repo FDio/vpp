@@ -12,9 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stdint.h>
-#include <vnet/policer/policer.h>
-#include <vnet/classify/vnet_classify.h>
+#include "policer.h"
+#include "vnet/classify/vnet_classify.h"
+#include "vlib/global_funcs.h"
 
 clib_error_t *
 policer_add_del (vlib_main_t * vm,

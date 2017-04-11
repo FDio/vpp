@@ -19,10 +19,13 @@
  * Removes GRE header from the packet and sends it to the l2-input node.
 */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ipsec-gre/ipsec_gre.h>
-#include <vppinfra/sparse_vec.h>
+#include "vnet/buffer.h"
+#include "vnet/gre/gre.h"
+#include "vnet/ip/format.h"
+#include "ipsec_gre.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_ipsec_gre_input_next		\
 _(PUNT, "error-punt")                           \

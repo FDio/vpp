@@ -19,7 +19,8 @@
  * @brief deterministic NAT
  */
 
-#include <snat/snat_det.h>
+#include "snat/snat_det.h"
+#include "vlib/global_funcs.h"
 
 
 /**

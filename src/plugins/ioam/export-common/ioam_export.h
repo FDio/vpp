@@ -15,21 +15,12 @@
 #ifndef __included_ioam_export_h__
 #define __included_ioam_export_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <vnet/udp/udp.h>
-#include <vnet/flow/ipfix_packet.h>
-
-#include <vppinfra/pool.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
-
-#include <vlib/threads.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/buffer.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/flow/ipfix_packet.h"
+#include "vnet/udp/udp_packet.h"
+#include "vnet/udp/udp.h"
 
 typedef struct ioam_export_buffer
 {

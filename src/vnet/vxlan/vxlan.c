@@ -12,14 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vxlan/vxlan.h>
-#include <vnet/ip/format.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/adj/adj_mcast.h>
-#include <vnet/interface.h>
-#include <vlib/vlib.h>
+#include "vxlan.h"
+#include "vnet/ip/format.h"
+#include "vnet/udp/udp.h"
+#include "vnet/fib/fib_table.h"
+#include "vnet/mfib/mfib_table.h"
+#include "vnet/adj/adj.h"
+#include "vnet/adj/adj_mcast.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
+
+#include <stdbool.h>
 
 /**
  * @file

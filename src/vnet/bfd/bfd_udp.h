@@ -19,10 +19,12 @@
 #ifndef __included_bfd_udp_h__
 #define __included_bfd_udp_h__
 
-#include <vppinfra/clib.h>
-#include <vnet/adj/adj_types.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/bfd/bfd_api.h>
+#include "vlib/main.h"
+#include "vnet/ip/ip6_packet.h"
+#include "vnet/adj/adj_types.h"
+
+#define BFD_UDP_KEY_BODY
+#include "bfd_api.h"
 
 /* *INDENT-OFF* */
 /** identifier of BFD session based on UDP transport only */

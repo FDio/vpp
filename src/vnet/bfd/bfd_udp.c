@@ -16,28 +16,17 @@
  * @file
  * @brief BFD UDP transport layer implementation
  */
-#include <vppinfra/types.h>
-#include <vlibmemory/api.h>
-#include <vlib/vlib.h>
-#include <vlib/buffer.h>
-#include <vnet/ip/format.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/udp/udp_packet.h>
-#include <vnet/udp/udp.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/ip/icmp46_packet.h>
-#include <vnet/ip/ip4.h>
-#include <vnet/ip/ip6.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_nbr.h>
-#include <vnet/dpo/receive_dpo.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/bfd/bfd_debug.h>
-#include <vnet/bfd/bfd_udp.h>
-#include <vnet/bfd/bfd_main.h>
-#include <vnet/bfd/bfd_api.h>
+#include "vlibmemory/api.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vnet/buffer.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/udp/udp.h"
+#include "vnet/adj/adj.h"
+#include "vnet/adj/adj_nbr.h"
+#include "bfd_debug.h"
+#include "bfd_main.h"
 
 typedef struct
 {

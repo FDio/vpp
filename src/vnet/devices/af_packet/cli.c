@@ -17,20 +17,10 @@
  *------------------------------------------------------------------
  */
 
-#include <fcntl.h>		/* for open */
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
-#include <netinet/in.h>
+#include "vlib/global_funcs.h"
+#include "vnet/ethernet/ethernet.h"
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vnet/devices/af_packet/af_packet.h>
+#include "af_packet.h"
 
 /**
  * @file

@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/ip4_fib.h>
+#include "ip4_fib.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 /*
  * A table of pefixes to be added to tables and the sources for them

@@ -13,21 +13,20 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/handoff.h>
+#include "vnet/udp/udp_packet.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/icmp4.h"
 
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/fib/ip4_fib.h>
-#include <snat/snat.h>
-#include <snat/snat_ipfix_logging.h>
-#include <snat/snat_det.h>
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
+#include "vppinfra/cpu.h"
+
+#include "snat_ipfix_logging.h"
+#include "snat_det.h"
+
+#include <arpa/inet.h>
 
 typedef struct {
   u32 sw_if_index;

@@ -1,7 +1,7 @@
 #ifndef included_vnet_sr_packet_h
 #define included_vnet_sr_packet_h
 
-#include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_packet.h>
 
 /*
  * ipv6 segment-routing header format

@@ -15,9 +15,8 @@
 #ifndef included_vlib_parse_h
 #define included_vlib_parse_h
 
-#include <vlib/vlib.h>
-#include <vlib/lex.h>
-#include <vppinfra/mhash.h>
+#include "lex.h"
+#include "main.h"
 
 typedef struct
 {

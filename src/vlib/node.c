@@ -37,8 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/threads.h>
+#include "node_funcs.h"
+#include "buffer_funcs.h"
+
+#include <sys/mman.h>
 
 /* Query node given name. */
 vlib_node_t *

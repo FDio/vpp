@@ -35,7 +35,8 @@
 #ifndef IP_FRAG_H
 #define IP_FRAG_H
 
-#include <vnet/vnet.h>
+#include "vlib/node.h"
+#include "vlib/buffer.h"
 
 #define IP_FRAG_FLAG_IP4_HEADER 0x01	//Encapsulating IPv4 header
 #define IP_FRAG_FLAG_IP6_HEADER 0x02	//Encapsulating IPv6 header

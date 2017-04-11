@@ -15,7 +15,7 @@
 #ifndef included_asm_x86_h
 #define included_asm_x86_h
 
-#include <vppinfra/format.h>
+#include "format.h"
 
 typedef union
 {

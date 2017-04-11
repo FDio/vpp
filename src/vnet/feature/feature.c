@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/feature/feature.h>
-#include <vnet/adj/adj.h>
+#include "feature.h"
+#include "vnet/adj/adj.h"
+#include "vlib/global_funcs.h"
 
 vnet_feature_main_t feature_main;
 

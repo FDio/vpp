@@ -12,10 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
-#include <vnet/classify/vnet_classify.h>
-#include <vnet/dpo/classify_dpo.h>
+#include "vnet/ip/lookup.h"
+#include "vnet/ethernet/ethernet.h"	/* for ethernet_header_t */
+#include "vnet_classify.h"
+#include "vnet/dpo/classify_dpo.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 typedef struct {
   u32 next_index;

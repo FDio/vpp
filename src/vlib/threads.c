@@ -14,13 +14,13 @@
  */
 #define _GNU_SOURCE
 
-#include <signal.h>
-#include <math.h>
-#include <vppinfra/format.h>
-#include <vlib/vlib.h>
+#include "global_funcs.h"
+#include "node_funcs.h"
 
-#include <vlib/threads.h>
-#include <vlib/unix/cj.h>
+#include "unix/cj.h"
+#include "vppinfra/mheap.h"
+
+#include <pthread.h>
 
 DECLARE_CJ_GLOBAL_LOG;
 

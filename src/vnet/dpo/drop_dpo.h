@@ -20,7 +20,7 @@
 #ifndef __DROP_DPO_H__
 #define __DROP_DPO_H__
 
-#include <vnet/dpo/dpo.h>
+#include "dpo.h"
 
 extern int dpo_is_drop(const dpo_id_t *dpo);
 

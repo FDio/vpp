@@ -16,7 +16,8 @@
 #ifndef included_clib_lock_h
 #define included_clib_lock_h
 
-#include <vppinfra/clib.h>
+#include "mem.h"
+#include "cache.h"
 
 typedef struct
 {

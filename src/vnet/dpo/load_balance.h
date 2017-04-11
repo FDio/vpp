@@ -32,11 +32,8 @@
 #ifndef __LOAD_BALANCE_H__
 #define __LOAD_BALANCE_H__
 
-#include <vlib/vlib.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/fib/fib_types.h>
-#include <vnet/fib/fib_entry.h>
+#include "vnet/fib/fib_entry.h"
+#include "vnet/ip/lookup.h"
 
 /**
  * Load-balance main

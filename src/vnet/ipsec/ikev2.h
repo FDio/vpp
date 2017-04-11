@@ -15,10 +15,8 @@
 #ifndef __included_ikev2_h__
 #define __included_ikev2_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-
-#include <vppinfra/error.h>
+#include "vlib/main.h"
+#include "vnet/ip/ip4_packet.h"
 
 #define IKEV2_NONCE_SIZE  32
 

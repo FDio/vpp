@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/unix/mc_socket.h>
-#include <vppinfra/random.h>
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
+#include "vlib/unix/mc_socket.h"
 
 typedef struct
 {

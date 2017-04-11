@@ -37,8 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
+#include "vnet/ip/ip.h"
+#include "vnet/pg/pg.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ip/ip4_packet.h"
+#include "vnet/ip/format.h"
 
 /* TCP flags bit 0 first. */
 #define foreach_tcp_flag			\

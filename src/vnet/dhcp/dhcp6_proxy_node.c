@@ -15,17 +15,18 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/dhcp/dhcp_proxy.h>
-#include <vnet/dhcp/dhcp6_packet.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/mfib/ip6_mfib.h>
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vnet/pg/pg.h"
+#include "dhcp_proxy.h"
+#include "dhcp6_packet.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/mfib/mfib_table.h"
+#include "vnet/mfib/ip6_mfib.h"
 
 static char * dhcpv6_proxy_error_strings[] = {
 #define dhcpv6_proxy_error(n,s) s,
-#include <vnet/dhcp/dhcp6_proxy_error.def>
+#include "dhcp6_proxy_error.def"
 #undef dhcpv6_proxy_error
 };
 

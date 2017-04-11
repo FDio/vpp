@@ -40,13 +40,8 @@
 #ifndef included_vnet_vnet_h
 #define included_vnet_vnet_h
 
-#include <vppinfra/types.h>
-
-#include <vnet/unix/pcap.h>
-#include <vnet/buffer.h>
-#include <vnet/config.h>
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
+#include "interface.h"
+#include "api_errno.h"
 
 typedef struct vnet_main_t
 {

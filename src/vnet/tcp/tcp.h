@@ -16,13 +16,12 @@
 #ifndef _vnet_tcp_h_
 #define _vnet_tcp_h_
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/tcp/tcp_packet.h>
-#include <vnet/tcp/tcp_timer.h>
-#include <vnet/session/transport.h>
-#include <vnet/session/session.h>
-#include <vnet/tcp/tcp_debug.h>
+
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/session/transport.h"
+#include "vnet/buffer.h"
+#include "vppinfra/tw_timer_16t_2w_512sl.h"
 
 #define TCP_TICK 10e-3			/**< TCP tick period (s) */
 #define THZ 1/TCP_TICK			/**< TCP tick frequency */

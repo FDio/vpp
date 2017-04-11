@@ -17,14 +17,12 @@
  *------------------------------------------------------------------
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ipsec/ipsec.h>
+#include "vnet/ipsec/ipsec.h"
 
-#include <dpdk/device/dpdk.h>
-#include <dpdk/device/dpdk_priv.h>
-#include <dpdk/ipsec/ipsec.h>
+#include "ipsec.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
+#include "dpdk/device/dpdk_priv.h"
 
 #define foreach_dpdk_crypto_input_next		\
   _(DROP, "error-drop")				\

@@ -38,8 +38,7 @@
 #ifndef included_clib_elf_self_h
 #define included_clib_elf_self_h
 
-#include <vppinfra/elf.h>
-#include <vppinfra/hash.h>
+#include "elf.h"
 
 #define CLIB_ELF_SECTION_DATA_ALIGN 32
 

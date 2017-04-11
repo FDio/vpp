@@ -16,7 +16,7 @@
 #ifndef included_clib_cpu_h
 #define included_clib_cpu_h
 
-#include <vppinfra/format.h>
+#include "format.h"
 
 /*
  * multiarchitecture support. Adding new entry will produce

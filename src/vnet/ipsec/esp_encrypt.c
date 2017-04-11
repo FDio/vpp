@@ -15,12 +15,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/esp.h>
+#include "esp.h"
+#include "vnet/ethernet/packet.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 
 #define foreach_esp_encrypt_next                   \

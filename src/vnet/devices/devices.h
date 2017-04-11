@@ -16,8 +16,8 @@
 #ifndef included_vnet_vnet_device_h
 #define included_vnet_vnet_device_h
 
-#include <vnet/unix/pcap.h>
-#include <vnet/l3_types.h>
+#include "vlib/node.h"
+#include "vnet/vnet.h"
 
 typedef enum
 {

@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/mpls_fib.h>
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/mfib/ip4_mfib.h>
-#include <vnet/mfib/ip6_mfib.h>
+#include "lookup_dpo.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/fib/mpls_fib.h"
+#include "vnet/ip/format.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+#include "vnet/mfib/mfib_table.h"
+#include "vnet/mfib/ip4_mfib.h"
+#include "vnet/mfib/ip6_mfib.h"
 
 static const char *const lookup_input_names[] = LOOKUP_INPUTS;
 static const char *const lookup_cast_names[] = LOOKUP_CASTS;

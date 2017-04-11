@@ -18,11 +18,8 @@
 #ifndef included_l2bvi_h
 #define included_l2bvi_h
 
-#include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vppinfra/sparse_vec.h>
-
-#include <vnet/l2/l2_input.h>
 
 #define TO_BVI_ERR_OK        0
 #define TO_BVI_ERR_BAD_MAC   1

@@ -41,7 +41,7 @@
 /* Bootstrap include so that #include <vppinfra/mem.h> can include e.g.
    <vppinfra/mheap.h> which depends on <vppinfra/vec.h>. */
 
-#include <vppinfra/clib.h>	/* for uword */
+#include "types.h"		/* for uword */
 
 enum
 {

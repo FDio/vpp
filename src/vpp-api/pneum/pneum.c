@@ -12,26 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <signal.h>
-#include <stdbool.h>
-#include <vnet/vnet.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
 
-#include <vpp/api/vpe_msg_enum.h>
+#include "vlib/unix/unix.h"
+#include "vlibmemory/api.h"
 
+#include "vpp/api/vpe_msg_enum.h"
 #include "pneum.h"
+
+#include <setjmp.h>
+#include <stdbool.h>
 
 /*
  * Asynchronous mode:
@@ -44,11 +33,11 @@
  */
 
 #define vl_typedefs             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
+#include "vpp/api/vpe_all_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun             /* define message structures */
-#include <vpp/api/vpe_all_api_h.h>
+#include "vpp/api/vpe_all_api_h.h"
 #undef vl_endianfun
 
 vlib_main_t vlib_global_main;

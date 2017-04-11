@@ -38,10 +38,7 @@
 #ifndef included_vec_h
 #define included_vec_h
 
-#include <vppinfra/clib.h>	/* word, etc */
-#include <vppinfra/mem.h>	/* clib_mem_free */
-#include <vppinfra/string.h>	/* memcpy, memmove */
-#include <vppinfra/vec_bootstrap.h>
+#include "vppinfra/mem.h"	/* clib_mem_free */
 
 /** \file
 

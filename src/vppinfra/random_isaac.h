@@ -51,8 +51,7 @@
 #ifndef included_random_isaac_h
 #define included_random_isaac_h
 
-#include <vppinfra/clib.h>	/* for u32/u64 */
-#include <vppinfra/format.h>	/* for unformat_input_t */
+#include "format.h"
 
 /* Bob recommends 8 for crypto, 4 for simulations */
 #define ISAAC_LOG2_SIZE   (4)

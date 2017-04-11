@@ -37,9 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <signal.h>
+#include "vlib/global_funcs.h"
+#include "unix.h"
 
 /* FIXME autoconf */
 #define HAVE_LINUX_EPOLL

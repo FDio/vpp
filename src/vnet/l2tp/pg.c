@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/l2tp/l2tp.h>
+#include "vnet/pg/pg.h"
+#include "l2tp.h"
+#include "packet.h"
+#include "vlib/global_funcs.h"
 
 typedef struct
 {

@@ -14,7 +14,11 @@
  */
 #include "map.h"
 
-#include "../ip/ip_frag.h"
+#include "vnet/buffer.h"
+#include "vnet/ip/ip_frag.h"
+#include "vnet/ip/ip6_error.h"
+#include "vnet/ip/icmp6.h"
+#include "vlib/global_funcs.h"
 
 enum ip6_map_next_e
 {

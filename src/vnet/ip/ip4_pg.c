@@ -37,8 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
+#include "ip.h"
+#include "ip4_packet.h"
+#include "format.h"
+#include "vnet/pg/pg.h"
+#include "vlib/global_funcs.h"
 
 #define IP4_PG_EDIT_CHECKSUM (1 << 0)
 #define IP4_PG_EDIT_LENGTH (1 << 1)

@@ -40,11 +40,12 @@
 #ifndef included_vlib_node_h
 #define included_vlib_node_h
 
-#include <vppinfra/cpu.h>
-#include <vppinfra/longjmp.h>
-#include <vppinfra/lock.h>
-#include <vppinfra/timing_wheel.h>
-#include <vlib/trace.h>		/* for vlib_trace_filter_t */
+#include "vppinfra/elf_clib.h"
+#include "vppinfra/timing_wheel.h"
+#include "cli.h"
+#include "vppinfra/lock.h"
+#include "error.h"
+#include "vppinfra/longjmp.h"
 
 /* Forward declaration. */
 struct vlib_node_runtime_t;

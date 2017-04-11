@@ -21,7 +21,7 @@
 #ifndef __LISP_GPE_SUB_INTERFACE_H__
 #define __LISP_GPE_SUB_INTERFACE_H__
 
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "vnet/lisp-cp/lisp_types.h"
 
 /**
  * A Key for lookup in the L£ sub-interface DB

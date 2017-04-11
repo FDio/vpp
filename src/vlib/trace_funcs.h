@@ -40,6 +40,9 @@
 #ifndef included_vlib_trace_funcs_h
 #define included_vlib_trace_funcs_h
 
+#include "buffer_funcs.h"
+#include "node_funcs.h"
+
 always_inline void
 vlib_validate_trace (vlib_trace_main_t * tm, vlib_buffer_t * b)
 {

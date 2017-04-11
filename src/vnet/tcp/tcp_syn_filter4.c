@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <vnet/feature/feature.h>
-#include <vnet/ip/ip.h>
-#include <vppinfra/xxhash.h>
+#include "vlib/vlib.h"
+#include "vnet/vnet.h"
+#include "vnet/pg/pg.h"
+#include "vppinfra/error.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ip/ip.h"
+#include "vnet/ip/ip4_packet.h"
+#include "vppinfra/xxhash.h"
+#include "vppinfra/cpu.h"
 
 typedef struct
 {

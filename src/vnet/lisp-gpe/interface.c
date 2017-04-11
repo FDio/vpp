@@ -19,21 +19,16 @@
  *
  */
 
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/udp/udp.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
-#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
-#include <vnet/adj/adj.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/lisp-cp/lisp_cp_dpo.h>
+#include "vnet/udp/udp.h"
+#include "lisp_gpe_fwd_entry.h"
+#include "lisp_gpe_tenant.h"
+#include "lisp_gpe_adjacency.h"
+#include "vnet/adj/adj.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/lisp-cp/lisp_cp_dpo.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @brief The VLIB node arc/edge from the interface's TX node, to the L2

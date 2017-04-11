@@ -18,6 +18,8 @@
 #ifndef included_ethernet_arp_packet_h
 #define included_ethernet_arp_packet_h
 
+#include "vnet/fib/fib_node.h"
+
 #define foreach_ethernet_arp_hardware_type	\
   _ (0, reserved)				\
   _ (1, ethernet)				\

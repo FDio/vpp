@@ -38,8 +38,7 @@
 #ifndef included_clib_random_buffer_h
 #define included_clib_random_buffer_h
 
-#include <vppinfra/clib.h>
-#include <vppinfra/random_isaac.h>
+#include "random_isaac.h"
 
 typedef struct
 {

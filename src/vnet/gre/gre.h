@@ -18,12 +18,10 @@
 #ifndef included_gre_h
 #define included_gre_h
 
-#include <vnet/vnet.h>
-#include <vnet/gre/packet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ip/format.h>
-#include <vnet/adj/adj_types.h>
+#include "vnet/fib/fib_node.h"
+#include "vnet/vnet.h"
+#include "packet.h"
+#include "vnet/adj/adj_types.h"
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
 

@@ -18,8 +18,8 @@
 #ifndef __included_plugin_h__
 #define __included_plugin_h__
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include "vlib/main.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

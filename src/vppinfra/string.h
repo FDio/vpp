@@ -38,8 +38,7 @@
 #ifndef included_clib_string_h
 #define included_clib_string_h
 
-#include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
-#include <vppinfra/vector.h>
+#include "types.h"
 
 #ifdef CLIB_LINUX_KERNEL
 #include <linux/string.h>

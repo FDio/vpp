@@ -18,7 +18,8 @@
  * @file
  * @brief LLDP protocol declarations
  */
-#include <vnet/srp/packet.h>
+
+#include "vppinfra/clib.h"
 
 /*
  * optional TLV codes.

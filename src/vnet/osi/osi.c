@@ -37,8 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/osi/osi.h>
+#include "osi.h"
+#include "vlib/format_funcs.h"
+#include "vlib/global_funcs.h"
 
 /* Global main structure. */
 osi_main_t osi_main;

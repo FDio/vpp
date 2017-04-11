@@ -39,8 +39,8 @@
 #ifndef __FIB_URPF_LIST_H__
 #define __FIB_URPF_LIST_H__
 
-#include <vnet/fib/fib_types.h>
-#include <vnet/adj/adj.h>
+#include <vnet/dpo/dpo.h>
+#include <vnet/adj/adj_types.h>
 
 /**
  * @brief flags

@@ -19,6 +19,8 @@
 #ifndef __included_plugin_h__
 #define __included_plugin_h__
 
+#include "vat.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

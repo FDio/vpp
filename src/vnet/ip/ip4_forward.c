@@ -37,20 +37,24 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
-#include <vnet/ethernet/arp_packet.h>	/* for ethernet_arp_header_t */
-#include <vnet/ppp/ppp.h>
-#include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
-#include <vnet/api_errno.h>	/* for API error numbers */
-#include <vnet/fib/fib_table.h>	/* for FIB table and entry creation */
-#include <vnet/fib/fib_entry.h>	/* for FIB table and entry creation */
-#include <vnet/fib/fib_urpf_list.h>	/* for FIB uRPF check */
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/classify_dpo.h>
-#include <vnet/mfib/mfib_table.h>	/* for mFIB table and entry creation */
+#include "format.h"
+#include "ip4_error.h"
+#include "vnet/udp/udp_packet.h"
+#include "icmp4.h"
+#include "vnet/adj/adj.h"
+#include "vnet/ethernet/arp_packet.h"	/* for ethernet_arp_header_t */
+#include "vnet/srp/srp.h"	/* for srp_hw_interface_class */
+#include "vnet/fib/fib_urpf_list.h"	/* for FIB uRPF check */
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/dpo/classify_dpo.h"
+#include "vnet/mfib/mfib_table.h"	/* for mFIB table and entry creation */
+#include "vnet/classify/vnet_classify.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
+#include "vppinfra/cpu.h"
+#include "vnet/feature/feature.h"
 
 /**
  * @file
@@ -2855,7 +2859,6 @@ add_del_interface_table (vlib_main_t * vm,
                                  format_ip4_address, a);
       goto done;
    }));
-   /* *INDENT-ON* */
 
 {
   ip4_main_t *im = &ip4_main;
@@ -2874,6 +2877,7 @@ add_del_interface_table (vlib_main_t * vm,
 done:
 return error;
 }
+  /* *INDENT-ON* */
 
 /*?
  * Place the indicated interface into the supplied IPv4 FIB table (also known

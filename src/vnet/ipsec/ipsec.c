@@ -15,14 +15,8 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-#include <vnet/interface.h>
-
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/esp.h>
+#include "ikev2.h"
+#include "esp.h"
 
 u32
 ipsec_get_sa_index_by_sa_id (u32 sa_id)

@@ -15,11 +15,9 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-
-#include <vnet/ipsec/ipsec.h>
+#include "ipsec.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 /* Statistics (not really errors) */
 #define foreach_ipsec_if_output_error    \

@@ -37,9 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ppp/ppp.h>
+#include "ppp.h"
 
 typedef struct
 {

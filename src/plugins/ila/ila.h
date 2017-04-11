@@ -16,12 +16,8 @@
 #ifndef ILA_H
 #define ILA_H
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/fib/fib_node.h>
-
-#include <vppinfra/bihash_24_8.h>
-#include <vppinfra/bihash_template.h>
+#include "vnet/fib/fib_node.h"
+#include "vppinfra/bihash_24_8.h"
 
 #define ila_foreach_type		\
   _(IID, 0, "iid")			\

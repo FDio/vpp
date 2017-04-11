@@ -12,11 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip_source_and_port_range_check.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip4_fib.h>
+#include "ip_source_and_port_range_check.h"
+#include "format.h"
+#include "vnet/udp/udp_packet.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/feature/feature.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
 
 /**
  * @file

@@ -18,8 +18,8 @@
 #ifndef included_l2learn_h
 #define included_l2learn_h
 
-#include <vlib/vlib.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vnet/vnet.h"
+#include "vppinfra/bihash_8_8.h"
 
 
 typedef struct

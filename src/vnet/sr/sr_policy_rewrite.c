@@ -38,18 +38,21 @@
  *
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/sr/sr.h>
-#include <vnet/ip/ip.h>
-#include <vnet/sr/sr_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
+#include "vnet/vnet.h"
+#include "vnet/ethernet/ethernet.h"
+#include "sr.h"
+#include "vnet/ip/ip.h"
+#include "sr_packet.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/ip6_packet.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/dpo/dpo.h"
+#include "vnet/dpo/replicate_dpo.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
 
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
+#include "vppinfra/error.h"
+#include "vppinfra/elog.h"
 
 /**
  * @brief SR policy rewrite trace

@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_path.h>
-#include <vnet/fib/fib_walk.h>
-#include <vnet/fib/fib_path_list.h>
+#include "fib_entry_src.h"
+#include "fib_path.h"
+#include "fib_walk.h"
+#include "vlib/global_funcs.h"
 
 static clib_error_t *
 fib_module_init (vlib_main_t * vm)

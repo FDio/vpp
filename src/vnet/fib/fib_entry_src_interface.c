@@ -13,13 +13,11 @@
  * limitations under the License.
  */
 
-#include "fib_entry.h"
 #include "fib_entry_src.h"
-#include "fib_path_list.h"
-#include "fib_internal.h"
 #include "fib_table.h"
 #include "fib_entry_cover.h"
 #include "fib_attached_export.h"
+#include "vnet/adj/adj.h"
 
 /**
  * Source initialisation Function 

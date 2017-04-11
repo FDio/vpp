@@ -38,7 +38,7 @@
 #ifndef included_math_h
 #define included_math_h
 
-#include <vppinfra/clib.h>
+#include "clib.h"
 
 always_inline f64
 sqrt (f64 x)

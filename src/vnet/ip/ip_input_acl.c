@@ -12,9 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/ip/ip.h>
-#include <vnet/classify/vnet_classify.h>
-#include <vnet/classify/input_acl.h>
+#include "ip4.h"
+#include "ip4_error.h"
+#include "ip6.h"
+#include "ip6_error.h"
+#include "vnet/buffer.h"
+#include "vnet/classify/input_acl.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 typedef struct
 {

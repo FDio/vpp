@@ -37,8 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/lookup.h>
+#include "vnet/vnet.h"
+#include "vnet/ip/lookup.h"
 
 void
 vnet_rewrite_copy_slow_path (vnet_rewrite_data_t * p0,

@@ -12,21 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
+#include "vxlan_gpe_ioam.h"
+#include "vnet/buffer.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
+#include "vlib/global_funcs.h"
 
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/elog.h>
-
-#include <ioam/lib-trace/trace_util.h>
-#include <ioam/lib-trace/trace_config.h>
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
+#include "ioam/lib-trace/trace_util.h"
+#include "ioam/lib-trace/trace_config.h"
 
 /* Timestamp precision multipliers for seconds, milliseconds, microseconds
  * and nanoseconds respectively.

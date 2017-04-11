@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/classify_dpo.h>
-#include <vnet/mpls/mpls.h>
+#include "classify_dpo.h"
+#include "vnet/fib/fib_node.h"
 
 /*
  * pool of all MPLS Label DPOs

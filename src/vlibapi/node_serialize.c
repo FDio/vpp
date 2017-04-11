@@ -12,9 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
 
-#include <vppinfra/serialize.h>
 
 extern void vl_msg_api_barrier_sync (void);
 extern void vl_msg_api_barrier_release (void);

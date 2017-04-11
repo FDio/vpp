@@ -37,7 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
+#include "ip.h"
 
 ip_csum_t
 ip_incremental_checksum (ip_csum_t sum, void *_data, uword n_bytes)

@@ -12,7 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cop/cop.h>
+
+#include "cop.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
 
 cop_main_t cop_main;
 

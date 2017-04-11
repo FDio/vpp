@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-#include <vnet/mpls/mpls.h>
+#include "mpls.h"
+#include "vlib/error_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+#include "vnet/feature/feature.h"
 
 always_inline uword
 mpls_terminate (vlib_main_t * vm,

@@ -35,10 +35,12 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#include <vppinfra/cache.h>
+#include "vec.h"
+#include "mem.h"
 #include <vppinfra/fifo.h>
 #include <vppinfra/error.h>
 #include <vppinfra/string.h>
+#include <vppinfra/cache.h>
 
 /*
   General first in/first out queues.

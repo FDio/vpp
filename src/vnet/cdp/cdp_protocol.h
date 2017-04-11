@@ -15,10 +15,10 @@
 #ifndef __included_cdp_protocol_h__
 #define __included_cdp_protocol_h__
 
-#include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
-#include <vnet/llc/llc.h>
-#include <vnet/snap/snap.h>
-#include <vnet/srp/packet.h>
+#include "vnet/llc/llc.h"
+#include "vnet/snap/snap.h"
+#include "vnet/srp/packet.h"
+#include "vnet/hdlc/packet.h"
 
 typedef CLIB_PACKED (struct
 		     {

@@ -37,10 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/hdlc/hdlc.h>
-#include <vppinfra/sparse_vec.h>
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
+#include "hdlc.h"
+#include "vppinfra/sparse_vec.h"
 
 #define foreach_hdlc_input_next			\
   _ (PUNT, "error-punt")			\

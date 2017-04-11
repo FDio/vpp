@@ -16,7 +16,7 @@
 #ifndef __ADJ_TYPES_H__
 #define __ADJ_TYPES_H__
 
-#include <vnet/vnet.h>
+#include "vppinfra/types.h"
 
 /**
  * @brief An index for adjacencies.

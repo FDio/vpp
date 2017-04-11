@@ -17,7 +17,8 @@
  *------------------------------------------------------------------
  */
 
-#include <vppinfra/lock.h>
+#include "vnet/interface.h"
+#include "vppinfra/lock.h"
 
 typedef struct
 {

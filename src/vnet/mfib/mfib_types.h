@@ -16,7 +16,7 @@
 #ifndef __MFIB_TYPES_H__
 #define __MFIB_TYPES_H__
 
-#include <vnet/fib/fib_types.h>
+#include "vnet/fib/fib_types.h"
 
 /**
  * Aggregrate type for a prefix

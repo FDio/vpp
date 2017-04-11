@@ -18,10 +18,10 @@
  *
  */
 
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
-#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
+#include "lisp_gpe_fwd_entry.h"
+#include "lisp_gpe_tenant.h"
+#include "vnet/udp/udp.h"
+#include "vlib/global_funcs.h"
 
 /** LISP-GPE global state */
 lisp_gpe_main_t lisp_gpe_main;

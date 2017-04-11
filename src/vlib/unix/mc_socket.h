@@ -18,7 +18,7 @@
 #ifndef __included_mc_socket_h__
 #define __included_mc_socket_h__
 
-#include <vlib/unix/unix.h>
+#include "vlib/mc.h"
 #include <netinet/in.h>
 
 typedef struct

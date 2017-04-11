@@ -21,21 +21,25 @@
  */
 
 #if __x86_64__
-#include <vppinfra/vector.h>
+#include "vppinfra/vector.h"
 
 #ifndef CLIB_HAVE_VEC128
 #warning HACK: ixge driver wont really work, missing u32x4
 typedef unsigned long long u32x4;
 #endif
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlib/pci/pci.h>
-#include <vnet/vnet.h>
-#include <ixge/ixge.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/plugin/plugin.h>
-#include <vpp/app/version.h>
+#include "vlib/unix/unix.h"
+#include "vlib/unix/plugin.h"
+#include "vlib/pci/pci.h"
+#include "vnet/vnet.h"
+#include "ixge/ixge.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/plugin/plugin.h"
+#include "vpp/app/version.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
+#include "vppinfra/cpu.h"
 
 #define IXGE_ALWAYS_POLL 0
 

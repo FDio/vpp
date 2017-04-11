@@ -16,11 +16,7 @@
 #ifndef __FIB_PATH_LIST_H__
 #define __FIB_PATH_LIST_H__
 
-#include <vlib/vlib.h>
-#include <vnet/adj/adj.h>
-
 #include "fib_node.h"
-#include "fib_path.h"
 
 /**
  * Enumeration of path-list flags.

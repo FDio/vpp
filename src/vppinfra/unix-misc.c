@@ -35,15 +35,18 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#include "vec.h"
 #include <vppinfra/error.h>
 #include <vppinfra/os.h>
 #include <vppinfra/unix.h>
+#include "error_bootstrap.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>		/* writev */
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
+#include <unistd.h>
 
 clib_error_t *
 unix_file_n_bytes (char *file, uword * result)

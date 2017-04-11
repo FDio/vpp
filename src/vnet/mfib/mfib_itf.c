@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-
-#include <vnet/mfib/mfib_itf.h>
-#include <vnet/mfib/mfib_signal.h>
+#include "vnet/vnet.h"
+#include "mfib_signal.h"
+#include "vlib/global_funcs.h"
 
 mfib_itf_t *mfib_itf_pool;
 

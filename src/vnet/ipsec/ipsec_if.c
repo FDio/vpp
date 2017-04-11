@@ -15,12 +15,9 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
+#include "vnet/ip/ip4.h"
 
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/esp.h>
+#include "esp.h"
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 

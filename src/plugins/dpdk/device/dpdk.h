@@ -49,8 +49,6 @@
 #include <rte_eth_bond.h>
 #include <rte_sched.h>
 
-#include <vnet/unix/pcap.h>
-#include <vnet/devices/devices.h>
 
 #if CLIB_DEBUG > 0
 #define always_inline static inline
@@ -58,6 +56,7 @@
 #define always_inline static inline __attribute__ ((__always_inline__))
 #endif
 
+#include "vnet/vnet.h"
 #include <vlib/pci/pci.h>
 
 #define NB_MBUF   (16<<10)

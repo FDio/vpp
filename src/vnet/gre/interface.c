@@ -15,15 +15,14 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/gre/gre.h>
-#include <vnet/ip/format.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/adj/adj_midchain.h>
-#include <vnet/adj/adj_nbr.h>
-#include <vnet/mpls/mpls.h>
+#include "gre.h"
+#include "vnet/ip/format.h"
+#include "vnet/fib/ip4_fib.h"
+#include "vnet/adj/adj_midchain.h"
+#include "vnet/adj/adj_nbr.h"
+#include "vnet/l2/l2_input.h"
+#include "vlib/global_funcs.h"
+#include "vnet/fib/ip6_fib.h"
 
 static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
 

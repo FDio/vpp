@@ -14,9 +14,8 @@
  */
 
 
-#include <vnet/vnet.h>
-#include <vnet/mfib/mfib_signal.h>
-#include <vppinfra/dlist.h>
+#include "mfib_signal.h"
+#include "vppinfra/dlist.h"
 
 /**
  * @brief Pool of signals

@@ -15,10 +15,13 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/feature/feature.h>
+#include "packet.h"
+#include "mpls.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 typedef struct {
   u32 next_index;

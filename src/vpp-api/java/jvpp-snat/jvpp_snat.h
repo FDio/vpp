@@ -15,12 +15,13 @@
 #ifndef __included_jvpp_snat_h__
 #define __included_jvpp_snat_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/api_errno.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <jni.h>
+#include "vnet/ip/ip.h"
+#include "vnet/api_errno.h"
+#include "vlibapi/api.h"
+#include "vlibmemory/api.h"
+#include "jni.h"
+
+#include <arpa/inet.h>
 
 /* Global state for JVPP-SNAT */
 typedef struct {

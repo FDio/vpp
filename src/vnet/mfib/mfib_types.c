@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/mfib/mfib_types.h>
+#include "mfib_types.h"
 
-#include <vnet/ip/ip.h>
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 /**
  * String names for each flag

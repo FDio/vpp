@@ -16,7 +16,7 @@
 #ifndef __LISP_GPE_TENANT_H__
 #define __LISP_GPE_TENANT_H__
 
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "vppinfra/types.h"
 
 /**
  * Refernece counting lock types on the tenant.

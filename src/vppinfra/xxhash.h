@@ -47,6 +47,8 @@
 #ifndef __included_xxhash_h__
 #define __included_xxhash_h__
 
+#include "types.h"
+
 #define PRIME64_1 11400714785074694791ULL
 #define PRIME64_2 14029467366897019727ULL
 #define PRIME64_3  1609587929392839161ULL

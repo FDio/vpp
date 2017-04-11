@@ -20,8 +20,10 @@
 #ifndef __JSON_FORMAT_H__
 #define __JSON_FORMAT_H__
 
-#include <vppinfra/clib.h>
-#include <vppinfra/format.h>
+#include "vppinfra/vec.h"
+
+#include <string.h>
+#include <stdio.h>
 #include <netinet/ip.h>
 
 /* JSON value type */

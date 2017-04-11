@@ -20,8 +20,8 @@
 #ifndef __RECEIVE_DPO_H__
 #define __RECEIVE_DPO_H__
 
-#include <vnet/dpo/dpo.h>
-#include <vnet/ip/ip6.h>
+#include "dpo.h"
+#include "vnet/ip/ip6_packet.h"
 
 typedef struct receive_dpo_t_
 {

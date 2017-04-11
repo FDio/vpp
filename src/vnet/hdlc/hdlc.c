@@ -37,8 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/hdlc/hdlc.h>
+#include "vnet/vnet.h"
+#include "hdlc.h"
+#include "vlib/format_funcs.h"
+#include "vlib/global_funcs.h"
 
 /* Global main structure. */
 hdlc_main_t hdlc_main;

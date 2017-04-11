@@ -40,6 +40,9 @@
 #ifndef included_vlib_physmem_h
 #define included_vlib_physmem_h
 
+#include "vppinfra/vec_bootstrap.h"
+#include "vppinfra/error_bootstrap.h"
+
 typedef struct
 {
   uword start, end, size;

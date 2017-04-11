@@ -38,7 +38,7 @@
 #ifndef included_clib_unix_h
 #define included_clib_unix_h
 
-#include <vppinfra/error.h>
+#include "error.h"
 
 /* Number of bytes in a Unix file. */
 clib_error_t *unix_file_n_bytes (char *file, uword * result);

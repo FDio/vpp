@@ -12,21 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/error.h>
-#include <vppinfra/format.h>
-#include <vppinfra/xxhash.h>
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/devices/devices.h"
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
+#include "vppinfra/vector.h"
 
-#include <vnet/ethernet/ethernet.h>
-#include <dpdk/device/dpdk.h>
-#include <vnet/classify/vnet_classify.h>
-#include <vnet/mpls/packet.h>
-#include <vnet/handoff.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
-
-#include <dpdk/device/dpdk_priv.h>
+#include "dpdk_priv.h"
 
 static char *dpdk_error_strings[] = {
 #define _(n,s) s,

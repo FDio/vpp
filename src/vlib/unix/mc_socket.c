@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/unix/mc_socket.h>
+#include "unix.h"
+#include "vlib/buffer_funcs.h"
+#include "mc_socket.h"
 
 #include <sys/ioctl.h>		/* for FIONBIO */
 #include <netinet/tcp.h>	/* for TCP_NODELAY */

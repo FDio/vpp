@@ -14,6 +14,9 @@
  *---------------------------------------------------------------------------
  */
 #include "sixrd.h"
+#include "vnet/ip/format.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 static vlib_node_registration_t ip4_sixrd_node;
 

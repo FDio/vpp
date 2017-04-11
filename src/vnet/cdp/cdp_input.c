@@ -12,7 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/cdp/cdp_node.h>
+#include "cdp_node.h"
+#include "cdp_protocol.h"
+#include "vnet/buffer.h"
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
 
 cdp_main_t cdp_main;
 

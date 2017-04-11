@@ -15,16 +15,19 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6_neighbor.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vppinfra/mhash.h>
-#include <vppinfra/md5.h>
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_mcast.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/mfib/ip6_mfib.h>
+#include "ip6_neighbor.h"
+#include "format.h"
+#include "icmp6.h"
+#include "vppinfra/md5.h"
+#include "vnet/adj/adj.h"
+#include "vnet/adj/adj_mcast.h"
+#include "vnet/adj/adj_nbr.h"
+#include "vnet/fib/ip6_fib.h"
+#include "vnet/l2/l2_input.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
+#include "vnet/mfib/ip6_mfib.h"
 
 /**
  * @file

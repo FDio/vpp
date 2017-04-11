@@ -13,17 +13,15 @@
  * limitations under the License.
  */
 
-#include <lb/lb.h>
+#include "lb.h"
 
-#include <vppinfra/byte_order.h>
-#include <vlibapi/api.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+#include "vnet/ip/format.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
 
 #define vl_msg_id(n,h) n,
 typedef enum {
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
     /* We'll want to know how many messages IDs we need... */
     VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;
@@ -32,23 +30,23 @@ typedef enum {
 
 /* define message structures */
 #define vl_typedefs
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_endianfun
 
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_api_version
 
 #define vl_msg_name_crc_list
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_msg_name_crc_list
 
 

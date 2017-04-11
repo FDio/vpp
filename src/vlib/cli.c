@@ -37,7 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
+#include "global_funcs.h"
+#include "node_funcs.h"
+#include "format_funcs.h"
+#include "vppinfra/mheap.h"
 #include <vppinfra/cpu.h>
 #include <unistd.h>
 

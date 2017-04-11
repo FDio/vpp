@@ -38,8 +38,7 @@
 #ifndef included_error_h
 #define included_error_h
 
-#include <vppinfra/clib.h>	/* for CLIB_LINUX_KERNEL */
-#include <vppinfra/error_bootstrap.h>
+#include "clib.h"		/* for CLIB_LINUX_KERNEL */
 
 #ifdef CLIB_UNIX
 #include <errno.h>
@@ -50,7 +49,6 @@
 #endif
 
 #include <stdarg.h>
-#include <vppinfra/vec.h>
 
 /* Callback functions for error reporting. */
 typedef void clib_error_handler_func_t (void *arg, u8 * msg, int msg_len);

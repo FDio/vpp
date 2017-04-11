@@ -15,6 +15,8 @@
 
 /** @cond DOCUMENTATION_IS_IN_BIHASH_DOC_H */
 
+#include "mheap.h"
+
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
 {

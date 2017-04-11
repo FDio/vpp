@@ -14,11 +14,12 @@
  */
 #define _GNU_SOURCE
 
-#include <vppinfra/format.h>
-#include <vlib/vlib.h>
+#include "global_funcs.h"
+#include "node_funcs.h"
 
-#include <vlib/threads.h>
-#include <vlib/unix/unix.h>
+#include "unix/unix.h"
+
+#include <pthread.h>
 
 static u8 *
 format_sched_policy_and_priority (u8 * s, va_list * args)

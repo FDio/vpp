@@ -37,8 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ppp/ppp.h>
+#include "vnet/vnet.h"
+#include "vlib/format_funcs.h"
+#include "vlib/global_funcs.h"
+#include "ppp.h"
 
 /* Global main structure. */
 ppp_main_t ppp_main;

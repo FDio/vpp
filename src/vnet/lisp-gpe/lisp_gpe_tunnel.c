@@ -17,11 +17,13 @@
  * @brief Common utility functions for IPv4, IPv6 and L2 LISP-GPE tunnels.
  *
  */
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
-#include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
+#include "lisp_gpe.h"
+#include "lisp_gpe_tunnel.h"
+#include "lisp_gpe_adjacency.h"
 
-#include <vnet/fib/fib_table.h>
+#include "vnet/fib/fib_table.h"
+#include "vnet/udp/udp.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @brief Pool of all LISP tunnels

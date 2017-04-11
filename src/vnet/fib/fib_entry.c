@@ -13,21 +13,16 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/format.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/drop_dpo.h>
-
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_walk.h>
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_entry_cover.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_internal.h>
-#include <vnet/fib/fib_attached_export.h>
-#include <vnet/fib/fib_path_ext.h>
+#include "fib_path.h"
+#include "vnet/dpo/drop_dpo.h"
+#include "vlib/global_funcs.h"
+#include "fib_walk.h"
+#include "fib_entry_src.h"
+#include "fib_entry_cover.h"
+#include "fib_table.h"
+#include "fib_attached_export.h"
+#include "fib_path_ext.h"
+#include "vnet/mpls/mpls_types.h"
 
 /*
  * Array of strings/names for the FIB sources

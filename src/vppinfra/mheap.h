@@ -38,10 +38,8 @@
 #ifndef included_mheap_h
 #define included_mheap_h
 
-#include <vppinfra/vec.h>
-#include <vppinfra/error.h>	/* clib_error_t */
-#include <vppinfra/mem.h>	/* clib_mem_usage_t */
-#include <vppinfra/format.h>	/* for unformat_input_t */
+#include "format.h"
+#include <stdarg.h>
 
 /* Allocate size bytes.  New heap and offset are returned.
    offset == ~0 means allocation failed. */

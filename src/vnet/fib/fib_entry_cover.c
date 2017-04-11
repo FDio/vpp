@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_entry_cover.h>
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_node_list.h>
+#include "fib_entry_cover.h"
+#include "fib_entry_src.h"
+#include "fib_node_list.h"
 
 u32
 fib_entry_cover_track (fib_entry_t* cover,

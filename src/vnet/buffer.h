@@ -40,7 +40,8 @@
 #ifndef included_vnet_buffer_h
 #define included_vnet_buffer_h
 
-#include <vlib/vlib.h>
+#include "vlib/buffer.h"
+#include "vlib/defs.h"
 
 /* VLIB buffer flags for ip4/ip6 packets.  Set by input interfaces for ip4/ip6
    tcp/udp packets with hardware computed checksums. */

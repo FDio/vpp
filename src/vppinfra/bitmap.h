@@ -42,10 +42,8 @@
     Bitmaps built as vectors of machine words
 */
 
-#include <vppinfra/vec.h>
-#include <vppinfra/random.h>
-#include <vppinfra/error.h>
-#include <vppinfra/bitops.h>	/* for count_set_bits */
+#include "random.h"
+#include "bitops.h"		/* for count_set_bits */
 
 typedef uword clib_bitmap_t;
 

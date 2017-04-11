@@ -37,8 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
+#include "ip/ip6.h"
+#include "ip/ip4.h"
+#include "vlib/global_funcs.h"
 
 vnet_main_t vnet_main;
 

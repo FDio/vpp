@@ -48,14 +48,8 @@
 #ifndef included_ip_lookup_h
 #define included_ip_lookup_h
 
-#include <vnet/vnet.h>
-#include <vlib/buffer.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/fib/fib_node.h>
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/feature/feature.h>
+#include "vnet/fib/fib_node.h"
+#include "vnet/adj/adj.h"
 
 /** Flow hash configuration */
 #define IP_FLOW_HASH_SRC_ADDR (1<<0)

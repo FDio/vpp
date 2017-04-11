@@ -40,6 +40,9 @@
 #ifndef included_vnet_interface_funcs_h
 #define included_vnet_interface_funcs_h
 
+#include "vnet.h"
+#include "vlib/node_funcs.h"
+
 always_inline vnet_hw_interface_t *
 vnet_get_hw_interface (vnet_main_t * vnm, u32 hw_if_index)
 {

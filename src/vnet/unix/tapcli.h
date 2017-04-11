@@ -22,6 +22,8 @@
 #ifndef __included_tapcli_h__
 #define __included_tapcli_h__
 
+#include "vppinfra/types.h"
+
 /** TAP CLI errors */
 #define foreach_tapcli_error				\
   /* Must be first. */                                  \

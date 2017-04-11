@@ -38,10 +38,8 @@
 #ifndef included_clib_elf_h
 #define included_clib_elf_h
 
-#include <vppinfra/format.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/byte_order.h>
+#include "hash.h"
+#include "byte_order.h"
 
 #define foreach_elf_file_class \
   _ (CLASS_NONE) _ (32BIT) _ (64BIT)

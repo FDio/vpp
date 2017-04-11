@@ -19,6 +19,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include "vnet/ip/format.h"
 #include <vnet/unix/tuntap.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/dhcp/dhcp_proxy.h>
@@ -30,7 +31,7 @@
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
 #include <vnet/classify/flow_classify.h>
-#include <vlib/vlib.h>
+//#include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>

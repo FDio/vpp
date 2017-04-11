@@ -18,7 +18,7 @@
  * are described as key:{type,index}.
  */
 
-#include <vnet/fib/fib_node_list.h>
+#include "fib_node_list.h"
 
 /**
  * @brief An element in the list

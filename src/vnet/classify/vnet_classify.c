@@ -12,12 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/classify/vnet_classify.h>
-#include <vnet/classify/input_acl.h>
-#include <vnet/ip/ip.h>
-#include <vnet/api_errno.h>     /* for API error numbers */
-#include <vnet/l2/l2_classify.h> /* for L2_INPUT_CLASSIFY_NEXT_xxx */
-#include <vnet/fib/fib_table.h>
+#include "input_acl.h"
+#include "vnet/ip/ip.h"
+#include "vnet/udp/udp_packet.h"
+#include "vnet/ip/format.h"
+#include "vnet/l2/l2_classify.h" /* for L2_INPUT_CLASSIFY_NEXT_xxx */
+#include "vnet/fib/fib_table.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/mheap.h"
 
 vnet_classify_main_t vnet_classify_main;
 

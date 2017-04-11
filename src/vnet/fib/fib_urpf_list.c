@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_urpf_list.h>
-#include <vnet/adj/adj.h>
+#include "fib_urpf_list.h"
+#include "vnet/adj/adj.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @brief pool of all fib_urpf_list

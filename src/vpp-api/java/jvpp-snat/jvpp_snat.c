@@ -13,16 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-
-#include <snat/snat_msg_enum.h>
+#include "snat/snat_msg_enum.h"
 #define vl_typedefs             /* define message structures */
-#include <snat/snat_all_api_h.h>
+#include "snat/snat_all_api_h.h"
 #undef vl_typedefs
-
-#include <vnet/api_errno.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
 
 #if VPPJNI_DEBUG == 1
   #define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
@@ -30,10 +24,10 @@
   #define DEBUG_LOG(...)
 #endif
 
-#include <jvpp-common/jvpp_common.h>
+#include "jvpp-common/jvpp_common.h"
 
-#include "jvpp-snat/io_fd_vpp_jvpp_snat_JVppSnatImpl.h"
 #include "jvpp_snat.h"
+#include "jvpp-snat/io_fd_vpp_jvpp_snat_JVppSnatImpl.h"
 #include "jvpp-snat/jvpp_snat_gen.h"
 
 /*

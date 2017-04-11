@@ -40,10 +40,9 @@
 #ifndef included_srp_h
 #define included_srp_h
 
-#include <vnet/vnet.h>
-#include <vnet/srp/packet.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/pg/pg.h>
+#include "vnet/pg/pg.h"
+#include "vlib/node_funcs.h"
+#include "packet.h"
 
 extern vnet_hw_interface_class_t srp_hw_interface_class;
 

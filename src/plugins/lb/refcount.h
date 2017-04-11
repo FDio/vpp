@@ -29,7 +29,7 @@
  *
  */
 
-#include <vnet/vnet.h>
+#include "vlib/global_funcs.h"
 
 typedef struct {
   u32 *counters;

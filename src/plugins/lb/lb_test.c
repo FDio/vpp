@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-#include <vat/vat.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vppinfra/error.h>
-#include <lb/lb.h>
+#include "vnet/ip/format.h"
+#include "vat/vat.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "lb.h"
 
 #define __plugin_msg_base lb_test_main.msg_id_base
-#include <vlibapi/vat_helper_macros.h>
+#include "vlibapi/vat_helper_macros.h"
 
 //TODO: Move that to vat/plugin_api.c
 //////////////////////////
@@ -64,7 +63,7 @@ uword unformat_ip46_prefix (unformat_input_t * input, va_list * args)
 
 #define vl_msg_id(n,h) n,
 typedef enum {
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
     /* We'll want to know how many messages IDs we need... */
     VL_MSG_FIRST_AVAILABLE,
 } vl_msg_id_t;
@@ -72,24 +71,24 @@ typedef enum {
 
 /* define message structures */
 #define vl_typedefs
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_printfun
 
 /* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <lb/lb.api.h>
+#include "lb/lb.api.h"
 #undef vl_api_version
 
 typedef struct {

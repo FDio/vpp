@@ -18,38 +18,36 @@
  *------------------------------------------------------------------
  */
 
-#include <vat/vat.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vppinfra/error.h>
+#include "vat/vat.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
 
 #define __plugin_msg_base pot_test_main.msg_id_base
-#include <vlibapi/vat_helper_macros.h>
+#include "vlibapi/vat_helper_macros.h"
 
 /* Declare message IDs */
-#include <ioam/lib-pot/pot_msg_enum.h>
+#include "pot_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <ioam/lib-pot/pot_all_api_h.h>
+#include "pot_all_api_h.h"
 #undef vl_typedefs
 
 /* declare message handlers for each api */
 
 #define vl_endianfun             /* define message structures */
-#include <ioam/lib-pot/pot_all_api_h.h>
+#include "pot_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...)
 #define vl_printfun
-#include <ioam/lib-pot/pot_all_api_h.h>
+#include "pot_all_api_h.h"
 #undef vl_printfun
 
 /* Get the API version number. */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-pot/pot_all_api_h.h>
+#include "pot_all_api_h.h"
 #undef vl_api_version
 
 

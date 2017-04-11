@@ -15,6 +15,8 @@
 #ifndef __POLICE_H__
 #define __POLICE_H__
 
+#include "vppinfra/types.h"
+
 typedef enum
 {
   POLICE_CONFORM = 0,

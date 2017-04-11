@@ -17,39 +17,30 @@
  *------------------------------------------------------------------
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <pthread.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/format.h>
-#include <vppinfra/byte_order.h>
-#include <vppinfra/elog.h>
-#include <stdarg.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
+
+#include "vlib/node_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_funcs.h"
+#include "vlib/unix/unix.h"
+#include "api.h"
 
 #define TRACE_VLIB_MEMORY_QUEUE 0
 
-#include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
+#include "vl_memory_msg_enum.h"	/* enumerate all vlib messages */
 
 #define vl_typedefs		/* define message structures */
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vl_memory_api_h.h"
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vl_memory_api_h.h"
 #undef vl_printfun
 
 static inline void *

@@ -16,6 +16,9 @@
 #ifndef included_ip_ip_source_and_port_range_check_h
 #define included_ip_ip_source_and_port_range_check_h
 
+#include "vnet/vnet.h"
+#include "ip6_packet.h"
+#include "vppinfra/vector.h"
 
 typedef struct
 {

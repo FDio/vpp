@@ -14,7 +14,6 @@
  */
 
 #include "sixrd_dpo.h"
-#include <vnet/ip/ip.h>
 
 /**
  * pool of all MPLS Label DPOs

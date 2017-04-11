@@ -15,21 +15,9 @@
 #ifndef __included_vnet_flow_report_h__
 #define __included_vnet_flow_report_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/udp/udp.h>
-#include <vlib/cli.h>
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/cache.h>
+#include "ipfix_packet.h"
 
-#include <vnet/flow/ipfix_packet.h>
+#include "vnet/udp/udp.h"
 
 /* Used to build the rewrite */
 typedef struct {

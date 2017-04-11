@@ -20,8 +20,7 @@
 #ifndef LB_PLUGIN_LB_UTIL_H_
 #define LB_PLUGIN_LB_UTIL_H_
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
+#include "vnet/ip/ip6.h"
 
 #define ip46_address_type(ip46) (ip46_address_is_ip4(ip46)?IP46_TYPE_IP4:IP46_TYPE_IP6)
 #define ip46_prefix_is_ip4(ip46, len) ((len) >= 96 && ip46_address_is_ip4(ip46))

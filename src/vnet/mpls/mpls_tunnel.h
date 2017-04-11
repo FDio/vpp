@@ -16,8 +16,9 @@
 #ifndef __MPLS_TUNNEL_H__
 #define __MPLS_TUNNEL_H__
 
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/fib_path_ext.h>
+#include "vnet/adj/adj_types.h"
+#include "vnet/fib/fib_node.h"
+#include "vnet/fib/fib_path_ext.h"
 
 typedef enum mpls_tunnel_attribute_t_
 {
@@ -42,6 +43,7 @@ typedef enum mpls_tunnel_flag_t_ {
     MPLS_TUNNEL_FLAG_MCAST  = (1 << MPLS_TUNNEL_ATTRIBUTE_MCAST),
 } __attribute__ ((packed)) mpls_tunnel_flags_t;
 
+//>>>>>>> 0f26c5a0138ac86d7ebd197c31a09d8d624c35fe
 
 /**
  * @brief A uni-directional MPLS tunnel

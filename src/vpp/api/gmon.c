@@ -13,34 +13,8 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
-#include <fcntl.h>
-#include <string.h>
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/bitmap.h>
-#include <vppinfra/fifo.h>
-#include <vppinfra/time.h>
-#include <vppinfra/mheap.h>
-#include <vppinfra/heap.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/format.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/api_errno.h>
+#include "vlibmemory/api.h"
+#include "vlib/global_funcs.h"
 
 #include <svm/svmdb.h>
 
@@ -59,7 +33,6 @@ typedef struct
 
 } gmon_main_t;
 
-#include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/devices/devices.h>
 

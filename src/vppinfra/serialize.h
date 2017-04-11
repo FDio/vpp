@@ -38,11 +38,13 @@
 #ifndef included_clib_serialize_h
 #define included_clib_serialize_h
 
+#include "byte_order.h"
+#include "error.h"
+#include "vec_bootstrap.h"
+#include "longjmp.h"
+#include "error_bootstrap.h"
+
 #include <stdarg.h>
-#include <vppinfra/byte_order.h>
-#include <vppinfra/types.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/longjmp.h>
 
 struct serialize_main_header_t;
 struct serialize_stream_t;

@@ -40,10 +40,9 @@
 #ifndef included_ip_ip4_fib_h
 #define included_ip_ip4_fib_h
 
-#include <vppinfra/cache.h>
-#include <vppinfra/vector.h>
-#include <vnet/ip/lookup.h>
 #include <vnet/ip/ip4_packet.h>	/* for ip4_address_t */
+#include "vppinfra/format.h"
+#include <vppinfra/cache.h>
 
 /* ip4 fib leafs: 4 ply 8-8-8-8 mtrie.
    1 + 2*adj_index for terminal leaves.

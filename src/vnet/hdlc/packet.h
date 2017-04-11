@@ -15,6 +15,8 @@
 #ifndef included_vnet_hdlc_packet_h
 #define included_vnet_hdlc_packet_h
 
+#include "vppinfra/types.h"
+
 /*
  * HDLC packet format
  *

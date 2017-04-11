@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/format.h"
 
-#include <vnet/fib/fib_types.h>
-#include <vnet/fib/fib_internal.h>
-#include <vnet/mpls/mpls.h>
+#include "vnet/mpls/mpls.h"
 
 /*
  * arrays of protocol and link names

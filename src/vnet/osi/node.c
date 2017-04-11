@@ -37,12 +37,12 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/osi/osi.h>
-#include <vnet/ppp/ppp.h>
-#include <vnet/hdlc/hdlc.h>
-#include <vnet/llc/llc.h>
+#include "osi.h"
+#include "vnet/ppp/ppp.h"
+#include "vnet/hdlc/hdlc.h"
+#include "vnet/llc/llc.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
 
 #define foreach_osi_input_next			\
   _ (PUNT, "error-punt")			\

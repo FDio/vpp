@@ -12,11 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <acl/acl.h>
+#include "acl.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 #include "node_in.h"
 
 typedef struct

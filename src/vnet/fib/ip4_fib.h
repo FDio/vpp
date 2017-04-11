@@ -30,11 +30,7 @@
 #ifndef __IP4_FIB_H__
 #define __IP4_FIB_H__
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/ip/ip4_mtrie.h>
+#include "fib_table.h"
 
 typedef struct ip4_fib_t_
 {

@@ -16,11 +16,9 @@
 #ifndef __MFIB_TABLE_H__
 #define __MFIB_TABLE_H__
 
-#include <vnet/ip/ip.h>
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/replicate_dpo.h>
-
-#include <vnet/mfib/mfib_types.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
+#include "mfib_types.h"
 
 /**
  * @brief

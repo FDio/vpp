@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <vnet/lisp-cp/gid_dictionary.h>
+#include "gid_dictionary.h"
 
 typedef struct
 {

@@ -32,23 +32,20 @@
 
 #include <fcntl.h>		/* for open */
 #include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
 #include <netinet/in.h>
-
 #include <linux/if_arp.h>
 #include <linux/if_tun.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include "vlib/global_funcs.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/unix/unix.h"
 
-#include <vnet/ip/ip.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
 
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/devices/devices.h"
+#include "vnet/feature/feature.h"
 
 static vnet_device_class_t tuntap_dev_class;
 static vnet_hw_interface_class_t tuntap_interface_class;

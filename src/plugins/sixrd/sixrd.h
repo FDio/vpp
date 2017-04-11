@@ -13,13 +13,10 @@
  * limitations under the License.
  *---------------------------------------------------------------------------
  */
-#include <stdbool.h>
-#include <vppinfra/error.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
 #include <vnet/fib/ip6_fib.h>
-
 #include "sixrd_dpo.h"
+
+#include <stdbool.h>
 
 int sixrd_create_domain(ip6_address_t *ip6_prefix, u8 ip6_prefix_len,
 			ip4_address_t *ip4_prefix, u8 ip4_prefix_len,

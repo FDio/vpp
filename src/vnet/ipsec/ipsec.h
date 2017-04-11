@@ -17,6 +17,10 @@
 
 #define IPSEC_FLAG_IPSEC_GRE_TUNNEL (1 << 0)
 
+#include "vnet/feature/feature.h"
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
+#include "vnet/ip/ip6_packet.h"
 
 #define foreach_ipsec_output_next                \
 _(DROP, "error-drop")                            \

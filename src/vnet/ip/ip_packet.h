@@ -41,7 +41,7 @@
 #define included_ip_packet_h
 
 #include <vppinfra/byte_order.h>
-#include <vppinfra/error.h>
+#include <vppinfra/error_bootstrap.h>
 
 typedef enum ip_protocol
 {

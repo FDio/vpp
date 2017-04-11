@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <lb/refcount.h>
+#include "refcount.h"
 
 void __vlib_refcount_resize(vlib_refcount_per_cpu_t *per_cpu, u32 size)
 {

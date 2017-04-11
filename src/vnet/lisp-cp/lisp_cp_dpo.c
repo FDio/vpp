@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/dpo/dpo.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
-#include <vnet/lisp-cp/control.h>
+#include "vnet/lisp-cp/control.h"
+#include "vlib/global_funcs.h"
 
 /**
  * The static array of LISP punt DPOs

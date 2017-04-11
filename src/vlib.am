@@ -67,8 +67,7 @@ nobase_include_HEADERS +=			\
   vlib/pci/pci_config.h				\
   vlib/threads.h				\
   vlib/trace_funcs.h				\
-  vlib/trace.h					\
-  vlib/vlib.h
+  vlib/trace.h
 
 libvlib_la_SOURCES +=				\
   vlib/unix/cj.c				\

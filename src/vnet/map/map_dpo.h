@@ -16,7 +16,6 @@
 #ifndef __MAP_DPO_H__
 #define __MAP_DPO_H__
 
-#include <vnet/vnet.h>
 #include <vnet/dpo/dpo.h>
 
 /**

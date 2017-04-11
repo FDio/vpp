@@ -12,14 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <vnet/api_errno.h>
-#include <vnet/ip/ip.h>
-#include <vnet/interface.h>
 
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include "ikev2_priv.h"
 
 u8 *
 format_ikev2_sa_transform (u8 * s, va_list * args)

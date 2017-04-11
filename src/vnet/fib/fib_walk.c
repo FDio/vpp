@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_walk.h>
-#include <vnet/fib/fib_node_list.h>
+#include "fib_walk.h"
+#include "fib_node_list.h"
+#include "vlib/global_funcs.h"
+#include "vlib/node_funcs.h"
 
 /**
  * The flags on a walk

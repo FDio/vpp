@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vppinfra/error.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/replication.h>
+#include "buffer.h"
+#include "ip/ip4_packet.h"
+#include "replication.h"
+#include "vlib/global_funcs.h"
 
 
 replication_main_t replication_main;

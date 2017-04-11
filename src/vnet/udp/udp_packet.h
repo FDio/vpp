@@ -40,6 +40,8 @@
 #ifndef included_udp_packet_h
 #define included_udp_packet_h
 
+#include "vppinfra/types.h"
+
 typedef struct
 {
   /* Source and destination port. */

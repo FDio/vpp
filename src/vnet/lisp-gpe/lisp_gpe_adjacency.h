@@ -21,8 +21,10 @@
 #ifndef LISP_GPE_ADJACENCY_H__
 #define LISP_GPE_ADJACENCY_H__
 
+#include "vnet/lisp-cp/lisp_types.h"
 #include <vnet/fib/fib_node.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "vnet/vnet.h"
+#include "vnet/adj/adj_types.h"
 
 /**
  * @brief A LISP GPE Adjacency.

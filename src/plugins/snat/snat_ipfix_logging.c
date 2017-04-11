@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-#include <vnet/flow/flow_report.h>
-#include <vlibmemory/api.h>
-#include <snat/snat.h>
-#include <snat/snat_ipfix_logging.h>
+#include "vnet/flow/flow_report.h"
+#include "vnet/flow/ipfix_info_elements.h"
+#include "vlibmemory/api.h"
+#include "snat_ipfix_logging.h"
 
 snat_ipfix_logging_main_t snat_ipfix_logging_main;
 

@@ -16,23 +16,9 @@
 #ifndef __included_vnet_l2_input_classify_h__
 #define __included_vnet_l2_input_classify_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vlib/cli.h>
-#include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
-#include <vnet/l2/feat_bitmap.h>
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/cache.h>
-
 #include <vnet/classify/vnet_classify.h>
+
 
 typedef enum
 {

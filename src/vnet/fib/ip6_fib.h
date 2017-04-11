@@ -16,12 +16,10 @@
 #ifndef __IP6_FIB_H__
 #define __IP6_FIB_H__
 
-#include <vlib/vlib.h>
-#include <vnet/ip/format.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/dpo/load_balance.h>
+#include "fib_table.h"
+#include "fib_urpf_list.h"
+#include "vnet/dpo/load_balance.h"
+#include "vnet/buffer.h"
 
 extern fib_node_index_t ip6_fib_table_lookup(u32 fib_index,
 					     const ip6_address_t *addr,

@@ -37,9 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip_packet.h>	/* for ip_csum_fold */
-#include <vnet/srp/srp.h>
+#include "vnet/ip/ip_packet.h"	/* for ip_csum_fold */
+#include "vnet/ethernet/ethernet.h"
+#include "srp.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 typedef struct {
   u8 packet_data[32];

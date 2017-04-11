@@ -18,11 +18,6 @@
 #ifndef __MPLS_FIB_TABLE_H__
 #define __MPLS_FIB_TABLE_H__
 
-#include <vnet/vnet.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/fib/fib_types.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/mpls/mpls.h>
 #include <vnet/fib/fib_table.h>
 
 #define MPLS_FIB_DEFAULT_TABLE_ID 0

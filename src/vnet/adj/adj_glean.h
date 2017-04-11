@@ -27,7 +27,8 @@
 #ifndef __ADJ_GLEAN_H__
 #define __ADJ_GLEAN_H__
 
-#include <vnet/adj/adj_types.h>
+#include "vnet/fib/fib_types.h"
+#include "adj_types.h"
 
 /**
  * @brief

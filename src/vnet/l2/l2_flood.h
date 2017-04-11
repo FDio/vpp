@@ -18,7 +18,6 @@
 #ifndef included_l2flood_h
 #define included_l2flood_h
 
-#include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
 
 void

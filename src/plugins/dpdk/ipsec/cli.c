@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
+#include "ipsec.h"
+#include "vlib/global_funcs.h"
 #include <dpdk/device/dpdk.h>
-#include <dpdk/ipsec/ipsec.h>
 
 static void
 dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)

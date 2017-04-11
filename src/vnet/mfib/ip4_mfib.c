@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/mfib/ip4_mfib.h>
-
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/mfib/mfib_entry.h>
+#include "vnet/ip/format.h"
+#include "ip4_mfib.h"
+#include "mfib_entry.h"
+#include "vlib/global_funcs.h"
 
 static const mfib_prefix_t ip4_specials[] = {
     {

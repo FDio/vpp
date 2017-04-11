@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/lookup.h>
-#include <vnet/dpo/replicate_dpo.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/adj/adj.h>
-#include <vnet/mpls/mpls_types.h>
+#include "vnet/buffer.h"
+#include "replicate_dpo.h"
+#include "drop_dpo.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
 
 #undef REP_DEBUG
 

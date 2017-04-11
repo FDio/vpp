@@ -16,9 +16,10 @@
  * @brief
  * The data-path object representing receiveing the packet, i.e. it's for-us
  */
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/receive_dpo.h>
+#include "vnet/vnet.h"
+#include "vnet/ip/format.h"
+#include "receive_dpo.h"
+#include "vnet/fib/fib_node.h"
 
 /**
  * @brief pool of all receive DPOs

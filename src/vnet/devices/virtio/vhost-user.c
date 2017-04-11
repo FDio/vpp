@@ -18,29 +18,23 @@
  */
 
 #include <fcntl.h>		/* for open */
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/uio.h>		/* for iovec */
 #include <netinet/in.h>
 #include <sys/vfs.h>
 
-#include <linux/if_arp.h>
-#include <linux/if_tun.h>
+#include "vlib/global_funcs.h"
+#include "vlib/error_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/unix/unix.h"
+#include "vppinfra/cpu.h"
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/devices/devices.h"
+#include "vnet/feature/feature.h"
 
-#include <vnet/ip/ip.h>
+#include "vhost-user.h"
 
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
-
-#include <vnet/devices/virtio/vhost-user.h>
-
+#include <sys/mman.h>
 /**
  * @file
  * @brief vHost User Device Driver.

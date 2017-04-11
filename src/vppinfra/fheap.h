@@ -15,10 +15,10 @@
 #ifndef included_clib_fheap_h
 #define included_clib_fheap_h
 
+#include "vec.h"
+
 /* Fibonacci Heaps Fredman, M. L.; Tarjan (1987).
    "Fibonacci heaps and their uses in improved network optimization algorithms" */
-
-#include <vppinfra/vec.h>
 
 typedef struct
 {

@@ -20,7 +20,7 @@
 #ifndef __LISP_GPE_FWD_ENTRY_H__
 #define __LISP_GPE_FWD_ENTRY_H__
 
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "lisp_gpe.h"
 
 /**
  * @brief A path on which to forward lisp traffic

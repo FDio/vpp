@@ -13,8 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/dpo/interface_dpo.h>
-#include <vnet/fib/fib_node.h>
+#include "interface_dpo.h"
+#include "vnet/fib/fib_node.h"
+#include "vnet/buffer.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
 
 /*
  * The 'DB' of interface DPOs.

@@ -16,8 +16,8 @@
 #ifndef included_manual_fns_h
 #define included_manual_fns_h
 
-#include <vnet/ip/format.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vnet/ip/format.h"
+#include "vnet/ethernet/ethernet.h"
 
 /* Macro to finish up custom dump fns */
 #define PRINT_S \

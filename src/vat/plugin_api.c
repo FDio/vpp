@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vat/vat.h>
-#include <vnet/ip/ip.h>
+#include "vat.h"
+#include "vnet/ip/ip6.h"
 
 uword
 unformat_sw_if_index (unformat_input_t * input, va_list * args)

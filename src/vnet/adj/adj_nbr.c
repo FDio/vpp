@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-#include <vnet/adj/adj_nbr.h>
-#include <vnet/adj/adj_internal.h>
-#include <vnet/ethernet/arp_packet.h>
-#include <vnet/fib/fib_walk.h>
+#include "adj_nbr.h"
+#include "adj_internal.h"
+#include "vnet/feature/feature.h"
+#include "vnet/fib/fib_walk.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 /*
  * Vector Hash tables of neighbour (traditional) adjacencies

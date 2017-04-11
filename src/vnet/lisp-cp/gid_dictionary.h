@@ -16,10 +16,8 @@
 #ifndef VNET_LISP_GPE_GID_DICTIONARY_H_
 #define VNET_LISP_GPE_GID_DICTIONARY_H_
 
-#include <vnet/vnet.h>
-#include <vnet/lisp-cp/lisp_types.h>
-#include <vppinfra/bihash_24_8.h>
-#include <vppinfra/bihash_template.h>
+#include "lisp_types.h"
+#include "vppinfra/bihash_24_8.h"
 
 #define GID_LOOKUP_MISS ((u32)~0)
 

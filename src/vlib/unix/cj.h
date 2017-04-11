@@ -20,6 +20,8 @@
 #ifndef __included_cj_h__
 #define __included_cj_h__
 
+#include "vlib/main.h"
+
 typedef struct
 {
   f64 time;

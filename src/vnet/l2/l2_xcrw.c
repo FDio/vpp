@@ -12,7 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/l2/l2_xcrw.h>
+#include "l2_xcrw.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+#include "l2_input.h"
 
 /**
  * @file

@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
-
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/policer/policer.h>
-#include <vnet/ip/ip.h>
-#include <vnet/classify/policer_classify.h>
-#include <vnet/classify/vnet_classify.h>
+#include "vnet/policer/policer.h"
+#include "vnet/classify/policer_classify.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/l2/feat_bitmap.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 #define IP4_NON_DSCP_BITS 0x03
 #define IP4_DSCP_SHIFT    2

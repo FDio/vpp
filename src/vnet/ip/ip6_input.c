@@ -37,10 +37,17 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ppp/ppp.h>
-#include <vnet/hdlc/hdlc.h>
+#include "ip6.h"
+#include "ip6_error.h"
+#include "icmp6.h"
+#include "format.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/feature/feature.h"
+#include "vnet/ppp/ppp.h"
+#include "vnet/hdlc/hdlc.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 typedef struct
 {

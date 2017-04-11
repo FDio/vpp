@@ -16,10 +16,9 @@
 #ifndef __FIB_TYPES_H__
 #define __FIB_TYPES_H__
 
-#include <vlib/vlib.h>
+#include <vnet/dpo/dpo.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/packet.h>
-#include <vnet/dpo/dpo.h>
 
 /**
  * A typedef of a node index.

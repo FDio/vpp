@@ -13,10 +13,13 @@
  * limitations under the License.
  */
 
-#include <lb/lb.h>
+#include "lb.h"
 
-#include <vnet/gre/packet.h>
-#include <lb/lbhash.h>
+#include "vnet/buffer.h"
+#include "vnet/gre/packet.h"
+#include "vnet/udp/udp_packet.h"
+#include "vlib/buffer_node.h"
+
 
 #define foreach_lb_error \
  _(NONE, "no error") \

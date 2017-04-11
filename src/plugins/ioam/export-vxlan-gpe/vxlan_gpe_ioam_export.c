@@ -18,39 +18,36 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <ioam/export-common/ioam_export.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include "ioam/export-common/ioam_export.h"
+#include "ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ip/format.h"
 
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-
-#include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 
 /* define message IDs */
-#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_msg_enum.h>
+#include "vxlan_gpe_ioam_export_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h>
+#include "vxlan_gpe_ioam_export_all_api_h.h"
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h>
+#include "vxlan_gpe_ioam_export_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h>
+#include "vxlan_gpe_ioam_export_all_api_h.h"
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h>
+#include "vxlan_gpe_ioam_export_all_api_h.h"
 #undef vl_api_version
 
 #define REPLY_MSG_ID_BASE sm->msg_id_base

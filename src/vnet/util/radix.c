@@ -35,7 +35,8 @@
  * Routines to build and maintain radix trees for routing lookups.
  */
 
-#include <vnet/util/radix.h>
+#include "radix.h"
+#include "vlib/global_funcs.h"
 
 typedef void (*rn_printer_t)(void *, const char *fmt, ...);
 

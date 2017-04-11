@@ -40,11 +40,9 @@
 #ifndef included_vlib_buffer_h
 #define included_vlib_buffer_h
 
-#include <vppinfra/types.h>
-#include <vppinfra/cache.h>
 #include <vppinfra/serialize.h>
-#include <vppinfra/vector.h>
 #include <vlib/error.h>		/* for vlib_error_t */
+#include <vppinfra/cache.h>
 
 #include <vlib/config.h>	/* for __PRE_DATA_SIZE */
 #define VLIB_BUFFER_DATA_SIZE		(2048)

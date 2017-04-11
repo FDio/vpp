@@ -20,10 +20,11 @@
 #ifndef __included_bihash_24_8_h__
 #define __included_bihash_24_8_h__
 
-#include <vppinfra/heap.h>
-#include <vppinfra/format.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/xxhash.h>
+#include "format.h"
+#if __SSE4_2__
+#include <x86intrin.h>
+#endif
+#include <stdarg.h>
 
 typedef struct
 {

@@ -13,10 +13,15 @@
  * limitations under the License.
  */
 
-#include <vppinfra/sparse_vec.h>
-#include <vnet/tcp/tcp_packet.h>
-#include <vnet/tcp/tcp.h>
-#include <vnet/session/session.h>
+#include "vppinfra/sparse_vec.h"
+#include "vnet/ip/format.h"
+#include "tcp_packet.h"
+#include "tcp.h"
+#include "vnet/session/session.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+
 #include <math.h>
 
 static char *tcp_error_strings[] = {

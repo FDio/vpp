@@ -15,11 +15,8 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/l2/l2_fwd.h>
-#include <vnet/l2/l2_flood.h>
-#include <vnet/l2/l2_bvi.h>
+#include "l2_fwd.h"
+#include "l2_flood.h"
 
 
 /* Call the L2 nodes that need the ethertype mapping */

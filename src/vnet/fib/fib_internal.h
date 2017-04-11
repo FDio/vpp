@@ -16,8 +16,7 @@
 #ifndef __FIB_INTERNAL_H__
 #define __FIB_INTERNAL_H__
 
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/dpo.h>
+#include "fib_types.h"
 
 /**
  * Big train switch; FIB debugs on or off

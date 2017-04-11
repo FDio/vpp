@@ -15,32 +15,31 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <vnet/tcp/builtin_client.h>
+#include "builtin_client.h"
 
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vpp/app/version.h>
+#include "vnet/plugin/plugin.h"
+
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vpp/app/version.h"
 
 /* define message IDs */
-#include <vpp/api/vpe_msg_enum.h>
+#include "vpp/api/vpe_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
+#include "vpp/api/vpe_all_api_h.h"
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <vpp/api/vpe_all_api_h.h>
+#include "vpp/api/vpe_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
+#include "vpp/api/vpe_all_api_h.h"
 #undef vl_printfun
 
 #define TCP_BUILTIN_CLIENT_DBG (1)

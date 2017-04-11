@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
+#include "vec.h"
+#include "error_bootstrap.h"
 #include <vppinfra/ptclosure.h>
+#include "clib.h"
 
 u8 **
 clib_ptclosure_alloc (int n)

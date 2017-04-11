@@ -27,7 +27,7 @@
 #ifndef __DPO_H__
 #define __DPO_H__
 
-#include <vnet/vnet.h>
+#include <vnet/interface.h>
 
 /**
  * @brief An index for adjacencies.

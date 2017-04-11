@@ -12,39 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/mount.h>
-#include <string.h>
-#include <fcntl.h>
 
-#include <vppinfra/vec.h>
-#include <vppinfra/error.h>
-#include <vppinfra/format.h>
-#include <vppinfra/bitmap.h>
+#include "vlib/global_funcs.h"
+#include "vlibmemory/vl_memory_msg_enum.h"	/* enumerate all vlib messages */
+#include "dpdk/device/dpdk.h"
 
-#include <vnet/vnet.h>
-#include <vnet/ethernet/ethernet.h>
-#include <dpdk/device/dpdk.h>
-
-#include <vlib/unix/physmem.h>
-#include <vlib/pci/pci.h>
-#include <vlibmemory/api.h>
-#include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
 
 #define vl_typedefs		/* define message structures */
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vlibmemory/vl_memory_api_h.h"
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vlibmemory/vl_memory_api_h.h"
 #undef vl_printfun
-
-#include <dpdk/device/dpdk_priv.h>
 
 dpdk_main_t dpdk_main;
 

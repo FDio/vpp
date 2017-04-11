@@ -13,16 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-
-#include <acl/acl_msg_enum.h>
+#include "acl/acl_msg_enum.h"
 #define vl_typedefs             /* define message structures */
-#include <acl/acl_all_api_h.h>
+#include "acl/acl_all_api_h.h"
 #undef vl_typedefs
-
-#include <vnet/api_errno.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
 
 #if VPPJNI_DEBUG == 1
   #define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
@@ -30,11 +24,11 @@
   #define DEBUG_LOG(...)
 #endif
 
-#include <jvpp-common/jvpp_common.h>
+#include "jvpp-common/jvpp_common.h"
 
-#include "jvpp-acl/io_fd_vpp_jvpp_acl_JVppAclImpl.h"
 #include "jvpp_acl.h"
-#include "jvpp-acl/jvpp_acl_gen.h"
+#include <arpa/inet.h>
+#include "jvpp_acl_gen.h"
 
 /*
  * Class:     io_fd_vpp_jvpp_acl_JVppaclImpl

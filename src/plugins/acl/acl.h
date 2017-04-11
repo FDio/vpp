@@ -15,15 +15,8 @@
 #ifndef included_acl_h
 #define included_acl_h
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_output.h>
-
-
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vppinfra/bitmap.h>
-#include <vppinfra/elog.h>
+#include "vnet/l2/l2_output.h"
+#include "vnet/ip/ip6.h"
 #include "bihash_40_8.h"
 #include "fa_node.h"
 

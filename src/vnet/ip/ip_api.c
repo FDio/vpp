@@ -17,44 +17,43 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
+#include "vlibmemory/api.h"
 
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6_neighbor.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/fib_api.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vnet/dpo/receive_dpo.h>
-#include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/classify_dpo.h>
-#include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/ethernet/arp_packet.h>
-#include <vnet/mfib/ip6_mfib.h>
-#include <vnet/mfib/ip4_mfib.h>
-#include <vnet/mfib/mfib_signal.h>
-#include <vnet/mfib/mfib_entry.h>
+#include "vnet/ethernet/ethernet.h"
+#include "ip6_neighbor.h"
+#include "format.h"
+#include "vnet/classify/vnet_classify.h"
+#include "vnet/fib/fib_table.h"
+#include "vnet/dpo/receive_dpo.h"
+#include "vnet/dpo/classify_dpo.h"
+#include "vnet/dpo/ip_null_dpo.h"
+#include "vnet/ethernet/arp_packet.h"
+#include "vnet/mfib/ip4_mfib.h"
+#include "vnet/mfib/mfib_signal.h"
+#include "vnet/mpls/mpls_types.h"
+#include "vnet/vnet_msg_enum.h"
 
-#include <vnet/vnet_msg_enum.h>
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
+#include <stdbool.h>
+#include "vnet/mfib/ip6_mfib.h"
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include "vnet/vnet_all_api_h.h"
 #undef vl_printfun
 
-#include <vlibapi/api_helper_macros.h>
+#include "vlibapi/api_helper_macros.h"
 
 
 #define foreach_ip_api_msg                                              \
@@ -1664,7 +1663,7 @@ vl_api_mfib_signal_dump_t_handler (vl_api_mfib_signal_dump_t * mp)
 }
 
 #define vl_msg_name_crc_list
-#include <vnet/ip/ip.api.h>
+#include "vnet/ip/ip.api.h"
 #undef vl_msg_name_crc_list
 
 static void

@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
+#include "buffer_funcs.h"
+#include "node_funcs.h"
+#include "global_funcs.h"
 
 /*
  * 1 to enable msg id training wheels, which are useful for tracking

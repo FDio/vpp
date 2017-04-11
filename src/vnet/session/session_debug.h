@@ -15,9 +15,6 @@
 #ifndef SRC_VNET_SESSION_SESSION_DEBUG_H_
 #define SRC_VNET_SESSION_SESSION_DEBUG_H_
 
-#include <vnet/session/transport.h>
-#include <vlib/vlib.h>
-
 #define foreach_session_dbg_evt		\
   _(ENQ, "enqueue")			\
   _(DEQ, "dequeue")			\

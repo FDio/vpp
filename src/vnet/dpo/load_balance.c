@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/lookup.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/load_balance_map.h>
-#include <vnet/dpo/drop_dpo.h>
-#include <vppinfra/math.h>              /* for fabs */
-#include <vnet/adj/adj.h>
-#include <vnet/adj/adj_internal.h>
-#include <vnet/fib/fib_urpf_list.h>
+#include "load_balance_map.h"
+#include "drop_dpo.h"
+#include "vppinfra/math.h"              /* for fabs */
+#include "vnet/adj/adj_internal.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/fib/fib_urpf_list.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
 
 /*
  * distribution error tolerance for load-balancing

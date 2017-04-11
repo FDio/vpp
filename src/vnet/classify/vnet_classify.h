@@ -15,25 +15,11 @@
 #ifndef __included_vnet_classify_h__
 #define __included_vnet_classify_h__
 
+#include "vnet/vnet.h"
+#include "vppinfra/vector_sse2.h"
+#include "vppinfra/xxhash.h"
+
 #include <stdarg.h>
-
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vlib/cli.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/l2/feat_bitmap.h>
-#include <vnet/api_errno.h>     /* for API error numbers */
-
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/cache.h>
-#include <vppinfra/xxhash.h>
 
 extern vlib_node_registration_t ip4_classify_node;
 extern vlib_node_registration_t ip6_classify_node;

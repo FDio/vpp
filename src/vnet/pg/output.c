@@ -37,11 +37,9 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vppinfra/string.h>
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
+#include "pg.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlib/trace_funcs.h"
 
 uword
 pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)

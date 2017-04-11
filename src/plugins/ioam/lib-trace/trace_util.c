@@ -12,13 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <stdint.h>
-#include <time.h>
-#include <string.h>
-#include <vppinfra/mem.h>
 #include "trace_util.h"
 #include "trace_config.h"
+#include "vlib/global_funcs.h"
 
 trace_main_t trace_main;
 

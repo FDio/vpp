@@ -13,15 +13,9 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/format.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/drop_dpo.h>
-
+#include "vnet/dpo/drop_dpo.h"
 #include "fib_entry_src.h"
 #include "fib_entry_cover.h"
-#include "fib_entry.h"
 #include "fib_table.h"
 
 /*

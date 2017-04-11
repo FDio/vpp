@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
-#include <ila/ila.h>
-#include <vnet/plugin/plugin.h>
-#include <vnet/ip/lookup.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/fib/fib_table.h>
-#include <vpp/app/version.h>
+#include "vnet/fib/fib_table.h"
+#include "vpp/app/version.h"
+#include "ila.h"
+#include "vnet/feature/feature.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vlib/unix/plugin.h"
+#include "vnet/ip/format.h"
 
 static ila_main_t ila_main;
 

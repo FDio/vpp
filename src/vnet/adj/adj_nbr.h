@@ -21,10 +21,8 @@
 #ifndef __ADJ_NBR_H__
 #define __ADJ_NBR_H__
 
-#include <vnet/vnet.h>
-#include <vnet/adj/adj_types.h>
-#include <vnet/fib/fib_node.h>
-#include <vnet/dpo/dpo.h>
+#include "vnet/fib/fib_types.h"
+#include "adj_types.h"
 
 /**
  * @brief

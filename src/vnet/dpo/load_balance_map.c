@@ -15,10 +15,10 @@
 /**
  * @brief
  */
-#include <vnet/fib/fib_path.h>
-#include <vnet/fib/fib_node_list.h>
-#include <vnet/dpo/load_balance_map.h>
-#include <vnet/dpo/load_balance.h>
+#include "vnet/fib/fib_path.h"
+#include "vnet/fib/fib_node_list.h"
+#include "load_balance_map.h"
+#include "vlib/global_funcs.h"
 
 /**
  * A hash-table of load-balance maps by path index.

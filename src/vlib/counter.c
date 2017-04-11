@@ -37,7 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
+#include "counter.h"
+#include "global_funcs.h"
 
 void
 vlib_clear_simple_counters (vlib_simple_counter_main_t * cm)

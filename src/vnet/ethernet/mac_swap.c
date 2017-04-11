@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vppinfra/error.h>

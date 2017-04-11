@@ -16,9 +16,10 @@
  * @file
  * @brief LLDP nodes implementation
  */
-#include <vnet/lldp/lldp_node.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
+#include "lldp_node.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlib/trace_funcs.h"
+#include "vlib/global_funcs.h"
 
 /* set this to 1 to turn on debug prints via clib_warning() */
 #define LLDP_DEBUG (0)

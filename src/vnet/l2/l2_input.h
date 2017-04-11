@@ -18,11 +18,10 @@
 #ifndef included_vnet_l2_input_h
 #define included_vnet_l2_input_h
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/l2/l2_bd.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip.h>
+#include "vnet/ip/ip4.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ethernet/ethernet.h"
+#include "l2_bd.h"
 
 /* Per-subinterface L2 feature configuration */
 

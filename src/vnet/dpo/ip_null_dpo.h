@@ -27,7 +27,7 @@
 #ifndef __IP_NULL_DPO_H__
 #define __IP_NULL_DPO_H__
 
-#include <vnet/dpo/dpo.h>
+#include "dpo.h"
 
 /**
  * @brief Actions to take when a packet encounters the NULL DPO

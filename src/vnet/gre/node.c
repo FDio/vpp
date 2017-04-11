@@ -15,11 +15,16 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/gre/gre.h>
-#include <vnet/mpls/mpls.h>
-#include <vppinfra/sparse_vec.h>
+#include "vnet/buffer.h"
+#include "vnet/pg/pg.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip4.h"
+#include "gre.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vppinfra/sparse_vec.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_gre_input_next			\
 _(PUNT, "error-punt")                           \

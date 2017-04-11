@@ -14,12 +14,10 @@
  */
 
 #include "sixrd.h"
-#include <vnet/plugin/plugin.h>
-
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/adj/adj.h>
-#include <vpp/app/version.h>
+#include "vnet/ip/format.h"
+#include "vlib/unix/plugin.h"
+#include "vpp/app/version.h"
+#include "vlib/global_funcs.h"
 
 /*
  * This code supports the following sixrd modes:

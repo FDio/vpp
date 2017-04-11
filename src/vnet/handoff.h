@@ -16,11 +16,11 @@
 #ifndef included_vnet_handoff_h
 #define included_vnet_handoff_h
 
-#include <vlib/vlib.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vnet/mpls/packet.h>
+#include "ip/ip6_packet.h"
+#include "ip/ip4_packet.h"
+#include "vppinfra/bitops.h"
+#include "ethernet/packet.h"
+#include "mpls/packet.h"
 
 typedef enum
 {

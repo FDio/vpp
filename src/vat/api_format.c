@@ -17,42 +17,30 @@
  *------------------------------------------------------------------
  */
 
-#include <vat/vat.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vnet/ip/ip.h>
-#include <vnet/l2/l2_input.h>
-#include <vnet/l2tp/l2tp.h>
-#include <vnet/vxlan/vxlan.h>
-#include <vnet/gre/gre.h>
-#include <vnet/vxlan-gpe/vxlan_gpe.h>
-#include <vnet/lisp-gpe/lisp_gpe.h>
+#include "vat.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vnet/ip/format.h"
+#include "vnet/udp/udp.h"
+#include "vnet/sr/sr_packet.h"
+#include "vnet/l2/l2_input.h"
+#include "vnet/l2tp/l2tp.h"
+#include "vnet/vxlan/vxlan.h"
+#include "vnet/lisp-gpe/lisp_gpe.h"
 
-#include <vpp/api/vpe_msg_enum.h>
-#include <vnet/l2/l2_classify.h>
-#include <vnet/l2/l2_vtr.h>
-#include <vnet/classify/input_acl.h>
-#include <vnet/classify/policer_classify.h>
-#include <vnet/classify/flow_classify.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
+#include "vpp/api/vpe_msg_enum.h"
+#include "vnet/l2/l2_classify.h"
+#include "vnet/classify/input_acl.h"
+#include "vnet/classify/policer_classify.h"
+#include "vnet/classify/flow_classify.h"
+#include "vnet/mpls/mpls_types.h"
+#include "vnet/ipsec/ipsec.h"
+#include "vnet/ipsec/ikev2.h"
+#include "vnet/policer/policer.h"
+#include "vnet/mfib/mfib_types.h"
+
+#include <stdbool.h>
 #include <inttypes.h>
-#include <vnet/map/map.h>
-#include <vnet/cop/cop.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <vnet/ip/ip_source_and_port_range_check.h>
-#include <vnet/policer/xlate.h>
-#include <vnet/span/span.h>
-#include <vnet/policer/policer.h>
-#include <vnet/policer/police.h>
-#include <vnet/mfib/mfib_types.h>
-
-#include "vat/json_format.h"
-
-#include <inttypes.h>
-#include <sys/stat.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>

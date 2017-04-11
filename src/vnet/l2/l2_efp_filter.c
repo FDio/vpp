@@ -15,16 +15,10 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/l2/feat_bitmap.h>
-#include <vnet/l2/l2_output.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vppinfra/error.h>
-#include <vppinfra/cache.h>
+#include "vlib/buffer_node.h"
+#include "vppinfra/cpu.h"
+#include "vlib/global_funcs.h"
+#include "l2_output.h"
 
 /**
  * @file

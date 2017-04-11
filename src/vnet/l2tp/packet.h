@@ -18,6 +18,8 @@
 #ifndef __included_l2tp_packet_h__
 #define __included_l2tp_packet_h__
 
+#include "vppinfra/clib.h"
+
 /*
  * See RFC4719 for packet format.
  * Note: the l2_specific_sublayer is present in current Linux l2tpv3

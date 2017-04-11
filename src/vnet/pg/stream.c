@@ -37,12 +37,12 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/mpls/mpls.h>
-#include <vnet/devices/devices.h>
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip4.h"
+#include "vnet/mpls/mpls.h"
+#include "vnet/devices/devices.h"
+#include "vlib/global_funcs.h"
 
 /* Mark stream active or inactive. */
 void

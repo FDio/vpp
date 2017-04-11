@@ -16,6 +16,8 @@
 #define __VIRTIO_VHOST_USER_H__
 /* vhost-user data structures */
 
+#include "vnet/vnet.h"
+
 #define VHOST_MEMORY_MAX_NREGIONS       8
 #define VHOST_USER_MSG_HDR_SZ           12
 #define VHOST_VRING_MAX_SIZE            32768

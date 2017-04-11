@@ -40,9 +40,9 @@
 #ifndef included_ip4_packet_h
 #define included_ip4_packet_h
 
-#include <vnet/ip/ip_packet.h>	/* for ip_csum_t */
-#include <vnet/tcp/tcp_packet.h>	/* for tcp_header_t */
-#include <vppinfra/byte_order.h>	/* for clib_net_to_host_u16 */
+#include "ip_packet.h"		/* for ip_csum_t */
+#include "vppinfra/string.h"	/* for clib_net_to_host_u16 */
+#include "vnet/tcp/tcp_packet.h"	/* for tcp_header_t */
 
 /* IP4 address which can be accessed either as 4 bytes
    or as a 32-bit number. */

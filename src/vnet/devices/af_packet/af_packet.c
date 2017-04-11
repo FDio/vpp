@@ -20,12 +20,14 @@
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+#include "vnet/devices/devices.h"
+#include "vnet/ethernet/ethernet.h"
 
-#include <vnet/devices/af_packet/af_packet.h>
+#include "af_packet.h"
+
+#include <sys/mman.h>
 
 #define AF_PACKET_DEBUG_SOCKET		0
 

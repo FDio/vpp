@@ -39,6 +39,10 @@
 #ifndef _NET_NETMAP_H_
 #define _NET_NETMAP_H_
 
+#include <sys/socket.h>
+#include <linux/if.h>
+#include <stdint.h>
+
 #define	NETMAP_API	11		/* current API version */
 
 #define	NETMAP_MIN_API	11		/* min and max versions accepted */

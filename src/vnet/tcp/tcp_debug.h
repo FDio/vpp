@@ -16,8 +16,6 @@
 #ifndef SRC_VNET_TCP_TCP_DEBUG_H_
 #define SRC_VNET_TCP_TCP_DEBUG_H_
 
-#include <vlib/vlib.h>
-
 #define TCP_DEBUG (1)
 #define TCP_DEBUG_CC (1)
 #define TCP_DEBUG_VERBOSE (0)

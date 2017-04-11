@@ -15,16 +15,15 @@
  *------------------------------------------------------------------
  */
 
-#include <stdint.h>
-#include <net/if.h>
 #include <sys/ioctl.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vlib/error_funcs.h"
+#include "vlib/global_funcs.h"
+#include "vnet/ethernet/ethernet.h"
 
-#include <vnet/devices/netmap/net_netmap.h>
-#include <vnet/devices/netmap/netmap.h>
+#include "net_netmap.h"
+#include "netmap.h"
+#include "vppinfra/cpu.h"
 
 #define foreach_netmap_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \

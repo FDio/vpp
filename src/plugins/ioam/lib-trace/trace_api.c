@@ -19,37 +19,34 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vnet/plugin/plugin.h>
-#include <ioam/lib-trace/trace_util.h>
-#include <ioam/lib-trace/trace_config.h>
-
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+#include "trace_util.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "vlib/global_funcs.h"
+#include "trace_config.h"
 
 /* define message IDs */
-#include <ioam/lib-trace/trace_msg_enum.h>
+#include "trace_msg_enum.h"
 
 /* define message structures */
 #define vl_typedefs
-#include <ioam/lib-trace/trace_all_api_h.h>
+#include "trace_all_api_h.h"
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <ioam/lib-trace/trace_all_api_h.h>
+#include "trace_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <ioam/lib-trace/trace_all_api_h.h>
+#include "trace_all_api_h.h"
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <ioam/lib-trace/trace_all_api_h.h>
+#include "trace_all_api_h.h"
 #undef vl_api_version
 
 /*
@@ -186,7 +183,7 @@ trace_plugin_api_hookup (vlib_main_t * vm)
 }
 
 #define vl_msg_name_crc_list
-#include <ioam/lib-trace/trace_all_api_h.h>
+#include "trace_all_api_h.h"
 #undef vl_msg_name_crc_list
 
 static void

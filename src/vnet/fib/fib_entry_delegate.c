@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_entry_delegate.h>
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_attached_export.h>
+#include "fib_entry.h"
+#include "fib_attached_export.h"
 
 static fib_entry_delegate_t *
 fib_entry_delegate_find_i (const fib_entry_t *fib_entry,

@@ -30,15 +30,9 @@
 #ifndef LB_PLUGIN_LB_LB_H_
 #define LB_PLUGIN_LB_LB_H_
 
-#include <lb/util.h>
-#include <lb/refcount.h>
+#include "lbhash.h"
+#include "refcount.h"
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/dpo/dpo.h>
-#include <vnet/fib/fib_table.h>
-
-#include <lb/lbhash.h>
 
 #define LB_DEFAULT_PER_CPU_STICKY_BUCKETS 1 << 10
 #define LB_DEFAULT_FLOW_TIMEOUT 40

@@ -40,9 +40,8 @@
 #ifndef included_vlib_init_h
 #define included_vlib_init_h
 
-#include <vppinfra/error.h>
 #include <vppinfra/format.h>
-#include <vppinfra/hash.h>
+#include <vppinfra/error.h>
 
 /* Init/exit functions: called at start/end of main routine.  Init
    functions are typically used to register and setup packet

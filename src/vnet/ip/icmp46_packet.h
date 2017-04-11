@@ -40,7 +40,6 @@
 #ifndef included_vnet_icmp46_packet_h
 #define included_vnet_icmp46_packet_h
 
-#include <vnet/ethernet/packet.h>
 #include <vnet/ip/ip6_packet.h>
 
 #define foreach_icmp4_type			\

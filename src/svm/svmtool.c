@@ -17,28 +17,12 @@
  *------------------------------------------------------------------
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
 #include <fcntl.h>
-#include <string.h>
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/bitmap.h>
-#include <vppinfra/fifo.h>
-#include <vppinfra/time.h>
-#include <vppinfra/mheap.h>
-#include <vppinfra/heap.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/format.h>
+
+#include "vppinfra/hash.h"
+#include "vppinfra/mheap.h"
+#include "vppinfra/pool.h"
 
 #include "svm.h"
 

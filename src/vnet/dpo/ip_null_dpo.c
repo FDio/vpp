@@ -17,8 +17,12 @@
  * The data-path object representing dropping the packet
  */
 
-#include <vnet/dpo/ip_null_dpo.h>
-#include <vnet/ip/ip.h>
+#include "vnet/buffer.h"
+#include "ip_null_dpo.h"
+#include "vnet/ip/icmp4.h"
+#include "vnet/ip/icmp6.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @brief A representation of the IP_NULL DPO

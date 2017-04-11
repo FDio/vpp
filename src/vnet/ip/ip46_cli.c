@@ -37,7 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/ip/ip.h>
+#include "ip6.h"
+#include "ip4.h"
+#include "format.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @file

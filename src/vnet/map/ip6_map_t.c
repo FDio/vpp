@@ -14,7 +14,10 @@
  */
 #include "map.h"
 
-#include "../ip/ip_frag.h"
+#include "vnet/buffer.h"
+#include "vnet/ip/ip_frag.h"
+#include "vnet/udp/udp_packet.h"
+#include "vlib/global_funcs.h"
 
 #define IP6_MAP_T_DUAL_LOOP
 

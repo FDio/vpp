@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_table.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/adj/adj.h>
-#include <vnet/map/map_dpo.h>
-
+#include "vnet/fib/ip6_fib.h"
 #include "map.h"
+#include "vnet/udp/udp_packet.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
+
 
 #ifdef __SSE4_2__
 static inline u32
@@ -31,7 +31,7 @@ crc_u32 (u32 data, u32 value)
   return value;
 }
 #else
-#include <vppinfra/xxhash.h>
+#include "vppinfra/xxhash.h"
 
 static inline u32
 crc_u32 (u32 data, u32 value)

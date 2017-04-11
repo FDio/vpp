@@ -19,24 +19,13 @@
  *------------------------------------------------------------------
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stddef.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <vppinfra/format.h>
-#include <vppinfra/byte_order.h>
-#include <vppinfra/error.h>
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vlibmemory/api.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include "vlib/unix/unix.h"
+#include "api.h"
 
-#include <vlibmemory/vl_memory_msg_enum.h>
+#include "vl_memory_msg_enum.h"
 
 #define vl_typedefs
-#include <vlibmemory/vl_memory_api_h.h>
+#include "vl_memory_api_h.h"
 #undef vl_typedefs
 
 static inline void *

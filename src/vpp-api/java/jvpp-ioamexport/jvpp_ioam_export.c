@@ -13,16 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-
-#include <ioam/export/ioam_export_msg_enum.h>
+#include "ioam/export/ioam_export_msg_enum.h"
 #define vl_typedefs             /* define message structures */
-#include <ioam/export/ioam_export_all_api_h.h>
+#include "ioam/export/ioam_export_all_api_h.h"
 #undef vl_typedefs
-
-#include <vnet/api_errno.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
 
 #if VPPJNI_DEBUG == 1
   #define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
@@ -30,10 +24,12 @@
   #define DEBUG_LOG(...)
 #endif
 
-#include <jvpp-common/jvpp_common.h>
+#include "jvpp-common/jvpp_common.h"
 
 #include "jvpp-ioamexport/io_fd_vpp_jvpp_ioamexport_JVppIoamexportImpl.h"
 #include "jvpp_ioam_export.h"
+
+#include <arpa/inet.h>
 #include "jvpp-ioamexport/jvpp_ioamexport_gen.h"
 
 /*

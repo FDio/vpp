@@ -16,6 +16,10 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
+
+#include "vlib/main.h"
+#include "vnet/ip/ip6_packet.h"
+
 /**
  * @file
  * @brief Call from VLIB_INIT_FUNCTION to set the Linux kernel inject node name.

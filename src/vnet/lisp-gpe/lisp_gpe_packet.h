@@ -21,6 +21,8 @@
 #ifndef included_lisp_gpe_packet_h
 #define included_lisp_gpe_packet_h
 
+#include "vppinfra/types.h"
+
 /*
  *   From draft-lewis-lisp-gpe-02.txt
  *

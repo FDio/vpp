@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <ioam/encap/ip6_ioam_e2e.h>
-#include <ioam/encap/ip6_ioam_trace.h>
-#include <ioam/udp-ping/udp_ping_packet.h>
-#include <ioam/udp-ping/udp_ping.h>
+#include "vnet/buffer.h"
+#include "vnet/ip/ip.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip6_hop_by_hop.h"
+#include "ioam/encap/ip6_ioam_e2e.h"
+#include "ioam/encap/ip6_ioam_trace.h"
+#include "udp_ping_packet.h"
+#include "udp_ping.h"
 
 #define UDP_PING_REWRITE_LEN 1000
 

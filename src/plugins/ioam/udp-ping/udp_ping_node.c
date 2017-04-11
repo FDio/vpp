@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-#include <vnet/vnet.h>
-#include <vlib/vlib.h>
-#include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ip/ip6_hop_by_hop.h>
-#include <ioam/encap/ip6_ioam_trace.h>
-#include <ioam/encap/ip6_ioam_e2e.h>
-#include <ioam/udp-ping/udp_ping_packet.h>
-#include <ioam/udp-ping/udp_ping.h>
-#include <ioam/udp-ping/udp_ping_util.h>
-#include <vnet/sr/sr_packet.h>
+#include "vnet/buffer.h"
+#include "vnet/ip/format.h"
+#include "vnet/ip/ip.h"
+#include "vnet/ip/ip6.h"
+#include "vnet/ip/ip6_hop_by_hop.h"
+#include "vnet/sr/sr_packet.h"
+#include "vlibmemory/api.h"
+#include "vlibsocket/api.h"
+#include "ioam/encap/ip6_ioam_trace.h"
+#include "ioam/encap/ip6_ioam_e2e.h"
+#include "udp_ping_packet.h"
+#include "udp_ping.h"
+#include "udp_ping_util.h"
 
 typedef enum
 {

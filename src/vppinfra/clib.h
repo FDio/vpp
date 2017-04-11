@@ -43,7 +43,7 @@
 #define CLIB_UNIX
 #endif
 
-#include <vppinfra/types.h>
+#include "types.h"
 
 /* Global DEBUG flag.  Setting this to 1 or 0 turns off
    ASSERT (see vppinfra/error.h) & other debugging code. */

@@ -17,10 +17,11 @@
  * @brief LISP sub-interfaces.
  *
  */
-#include <vnet/lisp-gpe/lisp_gpe_tenant.h>
-#include <vnet/lisp-gpe/lisp_gpe_sub_interface.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/interface.h>
+#include "lisp_gpe_tenant.h"
+#include "lisp_gpe_sub_interface.h"
+#include "vnet/fib/fib_table.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlib/global_funcs.h"
 
 /**
  * @brief Pool of all l3-sub-interfaces

@@ -40,7 +40,9 @@
 #ifndef included_vlib_buffer_funcs_h
 #define included_vlib_buffer_funcs_h
 
-#include <vppinfra/hash.h>
+#include "main.h"
+#include "vppinfra/clib.h"
+#include "global_funcs.h"
 
 /** \file
     vlib buffer access methods.

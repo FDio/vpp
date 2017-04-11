@@ -40,8 +40,9 @@
 #ifndef included_snap_h
 #define included_snap_h
 
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
+#include "vnet/pg/pg.h"
+#include "vnet/adj/rewrite.h"
+#include "vlib/node_funcs.h"
 
 #define foreach_ieee_oui			\
   _ (0x000000, ethernet)			\

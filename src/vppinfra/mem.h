@@ -38,13 +38,12 @@
 #ifndef _included_clib_mem_h
 #define _included_clib_mem_h
 
-#include <stdarg.h>
 
-#include <vppinfra/clib.h>	/* uword, etc */
-#include <vppinfra/mheap_bootstrap.h>
-#include <vppinfra/os.h>
-#include <vppinfra/string.h>	/* memcpy, memset */
-#include <vppinfra/valgrind.h>
+#include "mheap_bootstrap.h"
+#include "string.h"		/* memcpy, memset */
+#include "os.h"
+
+#include <stdarg.h>
 
 #define CLIB_MAX_MHEAPS 256
 
@@ -271,14 +270,12 @@ u8 *format_clib_mem_usage (u8 * s, va_list * args);
 #endif
 
 #ifdef CLIB_UNIX
-#include <vppinfra/vm_unix.h>
 #endif
 
 #ifdef CLIB_STANDALONE
 #include <vppinfra/vm_standalone.h>
 #endif
 
-#include <vppinfra/error.h>	/* clib_panic */
 
 #endif /* _included_clib_mem_h */
 

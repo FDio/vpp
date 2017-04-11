@@ -17,35 +17,32 @@
  *------------------------------------------------------------------
  */
 
-#include <vnet/vnet.h>
-#include <vlibmemory/api.h>
+#include "vlibmemory/api.h"
 
-#include <vnet/interface.h>
-#include <vnet/api_errno.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/fib/fib_table.h>
-#include <vnet/mfib/mfib_table.h>
-#include <vnet/l2/l2_vtr.h>
-#include <vnet/vnet_msg_enum.h>
-#include <vnet/fib/fib_api.h>
-#include <vnet/mfib/mfib_table.h>
+#include "ip/ip.h"
+#include "fib/fib_table.h"
+#include "l2/l2_vtr.h"
+#include "vnet_msg_enum.h"
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
+#include "mfib/mfib_table.h"
 
 #define vl_typedefs		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet_all_api_h.h"
 #undef vl_typedefs
 
 #define vl_endianfun		/* define message structures */
-#include <vnet/vnet_all_api_h.h>
+#include "vnet_all_api_h.h"
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vnet/vnet_all_api_h.h>
+#include "vnet_all_api_h.h"
 #undef vl_printfun
 
-#include <vlibapi/api_helper_macros.h>
+#include "vlibapi/api_helper_macros.h"
 vpe_api_main_t vpe_api_main;
 
 #define foreach_vpe_api_msg                                     \
@@ -767,7 +764,7 @@ out:
  * See .../vlib-api/vlibmemory/memclnt_vlib.c:memclnt_process()
  */
 #define vl_msg_name_crc_list
-#include <vnet/interface.api.h>
+#include "vnet/interface.api.h"
 #undef vl_msg_name_crc_list
 
 static void

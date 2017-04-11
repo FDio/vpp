@@ -40,7 +40,7 @@
 #ifndef included_vnet_config_h
 #define included_vnet_config_h
 
-#include <vlib/vlib.h>
+#include "vlib/main.h"
 #include <vppinfra/heap.h>
 
 typedef struct

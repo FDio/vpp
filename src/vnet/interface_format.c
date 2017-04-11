@@ -37,8 +37,7 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vppinfra/bitmap.h>
+#include "vnet.h"
 
 u8 *
 format_vnet_sw_interface_flags (u8 * s, va_list * args)

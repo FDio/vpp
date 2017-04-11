@@ -16,9 +16,8 @@
 #ifndef __included_vnet_policer_classify_h__
 #define __included_vnet_policer_classify_h__
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/classify/vnet_classify.h>
+#include "vnet_classify.h"
+#include "vnet/config.h"
 
 typedef enum {
   POLICER_CLASSIFY_TABLE_IP4,

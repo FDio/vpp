@@ -18,16 +18,15 @@
 #ifndef __included_tclient_h__
 #define __included_tclient_h__
 
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vnet/ip/ip.h"
+#include "vnet/ethernet/ethernet.h"
 
-#include <vppinfra/hash.h>
-#include <vppinfra/error.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
-#include <svm/svm_fifo_segment.h>
-#include <vnet/session/session.h>
-#include <vnet/session/application_interface.h>
+#include "vppinfra/hash.h"
+#include "vppinfra/error.h"
+#include "vlibmemory/unix_shared_memory_queue.h"
+#include "svm/svm_fifo_segment.h"
+#include "vnet/session/session.h"
+#include "vnet/session/application_interface.h"
 
 typedef struct
 {

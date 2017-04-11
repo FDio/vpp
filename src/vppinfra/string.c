@@ -37,6 +37,7 @@
 
 #include <vppinfra/string.h>
 #include <vppinfra/error.h>
+#include "error_bootstrap.h"
 
 /* Exchanges source and destination. */
 void

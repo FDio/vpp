@@ -13,17 +13,12 @@
  * limitations under the License.
  */
 
-#include <vppinfra/mhash.h>
-#include <vnet/ip/ip.h>
-#include <vnet/adj/adj.h>
-#include <vnet/dpo/load_balance.h>
-#include <vnet/dpo/load_balance_map.h>
-
-#include <vnet/fib/fib_path_list.h>
-#include <vnet/fib/fib_internal.h>
-#include <vnet/fib/fib_node_list.h>
-#include <vnet/fib/fib_walk.h>
-#include <vnet/fib/fib_urpf_list.h>
+#include "fib_path_list.h"
+#include "fib_path.h"
+#include "fib_node_list.h"
+#include "fib_walk.h"
+#include "fib_urpf_list.h"
+#include "vlib/global_funcs.h"
 
 /**
  * FIB path-list

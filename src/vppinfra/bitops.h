@@ -38,7 +38,7 @@
 #ifndef included_clib_bitops_h
 #define included_clib_bitops_h
 
-#include <vppinfra/clib.h>
+#include "clib.h"
 
 /* Population count from Hacker's Delight. */
 always_inline uword

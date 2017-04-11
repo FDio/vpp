@@ -15,9 +15,8 @@
 /*
  * ioam_export_thread.c
  */
-#include <vnet/api_errno.h>
-#include <vppinfra/pool.h>
-#include <ioam/export-common/ioam_export.h>
+#include "ioam/export-common/ioam_export.h"
+#include "vlib/global_funcs.h"
 
 static vlib_node_registration_t vxlan_gpe_ioam_export_process_node;
 extern ioam_export_main_t vxlan_gpe_ioam_export_main;

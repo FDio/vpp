@@ -37,9 +37,16 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
+#include "ip.h"
+#include "ip4.h"
+#include "icmp4.h"
+#include "format.h"
+#include "vnet/pg/pg.h"
+#include "vnet/buffer.h"
+#include "vlib/global_funcs.h"
+#include "vlib/error_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/format_funcs.h"
 
 
 static char *icmp_error_strings[] = {

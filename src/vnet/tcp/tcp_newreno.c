@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/tcp/tcp.h>
+#include "tcp.h"
+#include "vlib/global_funcs.h"
 
 void
 newreno_congestion (tcp_connection_t * tc)

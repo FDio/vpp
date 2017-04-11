@@ -16,7 +16,11 @@
  * @file
  * @brief LLDP packet generation implementation
  */
-#include <vnet/lldp/lldp_node.h>
+#include "lldp_node.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vlib/global_funcs.h"
+
+#include <arpa/inet.h>
 
 static void
 lldp_add_chassis_id (const vnet_hw_interface_t * hw, u8 ** t0p)

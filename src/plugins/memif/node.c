@@ -16,18 +16,21 @@
  */
 
 #define _GNU_SOURCE
+
+#include "memif.h"
+
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vlib/unix/unix.h"
+#include "vnet/ethernet/ethernet.h"
+#include "vnet/devices/devices.h"
+#include "vnet/feature/feature.h"
+#include "vppinfra/cpu.h"
+
 #include <stdint.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/uio.h>
-
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/devices/devices.h>
-#include <vnet/feature/feature.h>
-
-#include <memif/memif.h>
 
 #define foreach_memif_input_error
 

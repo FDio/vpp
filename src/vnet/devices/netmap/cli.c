@@ -14,16 +14,9 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
-#include <stdint.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
-
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/ethernet/ethernet.h>
-
-#include <vnet/devices/netmap/net_netmap.h>
-#include <vnet/devices/netmap/netmap.h>
+#include "vlib/global_funcs.h"
+#include "vnet/ethernet/ethernet.h"
+#include "netmap.h"
 
 static clib_error_t *
 netmap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,

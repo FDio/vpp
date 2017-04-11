@@ -16,8 +16,7 @@
 #ifndef __LISP_CP_DPO_H__
 #define __LISP_CP_DPO_H__
 
-#include <vnet/vnet.h>
-#include <vnet/dpo/dpo.h>
+#include "vnet/dpo/dpo.h"
 
 /**
  * A representation of punt to the LISP control plane.

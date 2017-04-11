@@ -38,7 +38,7 @@
 #ifndef included_clib_longjmp_h
 #define included_clib_longjmp_h
 
-#include <vppinfra/types.h>
+#include "types.h"
 
 #if defined(__x86_64__)
 /* rbx, rbp, r12, r13, r14, r15, eip, rsp */

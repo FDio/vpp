@@ -43,8 +43,9 @@
  * Allocate/free network buffers.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include "buffer_funcs.h"
+#include "global_funcs.h"
+#include "unix/unix.h"
 
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,

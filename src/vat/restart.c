@@ -13,21 +13,12 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <time.h>
-#include <sys/types.h>
 #include <signal.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <svm/svmdb.h>
-#include <vppinfra/format.h>
-#include <vppinfra/error.h>
-#include <vppinfra/time.h>
-#include <vppinfra/macros.h>
+#include "svm/svmdb.h"
+#include "vppinfra/format.h"
+#include "vppinfra/macros.h"
 
 int
 restart_main_fn (unformat_input_t * i)

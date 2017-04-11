@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/gre/gre.h>
+#include "vnet/pg/pg.h"
+#include "gre.h"
 
 typedef struct {
   pg_edit_t flags_and_version;

@@ -17,6 +17,10 @@
  * @brief BFD nodes implementation
  */
 
+#include "vnet/buffer.h"
+#include "bfd_debug.h"
+#include "bfd_main.h"
+
 #if WITH_LIBSSL > 0
 #include <openssl/sha.h>
 #endif
@@ -24,16 +28,6 @@
 #if __SSE4_2__
 #include <x86intrin.h>
 #endif
-
-#include <vppinfra/random.h>
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/xxhash.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/bfd/bfd_debug.h>
-#include <vnet/bfd/bfd_protocol.h>
-#include <vnet/bfd/bfd_main.h>
 
 static u64
 bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
@@ -48,6 +42,8 @@ bfd_calc_echo_checksum (u32 discriminator, u64 expire_time, u32 secret)
 #endif
   return checksum;
 }
+
+#include "vlib/global_funcs.h"
 
 static u64
 bfd_usec_to_clocks (const bfd_main_t * bm, u64 us)

@@ -16,11 +16,10 @@
 #ifndef __FIB_TABLE_H__
 #define __FIB_TABLE_H__
 
-#include <vnet/ip/ip.h>
-#include <vnet/adj/adj.h>
 #include <vnet/fib/fib_entry.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/ip/ip6.h>
 #include <vnet/mpls/mpls.h>
-#include <vnet/mpls/packet.h>
 
 /**
  * @brief 

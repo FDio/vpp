@@ -19,13 +19,8 @@
 #ifndef __included_lldp_node_h__
 #define __included_lldp_node_h__
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
-#include <vnet/snap/snap.h>
-#include <vppinfra/format.h>
-#include <vppinfra/hash.h>
-
-#include <vnet/lldp/lldp_protocol.h>
+#include "vnet/vnet.h"
+#include "lldp_protocol.h"
 
 typedef struct lldp_intf
 {

@@ -13,13 +13,10 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/fib_entry.h>
-#include <vnet/fib/fib_table.h>
-
-#include <vnet/fib/fib_attached_export.h>
-#include <vnet/fib/fib_entry_cover.h>
-#include <vnet/fib/fib_entry_src.h>
-#include <vnet/fib/fib_entry_delegate.h>
+#include "fib_table.h"
+#include "fib_entry_cover.h"
+#include "fib_entry_src.h"
+#include "vnet/dpo/load_balance.h"
 
 /**
  * A description of the need to import routes from the export table

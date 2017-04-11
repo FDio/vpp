@@ -16,10 +16,7 @@
  * limitations under the License.
  *------------------------------------------------------------------
  */
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>
-#include <vat/vat.h>
-#include <vat/json_format.h>
+#include "json_format.h"
 
 static void
 print_json_test (void)

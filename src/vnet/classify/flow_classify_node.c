@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include <stdint.h>
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/ip/ip.h>
-#include <vnet/classify/flow_classify.h>
-#include <vnet/classify/vnet_classify.h>
+#include "vnet/buffer.h"
+#include "flow_classify.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
+
+#include <arpa/inet.h>
 
 typedef struct {
   u32 sw_if_index;

@@ -12,13 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <vnet/vnet.h>
-#include <stdint.h>
-#include <time.h>
-#include <string.h>
-#include <vppinfra/mem.h>
-#include "math64.h"
 #include "pot_util.h"
+#include "vlib/global_funcs.h"
+#include "math64.h"
 
 pot_main_t pot_main;
 

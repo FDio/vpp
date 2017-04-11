@@ -37,10 +37,8 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/pg/pg.h>
-#include <vnet/srp/srp.h>
-#include <vnet/ethernet/ethernet.h>
+#include "srp.h"
+#include "vnet/ethernet/ethernet.h"
 
 typedef struct {
   pg_edit_t ttl;

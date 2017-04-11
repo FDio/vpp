@@ -37,9 +37,10 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vnet/vnet.h>
-#include <vnet/snap/snap.h>
-#include <vnet/ethernet/ethernet.h>
+#include "vlib/format_funcs.h"
+#include "vlib/global_funcs.h"
+#include "snap.h"
+#include "vnet/ethernet/ethernet.h"
 
 /* Global main structure. */
 snap_main_t snap_main;

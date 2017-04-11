@@ -49,11 +49,9 @@
 #ifndef included_clib_elog_h
 #define included_clib_elog_h
 
-#include <vppinfra/cache.h>
-#include <vppinfra/error.h>	/* for ASSERT */
-#include <vppinfra/serialize.h>
-#include <vppinfra/time.h>	/* for clib_cpu_time_now */
-#include <vppinfra/mhash.h>
+#include "serialize.h"
+#include "smp.h"
+#include "time.h"		/* for clib_cpu_time_now */
 
 typedef struct
 {

@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vppinfra/error.h>
-#include <vnet/udp/udp.h>
-#include <vnet/ipsec/ipsec.h>
-#include <vnet/ipsec/ikev2.h>
-#include <vnet/ipsec/ikev2_priv.h>
+#include "vnet/udp/udp.h"
+#include "vnet/ip/format.h"
+#include "ipsec.h"
+#include "ikev2_priv.h"
+#include "vlib/buffer_node.h"
+
 #include <openssl/sha.h>
 
 static int ikev2_delete_tunnel_interface (vnet_main_t * vnm,

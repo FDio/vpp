@@ -37,9 +37,16 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/vlib.h>
-#include <vnet/ip/ip.h>
-#include <vnet/pg/pg.h>
+#include "format.h"
+#include "icmp6.h"
+#include "ip6.h"
+#include "ip.h"
+#include "vnet/pg/pg.h"
+#include "vnet/buffer.h"
+#include "vlib/global_funcs.h"
+#include "vlib/buffer_node.h"
+#include "vlib/error_funcs.h"
+#include "vlib/format_funcs.h"
 
 static u8 *
 format_ip6_icmp_type_and_code (u8 * s, va_list * args)

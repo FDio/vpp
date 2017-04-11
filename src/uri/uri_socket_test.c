@@ -13,12 +13,11 @@
  * limitations under the License.
  */
 
-#include <stdio.h>
-#include <sys/types.h>
+#include "vppinfra/format.h"
+
 #include <sys/socket.h>
-#include <netinet/in.h>
 #include <netdb.h>
-#include <vppinfra/format.h>
+#include <unistd.h>
 
 int
 main (int argc, char *argv[])

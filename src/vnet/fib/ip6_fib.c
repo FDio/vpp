@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/fib_table.h>
+#include "ip6_fib.h"
+#include "vnet/ip/format.h"
+#include "vlib/global_funcs.h"
 
 static void
 vnet_ip6_fib_init (u32 fib_index)

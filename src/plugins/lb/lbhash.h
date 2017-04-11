@@ -29,7 +29,7 @@
 #ifndef LB_PLUGIN_LB_LBHASH_H_
 #define LB_PLUGIN_LB_LBHASH_H_
 
-#include <vnet/vnet.h>
+#include "util.h"
 
 #if defined (__SSE4_2__)
 #include <immintrin.h>

@@ -18,7 +18,8 @@
 #ifndef include_vnet_pot_util_h
 #define include_vnet_pot_util_h
 
-#include <vnet/ip/ip6_hop_by_hop.h>
+#include "vnet/vnet.h"
+
 #define debug_ioam debug_ioam_fn
 /* Dont change this size 256. This is there across multiple components */
 #define PATH_NAME_SIZE  256

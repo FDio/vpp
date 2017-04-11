@@ -13,8 +13,14 @@
  * limitations under the License.
  */
 
-#include <vnet/tcp/tcp.h>
-#include <vnet/lisp-cp/packets.h>
+#include "vnet/session/session.h"
+#include "vnet/ip/format.h"
+#include "tcp.h"
+#include "tcp_debug.h"
+#include "vnet/lisp-cp/packets.h"
+#include "vlib/buffer_node.h"
+#include "vlib/global_funcs.h"
+#include "vppinfra/cpu.h"
 
 vlib_node_registration_t tcp4_output_node;
 vlib_node_registration_t tcp6_output_node;
