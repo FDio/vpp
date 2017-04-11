@@ -238,12 +238,12 @@ class VppTestCase(unittest.TestCase):
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-' + cls.__name__ + '-')
-        file_handler = FileHandler("%s/log.txt" % cls.tempdir)
-        file_handler.setFormatter(
+        cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
+        cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
                       datefmt="%H:%M:%S"))
-        file_handler.setLevel(DEBUG)
-        cls.logger.addHandler(file_handler)
+        cls.file_handler.setLevel(DEBUG)
+        cls.logger.addHandler(cls.file_handler)
         cls.shm_prefix = cls.tempdir.split("/")[-1]
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
@@ -344,9 +344,9 @@ class VppTestCase(unittest.TestCase):
             stdout_log(single_line_delim)
             stdout_log('VPP output to stdout while running %s:', cls.__name__)
             stdout_log(single_line_delim)
-            f = open(cls.tempdir + '/vpp_stdout.txt', 'w')
             vpp_output = "".join(cls.vpp_stdout_deque)
-            f.write(vpp_output)
+            with open(cls.tempdir + '/vpp_stdout.txt', 'w') as f:
+                f.write(vpp_output)
             stdout_log('\n%s', vpp_output)
             stdout_log(single_line_delim)
 
@@ -354,9 +354,9 @@ class VppTestCase(unittest.TestCase):
             stderr_log(single_line_delim)
             stderr_log('VPP output to stderr while running %s:', cls.__name__)
             stderr_log(single_line_delim)
-            f = open(cls.tempdir + '/vpp_stderr.txt', 'w')
             vpp_output = "".join(cls.vpp_stderr_deque)
-            f.write(vpp_output)
+            with open(cls.tempdir + '/vpp_stderr.txt', 'w') as f:
+                f.write(vpp_output)
             stderr_log('\n%s', vpp_output)
             stderr_log(single_line_delim)
 
@@ -364,6 +364,7 @@ class VppTestCase(unittest.TestCase):
     def tearDownClass(cls):
         """ Perform final cleanup after running all tests in this test-case """
         cls.quit()
+        cls.file_handler.close()
 
     def tearDown(self):
         """ Show various debug prints after each test """
