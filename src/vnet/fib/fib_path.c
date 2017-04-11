@@ -778,7 +778,7 @@ fib_path_to_chain_type (const fib_path_t *path)
         }
         else
         {
-            return (FIB_FORW_CHAIN_TYPE_MPLS_EOS);
+            return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
         }
     }
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
