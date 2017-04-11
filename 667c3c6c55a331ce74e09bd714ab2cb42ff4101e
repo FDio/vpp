@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b7e91182",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-04-11T19:30:16Z",
+      "side": 1,
+      "message": "I guess this can be removed.",
+      "range": {
+        "startLine": 626,
+        "startChar": 8,
+        "endLine": 626,
+        "endChar": 30
+      },
+      "revId": "667c3c6c55a331ce74e09bd714ab2cb42ff4101e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
