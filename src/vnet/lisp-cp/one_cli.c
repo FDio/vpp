@@ -750,8 +750,9 @@ format_eid_entry (u8 * s, va_list * args)
 
   if (vec_len (ls->locator_indices) == 0)
     {
-      s = format (s, "%-35U%-30s%-20u%-u", format_gid_address, gid,
-		  type, ttl, aut);
+      s = format (s, "%-35U%-20saction:%-30U%-20u%-u", format_gid_address,
+		  gid, type, format_negative_mapping_action, mapit->action,
+		  ttl, aut);
     }
   else
     {
