@@ -492,7 +492,7 @@ ip_source_check_accept (vlib_main_t * vm,
 
   if (~0 != table_id)
     {
-      fib_index = fib_table_id_find_fib_index (pfx.fp_proto, table_id);
+      fib_index = fib_table_find (pfx.fp_proto, table_id);
       if (~0 == fib_index)
 	{
 	  error = clib_error_return (0, "Nonexistent table id %d", table_id);

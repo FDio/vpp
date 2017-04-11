@@ -302,11 +302,10 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	    {
 	      u16 tx_if = 0;
 	      u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
-	      ip4_main_t *im4 = &ip4_main;
-	      ip_lookup_main_t *lm = &im4->lookup_main;
+
 	      if (use_adj)
 		{
-		  ip_adjacency_t *adj = ip_get_adjacency (lm, adj_index);
+		  ip_adjacency_t *adj = adj_get (adj_index);
 		  tx_if = adj->rewrite_header.sw_if_index & 0xFFFF;
 		}
 
@@ -330,11 +329,10 @@ vxlan_gpe_ioam_trace_data_list_handler (vlib_buffer_t * b,
 	    {
 	      u16 tx_if = 0;
 	      u32 adj_index = vnet_buffer (b)->ip.adj_index[VLIB_TX];
-	      ip6_main_t *im6 = &ip6_main;
-	      ip_lookup_main_t *lm = &im6->lookup_main;
+
 	      if (use_adj)
 		{
-		  ip_adjacency_t *adj = ip_get_adjacency (lm, adj_index);
+		  ip_adjacency_t *adj = adj_get (adj_index);
 		  tx_if = adj->rewrite_header.sw_if_index & 0xFFFF;
 		}
 

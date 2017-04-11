@@ -376,10 +376,9 @@ update_lb (ip6_sr_policy_t * sr_policy)
 	       load_balance_create (0, DPO_PROTO_IP6, fhc));
 
       /* Update FIB entry's to point to the LB DPO in the main FIB and hidden one */
-      fib_table_entry_special_dpo_update (fib_table_id_find_fib_index
-					  (FIB_PROTOCOL_IP6,
-					   sr_policy->fib_table), &pfx,
-					  FIB_SOURCE_SR,
+      fib_table_entry_special_dpo_update (fib_table_find (FIB_PROTOCOL_IP6,
+							  sr_policy->fib_table),
+					  &pfx, FIB_SOURCE_SR,
 					  FIB_ENTRY_FLAG_EXCLUSIVE,
 					  &sr_policy->bsid_dpo);
 
@@ -470,10 +469,9 @@ update_replicate (ip6_sr_policy_t * sr_policy)
 		    .ip6 = sr_policy->bsid,
 		    }
       };
-      fib_table_entry_special_dpo_update (fib_table_id_find_fib_index
-					  (FIB_PROTOCOL_IP6,
-					   sr_policy->fib_table), &pfx,
-					  FIB_SOURCE_SR,
+      fib_table_entry_special_dpo_update (fib_table_find (FIB_PROTOCOL_IP6,
+							  sr_policy->fib_table),
+					  &pfx, FIB_SOURCE_SR,
 					  FIB_ENTRY_FLAG_EXCLUSIVE,
 					  &sr_policy->bsid_dpo);
 
@@ -568,9 +566,8 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
   };
 
   /* Lookup the FIB index associated to the table selected */
-  u32 fib_index = fib_table_id_find_fib_index (FIB_PROTOCOL_IP6,
-					       (fib_table !=
-						(u32) ~ 0 ? fib_table : 0));
+  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6,
+				  (fib_table != (u32) ~ 0 ? fib_table : 0));
   if (fib_index == ~0)
     return -13;
 
@@ -653,8 +650,8 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
     ,
   };
 
-  fib_table_entry_special_remove (fib_table_id_find_fib_index
-				  (FIB_PROTOCOL_IP6, sr_policy->fib_table),
+  fib_table_entry_special_remove (fib_table_find (FIB_PROTOCOL_IP6,
+						  sr_policy->fib_table),
 				  &pfx, FIB_SOURCE_SR);
 
   fib_table_entry_special_remove (sm->fib_table_ip6, &pfx, FIB_SOURCE_SR);

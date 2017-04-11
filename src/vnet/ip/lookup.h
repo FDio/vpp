@@ -121,12 +121,6 @@ struct ip_lookup_main_t;
 
 typedef struct ip_lookup_main_t
 {
-  /* Adjacency heap. */
-  ip_adjacency_t *adjacency_heap;
-
-  /** load-balance  packet/byte counters indexed by LB index. */
-  vlib_combined_counter_main_t load_balance_counters;
-
   /** Pool of addresses that are assigned to interfaces. */
   ip_interface_address_t *if_address_pool;
 
@@ -149,16 +143,11 @@ typedef struct ip_lookup_main_t
      sizeof (uword).  First word is always adjacency index. */
   u32 fib_result_n_bytes, fib_result_n_words;
 
-  format_function_t *format_fib_result;
-
   /** 1 for ip6; 0 for ip4. */
   u32 is_ip6;
 
   /** Either format_ip4_address_and_length or format_ip6_address_and_length. */
   format_function_t *format_address_and_length;
-
-  /** Special adjacency format functions */
-  format_function_t **special_adjacency_format_functions;
 
   /** Table mapping ip protocol to ip[46]-local node next index. */
   u8 local_next_by_ip_protocol[256];
@@ -166,22 +155,6 @@ typedef struct ip_lookup_main_t
   /** IP_BUILTIN_PROTOCOL_{TCP,UDP,ICMP,OTHER} by protocol in IP header. */
   u8 builtin_protocol_by_ip_protocol[256];
 } ip_lookup_main_t;
-
-always_inline ip_adjacency_t *
-ip_get_adjacency (ip_lookup_main_t * lm, u32 adj_index)
-{
-  ip_adjacency_t *adj;
-
-  adj = vec_elt_at_index (lm->adjacency_heap, adj_index);
-
-  return adj;
-}
-
-#define ip_prefetch_adjacency(lm,adj_index,type)		\
-do {								\
-  ip_adjacency_t * _adj = (lm)->adjacency_heap + (adj_index);	\
-  CLIB_PREFETCH (_adj, sizeof (_adj[0]), type);			\
-} while (0)
 
 clib_error_t *ip_interface_address_add_del (ip_lookup_main_t * lm,
 					    u32 sw_if_index,
@@ -197,8 +170,6 @@ ip_get_interface_address (ip_lookup_main_t * lm, void *addr_fib)
   uword *p = mhash_get (&lm->address_to_if_address_index, addr_fib);
   return p ? pool_elt_at_index (lm->if_address_pool, p[0]) : 0;
 }
-
-u32 fib_table_id_find_fib_index (fib_protocol_t proto, u32 table_id);
 
 always_inline void *
 ip_interface_address_get_address (ip_lookup_main_t * lm,

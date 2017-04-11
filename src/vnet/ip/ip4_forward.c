@@ -2036,7 +2036,7 @@ ip4_arp_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  adj0 = adj_get (adj_index0);
 	  ip0 = vlib_buffer_get_current (p0);
 
 	  a0 = hash_seeds[0];
@@ -2276,7 +2276,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 	 sw_if_index);
     }
 
-  adj = ip_get_adjacency (&im->lookup_main, ia->neighbor_probe_adj_index);
+  adj = adj_get (ia->neighbor_probe_adj_index);
 
   h =
     vlib_packet_template_get_packet (vm,
@@ -2465,8 +2465,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    }
 
 	  /* Rewrite packet header and updates lengths. */
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  adj0 = adj_get (adj_index0);
+	  adj1 = adj_get (adj_index1);
 
 	  /* Worth pipelining. No guarantee that adj0,1 are hot... */
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
@@ -2571,7 +2571,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  adj0 = adj_get (adj_index0);
 
 	  ip0 = vlib_buffer_get_current (p0);
 
@@ -3003,14 +3003,15 @@ VLIB_CLI_COMMAND (lookup_test_command, static) =
 int
 vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
 {
-  ip4_main_t *im4 = &ip4_main;
   ip4_fib_t *fib;
-  uword *p = hash_get (im4->fib_index_by_table_id, table_id);
+  u32 fib_index;
 
-  if (p == 0)
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
+
+  if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib = ip4_fib_get (p[0]);
+  fib = ip4_fib_get (fib_index);
 
   fib->flow_hash_config = flow_hash_config;
   return 0;

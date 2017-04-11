@@ -447,8 +447,8 @@ vnet_mpls_local_label (vlib_main_t * vm,
        */
       if (FIB_NODE_INDEX_INVALID == rpath.frp_sw_if_index)
       {
-	  fi = fib_table_id_find_fib_index(dpo_proto_to_fib(pfx.fp_payload_proto),
-					   rpaths[0].frp_fib_index);
+	  fi = fib_table_find(dpo_proto_to_fib(pfx.fp_payload_proto),
+                              rpaths[0].frp_fib_index);
 
 	  if (~0 == fi)
 	  {
