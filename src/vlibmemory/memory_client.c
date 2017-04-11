@@ -104,12 +104,254 @@ vl_api_rx_thread_exit_t_handler (vl_api_rx_thread_exit_t * mp)
 }
 
 static void
+vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
+{
+  serialize_main_t _sm, *sm = &_sm;
+  api_main_t *am = &api_main;
+  u8 *tblv;
+  u32 nmsgs;
+  int i;
+  u8 *name_and_crc;
+  u32 msg_index;
+
+  am->my_client_index = mp->index;
+  am->my_registration = (vl_api_registration_t *) (uword) mp->handle;
+
+  /* Clean out any previous hash table (unlikely) */
+  if (am->msg_index_by_name_and_crc)
+    {
+      int i;
+      u8 **keys = 0;
+      hash_pair_t *hp;
+      /* *INDENT-OFF* */
+      hash_foreach_pair (hp, am->msg_index_by_name_and_crc,
+      ({
+        vec_add1 (keys, (u8 *) hp->key);
+      }));
+      /* *INDENT-ON* */
+      for (i = 0; i < vec_len (keys); i++)
+	vec_free (keys[i]);
+      vec_free (keys);
+    }
+
+  am->msg_index_by_name_and_crc = hash_create_string (0, sizeof (uword));
+
+  /* Recreate the vnet-side API message handler table */
+  tblv = (u8 *) mp->message_table;
+  serialize_open_vector (sm, tblv);
+  unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+  for (i = 0; i < nmsgs; i++)
+    {
+      msg_index = unserialize_likely_small_unsigned_integer (sm);
+      unserialize_cstring (sm, (char **) &name_and_crc);
+      hash_set_mem (am->msg_index_by_name_and_crc, name_and_crc, msg_index);
+    }
+}
+
+static void
 noop_handler (void *notused)
 {
 }
 
-#define foreach_api_msg						\
-_(RX_THREAD_EXIT, rx_thread_exit)
+int
+vl_client_connect (char *name, int ctx_quota, int input_queue_size)
+{
+  svm_region_t *svm;
+  vl_api_memclnt_create_t *mp;
+  vl_api_memclnt_create_reply_t *rp;
+  unix_shared_memory_queue_t *vl_input_queue;
+  vl_shmem_hdr_t *shmem_hdr;
+  int rv = 0;
+  void *oldheap;
+  api_main_t *am = &api_main;
+
+  if (am->my_registration)
+    {
+      clib_warning ("client %s already connected...", name);
+      return -1;
+    }
+
+  if (am->vlib_rp == 0)
+    {
+      clib_warning ("am->vlib_rp NULL");
+      return -1;
+    }
+
+  svm = am->vlib_rp;
+  shmem_hdr = am->shmem_hdr;
+
+  if (shmem_hdr == 0 || shmem_hdr->vl_input_queue == 0)
+    {
+      clib_warning ("shmem_hdr / input queue NULL");
+      return -1;
+    }
+
+  pthread_mutex_lock (&svm->mutex);
+  oldheap = svm_push_data_heap (svm);
+  vl_input_queue =
+    unix_shared_memory_queue_init (input_queue_size, sizeof (uword),
+				   getpid (), 0);
+  pthread_mutex_unlock (&svm->mutex);
+  svm_pop_heap (oldheap);
+
+  am->my_client_index = ~0;
+  am->my_registration = 0;
+  am->vl_input_queue = vl_input_queue;
+
+  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_create_t));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE);
+  mp->ctx_quota = ctx_quota;
+  mp->input_queue = (uword) vl_input_queue;
+  strncpy ((char *) mp->name, name, sizeof (mp->name) - 1);
+
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+
+  while (1)
+    {
+      int qstatus;
+      struct timespec ts, tsrem;
+      int i;
+
+      /* Wait up to 10 seconds */
+      for (i = 0; i < 1000; i++)
+	{
+	  qstatus = unix_shared_memory_queue_sub (vl_input_queue, (u8 *) & rp,
+						  1 /* nowait */ );
+	  if (qstatus == 0)
+	    goto read_one_msg;
+	  ts.tv_sec = 0;
+	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
+	  while (nanosleep (&ts, &tsrem) < 0)
+	    ts = tsrem;
+	}
+      /* Timeout... */
+      clib_warning ("memclnt_create_reply timeout");
+      return -1;
+
+    read_one_msg:
+      if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_CREATE_REPLY)
+	{
+	  clib_warning ("unexpected reply: id %d", ntohs (rp->_vl_msg_id));
+	  continue;
+	}
+      rv = clib_net_to_host_u32 (rp->response);
+
+      vl_msg_api_handler ((void *) rp);
+      break;
+    }
+  return (rv);
+}
+
+static void
+vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
+{
+  void *oldheap;
+  api_main_t *am = &api_main;
+
+  pthread_mutex_lock (&am->vlib_rp->mutex);
+  oldheap = svm_push_data_heap (am->vlib_rp);
+  unix_shared_memory_queue_free (am->vl_input_queue);
+  pthread_mutex_unlock (&am->vlib_rp->mutex);
+  svm_pop_heap (oldheap);
+
+  am->my_client_index = ~0;
+  am->my_registration = 0;
+  am->vl_input_queue = 0;
+}
+
+void
+vl_client_disconnect (void)
+{
+  vl_api_memclnt_delete_t *mp;
+  vl_api_memclnt_delete_reply_t *rp;
+  unix_shared_memory_queue_t *vl_input_queue;
+  vl_shmem_hdr_t *shmem_hdr;
+  time_t begin;
+  api_main_t *am = &api_main;
+
+  ASSERT (am->vlib_rp);
+  shmem_hdr = am->shmem_hdr;
+  ASSERT (shmem_hdr && shmem_hdr->vl_input_queue);
+
+  vl_input_queue = am->vl_input_queue;
+
+  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_delete_t));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_DELETE);
+  mp->index = am->my_client_index;
+  mp->handle = (uword) am->my_registration;
+
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+
+  /*
+   * Have to be careful here, in case the client is disconnecting
+   * because e.g. the vlib process died, or is unresponsive.
+   */
+
+  begin = time (0);
+  while (1)
+    {
+      time_t now;
+
+      now = time (0);
+
+      if (now >= (begin + 2))
+	{
+	  clib_warning ("peer unresponsive, give up");
+	  am->my_client_index = ~0;
+	  am->my_registration = 0;
+	  am->shmem_hdr = 0;
+	  break;
+	}
+      if (unix_shared_memory_queue_sub (vl_input_queue, (u8 *) & rp, 1) < 0)
+	continue;
+
+      /* drain the queue */
+      if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_DELETE_REPLY)
+	{
+	  vl_msg_api_handler ((void *) rp);
+	  continue;
+	}
+      vl_msg_api_handler ((void *) rp);
+      break;
+    }
+}
+
+#define foreach_api_msg                         \
+_(RX_THREAD_EXIT, rx_thread_exit)               \
+_(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   \
+_(MEMCLNT_DELETE_REPLY, memclnt_delete_reply)
+
+
+int
+vl_client_api_map (char *region_name)
+{
+  int rv;
+
+  if ((rv = vl_map_shmem (region_name, 0 /* is_vlib */ )) < 0)
+    {
+      return rv;
+    }
+
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+                            vl_api_##n##_t_handler,             \
+                            noop_handler,                       \
+                            vl_api_##n##_t_endian,              \
+                            vl_api_##n##_t_print,               \
+                            sizeof(vl_api_##n##_t), 1);
+  foreach_api_msg;
+#undef _
+  return 0;
+}
+
+void
+vl_client_api_unmap (void)
+{
+  vl_unmap_shmem ();
+}
 
 static int
 connect_to_vlib_internal (char *svm_name, char *client_name,
@@ -123,16 +365,6 @@ connect_to_vlib_internal (char *svm_name, char *client_name,
       clib_warning ("vl_client_api map rv %d", rv);
       return rv;
     }
-
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                            vl_api_##n##_t_handler,             \
-                            noop_handler,                       \
-                            vl_api_##n##_t_endian,              \
-                            vl_api_##n##_t_print,               \
-                            sizeof(vl_api_##n##_t), 1);
-  foreach_api_msg;
-#undef _
 
   if (vl_client_connect (client_name, 0 /* punt quota */ ,
 			 rx_queue_size /* input queue */ ) < 0)
