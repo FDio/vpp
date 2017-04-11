@@ -173,6 +173,7 @@ typedef struct
   /* The current rewrite string being used */
   u8 *rewrite;
   u8 rewrite_pool_index_offset;
+  ip6_address_t sr_localsid_cache;
 
   u64 lookup_table_nbuckets;
   u64 lookup_table_size;
@@ -190,6 +191,7 @@ typedef struct
    */
   bool criteria_oneway;
   u8 wait_for_responses;
+  ip6_address_t sr_localsid_ts;
 
   /* convenience */
   vlib_main_t *vlib_main;
@@ -276,17 +278,11 @@ typedef CLIB_PACKED (struct
 
 static inline void
 ioam_e2e_id_rewrite_handler (ioam_e2e_id_option_t * e2e_option,
-			     vlib_buffer_t * b0)
+			     ip6_address_t * address)
 {
-  ip6_main_t *im = &ip6_main;
-  ip6_address_t *my_address = 0;
-  my_address =
-    ip6_interface_first_address (im, vnet_buffer (b0)->sw_if_index[VLIB_RX]);
-  if (my_address)
-    {
-      e2e_option->id.as_u64[0] = my_address->as_u64[0];
-      e2e_option->id.as_u64[1] = my_address->as_u64[1];
-    }
+  e2e_option->id.as_u64[0] = address->as_u64[0];
+  e2e_option->id.as_u64[1] = address->as_u64[1];
+
 }
 
 /* Following functions are for the caching of ioam header
@@ -400,7 +396,7 @@ ioam_cache_add (vlib_buffer_t * b0,
 
   /* suffix rewrite string with e2e ID option */
   e2e = (ioam_e2e_id_option_t *) (entry->ioam_rewrite_string + e2e_id_offset);
-  ioam_e2e_id_rewrite_handler (e2e, b0);
+  ioam_e2e_id_rewrite_handler (e2e, &cm->sr_localsid_cache);
   entry->my_address_offset = (u8 *) (&e2e->id) - (u8 *) hbh0;
 
   /* add it to hash, replacing and freeing any collision for now */
