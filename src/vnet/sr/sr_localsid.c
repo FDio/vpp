@@ -93,9 +93,9 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 			}
 	  };
 
-	  fib_table_entry_delete (fib_table_id_find_fib_index
-				  (FIB_PROTOCOL_IP6, fib_table), &pfx,
-				  FIB_SOURCE_SR);
+	  fib_table_entry_delete (fib_table_find (FIB_PROTOCOL_IP6,
+						  fib_table),
+				  &pfx, FIB_SOURCE_SR);
 
 	  /* In case it is a Xconnect iface remove the (OIF, NHOP) adj */
 	  if (ls->behavior == SR_BEHAVIOR_X || ls->behavior == SR_BEHAVIOR_DX6
@@ -135,7 +135,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
   pfx.fp_addr.as_u64[1] = localsid_addr->as_u64[1];
 
   /* Lookup the FIB index associated to the table id provided */
-  u32 fib_index = fib_table_id_find_fib_index (FIB_PROTOCOL_IP6, fib_table);
+  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP6, fib_table);
   if (fib_index == ~0)
     return -3;
 

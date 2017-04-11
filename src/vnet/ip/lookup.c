@@ -191,9 +191,6 @@ VNET_SW_INTERFACE_ADD_DEL_FUNCTION (ip_sw_interface_add_del);
 void
 ip_lookup_init (ip_lookup_main_t * lm, u32 is_ip6)
 {
-  /* Preallocate three "special" adjacencies */
-  lm->adjacency_heap = adj_pool;
-
   if (!lm->fib_result_n_bytes)
     lm->fib_result_n_bytes = sizeof (uword);
 
@@ -352,32 +349,6 @@ const ip46_address_t zero_addr = {
   .as_u64 = {
 	     0, 0},
 };
-
-u32
-fib_table_id_find_fib_index (fib_protocol_t proto, u32 table_id)
-{
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
-  uword *p;
-
-  switch (proto)
-    {
-    case FIB_PROTOCOL_IP4:
-      p = hash_get (im4->fib_index_by_table_id, table_id);
-      break;
-    case FIB_PROTOCOL_IP6:
-      p = hash_get (im6->fib_index_by_table_id, table_id);
-      break;
-    default:
-      p = NULL;
-      break;
-    }
-  if (NULL != p)
-    {
-      return (p[0]);
-    }
-  return (~0);
-}
 
 clib_error_t *
 vnet_ip_route_cmd (vlib_main_t * vm,
@@ -602,7 +573,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
     }
   else
     {
-      fib_index = fib_table_id_find_fib_index (prefixs[0].fp_proto, table_id);
+      fib_index = fib_table_find (prefixs[0].fp_proto, table_id);
 
       if (~0 == fib_index)
 	{
@@ -651,8 +622,8 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 		  /*
 		   * the CLI parsing stored table Ids, swap to FIB indicies
 		   */
-		  fi = fib_table_id_find_fib_index (prefixs[i].fp_proto,
-						    rpaths[i].frp_fib_index);
+		  fi = fib_table_find (prefixs[i].fp_proto,
+				       rpaths[i].frp_fib_index);
 
 		  if (~0 == fi)
 		    {

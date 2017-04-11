@@ -265,8 +265,7 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 		      continue;
 		    }
 
-		  adj0 =
-		    ip_get_adjacency (&(ip4_main.lookup_main), adj_index0);
+		  adj0 = adj_get (adj_index0);
 		  sw_if_index0 = adj0->rewrite_header.sw_if_index;
 
 		  if (~0 == sw_if_index0)

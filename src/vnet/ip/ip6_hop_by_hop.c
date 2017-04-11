@@ -581,8 +581,6 @@ static uword
 ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 			    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
   u32 processed = 0;
@@ -640,8 +638,8 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 	  ip1 = vlib_buffer_get_current (b1);
 	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	  adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  adj0 = adj_get (adj_index0);
+	  adj1 = adj_get (adj_index1);
 
 	  next0 = adj0->lookup_next_index;
 	  next1 = adj1->lookup_next_index;
@@ -729,7 +727,7 @@ ip6_pop_hop_by_hop_node_fn (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (b0);
 	  adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  adj0 = adj_get (adj_index0);
 
 	  /* Default use the next_index from the adjacency. */
 	  next0 = adj0->lookup_next_index;

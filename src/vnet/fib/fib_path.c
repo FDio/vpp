@@ -240,25 +240,6 @@ typedef struct fib_path_t_ {
 	    } fp_nh;
 	    /**
 	     * The FIB table index in which to find the next-hop.
-	     * This needs to be fixed. We should lookup the adjacencies in
-	     * a separate table of adjacencies, rather than from the FIB.
-	     * Two reasons I can think of:
-	     *   - consider:
-	     *       int ip addr Gig0 10.0.0.1/24
-	     *       ip route 10.0.0.2/32 via Gig1 192.168.1.2
-	     *       ip route 1.1.1.1/32 via Gig0 10.0.0.2
-	     *     this is perfectly valid.
-	     *     Packets addressed to 10.0.0.2 should be sent via Gig1.
-	     *     Packets address to 1.1.1.1 should be sent via Gig0.
-	     *    when we perform the adj resolution from the FIB for the path
-	     *    "via Gig0 10.0.0.2" the lookup will result in the route via Gig1
-	     *    and so we will pick up the adj via Gig1 - which was not what the
-	     *    operator wanted.
-	     *  - we can only return link-type IPv4 and so not the link-type MPLS.
-	     *    more on this in a later commit.
-	     *
-	     * The table ID should only belong to a recursive path and indicate
-	     * which FIB should be used to resolve the next-hop.
 	     */
 	    fib_node_index_t fp_tbl_id;
 	} recursive;

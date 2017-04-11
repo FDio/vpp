@@ -1915,18 +1915,15 @@ vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 int
 vnet_proxy_arp_fib_reset (u32 fib_id)
 {
-  ip4_main_t *im = &ip4_main;
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_proxy_arp_t *pa;
   u32 *entries_to_delete = 0;
   u32 fib_index;
-  uword *p;
   int i;
 
-  p = hash_get (im->fib_index_by_table_id, fib_id);
-  if (!p)
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, fib_id);
+  if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
-  fib_index = p[0];
 
   vec_foreach (pa, am->proxy_arps)
   {
@@ -1985,11 +1982,10 @@ ip_arp_add_del_command_fn (vlib_main_t * vm,
 
       else if (unformat (input, "fib-id %d", &fib_id))
 	{
-	  ip4_main_t *im = &ip4_main;
-	  uword *p = hash_get (im->fib_index_by_table_id, fib_id);
-	  if (!p)
+	  fib_index = fib_table_find (FIB_PROTOCOL_IP4, fib_id);
+
+	  if (~0 == fib_index)
 	    return clib_error_return (0, "fib ID %d doesn't exist\n", fib_id);
-	  fib_index = p[0];
 	}
 
       else if (unformat (input, "proxy %U - %U",

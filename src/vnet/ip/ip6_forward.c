@@ -1611,7 +1611,7 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  adj0 = adj_get (adj_index0);
 
 	  if (!is_glean)
 	    {
@@ -1862,7 +1862,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
     vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
 
   /* Add encapsulation string for software interface (e.g. ethernet header). */
-  adj = ip_get_adjacency (&im->lookup_main, ia->neighbor_probe_adj_index);
+  adj = adj_get (ia->neighbor_probe_adj_index);
   vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
   vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
 
@@ -2007,8 +2007,8 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    {
 	      p1->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
 	    }
-	  adj0 = ip_get_adjacency (lm, adj_index0);
-	  adj1 = ip_get_adjacency (lm, adj_index1);
+	  adj0 = adj_get (adj_index0);
+	  adj1 = adj_get (adj_index1);
 
 	  rw_len0 = adj0[0].rewrite_header.data_bytes;
 	  rw_len1 = adj1[0].rewrite_header.data_bytes;
@@ -2108,7 +2108,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 
 	  adj_index0 = vnet_buffer (p0)->ip.adj_index[VLIB_TX];
 
-	  adj0 = ip_get_adjacency (lm, adj_index0);
+	  adj0 = adj_get (adj_index0);
 
 	  ip0 = vlib_buffer_get_current (p0);
 
@@ -2531,8 +2531,6 @@ ip6_hop_by_hop (vlib_main_t * vm,
   ip6_hop_by_hop_main_t *hm = &ip6_hop_by_hop_main;
   u32 n_left_from, *from, *to_next;
   ip_lookup_next_t next_index;
-  ip6_main_t *im = &ip6_main;
-  ip_lookup_main_t *lm = &im->lookup_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -2581,9 +2579,9 @@ ip6_hop_by_hop (vlib_main_t * vm,
 
 	  /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
 	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  ip_adjacency_t *adj0 = ip_get_adjacency (lm, adj_index0);
+	  ip_adjacency_t *adj0 = adj_get (adj_index0);
 	  u32 adj_index1 = vnet_buffer (b1)->ip.adj_index[VLIB_TX];
-	  ip_adjacency_t *adj1 = ip_get_adjacency (lm, adj_index1);
+	  ip_adjacency_t *adj1 = adj_get (adj_index1);
 
 	  /* Default use the next_index from the adjacency. A HBH option rarely redirects to a different node */
 	  next0 = adj0->lookup_next_index;
@@ -2704,7 +2702,7 @@ ip6_hop_by_hop (vlib_main_t * vm,
 	   * A HBH option rarely redirects to a different node
 	   */
 	  u32 adj_index0 = vnet_buffer (b0)->ip.adj_index[VLIB_TX];
-	  ip_adjacency_t *adj0 = ip_get_adjacency (lm, adj_index0);
+	  ip_adjacency_t *adj0 = adj_get (adj_index0);
 	  next0 = adj0->lookup_next_index;
 
 	  ip0 = vlib_buffer_get_current (b0);
@@ -3114,14 +3112,15 @@ VLIB_CLI_COMMAND (test_link_command, static) =
 int
 vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
 {
-  ip6_main_t *im6 = &ip6_main;
   ip6_fib_t *fib;
-  uword *p = hash_get (im6->fib_index_by_table_id, table_id);
+  u32 fib_index;
 
-  if (p == 0)
-    return -1;
+  fib_index = fib_table_find (FIB_PROTOCOL_IP6, table_id);
 
-  fib = ip6_fib_get (p[0]);
+  if (~0 == fib_index)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  fib = ip6_fib_get (fib_index);
 
   fib->flow_hash_config = flow_hash_config;
   return 1;

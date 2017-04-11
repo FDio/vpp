@@ -71,9 +71,6 @@ adj_alloc (fib_protocol_t proto)
     memset(&adj->sub_type.midchain.next_dpo, 0,
            sizeof(adj->sub_type.midchain.next_dpo));
 
-    ip4_main.lookup_main.adjacency_heap = adj_pool;
-    ip6_main.lookup_main.adjacency_heap = adj_pool;
-
     return (adj);
 }
 

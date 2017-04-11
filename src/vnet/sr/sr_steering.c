@@ -115,10 +115,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip6 = steer_pl->classify.l3.prefix.ip6;
 
-	      fib_table_entry_delete (fib_table_id_find_fib_index
+	      fib_table_entry_delete (fib_table_find
 				      (FIB_PROTOCOL_IP6,
-				       steer_pl->classify.l3.fib_table), &pfx,
-				      FIB_SOURCE_SR);
+				       steer_pl->classify.l3.fib_table),
+				      &pfx, FIB_SOURCE_SR);
 	    }
 	  else if (steer_pl->classify.traffic_type == SR_STEER_IPV4)
 	    {
@@ -127,7 +127,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip4 = steer_pl->classify.l3.prefix.ip4;
 
-	      fib_table_entry_delete (fib_table_id_find_fib_index
+	      fib_table_entry_delete (fib_table_find
 				      (FIB_PROTOCOL_IP4,
 				       steer_pl->classify.l3.fib_table), &pfx,
 				      FIB_SOURCE_SR);
@@ -194,10 +194,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip6 = steer_pl->classify.l3.prefix.ip6;
 
-	      fib_table_entry_delete (fib_table_id_find_fib_index
+	      fib_table_entry_delete (fib_table_find
 				      (FIB_PROTOCOL_IP6,
-				       steer_pl->classify.l3.fib_table), &pfx,
-				      FIB_SOURCE_SR);
+				       steer_pl->classify.l3.fib_table),
+				      &pfx, FIB_SOURCE_SR);
 
 	      /* Create a new one */
 	      goto update_fib;
@@ -209,10 +209,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      pfx.fp_len = steer_pl->classify.l3.mask_width;
 	      pfx.fp_addr.ip4 = steer_pl->classify.l3.prefix.ip4;
 
-	      fib_table_entry_delete (fib_table_id_find_fib_index
+	      fib_table_entry_delete (fib_table_find
 				      (FIB_PROTOCOL_IP4,
-				       steer_pl->classify.l3.fib_table), &pfx,
-				      FIB_SOURCE_SR);
+				       steer_pl->classify.l3.fib_table),
+				      &pfx, FIB_SOURCE_SR);
 
 	      /* Create a new one */
 	      goto update_fib;
@@ -304,10 +304,10 @@ update_fib:
       pfx.fp_len = steer_pl->classify.l3.mask_width;
       pfx.fp_addr.ip6 = steer_pl->classify.l3.prefix.ip6;
 
-      fib_table_entry_path_add (fib_table_id_find_fib_index (FIB_PROTOCOL_IP6,
-							     (table_id !=
-							      (u32) ~ 0 ?
-							      table_id : 0)),
+      fib_table_entry_path_add (fib_table_find (FIB_PROTOCOL_IP6,
+						(table_id !=
+						 (u32) ~ 0 ?
+						 table_id : 0)),
 				&pfx, FIB_SOURCE_SR,
 				FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
 				FIB_PROTOCOL_IP6,
@@ -321,10 +321,10 @@ update_fib:
       pfx.fp_len = steer_pl->classify.l3.mask_width;
       pfx.fp_addr.ip4 = steer_pl->classify.l3.prefix.ip4;
 
-      fib_table_entry_path_add (fib_table_id_find_fib_index (FIB_PROTOCOL_IP4,
-							     (table_id !=
-							      (u32) ~ 0 ?
-							      table_id : 0)),
+      fib_table_entry_path_add (fib_table_find (FIB_PROTOCOL_IP4,
+						(table_id !=
+						 (u32) ~ 0 ?
+						 table_id : 0)),
 				&pfx, FIB_SOURCE_SR,
 				FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
 				FIB_PROTOCOL_IP6,

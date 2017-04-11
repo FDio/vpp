@@ -1001,8 +1001,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 
 	      if (ADJ_INDEX_INVALID != src_adj_index0)
 		{
-		  ip_adjacency_t *adj0 =
-		    ip_get_adjacency (&im->lookup_main, src_adj_index0);
+		  ip_adjacency_t *adj0 = adj_get (src_adj_index0);
 
 		  /* Allow all realistic-looking rewrite adjacencies to pass */
 		  ni0 = adj0->lookup_next_index;
@@ -1322,8 +1321,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 
 	      if (ADJ_INDEX_INVALID != src_adj_index0)
 		{
-		  ip_adjacency_t *adj0 = ip_get_adjacency (&im->lookup_main,
-							   src_adj_index0);
+		  ip_adjacency_t *adj0 = adj_get (src_adj_index0);
 
 		  error0 = (adj0->rewrite_header.sw_if_index != sw_if_index0
 			    ?
