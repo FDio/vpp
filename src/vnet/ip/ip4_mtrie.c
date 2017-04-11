@@ -271,7 +271,7 @@ set_leaf (ip4_fib_mtrie_t * m,
 
   old_ply = pool_elt_at_index (ip4_ply_pool, old_ply_index);
 
-  ASSERT (a->dst_address_length >= 0 && a->dst_address_length <= 32);
+  ASSERT (a->dst_address_length <= 32);
   ASSERT (dst_address_byte_index < ARRAY_LEN (a->dst_address.as_u8));
 
   /* how many bits of the destination address are in the next PLY */
@@ -284,7 +284,8 @@ set_leaf (ip4_fib_mtrie_t * m,
   if (n_dst_bits_next_plies <= 0)
     {
       /* The mask length of the address to insert maps to this ply */
-      uword i, n_dst_bits_this_ply, old_leaf_is_terminal;
+      uword i, old_leaf_is_terminal;
+      u32 n_dst_bits_this_ply;
 
       /* The number of bits, and hence slots/buckets, we will fill */
       n_dst_bits_this_ply = clib_min (8, -n_dst_bits_next_plies);
@@ -401,7 +402,7 @@ set_root_leaf (ip4_fib_mtrie_t * m,
 
   old_ply = &m->root_ply;
 
-  ASSERT (a->dst_address_length >= 0 && a->dst_address_length <= 32);
+  ASSERT (a->dst_address_length <= 32);
 
   /* how many bits of the destination address are in the next PLY */
   n_dst_bits_next_plies = a->dst_address_length - BITS (u16);
@@ -412,7 +413,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
   if (n_dst_bits_next_plies <= 0)
     {
       /* The mask length of the address to insert maps to this ply */
-      uword i, n_dst_bits_this_ply, old_leaf_is_terminal;
+      uword i, old_leaf_is_terminal;
+      u32 n_dst_bits_this_ply;
 
       /* The number of bits, and hence slots/buckets, we will fill */
       n_dst_bits_this_ply = 16 - a->dst_address_length;
@@ -515,7 +517,7 @@ unset_leaf (ip4_fib_mtrie_t * m,
   i32 i, n_dst_bits_this_ply, old_leaf_is_terminal;
   u8 dst_byte;
 
-  ASSERT (a->dst_address_length >= 0 && a->dst_address_length <= 32);
+  ASSERT (a->dst_address_length <= 32);
   ASSERT (dst_address_byte_index < ARRAY_LEN (a->dst_address.as_u8));
 
   n_dst_bits_next_plies =
@@ -588,7 +590,7 @@ unset_root_leaf (ip4_fib_mtrie_t * m,
   u16 dst_byte;
   ip4_fib_mtrie_16_ply_t *old_ply;
 
-  ASSERT (a->dst_address_length >= 0 && a->dst_address_length <= 32);
+  ASSERT (a->dst_address_length <= 32);
 
   old_ply = &m->root_ply;
   n_dst_bits_next_plies = a->dst_address_length - BITS (u16);
