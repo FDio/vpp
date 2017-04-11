@@ -174,9 +174,6 @@ vnet_device_input_unassign_thread (vnet_main_t * vnm, u32 hw_if_index,
 
   old_thread_index = hw->input_node_thread_index_by_queue[queue_id];
 
-  if (old_thread_index == thread_index)
-    return 0;
-
   vm = vlib_mains[old_thread_index];
 
   rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
