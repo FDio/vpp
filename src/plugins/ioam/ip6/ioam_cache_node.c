@@ -355,7 +355,6 @@ ip6_add_from_cache_hbh_node_fn (vlib_main_t * vm,
 	  clib_memcpy (&srh0->segments[1],
 		       (u8 *) hbh0 + entry->my_address_offset,
 		       sizeof (ip6_address_t));
-	  srh0->segments_left--;
 	  ioam_cache_entry_free (entry);
 
 	  /* Patch the protocol chain, insert the h-b-h (type 0) header */

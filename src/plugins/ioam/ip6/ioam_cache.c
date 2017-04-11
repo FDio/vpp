@@ -94,13 +94,16 @@ ioam_e2e_cache_trace_handler (u8 * s, ip6_hop_by_hop_option_t * opt)
 
 /* Action function shared between message handler and debug CLI */
 int
-ioam_cache_ip6_enable_disable (ioam_cache_main_t * em, u8 is_disable)
+ioam_cache_ip6_enable_disable (ioam_cache_main_t * em,
+			       ip6_address_t * sr_localsid, u8 is_disable)
 {
   vlib_main_t *vm = em->vlib_main;
 
   if (is_disable == 0)
     {
       ioam_cache_table_init (vm);
+      em->sr_localsid_cache.as_u64[0] = sr_localsid->as_u64[0];
+      em->sr_localsid_cache.as_u64[1] = sr_localsid->as_u64[1];
       ip6_hbh_set_next_override (em->cache_hbh_slot);
       ip6_hbh_register_option (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE_ID,
 			       0, ioam_e2e_id_trace_handler);
@@ -112,6 +115,8 @@ ioam_cache_ip6_enable_disable (ioam_cache_main_t * em, u8 is_disable)
     {
       ip6_hbh_set_next_override (IP6_LOOKUP_NEXT_POP_HOP_BY_HOP);
       ioam_cache_table_destroy (vm);
+      em->sr_localsid_cache.as_u64[0] = 0;
+      em->sr_localsid_cache.as_u64[1] = 0;
       ip6_hbh_unregister_option (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE_ID);
       ip6_hbh_unregister_option (HBH_OPTION_TYPE_IOAM_E2E_CACHE_ID);
     }
@@ -123,7 +128,9 @@ ioam_cache_ip6_enable_disable (ioam_cache_main_t * em, u8 is_disable)
 int
 ioam_tunnel_select_ip6_enable_disable (ioam_cache_main_t * em,
 				       u8 criteria,
-				       u8 no_of_responses, u8 is_disable)
+				       u8 no_of_responses,
+				       ip6_address_t * sr_localsid,
+				       u8 is_disable)
 {
   vlib_main_t *vm = em->vlib_main;
 
@@ -132,6 +139,8 @@ ioam_tunnel_select_ip6_enable_disable (ioam_cache_main_t * em,
       ioam_cache_ts_table_init (vm);
       em->criteria_oneway = criteria;
       em->wait_for_responses = no_of_responses;
+      em->sr_localsid_ts.as_u64[0] = sr_localsid->as_u64[0];
+      em->sr_localsid_ts.as_u64[1] = sr_localsid->as_u64[1];
       ip6_hbh_set_next_override (em->ts_hbh_slot);
       ip6_ioam_ts_cache_set_rewrite ();
       ip6_hbh_register_option (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE_ID,
@@ -146,6 +155,8 @@ ioam_tunnel_select_ip6_enable_disable (ioam_cache_main_t * em,
     {
       ioam_cache_ts_timer_node_enable (vm, 0);
       ip6_hbh_set_next_override (IP6_LOOKUP_NEXT_POP_HOP_BY_HOP);
+      em->sr_localsid_ts.as_u64[0] = 0;
+      em->sr_localsid_ts.as_u64[1] = 0;
       ioam_cache_ts_table_destroy (vm);
       ip6_ioam_ts_cache_cleanup_rewrite ();
       ip6_hbh_unregister_option (HBH_OPTION_TYPE_IOAM_EDGE_TO_EDGE_ID);
@@ -161,9 +172,13 @@ static void vl_api_ioam_cache_ip6_enable_disable_t_handler
 {
   vl_api_ioam_cache_ip6_enable_disable_reply_t *rmp;
   ioam_cache_main_t *cm = &ioam_cache_main;
+  ip6_address_t sr_localsid;
   int rv;
 
-  rv = ioam_cache_ip6_enable_disable (cm, (int) (mp->is_disable));
+  sr_localsid.as_u64[0] = 0;
+  sr_localsid.as_u64[1] = 0;
+  rv =
+    ioam_cache_ip6_enable_disable (cm, &sr_localsid, (int) (mp->is_disable));
   REPLY_MACRO (VL_API_IOAM_CACHE_IP6_ENABLE_DISABLE_REPLY);
 }
 
@@ -205,15 +220,25 @@ set_ioam_cache_command_fn (vlib_main_t * vm,
 {
   ioam_cache_main_t *em = &ioam_cache_main;
   u8 is_disable = 0;
+  ip6_address_t sr_localsid;
+  u8 address_set = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "disable"))
 	is_disable = 1;
+      else if (!address_set
+	       && unformat (input, "sr_localsid %U", unformat_ip6_address,
+			    &sr_localsid))
+	address_set = 1;
       else
 	break;
     }
-  ioam_cache_ip6_enable_disable (em, is_disable);
+
+  if (is_disable == 0 && !address_set)
+    return clib_error_return (0, "Error: SRv6 LocalSID address is mandatory");
+
+  ioam_cache_ip6_enable_disable (em, &sr_localsid, is_disable);
 
   return 0;
 }
@@ -222,7 +247,8 @@ set_ioam_cache_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ioam_cache_command, static) =
 {
 .path = "set ioam ip6 cache",.short_help =
-    "set ioam ip6 cache [disable]",.function = set_ioam_cache_command_fn};
+    "set ioam ip6 cache sr_localsid <ip6 address> [disable]",.function =
+    set_ioam_cache_command_fn};
 /* *INDENT_ON* */
 
 #define IOAM_TS_WAIT_FOR_RESPONSES 3
@@ -234,7 +260,10 @@ set_ioam_tunnel_select_command_fn (vlib_main_t * vm,
   ioam_cache_main_t *em = &ioam_cache_main;
   u8 is_disable = 0;
   u8 one_way = 0;
+  ip6_address_t sr_localsid;
+  u8 address_set = 0;
   u8 no_of_responses = IOAM_TS_WAIT_FOR_RESPONSES;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "disable"))
@@ -245,12 +274,19 @@ set_ioam_tunnel_select_command_fn (vlib_main_t * vm,
 	one_way = 1;
       else if (unformat (input, "wait_for_responses %d", &no_of_responses))
 	;
+      else if (!address_set
+	       && unformat (input, "sr_localsid %U", unformat_ip6_address,
+			    &sr_localsid))
+	address_set = 1;
       else
 	break;
     }
+  if (is_disable == 0 && !address_set)
+    return clib_error_return (0,
+			      "Error: SRv6 LocalSID address is mandatory to receive response.");
 
   ioam_tunnel_select_ip6_enable_disable (em, one_way, no_of_responses,
-					 is_disable);
+					 &sr_localsid, is_disable);
 
   return 0;
 }
@@ -259,8 +295,8 @@ set_ioam_tunnel_select_command_fn (vlib_main_t * vm,
 VLIB_CLI_COMMAND (set_ioam_cache_ts_command, static) =
 {
 .path = "set ioam ip6 sr-tunnel-select",.short_help =
-    "set ioam ip6 sr-tunnel-select [disable] [oneway|rtt] [wait_for_responses <n|default 3>]",.function
-    = set_ioam_tunnel_select_command_fn};
+    "set ioam ip6 sr-tunnel-select [disable] [oneway|rtt] [wait_for_responses <n|default 3>] \
+  [sr_localsid <ip6 address>]",.function = set_ioam_tunnel_select_command_fn};
 /* *INDENT_ON* */
 
 static void
