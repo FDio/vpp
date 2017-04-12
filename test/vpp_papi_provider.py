@@ -1775,3 +1775,35 @@ class VppPapiProvider(object):
                 'is_translation': is_translation,
                 'mtu': mtu
             })
+
+    def gtpu_add_del_tunnel(
+            self,
+            src_addr,
+            dst_addr,
+            is_add=1,
+            is_ipv6=0,
+            mcast_sw_if_index=0xFFFFFFFF,
+            encap_vrf_id=0,
+            decap_next_index=0xFFFFFFFF,
+            teid=0):
+        """
+
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+        :param src_addr:
+        :param dst_addr:
+        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param encap_vrf_id:  (Default value = 0)
+        :param decap_next_index:  (Default value = 0xFFFFFFFF)
+        :param teid:  (Default value = 0)
+
+        """
+        return self.api(self.papi.gtpu_add_del_tunnel,
+                        {'is_add': is_add,
+                         'is_ipv6': is_ipv6,
+                         'src_address': src_addr,
+                         'dst_address': dst_addr,
+                         'mcast_sw_if_index': mcast_sw_if_index,
+                         'encap_vrf_id': encap_vrf_id,
+                         'decap_next_index': decap_next_index,
+                         'teid': teid})
