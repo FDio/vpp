@@ -41,6 +41,11 @@ if ENABLE_FLOWPERPKT_PLUGIN
 include flowperpkt.am
 endif
 
+
+if ENABLE_GTPU_PLUGIN
+include gtpu.am
+endif
+
 if ENABLE_ILA_PLUGIN
 include ila.am
 endif
