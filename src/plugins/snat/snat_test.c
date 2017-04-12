@@ -21,6 +21,7 @@
 #include <vlibsocket/api.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
+#include <snat/snat.h>
 
 #define __plugin_msg_base snat_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -67,7 +68,8 @@ _(snat_add_static_mapping_reply)                \
 _(snat_set_workers_reply)                       \
 _(snat_add_del_interface_addr_reply)            \
 _(snat_ipfix_enable_disable_reply)              \
-_(snat_add_det_map_reply)
+_(snat_add_det_map_reply)                       \
+_(snat_det_set_timeouts_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -111,7 +113,9 @@ _(SNAT_USER_SESSION_DETAILS, snat_user_session_details)         \
 _(SNAT_ADD_DET_MAP_REPLY, snat_add_det_map_reply)               \
 _(SNAT_DET_FORWARD_REPLY, snat_det_forward_reply)               \
 _(SNAT_DET_REVERSE_REPLY, snat_det_reverse_reply)               \
-_(SNAT_DET_MAP_DETAILS, snat_det_map_details)
+_(SNAT_DET_MAP_DETAILS, snat_det_map_details)                   \
+_(SNAT_DET_SET_TIMEOUTS_REPLY, snat_det_set_timeouts_reply)     \
+_(SNAT_DET_GET_TIMEOUTS_REPLY, snat_det_get_timeouts_reply)
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -893,6 +897,78 @@ static int api_snat_det_map_dump(vat_main_t * vam)
   return ret;
 }
 
+static int api_snat_det_set_timeouts (vat_main_t * vam)
+{
+  unformat_input_t * i = vam->input;
+  vl_api_snat_det_set_timeouts_t * mp;
+  u32 udp = SNAT_UDP_TIMEOUT;
+  u32 tcp_established = SNAT_TCP_ESTABLISHED_TIMEOUT;
+  u32 tcp_transitory = SNAT_TCP_TRANSITORY_TIMEOUT;
+  u32 icmp = SNAT_ICMP_TIMEOUT;
+  int ret;
+
+  if (unformat (i, "udp %d", &udp))
+    ;
+  else if (unformat (i, "tcp_established %d", &tcp_established))
+    ;
+  else if (unformat (i, "tcp_transitory %d", &tcp_transitory))
+    ;
+  else if (unformat (i, "icmp %d", &icmp))
+    ;
+  else
+    {
+      clib_warning("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
+
+  M(SNAT_DET_SET_TIMEOUTS, mp);
+  mp->udp = htonl(udp);
+  mp->tcp_established = htonl(tcp_established);
+  mp->tcp_transitory = htonl(tcp_transitory);
+  mp->icmp = htonl(icmp);
+
+  S(mp);
+  W (ret);
+  return ret;
+}
+
+static void vl_api_snat_det_get_timeouts_reply_t_handler
+  (vl_api_snat_det_get_timeouts_reply_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval >= 0)
+    {
+      fformat (vam->ofp, "udp timeout: %dsec\n", ntohl (mp->udp));
+      fformat (vam->ofp, "tcp-established timeout: %dsec",
+               ntohl (mp->tcp_established));
+      fformat (vam->ofp, "tcp-transitory timeout: %dsec",
+               ntohl (mp->tcp_transitory));
+      fformat (vam->ofp, "icmp timeout: %dsec", ntohl (mp->icmp));
+    }
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static int api_snat_det_get_timeouts(vat_main_t * vam)
+{
+  vl_api_snat_det_get_timeouts_t * mp;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_show_config");
+      return -99;
+    }
+
+  M(SNAT_DET_GET_TIMEOUTS, mp);
+  S(mp);
+  W (ret);
+  return ret;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -922,7 +998,10 @@ _(snat_add_det_map, "in <in_addr>/<in_plen> out "                \
   "<out_addr>/<out_plen> [del]")                                 \
 _(snat_det_forward, "<in_addr>")                                 \
 _(snat_det_reverse, "<out_addr> <out_port>")                     \
-_(snat_det_map_dump, "")
+_(snat_det_map_dump, "")                                         \
+_(snat_det_set_timeouts, "[udp <sec> | tcp_established <sec> | " \
+  "tcp_transitory <sec> | icmp <sec>]")                          \
+_(snat_det_get_timeouts, "")
 
 static void 
 snat_vat_api_hookup (vat_main_t *vam)

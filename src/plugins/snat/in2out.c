@@ -1687,16 +1687,16 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           switch(ses0->state)
             {
             case SNAT_SESSION_UDP_ACTIVE:
-                ses0->expire = now + SNAT_UDP_TIMEOUT;
+                ses0->expire = now + sm->udp_timeout;
                 break;
             case SNAT_SESSION_TCP_SYN_SENT:
             case SNAT_SESSION_TCP_FIN_WAIT:
             case SNAT_SESSION_TCP_CLOSE_WAIT:
             case SNAT_SESSION_TCP_LAST_ACK:
-                ses0->expire = now + SNAT_TCP_TRANSITORY_TIMEOUT;
+                ses0->expire = now + sm->tcp_transitory_timeout;
                 break;
             case SNAT_SESSION_TCP_ESTABLISHED:
-                ses0->expire = now + SNAT_TCP_ESTABLISHED_TIMEOUT;
+                ses0->expire = now + sm->tcp_established_timeout;
                 break;
             }
 
@@ -1831,16 +1831,16 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           switch(ses1->state)
             {
             case SNAT_SESSION_UDP_ACTIVE:
-                ses1->expire = now + SNAT_UDP_TIMEOUT;
+                ses1->expire = now + sm->udp_timeout;
                 break;
             case SNAT_SESSION_TCP_SYN_SENT:
             case SNAT_SESSION_TCP_FIN_WAIT:
             case SNAT_SESSION_TCP_CLOSE_WAIT:
             case SNAT_SESSION_TCP_LAST_ACK:
-                ses1->expire = now + SNAT_TCP_TRANSITORY_TIMEOUT;
+                ses1->expire = now + sm->tcp_transitory_timeout;
                 break;
             case SNAT_SESSION_TCP_ESTABLISHED:
-                ses1->expire = now + SNAT_TCP_ESTABLISHED_TIMEOUT;
+                ses1->expire = now + sm->tcp_established_timeout;
                 break;
             }
 
@@ -2011,16 +2011,16 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
           switch(ses0->state)
             {
             case SNAT_SESSION_UDP_ACTIVE:
-                ses0->expire = now + SNAT_UDP_TIMEOUT;
+                ses0->expire = now + sm->udp_timeout;
                 break;
             case SNAT_SESSION_TCP_SYN_SENT:
             case SNAT_SESSION_TCP_FIN_WAIT:
             case SNAT_SESSION_TCP_CLOSE_WAIT:
             case SNAT_SESSION_TCP_LAST_ACK:
-                ses0->expire = now + SNAT_TCP_TRANSITORY_TIMEOUT;
+                ses0->expire = now + sm->tcp_transitory_timeout;
                 break;
             case SNAT_SESSION_TCP_ESTABLISHED:
-                ses0->expire = now + SNAT_TCP_ESTABLISHED_TIMEOUT;
+                ses0->expire = now + sm->tcp_established_timeout;
                 break;
             }
 
@@ -2218,7 +2218,7 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
   u32 now = (u32) vlib_time_now (sm->vlib_main);
 
   ses0->state = SNAT_SESSION_ICMP_ACTIVE;
-  ses0->expire = now + SNAT_ICMP_TIMEOUT;
+  ses0->expire = now + sm->icmp_timeout;
 
 out:
   *p_proto = protocol;
