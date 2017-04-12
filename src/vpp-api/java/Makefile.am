@@ -129,6 +129,26 @@ jvpp-acl/io_fd_vpp_jvpp_acl_JVppAclImpl.h: $(jvpp_registry_ok) $(jvpp_acl_json_f
 endif
 
 #
+# GTPU Plugin
+#
+if ENABLE_GTPU_PLUGIN
+noinst_LTLIBRARIES += libjvpp_gtpu.la
+libjvpp_gtpu_la_SOURCES = jvpp-gtpu/jvpp_gtpu.c
+libjvpp_gtpu_la_CPPFLAGS = -Ijvpp-gtpu
+libjvpp_gtpu_la_LIBADD = $(JVPP_LIBS)
+libjvpp_gtpu_la_DEPENDENCIES = libjvpp_common.la
+
+BUILT_SOURCES += jvpp-gtpu/io_fd_vpp_jvpp_gtpu_JVppGtpuImpl.h
+JAR_FILES += jvpp-gtpu-$(PACKAGE_VERSION).jar
+CLEANDIRS += jvpp-gtpu/target
+
+jvpp_gtpu_json_files = @top_builddir@/plugins/gtpu/gtpu.api.json
+
+jvpp-gtpu/io_fd_vpp_jvpp_gtpu_JVppGtpuImpl.h: $(jvpp_registry_ok) $(jvpp_gtpu_json_files)
+	$(call japigen,gtpu,JVppGtpuImpl)
+endif
+
+#
 # SNAT Plugin
 #
 if ENABLE_SNAT_PLUGIN
