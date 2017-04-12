@@ -247,6 +247,7 @@ define classify_table_info
     @param active_sessions - number of sessions (active entries)
     @param next_table_index - index of next table
     @param miss_next_index - index of miss table
+    @param memory_size - size of table
     @param mask[] - match mask
 */
 define classify_table_info_reply
@@ -261,6 +262,7 @@ define classify_table_info_reply
   u32 next_table_index;
   u32 miss_next_index;
   u32 mask_length;
+  u32 memory_size;
   u8 mask[mask_length];
 };
 

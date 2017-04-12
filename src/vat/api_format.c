@@ -3922,9 +3922,9 @@ vl_api_classify_table_info_reply_t_handler (vl_api_classify_table_info_reply_t
       print (vam->ofp, "sessions: %d nexttbl: %d nextnode: %d",
 	     ntohl (mp->active_sessions), ntohl (mp->next_table_index),
 	     ntohl (mp->miss_next_index));
-      print (vam->ofp, "nbuckets: %d skip: %d match: %d",
-	     ntohl (mp->nbuckets), ntohl (mp->skip_n_vectors),
-	     ntohl (mp->match_n_vectors));
+      print (vam->ofp, "memorysize: %d kB nbuckets: %d skip: %d match: %d",
+	     ntohl (mp->memory_size) >> 10, ntohl (mp->nbuckets),
+	     ntohl (mp->skip_n_vectors), ntohl (mp->match_n_vectors));
       print (vam->ofp, "mask: %U", format_hex_bytes, mp->mask,
 	     ntohl (mp->mask_length));
     }

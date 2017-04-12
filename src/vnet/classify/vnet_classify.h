@@ -156,6 +156,7 @@ typedef struct {
   u32 current_data_flag;
   int current_data_offset;
   u32 data_offset;
+  u32 memory_size;
   /* Index of next table to try */
   u32 next_table_index;
   

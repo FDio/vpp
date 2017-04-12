@@ -678,6 +678,7 @@ int vnet_classify_add_del_table (vnet_classify_main_t * cm,
           t->miss_next_index = miss_next_index;
           t->current_data_flag = current_data_flag;
           t->current_data_offset = current_data_offset;
+          t->memory_size = memory_size;
           *table_index = t - cm->tables;
         }
       else /* update */

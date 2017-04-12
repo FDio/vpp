@@ -337,6 +337,7 @@ vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
          rmp->next_table_index = ntohl(t->next_table_index);
          rmp->miss_next_index = ntohl(t->miss_next_index);
          rmp->mask_length = ntohl(t->match_n_vectors * sizeof (u32x4));
+         rmp->memory_size = ntohl(t->memory_size);
          clib_memcpy(rmp->mask, t->mask, t->match_n_vectors * sizeof(u32x4));
          rmp->retval = 0;
          break;
