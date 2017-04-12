@@ -364,6 +364,11 @@ static int api_acl_add_replace (vat_main_t * vam)
             vec_validate_acl_rules(rules, rule_idx);
             rules[rule_idx].is_permit = 1;
           }
+        else if (unformat (i, "deny"))
+          {
+            vec_validate_acl_rules(rules, rule_idx);
+            rules[rule_idx].is_permit = 0;
+          }
         else if (unformat (i, "count %d", &n_rules_override))
           {
             /* we will use this later */
