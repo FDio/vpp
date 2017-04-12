@@ -167,6 +167,7 @@ typedef enum mfib_source_t_
     MFIB_SOURCE_DHCP,
     MFIB_SOURCE_SRv6,
     MFIB_SOURCE_DEFAULT_ROUTE,
+    MFIB_SOURCE_GTPU,
 } mfib_source_t;
 
 #define MFIB_SOURCE_NAMES {                        \
@@ -177,6 +178,7 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_VXLAN] = "VXLAN",                 \
     [MFIB_SOURCE_SRv6] = "SRv6",                   \
     [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
+    [MFIB_SOURCE_GTPU] = "GTPU",                   \
 }
 
 /**
