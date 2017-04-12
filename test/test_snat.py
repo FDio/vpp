@@ -1345,10 +1345,29 @@ class TestDeterministicNAT(MethodHolder):
         deterministic_mappings = self.vapi.snat_det_map_dump()
         self.assertEqual(len(deterministic_mappings), 0)
 
+    def test_set_timeouts(self):
+        """ Set deterministic NAT timeouts """
+        timeouts_before = self.vapi.snat_det_get_timeouts()
+
+        self.vapi.snat_det_set_timeouts(timeouts_before.udp + 10,
+                                        timeouts_before.tcp_established + 10,
+                                        timeouts_before.tcp_transitory + 10,
+                                        timeouts_before.icmp + 10)
+
+        timeouts_after = self.vapi.snat_det_get_timeouts()
+
+        self.assertNotEqual(timeouts_before.udp, timeouts_after.udp)
+        self.assertNotEqual(timeouts_before.icmp, timeouts_after.icmp)
+        self.assertNotEqual(timeouts_before.tcp_established,
+                            timeouts_after.tcp_established)
+        self.assertNotEqual(timeouts_before.tcp_transitory,
+                            timeouts_after.tcp_transitory)
+
     def clear_snat(self):
         """
         Clear SNAT configuration.
         """
+        self.vapi.snat_det_set_timeouts()
         deterministic_mappings = self.vapi.snat_det_map_dump()
         for dsm in deterministic_mappings:
             self.vapi.snat_add_det_map(dsm.in_addr,

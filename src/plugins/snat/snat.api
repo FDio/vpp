@@ -126,7 +126,8 @@ define snat_interface_details {
     @param local_port - local port number
     @param external_port - external port number
     @param external_sw_if_index - external interface (if set
-                                  external_ip_address is ignored)
+                                  external_ip_address is ignored, ~0 means not
+                                  used)
     @param vfr_id - VRF ID
 */
 define snat_add_static_mapping {
@@ -545,4 +546,56 @@ define snat_det_map_details {
   u32 sharing_ratio;
   u16 ports_per_host;
   u32 ses_num;
+};
+
+/** \brief Set values of timeouts for deterministic NAT (seconds, 0 = default)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+define snat_det_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief Set values of timeouts for deterministic NAT reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+*/
+define snat_det_set_timeouts_reply {
+  u32 context;
+  i32 retval;
+};
+
+/** \brief Get values of timeouts for deterministic NAT (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_det_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for deterministic NAT reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+define snat_det_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
 };

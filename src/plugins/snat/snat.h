@@ -312,6 +312,12 @@ typedef struct snat_main_s {
   /* tenant VRF aware address pool activation flag */
   u8 vrf_mode;
 
+  /* values of various timeouts */
+  u32 udp_timeout;
+  u32 tcp_established_timeout;
+  u32 tcp_transitory_timeout;
+  u32 icmp_timeout;
+
   /* API message ID base */
   u16 msg_id_base;
 

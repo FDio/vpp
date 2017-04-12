@@ -1654,6 +1654,64 @@ static void * vl_api_snat_det_map_dump_t_print
   FINISH;
 }
 
+static void
+vl_api_snat_det_set_timeouts_t_handler
+(vl_api_snat_det_set_timeouts_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_det_set_timeouts_reply_t * rmp;
+  int rv = 0;
+
+  sm->udp_timeout = ntohl(mp->udp);
+  sm->tcp_established_timeout = ntohl(mp->tcp_established);
+  sm->tcp_transitory_timeout = ntohl(mp->tcp_transitory);
+  sm->icmp_timeout = ntohl(mp->icmp);
+
+  REPLY_MACRO (VL_API_SNAT_DET_SET_TIMEOUTS_REPLY);
+}
+
+static void *vl_api_snat_det_set_timeouts_t_print
+(vl_api_snat_det_set_timeouts_t *mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_det_set_timeouts ");
+  s = format (s, "udp %d tcp_established %d tcp_transitory %d icmp %d\n",
+              ntohl(mp->udp),
+              ntohl(mp->tcp_established),
+              ntohl(mp->tcp_transitory),
+              ntohl(mp->icmp));
+
+  FINISH;
+}
+
+static void
+vl_api_snat_det_get_timeouts_t_handler
+(vl_api_snat_det_get_timeouts_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_det_get_timeouts_reply_t * rmp;
+  int rv = 0;
+
+  REPLY_MACRO2(VL_API_SNAT_DET_GET_TIMEOUTS_REPLY,
+  ({
+    rmp->udp = htonl(sm->udp_timeout);
+    rmp->tcp_established = htonl(sm->tcp_established_timeout);
+    rmp->tcp_transitory = htonl(sm->tcp_transitory_timeout);
+    rmp->icmp = htonl(sm->icmp_timeout);
+  }))
+}
+
+static void *vl_api_snat_det_get_timeouts_t_print
+(vl_api_snat_det_get_timeouts_t * mp, void * handle)
+{
+  u8 * s;
+
+  s = format(0, "SCRIPT: snat_det_get_timeouts");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1674,7 +1732,10 @@ _(SNAT_USER_SESSION_DUMP, snat_user_session_dump)                       \
 _(SNAT_ADD_DET_MAP, snat_add_det_map)                                   \
 _(SNAT_DET_FORWARD, snat_det_forward)                                   \
 _(SNAT_DET_REVERSE, snat_det_reverse)                                   \
-_(SNAT_DET_MAP_DUMP, snat_det_map_dump)
+_(SNAT_DET_MAP_DUMP, snat_det_map_dump)                                 \
+_(SNAT_DET_SET_TIMEOUTS, snat_det_set_timeouts)                         \
+_(SNAT_DET_GET_TIMEOUTS, snat_det_get_timeouts)
+
 
 /* Set up the API message handling tables */
 static clib_error_t *
@@ -1758,6 +1819,10 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->workers = 0;
   sm->fq_in2out_index = ~0;
   sm->fq_out2in_index = ~0;
+  sm->udp_timeout = SNAT_UDP_TIMEOUT;
+  sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+  sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+  sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)
@@ -2855,6 +2920,12 @@ show_snat_command_fn (vlib_main_t * vm,
 
   if (sm->deterministic)
     {
+      vlib_cli_output (vm, "udp timeout: %dsec", sm->udp_timeout);
+      vlib_cli_output (vm, "tcp-established timeout: %dsec",
+                       sm->tcp_established_timeout);
+      vlib_cli_output (vm, "tcp-transitory timeout: %dsec",
+                       sm->tcp_transitory_timeout);
+      vlib_cli_output (vm, "icmp timeout: %dsec", sm->icmp_timeout);
       vlib_cli_output (vm, "%d deterministic mappings",
                        pool_elts (sm->det_maps));
       if (verbose > 0)
@@ -3345,4 +3416,70 @@ VLIB_CLI_COMMAND (snat_det_reverse_command, static) = {
     .path = "snat deterministic reverse",
     .short_help = "snat deterministic reverse <addr>:<port>",
     .function = snat_det_reverse_command_fn,
+};
+
+static clib_error_t *
+set_timeout_command_fn (vlib_main_t * vm,
+                        unformat_input_t * input,
+                        vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "udp %u", &sm->udp_timeout))
+        ;
+      else if (unformat (line_input, "tcp-established %u",
+               &sm->tcp_established_timeout))
+        ;
+      else if (unformat (line_input, "tcp-transitory %u",
+               &sm->tcp_transitory_timeout))
+        ;
+      else if (unformat (line_input, "icmp %u", &sm->icmp_timeout))
+        ;
+      else if (unformat (line_input, "reset"))
+        {
+          sm->udp_timeout = SNAT_UDP_TIMEOUT;
+          sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
+          sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
+          sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
+        }
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  unformat_free (line_input);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{set snat deterministic timeout}
+ * Set values of timeouts for deterministic NAT (in seconds), use:
+ *  vpp# set snat deterministic timeout udp 120 tcp-established 7500
+ *  tcp-transitory 250 icmp 90
+ * To reset default values use:
+ *  vpp# set snat deterministic timeout reset
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (set_timeout_command, static) = {
+  .path = "set snat deterministic timeout",
+  .function = set_timeout_command_fn,
+  .short_help =
+    "set snat deterministic timeout [udp <sec> | tcp-established <sec> "
+    "tcp-transitory <sec> | icmp <sec> | reset]",
 };

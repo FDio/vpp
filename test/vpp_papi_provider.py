@@ -1199,6 +1199,33 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_det_map_dump, {})
 
+    def snat_det_set_timeouts(
+            self,
+            udp=300,
+            tcp_established=7440,
+            tcp_transitory=240,
+            icmp=60):
+        """Set values of timeouts for deterministic NAT (in seconds)
+
+        :param udp - UDP timeout (Default value = 300)
+        :param tcp_established - TCP established timeout (Default value = 7440)
+        :param tcp_transitory - TCP transitory timeout (Default value = 240)
+        :param icmp - ICMP timeout (Default value = 60)
+        """
+        return self.api(
+            self.papi.snat_det_set_timeouts,
+            {'udp': udp,
+             'tcp_established': tcp_established,
+             'tcp_transitory': tcp_transitory,
+             'icmp': icmp})
+
+    def snat_det_get_timeouts(self):
+        """Get values of timeouts for deterministic NAT
+
+        :return: Timeouts for deterministic NAT (in seconds)
+        """
+        return self.api(self.papi.snat_det_get_timeouts, {})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
