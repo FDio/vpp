@@ -419,6 +419,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	}
     }
 #endif
+  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
 
   /* Fire off connect requests, in something approaching a normal manner */
   for (i = 0; i < n_clients; i++)
@@ -455,7 +456,7 @@ VLIB_REGISTER_THREAD (builtin_client_reg, static) = {
 VLIB_CLI_COMMAND (test_clients_command, static) =
 {
   .path = "test tcp clients",
-  .short_help = "test tcp clients",
+  .short_help = "test tcp clients [nclients %d] [iterations %d] [bytes %d] [uri tcp://1.2.3.4/1234]",
   .function = test_tcp_clients_command_fn,
 };
 /* *INDENT-ON* */
