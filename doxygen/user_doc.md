@@ -6,6 +6,7 @@ Several modules provide operational, dataplane-user focused documentation.
 - [GUI guided user demo](https://wiki.fd.io/view/VPP_Sandbox/vpp-userdemo)
 - @subpage bfd_doc
 - @subpage ioam_plugin_doc
+- @subpage ioam_vxlan_gpe_plugin_doc
 - @subpage ipsec_gre_doc
 - @subpage lb_plugin_doc
 - @subpage lldp_doc
