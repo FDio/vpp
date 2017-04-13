@@ -420,20 +420,20 @@ end
 
 
 function vpp.init(vpp, args)
-  local pneum_api = args.pneum_api or [[
- int cough_pneum_attach(char *pneum_path, char *cough_path);
- int pneum_connect(char *name, char *chroot_prefix, void *cb);
- int pneum_disconnect(void);
- int pneum_read(char **data, int *l);
- int pneum_write(char *data, int len);
- void pneum_free(char *data);
- uint32_t pneum_get_msg_index(unsigned char * name);
+  local vac_api = args.vac_api or [[
+ int cough_vac_attach(char *vac_path, char *cough_path);
+ int vac_connect(char *name, char *chroot_prefix, void *cb);
+ int vac_disconnect(void);
+ int vac_read(char **data, int *l);
+ int vac_write(char *data, int len);
+ void vac_free(char *data);
+ uint32_t vac_get_msg_index(unsigned char * name);
 ]]
 
-  vpp.pneum_path = args.pneum_path
-  ffi.cdef(pneum_api)
+  vpp.vac_path = args.vac_path
+  ffi.cdef(vac_api)
   local init_res = 0
-  vpp.pneum = ffi.load(vpp.pneum_path)
+  vpp.vac = ffi.load(vpp.vac_path)
   if (init_res < 0) then
     return nil
   end
@@ -676,7 +676,7 @@ end
 
 function vpp.resolve_message_number(msgname)
   local name = msgname .. "_" .. vpp.msg_name_to_crc[msgname]
-  local idx = vpp.pneum.pneum_get_msg_index(vpp.c_str(name))
+  local idx = vpp.vac.vac_get_msg_index(vpp.c_str(name))
   if vpp.debug_dump then
     print("Index for " .. tostring(name) .. " is " .. tostring(idx))
   end
@@ -692,7 +692,7 @@ function vpp.connect(vpp, client_name)
     if client_name then
       name = client_name
     end
-    local ret = vpp.pneum.pneum_connect(vpp.c_str(client_name), nil, nil)
+    local ret = vpp.vac.vac_connect(vpp.c_str(client_name), nil, nil)
     if tonumber(ret) == 0 then
       vpp.is_connected = true
     end
@@ -702,7 +702,7 @@ function vpp.connect(vpp, client_name)
   end
 
 function vpp.disconnect(vpp)
-    vpp.pneum.pneum_disconnect()
+    vpp.vac.vac_disconnect()
   end
 
 function vpp.json_api(vpp, path, plugin_name)
@@ -921,7 +921,7 @@ function vpp.api_write(vpp, api_name, req_table)
       print("Write Message length: " .. tostring(packed_len) .. "\n" .. vpp.hex_dump(ffi.string(ffi.cast('void *', req_store_cache), packed_len)))
     end
 
-    res = vpp.pneum.pneum_write(ffi.cast('void *', req_store_cache), packed_len)
+    res = vpp.vac.vac_write(ffi.cast('void *', req_store_cache), packed_len)
     return res
   end
 
@@ -932,7 +932,7 @@ function vpp.api_read(vpp)
     local rep_type = "vl_api_opaque_message_t"
     local rep = rep_store_cache
     local replen = rep_len_cache
-    res = vpp.pneum.pneum_read(ffi.cast("void *", rep), replen)
+    res = vpp.vac.vac_read(ffi.cast("void *", rep), replen)
     if vpp.debug_dump then
       print("Read Message length: " .. tostring(replen[0]) .. "\n" .. vpp.hex_dump(ffi.string(ffi.cast('void *', rep[0]), replen[0])))
     end
@@ -946,7 +946,7 @@ function vpp.api_read(vpp)
       out["luaapi_message_name"] = reply_msg_name
     end
 
-    vpp.pneum.pneum_free(ffi.cast('void *',rep[0]))
+    vpp.vac.vac_free(ffi.cast('void *',rep[0]))
 
     return reply_msg_name, out
   end
