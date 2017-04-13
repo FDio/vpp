@@ -807,8 +807,7 @@ dhcp4_proxy_set_server (ip46_address_t *addr,
           fib_table_entry_special_add(rx_fib_index,
                                       &all_1s,
                                       FIB_SOURCE_DHCP,
-                                      FIB_ENTRY_FLAG_LOCAL,
-                                      ADJ_INDEX_INVALID);
+                                      FIB_ENTRY_FLAG_LOCAL);
           fib_table_lock (rx_fib_index, FIB_PROTOCOL_IP4);
       }
   }

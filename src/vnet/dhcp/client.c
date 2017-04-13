@@ -781,8 +781,7 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 				      c->sw_if_index),
 				  &all_1s,
 				  FIB_SOURCE_DHCP,
-				  FIB_ENTRY_FLAG_LOCAL,
-				  ADJ_INDEX_INVALID);
+				  FIB_ENTRY_FLAG_LOCAL);
 
      /*
        * enable the interface to RX IPv4 packets
