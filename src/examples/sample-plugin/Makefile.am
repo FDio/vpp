@@ -13,7 +13,21 @@
 
 AUTOMAKE_OPTIONS = foreign subdir-objects
 
-AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir}
+if DEBUG
+AM_CFLAGS = -O0 -DCLIB_DEBUG -Werror
+vpp_build = vpp_debug-native
+else
+AM_CFLAGS = -O2
+vpp_build = vpp-native
+endif
+
+if VPP_DIR_SET
+vpp_install = @VPP_DIR@/build-root/install-$(vpp_build)
+AM_CFLAGS  += -I$(vpp_install)/vpp/include/
+vpp_env    = env PATH="$$PATH:$(vpp_install)/vpp/bin"
+endif
+
+AM_CFLAGS += -Wall -Werror -I${top_srcdir} -I${top_builddir}
 AM_LDFLAGS = -module -shared -avoid-version
 AM_LIBTOOLFLAGS = --quiet
 SUFFIXES = .api.h .api .api.json
@@ -33,13 +47,13 @@ include sample.am
 %.api.h: %.api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
-	| vppapigen --input - --output $@ --show-name $@
+	| $(vpp_env) vppapigen --input - --output $@ --show-name $@
 
 %.api.json: %.api
 	@echo "  JSON APIGEN  " $@ ;				\
 	mkdir -p `dirname $@` ;					\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --json $@
+	| $(vpp_env) vppapigen --input - --json $@
 
 apidir = $(prefix)/api/plugins
 apiincludedir = ${includedir}/vpp_plugins
