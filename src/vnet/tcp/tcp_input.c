@@ -1125,6 +1125,43 @@ done:
   return error;
 }
 
+typedef struct
+{
+  tcp_header_t tcp_header;
+  tcp_connection_t tcp_connection;
+} tcp_rx_trace_t;
+
+u8 *
+format_tcp_rx_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  tcp_rx_trace_t *t = va_arg (*args, tcp_rx_trace_t *);
+  uword indent = format_get_indent (s);
+
+  s = format (s, "%U\n%U%U",
+	      format_tcp_header, &t->tcp_header, 128,
+	      format_white_space, indent,
+	      format_tcp_connection_verbose, &t->tcp_connection);
+
+  return s;
+}
+
+u8 *
+format_tcp_rx_trace_short (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  tcp_rx_trace_t *t = va_arg (*args, tcp_rx_trace_t *);
+
+  s = format (s, "%d -> %d (%U)",
+	      clib_net_to_host_u16 (t->tcp_header.src_port),
+	      clib_net_to_host_u16 (t->tcp_header.dst_port), format_tcp_state,
+	      &t->tcp_connection.state);
+
+  return s;
+}
+
 always_inline void
 tcp_established_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
 {
@@ -1160,6 +1197,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
+	  tcp_rx_trace_t *t0;
 	  tcp_header_t *th0 = 0;
 	  tcp_connection_t *tc0;
 	  ip4_header_t *ip40;
@@ -1250,7 +1288,10 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+	      clib_memcpy (&t0->tcp_connection, tc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1296,6 +1337,7 @@ VLIB_REGISTER_NODE (tcp4_established_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -1317,6 +1359,7 @@ VLIB_REGISTER_NODE (tcp6_established_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -1350,6 +1393,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0, ack0, seq0;
 	  vlib_buffer_t *b0;
+	  tcp_rx_trace_t *t0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
 	  ip4_header_t *ip40;
@@ -1545,7 +1589,10 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->error = error0 ? node->errors[error0] : 0;
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
+	      clib_memcpy (&t0->tcp_connection, tc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1599,6 +1646,7 @@ VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -1619,8 +1667,9 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
 #define _(s,n) [TCP_SYN_SENT_NEXT_##s] = n,
     foreach_tcp_state_next
 #undef _
-  }
-,};
+  },
+  .format_trace = format_tcp_rx_trace_short,
+};
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (tcp6_syn_sent_node, tcp6_syn_sent_rcv);
@@ -1651,6 +1700,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
+	  tcp_rx_trace_t *t0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
 	  ip4_header_t *ip40;
@@ -1899,7 +1949,10 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
+	      clib_memcpy (&t0->tcp_connection, tc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1953,6 +2006,7 @@ VLIB_REGISTER_NODE (tcp4_rcv_process_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -1974,6 +2028,7 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -2009,6 +2064,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
+	  tcp_rx_trace_t *t0;
 	  tcp_header_t *th0 = 0;
 	  tcp_connection_t *lc0;
 	  ip4_header_t *ip40;
@@ -2116,7 +2172,10 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+	      clib_memcpy (&t0->tcp_connection, lc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  b0->error = node->errors[error0];
@@ -2160,6 +2219,7 @@ VLIB_REGISTER_NODE (tcp4_listen_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -2181,6 +2241,7 @@ VLIB_REGISTER_NODE (tcp6_listen_node) =
     foreach_tcp_state_next
 #undef _
   },
+  .format_trace = format_tcp_rx_trace_short,
 };
 /* *INDENT-ON* */
 
@@ -2216,27 +2277,6 @@ typedef enum _tcp_input_next
   _ (ESTABLISHED, "tcp6-established")		\
   _ (RESET, "tcp6-reset")
 
-typedef struct
-{
-  u16 src_port;
-  u16 dst_port;
-  u8 state;
-} tcp_rx_trace_t;
-
-u8 *
-format_tcp_rx_trace (u8 * s, va_list * args)
-{
-  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
-  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  tcp_rx_trace_t *t = va_arg (*args, tcp_rx_trace_t *);
-
-  s = format (s, "TCP: src-port %d dst-port %U%s\n",
-	      clib_net_to_host_u16 (t->src_port),
-	      clib_net_to_host_u16 (t->dst_port), format_tcp_state, t->state);
-
-  return s;
-}
-
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 
 always_inline uword
@@ -2262,6 +2302,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
+	  tcp_rx_trace_t *t0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
 	  ip4_header_t *ip40;
@@ -2339,7 +2380,10 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
+	      clib_memcpy (&t0->tcp_connection, tc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
