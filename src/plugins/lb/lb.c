@@ -510,8 +510,7 @@ next:
 	fib_table_entry_special_add(0,
 				    &nh,
 				    FIB_SOURCE_RR,
-				    FIB_ENTRY_FLAG_NONE,
-				    ADJ_INDEX_INVALID);
+				    FIB_ENTRY_FLAG_NONE);
     as->next_hop_child_index =
 	fib_entry_child_add(as->next_hop_fib_entry_index,
 			    lbm->fib_node_type,

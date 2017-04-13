@@ -1621,8 +1621,7 @@ fib_path_resolve (fib_node_index_t path_index)
 	fei = fib_table_entry_special_add(path->recursive.fp_tbl_id,
 					  &pfx,
 					  FIB_SOURCE_RR,
-					  FIB_ENTRY_FLAG_NONE,
-					  ADJ_INDEX_INVALID);
+					  FIB_ENTRY_FLAG_NONE);
 
 	path = fib_path_get(path_index);
 	path->fp_via_fib = fei;

@@ -509,7 +509,7 @@ ip_source_check_accept (vlib_main_t * vm,
       fib_table_entry_special_add (fib_index,
 				   &pfx,
 				   FIB_SOURCE_URPF_EXEMPT,
-				   FIB_ENTRY_FLAG_DROP, ADJ_INDEX_INVALID);
+				   FIB_ENTRY_FLAG_DROP);
     }
   else
     {

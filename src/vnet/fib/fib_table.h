@@ -126,14 +126,16 @@ extern fib_node_index_t fib_table_get_less_specific(u32 fib_index,
 
 /**
  * @brief
- *  Add a 'special' entry to the FIB that links to the adj passed
+ *  Add a 'special' entry to the FIB.
  *  A special entry is an entry that the FIB is not expect to resolve
  *  via the usual mechanisms (i.e. recurisve or neighbour adj DB lookup).
- *  Instead the client/source provides the adj to link to.
+ *  Instead the will link to a DPO valid for the source and/or the flags.
  *  This add is reference counting per-source. So n 'removes' are required
  *  for n 'adds', if the entry is no longer required.
+ *  If the source needs to provide non-default forwarding use:
+ *  fib_table_entry_special_dpo_add()
  *
-  * @param fib_index
+ * @param fib_index
  *  The index of the FIB
  *
  * @param prefix
@@ -145,17 +147,13 @@ extern fib_node_index_t fib_table_get_less_specific(u32 fib_index,
  * @param flags
  *  Flags for the entry.
  *
- * @param adj_index
- *  The adjacency to link to.
- *
  * @return
  *  the index of the fib_entry_t that is created (or exists already).
  */
 extern fib_node_index_t fib_table_entry_special_add(u32 fib_index,
 						    const fib_prefix_t *prefix,
 						    fib_source_t source,
-						    fib_entry_flag_t flags,
-						    adj_index_t adj_index);
+						    fib_entry_flag_t flags);
 
 /**
  * @brief

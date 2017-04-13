@@ -732,16 +732,14 @@ ip4_add_interface_routes (u32 sw_if_index,
                                     &net_pfx,
                                     FIB_SOURCE_INTERFACE,
                                     (FIB_ENTRY_FLAG_DROP |
-                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
-                                    ADJ_INDEX_INVALID);
+                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
       net_pfx.fp_addr.ip4.as_u32 |= ~im->fib_masks[pfx.fp_len];
       if (net_pfx.fp_addr.ip4.as_u32 != pfx.fp_addr.ip4.as_u32)
         fib_table_entry_special_add(fib_index,
                                     &net_pfx,
                                     FIB_SOURCE_INTERFACE,
                                     (FIB_ENTRY_FLAG_DROP |
-                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT),
-                                    ADJ_INDEX_INVALID);
+                                     FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT));
     }
   else if (pfx.fp_len == 31)
     {

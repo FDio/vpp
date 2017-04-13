@@ -109,8 +109,7 @@ fib_bfd_notify (bfd_listen_event_e event,
             fei = fib_table_entry_special_add(key->fib_index,
                                               &pfx,
                                               FIB_SOURCE_RR,
-                                              FIB_ENTRY_FLAG_NONE,
-                                              ADJ_INDEX_INVALID);
+                                              FIB_ENTRY_FLAG_NONE);
             fib_entry_lock(fei);
 
             fed = fib_entry_delegate_find_or_add(fib_entry_get(fei),
