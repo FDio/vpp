@@ -14,29 +14,32 @@
 #
 # VPP API C wrapper extension
 #
-lib_LTLIBRARIES += libpneum.la
-libpneum_la_SOURCES = vpp-api/pneum/pneum.c
-libpneum_la_LIBADD = \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libsvm.la \
+lib_LTLIBRARIES += libvppapiclient.la
+libvppapiclient_la_SOURCES = \
+  vpp-api/client/client.c \
+  vpp-api/client/libvppapiclient.map
+
+libvppapiclient_la_LIBADD = \
   -lpthread -lm -lrt
 
-libpneum_la_LDFLAGS = -module
-libpneum_la_CPPFLAGS =
+libvppapiclient_la_LDFLAGS = \
+  -Wl,-L$(top_builddir)/.libs,--whole-archive,-l:libsvm.a,-l:libvppinfra.a,-l:libvlibmemoryclient.a,--no-whole-archive \
+  -Wl,--version-script=$(srcdir)/vpp-api/client/libvppapiclient.map,-lrt
 
-nobase_include_HEADERS += vpp-api/pneum/pneum.h
+libvppapiclient_la_DEPENDENCIES = libvppinfra.la libvlibmemoryclient.la libsvm.la
+
+libvppapiclient_la_CPPFLAGS =
+
+nobase_include_HEADERS += vpp-api/client/vppapiclient.h
 
 #
 # Test client
 #
 if ENABLE_TESTS
-noinst_PROGRAMS += test_pneum
-test_pneum_SOURCES = vpp-api/pneum/pneum.c vpp-api/pneum/test_pneum.c
-test_pneum_LDADD = \
-  $(top_builddir)/libvppinfra.la \
-  $(top_builddir)/libvlibmemoryclient.la \
-  $(top_builddir)/libsvm.la \
+noinst_PROGRAMS += vac_test
+vac_test_SOURCES = vpp-api/client/test.c
+vac_test_LDADD = \
+  $(builddir)/libvppapiclient.la \
   -lpthread -lm -lrt
 endif
 
