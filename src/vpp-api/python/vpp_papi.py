@@ -21,26 +21,26 @@ import atexit, Queue
 from cffi import FFI
 ffi = FFI()
 ffi.cdef("""
-typedef void (*pneum_callback_t)(unsigned char * data, int len);
-typedef void (*pneum_error_callback_t)(void *, unsigned char *, int);
-int pneum_connect(char * name, char * chroot_prefix, pneum_callback_t cb,
+typedef void (*vac_callback_t)(unsigned char * data, int len);
+typedef void (*vac_error_callback_t)(void *, unsigned char *, int);
+int vac_connect(char * name, char * chroot_prefix, vac_callback_t cb,
     int rx_qlen);
-int pneum_disconnect(void);
-int pneum_read(char **data, int *l, unsigned short timeout);
-int pneum_write(char *data, int len);
-void pneum_free(void * msg);
+int vac_disconnect(void);
+int vac_read(char **data, int *l, unsigned short timeout);
+int vac_write(char *data, int len);
+void vac_free(void * msg);
 
-int pneum_get_msg_index(unsigned char * name);
-int pneum_msg_table_size(void);
-int pneum_msg_table_max_index(void);
+int vac_get_msg_index(unsigned char * name);
+int vac_msg_table_size(void);
+int vac_msg_table_max_index(void);
 
-void pneum_rx_suspend (void);
-void pneum_rx_resume (void);
-void pneum_set_error_handler(pneum_error_callback_t);
+void vac_rx_suspend (void);
+void vac_rx_resume (void);
+void vac_set_error_handler(vac_error_callback_t);
  """)
 
 # Barfs on failure, no need to check success.
-vpp_api = ffi.dlopen('libpneum.so')
+vpp_api = ffi.dlopen('libvppapiclient.so')
 
 def vpp_atexit(self):
     """Clean up VPP connection on shutdown."""
@@ -51,13 +51,13 @@ def vpp_atexit(self):
 vpp_object = None
 
 @ffi.callback("void(unsigned char *, int)")
-def pneum_callback_sync(data, len):
+def vac_callback_sync(data, len):
     vpp_object.msg_handler_sync(ffi.buffer(data, len))
 @ffi.callback("void(unsigned char *, int)")
-def pneum_callback_async(data, len):
+def vac_callback_async(data, len):
     vpp_object.msg_handler_async(ffi.buffer(data, len))
 @ffi.callback("void(void *, unsigned char *, int)")
-def pneum_error_handler(arg, msg, msg_len):
+def vac_error_handler(arg, msg, msg_len):
     vpp_object.logger.warning("PNEUM: %s", ffi.string(msg, msg_len))
 
 class Empty(object):
@@ -138,7 +138,7 @@ class VPP():
         atexit.register(vpp_atexit, self)
 
         # Register error handler
-        vpp_api.pneum_set_error_handler(pneum_error_handler)
+        vpp_api.vac_set_error_handler(vac_error_handler)
 
     class ContextId(object):
         """Thread-safe provider of unique context IDs."""
@@ -379,7 +379,7 @@ class VPP():
             if self.messages[name]['typeonly']: continue
             crc = self.messages[name]['crc']
             n = name + '_' + crc[2:]
-            i = vpp_api.pneum_get_msg_index(bytes(n))
+            i = vpp_api.vac_get_msg_index(bytes(n))
             if i > 0:
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
@@ -400,33 +400,33 @@ class VPP():
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise IOError(1, 'Not connected')
-        return vpp_api.pneum_write(str(buf), len(buf))
+        return vpp_api.vac_write(str(buf), len(buf))
 
     def _read (self):
         if not self.connected:
             raise IOError(1, 'Not connected')
         mem = ffi.new("char **")
         size = ffi.new("int *")
-        rv = vpp_api.pneum_read(mem, size, self.read_timeout)
+        rv = vpp_api.vac_read(mem, size, self.read_timeout)
         if rv:
-            raise IOError(rv, 'pneum_read filed')
+            raise IOError(rv, 'vac_read filed')
         msg = bytes(ffi.buffer(mem[0], size[0]))
-        vpp_api.pneum_free(mem[0])
+        vpp_api.vac_free(mem[0])
         return msg
 
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen, async):
-	rv = vpp_api.pneum_connect(name, chroot_prefix, msg_handler, rx_qlen)
+	rv = vpp_api.vac_connect(name, chroot_prefix, msg_handler, rx_qlen)
         if rv != 0:
             raise IOError(2, 'Connect failed')
         self.connected = True
 
-        self.vpp_dictionary_maxid = vpp_api.pneum_msg_table_max_index()
+        self.vpp_dictionary_maxid = vpp_api.vac_msg_table_max_index()
         self._register_functions(async=async)
 
         # Initialise control ping
         crc = self.messages['control_ping']['crc']
         self.control_ping_index = \
-                                  vpp_api.pneum_get_msg_index(
+                                  vpp_api.vac_get_msg_index(
                                       bytes('control_ping' + '_' + crc[2:]))
         self.control_ping_msgdef = self.messages['control_ping']
 
@@ -440,8 +440,8 @@ class VPP():
         rx_qlen - the length of the VPP message receive queue between
         client and server.
         """
-        msg_handler = pneum_callback_sync if not async \
-                      else pneum_callback_async
+        msg_handler = vac_callback_sync if not async \
+                      else vac_callback_async
         return self.connect_internal(name, msg_handler, chroot_prefix, rx_qlen,
                                      async)
 
@@ -459,7 +459,7 @@ class VPP():
 
     def disconnect(self):
         """Detach from VPP."""
-        rv = vpp_api.pneum_disconnect()
+        rv = vpp_api.vac_disconnect()
         self.connected = False
         return rv
 
@@ -550,7 +550,7 @@ class VPP():
         kwargs['_vl_msg_id'] = i
         b = self.encode(msgdef, kwargs)
 
-        vpp_api.pneum_rx_suspend()
+        vpp_api.vac_rx_suspend()
         self._write(b)
 
         if multipart:
@@ -580,7 +580,7 @@ class VPP():
 
             rl.append(r)
 
-        vpp_api.pneum_rx_resume()
+        vpp_api.vac_rx_resume()
 
         return rl
 
