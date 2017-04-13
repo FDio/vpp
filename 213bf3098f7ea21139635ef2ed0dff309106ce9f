@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_cbed1827",
+        "filename": "src/plugins/gtpu/gtpu_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-04-13T03:02:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_9aecfc90",
+      "revId": "213bf3098f7ea21139635ef2ed0dff309106ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_5afe9439",
         "filename": "src/plugins/gtpu/gtpu_cli.c",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2017-04-12T07:43:31Z",
       "side": 1,
       "message": "rv is always 0. perhaps gtpu_rewrite should return void.",
+      "revId": "213bf3098f7ea21139635ef2ed0dff309106ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_abf40cf2",
+        "filename": "src/plugins/gtpu/gtpu_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 410,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-04-13T03:02:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a3291f1_5afe9439",
       "revId": "213bf3098f7ea21139635ef2ed0dff309106ce9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_8bf710f5",
+        "filename": "src/plugins/gtpu/gtpu_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-04-13T03:02:17Z",
+      "side": 1,
+      "message": "Yes. GTPU tunnel needs to be up first, then stack it to FIB.",
+      "parentUuid": "3a3291f1_1af80c48",
+      "revId": "213bf3098f7ea21139635ef2ed0dff309106ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_bab7b885",
         "filename": "src/plugins/gtpu/gtpu_cli.c",
         "patchSetId": 4
@@ -64,6 +118,24 @@
       "writtenOn": "2017-04-12T07:43:31Z",
       "side": 1,
       "message": "this is just a suggestion.\nif you do:\n  dpo_register(DPO_GTPU_TUNNEL, vft, nodes);\nand replace the dpo_stack_from_node with:\n  dpo_stack(DPO_GTPU_TUNNEL.\n                    fib_proto_2_dpo(fib_ip_proto(is_ip6),\n                    \u0026t-\u003enext_dpo.\n                    \u0026dpo);\n\nthe first call makes the association between the DPO type and protocol and the VLIB nodes. The latter uses this association to build the VLIB graph for you.",
+      "revId": "213bf3098f7ea21139635ef2ed0dff309106ce9f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6bc5048d",
+        "filename": "src/plugins/gtpu/gtpu_cli.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 562,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-04-13T03:02:17Z",
+      "side": 1,
+      "message": "Thanks. will try it later.",
+      "parentUuid": "3a3291f1_bab7b885",
       "revId": "213bf3098f7ea21139635ef2ed0dff309106ce9f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
