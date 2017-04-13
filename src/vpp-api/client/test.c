@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * test_pneum.c
+ * test.c
  * 
  * Copyright (c) 2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,13 +33,10 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
-#include <vlibmemory/api.h>
-#include <vnet/ip/ip.h>
 
 #include <vpp/api/vpe_msg_enum.h>
 #include <signal.h>
-#include <setjmp.h>
-#include "pneum.h"
+#include "vppapiclient.h"
 
 #define vl_typedefs             /* define message structures */
 #include <vpp/api/vpe_all_api_h.h> 
@@ -66,7 +63,7 @@ volatile u16 result_msg_id;
 
 
 int
-wrap_pneum_callback (char *data, int len)
+wrap_vac_callback (char *data, int len)
 {
   //printf("Callback %d\n", len);
   result_ready = 1;
@@ -80,7 +77,7 @@ int main (int argc, char ** argv)
   vl_api_show_version_t message;
   vl_api_show_version_t *mp;
   int async = 1;
-  int rv = pneum_connect("pneum_client", NULL, NULL, 32 /* rx queue-length*/);
+  int rv = vac_connect("vac_client", NULL, NULL, 32 /* rx queue-length*/);
 
   if (rv != 0) {
     printf("Connect failed: %d\n", rv);
@@ -109,7 +106,7 @@ int main (int argc, char ** argv)
   for (i = 0; i < no_msgs; i++) {
     /* Construct the API message */
     M_NOALLOC(SHOW_VERSION, show_version);
-    pneum_write((char *)mp, sizeof(*mp));
+    vac_write((char *)mp, sizeof(*mp));
 #ifndef __COVERITY__
     /* As given, async is always 1. Shut up Coverity about it */
     if (!async)
@@ -121,7 +118,7 @@ int main (int argc, char ** argv)
     vl_api_control_ping_t *mp;
     mp = &control;
     M_NOALLOC(CONTROL_PING, control_ping);
-    pneum_write((char *)mp, sizeof(*mp));
+    vac_write((char *)mp, sizeof(*mp));
 
     while (result_msg_id != VL_API_CONTROL_PING_REPLY);
   }
@@ -137,7 +134,7 @@ int main (int argc, char ** argv)
   
   printf("Took %lld msec, %lld msgs/msec \n", (timestamp_msec_end - timestamp_msec_start),
 	 no_msgs/(timestamp_msec_end - timestamp_msec_start));
-  fformat(stdout, "Exiting...\n");
-  pneum_disconnect();
+  printf("Exiting...\n");
+  vac_disconnect();
   exit (0);
 }

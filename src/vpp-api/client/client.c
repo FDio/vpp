@@ -31,7 +31,7 @@
 
 #include <vpp/api/vpe_msg_enum.h>
 
-#include "pneum.h"
+#include "vppapiclient.h"
 
 /*
  * Asynchronous mode:
@@ -39,8 +39,8 @@
  * Synchronous mode:
  *  Client calls blocking read().
  *  Clients are expected to collate events on a queue.
- *  pneum_write() -> suspends RX thread
- *  pneum_read() -> resumes RX thread
+ *  vac_write() -> suspends RX thread
+ *  vac_read() -> resumes RX thread
  */
 
 #define vl_typedefs             /* define message structures */
@@ -65,17 +65,17 @@ typedef struct {
   pthread_cond_t timeout_cv;
   pthread_cond_t timeout_cancel_cv;
   pthread_cond_t terminate_cv;
-} pneum_main_t;
+} vac_main_t;
 
-pneum_main_t pneum_main;
-pneum_callback_t pneum_callback;
+vac_main_t vac_main;
+vac_callback_t vac_callback;
 u16 read_timeout = 0;
 bool rx_is_running = false;
 
 static void
 init (void)
 {
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   memset(pm, 0, sizeof(*pm));
   pthread_mutex_init(&pm->queue_lock, NULL);
   pthread_cond_init(&pm->suspend_cv, NULL);
@@ -89,7 +89,7 @@ init (void)
 static void
 cleanup (void)
 {
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   pthread_cond_destroy(&pm->suspend_cv);
   pthread_cond_destroy(&pm->resume_cv);
   pthread_cond_destroy(&pm->timeout_cv);
@@ -109,13 +109,13 @@ void vlib_cli_output (struct vlib_main_t * vm, char * fmt, ...)
 }
 
 void
-pneum_free (void * msg)
+vac_free (void * msg)
 {
   vl_msg_api_free (msg);
 }
 
 static void
-pneum_api_handler (void *msg)
+vac_api_handler (void *msg)
 {
   u16 id = ntohs(*((u16 *)msg));
   msgbuf_t *msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
@@ -124,16 +124,16 @@ pneum_api_handler (void *msg)
     clib_warning("Message ID %d has wrong length: %d\n", id, l);
 
   /* Call Python callback */
-  ASSERT(pneum_callback);
-  (pneum_callback)(msg, l);
-  pneum_free(msg);
+  ASSERT(vac_callback);
+  (vac_callback)(msg, l);
+  vac_free(msg);
 }
 
 static void *
-pneum_rx_thread_fn (void *arg)
+vac_rx_thread_fn (void *arg)
 {
   unix_shared_memory_queue_t *q;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   api_main_t *am = &api_main;
   uword msg;
 
@@ -170,16 +170,16 @@ pneum_rx_thread_fn (void *arg)
 	  break;
 
 	default:
-	  pneum_api_handler((void *)msg);
+	  vac_api_handler((void *)msg);
 	}
       }
 }
 
 static void *
-pneum_timeout_thread_fn (void *arg)
+vac_timeout_thread_fn (void *arg)
 {
   vl_api_memclnt_read_timeout_t *ep;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   api_main_t *am = &api_main;
   struct timespec ts;
   struct timeval tv;
@@ -209,10 +209,10 @@ pneum_timeout_thread_fn (void *arg)
 }
 
 void
-pneum_rx_suspend (void)
+vac_rx_suspend (void)
 {
   api_main_t *am = &api_main;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   vl_api_memclnt_rx_thread_suspend_t *ep;
 
   if (!pm->rx_thread_handle) return;
@@ -230,9 +230,9 @@ pneum_rx_suspend (void)
 }
 
 void
-pneum_rx_resume (void)
+vac_rx_resume (void)
 {
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   if (!pm->rx_thread_handle) return;
   pthread_mutex_lock(&pm->queue_lock);
   if (rx_is_running) goto unlock;
@@ -243,25 +243,25 @@ pneum_rx_resume (void)
 }
 
 static uword *
-pneum_msg_table_get_hash (void)
+vac_msg_table_get_hash (void)
 {
   api_main_t *am = &api_main;
   return (am->msg_index_by_name_and_crc);
 }
 
 int
-pneum_msg_table_size(void)
+vac_msg_table_size(void)
 {
   api_main_t *am = &api_main;
   return hash_elts(am->msg_index_by_name_and_crc);
 }
 
 int
-pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb,
+vac_connect (char * name, char * chroot_prefix, vac_callback_t cb,
                int rx_qlen)
 {
   int rv = 0;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
 
   init();
   if (chroot_prefix != NULL)
@@ -279,19 +279,19 @@ pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb,
 
   if (cb) {
     /* Start the rx queue thread */
-    rv = pthread_create(&pm->rx_thread_handle, NULL, pneum_rx_thread_fn, 0);
+    rv = pthread_create(&pm->rx_thread_handle, NULL, vac_rx_thread_fn, 0);
     if (rv) {
       clib_warning("pthread_create returned %d", rv);
       vl_client_api_unmap();
       return (-1);
     }
-    pneum_callback = cb;
+    vac_callback = cb;
     rx_is_running = true;
   }
 
   /* Start read timeout thread */
   rv = pthread_create(&pm->timeout_thread_handle, NULL,
-		      pneum_timeout_thread_fn, 0);
+		      vac_timeout_thread_fn, 0);
   if (rv) {
     clib_warning("pthread_create returned %d", rv);
     vl_client_api_unmap();
@@ -304,10 +304,10 @@ pneum_connect (char * name, char * chroot_prefix, pneum_callback_t cb,
 }
 
 int
-pneum_disconnect (void)
+vac_disconnect (void)
 {
   api_main_t *am = &api_main;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
 
   if (!pm->connected_to_vlib) return 0;
 
@@ -338,7 +338,7 @@ pneum_disconnect (void)
 
   vl_client_disconnect();
   vl_client_api_unmap();
-  pneum_callback = 0;
+  vac_callback = 0;
 
   cleanup();
 
@@ -348,7 +348,7 @@ pneum_disconnect (void)
 static void
 set_timeout (unsigned short timeout)
 {
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   pthread_mutex_lock(&pm->timeout_lock);
   read_timeout = timeout;
   pthread_cond_signal(&pm->timeout_cv);
@@ -358,18 +358,18 @@ set_timeout (unsigned short timeout)
 static void
 unset_timeout (void)
 {
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   pthread_mutex_lock(&pm->timeout_lock);
   pthread_cond_signal(&pm->timeout_cancel_cv);
   pthread_mutex_unlock(&pm->timeout_lock);
 }
 
 int
-pneum_read (char **p, int *l, u16 timeout)
+vac_read (char **p, int *l, u16 timeout)
 {
   unix_shared_memory_queue_t *q;
   api_main_t *am = &api_main;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
   uword msg;
   msgbuf_t *msgbuf;
 
@@ -419,7 +419,7 @@ pneum_read (char **p, int *l, u16 timeout)
  error:
   vl_msg_api_free((void *) msg);
   /* Client might forget to resume RX thread on failure */
-  pneum_rx_resume ();
+  vac_rx_resume ();
   return -1;
 }
 
@@ -432,47 +432,47 @@ typedef VL_API_PACKED(struct _vl_api_header {
 }) vl_api_header_t;
 
 static unsigned int
-pneum_client_index (void)
+vac_client_index (void)
 {
   return (api_main.my_client_index);
 }
 
 int
-pneum_write (char *p, int l)
+vac_write (char *p, int l)
 {
   int rv = -1;
   api_main_t *am = &api_main;
   vl_api_header_t *mp = vl_msg_api_alloc(l);
   unix_shared_memory_queue_t *q;
-  pneum_main_t *pm = &pneum_main;
+  vac_main_t *pm = &vac_main;
 
   if (!pm->connected_to_vlib) return -1;
   if (!mp) return (-1);
 
   memcpy(mp, p, l);
-  mp->client_index = pneum_client_index();
+  mp->client_index = vac_client_index();
   q = am->shmem_hdr->vl_input_queue;
   rv = unix_shared_memory_queue_add(q, (u8 *)&mp, 0);
   if (rv != 0) {
     clib_warning("vpe_api_write fails: %d\n", rv);
     /* Clear message */
-    pneum_free(mp);
+    vac_free(mp);
   }
   return (rv);
 }
 
 int
-pneum_get_msg_index (unsigned char * name)
+vac_get_msg_index (unsigned char * name)
 {
   return vl_api_get_msg_index (name);
 }
 
 int
-pneum_msg_table_max_index(void)
+vac_msg_table_max_index(void)
 {
   int max = 0;
   hash_pair_t *hp;
-  uword *h = pneum_msg_table_get_hash();
+  uword *h = vac_msg_table_get_hash();
   hash_foreach_pair (hp, h,
   ({
     if (hp->value[0] > max)
@@ -483,7 +483,7 @@ pneum_msg_table_max_index(void)
 }
 
 void
-pneum_set_error_handler (pneum_error_callback_t cb)
+vac_set_error_handler (vac_error_callback_t cb)
 {
   if (cb) clib_error_register_handler (cb, 0);
 }
