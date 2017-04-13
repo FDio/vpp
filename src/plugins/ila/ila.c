@@ -736,8 +736,7 @@ ila_add_del_entry (ila_add_del_entry_args_t * args)
 	      fib_table_entry_special_add(0,
 					  &next_hop,
 					  FIB_SOURCE_RR,
-					  FIB_ENTRY_FLAG_NONE,
-					  ADJ_INDEX_INVALID);
+					  FIB_ENTRY_FLAG_NONE);
 	  e->next_hop_child_index =
 	      fib_entry_child_add(e->next_hop_fib_entry_index,
 				  ila_fib_node_type,

@@ -35,8 +35,7 @@ vnet_ip6_fib_init (u32 fib_index)
     fib_table_entry_special_add(fib_index,
 				&pfx,
 				FIB_SOURCE_DEFAULT_ROUTE,
-				FIB_ENTRY_FLAG_DROP,
-				ADJ_INDEX_INVALID);
+				FIB_ENTRY_FLAG_DROP);
 
     /*
      * all link local for us
@@ -47,8 +46,7 @@ vnet_ip6_fib_init (u32 fib_index)
     fib_table_entry_special_add(fib_index,
 				&pfx,
 				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_LOCAL,
-				ADJ_INDEX_INVALID);
+				FIB_ENTRY_FLAG_LOCAL);
 }
 
 static u32
