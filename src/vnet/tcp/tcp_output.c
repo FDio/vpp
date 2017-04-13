@@ -42,9 +42,8 @@ static char *tcp_error_strings[] = {
 
 typedef struct
 {
-  u16 src_port;
-  u16 dst_port;
-  u8 state;
+  tcp_header_t tcp_header;
+  tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
 u16 dummy_mtu = 400;
@@ -54,8 +53,13 @@ format_tcp_tx_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  tcp_tx_trace_t *t = va_arg (*args, tcp_tx_trace_t *);
+  uword indent = format_get_indent (s);
 
-  s = format (s, "TBD\n");
+  s = format (s, "%U\n%U%U",
+	      format_tcp_header, &t->tcp_header, 128,
+	      format_white_space, indent,
+	      format_tcp_connection_verbose, &t->tcp_connection);
 
   return s;
 }
@@ -1331,7 +1335,8 @@ tcp46_output_inline (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  tcp_connection_t *tc0;
-	  tcp_header_t *th0;
+	  tcp_tx_trace_t *t0;
+	  tcp_header_t *th0 = 0;
 	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_IP_LOOKUP;
 
 	  bi0 = from[0];
@@ -1424,7 +1429,17 @@ tcp46_output_inline (vlib_main_t * vm,
 	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      if (th0)
+		{
+		  clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+		}
+	      else
+		{
+		  memset (&t0->tcp_header, 0, sizeof (t0->tcp_header));
+		}
+	      clib_memcpy (&t0->tcp_connection, tc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1541,6 +1556,9 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
+	  tcp_tx_trace_t *t0;
+	  tcp_header_t *th0;
+	  tcp_connection_t *tc0;
 	  u32 error0 = TCP_ERROR_RST_SENT, next0 = TCP_RESET_NEXT_IP_LOOKUP;
 
 	  bi0 = from[0];
@@ -1569,7 +1587,18 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-
+	      th0 = vlib_buffer_get_current (b0);
+	      if (is_ip4)
+		th0 = ip4_next_header ((ip4_header_t *) th0);
+	      else
+		th0 = ip6_next_header ((ip6_header_t *) th0);
+	      tc0 =
+		tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
+				    my_thread_index);
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+	      clib_memcpy (&t0->tcp_connection, tc0,
+			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1607,6 +1636,7 @@ VLIB_REGISTER_NODE (tcp4_reset_node) = {
     foreach_tcp4_reset_next
 #undef _
   },
+  .format_trace = format_tcp_tx_trace,
 };
 /* *INDENT-ON* */
 
@@ -1625,6 +1655,7 @@ VLIB_REGISTER_NODE (tcp6_reset_node) = {
     foreach_tcp6_reset_next
 #undef _
   },
+  .format_trace = format_tcp_tx_trace,
 };
 /* *INDENT-ON* */
 
