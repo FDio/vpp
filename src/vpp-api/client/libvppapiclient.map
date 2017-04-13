@@ -1,0 +1,19 @@
+
+VPPAPICLIENT_17.07 {
+	global:
+	vac_read;
+	vac_write;
+	vac_connect;
+	vac_disconnect;
+	vac_set_error_handler;
+	vac_msg_table_max_index;
+	vac_get_msg_index;
+	vac_rx_suspend;
+	vac_rx_resume;
+	vac_free;
+	vac_msg_table_size;
+
+	api_main;
+
+	local: *;
+};

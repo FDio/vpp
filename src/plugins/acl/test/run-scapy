@@ -19,7 +19,7 @@ cd $ACL_PLUGIN_SETUP_DIR;
 $ROOT_DIR/virtualenv/bin/python setup.py install
 cd $ROOT_DIR
 # figure out the shared library path and start scapy
-export LD_LIBRARY_PATH=`pwd`/`find . -name "libpneum.so" -exec dirname {} \; | grep lib64 | head -n 1`
+export LD_LIBRARY_PATH=`pwd`/`find . -name "libvppapiclient.so" -exec dirname {} \; | grep lib64 | head -n 1`
 sudo LD_LIBRARY_PATH=$LD_LIBRARY_PATH virtualenv/bin/scapy
 
 
