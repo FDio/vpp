@@ -427,8 +427,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t *a,
       fib_table_entry_special_add(outer_fib_index,
                                   &t->tunnel_dst,
                                   FIB_SOURCE_RR,
-                                  FIB_ENTRY_FLAG_NONE,
-                                  ADJ_INDEX_INVALID);
+                                  FIB_ENTRY_FLAG_NONE);
   t->sibling_index =
       fib_entry_child_add(t->fib_entry_index,
                           FIB_NODE_TYPE_GRE_TUNNEL,

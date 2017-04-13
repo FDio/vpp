@@ -371,23 +371,12 @@ fib_node_index_t
 fib_table_entry_special_add (u32 fib_index,
 			     const fib_prefix_t *prefix,
 			     fib_source_t source,
-			     fib_entry_flag_t flags,
-			     adj_index_t adj_index)
+			     fib_entry_flag_t flags)
 {
     fib_node_index_t fib_entry_index;
     dpo_id_t tmp_dpo = DPO_INVALID;
 
-    if (ADJ_INDEX_INVALID != adj_index)
-    {
-        dpo_set(&tmp_dpo,
-                DPO_ADJACENCY,
-                FIB_PROTOCOL_MAX,
-                adj_index);
-    }
-    else
-    {
-        dpo_copy(&tmp_dpo, drop_dpo_get(fib_proto_to_dpo(prefix->fp_proto)));
-    }
+    dpo_copy(&tmp_dpo, drop_dpo_get(fib_proto_to_dpo(prefix->fp_proto)));
  
     fib_entry_index = fib_table_entry_special_dpo_add(fib_index, prefix, source,
                                                       flags, &tmp_dpo);

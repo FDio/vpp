@@ -336,9 +336,7 @@ vxlan_gpe_enable_disable_ioam_for_dest (vlib_main_t * vm,
 	  t1->fib_entry_index =
 	    fib_table_entry_special_add (outer_fib_index,
 					 &tun_dst_pfx,
-					 FIB_SOURCE_RR,
-					 FIB_ENTRY_FLAG_NONE,
-					 ADJ_INDEX_INVALID);
+					 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
 	  t1->sibling_index =
 	    fib_entry_child_add (t1->fib_entry_index,
 				 hm->fib_entry_type, t1 - hm->dst_tunnels);

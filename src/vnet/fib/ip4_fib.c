@@ -149,8 +149,7 @@ ip4_create_fib_with_table_id (u32 table_id)
 	fib_table_entry_special_add(fib_table->ft_index,
 				    &prefix,
 				    ip4_specials[ii].ift_source,
-				    ip4_specials[ii].ift_flag,
-				    ADJ_INDEX_INVALID);
+				    ip4_specials[ii].ift_flag);
     }
 
     return (fib_table->ft_index);

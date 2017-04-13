@@ -518,9 +518,7 @@ map_fib_resolve (map_main_pre_resolved_t * pr,
 
   pr->fei = fib_table_entry_special_add (0,	// default fib
 					 &pfx,
-					 FIB_SOURCE_RR,
-					 FIB_ENTRY_FLAG_NONE,
-					 ADJ_INDEX_INVALID);
+					 FIB_SOURCE_RR, FIB_ENTRY_FLAG_NONE);
   pr->sibling = fib_entry_child_add (pr->fei, FIB_NODE_TYPE_MAP_E, proto);
   map_stack (pr);
 }

@@ -1378,8 +1378,8 @@ fib_test_v4 (void)
 	     fib_entry_pool_size());
 
     /*
-     * An EXCLUSIVE route; one where the user (me) provides the exclusive
-     * adjacency through which the route will resovle
+     * An special route; one where the user (me) provides the
+     * adjacency through which the route will resovle by setting the flags
      */
     fib_prefix_t ex_pfx = {
 	.fp_len = 32,
@@ -1393,11 +1393,12 @@ fib_test_v4 (void)
     fib_table_entry_special_add(fib_index,
 				&ex_pfx,
 				FIB_SOURCE_SPECIAL,
-				FIB_ENTRY_FLAG_EXCLUSIVE,
-				locked_ai);
+				FIB_ENTRY_FLAG_LOCAL);
     fei = fib_table_lookup_exact_match(fib_index, &ex_pfx);
-    FIB_TEST((ai == fib_entry_get_adj(fei)),
-	     "Exclusive route links to user adj");
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
+    FIB_TEST((DPO_RECEIVE == dpo->dpoi_type),
+	     "local interface adj is local");
 
     fib_table_entry_special_remove(fib_index,
 				   &ex_pfx,
@@ -3675,8 +3676,7 @@ fib_test_v4 (void)
     fei = fib_table_entry_special_add(fib_index,
 				      &pfx_4_1_1_1_s_32,
 				      FIB_SOURCE_URPF_EXEMPT,
-				      FIB_ENTRY_FLAG_DROP,
-				      ADJ_INDEX_INVALID);
+				      FIB_ENTRY_FLAG_DROP);
     dpo = fib_entry_contribute_ip_forwarding(fei);
     FIB_TEST(load_balance_is_drop(dpo),
 	     "uRPF exempt 4.1.1.1/32 DROP");
