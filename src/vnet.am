@@ -579,6 +579,19 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/ipsec-gre/ipsec_gre.api
 
 ########################################
+# Tunnel protocol: geneve
+########################################
+libvnet_la_SOURCES +=				\
+ vnet/geneve/geneve.c               \
+ vnet/geneve/geneve_decap.c         \
+ vnet/geneve/geneve_encap.c
+
+nobase_include_HEADERS +=			\
+ vnet/geneve/geneve.h
+
+API_FILES += vnet/gre/gre.api
+
+########################################
 # LISP control plane: lisp-cp
 ########################################
 
