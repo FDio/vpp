@@ -58,6 +58,7 @@ typedef enum _tcp_state
 } tcp_state_t;
 
 format_function_t format_tcp_state;
+format_function_t format_tcp_flags;
 
 /** TCP timers */
 #define foreach_tcp_timer               \
@@ -145,7 +146,7 @@ enum
 #undef _
 };
 
-#define TCP_MAX_SACK_BLOCKS 5	/**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS 32	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 
 typedef struct _sack_scoreboard_hole

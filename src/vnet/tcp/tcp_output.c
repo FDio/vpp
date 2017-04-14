@@ -427,7 +427,8 @@ tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 	 && (it = vlib_get_buffer (vm, it->next_buffer)));
 
   /* Leave enough space for headers */
-  vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  // vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  b->current_data = 256;
   vnet_buffer (b)->tcp.flags = 0;
 }
 
@@ -671,7 +672,8 @@ tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4)
   b = vlib_get_buffer (vm, bi);
 
   /* Leave enough space for headers */
-  vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  // vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  b->current_data = 256;
 
   /* Make and write options */
   tcp_hdr_len = sizeof (tcp_header_t);
@@ -776,7 +778,8 @@ tcp_send_syn (tcp_connection_t * tc)
   b = vlib_get_buffer (vm, bi);
 
   /* Leave enough space for headers */
-  vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  b->current_data = 256;
+  // vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 
   /* Set random initial sequence */
   time_now = tcp_time_now ();
@@ -848,7 +851,8 @@ tcp_send_fin (tcp_connection_t * tc)
   b = vlib_get_buffer (vm, bi);
 
   /* Leave enough space for headers */
-  vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  b->current_data = 256;
+  // vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
