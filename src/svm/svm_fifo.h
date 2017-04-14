@@ -36,9 +36,12 @@ typedef struct
   u32 next;	/**< Next linked-list element pool index */
   u32 prev;	/**< Previous linked-list element pool index */
 
-  u32 fifo_position;	/**< Start of segment, normalized*/
+  u32 start;	/**< Start of segment, normalized*/
   u32 length;		/**< Length of segment */
 } ooo_segment_t;
+
+format_function_t format_ooo_segment;
+format_function_t format_ooo_list;
 
 #define OOO_SEGMENT_INVALID_INDEX ((u32)~0)
 
@@ -127,6 +130,8 @@ int svm_fifo_dequeue_nowait (svm_fifo_t * f, int pid, u32 max_bytes,
 int svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
 		   u8 * copy_here);
 int svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes);
+u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
+ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 
 format_function_t format_svm_fifo;
 
@@ -139,13 +144,23 @@ svm_fifo_newest_ooo_segment (svm_fifo_t * f)
 always_inline u32
 ooo_segment_offset (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return ((f->nitems + s->fifo_position - f->tail) % f->nitems);
+//  return ((f->nitems + s->fifo_position - f->tail) % f->nitems);
+  return s->start;
 }
 
 always_inline u32
 ooo_segment_end_offset (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return ((f->nitems + s->fifo_position + s->length - f->tail) % f->nitems);
+//  return ((f->nitems + s->fifo_position + s->length - f->tail) % f->nitems);
+  return s->start + s->length;
+}
+
+always_inline ooo_segment_t *
+ooo_segment_get_prev (svm_fifo_t * f, ooo_segment_t * s)
+{
+  if (s->prev == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (f->ooo_segments, s->prev);
 }
 
 #endif /* __included_ssvm_fifo_h__ */
