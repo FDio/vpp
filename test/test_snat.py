@@ -560,7 +560,7 @@ class TestSNAT(MethodHolder):
         self.verify_capture_out_with_icmp_errors(capture)
 
     def test_ping_out_interface_from_outside(self):
-        """ Ping SNAT out interface from outside """
+        """ Ping SNAT out interface from outside network """
 
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
@@ -586,6 +586,36 @@ class TestSNAT(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet "
                                   "(outside network):", packet))
             raise
+
+    def test_ping_internal_host_from_outside(self):
+        """ Ping internal host from outside network """
+
+        self.snat_add_static_mapping(self.pg0.remote_ip4, self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # out2in
+        pkt = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+               IP(src=self.pg1.remote_ip4, dst=self.snat_addr, ttl=64) /
+               ICMP(id=self.icmp_id_out, type='echo-request'))
+        self.pg1.add_stream(pkt)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        self.verify_capture_in(capture, self.pg0, packet_num=1)
+        self.assert_equal(capture[0][IP].proto, IP_PROTOS.icmp)
+
+        # in2out
+        pkt = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+               IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4, ttl=64) /
+               ICMP(id=self.icmp_id_in, type='echo-reply'))
+        self.pg0.add_stream(pkt)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.verify_capture_out(capture, same_port=True, packet_num=1)
+        self.assert_equal(capture[0][IP].proto, IP_PROTOS.icmp)
 
     def test_static_in(self):
         """ SNAT 1:1 NAT initialized from inside network """

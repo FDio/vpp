@@ -351,7 +351,8 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
 int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t match,
                                snat_session_key_t * mapping,
-                               u8 by_external);
+                               u8 by_external,
+                               u8 *is_addr_only);
 
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
                                u8 p_len,
