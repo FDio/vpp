@@ -172,7 +172,7 @@ typedef struct
 #define TCP_WND_MAX                     65535U
 #define TCP_MAX_WND_SCALE               14	/* See RFC 1323 */
 #define TCP_OPTS_ALIGN                  4
-#define TCP_OPTS_MAX_SACK_BLOCKS        3
+#define TCP_OPTS_MAX_SACK_BLOCKS        128
 #endif /* included_tcp_packet_h */
 
 /*
