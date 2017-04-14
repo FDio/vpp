@@ -86,7 +86,7 @@ vlib_node_registration_t snat_det_out2in_node;
 #define foreach_snat_out2in_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
 _(OUT2IN_PACKETS, "Good out2in packets processed")      \
-_(BAD_ICMP_TYPE, "icmp type not echo-reply")            \
+_(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(NO_TRANSLATION, "No translation")
   
 typedef enum {
@@ -299,6 +299,7 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   snat_session_t *s0 = 0;
   u8 dont_translate = 0;
   clib_bihash_kv_8_8_t kv0, value0;
+  u8 is_addr_only;
   u32 next0 = ~0;
   int err;
 
@@ -322,7 +323,7 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
     {
       /* Try to match static mapping by external address and port,
          destination address and port in packet */
-      if (snat_static_mapping_match(sm, key0, &sm0, 1))
+      if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only))
         {
           /* Don't NAT packet aimed at the intfc address */
           if (PREDICT_FALSE(is_interface_addr(sm, node, sw_if_index0,
@@ -336,8 +337,10 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
           goto out;
         }
 
-      if (icmp_is_error_message (icmp0))
+      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply &&
+                        (icmp0->type != ICMP4_echo_request || !is_addr_only)))
         {
+          b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
           next0 = SNAT_OUT2IN_NEXT_DROP;
           goto out;
         }
@@ -353,15 +356,18 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
         }
     }
   else
-    s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-                            value0.value);
-
-  if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply &&
-                    !icmp_is_error_message (icmp0)))
     {
-      b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
-      next0 = SNAT_OUT2IN_NEXT_DROP;
-      goto out;
+      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply &&
+                        icmp0->type != ICMP4_echo_request &&
+                        !icmp_is_error_message (icmp0)))
+        {
+          b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
+          next0 = SNAT_OUT2IN_NEXT_DROP;
+          goto out;
+        }
+
+      s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
+                              value0.value);
     }
 
 out:
@@ -399,6 +405,7 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
   snat_session_key_t key0;
   snat_session_key_t sm0;
   u8 dont_translate = 0;
+  u8 is_addr_only;
   u32 next0 = ~0;
   int err;
 
@@ -416,7 +423,7 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
     }
   key0.fib_index = rx_fib_index0;
 
-  if (snat_static_mapping_match(sm, key0, &sm0, 1))
+  if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only))
     {
       /* Don't NAT packet aimed at the intfc address */
       if (is_interface_addr(sm, node, sw_if_index0, ip0->dst_address.as_u32))
@@ -430,14 +437,12 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
     }
 
   if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply &&
+                    (icmp0->type != ICMP4_echo_request || !is_addr_only) &&
                     !icmp_is_error_message (icmp0)))
     {
-      if (icmp0->type != ICMP4_echo_request || key0.port != sm0.port)
-        {
-          b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
-          next0 = SNAT_OUT2IN_NEXT_DROP;
-          goto out;
-        }
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_BAD_ICMP_TYPE];
+      next0 = SNAT_OUT2IN_NEXT_DROP;
+      goto out;
     }
 
 out:
@@ -717,7 +722,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
-              if (snat_static_mapping_match(sm, key0, &sm0, 1))
+              if (snat_static_mapping_match(sm, key0, &sm0, 1, 0))
                 {
                   b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                   /* 
@@ -852,7 +857,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
-              if (snat_static_mapping_match(sm, key1, &sm1, 1))
+              if (snat_static_mapping_match(sm, key1, &sm1, 1, 0))
                 {
                   b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                   /* 
@@ -1021,7 +1026,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
-              if (snat_static_mapping_match(sm, key0, &sm0, 1))
+              if (snat_static_mapping_match(sm, key0, &sm0, 1, 0))
                 {
                   b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                   /* 
@@ -2025,7 +2030,7 @@ snat_out2in_fast_node_fn (vlib_main_t * vm,
           key0.port = udp0->dst_port;
           key0.fib_index = rx_fib_index0;
 
-          if (snat_static_mapping_match(sm, key0, &sm0, 1))
+          if (snat_static_mapping_match(sm, key0, &sm0, 1, 0))
             {
               b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
               goto trace00;

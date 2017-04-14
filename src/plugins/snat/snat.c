@@ -1903,13 +1903,15 @@ void snat_free_outside_address_and_port (snat_main_t * sm,
  * @param mapping     External or local address and port of the matched mapping.
  * @param by_external If 0 match by local address otherwise match by external
  *                    address.
+ * @param is_addr_only If matched mapping is address only
  *
  * @returns 0 if match found otherwise 1.
  */
 int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t match,
                                snat_session_key_t * mapping,
-                               u8 by_external)
+                               u8 by_external,
+                               u8 *is_addr_only)
 {
   clib_bihash_kv_8_8_t kv, value;
   snat_static_mapping_t *m;
@@ -1954,6 +1956,9 @@ int snat_static_mapping_match (snat_main_t * sm,
         : clib_host_to_net_u16 (m->external_port);
       mapping->fib_index = sm->outside_fib_index;
     }
+
+  if (PREDICT_FALSE(is_addr_only != 0))
+    *is_addr_only = m->addr_only;
 
   return 0;
 }
