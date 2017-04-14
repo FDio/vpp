@@ -15,6 +15,33 @@
 
 #include <svm/svm_fifo.h>
 
+u8 *
+format_ooo_segment (u8 * s, va_list * args)
+{
+  ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
+
+  s = format (s, "pos %u, len %u, next %d, prev %d",
+	      seg->fifo_position, seg->length, seg->next, seg->prev);
+  return s;
+}
+
+u8 *
+format_ooo_list (u8 * s, va_list * args)
+{
+  svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
+  u32 ooo_segment_index = f->ooos_list_head;
+  ooo_segment_t *seg;
+
+  while (ooo_segment_index != OOO_SEGMENT_INVALID_INDEX)
+    {
+      seg = pool_elt_at_index (f->ooo_segments, ooo_segment_index);
+      s = format (s, "\n  %U", format_ooo_segment, seg);
+
+      ooo_segment_index = seg->next;
+    }
+  return s;
+}
+
 /** create an svm fifo, in the current heap. Fails vs blow up the process */
 svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
@@ -108,6 +135,7 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
     s = pool_elt_at_index (f->ooo_segments, s->next);
 
   s_index = s - f->ooo_segments;
+
   s_sof = ooo_segment_offset (f, s);
   s_eof = ooo_segment_end_offset (f, s);
 
@@ -181,6 +209,11 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
 	      s->fifo_position = prev->fifo_position;
 	      s->length = s_eof - ooo_segment_offset (f, prev);
 	      ooo_segment_del (f, s->prev);
+	    }
+	  else
+	    {
+	      s->fifo_position = position;
+	      s->length = s_eof - ooo_segment_offset (f, s);
 	    }
 	}
       else
@@ -573,8 +606,8 @@ format_svm_fifo (u8 * s, va_list * args)
       ooo_segment_t *seg;
       u32 seg_index;
 
-      s =
-	format (s, "ooo pool %d active elts\n", pool_elts (f->ooo_segments));
+      s = format (s, "ooo pool %d active elts\n",
+		  pool_elts (f->ooo_segments));
 
       seg_index = f->ooos_list_head;
 
@@ -587,6 +620,18 @@ format_svm_fifo (u8 * s, va_list * args)
 	}
     }
   return s;
+}
+
+u32
+svm_fifo_number_ooo_segments (svm_fifo_t * f)
+{
+  return pool_elts (f->ooo_segments);
+}
+
+ooo_segment_t *
+svm_fifo_first_ooo_segment (svm_fifo_t *f)
+{
+  return pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 }
 
 /*
