@@ -211,7 +211,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* *INDENT-ON* */
 
 	  /* Make room for headers */
-	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
+	  b0->current_data = 256;
+	  data0 = vlib_buffer_get_current (b0);
+	  // data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
 
 	  /* Dequeue the data
 	   * TODO 1) peek instead of dequeue
