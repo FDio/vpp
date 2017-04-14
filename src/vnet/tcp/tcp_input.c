@@ -211,8 +211,6 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 always_inline int
 tcp_segment_check_paws (tcp_connection_t * tc)
 {
-  /* XXX normally test for timestamp should be lt instead of leq, but for
-   * local testing this is not enough */
   return tcp_opts_tstamp (&tc->opt) && tc->tsval_recent
     && timestamp_lt (tc->opt.tsval, tc->tsval_recent);
 }
@@ -999,7 +997,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
   stream_session_t *s0;
-  u32 offset, seq;
+  u32 offset;
   int rv;
 
   /* Pure ACK. Do nothing */
@@ -1009,8 +1007,9 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     }
 
   s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
-  seq = vnet_buffer (b)->tcp.seq_number;
-  offset = seq - tc->rcv_nxt;
+  offset = vnet_buffer (b)->tcp.seq_number - tc->irs;
+
+  clib_warning ("ooo: offset %d len %d", offset, data_len);
 
   rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, s0->pid, offset,
 				     data_len, vlib_buffer_get_current (b));
@@ -1032,8 +1031,8 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 
       /* Get the newest segment from the fifo */
       newest = svm_fifo_newest_ooo_segment (s0->server_rx_fifo);
-      start = tc->rcv_nxt + ooo_segment_offset (s0->server_rx_fifo, newest);
-      end = tc->rcv_nxt + ooo_segment_end_offset (s0->server_rx_fifo, newest);
+      start = ooo_segment_offset (s0->server_rx_fifo, newest);
+      end = ooo_segment_end_offset (s0->server_rx_fifo, newest);
 
       tcp_update_sack_list (tc, start, end);
     }
@@ -1072,6 +1071,7 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
     {
       /* Old sequence numbers allowed through because they overlapped
        * the rx window */
+
       if (seq_lt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt))
 	{
 	  error = TCP_ERROR_SEGMENT_OLD;
@@ -1181,6 +1181,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index, errors = 0;
   tcp_main_t *tm = vnet_get_tcp_main ();
+  u8 is_fin = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1243,9 +1244,11 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_advance_bytes0 += sizeof (ip60[0]);
 	    }
 
+	  is_fin = (th0->flags & TCP_FLAG_FIN) != 0;
+
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	    + tcp_is_syn (th0) + tcp_is_fin (th0) + n_data_bytes0;
+	    + tcp_is_syn (th0) + is_fin + n_data_bytes0;
 
 	  /* TODO header prediction fast path */
 
@@ -1272,8 +1275,11 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_advance (b0, n_advance_bytes0);
 	  error0 = tcp_segment_rcv (tm, tc0, b0, n_data_bytes0, &next0);
 
+	  /* N.B. buffer is rewritten if segment is ooo. Thus, th0 becomes a
+	   * dangling reference. */
+
 	  /* 8: check the FIN bit */
-	  if (tcp_fin (th0))
+	  if (is_fin)
 	    {
 	      /* Enter CLOSE-WAIT and notify session. Don't send ACK, instead
 	       * wait for session to call close. To avoid lingering
@@ -2365,8 +2371,12 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      if (PREDICT_FALSE (error0 == TCP_ERROR_DISPATCH))
 		{
+		  tcp_state_t state0 = tc0->state;
 		  /* Overload tcp flags to store state */
 		  vnet_buffer (b0)->tcp.flags = tc0->state;
+		  clib_warning ("disp error state %U flags %U",
+				format_tcp_state, &state0,
+				format_tcp_flags, flags0);
 		}
 	    }
 	  else

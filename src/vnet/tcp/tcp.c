@@ -447,7 +447,7 @@ format_tcp_state (u8 * s, va_list * args)
   if (*state < TCP_N_STATES)
     s = format (s, "%s", tcp_fsm_states[*state]);
   else
-    s = format (s, "UNKNOWN");
+    s = format (s, "UNKNOWN (%d (0x%x))", *state, *state);
 
   return s;
 }

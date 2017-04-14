@@ -40,7 +40,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/tcp/tcp.h>
 
-static u8 *
+u8 *
 format_tcp_flags (u8 * s, va_list * args)
 {
   int flags = va_arg (*args, int);

@@ -58,6 +58,7 @@ typedef enum _tcp_state
 } tcp_state_t;
 
 format_function_t format_tcp_state;
+format_function_t format_tcp_flags;
 
 /** TCP timers */
 #define foreach_tcp_timer               \
