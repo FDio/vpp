@@ -19,6 +19,8 @@
 #include <vnet/session/session.h>
 #include <math.h>
 
+tcp_header_t *oingo_th0;
+
 static char *tcp_error_strings[] = {
 #define tcp_error(n,s) s,
 #include <vnet/tcp/tcp_error.def>
@@ -211,6 +213,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 always_inline int
 tcp_segment_check_paws (tcp_connection_t * tc)
 {
+  return 0;			/*$$$$$ */
   /* XXX normally test for timestamp should be lt instead of leq, but for
    * local testing this is not enough */
   return tcp_opts_tstamp (&tc->opt) && tc->tsval_recent
@@ -947,6 +950,8 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       return TCP_ERROR_PURE_ACK;
     }
 
+  clib_warning ("in-order: len %d", data_len);
+
   written = stream_session_enqueue_data (&tc->connection,
 					 vlib_buffer_get_current (b),
 					 data_len, 1 /* queue event */ );
@@ -1012,6 +1017,8 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
   seq = vnet_buffer (b)->tcp.seq_number;
   offset = seq - tc->rcv_nxt;
 
+  clib_warning ("ooo: offset %d len %d", offset, data_len);
+
   rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, s0->pid, offset,
 				     data_len, vlib_buffer_get_current (b));
 
@@ -1067,11 +1074,15 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
 {
   u32 error = 0;
 
+  if (oingo_th0 && oingo_th0->flags & TCP_FLAG_FIN)
+    clib_warning ("OINGO1");
+
   /* Handle out-of-order data */
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt))
     {
       /* Old sequence numbers allowed through because they overlapped
        * the rx window */
+
       if (seq_lt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt))
 	{
 	  error = TCP_ERROR_SEGMENT_OLD;
@@ -1080,6 +1091,10 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
 	}
 
       error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
+
+      if (oingo_th0 && oingo_th0->flags & TCP_FLAG_FIN)
+	clib_warning ("OINGO2");
+
 
       /* N.B. Should not filter burst of dupacks. Two issues 1) dupacks open
        * cwnd on remote peer when congested 2) acks leaving should have the
@@ -1090,6 +1105,10 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
       /* RFC2581: Send DUPACK for fast retransmit */
       tcp_make_ack (tc, b);
       *next0 = tcp_next_output (tc->c_is_ip4);
+
+      if (oingo_th0 && oingo_th0->flags & TCP_FLAG_FIN)
+	clib_warning ("OINGO3");
+
 
       /* Mark as DUPACK. We may filter these in output if
        * the burst fills the holes. */
@@ -1103,6 +1122,9 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
   error = tcp_session_enqueue_data (tc, b, n_data_bytes);
+
+  if (oingo_th0 && oingo_th0->flags & TCP_FLAG_FIN)
+    clib_warning ("OINGO4");
 
   if (n_data_bytes == 0)
     {
@@ -1121,7 +1143,13 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
   *next0 = tcp_next_output (tc->c_is_ip4);
   tcp_make_ack (tc, b);
 
+  if (oingo_th0 && oingo_th0->flags & TCP_FLAG_FIN)
+    clib_warning ("OINGO5");
+
+
 done:
+  if (oingo_th0 && oingo_th0->flags & TCP_FLAG_FIN)
+    clib_warning ("OINGO6");
   return error;
 }
 
@@ -1144,6 +1172,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index, errors = 0;
   tcp_main_t *tm = vnet_get_tcp_main ();
+  u8 is_fin = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1190,6 +1219,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ip40 = vlib_buffer_get_current (b0);
 	      th0 = ip4_next_header (ip40);
+
+	      is_fin = (th0->flags & TCP_FLAG_FIN) != 0;
+
 	      n_advance_bytes0 = (ip4_header_bytes (ip40)
 				  + tcp_header_bytes (th0));
 	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
@@ -1199,6 +1231,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ip60 = vlib_buffer_get_current (b0);
 	      th0 = ip6_next_header (ip60);
+
+	      is_fin = (th0->flags & TCP_FLAG_FIN) != 0;
+
 	      n_advance_bytes0 = tcp_header_bytes (th0);
 	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
 		- n_advance_bytes0;
@@ -1207,7 +1242,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	    + tcp_is_syn (th0) + tcp_is_fin (th0) + n_data_bytes0;
+	    + tcp_is_syn (th0) + is_fin + n_data_bytes0;
 
 	  /* TODO header prediction fast path */
 
@@ -1233,9 +1268,10 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  vlib_buffer_advance (b0, n_advance_bytes0);
 	  error0 = tcp_segment_rcv (tm, tc0, b0, n_data_bytes0, &next0);
+	  /* WARNING: th0 is a dangling reference after this point! */
 
 	  /* 8: check the FIN bit */
-	  if (tcp_fin (th0))
+	  if (is_fin)
 	    {
 	      /* Enter CLOSE-WAIT and notify session. Don't send ACK, instead
 	       * wait for session to call close. To avoid lingering
@@ -1808,6 +1844,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		goto drop;
 
 	      tc0->state = TCP_STATE_CLOSED;
+	      clib_warning ("state now closed");
 
 	      /* Don't delete the connection/session yet. Instead, wait a
 	       * reasonable amount of time until the pipes are cleared. In
@@ -2324,8 +2361,12 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      if (PREDICT_FALSE (error0 == TCP_ERROR_DISPATCH))
 		{
+		  tcp_state_t state0 = tc0->state;
 		  /* Overload tcp flags to store state */
 		  vnet_buffer (b0)->tcp.flags = tc0->state;
+		  clib_warning ("disp error state %U flags %U",
+				format_tcp_state, &state0,
+				format_tcp_flags, flags0);
 		}
 	    }
 	  else

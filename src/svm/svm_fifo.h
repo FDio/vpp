@@ -40,6 +40,9 @@ typedef struct
   u32 length;		/**< Length of segment */
 } ooo_segment_t;
 
+format_function_t format_ooo_segment;
+format_function_t format_ooo_list;
+
 #define OOO_SEGMENT_INVALID_INDEX ((u32)~0)
 
 typedef struct

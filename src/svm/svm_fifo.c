@@ -15,6 +15,33 @@
 
 #include <svm/svm_fifo.h>
 
+u8 *
+format_ooo_segment (u8 * s, va_list * args)
+{
+  ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
+
+  s = format (s, "pos %u, len %u, next %d, prev %d",
+	      seg->fifo_position, seg->length, seg->next, seg->prev);
+  return s;
+}
+
+u8 *
+format_ooo_list (u8 * s, va_list * args)
+{
+  svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
+  u32 ooo_segment_index = f->ooos_list_head;
+  ooo_segment_t *seg;
+
+  while (ooo_segment_index != OOO_SEGMENT_INVALID_INDEX)
+    {
+      seg = pool_elt_at_index (f->ooo_segments, ooo_segment_index);
+      s = format (s, "\n  %U", format_ooo_segment, seg);
+
+      ooo_segment_index = seg->next;
+    }
+  return s;
+}
+
 /** create an svm fifo, in the current heap. Fails vs blow up the process */
 svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
@@ -93,9 +120,12 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
   position = (f->tail + offset) % f->nitems;
   end_offset = offset + length;
 
+  // clib_warning ("add: pos %u len %u", position, length);
+
   if (f->ooos_list_head == OOO_SEGMENT_INVALID_INDEX)
     {
       s = ooo_segment_new (f, position, length);
+      // clib_warning ("init: %U", format_ooo_segment, s);
       f->ooos_list_head = s - f->ooo_segments;
       f->ooos_newest = f->ooos_list_head;
       return;
@@ -108,6 +138,9 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
     s = pool_elt_at_index (f->ooo_segments, s->next);
 
   s_index = s - f->ooo_segments;
+
+  // clib_warning ("first seg after new: %U", format_ooo_segment, s);
+
   s_sof = ooo_segment_offset (f, s);
   s_eof = ooo_segment_end_offset (f, s);
 
@@ -136,6 +169,7 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
       new_s->next = s - f->ooo_segments;
       s->prev = new_index;
       f->ooos_newest = new_index;
+      // clib_warning ("added before, full list: %U", format_ooo_list, f);
       return;
     }
   /* No overlap, add after current segment */
@@ -159,6 +193,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
       s->next = new_index;
       f->ooos_newest = new_index;
 
+      // clib_warning ("added after, full list: %U", format_ooo_list, f);
+
       return;
     }
 
@@ -172,6 +208,8 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
       /* If we have a previous, check if we overlap */
       if (s->prev != OOO_SEGMENT_INVALID_INDEX)
 	{
+	  // clib_warning ("merge c1");
+
 	  prev = pool_elt_at_index (f->ooo_segments, s->prev);
 
 	  /* New segment merges prev and current. Remove previous and
@@ -182,16 +220,29 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
 	      s->length = s_eof - ooo_segment_offset (f, prev);
 	      ooo_segment_del (f, s->prev);
 	    }
+	  /* $$$$$ THIS CASE WAS MISSING... */
+	  else
+	    {
+	      s->fifo_position = position;
+	      s->length += length;
+	    }
+
+	  // clib_warning ("merge c1, full list: %U", format_ooo_list, f);
 	}
       else
 	{
+	  // clib_warning ("merge c2");
+
 	  s->fifo_position = position;
 	  s->length = s_eof - ooo_segment_offset (f, s);
+	  // clib_warning ("merge c2, full list: %U", format_ooo_list, f);
 	}
 
       /* The new segment's tail may cover multiple smaller ones */
       if (s_eof < end_offset)
 	{
+	  // clib_warning ("merge c3");
+
 	  /* Remove segments completely covered */
 	  it = (s->next != OOO_SEGMENT_INVALID_INDEX) ?
 	    pool_elt_at_index (f->ooo_segments, s->next) : 0;
@@ -213,16 +264,19 @@ ooo_segment_add (svm_fifo_t * f, u32 offset, u32 length)
 		it->length - (ooo_segment_offset (f, it) - end_offset);
 	      ooo_segment_del (f, it - f->ooo_segments);
 	    }
+	  // clib_warning ("merge c3, full list: %U", format_ooo_list, f);
 	}
     }
   /* Last but overlapping previous */
   else if (s_eof <= end_offset)
     {
+      // clib_warning ("partial overlap");
       s->length = end_offset - ooo_segment_offset (f, s);
     }
   /* New segment completely covered by current one */
   else
     {
+      // clib_warning ("cover");
       /* Do Nothing */
     }
 
@@ -588,6 +642,8 @@ format_svm_fifo (u8 * s, va_list * args)
     }
   return s;
 }
+
+
 
 /*
  * fd.io coding-style-patch-verification: ON
