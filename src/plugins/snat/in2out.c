@@ -94,7 +94,7 @@ _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
 _(IN2OUT_PACKETS, "Good in2out packets processed")      \
 _(OUT_OF_PORTS, "Out of ports")                         \
 _(BAD_OUTSIDE_FIB, "Outside VRF ID not found")          \
-_(BAD_ICMP_TYPE, "icmp type not echo-request")          \
+_(BAD_ICMP_TYPE, "unsupported ICMP type")               \
 _(NO_TRANSLATION, "No translation")
   
 typedef enum {
@@ -177,7 +177,7 @@ snat_not_translate (snat_main_t * sm, snat_runtime_t * rt, u32 sw_if_index0,
   if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
     {
       /* or is static mappings */
-      if (!snat_static_mapping_match(sm, key0, &sm0, 1))
+      if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
         return 0;
     }
   else
@@ -333,7 +333,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       u8 static_mapping = 1;
 
       /* First try to match static mapping by local address and port */
-      if (snat_static_mapping_match (sm, *key0, &key1, 0))
+      if (snat_static_mapping_match (sm, *key0, &key1, 0, 0))
         {
           static_mapping = 0;
           /* Try to create dynamic translation */
@@ -432,8 +432,6 @@ snat_in2out_error_t icmp_get_key(ip4_header_t *ip0,
 
   if (!icmp_is_error_message (icmp0))
     {
-      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
-        return SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE;
       key0.protocol = SNAT_PROTOCOL_ICMP;
       key0.addr = ip0->src_address;
       key0.port = echo0->identifier;
@@ -520,8 +518,9 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
           goto out;
         }
 
-      if (icmp_is_error_message (icmp0))
+      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
         {
+          b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
           next0 = SNAT_IN2OUT_NEXT_DROP;
           goto out;
         }
@@ -533,8 +532,19 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
         goto out;
     }
   else
-    s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
-                            value0.value);
+    {
+      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request &&
+                        icmp0->type != ICMP4_echo_reply &&
+                        !icmp_is_error_message (icmp0)))
+        {
+          b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
+          next0 = SNAT_IN2OUT_NEXT_DROP;
+          goto out;
+        }
+
+      s0 = pool_elt_at_index (sm->per_thread_data[cpu_index].sessions,
+                              value0.value);
+    }
 
 out:
   *p_key = key0;
@@ -572,6 +582,7 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
   snat_session_key_t key0;
   snat_session_key_t sm0;
   u8 dont_translate = 0;
+  u8 is_addr_only;
   u32 next0 = ~0;
   int err;
 
@@ -590,7 +601,7 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
     }
   key0.fib_index = rx_fib_index0;
 
-  if (snat_static_mapping_match(sm, key0, &sm0, 0))
+  if (snat_static_mapping_match(sm, key0, &sm0, 0, &is_addr_only))
     {
       if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
@@ -606,6 +617,15 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
         }
 
       b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
+      next0 = SNAT_IN2OUT_NEXT_DROP;
+      goto out;
+    }
+
+  if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request &&
+                    (icmp0->type != ICMP4_echo_reply || !is_addr_only) &&
+                    !icmp_is_error_message (icmp0)))
+    {
+      b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
       next0 = SNAT_IN2OUT_NEXT_DROP;
       goto out;
     }
@@ -778,7 +798,7 @@ snat_hairpinning (snat_main_t *sm,
   if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
     {
       /* or static mappings */
-      if (!snat_static_mapping_match(sm, key0, &sm0, 1))
+      if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
         {
           new_dst_addr0 = sm0.addr.as_u32;
           new_dst_port0 = sm0.port;
@@ -2166,7 +2186,6 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
   snat_in2out_next_t next_index;
   u32 pkts_processed = 0;
   snat_main_t * sm = &snat_main;
-  snat_runtime_t * rt = (snat_runtime_t *)node->runtime_data;
   u32 stats_node_index;
 
   stats_node_index = snat_in2out_fast_node.index;
@@ -2225,10 +2244,6 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
             {
-              if (PREDICT_FALSE(snat_not_translate(sm, rt, sw_if_index0, ip0,
-                  proto0, rx_fib_index0)))
-                goto trace0;
-
               next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0,
                                   rx_fib_index0, node, next0, ~0, 0);
               goto trace0;
@@ -2238,7 +2253,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
           key0.port = udp0->src_port;
           key0.fib_index = rx_fib_index0;
 
-          if (snat_static_mapping_match(sm, key0, &sm0, 0))
+          if (snat_static_mapping_match(sm, key0, &sm0, 0, 0))
             {
               b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               next0= SNAT_IN2OUT_NEXT_DROP;
