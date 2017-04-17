@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_1f7c77b4",
+        "filename": "src/vnet.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 592,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-04-17T16:00:09Z",
+      "side": 1,
+      "message": "i think this cut-n-paster is what\u0027s causing the build failures.",
+      "revId": "3836884d1908eca8747e44b9c1c57927982381b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
