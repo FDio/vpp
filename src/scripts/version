@@ -4,16 +4,12 @@ path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
 
 cd "$path"
 
-git rev-parse 2> /dev/null
-if [ $? == 0 ]; then
-    vstring=$(git describe)
-elif [ -f .version ]; then
+if [ -f .version ]; then
     vstring=$(cat .version)
 else
-    if [ -f ../rpm/*.gz ]; then
-        vstring=$(ls ../rpm/*.gz)
-    else
-        exit 1
+    vstring=$(git describe)
+    if [ $? != 0 ]; then
+      exit 1
     fi
 fi
 

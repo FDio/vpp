@@ -214,18 +214,30 @@ else
 	$(shell $(BR)/scripts/version > $(BR)/scripts/.version)
 endif
 
-dist:	$(BR)/scripts/.version
-	$(MAKE) verstring=$(PLATFORM)-$(shell cat $(BR)/scripts/.version) prefix=$(PLATFORM) distversion
+DIST_FILE = $(BR)/vpp-$(shell src/scripts/version).tar
+DIST_SUBDIR = vpp-$(shell src/scripts/version|cut -f1 -d-)
 
-distversion:	$(BR)/scripts/.version
-	$(BR)/scripts/verdist ${BR} ${prefix}-$(shell $(BR)/scripts/version rpm-version) ${verstring}
-	mv $(verstring).tar.gz $(BR)/rpm
+dist:
+	@git archive \
+	  --prefix=$(DIST_SUBDIR)/ \
+	  --format=tar \
+	  -o $(DIST_FILE) \
+	  HEAD
+	@git describe > $(BR)/.version
+	@tar --append \
+	  --file $(DIST_FILE) \
+	  --transform='s,.*/.version,$(DIST_SUBDIR)/src/scripts/.version,' \
+	  $(BR)/.version
+	@$(RM) $(BR)/.version $(DIST_FILE).xz
+	@xz -v --threads=0 $(DIST_FILE)
+	@$(RM) $(BR)/vpp-latest.tar.xz
+	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-install)
 
 wipedist:
-	$(RM) $(BR)/scripts/.version $(BR)/rpm/*.tar.gz
+	@$(RM) $(BR)/*.tar.xz
 
 wipe: wipedist $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,vpp-wipe)
@@ -351,7 +363,7 @@ pkg-deb:
 	$(call make,$(PLATFORM),install-deb)
 
 pkg-rpm: dist
-	$(call make,$(PLATFORM),install-rpm)
+	make -C extras/rpm
 
 dpdk-install-dev:
 	make -C dpdk install-$(PKG)
