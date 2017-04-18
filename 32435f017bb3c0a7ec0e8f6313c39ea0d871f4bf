@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_6271a275",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1508,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "CGNAT translation test (TCP, UDP, ICMP)",
+      "range": {
+        "startLine": 1508,
+        "startChar": 12,
+        "endLine": 1508,
+        "endChar": 71
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_82748e68",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1543,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "CGNAT multiple users",
+      "range": {
+        "startLine": 1543,
+        "startChar": 12,
+        "endLine": 1543,
+        "endChar": 39
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_426a2682",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1645,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "CGNAT TCP session close initiated from inside network",
+      "range": {
+        "startLine": 1645,
+        "startChar": 12,
+        "endLine": 1645,
+        "endChar": 53
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_22671ab9",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1707,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "CGNAT TCP session close initiated from outside network",
+      "range": {
+        "startLine": 1707,
+        "startChar": 12,
+        "endLine": 1707,
+        "endChar": 54
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_02089ed8",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1769,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "CGNAT session timeouts",
+      "range": {
+        "startLine": 1769,
+        "startChar": 12,
+        "endLine": 1769,
+        "endChar": 37
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e20c72ef",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1791,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "CGNAT maximum 1000 sessions per user should be created",
+      "range": {
+        "startLine": 1791,
+        "startChar": 12,
+        "endLine": 1791,
+        "endChar": 60
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c20df6e9",
+        "filename": "test/test_snat.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 1801,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-18T04:59:05Z",
+      "side": 1,
+      "message": "use portrs from 1025",
+      "range": {
+        "startLine": 1801,
+        "startChar": 26,
+        "endLine": 1801,
+        "endChar": 33
+      },
+      "revId": "32435f017bb3c0a7ec0e8f6313c39ea0d871f4bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
