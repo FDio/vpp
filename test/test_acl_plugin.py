@@ -230,7 +230,7 @@ class TestACLplugin(VppTestCase):
         return ''
 
     def create_stream(self, src_if, packet_sizes, traffic_type=0, ipv6=0,
-                      proto=-1, ports=0, fragments=False):
+                      proto=-1, ports=0, fragments=False, pkt_raw=True):
         """
         Create input packet stream for defined interface using hosts or
         deleted_hosts list.
@@ -281,10 +281,12 @@ class TestACLplugin(VppTestCase):
                                       code=self.icmp4_code)
                     else:
                         p /= self.create_upper_layer(i, pkt_info.proto, ports)
-                    p /= Raw(payload)
-                    pkt_info.data = p.copy()
-                    size = random.choice(packet_sizes)
-                    self.extend_packet(p, size)
+                    if pkt_raw:
+                        p /= Raw(payload)
+                        pkt_info.data = p.copy()
+                    if pkt_raw:
+                        size = random.choice(packet_sizes)
+                        self.extend_packet(p, size)
                     pkts.append(p)
         return pkts
 
@@ -389,7 +391,7 @@ class TestACLplugin(VppTestCase):
         self.pg_start()
 
     def run_verify_test(self, traffic_type=0, ip_type=0, proto=-1, ports=0,
-                        frags=False):
+                        frags=False, pkt_raw=True):
         # Test
         # Create incoming packet streams for packet-generator interfaces
         pkts_cnt = 0
@@ -397,7 +399,7 @@ class TestACLplugin(VppTestCase):
             if self.flows.__contains__(i):
                 pkts = self.create_stream(i, self.pg_if_packet_sizes,
                                           traffic_type, ip_type, proto, ports,
-                                          frags)
+                                          frags, pkt_raw)
                 if len(pkts) > 0:
                     i.add_stream(pkts)
                     pkts_cnt += len(pkts)
@@ -1047,6 +1049,76 @@ class TestACLplugin(VppTestCase):
                                    self.proto[self.IP][self.UDP], port, True)
 
         self.logger.info("ACLP_TEST_FINISH_0021")
+
+    def test_0022_zero_length_udp_ipv4(self):
+        """ VPP-687 zero length udp ipv4 packet"""
+        self.logger.info("ACLP_TEST_START_0022")
+
+        port = random.randint(0, 65535)
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV4, self.PERMIT, port,
+                                      self.proto[self.IP][self.UDP]))
+        # deny ip any any in the end
+        rules.append(
+            self.create_rule(self.IPV4, self.DENY, self.PORTS_ALL, 0))
+
+        # Apply rules
+        self.apply_rules(rules, "permit empty udp ip4 " + str(port))
+
+        # Traffic should still pass
+        # Create incoming packet streams for packet-generator interfaces
+        pkts_cnt = 0
+        pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes,
+                                  self.IP, self.IPV4,
+                                  self.proto[self.IP][self.UDP], port,
+                                  False, False)
+        if len(pkts) > 0:
+            self.pg0.add_stream(pkts)
+            pkts_cnt += len(pkts)
+
+        # Enable packet capture and start packet sendingself.IPV
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg1.get_capture(pkts_cnt)
+
+        self.logger.info("ACLP_TEST_FINISH_0022")
+
+    def test_0023_zero_length_udp_ipv6(self):
+        """ VPP-687 zero length udp ipv6 packet"""
+        self.logger.info("ACLP_TEST_START_0023")
+
+        port = random.randint(0, 65535)
+        # Add an ACL
+        rules = []
+        rules.append(self.create_rule(self.IPV6, self.PERMIT, port,
+                                      self.proto[self.IP][self.UDP]))
+        # deny ip any any in the end
+        rules.append(self.create_rule(self.IPV6, self.DENY, self.PORTS_ALL, 0))
+
+        # Apply rules
+        self.apply_rules(rules, "permit empty udp ip6 "+str(port))
+
+        # Traffic should still pass
+        # Create incoming packet streams for packet-generator interfaces
+        pkts_cnt = 0
+        pkts = self.create_stream(self.pg0, self.pg_if_packet_sizes,
+                                  self.IP, self.IPV6,
+                                  self.proto[self.IP][self.UDP], port,
+                                  False, False)
+        if len(pkts) > 0:
+            self.pg0.add_stream(pkts)
+            pkts_cnt += len(pkts)
+
+        # Enable packet capture and start packet sendingself.IPV
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify outgoing packet streams per packet-generator interface
+        self.pg1.get_capture(pkts_cnt)
+
+        self.logger.info("ACLP_TEST_FINISH_0023")
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

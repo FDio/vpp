@@ -307,7 +307,7 @@ static int
 offset_within_packet (vlib_buffer_t * b0, int offset)
 {
   /* For the purposes of this code, "within" means we have at least 8 bytes after it */
-  return (offset < (b0->current_length - 8));
+  return (offset <= (b0->current_length - 8));
 }
 
 static void
