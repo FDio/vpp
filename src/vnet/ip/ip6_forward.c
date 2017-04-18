@@ -45,7 +45,7 @@
 #include <vnet/fib/fib_urpf_list.h>	/* for FIB uRPF check */
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/ip6_mfib.h>
-#include <vnet/dpo/load_balance.h>
+#include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/classify_dpo.h>
 
 #include <vppinfra/bihash_template.c>
@@ -138,6 +138,10 @@ ip6_lookup_inline (vlib_main_t * vm,
 
 	  lb0 = load_balance_get (lbi0);
 	  lb1 = load_balance_get (lbi1);
+	  ASSERT (lb0->lb_n_buckets > 0);
+	  ASSERT (lb1->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb0->lb_n_buckets));
+	  ASSERT (is_pow2 (lb1->lb_n_buckets));
 
 	  vnet_buffer (p0)->ip.flow_hash = vnet_buffer (p1)->ip.flow_hash = 0;
 
@@ -146,25 +150,29 @@ ip6_lookup_inline (vlib_main_t * vm,
 	      flow_hash_config0 = lb0->lb_hash_config;
 	      vnet_buffer (p0)->ip.flow_hash =
 		ip6_compute_flow_hash (ip0, flow_hash_config0);
+	      dpo0 =
+		load_balance_get_fwd_bucket (lb0,
+					     (vnet_buffer (p0)->ip.flow_hash &
+					      (lb0->lb_n_buckets_minus_1)));
+	    }
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
 	    }
 	  if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
 	    {
 	      flow_hash_config1 = lb1->lb_hash_config;
 	      vnet_buffer (p1)->ip.flow_hash =
 		ip6_compute_flow_hash (ip1, flow_hash_config1);
+	      dpo1 =
+		load_balance_get_fwd_bucket (lb1,
+					     (vnet_buffer (p1)->ip.flow_hash &
+					      (lb1->lb_n_buckets_minus_1)));
 	    }
-
-	  ASSERT (lb0->lb_n_buckets > 0);
-	  ASSERT (lb1->lb_n_buckets > 0);
-	  ASSERT (is_pow2 (lb0->lb_n_buckets));
-	  ASSERT (is_pow2 (lb1->lb_n_buckets));
-	  dpo0 = load_balance_get_bucket_i (lb0,
-					    (vnet_buffer (p0)->ip.flow_hash &
-					     lb0->lb_n_buckets_minus_1));
-	  dpo1 = load_balance_get_bucket_i (lb1,
-					    (vnet_buffer (p1)->ip.flow_hash &
-					     lb1->lb_n_buckets_minus_1));
-
+	  else
+	    {
+	      dpo1 = load_balance_get_bucket_i (lb1, 0);
+	    }
 	  next0 = dpo0->dpoi_next_node;
 	  next1 = dpo1->dpoi_next_node;
 
@@ -266,16 +274,24 @@ ip6_lookup_inline (vlib_main_t * vm,
 	  lb0 = load_balance_get (lbi0);
 
 	  vnet_buffer (p0)->ip.flow_hash = 0;
+	  ASSERT (lb0->lb_n_buckets > 0);
+	  ASSERT (is_pow2 (lb0->lb_n_buckets));
 
 	  if (PREDICT_FALSE (lb0->lb_n_buckets > 1))
 	    {
 	      flow_hash_config0 = lb0->lb_hash_config;
 	      vnet_buffer (p0)->ip.flow_hash =
 		ip6_compute_flow_hash (ip0, flow_hash_config0);
+	      dpo0 =
+		load_balance_get_fwd_bucket (lb0,
+					     (vnet_buffer (p0)->ip.flow_hash &
+					      (lb0->lb_n_buckets_minus_1)));
+	    }
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
 	    }
 
-	  ASSERT (lb0->lb_n_buckets > 0);
-	  ASSERT (is_pow2 (lb0->lb_n_buckets));
 	  dpo0 = load_balance_get_bucket_i (lb0,
 					    (vnet_buffer (p0)->ip.flow_hash &
 					     lb0->lb_n_buckets_minus_1));
@@ -337,10 +353,18 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
     {
       fib_node_index_t fei;
 
-      fei = fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_INTERFACE, (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_ATTACHED), FIB_PROTOCOL_IP6, NULL,	/* No next-hop address */
-					     sw_if_index, ~0,	// invalid FIB index
-					     1, NULL,	// no label stack
-					     FIB_ROUTE_PATH_FLAG_NONE);
+      fei = fib_table_entry_update_one_path (fib_index,
+					     &pfx,
+					     FIB_SOURCE_INTERFACE,
+					     (FIB_ENTRY_FLAG_CONNECTED |
+					      FIB_ENTRY_FLAG_ATTACHED),
+					     FIB_PROTOCOL_IP6,
+					     /* No next-hop address */
+					     NULL, sw_if_index,
+					     /* invalid FIB index */
+					     ~0, 1,
+					     /* no label stack */
+					     NULL, FIB_ROUTE_PATH_FLAG_NONE);
       a->neighbor_probe_adj_index = fib_entry_get_adj (fei);
     }
 
@@ -366,7 +390,13 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 	}
     }
 
-  fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_INTERFACE, (FIB_ENTRY_FLAG_CONNECTED | FIB_ENTRY_FLAG_LOCAL), FIB_PROTOCOL_IP6, &pfx.fp_addr, sw_if_index, ~0,	// invalid FIB index
+  fib_table_entry_update_one_path (fib_index, &pfx,
+				   FIB_SOURCE_INTERFACE,
+				   (FIB_ENTRY_FLAG_CONNECTED |
+				    FIB_ENTRY_FLAG_LOCAL),
+				   FIB_PROTOCOL_IP6,
+				   &pfx.fp_addr,
+				   sw_if_index, ~0,
 				   1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
 }
 
@@ -780,6 +810,14 @@ ip6_load_balance (vlib_main_t * vm,
 		  hc0 = vnet_buffer (p0)->ip.flow_hash =
 		    ip6_compute_flow_hash (ip0, lb0->lb_hash_config);
 		}
+	      dpo0 =
+		load_balance_get_fwd_bucket (lb0,
+					     (hc0 &
+					      lb0->lb_n_buckets_minus_1));
+	    }
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
 	    }
 	  if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
 	    {
@@ -793,14 +831,15 @@ ip6_load_balance (vlib_main_t * vm,
 		  hc1 = vnet_buffer (p1)->ip.flow_hash =
 		    ip6_compute_flow_hash (ip1, lb1->lb_hash_config);
 		}
+	      dpo1 =
+		load_balance_get_fwd_bucket (lb1,
+					     (hc1 &
+					      lb1->lb_n_buckets_minus_1));
 	    }
-
-	  dpo0 =
-	    load_balance_get_bucket_i (lb0,
-				       hc0 & (lb0->lb_n_buckets_minus_1));
-	  dpo1 =
-	    load_balance_get_bucket_i (lb1,
-				       hc1 & (lb1->lb_n_buckets_minus_1));
+	  else
+	    {
+	      dpo1 = load_balance_get_bucket_i (lb1, 0);
+	    }
 
 	  next0 = dpo0->dpoi_next_node;
 	  next1 = dpo1->dpoi_next_node;
@@ -869,10 +908,15 @@ ip6_load_balance (vlib_main_t * vm,
 		  hc0 = vnet_buffer (p0)->ip.flow_hash =
 		    ip6_compute_flow_hash (ip0, lb0->lb_hash_config);
 		}
+	      dpo0 =
+		load_balance_get_fwd_bucket (lb0,
+					     (hc0 &
+					      lb0->lb_n_buckets_minus_1));
 	    }
-	  dpo0 =
-	    load_balance_get_bucket_i (lb0,
-				       hc0 & (lb0->lb_n_buckets_minus_1));
+	  else
+	    {
+	      dpo0 = load_balance_get_bucket_i (lb0, 0);
+	    }
 
 	  next0 = dpo0->dpoi_next_node;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;

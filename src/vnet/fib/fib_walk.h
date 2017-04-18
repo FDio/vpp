@@ -54,5 +54,8 @@ extern void fib_walk_sync(fib_node_type_t parent_type,
 
 extern u8* format_fib_walk_priority(u8 *s, va_list ap);
 
+extern void fib_walk_process_enable(void);
+extern void fib_walk_process_disable(void);
+
 #endif
 

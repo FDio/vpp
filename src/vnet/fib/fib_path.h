@@ -144,7 +144,7 @@ extern fib_node_index_t fib_path_copy(fib_node_index_t path_index,
 				      fib_node_index_t path_list_index);
 extern int fib_path_resolve(fib_node_index_t path_index);
 extern int fib_path_is_resolved(fib_node_index_t path_index);
-extern int fib_path_is_recursive(fib_node_index_t path_index);
+extern int fib_path_is_recursive_constrained(fib_node_index_t path_index);
 extern int fib_path_is_exclusive(fib_node_index_t path_index);
 extern int fib_path_is_deag(fib_node_index_t path_index);
 extern int fib_path_is_looped(fib_node_index_t path_index);

@@ -729,6 +729,9 @@ fib_test_v4 (void)
 	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a02),
     };
 
+    FIB_TEST((0 == pool_elts(load_balance_map_pool)), "LB-map pool size is %d",
+    	     pool_elts(load_balance_map_pool));
+
     tm = &test_main;
 
     /* record the nubmer of load-balances in use before we start */
@@ -3090,6 +3093,43 @@ fib_test_v4 (void)
 			     NULL,
 			     FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
 
+    /*
+     * add a bunch load more entries using this path combo so that we get
+     * an LB-map created.
+     */
+#define N_P 128
+    fib_prefix_t bgp_78s[N_P];
+    for (ii = 0; ii < N_P; ii++)
+    {
+        bgp_78s[ii].fp_len = 32;
+        bgp_78s[ii].fp_proto = FIB_PROTOCOL_IP4;
+        bgp_78s[ii].fp_addr.ip4.as_u32 = clib_host_to_net_u32(0x4e000000+ii);
+
+        
+        fib_table_entry_path_add(fib_index,
+                                 &bgp_78s[ii],
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 FIB_PROTOCOL_IP4,
+                                 &pfx_1_1_1_3_s_32.fp_addr,
+                                 ~0,
+                                 fib_index,
+                                 1,
+                                 NULL,
+                                 FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
+        fib_table_entry_path_add(fib_index,
+                                 &bgp_78s[ii],
+                                 FIB_SOURCE_API,
+                                 FIB_ENTRY_FLAG_NONE,
+                                 FIB_PROTOCOL_IP4,
+                                 &nh_1_1_1_1,
+                                 ~0,
+                                 fib_index,
+                                 1,
+                                 NULL,
+                                 FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
+    }
+
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
     dpo = fib_entry_contribute_ip_forwarding(fei);
 
@@ -3138,6 +3178,9 @@ fib_test_v4 (void)
 				1,
 				FIB_ROUTE_PATH_FLAG_NONE);
 
+    /* suspend so the update walk kicks int */
+    vlib_process_suspend(vlib_get_main(), 1e-5);
+
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
     FIB_TEST(!dpo_cmp(dpo, fib_entry_contribute_ip_forwarding(fei)),
 	     "post PIC 200.200.200.200/32 was inplace modified");
@@ -3175,6 +3218,9 @@ fib_test_v4 (void)
 			     NULL,
 			     FIB_ROUTE_PATH_FLAG_NONE);
 
+    /* suspend so the update walk kicks in */
+    vlib_process_suspend(vlib_get_main(), 1e-5);
+
     FIB_TEST(!dpo_cmp(dpo2, load_balance_get_bucket_i(lb, 0)),
 	     "post PIC recovery adj for 200.200.200.200/32 is recursive "
 	     "via adj for 1.1.1.1");
@@ -3201,6 +3247,20 @@ fib_test_v4 (void)
 			     1,
 			     NULL,
 			     FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
+    for (ii = 0; ii < N_P; ii++)
+    {
+        fib_table_entry_path_add(fib_index,
+                                 &bgp_78s[ii],
+			     FIB_SOURCE_API,
+			     FIB_ENTRY_FLAG_NONE,
+			     FIB_PROTOCOL_IP4,
+			     &pfx_1_1_1_2_s_32.fp_addr,
+			     ~0,
+			     fib_index,
+			     1,
+			     NULL,
+			     FIB_ROUTE_PATH_RESOLVE_VIA_HOST);
+    }
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
     dpo = fib_entry_contribute_ip_forwarding(fei);
@@ -3233,6 +3293,8 @@ fib_test_v4 (void)
 				~0,
 				1,
 				FIB_ROUTE_PATH_FLAG_NONE);
+    /* suspend so the update walk kicks int */
+    vlib_process_suspend(vlib_get_main(), 1e-5);
 
     fei = fib_table_lookup_exact_match(fib_index, &bgp_200_pfx);
     dpo = fib_entry_contribute_ip_forwarding(fei);
@@ -3270,6 +3332,16 @@ fib_test_v4 (void)
                              NULL,
                              FIB_ROUTE_PATH_FLAG_NONE);
 
+    for (ii = 0; ii < N_P; ii++)
+    {
+        fib_table_entry_delete(fib_index,
+                               &bgp_78s[ii],
+                               FIB_SOURCE_API);
+        FIB_TEST((FIB_NODE_INDEX_INVALID ==
+                  fib_table_lookup_exact_match(fib_index, &bgp_78s[ii])),
+                 "%U removed",
+                 format_fib_prefix, &bgp_78s[ii]);
+    }
     fib_table_entry_path_remove(fib_index,
                                 &bgp_200_pfx,
                                 FIB_SOURCE_API,
@@ -3303,6 +3375,8 @@ fib_test_v4 (void)
     fib_table_entry_delete(fib_index,
 			   &pfx_1_1_1_0_s_28,
 			   FIB_SOURCE_API);
+    /* suspend so the update walk kicks int */
+    vlib_process_suspend(vlib_get_main(), 1e-5);
     FIB_TEST((FIB_NODE_INDEX_INVALID ==
 	      fib_table_lookup_exact_match(fib_index, &pfx_1_1_1_0_s_28)),
 	     "1.1.1.1/28 removed");
@@ -3821,7 +3895,7 @@ fib_test_v4 (void)
     /*
      * -2 entries and -2 non-shared path-list
      */
-    FIB_TEST((0  == fib_path_list_db_size()),   "path list DB population:%d",
+    FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
     	     fib_path_list_db_size());
     FIB_TEST((PNBR == fib_path_list_pool_size()), "path list pool size is %d",
     	     fib_path_list_pool_size());
@@ -3855,7 +3929,7 @@ fib_test_v4 (void)
     FIB_TEST((ENBR-5 == pool_elts(fib_urpf_list_pool)), "uRPF pool size is %d",
     	     pool_elts(fib_urpf_list_pool));
     FIB_TEST((0 == pool_elts(load_balance_map_pool)), "LB-map pool size is %d",
-             pool_elts(load_balance_map_pool));
+    	     pool_elts(load_balance_map_pool));
     FIB_TEST((lb_count == pool_elts(load_balance_pool)), "LB pool size is %d",
              pool_elts(load_balance_pool));
 
@@ -5900,6 +5974,12 @@ fib_test_label (void)
 	    .adj = DPO_PROTO_IP4,
 	},
     };
+    fib_test_lb_bucket_t mpls_bucket_drop = {
+	.type = FT_LB_SPECIAL,
+	.special = {
+	    .adj = DPO_PROTO_MPLS,
+	},
+    };
 
     fib_table_entry_path_remove(fib_index,
 				&pfx_1_1_1_1_s_32,
@@ -5932,9 +6012,9 @@ fib_test_label (void)
 			   &pfx_24001_neos);
     FIB_TEST(fib_test_validate_entry(fei, 
 				     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-				      1,
-				      &bucket_drop),
-	     "24001/eos LB 1 buckets via: DROP");
+                                     1,
+                                     &mpls_bucket_drop),
+	     "24001/neos LB 1 buckets via: DROP");
 
     /*
      * add back the path with the valid label
@@ -7709,6 +7789,12 @@ lfib_test (void)
     fib_test_lb_bucket_t bucket_drop = {
 	.type = FT_LB_SPECIAL,
 	.special = {
+	    .adj = DPO_PROTO_IP4,
+	},
+    };
+    fib_test_lb_bucket_t mpls_bucket_drop = {
+	.type = FT_LB_SPECIAL,
+	.special = {
 	    .adj = DPO_PROTO_MPLS,
 	},
     };
@@ -7735,7 +7821,12 @@ lfib_test (void)
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     1,
 				     &bucket_drop),
-	     "2.2.2.4/32 LB 1 buckets via: ip4-DROP");
+	     "1200/neos LB 1 buckets via: ip4-DROP");
+    FIB_TEST(fib_test_validate_entry(lfe,
+				     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+				     1,
+				     &mpls_bucket_drop),
+	     "1200/neos LB 1 buckets via: mpls-DROP");
 
     fib_table_entry_delete(fib_index, &pfx_2_2_2_4_s_32, FIB_SOURCE_API);
 
@@ -7940,18 +8031,19 @@ fib_test (vlib_main_t * vm,
     }
     else
     {
-        /*
-         * These walk UT aren't run as part of the full suite, since the
-         * fib-walk process must be disabled in order for the tests to work
-         *
-         * fib_test_walk();
-         */
 	res += fib_test_v4();
 	res += fib_test_v6();
 	res += fib_test_ae();
 	res += fib_test_bfd();
 	res += fib_test_label();
 	res += lfib_test();
+
+        /*
+         * fib-walk process must be disabled in order for the walk tests to work
+         */
+        fib_walk_process_disable();
+        res += fib_test_walk();
+        fib_walk_process_enable();
     }
 
     if (res)

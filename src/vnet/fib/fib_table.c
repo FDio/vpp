@@ -608,11 +608,19 @@ fib_table_entry_path_remove2 (u32 fib_index,
 	fib_entry_src_flag_t src_flag;
         int was_sourced;
 
-	/*
+        /*
+         * if it's not sourced, then there's nowt to remove
+         */
+        was_sourced = fib_entry_is_sourced(fib_entry_index, source);
+        if (!was_sourced)
+        {
+            return;
+        }
+
+        /*
 	 * don't nobody go nowhere
 	 */
 	fib_entry_lock(fib_entry_index);
-        was_sourced = fib_entry_is_sourced(fib_entry_index, source);
 
         for (ii = 0; ii < vec_len(rpath); ii++)
         {

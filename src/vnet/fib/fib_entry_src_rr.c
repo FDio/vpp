@@ -103,7 +103,7 @@ fib_entry_src_rr_activate (fib_entry_src_t *src,
 	fib_entry_cover_track(cover, fib_entry_get_index(fib_entry));
 
     /*
-     * if the ocver is attached then install an attached-host path
+     * if the cover is attached then install an attached-host path
      * (like an adj-fib). Otherwise inherit the forwarding from the cover
      */
     if (FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags_i(cover))

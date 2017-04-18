@@ -118,7 +118,8 @@ load_balance_format (index_t lbi,
     buckets = load_balance_get_buckets(lb);
 
     s = format(s, "%U: ", format_dpo_type, DPO_LOAD_BALANCE);
-    s = format(s, "[index:%d buckets:%d ", lbi, lb->lb_n_buckets);
+    s = format(s, "[proto:%U ", format_dpo_proto, lb->lb_proto);
+    s = format(s, "index:%d buckets:%d ", lbi, lb->lb_n_buckets);
     s = format(s, "uRPF:%d ", lb->lb_urpf);
     s = format(s, "to:[%Ld:%Ld]", to.packets, to.bytes);
     if (0 != via.packets)
