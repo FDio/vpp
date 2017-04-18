@@ -30,6 +30,10 @@
 #define  ACL_PLUGIN_VERSION_MAJOR 1
 #define  ACL_PLUGIN_VERSION_MINOR 2
 
+#define UDP_SESSION_IDLE_TIMEOUT_SEC 600
+#define TCP_SESSION_IDLE_TIMEOUT_SEC (3600*24)
+#define TCP_SESSION_TRANSIENT_TIMEOUT_SEC 120
+
 extern vlib_node_registration_t acl_in_node;
 extern vlib_node_registration_t acl_out_node;
 
@@ -128,22 +132,6 @@ typedef struct {
   /* MACIP (input) ACLs associated with the interfaces */
   u32 *macip_acl_by_sw_if_index;
 
-  /* next indices for our nodes in the l2-classify tables */
-  u32 l2_input_classify_next_acl_old;
-  u32 l2_output_classify_next_acl_old;
-
-  /* next node indices for feature bitmap */
-  u32 acl_in_node_feat_next_node_index[32];
-  u32 acl_out_node_feat_next_node_index[32];
-
-  /* ACL match actions (must be coherent across in/out ACLs to next indices (can differ) */
-
-  u32 acl_in_ip4_match_next[256];
-  u32 acl_in_ip6_match_next[256];
-  u32 acl_out_ip4_match_next[256];
-  u32 acl_out_ip6_match_next[256];
-  u32 n_match_actions;
-
   /* bitmaps when set the processing is enabled on the interface */
   uword *fa_in_acl_on_sw_if_index;
   uword *fa_out_acl_on_sw_if_index;
@@ -162,16 +150,11 @@ typedef struct {
 
   /* L2 datapath glue */
 
-  /* active next indices within L2 classifiers - switch old/new path */
+  /* next indices within L2 classifiers for ip4/ip6 fa L2 nodes */
   u32 l2_input_classify_next_acl_ip4;
   u32 l2_input_classify_next_acl_ip6;
   u32 l2_output_classify_next_acl_ip4;
   u32 l2_output_classify_next_acl_ip6;
-  /* saved next indices within L2 classifiers for ip4/ip6 fa L2 nodes */
-  u32 fa_l2_input_classify_next_acl_ip4;
-  u32 fa_l2_input_classify_next_acl_ip6;
-  u32 fa_l2_output_classify_next_acl_ip4;
-  u32 fa_l2_output_classify_next_acl_ip6;
   /* next node indices for L2 dispatch */
   u32 fa_acl_in_ip4_l2_node_feat_next_node_index[32];
   u32 fa_acl_in_ip6_l2_node_feat_next_node_index[32];
@@ -211,6 +194,10 @@ typedef struct {
   u64 fa_current_cleaner_timer_wait_interval;
   u32 fa_conn_list_head[ACL_N_TIMEOUTS];
   u32 fa_conn_list_tail[ACL_N_TIMEOUTS];
+
+  /* Configured session timeout */
+  u64 session_timeout[ACL_N_TIMEOUTS];
+
 
   /* Counters for the cleaner thread */
 

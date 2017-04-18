@@ -715,53 +715,5 @@ class TestIpIrb(VppTestCase):
         self.run_test_ip46_bridged_to_routed_and_back(False, False,
                                                       self.WITH_EH)
 
-    # Old datapath group
-    def test_8900_ip6_irb_1(self):
-        """ ACL plugin set old L2 datapath"""
-        if not self.vpp_dead:
-            cmd = "set acl-plugin l2-datapath old"
-            self.logger.info(self.vapi.ppcli(cmd))
-
-    def test_8901_ip6_irb_1(self):
-        """ ACL IPv6 routed -> bridged, L2 ACL deny"""
-        self.run_test_ip46_routed_to_bridged(True, True, False,
-                                             self.WITHOUT_EH)
-
-    def test_8902_ip6_irb_1(self):
-        """ ACL IPv6 routed -> bridged, L3 ACL deny"""
-        self.run_test_ip46_routed_to_bridged(False, True, False,
-                                             self.WITHOUT_EH)
-
-    def test_8903_ip4_irb_1(self):
-        """ ACL IPv4 routed -> bridged, L2 ACL deny"""
-        self.run_test_ip46_routed_to_bridged(True, False, False,
-                                             self.WITHOUT_EH)
-
-    def test_8904_ip4_irb_1(self):
-        """ ACL IPv4 routed -> bridged, L3 ACL deny"""
-        self.run_test_ip46_routed_to_bridged(False, False, False,
-                                             self.WITHOUT_EH)
-
-    def test_8905_ip6_irb_1(self):
-        """ ACL IPv6 bridged -> routed, L2 ACL deny """
-        self.run_test_ip46_bridged_to_routed(True, True, False,
-                                             self.WITHOUT_EH)
-
-    def test_8906_ip6_irb_1(self):
-        """ ACL IPv6 bridged -> routed, L3 ACL deny """
-        self.run_test_ip46_bridged_to_routed(False, True, False,
-                                             self.WITHOUT_EH)
-
-    def test_8907_ip6_irb_1(self):
-        """ ACL IPv4 bridged -> routed, L2 ACL deny """
-        self.run_test_ip46_bridged_to_routed(True, False, False,
-                                             self.WITHOUT_EH)
-
-    def test_8908_ip6_irb_1(self):
-        """ ACL IPv4 bridged -> routed, L3 ACL deny """
-        self.run_test_ip46_bridged_to_routed(False, False, False,
-                                             self.WITHOUT_EH)
-
-
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
