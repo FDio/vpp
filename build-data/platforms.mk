@@ -94,20 +94,3 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	dpkg-buildpackage -us -uc -b					\
 	)
 
-.PHONY: install-rpm
-install-rpm: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
-	@$(BUILD_ENV) ;							\
-	set -eu$(BUILD_DEBUG) ;						\
-	$(MAKE) -C $(MU_BUILD_ROOT_DIR)					\
-	    $(patsubst %,%-install,					\
-	      $(ROOT_PACKAGES))	|| exit 1;				\
-									\
-	cd rpm ;							\
-	mkdir -p SOURCES ;                                              \
-	if test -f *.tar.gz ; then mv *.tar.gz SOURCES ; fi ;           \
-	rpmbuild -bb --define "_topdir $$PWD" --define			\
-		"_install_dir $(INSTALL_PREFIX)$(ARCH)"                 \
-		--define "_mu_build_root_dir $(MU_BUILD_ROOT_DIR)"      \
-		vpp.spec ;                                              \
-	mv $$(find RPMS -name \*.rpm -type f) ..
-
