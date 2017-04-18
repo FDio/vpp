@@ -18,7 +18,6 @@
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
 #include <acl/acl.h>
-#include <acl/l2sess.h>
 
 #include <vnet/l2/l2_classify.h>
 #include <vnet/classify/input_acl.h>
@@ -52,8 +51,6 @@
 #include <acl/acl_all_api_h.h>
 #undef vl_api_version
 
-#include "node_in.h"
-#include "node_out.h"
 #include "fa_node.h"
 
 acl_main_t acl_main;
@@ -712,265 +709,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
   return rv;
 }
 
-
-static void *
-get_ptr_to_offset (vlib_buffer_t * b0, int offset)
-{
-  u8 *p = vlib_buffer_get_current (b0) + offset;
-  return p;
-}
-
-static u8
-acl_get_l4_proto (vlib_buffer_t * b0, int node_is_ip6)
-{
-  u8 proto;
-  int proto_offset;
-  if (node_is_ip6)
-    {
-      proto_offset = 20;
-    }
-  else
-    {
-      proto_offset = 23;
-    }
-  proto = *((u8 *) vlib_buffer_get_current (b0) + proto_offset);
-  return proto;
-}
-
-static int
-acl_match_addr (ip46_address_t * addr1, ip46_address_t * addr2, int prefixlen,
-		int is_ip6)
-{
-  if (prefixlen == 0)
-    {
-      /* match any always succeeds */
-      return 1;
-    }
-  if (is_ip6)
-    {
-      if (memcmp (addr1, addr2, prefixlen / 8))
-	{
-	  /* If the starting full bytes do not match, no point in bittwidling the thumbs further */
-	  return 0;
-	}
-      if (prefixlen % 8)
-	{
-	  u8 b1 = *((u8 *) addr1 + 1 + prefixlen / 8);
-	  u8 b2 = *((u8 *) addr2 + 1 + prefixlen / 8);
-	  u8 mask0 = (0xff - ((1 << (8 - (prefixlen % 8))) - 1));
-	  return (b1 & mask0) == b2;
-	}
-      else
-	{
-	  /* The prefix fits into integer number of bytes, so nothing left to do */
-	  return 1;
-	}
-    }
-  else
-    {
-      uint32_t a1 = ntohl (addr1->ip4.as_u32);
-      uint32_t a2 = ntohl (addr2->ip4.as_u32);
-      uint32_t mask0 = 0xffffffff - ((1 << (32 - prefixlen)) - 1);
-      return (a1 & mask0) == a2;
-    }
-}
-
-static int
-acl_match_port (u16 port, u16 port_first, u16 port_last, int is_ip6)
-{
-  return ((port >= port_first) && (port <= port_last));
-}
-
-static int
-acl_packet_match (acl_main_t * am, u32 acl_index, vlib_buffer_t * b0,
-		  u8 * r_action, int *r_is_ip6, u32 * r_acl_match_p,
-		  u32 * r_rule_match_p, u32 * trace_bitmap)
-{
-  ethernet_header_t *h0;
-  u16 type0;
-
-  ip46_address_t src, dst;
-  int is_ip6;
-  int is_ip4;
-  u8 proto;
-  u16 src_port = 0;
-  u16 dst_port = 0;
-  u8 tcp_flags = 0;
-  int i;
-  acl_list_t *a;
-  acl_rule_t *r;
-
-  h0 = vlib_buffer_get_current (b0);
-  type0 = clib_net_to_host_u16 (h0->type);
-  is_ip4 = (type0 == ETHERNET_TYPE_IP4);
-  is_ip6 = (type0 == ETHERNET_TYPE_IP6);
-
-  if (!(is_ip4 || is_ip6))
-    {
-      return 0;
-    }
-  /* The bunch of hardcoded offsets here is intentional to get rid of them
-     ASAP, when getting to a faster matching code */
-  if (is_ip4)
-    {
-      clib_memcpy (&src.ip4, get_ptr_to_offset (b0, 26), 4);
-      clib_memcpy (&dst.ip4, get_ptr_to_offset (b0, 30), 4);
-      proto = acl_get_l4_proto (b0, 0);
-      if (1 == proto)
-	{
-	  *trace_bitmap |= 0x00000001;
-	  /* type */
-	  src_port = ((u16) (*(u8 *) get_ptr_to_offset (b0, 34)));
-	  /* code */
-	  dst_port = ((u16) (*(u8 *) get_ptr_to_offset (b0, 35)));
-	} else {
-	  /* assume TCP/UDP */
-	  src_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 34)));
-	  dst_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 36)));
-	  /* UDP gets ability to check on an oddball data byte as a bonus */
-	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 20 + 13);
-	}
-    }
-  else /* is_ipv6 implicitly */
-    {
-      clib_memcpy (&src, get_ptr_to_offset (b0, 22), 16);
-      clib_memcpy (&dst, get_ptr_to_offset (b0, 38), 16);
-      proto = acl_get_l4_proto (b0, 1);
-      if (58 == proto)
-	{
-	  *trace_bitmap |= 0x00000002;
-	  /* type */
-	  src_port = (u16) (*(u8 *) get_ptr_to_offset (b0, 54));
-	  /* code */
-	  dst_port = (u16) (*(u8 *) get_ptr_to_offset (b0, 55));
-	}
-      else
-	{
-	  /* assume TCP/UDP */
-	  src_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 54)));
-	  dst_port = ntohs ((u16) (*(u16 *) get_ptr_to_offset (b0, 56)));
-	  tcp_flags = *(u8 *) get_ptr_to_offset (b0, 14 + 40 + 13);
-	}
-    }
-  if (pool_is_free_index (am->acls, acl_index))
-    {
-      if (r_acl_match_p)
-	*r_acl_match_p = acl_index;
-      if (r_rule_match_p)
-	*r_rule_match_p = -1;
-      /* the ACL does not exist but is used for policy. Block traffic. */
-      return 0;
-    }
-  a = am->acls + acl_index;
-  for (i = 0; i < a->count; i++)
-    {
-      r = a->rules + i;
-      if (is_ip6 != r->is_ipv6)
-	{
-	  continue;
-	}
-      if (!acl_match_addr (&dst, &r->dst, r->dst_prefixlen, is_ip6))
-	continue;
-      if (!acl_match_addr (&src, &r->src, r->src_prefixlen, is_ip6))
-	continue;
-      if (r->proto)
-	{
-	  if (proto != r->proto)
-	    continue;
-	  if (!acl_match_port
-	      (src_port, r->src_port_or_type_first, r->src_port_or_type_last,
-	       is_ip6))
-	    continue;
-	  if (!acl_match_port
-	      (dst_port, r->dst_port_or_code_first, r->dst_port_or_code_last,
-	       is_ip6))
-	    continue;
-	  /* No need for check of proto == TCP, since in other rules both fields should be zero, so this match will succeed */
-	  if ((tcp_flags & r->tcp_flags_mask) != r->tcp_flags_value)
-	    continue;
-	}
-      /* everything matches! */
-      *r_action = r->is_permit;
-      *r_is_ip6 = is_ip6;
-      if (r_acl_match_p)
-	*r_acl_match_p = acl_index;
-      if (r_rule_match_p)
-	*r_rule_match_p = i;
-      return 1;
-    }
-  return 0;
-}
-
-void
-input_acl_packet_match (u32 sw_if_index, vlib_buffer_t * b0, u32 * nextp,
-			u32 * acl_match_p, u32 * rule_match_p,
-			u32 * trace_bitmap)
-{
-  acl_main_t *am = &acl_main;
-  uint8_t action = 0;
-  int is_ip6 = 0;
-  int i;
-  vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
-  for (i = 0; i < vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]);
-       i++)
-    {
-      if (acl_packet_match
-	  (am, am->input_acl_vec_by_sw_if_index[sw_if_index][i], b0, &action,
-	   &is_ip6, acl_match_p, rule_match_p, trace_bitmap))
-	{
-	  if (is_ip6)
-	    {
-	      *nextp = am->acl_in_ip6_match_next[action];
-	    }
-	  else
-	    {
-	      *nextp = am->acl_in_ip4_match_next[action];
-	    }
-	  return;
-	}
-    }
-  if (vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]) > 0)
-    {
-      /* If there are ACLs and none matched, deny by default */
-      *nextp = 0;
-    }
-
-}
-
-void
-output_acl_packet_match (u32 sw_if_index, vlib_buffer_t * b0, u32 * nextp,
-			 u32 * acl_match_p, u32 * rule_match_p,
-			 u32 * trace_bitmap)
-{
-  acl_main_t *am = &acl_main;
-  uint8_t action = 0;
-  int is_ip6 = 0;
-  int i;
-  vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
-  for (i = 0; i < vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]);
-       i++)
-    {
-      if (acl_packet_match
-	  (am, am->output_acl_vec_by_sw_if_index[sw_if_index][i], b0, &action,
-	   &is_ip6, acl_match_p, rule_match_p, trace_bitmap))
-	{
-	  if (is_ip6)
-	    {
-	      *nextp = am->acl_out_ip6_match_next[action];
-	    }
-	  else
-	    {
-	      *nextp = am->acl_out_ip4_match_next[action];
-	    }
-	  return;
-	}
-    }
-  if (vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]) > 0)
-    {
-      /* If there are ACLs and none matched, deny by default */
-      *nextp = 0;
-    }
-}
 
 typedef struct
 {
@@ -1799,67 +1537,7 @@ setup_message_id_table (acl_main_t * am, api_main_t * apim)
 #undef _
 }
 
-u32
-register_match_action_nexts (u32 next_in_ip4, u32 next_in_ip6,
-			     u32 next_out_ip4, u32 next_out_ip6)
-{
-  acl_main_t *am = &acl_main;
-  if (am->n_match_actions == 255)
-    {
-      return ~0;
-    }
-  u32 act = am->n_match_actions;
-  am->n_match_actions++;
-  am->acl_in_ip4_match_next[act] = next_in_ip4;
-  am->acl_in_ip6_match_next[act] = next_in_ip6;
-  am->acl_out_ip4_match_next[act] = next_out_ip4;
-  am->acl_out_ip6_match_next[act] = next_out_ip6;
-  return act;
-}
-
-void
-acl_setup_nodes (void)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  acl_main_t *am = &acl_main;
-  vlib_node_t *n;
-
-  n = vlib_get_node_by_name (vm, (u8 *) "l2-input-classify");
-  am->l2_input_classify_next_acl_old =
-    vlib_node_add_next_with_slot (vm, n->index, acl_in_node.index, ~0);
-  n = vlib_get_node_by_name (vm, (u8 *) "l2-output-classify");
-  am->l2_output_classify_next_acl_old =
-    vlib_node_add_next_with_slot (vm, n->index, acl_out_node.index, ~0);
-
-  feat_bitmap_init_next_nodes (vm, acl_in_node.index, L2INPUT_N_FEAT,
-			       l2input_get_feat_names (),
-			       am->acl_in_node_feat_next_node_index);
-
-  feat_bitmap_init_next_nodes (vm, acl_out_node.index, L2OUTPUT_N_FEAT,
-			       l2output_get_feat_names (),
-			       am->acl_out_node_feat_next_node_index);
-
-  memset (&am->acl_in_ip4_match_next[0], 0,
-	  sizeof (am->acl_in_ip4_match_next));
-  memset (&am->acl_in_ip6_match_next[0], 0,
-	  sizeof (am->acl_in_ip6_match_next));
-  memset (&am->acl_out_ip4_match_next[0], 0,
-	  sizeof (am->acl_out_ip4_match_next));
-  memset (&am->acl_out_ip6_match_next[0], 0,
-	  sizeof (am->acl_out_ip6_match_next));
-  am->n_match_actions = 0;
-
-  am->l2_input_classify_next_acl_ip4 = am->l2_input_classify_next_acl_old;
-  am->l2_input_classify_next_acl_ip6 = am->l2_input_classify_next_acl_old;
-  am->l2_output_classify_next_acl_ip4 = am->l2_output_classify_next_acl_old;
-  am->l2_output_classify_next_acl_ip6 = am->l2_output_classify_next_acl_old;
-
-  register_match_action_nexts (0, 0, 0, 0);	/* drop */
-  register_match_action_nexts (~0, ~0, ~0, ~0);	/* permit */
-  register_match_action_nexts (ACL_IN_L2S_INPUT_IP4_ADD, ACL_IN_L2S_INPUT_IP6_ADD, ACL_OUT_L2S_OUTPUT_IP4_ADD, ACL_OUT_L2S_OUTPUT_IP6_ADD);	/* permit + create session */
-}
-
-void
+static void
 acl_setup_fa_nodes (void)
 {
   vlib_main_t *vm = vlib_get_main ();
@@ -1871,9 +1549,9 @@ acl_setup_fa_nodes (void)
   n6 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-in-ip6-l2");
 
 
-  am->fa_l2_input_classify_next_acl_ip4 =
+  am->l2_input_classify_next_acl_ip4 =
     vlib_node_add_next_with_slot (vm, n->index, n4->index, ~0);
-  am->fa_l2_input_classify_next_acl_ip6 =
+  am->l2_input_classify_next_acl_ip6 =
     vlib_node_add_next_with_slot (vm, n->index, n6->index, ~0);
 
   feat_bitmap_init_next_nodes (vm, n4->index, L2INPUT_N_FEAT,
@@ -1889,9 +1567,9 @@ acl_setup_fa_nodes (void)
   n4 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-out-ip4-l2");
   n6 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-out-ip6-l2");
 
-  am->fa_l2_output_classify_next_acl_ip4 =
+  am->l2_output_classify_next_acl_ip4 =
     vlib_node_add_next_with_slot (vm, n->index, n4->index, ~0);
-  am->fa_l2_output_classify_next_acl_ip6 =
+  am->l2_output_classify_next_acl_ip6 =
     vlib_node_add_next_with_slot (vm, n->index, n6->index, ~0);
 
   feat_bitmap_init_next_nodes (vm, n4->index, L2OUTPUT_N_FEAT,
@@ -1901,19 +1579,12 @@ acl_setup_fa_nodes (void)
   feat_bitmap_init_next_nodes (vm, n6->index, L2OUTPUT_N_FEAT,
                                l2output_get_feat_names (),
                                am->fa_acl_out_ip6_l2_node_feat_next_node_index);
-
-  am->l2_input_classify_next_acl_ip4 = am->fa_l2_input_classify_next_acl_ip4;
-  am->l2_input_classify_next_acl_ip6 = am->fa_l2_input_classify_next_acl_ip6;
-  am->l2_output_classify_next_acl_ip4 = am->fa_l2_output_classify_next_acl_ip4;
-  am->l2_output_classify_next_acl_ip6 = am->fa_l2_output_classify_next_acl_ip6;
-
 }
 
-void
+static void
 acl_set_timeout_sec(int timeout_type, u32 value)
 {
   acl_main_t *am = &acl_main;
-  l2sess_main_t *sm = &l2sess_main;
   clib_time_t *ct = &am->vlib_main->clib_time;
 
   if (timeout_type < ACL_N_TIMEOUTS) {
@@ -1922,30 +1593,17 @@ acl_set_timeout_sec(int timeout_type, u32 value)
     clib_warning("Unknown timeout type %d", timeout_type);
     return;
   }
-
-  switch(timeout_type) {
-    case ACL_TIMEOUT_UDP_IDLE:
-      sm->udp_session_idle_timeout = (u64)(((f64)value)/ct->seconds_per_clock);
-      break;
-    case ACL_TIMEOUT_TCP_IDLE:
-      sm->tcp_session_idle_timeout = (u64)(((f64)value)/ct->seconds_per_clock);
-      break;
-    case ACL_TIMEOUT_TCP_TRANSIENT:
-      sm->tcp_session_transient_timeout = (u64)(((f64)value)/ct->seconds_per_clock);
-      break;
-    default:
-      clib_warning("Unknown timeout type %d", timeout_type);
-  }
+  am->session_timeout[timeout_type] = (u64)(((f64)value)/ct->seconds_per_clock);
 }
 
-void
+static void
 acl_set_session_max_entries(u32 value)
 {
   acl_main_t *am = &acl_main;
   am->fa_conn_table_max_entries = value;
 }
 
-int
+static int
 acl_set_skip_ipv6_eh(u32 eh, u32 value)
 {
   acl_main_t *am = &acl_main;
@@ -1984,24 +1642,6 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
   uword memory_size = 0;
   acl_main_t *am = &acl_main;
 
-  /* The new datapath is the default. This command exists out of precaution and for comparing the two */
-  if (unformat (input, "l2-datapath")) {
-    if (unformat(input, "old")) {
-      am->l2_input_classify_next_acl_ip4 = am->l2_input_classify_next_acl_old;
-      am->l2_input_classify_next_acl_ip6 = am->l2_input_classify_next_acl_old;
-      am->l2_output_classify_next_acl_ip4 = am->l2_output_classify_next_acl_old;
-      am->l2_output_classify_next_acl_ip6 = am->l2_output_classify_next_acl_old;
-      goto done;
-    }
-    if (unformat(input, "new")) {
-      am->l2_input_classify_next_acl_ip4 = am->fa_l2_input_classify_next_acl_ip4;
-      am->l2_input_classify_next_acl_ip6 = am->fa_l2_input_classify_next_acl_ip6;
-      am->l2_output_classify_next_acl_ip4 = am->fa_l2_output_classify_next_acl_ip4;
-      am->l2_output_classify_next_acl_ip6 = am->fa_l2_output_classify_next_acl_ip6;
-      goto done;
-    }
-    goto done;
-  }
   if (unformat (input, "skip-ipv6-extension-header %u %u", &eh_val, &val)) {
     if(!acl_set_skip_ipv6_eh(eh_val, val)) {
       error = clib_error_return(0, "expecting eh=0..255, value=0..1");
@@ -2170,7 +1810,6 @@ acl_init (vlib_main_t * vm)
 					    VL_MSG_FIRST_AVAILABLE);
 
   error = acl_plugin_api_hookup (vm);
-  acl_setup_nodes ();
 
  /* Add our API messages to the global name_crc hash table */
   setup_message_id_table (am, &api_main);
