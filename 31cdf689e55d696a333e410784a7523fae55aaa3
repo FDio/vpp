@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_10bd84d8",
+        "filename": "src/plugins/flowperpkt/node.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 671
+      },
+      "writtenOn": "2017-04-18T17:27:21Z",
+      "side": 1,
+      "message": "Shouldn\u0027t the timestamp also be included in the common fields?",
+      "revId": "31cdf689e55d696a333e410784a7523fae55aaa3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
