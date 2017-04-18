@@ -1300,7 +1300,9 @@ class TestDeterministicNAT(MethodHolder):
         super(TestDeterministicNAT, cls).setUpClass()
 
         try:
-            cls.create_pg_interfaces(range(2))
+            cls.snat_addr = '10.0.0.3'
+
+            cls.create_pg_interfaces(range(3))
             cls.interfaces = list(cls.pg_interfaces)
 
             for i in cls.interfaces:
@@ -1311,6 +1313,21 @@ class TestDeterministicNAT(MethodHolder):
         except Exception:
             super(TestDeterministicNAT, cls).tearDownClass()
             raise
+
+    def verify_ipfix_max_entries_per_user(self, data):
+        """
+        Verify IPFIX maximum entries per user exceeded event
+
+        :param data: Decoded IPFIX data records
+        """
+        self.assertEqual(1, len(data))
+        record = data[0]
+        # natEvent
+        self.assertEqual(ord(record[230]), 13)
+        # natQuotaExceededEvent
+        self.assertEqual('\x03\x00\x00\x00', record[466])
+        # sourceIPv4Address
+        self.assertEqual(self.pg0.remote_ip4n, record[8])
 
     def test_deterministic_mode(self):
         """ S-NAT run deterministic mode """
@@ -1363,10 +1380,51 @@ class TestDeterministicNAT(MethodHolder):
         self.assertNotEqual(timeouts_before.tcp_transitory,
                             timeouts_after.tcp_transitory)
 
+    def test_ipfix_max_entries_per_user(self):
+        """ CGNAT IPFIX maximum entries per user exceeded event """
+        self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
+                                   32,
+                                   socket.inet_aton(self.snat_addr),
+                                   32)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+        self.vapi.set_ipfix_exporter(collector_address=self.pg2.remote_ip4n,
+                                     src_address=self.pg2.local_ip4n,
+                                     path_mtu=512,
+                                     template_interval=10)
+        self.vapi.snat_ipfix()
+
+        pkts = []
+        for port in range(1025, 2026):
+            p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                 IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+                 UDP(sport=port, dport=port))
+            pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.get_capture(1000)
+
+        self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        capture = self.pg2.get_capture(2)
+        ipfix = IPFIXDecoder()
+        # first load template
+        for p in capture:
+            self.assertTrue(p.haslayer(IPFIX))
+            if p.haslayer(Template):
+                ipfix.add_template(p.getlayer(Template))
+        # verify events in data set
+        for p in capture:
+            if p.haslayer(Data):
+                data = ipfix.decode_data_set(p.getlayer(Set))
+                self.verify_ipfix_max_entries_per_user(data)
+
     def clear_snat(self):
         """
         Clear SNAT configuration.
         """
+        self.vapi.snat_ipfix(enable=0)
         self.vapi.snat_det_set_timeouts()
         deterministic_mappings = self.vapi.snat_det_map_dump()
         for dsm in deterministic_mappings:

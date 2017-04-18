@@ -24,6 +24,7 @@
 
 #include <vnet/ip/ip.h>
 #include <snat/snat.h>
+#include <snat/snat_ipfix_logging.h>
 
 
 #define SNAT_DET_SES_PER_USER 1000
@@ -170,6 +171,7 @@ snat_det_ses_create (snat_det_map_t * dm, ip4_address_t * in_addr,
 	}
     }
 
+  snat_ipfix_logging_max_entries_per_user (in_addr->as_u32);
   return 0;
 }
 
