@@ -22,7 +22,12 @@ typedef enum {
   NAT44_SESSION_CREATE = 4,
   NAT44_SESSION_DELETE = 5,
   NAT_PORTS_EXHAUSTED = 12,
+  QUOTA_EXCEEDED = 13,
 } nat_event_t;
+
+typedef enum {
+  MAX_ENTRIES_PER_USER = 3,
+} quota_exceed_event_t;
 
 typedef struct {
   /** S-NAT IPFIX logging enabled */
@@ -31,14 +36,17 @@ typedef struct {
   /** ipfix buffers under construction */
   vlib_buffer_t *nat44_session_buffer;
   vlib_buffer_t *addr_exhausted_buffer;
+  vlib_buffer_t *max_entries_per_user_buffer;
 
   /** frames containing ipfix buffers */
   vlib_frame_t *nat44_session_frame;
   vlib_frame_t *addr_exhausted_frame;
+  vlib_frame_t *max_entries_per_user_frame;
 
   /** next record offset */
   u32 nat44_session_next_record_offset;
   u32 addr_exhausted_next_record_offset;
+  u32 max_entries_per_user_next_record_offset;
 
   /** Time reference pair */
   u64 milisecond_time_0;
@@ -47,6 +55,7 @@ typedef struct {
   /** template IDs */
   u16 nat44_session_template_id;
   u16 addr_exhausted_template_id;
+  u16 max_entries_per_user_template_id;
 
   /** stream index */
   u32 stream_index;
@@ -65,4 +74,6 @@ void snat_ipfix_logging_nat44_ses_delete (u32 src_ip, u32 nat_src_ip,
                                           u16 src_port, u16 nat_src_port,
                                           u32 vrf_id);
 void snat_ipfix_logging_addresses_exhausted(u32 pool_id);
+void snat_ipfix_logging_max_entries_per_user(u32 src_ip);
+
 #endif /* __included_snat_ipfix_logging_h__ */
