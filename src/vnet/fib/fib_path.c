@@ -2025,13 +2025,15 @@ fib_path_append_nh_for_multipath_hash (fib_node_index_t path_index,
 }
 
 int
-fib_path_is_recursive (fib_node_index_t path_index)
+fib_path_is_recursive_constrained (fib_node_index_t path_index)
 {
     fib_path_t *path;
 
     path = fib_path_get(path_index);
 
-    return (FIB_PATH_TYPE_RECURSIVE == path->fp_type);
+    return ((FIB_PATH_TYPE_RECURSIVE == path->fp_type) &&
+            ((path->fp_cfg_flags & FIB_PATH_CFG_FLAG_RESOLVE_ATTACHED) ||
+             (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_RESOLVE_HOST)));
 }
 
 int

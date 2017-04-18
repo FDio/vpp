@@ -73,6 +73,37 @@ load_balance_map_get (index_t lbmi)
     return (pool_elt_at_index(load_balance_map_pool, lbmi));
 }
 
+static inline u16
+load_balance_map_translate (index_t lbmi,
+                            u16 bucket)
+{
+    load_balance_map_t*lbm;
+
+    lbm = load_balance_map_get(lbmi);
+
+    return (lbm->lbm_buckets[bucket]);
+}
+
+static inline const dpo_id_t *
+load_balance_get_fwd_bucket (const load_balance_t *lb,
+                             u16 bucket)
+{
+    ASSERT(bucket < lb->lb_n_buckets);
+
+    if (INDEX_INVALID != lb->lb_map)
+    {
+        bucket = load_balance_map_translate(lb->lb_map, bucket);
+    }
+
+    if (PREDICT_TRUE(LB_HAS_INLINE_BUCKETS(lb)))
+    {
+	return (&lb->lb_buckets_inline[bucket]);
+    }
+    else
+    {
+	return (&lb->lb_buckets[bucket]);
+    }
+}
 
 extern void load_balance_map_module_init(void);
 

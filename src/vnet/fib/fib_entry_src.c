@@ -192,7 +192,7 @@ typedef struct fib_entry_src_collect_forwarding_ctx_t_
     const fib_entry_t *fib_entry;
     const fib_entry_src_t *esrc;
     fib_forward_chain_type_t fct;
-    int is_recursive;
+    int n_recursive_constrained;
 } fib_entry_src_collect_forwarding_ctx_t;
 
 /**
@@ -203,10 +203,11 @@ load_balance_flags_t
 fib_entry_calc_lb_flags (fib_entry_src_collect_forwarding_ctx_t *ctx)
 {
     /**
-     * We'll use a LB map is the path-list has recursive paths.
+     * We'll use a LB map if the path-list has multiple recursive paths.
      * recursive paths implies BGP, and hence scale.
      */
-    if (ctx->is_recursive)
+    if (ctx->n_recursive_constrained > 1 &&
+        fib_path_list_is_popular(ctx->esrc->fes_pl))
     {
         return (LOAD_BALANCE_FLAG_USES_MAP);
     }
@@ -282,9 +283,9 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
         return (!0);
     }
 
-    if (fib_path_is_recursive(path_index))
+    if (fib_path_is_recursive_constrained(path_index))
     {
-        ctx->is_recursive = 1;
+        ctx->n_recursive_constrained += 1;
     }
 
     /*
@@ -397,7 +398,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         .esrc = esrc,
         .fib_entry = fib_entry,
         .next_hops = NULL,
-        .is_recursive = 0,
+        .n_recursive_constrained = 0,
         .fct = fct,
     };
 
@@ -409,7 +410,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
     vec_validate(ctx.next_hops, fib_path_list_get_n_paths(esrc->fes_pl));
     vec_reset_length(ctx.next_hops);
 
-    lb_proto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto);
+    lb_proto = fib_forw_chain_type_to_dpo_proto(fct);
 
     fib_path_list_walk(esrc->fes_pl,
                        fib_entry_src_collect_forwarding,

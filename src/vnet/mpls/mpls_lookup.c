@@ -19,7 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/mpls/mpls.h>
 #include <vnet/fib/mpls_fib.h>
-#include <vnet/dpo/load_balance.h>
+#include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/replicate_dpo.h>
 
 /**
@@ -47,7 +47,7 @@ format_mpls_lookup_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpls_lookup_trace_t * t = va_arg (*args, mpls_lookup_trace_t *);
 
-  s = format (s, "MPLS: next [%d], lookup fib index %d, LB index %d hash %d"
+  s = format (s, "MPLS: next [%d], lookup fib index %d, LB index %d hash %#x "
               "label %d eos %d", 
               t->next_index, t->lfib_index, t->lb_index, t->hash,
               vnet_mpls_uc_get_label(
@@ -64,8 +64,15 @@ always_inline u32
 mpls_compute_flow_hash (const mpls_unicast_header_t * hdr,
                         flow_hash_config_t flow_hash_config)
 {
-    // FIXME
-    return (vnet_mpls_uc_get_label(hdr->label_exp_s_ttl));
+    /*
+     * improve this to include:
+     *  - all labels in the stack.
+     *  - recognise entropy labels.
+     *
+     * We need to byte swap so we use the numerical value. i.e. an odd label
+     * leads to an odd bucket. ass opposed to a label above and below value X.
+     */
+    return (vnet_mpls_uc_get_label(clib_net_to_host_u32(hdr->label_exp_s_ttl)));
 }
 
 static inline uword
@@ -179,17 +186,21 @@ mpls_lookup (vlib_main_t * vm,
           else
           {
               lb0 = load_balance_get(lbi0);
+              ASSERT (lb0->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb0->lb_n_buckets));
 
               if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
               {
                   hash_c0 = vnet_buffer (b0)->ip.flow_hash =
                       mpls_compute_flow_hash(h0, lb0->lb_hash_config);
+                  dpo0 = load_balance_get_fwd_bucket
+                      (lb0,
+                       (hash_c0 & (lb0->lb_n_buckets_minus_1)));
               }
-              ASSERT (lb0->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb0->lb_n_buckets));
-              dpo0 = load_balance_get_bucket_i(lb0,
-                                               (hash_c0 &
-                                                (lb0->lb_n_buckets_minus_1)));
+              else
+              {
+                  dpo0 = load_balance_get_bucket_i (lb0, 0);
+              }
               next0 = dpo0->dpoi_next_node;
 
               vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
@@ -207,17 +218,21 @@ mpls_lookup (vlib_main_t * vm,
           else
           {
               lb1 = load_balance_get(lbi1);
+              ASSERT (lb1->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb1->lb_n_buckets));
 
               if (PREDICT_FALSE(lb1->lb_n_buckets > 1))
               {
                   hash_c1 = vnet_buffer (b1)->ip.flow_hash =
                       mpls_compute_flow_hash(h1, lb1->lb_hash_config);
+                  dpo1 = load_balance_get_fwd_bucket
+                      (lb1,
+                       (hash_c1 & (lb1->lb_n_buckets_minus_1)));
               }
-              ASSERT (lb1->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb1->lb_n_buckets));
-              dpo1 = load_balance_get_bucket_i(lb1,
-                                               (hash_c1 &
-                                                (lb1->lb_n_buckets_minus_1)));
+              else
+              {
+                  dpo1 = load_balance_get_bucket_i (lb1, 0);
+              }
               next1 = dpo1->dpoi_next_node;
 
               vnet_buffer (b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
@@ -235,17 +250,21 @@ mpls_lookup (vlib_main_t * vm,
           else
           {
               lb2 = load_balance_get(lbi2);
+              ASSERT (lb2->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb2->lb_n_buckets));
 
               if (PREDICT_FALSE(lb2->lb_n_buckets > 1))
               {
                   hash_c2 = vnet_buffer (b2)->ip.flow_hash =
                       mpls_compute_flow_hash(h2, lb2->lb_hash_config);
+                  dpo2 = load_balance_get_fwd_bucket
+                      (lb2,
+                       (hash_c2 & (lb2->lb_n_buckets_minus_1)));
               }
-              ASSERT (lb2->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb2->lb_n_buckets));
-              dpo2 = load_balance_get_bucket_i(lb2,
-                                               (hash_c2 &
-                                                (lb2->lb_n_buckets_minus_1)));
+              else
+              {
+                  dpo2 = load_balance_get_bucket_i (lb2, 0);
+              }
               next2 = dpo2->dpoi_next_node;
 
               vnet_buffer (b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
@@ -263,17 +282,21 @@ mpls_lookup (vlib_main_t * vm,
           else
           {
               lb3 = load_balance_get(lbi3);
+              ASSERT (lb3->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb3->lb_n_buckets));
 
               if (PREDICT_FALSE(lb3->lb_n_buckets > 1))
               {
                   hash_c3 = vnet_buffer (b3)->ip.flow_hash =
                       mpls_compute_flow_hash(h3, lb3->lb_hash_config);
+                  dpo3 = load_balance_get_fwd_bucket
+                      (lb3,
+                       (hash_c3 & (lb3->lb_n_buckets_minus_1)));
               }
-              ASSERT (lb3->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb3->lb_n_buckets));
-              dpo3 = load_balance_get_bucket_i(lb3,
-                                               (hash_c3 &
-                                                (lb3->lb_n_buckets_minus_1)));
+              else
+              {
+                  dpo3 = load_balance_get_bucket_i (lb3, 0);
+              }
               next3 = dpo3->dpoi_next_node;
 
               vnet_buffer (b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
@@ -393,20 +416,21 @@ mpls_lookup (vlib_main_t * vm,
           else
           {
               lb0 = load_balance_get(lbi0);
+              ASSERT (lb0->lb_n_buckets > 0);
+              ASSERT (is_pow2 (lb0->lb_n_buckets));
 
               if (PREDICT_FALSE(lb0->lb_n_buckets > 1))
               {
                   hash_c0 = vnet_buffer (b0)->ip.flow_hash =
                       mpls_compute_flow_hash(h0, lb0->lb_hash_config);
+                  dpo0 = load_balance_get_fwd_bucket
+                      (lb0,
+                       (hash_c0 & (lb0->lb_n_buckets_minus_1)));
               }
-
-              ASSERT (lb0->lb_n_buckets > 0);
-              ASSERT (is_pow2 (lb0->lb_n_buckets));
-
-              dpo0 = load_balance_get_bucket_i(lb0,
-                                               (hash_c0 &
-                                                (lb0->lb_n_buckets_minus_1)));
-
+              else
+              {
+                  dpo0 = load_balance_get_bucket_i (lb0, 0);
+              }
               next0 = dpo0->dpoi_next_node;
               vnet_buffer (b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
@@ -467,7 +491,7 @@ VLIB_REGISTER_NODE (mpls_lookup_node, static) = {
   .n_errors = MPLS_N_ERROR,
   .error_strings = mpls_error_strings,
 
-  .sibling_of = "ip4-lookup",
+  .sibling_of = "mpls-load-balance",
 
   .format_buffer = format_mpls_header,
   .format_trace = format_mpls_lookup_trace,
@@ -574,6 +598,11 @@ mpls_load_balance (vlib_main_t * vm,
               {
                   hc0 = vnet_buffer(p0)->ip.flow_hash = mpls_compute_flow_hash(mpls0, hc0);
               }
+              dpo0 = load_balance_get_fwd_bucket(lb0, (hc0 & lb0->lb_n_buckets_minus_1));
+          }
+          else
+          {
+              dpo0 = load_balance_get_bucket_i (lb0, 0);
           }
           if (PREDICT_FALSE (lb1->lb_n_buckets > 1))
           {
@@ -585,10 +614,12 @@ mpls_load_balance (vlib_main_t * vm,
               {
                   hc1 = vnet_buffer(p1)->ip.flow_hash = mpls_compute_flow_hash(mpls1, hc1);
               }
+              dpo1 = load_balance_get_fwd_bucket(lb1, (hc1 & lb1->lb_n_buckets_minus_1));
           }
-
-          dpo0 = load_balance_get_bucket_i(lb0, hc0 & (lb0->lb_n_buckets_minus_1));
-          dpo1 = load_balance_get_bucket_i(lb1, hc1 & (lb1->lb_n_buckets_minus_1));
+          else
+          {
+              dpo1 = load_balance_get_bucket_i (lb1, 0);
+          }
 
           next0 = dpo0->dpoi_next_node;
           next1 = dpo1->dpoi_next_node;
@@ -650,9 +681,12 @@ mpls_load_balance (vlib_main_t * vm,
               {
                   hc0 = vnet_buffer(p0)->ip.flow_hash = mpls_compute_flow_hash(mpls0, hc0);
               }
+               dpo0 = load_balance_get_fwd_bucket(lb0, (hc0 & lb0->lb_n_buckets_minus_1));
           }
-
-          dpo0 = load_balance_get_bucket_i(lb0, hc0 & (lb0->lb_n_buckets_minus_1));
+          else
+          {
+              dpo0 = load_balance_get_bucket_i (lb0, 0);
+          }
 
           next0 = dpo0->dpoi_next_node;
           vnet_buffer (p0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
@@ -676,9 +710,13 @@ VLIB_REGISTER_NODE (mpls_load_balance_node) = {
   .function = mpls_load_balance,
   .name = "mpls-load-balance",
   .vector_size = sizeof (u32),
-  .sibling_of = "mpls-lookup",
-
   .format_trace = format_mpls_load_balance_trace,
+  .n_next_nodes = 1,
+  .next_nodes =
+  {
+      [0] = "mpls-drop",
+  },
+
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (mpls_load_balance_node, mpls_load_balance)

@@ -39,11 +39,6 @@ typedef enum fib_path_list_attribute_t_ {
      */
     FIB_PATH_LIST_ATTRIBUTE_SHARED = FIB_PATH_LIST_ATTRIBUTE_FIRST,
     /**
-     * Indexed means the path-list keeps a hash table of all paths for
-     * fast lookup. The lookup result is the fib_node_index of the path.
-     */
-    FIB_PATH_LIST_ATTRIBUTE_INDEXED,
-    /**
      * explicit drop path-list. Used when the entry source needs to 
      * force a drop, despite the fact the path info is present.
      */
@@ -66,36 +61,42 @@ typedef enum fib_path_list_attribute_t_ {
      */
     FIB_PATH_LIST_ATTRIBUTE_LOOPED,
     /**
+     * a popular path-ist is one that is shared amongst many entries.
+     * Path list become popular as they gain more children, but they
+     * don't become unpopular as they lose them.
+     */
+    FIB_PATH_LIST_ATTRIBUTE_POPULAR,
+    /**
      * no uRPF - do not generate unicast RPF list for this path-list
      */
     FIB_PATH_LIST_ATTRIBUTE_NO_URPF,
     /**
      * Marher. Add new flags before this one, and then update it.
      */
-    FIB_PATH_LIST_ATTRIBUTE_LAST = FIB_PATH_LIST_ATTRIBUTE_LOOPED,
+    FIB_PATH_LIST_ATTRIBUTE_LAST = FIB_PATH_LIST_ATTRIBUTE_NO_URPF,
 } fib_path_list_attribute_t;
 
 typedef enum fib_path_list_flags_t_ {
     FIB_PATH_LIST_FLAG_NONE      = 0,
     FIB_PATH_LIST_FLAG_SHARED    = (1 << FIB_PATH_LIST_ATTRIBUTE_SHARED),
-    FIB_PATH_LIST_FLAG_INDEXED    = (1 << FIB_PATH_LIST_ATTRIBUTE_INDEXED),
     FIB_PATH_LIST_FLAG_DROP      = (1 << FIB_PATH_LIST_ATTRIBUTE_DROP),
     FIB_PATH_LIST_FLAG_LOCAL     = (1 << FIB_PATH_LIST_ATTRIBUTE_LOCAL),
     FIB_PATH_LIST_FLAG_EXCLUSIVE = (1 << FIB_PATH_LIST_ATTRIBUTE_EXCLUSIVE),
     FIB_PATH_LIST_FLAG_RESOLVED  = (1 << FIB_PATH_LIST_ATTRIBUTE_RESOLVED),
     FIB_PATH_LIST_FLAG_LOOPED    = (1 << FIB_PATH_LIST_ATTRIBUTE_LOOPED),
+    FIB_PATH_LIST_FLAG_POPULAR   = (1 << FIB_PATH_LIST_ATTRIBUTE_POPULAR),
     FIB_PATH_LIST_FLAG_NO_URPF   = (1 << FIB_PATH_LIST_ATTRIBUTE_NO_URPF),
 } fib_path_list_flags_t;
 
 #define FIB_PATH_LIST_ATTRIBUTES {       		 \
     [FIB_PATH_LIST_ATTRIBUTE_SHARED]    = "shared",	 \
-    [FIB_PATH_LIST_ATTRIBUTE_INDEXED]    = "indexed",	 \
     [FIB_PATH_LIST_ATTRIBUTE_RESOLVED]  = "resolved",	 \
     [FIB_PATH_LIST_ATTRIBUTE_DROP]      = "drop",	 \
     [FIB_PATH_LIST_ATTRIBUTE_EXCLUSIVE] = "exclusive",   \
-    [FIB_PATH_LIST_ATTRIBUTE_LOCAL]     = "local",      \
-    [FIB_PATH_LIST_ATTRIBUTE_LOOPED]     = "looped",	 \
-    [FIB_PATH_LIST_ATTRIBUTE_NO_URPF]     = "no-uRPF",	 \
+    [FIB_PATH_LIST_ATTRIBUTE_LOCAL]     = "local",       \
+    [FIB_PATH_LIST_ATTRIBUTE_LOOPED]    = "looped",	 \
+    [FIB_PATH_LIST_ATTRIBUTE_POPULAR]   = "popular",	 \
+    [FIB_PATH_LIST_ATTRIBUTE_NO_URPF]   = "no-uRPF",	 \
 }
 
 #define FOR_EACH_PATH_LIST_ATTRIBUTE(_item)		\
@@ -148,6 +149,7 @@ extern int fib_path_list_recursive_loop_detect(fib_node_index_t path_list_index,
 					       fib_node_index_t **entry_indicies);
 extern u32 fib_path_list_get_resolving_interface(fib_node_index_t path_list_index);
 extern int fib_path_list_is_looped(fib_node_index_t path_list_index);
+extern int fib_path_list_is_popular(fib_node_index_t path_list_index);
 extern fib_protocol_t fib_path_list_get_proto(fib_node_index_t path_list_index);
 extern u8 * fib_path_list_format(fib_node_index_t pl_index,
 				 u8 * s);

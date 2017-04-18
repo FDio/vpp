@@ -26,6 +26,16 @@
 #include <vnet/fib/fib_urpf_list.h>
 
 /**
+ * The magic number of child entries that make a path-list popular.
+ * There's a trade-off here between convergnece and forwarding speed.
+ * Popular path-lists generate load-balance maps for the entires that
+ * use them. If the map is present there is a switch path cost to indirect
+ * through the map - this indirection provides the fast convergence - so
+ * without the map convergence is slower.
+ */
+#define FIB_PATH_LIST_POPULAR 64
+
+/**
  * FIB path-list
  * A representation of the list/set of path trough which a prefix is reachable
  */
@@ -454,14 +464,7 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
     /*
      * propagate the backwalk further
      */
-    if (32 >= fib_node_list_get_size(path_list->fpl_node.fn_children))
-    {
-        /*
-         * only a few children. continue the walk synchronously
-         */
-	fib_walk_sync(FIB_NODE_TYPE_PATH_LIST, path_list_index, ctx);
-    }
-    else
+    if (path_list->fpl_flags & FIB_PATH_LIST_FLAG_POPULAR)
     {
         /*
          * many children. schedule a async walk
@@ -470,6 +473,13 @@ fib_path_list_back_walk (fib_node_index_t path_list_index,
                        path_list_index,
                        FIB_WALK_PRIORITY_LOW,
                        ctx);
+    }
+    else
+    {
+        /*
+         * only a few children. continue the walk synchronously
+         */
+	fib_walk_sync(FIB_NODE_TYPE_PATH_LIST, path_list_index, ctx);
     }
 }
 
@@ -623,6 +633,16 @@ fib_path_list_is_looped (fib_node_index_t path_list_index)
     path_list = fib_path_list_get(path_list_index);
 
     return (path_list->fpl_flags & FIB_PATH_LIST_FLAG_LOOPED);
+}
+
+int
+fib_path_list_is_popular (fib_node_index_t path_list_index)
+{
+    fib_path_list_t *path_list;
+
+    path_list = fib_path_list_get(path_list_index);
+
+    return (path_list->fpl_flags & FIB_PATH_LIST_FLAG_POPULAR);
 }
 
 static fib_path_list_flags_t
@@ -807,6 +827,7 @@ fib_path_list_path_add (fib_node_index_t path_list_index,
          */
 	if (0 == fib_path_cmp(new_path_index, *orig_path_index))
         {
+            fib_path_destroy(new_path_index);
             return (*orig_path_index);
         }
     }
@@ -1173,10 +1194,38 @@ fib_path_list_child_add (fib_node_index_t path_list_index,
 			 fib_node_type_t child_type,
 			 fib_node_index_t child_index)
 {
-    return (fib_node_child_add(FIB_NODE_TYPE_PATH_LIST,
-                               path_list_index,
-                               child_type,
-                               child_index));
+    u32 sibling;
+
+    sibling = fib_node_child_add(FIB_NODE_TYPE_PATH_LIST,
+                                 path_list_index,
+                                 child_type,
+                                 child_index);
+
+    if (FIB_PATH_LIST_POPULAR == fib_node_get_n_children(FIB_NODE_TYPE_PATH_LIST,
+                                                         path_list_index))
+    {
+        /*
+         * Set the popular flag on the path-list once we pass the magic
+         * threshold. then walk children to update.
+         * We don't undo this action. The rational being that the number
+         * of entries using this prefix is large enough such that it is a
+         * non-trival amount of effort to converge them. If we get into the
+         * situation where we are adding and removing entries such that we
+         * flip-flop over the threshold, then this non-trivial work is added
+         * to each of those routes adds/deletes - not a situation we want.
+         */
+        fib_node_back_walk_ctx_t ctx = {
+            .fnbw_reason = FIB_NODE_BW_REASON_FLAG_EVALUATE,
+        };
+        fib_path_list_t *path_list;
+
+        path_list = fib_path_list_get(path_list_index);
+        path_list->fpl_flags |= FIB_PATH_LIST_FLAG_POPULAR;
+
+	fib_walk_sync(FIB_NODE_TYPE_PATH_LIST, path_list_index, &ctx);
+    }
+
+    return (sibling);
 }
 
 void
