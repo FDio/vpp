@@ -717,6 +717,7 @@ fib_test_v4 (void)
     const load_balance_t *lb;
     test_main_t *tm;
     u32 fib_index;
+    int lb_count;
     int ii;
 
     /* via 10.10.10.1 */
@@ -729,6 +730,9 @@ fib_test_v4 (void)
     };
 
     tm = &test_main;
+
+    /* record the nubmer of load-balances in use before we start */
+    lb_count = pool_elts(load_balance_pool);
 
     /* Find or create FIB table 11 */
     fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 11);
@@ -3154,7 +3158,7 @@ fib_test_v4 (void)
              "LB maps's bucket 1 is %d",
              lbm->lbm_buckets[1]);
 
-    load_balance_map_unlock(lb->lb_map);
+    load_balance_map_unlock(lbmi);
 
     /*
      * add it back. again 
@@ -3249,7 +3253,7 @@ fib_test_v4 (void)
                  "LB Map for 200.200.200.200/32 at %d is %d",
                  ii, lbm->lbm_buckets[ii]);
     }
-
+    load_balance_map_unlock(lbmi);
 
     /*
      * tidy up
@@ -3850,6 +3854,10 @@ fib_test_v4 (void)
     	     fib_entry_pool_size());
     FIB_TEST((ENBR-5 == pool_elts(fib_urpf_list_pool)), "uRPF pool size is %d",
     	     pool_elts(fib_urpf_list_pool));
+    FIB_TEST((0 == pool_elts(load_balance_map_pool)), "LB-map pool size is %d",
+             pool_elts(load_balance_map_pool));
+    FIB_TEST((lb_count == pool_elts(load_balance_pool)), "LB pool size is %d",
+             pool_elts(load_balance_pool));
 
     return 0;
 }

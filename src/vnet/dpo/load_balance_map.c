@@ -415,6 +415,14 @@ load_balance_map_init (load_balance_map_t *lbm,
     return (lbm);
 }
 
+static void
+load_balance_map_destroy (load_balance_map_t *lbm)
+{
+    vec_free(lbm->lbm_paths);
+    vec_free(lbm->lbm_buckets);
+    pool_put(load_balance_map_pool, lbm);
+}
+
 index_t
 load_balance_map_add_or_lock (u32 n_buckets,
                               u32 sum_of_weights,
@@ -434,6 +442,7 @@ load_balance_map_add_or_lock (u32 n_buckets,
     else
     {
         lbm = load_balance_map_get(lbmi);
+        load_balance_map_destroy(tmp);
     }
 
     lbm->lbm_locks++;
@@ -468,9 +477,7 @@ load_balance_map_unlock (index_t lbmi)
     if (0 == lbm->lbm_locks)
     {
         load_balance_map_db_remove(lbm);
-        vec_free(lbm->lbm_paths);
-        vec_free(lbm->lbm_buckets);
-        pool_put(load_balance_map_pool, lbm);
+        load_balance_map_destroy(lbm);
     }
 }
 
