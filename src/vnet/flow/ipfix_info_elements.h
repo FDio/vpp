@@ -418,7 +418,8 @@ _(layer2OctetTotalSumOfSquares, 429, u64)                               \
 _(layer2FrameDeltaCount, 430, u64)                                      \
 _(layer2FrameTotalCount, 431, u64)                                      \
 _(pseudoWireDestinationIPv4Address, 432, ip4_address_t)                 \
-_(ignoredLayer2FrameTotalCount, 433, u64)
+_(ignoredLayer2FrameTotalCount, 433, u64)                               \
+_(natQuotaExceededEvent, 466, u32)
 
 typedef enum {
 #define _(n,v,t) n = v,
