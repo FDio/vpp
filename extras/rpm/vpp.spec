@@ -1,11 +1,9 @@
-%define _mu_build_dir    %{_mu_build_root_dir}
-%define _vpp_install_dir %{_install_dir}
 %define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
 %define _topdir          %(pwd)
 %define _builddir        %{_topdir}
-%define _version         %(../scripts/version rpm-version)
-%define _release         %(../scripts/version rpm-release)
+%define _mu_build_dir    %{_topdir}/%{name}-%{_version}/build-root
+%define _vpp_install_dir install-vpp-native
 
 # Failsafe backport of Python2-macros for RHEL <= 6
 %{!?python_sitelib: %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
@@ -28,7 +26,8 @@ Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 
-Source: %{name}-%{_version}-%{_release}.tar.gz
+# Source: %{name}-%{_version}-%{_release}.tar.xz
+Source: vpp-latest.tar.xz
 
 %description
 This package provides VPP executables: vpp, vpp_api_test, vpp_json_test
@@ -102,6 +101,8 @@ This package contains the python bindings for the vpp api
 groupadd -f -r vpp
 
 %build
+make bootstrap
+make -C build-root PLATFORM=vpp TAG=vpp install-packages
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
 
 %install
@@ -120,7 +121,7 @@ mkdir -p -m755 %{buildroot}/usr/share/vpp/api
 #
 mkdir -p -m755 %{buildroot}/etc/vpp
 mkdir -p -m755 %{buildroot}/etc/sysctl.d
-install -p -m 644 %{_mu_build_dir}/rpm/vpp.service %{buildroot}%{_unitdir}
+install -p -m 644 %{_topdir}/vpp.service %{buildroot}%{_unitdir}
 install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/startup.conf %{buildroot}/etc/vpp/startup.conf
 install -p -m 644 %{_mu_build_dir}/../src/vpp/conf/80-vpp.conf %{buildroot}/etc/sysctl.d
 #
