@@ -648,8 +648,18 @@ class VppTestCase(unittest.TestCase):
     @classmethod
     def sleep(cls, timeout, remark=None):
         if hasattr(cls, 'logger'):
-            cls.logger.debug("Sleeping for %ss (%s)" % (timeout, remark))
+            cls.logger.debug("Starting sleep for %ss (%s)" % (timeout, remark))
+        before = time.time()
         time.sleep(timeout)
+        after = time.time()
+        if after - before > 2 * timeout:
+            cls.logger.error(
+                    "time.sleep() derp! slept for %ss instead of ~%ss!" % (
+                        after - before, timeout))
+        if hasattr(cls, 'logger'):
+            cls.logger.debug(
+                "Finished sleep (%s) - slept %ss (wanted %ss)" % (
+                    remark, after - before, timeout))
 
 
 class TestCasePrinter(object):
