@@ -579,7 +579,7 @@ image_extra_dependencies = $($(PLATFORM)_image_extra_dependencies)
 ### dbarach
 
 configure_package_gnu =						\
-  s=$(call find_source_fn,$(PACKAGE_SOURCE)) ;			\
+  s=$(call find_source_fn,$(PACKAGE_SOURCE))$(PACKAGE_SUBDIR) ;	\
   if [ ! -f $$s/configure ] ; then				\
     autoreconf -i -f $$s ;					\
   fi ;								\
@@ -635,7 +635,8 @@ configure_check_timestamp =						\
   mkdir -p $(PACKAGE_INSTALL_DIR) ;					\
   conf="$(TIMESTAMP_DIR)/$(CONFIGURE_TIMESTAMP)" ;			\
   dirs="$(call package_mk_fn,$(PACKAGE))				\
-	$(wildcard $(call find_source_fn,$(PACKAGE_SOURCE))/configure)	\
+	$(wildcard $(call find_source_fn,				\
+	             $(PACKAGE_SOURCE))$(PACKAGE_SUBDIR)/configure)	\
        $(MU_BUILD_ROOT_DIR)/config.site" ;				\
   if [[ $(call find_newer_fn, $${conf}, $${dirs}, $?) ]]; then		\
     $(configure_package) ;						\
@@ -747,6 +748,7 @@ GIT = git
 # Multiple packages may use a single source tree.
 # For example, gcc-bootstrap package shares gcc source.
 PACKAGE_SOURCE = $(if $($(PACKAGE)_source),$($(PACKAGE)_source),$(PACKAGE))
+PACKAGE_SUBDIR = $(if $($(PACKAGE)_configure_subdir),/$($(PACKAGE)_configure_subdir),)
 
 # Use git to download source if directory is not found
 find_source_for_package =									\

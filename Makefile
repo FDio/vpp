@@ -423,6 +423,8 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang wipe-all install-packages
 endif
+	$(call banner,"Building sample-plugin")
+	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 	@make test
