@@ -235,7 +235,7 @@ rebuild: wipe build
 build-release: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),vpp-install)
 
-wipe-release: $(BR)/.bootstrap.ok
+wipe-release: wipedist $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),vpp-wipe)
 
 rebuild-release: wipe-release build-release
