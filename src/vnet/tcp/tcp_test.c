@@ -294,6 +294,34 @@ fifo_get_validate_pattern (vlib_main_t * vm, test_pattern_t * test_data,
   return validate_pattern;
 }
 
+static svm_fifo_t *
+fifo_prepare (u32 fifo_size)
+{
+  svm_fifo_t *f;
+  f = svm_fifo_create (fifo_size);
+
+  /* Paint fifo data vector with -1's */
+  memset (f->data, 0xFF, fifo_size);
+
+  return f;
+}
+
+static int
+compare_data (u8 * data1, u8 * data2, u32 start, u32 len, u32 * index)
+{
+  int i;
+
+  for (i = start; i < len; i++)
+    {
+      if (data1[i] != data2[i])
+	{
+	  *index = i;
+	  return 1;
+	}
+    }
+  return 0;
+}
+
 int
 tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 {
@@ -302,9 +330,9 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   u32 *test_data = 0;
   u32 offset;
   int i, rv, verbose = 0;
-  u32 data_word, test_data_len;
+  u32 data_word, test_data_len, j;
   ooo_segment_t *ooo_seg;
-  u8 *data;
+  u8 *data, *s, *data_buf = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -318,12 +346,11 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   for (i = 0; i < vec_len (test_data); i++)
     test_data[i] = i;
 
-  f = svm_fifo_create (fifo_size);
+  f = fifo_prepare (fifo_size);
 
-  /* Paint fifo data vector with -1's */
-  memset (f->data, 0xFF, test_data_len);
-
-  /* Enqueue an initial (un-dequeued) chunk */
+  /*
+   * Enqueue an initial (un-dequeued) chunk
+   */
   rv = svm_fifo_enqueue_nowait (f, 0 /* pid */ ,
 				sizeof (u32), (u8 *) test_data);
   TCP_TEST ((rv == sizeof (u32)), "enqueued %d", rv);
@@ -337,9 +364,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     {
       offset = (2 * i + 1) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 1));
-      rv =
-	svm_fifo_enqueue_with_offset (f, 0 /* pid */ , offset, sizeof (u32),
-				      data);
+      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
 			 offset + sizeof (u32));
@@ -352,16 +377,23 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 
   if (verbose)
     vlib_cli_output (vm, "fifo after odd segs: %U", format_svm_fifo, f, 1);
+
   TCP_TEST ((f->tail == 8), "fifo tail %u", f->tail);
 
-  /* Paint some of missing data backwards */
+  /*
+   * Make sure format functions are not buggy
+   */
+  s = format (0, "%U", format_svm_fifo, f, 2);
+  vec_free (s);
+
+  /*
+   * Paint some of missing data backwards
+   */
   for (i = 3; i > 1; i--)
     {
       offset = (2 * i + 0) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 0));
-      rv =
-	svm_fifo_enqueue_with_offset (f, 0 /* pid */ , offset, sizeof (u32),
-				      data);
+      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i, offset,
 			 offset + sizeof (u32));
@@ -383,7 +415,9 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((ooo_seg->length == 16),
 	    "first ooo seg length %u", ooo_seg->length);
 
-  /* Enqueue the missing u32 */
+  /*
+   * Enqueue the missing u32
+   */
   rv = svm_fifo_enqueue_nowait (f, 0 /* pid */ , sizeof (u32),
 				(u8 *) (test_data + 2));
   if (verbose)
@@ -393,7 +427,9 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
-  /* Collect results */
+  /*
+   * Collect results
+   */
   for (i = 0; i < 7; i++)
     {
       rv = svm_fifo_dequeue_nowait (f, 0 /* pid */ , sizeof (u32),
@@ -411,8 +447,77 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
+  /*
+   * Test segment overlaps: last ooo segment overlaps all
+   */
+  svm_fifo_free (f);
+  f = fifo_prepare (fifo_size);
+
+  for (i = 0; i < 4; i++)
+    {
+      offset = (2 * i + 1) * sizeof (u32);
+      data = (u8 *) (test_data + (2 * i + 1));
+      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
+      if (verbose)
+	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
+			 offset + sizeof (u32));
+      if (rv)
+	{
+	  clib_warning ("enqueue returned %d", rv);
+	  goto err;
+	}
+    }
+
+  rv = svm_fifo_enqueue_with_offset (f, 0, 8, 21, data);
+  TCP_TEST ((rv == 0), "ooo enqueued %u", rv);
+  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
+	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
+
+  vec_validate (data_buf, vec_len (data));
+  svm_fifo_peek (f, 0, 0, vec_len (data), data_buf);
+  if (compare_data (data_buf, data, 8, vec_len (data), &j))
+    {
+      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
+    }
+  vec_reset_length (data_buf);
+
+  /*
+   * Test segment overlaps: enqueue and overlap ooo segments
+   */
+  svm_fifo_free (f);
+  f = fifo_prepare (fifo_size);
+
+  for (i = 0; i < 4; i++)
+    {
+      offset = (2 * i + 1) * sizeof (u32);
+      data = (u8 *) (test_data + (2 * i + 1));
+      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
+      if (verbose)
+	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
+			 offset + sizeof (u32));
+      if (rv)
+	{
+	  clib_warning ("enqueue returned %d", rv);
+	  goto err;
+	}
+    }
+
+  rv = svm_fifo_enqueue_nowait (f, 0, 29, data);
+  TCP_TEST ((rv == 32), "ooo enqueued %u", rv);
+  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
+	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
+
+  vec_validate (data_buf, vec_len (data));
+  svm_fifo_peek (f, 0, 0, vec_len (data), data_buf);
+  if (compare_data (data_buf, data, 0, vec_len (data), &j))
+    {
+      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
+    }
+
+  vec_free (data_buf);
   svm_fifo_free (f);
   vec_free (test_data);
+
   return 0;
 
 err:
@@ -437,10 +542,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
   vp = fifo_get_validate_pattern (vm, test_data, test_data_len);
 
   /* Create a fifo */
-  f = svm_fifo_create (fifo_size);
-
-  /* Paint the fifo data vector with -1's */
-  memset (f->data, 0xFF, 1 << 20);
+  f = fifo_prepare (fifo_size);
 
   /*
    * Try with sorted data
@@ -473,10 +575,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
    * Now try it again w/ unsorted data...
    */
 
-  f = svm_fifo_create (fifo_size);
-
-  /* Paint fifo data vector with -1's */
-  memset (f->data, 0xFF, 1 << 20);
+  f = fifo_prepare (fifo_size);
 
   for (i = 0; i < test_data_len; i++)
     {
@@ -516,16 +615,13 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   u32 fifo_size = 4 << 10;
   u32 fifo_initial_offset = 0;
   u32 total_size = 2 << 10;
-  int overlap = 0;
-  int i, rv;
-  u8 *data_pattern = 0;
+  int overlap = 0, verbose = 0, randomize = 1, drop = 0, in_seq_all = 0;
+  u8 *data_pattern = 0, *data_buf = 0;
   test_pattern_t *tp, *generate = 0;
-  u32 nsegs = 2;
-  u32 seg_size, length_so_far;
+  u32 nsegs = 2, seg_size, length_so_far;
   u32 current_offset, offset_increment, len_this_chunk;
-  u32 seed = 0xdeaddabe;
-  int verbose = 0;
-  int randomize = 1;
+  u32 seed = 0xdeaddabe, j;
+  int i, rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -545,6 +641,10 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 	;
       else if (unformat (input, "no-randomize"))
 	randomize = 0;
+      else if (unformat (input, "in-seq-all"))
+	in_seq_all = 1;
+      else if (unformat (input, "drop"))
+	drop = 1;
       else
 	{
 	  clib_error_t *e = clib_error_return
@@ -554,6 +654,18 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
+  if (total_size > fifo_size)
+    {
+      clib_warning ("total_size %d greater than fifo size %d", total_size,
+		    fifo_size);
+      return -1;
+    }
+  if (overlap && randomize == 0)
+    {
+      clib_warning ("Can't enqueue in-order with overlap");
+      return -1;
+    }
+
   /*
    * Generate data
    */
@@ -561,9 +673,12 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   for (i = 0; i < vec_len (data_pattern); i++)
     data_pattern[i] = i & 0xff;
 
+  /*
+   * Generate segments
+   */
   seg_size = total_size / nsegs;
   length_so_far = 0;
-  current_offset = 1;
+  current_offset = randomize;
   while (length_so_far < total_size)
     {
       vec_add2 (generate, tp, 1);
@@ -616,51 +731,100 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 	  generate[dst_index] = generate[src_index];
 	  generate[src_index] = tmp[0];
 	}
-    }
-
-  if (verbose)
-    {
-      vlib_cli_output (vm, "randomized data pattern:");
-      for (i = 0; i < vec_len (generate); i++)
+      if (verbose)
 	{
-	  vlib_cli_output (vm, "[%d] offset %u len %u", i,
-			   generate[i].offset, generate[i].len);
+	  vlib_cli_output (vm, "randomized data pattern:");
+	  for (i = 0; i < vec_len (generate); i++)
+	    {
+	      vlib_cli_output (vm, "[%d] offset %u len %u", i,
+			       generate[i].offset, generate[i].len);
+	    }
 	}
     }
 
-  /* Create a fifo */
-  f = svm_fifo_create (fifo_size);
-
-  /* Paint the fifo data vector with -1's */
-  memset (f->data, 0xFF, fifo_size);
+  /*
+   * Create a fifo and add segments
+   */
+  f = fifo_prepare (fifo_size);
 
   /* manually set head and tail pointers to validate modular arithmetic */
-  f->head = fifo_initial_offset % fifo_size;
-  f->tail = fifo_initial_offset % fifo_size;
+  fifo_initial_offset = fifo_initial_offset % fifo_size;
+  f->head = fifo_initial_offset;
+  f->tail = fifo_initial_offset;
 
   for (i = 0; i < vec_len (generate); i++)
     {
       tp = generate + i;
-      rv = svm_fifo_enqueue_with_offset (f, 0, tp->offset, tp->len,
+      rv = svm_fifo_enqueue_with_offset (f, 0, fifo_initial_offset
+					 + tp->offset, tp->len,
 					 (u8 *) data_pattern + tp->offset);
     }
 
-  /* Expected result: one big fat chunk at offset 1 */
+  /*
+   * Expected result: one big fat chunk at offset 1 if randomize == 1
+   */
 
   if (verbose)
     vlib_cli_output (vm, "fifo before missing link: %U",
 		     format_svm_fifo, f, 1 /* verbose */ );
 
-  rv = svm_fifo_enqueue_nowait (f, 0, 1 /* count */ , data_pattern + 0);
+  /*
+   * Add the missing byte if segments were randomized
+   */
+  if (randomize)
+    {
+      u32 bytes_to_enq = 1;
+      if (in_seq_all)
+	bytes_to_enq = total_size;
+      rv = svm_fifo_enqueue_nowait (f, 0, bytes_to_enq, data_pattern + 0);
 
-  if (verbose)
-    vlib_cli_output (vm, "in-order enqueue returned %d", rv);
+      if (verbose)
+	vlib_cli_output (vm, "in-order enqueue returned %d", rv);
 
-  TCP_TEST ((rv == total_size), "retrieved %u expected %u", rv, total_size);
-  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
-	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
+      TCP_TEST ((rv == total_size), "enqueued %u expected %u", rv,
+		total_size);
+
+    }
+
+  TCP_TEST ((svm_fifo_has_ooo_data (f) == 0), "number of ooo segments %u",
+	    svm_fifo_number_ooo_segments (f));
+
+  /*
+   * Test if peeked data is the same as original data
+   */
+  vec_validate (data_buf, vec_len (data_pattern));
+  svm_fifo_peek (f, 0, 0, vec_len (data_pattern), data_buf);
+  if (compare_data (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
+    {
+      TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
+		data_pattern[j]);
+    }
+  vec_reset_length (data_buf);
+
+  /*
+   * Dequeue or drop all data
+   */
+  if (drop)
+    {
+      svm_fifo_dequeue_drop (f, 0, vec_len (data_pattern));
+    }
+  else
+    {
+      svm_fifo_dequeue_nowait (f, 0, vec_len (data_pattern), data_buf);
+      if (compare_data
+	  (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
+	{
+	  TCP_TEST (0, "[%d] dequeued %u expected %u", j, data_buf[j],
+		    data_pattern[j]);
+	}
+    }
+
+  TCP_TEST ((svm_fifo_max_dequeue (f) == 0), "fifo has %d bytes",
+	    svm_fifo_max_dequeue (f));
+
   svm_fifo_free (f);
   vec_free (data_pattern);
+  vec_free (data_buf);
 
   return 0;
 }
@@ -669,6 +833,7 @@ static int
 tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
 {
   int res = 0;
+  char *str;
 
   /* Run all tests */
   if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
@@ -681,13 +846,35 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
       if (res)
 	return res;
 
-      /* Run a number of fifo3 configs */
-      unformat_init_cstring (input, "nsegs 3 overlap seed 123");
+      /*
+       * Run a number of fifo3 configs
+       */
+      str = "nsegs 10 overlap seed 123";
+      unformat_init_cstring (input, str);
       if (tcp_test_fifo3 (vm, input))
 	return -1;
       unformat_free (input);
 
-      unformat_init_cstring (input, "nsegs 10");
+      str = "nsegs 10 overlap seed 123 in-seq-all";
+      unformat_init_cstring (input, str);
+      if (tcp_test_fifo3 (vm, input))
+	return -1;
+      unformat_free (input);
+
+      str = "nsegs 10 overlap seed 123 initial-offset 3917";
+      unformat_init_cstring (input, str);
+      if (tcp_test_fifo3 (vm, input))
+	return -1;
+      unformat_free (input);
+
+      str = "nsegs 10 overlap seed 123 initial-offset 3917 drop";
+      unformat_init_cstring (input, str);
+      if (tcp_test_fifo3 (vm, input))
+	return -1;
+      unformat_free (input);
+
+      str = "nsegs 10 seed 123 initial-offset 3917 drop no-randomize";
+      unformat_init_cstring (input, str);
       if (tcp_test_fifo3 (vm, input))
 	return -1;
       unformat_free (input);

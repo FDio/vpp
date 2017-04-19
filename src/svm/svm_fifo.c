@@ -38,9 +38,33 @@ format_ooo_list (u8 * s, va_list * args)
   while (ooo_segment_index != OOO_SEGMENT_INVALID_INDEX)
     {
       seg = pool_elt_at_index (f->ooo_segments, ooo_segment_index);
-      s = format (s, "\n  %U", format_ooo_segment, seg);
-
+      s = format (s, "  %U\n", format_ooo_segment, seg);
       ooo_segment_index = seg->next;
+    }
+  return s;
+}
+
+u8 *
+format_svm_fifo (u8 * s, va_list * args)
+{
+  svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
+  int verbose = va_arg (*args, int);
+
+  s = format (s, "cursize %u nitems %u has_event %d\n",
+	      f->cursize, f->nitems, f->has_event);
+  s = format (s, "head %d tail %d\n", f->head, f->tail);
+
+  if (verbose > 1)
+    s = format
+      (s, "server session %d thread %d client session %d thread %d\n",
+       f->server_session_index, f->server_thread_index,
+       f->client_session_index, f->client_thread_index);
+
+  if (verbose)
+    {
+      s = format (s, "ooo pool %d active elts\n",
+		  pool_elts (f->ooo_segments));
+      s = format (s, "%U", format_ooo_list, f);
     }
   return s;
 }
@@ -274,33 +298,41 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
   u32 index, bytes = 0, diff;
   u32 cursize;
 
-  /* read cursize, which can only increase while we're working */
-  cursize = svm_fifo_max_dequeue (f);
+  /* current size has not yet been updated */
+  cursize = svm_fifo_max_dequeue (f) + n_bytes_enqueued;
 
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 
+  diff = (f->nitems + (i32) (f->tail - s->start)) % f->nitems;
+  if (diff > cursize)
+    return 0;
+
   /* If last tail update overlaps one/multiple ooo segments, remove them */
-  diff = (f->nitems + ((int) s->start - f->tail)) % f->nitems;
-  while (0 < diff && diff < n_bytes_enqueued)
+  while (0 < diff && diff < cursize)
     {
-      /* Segment end is beyond the tail. Advance tail and be done */
+      index = s - f->ooo_segments;
+
+      /* Segment end is beyond the tail. Advance tail and remove segment */
       if (diff < s->length)
 	{
 	  f->tail += s->length - diff;
 	  f->tail %= f->nitems;
+	  bytes = s->length - diff;
+	  ooo_segment_del (f, index);
 	  break;
 	}
+
       /* If we have next go on */
-      else if (s->next != OOO_SEGMENT_INVALID_INDEX)
+      if (s->next != OOO_SEGMENT_INVALID_INDEX)
 	{
-	  index = s - f->ooo_segments;
 	  s = pool_elt_at_index (f->ooo_segments, s->next);
-	  diff = (f->nitems + ((int) s->start - f->tail)) % f->nitems;
+	  diff = (f->nitems + (i32) (f->tail - s->start)) % f->nitems;
 	  ooo_segment_del (f, index);
 	}
       /* End of search */
       else
 	{
+	  ooo_segment_del (f, index);
 	  break;
 	}
     }
@@ -404,10 +436,7 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
   u32 normalized_offset;
   int rv;
 
-  /* Safety: don't wrap more than nitems/2 */
-  ASSERT ((f->nitems + offset - f->tail) % f->nitems < f->nitems / 2);
-
-  /* Users would do do well to avoid this */
+  /* Users would do well to avoid this */
   if (PREDICT_FALSE (f->tail == (offset % f->nitems)))
     {
       rv = svm_fifo_enqueue_internal (f, pid, required_bytes, copy_from_here);
@@ -421,7 +450,7 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
   nitems = f->nitems;
 
   /* Will this request fit? */
-  if ((required_bytes + offset) > (nitems - cursize))
+  if ((required_bytes + (offset - f->tail) % nitems) > (nitems - cursize))
     return -1;
 
   ooo_segment_add (f, offset, required_bytes);
@@ -523,7 +552,7 @@ svm_fifo_dequeue_nowait (svm_fifo_t * f,
 }
 
 int
-svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
+svm_fifo_peek (svm_fifo_t * f, int pid, u32 relative_offset, u32 max_bytes,
 	       u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
@@ -535,7 +564,7 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
     return -2;			/* nothing in the fifo */
 
   nitems = f->nitems;
-  real_head = f->head + offset;
+  real_head = f->head + relative_offset;
   real_head = real_head >= nitems ? real_head - nitems : real_head;
 
   /* Number of bytes we're going to copy */
@@ -594,43 +623,6 @@ svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes)
   __sync_fetch_and_sub (&f->cursize, total_drop_bytes);
 
   return total_drop_bytes;
-}
-
-u8 *
-format_svm_fifo (u8 * s, va_list * args)
-{
-  svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
-  int verbose = va_arg (*args, int);
-
-  s = format (s, "cursize %u nitems %u has_event %d\n",
-	      f->cursize, f->nitems, f->has_event);
-  s = format (s, "head %d tail %d\n", f->head, f->tail);
-
-  if (verbose > 1)
-    s = format
-      (s, "server session %d thread %d client session %d thread %d\n",
-       f->server_session_index, f->server_thread_index,
-       f->client_session_index, f->client_thread_index);
-
-  if (verbose)
-    {
-      ooo_segment_t *seg;
-      u32 seg_index;
-
-      s = format (s, "ooo pool %d active elts\n",
-		  pool_elts (f->ooo_segments));
-
-      seg_index = f->ooos_list_head;
-
-      while (seg_index != OOO_SEGMENT_INVALID_INDEX)
-	{
-	  seg = pool_elt_at_index (f->ooo_segments, seg_index);
-	  s = format (s, "  pos %u, len %u next %d\n",
-		      seg->start, seg->length, seg->next);
-	  seg_index = seg->next;
-	}
-    }
-  return s;
 }
 
 u32
