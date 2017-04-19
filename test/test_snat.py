@@ -1686,6 +1686,21 @@ class TestDeterministicNAT(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet", p))
             raise
 
+        # session close api test
+        self.vapi.snat_det_close_session_out(socket.inet_aton(nat_ip),
+                                             external_port1,
+                                             self.pg1.remote_ip4n,
+                                             port_out)
+        dms = self.vapi.snat_det_map_dump()
+        self.assertEqual(dms[0].ses_num, 1)
+
+        self.vapi.snat_det_close_session_in(host0.ip4n,
+                                            port_in,
+                                            self.pg1.remote_ip4n,
+                                            port_out)
+        dms = self.vapi.snat_det_map_dump()
+        self.assertEqual(dms[0].ses_num, 0)
+
     def test_tcp_session_close_detection_in(self):
         """ CGNAT TCP session close initiated from inside network """
         self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
