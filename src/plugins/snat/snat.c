@@ -1712,6 +1712,105 @@ static void *vl_api_snat_det_get_timeouts_t_print
   FINISH;
 }
 
+static void
+vl_api_snat_det_close_session_out_t_handler
+(vl_api_snat_det_close_session_out_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_det_close_session_out_reply_t * rmp;
+  ip4_address_t out_addr, ext_addr, in_addr;
+  snat_det_out_key_t key;
+  snat_det_map_t * dm;
+  snat_det_session_t * ses;
+  int rv = 0;
+
+  clib_memcpy(&out_addr, mp->out_addr, 4);
+  clib_memcpy(&ext_addr, mp->ext_addr, 4);
+
+  dm = snat_det_map_by_out(sm, &out_addr);
+  if (!dm)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto send_reply;
+    }
+  snat_det_reverse(dm, &ext_addr, ntohs(mp->out_port), &in_addr);
+  key.ext_host_addr = ext_addr;
+  key.ext_host_port = mp->ext_port;
+  key.out_port = mp->out_port;
+  ses = snat_det_get_ses_by_out(dm, &in_addr, key.as_u64);
+  if (!ses)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto send_reply;
+    }
+  snat_det_ses_close(dm, ses);
+
+send_reply:
+  REPLY_MACRO (VL_API_SNAT_DET_CLOSE_SESSION_OUT_REPLY);
+}
+
+static void *vl_api_snat_det_close_session_out_t_print
+(vl_api_snat_det_close_session_out_t *mp, void * handle)
+{
+  u8 * s;
+
+  s = format (0, "SCRIPT: snat_det_close_session_out ");
+  s = format (s, "out_addr %U out_port %d "
+                 "ext_addr %U ext_port %d\n",
+              format_ip4_address, mp->out_addr, ntohs(mp->out_port),
+              format_ip4_address, mp->ext_addr, ntohs(mp->ext_port));
+
+  FINISH;
+}
+
+static void
+vl_api_snat_det_close_session_in_t_handler
+(vl_api_snat_det_close_session_in_t * mp)
+{
+  snat_main_t * sm = &snat_main;
+  vl_api_snat_det_close_session_in_reply_t * rmp;
+  ip4_address_t in_addr, ext_addr;
+  snat_det_out_key_t key;
+  snat_det_map_t * dm;
+  snat_det_session_t * ses;
+  int rv = 0;
+
+  clib_memcpy(&in_addr, mp->in_addr, 4);
+  clib_memcpy(&ext_addr, mp->ext_addr, 4);
+
+  dm = snat_det_map_by_user(sm, &in_addr);
+  if (!dm)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto send_reply;
+    }
+  key.ext_host_addr = ext_addr;
+  key.ext_host_port = mp->ext_port;
+  ses = snat_det_find_ses_by_in(dm, &in_addr, mp->in_port, key);
+  if (!ses)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto send_reply;
+    }
+  snat_det_ses_close(dm, ses);
+
+send_reply:
+  REPLY_MACRO (VL_API_SNAT_DET_CLOSE_SESSION_OUT_REPLY);
+}
+
+static void *vl_api_snat_det_close_session_in_t_print
+(vl_api_snat_det_close_session_in_t *mp, void * handle)
+{
+  u8 * s;
+  s = format (0, "SCRIPT: snat_det_close_session_in ");
+  s = format (s, "in_addr %U in_port %d "
+                 "ext_addr %U ext_port %d\n",
+              format_ip4_address, mp->in_addr, ntohs(mp->in_port),
+              format_ip4_address, mp->ext_addr, ntohs(mp->ext_port));
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1734,7 +1833,9 @@ _(SNAT_DET_FORWARD, snat_det_forward)                                   \
 _(SNAT_DET_REVERSE, snat_det_reverse)                                   \
 _(SNAT_DET_MAP_DUMP, snat_det_map_dump)                                 \
 _(SNAT_DET_SET_TIMEOUTS, snat_det_set_timeouts)                         \
-_(SNAT_DET_GET_TIMEOUTS, snat_det_get_timeouts)
+_(SNAT_DET_GET_TIMEOUTS, snat_det_get_timeouts)                         \
+_(SNAT_DET_CLOSE_SESSION_OUT, snat_det_close_session_out)               \
+_(SNAT_DET_CLOSE_SESSION_IN, snat_det_close_session_in)
 
 
 /* Set up the API message handling tables */
@@ -3487,4 +3588,144 @@ VLIB_CLI_COMMAND (set_timeout_command, static) = {
   .short_help =
     "set snat deterministic timeout [udp <sec> | tcp-established <sec> "
     "tcp-transitory <sec> | icmp <sec> | reset]",
+};
+
+static clib_error_t *
+snat_det_close_session_out_fn (vlib_main_t *vm,
+                               unformat_input_t * input,
+                               vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t out_addr, ext_addr, in_addr;
+  u16 out_port, ext_port;
+  snat_det_map_t * dm;
+  snat_det_session_t * ses;
+  snat_det_out_key_t key;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U:%d %U:%d",
+                    unformat_ip4_address, &out_addr, &out_port,
+                    unformat_ip4_address, &ext_addr, &ext_port))
+        ;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  unformat_free (line_input);
+
+  dm = snat_det_map_by_out(sm, &out_addr);
+  if (!dm)
+    vlib_cli_output (vm, "no match");
+  else
+    {
+      snat_det_reverse(dm, &ext_addr, out_port, &in_addr);
+      key.ext_host_addr = out_addr;
+      key.ext_host_port = ntohs(ext_port);
+      key.out_port = ntohs(out_port);
+      ses = snat_det_get_ses_by_out(dm, &out_addr, key.as_u64);
+      if (!ses)
+        vlib_cli_output (vm, "no match");
+      else
+       snat_det_ses_close(dm, ses);
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat deterministic close session out}
+ * Close session using outside ip address and port
+ * and external ip address and port, use:
+ *  vpp# snat deterministic close session out 1.1.1.1:1276 2.2.2.2:2387
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_det_close_sesion_out_command, static) = {
+  .path = "snat deterministic close session out",
+  .short_help = "snat deterministic close session out "
+                "<out_addr>:<out_port> <ext_addr>:<ext_port>",
+  .function = snat_det_close_session_out_fn,
+};
+
+static clib_error_t *
+snat_det_close_session_in_fn (vlib_main_t *vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip4_address_t in_addr, ext_addr;
+  u16 in_port, ext_port;
+  snat_det_map_t * dm;
+  snat_det_session_t * ses;
+  snat_det_out_key_t key;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U:%d %U:%d",
+                    unformat_ip4_address, &in_addr, &in_port,
+                    unformat_ip4_address, &ext_addr, &ext_port))
+        ;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  unformat_free (line_input);
+
+  dm = snat_det_map_by_user (sm, &in_addr);
+  if (!dm)
+    vlib_cli_output (vm, "no match");
+  else
+    {
+      key.ext_host_addr = ext_addr;
+      key.ext_host_port = ntohs (ext_port);
+      ses = snat_det_find_ses_by_in (dm, &in_addr, ntohs(in_port), key);
+      if (!ses)
+        vlib_cli_output (vm, "no match");
+      else
+        snat_det_ses_close(dm, ses);
+    }
+
+done:
+  unformat_free(line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat deterministic close_session_in}
+ * Close session using inside ip address and port
+ * and external ip address and port, use:
+ *  vpp# snat deterministic close session in 3.3.3.3:3487 2.2.2.2:2387
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_det_close_session_in_command, static) = {
+  .path = "snat deterministic close session in",
+  .short_help = "snat deterministic close session in "
+                "<in_addr>:<in_port> <ext_addr>:<ext_port>",
+  .function = snat_det_close_session_in_fn,
 };
