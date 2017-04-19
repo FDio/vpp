@@ -145,8 +145,7 @@ udp4_uri_input_node_fn (vlib_main_t * vm,
 		  goto trace0;
 		}
 
-	      svm_fifo_enqueue_nowait (f0, 0 /* pid */ ,
-				       udp_len0 - sizeof (*udp0),
+	      svm_fifo_enqueue_nowait (f0, udp_len0 - sizeof (*udp0),
 				       (u8 *) (udp0 + 1));
 
 	      b0->error = node->errors[SESSION_ERROR_ENQUEUED];
@@ -255,7 +254,7 @@ udp4_uri_input_node_fn (vlib_main_t * vm,
 	{
 	  /* Fabricate event */
 	  evt.fifo = s0->server_rx_fifo;
-	  evt.event_type = FIFO_EVENT_SERVER_RX;
+	  evt.event_type = FIFO_EVENT_APP_RX;
 	  evt.event_id = serial_number++;
 
 	  /* Add event to server's event queue */

@@ -487,7 +487,8 @@ u8 *
 format_tcp_connection (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-
+  if (!tc)
+    return s;
   if (tc->c_is_ip4)
     {
       s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",

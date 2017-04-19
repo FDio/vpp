@@ -164,7 +164,7 @@ setup_signal_handlers (void)
 }
 
 void
-application_attach (uri_udp_test_main_t * utm)
+application_send_attach (uri_udp_test_main_t * utm)
 {
   vl_api_application_attach_t *bmp;
   u32 fifo_size = 3 << 20;
@@ -174,8 +174,8 @@ application_attach (uri_udp_test_main_t * utm)
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
   bmp->client_index = utm->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  bmp->options[SESSION_OPTIONS_FLAGS] =
-    SESSION_OPTIONS_FLAGS_USE_FIFO | SESSION_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_USE_FIFO | APP_OPTIONS_FLAGS_ADD_SEGMENT;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
@@ -307,7 +307,7 @@ cut_through_thread_fn (void *arg)
       /* We read from the tx fifo and write to the rx fifo */
       do
 	{
-	  actual_transfer = svm_fifo_dequeue_nowait (tx_fifo, 0,
+	  actual_transfer = svm_fifo_dequeue_nowait (tx_fifo,
 						     vec_len (my_copy_buffer),
 						     my_copy_buffer);
 	}
@@ -318,7 +318,7 @@ cut_through_thread_fn (void *arg)
       buffer_offset = 0;
       while (actual_transfer > 0)
 	{
-	  rv = svm_fifo_enqueue_nowait (rx_fifo, 0, actual_transfer,
+	  rv = svm_fifo_enqueue_nowait (rx_fifo, actual_transfer,
 					my_copy_buffer + buffer_offset);
 	  if (rv > 0)
 	    {
@@ -357,7 +357,6 @@ client_send (uri_udp_test_main_t * utm, session_t * session)
   u64 bytes_received = 0, bytes_sent = 0;
   i32 bytes_to_read;
   int rv;
-  int mypid = getpid ();
   f64 before, after, delta, bytes_per_second;
   svm_fifo_t *rx_fifo, *tx_fifo;
   int buffer_offset, bytes_to_send = 0;
@@ -382,8 +381,7 @@ client_send (uri_udp_test_main_t * utm, session_t * session)
       buffer_offset = 0;
       while (bytes_to_send > 0)
 	{
-	  rv = svm_fifo_enqueue_nowait (tx_fifo, mypid,
-					bytes_to_send,
+	  rv = svm_fifo_enqueue_nowait (tx_fifo, bytes_to_send,
 					test_data + buffer_offset);
 
 	  if (rv > 0)
@@ -402,7 +400,7 @@ client_send (uri_udp_test_main_t * utm, session_t * session)
       buffer_offset = 0;
       while (bytes_to_read > 0)
 	{
-	  rv = svm_fifo_dequeue_nowait (rx_fifo, mypid,
+	  rv = svm_fifo_dequeue_nowait (rx_fifo,
 					bytes_to_read,
 					utm->rx_buf + buffer_offset);
 	  if (rv > 0)
@@ -415,8 +413,8 @@ client_send (uri_udp_test_main_t * utm, session_t * session)
     }
   while (bytes_received < bytes_sent)
     {
-      rv = svm_fifo_dequeue_nowait (rx_fifo, mypid,
-				    vec_len (utm->rx_buf), utm->rx_buf);
+      rv =
+	svm_fifo_dequeue_nowait (rx_fifo, vec_len (utm->rx_buf), utm->rx_buf);
       if (rv > 0)
 	{
 #if CLIB_DEBUG > 0
@@ -459,7 +457,7 @@ uri_udp_client_test (uri_udp_test_main_t * utm)
 {
   session_t *session;
 
-  application_attach (utm);
+  application_send_attach (utm);
   udp_client_connect (utm);
 
   if (wait_for_state_change (utm, STATE_READY))
@@ -559,8 +557,8 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 							 128 * 1024);
   ASSERT (session->server_tx_fifo);
 
-  session->server_rx_fifo->server_session_index = session - utm->sessions;
-  session->server_tx_fifo->server_session_index = session - utm->sessions;
+  session->server_rx_fifo->master_session_index = session - utm->sessions;
+  session->server_tx_fifo->master_session_index = session - utm->sessions;
   utm->cut_through_session_index = session - utm->sessions;
 
   rv = pthread_create (&utm->cut_through_thread_handle,
@@ -805,19 +803,19 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
 
   do
     {
-      nbytes = svm_fifo_dequeue_nowait (rx_fifo, 0,
-					vec_len (utm->rx_buf), utm->rx_buf);
+      nbytes = svm_fifo_dequeue_nowait (rx_fifo, vec_len (utm->rx_buf),
+					utm->rx_buf);
     }
   while (nbytes <= 0);
   do
     {
-      rv = svm_fifo_enqueue_nowait (tx_fifo, 0, nbytes, utm->rx_buf);
+      rv = svm_fifo_enqueue_nowait (tx_fifo, nbytes, utm->rx_buf);
     }
   while (rv == -2);
 
   /* Fabricate TX event, send to vpp */
   evt.fifo = tx_fifo;
-  evt.event_type = FIFO_EVENT_SERVER_TX;
+  evt.event_type = FIFO_EVENT_APP_TX;
   evt.event_id = e->event_id;
 
   if (svm_fifo_set_event (tx_fifo))
@@ -839,11 +837,11 @@ server_handle_event_queue (uri_udp_test_main_t * utm)
 				    0 /* nowait */ );
       switch (e->event_type)
 	{
-	case FIFO_EVENT_SERVER_RX:
+	case FIFO_EVENT_APP_RX:
 	  server_handle_fifo_event_rx (utm, e);
 	  break;
 
-	case FIFO_EVENT_SERVER_EXIT:
+	case FIFO_EVENT_DISCONNECT:
 	  return;
 
 	default:
@@ -893,7 +891,7 @@ void
 udp_server_test (uri_udp_test_main_t * utm)
 {
 
-  application_attach (utm);
+  application_send_attach (utm);
 
   /* Bind to uri */
   server_listen (utm);

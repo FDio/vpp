@@ -18,6 +18,10 @@
 #include <vnet/vnet.h>
 #include <svm/svm_fifo_segment.h>
 
+#include <vlibmemory/unix_shared_memory_queue.h>
+#include <vlibmemory/api.h>
+#include <vppinfra/lock.h>
+
 typedef struct _segment_manager_properties
 {
   /** Session fifo sizes.  */
@@ -30,10 +34,14 @@ typedef struct _segment_manager_properties
   /** Flag that indicates if additional segments should be created */
   u8 add_segment;
 
+  /** Use private memory segment instead of shared memory */
+  u8 use_private_segment;
 } segment_manager_properties_t;
 
 typedef struct _segment_manager
 {
+  clib_spinlock_t lockp;
+
   /** segments mapped by this manager */
   u32 *segment_indices;
 
@@ -95,6 +103,10 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 void
 segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
 			       svm_fifo_t * tx_fifo);
+unix_shared_memory_queue_t *segment_manager_alloc_queue (segment_manager_t *
+							 sm, u32 queue_size);
+void segment_manager_dealloc_queue (segment_manager_t * sm,
+				    unix_shared_memory_queue_t * q);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*

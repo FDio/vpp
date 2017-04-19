@@ -180,7 +180,7 @@ builtin_server_rx_callback (stream_session_t * s)
   vec_validate (bsm->rx_buf, max_transfer - 1);
   _vec_len (bsm->rx_buf) = max_transfer;
 
-  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, 0, max_transfer,
+  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_transfer,
 					     bsm->rx_buf);
   ASSERT (actual_transfer == max_transfer);
 
@@ -190,8 +190,7 @@ builtin_server_rx_callback (stream_session_t * s)
    * Echo back
    */
 
-  n_written =
-    svm_fifo_enqueue_nowait (tx_fifo, 0, actual_transfer, bsm->rx_buf);
+  n_written = svm_fifo_enqueue_nowait (tx_fifo, actual_transfer, bsm->rx_buf);
 
   if (n_written != max_transfer)
     clib_warning ("short trout!");
@@ -200,7 +199,7 @@ builtin_server_rx_callback (stream_session_t * s)
     {
       /* Fabricate TX event, send to vpp */
       evt.fifo = tx_fifo;
-      evt.event_type = FIFO_EVENT_SERVER_TX;
+      evt.event_type = FIFO_EVENT_APP_TX;
       evt.event_id = serial_number++;
 
       unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
@@ -288,6 +287,7 @@ server_attach ()
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
   a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 1 << 16;
   a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 1 << 16;
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 

@@ -62,8 +62,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
   bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
     ? bytes_this_chunk : s->bytes_to_send;
 
-  rv = svm_fifo_enqueue_nowait (s->server_tx_fifo, 0 /*pid */ ,
-				bytes_this_chunk,
+  rv = svm_fifo_enqueue_nowait (s->server_tx_fifo, bytes_this_chunk,
 				test_data + test_buf_offset);
 
   /* If we managed to enqueue data... */
@@ -95,7 +94,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 	{
 	  /* Fabricate TX event, send to vpp */
 	  evt.fifo = s->server_tx_fifo;
-	  evt.event_type = FIFO_EVENT_SERVER_TX;
+	  evt.event_type = FIFO_EVENT_APP_TX;
 	  evt.event_id = serial_number++;
 
 	  unix_shared_memory_queue_add (tm->vpp_event_queue, (u8 *) & evt,
@@ -113,7 +112,7 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
   /* Allow enqueuing of new event */
   // svm_fifo_unset_event (rx_fifo);
 
-  n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (tm->rx_buf),
+  n_read = svm_fifo_dequeue_nowait (rx_fifo, vec_len (tm->rx_buf),
 				    tm->rx_buf);
   if (n_read > 0)
     {
@@ -457,6 +456,8 @@ attach_builtin_test_clients ()
 
   options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[SESSION_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+
   a->options = options;
 
   return vnet_application_attach (a);
