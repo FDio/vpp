@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_d6249461",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-04-19T13:11:13Z",
+      "side": 1,
+      "message": "pkg-rpm target is broken when building from separate tree.\nThis can be addressed in separate patch.\n\nThis is trivial but there are 3 whitespace errors in patch.",
+      "revId": "52cbdd748de65f53aaf270bf7b0809366c059765",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_f09c3811",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-04-19T13:11:13Z",
+      "side": 1,
+      "message": "decouple",
+      "range": {
+        "startLine": 7,
+        "startChar": 43,
+        "endLine": 7,
+        "endChar": 51
+      },
+      "revId": "52cbdd748de65f53aaf270bf7b0809366c059765",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_361518e5",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-04-19T13:11:13Z",
+      "side": 1,
+      "message": "The tarball name was here to facilitate SRPM building but that can be addressed in a subsequent patch.",
+      "revId": "52cbdd748de65f53aaf270bf7b0809366c059765",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
