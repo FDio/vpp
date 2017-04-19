@@ -1066,13 +1066,13 @@ class BFD4TestCase(VppTestCase):
     def test_echo(self):
         """ echo function """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
         detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
         # echo shouldn't work without echo source set
-        for dummy in range(3):
-            sleep = 0.75 * detection_time
+        for dummy in range(10):
+            sleep = self.vpp_session.required_min_rx / USEC_IN_SEC
             self.sleep(sleep, "delay before sending bfd packet")
             self.test_session.send_packet()
         p = wait_for_bfd_packet(
@@ -1080,7 +1080,9 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(p[BFD].required_min_rx_interval,
                           self.vpp_session.required_min_rx,
                           "BFD required min rx interval")
+        self.test_session.send_packet()
         self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        echo_seen = False
         # should be turned on - loopback echo packets
         for dummy in range(3):
             loop_until = time.time() + 0.75 * detection_time
@@ -1098,9 +1100,12 @@ class BFD4TestCase(VppTestCase):
                     p[Ether].dst = self.pg0.local_mac
                     self.pg0.add_stream(p)
                     self.pg_start()
+                    echo_seen = True
                 elif p.haslayer(BFD):
-                    self.assertGreaterEqual(p[BFD].required_min_rx_interval,
-                                            1000000)
+                    if echo_seen:
+                        self.assertGreaterEqual(
+                            p[BFD].required_min_rx_interval,
+                            1000000)
                     if "P" in p.sprintf("%BFD.flags%"):
                         final = self.test_session.create_packet()
                         final[BFD].flags = "F"
@@ -1111,12 +1116,13 @@ class BFD4TestCase(VppTestCase):
                 self.assert_equal(len(self.vapi.collect_events()), 0,
                                   "number of bfd events")
             self.test_session.send_packet()
+        self.assertTrue(echo_seen, "No echo packets received")
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_echo_fail(self):
         """ session goes down if echo function fails """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
         detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
@@ -1156,7 +1162,7 @@ class BFD4TestCase(VppTestCase):
     def test_echo_stop(self):
         """ echo function stops if peer sets required min echo rx zero """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
         self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
         # wait for first echo packet
@@ -1188,7 +1194,7 @@ class BFD4TestCase(VppTestCase):
     def test_echo_source_removed(self):
         """ echo function stops if echo source is removed """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
         self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
         # wait for first echo packet
@@ -1220,7 +1226,7 @@ class BFD4TestCase(VppTestCase):
     def test_stale_echo(self):
         """ stale echo packets don't keep a session up """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
         self.test_session.send_packet()
         # should be turned on - loopback echo packets
@@ -1273,7 +1279,7 @@ class BFD4TestCase(VppTestCase):
     def test_invalid_echo_checksum(self):
         """ echo packets with invalid checksum don't keep a session up """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
         self.test_session.send_packet()
         # should be turned on - loopback echo packets
@@ -1534,15 +1540,15 @@ class BFD6TestCase(VppTestCase):
                           "ECHO packet identifier for test purposes)")
 
     def test_echo(self):
-        """ echo function used """
+        """ echo function """
         bfd_session_up(self)
-        self.test_session.update(required_min_echo_rx=50000)
+        self.test_session.update(required_min_echo_rx=150000)
         self.test_session.send_packet()
         detection_time = self.test_session.detect_mult *\
             self.vpp_session.required_min_rx / USEC_IN_SEC
         # echo shouldn't work without echo source set
-        for dummy in range(3):
-            sleep = 0.75 * detection_time
+        for dummy in range(10):
+            sleep = self.vpp_session.required_min_rx / USEC_IN_SEC
             self.sleep(sleep, "delay before sending bfd packet")
             self.test_session.send_packet()
         p = wait_for_bfd_packet(
@@ -1550,7 +1556,9 @@ class BFD6TestCase(VppTestCase):
         self.assert_equal(p[BFD].required_min_rx_interval,
                           self.vpp_session.required_min_rx,
                           "BFD required min rx interval")
+        self.test_session.send_packet()
         self.vapi.bfd_udp_set_echo_source(self.loopback0.sw_if_index)
+        echo_seen = False
         # should be turned on - loopback echo packets
         for dummy in range(3):
             loop_until = time.time() + 0.75 * detection_time
@@ -1568,9 +1576,12 @@ class BFD6TestCase(VppTestCase):
                     p[Ether].dst = self.pg0.local_mac
                     self.pg0.add_stream(p)
                     self.pg_start()
+                    echo_seen = True
                 elif p.haslayer(BFD):
-                    self.assertGreaterEqual(p[BFD].required_min_rx_interval,
-                                            1000000)
+                    if echo_seen:
+                        self.assertGreaterEqual(
+                            p[BFD].required_min_rx_interval,
+                            1000000)
                     if "P" in p.sprintf("%BFD.flags%"):
                         final = self.test_session.create_packet()
                         final[BFD].flags = "F"
@@ -1581,6 +1592,7 @@ class BFD6TestCase(VppTestCase):
                 self.assert_equal(len(self.vapi.collect_events()), 0,
                                   "number of bfd events")
             self.test_session.send_packet()
+        self.assertTrue(echo_seen, "No echo packets received")
 
 
 class BFDFIBTestCase(VppTestCase):
@@ -1619,8 +1631,8 @@ class BFDFIBTestCase(VppTestCase):
 
         # packets to match against both of the routes
         p = [(Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src="3001::1", dst="2001::1") /
-             UDP(sport=1234, dport=1234) /
+              IPv6(src="3001::1", dst="2001::1") /
+              UDP(sport=1234, dport=1234) /
               Raw('\xa5' * 100)),
              (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
               IPv6(src="3001::1", dst="2002::1") /
