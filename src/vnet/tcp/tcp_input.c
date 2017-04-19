@@ -1011,8 +1011,8 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 
   clib_warning ("ooo: offset %d len %d", offset, data_len);
 
-  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, s0->pid, offset,
-				     data_len, vlib_buffer_get_current (b));
+  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, offset, data_len,
+				     vlib_buffer_get_current (b));
 
   /* Nothing written */
   if (rv)

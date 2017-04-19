@@ -96,7 +96,7 @@ send_session_accept_callback (stream_session_t * s)
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
-
+  mp->context = server->index;
   listener = listen_session_get (s->session_type, s->listener_index);
   tp_vft = session_get_transport_vft (s->session_type);
   tc = tp_vft->get_connection (s->connection_index, s->thread_index);
@@ -270,23 +270,6 @@ static session_cb_vft_t uri_session_cb_vft = {
   .redirect_connect_callback = redirect_connect_callback
 };
 
-static int
-api_session_not_valid (u32 session_index, u32 thread_index)
-{
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
-  stream_session_t *pool;
-
-  if (thread_index >= vec_len (smm->sessions))
-    return VNET_API_ERROR_INVALID_VALUE;
-
-  pool = smm->sessions[thread_index];
-
-  if (pool_is_free_index (pool, session_index))
-    return VNET_API_ERROR_INVALID_VALUE_2;
-
-  return 0;
-}
-
 static void
 vl_api_session_enable_disable_t_handler (vl_api_session_enable_disable_t * mp)
 {
@@ -324,9 +307,9 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   rv = vnet_application_attach (a);
 
 done:
+
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_APPLICATION_ATTACH_REPLY, ({
-    rmp->retval = rv;
     if (!rv)
       {
 	rmp->segment_name_length = 0;
@@ -558,24 +541,33 @@ static void
 vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 {
   stream_session_t *s;
-  int rv;
   u32 session_index, thread_index;
-  session_index = stream_session_index_from_handle (mp->handle);
-  thread_index = stream_session_thread_from_handle (mp->handle);
-  if (api_session_not_valid (session_index, thread_index))
-    return;
+  vnet_disconnect_args_t _a, *a = &_a;
 
-  s = stream_session_get (session_index, thread_index);
-  rv = mp->retval;
-
-  if (rv)
+  /* Server isn't interested, kill the session */
+  if (mp->retval)
     {
-      /* Server isn't interested, kill the session */
-      stream_session_disconnect (s);
-      return;
+      a->app_index = mp->context;
+      a->handle = mp->handle;
+      vnet_disconnect_session (a);
     }
-
-  s->session_state = SESSION_STATE_READY;
+  else
+    {
+      stream_session_parse_handle (mp->handle, &session_index, &thread_index);
+      s = stream_session_get_if_valid (session_index, thread_index);
+      if (!s)
+	{
+	  clib_warning ("session doesn't exist");
+	  return;
+	}
+      if (s->app_index != mp->context)
+	{
+	  clib_warning ("app doesn't own session");
+	  return;
+	}
+      /* XXX volatile? */
+      s->session_state = SESSION_STATE_READY;
+    }
 }
 
 static void

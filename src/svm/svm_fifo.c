@@ -57,7 +57,7 @@ format_svm_fifo (u8 * s, va_list * args)
   if (verbose > 1)
     s = format
       (s, "server session %d thread %d client session %d thread %d\n",
-       f->server_session_index, f->server_thread_index,
+       f->master_session_index, f->master_thread_index,
        f->client_session_index, f->client_thread_index);
 
   if (verbose)
@@ -353,8 +353,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
 }
 
 static int
-svm_fifo_enqueue_internal (svm_fifo_t * f,
-			   int pid, u32 max_bytes, u8 * copy_from_here)
+svm_fifo_enqueue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -411,10 +410,9 @@ svm_fifo_enqueue_internal (svm_fifo_t * f,
 }
 
 int
-svm_fifo_enqueue_nowait (svm_fifo_t * f,
-			 int pid, u32 max_bytes, u8 * copy_from_here)
+svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_from_here)
 {
-  return svm_fifo_enqueue_internal (f, pid, max_bytes, copy_from_here);
+  return svm_fifo_enqueue_internal (f, max_bytes, copy_from_here);
 }
 
 /**
@@ -426,7 +424,6 @@ svm_fifo_enqueue_nowait (svm_fifo_t * f,
  */
 static int
 svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
-				       int pid,
 				       u32 offset,
 				       u32 required_bytes,
 				       u8 * copy_from_here)
@@ -439,7 +436,7 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
   /* Users would do well to avoid this */
   if (PREDICT_FALSE (f->tail == (offset % f->nitems)))
     {
-      rv = svm_fifo_enqueue_internal (f, pid, required_bytes, copy_from_here);
+      rv = svm_fifo_enqueue_internal (f, required_bytes, copy_from_here);
       if (rv > 0)
 	return 0;
       return -1;
@@ -484,18 +481,16 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
 
 int
 svm_fifo_enqueue_with_offset (svm_fifo_t * f,
-			      int pid,
 			      u32 offset,
 			      u32 required_bytes, u8 * copy_from_here)
 {
-  return svm_fifo_enqueue_with_offset_internal
-    (f, pid, offset, required_bytes, copy_from_here);
+  return svm_fifo_enqueue_with_offset_internal (f, offset, required_bytes,
+						copy_from_here);
 }
 
 
 static int
-svm_fifo_dequeue_internal (svm_fifo_t * f,
-			   int pid, u32 max_bytes, u8 * copy_here)
+svm_fifo_dequeue_internal (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems;
@@ -545,14 +540,13 @@ svm_fifo_dequeue_internal (svm_fifo_t * f,
 }
 
 int
-svm_fifo_dequeue_nowait (svm_fifo_t * f,
-			 int pid, u32 max_bytes, u8 * copy_here)
+svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here)
 {
-  return svm_fifo_dequeue_internal (f, pid, max_bytes, copy_here);
+  return svm_fifo_dequeue_internal (f, max_bytes, copy_here);
 }
 
 int
-svm_fifo_peek (svm_fifo_t * f, int pid, u32 relative_offset, u32 max_bytes,
+svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
 	       u8 * copy_here)
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
@@ -590,7 +584,7 @@ svm_fifo_peek (svm_fifo_t * f, int pid, u32 relative_offset, u32 max_bytes,
 }
 
 int
-svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes)
+svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes)
 {
   u32 total_drop_bytes, first_drop_bytes, second_drop_bytes;
   u32 cursize, nitems;
