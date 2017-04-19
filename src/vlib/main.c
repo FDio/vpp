@@ -815,6 +815,52 @@ elog_show_buffer_internal (vlib_main_t * vm, u32 n_events_to_show)
 
 }
 
+void static
+elog_dump_event (FILE * output, char *fmt, ...)
+{
+  va_list va;
+  u8 *s;
+
+  va_start (va, fmt);
+  s = va_format (0, fmt, &va);
+  va_end (va);
+
+  if (vec_len (s) > 0 && s[vec_len (s) - 1] != '\n')
+    vec_add1 (s, '\n');
+
+  fformat (output, "%v", s);
+
+  vec_free (s);
+}
+
+void
+elog_dump_buffer_fn (vlib_main_t * vm, u32 n_events_to_show)
+{
+  elog_main_t *em = &vm->elog_main;
+  elog_event_t *e, *es;
+  FILE *output;
+  f64 dt;
+
+  dt =
+    (em->init_time.cpu -
+     vm->clib_time.init_cpu_time) * vm->clib_time.seconds_per_clock;
+
+  es = elog_peek_events (em);
+  if (vec_len (em->event_dump_file) > 0)
+    {
+      output = fopen (em->event_dump_file, "w");
+      vec_foreach (e, es)
+      {
+	elog_dump_event (output, "%18.9f: %U", e->time + dt,
+			 format_elog_event, em, e);
+	n_events_to_show--;
+	if (n_events_to_show == 0)
+	  break;
+      }
+      fclose (output);
+    }
+}
+
 static clib_error_t *
 elog_show_buffer (vlib_main_t * vm,
 		  unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -836,11 +882,35 @@ elog_show_buffer (vlib_main_t * vm,
   return error;
 }
 
+static clib_error_t *
+elog_dump_buffer_cmd (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u32 n_events_to_show = ~0;
+  clib_error_t *error = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%d", &n_events_to_show))
+	;
+      else
+	return unformat_parse_error (input);
+    }
+  elog_dump_buffer_fn (vm, n_events_to_show);
+  return error;
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (elog_show_cli, static) = {
   .path = "show event-logger",
   .short_help = "Show event logger info",
   .function = elog_show_buffer,
+};
+
+VLIB_CLI_COMMAND (elog_dump_cli, static) = {
+  .path = "event-logger dump",
+  .short_help = "dump event logger info if the dump file is configured",
+  .function = elog_dump_buffer_cmd,
 };
 /* *INDENT-ON* */
 
@@ -1633,6 +1703,7 @@ static clib_error_t *
 vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 {
   int turn_on_mem_trace = 0;
+  vec_free (vm->elog_main.event_dump_file);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1641,6 +1712,9 @@ vlib_main_configure (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "elog-events %d",
 			 &vm->elog_main.event_ring_size))
+	;
+      else if (unformat (input, "elog-dumpfile %s",
+			 &vm->elog_main.event_dump_file))
 	;
       else
 	return unformat_parse_error (input);
@@ -1762,6 +1836,7 @@ done:
 
   return 0;
 }
+
 
 /*
  * fd.io coding-style-patch-verification: ON

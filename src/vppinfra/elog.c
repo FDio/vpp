@@ -458,12 +458,15 @@ elog_alloc (elog_main_t * em, u32 n_events)
 void
 elog_init (elog_main_t * em, u32 n_events)
 {
+  char *dump_file = em->event_dump_file;
   memset (em, 0, sizeof (em[0]));
 
   em->lock = 0;
 
   if (n_events > 0)
     elog_alloc (em, n_events);
+
+  em->event_dump_file = dump_file;
 
   clib_time_init (&em->cpu_timer);
 

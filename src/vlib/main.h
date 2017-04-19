@@ -327,6 +327,16 @@ extern u8 **vlib_thread_stacks;
 u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
 extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
+extern void elog_dump_buffer_fn (vlib_main_t * vm, u32 n_events_to_show);
+
+#define VLIB_ASSERT(truth) \
+do {                       \
+	if (CLIB_ASSERT_ENABLE && ! (truth)) \
+	{                                    \
+		elog_dump_buffer_fn (&vlib_global_main, ~0); \
+		ASSERT (truth); \
+	} \
+} while (0)
 
 #endif /* included_vlib_main_h */
 

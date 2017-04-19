@@ -143,6 +143,9 @@ typedef struct
   /** Power of 2 number of elements in ring. */
   uword event_ring_size;
 
+  /** File name for dumps. */
+  char *event_dump_file;
+
   /** Vector of events (circular buffer).  Power of 2 size.
       Used when events are being collected. */
   elog_event_t *event_ring;
