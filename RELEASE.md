@@ -21,7 +21,7 @@
   - Added MAINTAINERS file
 
 - Host stack
-  - TCP stack
+  - TCP stack (experimental)
   - DHCPv4 / DHCPv6 relay multi-destination
   - DHCPv4 option 82
   - ND proxy
@@ -74,6 +74,8 @@
 
   - LISP
     - Statistics collection
+    - Generalize encap for overlay transport (vxlan-gpe support)
+    - Improve data plane speed
 
   - GPE
     - CLI
