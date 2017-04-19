@@ -59,10 +59,10 @@ builtin_server_rx_callback (stream_session_t * s)
   vec_validate (my_copy_buffer, this_transfer - 1);
   _vec_len (my_copy_buffer) = this_transfer;
 
-  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, 0, this_transfer,
+  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, this_transfer,
 					     my_copy_buffer);
   ASSERT (actual_transfer == this_transfer);
-  actual_transfer = svm_fifo_enqueue_nowait (tx_fifo, 0, this_transfer,
+  actual_transfer = svm_fifo_enqueue_nowait (tx_fifo, this_transfer,
 					     my_copy_buffer);
   ASSERT (actual_transfer == this_transfer);
 
@@ -72,7 +72,7 @@ builtin_server_rx_callback (stream_session_t * s)
     {
       /* Fabricate TX event, send to ourselves */
       evt.fifo = tx_fifo;
-      evt.event_type = FIFO_EVENT_SERVER_TX;
+      evt.event_type = FIFO_EVENT_APP_TX;
       evt.event_id = 0;
       q = session_manager_get_vpp_event_queue (s->thread_index);
       unix_shared_memory_queue_add (q, (u8 *) & evt,
@@ -110,6 +110,8 @@ attach_builtin_uri_server ()
 
   options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[SESSION_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+
   a->options = options;
 
   return vnet_application_attach (a);

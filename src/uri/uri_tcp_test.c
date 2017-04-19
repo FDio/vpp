@@ -160,8 +160,8 @@ application_attach (uri_tcp_test_main_t * utm)
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
   bmp->client_index = utm->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  bmp->options[SESSION_OPTIONS_FLAGS] =
-    SESSION_OPTIONS_FLAGS_USE_FIFO | SESSION_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_USE_FIFO | APP_OPTIONS_FLAGS_ADD_SEGMENT;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
@@ -392,7 +392,7 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   /* Read the bytes */
   do
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, 0,
+      n_read = svm_fifo_dequeue_nowait (rx_fifo,
 					clib_min (vec_len (utm->rx_buf),
 						  bytes), utm->rx_buf);
       if (n_read > 0)
@@ -432,11 +432,11 @@ client_handle_event_queue (uri_tcp_test_main_t * utm)
 				0 /* nowait */ );
   switch (e->event_type)
     {
-    case FIFO_EVENT_SERVER_RX:
+    case FIFO_EVENT_APP_RX:
       client_handle_fifo_event_rx (utm, e);
       break;
 
-    case FIFO_EVENT_SERVER_EXIT:
+    case FIFO_EVENT_DISCONNECT:
       return;
 
     default:
@@ -458,11 +458,11 @@ client_rx_thread_fn (void *arg)
 				    0 /* nowait */ );
       switch (e->event_type)
 	{
-	case FIFO_EVENT_SERVER_RX:
+	case FIFO_EVENT_APP_RX:
 	  client_handle_fifo_event_rx (utm, e);
 	  break;
 
-	case FIFO_EVENT_SERVER_EXIT:
+	case FIFO_EVENT_DISCONNECT:
 	  return 0;
 	default:
 	  clib_warning ("unknown event type %d", e->event_type);
@@ -550,7 +550,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
     {
       actual_write =
 	bytes_to_snd > queue_max_chunk ? queue_max_chunk : bytes_to_snd;
-      rv = svm_fifo_enqueue_nowait (tx_fifo, mypid, actual_write,
+      rv = svm_fifo_enqueue_nowait (tx_fifo, actual_write,
 				    test_data + test_buf_offset);
 
       if (rv > 0)
@@ -563,7 +563,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	    {
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
-	      evt.event_type = FIFO_EVENT_SERVER_TX;
+	      evt.event_type = FIFO_EVENT_APP_TX;
 	      evt.event_id = serial_number++;
 
 	      unix_shared_memory_queue_add (utm->vpp_event_queue,
@@ -868,7 +868,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   /* Read the bytes */
   do
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (utm->rx_buf),
+      n_read = svm_fifo_dequeue_nowait (rx_fifo, vec_len (utm->rx_buf),
 					utm->rx_buf);
       if (n_read > 0)
 	bytes -= n_read;
@@ -881,7 +881,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	{
 	  do
 	    {
-	      rv = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, utm->rx_buf);
+	      rv = svm_fifo_enqueue_nowait (tx_fifo, n_read, utm->rx_buf);
 	    }
 	  while (rv <= 0 && !utm->time_to_stop);
 
@@ -890,7 +890,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	    {
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
-	      evt.event_type = FIFO_EVENT_SERVER_TX;
+	      evt.event_type = FIFO_EVENT_APP_TX;
 	      evt.event_id = e->event_id;
 
 	      q = utm->vpp_event_queue;
@@ -913,11 +913,11 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 				    0 /* nowait */ );
       switch (e->event_type)
 	{
-	case FIFO_EVENT_SERVER_RX:
+	case FIFO_EVENT_APP_RX:
 	  server_handle_fifo_event_rx (utm, e);
 	  break;
 
-	case FIFO_EVENT_SERVER_EXIT:
+	case FIFO_EVENT_DISCONNECT:
 	  return;
 
 	default:

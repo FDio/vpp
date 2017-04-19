@@ -61,18 +61,6 @@ typedef struct _application
   /** Flags */
   u32 flags;
 
-  /* Stream server mode: accept or connect
-   * TODO REMOVE*/
-  u8 mode;
-
-  /** Index of the listen session or connect session
-   * TODO REMOVE*/
-  u32 session_index;
-
-  /** Session thread index for client connect sessions
-   * TODO REMOVE */
-  u32 thread_index;
-
   /*
    * Binary API interface to external app
    */

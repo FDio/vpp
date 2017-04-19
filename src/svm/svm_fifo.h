@@ -23,13 +23,6 @@
 #include <vppinfra/format.h>
 #include <pthread.h>
 
-typedef enum
-{
-  SVM_FIFO_TAG_NOT_HELD = 0,
-  SVM_FIFO_TAG_DEQUEUE,
-  SVM_FIFO_TAG_ENQUEUE,
-} svm_lock_tag_t;
-
 /** Out-of-order segment */
 typedef struct
 {
@@ -37,7 +30,7 @@ typedef struct
   u32 prev;	/**< Previous linked-list element pool index */
 
   u32 start;	/**< Start of segment, normalized*/
-  u32 length;		/**< Length of segment */
+  u32 length;	/**< Length of segment */
 } ooo_segment_t;
 
 format_function_t format_ooo_segment;
@@ -52,12 +45,11 @@ typedef struct
     CLIB_CACHE_LINE_ALIGN_MARK (end_cursize);
 
   volatile u8 has_event;	/**< non-zero if deq event exists */
-  u32 owner_pid;
 
   /* Backpointers */
-  u32 server_session_index;
+  u32 master_session_index;
   u32 client_session_index;
-  u8 server_thread_index;
+  u8 master_thread_index;
   u8 client_thread_index;
   u32 segment_manager;
     CLIB_CACHE_LINE_ALIGN_MARK (end_shared);
@@ -117,19 +109,14 @@ svm_fifo_unset_event (svm_fifo_t * f)
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);
 void svm_fifo_free (svm_fifo_t * f);
 
-int svm_fifo_enqueue_nowait (svm_fifo_t * f, int pid, u32 max_bytes,
+int svm_fifo_enqueue_nowait (svm_fifo_t * f, u32 max_bytes,
 			     u8 * copy_from_here);
+int svm_fifo_enqueue_with_offset (svm_fifo_t * f, u32 offset,
+				  u32 required_bytes, u8 * copy_from_here);
+int svm_fifo_dequeue_nowait (svm_fifo_t * f, u32 max_bytes, u8 * copy_here);
 
-int svm_fifo_enqueue_with_offset (svm_fifo_t * f, int pid,
-				  u32 offset, u32 required_bytes,
-				  u8 * copy_from_here);
-
-int svm_fifo_dequeue_nowait (svm_fifo_t * f, int pid, u32 max_bytes,
-			     u8 * copy_here);
-
-int svm_fifo_peek (svm_fifo_t * f, int pid, u32 offset, u32 max_bytes,
-		   u8 * copy_here);
-int svm_fifo_dequeue_drop (svm_fifo_t * f, int pid, u32 max_bytes);
+int svm_fifo_peek (svm_fifo_t * f, u32 offset, u32 max_bytes, u8 * copy_here);
+int svm_fifo_dequeue_drop (svm_fifo_t * f, u32 max_bytes);
 u32 svm_fifo_number_ooo_segments (svm_fifo_t * f);
 ooo_segment_t *svm_fifo_first_ooo_segment (svm_fifo_t * f);
 
