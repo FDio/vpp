@@ -45,12 +45,13 @@ typedef struct
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  u32 vpp_session_handle;
+  u64 vpp_session_handle;
 } session_t;
 
 typedef enum
 {
   STATE_START,
+  STATE_ATTACHED,
   STATE_READY,
   STATE_DISCONNECTING,
   STATE_FAILED
@@ -127,6 +128,34 @@ uri_tcp_test_main_t uri_tcp_test_main;
 #define NITER 4000000
 #endif
 
+static u8 *
+format_api_error (u8 * s, va_list * args)
+{
+  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  i32 error = va_arg (*args, u32);
+  uword *p;
+
+  p = hash_get (utm->error_string_by_error_number, -error);
+
+  if (p)
+    s = format (s, "%s", p[0]);
+  else
+    s = format (s, "%d", error);
+  return s;
+}
+
+static void
+init_error_string_table (uri_tcp_test_main_t * utm)
+{
+  utm->error_string_by_error_number = hash_create (0, sizeof (uword));
+
+#define _(n,v,s) hash_set (utm->error_string_by_error_number, -v, s);
+  foreach_vnet_api_error;
+#undef _
+
+  hash_set (utm->error_string_by_error_number, 99, "Misc");
+}
+
 int
 wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
 {
@@ -150,7 +179,7 @@ wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
 }
 
 void
-application_attach (uri_tcp_test_main_t * utm)
+application_send_attach (uri_tcp_test_main_t * utm)
 {
   vl_api_application_attach_t *bmp;
   u32 fifo_size = 3 << 20;
@@ -160,13 +189,25 @@ application_attach (uri_tcp_test_main_t * utm)
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
   bmp->client_index = utm->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  bmp->options[SESSION_OPTIONS_FLAGS] =
-    SESSION_OPTIONS_FLAGS_USE_FIFO | SESSION_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[APP_OPTIONS_FLAGS] =
+    APP_OPTIONS_FLAGS_USE_FIFO | APP_OPTIONS_FLAGS_ADD_SEGMENT;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+}
+
+int
+application_attach (uri_tcp_test_main_t * utm)
+{
+  application_send_attach (utm);
+  if (wait_for_state_change (utm, STATE_ATTACHED))
+    {
+      clib_warning ("timeout waiting for STATE_ATTACHED");
+      return -1;
+    }
+  return 0;
 }
 
 void
@@ -192,8 +233,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   if (mp->retval)
     {
-      uword *errp = hash_get (utm->error_string_by_error_number, -mp->retval);
-      clib_warning ("attach failed: %s", *errp);
+      clib_warning ("attach failed: %U", format_api_error,
+		    clib_net_to_host_u32 (mp->retval));
       utm->state = STATE_FAILED;
       return;
     }
@@ -220,7 +261,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   utm->our_event_queue =
     (unix_shared_memory_queue_t *) mp->app_event_queue_address;
-
+  utm->state = STATE_ATTACHED;
 }
 
 static void
@@ -229,18 +270,6 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
 {
   if (mp->retval)
     clib_warning ("detach returned with err: %d", mp->retval);
-}
-
-static void
-init_error_string_table (uri_tcp_test_main_t * utm)
-{
-  utm->error_string_by_error_number = hash_create (0, sizeof (uword));
-
-#define _(n,v,s) hash_set (utm->error_string_by_error_number, -v, s);
-  foreach_vnet_api_error;
-#undef _
-
-  hash_set (utm->error_string_by_error_number, 99, "Misc");
 }
 
 static void
@@ -392,7 +421,7 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   /* Read the bytes */
   do
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, 0,
+      n_read = svm_fifo_dequeue_nowait (rx_fifo,
 					clib_min (vec_len (utm->rx_buf),
 						  bytes), utm->rx_buf);
       if (n_read > 0)
@@ -432,11 +461,11 @@ client_handle_event_queue (uri_tcp_test_main_t * utm)
 				0 /* nowait */ );
   switch (e->event_type)
     {
-    case FIFO_EVENT_SERVER_RX:
+    case FIFO_EVENT_APP_RX:
       client_handle_fifo_event_rx (utm, e);
       break;
 
-    case FIFO_EVENT_SERVER_EXIT:
+    case FIFO_EVENT_DISCONNECT:
       return;
 
     default:
@@ -458,11 +487,11 @@ client_rx_thread_fn (void *arg)
 				    0 /* nowait */ );
       switch (e->event_type)
 	{
-	case FIFO_EVENT_SERVER_RX:
+	case FIFO_EVENT_APP_RX:
 	  client_handle_fifo_event_rx (utm, e);
 	  break;
 
-	case FIFO_EVENT_SERVER_EXIT:
+	case FIFO_EVENT_DISCONNECT:
 	  return 0;
 	default:
 	  clib_warning ("unknown event type %d", e->event_type);
@@ -487,9 +516,8 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 
   if (mp->retval)
     {
-      uword *errp = hash_get (utm->error_string_by_error_number,
-			      -clib_net_to_host_u32 (mp->retval));
-      clib_warning ("connection failed with code: %s", *errp);
+      clib_warning ("connection failed with code: %U", format_api_error,
+		    clib_net_to_host_u32 (mp->retval));
       utm->state = STATE_FAILED;
       return;
     }
@@ -551,7 +579,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
     {
       actual_write =
 	bytes_to_snd > queue_max_chunk ? queue_max_chunk : bytes_to_snd;
-      rv = svm_fifo_enqueue_nowait (tx_fifo, mypid, actual_write,
+      rv = svm_fifo_enqueue_nowait (tx_fifo, actual_write,
 				    test_data + test_buf_offset);
 
       if (rv > 0)
@@ -564,7 +592,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	    {
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
-	      evt.event_type = FIFO_EVENT_SERVER_TX;
+	      evt.event_type = FIFO_EVENT_APP_TX;
 	      evt.event_id = serial_number++;
 
 	      unix_shared_memory_queue_add (utm->vpp_event_queue,
@@ -619,7 +647,7 @@ client_send_data (uri_tcp_test_main_t * utm)
 }
 
 void
-client_connect (uri_tcp_test_main_t * utm)
+client_send_connect (uri_tcp_test_main_t * utm)
 {
   vl_api_connect_uri_t *cmp;
   cmp = vl_msg_api_alloc (sizeof (*cmp));
@@ -632,8 +660,20 @@ client_connect (uri_tcp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & cmp);
 }
 
+int
+client_connect (uri_tcp_test_main_t * utm)
+{
+  client_send_connect (utm);
+  if (wait_for_state_change (utm, STATE_READY))
+    {
+      clib_warning ("Connect failed");
+      return -1;
+    }
+  return 0;
+}
+
 void
-client_disconnect (uri_tcp_test_main_t * utm)
+client_send_disconnect (uri_tcp_test_main_t * utm)
 {
   session_t *connected_session;
   vl_api_disconnect_session_t *dmp;
@@ -647,16 +687,29 @@ client_disconnect (uri_tcp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & dmp);
 }
 
+int
+client_disconnect (uri_tcp_test_main_t * utm)
+{
+  client_send_disconnect (utm);
+  if (wait_for_state_change (utm, STATE_START))
+    {
+      clib_warning ("Disconnect failed");
+      return -1;
+    }
+  return 0;
+}
+
 static void
 client_test (uri_tcp_test_main_t * utm)
 {
   int i;
 
-  application_attach (utm);
-  client_connect (utm);
+  if (application_attach (utm))
+    return;
 
-  if (wait_for_state_change (utm, STATE_READY))
+  if (client_connect (utm))
     {
+      application_detach (utm);
       return;
     }
 
@@ -671,11 +724,6 @@ client_test (uri_tcp_test_main_t * utm)
   /* Disconnect */
   client_disconnect (utm);
 
-  if (wait_for_state_change (utm, STATE_START))
-    {
-      clib_warning ("Disconnect failed");
-      return;
-    }
   application_detach (utm);
 }
 
@@ -686,9 +734,8 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 
   if (mp->retval)
     {
-      uword *errp = hash_get (utm->error_string_by_error_number,
-			      -clib_net_to_host_u32 (mp->retval));
-      clib_warning ("bind failed: %s", (char *) *errp);
+      clib_warning ("bind failed: %s", format_api_error,
+		    clib_net_to_host_u32 (mp->retval));
       utm->state = STATE_FAILED;
       return;
     }
@@ -869,7 +916,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   /* Read the bytes */
   do
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, 0, vec_len (utm->rx_buf),
+      n_read = svm_fifo_dequeue_nowait (rx_fifo, vec_len (utm->rx_buf),
 					utm->rx_buf);
       if (n_read > 0)
 	bytes -= n_read;
@@ -882,7 +929,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	{
 	  do
 	    {
-	      rv = svm_fifo_enqueue_nowait (tx_fifo, 0, n_read, utm->rx_buf);
+	      rv = svm_fifo_enqueue_nowait (tx_fifo, n_read, utm->rx_buf);
 	    }
 	  while (rv <= 0 && !utm->time_to_stop);
 
@@ -891,7 +938,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	    {
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
-	      evt.event_type = FIFO_EVENT_SERVER_TX;
+	      evt.event_type = FIFO_EVENT_APP_TX;
 	      evt.event_id = e->event_id;
 
 	      q = utm->vpp_event_queue;
@@ -914,11 +961,11 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 				    0 /* nowait */ );
       switch (e->event_type)
 	{
-	case FIFO_EVENT_SERVER_RX:
+	case FIFO_EVENT_APP_RX:
 	  server_handle_fifo_event_rx (utm, e);
 	  break;
 
-	case FIFO_EVENT_SERVER_EXIT:
+	case FIFO_EVENT_DISCONNECT:
 	  return;
 
 	default:
@@ -936,7 +983,7 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 }
 
 void
-server_listen (uri_tcp_test_main_t * utm)
+server_send_listen (uri_tcp_test_main_t * utm)
 {
   vl_api_bind_uri_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
@@ -949,8 +996,20 @@ server_listen (uri_tcp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
 }
 
+int
+server_listen (uri_tcp_test_main_t * utm)
+{
+  server_send_listen (utm);
+  if (wait_for_state_change (utm, STATE_READY))
+    {
+      clib_warning ("timeout waiting for STATE_READY");
+      return -1;
+    }
+  return 0;
+}
+
 void
-server_unbind (uri_tcp_test_main_t * utm)
+server_send_unbind (uri_tcp_test_main_t * utm)
 {
   vl_api_unbind_uri_t *ump;
 
@@ -963,31 +1022,33 @@ server_unbind (uri_tcp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & ump);
 }
 
+int
+server_unbind (uri_tcp_test_main_t * utm)
+{
+  server_send_unbind (utm);
+  if (wait_for_state_change (utm, STATE_START))
+    {
+      clib_warning ("timeout waiting for STATE_START");
+      return -1;
+    }
+  return 0;
+}
+
 void
 server_test (uri_tcp_test_main_t * utm)
 {
-  application_attach (utm);
+  if (application_attach (utm))
+    return;
 
   /* Bind to uri */
-  server_listen (utm);
-
-  if (wait_for_state_change (utm, STATE_READY))
-    {
-      clib_warning ("timeout waiting for STATE_READY");
-      return;
-    }
+  if (server_listen (utm))
+    return;
 
   /* Enter handle event loop */
   server_handle_event_queue (utm);
 
   /* Cleanup */
-  server_unbind (utm);
-
-  if (wait_for_state_change (utm, STATE_START))
-    {
-      clib_warning ("timeout waiting for STATE_START");
-      return;
-    }
+  server_send_unbind (utm);
 
   application_detach (utm);
 

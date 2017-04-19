@@ -87,13 +87,16 @@ application_new ()
 void
 application_del (application_t * app)
 {
-  api_main_t *am = &api_main;
-  void *oldheap;
   segment_manager_t *sm;
   u64 handle;
   u32 index, *handles = 0;
   int i;
   vnet_unbind_args_t _a, *a = &_a;
+
+  /*
+   * The app event queue allocated in first segment is cleared with
+   * the segment manager. No need to explicitly free it.
+   */
 
   /*
    * Cleanup segment managers
@@ -120,14 +123,6 @@ application_del (application_t * app)
       vnet_unbind (a);
     }
 
-  /*
-   * Free the event fifo in the /vpe-api shared-memory segment
-   */
-  oldheap = svm_push_data_heap (am->vlib_rp);
-  if (app->event_queue)
-    unix_shared_memory_queue_free (app->event_queue);
-  svm_pop_heap (oldheap);
-
   application_table_del (app);
   pool_put (app_pool, app);
 }
@@ -149,29 +144,13 @@ int
 application_init (application_t * app, u32 api_client_index, u64 * options,
 		  session_cb_vft_t * cb_fns)
 {
-  api_main_t *am = &api_main;
   segment_manager_t *sm;
   segment_manager_properties_t *props;
-  void *oldheap;
-  u32 app_evt_queue_size;
+  u32 app_evt_queue_size, first_seg_size;
   int rv;
 
   app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
     options[APP_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
-
-  /* Allocate event fifo in the /vpe-api shared-memory segment */
-  oldheap = svm_push_data_heap (am->vlib_rp);
-
-  /* Allocate server event queue */
-  app->event_queue =
-    unix_shared_memory_queue_init (app_evt_queue_size,
-				   sizeof (session_fifo_event_t),
-				   0 /* consumer pid */ ,
-				   0
-				   /* (do not) signal when queue non-empty */
-    );
-
-  svm_pop_heap (oldheap);
 
   /* Setup segment manager */
   sm = segment_manager_new ();
@@ -181,15 +160,20 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
   props->tx_fifo_size = options[SESSION_OPTIONS_TX_FIFO_SIZE];
   props->add_segment = props->add_segment_size != 0;
+  props->use_private_segment = options[APP_OPTIONS_FLAGS]
+    & APP_OPTIONS_FLAGS_BUILTIN_APP;
 
-  if ((rv = segment_manager_init (sm, props,
-				  options[SESSION_OPTIONS_SEGMENT_SIZE])))
+  first_seg_size = options[SESSION_OPTIONS_SEGMENT_SIZE];
+  if ((rv = segment_manager_init (sm, props, first_seg_size)))
     return rv;
 
   app->first_segment_manager = segment_manager_index (sm);
   app->api_client_index = api_client_index;
-  app->flags = options[SESSION_OPTIONS_FLAGS];
+  app->flags = options[APP_OPTIONS_FLAGS];
   app->cb_fns = *cb_fns;
+
+  /* Allocate app event queue in the first shared-memory segment */
+  app->event_queue = segment_manager_alloc_queue (sm, app_evt_queue_size);
 
   /* Check that the obvious things are properly set up */
   application_verify_cb_fns (cb_fns);
@@ -451,8 +435,8 @@ application_format_connects (application_t * app, int verbose)
 	    continue;
 
 	  fifo = fifos[i];
-	  session_index = fifo->server_session_index;
-	  thread_index = fifo->server_thread_index;
+	  session_index = fifo->master_session_index;
+	  thread_index = fifo->master_thread_index;
 
 	  session = stream_session_get (session_index, thread_index);
 	  str = format (0, "%U", format_stream_session, session, verbose);
