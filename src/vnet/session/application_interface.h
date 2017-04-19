@@ -30,9 +30,17 @@ typedef enum _session_api_proto
 
 typedef struct _vnet_app_attach_args_t
 {
+  /** Binary API client index */
   u32 api_client_index;
+
+  /** Application and segment manager options */
   u64 *options;
+
+  /** Session to application callback functions */
   session_cb_vft_t *session_cb_vft;
+
+  /** Flag that indicates if app is builtin */
+  u8 builtin;
 
   /*
    * Results
@@ -110,7 +118,7 @@ typedef struct _vnet_disconnect_args_t
 typedef enum
 {
   APP_EVT_QUEUE_SIZE,
-  SESSION_OPTIONS_FLAGS,
+  APP_OPTIONS_FLAGS,
   SESSION_OPTIONS_SEGMENT_SIZE,
   SESSION_OPTIONS_ADD_SEGMENT_SIZE,
   SESSION_OPTIONS_RX_FIFO_SIZE,
@@ -119,11 +127,30 @@ typedef enum
   SESSION_OPTIONS_N_OPTIONS
 } app_attach_options_index_t;
 
-/** Server can handle delegated connect requests from local clients */
-#define SESSION_OPTIONS_FLAGS_USE_FIFO	(1<<0)
+#define foreach_app_options_flags				\
+  _(USE_FIFO, "Use FIFO with redirects")			\
+  _(ADD_SEGMENT, "Add segment and signal app if needed")	\
+  _(BUILTIN_APP, "Application is builtin")			\
 
-/** Server wants vpp to add segments when out of memory for fifos */
-#define SESSION_OPTIONS_FLAGS_ADD_SEGMENT   (1<<1)
+typedef enum _app_options
+{
+#define _(sym, str) APP_OPTIONS_##sym,
+  foreach_app_options_flags
+#undef _
+} app_options_t;
+
+typedef enum _app_options_flags
+{
+#define _(sym, str) APP_OPTIONS_FLAGS_##sym = 1 << APP_OPTIONS_##sym,
+  foreach_app_options_flags
+#undef _
+} app_options_flags_t;
+
+///** Server can handle delegated connect requests from local clients */
+//#define APP_OPTIONS_FLAGS_USE_FIFO    (1<<0)
+//
+///** Server wants vpp to add segments when out of memory for fifos */
+//#define APP_OPTIONS_FLAGS_ADD_SEGMENT   (1<<1)
 
 #define VNET_CONNECT_REDIRECTED	123
 
@@ -138,7 +165,6 @@ int vnet_disconnect_session (vnet_disconnect_args_t * a);
 int vnet_bind (vnet_bind_args_t * a);
 int vnet_connect (vnet_connect_args_t * a);
 int vnet_unbind (vnet_unbind_args_t * a);
-int vnet_disconnect (vnet_disconnect_args_t * a);
 
 int
 api_parse_session_handle (u64 handle, u32 * session_index,

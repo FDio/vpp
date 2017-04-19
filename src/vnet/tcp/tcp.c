@@ -487,7 +487,8 @@ u8 *
 format_tcp_connection (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-
+  if (!tc)
+    return s;
   if (tc->c_is_ip4)
     {
       s = format (s, "[#%d][%s] %U:%d->%U:%d", tc->c_thread_index, "T",
@@ -747,12 +748,14 @@ void
 tcp_initialize_timer_wheels (tcp_main_t * tm)
 {
   tw_timer_wheel_16t_2w_512sl_t *tw;
-  vec_foreach (tw, tm->timer_wheels)
-  {
+  /* *INDENT-OFF* */
+  foreach_vlib_main (({
+    tw = &tm->timer_wheels[ii];
     tw_timer_wheel_init_16t_2w_512sl (tw, tcp_expired_timers_dispatch,
 				      100e-3 /* timer period 100ms */ , ~0);
-    tw->last_run_time = vlib_time_now (tm->vlib_main);
-  }
+    tw->last_run_time = vlib_time_now (this_vlib_main);
+  }));
+  /* *INDENT-ON* */
 }
 
 clib_error_t *

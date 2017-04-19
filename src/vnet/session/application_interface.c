@@ -142,7 +142,7 @@ vnet_connect_i (u32 app_index, u32 api_context, session_type_t sst,
        * Server is willing to have a direct fifo connection created
        * instead of going through the state machine, etc.
        */
-      if (server->flags & SESSION_OPTIONS_FLAGS_USE_FIFO)
+      if (server->flags & APP_OPTIONS_FLAGS_USE_FIFO)
 	return server->cb_fns.
 	  redirect_connect_callback (server->api_client_index, mp);
     }
@@ -363,7 +363,11 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   if (!s || s->app_index != a->app_index)
     return VNET_API_ERROR_INVALID_VALUE;
 
-  stream_session_disconnect (s);
+  /* We're peeking into another's thread pool. Make sure */
+  ASSERT (s->session_index == index);
+
+  session_send_session_evt_to_thread (a->handle, FIFO_EVENT_DISCONNECT,
+				      thread_index);
   return 0;
 }
 
@@ -393,24 +397,6 @@ vnet_connect (vnet_connect_args_t * a)
 
   sst = session_type_from_proto_and_ip (a->proto, a->tep.is_ip4);
   return vnet_connect_i (a->app_index, a->api_context, sst, &a->tep, a->mp);
-}
-
-int
-vnet_disconnect (vnet_disconnect_args_t * a)
-{
-  stream_session_t *session;
-  u32 session_index, thread_index;
-
-  if (api_parse_session_handle (a->handle, &session_index, &thread_index))
-    {
-      clib_warning ("Invalid handle");
-      return -1;
-    }
-
-  session = stream_session_get (session_index, thread_index);
-  stream_session_disconnect (session);
-
-  return 0;
 }
 
 /*

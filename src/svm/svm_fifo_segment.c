@@ -70,6 +70,44 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   return (0);
 }
 
+/** Create an svm fifo segment in process-private memory */
+int
+svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
+{
+  svm_fifo_segment_private_t *s;
+  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
+  ssvm_shared_header_t *sh;
+  svm_fifo_segment_header_t *fsh;
+
+  /* Allocate a fresh segment */
+  pool_get (sm->segments, s);
+  memset (s, 0, sizeof (*s));
+
+  s->ssvm.ssvm_size = ~0;
+  s->ssvm.i_am_master = 1;
+  s->ssvm.my_pid = getpid ();
+  s->ssvm.name = (u8 *) a->segment_name;
+  s->ssvm.requested_va = ~0;
+
+  /* Allocate a [sic] shared memory header, in process memory... */
+  sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
+  s->ssvm.sh = sh;
+
+  memset (sh, 0, sizeof (*sh));
+  sh->heap = clib_mem_get_heap ();
+
+  /* Set up svm_fifo_segment shared header */
+  fsh = clib_mem_alloc (sizeof (*fsh));
+  memset (fsh, 0, sizeof (*fsh));
+  sh->opaque[0] = fsh;
+  s->h = fsh;
+  fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
+
+  sh->ready = 1;
+  a->new_segment_index = s - sm->segments;
+  return (0);
+}
+
 /** (slave) attach to an svm fifo segment */
 int
 svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
@@ -82,7 +120,6 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
 
   /* Allocate a fresh segment */
   pool_get (sm->segments, s);
-
   memset (s, 0, sizeof (*s));
 
   s->ssvm.ssvm_size = a->segment_size;
@@ -126,19 +163,22 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 
   sh = s->ssvm.sh;
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
+
+  ssvm_lock (sh, 1, 0);
   oldheap = ssvm_push_heap (sh);
 
   /* Note: this can fail, in which case: create another segment */
   f = svm_fifo_create (data_size_in_bytes);
-  if (f == 0)
+  if (PREDICT_FALSE (f == 0))
     {
       ssvm_pop_heap (oldheap);
+      ssvm_unlock (sh);
       return (0);
     }
 
   vec_add1 (fsh->fifos, f);
-
   ssvm_pop_heap (oldheap);
+  ssvm_unlock (sh);
   return (f);
 }
 
@@ -152,8 +192,9 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f)
 
   sh = s->ssvm.sh;
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
-  oldheap = ssvm_push_heap (sh);
 
+  ssvm_lock (sh, 1, 0);
+  oldheap = ssvm_push_heap (sh);
   for (i = 0; i < vec_len (fsh->fifos); i++)
     {
       if (fsh->fifos[i] == f)
@@ -167,6 +208,7 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f)
 found:
   clib_mem_free (f);
   ssvm_pop_heap (oldheap);
+  ssvm_unlock (sh);
 }
 
 void
