@@ -92,9 +92,7 @@ _(SAMPLE_MACSWAP_ENABLE_DISABLE_REPLY, sample_macswap_enable_disable_reply)
 
 static int api_sample_macswap_enable_disable (vat_main_t * vam)
 {
-    sample_test_main_t * sm = &sample_test_main;
     unformat_input_t * i = vam->input;
-    f64 timeout;
     int enable_disable = 1;
     u32 sw_if_index = ~0;
     vl_api_sample_macswap_enable_disable_t * mp;
