@@ -1226,6 +1226,52 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_det_get_timeouts, {})
 
+    def snat_det_close_session_out(
+            self,
+            out_addr,
+            out_port,
+            ext_addr,
+            ext_port,
+            is_ip4=1):
+        """Close CGN session using outside address and port
+
+        :param out_addr - outside IP address
+        :param out_port - outside port
+        :param ext_addr - external host IP address
+        :param ext_port - external host port
+        :param is_ip4: 1 if address type is IPv4 (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_det_close_session_out,
+            {'out_addr': out_addr,
+             'out_port': out_port,
+             'ext_addr': ext_addr,
+             'ext_port': ext_port,
+             'is_ip4': is_ip4})
+
+    def snat_det_close_session_in(
+            self,
+            in_addr,
+            in_port,
+            ext_addr,
+            ext_port,
+            is_ip4=1):
+        """Close CGN session using inside address and port
+
+        :param in_addr - inside IP address
+        :param in_port - inside port
+        :param ext_addr - external host IP address
+        :param ext_port - external host port
+        :param is_ip4: 1 if address type is IPv4 (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_det_close_session_in,
+            {'in_addr': in_addr,
+             'in_port': in_port,
+             'ext_addr': ext_addr,
+             'ext_port': ext_port,
+             'is_ip4': is_ip4})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
