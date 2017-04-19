@@ -6,6 +6,7 @@ import struct
 
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor
+from util import mk_ll_addr
 
 from scapy.layers.l2 import Ether, getmacbyip
 from scapy.layers.inet import IP, UDP, ICMP
@@ -22,13 +23,6 @@ DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67
 DHCP6_CLIENT_PORT = 547
 DHCP6_SERVER_PORT = 546
-
-
-def mk_ll_addr(mac):
-
-    euid = in6_mactoifaceid(mac)
-    addr = "fe80::" + euid
-    return addr
 
 
 class TestDHCP(VppTestCase):

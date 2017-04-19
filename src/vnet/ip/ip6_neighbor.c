@@ -634,6 +634,9 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 					     FIB_PROTOCOL_IP6, &pfx.fp_addr,
 					     n->key.sw_if_index, ~0, 1, NULL,
 					     FIB_ROUTE_PATH_FLAG_NONE);
+	}
+      else
+	{
 	  n->flags |= IP6_NEIGHBOR_FLAG_NO_FIB_ENTRY;
 	}
     }
@@ -1027,7 +1030,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 
 	  /* If src address unspecified or link local, donot learn neighbor MAC */
 	  if (PREDICT_TRUE (error0 == ICMP6_ERROR_NONE && o0 != 0 &&
-			    !ip6_sadd_unspecified && !ip6_sadd_link_local))
+			    !ip6_sadd_unspecified))
 	    {
 	      ip6_neighbor_main_t *nm = &ip6_neighbor_main;
 	      if (nm->limit_neighbor_cache_size &&
@@ -1040,7 +1043,7 @@ icmp6_neighbor_solicitation_or_advertisement (vlib_main_t * vm,
 					      &h0->target_address,
 					      o0->ethernet_address,
 					      sizeof (o0->ethernet_address),
-					      0, 0);
+					      0, ip6_sadd_link_local);
 	    }
 
 	  if (is_solicitation && error0 == ICMP6_ERROR_NONE)

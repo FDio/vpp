@@ -4,6 +4,7 @@ import socket
 import sys
 from abc import abstractmethod, ABCMeta
 from cStringIO import StringIO
+from scapy.layers.inet6 import in6_mactoifaceid
 
 
 def ppp(headline, packet):
@@ -50,6 +51,12 @@ def ip4n_range(ip4n, s, e):
 def mactobinary(mac):
     """ Convert the : separated format into binary packet data for the API """
     return mac.replace(':', '').decode('hex')
+
+
+def mk_ll_addr(mac):
+    euid = in6_mactoifaceid(mac)
+    addr = "fe80::" + euid
+    return addr
 
 
 class NumericConstant(object):
@@ -101,10 +108,22 @@ class Host(object):
         """ IPv6 address of remote host - raw, suitable as API parameter."""
         return socket.inet_pton(socket.AF_INET6, self._ip6)
 
-    def __init__(self, mac=None, ip4=None, ip6=None):
+    @property
+    def ip6_ll(self):
+        """ IPv6 link-local address - string """
+        return self._ip6_ll
+
+    @property
+    def ip6n_ll(self):
+        """ IPv6 link-local address of remote host -
+        raw, suitable as API parameter."""
+        return socket.inet_pton(socket.AF_INET6, self._ip6_ll)
+
+    def __init__(self, mac=None, ip4=None, ip6=None, ip6_ll=None):
         self._mac = mac
         self._ip4 = ip4
         self._ip6 = ip6
+        self._ip6_ll = ip6_ll
 
 
 class ForeignAddressFactory(object):
