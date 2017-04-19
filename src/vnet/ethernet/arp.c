@@ -584,6 +584,9 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 					     FIB_PROTOCOL_IP4, &pfx.fp_addr,
 					     e->sw_if_index, ~0, 1, NULL,
 					     FIB_ROUTE_PATH_FLAG_NONE);
+	}
+      else
+	{
 	  e->flags |= ETHERNET_ARP_IP4_ENTRY_FLAG_NO_FIB_ENTRY;
 	}
     }

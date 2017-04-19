@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 import socket
 
-from util import Host
+from util import Host, mk_ll_addr
 from vpp_neighbor import VppNeighbor
 
 
@@ -53,6 +53,16 @@ class VppInterface(object):
     def local_ip6n(self):
         """Local IPv6 address - raw, suitable as API parameter."""
         return socket.inet_pton(socket.AF_INET6, self.local_ip6)
+
+    @property
+    def local_ip6_ll(self):
+        """Local IPv6 linnk-local address on VPP interface (string)."""
+        return self._local_ip6_ll
+
+    @property
+    def local_ip6n_ll(self):
+        """Local IPv6 link-local address - raw, suitable as API parameter."""
+        return self.local_ip6n_ll
 
     @property
     def remote_ip6(self):
@@ -133,7 +143,8 @@ class VppInterface(object):
             mac = "02:%02x:00:00:ff:%02x" % (self.sw_if_index, i)
             ip4 = "172.16.%u.%u" % (self.sw_if_index, i)
             ip6 = "fd01:%x::%x" % (self.sw_if_index, i)
-            host = Host(mac, ip4, ip6)
+            ip6_ll = mk_ll_addr(mac)
+            host = Host(mac, ip4, ip6, ip6_ll)
             self._remote_hosts.append(host)
             self._hosts_by_mac[mac] = host
             self._hosts_by_ip4[ip4] = host
@@ -176,6 +187,9 @@ class VppInterface(object):
                 "Could not find interface with sw_if_index %d "
                 "in interface dump %s" %
                 (self.sw_if_index, repr(r)))
+        self._local_ip6_ll = mk_ll_addr(self.local_mac)
+        self._local_ip6n_ll = socket.inet_pton(socket.AF_INET6,
+                                               self.local_ip6_ll)
 
     def config_ip4(self):
         """Configure IPv4 address on the VPP interface."""

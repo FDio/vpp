@@ -77,7 +77,6 @@ class TestIPv6ND(VppTestCase):
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
                            filter_out_fn=is_ipv6_misc):
         intf.add_stream(pkts)
-        self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         rx = intf.get_capture(1, filter_out_fn=filter_out_fn)
@@ -86,11 +85,25 @@ class TestIPv6ND(VppTestCase):
         rx = rx[0]
         self.validate_ra(intf, rx, dst_ip)
 
+    def send_and_expect_na(self, intf, pkts, remark, dst_ip=None,
+                           tgt_ip=None,
+                           filter_out_fn=is_ipv6_misc):
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = intf.get_capture(1, filter_out_fn=filter_out_fn)
+
+        self.assertEqual(len(rx), 1)
+        rx = rx[0]
+        self.validate_na(intf, rx, dst_ip, tgt_ip)
+
     def send_and_assert_no_replies(self, intf, pkts, remark):
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        intf.assert_nothing_captured(remark=remark)
+        for i in self.pg_interfaces:
+            i.get_capture(0)
+            i.assert_nothing_captured(remark=remark)
 
 
 class TestIPv6(TestIPv6ND):
@@ -373,6 +386,59 @@ class TestIPv6(TestIPv6ND):
                                  inet=AF_INET6))
         self.assertFalse(find_route(self,
                                     self.pg0._remote_hosts[2].ip6,
+                                    128,
+                                    inet=AF_INET6))
+
+        #
+        # send an NS from a link local address to the interface's global
+        # address
+        #
+        p = (Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac) /
+             IPv6(dst=d, src=self.pg0._remote_hosts[2].ip6_ll) /
+             ICMPv6ND_NS(tgt=self.pg0.local_ip6) /
+             ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+
+        self.send_and_expect_na(self.pg0, p,
+                                "NS from link-local",
+                                dst_ip=self.pg0._remote_hosts[2].ip6_ll,
+                                tgt_ip=self.pg0.local_ip6)
+
+        #
+        # we should have learned an ND entry for the peer's link-local
+        # but not inserted a route to it in the FIB
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg0.sw_if_index,
+                                 self.pg0._remote_hosts[2].ip6_ll,
+                                 inet=AF_INET6))
+        self.assertFalse(find_route(self,
+                                    self.pg0._remote_hosts[2].ip6_ll,
+                                    128,
+                                    inet=AF_INET6))
+
+        #
+        # An NS to the router's own Link-local
+        #
+        p = (Ether(dst=in6_getnsmac(nsma), src=self.pg0.remote_mac) /
+             IPv6(dst=d, src=self.pg0._remote_hosts[3].ip6_ll) /
+             ICMPv6ND_NS(tgt=self.pg0.local_ip6_ll) /
+             ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
+
+        self.send_and_expect_na(self.pg0, p,
+                                "NS to/from link-local",
+                                dst_ip=self.pg0._remote_hosts[3].ip6_ll,
+                                tgt_ip=self.pg0.local_ip6_ll)
+
+        #
+        # we should have learned an ND entry for the peer's link-local
+        # but not inserted a route to it in the FIB
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg0.sw_if_index,
+                                 self.pg0._remote_hosts[3].ip6_ll,
+                                 inet=AF_INET6))
+        self.assertFalse(find_route(self,
+                                    self.pg0._remote_hosts[3].ip6_ll,
                                     128,
                                     inet=AF_INET6))
 
@@ -770,14 +836,10 @@ class IPv6NDProxyTest(TestIPv6ND):
         #
         # try that NS again. this time we expect an NA back
         #
-        self.pg1.add_stream(ns_pg1)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = self.pg1.get_capture(1)
-
-        self.validate_na(self.pg1, rx[0],
-                         dst_ip=self.pg0._remote_hosts[2].ip6,
-                         tgt_ip=self.pg0.local_ip6)
+        self.send_and_expect_na(self.pg1, ns_pg1,
+                                "NS to proxy entry",
+                                dst_ip=self.pg0._remote_hosts[2].ip6,
+                                tgt_ip=self.pg0.local_ip6)
 
         #
         # ... and that we have an entry in the ND cache
@@ -816,14 +878,10 @@ class IPv6NDProxyTest(TestIPv6ND):
                   ICMPv6ND_NS(tgt=self.pg0._remote_hosts[2].ip6) /
                   ICMPv6NDOptSrcLLAddr(lladdr=self.pg0.remote_mac))
 
-        self.pg0.add_stream(ns_pg0)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = self.pg0.get_capture(1)
-
-        self.validate_na(self.pg0, rx[0],
-                         tgt_ip=self.pg0._remote_hosts[2].ip6,
-                         dst_ip=self.pg0.remote_ip6)
+        self.send_and_expect_na(self.pg0, ns_pg0,
+                                "NS to proxy entry on main",
+                                tgt_ip=self.pg0._remote_hosts[2].ip6,
+                                dst_ip=self.pg0.remote_ip6)
 
         #
         # Setup and resolve proxy for another host on another interface
@@ -837,14 +895,10 @@ class IPv6NDProxyTest(TestIPv6ND):
             inet_pton(AF_INET6, self.pg0._remote_hosts[3].ip6),
             self.pg2.sw_if_index)
 
-        self.pg2.add_stream(ns_pg2)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = self.pg2.get_capture(1)
-
-        self.validate_na(self.pg2, rx[0],
-                         dst_ip=self.pg0._remote_hosts[3].ip6,
-                         tgt_ip=self.pg0.local_ip6)
+        self.send_and_expect_na(self.pg2, ns_pg2,
+                                "NS to proxy entry other interface",
+                                dst_ip=self.pg0._remote_hosts[3].ip6,
+                                tgt_ip=self.pg0.local_ip6)
 
         self.assertTrue(find_nbr(self,
                                  self.pg2.sw_if_index,
