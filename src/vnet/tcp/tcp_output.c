@@ -1558,7 +1558,6 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  tcp_tx_trace_t *t0;
 	  tcp_header_t *th0;
-	  tcp_connection_t *tc0;
 	  u32 error0 = TCP_ERROR_RST_SENT, next0 = TCP_RESET_NEXT_IP_LOOKUP;
 
 	  bi0 = from[0];
@@ -1592,13 +1591,8 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		th0 = ip4_next_header ((ip4_header_t *) th0);
 	      else
 		th0 = ip6_next_header ((ip6_header_t *) th0);
-	      tc0 =
-		tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
-				    my_thread_index);
 	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 	      clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
-	      clib_memcpy (&t0->tcp_connection, tc0,
-			   sizeof (t0->tcp_connection));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

@@ -351,8 +351,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Enqueue an initial (un-dequeued) chunk
    */
-  rv = svm_fifo_enqueue_nowait (f, 0 /* pid */ ,
-				sizeof (u32), (u8 *) test_data);
+  rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) test_data);
   TCP_TEST ((rv == sizeof (u32)), "enqueued %d", rv);
   TCP_TEST ((f->tail == 4), "fifo tail %u", f->tail);
 
@@ -364,7 +363,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     {
       offset = (2 * i + 1) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 1));
-      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
+      rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
 			 offset + sizeof (u32));
@@ -393,7 +392,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     {
       offset = (2 * i + 0) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 0));
-      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
+      rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i, offset,
 			 offset + sizeof (u32));
@@ -418,8 +417,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Enqueue the missing u32
    */
-  rv = svm_fifo_enqueue_nowait (f, 0 /* pid */ , sizeof (u32),
-				(u8 *) (test_data + 2));
+  rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) (test_data + 2));
   if (verbose)
     vlib_cli_output (vm, "fifo after missing link: %U", format_svm_fifo, f,
 		     1);
@@ -432,8 +430,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
    */
   for (i = 0; i < 7; i++)
     {
-      rv = svm_fifo_dequeue_nowait (f, 0 /* pid */ , sizeof (u32),
-				    (u8 *) & data_word);
+      rv = svm_fifo_dequeue_nowait (f, sizeof (u32), (u8 *) & data_word);
       if (rv != sizeof (u32))
 	{
 	  clib_warning ("bytes dequeues %u", rv);
@@ -457,7 +454,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     {
       offset = (2 * i + 1) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 1));
-      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
+      rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
 			 offset + sizeof (u32));
@@ -468,13 +465,13 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  rv = svm_fifo_enqueue_with_offset (f, 0, 8, 21, data);
+  rv = svm_fifo_enqueue_with_offset (f, 8, 21, data);
   TCP_TEST ((rv == 0), "ooo enqueued %u", rv);
   TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   vec_validate (data_buf, vec_len (data));
-  svm_fifo_peek (f, 0, 0, vec_len (data), data_buf);
+  svm_fifo_peek (f, 0, vec_len (data), data_buf);
   if (compare_data (data_buf, data, 8, vec_len (data), &j))
     {
       TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
@@ -491,7 +488,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     {
       offset = (2 * i + 1) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 1));
-      rv = svm_fifo_enqueue_with_offset (f, 0, offset, sizeof (u32), data);
+      rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
 			 offset + sizeof (u32));
@@ -502,13 +499,13 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  rv = svm_fifo_enqueue_nowait (f, 0, 29, data);
+  rv = svm_fifo_enqueue_nowait (f, 29, data);
   TCP_TEST ((rv == 32), "ooo enqueued %u", rv);
   TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   vec_validate (data_buf, vec_len (data));
-  svm_fifo_peek (f, 0, 0, vec_len (data), data_buf);
+  svm_fifo_peek (f, 0, vec_len (data), data_buf);
   if (compare_data (data_buf, data, 0, vec_len (data), &j))
     {
       TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j], data[j]);
@@ -551,7 +548,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
     {
       tp = vp + i;
       data64 = tp->offset;
-      rv = svm_fifo_enqueue_with_offset (f, 0, tp->offset, tp->len,
+      rv = svm_fifo_enqueue_with_offset (f, tp->offset, tp->len,
 					 (u8 *) & data64);
     }
 
@@ -565,7 +562,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
 	    "first ooo seg length %u", ooo_seg->length);
 
   data64 = 0;
-  rv = svm_fifo_enqueue_nowait (f, 0, sizeof (u32), (u8 *) & data64);
+  rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) & data64);
   TCP_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
 
   svm_fifo_free (f);
@@ -581,7 +578,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
     {
       tp = &test_data[i];
       data64 = tp->offset;
-      rv = svm_fifo_enqueue_with_offset (f, 0, tp->offset, tp->len,
+      rv = svm_fifo_enqueue_with_offset (f, tp->offset, tp->len,
 					 (u8 *) & data64);
       if (rv)
 	{
@@ -599,7 +596,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
 	    "first ooo seg length %u", ooo_seg->length);
 
   data64 = 0;
-  rv = svm_fifo_enqueue_nowait (f, 0, sizeof (u32), (u8 *) & data64);
+  rv = svm_fifo_enqueue_nowait (f, sizeof (u32), (u8 *) & data64);
 
   TCP_TEST ((rv == 3000), "bytes to be enqueued %u", rv);
 
@@ -755,7 +752,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   for (i = 0; i < vec_len (generate); i++)
     {
       tp = generate + i;
-      rv = svm_fifo_enqueue_with_offset (f, 0, fifo_initial_offset
+      rv = svm_fifo_enqueue_with_offset (f, fifo_initial_offset
 					 + tp->offset, tp->len,
 					 (u8 *) data_pattern + tp->offset);
     }
@@ -776,7 +773,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
       u32 bytes_to_enq = 1;
       if (in_seq_all)
 	bytes_to_enq = total_size;
-      rv = svm_fifo_enqueue_nowait (f, 0, bytes_to_enq, data_pattern + 0);
+      rv = svm_fifo_enqueue_nowait (f, bytes_to_enq, data_pattern + 0);
 
       if (verbose)
 	vlib_cli_output (vm, "in-order enqueue returned %d", rv);
@@ -793,7 +790,7 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
    * Test if peeked data is the same as original data
    */
   vec_validate (data_buf, vec_len (data_pattern));
-  svm_fifo_peek (f, 0, 0, vec_len (data_pattern), data_buf);
+  svm_fifo_peek (f, 0, vec_len (data_pattern), data_buf);
   if (compare_data (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
     {
       TCP_TEST (0, "[%d] peeked %u expected %u", j, data_buf[j],
@@ -806,11 +803,11 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
    */
   if (drop)
     {
-      svm_fifo_dequeue_drop (f, 0, vec_len (data_pattern));
+      svm_fifo_dequeue_drop (f, vec_len (data_pattern));
     }
   else
     {
-      svm_fifo_dequeue_nowait (f, 0, vec_len (data_pattern), data_buf);
+      svm_fifo_dequeue_nowait (f, vec_len (data_pattern), data_buf);
       if (compare_data
 	  (data_buf, data_pattern, 0, vec_len (data_pattern), &j))
 	{

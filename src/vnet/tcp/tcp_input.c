@@ -1011,8 +1011,8 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 
   clib_warning ("ooo: offset %d len %d", offset, data_len);
 
-  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, s0->pid, offset,
-				     data_len, vlib_buffer_get_current (b));
+  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, offset, data_len,
+				     vlib_buffer_get_current (b));
 
   /* Nothing written */
   if (rv)
@@ -2392,8 +2392,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
-	      clib_memcpy (&t0->tcp_connection, tc0,
-			   sizeof (t0->tcp_connection));
+	      if (tc0)
+		clib_memcpy (&t0->tcp_connection, tc0, sizeof (*tc0));
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
