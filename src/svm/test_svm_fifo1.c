@@ -25,7 +25,6 @@ hello_world (int verbose)
   u8 *test_data;
   u8 *retrieved_data = 0;
   clib_error_t *error = 0;
-  int pid = getpid ();
 
   memset (a, 0, sizeof (*a));
 
@@ -48,18 +47,16 @@ hello_world (int verbose)
   vec_validate (retrieved_data, vec_len (test_data) - 1);
 
   while (svm_fifo_max_enqueue (f) >= vec_len (test_data))
-    svm_fifo_enqueue_nowait (f, pid, vec_len (test_data), test_data);
+    svm_fifo_enqueue_nowait (f, vec_len (test_data), test_data);
 
   while (svm_fifo_max_dequeue (f) >= vec_len (test_data))
-    svm_fifo_dequeue_nowait (f, pid, vec_len (retrieved_data),
-			     retrieved_data);
+    svm_fifo_dequeue_nowait (f, vec_len (retrieved_data), retrieved_data);
 
   while (svm_fifo_max_enqueue (f) >= vec_len (test_data))
-    svm_fifo_enqueue_nowait (f, pid, vec_len (test_data), test_data);
+    svm_fifo_enqueue_nowait (f, vec_len (test_data), test_data);
 
   while (svm_fifo_max_dequeue (f) >= vec_len (test_data))
-    svm_fifo_dequeue_nowait (f, pid, vec_len (retrieved_data),
-			     retrieved_data);
+    svm_fifo_dequeue_nowait (f, vec_len (retrieved_data), retrieved_data);
 
   if (!memcmp (retrieved_data, test_data, vec_len (test_data)))
     error = clib_error_return (0, "data test OK, got '%s'", retrieved_data);
@@ -81,7 +78,6 @@ master (int verbose)
   u8 *test_data;
   u8 *retrieved_data = 0;
   int i;
-  int pid = getpid ();
 
   memset (a, 0, sizeof (*a));
 
@@ -104,7 +100,7 @@ master (int verbose)
   vec_validate (retrieved_data, vec_len (test_data) - 1);
 
   for (i = 0; i < 1000; i++)
-    svm_fifo_enqueue_nowait (f, pid, vec_len (test_data), test_data);
+    svm_fifo_enqueue_nowait (f, vec_len (test_data), test_data);
 
   return clib_error_return (0, "master (enqueue) done");
 }
@@ -176,7 +172,6 @@ offset (int verbose)
   u32 *test_data = 0;
   u32 *recovered_data = 0;
   int i;
-  int pid = getpid ();
 
   memset (a, 0, sizeof (*a));
 
@@ -199,19 +194,19 @@ offset (int verbose)
     vec_add1 (test_data, i);
 
   /* Enqueue the first 1024 u32's */
-  svm_fifo_enqueue_nowait (f, pid, 4096 /* bytes to enqueue */ ,
+  svm_fifo_enqueue_nowait (f, 4096 /* bytes to enqueue */ ,
 			   (u8 *) test_data);
 
   /* Enqueue the third 1024 u32's 2048 ahead of the current tail */
-  svm_fifo_enqueue_with_offset (f, pid, 4096, 4096, (u8 *) & test_data[2048]);
+  svm_fifo_enqueue_with_offset (f, 4096, 4096, (u8 *) & test_data[2048]);
 
   /* Enqueue the second 1024 u32's at the current tail */
-  svm_fifo_enqueue_nowait (f, pid, 4096 /* bytes to enqueue */ ,
+  svm_fifo_enqueue_nowait (f, 4096 /* bytes to enqueue */ ,
 			   (u8 *) & test_data[1024]);
 
   vec_validate (recovered_data, (3 * 1024) - 1);
 
-  svm_fifo_dequeue_nowait (f, pid, 3 * 4096, (u8 *) recovered_data);
+  svm_fifo_dequeue_nowait (f, 3 * 4096, (u8 *) recovered_data);
 
   for (i = 0; i < (3 * 1024); i++)
     {
@@ -237,7 +232,6 @@ slave (int verbose)
   int rv;
   u8 *test_data;
   u8 *retrieved_data = 0;
-  int pid = getpid ();
   int i;
 
   memset (a, 0, sizeof (*a));
@@ -262,8 +256,7 @@ slave (int verbose)
 
   for (i = 0; i < 1000; i++)
     {
-      svm_fifo_dequeue_nowait (f, pid, vec_len (retrieved_data),
-			       retrieved_data);
+      svm_fifo_dequeue_nowait (f, vec_len (retrieved_data), retrieved_data);
       if (memcmp (retrieved_data, test_data, vec_len (retrieved_data)))
 	return clib_error_return (0, "retrieved data incorrect, '%s'",
 				  retrieved_data);

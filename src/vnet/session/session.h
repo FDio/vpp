@@ -17,9 +17,6 @@
 
 #include <vnet/session/transport.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
-#include <vlibmemory/api.h>
-#include <vppinfra/sparse_vec.h>
-#include <svm/svm_fifo_segment.h>
 #include <vnet/session/session_debug.h>
 #include <vnet/session/segment_manager.h>
 
@@ -31,10 +28,10 @@
 
 typedef enum
 {
-  FIFO_EVENT_SERVER_RX,
-  FIFO_EVENT_SERVER_TX,
+  FIFO_EVENT_APP_RX,
+  FIFO_EVENT_APP_TX,
   FIFO_EVENT_TIMEOUT,
-  FIFO_EVENT_SERVER_EXIT,
+  FIFO_EVENT_DISCONNECT,
   FIFO_EVENT_BUILTIN_RX
 } fifo_event_type_t;
 
@@ -96,7 +93,11 @@ typedef enum
 
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
-  svm_fifo_t * fifo;
+  union
+    {
+      svm_fifo_t * fifo;
+      u64 session_handle;
+    };
   u8 event_type;
   u16 event_id;
 }) session_fifo_event_t;
@@ -370,7 +371,9 @@ int stream_session_listen (stream_session_t * s, transport_endpoint_t * tep);
 int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
-
+void session_send_session_evt_to_thread (u64 session_handle,
+					 fifo_event_type_t evt_type,
+					 u32 thread_index);
 u8 *format_stream_session (u8 * s, va_list * args);
 
 void session_register_transport (u8 type, const transport_proto_vft_t * vft);

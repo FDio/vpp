@@ -218,8 +218,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   *      2) buffer chains */
 	  if (peek_data)
 	    {
-	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, s0->pid,
-					    rx_offset, len_to_deq0, data0);
+	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, rx_offset,
+					    len_to_deq0, data0);
 	      if (n_bytes_read <= 0)
 		goto dequeue_fail;
 
@@ -230,8 +230,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
-						      s0->pid, len_to_deq0,
-						      data0);
+						      len_to_deq0, data0);
 	      if (n_bytes_read <= 0)
 		goto dequeue_fail;
 	    }
@@ -299,6 +298,26 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   return session_tx_fifo_read_and_snd_i (vm, node, smm, e0, s0, thread_index,
 					 n_tx_pkts, 0);
+}
+
+stream_session_t *
+session_event_get_session (session_fifo_event_t * e0, u8 thread_index)
+{
+  svm_fifo_t *f0;
+  stream_session_t *s0;
+  u32 session_index0;
+
+  f0 = e0->fifo;
+  session_index0 = f0->master_session_index;
+
+  /* $$$ add multiple event queues, per vpp worker thread */
+  ASSERT (f0->master_thread_index == thread_index);
+
+  s0 = stream_session_get_if_valid (session_index0, thread_index);
+
+  ASSERT (s0->thread_index == thread_index);
+
+  return s0;
 }
 
 static uword
@@ -370,34 +389,24 @@ skip_dequeue:
   n_events = vec_len (my_fifo_events);
   for (i = 0; i < n_events; i++)
     {
-      svm_fifo_t *f0;		/* $$$ prefetch 1 ahead maybe */
-      stream_session_t *s0;
-      u32 session_index0;
+      stream_session_t *s0;	/* $$$ prefetch 1 ahead maybe */
       session_fifo_event_t *e0;
 
       e0 = &my_fifo_events[i];
-      f0 = e0->fifo;
-      session_index0 = f0->server_session_index;
-
-      /* $$$ add multiple event queues, per vpp worker thread */
-      ASSERT (f0->server_thread_index == my_thread_index);
-
-      s0 = stream_session_get_if_valid (session_index0, my_thread_index);
-
-      if (CLIB_DEBUG && !s0)
-	{
-	  clib_warning ("It's dead, Jim!");
-	  continue;
-	}
-
-      if (PREDICT_FALSE (s0->session_state == SESSION_STATE_CLOSED))
-	continue;
-
-      ASSERT (s0->thread_index == my_thread_index);
 
       switch (e0->event_type)
 	{
-	case FIFO_EVENT_SERVER_TX:
+	case FIFO_EVENT_APP_TX:
+	  s0 = session_event_get_session (e0, my_thread_index);
+
+	  if (CLIB_DEBUG && !s0)
+	    {
+	      clib_warning ("It's dead, Jim!");
+	      continue;
+	    }
+
+	  if (PREDICT_FALSE (s0->session_state == SESSION_STATE_CLOSED))
+	    continue;
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
 	  rv = (smm->session_tx_fns[s0->session_type]) (vm, node, smm, e0, s0,
@@ -408,10 +417,12 @@ skip_dequeue:
 	    goto done;
 
 	  break;
-	case FIFO_EVENT_SERVER_EXIT:
+	case FIFO_EVENT_DISCONNECT:
+	  s0 = stream_session_get_from_handle (e0->session_handle);
 	  stream_session_disconnect (s0);
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:
+	  s0 = session_event_get_session (e0, my_thread_index);
 	  svm_fifo_unset_event (s0->server_rx_fifo);
 	  /* Get session's server */
 	  app = application_get (s0->app_index);
