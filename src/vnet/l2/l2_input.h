@@ -89,6 +89,17 @@ l2input_bd_config_from_index (l2input_main_t * l2im, u32 bd_index)
   return bd_is_valid (bd_config) ? bd_config : NULL;
 }
 
+static_always_inline l2_bridge_domain_t *
+l2input_bd_config (u32 bd_index)
+{
+  l2input_main_t *mp = &l2input_main;
+  l2_bridge_domain_t *bd_config;
+
+  vec_validate (mp->bd_configs, bd_index);
+  bd_config = vec_elt_at_index (mp->bd_configs, bd_index);
+  return bd_config;
+}
+
 /* L2 input indication packet is from BVI, using -2 */
 #define L2INPUT_BVI ((u32) (~0-1))
 

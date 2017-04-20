@@ -94,6 +94,8 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
 {
   l2_bridge_domain_t *bd = &l2input_main.bd_configs[bd_index];
   u32 bd_id = bd->bd_id;
+  l2fib_flush_bd_mac (vlib_get_main (), bd_index);
+
   hash_unset (bdm->bd_index_by_bd_id, bd_id);
 
   /* mark this index clear */
@@ -107,7 +109,6 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
   vec_free (bd->members);
   hash_free (bd->mac_by_ip4);
   hash_free (bd->mac_by_ip6);
-  l2fib_flush_bd_mac (vlib_get_main (), bd_index);
 
   return 0;
 }
@@ -219,13 +220,9 @@ u32
 bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable)
 {
 
-  l2_bridge_domain_t *bd_config;
-  u32 feature_bitmap = 0;
-
-  vec_validate (l2input_main.bd_configs, bd_index);
-  bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
-
+  l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
   bd_validate (bd_config);
+  u32 feature_bitmap = 0;
 
   if (flags & L2_LEARN)
     {
@@ -713,13 +710,13 @@ u32
 bd_add_del_ip_mac (u32 bd_index,
 		   u8 * ip_addr, u8 * mac_addr, u8 is_ip6, u8 is_add)
 {
-  l2input_main_t *l2im = &l2input_main;
-  l2_bridge_domain_t *bd_cfg = l2input_bd_config_from_index (l2im, bd_index);
+  l2_bridge_domain_t *bd_cfg = l2input_bd_config (bd_index);
   u64 new_mac = *(u64 *) mac_addr;
   u64 *old_mac;
   u16 *mac16 = (u16 *) & new_mac;
 
   ASSERT (sizeof (uword) == sizeof (u64));	/* make sure uword is 8 bytes */
+  ASSERT (bd_is_valid (bd_cfg));
 
   mac16[3] = 0;			/* Clear last 2 unsed bytes of the 8-byte MAC address */
   if (is_ip6)
