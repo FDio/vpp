@@ -54,21 +54,19 @@
 static void
 tcp_pg_edit_function (pg_main_t * pg,
 		      pg_stream_t * s,
-		      pg_edit_group_t * g,
-		      u32 * packets,
-		      u32 n_packets)
+		      pg_edit_group_t * g, u32 * packets, u32 n_packets)
 {
-  vlib_main_t * vm = vlib_get_main();
+  vlib_main_t *vm = vlib_get_main ();
   u32 ip_offset, tcp_offset;
 
   tcp_offset = g->start_byte_offset;
-  ip_offset = (g-1)->start_byte_offset;
+  ip_offset = (g - 1)->start_byte_offset;
 
   while (n_packets >= 1)
     {
-      vlib_buffer_t * p0;
-      ip4_header_t * ip0;
-      tcp_header_t * tcp0;
+      vlib_buffer_t *p0;
+      ip4_header_t *ip0;
+      tcp_header_t *tcp0;
       ip_csum_t sum0;
       u32 tcp_len0;
 
@@ -85,7 +83,9 @@ tcp_pg_edit_function (pg_main_t * pg,
       if (BITS (sum0) == 32)
 	{
 	  sum0 = clib_mem_unaligned (&ip0->src_address, u32);
-	  sum0 = ip_csum_with_carry (sum0, clib_mem_unaligned (&ip0->dst_address, u32));
+	  sum0 =
+	    ip_csum_with_carry (sum0,
+				clib_mem_unaligned (&ip0->dst_address, u32));
 	}
       else
 	sum0 = clib_mem_unaligned (&ip0->src_address, u64);
@@ -96,20 +96,22 @@ tcp_pg_edit_function (pg_main_t * pg,
       /* Invalidate possibly old checksum. */
       tcp0->checksum = 0;
 
-      sum0 = ip_incremental_checksum_buffer (vm, p0, tcp_offset, tcp_len0, sum0);
+      sum0 =
+	ip_incremental_checksum_buffer (vm, p0, tcp_offset, tcp_len0, sum0);
 
-      tcp0->checksum = ~ ip_csum_fold (sum0);
+      tcp0->checksum = ~ip_csum_fold (sum0);
     }
 }
 
-typedef struct {
+typedef struct
+{
   pg_edit_t src, dst;
   pg_edit_t seq_number, ack_number;
   pg_edit_t data_offset_and_reserved;
 #define _(f) pg_edit_t f##_flag;
-  foreach_tcp_flag
+    foreach_tcp_flag
 #undef _
-  pg_edit_t window;
+    pg_edit_t window;
   pg_edit_t checksum;
   pg_edit_t urgent_pointer;
 } pg_tcp_header_t;
@@ -119,13 +121,13 @@ pg_tcp_header_init (pg_tcp_header_t * p)
 {
   /* Initialize fields that are not bit fields in the IP header. */
 #define _(f) pg_edit_init (&p->f, tcp_header_t, f);
-  _ (src);
-  _ (dst);
-  _ (seq_number);
-  _ (ack_number);
-  _ (window);
-  _ (checksum);
-  _ (urgent_pointer);
+  _(src);
+  _(dst);
+  _(seq_number);
+  _(ack_number);
+  _(window);
+  _(checksum);
+  _(urgent_pointer);
 #undef _
 
   /* Initialize bit fields. */
@@ -136,19 +138,17 @@ pg_tcp_header_init (pg_tcp_header_t * p)
 
   foreach_tcp_flag
 #undef _
-
-  pg_edit_init_bitfield (&p->data_offset_and_reserved, tcp_header_t,
-			 data_offset_and_reserved,
-			 4, 4);
+    pg_edit_init_bitfield (&p->data_offset_and_reserved, tcp_header_t,
+			   data_offset_and_reserved, 4, 4);
 }
 
 uword
 unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
 {
-  pg_stream_t * s = va_arg (*args, pg_stream_t *);
-  pg_tcp_header_t * p;
+  pg_stream_t *s = va_arg (*args, pg_stream_t *);
+  pg_tcp_header_t *p;
   u32 group_index;
-  
+
   p = pg_create_edit_group (s, sizeof (p[0]), sizeof (tcp_header_t),
 			    &group_index);
   pg_tcp_header_init (p);
@@ -157,8 +157,8 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
   pg_edit_set_fixed (&p->seq_number, 0);
   pg_edit_set_fixed (&p->ack_number, 0);
 
-  pg_edit_set_fixed (&p->data_offset_and_reserved, 
-                     sizeof (tcp_header_t) / sizeof (u32));
+  pg_edit_set_fixed (&p->data_offset_and_reserved,
+		     sizeof (tcp_header_t) / sizeof (u32));
 
   pg_edit_set_fixed (&p->window, 4096);
   pg_edit_set_fixed (&p->urgent_pointer, 0);
@@ -166,43 +166,44 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
 #define _(f) pg_edit_set_fixed (&p->f##_flag, 0);
   foreach_tcp_flag
 #undef _
+    p->checksum.type = PG_EDIT_UNSPECIFIED;
 
-  p->checksum.type = PG_EDIT_UNSPECIFIED;
-
-  if (! unformat (input, "TCP: %U -> %U",
-		  unformat_pg_edit,
-		    unformat_tcp_udp_port, &p->src,
-		  unformat_pg_edit,
-		    unformat_tcp_udp_port, &p->dst))
+  if (!unformat (input, "TCP: %U -> %U",
+		 unformat_pg_edit,
+		 unformat_tcp_udp_port, &p->src,
+		 unformat_pg_edit, unformat_tcp_udp_port, &p->dst))
     goto error;
 
   /* Parse options. */
   while (1)
     {
       if (unformat (input, "window %U",
-		    unformat_pg_edit,
-		    unformat_pg_number, &p->window))
+		    unformat_pg_edit, unformat_pg_number, &p->window))
 	;
 
       else if (unformat (input, "checksum %U",
-			 unformat_pg_edit,
-			 unformat_pg_number, &p->checksum))
+			 unformat_pg_edit, unformat_pg_number, &p->checksum))
 	;
 
+      else if (unformat (input, "seqnum %U", unformat_pg_edit,
+			 unformat_pg_number, &p->seq_number))
+	;
+      else if (unformat (input, "acknum %U", unformat_pg_edit,
+			 unformat_pg_number, &p->ack_number))
+	;
       /* Flags. */
 #define _(f) else if (unformat (input, #f)) pg_edit_set_fixed (&p->f##_flag, 1);
-  foreach_tcp_flag
+      foreach_tcp_flag
 #undef _
-
-      /* Can't parse input: try next protocol level. */
-      else
+	/* Can't parse input: try next protocol level. */
+	else
 	break;
     }
 
   {
-    ip_main_t * im = &ip_main;
+    ip_main_t *im = &ip_main;
     u16 dst_port;
-    tcp_udp_port_info_t * pi;
+    tcp_udp_port_info_t *pi;
 
     pi = 0;
     if (p->dst.type == PG_EDIT_FIXED)
@@ -215,12 +216,12 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
 	&& unformat_user (input, pi->unformat_pg_edit, s))
       ;
 
-    else if (! unformat_user (input, unformat_pg_payload, s))
+    else if (!unformat_user (input, unformat_pg_payload, s))
       goto error;
 
     if (p->checksum.type == PG_EDIT_UNSPECIFIED)
       {
-	pg_edit_group_t * g = pg_stream_get_group (s, group_index);
+	pg_edit_group_t *g = pg_stream_get_group (s, group_index);
 	g->edit_function = tcp_pg_edit_function;
 	g->edit_function_opaque = 0;
       }
@@ -228,9 +229,16 @@ unformat_pg_tcp_header (unformat_input_t * input, va_list * args)
     return 1;
   }
 
- error:
+error:
   /* Free up any edits we may have added. */
   pg_free_edit_group (s);
   return 0;
 }
 
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

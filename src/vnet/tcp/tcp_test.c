@@ -895,6 +895,68 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
   return res;
 }
 
+static int
+tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
+{
+  int rv = 0;
+  tcp_connection_t *tc0;
+  u8 sst = SESSION_TYPE_IP4_TCP;
+  ip4_address_t local, remote;
+  u16 local_port, remote_port;
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  int is_add = 1;
+
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "add"))
+	is_add = 1;
+      else
+	break;
+    }
+
+  if (is_add)
+    {
+      local.as_u32 = clib_host_to_net_u32 (0x06000101);
+      remote.as_u32 = clib_host_to_net_u32 (0x06000102);
+      local_port = clib_host_to_net_u16 (1234);
+      remote_port = clib_host_to_net_u16 (11234);
+
+      pool_get (tm->connections[0], tc0);
+      memset (tc0, 0, sizeof (*tc0));
+
+      tc0->state = TCP_STATE_ESTABLISHED;
+      tc0->rcv_las = 1;
+      tc0->c_c_index = tc0 - tm->connections[0];
+      tc0->c_lcl_port = local_port;
+      tc0->c_rmt_port = remote_port;
+      tc0->c_is_ip4 = 1;
+      tc0->c_thread_index = 0;
+      tc0->c_lcl_ip4.as_u32 = local.as_u32;
+      tc0->c_rmt_ip4.as_u32 = remote.as_u32;
+      tc0->opt.mss = 1450;
+      tcp_connection_init_vars (tc0);
+
+      TCP_EVT_DBG (TCP_EVT_OPEN, tc0);
+
+      if (stream_session_accept (&tc0->connection, 0 /* listener index */ ,
+				 sst, 0 /* notify */ ))
+	clib_warning ("stream_session_accept failed");
+
+      stream_session_accept_notify (&tc0->connection);
+    }
+  else
+    {
+      tc0 = tcp_connection_get (0 /* connection index */ , 0 /* thread */ );
+      tc0->state = TCP_STATE_CLOSED;
+      stream_session_disconnect_notify (&tc0->connection);
+    }
+
+  return rv;
+}
+
 static clib_error_t *
 tcp_test (vlib_main_t * vm,
 	  unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -911,11 +973,12 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_fifo (vm, input);
 	}
-      else
+      else if (unformat (input, "session"))
 	{
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
+	  res = tcp_test_session (vm, input);
 	}
+      else
+	break;
     }
 
   if (res)

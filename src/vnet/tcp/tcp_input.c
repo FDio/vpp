@@ -2376,7 +2376,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vnet_buffer (b0)->tcp.flags = tc0->state;
 		  clib_warning ("disp error state %U flags %U",
 				format_tcp_state, &state0,
-				format_tcp_flags, flags0);
+				format_tcp_flags, (int) flags0);
 		}
 	    }
 	  else
