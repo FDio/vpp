@@ -751,8 +751,7 @@ void
 l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index)
 {
   l2_bridge_domain_t *bd_config;
-  vec_validate (l2input_main.bd_configs, bd_index);
-  bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
+  bd_config = l2input_bd_config (bd_index);
   bd_config->seq_num += 1;
   l2fib_start_ager_scan (vm);
 }
@@ -848,6 +847,16 @@ VLIB_CLI_COMMAND (l2fib_flush_mac_bd_cli, static) = {
 };
 /* *INDENT-ON* */
 
+clib_error_t *
+l2fib_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+{
+  l2_input_config_t *config = l2input_intf_config (sw_if_index);
+  if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0 && config->bridge)
+    l2fib_flush_int_mac (vnm->vlib_main, sw_if_index);
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (l2fib_sw_interface_up_down);
 
 BVT (clib_bihash) * get_mac_table (void)
 {

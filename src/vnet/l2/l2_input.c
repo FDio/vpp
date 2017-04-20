@@ -481,20 +481,12 @@ l2input_intf_config (u32 sw_if_index)
 u32
 l2input_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
 {
-  l2input_main_t *mp = &l2input_main;
-  l2_input_config_t *config;
-
-  vec_validate (mp->configs, sw_if_index);
-  config = vec_elt_at_index (mp->configs, sw_if_index);
+  l2_input_config_t *config = l2input_intf_config (sw_if_index);
 
   if (enable)
-    {
-      config->feature_bitmap |= feature_bitmap;
-    }
+    config->feature_bitmap |= feature_bitmap;
   else
-    {
-      config->feature_bitmap &= ~feature_bitmap;
-    }
+    config->feature_bitmap &= ~feature_bitmap;
 
   return config->feature_bitmap;
 }
@@ -502,9 +494,7 @@ l2input_intf_bitmap_enable (u32 sw_if_index, u32 feature_bitmap, u32 enable)
 u32
 l2input_set_bridge_features (u32 bd_index, u32 feat_mask, u32 feat_value)
 {
-  l2_bridge_domain_t *bd_config;
-  vec_validate (l2input_main.bd_configs, bd_index);
-  bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
+  l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);;
   bd_validate (bd_config);
   bd_config->feature_bitmap =
     (bd_config->feature_bitmap & ~feat_mask) | feat_value;
@@ -535,7 +525,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   l2_output_config_t *out_config;
   l2_input_config_t *config;
   l2_bridge_domain_t *bd_config;
-  l2_flood_member_t member;
   u64 mac;
   i32 l2_if_adjust = 0;
   u32 slot;
@@ -570,8 +559,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	}
 
       /* Clear MACs learned on the interface */
-      if ((config->feature_bitmap | L2INPUT_FEAT_LEARN) ||
-	  (bd_config->feature_bitmap | L2INPUT_FEAT_LEARN))
+      if ((config->feature_bitmap & L2INPUT_FEAT_LEARN) ||
+	  (bd_config->feature_bitmap & L2INPUT_FEAT_LEARN))
 	l2fib_flush_int_mac (vm, sw_if_index);
 
       l2_if_adjust--;
@@ -661,8 +650,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->feature_bitmap &= ~L2INPUT_FEAT_XCONNECT;
 
 	  /* Set up bridge domain */
-	  vec_validate (mp->bd_configs, bd_index);
-	  bd_config = vec_elt_at_index (mp->bd_configs, bd_index);
+	  bd_config = l2input_bd_config (bd_index);
 	  bd_validate (bd_config);
 
 	  /* TODO: think: add l2fib entry even for non-bvi interface? */
@@ -694,9 +682,11 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	    }
 
 	  /* Add interface to bridge-domain flood vector */
-	  member.sw_if_index = sw_if_index;
-	  member.flags = bvi ? L2_FLOOD_MEMBER_BVI : L2_FLOOD_MEMBER_NORMAL;
-	  member.shg = shg;
+	  l2_flood_member_t member = {
+	    .sw_if_index = sw_if_index,
+	    .flags = bvi ? L2_FLOOD_MEMBER_BVI : L2_FLOOD_MEMBER_NORMAL,
+	    .shg = shg,
+	  };
 	  bd_add_member (bd_config, &member);
 
 	}
@@ -997,10 +987,8 @@ show_int_mode (vlib_main_t * vm,
   char *mode;
   u8 *args;
   vnet_interface_main_t *im = &vnm->interface_main;
-  vnet_sw_interface_t *si, *sis = 0;
-  l2input_main_t *mp = &l2input_main;
-  l2_input_config_t *config;
 
+  vnet_sw_interface_t *si, *sis = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       u32 sw_if_index;
@@ -1018,7 +1006,6 @@ show_int_mode (vlib_main_t * vm,
 				     format_unformat_error, input);
 	  goto done;
 	}
-
     }
 
   if (vec_len (sis) == 0)	/* Get all interfaces */
@@ -1033,8 +1020,7 @@ show_int_mode (vlib_main_t * vm,
 
   vec_foreach (si, sis)
   {
-    vec_validate (mp->configs, si->sw_if_index);
-    config = vec_elt_at_index (mp->configs, si->sw_if_index);
+    l2_input_config_t *config = l2input_intf_config (si->sw_if_index);
     if (config->bridge)
       {
 	u32 bd_id;
