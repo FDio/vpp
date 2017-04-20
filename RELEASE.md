@@ -1,11 +1,104 @@
 # Release Notes    {#release_notes}
 
 * @subpage release_notes_1704
+* @subpage release_notes_17011
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
 
 @page release_notes_1704 Release notes for VPP 17.04
+
+More than 500 commits since the 1701 release.
+
+## Features
+- Infrastructure
+  - make test improvements
+  - vnet: add device-input threadplacement infra
+  - 64 bit per-thread counters
+  - process restart cli
+  - High performance timer wheels
+  - Plugin infrastructure improvements
+    - Support for .default_disabled, .version_required
+  - Added MAINTAINERS file
+
+- Host stack
+  - TCP stack (experimental)
+  - DHCPv4 / DHCPv6 relay multi-destination
+  - DHCPv4 option 82
+  - ND proxy
+  - Attached hosts
+  - Consolidated DHCPv4 and DHCPv6 implementation
+
+- Interfaces
+  - DPDK 17.02 (retire support for DPDK 16.07)
+  - Add memif - packet memory interface for intra-host communication
+  - vhost: support interrupt mode
+  - DPDK as plugin (retired vpp_lite)
+  - DPDPK input optimizations
+  - Loopback interface allocation scheme
+
+- Network features
+  - IP Multicast FIB
+
+  - Bridging
+    - Learning on local interfaces
+    - Flushing of MACs from the L2 FIB
+
+  - SNAT
+    - CGN (Deterministic and dynamic)
+    - CGN configurable port allocation algorithm
+    - ICMP support
+    - Tentant VRF id for SNAT outside addresses
+    - Session dump / User dump
+    - Port allocation per protocol
+
+  - Security groups
+    - Routed interface support
+    - L2+L3 unified processing node
+    - Improve fragment handling
+
+  - Segement routing v6
+    - SR policies with weighted SID lists
+    - Binding SID
+    - SR steering policies
+    - SR Local SIDs
+    - Framework to expand local SIDs w/plugins
+    - Documentation
+
+  - IOAM
+    - UDP Pinger w/path fault isolation
+    - IOAM as type 2 metadata in NSH
+    - IAOM raw IPFIX collector and analyzer
+    - Anycast active server selection
+    - Documentation
+    - SRv6 Local SID
+    - IP6 HBH header and SR header co-existence
+    - Active probe
+
+  - LISP
+    - Statistics collection
+    - Generalize encap for overlay transport (vxlan-gpe support)
+    - Improve data plane speed
+
+  - GPE
+    - CLI
+    - NSH added to encap/decap path
+    - Renamed LISP GPE API to GPE
+
+  - MPLS
+    - Performance improvements (quad loop)
+
+  - BFD
+    - Command line interface
+    - Echo function
+    - Remote demand mode
+    - SHA1 authentication
+
+  - IPsec
+    - IKEv2 initiator features
+
+  - VXLAN
+    - unify IP4/IP6 control plane handling
 
 ## API changes
 
@@ -23,23 +116,112 @@
   For backwards compatibility VPP API methods are left in the main
   name space (VPP), but will be removed from 17.07.
 
+  - Python API: Change from cPython to CFFI.
+
 - create_loopback message to be replaced with create_loopback_instance
   create_loopback will be removed from 17.07.
   https://gerrit.fd.io/r/#/c/5572/
 
-@todo Release 17.04 needs release notes.
+## Known issues
+
+For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1704)
+
+@page release_notes_17011 Release notes for VPP 17.01.1
+
+This is bug fix release.
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
 
 @page release_notes_1701 Release notes for VPP 17.01
 
 @note This release was for a while known as 16.12.
-@todo Release 17.01 needs release notes. It will show up here soon...
 
 ## Features
 
+- [Integrated November 2016 DPDK release](http://www.dpdk.org/doc/guides/rel_notes/release_16_11.html)
+
+- Complete rework of Forwarding Information Base (FIB)
+
+- Performance Improvements
+  - Improvements in DPDK input and output nodes
+  - Improvements in L2 path
+  - Improvmeents in IPv4 lookup node
+
+- Feature Arcs Improvements
+  - Consolidation of the code
+  - New feature arcs
+    - device-input
+    - interface-output
+
+- DPDK Cryptodev Support
+  - Software and Hardware Crypto Support
+
+- DPDK HQoS support
+
+- Simple Port Analyzer (SPAN)
+
+- Bidirectional Forwarding Detection
+  - Basic implementation
+
+- IPFIX Improvements
+
+- L2 GRE over IPSec tunnels
+
+- Link Layer Discovery Protocol (LLDP)
+
+- Vhost-user Improvements
+  - Performance Improvements
+  - Multiqueue
+  - Reconnect
+
+- LISP Enhancements
+  - Source/Dest control plane support
+  - L2 over LISP and GRE
+  - Map-Register/Map-Notify/RLOC-probing support
+  - L2 API improvements, overall code hardening
+
+- Plugins:
+  - New: ACL
+  - New: Flow per Packet
+  - Improved: SNAT
+    - Mutlithreading
+    - Flow export
+
+- Doxygen Enhancements
+
+- Luajit API bindings
+
+- API Refactoring
+  - file split
+  - message signatures
+
+- Python and Scapy based unit testing infrastructure
+  - Infrastructure
+  - Various tests
+
+- Packet Generator improvements
+
+- TUN/TAP jumbo frames support
+
+- Other various bug fixes and improvements
+
 ## Known issues
+
+For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
 
 ## Issues fixed
 
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1701)
 
 @page release_notes_1609 Release notes for VPP 16.09
 
