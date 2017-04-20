@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_866c9b36",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 920,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-04-20T15:45:34Z",
+      "side": 1,
+      "message": "There is a similar code in this case statement. Doesn\u0027t it have the same problem?\n\n    case VHOST_USER_SET_LOG_BASE:\n...\n\tssize_t map_sz \u003d\n\t  (msg.log.size + msg.log.offset + page_sz) \u0026 ~(page_sz - 1);",
+      "revId": "195c98b2658241ebf8f0eda8dbd7e92e6534295f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
