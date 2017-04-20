@@ -45,7 +45,8 @@ format_tcp_flags (u8 * s, va_list * args)
 {
   int flags = va_arg (*args, int);
 
-#define _(f) if (flags & TCP_FLAG_##f) s = format (s, "%s, ", #f);
+  s = format (s, "0x%02x", flags);
+#define _(f) if (flags & TCP_FLAG_##f) s = format (s, " %s", #f);
   foreach_tcp_flag
 #undef _
     return s;
