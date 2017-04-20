@@ -303,7 +303,7 @@ unmap_all_mem_regions (vhost_user_intf_t * vui)
 
 	  ssize_t map_sz = (vui->regions[i].memory_size +
 			    vui->regions[i].mmap_offset +
-			    page_sz) & ~(page_sz - 1);
+			    page_sz - 1) & ~(page_sz - 1);
 
 	  r =
 	    munmap (vui->region_mmap_addr[i] - vui->regions[i].mmap_offset,
@@ -917,7 +917,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  /* align size to 2M page */
 	  ssize_t map_sz = (vui->regions[i].memory_size +
 			    vui->regions[i].mmap_offset +
-			    page_sz) & ~(page_sz - 1);
+			    page_sz - 1) & ~(page_sz - 1);
 
 	  vui->region_mmap_addr[i] = mmap (0, map_sz, PROT_READ | PROT_WRITE,
 					   MAP_SHARED, fds[i], 0);
@@ -1168,7 +1168,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	/* align size to 2M page */
 	long page_sz = get_huge_page_size (fd);
 	ssize_t map_sz =
-	  (msg.log.size + msg.log.offset + page_sz) & ~(page_sz - 1);
+	  (msg.log.size + msg.log.offset + page_sz - 1) & ~(page_sz - 1);
 
 	vui->log_base_addr = mmap (0, map_sz, PROT_READ | PROT_WRITE,
 				   MAP_SHARED, fd, 0);
