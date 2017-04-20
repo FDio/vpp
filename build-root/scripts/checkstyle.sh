@@ -40,7 +40,7 @@ indent --version
 cd ${VPP_DIR}
 git status
 for i in ${FILELIST}; do
-    if [ -f ${i} ] && [ ${i} != "build-root/scripts/checkstyle.sh" ] && [ ${i} != "build-root/emacs-lisp/fix-coding-style.el" ]; then
+    if [ -f ${i} ] && [ ${i} != "build-root/scripts/checkstyle.sh" ] && [ ${i} != "extras/emacs/fix-coding-style.el" ]; then
         grep -q "fd.io coding-style-patch-verification: ON" ${i}
         if [ $? == 0 ]; then
             CHECKSTYLED_FILES="${CHECKSTYLED_FILES} ${i}"
