@@ -487,7 +487,8 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 
   if (mp->retval)
     {
-      uword *errp = hash_get (utm->error_string_by_error_number, -mp->retval);
+      uword *errp = hash_get (utm->error_string_by_error_number,
+			      -clib_net_to_host_u32 (mp->retval));
       clib_warning ("connection failed with code: %s", *errp);
       utm->state = STATE_FAILED;
       return;

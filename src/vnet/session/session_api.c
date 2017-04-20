@@ -180,7 +180,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
     }
   else
     {
-      mp->retval = VNET_API_ERROR_SESSION_CONNECT_FAIL;
+      mp->retval = clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT_FAIL);
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
