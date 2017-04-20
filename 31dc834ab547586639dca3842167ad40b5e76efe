@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_43ec65f3",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 238,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-04-20T08:56:27Z",
+      "side": 1,
+      "message": "wipe-release is command to wipe local release workspace and it doesn\u0027t have anything with distribution package",
+      "range": {
+        "startLine": 238,
+        "startChar": 0,
+        "endLine": 238,
+        "endChar": 23
+      },
+      "revId": "31dc834ab547586639dca3842167ad40b5e76efe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
