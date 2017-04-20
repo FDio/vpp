@@ -16,6 +16,24 @@
       "revId": "195c98b2658241ebf8f0eda8dbd7e92e6534295f",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_06cf8b2b",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 920,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-04-20T16:35:44Z",
+      "side": 1,
+      "message": "Another one here.\n\nstatic void\nunmap_all_mem_regions (vhost_user_intf_t * vui)\n{\n  int i, r;\n  for (i \u003d 0; i \u003c vui-\u003enregions; i++)\n    {\n      if (vui-\u003eregion_mmap_addr[i] !\u003d (void *) -1)\n\t{\n\n\t  long page_sz \u003d get_huge_page_size (vui-\u003eregion_mmap_fd[i]);\n\n\t  ssize_t map_sz \u003d (vui-\u003eregions[i].memory_size +\n\t\t\t    vui-\u003eregions[i].mmap_offset +\n\t\t\t    page_sz) \u0026 ~(page_sz - 1);",
+      "parentUuid": "3a3291f1_866c9b36",
+      "revId": "195c98b2658241ebf8f0eda8dbd7e92e6534295f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
