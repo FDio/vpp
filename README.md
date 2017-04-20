@@ -67,7 +67,7 @@ To install system dependencies, build VPP and then install it, simply run the
 build script. This should be performed a non-privileged user with `sudo`
 access from the project base directory:
 
-    ./build-root/vagrant/build.sh
+    ./extras/vagrant/build.sh
 
 If you want a more fine-grained approach because you intend to do some
 development work, the `Makefile` in the root directory of the source tree
@@ -79,7 +79,7 @@ interest. To see the available targets run:
 
 ### Quick-start: Vagrant
 
-The directory `build-root/vagrant` contains a `VagrantFile` and supporting
+The directory `extras/vagrant` contains a `VagrantFile` and supporting
 scripts to bootstrap a working VPP inside a Vagrant-managed Virtual Machine.
 This VM can then be used to test concepts with VPP or as a development
 platform to extend VPP. Some obvious caveats apply when using a VM for VPP
