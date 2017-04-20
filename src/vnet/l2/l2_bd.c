@@ -228,13 +228,8 @@ u32
 bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable)
 {
 
-  l2_bridge_domain_t *bd_config;
+  l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
   u32 feature_bitmap = 0;
-
-  vec_validate (l2input_main.bd_configs, bd_index);
-  bd_config = vec_elt_at_index (l2input_main.bd_configs, bd_index);
-
-  bd_validate (bd_config);
 
   if (flags & L2_LEARN)
     {
