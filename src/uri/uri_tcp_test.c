@@ -192,7 +192,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   if (mp->retval)
     {
-      uword *errp = hash_get (utm->error_string_by_error_number, mp->retval);
+      uword *errp = hash_get (utm->error_string_by_error_number, -mp->retval);
       clib_warning ("attach failed: %s", *errp);
       utm->state = STATE_FAILED;
       return;
