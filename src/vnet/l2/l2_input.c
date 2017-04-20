@@ -535,7 +535,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   l2_output_config_t *out_config;
   l2_input_config_t *config;
   l2_bridge_domain_t *bd_config;
-  l2_flood_member_t member;
   u64 mac;
   i32 l2_if_adjust = 0;
   u32 slot;
@@ -570,8 +569,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	}
 
       /* Clear MACs learned on the interface */
-      if ((config->feature_bitmap | L2INPUT_FEAT_LEARN) ||
-	  (bd_config->feature_bitmap | L2INPUT_FEAT_LEARN))
+      if ((config->feature_bitmap & L2INPUT_FEAT_LEARN) ||
+	  (bd_config->feature_bitmap & L2INPUT_FEAT_LEARN))
 	l2fib_flush_int_mac (vm, sw_if_index);
 
       l2_if_adjust--;
@@ -694,9 +693,11 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	    }
 
 	  /* Add interface to bridge-domain flood vector */
-	  member.sw_if_index = sw_if_index;
-	  member.flags = bvi ? L2_FLOOD_MEMBER_BVI : L2_FLOOD_MEMBER_NORMAL;
-	  member.shg = shg;
+	  l2_flood_member_t member = {
+	    .sw_if_index = sw_if_index,
+	    .flags = bvi ? L2_FLOOD_MEMBER_BVI : L2_FLOOD_MEMBER_NORMAL,
+	    .shg = shg,
+	  };
 	  bd_add_member (bd_config, &member);
 
 	}

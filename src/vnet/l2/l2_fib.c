@@ -848,6 +848,15 @@ VLIB_CLI_COMMAND (l2fib_flush_mac_bd_cli, static) = {
 };
 /* *INDENT-ON* */
 
+clib_error_t *
+l2fib_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+{
+  if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) == 0)
+    l2fib_flush_int_mac (vnm->vlib_main, sw_if_index);
+  return 0;
+}
+
+VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (l2fib_sw_interface_up_down);
 
 BVT (clib_bihash) * get_mac_table (void)
 {
