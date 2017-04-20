@@ -917,7 +917,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  /* align size to 2M page */
 	  ssize_t map_sz = (vui->regions[i].memory_size +
 			    vui->regions[i].mmap_offset +
-			    page_sz) & ~(page_sz - 1);
+			    page_sz - 1) & ~(page_sz - 1);
 
 	  vui->region_mmap_addr[i] = mmap (0, map_sz, PROT_READ | PROT_WRITE,
 					   MAP_SHARED, fds[i], 0);
