@@ -80,7 +80,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!smm->is_enabled)
     {
-      clib_error_return (0, "session layer is not enabled");
+      return clib_error_return (0, "session layer is not enabled");
     }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -152,7 +152,7 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (!smm->is_enabled)
     {
-      clib_error_return (0, "session layer is not enabled");
+      return clib_error_return (0, "session layer is not enabled");
     }
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
