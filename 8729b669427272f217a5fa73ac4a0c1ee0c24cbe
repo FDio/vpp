@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_bcae8696",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 217,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-04-21T12:24:42Z",
+      "side": 1,
+      "message": "maybe clib_unix_warning is better choice...",
+      "range": {
+        "startLine": 217,
+        "startChar": 6,
+        "endLine": 217,
+        "endChar": 18
+      },
+      "revId": "8729b669427272f217a5fa73ac4a0c1ee0c24cbe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
