@@ -251,6 +251,7 @@ class BFDAPITestCase(VppTestCase):
         session.activate_auth(key2)
 
 
+@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class BFDTestSession(object):
     """ BFD session as seen from test framework side """
 
@@ -612,6 +613,7 @@ def wait_for_bfd_packet(test, timeout=1, pcap_time_min=None):
     return p
 
 
+@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class BFD4TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD)"""
 
@@ -1402,6 +1404,7 @@ class BFD4TestCase(VppTestCase):
         self.assert_equal(len(events), 0, "number of events received")
 
 
+@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class BFD6TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (IPv6) """
 
@@ -1595,6 +1598,7 @@ class BFD6TestCase(VppTestCase):
         self.assertTrue(echo_seen, "No echo packets received")
 
 
+@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class BFDFIBTestCase(VppTestCase):
     """ BFD-FIB interactions (IPv6) """
 
@@ -1696,6 +1700,7 @@ class BFDFIBTestCase(VppTestCase):
                              packet[IPv6].dst)
 
 
+@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class BFDSHA1TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD) (SHA1 auth) """
 
