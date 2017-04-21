@@ -1133,5 +1133,154 @@ class TestIPDisabled(VppTestCase):
         self.send_and_assert_no_replies(self.pg1, pm, "IPv6 disabled")
 
 
+class TestIP6LoadBalance(VppTestCase):
+    """ IPv6 Load-Balancing """
+
+    def setUp(self):
+        super(TestIP6LoadBalance, self).setUp()
+
+        self.create_pg_interfaces(range(5))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+    def tearDown(self):
+        super(TestIP6LoadBalance, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip6()
+            i.admin_down()
+
+    def send_and_expect_load_balancing(self, input, pkts, outputs):
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        for oo in outputs:
+            rx = oo._get_capture(1)
+            self.assertNotEqual(0, len(rx))
+
+    def test_ip6_load_balance(self):
+        """ IPv6 Load-Balancing """
+
+        #
+        # An array of packets that differ only in the destination port
+        #
+        port_pkts = []
+
+        #
+        # An array of packets that differ only in the source address
+        #
+        src_pkts = []
+
+        for ii in range(65):
+            port_pkts.append((Ether(src=self.pg0.remote_mac,
+                                    dst=self.pg0.local_mac) /
+                              IPv6(dst="3000::1", src="3000:1::1") /
+                              UDP(sport=1234, dport=1234 + ii) /
+                              Raw('\xa5' * 100)))
+            src_pkts.append((Ether(src=self.pg0.remote_mac,
+                                   dst=self.pg0.local_mac) /
+                             IPv6(dst="3000::1", src="3000:1::%d" % ii) /
+                             UDP(sport=1234, dport=1234) /
+                             Raw('\xa5' * 100)))
+
+        route_3000_1 = VppIpRoute(self, "3000::1", 128,
+                                  [VppRoutePath(self.pg1.remote_ip6,
+                                                self.pg1.sw_if_index,
+                                                is_ip6=1),
+                                   VppRoutePath(self.pg2.remote_ip6,
+                                                self.pg2.sw_if_index,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        route_3000_1.add_vpp_config()
+
+        #
+        # inject the packet on pg0 - expect load-balancing across the 2 paths
+        #  - since the default hash config is to use IP src,dst and port
+        #    src,dst
+        # We are not going to ensure equal amounts of packets across each link,
+        # since the hash algorithm is statistical and therefore this can never
+        # be guaranteed. But wuth 64 different packets we do expect some
+        # balancing. So instead just ensure there is traffic on each link.
+        #
+        self.send_and_expect_load_balancing(self.pg0, port_pkts,
+                                            [self.pg1, self.pg2])
+        self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                            [self.pg1, self.pg2])
+
+        #
+        # change the flow hash config so it's only IP src,dst
+        #  - now only the stream with differing source address will
+        #    load-balance
+        #
+        self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=0, dport=0)
+
+        self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                            [self.pg1, self.pg2])
+
+        self.pg0.add_stream(port_pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(len(port_pkts))
+
+        #
+        # change the flow hash config back to defaults
+        #
+        self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=1, dport=1)
+
+        #
+        # Recursive prefixes
+        #  - testing that 2 stages of load-balancing occurs and there is no
+        #    polarisation (i.e. only 2 of 4 paths are used)
+        #
+        port_pkts = []
+        src_pkts = []
+
+        for ii in range(257):
+            port_pkts.append((Ether(src=self.pg0.remote_mac,
+                                    dst=self.pg0.local_mac) /
+                              IPv6(dst="4000::1", src="4000:1::1") /
+                              UDP(sport=1234, dport=1234 + ii) /
+                              Raw('\xa5' * 100)))
+            src_pkts.append((Ether(src=self.pg0.remote_mac,
+                                   dst=self.pg0.local_mac) /
+                             IPv6(dst="4000::1", src="4000:1::%d" % ii) /
+                             UDP(sport=1234, dport=1234) /
+                             Raw('\xa5' * 100)))
+
+        route_3000_2 = VppIpRoute(self, "3000::2", 128,
+                                  [VppRoutePath(self.pg3.remote_ip6,
+                                                self.pg3.sw_if_index,
+                                                is_ip6=1),
+                                   VppRoutePath(self.pg4.remote_ip6,
+                                                self.pg4.sw_if_index,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        route_3000_2.add_vpp_config()
+
+        route_4000_1 = VppIpRoute(self, "4000::1", 128,
+                                  [VppRoutePath("3000::1",
+                                                0xffffffff,
+                                                is_ip6=1),
+                                   VppRoutePath("3000::2",
+                                                0xffffffff,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        route_4000_1.add_vpp_config()
+
+        #
+        # inject the packet on pg0 - expect load-balancing across all 4 paths
+        #
+        self.vapi.cli("clear trace")
+        self.send_and_expect_load_balancing(self.pg0, port_pkts,
+                                            [self.pg1, self.pg2,
+                                             self.pg3, self.pg4])
+        self.send_and_expect_load_balancing(self.pg0, src_pkts,
+                                            [self.pg1, self.pg2,
+                                             self.pg3, self.pg4])
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

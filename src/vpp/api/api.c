@@ -971,6 +971,9 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
 
     vec_reset_length (sw_if_indices_to_shut);
 
+    /* Set the flow hash for this fib to the default */
+    vnet_set_ip6_flow_hash (fib->table_id, IP_FLOW_HASH_DEFAULT);
+
     /* Shut down interfaces in this FIB / clean out intfc routes */
     pool_foreach (si, im->sw_interfaces,
     ({

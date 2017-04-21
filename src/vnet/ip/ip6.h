@@ -71,9 +71,6 @@ typedef struct
 
   /* Index into FIB vector. */
   u32 index;
-
-  /* flow hash configuration */
-  flow_hash_config_t flow_hash_config;
 } ip6_fib_t;
 
 typedef struct ip6_mfib_t

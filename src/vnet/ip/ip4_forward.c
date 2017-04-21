@@ -3020,7 +3020,6 @@ VLIB_CLI_COMMAND (lookup_test_command, static) =
 int
 vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
 {
-  ip4_fib_t *fib;
   u32 fib_index;
 
   fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
@@ -3028,9 +3027,9 @@ vnet_set_ip4_flow_hash (u32 table_id, u32 flow_hash_config)
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib = ip4_fib_get (fib_index);
+  fib_table_set_flow_hash_config (fib_index, FIB_PROTOCOL_IP4,
+				  flow_hash_config);
 
-  fib->flow_hash_config = flow_hash_config;
   return 0;
 }
 
