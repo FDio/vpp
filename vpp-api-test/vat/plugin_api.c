@@ -194,6 +194,56 @@ format_ip4_address (u8 * s, va_list * args)
 }
 
 u8 *
+format_ip6_address (u8 * s, va_list * args)
+{
+  ip6_address_t *a = va_arg (*args, ip6_address_t *);
+  u32 i, i_max_n_zero, max_n_zeros, i_first_zero, n_zeros, last_double_colon;
+
+  i_max_n_zero = ARRAY_LEN (a->as_u16);
+  max_n_zeros = 0;
+  i_first_zero = i_max_n_zero;
+  n_zeros = 0;
+  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
+    {
+      u32 is_zero = a->as_u16[i] == 0;
+      if (is_zero && i_first_zero >= ARRAY_LEN (a->as_u16))
+	{
+	  i_first_zero = i;
+	  n_zeros = 0;
+	}
+      n_zeros += is_zero;
+      if ((!is_zero && n_zeros > max_n_zeros)
+	  || (i + 1 >= ARRAY_LEN (a->as_u16) && n_zeros > max_n_zeros))
+	{
+	  i_max_n_zero = i_first_zero;
+	  max_n_zeros = n_zeros;
+	  i_first_zero = ARRAY_LEN (a->as_u16);
+	  n_zeros = 0;
+	}
+    }
+
+  last_double_colon = 0;
+  for (i = 0; i < ARRAY_LEN (a->as_u16); i++)
+    {
+      if (i == i_max_n_zero && max_n_zeros > 1)
+	{
+	  s = format (s, "::");
+	  i += max_n_zeros - 1;
+	  last_double_colon = 1;
+	}
+      else
+	{
+	  s = format (s, "%s%x",
+		      (last_double_colon || i == 0) ? "" : ":",
+		      clib_net_to_host_u16 (a->as_u16[i]));
+	  last_double_colon = 0;
+	}
+    }
+
+  return s;
+}
+
+u8 *
 format_ethernet_address (u8 * s, va_list * args)
 {
   u8 *a = va_arg (*args, u8 *);

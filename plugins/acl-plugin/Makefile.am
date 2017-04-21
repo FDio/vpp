@@ -29,6 +29,7 @@ acl_plugin_la_SOURCES =				\
 	acl/l2sess.c				\
 	acl/l2sess_node.c			\
 	acl/l2sess.h				\
+	acl/manual_fns.h			\
 	acl/acl_plugin.api.h
 
 BUILT_SOURCES = acl/acl.api.h acl/acl.api.json
@@ -55,9 +56,10 @@ api_DATA = acl/acl.api.json
 nobase_include_HEADERS =				\
   acl/acl_all_api_h.h				\
   acl/acl_msg_enum.h				\
+  acl/manual_fns.h				\
   acl/acl.api.h
 
-acl_test_plugin_la_SOURCES = acl/acl_test.c acl/acl_plugin.api.h
+acl_test_plugin_la_SOURCES = acl/acl_test.c acl/acl_plugin.api.h acl/acl_all_api.h
 
 # Remove *.la files
 install-data-hook:

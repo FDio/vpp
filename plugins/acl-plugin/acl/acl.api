@@ -60,7 +60,7 @@ define acl_plugin_get_version_reply
     @param tcp_flags_value - if proto==6, mask to AND the TCP flags in the packet with
 */
 
-typeonly manual_print manual_endian define acl_rule
+typeonly manual_print define acl_rule
 {
   u8 is_permit;
   u8 is_ipv6;
@@ -104,7 +104,7 @@ typeonly manual_print manual_endian define acl_rule
     @param src_ip_prefix_len - Source prefix length
 */
 
-typeonly manual_print manual_endian define macip_acl_rule
+typeonly manual_print define macip_acl_rule
 {
   u8 is_permit;
   u8 is_ipv6;
@@ -161,7 +161,7 @@ define acl_add_replace_reply
     @param acl_index - ACL index to delete
 */
 
-define acl_del
+manual_print define acl_del
 {
   u32 client_index;
   u32 context;
@@ -190,7 +190,7 @@ define acl_del_reply
     @param acl_index - index of ACL for the operation
 */
 
-define acl_interface_add_del
+manual_print define acl_interface_add_del
 {
   u32 client_index;
   u32 context;
@@ -224,7 +224,7 @@ define acl_interface_add_del_reply
     @param acls - vector of ACL indices
 */
 
-manual_endian define acl_interface_set_acl_list
+manual_print define acl_interface_set_acl_list
 {
   u32 client_index;
   u32 context;
@@ -266,7 +266,7 @@ define acl_dump
     @param r - Array of rules within this ACL
 */
 
-manual_print manual_endian define acl_details
+manual_endian manual_print define acl_details
 {
   u32 context;
   u32 acl_index;
@@ -296,7 +296,7 @@ define acl_interface_list_dump
     @param acls - the vector of ACL indices
 */
 
-manual_endian define acl_interface_list_details
+define acl_interface_list_details
 {
   u32 context;
   u32 sw_if_index;
@@ -313,7 +313,7 @@ manual_endian define acl_interface_list_details
     @param r - vector of MACIP ACL rules
 */
 
-manual_print manual_endian define macip_acl_add
+manual_endian manual_print define macip_acl_add
 {
   u32 client_index;
   u32 context;
@@ -341,7 +341,7 @@ define macip_acl_add_reply
     @param acl_index - MACIP ACL index to delete
 */
 
-define macip_acl_del
+manual_print define macip_acl_del
 {
   u32 client_index;
   u32 context;
@@ -367,7 +367,7 @@ define macip_acl_del_reply
     @param acl_index - MACIP ACL index
 */
 
-define macip_acl_interface_add_del
+manual_print define macip_acl_interface_add_del
 {
   u32 client_index;
   u32 context;
@@ -409,7 +409,7 @@ define macip_acl_dump
     @param r - rules comprising this ACL
 */
 
-manual_print manual_endian define macip_acl_details
+manual_endian manual_print define macip_acl_details
 {
   u32 context;
   u32 acl_index;
