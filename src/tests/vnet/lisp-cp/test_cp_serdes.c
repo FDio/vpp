@@ -395,7 +395,7 @@ build_test_map_records ()
   mapping_t * records = 0;
 
   mapping_t r = {
-    .ttl = 0x44332211,
+    .ttl = MAP_REGISTER_DEFAULT_TTL,
     .eid = {
       .type = GID_ADDR_MAC,
       .mac = {1, 2, 3, 4, 5, 6},
@@ -472,7 +472,7 @@ test_lisp_map_register ()
     0x00, 0x00, 0x00, 0x00, /* auth data */
 
     /* first record */
-    0x44, 0x33, 0x22, 0x11, /* ttl */
+    0x00, 0x00, 0x03, 0x84, /* default ttl (15 minues) */
     0x01, 0x00, 0x00, 0x00, /* loc count, eid len, ACT, A */
     0x00, 0x00, 0x40, 0x05, /* rsvd, map ver num, AFI = MAC */
     0x01, 0x02, 0x03, 0x04,
