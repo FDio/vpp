@@ -46,6 +46,30 @@
       "revId": "25bf166ef53ae0d8920246ac9332242f7aa2a7bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_462a3391",
+        "filename": "src/uri/uri_tcp_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-04-21T03:59:11Z",
+      "side": 1,
+      "message": "Okay, so running with session disabled does explain the behavior you\u0027ve seen. It indeed exposes an inconsistency I\u0027ve missed. Could you then extend the patch to make sure that send_session_connected_callback sets mp-\u003eretval to clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT_FAIL)?",
+      "parentUuid": "3a3291f1_86249bc5",
+      "range": {
+        "startLine": 491,
+        "startChar": 9,
+        "endLine": 491,
+        "endChar": 32
+      },
+      "revId": "25bf166ef53ae0d8920246ac9332242f7aa2a7bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
