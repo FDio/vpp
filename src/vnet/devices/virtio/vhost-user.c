@@ -1354,15 +1354,6 @@ vhost_user_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (vhost_user_init);
 
-static clib_error_t *
-vhost_user_exit (vlib_main_t * vm)
-{
-  /* TODO cleanup */
-  return 0;
-}
-
-VLIB_MAIN_LOOP_EXIT_FUNCTION (vhost_user_exit);
-
 static u8 *
 format_vhost_trace (u8 * s, va_list * va)
 {
@@ -2553,6 +2544,7 @@ vhost_user_term_if (vhost_user_intf_t * vui)
 					   vui->unix_server_index);
       unix_file_del (&unix_main, uf);
       vui->unix_server_index = ~0;
+      unlink (vui->sock_filename);
     }
 }
 
@@ -2589,6 +2581,23 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
 
   return rv;
 }
+
+static clib_error_t *
+vhost_user_exit (vlib_main_t * vm)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vhost_user_main_t *vum = &vhost_user_main;
+  vhost_user_intf_t *vui;
+
+  /* *INDENT-OFF* */
+  pool_foreach (vui, vum->vhost_user_interfaces, {
+      vhost_user_delete_if (vnm, vm, vui->sw_if_index);
+  });
+  /* *INDENT-ON* */
+  return 0;
+}
+
+VLIB_MAIN_LOOP_EXIT_FUNCTION (vhost_user_exit);
 
 /**
  * Open server unix socket on specified sock_filename.
