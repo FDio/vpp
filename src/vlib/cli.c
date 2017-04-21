@@ -1163,6 +1163,55 @@ done:
 }
 #endif
 
+static int
+cli_path_compare (void *a1, void *a2)
+{
+  u8 **s1 = a1;
+  u8 **s2 = a2;
+
+  if ((vec_len (*s1) < vec_len (*s2)) &&
+      memcmp ((char *) *s1, (char *) *s2, vec_len (*s1)) == 0)
+    return -1;
+
+
+  if ((vec_len (*s1) > vec_len (*s2)) &&
+      memcmp ((char *) *s1, (char *) *s2, vec_len (*s2)) == 0)
+    return 1;
+
+  return vec_cmp (*s1, *s2);
+}
+
+static clib_error_t *
+show_cli_cmd_fn (vlib_main_t * vm, unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+  vlib_cli_main_t *cm = &vm->cli_main;
+  vlib_cli_command_t *cli;
+  u8 **paths = 0, **s;
+
+  /* *INDENT-OFF* */
+  vec_foreach (cli, cm->commands)
+    if (vec_len (cli->path) > 0)
+      vec_add1 (paths, (u8 *) cli->path);
+
+  vec_sort_with_function (paths, cli_path_compare);
+
+  vec_foreach (s, paths)
+    vlib_cli_output (vm, "%v", *s);
+  /* *INDENT-ON* */
+
+  vec_free (paths);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_cli_command, static) = {
+  .path = "show cli",
+  .short_help = "Show cli commands",
+  .function = show_cli_cmd_fn,
+};
+/* *INDENT-ON* */
+
 static clib_error_t *
 vlib_cli_init (vlib_main_t * vm)
 {
