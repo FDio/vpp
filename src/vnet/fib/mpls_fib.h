@@ -33,6 +33,11 @@
 #define MPLS_FIB_KEY_SIZE 21
 #define MPLS_FIB_DB_SIZE (1 << (MPLS_FIB_KEY_SIZE-1))
 
+/**
+ * There are no options for controlling the MPLS flow hash
+ */
+#define MPLS_FLOW_HASH_DEFAULT 0
+
 typedef struct mpls_fib_t_
 {
   /**
@@ -129,7 +134,5 @@ mpls_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
 
     return (mm->fib_index_by_sw_if_index[sw_if_index]);
 }
-
-extern flow_hash_config_t mpls_fib_table_get_flow_hash_config(u32 fib_index);
 
 #endif

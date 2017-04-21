@@ -277,6 +277,25 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'suppress': suppress})
 
+    def set_ip_flow_hash(self,
+                         table_id,
+                         src=1,
+                         dst=1,
+                         sport=1,
+                         dport=1,
+                         proto=1,
+                         reverse=0,
+                         is_ip6=0):
+        return self.api(self.papi.set_ip_flow_hash,
+                        {'vrf_id': table_id,
+                         'src': src,
+                         'dst': dst,
+                         'dport': dport,
+                         'sport': sport,
+                         'proto': proto,
+                         'reverse': reverse,
+                         'is_ipv6': is_ip6})
+
     def ip6_nd_proxy(self, address, sw_if_index, is_del=0):
         return self.api(self.papi.ip6nd_proxy_add_del,
                         {'address': address,

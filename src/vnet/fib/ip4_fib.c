@@ -124,9 +124,7 @@ ip4_create_fib_with_table_id (u32 table_id)
     fib_table->ft_table_id =
 	v4_fib->table_id =
 	    table_id;
-    fib_table->ft_flow_hash_config = 
-	v4_fib->flow_hash_config =
-	    IP_FLOW_HASH_DEFAULT;
+    fib_table->ft_flow_hash_config = IP_FLOW_HASH_DEFAULT;
     v4_fib->fwd_classify_table_index = ~0;
     v4_fib->rev_classify_table_index = ~0;
     
@@ -231,12 +229,6 @@ ip4_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
 	return (~0);
     }
     return (ip4_main.fib_index_by_sw_if_index[sw_if_index]);
-}
-
-flow_hash_config_t
-ip4_fib_table_get_flow_hash_config (u32 fib_index)
-{
-    return (ip4_fib_get(fib_index)->flow_hash_config);
 }
 
 /*
@@ -542,7 +534,7 @@ ip4_show_fib (vlib_main_t * vm,
 	vlib_cli_output (vm, "%U, fib_index %d, flow hash: %U", 
 			 format_fib_table_name, fib->index, FIB_PROTOCOL_IP4,
 			 fib->index,
-			 format_ip_flow_hash_config, fib->flow_hash_config);
+			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config);
 
 	/* Show summary? */
 	if (! verbose)

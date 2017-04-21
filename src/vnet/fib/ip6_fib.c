@@ -74,9 +74,7 @@ create_fib_with_table_id (u32 table_id)
     fib_table->ft_table_id =
 	v6_fib->table_id =
 	    table_id;
-    fib_table->ft_flow_hash_config = 
-	v6_fib->flow_hash_config =
-	    IP_FLOW_HASH_DEFAULT;
+    fib_table->ft_flow_hash_config = IP_FLOW_HASH_DEFAULT;
 
     vnet_ip6_fib_init(fib_table->ft_index);
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP6);
@@ -390,12 +388,6 @@ u32 ip6_fib_table_fwding_lookup_with_if_index (ip6_main_t * im,
     return ip6_fib_table_fwding_lookup(im, fib_index, dst);
 }
 
-flow_hash_config_t
-ip6_fib_table_get_flow_hash_config (u32 fib_index)
-{
-    return (ip6_fib_get(fib_index)->flow_hash_config);
-}
-
 u32
 ip6_fib_table_get_index_for_sw_if_index (u32 sw_if_index)
 {
@@ -643,7 +635,7 @@ ip6_show_fib (vlib_main_t * vm,
 
 	vlib_cli_output (vm, "%s, fib_index %d, flow hash: %U", 
 			 fib_table->ft_desc, fib->index,
-			 format_ip_flow_hash_config, fib->flow_hash_config);
+			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config);
 
 	/* Show summary? */
 	if (! verbose)

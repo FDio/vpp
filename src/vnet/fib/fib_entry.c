@@ -1390,6 +1390,35 @@ fib_entry_is_resolved (fib_node_index_t fib_entry_index)
     }
 }
 
+void
+fib_entry_set_flow_hash_config (fib_node_index_t fib_entry_index,
+                                flow_hash_config_t hash_config)
+{
+    fib_entry_t *fib_entry;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    /*
+     * pass the hash-config on to the load-balance object where it is cached.
+     * we can ignore LBs in the delegate chains, since they will not be of the
+     * correct protocol type (i.e. they are not IP)
+     * There's no way, nor need, to change the hash config for MPLS.
+     */
+    if (dpo_id_is_valid(&fib_entry->fe_lb))
+    {
+        load_balance_t *lb;
+
+        ASSERT(DPO_LOAD_BALANCE == fib_entry->fe_lb.dpoi_type);
+
+        lb = load_balance_get(fib_entry->fe_lb.dpoi_index);
+
+        /*
+         * atomic update for packets in flight
+         */
+        lb->lb_hash_config = hash_config;
+    }
+}
+
 static int
 fib_ip4_address_compare (const ip4_address_t * a1,
                          const ip4_address_t * a2)
