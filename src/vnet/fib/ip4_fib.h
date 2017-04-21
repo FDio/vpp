@@ -53,9 +53,6 @@ typedef struct ip4_fib_t_
   /* Index into FIB vector. */
   u32 index;
 
-  /* flow hash configuration */
-  flow_hash_config_t flow_hash_config;
-
   /* N-tuple classifier indices */
   u32 fwd_classify_table_index;
   u32 rev_classify_table_index;
@@ -148,9 +145,6 @@ u32 ip4_fib_index_from_table_id (u32 table_id)
 }
 
 extern u32 ip4_fib_table_get_index_for_sw_if_index(u32 sw_if_index);
-
-extern flow_hash_config_t ip4_fib_table_get_flow_hash_config(u32 fib_index);
-
 
 always_inline index_t
 ip4_fib_forwarding_lookup (u32 fib_index,

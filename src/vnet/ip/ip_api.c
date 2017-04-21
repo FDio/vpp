@@ -1336,9 +1336,17 @@ static void
 set_ip6_flow_hash (vl_api_set_ip_flow_hash_t * mp)
 {
   vl_api_set_ip_flow_hash_reply_t *rmp;
-  int rv = VNET_API_ERROR_UNIMPLEMENTED;
+  int rv;
+  u32 table_id;
+  flow_hash_config_t flow_hash_config = 0;
 
-  clib_warning ("unimplemented...");
+  table_id = ntohl (mp->vrf_id);
+
+#define _(a,b) if (mp->a) flow_hash_config |= b;
+  foreach_flow_hash_bit;
+#undef _
+
+  rv = vnet_set_ip6_flow_hash (table_id, flow_hash_config);
 
   REPLY_MACRO (VL_API_SET_IP_FLOW_HASH_REPLY);
 }
