@@ -24,6 +24,7 @@
 #include <vnet/adj/adj_midchain.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/dpo/replicate_dpo.h>
+#include <vnet/fib/mpls_fib.h>
 
 /**
  * @brief pool of tunnel instances
@@ -200,9 +201,20 @@ mpls_tunnel_mk_lb (mpls_tunnel_t *mt,
         {
             flow_hash_config_t fhc;
 
-            fhc = 0; // FIXME
-            /* fhc = fib_table_get_flow_hash_config(fib_entry->fe_fib_index, */
-            /*                                      dpo_proto_to_fib(lb_proto)); */
+            switch (linkt)
+            {
+            case VNET_LINK_MPLS:
+                fhc = MPLS_FLOW_HASH_DEFAULT;
+                break;
+            case VNET_LINK_IP4:
+            case VNET_LINK_IP6:
+                fhc = IP_FLOW_HASH_DEFAULT;
+                break;
+            default:
+                fhc = 0;
+                break;
+            }
+
             dpo_set(dpo_lb,
                     DPO_LOAD_BALANCE,
                     lb_proto,

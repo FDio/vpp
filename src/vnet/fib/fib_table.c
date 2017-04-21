@@ -945,18 +945,52 @@ flow_hash_config_t
 fib_table_get_flow_hash_config (u32 fib_index,
 				fib_protocol_t proto)
 {
-    switch (proto)
-    {
-    case FIB_PROTOCOL_IP4:
-	return (ip4_fib_table_get_flow_hash_config(fib_index));
-    case FIB_PROTOCOL_IP6:
-	return (ip6_fib_table_get_flow_hash_config(fib_index));
-    case FIB_PROTOCOL_MPLS:
-	return (mpls_fib_table_get_flow_hash_config(fib_index));
-    }
-    return (0);
+    fib_table_t *fib;
+
+    fib = fib_table_get(fib_index, proto);
+
+    return (fib->ft_flow_hash_config);
 }
 
+/**
+ * @brief Table set flow hash config context.
+ */
+typedef struct fib_table_set_flow_hash_config_ctx_t_
+{
+    /**
+     * the flow hash config to set
+     */
+    flow_hash_config_t hash_config;
+} fib_table_set_flow_hash_config_ctx_t;
+
+static int
+fib_table_set_flow_hash_config_cb (fib_node_index_t fib_entry_index,
+                                   void *arg)
+{
+    fib_table_set_flow_hash_config_ctx_t *ctx = arg;
+
+    fib_entry_set_flow_hash_config(fib_entry_index, ctx->hash_config);
+
+    return (1);
+}
+
+void
+fib_table_set_flow_hash_config (u32 fib_index,
+                                fib_protocol_t proto,
+                                flow_hash_config_t hash_config)
+{
+    fib_table_set_flow_hash_config_ctx_t ctx = {
+        .hash_config = hash_config,
+    };
+    fib_table_t *fib;
+
+    fib = fib_table_get(fib_index, proto);
+    fib->ft_flow_hash_config = hash_config;
+
+    fib_table_walk(fib_index, proto,
+                   fib_table_set_flow_hash_config_cb,
+                   &ctx);
+}
 
 u32
 fib_table_get_table_id_for_sw_if_index (fib_protocol_t proto,

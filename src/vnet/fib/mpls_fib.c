@@ -61,11 +61,6 @@
  */
 static index_t mpls_fib_drop_dpo_index = INDEX_INVALID;
 
-/**
- * FIXME
- */
-#define MPLS_FLOW_HASH_DEFAULT 0
-
 static inline u32
 mpls_fib_entry_mk_key (mpls_label_t label,
 		       mpls_eos_bit_t eos)
@@ -109,10 +104,8 @@ mpls_fib_create_with_table_id (u32 table_id)
 
     hash_set (mpls_main.fib_index_by_table_id, table_id, fib_table->ft_index);
 
-    fib_table->ft_table_id =
-	table_id;
-    fib_table->ft_flow_hash_config = 
-	MPLS_FLOW_HASH_DEFAULT;
+    fib_table->ft_table_id = table_id;
+    fib_table->ft_flow_hash_config = MPLS_FLOW_HASH_DEFAULT;
     
     fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_MPLS);
 
@@ -348,13 +341,6 @@ mpls_fib_forwarding_table_reset (mpls_fib_t *mf,
     key = mpls_fib_entry_mk_key(label, eos);
 
     mf->mf_lbs[key] = mpls_fib_drop_dpo_index;
-}
-
-flow_hash_config_t
-mpls_fib_table_get_flow_hash_config (u32 fib_index)
-{
-    // FIXME.
-    return (0);
 }
 
 void
