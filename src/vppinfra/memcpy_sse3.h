@@ -224,11 +224,6 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	/**
 	 * Fast way when copy size doesn't exceed 512 bytes
 	 */
-  if (n == 16)
-    {
-      clib_mov16 ((u8 *) dst, (const u8 *) src);
-      return ret;
-    }
   if (n <= 32)
     {
       clib_mov16 ((u8 *) dst, (const u8 *) src);
