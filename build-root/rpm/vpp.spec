@@ -89,7 +89,7 @@ This package contains the java bindings for the vpp api
 %package api-python
 Summary: VPP api python bindings
 Group: Development/Libraries
-Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools libffi-devel
+Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, python-setuptools libffi-devel python-cffi
 
 %description api-python
 This package contains the python bindings for the vpp api
