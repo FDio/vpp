@@ -1477,6 +1477,54 @@ is_locator_in_locator_set (lisp_cp_main_t * lcm, locator_set_t * ls,
   return 0;
 }
 
+static void
+update_adjacencies_by_map_index (lisp_cp_main_t * lcm, u8 is_local,
+				 u32 mapping_index, u8 remove_only)
+{
+  fwd_entry_t *fwd;
+  mapping_t *map;
+  vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
+
+  map = pool_elt_at_index (lcm->mapping_pool, mapping_index);
+
+  /* *INDENT-OFF* */
+  pool_foreach(fwd, lcm->fwd_entry_pool,
+  ({
+    if ((is_local && 0 == gid_address_cmp (&map->eid, &fwd->leid)) ||
+        (!is_local && 0 == gid_address_cmp (&map->eid, &fwd->reid)))
+      {
+        a->is_add = 0;
+        gid_address_copy (&a->leid, &fwd->leid);
+        gid_address_copy (&a->reid, &fwd->reid);
+
+        vnet_lisp_add_del_adjacency (a);
+
+        if (!remove_only)
+          {
+            a->is_add = 1;
+            vnet_lisp_add_del_adjacency (a);
+          }
+      }
+    }));
+  /* *INDENT-ON* */
+}
+
+static void
+update_fwd_entries_by_locator_set (lisp_cp_main_t * lcm, u8 is_local,
+				   u32 ls_index, u8 remove_only)
+{
+  u32 i, *map_indexp;
+  u32 **eid_indexes;
+  eid_indexes = vec_elt_at_index (lcm->locator_set_to_eids, ls_index);
+
+  for (i = 0; i < vec_len (eid_indexes[0]); i++)
+    {
+      map_indexp = vec_elt_at_index (eid_indexes[0], i);
+      update_adjacencies_by_map_index (lcm, is_local, map_indexp[0],
+				       remove_only);
+    }
+}
+
 static inline void
 remove_locator_from_locator_set (locator_set_t * ls, u32 * locit,
 				 u32 ls_index, u32 loc_id)
@@ -1559,24 +1607,38 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
   else
     {
       ls_index = p[0];
+      u8 removed;
 
-      itloc = a->locators;
-      loc_id = 0;
-      vec_foreach (locit, ls->locator_indices)
+      vec_foreach (itloc, a->locators)
       {
-	loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
+	removed = 0;
+	loc_id = 0;
+	vec_foreach (locit, ls->locator_indices)
+	{
+	  loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
 
-	if (loc->local && loc->sw_if_index == itloc->sw_if_index)
-	  {
-	    remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
-	  }
-	if (0 == loc->local &&
-	    !gid_address_cmp (&loc->address, &itloc->address))
-	  {
-	    remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
-	  }
+	  if (loc->local && loc->sw_if_index == itloc->sw_if_index)
+	    {
+	      removed = 1;
+	      remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
+	    }
+	  if (0 == loc->local &&
+	      !gid_address_cmp (&loc->address, &itloc->address))
+	    {
+	      removed = 1;
+	      remove_locator_from_locator_set (ls, locit, ls_index, loc_id);
+	    }
 
-	loc_id++;
+	  if (removed)
+	    {
+	      /* update fwd entries using this locator in DP */
+	      update_fwd_entries_by_locator_set (lcm, loc->local, ls_index,
+						 vec_len (ls->locator_indices)
+						 == 0);
+	    }
+
+	  loc_id++;
+	}
       }
     }
 
