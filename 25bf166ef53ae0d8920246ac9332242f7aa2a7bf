@@ -22,6 +22,30 @@
       "revId": "25bf166ef53ae0d8920246ac9332242f7aa2a7bf",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_86249bc5",
+        "filename": "src/uri/uri_tcp_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 414
+      },
+      "writtenOn": "2017-04-21T03:40:42Z",
+      "side": 1,
+      "message": "it\u0027s master branch.I found this issue when I ran the uri_tcp_test with session manager disable.some details is in jira .\nMaybe convert byte order here?\nsession api reply msg will \nvl_api_connect_uri_t_handler\nREPLY_MACRO\nrmp-\u003eretval \u003d htonl (rv);\n\nAnd also here vl_api_bind_uri_reply_t_handler change byte order.",
+      "parentUuid": "3a3291f1_c63e23da",
+      "range": {
+        "startLine": 491,
+        "startChar": 9,
+        "endLine": 491,
+        "endChar": 32
+      },
+      "revId": "25bf166ef53ae0d8920246ac9332242f7aa2a7bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
