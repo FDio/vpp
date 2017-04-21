@@ -18,6 +18,8 @@
  */
 
 #include <linux/if_packet.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -205,17 +207,51 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   af_packet_if_t *apif =
     pool_elt_at_index (apm->interfaces, hw->dev_instance);
   u32 hw_flags;
+  int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
+  struct ifreq ifr;
+
+  /* if interface is a bridge ignore */
+  if (apif->host_if_index < 0)
+    return 0;			/* no error */
+
+  /* use host_if_index in case host name has changed */
+  ifr.ifr_ifindex = apif->host_if_index;
+  if ((rv = ioctl (fd, SIOCGIFNAME, &ifr)) < 0)
+    {
+      clib_unix_warning ("af_packet_%s ioctl could not retrieve eth name",
+			 apif->host_if_name);
+    }
 
   apif->is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
 
+  if ((rv = ioctl (fd, SIOCGIFFLAGS, &ifr)) < 0)
+    {
+      clib_unix_warning ("af_packet_%s error: %d",
+			 apif->is_admin_up ? "up" : "down", rv);
+    }
+
   if (apif->is_admin_up)
-    hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
+    {
+      hw_flags = VNET_HW_INTERFACE_FLAG_LINK_UP;
+      ifr.ifr_flags |= IFF_UP;
+    }
   else
-    hw_flags = 0;
+    {
+      hw_flags = 0;
+      ifr.ifr_flags &= ~IFF_UP;
+    }
+
+  if ((rv = ioctl (fd, SIOCSIFFLAGS, &ifr)) < 0)
+    {
+      clib_unix_warning ("af_packet_%s error: %d",
+			 apif->is_admin_up ? "up" : "down", rv);
+    }
 
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
-  return 0;
+  close (fd);
+
+  return 0;			/* no error */
 }
 
 static clib_error_t *
