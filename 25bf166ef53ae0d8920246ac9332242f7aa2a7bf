@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_c63e23da",
+        "filename": "src/uri/uri_tcp_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 491,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-04-21T03:06:01Z",
+      "side": 1,
+      "message": "Actually there\u0027s no need to convert to host byte order (the shared memory queue does not change endianness). But I\u0027m wondering what may have resulted in the bug you reported. Could you provide more detail?\n\nIf you check send_session_connected_callback(), the expected values here are either 0 or VNET_API_ERROR_SESSION_CONNECT_FAIL (-115) and your value seems off. Are you running the latest vpp?",
+      "range": {
+        "startLine": 491,
+        "startChar": 9,
+        "endLine": 491,
+        "endChar": 32
+      },
+      "revId": "25bf166ef53ae0d8920246ac9332242f7aa2a7bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
