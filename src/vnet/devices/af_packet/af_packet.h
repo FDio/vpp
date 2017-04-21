@@ -24,6 +24,7 @@ typedef struct
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   clib_spinlock_t lockp;
   u8 *host_if_name;
+  int host_if_index;
   int fd;
   struct tpacket_req *rx_req;
   struct tpacket_req *tx_req;
