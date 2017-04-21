@@ -82,25 +82,15 @@ af_packet_fd_read_ready (unix_file_t * uf)
 }
 
 static int
-create_packet_v2_sock (u8 * name, tpacket_req_t * rx_req,
+create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 		       tpacket_req_t * tx_req, int *fd, u8 ** ring)
 {
   int ret, err;
   struct sockaddr_ll sll;
-  uint host_if_index;
   int ver = TPACKET_V2;
   socklen_t req_sz = sizeof (struct tpacket_req);
   u32 ring_sz = rx_req->tp_block_size * rx_req->tp_block_nr +
     tx_req->tp_block_size * tx_req->tp_block_nr;
-
-  host_if_index = if_nametoindex ((const char *) name);
-
-  if (!host_if_index)
-    {
-      DBG_SOCK ("Wrong host interface name");
-      ret = VNET_API_ERROR_INVALID_INTERFACE;
-      goto error;
-    }
 
   if ((*fd = socket (AF_PACKET, SOCK_RAW, htons (ETH_P_ALL))) < 0)
     {
@@ -190,6 +180,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   uword *p;
   uword if_index;
   u8 *host_if_name_dup = vec_dup (host_if_name);
+  int host_if_index = 0;
 
   p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
   if (p)
@@ -209,7 +200,15 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   tx_req->tp_block_nr = AF_PACKET_TX_BLOCK_NR;
   tx_req->tp_frame_nr = AF_PACKET_TX_FRAME_NR;
 
-  ret = create_packet_v2_sock (host_if_name, rx_req, tx_req, &fd, &ring);
+  host_if_index = if_nametoindex ((const char *) host_if_name);
+
+  if (!host_if_index)
+    {
+      DBG_SOCK ("Wrong host interface name");
+      return VNET_API_ERROR_INVALID_INTERFACE;
+    }
+
+  ret = create_packet_v2_sock (host_if_index, rx_req, tx_req, &fd, &ring);
 
   if (ret != 0)
     goto error;
@@ -218,6 +217,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   pool_get (apm->interfaces, apif);
   if_index = apif - apm->interfaces;
 
+  apif->host_if_index = host_if_index;
   apif->fd = fd;
   apif->rx_ring = ring;
   apif->tx_ring = ring + rx_req->tp_block_size * rx_req->tp_block_nr;
@@ -341,6 +341,7 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
 
   vec_free (apif->host_if_name);
   apif->host_if_name = NULL;
+  apif->host_if_index = -1;
 
   mhash_unset (&apm->if_index_by_host_if_name, host_if_name, &if_index);
 
