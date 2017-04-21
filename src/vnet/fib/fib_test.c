@@ -3832,6 +3832,29 @@ fib_test_v4 (void)
     fib_table_entry_delete(fib_index,
 			   &pfx_10_10_10_127_s_32,
 			   FIB_SOURCE_ADJ);
+    /*
+     * change the table's flow-hash config - expect the update to propagete to
+     * the entries' load-balance objects
+     */
+    flow_hash_config_t old_hash_config, new_hash_config;
+
+    old_hash_config = fib_table_get_flow_hash_config(fib_index,
+                                                     FIB_PROTOCOL_IP4);
+    new_hash_config = (IP_FLOW_HASH_SRC_ADDR |
+                       IP_FLOW_HASH_DST_ADDR);
+
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_1_s_32);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    lb = load_balance_get(dpo->dpoi_index);
+    FIB_TEST((lb->lb_hash_config == old_hash_config),
+             "Table and LB hash config match: %U",
+             format_ip_flow_hash_config, lb->lb_hash_config);
+
+    fib_table_set_flow_hash_config(fib_index, FIB_PROTOCOL_IP4, new_hash_config);
+
+    FIB_TEST((lb->lb_hash_config == new_hash_config),
+             "Table and LB newhash config match: %U",
+             format_ip_flow_hash_config, lb->lb_hash_config);
 
     /*
      * CLEANUP

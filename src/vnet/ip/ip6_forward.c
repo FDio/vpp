@@ -267,11 +267,10 @@ ip6_lookup_inline (vlib_main_t * vm,
 	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
 	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
 
-	  flow_hash_config0 = ip6_fib_get (fib_index0)->flow_hash_config;
-
 	  lbi0 = ip6_fib_table_fwding_lookup (im, fib_index0, dst_addr0);
 
 	  lb0 = load_balance_get (lbi0);
+	  flow_hash_config0 = lb0->lb_hash_config;
 
 	  vnet_buffer (p0)->ip.flow_hash = 0;
 	  ASSERT (lb0->lb_n_buckets > 0);
@@ -3156,7 +3155,6 @@ VLIB_CLI_COMMAND (test_link_command, static) =
 int
 vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
 {
-  ip6_fib_t *fib;
   u32 fib_index;
 
   fib_index = fib_table_find (FIB_PROTOCOL_IP6, table_id);
@@ -3164,10 +3162,10 @@ vnet_set_ip6_flow_hash (u32 table_id, u32 flow_hash_config)
   if (~0 == fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  fib = ip6_fib_get (fib_index);
+  fib_table_set_flow_hash_config (fib_index, FIB_PROTOCOL_IP6,
+				  flow_hash_config);
 
-  fib->flow_hash_config = flow_hash_config;
-  return 1;
+  return 0;
 }
 
 static clib_error_t *
@@ -3199,7 +3197,7 @@ set_ip6_flow_hash_command_fn (vlib_main_t * vm,
   rv = vnet_set_ip6_flow_hash (table_id, flow_hash_config);
   switch (rv)
     {
-    case 1:
+    case 0:
       break;
 
     case -1:
