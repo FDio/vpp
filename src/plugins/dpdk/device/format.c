@@ -417,7 +417,7 @@ format_dpdk_device (u8 * s, va_list * args)
 	format (s, "%Upromiscuous:       unicast %s all-multicast %s\n",
 		format_white_space, indent + 2,
 		rte_eth_promiscuous_get (xd->device_index) ? "on" : "off",
-		rte_eth_promiscuous_get (xd->device_index) ? "on" : "off");
+		rte_eth_allmulticast_get (xd->device_index) ? "on" : "off");
       vlan_off = rte_eth_dev_get_vlan_offload (xd->device_index);
       s = format (s, "%Uvlan offload:      strip %s filter %s qinq %s\n",
 		  format_white_space, indent + 2,
