@@ -15,3 +15,4 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage qos_doc
 - @subpage span_doc
 - @subpage srv6_doc
+- @subpage srmpls_doc

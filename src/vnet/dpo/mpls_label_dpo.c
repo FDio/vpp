@@ -171,7 +171,7 @@ mpls_label_paint (vlib_buffer_t * b0,
 
     hdr0 = vlib_buffer_get_current(b0);
 
-    if (PREDICT_TRUE(1 == mld0->mld_n_labels))
+    if (1 == mld0->mld_n_labels)
     {
         /* optimise for the common case of one label */
         *hdr0 = mld0->mld_hdr[0];
