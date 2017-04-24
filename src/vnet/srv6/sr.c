@@ -22,7 +22,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/sr/sr.h>
+#include <vnet/srv6/sr.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/dpo/dpo.h>
