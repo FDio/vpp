@@ -52,23 +52,13 @@ define l2tpv3_create_tunnel_reply
   u32 sw_if_index;
 };
 
-define l2tpv3_set_tunnel_cookies
+autoreply define l2tpv3_set_tunnel_cookies
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u64 new_local_cookie;
   u64 new_remote_cookie;
-};
-
-/** \brief L2TP tunnel set cookies response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define l2tpv3_set_tunnel_cookies_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 define sw_if_l2tpv3_tunnel_details
@@ -91,7 +81,7 @@ define sw_if_l2tpv3_tunnel_dump
   u32 context;
 };
 
-define l2tpv3_interface_enable_disable
+autoreply define l2tpv3_interface_enable_disable
 {
   u32 client_index;
   u32 context;
@@ -99,24 +89,12 @@ define l2tpv3_interface_enable_disable
   u32 sw_if_index;
 };
 
-define l2tpv3_interface_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-define l2tpv3_set_lookup_key
+autoreply define l2tpv3_set_lookup_key
 {
   u32 client_index;
   u32 context;
   /* 0 = ip6 src_address, 1 = ip6 dst_address, 2 = session_id */
   u8 key;
-};
-
-define l2tpv3_set_lookup_key_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /*

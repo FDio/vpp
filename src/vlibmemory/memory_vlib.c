@@ -1275,7 +1275,7 @@ VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) = {
 static void
 vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
 {
-  vl_api_rpc_reply_t *rmp;
+  vl_api_rpc_call_reply_t *rmp;
   int (*fp) (void *);
   i32 rv = 0;
   vlib_main_t *vm = vlib_get_main ();
@@ -1305,7 +1305,7 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
       if (q)
 	{
 	  rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
-	  rmp->_vl_msg_id = ntohs (VL_API_RPC_REPLY);
+	  rmp->_vl_msg_id = ntohs (VL_API_RPC_CALL_REPLY);
 	  rmp->context = mp->context;
 	  rmp->retval = rv;
 	  vl_msg_api_send_shmem (q, (u8 *) & rmp);
@@ -1318,7 +1318,7 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
 }
 
 static void
-vl_api_rpc_reply_t_handler (vl_api_rpc_reply_t * mp)
+vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t * mp)
 {
   clib_warning ("unimplemented");
 }
@@ -1415,7 +1415,7 @@ vl_api_trace_plugin_msg_ids_t_handler (vl_api_trace_plugin_msg_ids_t * mp)
 
 #define foreach_rpc_api_msg                     \
 _(RPC_CALL,rpc_call)                            \
-_(RPC_REPLY,rpc_reply)
+_(RPC_CALL_REPLY,rpc_call_reply)
 
 #define foreach_plugin_trace_msg		\
 _(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)

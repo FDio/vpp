@@ -24,6 +24,7 @@
 extern int yylex (void);
 extern void yyerror (char *);
 extern int yyparse (void);
+extern void autoreply (void *);
 
 #ifndef YYSTYPE
 #define YYSTYPE void *

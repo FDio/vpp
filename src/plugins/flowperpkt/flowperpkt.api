@@ -12,7 +12,7 @@
     @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param sw_if_index - index of the interface
 */
-manual_print define flowperpkt_tx_interface_add_del
+autoreply manual_print define flowperpkt_tx_interface_add_del
 {
   /* Client identifier, set from api_main.my_client_index */
   u32 client_index;
@@ -28,20 +28,7 @@ manual_print define flowperpkt_tx_interface_add_del
   u32 sw_if_index;
 };
 
-/** \brief Reply to enable/disable per-packet IPFIX recording messages
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define flowperpkt_tx_interface_add_del_reply
-{
-  /* From the request */
-  u32 context;
-
-  /* Return value, zero means all OK */
-  i32 retval;
-};
-
-define flowperpkt_params
+autoreply define flowperpkt_params
 {
   u32 client_index;
   u32 context;
@@ -50,10 +37,4 @@ define flowperpkt_params
   u8 record_l4;
   u32 active_timer;  /* ~0 is off, 0 is default */
   u32 passive_timer; /* ~0 is off, 0 is default */
-};
-
-define flowperpkt_params_reply
-{
-  u32 context;
-  i32 retval;
 };

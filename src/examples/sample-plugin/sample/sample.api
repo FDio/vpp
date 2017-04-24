@@ -16,7 +16,7 @@
 
 /* Define a simple binary API to control the feature */
 
-define sample_macswap_enable_disable {
+autoreply define sample_macswap_enable_disable {
     /* Client identifier, set from api_main.my_client_index */
     u32 client_index;
 
@@ -28,12 +28,4 @@ define sample_macswap_enable_disable {
 
     /* Interface handle */
     u32 sw_if_index;
-};
-
-define sample_macswap_enable_disable_reply {
-    /* From the request */
-    u32 context;
-
-    /* Return value, zero means all OK */
-    i32 retval;
 };

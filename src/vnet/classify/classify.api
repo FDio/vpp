@@ -92,7 +92,7 @@ define classify_add_del_table_reply
            VRF id if action is 1 or 2.
     @param match[] - for add, match value for session, required
 */
-define classify_add_del_session
+autoreply define classify_add_del_session
 {
   u32 client_index;
   u32 context;
@@ -106,16 +106,6 @@ define classify_add_del_session
   u8 match[0];
 };
 
-/** \brief Classify add / del session response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the add/del session request
-*/
-define classify_add_del_session_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Set/unset policer classify interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -127,7 +117,7 @@ define classify_add_del_session_reply
     Note: User is recommeneded to use just one valid table_index per call.
           (ip4_table_index, ip6_table_index, or l2_table_index)
 */
-define policer_classify_set_interface
+autoreply define policer_classify_set_interface
 {
   u32 client_index;
   u32 context;
@@ -136,16 +126,6 @@ define policer_classify_set_interface
   u32 ip6_table_index;
   u32 l2_table_index;
   u8 is_add;
-};
-
-/** \brief Set/unset policer classify interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define policer_classify_set_interface_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get list of policer classify interfaces and tables
@@ -308,22 +288,13 @@ define classify_session_details
     Note: User is recommeneded to use just one valid table_index per call.
           (ip4_table_index, ip6_table_index, or l2_table_index)
 */
-define flow_classify_set_interface {
+autoreply define flow_classify_set_interface {
     u32 client_index;
     u32 context;
     u32 sw_if_index;
     u32 ip4_table_index;
     u32 ip6_table_index;
     u8  is_add;
-};
-
-/** \brief Set/unset flow classify interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define flow_classify_set_interface_reply {
-    u32 context;
-    i32 retval;
 };
 
 /** \brief Get list of flow classify interfaces and tables

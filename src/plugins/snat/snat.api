@@ -29,7 +29,7 @@
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
     @param is_add - 1 if add, 0 if delete
 */
-define snat_add_address_range {
+autoreply define snat_add_address_range {
   u32 client_index;
   u32 context;
   u8 is_ip4;
@@ -37,15 +37,6 @@ define snat_add_address_range {
   u8 last_ip_address[16];
   u32 vrf_id;
   u8 is_add;
-};
-
-/** \brief Add S-NAT address range reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_add_address_range_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump S-NAT addresses
@@ -77,21 +68,12 @@ define snat_address_details {
     @param is_inside - 1 if inside, 0 if outside
     @param sw_if_index - software index of the interface
 */
-define snat_interface_add_del_feature {
+autoreply define snat_interface_add_del_feature {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 is_inside;
   u32 sw_if_index;
-};
-
-/** \brief Enable/disable S-NAT feature on the interface reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_interface_add_del_feature_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump interfaces with S-NAT feature
@@ -130,7 +112,7 @@ define snat_interface_details {
                                   used)
     @param vfr_id - VRF ID
 */
-define snat_add_static_mapping {
+autoreply define snat_add_static_mapping {
   u32 client_index;
   u32 context;
   u8 is_add;
@@ -143,15 +125,6 @@ define snat_add_static_mapping {
   u16 external_port;
   u32 external_sw_if_index;
   u32 vrf_id;
-};
-
-/** \brief Add/delete S-NAT static mapping reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_add_static_mapping_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump S-NAT static mappings
@@ -257,19 +230,10 @@ define snat_show_config_reply
     @param context - sender context, to match reply w/ request
     @param worker_mask - S-NAT workers mask
 */
-define snat_set_workers {
+autoreply define snat_set_workers {
   u32 client_index;
   u32 context;
   u64 worker_mask;
-};
-
-/** \brief Set S-NAT workers reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_set_workers_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump S-NAT workers
@@ -300,21 +264,12 @@ define snat_worker_details {
     @param is_add - 1 if add, 0 if delete
     @param sw_if_index - software index of the interface
 */
-define snat_add_del_interface_addr {
+autoreply define snat_add_del_interface_addr {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 is_inside;
   u32 sw_if_index;
-};
-
-/** \brief Add/delete S-NAT pool address from specific interfce reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_add_del_interface_addr_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump S-NAT pool addresses interfaces
@@ -342,21 +297,12 @@ define snat_interface_addr_details {
     @param src_port - source port number
     @param enable - 1 if enable, 0 if disable
 */
-define snat_ipfix_enable_disable {
+autoreply define snat_ipfix_enable_disable {
   u32 client_index;
   u32 context;
   u32 domain_id;
   u16 src_port;
   u8 enable;
-};
-
-/** \brief Enable/disable S-NAT IPFIX logging reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_ipfix_enable_disable_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump S-NAT users
@@ -437,7 +383,7 @@ define snat_user_session_details {
     @param out_addr - outside IP address
     @param out_addr - outside IP address prefix length
 */
-define snat_add_det_map {
+autoreply define snat_add_det_map {
   u32 client_index;
   u32 context;
   u8 is_add;
@@ -447,15 +393,6 @@ define snat_add_det_map {
   u8 in_plen;
   u8 out_addr[16];
   u8 out_plen;
-};
-
-/** \brief Add/delete S-NAT deterministic mapping reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_add_det_map_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get outside address and port range from inside address
@@ -556,22 +493,13 @@ define snat_det_map_details {
     @param tcp_transitory - TCP transitory timeout (default 240sec)
     @param icmp - ICMP timeout (default 60sec)
 */
-define snat_det_set_timeouts {
+autoreply define snat_det_set_timeouts {
   u32 client_index;
   u32 context;
   u32 udp;
   u32 tcp_established;
   u32 tcp_transitory;
   u32 icmp;
-};
-
-/** \brief Set values of timeouts for deterministic NAT reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define snat_det_set_timeouts_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get values of timeouts for deterministic NAT (seconds)

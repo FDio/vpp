@@ -93,21 +93,11 @@ define tap_modify_reply
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface index of existing tap interface
 */
-define tap_delete
+autoreply define tap_delete
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-};
-
-/** \brief Reply for tap delete request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define tap_delete_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump tap interfaces request */

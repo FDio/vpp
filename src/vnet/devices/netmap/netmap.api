@@ -22,7 +22,7 @@
     @param is_pipe - is pipe
     @param is_master - 0=slave, 1=master
 */
-define netmap_create
+autoreply define netmap_create
 {
   u32 client_index;
   u32 context;
@@ -34,37 +34,17 @@ define netmap_create
   u8 is_master;
 };
 
-/** \brief Create netmap response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define netmap_create_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Delete netmap
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param netmap_if_name - interface name
 */
-define netmap_delete
+autoreply define netmap_delete
 {
   u32 client_index;
   u32 context;
 
   u8 netmap_if_name[64];
-};
-
-/** \brief Delete netmap response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define netmap_delete_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /*

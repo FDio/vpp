@@ -21,20 +21,12 @@
     @param sw_if_index_to - interface where the traffic is mirrored
     @param state - 0 = disabled, 1 = rx enabled, 2 = tx enabled, 3 tx & rx enabled
 */
-define sw_interface_span_enable_disable {
+autoreply define sw_interface_span_enable_disable {
     u32 client_index;
     u32 context;
     u32 sw_if_index_from;
     u32 sw_if_index_to;
     u8  state;
-};
-
-/** \brief Reply to SPAN enable/disable request
-    @param context - sender context which was passed in the request
-*/
-define sw_interface_span_enable_disable_reply {
-    u32 context;
-    i32 retval;
 };
 
 /** \brief SPAN dump request

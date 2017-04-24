@@ -24,7 +24,7 @@
     @param trace_enable - iOAM Trace enabled or not flag
 
 */
-define vxlan_gpe_ioam_enable {
+autoreply define vxlan_gpe_ioam_enable {
   u32 client_index;
   u32 context;
   u16 id;
@@ -33,36 +33,16 @@ define vxlan_gpe_ioam_enable {
   u8 trace_enable;
 };
 
-/** \brief iOAM Over VxLAN-GPE - Set iOAM transport for VXLAN-GPE reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define vxlan_gpe_ioam_enable_reply {
-    u32 context;
-    i32 retval;
-};
-
-
 /** \brief iOAM for VxLAN-GPE disable
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param id - profile id
 */
-define vxlan_gpe_ioam_disable
+autoreply define vxlan_gpe_ioam_disable
 {
   u32 client_index;
   u32 context;
   u16 id;
-};
-
-/** \brief vxlan_gpe_ioam disable response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define vxlan_gpe_ioam_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Enable iOAM for a VNI (VXLAN-GPE)
@@ -73,25 +53,13 @@ define vxlan_gpe_ioam_disable_reply
     @param remote - IPv4/6 Address of the remote VTEP
 
 */
-define vxlan_gpe_ioam_vni_enable {
+autoreply define vxlan_gpe_ioam_vni_enable {
   u32 client_index;
   u32 context;
   u32 vni;
   u8  local[16];
   u8  remote[16];
   u8  is_ipv6;
-};
-
-/** \brief Reply to enable iOAM for a VNI (VXLAN-GPE)
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-
-*/
-define vxlan_gpe_ioam_vni_enable_reply {
-  u32 client_index;
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Disable iOAM for a VNI (VXLAN-GPE)
@@ -102,7 +70,7 @@ define vxlan_gpe_ioam_vni_enable_reply {
     @param remote - IPv4/6 Address of the remote VTEP
 
 */
-define vxlan_gpe_ioam_vni_disable {
+autoreply define vxlan_gpe_ioam_vni_disable {
   u32 client_index;
   u32 context;
   u32 vni;
@@ -111,19 +79,6 @@ define vxlan_gpe_ioam_vni_disable {
   u8  is_ipv6;
 };
 
-/** \brief Reply to disable iOAM for a VNI (VXLAN-GPE)
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-
-*/
-define vxlan_gpe_ioam_vni_disable_reply {
-  u32 client_index;
-  u32 context;
-  i32 retval;
-};
-
-
 /** \brief Enable iOAM for a VXLAN-GPE transit
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -131,24 +86,12 @@ define vxlan_gpe_ioam_vni_disable_reply {
     @param outer_fib_index- FIB index
 
 */
-define vxlan_gpe_ioam_transit_enable {
+autoreply define vxlan_gpe_ioam_transit_enable {
   u32 client_index;
   u32 context;
   u32 outer_fib_index;
   u8  dst_addr[16];
   u8  is_ipv6;
-};
-
-/** \brief Reply to enable iOAM for VXLAN-GPE transit
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-
-*/
-define vxlan_gpe_ioam_transit_enable_reply {
-  u32 client_index;
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Disable iOAM for VXLAN-GPE transit
@@ -158,24 +101,11 @@ define vxlan_gpe_ioam_transit_enable_reply {
     @param outer_fib_index- FIB index
 
 */
-define vxlan_gpe_ioam_transit_disable {
+autoreply define vxlan_gpe_ioam_transit_disable {
   u32 client_index;
   u32 context;
   u32 outer_fib_index;
   u8  dst_addr[16];
   u8  is_ipv6;
 };
-
-/** \brief Reply to disable iOAM for VXLAN-GPE transit
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-
-*/
-define vxlan_gpe_ioam_transit_disable_reply {
-  u32 client_index;
-  u32 context;
-  i32 retval;
-};
-
 

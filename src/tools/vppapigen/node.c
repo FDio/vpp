@@ -1050,6 +1050,11 @@ YYSTYPE set_flags(YYSTYPE a1, YYSTYPE a2)
     flags = (int)(uword) a1;
 
     np->flags |= flags;
+
+    /* Generate a foo_reply_t right here */
+    if (flags & NODE_FLAG_AUTOREPLY) 
+        autoreply(np);
+
     return (a2);
 }
 /*

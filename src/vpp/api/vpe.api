@@ -80,22 +80,12 @@ define create_vlan_subif_reply
     @param sw_if_index - index of the interface
     @param enable - if non-zero enable, else disable
 */
-define sw_interface_set_mpls_enable
+autoreply define sw_interface_set_mpls_enable
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 enable;
-};
-
-/** \brief Reply for MPLS state on an interface
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define sw_interface_set_mpls_enable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Proxy ARP add / del request
@@ -106,7 +96,7 @@ define sw_interface_set_mpls_enable_reply
     @param low_address[4] - Low address of the Proxy ARP range
     @param hi_address[4] - High address of the Proxy ARP range
 */
-define proxy_arp_add_del
+autoreply define proxy_arp_add_del
 {
   u32 client_index;
   u32 context;
@@ -116,23 +106,13 @@ define proxy_arp_add_del
   u8 hi_address[4];
 };
 
-/** \brief Reply for proxy arp add / del request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define proxy_arp_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Proxy ARP add / del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - Which interface to enable / disable Proxy Arp on
     @param enable_disable - 1 to enable Proxy ARP on interface, 0 to disable
 */
-define proxy_arp_intfc_enable_disable
+autoreply define proxy_arp_intfc_enable_disable
 {
   u32 client_index;
   u32 context;
@@ -141,38 +121,18 @@ define proxy_arp_intfc_enable_disable
   u8 enable_disable;
 };
 
-/** \brief Reply for Proxy ARP interface enable / disable request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define proxy_arp_intfc_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Reset VRF (remove all routes etc) request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_ipv6 - 1 for IPv6 neighbor, 0 for IPv4
     @param vrf_id - ID of th FIB table / VRF to reset
 */
-define reset_vrf
+autoreply define reset_vrf
 {
   u32 client_index;
   u32 context;
   u8 is_ipv6;
   u32 vrf_id;
-};
-
-/** \brief Reply for Reset VRF request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define reset_vrf_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Is Address Reachable request - DISABLED
@@ -200,22 +160,12 @@ define is_address_reachable
     @param enable_disable - 1 = enable stats, 0 = disable
     @param pid - pid of process requesting stats updates
 */
-define want_stats
+autoreply define want_stats
 {
   u32 client_index;
   u32 context;
   u32 enable_disable;
   u32 pid;
-};
-
-/** \brief Reply for Want Stats request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define want_stats_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 typeonly manual_print manual_endian define ip4_fib_counter
@@ -331,22 +281,12 @@ define oam_event
     @param enable_disable- enable if non-zero, else disable
     @param pid - pid of the requesting process
 */
-define want_oam_events
+autoreply define want_oam_events
 {
   u32 client_index;
   u32 context;
   u32 enable_disable;
   u32 pid;
-};
-
-/** \brief Want OAM events response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the want oam stats request
-*/
-define want_oam_events_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief OAM add / del target request
@@ -357,7 +297,7 @@ define want_oam_events_reply
     @param dst_address[] - destination address of the target
     @param is_add - add target if non-zero, else delete
 */
-define oam_add_del
+autoreply define oam_add_del
 {
   u32 client_index;
   u32 context;
@@ -367,38 +307,18 @@ define oam_add_del
   u8 is_add;
 };
 
-/** \brief OAM add / del target response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code of the request
-*/
-define oam_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Reset fib table request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param vrf_id - vrf/table id of the fib table to reset
     @param is_ipv6 - an ipv6 fib to reset if non-zero, else ipv4
 */
-define reset_fib
+autoreply define reset_fib
 {
   u32 client_index;
   u32 context;
   u32 vrf_id;
   u8 is_ipv6;
-};
-
-/** \brief Reset fib response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the reset bfib request
-*/
-define reset_fib_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Create loopback interface request
@@ -458,21 +378,11 @@ define create_loopback_instance_reply
     @param context - sender context, to match reply w/ request
     @param sw_if_index - sw index of the interface that was created
 */
-define delete_loopback
+autoreply define delete_loopback
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-};
-
-/** \brief Delete loopback interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define delete_loopback_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Control ping from client to api server request
@@ -543,22 +453,12 @@ define cli_inband_reply
     @param is_ipv6 - neighbor limit if non-zero, else ARP limit
     @param arp_neighbor_limit - the new limit, defaults are ~ 50k
 */
-define set_arp_neighbor_limit
+autoreply define set_arp_neighbor_limit
 {
   u32 client_index;
   u32 context;
   u8 is_ipv6;
   u32 arp_neighbor_limit;
-};
-
-/** \brief Set max allowed ARP or ip6 neighbor entries response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for request
-*/
-define set_arp_neighbor_limit_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief L2 interface patch add / del request
@@ -568,7 +468,7 @@ define set_arp_neighbor_limit_reply
     @param tx_sw_if_index - transmit side interface
     @param is_add - if non-zero set up the interface patch, else remove it
 */
-define l2_patch_add_del
+autoreply define l2_patch_add_del
 {
   u32 client_index;
   u32 context;
@@ -577,38 +477,18 @@ define l2_patch_add_del
   u8 is_add;
 };
 
-/** \brief L2 interface patch add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define l2_patch_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Interface set vpath request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface used to reach neighbor
     @param enable - if non-zero enable, else disable
 */
-define sw_interface_set_vpath
+autoreply define sw_interface_set_vpath
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 enable;
-};
-
-/** \brief Interface set vpath response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define sw_interface_set_vpath_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Set L2 XConnect between two interfaces request
@@ -618,23 +498,13 @@ define sw_interface_set_vpath_reply
     @param tx_sw_if_index - Transmit interface index
     @param enable - enable xconnect if not 0, else set to L3 mode
 */
-define sw_interface_set_l2_xconnect
+autoreply define sw_interface_set_l2_xconnect
 {
   u32 client_index;
   u32 context;
   u32 rx_sw_if_index;
   u32 tx_sw_if_index;
   u8 enable;
-};
-
-/** \brief Set L2 XConnect response
-    @param context - sender context, to match reply w/ request
-    @param retval - L2 XConnect request return code
-*/
-define sw_interface_set_l2_xconnect_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Interface bridge mode request
@@ -646,7 +516,7 @@ define sw_interface_set_l2_xconnect_reply
     @param shg - Shared horizon group, for bridge mode only
     @param enable - Enable beige mode if not 0, else set to L3 mode
 */
-define sw_interface_set_l2_bridge
+autoreply define sw_interface_set_l2_bridge
 {
   u32 client_index;
   u32 context;
@@ -655,16 +525,6 @@ define sw_interface_set_l2_bridge
   u8 shg;
   u8 bvi;
   u8 enable;
-};
-
-/** \brief Interface bridge mode response
-    @param context - sender context, to match reply w/ request
-    @param retval - Bridge mode request return code
-*/
-define sw_interface_set_l2_bridge_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Set bridge domain ip to mac entry request
@@ -676,7 +536,7 @@ define sw_interface_set_l2_bridge_reply
     @param mac_address - MAC address
     @param 
 */
-define bd_ip_mac_add_del
+autoreply define bd_ip_mac_add_del
 {
   u32 client_index;
   u32 context;
@@ -687,16 +547,6 @@ define bd_ip_mac_add_del
   u8 mac_address[6];
 };
 
-/** \brief Set bridge domain ip to mac entry response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the set bridge flags request
-*/
-define bd_ip_mac_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Set/unset the classification table for an interface request 
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -704,23 +554,13 @@ define bd_ip_mac_add_del_reply
     @param sw_if_index - interface to associate with the table
     @param table_index - index of the table, if ~0 unset the table
 */
-define classify_set_interface_ip_table
+autoreply define classify_set_interface_ip_table
 {
   u32 client_index;
   u32 context;
   u8 is_ipv6;
   u32 sw_if_index;
   u32 table_index;		/* ~0 => off */
-};
-
-/** \brief Set/unset interface classification table response 
-    @param context - sender context, to match reply w/ request
-    @param retval - return code
-*/
-define classify_set_interface_ip_table_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Set/unset l2 classification tables for an interface request
@@ -731,7 +571,7 @@ define classify_set_interface_ip_table_reply
     @param ip6_table_index - ip6 index
     @param other_table_index - other index
 */
-define classify_set_interface_l2_tables
+autoreply define classify_set_interface_l2_tables
 {
   u32 client_index;
   u32 context;
@@ -741,16 +581,6 @@ define classify_set_interface_l2_tables
   u32 ip6_table_index;
   u32 other_table_index;
   u8 is_input;
-};
-
-/** \brief Set/unset l2 classification tables for an interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define classify_set_interface_l2_tables_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get node index using name request
@@ -809,22 +639,12 @@ define add_node_next_reply
     @param sw_if_index - interface to enable/disable filtering on
     @param enable_disable - if non-zero enable filtering, else disable
 */
-define l2_interface_efp_filter
+autoreply define l2_interface_efp_filter
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u32 enable_disable;
-};
-
-/** \brief L2 interface ethernet flow point filtering response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define l2_interface_efp_filter_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 define create_subif
@@ -882,18 +702,12 @@ define show_version_reply
 };
 
 /* Gross kludge, DGMS */
-define interface_name_renumber
+autoreply define interface_name_renumber
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u32 new_show_dev_instance;
-};
-
-define interface_name_renumber_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Register for ip4 arp resolution events
@@ -903,23 +717,13 @@ define interface_name_renumber_reply
     @param pid - sender's pid
     @param address - the exact ip4 address of interest
 */
-define want_ip4_arp_events
+autoreply define want_ip4_arp_events
 {
   u32 client_index;
   u32 context;
   u8 enable_disable;
   u32 pid;
   u32 address;
-};
-
-/** \brief Reply for interface events registration
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define want_ip4_arp_events_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Tell client about an ip4 arp resolution event
@@ -949,23 +753,13 @@ define ip4_arp_event
     @param pid - sender's pid
     @param address - the exact ip6 address of interest
 */
-define want_ip6_nd_events
+autoreply define want_ip6_nd_events
 {
   u32 client_index;
   u32 context;
   u8 enable_disable;
   u32 pid;
   u8 address[16];
-};
-
-/** \brief Reply for ip6 nd resolution events registration
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define want_ip6_nd_events_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Tell client about an ip6 nd resolution or mac/ip event
@@ -999,7 +793,7 @@ define ip6_nd_event
     Note: User is recommeneded to use just one valid table_index per call.
           (ip4_table_index, ip6_table_index, or l2_table_index)
 */
-define input_acl_set_interface
+autoreply define input_acl_set_interface
 {
   u32 client_index;
   u32 context;
@@ -1008,16 +802,6 @@ define input_acl_set_interface
   u32 ip6_table_index;
   u32 l2_table_index;
   u8 is_add;
-};
-
-/** \brief Set/unset input ACL interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define input_acl_set_interface_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 define get_node_graph
@@ -1048,7 +832,7 @@ define get_node_graph_reply
     @param pow_enable - Proof of Work enabled or not flag
     @param trace_enable - iOAM Trace enabled or not flag
 */
-define ioam_enable
+autoreply define ioam_enable
 {
   u32 client_index;
   u32 context;
@@ -1060,36 +844,16 @@ define ioam_enable
   u32 node_id;
 };
 
-/** \brief iOAM Trace profile add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define ioam_enable_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief iOAM disable
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param index - MAP Domain index
 */
-define ioam_disable
+autoreply define ioam_disable
 {
   u32 client_index;
   u32 context;
   u16 id;
-};
-
-/** \brief iOAM disable response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define ioam_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Query relative index via node names
@@ -1149,7 +913,7 @@ define pg_create_interface_reply
     @param count - number of packets to be captured
     @param pcap_file - pacp file name to store captured packets
 */
-define pg_capture
+autoreply define pg_capture
 {
   u32 client_index;
   u32 context;
@@ -1160,39 +924,19 @@ define pg_capture
   u8 pcap_file_name[pcap_name_length];
 };
 
-/** \brief PacketGenerator capture packets response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define pg_capture_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Enable / disable packet generator request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_enabled - 1 if enabling streams, 0 if disabling
     @param stream - stream name to be enable/disabled, if not specified handle all streams
 */
-define pg_enable_disable
+autoreply define pg_enable_disable
 {
   u32 client_index;
   u32 context;
   u8 is_enabled;
   u32 stream_name_length;
   u8 stream_name[stream_name_length];
-};
-
-/** \brief Reply for enable / disable packet generator
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define pg_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Configure IP source and L4 port-range check
@@ -1208,7 +952,7 @@ define pg_enable_disable_reply
     @param vrf_id - fib table/vrf id to associate the source and port-range check with
     @note To specify a single port set low_port and high_port entry the same
 */
-define ip_source_and_port_range_check_add_del
+autoreply define ip_source_and_port_range_check_add_del
 {
   u32 client_index;
   u32 context;
@@ -1222,16 +966,6 @@ define ip_source_and_port_range_check_add_del
   u32 vrf_id;
 };
 
-/** \brief Configure IP source and L4 port-range check reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ip_source_and_port_range_check_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Set interface source and L4 port-range request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -1239,7 +973,7 @@ define ip_source_and_port_range_check_add_del_reply
     @param tcp_vrf_id - VRF associated with source and TCP port-range check
     @param udp_vrf_id - VRF associated with source and TCP port-range check
 */
-define ip_source_and_port_range_check_interface_add_del
+autoreply define ip_source_and_port_range_check_interface_add_del
 {
   u32 client_index;
   u32 context;
@@ -1251,34 +985,15 @@ define ip_source_and_port_range_check_interface_add_del
   u32 udp_out_vrf_id;
 };
 
-/** \brief Set interface source and L4 port-range response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define ip_source_and_port_range_check_interface_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Delete sub interface request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - sw index of the interface that was created by create_subif
 */
-define delete_subif {
+autoreply define delete_subif {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-};
-
-/** \brief Delete sub interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define delete_subif_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Punt traffic to the host
@@ -1289,7 +1004,7 @@ define delete_subif_reply {
     @param l4_protocol - L4 protocol to be punted, only UDP (0x11) is supported
     @param l4_port - TCP/UDP port to be punted
 */
-define punt {
+autoreply define punt {
     u32 client_index;
     u32 context;
     u8 is_add;
@@ -1298,39 +1013,19 @@ define punt {
     u16 l4_port;
 };
 
-/** \brief Reply to the punt request
-    @param context - sender context which was passed in the request
-    @param retval - return code of punt request
-*/
-define punt_reply
-{
-    u32 context;
-    i32 retval;
-};
-
 /** \brief Feature path enable/disable request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - the interface
     @param enable - 1 = on, 0 = off
 */
-define feature_enable_disable {
+autoreply define feature_enable_disable {
     u32 client_index;
     u32 context;
     u32 sw_if_index;
     u8 enable;
     u8 arc_name[64];
     u8 feature_name[64];
-};
-
-/** \brief Reply to the eature path enable/disable request
-    @param context - sender context which was passed in the request
-    @param retval - return code for the request
-*/
-define feature_enable_disable_reply
-{
-    u32 context;
-    i32 retval;
 };
 
 /*

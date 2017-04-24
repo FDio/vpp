@@ -57,22 +57,12 @@ define memif_create_reply
     @param context - sender context, to match reply w/ request
     @param sw_if_index - software index of the interface to delete
 */
-define memif_delete
+autoreply define memif_delete
 {
   u32 client_index;
   u32 context;
 
   u32 sw_if_index;
-};
-
-/** \brief Delete host-interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define memif_delete_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Memory interface details structure

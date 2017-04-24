@@ -27,6 +27,9 @@
 #include "lex.h"
 #include "node.h"
 #include "tools/vppapigen/gram.h"
+#include <vppinfra/clib.h>
+#include <vppinfra/fifo.h>
+#include <vppinfra/format.h>
 
 FILE *ifp, *ofp, *pythonfp, *jsonfp;
 char *vlib_app_name = "vpp";
@@ -38,6 +41,9 @@ int current_filename_allocated;
 unsigned long input_crc;
 unsigned long message_crc;
 int yydebug;
+char *push_input_fifo;
+char saved_ungetc_char;
+char have_ungetc_char;
 
 /*
  * lexer variable definitions 
@@ -469,7 +475,48 @@ static char namebuf [MAXNAME];
 static inline char
 getc_char (FILE *ifp)
 {
+    char rv;
+
+    if (have_ungetc_char) {
+        have_ungetc_char = 0;
+        return saved_ungetc_char;
+    }
+        
+    if (clib_fifo_elts (push_input_fifo)) {
+        clib_fifo_sub1(push_input_fifo, rv);
+        return (rv & 0x7f);
+    }
     return ((char)(getc(ifp) & 0x7f));
+}
+
+u32 fe (char *fifo)
+{
+    return clib_fifo_elts (fifo);
+}
+
+static inline void
+ungetc_char (char c, FILE *ifp)
+{
+    saved_ungetc_char = c;
+    have_ungetc_char = 1;
+}
+
+void autoreply (void *np_arg)
+{
+    static u8 *s;
+    node_t *np = (node_t *)np_arg;
+    int i;
+
+    vec_reset_length (s);
+
+    s = format (0, " define %s_reply\n", (char *)(np->data[0]));
+    s = format (s, "{\n");
+    s = format (s, "    u32 context;\n");
+    s = format (s, "    i32 retval;\n");
+    s = format (s, "};\n");
+
+    for (i = 0; i < vec_len (s); i++)
+        clib_fifo_add1 (push_input_fifo, s[i]);
 }
 
 /*
@@ -595,7 +642,7 @@ static int yylex_1 (void)
             return (EOF);
         
         if (!isalnum (c) && c != '_') {
-            ungetc (c, ifp);
+            ungetc_char (c, ifp);
             namebuf [nameidx] = 0;
             the_lexer_state = START_STATE;
             return (name_check (namebuf, &yylval));
@@ -616,7 +663,7 @@ static int yylex_1 (void)
             return (EOF);
         
         if (!isdigit (c)) {
-            ungetc (c, ifp);
+            ungetc_char (c, ifp);
             namebuf [nameidx] = 0;
             the_lexer_state = START_STATE;
             yylval = (void *) atol(namebuf);
@@ -889,6 +936,7 @@ int yylex (void)
     case MANUAL_ENDIAN:      code = 276; break;
     case TYPEONLY:           code = 278; break;
     case DONT_TRACE:         code = 279; break;
+    case AUTOREPLY:          code = 280; break;
         
     case EOF: code = ~0; break; /* hysterical compatibility */
 
@@ -929,6 +977,7 @@ static struct keytab {
 } keytab [] = 
 /* Keep the table sorted, binary search used below! */
 {
+    {"autoreply",       NODE_AUTOREPLY},
     {"define",          NODE_DEFINE},  
     {"dont_trace",      NODE_DONT_TRACE},
     {"f64",             NODE_F64},
@@ -1004,6 +1053,10 @@ static int name_check (const char *s, YYSTYPE *token_value)
             case NODE_DONT_TRACE:
                 *token_value = (YYSTYPE) NODE_FLAG_DONT_TRACE;
                 return(DONT_TRACE);
+
+            case NODE_AUTOREPLY:
+                *token_value = (YYSTYPE) NODE_FLAG_AUTOREPLY;
+                return(AUTOREPLY);
 
             case NODE_NOVERSION:
                 return(NOVERSION);

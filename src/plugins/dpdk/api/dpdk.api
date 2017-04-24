@@ -21,22 +21,13 @@
     @param pipe - pipe ID within its subport
     @param profile - pipe profile ID
 */
-define sw_interface_set_dpdk_hqos_pipe {
+autoreply define sw_interface_set_dpdk_hqos_pipe {
     u32 client_index;
     u32 context;
     u32 sw_if_index;
     u32 subport;
     u32 pipe;
     u32 profile;
-};
-
-/** \brief DPDK interface HQoS pipe profile set reply
-    @param context - sender context, to match reply w/ request
-    @param retval - request return code
-*/
-define sw_interface_set_dpdk_hqos_pipe_reply {
-    u32 context;
-    i32 retval;
 };
 
 /** \brief DPDK interface HQoS subport parameters set request
@@ -49,7 +40,7 @@ define sw_interface_set_dpdk_hqos_pipe_reply {
     @param tc_rate - subport traffic class 0 .. 3 rates (measured in bytes/second)
     @param tc_period - enforcement period for rates (measured in milliseconds)
 */
-define sw_interface_set_dpdk_hqos_subport {
+autoreply define sw_interface_set_dpdk_hqos_subport {
     u32 client_index;
     u32 context;
     u32 sw_if_index;
@@ -60,15 +51,6 @@ define sw_interface_set_dpdk_hqos_subport {
     u32 tc_period;
 };
 
-/** \brief DPDK interface HQoS subport parameters set reply
-    @param context - sender context, to match reply w/ request
-    @param retval - request return code
-*/
-define sw_interface_set_dpdk_hqos_subport_reply {
-    u32 context;
-    i32 retval;
-};
-
 /** \brief DPDK interface HQoS tctbl entry set request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -77,22 +59,13 @@ define sw_interface_set_dpdk_hqos_subport_reply {
     @param tc - traffic class (0 .. 3)
     @param queue - traffic class queue (0 .. 3)
 */
-define sw_interface_set_dpdk_hqos_tctbl {
+autoreply define sw_interface_set_dpdk_hqos_tctbl {
     u32 client_index;
     u32 context;
     u32 sw_if_index;
     u32 entry;
     u32 tc;
     u32 queue;
-};
-
-/** \brief DPDK interface HQoS tctbl entry set reply
-    @param context - sender context, to match reply w/ request
-    @param retval - request return code
-*/
-define sw_interface_set_dpdk_hqos_tctbl_reply {
-    u32 context;
-    i32 retval;
 };
 
 /*
