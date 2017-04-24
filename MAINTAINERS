@@ -76,9 +76,11 @@ VNET IPv4 and IPv6 LPM
 M:	Dave Barach <dave@barachs.net>
 F:	src/vnet/ip/
 
-VNET IPv6 Segment Routing
+VNET Segment Routing (IPv6 and MPLS)
 M:	Pablo Camarillo <pcamaril@cisco.com>
-F:	src/vnet/sr/
+F:	src/vnet/srv6/
+F:	src/vnet/srmpls/
+F:	src/examples/srv6-sample-localsid/
 
 VNET IPSec
 M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
