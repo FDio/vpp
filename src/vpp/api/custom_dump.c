@@ -24,7 +24,7 @@
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
-#include <vnet/sr/sr.h>
+#include <vnet/srv6/sr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/policer/xlate.h>
