@@ -130,6 +130,8 @@ mpls_label_dpo_lock (dpo_id_t *dpo)
     mld = mpls_label_dpo_get(dpo->dpoi_index);
 
     mld->mld_locks++;
+
+    clib_warning("MPLS Label DPO. DPO[%d] locked. Number of locks: %d", dpo->dpoi_index, mld->mld_locks);
 }
 
 static void
@@ -141,10 +143,13 @@ mpls_label_dpo_unlock (dpo_id_t *dpo)
 
     mld->mld_locks--;
 
+    clib_warning("MPLS Label DPO. DPO[%d] locked. Number of locks: %d", dpo->dpoi_index, mld->mld_locks);
+
     if (0 == mld->mld_locks)
     {
 	dpo_reset(&mld->mld_dpo);
 	pool_put(mpls_label_dpo_pool, mld);
+    clib_warning("MPLS Label DPO. DPO[%d] removed", dpo->dpoi_index);
     }
 }
 
