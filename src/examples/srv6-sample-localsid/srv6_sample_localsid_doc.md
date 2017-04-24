@@ -26,5 +26,5 @@ Notice that the plugin only 'defines' a new SRv6 LocalSID behavior, but the exis
 ## Graph node
 
 The current graph node uses the function 'end_srh_processing' to do the Segment Routing Endpoint behavior. Notice that it does not allow the cleanup of a Segment Routing header (as per the SRv6 behavior specs).
-This function is identical to the one found in /src/vnet/sr/sr_localsid.c
+This function is identical to the one found in /src/vnet/srv6/sr_localsid.c
 In case that by some other reason you want to do decapsulation, or SRH clean_up you can use the functions 'end_decaps_srh_processing' or 'end_psp_srh_processing' respectively.

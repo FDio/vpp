@@ -19,11 +19,11 @@
  *
  */
 
-#ifndef included_vnet_sr_h
-#define included_vnet_sr_h
+#ifndef included_vnet_srv6_h
+#define included_vnet_srv6_h
 
 #include <vnet/vnet.h>
-#include <vnet/sr/sr_packet.h>
+#include <vnet/srv6/sr_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -83,9 +83,9 @@ typedef struct
   ip6_address_t bsid;			/**< BindingSID (key) */
 
   u8 type;					/**< Type (default is 0) */
-  /* SR Policy specific DPO                                                                               */
+  /* SR Policy specific DPO                                       */
   /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
-  /* IF Type = SPRAY then Spray DPO with all SID lists                    */
+  /* IF Type = SPRAY then Spray DPO with all SID lists            */
   dpo_id_t bsid_dpo;			/**< SR Policy specific DPO - BSID */
   dpo_id_t ip4_dpo;			/**< SR Policy specific DPO - IPv6 */
   dpo_id_t ip6_dpo;			/**< SR Policy specific DPO - IPv4 */
@@ -193,10 +193,10 @@ typedef struct
   /* SR SID lists */
   ip6_sr_sl_t *sid_lists;
 
-  /* SR policies */
+  /* SRv6 policies */
   ip6_sr_policy_t *sr_policies;
 
-  /* Hash table mapping BindingSID to SR policy */
+  /* Hash table mapping BindingSID to SRv6 policy */
   mhash_t sr_policies_index_hash;
 
   /* Pool of SR localsid instances */
@@ -236,39 +236,41 @@ typedef struct
   vnet_main_t *vnet_main;
 } ip6_sr_main_t;
 
-ip6_sr_main_t sr_main;
+extern ip6_sr_main_t sr_main;
 
 extern vlib_node_registration_t sr_policy_rewrite_encaps_node;
 extern vlib_node_registration_t sr_policy_rewrite_insert_node;
 extern vlib_node_registration_t sr_localsid_node;
 extern vlib_node_registration_t sr_localsid_d_node;
 
-void sr_dpo_lock (dpo_id_t * dpo);
-void sr_dpo_unlock (dpo_id_t * dpo);
+extern void sr_dpo_lock (dpo_id_t * dpo);
+extern void sr_dpo_unlock (dpo_id_t * dpo);
 
-int sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
-				   u8 * keyword_str, u8 * def_str,
-				   u8 * params_str, dpo_type_t * dpo,
-				   format_function_t * ls_format,
-				   unformat_function_t * ls_unformat,
-				   sr_plugin_callback_t * creation_fn,
-				   sr_plugin_callback_t * removal_fn);
+extern int
+sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
+			       u8 * keyword_str, u8 * def_str,
+			       u8 * params_str, dpo_type_t * dpo,
+			       format_function_t * ls_format,
+			       unformat_function_t * ls_unformat,
+			       sr_plugin_callback_t * creation_fn,
+			       sr_plugin_callback_t * removal_fn);
 
-int
+extern int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
-int
+extern int
 sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
 	       u8 operation, ip6_address_t * segments, u32 sl_index,
 	       u32 weight);
-int sr_policy_del (ip6_address_t * bsid, u32 index);
+extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
-int sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
-		     char end_psp, u8 behavior, u32 sw_if_index,
-		     u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
-		     void *ls_plugin_mem);
+extern int
+sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
+		 char end_psp, u8 behavior, u32 sw_if_index,
+		 u32 vlan_index, u32 fib_table, ip46_address_t * nh_addr,
+		 void *ls_plugin_mem);
 
-int
+extern int
 sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 		    u32 table_id, ip46_address_t * prefix, u32 mask_width,
 		    u32 sw_if_index, u8 traffic_type);
