@@ -20,23 +20,12 @@
     @param enable_disable - 1 => enable, 0 => disable
 */
 
-define cop_interface_enable_disable
+autoreply define cop_interface_enable_disable
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 enable_disable;
-};
-
-/** \brief cop: interface enable/disable junk filtration reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define cop_interface_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief cop: enable/disable whitelist filtration features on an interface
@@ -51,7 +40,7 @@ define cop_interface_enable_disable_reply
     @param default_cop -  1 => enable non-ip4, non-ip6 filtration 0=> disable it
 */
 
-define cop_whitelist_enable_disable
+autoreply define cop_whitelist_enable_disable
 {
   u32 client_index;
   u32 context;
@@ -60,17 +49,6 @@ define cop_whitelist_enable_disable
   u8 ip4;
   u8 ip6;
   u8 default_cop;
-};
-
-/** \brief cop: interface enable/disable junk filtration reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define cop_whitelist_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief get_node_graph - get a copy of the vpp node graph

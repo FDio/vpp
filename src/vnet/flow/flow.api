@@ -24,7 +24,7 @@
     @param template_interval - number of seconds after which to resend template
     @param udp_checksum - UDP checksum calculation enable flag
 */
-define set_ipfix_exporter
+autoreply define set_ipfix_exporter
 {
   u32 client_index;
   u32 context;
@@ -35,15 +35,6 @@ define set_ipfix_exporter
   u32 path_mtu;
   u32 template_interval;
   u8 udp_checksum;
-};
-
-/** \brief Reply to IPFIX exporter configure request
-    @param context - sender context which was passed in the request
-*/
-define set_ipfix_exporter_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPFIX exporter dump request
@@ -84,20 +75,11 @@ define ipfix_exporter_details
     @param domain_id - domain ID reported in IPFIX messages for classify stream
     @param src_port - source port of UDP session for classify stream
 */
-define set_ipfix_classify_stream {
+autoreply define set_ipfix_classify_stream {
     u32 client_index;
     u32 context;
     u32 domain_id;
     u16 src_port;
-};
-
-/** \brief IPFIX classify stream configure response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define set_ipfix_classify_stream_reply {
-    u32 context;
-    i32 retval;
 };
 
 /** \brief IPFIX classify stream dump request
@@ -127,21 +109,13 @@ define ipfix_classify_stream_details {
     @param ip_version - version of IP used in the classifier table
     @param transport_protocol - transport protocol used in the classifier table or 255 for unspecified
 */
-define ipfix_classify_table_add_del {
+autoreply define ipfix_classify_table_add_del {
     u32 client_index;
     u32 context;
     u32 table_id;
     u8 ip_version;
     u8 transport_protocol;
     u8 is_add;
-};
-
-/** \brief IPFIX add classifier table response
-    @param context - sender context which was passed in the request
-*/
-define ipfix_classify_table_add_del_reply {
-    u32 context;
-    i32 retval;
 };
 
 /** \brief IPFIX classify tables dump request

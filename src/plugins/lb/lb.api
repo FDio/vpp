@@ -8,7 +8,7 @@
     @param flow_timeout - Time in seconds after which, if no packet is received
            for a given flow, the flow is removed from the established flow table.
 */
-define lb_conf
+autoreply define lb_conf
 {
   u32 client_index;
   u32 context;
@@ -16,11 +16,6 @@ define lb_conf
   u8 ip6_src_address[16];
   u32 sticky_buckets_per_core;
   u32 flow_timeout;
-};
-
-define lb_conf_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Add a virtual address (or prefix)
@@ -33,7 +28,7 @@ define lb_conf_reply {
            for this VIP (must be power of 2).
     @param is_del - The VIP should be removed.
 */
-define lb_add_del_vip {
+autoreply define lb_add_del_vip {
   u32 client_index;
   u32 context;
   u8 ip_prefix[16];
@@ -41,11 +36,6 @@ define lb_add_del_vip {
   u8 is_gre4;
   u32 new_flows_table_length;
   u8 is_del;
-};
-
-define lb_add_del_vip_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Add an application server for a given VIP
@@ -56,16 +46,11 @@ define lb_add_del_vip_reply {
     @param as_address - The application server address (IPv4 in lower order 32 bits).
     @param is_del - The AS should be removed.
 */
-define lb_add_del_as {
+autoreply define lb_add_del_as {
   u32 client_index;
   u32 context;
   u8 vip_ip_prefix[16];
   u8 vip_prefix_length;
   u8 as_address[16];
   u8 is_del;
-};
-
-define lb_add_del_as_reply {
-  u32 context;
-  i32 retval;
 };

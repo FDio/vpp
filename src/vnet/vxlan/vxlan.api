@@ -61,21 +61,11 @@ define vxlan_tunnel_details
     @param is_ipv6 - if non-zero, enable ipv6-vxlan-bypass, else ipv4-vxlan-bypass
     @param enable - if non-zero enable, else disable
 */
-define sw_interface_set_vxlan_bypass
+autoreply define sw_interface_set_vxlan_bypass
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 is_ipv6;
   u8 enable;
-};
-
-/** \brief Interface set vxlan-bypass response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define sw_interface_set_vxlan_bypass_reply
-{
-  u32 context;
-  i32 retval;
 };

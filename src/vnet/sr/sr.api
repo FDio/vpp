@@ -25,7 +25,7 @@
     @param fib_table  FIB table in which we should install the localsid entry
     @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
 */
-define sr_localsid_add_del
+autoreply define sr_localsid_add_del
 {
   u32 client_index;
   u32 context;
@@ -39,16 +39,6 @@ define sr_localsid_add_del
   u8 nh_addr[16];
 };
 
-/** \brief IPv6 SR LocalSID add/del request response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_localsid_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IPv6 SR policy add
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -59,7 +49,7 @@ define sr_localsid_add_del_reply
     @param fib_table is the VRF where to install the FIB entry for the BSID
     @param segments is a vector of IPv6 address composing the segment list
 */
-define sr_policy_add
+autoreply define sr_policy_add
 {
   u32 client_index;
   u32 context;
@@ -70,16 +60,6 @@ define sr_policy_add
   u32 fib_table;
   u8 n_segments;
   u8 segments[0];
-};
-
-/** \brief IPv6 SR Policy add request response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_policy_add_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPv6 SR policy modification
@@ -94,7 +74,7 @@ define sr_policy_add_reply
     @param weight is the weight of the sid list. optional.
     @param is_encap Mode. Encapsulation or SRH insertion.
 */
-define sr_policy_mod
+autoreply define sr_policy_mod
 {
   u32 client_index;
   u32 context;
@@ -108,38 +88,18 @@ define sr_policy_mod
   u8 segments[0];
 };
 
-/** \brief IPv6 SR Policy modification request response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_policy_mod_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IPv6 SR policy deletion
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param bsid is the bindingSID of the SR Policy
     @param index is the index of the SR policy
 */
-define sr_policy_del
+autoreply define sr_policy_del
 {
   u32 client_index;
   u32 context;
   u8 bsid_addr[16];
   u32 sr_policy_index;
-};
-
-/** \brief IPv6 SR Policy deletion request response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_policy_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPv6 SR steering add/del
@@ -154,7 +114,7 @@ define sr_policy_del_reply
     @param sw_if_index is the incoming interface for L2 traffic
     @param traffic_type describes the type of traffic
 */
-define sr_steering_add_del
+autoreply define sr_steering_add_del
 {
   u32 client_index;
   u32 context;
@@ -166,16 +126,6 @@ define sr_steering_add_del
   u32 mask_width;
   u32 sw_if_index;
   u8 traffic_type;
-};
-
-/** \brief IPv6 SR steering add/del request response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define sr_steering_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump the list of SR LocalSIDs

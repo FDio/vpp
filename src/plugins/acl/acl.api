@@ -161,22 +161,11 @@ define acl_add_replace_reply
     @param acl_index - ACL index to delete
 */
 
-manual_print define acl_del
+autoreply manual_print define acl_del
 {
   u32 client_index;
   u32 context;
   u32 acl_index;
-};
-
-/** \brief Reply to delete the ACL
-    @param context - returned sender context, to match reply w/ request
-    @param retval 0 - no error
-*/
-
-define acl_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /* acl_interface_add_del(_reply) to be deprecated in lieu of acl_interface_set_acl_list */
@@ -190,7 +179,7 @@ define acl_del_reply
     @param acl_index - index of ACL for the operation
 */
 
-manual_print define acl_interface_add_del
+autoreply manual_print define acl_interface_add_del
 {
   u32 client_index;
   u32 context;
@@ -204,17 +193,6 @@ manual_print define acl_interface_add_del
   u32 acl_index;
 };
 
-/** \brief Reply to alter the ACL list
-    @param context - returned sender context, to match reply w/ request
-    @param retval 0 - no error
-*/
-
-define acl_interface_add_del_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Set the vector of input/output ACLs checked for an interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -224,7 +202,7 @@ define acl_interface_add_del_reply
     @param acls - vector of ACL indices
 */
 
-manual_print define acl_interface_set_acl_list
+autoreply manual_print define acl_interface_set_acl_list
 {
   u32 client_index;
   u32 context;
@@ -238,12 +216,6 @@ manual_print define acl_interface_set_acl_list
     @param context - returned sender context, to match reply w/ request
     @param retval 0 - no error
 */
-
-define acl_interface_set_acl_list_reply
-{
-  u32 context;
-  i32 retval;
-};
 
 /** \brief Dump the specific ACL contents or all of the ACLs' contents
     @param client_index - opaque cookie to identify the sender
@@ -341,22 +313,11 @@ define macip_acl_add_reply
     @param acl_index - MACIP ACL index to delete
 */
 
-manual_print define macip_acl_del
+autoreply manual_print define macip_acl_del
 {
   u32 client_index;
   u32 context;
   u32 acl_index;
-};
-
-/** \brief Reply to delete the MACIP ACL
-    @param context - returned sender context, to match reply w/ request
-    @param retval 0 - no error
-*/
-
-define macip_acl_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Add or delete a MACIP ACL to/from interface
@@ -367,7 +328,7 @@ define macip_acl_del_reply
     @param acl_index - MACIP ACL index
 */
 
-manual_print define macip_acl_interface_add_del
+autoreply manual_print define macip_acl_interface_add_del
 {
   u32 client_index;
   u32 context;
@@ -375,17 +336,6 @@ manual_print define macip_acl_interface_add_del
   /* macip ACLs are always input */
   u32 sw_if_index;
   u32 acl_index;
-};
-
-/** \brief Reply to apply/unapply  the MACIP ACL
-    @param context - returned sender context, to match reply w/ request
-    @param retval 0 - no error
-*/
-
-define macip_acl_interface_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump one or all defined MACIP ACLs

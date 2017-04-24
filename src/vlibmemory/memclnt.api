@@ -72,7 +72,7 @@ define memclnt_read_timeout {
 /*
  * RPC
  */
-define rpc_call {
+autoreply define rpc_call {
     u32 client_index;
     u32 context;
     u64 function;
@@ -80,11 +80,6 @@ define rpc_call {
     u8 need_barrier_sync;
     u8 send_reply;
     u8 data[0];
-};
-
-define rpc_reply {
-    i32 retval;
-    u32 context;
 };
 
 /*

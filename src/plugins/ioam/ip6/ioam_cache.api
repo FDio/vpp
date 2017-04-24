@@ -16,7 +16,7 @@
 
 /*  API to control ioam caching */
 
-define ioam_cache_ip6_enable_disable {
+autoreply define ioam_cache_ip6_enable_disable {
     /* Client identifier, set from api_main.my_client_index */
     u32 client_index;
 
@@ -26,12 +26,4 @@ define ioam_cache_ip6_enable_disable {
     /* Enable / disable the feature */
     u8 is_disable;
 
-};
-
-define ioam_cache_ip6_enable_disable_reply {
-    /* From the request */
-    u32 context;
-
-    /* Return value, zero means all OK */
-    i32 retval;
 };

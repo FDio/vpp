@@ -26,7 +26,7 @@
     @param mb_address_length - Length of IP prefix
     @param mb_address[16] - IP prefix/
 */
-define mpls_ip_bind_unbind
+autoreply define mpls_ip_bind_unbind
 {
   u32 client_index;
   u32 context;
@@ -38,16 +38,6 @@ define mpls_ip_bind_unbind
   u8 mb_is_ip4;
   u8 mb_address_length;
   u8 mb_address[16];
-};
-
-/** \brief Reply for MPLS IP bind/unbind request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define mpls_ip_bind_unbind_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief MPLS tunnel Add / del route
@@ -172,7 +162,7 @@ manual_endian manual_print define mpls_tunnel_details
     @param mr_next_hop_out_label_stack - the next-hop output label stack, outer most first
     @param next_hop_via_label - The next-hop is a resolved via a local label
 */
-define mpls_route_add_del
+autoreply define mpls_route_add_del
 {
   u32 client_index;
   u32 context;
@@ -197,16 +187,6 @@ define mpls_route_add_del
   u32 mr_next_hop_table_id;
   u32 mr_next_hop_via_label;
   u32 mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
-};
-
-/** \brief Reply for MPLS route add / del request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define mpls_route_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump MPLS fib table

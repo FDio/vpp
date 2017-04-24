@@ -53,7 +53,7 @@ define create_vhost_user_if_reply
     @param sock_filename - unix socket filename, used to speak with frontend
     @param operation_mode - polling=0, interrupt=1, or adaptive=2
 */
-define modify_vhost_user_if
+autoreply define modify_vhost_user_if
 {
   u32 client_index;
   u32 context;
@@ -65,34 +65,14 @@ define modify_vhost_user_if
   u8 operation_mode;
 };
 
-/** \brief vhost-user interface modify response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define modify_vhost_user_if_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief vhost-user interface delete request
     @param client_index - opaque cookie to identify the sender
 */
-define delete_vhost_user_if
+autoreply define delete_vhost_user_if
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-};
-
-/** \brief vhost-user interface delete response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define delete_vhost_user_if_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Vhost-user interface details structure (fix this)

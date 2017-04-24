@@ -53,6 +53,7 @@ enum node_subclass {  /* WARNING: indices must match the vft... */
     NODE_MANUAL_PRINT,
     NODE_MANUAL_ENDIAN,
     NODE_DONT_TRACE,
+    NODE_AUTOREPLY,
 };
 
 enum passid {
@@ -84,6 +85,7 @@ typedef struct node_ {
 #define NODE_FLAG_MANUAL_ENDIAN (1<<1)
 #define NODE_FLAG_TYPEONLY (1<<3)
 #define NODE_FLAG_DONT_TRACE (1<<4)
+#define NODE_FLAG_AUTOREPLY (1<<5)
 
 typedef struct node_vft_ {
     void (*print)(struct node_ *);

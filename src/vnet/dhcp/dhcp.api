@@ -24,7 +24,7 @@
     @param dhcp_server[] - server address
     @param dhcp_src_address[] - <fix this, need details>
 */
-define dhcp_proxy_config
+autoreply define dhcp_proxy_config
 {
   u32 client_index;
   u32 context;
@@ -36,16 +36,6 @@ define dhcp_proxy_config
   u8 dhcp_src_address[16];
 };
 
-/** \brief DHCP Proxy config response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define dhcp_proxy_config_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief DHCP Proxy set / unset vss request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -55,7 +45,7 @@ define dhcp_proxy_config_reply
     @param is_ipv6 - ip6 if non-zero, else ip4
     @param is_add - set vss if non-zero, else delete
 */
-define dhcp_proxy_set_vss
+autoreply define dhcp_proxy_set_vss
 {
   u32 client_index;
   u32 context;
@@ -64,16 +54,6 @@ define dhcp_proxy_set_vss
   u32 fib_id;
   u8 is_ipv6;
   u8 is_add;
-};
-
-/** \brief DHCP proxy set / unset vss response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define dhcp_proxy_set_vss_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief DHCP Client config add / del request
@@ -86,7 +66,7 @@ define dhcp_proxy_set_vss_reply
            via dhcp_compl_event API message if non-zero
     @param pid - sender's pid
 */
-define dhcp_client_config
+autoreply define dhcp_client_config
 {
   u32 client_index;
   u32 context;
@@ -95,16 +75,6 @@ define dhcp_client_config
   u8 is_add;
   u8 want_dhcp_event;
   u32 pid;
-};
-
-/** \brief DHCP Client config response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define dhcp_client_config_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Tell client about a DHCP completion event
