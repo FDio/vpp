@@ -49,6 +49,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_INTERFACE,
     /**
+     * SRv6 and SR-MPLS
+     */
+    FIB_SOURCE_SR,
+    /**
      * A high priority source a plugin can use
      */
     FIB_SOURCE_PLUGIN_HI,
@@ -64,10 +68,6 @@ typedef enum fib_source_t_ {
      * LISP
      */
     FIB_SOURCE_LISP,
-    /**
-     * SRv6
-     */
-    FIB_SOURCE_SR,
     /**
      * IPv[46] Mapping
      */
