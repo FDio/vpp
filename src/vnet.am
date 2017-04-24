@@ -697,21 +697,31 @@ nobase_include_HEADERS +=			\
 # ipv6 segment routing
 ########################################
 
-if WITH_LIBSSL
 libvnet_la_SOURCES +=				\
- vnet/sr/sr.c						\
- vnet/sr/sr_localsid.c				\
- vnet/sr/sr_policy_rewrite.c		\
- vnet/sr/sr_steering.c				\
- vnet/sr/sr_api.c
-endif
+ vnet/srv6/sr.c						\
+ vnet/srv6/sr_localsid.c			\
+ vnet/srv6/sr_policy_rewrite.c		\
+ vnet/srv6/sr_steering.c			\
+ vnet/srv6/sr_api.c
 
 nobase_include_HEADERS +=			\
- vnet/sr/sr_packet.h				\
- vnet/sr/sr.h						\
- vnet/sr/sr.api.h
+ vnet/srv6/sr_packet.h				\
+ vnet/srv6/sr.h 					\
+ vnet/srv6/sr.api.h
 
-API_FILES += vnet/sr/sr.api
+API_FILES += vnet/srv6/sr.api
+
+########################################
+# mpls segment routing
+########################################
+
+libvnet_la_SOURCES +=				\
+ vnet/srmpls/sr_mpls_policy.c		\
+ vnet/srmpls/sr_mpls_steering.c
+
+
+nobase_include_HEADERS +=			\
+ vnet/srmpls/sr.h
 
 ########################################
 # IPFIX / netflow v10

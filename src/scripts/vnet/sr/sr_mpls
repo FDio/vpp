@@ -1,0 +1,11 @@
+set interface mpls local0 enable
+sr mpls policy add bsid 20001 next 16001 next 16002 next 16003
+sr mpls steer l3 a::/112 via sr policy bsid 20001
+
+loop create
+set int state loop0 up
+
+set int ip address loop0 11.0.0.1/24
+set ip arp loop0 11.0.0.2 00:00:11:aa:bb:cc
+
+mpls local-label 16001 via 11.0.0.2 loop0 out-label 16001
