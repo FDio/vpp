@@ -22,7 +22,7 @@
     @param trace_tsp- Timestamp resolution
     @param app_data - Application specific opaque
 */
-define trace_profile_add {
+autoreply define trace_profile_add {
   u32 client_index;
   u32 context;
   u8 trace_type;
@@ -32,36 +32,14 @@ define trace_profile_add {
   u32 app_data;
 };
 
-/** \brief Trace profile add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define trace_profile_add_reply {
-    u32 context;
-    i32 retval;
-};
-
-
-
 /** \brief Delete trace Profile
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define trace_profile_del {
+autoreply define trace_profile_del {
   u32 client_index;
   u32 context;
 };
-
-/** \brief Trace profile add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define trace_profile_del_reply {
-    u32 context;
-    i32 retval;
-};
-
-
 
 /** \brief Show trace Profile
     @param client_index - opaque cookie to identify the sender

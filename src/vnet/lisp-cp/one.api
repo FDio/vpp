@@ -59,7 +59,7 @@ define one_add_del_locator_set_reply
     @param priority - priority of the locator
     @param weight - weight of the locator
 */
-define one_add_del_locator
+autoreply define one_add_del_locator
 {
   u32 client_index;
   u32 context;
@@ -68,16 +68,6 @@ define one_add_del_locator
   u32 sw_if_index;
   u8 priority;
   u8 weight;
-};
-
-/** \brief Reply for locator add/del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_add_del_locator_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief add or delete ONE eid-table
@@ -98,7 +88,7 @@ define one_add_del_locator_reply
       HMAC_SHA_256_128      2
     @param key - secret key
 */
-define one_add_del_local_eid
+autoreply define one_add_del_local_eid
 {
   u32 client_index;
   u32 context;
@@ -112,16 +102,6 @@ define one_add_del_local_eid
   u8 key[64];
 };
 
-/** \brief Reply for local_eid add/del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_add_del_local_eid_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Add/delete map server
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -129,23 +109,13 @@ define one_add_del_local_eid_reply
     @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - map server IP address
 */
-define one_add_del_map_server
+autoreply define one_add_del_map_server
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 is_ipv6;
   u8 ip_address[16];
-};
-
-/** \brief Reply for one_add_del_map_server
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_add_del_map_server_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief add or delete map-resolver
@@ -155,7 +125,7 @@ define one_add_del_map_server_reply
     @param is_ipv6 - if non-zero the address is ipv6, else ipv4
     @param ip_address - array of address bytes
 */
-define one_add_del_map_resolver
+autoreply define one_add_del_map_resolver
 {
   u32 client_index;
   u32 context;
@@ -164,36 +134,16 @@ define one_add_del_map_resolver
   u8 ip_address[16];
 };
 
-/** \brief Reply for map_resolver add/del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_add_del_map_resolver_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief enable or disable ONE feature
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_en - enable protocol if non-zero, else disable
 */
-define one_enable_disable
+autoreply define one_enable_disable
 {
   u32 client_index;
   u32 context;
   u8 is_en;
-};
-
-/** \brief Reply for gpe enable/disable
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief configure or disable ONE PITR node
@@ -202,22 +152,12 @@ define one_enable_disable_reply
     @param ls_name - locator set name
     @param is_add - add locator set if non-zero, else disable pitr
 */
-define one_pitr_set_locator_set
+autoreply define one_pitr_set_locator_set
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 ls_name[64];
-};
-
-/** \brief Reply for one_pitr_set_locator_set
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_pitr_set_locator_set_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief configure or disable use of PETR
@@ -227,23 +167,13 @@ define one_pitr_set_locator_set_reply
     @param address - PETR IP address
     @param is_add - add locator set if non-zero, else disable PETR
 */
-define one_use_petr
+autoreply define one_use_petr
 {
   u32 client_index;
   u32 context;
   u8 is_ip4;
   u8 address[16];
   u8 is_add;
-};
-
-/** \brief Reply for one_use_petr
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_use_petr_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Request for ONE PETR status
@@ -298,21 +228,11 @@ define show_one_rloc_probe_state_reply
     @param context - sender context, to match reply w/ request
     @param is_enable - enable if non-zero; disable otherwise
 */
-define one_rloc_probe_enable_disable
+autoreply define one_rloc_probe_enable_disable
 {
   u32 client_index;
   u32 context;
   u8 is_enabled;
-};
-
-/** \brief Reply for one_rloc_probe_enable_disable
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_rloc_probe_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief enable/disable ONE map-register
@@ -320,21 +240,11 @@ define one_rloc_probe_enable_disable_reply
     @param context - sender context, to match reply w/ request
     @param is_enable - enable if non-zero; disable otherwise
 */
-define one_map_register_enable_disable
+autoreply define one_map_register_enable_disable
 {
   u32 client_index;
   u32 context;
   u8 is_enabled;
-};
-
-/** \brief Reply for one_map_register_enable_disable
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_map_register_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get state of ONE map-register
@@ -366,21 +276,11 @@ define show_one_map_register_state_reply
       0 - destination only
       1 - source/destaination
 */
-define one_map_request_mode
+autoreply define one_map_request_mode
 {
   u32 client_index;
   u32 context;
   u8 mode;
-};
-
-/** \brief Reply for one_map_request_mode
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_map_request_mode_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Request for ONE map-request mode
@@ -430,7 +330,7 @@ typeonly manual_endian manual_print define one_remote_locator
     @param rloc_num - number of remote locators
     @param rlocs - remote locator records
 */
-manual_print manual_endian define one_add_del_remote_mapping
+autoreply manual_print manual_endian define one_add_del_remote_mapping
 {
   u32 client_index;
   u32 context;
@@ -448,16 +348,6 @@ manual_print manual_endian define one_add_del_remote_mapping
   vl_api_one_remote_locator_t rlocs[rloc_num];
 };
 
-/** \brief Reply for one_add_del_remote_mapping
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_add_del_remote_mapping_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief add or delete ONE adjacency adjacency
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -470,7 +360,7 @@ define one_add_del_remote_mapping_reply
     @param reid - remote EID
     @param leid - local EID
 */
-define one_add_del_adjacency
+autoreply define one_add_del_adjacency
 {
   u32 client_index;
   u32 context;
@@ -483,39 +373,18 @@ define one_add_del_adjacency
   u8 leid_len;
 };
 
-/** \brief Reply for one_add_del_adjacency
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_add_del_adjacency_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief add or delete map request itr rlocs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
     @param locator_set_name - locator set name
 */
-define one_add_del_map_request_itr_rlocs
+autoreply define one_add_del_map_request_itr_rlocs
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u8 locator_set_name[64];
-};
-
-/** \brief Reply for one_add_del_map_request_itr_rlocs
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define one_add_del_map_request_itr_rlocs_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief map/unmap vni/bd_index to vrf
@@ -525,7 +394,7 @@ define one_add_del_map_request_itr_rlocs_reply
     @param dp_table - virtual network id/bridge domain index
     @param vrf - vrf
 */
-define one_eid_table_add_del_map
+autoreply define one_eid_table_add_del_map
 {
   u32 client_index;
   u32 context;
@@ -533,16 +402,6 @@ define one_eid_table_add_del_map
   u32 vni;
   u32 dp_table;
   u8 is_l2;
-};
-
-/** \brief Reply for one_eid_table_add_del_map
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define one_eid_table_add_del_map_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Request for map one locator status
@@ -901,29 +760,17 @@ define one_stats_details
   u32 bytes;
 };
 
-define one_stats_flush
+autoreply define one_stats_flush
 {
   u32 client_index;
   u32 context;
 };
 
-define one_stats_flush_reply
-{
-  u32 context;
-  i32 retval;
-};
-
-define one_stats_enable_disable
+autoreply define one_stats_enable_disable
 {
   u32 client_index;
   u32 context;
   u8 is_en;
-};
-
-define one_stats_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 define show_one_stats_enable_disable

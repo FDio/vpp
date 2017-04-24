@@ -43,7 +43,7 @@ typeonly manual_print manual_endian define gpe_locator
     @param loc_num - number of locators
     @param locs - array of remote locators
 */
-manual_print manual_endian define gpe_add_del_fwd_entry
+autoreply manual_print manual_endian define gpe_add_del_fwd_entry
 {
   u32 client_index;
   u32 context;
@@ -60,36 +60,16 @@ manual_print manual_endian define gpe_add_del_fwd_entry
   vl_api_gpe_locator_t locs[loc_num];
 };
 
-/** \brief Reply for gpe_fwd_entry add/del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define gpe_add_del_fwd_entry_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief enable or disable gpe protocol
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_en - enable protocol if non-zero, else disable
 */
-define gpe_enable_disable
+autoreply define gpe_enable_disable
 {
   u32 client_index;
   u32 context;
   u8 is_en;
-};
-
-/** \brief Reply for gpe enable/disable
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define gpe_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief add or delete gpe_iface
@@ -97,7 +77,7 @@ define gpe_enable_disable_reply
     @param context - sender context, to match reply w/ request
     @param is_add - add address if non-zero, else delete
 */
-define gpe_add_del_iface
+autoreply define gpe_add_del_iface
 {
   u32 client_index;
   u32 context;
@@ -105,16 +85,6 @@ define gpe_add_del_iface
   u8 is_l2;
   u32 dp_table;
   u32 vni;
-};
-
-/** \brief Reply for gpe_iface add/del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define gpe_add_del_iface_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 define gpe_fwd_entries_get
@@ -163,21 +133,11 @@ manual_endian manual_print define gpe_fwd_entry_path_details
     @param context - sender context, to match reply w/ request
     @param mode - LISP (value 0) or VXLAN (value 1)
 */
-define gpe_set_encap_mode
+autoreply define gpe_set_encap_mode
 {
   u32 client_index;
   u32 context;
   u8 mode;
-};
-
-/** \brief Reply for set_encap_mode
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define gpe_set_encap_mode_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief get GPE encapsulation mode

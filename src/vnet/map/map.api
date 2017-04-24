@@ -62,22 +62,13 @@ define map_add_domain_reply
     @param context - sender context, to match reply w/ request
     @param index - MAP Domain index
 */
-define map_del_domain
+autoreply define map_del_domain
 {
   u32 client_index;
   u32 context;
   u32 index;
 };
 
-/** \brief Reply for MAP domain del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define map_del_domain_reply
-{
-  u32 context;
-  i32 retval;
-};
 
 /** \brief Add or Delete MAP rule from a domain (Only used for shared IPv4 per subscriber)
     @param client_index - opaque cookie to identify the sender
@@ -87,7 +78,7 @@ define map_del_domain_reply
     @param ip6_dst - MAP CE IPv6 address
     @param psid - Rule PSID
 */
-define map_add_del_rule
+autoreply define map_add_del_rule
 {
   u32 client_index;
   u32 context;
@@ -97,15 +88,6 @@ define map_add_del_rule
   u16 psid;
 };
 
-/** \brief Reply for MAP rule add/del
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define map_add_del_rule_reply
-{
-  u32 context;
-  i32 retval;
-};
 
 /** \brief Get list of map domains
     @param client_index - opaque cookie to identify the sender

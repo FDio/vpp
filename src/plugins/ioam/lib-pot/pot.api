@@ -27,7 +27,7 @@
     @param list_name_len - length of the name of this profile list
     @param list_name - name of this profile list
 */
-define pot_profile_add {
+autoreply define pot_profile_add {
   u32 client_index;
   u32 context;
   u8 id;
@@ -42,36 +42,17 @@ define pot_profile_add {
   u8 list_name[0];
 };
 
-/** \brief Proof of Transit profile add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define pot_profile_add_reply {
-    u32 context;
-    i32 retval;
-};
-
-
 /** \brief Proof of Transit(POT): Activate POT profile in the list
     @param id - id of the profile 
     @param list_name_len - length of the name of this profile list
     @param list_name - name of this profile list
 */
-define pot_profile_activate {
+autoreply define pot_profile_activate {
   u32 client_index;
   u32 context;
   u8 id;
   u8 list_name_len;
   u8 list_name[0];
-};
-
-/** \brief Proof of Transit profile activate response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request 
-*/
-define pot_profile_activate_reply {
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Delete POT Profile 
@@ -80,20 +61,11 @@ define pot_profile_activate_reply {
     @param list_name_len - length of the name of the profile list
     @param list_name - name of profile list to delete
 */
-define pot_profile_del {
+autoreply define pot_profile_del {
   u32 client_index;
   u32 context;
   u8 list_name_len;
   u8 list_name[0];
-};
-
-/** \brief Proof of Transit profile add / del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define pot_profile_del_reply {
-    u32 context;
-    i32 retval;
 };
 
 /** \brief Show POT Profiles

@@ -136,7 +136,7 @@ define ip_neighbor_details {
     @param mac_address - l2 address of the neighbor
     @param dst_address - ip4 or ip6 address of the neighbor
 */
-define ip_neighbor_add_del
+autoreply define ip_neighbor_add_del
 {
   u32 client_index;
   u32 context;
@@ -148,16 +148,6 @@ define ip_neighbor_add_del
   u8 is_no_adj_fib;
   u8 mac_address[6];
   u8 dst_address[16];
-};
-
-/** \brief Reply for IP Neighbor add / delete request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ip_neighbor_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Set the ip flow hash config for a fib request
@@ -172,7 +162,7 @@ define ip_neighbor_add_del_reply
     @param proto -if non-zero include proto in flow hash
     @param reverse - if non-zero include reverse in flow hash
 */
-define set_ip_flow_hash
+autoreply define set_ip_flow_hash
 {
   u32 client_index;
   u32 context;
@@ -184,16 +174,6 @@ define set_ip_flow_hash
   u8 dport;
   u8 proto;
   u8 reverse;
-};
-
-/** \brief Set the ip flow hash config for a fib response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define set_ip_flow_hash_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPv6 router advertisement config request
@@ -213,7 +193,7 @@ define set_ip_flow_hash_reply
     @param initial_count -
     @param initial_interval -
 */
-define sw_interface_ip6nd_ra_config
+autoreply define sw_interface_ip6nd_ra_config
 {
   u32 client_index;
   u32 context;
@@ -231,16 +211,6 @@ define sw_interface_ip6nd_ra_config
   u32 lifetime;
   u32 initial_count;
   u32 initial_interval;
-};
-
-/** \brief IPv6 router advertisement config response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define sw_interface_ip6nd_ra_config_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPv6 router advertisement prefix config request
@@ -272,7 +242,7 @@ define sw_interface_ip6nd_ra_config_reply
                      preferred [ADDRCONF].  A value of all one bits
                      (0xffffffff) represents infinity.
 */
-define sw_interface_ip6nd_ra_prefix
+autoreply define sw_interface_ip6nd_ra_prefix
 {
   u32 client_index;
   u32 context;
@@ -289,16 +259,6 @@ define sw_interface_ip6nd_ra_prefix
   u32 pref_lifetime;
 };
 
-/** \brief IPv6 router advertisement prefix config response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define sw_interface_ip6nd_ra_prefix_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IPv6 ND proxy config
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -306,23 +266,13 @@ define sw_interface_ip6nd_ra_prefix_reply
     @param address - The address of the host for which to proxy for
     @param is_add - Adding or deleting
 */
-define ip6nd_proxy_add_del
+autoreply define ip6nd_proxy_add_del
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 is_del;
   u8 address[16];
-};
-
-/** \brief IPv6 ND proxy response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define ip6nd_proxy_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPv6 ND proxy details returned after request
@@ -355,22 +305,12 @@ define ip6nd_proxy_dump
     @param sw_if_index - interface used to reach neighbor
     @param enable - if non-zero enable ip6 on interface, else disable
 */
-define sw_interface_ip6_enable_disable
+autoreply define sw_interface_ip6_enable_disable
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 enable;			/* set to true if enable */
-};
-
-/** \brief IPv6 interface enable / disable response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define sw_interface_ip6_enable_disable_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPv6 set link local address on interface request
@@ -379,22 +319,12 @@ define sw_interface_ip6_enable_disable_reply
     @param sw_if_index - interface to set link local on
     @param address[] - the new link local address
 */
-define sw_interface_ip6_set_link_local_address
+autoreply define sw_interface_ip6_set_link_local_address
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
   u8 address[16];
-};
-
-/** \brief IPv6 set link local address on interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - error code for the request
-*/
-define sw_interface_ip6_set_link_local_address_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Add / del route request
@@ -422,7 +352,7 @@ define sw_interface_ip6_set_link_local_address_reply
     @param next_hop_out_label_stack - the next-hop output label stack, outer most first
     @param next_hop_via_label - The next-hop is a resolved via a local label
 */
-define ip_add_del_route
+autoreply define ip_add_del_route
 {
   u32 client_index;
   u32 context;
@@ -452,16 +382,6 @@ define ip_add_del_route
   u32 next_hop_out_label_stack[next_hop_n_out_labels];
 };
 
-/** \brief Reply for add / del route request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ip_add_del_route_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Add / del route request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -470,7 +390,7 @@ define ip_add_del_route_reply
 
     FIXME
 */
-define ip_mroute_add_del
+autoreply define ip_mroute_add_del
 {
   u32 client_index;
   u32 context;
@@ -486,16 +406,6 @@ define ip_mroute_add_del
   u8 is_local;
   u8 grp_address[16];
   u8 src_address[16];
-};
-
-/** \brief Reply for add / del mroute request
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ip_mroute_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump IP multicast fib table

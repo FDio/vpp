@@ -20,23 +20,12 @@
     @param spd_id - SPD instance id (control plane allocated)
 */
 
-define ipsec_spd_add_del
+autoreply define ipsec_spd_add_del
 {
   u32 client_index;
   u32 context;
   u8 is_add;
   u32 spd_id;
-};
-
-/** \brief Reply for IPsec: Add/delete Security Policy Database entry
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define ipsec_spd_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPsec: Add/delete SPD from interface
@@ -49,7 +38,7 @@ define ipsec_spd_add_del_reply
 */
 
 
-define ipsec_interface_add_del_spd
+autoreply define ipsec_interface_add_del_spd
 {
   u32 client_index;
   u32 context;
@@ -57,17 +46,6 @@ define ipsec_interface_add_del_spd
   u8 is_add;
   u32 sw_if_index;
   u32 spd_id;
-};
-
-/** \brief Reply for IPsec: Add/delete SPD from interface
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define ipsec_interface_add_del_spd_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPsec: Add/delete Security Policy Database entry
@@ -95,7 +73,7 @@ define ipsec_interface_add_del_spd_reply
 
 */
 
-define ipsec_spd_add_del_entry
+autoreply define ipsec_spd_add_del_entry
 {
   u32 client_index;
   u32 context;
@@ -123,17 +101,6 @@ define ipsec_spd_add_del_entry
   // Policy
   u8 policy;
   u32 sa_id;
-};
-
-/** \brief Reply for IPsec: Add/delete Security Policy Database entry
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define ipsec_spd_add_del_entry_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IPsec: Add/delete Security Association Database entry
@@ -167,7 +134,7 @@ define ipsec_spd_add_del_entry_reply
      IPsec tunnel address copy mode (to support GDOI)
  */
 
-define ipsec_sad_add_del_entry
+autoreply define ipsec_sad_add_del_entry
 {
   u32 client_index;
   u32 context;
@@ -195,17 +162,6 @@ define ipsec_sad_add_del_entry
   u8 tunnel_dst_address[16];
 };
 
-/** \brief Reply for IPsec: Add/delete Security Association Database entry
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define ipsec_sad_add_del_entry_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IPsec: Update Security Association keys
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -219,7 +175,7 @@ define ipsec_sad_add_del_entry_reply
     @param integrity_key - integrity keying material
 */
 
-define ipsec_sa_set_key
+autoreply define ipsec_sa_set_key
 {
   u32 client_index;
   u32 context;
@@ -233,17 +189,6 @@ define ipsec_sa_set_key
   u8 integrity_key[128];
 };
 
-/** \brief Reply for IPsec: Update Security Association keys
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-
-define ipsec_sa_set_key_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IKEv2: Add/delete profile
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -251,23 +196,13 @@ define ipsec_sa_set_key_reply
     @param name - IKEv2 profile name
     @param is_add - Add IKEv2 profile if non-zero, else delete
 */
-define ikev2_profile_add_del
+autoreply define ikev2_profile_add_del
 {
   u32 client_index;
   u32 context;
 
   u8 name[64];
   u8 is_add;
-};
-
-/** \brief Reply for IKEv2: Add/delete profile
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_profile_add_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Set IKEv2 profile authentication method
@@ -280,7 +215,7 @@ define ikev2_profile_add_del_reply
     @param data_len - Authentication data length
     @param data - Authentication data (for rsa-sig cert file path)
 */
-define ikev2_profile_set_auth
+autoreply define ikev2_profile_set_auth
 {
   u32 client_index;
   u32 context;
@@ -290,16 +225,6 @@ define ikev2_profile_set_auth
   u8 is_hex;
   u32 data_len;
   u8 data[0];
-};
-
-/** \brief Reply for IKEv2: Set IKEv2 profile authentication method
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_profile_set_auth_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Set IKEv2 profile local/remote identification
@@ -312,7 +237,7 @@ define ikev2_profile_set_auth_reply
     @param data_len - Identification data length
     @param data - Identification data
 */
-define ikev2_profile_set_id
+autoreply define ikev2_profile_set_id
 {
   u32 client_index;
   u32 context;
@@ -322,16 +247,6 @@ define ikev2_profile_set_id
   u8 id_type;
   u32 data_len;
   u8 data[0];
-};
-
-/** \brief Reply for IKEv2:
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_profile_set_id_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Set IKEv2 profile traffic selector parameters
@@ -346,7 +261,7 @@ define ikev2_profile_set_id_reply
     @param start_addr - The smallest address included in traffic selector
     @param end_addr - The largest address included in traffic selector
 */
-define ikev2_profile_set_ts
+autoreply define ikev2_profile_set_ts
 {
   u32 client_index;
   u32 context;
@@ -360,38 +275,18 @@ define ikev2_profile_set_ts
   u32 end_addr;
 };
 
-/** \brief Reply for IKEv2: Set IKEv2 profile traffic selector parameters
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_profile_set_ts_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IKEv2: Set IKEv2 local RSA private key
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 
     @param key_file - Key file absolute path
 */
-define ikev2_set_local_key
+autoreply define ikev2_set_local_key
 {
   u32 client_index;
   u32 context;
 
   u8 key_file[256];
-};
-
-/** \brief Reply for IKEv2: Set IKEv2 local key
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_set_local_key_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Set IKEv2 responder interface and IP address
@@ -402,7 +297,7 @@ define ikev2_set_local_key_reply
     @param sw_if_index - interface index
     @param address - interface address
 */
-define ikev2_set_responder
+autoreply define ikev2_set_responder
 {
   u32 client_index;
   u32 context;
@@ -411,17 +306,6 @@ define ikev2_set_responder
   u32 sw_if_index;
   u8 address[4];
 };
-
-/** \brief Reply for IKEv2: Set IKEv2 responder interface and IP address
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_set_responder_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 
 /** \brief IKEv2: Set IKEv2 IKE transforms in SA_INIT proposal (RFC 7296)
     @param client_index - opaque cookie to identify the sender
@@ -434,7 +318,7 @@ define ikev2_set_responder_reply
     @param dh_group - Diffie-Hellman group
     
 */
-define ikev2_set_ike_transforms
+autoreply define ikev2_set_ike_transforms
 {
   u32 client_index;
   u32 context;
@@ -444,16 +328,6 @@ define ikev2_set_ike_transforms
   u32 crypto_key_size;
   u32 integ_alg;
   u32 dh_group;
-};
-
-/** \brief Reply for IKEv2: Set IKEv2 IKE transforms
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_set_ike_transforms_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Set IKEv2 ESP transforms in SA_INIT proposal (RFC 7296)
@@ -467,7 +341,7 @@ define ikev2_set_ike_transforms_reply
     @param dh_group - Diffie-Hellman group
     
 */
-define ikev2_set_esp_transforms
+autoreply define ikev2_set_esp_transforms
 {
   u32 client_index;
   u32 context;
@@ -477,16 +351,6 @@ define ikev2_set_esp_transforms
   u32 crypto_key_size;
   u32 integ_alg;
   u32 dh_group;
-};
-
-/** \brief Reply for IKEv2: Set IKEv2 ESP transforms
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_set_esp_transforms_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Set Child SA lifetime, limited by time and/or data
@@ -500,7 +364,7 @@ define ikev2_set_esp_transforms_reply
     @param lifetime_maxdata - SA maximum life time in bytes (0 to disable)
     
 */
-define ikev2_set_sa_lifetime
+autoreply define ikev2_set_sa_lifetime
 {
   u32 client_index;
   u32 context;
@@ -512,16 +376,6 @@ define ikev2_set_sa_lifetime
   u64 lifetime_maxdata;
 };
 
-/** \brief Reply for IKEv2: Set Child SA lifetime
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_set_sa_lifetime_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief IKEv2: Initiate the SA_INIT exchange
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -529,22 +383,12 @@ define ikev2_set_sa_lifetime_reply
     @param name - IKEv2 profile name
     
 */
-define ikev2_initiate_sa_init
+autoreply define ikev2_initiate_sa_init
 {
   u32 client_index;
   u32 context;
 
   u8 name[64];
-};
-
-/** \brief Reply for IKEv2: Initiate the SA_INIT exchange
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_initiate_sa_init_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Initiate the delete IKE SA exchange
@@ -554,22 +398,12 @@ define ikev2_initiate_sa_init_reply
     @param ispi - IKE SA initiator SPI
     
 */
-define ikev2_initiate_del_ike_sa
+autoreply define ikev2_initiate_del_ike_sa
 {
   u32 client_index;
   u32 context;
 
   u64 ispi;
-};
-
-/** \brief Reply for IKEv2: Initiate the delete IKE SA exchange
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_initiate_del_ike_sa_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Initiate the delete Child SA exchange
@@ -579,22 +413,12 @@ define ikev2_initiate_del_ike_sa_reply
     @param ispi - Child SA initiator SPI
     
 */
-define ikev2_initiate_del_child_sa
+autoreply define ikev2_initiate_del_child_sa
 {
   u32 client_index;
   u32 context;
 
   u32 ispi;
-};
-
-/** \brief Reply for IKEv2: Initiate the delete Child SA exchange
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_initiate_del_child_sa_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief IKEv2: Initiate the rekey Child SA exchange
@@ -604,22 +428,12 @@ define ikev2_initiate_del_child_sa_reply
     @param ispi - Child SA initiator SPI
     
 */
-define ikev2_initiate_rekey_child_sa
+autoreply define ikev2_initiate_rekey_child_sa
 {
   u32 client_index;
   u32 context;
 
   u32 ispi;
-};
-
-/** \brief Reply for IKEv2: Initiate the rekey Child SA exchange
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define ikev2_initiate_rekey_child_sa_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Dump ipsec policy database data

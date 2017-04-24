@@ -18,41 +18,21 @@
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface to use as echo source
 */
-define bfd_udp_set_echo_source
+autoreply define bfd_udp_set_echo_source
 {
   u32 client_index;
   u32 context;
   u32 sw_if_index;
 };
 
-/** \brief Set BFD feature response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define bfd_udp_set_echo_source_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Delete BFD echo source
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-define bfd_udp_del_echo_source
+autoreply define bfd_udp_del_echo_source
 {
   u32 client_index;
   u32 context;
-};
-
-/** \brief Delete BFD echo source response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define bfd_udp_del_echo_source_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Add UDP BFD session on interface
@@ -69,7 +49,7 @@ define bfd_udp_del_echo_source_reply
     @param bfd_key_id - key id sent out in BFD packets (if is_authenticated)
     @param conf_key_id - id of already configured key (if is_authenticated)
 */
-define bfd_udp_add
+autoreply define bfd_udp_add
 {
   u32 client_index;
   u32 context;
@@ -85,16 +65,6 @@ define bfd_udp_add
   u32 conf_key_id;
 };
 
-/** \brief Add UDP BFD session response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define bfd_udp_add_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Modify UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -106,7 +76,7 @@ define bfd_udp_add_reply
     @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param detect_mult - detect multiplier (# of packets missed before connection goes down)
 */
-define bfd_udp_mod
+autoreply define bfd_udp_mod
 {
   u32 client_index;
   u32 context;
@@ -119,16 +89,6 @@ define bfd_udp_mod
   u8 detect_mult;
 };
 
-/** \brief Modify UDP BFD session response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define bfd_udp_mod_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Delete UDP BFD session on interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -137,7 +97,7 @@ define bfd_udp_mod_reply
     @param peer_addr - peer address
     @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
 */
-define bfd_udp_del
+autoreply define bfd_udp_del
 {
   u32 client_index;
   u32 context;
@@ -145,16 +105,6 @@ define bfd_udp_del
   u8 local_addr[16];
   u8 peer_addr[16];
   u8 is_ipv6;
-};
-
-/** \brief Delete UDP BFD session response
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-*/
-define bfd_udp_del_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get all BFD sessions
@@ -206,7 +156,7 @@ define bfd_udp_session_details
     @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param admin_up_down - set the admin state, 1 = up, 0 = down
 */
-define bfd_udp_session_set_flags
+autoreply define bfd_udp_session_set_flags
 {
   u32 client_index;
   u32 context;
@@ -217,38 +167,18 @@ define bfd_udp_session_set_flags
   u8 admin_up_down;
 };
 
-/** \brief Reply to bfd_udp_session_set_flags
-    @param context - sender context which was passed in the request
-    @param retval - return code of the set flags request
-*/
-define bfd_udp_session_set_flags_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief Register for BFD events
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable_disable - 1 => register for events, 0 => cancel registration
     @param pid - sender's pid
 */
-define want_bfd_events
+autoreply define want_bfd_events
 {
   u32 client_index;
   u32 context;
   u32 enable_disable;
   u32 pid;
-};
-
-/** \brief Reply for BFD events registration
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define want_bfd_events_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief BFD UDP - add/replace key to configuration
@@ -259,7 +189,7 @@ define want_bfd_events_reply
     @param auth_type - authentication type (RFC 5880/4.1/Auth Type)
     @param key - key data
 */
-define bfd_auth_set_key
+autoreply define bfd_auth_set_key
 {
   u32 client_index;
   u32 context;
@@ -269,16 +199,6 @@ define bfd_auth_set_key
   u8 key[20];
 };
 
-/** \brief BFD UDP - add/replace key reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define bfd_auth_set_key_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief BFD UDP - delete key from configuration
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -286,21 +206,11 @@ define bfd_auth_set_key_reply
     @param key_len - length of key (must be non-zero)
     @param key - key data
 */
-define bfd_auth_del_key
+autoreply define bfd_auth_del_key
 {
   u32 client_index;
   u32 context;
   u32 conf_key_id;
-};
-
-/** \brief BFD UDP - delete key reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define bfd_auth_del_key_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /** \brief Get a list of configured authentication keys
@@ -338,7 +248,7 @@ define bfd_auth_keys_details
     @param bfd_key_id - key id sent out in BFD packets
     @param conf_key_id - id of already configured key
 */
-define bfd_udp_auth_activate
+autoreply define bfd_udp_auth_activate
 {
   u32 client_index;
   u32 context;
@@ -351,16 +261,6 @@ define bfd_udp_auth_activate
   u32 conf_key_id;
 };
 
-/** \brief BFD UDP - activate/change authentication reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define bfd_udp_auth_activate_reply
-{
-  u32 context;
-  i32 retval;
-};
-
 /** \brief BFD UDP - deactivate authentication
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -370,7 +270,7 @@ define bfd_udp_auth_activate_reply
     @param is_ipv6 - local_addr, peer_addr are IPv6 if non-zero, otherwise IPv4
     @param is_delayed - change is applied once peer applies the change (on first received non-authenticated packet)
 */
-define bfd_udp_auth_deactivate
+autoreply define bfd_udp_auth_deactivate
 {
   u32 client_index;
   u32 context;
@@ -379,16 +279,6 @@ define bfd_udp_auth_deactivate
   u8 peer_addr[16];
   u8 is_ipv6;
   u8 is_delayed;
-};
-
-/** \brief BFD UDP - deactivate authentication reply
-    @param context - returned sender context, to match reply w/ request
-    @param retval - return code
-*/
-define bfd_udp_auth_deactivate_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /*

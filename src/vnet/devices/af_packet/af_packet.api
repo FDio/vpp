@@ -46,22 +46,12 @@ define af_packet_create_reply
     @param context - sender context, to match reply w/ request
     @param host_if_name - interface name
 */
-define af_packet_delete
+autoreply define af_packet_delete
 {
   u32 client_index;
   u32 context;
 
   u8 host_if_name[64];
-};
-
-/** \brief Delete host-interface response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define af_packet_delete_reply
-{
-  u32 context;
-  i32 retval;
 };
 
 /*
