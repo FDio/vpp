@@ -18,7 +18,7 @@
  */
 
 #include <vnet/vnet.h>
-#include <vnet/sr/sr.h>
+#include <vnet/srv6/sr.h>
 #include <vlibmemory/api.h>
 
 #include <vnet/interface.h>

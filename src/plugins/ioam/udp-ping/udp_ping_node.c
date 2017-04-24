@@ -25,7 +25,7 @@
 #include <ioam/udp-ping/udp_ping_packet.h>
 #include <ioam/udp-ping/udp_ping.h>
 #include <ioam/udp-ping/udp_ping_util.h>
-#include <vnet/sr/sr_packet.h>
+#include <vnet/srv6/sr_packet.h>
 
 typedef enum
 {
