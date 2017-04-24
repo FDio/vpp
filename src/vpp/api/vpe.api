@@ -40,7 +40,7 @@
  * LISP-GPE APIs: see .../src/vnet/lisp-gpe/{lisp_gpe.api, lisp_gpe_api.c}
  * SESSION APIs: .../vnet/session/{session.api session_api.c}
  * MPLS APIs: see .../src/vnet/mpls/{mpls.api, mpls_api.c}
- * SR APIs: see .../src/vnet/sr/{sr.api, sr_api.c}
+ * SR APIs: see .../src/vnet/srv6/{sr.api, sr_api.c}
  * CLASSIFY APIs: see ... /src/vnet/classify/{classify.api, classify_api.c}
  * FLOW APIs: see ... /src/vnet/flow/{flow.api, flow_api.c}
  * DHCP APIs: see ... /src/vnet/dhcp/{dhcpk.api, dhcp_api.c}

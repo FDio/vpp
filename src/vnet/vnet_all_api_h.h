@@ -50,7 +50,7 @@
 #include <vnet/lisp-cp/one.api.h>
 #include <vnet/session/session.api.h>
 #include <vnet/mpls/mpls.api.h>
-#include <vnet/sr/sr.api.h>
+#include <vnet/srv6/sr.api.h>
 #include <vnet/classify/classify.api.h>
 #include <vnet/flow/flow.api.h>
 #include <vnet/dhcp/dhcp.api.h>
