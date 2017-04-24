@@ -385,8 +385,19 @@ static const unsigned optional = 0;
       have_##n = 1;                            \
     }
 
+#if __GNUC__ >= 6
+#define PRAGMA_STR1 \
+  _Pragma ("GCC diagnostic ignored \"-Wtautological-compare\"");
+#define PRAGMA_STR2 _Pragma ("GCC diagnostic pop");
+#else
+#define PRAGMA_STR1
+#define PRAGMA_STR2
+#endif
+
 #define CHECK_MANDATORY(t, n, s, r, ...)                                  \
+  PRAGMA_STR1                                                             \
   if (mandatory == r && !have_##n)                                        \
+    PRAGMA_STR2                                                           \
     {                                                                     \
       ret = clib_error_return (0, "Required parameter `%s' missing.", s); \
       goto out;                                                           \
