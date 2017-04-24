@@ -12,11 +12,14 @@
 # limitations under the License.
 
 # vector packet processor
+
+MACHINE=$(shell uname -m)
+
 vpp_arch = native
-ifeq ($(shell uname -m),x86_64)
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
 vpp_march = corei7			# Nehalem Instruction set
 vpp_mtune = corei7-avx			# Optimize for Sandy Bridge
-else ifeq ($(shell uname -m),aarch64)
+else ifeq ($(MACHINE),aarch64)
 ifeq ($(TARGET_PLATFORM),thunderx)
 vpp_march = armv8-a+crc
 vpp_mtune = thunderx
