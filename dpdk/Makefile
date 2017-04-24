@@ -50,11 +50,13 @@ else
 DPDK_CC=gcc
 endif
 
+MACHINE=$(shell uname -m)
+
 ##############################################################################
-# Intel x86_64
+# Intel x86
 ##############################################################################
-ifeq ($(shell uname -m),x86_64)
-DPDK_TARGET           ?= x86_64-native-linuxapp-$(DPDK_CC)
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
+DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= nhm
 DPDK_TUNE             ?= core-avx2
 
