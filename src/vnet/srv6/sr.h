@@ -23,7 +23,7 @@
 #define included_vnet_sr_h
 
 #include <vnet/vnet.h>
-#include <vnet/sr/sr_packet.h>
+#include <vnet/srv6/sr_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -83,9 +83,9 @@ typedef struct
   ip6_address_t bsid;			/**< BindingSID (key) */
 
   u8 type;					/**< Type (default is 0) */
-  /* SR Policy specific DPO                                                                               */
+  /* SR Policy specific DPO                                       */
   /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
-  /* IF Type = SPRAY then Spray DPO with all SID lists                    */
+  /* IF Type = SPRAY then Spray DPO with all SID lists            */
   dpo_id_t bsid_dpo;			/**< SR Policy specific DPO - BSID */
   dpo_id_t ip4_dpo;			/**< SR Policy specific DPO - IPv6 */
   dpo_id_t ip6_dpo;			/**< SR Policy specific DPO - IPv4 */
@@ -193,10 +193,10 @@ typedef struct
   /* SR SID lists */
   ip6_sr_sl_t *sid_lists;
 
-  /* SR policies */
+  /* SRv6 policies */
   ip6_sr_policy_t *sr_policies;
 
-  /* Hash table mapping BindingSID to SR policy */
+  /* Hash table mapping BindingSID to SRv6 policy */
   mhash_t sr_policies_index_hash;
 
   /* Pool of SR localsid instances */
