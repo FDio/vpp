@@ -418,6 +418,10 @@ typedef struct vlib_node_runtime_t
 
   vlib_error_t *errors;			/**< Vector of errors for this node. */
 
+#if __SIZEOF_POINTER__ == 4
+  u8 pad[8];
+#endif
+
   u32 clocks_since_last_overflow;	/**< Number of clock cycles. */
 
   u32 max_clock;			/**< Maximum clock cycle for an
