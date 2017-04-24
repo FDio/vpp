@@ -43,7 +43,7 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
-#include <vnet/sr/sr.h>
+#include <vnet/srv6/sr.h>
 #include <ioam/ip6/ioam_cache.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <vnet/ip/ip6_hop_by_hop_packet.h>

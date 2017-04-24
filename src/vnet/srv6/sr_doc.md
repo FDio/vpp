@@ -16,7 +16,7 @@ Segment routing uses the source routing paradigm. A node, usually a router but a
 
 Segment routing can operate with either an MPLS or an IPv6 data plane. All the currently available MPLS services, such as Layer 3 VPN (L3VPN), L2VPN (Virtual Private Wire Service [VPWS], Virtual Private LAN Services [VPLS], Ethernet VPN [E-VPN], and Provider Backbone Bridging Ethernet VPN [PBB-EVPN]), can run on top of a segment-routing transport network.
 
-**The implementation of Segment Routing in VPP only covers the IPv6 data plane (SRv6).**
+**The implementation of Segment Routing in VPP covers both the IPv6 data plane (SRv6) as well as the MPLS data plane (SR-MPLS). This page contains the SRv6 documentation.**
 
 ## Segment Routing terminology
 
