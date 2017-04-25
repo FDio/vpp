@@ -1,0 +1,556 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_8e4cadc9",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 603,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "by outside address and port",
+      "range": {
+        "startLine": 603,
+        "startChar": 31,
+        "endLine": 603,
+        "endChar": 43
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ce6f552a",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 609,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "host",
+      "range": {
+        "startLine": 609,
+        "startChar": 31,
+        "endLine": 609,
+        "endChar": 36
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ae6c0936",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 610,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "host",
+      "range": {
+        "startLine": 610,
+        "startChar": 31,
+        "endLine": 610,
+        "endChar": 36
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2ecff92b",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 622,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "by outside address and port",
+      "range": {
+        "startLine": 622,
+        "startChar": 31,
+        "endLine": 622,
+        "endChar": 43
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0ed0bdc7",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 631,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "by inside address and port",
+      "range": {
+        "startLine": 631,
+        "startChar": 31,
+        "endLine": 631,
+        "endChar": 42
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_aedac9e5",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 637,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "host",
+      "range": {
+        "startLine": 637,
+        "startChar": 31,
+        "endLine": 637,
+        "endChar": 36
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8ee38da3",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 638,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "host",
+      "range": {
+        "startLine": 638,
+        "startChar": 31,
+        "endLine": 638,
+        "endChar": 36
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eed451be",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 650,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "by inside address and port",
+      "range": {
+        "startLine": 650,
+        "startChar": 31,
+        "endLine": 650,
+        "endChar": 42
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2ef6d963",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1758,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "out_port",
+      "range": {
+        "startLine": 1758,
+        "startChar": 37,
+        "endLine": 1758,
+        "endChar": 49
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4ef1256a",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1758,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "out_addr",
+      "range": {
+        "startLine": 1758,
+        "startChar": 18,
+        "endLine": 1758,
+        "endChar": 33
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_eeeb3176",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1759,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "ext_addr",
+      "range": {
+        "startLine": 1759,
+        "startChar": 18,
+        "endLine": 1759,
+        "endChar": 34
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ce04f54b",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1759,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "ext_port",
+      "range": {
+        "startLine": 1759,
+        "startChar": 38,
+        "endLine": 1759,
+        "endChar": 51
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8efa6d41",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1806,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "in_port",
+      "range": {
+        "startLine": 1806,
+        "startChar": 36,
+        "endLine": 1806,
+        "endChar": 47
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ae01a939",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1806,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "in_addr",
+      "range": {
+        "startLine": 1806,
+        "startChar": 18,
+        "endLine": 1806,
+        "endChar": 32
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6ef7415a",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1807,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "ext_addr",
+      "range": {
+        "startLine": 1807,
+        "startChar": 18,
+        "endLine": 1807,
+        "endChar": 34
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4e98051c",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1807,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "ext_port",
+      "range": {
+        "startLine": 1807,
+        "startChar": 38,
+        "endLine": 1807,
+        "endChar": 51
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2e9db90b",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3651,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "snat deterministic close session out",
+      "range": {
+        "startLine": 3651,
+        "startChar": 15,
+        "endLine": 3651,
+        "endChar": 41
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0e9e7d07",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3720,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "snat deterministic close session in",
+      "range": {
+        "startLine": 3720,
+        "startChar": 15,
+        "endLine": 3720,
+        "endChar": 41
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ae8889c5",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1236,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "using outside address and port",
+      "range": {
+        "startLine": 1236,
+        "startChar": 29,
+        "endLine": 1236,
+        "endChar": 41
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_8e914df3",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1240,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "external host IP address",
+      "range": {
+        "startLine": 1240,
+        "startChar": 26,
+        "endLine": 1240,
+        "endChar": 45
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_6e8e21d2",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1241,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "external host port",
+      "range": {
+        "startLine": 1241,
+        "startChar": 26,
+        "endLine": 1241,
+        "endChar": 39
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_4ebfe561",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1259,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "using inside address and port",
+      "range": {
+        "startLine": 1259,
+        "startChar": 29,
+        "endLine": 1259,
+        "endChar": 40
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_2ec499f3",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1263,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "external host IP address",
+      "range": {
+        "startLine": 1263,
+        "startChar": 26,
+        "endLine": 1263,
+        "endChar": 45
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_0eb55d7d",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1264,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-25T08:22:12Z",
+      "side": 1,
+      "message": "external host port",
+      "range": {
+        "startLine": 1264,
+        "startChar": 26,
+        "endLine": 1264,
+        "endChar": 39
+      },
+      "revId": "dfb4671d1df9edb8d4f3c1f166d690c3506f8fd0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
