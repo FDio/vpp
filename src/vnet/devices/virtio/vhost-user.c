@@ -2589,11 +2589,13 @@ vhost_user_exit (vlib_main_t * vm)
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui;
 
+  vlib_worker_thread_barrier_sync (vlib_get_main ());
   /* *INDENT-OFF* */
   pool_foreach (vui, vum->vhost_user_interfaces, {
       vhost_user_delete_if (vnm, vm, vui->sw_if_index);
   });
   /* *INDENT-ON* */
+  vlib_worker_thread_barrier_release (vlib_get_main ());
   return 0;
 }
 
