@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_b771f877",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-04-25T20:19:35Z",
+      "side": 1,
+      "message": "Please add the tcp subtype here, so you\u0027ll know immediately if the structure overflows...",
+      "revId": "b24d364168954fa8ea7a034e4a58ed67c4800710",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
