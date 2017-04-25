@@ -228,6 +228,7 @@ typedef struct
   u32 unix_file_index;
   char sock_filename[256];
   int sock_errno;
+  uword if_index;
   u32 hw_if_index, sw_if_index;
 
   //Feature negotiation
@@ -311,6 +312,7 @@ typedef struct
 
 typedef struct
 {
+  mhash_t if_index_by_sock_name;
   u32 mtu_bytes;
   vhost_user_intf_t *vhost_user_interfaces;
   u32 *show_dev_instance_by_real_dev_instance;

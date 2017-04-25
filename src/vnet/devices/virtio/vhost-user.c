@@ -1349,6 +1349,8 @@ vhost_user_init (vlib_main_t * vm)
 
   vum->random = random_default_seed ();
 
+  mhash_init_c_string (&vum->if_index_by_sock_name, sizeof (uword));
+
   return 0;
 }
 
@@ -2525,6 +2527,7 @@ static void
 vhost_user_term_if (vhost_user_intf_t * vui)
 {
   int q;
+  vhost_user_main_t *vum = &vhost_user_main;
 
   // Delete configured thread pinning
   vec_reset_length (vui->workers);
@@ -2546,6 +2549,9 @@ vhost_user_term_if (vhost_user_intf_t * vui)
       vui->unix_server_index = ~0;
       unlink (vui->sock_filename);
     }
+
+  mhash_unset (&vum->if_index_by_sock_name, vui->sock_filename,
+	       &vui->if_index);
 }
 
 int
@@ -2692,13 +2698,14 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vnet_sw_interface_t *sw;
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   int q;
+  vhost_user_main_t *vum = &vhost_user_main;
 
   if (server_sock_fd != -1)
     {
       unix_file_t template = { 0 };
       template.read_function = vhost_user_socksvr_accept_ready;
       template.file_descriptor = server_sock_fd;
-      template.private_data = vui - vhost_user_main.vhost_user_interfaces;	//hw index
+      template.private_data = vui - vum->vhost_user_interfaces;	//hw index
       vui->unix_server_index = unix_file_add (&unix_main, &template);
     }
   else
@@ -2715,6 +2722,9 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vui->unix_file_index = ~0;
   vui->log_base_addr = 0;
   vui->operation_mode = operation_mode;
+  vui->if_index = vui - vum->vhost_user_interfaces;
+  mhash_set_mem (&vum->if_index_by_sock_name, vui->sock_filename,
+		 &vui->if_index, 0);
 
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
     vhost_user_vring_init (vui, q);
@@ -2842,6 +2852,7 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   int rv = 0;
   int server_sock_fd = -1;
   vhost_user_main_t *vum = &vhost_user_main;
+  uword *if_index;
 
   if ((operation_mode != VHOST_USER_POLLING_MODE) &&
       (operation_mode != VHOST_USER_INTERRUPT_MODE))
@@ -2850,6 +2861,17 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
     {
       return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  if_index = mhash_get (&vum->if_index_by_sock_name, (void *) sock_filename);
+  if (if_index)
+    {
+      if (sw_if_index)
+	{
+	  vui = &vum->vhost_user_interfaces[*if_index];
+	  *sw_if_index = vui->sw_if_index;
+	}
+      return VNET_API_ERROR_IF_ALREADY_EXISTS;
     }
 
   if (is_server)
@@ -2901,6 +2923,7 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   int server_sock_fd = -1;
   int rv = 0;
   vnet_hw_interface_t *hwif;
+  uword *if_index;
 
   if ((operation_mode != VHOST_USER_POLLING_MODE) &&
       (operation_mode != VHOST_USER_INTERRUPT_MODE))
@@ -2909,7 +2932,18 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
       hwif->dev_class_index != vhost_user_dev_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
+  if (sock_filename == NULL || !(strlen (sock_filename) > 0))
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
   vui = vec_elt_at_index (vum->vhost_user_interfaces, hwif->dev_instance);
+
+  /*
+   * Disallow changing the interface to have the same path name
+   * as other interface
+   */
+  if_index = mhash_get (&vum->if_index_by_sock_name, (void *) sock_filename);
+  if (if_index && (*if_index != vui->if_index))
+    return VNET_API_ERROR_IF_ALREADY_EXISTS;
 
   // First try to open server socket
   if (is_server)
