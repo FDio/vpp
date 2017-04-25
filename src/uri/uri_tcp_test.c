@@ -616,6 +616,8 @@ client_send_data (uri_tcp_test_main_t * utm)
   session = pool_elt_at_index (utm->sessions, utm->connected_session_index);
   tx_fifo = session->server_tx_fifo;
 
+  ASSERT (vec_len (test_data) > 0);
+
   vec_validate (utm->rx_buf, vec_len (test_data) - 1);
   n_iterations = utm->bytes_to_send / vec_len (test_data);
 

@@ -83,7 +83,8 @@ _(policer)                                      \
 _(ipsec)					\
 _(map)						\
 _(map_t)					\
-_(ip_frag)
+_(ip_frag)					\
+_(tcp)
 
 /*
  * vnet stack buffer opaque array overlay structure.
@@ -279,6 +280,9 @@ typedef struct
       u32 seq_number;
       u32 seq_end;
       u32 ack_number;
+      u16 hdr_offset;		/**< offset relative to ip hdr */
+      u16 data_offset;		/**< offset relative to ip hdr */
+      u16 data_len;		/**< data len */
       u8 flags;
     } tcp;
 

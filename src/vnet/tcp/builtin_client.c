@@ -56,6 +56,9 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
   session_fifo_event_t evt;
   static int serial_number = 0;
   int rv;
+
+  ASSERT (vec_len (test_data) > 0);
+
   test_buf_offset = s->bytes_sent % vec_len (test_data);
   bytes_this_chunk = vec_len (test_data) - test_buf_offset;
 
