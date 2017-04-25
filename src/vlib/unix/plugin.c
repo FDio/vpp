@@ -137,15 +137,11 @@ load_one_plugin (plugin_main_t * pm, plugin_info_t * pi, int from_early_init)
 
   handle = dlopen ((char *) pi->filename, RTLD_LAZY);
 
-  /*
-   * Note: this can happen if the plugin has an undefined symbol reference,
-   * so print a warning. Otherwise, the poor slob won't know what happened.
-   * Ask me how I know that...
-   */
   if (handle == 0)
     {
       clib_warning ("%s", dlerror ());
-      return -1;
+      clib_warning ("Failed to load plugin '%s'", pi->name);
+      os_exit (1);
     }
 
   pi->handle = handle;
