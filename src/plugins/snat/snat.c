@@ -1811,6 +1811,72 @@ static void *vl_api_snat_det_close_session_in_t_print
   FINISH;
 }
 
+static void
+send_snat_det_session_details
+(snat_det_session_t * s, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_snat_det_session_details_t * rmp;
+  snat_main_t * sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_DET_SESSION_DETAILS+sm->msg_id_base);
+  rmp->is_ip4 = 1;
+  rmp->in_port = s->in_port;
+  clib_memcpy (rmp->ext_addr, &s->out.ext_host_addr, 4);
+  rmp->ext_port = s->out.ext_host_port;
+  rmp->out_port = s->out.out_port;
+  rmp->state = s->state;
+  rmp->expire = ntohl (s->expire);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_snat_det_session_dump_t_handler
+(vl_api_snat_det_session_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t * sm = &snat_main;
+  ip4_address_t user_addr;
+  snat_det_map_t * dm;
+  snat_det_session_t * s, empty_ses;
+  u16 i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+  if (!mp->is_ip4)
+    return;
+
+  memset (&empty_ses, 0, sizeof (empty_ses));
+  clib_memcpy (&user_addr, mp->user_addr, 4);
+  dm = snat_det_map_by_user (sm, &user_addr);
+  if (!dm)
+    return;
+
+  s = dm->sessions + snat_det_user_ses_offset (&user_addr, dm->in_plen);
+  for (i = 0; i < SNAT_DET_SES_PER_USER; i++)
+    {
+      if (s->out.as_u64)
+        send_snat_det_session_details (s, q, mp->context);
+      s++;
+    }
+}
+
+static void *vl_api_snat_det_session_dump_t_print
+(vl_api_snat_det_session_dump_t * mp, void * handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_det_session_dump ");
+  s = format (s, "user_addr %U\n",
+              format_ip4_address, mp->user_addr);
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1835,7 +1901,8 @@ _(SNAT_DET_MAP_DUMP, snat_det_map_dump)                                 \
 _(SNAT_DET_SET_TIMEOUTS, snat_det_set_timeouts)                         \
 _(SNAT_DET_GET_TIMEOUTS, snat_det_get_timeouts)                         \
 _(SNAT_DET_CLOSE_SESSION_OUT, snat_det_close_session_out)               \
-_(SNAT_DET_CLOSE_SESSION_IN, snat_det_close_session_in)
+_(SNAT_DET_CLOSE_SESSION_IN, snat_det_close_session_in)                 \
+_(SNAT_DET_SESSION_DUMP, snat_det_session_dump)
 
 
 /* Set up the API message handling tables */

@@ -121,7 +121,8 @@ _(SNAT_DET_GET_TIMEOUTS_REPLY, snat_det_get_timeouts_reply)     \
 _(SNAT_DET_CLOSE_SESSION_OUT_REPLY,                             \
   snat_det_close_session_out_reply)                             \
 _(SNAT_DET_CLOSE_SESSION_IN_REPLY,                              \
-  snat_det_close_session_in_reply)
+  snat_det_close_session_in_reply)                              \
+_(SNAT_DET_SESSION_DETAILS, snat_det_session_details)
 
 static int api_snat_add_address_range (vat_main_t * vam)
 {
@@ -1033,6 +1034,52 @@ static int api_snat_det_close_session_in (vat_main_t * vam)
   return ret;
 }
 
+static void vl_api_snat_det_session_details_t_handler
+  (vl_api_snat_det_session_details_t *mp)
+{
+  snat_test_main_t * sm = &snat_test_main;
+  vat_main_t *vam = sm->vat_main;
+
+  fformat(vam->ofp, "deterministic session, external host address %U, "
+                    "external host port %d, outer port %d, inside port %d",
+          format_ip4_address, mp->ext_addr, mp->ext_port,
+          mp->out_port, mp->in_port);
+}
+
+static int api_snat_det_session_dump(vat_main_t * vam)
+{
+  unformat_input_t* i = vam->input;
+  vl_api_snat_det_session_dump_t * mp;
+  vl_api_snat_control_ping_t *mp_ping;
+  ip4_address_t user_addr;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning ("JSON output not supported for snat_det_session_dump");
+      return -99;
+    }
+
+  if (unformat (i, "user_addr %U", unformat_ip4_address, &user_addr))
+    ;
+  else
+    {
+      clib_warning ("unknown input '%U'", format_unformat_error, i);
+      return -99;
+    }
+
+  M(SNAT_DET_SESSION_DUMP, mp);
+  clib_memcpy (&mp->user_addr, &user_addr, 4);
+  S(mp);
+
+  /* Use a control ping for synchronization */
+  M(SNAT_CONTROL_PING, mp_ping);
+  S(mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 /* 
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -1069,7 +1116,8 @@ _(snat_det_get_timeouts, "")                                     \
 _(snat_det_close_session_out, "<out_addr>:<out_port> "           \
   "<ext_addr>:<ext_port>")                                       \
 _(snat_det_close_session_in, "<in_addr>:<in_port> "              \
-  "<out_addr>:<out_port>")
+  "<out_addr>:<out_port>")                                       \
+_(snat_det_session_dump, "ip_address <user_addr>")
 
 static void 
 snat_vat_api_hookup (vat_main_t *vam)

@@ -1272,6 +1272,21 @@ class VppPapiProvider(object):
              'ext_port': ext_port,
              'is_ip4': is_ip4})
 
+    def snat_det_session_dump(
+            self,
+            user_addr,
+            is_ip4=1):
+        """Dump S-NAT deterministic sessions belonging to a user
+
+        :param user_addr - inside IP address of the user
+        :param is_ip4: - 1 if address type is IPv4 (Default value = 1)
+        :return: Dictionary of S-NAT deterministic sessions
+        """
+        return self.api(
+            self.papi.snat_det_session_dump,
+            {'is_ip4': is_ip4,
+             'user_addr': user_addr})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 

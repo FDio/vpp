@@ -565,3 +565,38 @@ autoreply define snat_det_close_session_in {
   u8 ext_addr[16];
   u16 ext_port;
 };
+
+/** \brief Dump S-NAT deterministic sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param user_addr - address of an inside user whose sessions to dump
+*/
+define snat_det_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 user_addr[16];
+};
+
+/** \brief S-NAT deterministic sessions reply
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_port - inside port
+    @param ext_addr - external host address
+    @param ext_port - external host port
+    @param out_port - outside NAT port
+    @param state - session state
+    @param expire - session expiration timestamp
+*/
+define snat_det_session_details {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u16 in_port;
+  u8 ext_addr[16];
+  u16 ext_port;
+  u16 out_port;
+  u8 state;
+  u32 expire;
+};
