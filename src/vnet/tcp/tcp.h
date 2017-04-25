@@ -59,6 +59,7 @@ typedef enum _tcp_state
 
 format_function_t format_tcp_state;
 format_function_t format_tcp_flags;
+format_function_t format_tcp_sacks;
 
 /** TCP timers */
 #define foreach_tcp_timer               \
@@ -470,10 +471,12 @@ tcp_available_snd_space (const tcp_connection_t * tc)
 void tcp_update_rcv_wnd (tcp_connection_t * tc);
 
 void tcp_retransmit_first_unacked (tcp_connection_t * tc);
-
 void tcp_fast_retransmit (tcp_connection_t * tc);
 void tcp_cc_congestion (tcp_connection_t * tc);
 void tcp_cc_recover (tcp_connection_t * tc);
+
+/* Made public for unit testing only */
+void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 
 always_inline u32
 tcp_time_now (void)
@@ -496,7 +499,6 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
-
 void tcp_connection_init_vars (tcp_connection_t * tc);
 
 always_inline void

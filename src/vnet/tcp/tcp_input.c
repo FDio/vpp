@@ -894,37 +894,51 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
  * @param start Start sequence number of the newest SACK block
  * @param end End sequence of the newest SACK block
  */
-static void
+void
 tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
 {
-  sack_block_t *new_list = 0, block;
+  sack_block_t *new_list = 0, *block = 0;
   int i;
 
   /* If the first segment is ooo add it to the list. Last write might've moved
    * rcv_nxt over the first segment. */
   if (seq_lt (tc->rcv_nxt, start))
     {
-      block.start = start;
-      block.end = end;
-      vec_add1 (new_list, block);
+      vec_add2 (new_list, block, 1);
+      block->start = start;
+      block->end = end;
     }
 
   /* Find the blocks still worth keeping. */
   for (i = 0; i < vec_len (tc->snd_sacks); i++)
     {
-      /* Discard if:
-       * 1) rcv_nxt advanced beyond current block OR
-       * 2) Segment overlapped by the first segment, i.e., it has been merged
-       *    into it.*/
-      if (seq_leq (tc->snd_sacks[i].start, tc->rcv_nxt)
-	  || seq_leq (tc->snd_sacks[i].start, end))
+      /* Discard if rcv_nxt advanced beyond current block */
+      if (seq_leq (tc->snd_sacks[i].start, tc->rcv_nxt))
 	continue;
 
-      /* Save to new SACK list. */
-      vec_add1 (new_list, tc->snd_sacks[i]);
+      /* Merge or drop if segment overlapped by the new segment */
+      if (block && (seq_geq (tc->snd_sacks[i].end, new_list[0].start)
+		    && seq_leq (tc->snd_sacks[i].start, new_list[0].end)))
+	{
+	  if (seq_lt (tc->snd_sacks[i].start, new_list[0].start))
+	    new_list[0].start = tc->snd_sacks[i].start;
+	  if (seq_lt (new_list[0].end, tc->snd_sacks[i].end))
+	    new_list[0].end = tc->snd_sacks[i].end;
+	  continue;
+	}
+
+      /* Save to new SACK list if we have space. */
+      if (vec_len (new_list) < TCP_MAX_SACK_BLOCKS)
+	{
+	  vec_add1 (new_list, tc->snd_sacks[i]);
+	}
+      else
+	{
+	  clib_warning ("dropped sack blocks");
+	}
     }
 
-  ASSERT (vec_len (new_list) < TCP_MAX_SACK_BLOCKS);
+  ASSERT (vec_len (new_list) <= TCP_MAX_SACK_BLOCKS);
 
   /* Replace old vector with new one */
   vec_free (tc->snd_sacks);
