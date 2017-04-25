@@ -227,6 +227,12 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
   /* Tell the server the client's API queue address, so it can reply */
   mp->client_queue_address = (u64) client_q;
   app = application_lookup (mp->client_index);
+  if (!app)
+    {
+      clib_warning ("no client application");
+      return -1;
+    }
+
   mp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = app->sm_properties.rx_fifo_size;
   mp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = app->sm_properties.tx_fifo_size;
 

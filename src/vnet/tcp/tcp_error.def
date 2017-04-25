@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 tcp_error (NONE, "no error")
+tcp_error (LENGTH, "inconsistent ip/tcp lengths")
 tcp_error (NO_LISTENER, "no listener for dst port")
 tcp_error (LOOKUP_DROPS, "lookup drops")
 tcp_error (DISPATCH, "Dispatch error")

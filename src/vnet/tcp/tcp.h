@@ -351,6 +351,14 @@ vnet_get_tcp_main ()
   return &tcp_main;
 }
 
+always_inline tcp_header_t *
+tcp_buffer_hdr (vlib_buffer_t * b)
+{
+  ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
+  return (tcp_header_t *) (b->data + b->current_data
+			   + vnet_buffer (b)->tcp.hdr_offset);
+}
+
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
 
 always_inline tcp_connection_t *

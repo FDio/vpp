@@ -1176,6 +1176,21 @@ format_tcp_rx_trace_short (u8 * s, va_list * args)
   return s;
 }
 
+void
+tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
+		       tcp_header_t * th0, vlib_buffer_t * b0, u8 is_ip4)
+{
+  if (tc0)
+    {
+      clib_memcpy (&t0->tcp_connection, tc0, sizeof (t0->tcp_connection));
+    }
+  else
+    {
+      th0 = tcp_buffer_hdr (b0);
+    }
+  clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
+}
+
 always_inline void
 tcp_established_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
 {
@@ -1212,12 +1227,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  tcp_rx_trace_t *t0;
 	  tcp_header_t *th0 = 0;
 	  tcp_connection_t *tc0;
-	  ip4_header_t *ip40;
-	  ip6_header_t *ip60;
-	  u32 n_advance_bytes0, n_data_bytes0;
 	  u32 next0 = TCP_ESTABLISHED_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
 
 	  bi0 = from[0];
@@ -1237,32 +1248,13 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 
-	  /* Checksum computed by ipx_local no need to compute again */
-
-	  if (is_ip4)
-	    {
-	      ip40 = vlib_buffer_get_current (b0);
-	      th0 = ip4_next_header (ip40);
-	      n_advance_bytes0 = (ip4_header_bytes (ip40)
-				  + tcp_header_bytes (th0));
-	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
-		- n_advance_bytes0;
-	    }
-	  else
-	    {
-	      ip60 = vlib_buffer_get_current (b0);
-	      th0 = ip6_next_header (ip60);
-	      n_advance_bytes0 = tcp_header_bytes (th0);
-	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
-		- n_advance_bytes0;
-	      n_advance_bytes0 += sizeof (ip60[0]);
-	    }
+	  th0 = tcp_buffer_hdr (b0);
 
 	  is_fin = (th0->flags & TCP_FLAG_FIN) != 0;
 
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	    + tcp_is_syn (th0) + is_fin + n_data_bytes0;
+	    + tcp_is_syn (th0) + is_fin + vnet_buffer (b0)->tcp.data_len;
 
 	  /* TODO header prediction fast path */
 
@@ -1286,8 +1278,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* 7: process the segment text */
 
-	  vlib_buffer_advance (b0, n_advance_bytes0);
-	  error0 = tcp_segment_rcv (tm, tc0, b0, n_data_bytes0, &next0);
+	  vlib_buffer_advance (b0, vnet_buffer (b0)->tcp.data_offset);
+	  error0 = tcp_segment_rcv (tm, tc0, b0,
+				    vnet_buffer (b0)->tcp.data_len, &next0);
 
 	  /* N.B. buffer is rewritten if segment is ooo. Thus, th0 becomes a
 	   * dangling reference. */
@@ -1308,10 +1301,9 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      clib_memcpy (&t0->tcp_header, th0, sizeof (t0->tcp_header));
-	      clib_memcpy (&t0->tcp_connection, tc0,
-			   sizeof (t0->tcp_connection));
+	      tcp_rx_trace_t *t0 =
+		vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      tcp_set_rx_trace_data (t0, tc0, th0, b0, is_ip4);
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -1416,9 +1408,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_rx_trace_t *t0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
-	  ip4_header_t *ip40;
-	  ip6_header_t *ip60;
-	  u32 n_advance_bytes0, n_data_bytes0;
 	  tcp_connection_t *new_tc0;
 	  u32 next0 = TCP_SYN_SENT_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
 
@@ -1436,27 +1425,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ack0 = vnet_buffer (b0)->tcp.ack_number;
 	  seq0 = vnet_buffer (b0)->tcp.seq_number;
-
-	  /* Checksum computed by ipx_local no need to compute again */
-
-	  if (is_ip4)
-	    {
-	      ip40 = vlib_buffer_get_current (b0);
-	      tcp0 = ip4_next_header (ip40);
-	      n_advance_bytes0 = (ip4_header_bytes (ip40)
-				  + tcp_header_bytes (tcp0));
-	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
-		- n_advance_bytes0;
-	    }
-	  else
-	    {
-	      ip60 = vlib_buffer_get_current (b0);
-	      tcp0 = ip6_next_header (ip60);
-	      n_advance_bytes0 = tcp_header_bytes (tcp0);
-	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
-		- n_advance_bytes0;
-	      n_advance_bytes0 += sizeof (ip60[0]);
-	    }
+	  tcp0 = tcp_buffer_hdr (b0);
 
 	  if (PREDICT_FALSE
 	      (!tcp_ack (tcp0) && !tcp_rst (tcp0) && !tcp_syn (tcp0)))
@@ -1464,7 +1433,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = seq0 + tcp_is_syn (tcp0)
-	    + tcp_is_fin (tcp0) + n_data_bytes0;
+	    + tcp_is_fin (tcp0) + vnet_buffer (b0)->tcp.data_len;
 
 	  /*
 	   *  1. check the ACK bit
@@ -1591,10 +1560,12 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Read data, if any */
-	  if (n_data_bytes0)
+	  if (vnet_buffer (b0)->tcp.data_len)
 	    {
-	      error0 =
-		tcp_segment_rcv (tm, new_tc0, b0, n_data_bytes0, &next0);
+	      vlib_buffer_advance (b0, vnet_buffer (b0)->tcp.data_offset);
+	      error0 = tcp_segment_rcv (tm, new_tc0, b0,
+					vnet_buffer (b0)->tcp.data_len,
+					&next0);
 	      if (error0 == TCP_ERROR_PURE_ACK)
 		error0 = TCP_ERROR_SYN_ACKS_RCVD;
 	    }
@@ -1720,12 +1691,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  tcp_rx_trace_t *t0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
-	  ip4_header_t *ip40;
-	  ip6_header_t *ip60;
-	  u32 n_advance_bytes0, n_data_bytes0;
 	  u32 next0 = TCP_RCV_PROCESS_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
 
 	  bi0 = from[0];
@@ -1744,30 +1711,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto drop;
 	    }
 
-	  /* Checksum computed by ipx_local no need to compute again */
-
-	  if (is_ip4)
-	    {
-	      ip40 = vlib_buffer_get_current (b0);
-	      tcp0 = ip4_next_header (ip40);
-	      n_advance_bytes0 = (ip4_header_bytes (ip40)
-				  + tcp_header_bytes (tcp0));
-	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
-		- n_advance_bytes0;
-	    }
-	  else
-	    {
-	      ip60 = vlib_buffer_get_current (b0);
-	      tcp0 = ip6_next_header (ip60);
-	      n_advance_bytes0 = tcp_header_bytes (tcp0);
-	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
-		- n_advance_bytes0;
-	      n_advance_bytes0 += sizeof (ip60[0]);
-	    }
+	  tcp0 = tcp_buffer_hdr (b0);
 
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	    + tcp_is_syn (tcp0) + tcp_is_fin (tcp0) + n_data_bytes0;
+	    + tcp_is_syn (tcp0) + tcp_is_fin (tcp0)
+	    + vnet_buffer (b0)->tcp.data_len;
 
 	  /*
 	   * Special treatment for CLOSED
@@ -1911,8 +1860,10 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_ESTABLISHED:
 	    case TCP_STATE_FIN_WAIT_1:
 	    case TCP_STATE_FIN_WAIT_2:
-	      vlib_buffer_advance (b0, n_advance_bytes0);
-	      error0 = tcp_segment_rcv (tm, tc0, b0, n_data_bytes0, &next0);
+	      vlib_buffer_advance (b0, vnet_buffer (b0)->tcp.data_offset);
+	      error0 = tcp_segment_rcv (tm, tc0, b0,
+					vnet_buffer (b0)->tcp.data_len,
+					&next0);
 	      break;
 	    case TCP_STATE_CLOSE_WAIT:
 	    case TCP_STATE_CLOSING:
@@ -1964,15 +1915,14 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
 
+	drop:
 	  b0->error = error0 ? node->errors[error0] : 0;
 
-	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
-	      clib_memcpy (&t0->tcp_connection, tc0,
-			   sizeof (t0->tcp_connection));
+	      tcp_rx_trace_t *t0 =
+		vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      tcp_set_rx_trace_data (t0, tc0, tcp0, b0, is_ip4);
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -2320,9 +2270,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
+	  int n_advance_bytes0, n_data_bytes0;
 	  u32 bi0;
 	  vlib_buffer_t *b0;
-	  tcp_rx_trace_t *t0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
 	  ip4_header_t *ip40;
@@ -2340,10 +2290,16 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  vnet_buffer (b0)->tcp.flags = 0;
 
+	  /* Checksum computed by ipx_local no need to compute again */
+
 	  if (is_ip4)
 	    {
 	      ip40 = vlib_buffer_get_current (b0);
 	      tcp0 = ip4_next_header (ip40);
+	      n_advance_bytes0 = (ip4_header_bytes (ip40)
+				  + tcp_header_bytes (tcp0));
+	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
+		- n_advance_bytes0;
 
 	      /* lookup session */
 	      tc0 =
@@ -2359,6 +2315,11 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      ip60 = vlib_buffer_get_current (b0);
 	      tcp0 = ip6_next_header (ip60);
+	      n_advance_bytes0 = tcp_header_bytes (tcp0);
+	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
+		- n_advance_bytes0;
+	      n_advance_bytes0 += sizeof (ip60[0]);
+
 	      tc0 =
 		(tcp_connection_t *)
 		stream_session_lookup_transport6 (&ip60->src_address,
@@ -2367,6 +2328,13 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						  tcp0->dst_port,
 						  SESSION_TYPE_IP6_TCP,
 						  my_thread_index);
+	    }
+
+	  /* Length check */
+	  if (PREDICT_FALSE (n_advance_bytes0 < 0))
+	    {
+	      error0 = TCP_ERROR_LENGTH;
+	      goto done;
 	    }
 
 	  /* Session exists */
@@ -2378,6 +2346,11 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		clib_net_to_host_u32 (tcp0->seq_number);
 	      vnet_buffer (b0)->tcp.ack_number =
 		clib_net_to_host_u32 (tcp0->ack_number);
+
+	      vnet_buffer (b0)->tcp.hdr_offset = (u8 *) tcp0
+		- (u8 *) vlib_buffer_get_current (b0);
+	      vnet_buffer (b0)->tcp.data_offset = n_advance_bytes0;
+	      vnet_buffer (b0)->tcp.data_len = n_data_bytes0;
 
 	      flags0 = tcp0->flags & filter_flags;
 	      next0 = tm->dispatch_table[tc0->state][flags0].next;
@@ -2400,14 +2373,14 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      error0 = TCP_ERROR_NO_LISTENER;
 	    }
 
+	done:
 	  b0->error = error0 ? node->errors[error0] : 0;
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
-	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));
-	      if (tc0)
-		clib_memcpy (&t0->tcp_connection, tc0, sizeof (*tc0));
+	      tcp_rx_trace_t *t0 =
+		vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      tcp_set_rx_trace_data (t0, tc0, tcp0, b0, is_ip4);
 	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,

@@ -687,8 +687,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
     {
       tp = vp + i;
       data64 = tp->offset;
-      rv = svm_fifo_enqueue_with_offset (f, tp->offset, tp->len,
-					 (u8 *) & data64);
+      svm_fifo_enqueue_with_offset (f, tp->offset, tp->len, (u8 *) & data64);
     }
 
   /* Expected result: one big fat chunk at offset 4 */
@@ -891,9 +890,9 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   for (i = 0; i < vec_len (generate); i++)
     {
       tp = generate + i;
-      rv = svm_fifo_enqueue_with_offset (f, fifo_initial_offset
-					 + tp->offset, tp->len,
-					 (u8 *) data_pattern + tp->offset);
+      svm_fifo_enqueue_with_offset (f, fifo_initial_offset + tp->offset,
+				    tp->len,
+				    (u8 *) data_pattern + tp->offset);
     }
 
   /*
