@@ -35,7 +35,7 @@
 }
 
 static int
-tcp_test_sack ()
+tcp_test_sack_rx ()
 {
   tcp_connection_t _tc, *tc = &_tc;
   sack_scoreboard_t *sb = &tc->sack_sb;
@@ -172,6 +172,145 @@ tcp_test_sack ()
 	    "number of holes %d", pool_elts (sb->holes));
   return 0;
 }
+
+static int
+tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
+{
+  tcp_connection_t _tc, *tc = &_tc;
+  sack_block_t *sacks;
+  int i, verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  memset (tc, 0, sizeof (*tc));
+
+  /*
+   * Add odd sack block pairs
+   */
+  for (i = 1; i < 10; i += 2)
+    {
+      tcp_update_sack_list (tc, i * 100, (i + 1) * 100);
+    }
+
+  TCP_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 5);
+  TCP_TEST ((tc->snd_sacks[0].start = 900),
+	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
+	    900);
+
+  /*
+   * Try to add one extra
+   */
+  sacks = vec_dup (tc->snd_sacks);
+
+  tcp_update_sack_list (tc, 1100, 1200);
+  TCP_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 5);
+  TCP_TEST ((tc->snd_sacks[0].start == 1100),
+	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
+	    1100);
+
+  /* restore */
+  vec_free (tc->snd_sacks);
+  tc->snd_sacks = sacks;
+
+  /*
+   * Overlap first 2 segment
+   */
+  tc->rcv_nxt = 300;
+  tcp_update_sack_list (tc, 300, 300);
+  if (verbose)
+    vlib_cli_output (vm, "overlap first 2 segments:\n%U",
+		     format_tcp_sacks, tc->snd_sacks);
+  TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 3);
+  TCP_TEST ((tc->snd_sacks[0].start == 900),
+	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
+	    500);
+
+  /*
+   * Add a new segment
+   */
+  tcp_update_sack_list (tc, 1100, 1200);
+  if (verbose)
+    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
+		     format_tcp_sacks, tc->snd_sacks);
+  TCP_TEST ((vec_len (tc->snd_sacks) == 4), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 4);
+  TCP_TEST ((tc->snd_sacks[0].start == 1100),
+	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
+	    1100);
+
+  /*
+   * Join middle segments
+   */
+  tcp_update_sack_list (tc, 800, 900);
+  if (verbose)
+    vlib_cli_output (vm, "join middle segments [800, 900]\n%U",
+		     format_tcp_sacks, tc->snd_sacks);
+
+  TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 3);
+  TCP_TEST ((tc->snd_sacks[0].start == 700),
+	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
+	    1100);
+
+  /*
+   * Advance rcv_nxt to overlap all
+   */
+  tc->rcv_nxt = 1200;
+  tcp_update_sack_list (tc, 1200, 1200);
+  if (verbose)
+    vlib_cli_output (vm, "advance rcv_nxt to 1200\n%U",
+		     format_tcp_sacks, tc->snd_sacks);
+  TCP_TEST ((vec_len (tc->snd_sacks) == 0), "sack blocks %d expected %d",
+	    vec_len (tc->snd_sacks), 0);
+  return 0;
+}
+
+static int
+tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
+{
+  int res = 0;
+
+  /* Run all tests */
+  if (unformat_check_input (input) == UNFORMAT_END_OF_INPUT)
+    {
+      if (tcp_test_sack_tx (vm, input))
+	{
+	  return -1;
+	}
+
+      if (tcp_test_sack_rx ())
+	{
+	  return -1;
+	}
+    }
+  else
+    {
+      if (unformat (input, "tx"))
+	{
+	  res = tcp_test_sack_tx (vm, input);
+	}
+      else if (unformat (input, "rx"))
+	{
+	  res = tcp_test_sack_rx ();
+	}
+    }
+
+  return res;
+}
+
 
 typedef struct
 {
@@ -967,7 +1106,7 @@ tcp_test (vlib_main_t * vm,
     {
       if (unformat (input, "sack"))
 	{
-	  res = tcp_test_sack ();
+	  res = tcp_test_sack (vm, input);
 	}
       else if (unformat (input, "fifo"))
 	{
