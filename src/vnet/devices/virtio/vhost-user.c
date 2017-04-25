@@ -2850,6 +2850,13 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
       return VNET_API_ERROR_INVALID_ARGUMENT;
     }
 
+  /* *INDENT-OFF* */
+  pool_foreach (vui, vum->vhost_user_interfaces, {
+      if (!strcmp(vui->sock_filename, sock_filename))
+	return VNET_API_ERROR_IF_ALREADY_EXISTS;
+  });
+  /* *INDENT-ON* */
+
   if (is_server)
     {
       if ((rv =
@@ -2908,6 +2915,23 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
   vui = vec_elt_at_index (vum->vhost_user_interfaces, hwif->dev_instance);
+
+  /*
+   * Disallow changing the interface to have the same path name
+   * as other interface
+   */
+  if (sock_filename != NULL && (strlen (sock_filename) > 0))
+    {
+      vhost_user_intf_t *vui2;
+      /* *INDENT-OFF* */
+      pool_foreach (vui2, vum->vhost_user_interfaces, {
+	  if (vui == vui2)
+	    continue;
+	  if (!strcmp(vui2->sock_filename, sock_filename))
+	    return VNET_API_ERROR_IF_ALREADY_EXISTS;
+	});
+      /* *INDENT-ON* */
+    }
 
   // First try to open server socket
   if (is_server)
