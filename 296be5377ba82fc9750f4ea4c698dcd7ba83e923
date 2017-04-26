@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_bd60b901",
+        "filename": "src/vppinfra/clib.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-04-26T19:52:55Z",
+      "side": 1,
+      "message": "I\u0027m not sure that I would make this so easily available.",
+      "revId": "296be5377ba82fc9750f4ea4c698dcd7ba83e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9d5dfd49",
+        "filename": "src/vppinfra/crc32.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-04-26T19:52:55Z",
+      "side": 1,
+      "message": "Personally, I\u0027d go for:\n\nasm volatile (\"\" ::: \"memory\");\n\nin this specific place, instead of the CLIB_COMPILER_BARRIER() macro.",
+      "revId": "296be5377ba82fc9750f4ea4c698dcd7ba83e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_dd470576",
+        "filename": "src/vppinfra/crc32.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-04-26T19:52:55Z",
+      "side": 1,
+      "message": "Might produce better code / fewer branches if manually unrolled: Might try 1 or more switch(len) w/ deliberate flow-through.",
+      "revId": "296be5377ba82fc9750f4ea4c698dcd7ba83e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
