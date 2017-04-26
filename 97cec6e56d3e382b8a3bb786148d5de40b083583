@@ -1,0 +1,216 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_220dc8e9",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "naming",
+      "range": {
+        "startLine": 7,
+        "startChar": 24,
+        "endLine": 7,
+        "endChar": 35
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_020e4ce5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "delete, same as above",
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e244601c",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 586,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "external host address",
+      "range": {
+        "startLine": 586,
+        "startChar": 22,
+        "endLine": 586,
+        "endChar": 38
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c24de43f",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "external host port",
+      "range": {
+        "startLine": 587,
+        "startChar": 22,
+        "endLine": 587,
+        "endChar": 35
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a24ad823",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 592,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "missing outside address",
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_625070d4",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1874,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "user_addr",
+      "range": {
+        "startLine": 1874,
+        "startChar": 18,
+        "endLine": 1874,
+        "endChar": 30
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e25b40f4",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1043,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "add outside address",
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_82535ce1",
+        "filename": "src/plugins/snat/snat_test.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1063,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "user_addr",
+      "range": {
+        "startLine": 1063,
+        "startChar": 20,
+        "endLine": 1063,
+        "endChar": 30
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_826a3c7f",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1279,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "Dump S-NAT deterministic sessions belonging to a user",
+      "range": {
+        "startLine": 1279,
+        "startChar": 11,
+        "endLine": 1279,
+        "endChar": 55
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_626750b8",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 1281,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T11:35:58Z",
+      "side": 1,
+      "message": "inside IP address of the user",
+      "range": {
+        "startLine": 1281,
+        "startChar": 27,
+        "endLine": 1281,
+        "endChar": 55
+      },
+      "revId": "97cec6e56d3e382b8a3bb786148d5de40b083583",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
