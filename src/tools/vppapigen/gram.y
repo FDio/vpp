@@ -53,9 +53,9 @@ stmt:     flist defn            {$$ = set_flags($1, $2);}
         | defn                  {$$ = $1;}
           ;
 
-flist:    flist flag            {$$ = (YYSTYPE)(unsigned long long)
-                                     ((unsigned long long) $1 
-                                    | (unsigned long long) $2);}
+flist:    flist flag            {$$ = (YYSTYPE)(unsigned long)
+                                     ((unsigned long) $1 
+                                    | (unsigned long) $2);}
         | flag                  {$$ = $1;}
           ;
 

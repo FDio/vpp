@@ -397,7 +397,7 @@ void node_define_generate (node_t *this, enum passid which, FILE *fp)
 	    fprintf(fp, ",\n");
         }
 	indent_me(fp);
-	fprintf (fp, "{\"crc\" : \"0x%08x\"}\n", (u32)(u64)CDATA3);
+	fprintf (fp, "{\"crc\" : \"0x%08x\"}\n", (u32)(uword)CDATA3);
         indent -= 4;
 	indent_me(fp);
         fprintf(fp, "]");
@@ -1219,7 +1219,7 @@ void generate_msg_name_crc_list (YYSTYPE a1, FILE *fp)
             if (!(np->flags & NODE_FLAG_TYPEONLY)) {
                 fprintf (fp, "\\\n_(VL_API_%s, %s, %08x) ",
                          uppercase (np->data[0]), (i8 *) np->data[0],
-                         (u32)(u64)np->data[3]);
+                         (u32)(uword)np->data[3]);
             }
         }
         np = np->peer;
