@@ -205,6 +205,18 @@ vlib_buffer_advance (vlib_buffer_t * b, word l)
   b->current_length -= l;
 }
 
+/** \brief Check if there is enough space in buffer to advance
+
+    @param b - (vlib_buffer_t *) pointer to the buffer
+    @param l - (word) size to check
+    @return - 0 if there is less space than 'l' in buffer
+*/
+always_inline u8
+vlib_buffer_has_space (vlib_buffer_t * b, word l)
+{
+  return b->current_length >= l;
+}
+
 /** \brief Reset current header & length to state they were in when
     packet was received.
 

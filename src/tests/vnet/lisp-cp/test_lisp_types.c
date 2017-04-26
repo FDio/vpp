@@ -18,9 +18,6 @@
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-cp/lisp_cp_messages.h>
 
-/* FIXME */
-#include <vlibapi/api_helper_macros.h>
-
 #define _assert(e)                    \
   error = CLIB_ERROR_ASSERT (e);      \
   if (error)                          \
@@ -265,7 +262,6 @@ done:
 }
 #endif
 
-#if 0 /* uncomment this once VNI is supported */
 static clib_error_t * test_write_mac_in_lcaf (void)
 {
   clib_error_t * error = 0;
@@ -276,13 +272,12 @@ static clib_error_t * test_write_mac_in_lcaf (void)
   gid_address_t g =
     {
       .mac = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6},
-      .vni = 0x30,
+      .vni = 0x01020304,
       .vni_mask = 0x10,
       .type = GID_ADDR_MAC,
     };
 
   u16 len = gid_address_put (b, &g);
-  _assert (8 == len);
 
   u8 expected[] =
     {
@@ -290,20 +285,20 @@ static clib_error_t * test_write_mac_in_lcaf (void)
       0x00,                   /* reserved1 */
       0x00,                   /* flags */
       0x02,                   /* LCAF type = Instance ID */
-      0x20,                   /* IID/VNI mask len */
-      0x00, 0x0a,             /* length */
+      0x10,                   /* IID/IID mask len */
+      0x00, 0x0c,             /* length */
       0x01, 0x02, 0x03, 0x04, /* Instance ID / VNI */
 
-      0x00, 0x06,             /* AFI = MAC */
+      0x40, 0x05,             /* AFI = MAC */
       0x01, 0x02, 0x03, 0x04,
       0x05, 0x06              /* MAC */
-    }
+    };
+  _assert (sizeof (expected) == len);
   _assert (0 == memcmp (expected, b, len));
 done:
   clib_mem_free (b);
   return error;
 }
-#endif
 
 static clib_error_t * test_mac_address_write (void)
 {
@@ -414,6 +409,32 @@ test_src_dst_with_vni_serdes (void)
   _assert (0 == gid_address_cmp (&g, &p));
 done:
   clib_mem_free (b);
+  return error;
+}
+
+static clib_error_t *
+test_src_dst_deser_bad_afi (void)
+{
+  clib_error_t * error = 0;
+
+  u8 expected_data[] =
+    {
+      0x40, 0x03, 0x00, 0x00,  /* AFI = LCAF, reserved1, flags */
+      0x0c, 0x00, 0x00, 0x14,  /* LCAF type = source/dest key, rsvd, length */
+      0x00, 0x00, 0x00, 0x00,  /* reserved; source-ML, Dest-ML */
+
+      0xde, 0xad,              /* AFI = bad value */
+      0x11, 0x22, 0x33, 0x44,
+      0x55, 0x66,              /* source */
+
+      0x40, 0x05,              /* AFI = MAC */
+      0x10, 0x21, 0x32, 0x43,
+      0x54, 0x65,              /* destination */
+    };
+
+  gid_address_t p;
+  _assert (~0 == gid_address_parse (expected_data, &p));
+done:
   return error;
 }
 
@@ -537,6 +558,8 @@ done:
   _(mac_address_write)                    \
   _(gid_address_write)                    \
   _(src_dst_serdes)                       \
+  _(write_mac_in_lcaf)                    \
+  _(src_dst_deser_bad_afi)                \
   _(src_dst_with_vni_serdes)
 
 int run_tests (void)

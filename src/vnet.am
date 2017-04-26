@@ -662,19 +662,6 @@ nobase_include_HEADERS +=			\
 
 API_FILES += vnet/lisp-gpe/lisp_gpe.api
 
-if ENABLE_TESTS
-TESTS += test_test
-
-test_test_SOURCES = tests/vnet/lisp-gpe/test.c
-
-test_test_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
-
-test_test_LDADD = $(LIBOBJS)
-
-noinst_PROGRAMS += $(TESTS)
-check_PROGRAMS += $(TESTS)
-endif
-
 ########################################
 # DHCP client
 ########################################
