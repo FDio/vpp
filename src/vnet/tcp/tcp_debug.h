@@ -337,7 +337,8 @@ typedef enum _tcp_dbg_evt
 #define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)            \
 {                                                               	\
   tcp_connection_t *_tc;                                        	\
-  if (_timer_id == TCP_TIMER_RETRANSMIT_SYN)                           	\
+  if (_timer_id == TCP_TIMER_RETRANSMIT_SYN                     	\
+    || _timer_id == TCP_TIMER_ESTABLISH)                        	\
     {                                                           	\
       _tc = tcp_half_open_connection_get (_tc_index);           	\
     }                                                           	\
