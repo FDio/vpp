@@ -875,25 +875,26 @@ ikev2_process_auth_req (vlib_main_t * vm, ikev2_sa_t * sa, ike_header_t * ike)
 	      first_child_sa->i_proposals = ikev2_parse_sa_payload (ikep);
 	    }
 	}
-      else if (payload == IKEV2_PAYLOAD_IDI || payload == IKEV2_PAYLOAD_IDR)	/* 35, 36 */
+      else if (payload == IKEV2_PAYLOAD_IDI)	/* 35 */
 	{
 	  ike_id_payload_header_t *id = (ike_id_payload_header_t *) ikep;
 
-	  if (sa->is_initiator)
-	    {
-	      sa->r_id.type = id->id_type;
-	      vec_free (sa->r_id.data);
-	      vec_add (sa->r_id.data, id->payload, plen - sizeof (*id));
-	    }
-	  else
-	    {
-	      sa->i_id.type = id->id_type;
-	      vec_free (sa->i_id.data);
-	      vec_add (sa->i_id.data, id->payload, plen - sizeof (*id));
-	    }
+	  sa->i_id.type = id->id_type;
+	  vec_free (sa->i_id.data);
+	  vec_add (sa->i_id.data, id->payload, plen - sizeof (*id));
 
-	  clib_warning ("received payload %s, len %u id_type %u",
-			(payload == IKEV2_PAYLOAD_IDI ? "IDi" : "IDr"),
+	  clib_warning ("received payload IDi, len %u id_type %u",
+			plen - sizeof (*id), id->id_type);
+	}
+      else if (payload == IKEV2_PAYLOAD_IDR)	/* 36 */
+	{
+	  ike_id_payload_header_t *id = (ike_id_payload_header_t *) ikep;
+
+	  sa->r_id.type = id->id_type;
+	  vec_free (sa->r_id.data);
+	  vec_add (sa->r_id.data, id->payload, plen - sizeof (*id));
+
+	  clib_warning ("received payload IDr len %u id_type %u",
 			plen - sizeof (*id), id->id_type);
 	}
       else if (payload == IKEV2_PAYLOAD_AUTH)	/* 39 */
