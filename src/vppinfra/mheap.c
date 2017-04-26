@@ -304,7 +304,7 @@ mheap_small_object_cache_mask (mheap_small_object_cache_t * c, uword bin)
   uword mask;
 
 /* $$$$ ELIOT FIXME: add Altivec version of this routine */
-#if !defined (CLIB_HAVE_VEC128) || defined (__ALTIVEC__)
+#if !defined (CLIB_HAVE_VEC128) || defined (__ALTIVEC__) || defined (__i386__)
   mask = 0;
 #else
   u8x16 b = u8x16_splat (bin);

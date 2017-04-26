@@ -216,7 +216,8 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
      am->shmem_hdr->application_restarts);
   rp->context = mp->context;
   rp->response = ntohl (rv);
-  rp->message_table = (u64) am->serialized_message_table_in_shmem;
+  rp->message_table =
+    pointer_to_uword (am->serialized_message_table_in_shmem);
 
   vl_msg_api_send_shmem (q, (u8 *) & rp);
 }
