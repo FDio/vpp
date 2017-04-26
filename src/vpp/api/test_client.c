@@ -541,13 +541,6 @@ static void vl_api_create_loopback_instance_reply_t_handler
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
-static void
-vl_api_sr_tunnel_add_del_reply_t_handler (vl_api_sr_tunnel_add_del_reply_t *
-					  mp)
-{
-  fformat (stdout, "sr tunnel add/del reply %d\n", ntohl (mp->retval));
-}
-
 static void vl_api_l2_patch_add_del_reply_t_handler
   (vl_api_l2_patch_add_del_reply_t * mp)
 {
@@ -949,7 +942,6 @@ add_ip4_neighbor (test_main_t * tm, int add_del)
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_ADD_DEL);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  mp->vrf_id = ntohl (11);
   mp->sw_if_index = ntohl (6);
   mp->is_add = add_del;
 
@@ -972,7 +964,6 @@ add_ip6_neighbor (test_main_t * tm, int add_del)
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_ADD_DEL);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  mp->vrf_id = ntohl (11);
   mp->sw_if_index = ntohl (6);
   mp->is_add = add_del;
   mp->is_ipv6 = 1;
@@ -1055,9 +1046,7 @@ dhcp_set_proxy (test_main_t * tm, int ipv6)
   mp->_vl_msg_id = ntohs (VL_API_DHCP_PROXY_CONFIG);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
-  mp->vrf_id = ntohl (0);
   mp->is_ipv6 = ipv6;
-  mp->insert_circuit_id = 1;
   mp->is_add = 1;
   mp->dhcp_server[0] = 0x20;
   mp->dhcp_server[1] = 0x01;

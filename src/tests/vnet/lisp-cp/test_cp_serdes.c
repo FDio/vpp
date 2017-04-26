@@ -21,9 +21,6 @@
 #include <vlibapi/api.h>
 #include <vnet/lisp-cp/packets.h>
 
-/* FIXME */
-#include <vlibapi/api_helper_macros.h>
-
 #define _assert(e)                    \
   error = CLIB_ERROR_ASSERT (e);      \
   if (error)                          \
@@ -489,6 +486,53 @@ done:
   return error;
 }
 
+static vlib_buffer_t *
+create_buffer (u8 * data, u32 data_len)
+{
+  vlib_buffer_t *b;
+
+  u8 *buf_data = clib_mem_alloc(500);
+  memset (buf_data, 0, 500);
+  b = (vlib_buffer_t *)buf_data;
+
+  u8 * p = vlib_buffer_put_uninit (b, data_len);
+  clib_memcpy (p, data, data_len);
+
+  return b;
+}
+
+static clib_error_t *
+test_lisp_parse_map_reply ()
+{
+  clib_error_t * error = 0;
+  u8 map_reply_data[] =
+    {
+      0x00, 0x00, 0x00, 0x01, /* type; rsvd; mapping count */
+      0x00, 0x00, 0x00, 0x00,
+    };
+  vlib_buffer_t *b = create_buffer (map_reply_data, sizeof (map_reply_data));
+  map_records_arg_t *mrecs = parse_map_reply (b);
+  _assert (0 == mrecs);
+  clib_mem_free (b);
+
+  u8 map_reply_data2[] =
+    {
+      0x00, 0x00, 0x00, 0x01, /* type; rsvd */
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, /* nonce */
+
+      /* 1. record  - incomplete */
+      0x01, 0x02, 0x03, 0x04, /* record TTL */
+      0x01,                   /* locator count */
+    };
+  b = create_buffer (map_reply_data2, sizeof (map_reply_data2));
+  mrecs = parse_map_reply (b);
+  _assert (0 == mrecs);
+done:
+  clib_mem_free (b);
+  return error;
+}
+
 static clib_error_t *
 test_lisp_parse_lcaf ()
 {
@@ -610,6 +654,7 @@ done:
   _(lisp_msg_push_ecm)                    \
   _(lisp_msg_parse)                       \
   _(lisp_msg_parse_mapping_record)        \
+  _(lisp_parse_map_reply)                 \
   _(lisp_parse_lcaf)                      \
   _(lisp_map_register)
 

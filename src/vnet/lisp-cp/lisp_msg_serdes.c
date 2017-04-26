@@ -312,6 +312,8 @@ lisp_msg_parse_loc (vlib_buffer_t * b, locator_t * loc)
   if (len == ~0)
     return ~0;
 
+  if (!vlib_buffer_has_space (b, sizeof (len)))
+    return ~0;
   vlib_buffer_pull (b, len);
 
   return len;
@@ -326,12 +328,18 @@ lisp_msg_parse_mapping_record (vlib_buffer_t * b, gid_address_t * eid,
   int i = 0, len = 0, llen = 0;
 
   h = vlib_buffer_get_current (b);
+  if (!vlib_buffer_has_space (b, sizeof (mapping_record_hdr_t)))
+    return ~0;
+
   vlib_buffer_pull (b, sizeof (mapping_record_hdr_t));
 
   memset (eid, 0, sizeof (*eid));
   len = gid_address_parse (vlib_buffer_get_current (b), eid);
   if (len == ~0)
     return len;
+
+  if (!vlib_buffer_has_space (b, sizeof (len)))
+    return ~0;
 
   vlib_buffer_pull (b, len);
   if (GID_ADDR_IP_PREFIX == gid_address_type (eid))

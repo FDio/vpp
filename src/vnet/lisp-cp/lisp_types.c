@@ -657,11 +657,18 @@ fid_addr_parse (u8 * p, fid_address_t * a)
       return ip_address_parse (p, afi, ip_addr);
 
     case FID_ADDR_NSH:
-      ASSERT (0);
       break;
     }
   return ~0;
 }
+
+#define INC(dst, exp)   \
+do {                    \
+  u16 _sum = (exp);     \
+  if ((u16)~0 == _sum)  \
+    return ~0;          \
+  dst += _sum;          \
+} while (0);
 
 u16
 sd_parse (u8 * p, void *a)
@@ -677,8 +684,8 @@ sd_parse (u8 * p, void *a)
   sd_hdr = (lcaf_src_dst_hdr_t *) (p + size);
   size += sizeof (sd_hdr[0]);
 
-  size += fid_addr_parse (p + size, src);
-  size += fid_addr_parse (p + size, dst);
+  INC (size, fid_addr_parse (p + size, src));
+  INC (size, fid_addr_parse (p + size, dst));
 
   if (fid_addr_type (src) == FID_ADDR_IP_PREF)
     {
@@ -704,7 +711,7 @@ try_parse_src_dst_lcaf (u8 * p, gid_address_t * a)
   if (LCAF_SOURCE_DEST != lcaf_type (&lcaf))
     return ~0;
 
-  size += sd_parse (p + size, a);
+  INC (size, sd_parse (p + size, a));
   return size;
 }
 
@@ -724,13 +731,10 @@ vni_parse (u8 * p, void *a)
   u16 afi = clib_net_to_host_u16 (*((u16 *) (p + size)));
   if (LISP_AFI_LCAF == afi)
     {
-      u16 len = try_parse_src_dst_lcaf (p + size, g);
-      if ((u16) ~ 0 == len)
-	return ~0;
-      size += len;
+      INC (size, try_parse_src_dst_lcaf (p + size, g));
     }
   else
-    size += gid_address_parse (p + size, g);
+    INC (size, gid_address_parse (p + size, g));
 
   return size;
 }
@@ -757,7 +761,7 @@ lcaf_parse (void *offset, gid_address_t * addr)
       clib_warning ("Unsupported LCAF type: %u", type);
       return ~0;
     }
-  size += (*lcaf_parse_fcts[type]) (offset + size, lcaf);
+  INC (size, (*lcaf_parse_fcts[type]) (offset + size, lcaf));
   return sizeof (u16) + size;
 }
 
@@ -1419,10 +1423,9 @@ u32
 gid_address_parse (u8 * offset, gid_address_t * a)
 {
   lisp_afi_e afi;
-  int len = 0;
+  u16 len = 0;
 
-  if (!a)
-    return 0;
+  ASSERT (a);
 
   /* NOTE: since gid_address_parse may be called by vni_parse, we can't 0
    * the gid address here */
@@ -1458,7 +1461,7 @@ gid_address_parse (u8 * offset, gid_address_t * a)
       clib_warning ("LISP AFI %d not supported!", afi);
       return ~0;
     }
-  return len;
+  return (len == (u16) ~ 0) ? ~0 : len;
 }
 
 void
