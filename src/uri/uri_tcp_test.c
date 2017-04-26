@@ -173,6 +173,8 @@ wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
 	return 0;
       if (utm->state == STATE_FAILED)
 	return -1;
+      if (utm->time_to_stop == 1)
+	return -1;
     }
   clib_warning ("timeout waiting for STATE_READY");
   return -1;
@@ -736,7 +738,7 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 
   if (mp->retval)
     {
-      clib_warning ("bind failed: %s", format_api_error,
+      clib_warning ("bind failed: %U", format_api_error,
 		    clib_net_to_host_u32 (mp->retval));
       utm->state = STATE_FAILED;
       return;
