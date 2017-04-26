@@ -309,7 +309,7 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
     (*env)->ReleaseStringUTFChars(env, clientName, client_name);
 
     return (*env)->NewObject(env, connectionInfoClass,
-            connectionInfoConstructor, (jlong) jm->vl_input_queue,
+            connectionInfoConstructor, (jlong) pointer_to_uword (jm->vl_input_queue),
             (jint) jm->my_client_index, (jint) rv);
 }
 

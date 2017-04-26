@@ -47,7 +47,7 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_snat_JVppSnatImpl_init0
   clib_warning ("Java_io_fd_vpp_jvpp_snat_JVppSnatImpl_init0");
 
   plugin_main->my_client_index = my_client_index;
-  plugin_main->vl_input_queue = (unix_shared_memory_queue_t *)queue_address;
+  plugin_main->vl_input_queue = uword_to_pointer (queue_address, unix_shared_memory_queue_t *);
 
   plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
   plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
