@@ -127,7 +127,7 @@ typedef struct
   void (**msg_cleanup_handlers) (void *);
   void (**msg_endian_handlers) (void *);
   void (**msg_print_handlers) (void *, void *);
-  char **msg_names;
+  const char **msg_names;
   u8 *message_bounce;
   u8 *is_mp_safe;
   struct ring_alloc_ *arings;
@@ -195,8 +195,8 @@ typedef struct
   /* client side message index hash table */
   uword *msg_index_by_name_and_crc;
 
-  char *region_name;
-  char *root_path;
+  const char *region_name;
+  const char *root_path;
 
   /* Replay in progress? */
   int replay_in_progress;
@@ -276,8 +276,9 @@ void vl_msg_api_register_pd_handler (void *handler,
 int vl_msg_api_pd_handler (void *mp, int rv);
 
 void vl_msg_api_set_first_available_msg_id (u16 first_avail);
-u16 vl_msg_api_get_msg_ids (char *name, int n);
-void vl_msg_api_add_msg_name_crc (api_main_t * am, char *string, u32 id);
+u16 vl_msg_api_get_msg_ids (const char *name, int n);
+void vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string,
+				  u32 id);
 u32 vl_api_get_msg_index (u8 * name_and_crc);
 
 /* node_serialize.c prototypes */
