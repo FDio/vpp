@@ -491,7 +491,7 @@ svm_map_region (svm_map_region_args_t * a)
 	  return (0);
 	}
 
-      rp = mmap ((void *) a->baseva, a->size,
+      rp = mmap (uword_to_pointer (a->baseva, void *), a->size,
 		 PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, svm_fd, 0);
 
       if (rp == (svm_region_t *) MAP_FAILED)
@@ -533,9 +533,10 @@ svm_map_region (svm_map_region_args_t * a)
       rp->virtual_size = a->size;
 
       rp->region_heap =
-	mheap_alloc_with_flags ((void *) (a->baseva + MMAP_PAGESIZE),
-				(a->pvt_heap_size != 0) ?
-				a->pvt_heap_size : SVM_PVT_MHEAP_SIZE,
+	mheap_alloc_with_flags (uword_to_pointer
+				(a->baseva + MMAP_PAGESIZE, void *),
+				(a->pvt_heap_size !=
+				 0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE,
 				MHEAP_FLAG_DISABLE_VM);
       oldheap = svm_push_pvt_heap (rp);
 
@@ -661,7 +662,7 @@ svm_map_region (svm_map_region_args_t * a)
       a->size = rp->virtual_size;
       munmap (rp, MMAP_PAGESIZE);
 
-      rp = (void *) mmap ((void *) a->baseva, a->size,
+      rp = (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
 			  PROT_READ | PROT_WRITE,
 			  MAP_SHARED | MAP_FIXED, svm_fd, 0);
       if ((uword) rp == (uword) MAP_FAILED)
