@@ -83,7 +83,7 @@ typedef struct
 
 typedef struct
 {
-  char *root_path;
+  const char *root_path;
   uword size;
   u32 uid;
   u32 gid;

@@ -123,20 +123,20 @@ void *vl_msg_api_alloc_or_null (int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
 void *vl_msg_api_alloc_as_if_client_or_null (int nbytes);
 void vl_msg_api_free (void *a);
-int vl_map_shmem (char *region_name, int is_vlib);
+int vl_map_shmem (const char *region_name, int is_vlib);
 void vl_register_mapped_shmem_region (svm_region_t * rp);
 void vl_unmap_shmem (void);
 void vl_msg_api_send_shmem (unix_shared_memory_queue_t * q, u8 * elem);
 void vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t * q, u8 * elem);
 void vl_msg_api_send (vl_api_registration_t * rp, u8 * elem);
-int vl_client_connect (char *name, int ctx_quota, int input_queue_size);
+int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_disconnect (void);
 unix_shared_memory_queue_t *vl_api_client_index_to_input_queue (u32 index);
 vl_api_registration_t *vl_api_client_index_to_registration (u32 index);
-int vl_client_api_map (char *region_name);
+int vl_client_api_map (const char *region_name);
 void vl_client_api_unmap (void);
-void vl_set_memory_region_name (char *name);
-void vl_set_memory_root_path (char *root_path);
+void vl_set_memory_region_name (const char *name);
+void vl_set_memory_root_path (const char *root_path);
 void vl_set_memory_uid (int uid);
 void vl_set_memory_gid (int gid);
 void vl_set_global_memory_baseva (u64 baseva);
@@ -146,12 +146,12 @@ void vl_set_global_pvt_heap_size (u64 size);
 void vl_set_api_pvt_heap_size (u64 size);
 void vl_enable_disable_memory_api (vlib_main_t * vm, int yesno);
 void vl_client_disconnect_from_vlib (void);
-int vl_client_connect_to_vlib (char *svm_name, char *client_name,
-			       int rx_queue_size);
-int vl_client_connect_to_vlib_no_rx_pthread (char *svm_name,
-					     char *client_name,
+int vl_client_connect_to_vlib (const char *svm_name,
+			       const char *client_name, int rx_queue_size);
+int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
+					     const char *client_name,
 					     int rx_queue_size);
-u16 vl_client_get_first_plugin_msg_id (char *plugin_name);
+u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 

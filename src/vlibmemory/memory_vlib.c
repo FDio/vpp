@@ -361,7 +361,7 @@ _(GET_FIRST_MSG_ID, get_first_msg_id)
  * vl_api_init
  */
 static int
-memory_api_init (char *region_name)
+memory_api_init (const char *region_name)
 {
   int rv;
   vl_msg_api_msg_config_t cfg;
@@ -1202,7 +1202,7 @@ vlibmemory_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (vlibmemory_init);
 
 void
-vl_set_memory_region_name (char *name)
+vl_set_memory_region_name (const char *name)
 {
   api_main_t *am = &api_main;
 

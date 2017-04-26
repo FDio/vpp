@@ -211,7 +211,7 @@ api_cli_output (void *notused, const char *fmt, ...)
 }
 
 u16
-vl_client_get_first_plugin_msg_id (char *plugin_name)
+vl_client_get_first_plugin_msg_id (const char *plugin_name)
 {
   api_main_t *am = &api_main;
   vl_api_msg_range_t *rp;
