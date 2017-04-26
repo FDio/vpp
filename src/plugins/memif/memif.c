@@ -368,7 +368,7 @@ memif_conn_fd_read_ready (unix_file_t * uf)
 	  else if (cmsg->cmsg_level == SOL_SOCKET
 		   && cmsg->cmsg_type == SCM_RIGHTS)
 	    {
-	      clib_memcpy (fd_array, CMSG_DATA (cmsg), sizeof (fd_array));
+	      memcpy (fd_array, CMSG_DATA (cmsg), sizeof (fd_array));
 	    }
 	  cmsg = CMSG_NXTHDR (&mh, cmsg);
 	}
@@ -573,7 +573,7 @@ memif_connect_master (vlib_main_t * vm, memif_if_t * mif)
   cmsg->cmsg_level = SOL_SOCKET;
   cmsg->cmsg_type = SCM_RIGHTS;
   fd_array[0] = mfd;
-  clib_memcpy (CMSG_DATA (cmsg), fd_array, sizeof (fd_array));
+  memcpy (CMSG_DATA (cmsg), fd_array, sizeof (fd_array));
 
   mif->flags |= MEMIF_IF_FLAG_CONNECTING;
   rv = sendmsg (mif->connection.fd, &mh, 0);
