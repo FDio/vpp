@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_d78b64c1",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-04-26T07:04:54Z",
+      "side": 1,
+      "message": "please see hhttps://gerrit.fd.io/r/#/c/6387/3/src/plugins/snat/snat.api and update",
+      "revId": "579b66aa26ba0d8b914db2201e6117af7424802f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
