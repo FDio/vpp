@@ -208,11 +208,41 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
     }
 }
 
+/**
+ * RFC1323: Check against wrapped sequence numbers (PAWS). If we have
+ * timestamp to echo and it's less than tsval_recent, drop segment
+ * but still send an ACK in order to retain TCP's mechanism for detecting
+ * and recovering from half-open connections
+ *
+ * Or at least that's what the theory says. It seems that this might not work
+ * very well with packet reordering and fast retransmit. XXX
+ */
 always_inline int
 tcp_segment_check_paws (tcp_connection_t * tc)
 {
   return tcp_opts_tstamp (&tc->opt) && tc->tsval_recent
     && timestamp_lt (tc->opt.tsval, tc->tsval_recent);
+}
+
+/**
+ * Update tsval recent
+ */
+always_inline void
+tcp_update_timestamp (tcp_connection_t *tc, u32 seq, u32 seq_end)
+{
+  /*
+   * RFC1323: If Last.ACK.sent falls within the range of sequence numbers
+   * of an incoming segment:
+   *    SEG.SEQ <= Last.ACK.sent < SEG.SEQ + SEG.LEN
+   * then the TSval from the segment is copied to TS.Recent;
+   * otherwise, the TSval is ignored.
+   */
+  if (tcp_opts_tstamp (&tc->opt) && tc->tsval_recent
+      && seq_leq (seq, tc->rcv_las) && seq_leq (tc->rcv_las, seq_end))
+    {
+      tc->tsval_recent = tc->opt.tsval;
+      tc->tsval_recent_age = tcp_time_now ();
+    }
 }
 
 /**
@@ -228,21 +258,16 @@ static int
 tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
 		      vlib_buffer_t * b0, tcp_header_t * th0, u32 * next0)
 {
-  u8 paws_failed;
-
   if (PREDICT_FALSE (!tcp_ack (th0) && !tcp_rst (th0) && !tcp_syn (th0)))
     return -1;
 
   tcp_options_parse (th0, &tc0->opt);
 
-  /* RFC1323: Check against wrapped sequence numbers (PAWS). If we have
-   * timestamp to echo and it's less than tsval_recent, drop segment
-   * but still send an ACK in order to retain TCP's mechanism for detecting
-   * and recovering from half-open connections */
-  paws_failed = tcp_segment_check_paws (tc0);
-  if (paws_failed)
+  if (tcp_segment_check_paws (tc0))
     {
       clib_warning ("paws failed");
+      TCP_EVT_DBG (TCP_EVT_PAWS_FAIL, tc0, vnet_buffer (b0)->tcp.seq_number,
+		   vnet_buffer (b0)->tcp.seq_end);
 
       /* If it just so happens that a segment updates tsval_recent for a
        * segment over 24 days old, invalidate tsval_recent. */
@@ -251,6 +276,7 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
 	{
 	  /* Age isn't reset until we get a valid tsval (bsd inspired) */
 	  tc0->tsval_recent = 0;
+	  clib_warning ("paws failed - really old segment. REALLY?");
 	}
       else
 	{
@@ -305,12 +331,9 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
       return -1;
     }
 
-  /* If PAWS passed and segment in window, save timestamp */
-  if (!paws_failed)
-    {
-      tc0->tsval_recent = tc0->opt.tsval;
-      tc0->tsval_recent_age = tcp_time_now ();
-    }
+  /* If segment in window, save timestamp */
+  tcp_update_timestamp (tc0, vnet_buffer (b0)->tcp.seq_number,
+			vnet_buffer (b0)->tcp.seq_end);
 
   return 0;
 }
@@ -804,6 +827,9 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
   if (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt))
     {
+      clib_warning ("ACK FUTURE seq %u, [%u, %u]",
+		    vnet_buffer(b)->tcp.seq_number - tc->irs,
+		    tc->rcv_nxt - tc->irs, tc->rcv_nxt + tc->rcv_wnd - tc->irs);
       /* If we have outstanding data and this is within the window, accept it,
        * probably retransmit has timed out. Otherwise ACK segment and then
        * drop it */
@@ -827,6 +853,9 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   /* If old ACK, probably it's an old dupack */
   if (seq_lt (vnet_buffer (b)->tcp.ack_number, tc->snd_una))
     {
+      clib_warning ("ACK PAST seq %u, [%u, %u]",
+		    vnet_buffer(b)->tcp.seq_number - tc->irs,
+		    tc->rcv_nxt - tc->irs, tc->rcv_nxt + tc->rcv_wnd - tc->irs);
       *error = TCP_ERROR_ACK_OLD;
       TCP_EVT_DBG (TCP_EVT_ACK_RCV_ERR, tc, 1,
 		   vnet_buffer (b)->tcp.ack_number);
@@ -835,7 +864,8 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 	  TCP_EVT_DBG (TCP_EVT_DUPACK_RCVD, tc);
 	  tcp_cc_rcv_dupack (tc, vnet_buffer (b)->tcp.ack_number);
 	}
-      return -1;
+      /* Don't drop yet*/
+      return 0;
     }
 
   if (tcp_opts_sack_permitted (&tc->opt))
@@ -845,6 +875,9 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 
   if (tcp_ack_is_dupack (tc, b, new_snd_wnd))
     {
+      clib_warning ("DUPACK seq %u, [%u, %u]",
+		    vnet_buffer(b)->tcp.seq_number - tc->irs,
+		    tc->rcv_nxt - tc->irs, tc->rcv_nxt + tc->rcv_wnd - tc->irs);
       TCP_EVT_DBG (TCP_EVT_DUPACK_RCVD, tc, 1);
       tcp_cc_rcv_dupack (tc, vnet_buffer (b)->tcp.ack_number);
       *error = TCP_ERROR_ACK_DUP;
@@ -995,11 +1028,14 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       return TCP_ERROR_FIFO_FULL;
     }
 
+  clib_warning("order: seq %u len %d", vnet_buffer (b)->tcp.seq_number - tc->irs,
+	       data_len);
   /* Update SACK list if need be */
   if (tcp_opts_sack_permitted (&tc->opt))
     {
       /* Remove SACK blocks that have been delivered */
       tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt);
+      clib_warning ("segs\n %U", format_tcp_sacks, tc);
     }
 
   return TCP_ERROR_ENQUEUED;
@@ -1011,7 +1047,6 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
   stream_session_t *s0;
-  u32 offset;
   int rv;
 
   /* Pure ACK. Do nothing */
@@ -1021,11 +1056,13 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     }
 
   s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
-  offset = vnet_buffer (b)->tcp.seq_number - tc->irs;
 
-  clib_warning ("ooo: offset %d len %d", offset, data_len);
+  clib_warning("ooo: offset %u len %d", vnet_buffer (b)->tcp.seq_number - tc->irs,
+	       data_len);
 
-  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, offset, data_len,
+  /* Enqueue out-of-order data with absolute offset */
+  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo,
+				     vnet_buffer (b)->tcp.seq_number, data_len,
 				     vlib_buffer_get_current (b));
 
   /* Nothing written */
@@ -1049,6 +1086,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       end = ooo_segment_end_offset (s0->server_rx_fifo, newest);
 
       tcp_update_sack_list (tc, start, end);
+      clib_warning ("segs\n %U", format_tcp_sacks, tc);
     }
 
   return TCP_ERROR_ENQUEUED;
@@ -1542,6 +1580,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Notify app that we have connection */
 	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
 
+	      stream_session_init_fifos_pointers (&new_tc0->connection,
+						  new_tc0->irs + 1,
+						  new_tc0->iss + 1);
 	      /* Make sure after data segment processing ACK is sent */
 	      new_tc0->flags |= TCP_CONN_SNDACK;
 	    }
@@ -1552,7 +1593,9 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Notify app that we have connection */
 	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
-
+	      stream_session_init_fifos_pointers (&new_tc0->connection,
+						  new_tc0->irs + 1,
+						  new_tc0->iss + 1);
 	      tcp_make_synack (new_tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 
@@ -2139,6 +2182,10 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_make_synack (child0, b0);
 	  next0 = tcp_next_output (is_ip4);
 
+	  /* Init fifo pointers after we have iss */
+	  stream_session_init_fifos_pointers (&child0->connection,
+					      child0->irs + 1,
+					      child0->iss + 1);
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
