@@ -352,9 +352,10 @@ stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes);
 u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
 
-void
-stream_session_connect_notify (transport_connection_t * tc, u8 sst,
-			       u8 is_fail);
+void stream_session_connect_notify (transport_connection_t * tc, u8 sst,
+				    u8 is_fail);
+void stream_session_init_fifos_pointers (transport_connection_t * tc,
+					 u32 rx_pointer, u32 tx_pointer);
 
 void stream_session_accept_notify (transport_connection_t * tc);
 void stream_session_disconnect_notify (transport_connection_t * tc);

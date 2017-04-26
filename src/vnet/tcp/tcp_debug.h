@@ -50,6 +50,7 @@
   _(CC_EVT, "cc event")			\
   _(CC_PACK, "cc partial ack")		\
   _(SEG_INVALID, "invalid segment")	\
+  _(PAWS_FAIL, "failed paws check")	\
   _(ACK_RCV_ERR, "invalid ack")		\
   _(RCV_WND_SHRUNK, "shrunk rcv_wnd")	\
 
@@ -380,6 +381,20 @@ typedef enum _tcp_dbg_evt
   ed->data[2] = _tc->rcv_las - _tc->irs;				\
   ed->data[3] = _tc->rcv_nxt - _tc->irs;				\
   ed->data[4] = _tc->rcv_wnd;						\
+}
+
+#define TCP_EVT_PAWS_FAIL_HANDLER(_tc, _seq, _end, ...)			\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "paws fail: seq %u end %u tsval %u tsval_recent %u",	\
+    .format_args = "i4i4i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 4);						\
+  ed->data[0] = _seq - _tc->irs;					\
+  ed->data[1] = _end - _tc->irs;					\
+  ed->data[2] = _tc->opt.tsval;						\
+  ed->data[3] = _tc->tsval_recent;					\
 }
 
 #define TCP_EVT_ACK_RCV_ERR_HANDLER(_tc, _type, _ack, ...)		\

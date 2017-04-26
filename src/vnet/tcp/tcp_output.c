@@ -359,7 +359,8 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
 	{
 	  opts->flags |= TCP_OPTS_FLAG_SACK;
 	  opts->sacks = tc->snd_sacks;
-	  opts->n_sack_blocks = vec_len (tc->snd_sacks);
+	  opts->n_sack_blocks = clib_min (vec_len (tc->snd_sacks),
+					  TCP_OPTS_MAX_SACK_BLOCKS);
 	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
 	}
     }
@@ -917,6 +918,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
 
   tc->snd_nxt += data_len;
+  tc->rcv_las = tc->rcv_nxt;
 
   /* TODO this is updated in output as well ... */
   if (tc->snd_nxt > tc->snd_una_max)

@@ -231,7 +231,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tcp_update_sack_list (tc, 300, 300);
   if (verbose)
     vlib_cli_output (vm, "overlap first 2 segments:\n%U",
-		     format_tcp_sacks, tc->snd_sacks);
+		     format_tcp_sacks, tc);
   TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 3);
   TCP_TEST ((tc->snd_sacks[0].start == 900),
@@ -244,7 +244,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tcp_update_sack_list (tc, 1100, 1200);
   if (verbose)
     vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
-		     format_tcp_sacks, tc->snd_sacks);
+		     format_tcp_sacks, tc);
   TCP_TEST ((vec_len (tc->snd_sacks) == 4), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 4);
   TCP_TEST ((tc->snd_sacks[0].start == 1100),
@@ -257,7 +257,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tcp_update_sack_list (tc, 800, 900);
   if (verbose)
     vlib_cli_output (vm, "join middle segments [800, 900]\n%U",
-		     format_tcp_sacks, tc->snd_sacks);
+		     format_tcp_sacks, tc);
 
   TCP_TEST ((vec_len (tc->snd_sacks) == 3), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 3);
@@ -271,8 +271,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   tc->rcv_nxt = 1200;
   tcp_update_sack_list (tc, 1200, 1200);
   if (verbose)
-    vlib_cli_output (vm, "advance rcv_nxt to 1200\n%U",
-		     format_tcp_sacks, tc->snd_sacks);
+    vlib_cli_output (vm, "advance rcv_nxt to 1200\n%U", format_tcp_sacks, tc);
   TCP_TEST ((vec_len (tc->snd_sacks) == 0), "sack blocks %d expected %d",
 	    vec_len (tc->snd_sacks), 0);
   return 0;
@@ -502,7 +501,13 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     {
       offset = (2 * i + 1) * sizeof (u32);
       data = (u8 *) (test_data + (2 * i + 1));
-      rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
+      if (i == 0)
+	{
+	  rv = svm_fifo_enqueue_nowait (f, sizeof (u32), data);
+	  rv = rv > 0 ? 0 : rv;
+	}
+      else
+	rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", 2 * i + 1, offset,
 			 offset + sizeof (u32));
@@ -517,6 +522,26 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
     vlib_cli_output (vm, "fifo after odd segs: %U", format_svm_fifo, f, 1);
 
   TCP_TEST ((f->tail == 8), "fifo tail %u", f->tail);
+  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 2),
+	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
+
+  /*
+   * Try adding a completely overlapped segment
+   */
+  offset = 3 * sizeof (u32);
+  data = (u8 *) (test_data + 3);
+  rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
+  if (rv)
+    {
+      clib_warning ("enqueue returned %d", rv);
+      goto err;
+    }
+
+  if (verbose)
+    vlib_cli_output (vm, "fifo after overlap seg: %U", format_svm_fifo, f, 1);
+
+  TCP_TEST ((svm_fifo_number_ooo_segments (f) == 2),
+	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
 
   /*
    * Make sure format functions are not buggy
@@ -887,13 +912,17 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   f->head = fifo_initial_offset;
   f->tail = fifo_initial_offset;
 
-  for (i = 0; i < vec_len (generate); i++)
+  for (i = !randomize; i < vec_len (generate); i++)
     {
       tp = generate + i;
       svm_fifo_enqueue_with_offset (f, fifo_initial_offset + tp->offset,
 				    tp->len,
 				    (u8 *) data_pattern + tp->offset);
     }
+
+  /* Add the first segment in order for non random data */
+  if (!randomize)
+    svm_fifo_enqueue_nowait (f, generate[0].len, (u8 *) data_pattern);
 
   /*
    * Expected result: one big fat chunk at offset 1 if randomize == 1
@@ -965,6 +994,73 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+tcp_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
+{
+  svm_fifo_t *f;
+  u32 fifo_size = 6 << 10;
+  u32 fifo_initial_offset = 1000000000;
+  u32 test_n_bytes = 5000, j;
+  u8 *test_data = 0, *data_buf = 0;
+  int i, rv, verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  clib_error_t *e = clib_error_return
+	    (0, "unknown input `%U'", format_unformat_error, input);
+	  clib_error_report (e);
+	  return -1;
+	}
+    }
+
+  /*
+   * Create a fifo and add segments
+   */
+  f = fifo_prepare (fifo_size);
+
+  /* Set head and tail pointers */
+  fifo_initial_offset = fifo_initial_offset % fifo_size;
+  svm_fifo_init_pointers (f, fifo_initial_offset);
+
+  vec_validate (test_data, test_n_bytes - 1);
+  for (i = 0; i < vec_len (test_data); i++)
+    test_data[i] = i;
+
+  for (i = test_n_bytes - 1; i > 0; i--)
+    {
+      rv = svm_fifo_enqueue_with_offset (f, fifo_initial_offset + i,
+					 sizeof (u8), &test_data[i]);
+      if (verbose)
+	vlib_cli_output (vm, "add [%d] [%d, %d]", i, i, i + sizeof (u8));
+      if (rv)
+	{
+	  clib_warning ("enqueue returned %d", rv);
+	  svm_fifo_free (f);
+	  vec_free (test_data);
+	  return -1;
+	}
+    }
+
+  svm_fifo_enqueue_nowait (f, sizeof (u8), &test_data[0]);
+
+  vec_validate (data_buf, vec_len (test_data));
+
+  svm_fifo_dequeue_nowait (f, vec_len (test_data), data_buf);
+  rv = compare_data (data_buf, test_data, 0, vec_len (test_data), &j);
+  if (rv)
+    vlib_cli_output (vm, "[%d] dequeued %u expected %u", j, data_buf[j],
+		     test_data[j]);
+  TCP_TEST ((rv == 0), "dequeued compared to original returned %d", rv);
+
+  svm_fifo_free (f);
+  vec_free (test_data);
+  return 0;
+}
+
+static int
 tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
 {
   int res = 0;
@@ -1027,6 +1123,10 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "fifo1"))
 	{
 	  res = tcp_test_fifo1 (vm, input);
+	}
+      else if (unformat (input, "fifo4"))
+	{
+	  res = tcp_test_fifo4 (vm, input);
 	}
     }
 

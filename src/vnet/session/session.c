@@ -609,6 +609,21 @@ session_manager_flush_enqueue_events (u32 thread_index)
   return errors;
 }
 
+/**
+ * Init fifo tail and head pointers
+ *
+ * Useful if transport uses absolute offsets for tracking ooo segments.
+ */
+void
+stream_session_init_fifos_pointers (transport_connection_t * tc,
+				    u32 rx_pointer, u32 tx_pointer)
+{
+  stream_session_t *s;
+  s = stream_session_get (tc->s_index, tc->thread_index);
+  svm_fifo_init_pointers (s->server_rx_fifo, rx_pointer);
+  svm_fifo_init_pointers (s->server_tx_fifo, tx_pointer);
+}
+
 void
 stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 			       u8 is_fail)
