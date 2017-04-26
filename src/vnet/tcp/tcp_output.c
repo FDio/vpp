@@ -359,7 +359,8 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
 	{
 	  opts->flags |= TCP_OPTS_FLAG_SACK;
 	  opts->sacks = tc->snd_sacks;
-	  opts->n_sack_blocks = vec_len (tc->snd_sacks);
+	  opts->n_sack_blocks = clib_min(vec_len (tc->snd_sacks),
+					 TCP_OPTS_MAX_SACK_BLOCKS);
 	  len += 2 + TCP_OPTION_LEN_SACK_BLOCK * opts->n_sack_blocks;
 	}
     }

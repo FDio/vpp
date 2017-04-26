@@ -148,7 +148,7 @@ enum
 #undef _
 };
 
-#define TCP_MAX_SACK_BLOCKS 5	/**< Max number of SACK blocks stored */
+#define TCP_MAX_SACK_BLOCKS 50	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
 
 typedef struct _sack_scoreboard_hole
