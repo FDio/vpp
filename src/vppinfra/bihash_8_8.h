@@ -24,10 +24,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
-
-#if __SSE4_2__
-#include <x86intrin.h>
-#endif
+#include <vppinfra/crc32.h>
 
 /** 8 octet key, 8 octet key value pair */
 typedef struct
@@ -55,7 +52,7 @@ clib_bihash_hash_8_8 (clib_bihash_kv_8_8_t * v)
 {
   /* Note: to torture-test linear scan, make this fn return a constant */
 #if __SSE4_2__
-  return _mm_crc32_u64 (0, v->key);
+  return clib_crc32c ((u8 *) & v->key, 8);
 #else
   return clib_xxhash (v->key);
 #endif
