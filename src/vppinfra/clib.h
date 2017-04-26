@@ -97,6 +97,9 @@
 #define PREDICT_FALSE(x) __builtin_expect((x),0)
 #define PREDICT_TRUE(x) __builtin_expect((x),1)
 
+/* Compiler barrier. */
+#define CLIB_COMPILER_BARRIER() asm volatile ("" ::: "memory")
+
 /* Full memory barrier (read and write). */
 #define CLIB_MEMORY_BARRIER() __sync_synchronize ()
 
