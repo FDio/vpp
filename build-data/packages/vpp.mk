@@ -30,3 +30,7 @@ ifeq ($($(PLATFORM)_uses_dpdk_mlx5_pmd),yes)
 vpp_configure_args += --with-dpdk-mlx5-pmd
 endif
 endif
+
+ifeq ($($(PLATFORM)_enable_tests),yes)
+vpp_configure_args += --enable-tests
+endif

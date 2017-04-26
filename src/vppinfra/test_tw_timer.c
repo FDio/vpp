@@ -138,7 +138,7 @@ test2_single (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_2t_1w_2048sl (&tm->single_wheel,
 				    expired_timer_single_callback,
-				    1.0 /* timer interval */ );
+				    1.0 /* timer interval */ , ~0);
 
   /* Prime offset */
   initial_wheel_offset = 757;
@@ -266,7 +266,7 @@ test2_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ );
+				    1.0 /* timer interval */ , ~0);
 
   /* Prime offset */
   initial_wheel_offset = 757;
@@ -387,7 +387,7 @@ test1_single (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_2t_1w_2048sl (&tm->single_wheel,
 				    expired_timer_single_callback,
-				    1.0 /* timer interval */ );
+				    1.0 /* timer interval */ , ~0);
 
   /*
    * Prime offset, to make sure that the wheel starts in a
@@ -454,7 +454,7 @@ test1_double (tw_timer_test_main_t * tm)
 
   tw_timer_wheel_init_16t_2w_512sl (&tm->double_wheel,
 				    expired_timer_double_callback,
-				    1.0 /* timer interval */ );
+				    1.0 /* timer interval */ , ~0);
 
   /*
    * Prime offset, to make sure that the wheel starts in a

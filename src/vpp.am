@@ -100,7 +100,6 @@ bin_test_ha_SOURCES = \
 
 bin_test_ha_LDADD = \
   libvlibmemoryclient.la \
-  libvlibapi.la \
   libsvm.la \
   libvppinfra.la \
   -lpthread -lm -lrt

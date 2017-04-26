@@ -273,6 +273,13 @@ typedef struct
   u8 key_id;
 } vnet_lisp_add_del_mapping_args_t;
 
+typedef struct
+{
+  u64 nonce;
+  u8 is_rloc_probe;
+  mapping_t *mappings;
+} map_records_arg_t;
+
 int
 vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 			     u32 * map_index);
@@ -331,6 +338,8 @@ int vnet_lisp_rloc_probe_enable_disable (u8 is_enable);
 int vnet_lisp_map_register_enable_disable (u8 is_enable);
 u8 vnet_lisp_map_register_state_get (void);
 u8 vnet_lisp_rloc_probe_state_get (void);
+
+map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 
 always_inline mapping_t *
 lisp_get_petr_mapping (lisp_cp_main_t * lcm)

@@ -44,13 +44,6 @@ typedef struct
   u8 smr_invoked;
 } map_request_args_t;
 
-typedef struct
-{
-  u64 nonce;
-  u8 is_rloc_probe;
-  mapping_t *mappings;
-} map_records_arg_t;
-
 u8
 vnet_lisp_get_map_request_mode (void)
 {
@@ -3485,7 +3478,7 @@ done:
   vec_free (itr_rlocs);
 }
 
-static map_records_arg_t *
+map_records_arg_t *
 parse_map_reply (vlib_buffer_t * b)
 {
   locator_t probed;
@@ -3501,6 +3494,11 @@ parse_map_reply (vlib_buffer_t * b)
   mrep_hdr = vlib_buffer_get_current (b);
   a->nonce = MREP_NONCE (mrep_hdr);
   a->is_rloc_probe = MREP_RLOC_PROBE (mrep_hdr);
+  if (!vlib_buffer_has_space (b, sizeof (*mrep_hdr)))
+    {
+      clib_mem_free (a);
+      return 0;
+    }
   vlib_buffer_pull (b, sizeof (*mrep_hdr));
 
   for (i = 0; i < MREP_REC_COUNT (mrep_hdr); i++)
