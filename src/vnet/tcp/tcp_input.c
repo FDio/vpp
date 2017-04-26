@@ -1011,7 +1011,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
   stream_session_t *s0;
-  u32 offset;
+//  u32 offset;
   int rv;
 
   /* Pure ACK. Do nothing */
@@ -1021,11 +1021,13 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     }
 
   s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
-  offset = vnet_buffer (b)->tcp.seq_number - tc->irs;
+//  offset = vnet_buffer (b)->tcp.seq_number - tc->irs;
 
-  clib_warning ("ooo: offset %d len %d", offset, data_len);
+  clib_warning("ooo: offset %u len %d", vnet_buffer (b)->tcp.seq_number,
+	       data_len);
 
-  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo, offset, data_len,
+  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo,
+				     vnet_buffer (b)->tcp.seq_number, data_len,
 				     vlib_buffer_get_current (b));
 
   /* Nothing written */
@@ -1541,7 +1543,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Notify app that we have connection */
 	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
-
+	      stream_session_init_fifos_pointers (&new_tc0->connection,
+						  new_tc0->irs, new_tc0->iss);
 	      /* Make sure after data segment processing ACK is sent */
 	      new_tc0->flags |= TCP_CONN_SNDACK;
 	    }
@@ -1552,7 +1555,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Notify app that we have connection */
 	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
-
+	      stream_session_init_fifos_pointers (&new_tc0->connection,
+						  new_tc0->irs, new_tc0->iss);
 	      tcp_make_synack (new_tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 
@@ -2139,6 +2143,9 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_make_synack (child0, b0);
 	  next0 = tcp_next_output (is_ip4);
 
+	  /* Init fifo pointers after we have iss */
+	  stream_session_init_fifos_pointers (&child0->connection,
+					      child0->irs, child0->iss);
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {

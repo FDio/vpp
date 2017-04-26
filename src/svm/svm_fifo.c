@@ -631,6 +631,15 @@ svm_fifo_first_ooo_segment (svm_fifo_t * f)
   return pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 }
 
+/**
+ * Set fifo pointers to requested offset
+ */
+void
+svm_fifo_init_pointers (svm_fifo_t * f, u32 pointer)
+{
+  f->head = f->tail = pointer % f->nitems;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
