@@ -24,6 +24,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
+#include <vppinfra/crc32.h>
 
 typedef struct
 {
@@ -44,13 +45,7 @@ static inline u64
 clib_bihash_hash_40_8 (const clib_bihash_kv_40_8_t * v)
 {
 #if __SSE4_2__
-  u32 value = 0;
-  value = _mm_crc32_u64 (value, v->key[0]);
-  value = _mm_crc32_u64 (value, v->key[1]);
-  value = _mm_crc32_u64 (value, v->key[2]);
-  value = _mm_crc32_u64 (value, v->key[3]);
-  value = _mm_crc32_u64 (value, v->key[4]);
-  return value;
+  return clib_crc32c ((u8 *) v->key, 40);
 #else
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2] ^ v->key[3] ^ v->key[4];
   return clib_xxhash (tmp);
