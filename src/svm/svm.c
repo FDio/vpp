@@ -796,7 +796,7 @@ svm_region_init (void)
 }
 
 void
-svm_region_init_chroot (char *root_path)
+svm_region_init_chroot (const char *root_path)
 {
   svm_map_region_args_t _a, *a = &_a;
 
@@ -813,7 +813,7 @@ svm_region_init_chroot (char *root_path)
 }
 
 void
-svm_region_init_chroot_uid_gid (char *root_path, int uid, int gid)
+svm_region_init_chroot_uid_gid (const char *root_path, int uid, int gid)
 {
   svm_map_region_args_t _a, *a = &_a;
 
@@ -1151,7 +1151,7 @@ svm_client_scan_this_region_nolock (svm_region_t * rp)
  * Scan svm regions for dead clients
  */
 void
-svm_client_scan (char *root_path)
+svm_client_scan (const char *root_path)
 {
   int i, j;
   svm_main_region_t *mp;
