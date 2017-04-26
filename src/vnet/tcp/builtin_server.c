@@ -244,7 +244,7 @@ create_api_loopback (vlib_main_t * vm)
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = VL_API_MEMCLNT_CREATE;
   mp->context = 0xFEEDFACE;
-  mp->input_queue = (u64) bsm->vl_input_queue;
+  mp->input_queue = pointer_to_uword (bsm->vl_input_queue);
   strncpy ((char *) mp->name, "tcp_test_server", sizeof (mp->name) - 1);
 
   vl_api_memclnt_create_t_handler (mp);

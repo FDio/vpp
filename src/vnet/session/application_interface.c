@@ -247,7 +247,7 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 			      a->session_cb_vft)))
     return rv;
 
-  a->app_event_queue_address = (u64) app->event_queue;
+  a->app_event_queue_address = pointer_to_uword (app->event_queue);
   sm = segment_manager_get (app->first_segment_manager);
   segment_manager_get_segment_info (sm->segment_indices[0],
 				    &seg_name, &a->segment_size);
