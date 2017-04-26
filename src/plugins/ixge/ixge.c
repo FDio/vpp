@@ -20,7 +20,7 @@
  *   Please use supported DPDK driver instead.
  */
 
-#if __x86_64__
+#if __x86_64__ || __i386__
 #include <vppinfra/vector.h>
 
 #ifndef CLIB_HAVE_VEC128
@@ -2929,7 +2929,6 @@ ixge_set_next_node (ixge_rx_next_t next, char *name)
       break;
     }
 }
-#endif
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
@@ -2937,8 +2936,10 @@ VLIB_PLUGIN_REGISTER () = {
     .default_disabled = 1,
     .description = "Intel 82599 Family Native Driver (experimental)",
 };
+#endif
 
 /* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

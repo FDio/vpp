@@ -46,6 +46,11 @@ vpp_root_packages = vpp gmod
 # vpp_dpdk_lib_dir = /usr/lib
 # vpp_dpdk_shared_lib = yes
 
+# load balancer plugin is not portable on 32 bit platform
+ifeq ($(MACHINE),i686)
+vpp_configure_args_vpp = --disable-lb-plugin
+endif
+
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 	-fstack-protector-all -fPIC -Werror
 vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
