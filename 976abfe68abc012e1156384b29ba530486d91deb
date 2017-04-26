@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a3291f1_48ec752a",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2856,
+      "author": {
+        "id": 596
+      },
+      "writtenOn": "2017-04-26T22:39:47Z",
+      "side": 1,
+      "message": "Will it be possible to update the sw_if_index with the sw_if_index of the existing interface?\nSome implementations might want to check the index of an existing interface.",
+      "revId": "976abfe68abc012e1156384b29ba530486d91deb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_9d7bbd27",
         "filename": "src/vnet/devices/virtio/vhost-user.c",
         "patchSetId": 1
