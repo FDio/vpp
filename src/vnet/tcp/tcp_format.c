@@ -131,11 +131,13 @@ format_tcp_header (u8 * s, va_list * args)
 u8 *
 format_tcp_sacks (u8 * s, va_list * args)
 {
-  sack_block_t *sacks = va_arg (*args, sack_block_t *);
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  sack_block_t *sacks = tc->snd_sacks;
   sack_block_t *block;
   vec_foreach (block, sacks)
   {
-    s = format (s, " start %u end %u\n", block->start, block->end);
+    s = format (s, " start %u end %u\n", block->start - tc->irs,
+		block->end - tc->irs);
   }
   return s;
 }
