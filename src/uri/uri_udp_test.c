@@ -232,7 +232,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   utm->our_event_queue =
-    (unix_shared_memory_queue_t *) mp->app_event_queue_address;
+    uword_to_pointer (mp->app_event_queue_address,
+		      unix_shared_memory_queue_t *);
 }
 
 static void
@@ -581,7 +582,8 @@ send_reply:
 
   vec_free (a->segment_name);
 
-  client_q = (unix_shared_memory_queue_t *) mp->client_queue_address;
+  client_q =
+    uword_to_pointer (mp->client_queue_address, unix_shared_memory_queue_t *);
   vl_msg_api_send_shmem (client_q, (u8 *) & rmp);
 }
 
@@ -608,14 +610,15 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   if (start_time == 0.0)
     start_time = clib_time_now (&utm->clib_time);
 
-  utm->vpp_event_queue = (unix_shared_memory_queue_t *)
-    mp->vpp_event_queue_address;
+  utm->vpp_event_queue =
+    uword_to_pointer (mp->vpp_event_queue_address,
+		      unix_shared_memory_queue_t *);
 
   pool_get (utm->sessions, session);
 
-  rx_fifo = (svm_fifo_t *) mp->server_rx_fifo;
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session - utm->sessions;
-  tx_fifo = (svm_fifo_t *) mp->server_tx_fifo;
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session - utm->sessions;
 
   session->server_rx_fifo = rx_fifo;

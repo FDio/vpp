@@ -274,11 +274,12 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
       return;
     }
 
-  tm->our_event_queue = (unix_shared_memory_queue_t *)
-    mp->vpp_event_queue_address;
-
-  tm->vpp_event_queue = (unix_shared_memory_queue_t *)
-    mp->vpp_event_queue_address;
+  tm->our_event_queue =
+    uword_to_pointer (mp->vpp_event_queue_address,
+		      unix_shared_memory_queue_t *);
+  tm->vpp_event_queue =
+    uword_to_pointer (mp->vpp_event_queue_address,
+		      unix_shared_memory_queue_t *);
 
   /*
    * Setup session
@@ -288,9 +289,11 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
   session_index = session - tm->sessions;
   session->bytes_to_receive = session->bytes_to_send = tm->bytes_to_send;
 
-  session->server_rx_fifo = (svm_fifo_t *) mp->server_rx_fifo;
+  session->server_rx_fifo =
+    uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   session->server_rx_fifo->client_session_index = session_index;
-  session->server_tx_fifo = (svm_fifo_t *) mp->server_tx_fifo;
+  session->server_tx_fifo =
+    uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   session->server_tx_fifo->client_session_index = session_index;
   session->vpp_session_handle = mp->handle;
 
@@ -321,7 +324,7 @@ create_api_loopback (tclient_main_t * tm)
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = VL_API_MEMCLNT_CREATE;
   mp->context = 0xFEEDFACE;
-  mp->input_queue = (u64) tm->vl_input_queue;
+  mp->input_queue = pointer_to_uword (tm->vl_input_queue);
   strncpy ((char *) mp->name, "tcp_tester", sizeof (mp->name) - 1);
 
   vl_api_memclnt_create_t_handler (mp);
