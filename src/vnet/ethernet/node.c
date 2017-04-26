@@ -628,6 +628,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	      else
 		{
 		  if (!ethernet_address_cast (e0->dst_address) &&
+                      (hi->hw_address != 0) &&
 		      !eth_mac_equal ((u8 *) e0, hi->hw_address))
 		    error0 = ETHERNET_ERROR_L3_MAC_MISMATCH;
 		  determine_next_node (em, variant, 0, type0, b0,
