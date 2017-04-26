@@ -101,7 +101,7 @@ void lb_hash_free(lb_hash_t *h)
   vec_free(mem);
 }
 
-#if __SSE4_2__
+#if __SSE4_2__ && !defined (__i386__)
 static_always_inline
 u32 lb_hash_hash(u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
 {
