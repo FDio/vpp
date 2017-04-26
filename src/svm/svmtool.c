@@ -172,7 +172,7 @@ svm_map_region_nolock (svm_map_region_args_t * a)
   a->size = rp->virtual_size;
   munmap (rp, MMAP_PAGESIZE);
 
-  rp = (void *) mmap ((void *) a->baseva, a->size,
+  rp = (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
 		      PROT_READ | PROT_WRITE,
 		      MAP_SHARED | MAP_FIXED, svm_fd, 0);
   if ((uword) rp == (uword) MAP_FAILED)
@@ -401,7 +401,7 @@ repair (char *chroot_path, int crash_root_region)
   a->size = root_rp->virtual_size;
   munmap (root_rp, MMAP_PAGESIZE);
 
-  root_rp = (void *) mmap ((void *) a->baseva, a->size,
+  root_rp = (void *) mmap (uword_to_pointer (a->baseva, void *), a->size,
 			   PROT_READ | PROT_WRITE,
 			   MAP_SHARED | MAP_FIXED, svm_fd, 0);
   if ((uword) root_rp == (uword) MAP_FAILED)

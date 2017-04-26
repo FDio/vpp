@@ -137,7 +137,7 @@ vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
   am->msg_index_by_name_and_crc = hash_create_string (0, sizeof (uword));
 
   /* Recreate the vnet-side API message handler table */
-  tblv = (u8 *) mp->message_table;
+  tblv = uword_to_pointer (mp->message_table, u8 *);
   serialize_open_vector (sm, tblv);
   unserialize_integer (sm, &nmsgs, sizeof (u32));
 

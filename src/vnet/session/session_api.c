@@ -102,9 +102,9 @@ send_session_accept_callback (stream_session_t * s)
   tc = tp_vft->get_connection (s->connection_index, s->thread_index);
   mp->listener_handle = listen_session_get_handle (listener);
   mp->handle = stream_session_handle (s);
-  mp->server_rx_fifo = (u64) s->server_rx_fifo;
-  mp->server_tx_fifo = (u64) s->server_tx_fifo;
-  mp->vpp_event_queue_address = (u64) vpp_queue;
+  mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
+  mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+  mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
   mp->port = tc->rmt_port;
   mp->is_ip4 = tc->is_ip4;
   clib_memcpy (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
@@ -172,10 +172,10 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   if (!is_fail)
     {
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
-      mp->server_rx_fifo = (u64) s->server_rx_fifo;
-      mp->server_tx_fifo = (u64) s->server_tx_fifo;
+      mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
+      mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
       mp->handle = stream_session_handle (s);
-      mp->vpp_event_queue_address = (u64) vpp_queue;
+      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->retval = 0;
     }
   else
@@ -225,7 +225,7 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
     }
 
   /* Tell the server the client's API queue address, so it can reply */
-  mp->client_queue_address = (u64) client_q;
+  mp->client_queue_address = pointer_to_uword (client_q);
   app = application_lookup (mp->client_index);
   if (!app)
     {
