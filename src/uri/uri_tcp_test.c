@@ -262,7 +262,8 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   utm->our_event_queue =
-    (unix_shared_memory_queue_t *) mp->app_event_queue_address;
+    uword_to_pointer (mp->app_event_queue_address,
+		      unix_shared_memory_queue_t *);
   utm->state = STATE_ATTACHED;
 }
 
@@ -524,8 +525,9 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
       return;
     }
 
-  utm->vpp_event_queue = (unix_shared_memory_queue_t *)
-    mp->vpp_event_queue_address;
+  utm->vpp_event_queue =
+    uword_to_pointer (mp->vpp_event_queue_address,
+		      unix_shared_memory_queue_t *);
 
   /*
    * Setup session
@@ -534,9 +536,9 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
   pool_get (utm->sessions, session);
   session_index = session - utm->sessions;
 
-  rx_fifo = (svm_fifo_t *) mp->server_rx_fifo;
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
-  tx_fifo = (svm_fifo_t *) mp->server_tx_fifo;
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session_index;
 
   session->server_rx_fifo = rx_fifo;
@@ -858,16 +860,17 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   ip_str = format (0, "%U", format_ip46_address, &mp->ip, mp->is_ip4);
   clib_warning ("Accepted session from: %s:%d", ip_str,
 		clib_net_to_host_u16 (mp->port));
-  utm->vpp_event_queue = (unix_shared_memory_queue_t *)
-    mp->vpp_event_queue_address;
+  utm->vpp_event_queue =
+    uword_to_pointer (mp->vpp_event_queue_address,
+		      unix_shared_memory_queue_t *);
 
   /* Allocate local session and set it up */
   pool_get (utm->sessions, session);
   session_index = session - utm->sessions;
 
-  rx_fifo = (svm_fifo_t *) mp->server_rx_fifo;
+  rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
-  tx_fifo = (svm_fifo_t *) mp->server_tx_fifo;
+  tx_fifo = uword_to_pointer (mp->server_tx_fifo, svm_fifo_t *);
   tx_fifo->client_session_index = session_index;
 
   session->server_rx_fifo = rx_fifo;

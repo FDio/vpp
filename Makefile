@@ -263,9 +263,9 @@ define test
 	  TEST_DIR=$(WS_ROOT)/test \
 	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
-	  VPP_TEST_PLUGIN_PATH=$(BR)/install-$(2)-native/vpp/lib64/vpp_plugins \
+	  VPP_TEST_PLUGIN_PATH=$(wildcard $(BR)/install-$(2)-native/vpp/lib*/vpp_plugins) \
 	  VPP_TEST_INSTALL_PATH=$(BR)/install-$(2)-native/ \
-	  LD_LIBRARY_PATH=$(BR)/install-$(2)-native/vpp/lib64/ \
+	  LD_LIBRARY_PATH=$(subst $(subst ,, ),:,$(wildcard $(BR)/install-$(2)-native/vpp/lib*/)) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
 	  $(3)
@@ -325,12 +325,12 @@ define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(1)/vpp/lib64/vpp_plugins
+	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(wildcard $(1)/vpp/lib*/vpp_plugins)
 endef
 else
 define run
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(1)/vpp/lib64/vpp_plugins
+	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(wildcard $(1)/vpp/lib*/vpp_plugins)
 endef
 endif
 

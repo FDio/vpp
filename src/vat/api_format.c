@@ -1037,7 +1037,7 @@ vl_api_cli_reply_t_handler (vl_api_cli_reply_t * mp)
   i32 retval = ntohl (mp->retval);
 
   vam->retval = retval;
-  vam->shmem_result = (u8 *) mp->reply_in_shmem;
+  vam->shmem_result = uword_to_pointer (mp->reply_in_shmem, u8 *);
   vam->result_ready = 1;
 }
 
@@ -1058,7 +1058,7 @@ vl_api_cli_reply_t_handler_json (vl_api_cli_reply_t * mp)
   pthread_mutex_lock (&am->vlib_rp->mutex);
   oldheap = svm_push_data_heap (am->vlib_rp);
 
-  reply = (u8 *) (mp->reply_in_shmem);
+  reply = uword_to_pointer (mp->reply_in_shmem, u8 *);
   vec_free (reply);
 
   svm_pop_heap (oldheap);
@@ -2405,7 +2405,7 @@ static void vl_api_get_node_graph_reply_t_handler
   if (retval != 0)
     return;
 
-  reply = (u8 *) (mp->reply_in_shmem);
+  reply = uword_to_pointer (mp->reply_in_shmem, u8 *);
   pvt_copy = vec_dup (reply);
 
   /* Toss the shared-memory original... */
@@ -2456,7 +2456,7 @@ static void vl_api_get_node_graph_reply_t_handler_json
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
   vat_json_object_add_uint (&node, "reply_in_shmem", mp->reply_in_shmem);
 
-  reply = (u8 *) (mp->reply_in_shmem);
+  reply = uword_to_pointer (mp->reply_in_shmem, u8 *);
 
   /* Toss the shared-memory original... */
   pthread_mutex_lock (&am->vlib_rp->mutex);
@@ -4959,7 +4959,7 @@ exec (vat_main_t * vam)
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
 
-  mp->cmd_in_shmem = (u64) cmd;
+  mp->cmd_in_shmem = pointer_to_uword (cmd);
   S (mp);
   timeout = vat_time_now (vam) + 10.0;
 

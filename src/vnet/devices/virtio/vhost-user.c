@@ -719,7 +719,7 @@ vhost_user_log_dirty_pages_2 (vhost_user_intf_t * vui,
     }
   if (is_host_address)
     {
-      addr = (u64) map_user_mem (vui, (uword) addr);
+      addr = pointer_to_uword (map_user_mem (vui, (uword) addr));
     }
   if (PREDICT_FALSE ((addr + len - 1) / VHOST_LOG_PAGE / 8 >= vui->log_size))
     {

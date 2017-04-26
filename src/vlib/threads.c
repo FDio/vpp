@@ -1125,7 +1125,7 @@ cpu_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_EARLY_CONFIG_FUNCTION (cpu_config, "cpu");
 
-#if !defined (__x86_64__) && !defined (__aarch64__) && !defined (__powerpc64__) && !defined(__arm__)
+#if !defined (__x86_64__) && !defined (__i386__) && !defined (__aarch64__) && !defined (__powerpc64__) && !defined(__arm__)
 void
 __sync_fetch_and_add_8 (void)
 {
