@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_68e05196",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-04-27T08:45:11Z",
+      "side": 1,
+      "message": "VPP style implementation:\nstatic int\nis_bridge (const u8 * host_if_name)\n{\n  u8 *s;\n  s \u003d format (0, \"sys/class/net/%s/bridge%c\", host_if_name, 0);\n  dir \u003d opendir ((char *)bridge_path);\n  vec_free (s);\n  if (dir)\n    {\n      closedir (dir);\n      return 0;\n    }\n  return -1;\n}",
+      "range": {
+        "startLine": 86,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 35
+      },
+      "revId": "189e1f0bf646977d5e137cf87756239d53847ec5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
