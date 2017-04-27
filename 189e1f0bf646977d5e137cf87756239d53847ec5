@@ -22,6 +22,30 @@
       "revId": "189e1f0bf646977d5e137cf87756239d53847ec5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e8a2014a",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-04-27T08:55:06Z",
+      "side": 1,
+      "message": "apologies, thanks for that.",
+      "parentUuid": "3a3291f1_68e05196",
+      "range": {
+        "startLine": 86,
+        "startChar": 0,
+        "endLine": 87,
+        "endChar": 35
+      },
+      "revId": "189e1f0bf646977d5e137cf87756239d53847ec5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
