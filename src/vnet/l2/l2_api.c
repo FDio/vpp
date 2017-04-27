@@ -48,6 +48,7 @@
 _(L2_XCONNECT_DUMP, l2_xconnect_dump)                       \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                   \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                     \
+_(L2FIB_FLUSH_ALL, l2fib_flush_all)                         \
 _(L2FIB_FLUSH_INT, l2fib_flush_int)                         \
 _(L2FIB_FLUSH_BD, l2fib_flush_bd)                           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                             \
@@ -106,11 +107,8 @@ vl_api_l2_fib_clear_table_t_handler (vl_api_l2_fib_clear_table_t * mp)
   int rv = 0;
   vl_api_l2_fib_clear_table_reply_t *rmp;
 
-  /* DAW-FIXME: This API should only clear non-static l2fib entries, but
-   *            that is not currently implemented.  When that TODO is fixed
-   *            this call should be changed to pass 1 instead of 0.
-   */
-  l2fib_clear_table (0);
+  /* Clear all MACs including static MACs  */
+  l2fib_clear_table ();
 
   REPLY_MACRO (VL_API_L2_FIB_CLEAR_TABLE_REPLY);
 }
@@ -256,6 +254,16 @@ vl_api_l2fib_flush_int_t_handler (vl_api_l2fib_flush_int_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_L2FIB_FLUSH_INT_REPLY);
+}
+
+static void
+vl_api_l2fib_flush_all_t_handler (vl_api_l2fib_flush_all_t * mp)
+{
+  int rv = 0;
+  vl_api_l2fib_flush_all_reply_t *rmp;
+
+  l2fib_flush_all_mac (vlib_get_main ());
+  REPLY_MACRO (VL_API_L2FIB_FLUSH_ALL_REPLY);
 }
 
 static void
