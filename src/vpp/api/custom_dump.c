@@ -298,6 +298,17 @@ static void *vl_api_bridge_domain_dump_t_print
   FINISH;
 }
 
+static void *vl_api_l2fib_flush_all_t_print
+  (vl_api_l2fib_flush_all_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: l2fib_flush_all ");
+
+  FINISH;
+}
+
+
 static void *vl_api_l2fib_flush_bd_t_print
   (vl_api_l2fib_flush_bd_t * mp, void *handle)
 {
@@ -2979,6 +2990,7 @@ _(SR_POLICY_MOD, sr_policy_mod)                                         \
 _(SR_POLICY_DEL, sr_policy_del)                                         \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                                         \
+_(L2FIB_FLUSH_ALL, l2fib_flush_all)                                     \
 _(L2FIB_FLUSH_BD, l2fib_flush_bd)                                       \
 _(L2FIB_FLUSH_INT, l2fib_flush_int)                                     \
 _(L2_FLAGS, l2_flags)                                                   \
