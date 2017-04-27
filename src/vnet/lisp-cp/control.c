@@ -1515,6 +1515,10 @@ update_fwd_entries_by_locator_set (lisp_cp_main_t * lcm, u8 is_local,
 {
   u32 i, *map_indexp;
   u32 **eid_indexes;
+
+  if (vec_len (lcm->locator_set_to_eids) <= ls_index)
+    return;
+
   eid_indexes = vec_elt_at_index (lcm->locator_set_to_eids, ls_index);
 
   for (i = 0; i < vec_len (eid_indexes[0]); i++)
