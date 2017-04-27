@@ -186,6 +186,19 @@ ioam_cache_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <ioam/ip6/ioam_cache_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (ioam_cache_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_ioam_cache;
+#undef _
+}
+
 static clib_error_t *
 set_ioam_cache_command_fn (vlib_main_t * vm,
 			   unformat_input_t * input, vlib_cli_command_t * cmd)
@@ -334,6 +347,10 @@ ioam_cache_init (vlib_main_t * vm)
     ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = ioam_cache_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (em, &api_main);
+
   /* Hook this node to ip6-hop-by-hop */
   ip6_hbyh_node = vlib_get_node_by_name (vm, (u8 *) "ip6-hop-by-hop");
   em->cache_hbh_slot =

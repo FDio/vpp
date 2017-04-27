@@ -155,6 +155,19 @@ vxlan_gpe_ioam_export_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <ioam/export-vxlan-gpe/vxlan_gpe_ioam_export_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (ioam_export_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_vxlan_gpe_ioam_export;
+#undef _
+}
+
 
 static clib_error_t *
 set_vxlan_gpe_ioam_export_ipfix_command_fn (vlib_main_t * vm,
@@ -233,6 +246,10 @@ vxlan_gpe_ioam_export_init (vlib_main_t * vm)
   em->vlib_time_0 = vlib_time_now (vm);
 
   error = vxlan_gpe_ioam_export_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (em, &api_main);
+
   em->my_hbh_slot = ~0;
   em->vlib_main = vm;
   em->vnet_main = vnet_get_main ();
