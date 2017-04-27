@@ -303,6 +303,19 @@ vxlan_gpe_plugin_api_hookup (vlib_main_t * vm)
   return 0;
 }
 
+#define vl_msg_name_crc_list
+#include <ioam/lib-vxlan-gpe/vxlan_gpe_all_api_h.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (vxlan_gpe_ioam_main_t * sm, api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id + sm->msg_id_base);
+  foreach_vl_msg_name_crc_ioam_vxlan_gpe;
+#undef _
+}
+
 static clib_error_t *
 vxlan_gpe_init (vlib_main_t * vm)
 {
@@ -327,6 +340,9 @@ vxlan_gpe_init (vlib_main_t * vm)
     ((char *) name, VL_MSG_FIRST_AVAILABLE);
 
   error = vxlan_gpe_plugin_api_hookup (vm);
+
+  /* Add our API messages to the global name_crc hash table */
+  setup_message_id_table (sm, &api_main);
 
   /* Hook the ioam-encap node to vxlan-gpe-encap */
   vxlan_gpe_encap_node = vlib_get_node_by_name (vm, (u8 *) "vxlan-gpe-encap");
