@@ -829,7 +829,7 @@ done:
  ?*/
 VLIB_CLI_COMMAND (set_state_command, static) = {
   .path = "set interface state",
-  .short_help = "Set interface state",
+  .short_help = "set interface state <if-name> [up|down|punt|enable]",
   .function = set_state,
 };
 /* *INDENT-ON* */
