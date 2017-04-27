@@ -50,6 +50,20 @@ typedef struct
 
 STATIC_ASSERT_SIZEOF (l2fib_entry_key_t, 8);
 
+
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      u8 swif;
+      u8 bd;
+    };
+    u16 as_u16;
+  };
+} l2fib_seq_num_t;
+
 /*
  * The l2fib entry results
  */
@@ -66,8 +80,7 @@ typedef struct
       u8 filter:1;		/* drop packets to/from this mac */
       u8 unused1:5;
       u8 timestamp;		/* timestamp for aging */
-      u8 int_sn;		/* interface seq num */
-      u8 bd_sn;			/* bridge domain seq num */
+      l2fib_seq_num_t sn;	/* bd/int seq num */
     } fields;
     u64 raw;
   };
@@ -314,7 +327,7 @@ l2fib_lookup_4 (BVT (clib_bihash) * mac_table,
     }
 }
 
-void l2fib_clear_table (uint keep_static);
+void l2fib_clear_table (void);
 
 void
 l2fib_add_entry (u64 mac,
@@ -328,6 +341,8 @@ void l2fib_start_ager_scan (vlib_main_t * vm);
 void l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index);
 
 void l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index);
+
+void l2fib_flush_all_mac (vlib_main_t * vm);
 
 void
 l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,

@@ -202,8 +202,14 @@ classify_and_dispatch (vlib_main_t * vm,
       /* Get config for the bridge domain interface */
       bd_config = vec_elt_at_index (msm->bd_configs, bd_index0);
 
-      /* Save bridge domain seq_num */
-      vnet_buffer (b0)->l2.bd_sn = bd_config->seq_num;
+      /* Save bridge domain and interface seq_num */
+      /* *INDENT-OFF* */
+      l2fib_seq_num_t sn = {
+        .swif = config->seq_num,
+	.bd = bd_config->seq_num,
+      };
+      /* *INDENT-ON* */
+      vnet_buffer (b0)->l2.l2fib_sn = sn.as_u16;;
 
       /*
        * Process bridge domain feature enables.
@@ -217,9 +223,6 @@ classify_and_dispatch (vlib_main_t * vm,
 
   /* mask out features from bitmap using packet type and bd config */
   feature_bitmap = config->feature_bitmap & feat_mask;
-
-  /* Save interface seq_num */
-  vnet_buffer (b0)->l2.int_sn = config->seq_num;
 
   /* save for next feature graph nodes */
   vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
