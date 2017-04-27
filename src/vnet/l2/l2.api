@@ -76,6 +76,16 @@ autoreply define l2_fib_clear_table
   u32 context;
 };
 
+/** \brief L2 FIB flush all  entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define l2fib_flush_all
+{
+  u32 client_index;
+  u32 context;
+};
+
 /** \brief L2 FIB flush bridge domain entries
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
