@@ -114,7 +114,7 @@ dpdk_rx_error_from_mb (struct rte_mbuf *mb, u32 * next, u8 * error)
     *error = DPDK_ERROR_NONE;
 }
 
-void
+static void
 dpdk_rx_trace (dpdk_main_t * dm,
 	       vlib_node_runtime_t * node,
 	       dpdk_device_t * xd,

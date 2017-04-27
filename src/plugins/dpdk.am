@@ -28,6 +28,7 @@ dpdk_plugin_la_SOURCES =					\
   dpdk/main.c							\
   dpdk/buffer.c							\
   dpdk/thread.c							\
+  dpdk/api/dpdk_api.c						\
   dpdk/device/cli.c						\
   dpdk/device/dpdk_priv.h					\
   dpdk/device/device.c						\

@@ -469,19 +469,7 @@ typedef enum
     DPDK_N_ERROR,
 } dpdk_error_t;
 
-int dpdk_set_stat_poll_interval (f64 interval);
-int dpdk_set_link_state_poll_interval (f64 interval);
 void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
-void dpdk_device_lock_init (dpdk_device_t * xd);
-void dpdk_device_lock_free (dpdk_device_t * xd);
-
-void dpdk_rx_trace (dpdk_main_t * dm,
-		    vlib_node_runtime_t * node,
-		    dpdk_device_t * xd,
-		    u16 queue_id, u32 * buffers, uword n_buffers);
-
-#define EFD_OPERATION_LESS_THAN          0
-#define EFD_OPERATION_GREATER_OR_EQUAL   1
 
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
