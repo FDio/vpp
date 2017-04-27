@@ -1635,8 +1635,13 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                 }
               if (PREDICT_FALSE(!ses0))
                 {
-                  next0 = SNAT_IN2OUT_NEXT_DROP;
-                  b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
+                  /* too many sessions for user, send ICMP error packet */
+
+                  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+                  icmp4_error_set_vnet_buffer (b0, ICMP4_destination_unreachable,
+                                               ICMP4_destination_unreachable_destination_unreachable_host,
+                                               0);
+                  next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
                   goto trace0;
                 }
             }
@@ -1780,8 +1785,13 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                 }
               if (PREDICT_FALSE(!ses1))
                 {
-                  next1 = SNAT_IN2OUT_NEXT_DROP;
-                  b1->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
+                  /* too many sessions for user, send ICMP error packet */
+
+                  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+                  icmp4_error_set_vnet_buffer (b1, ICMP4_destination_unreachable,
+                                               ICMP4_destination_unreachable_destination_unreachable_host,
+                                               0);
+                  next1 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
                   goto trace1;
                 }
             }
@@ -1961,8 +1971,13 @@ snat_det_in2out_node_fn (vlib_main_t * vm,
                 }
               if (PREDICT_FALSE(!ses0))
                 {
-                  next0 = SNAT_IN2OUT_NEXT_DROP;
-                  b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
+                  /* too many sessions for user, send ICMP error packet */
+
+                  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+                  icmp4_error_set_vnet_buffer (b0, ICMP4_destination_unreachable,
+                                               ICMP4_destination_unreachable_destination_unreachable_host,
+                                               0);
+                  next0 = SNAT_IN2OUT_NEXT_ICMP_ERROR;
                   goto trace00;
                 }
             }

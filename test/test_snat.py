@@ -1895,11 +1895,23 @@ class TestDeterministicNAT(MethodHolder):
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
-             UDP(sport=3000, dport=3000))
+             UDP(sport=3001, dport=3002))
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg1.assert_nothing_captured()
+
+        # verify ICMP error packet
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        self.assertTrue(p.haslayer(ICMP))
+        icmp = p[ICMP]
+        self.assertEqual(icmp.type, 3)
+        self.assertEqual(icmp.code, 1)
+        self.assertTrue(icmp.haslayer(IPerror))
+        inner_ip = icmp[IPerror]
+        self.assertEqual(inner_ip[UDPerror].sport, 3001)
+        self.assertEqual(inner_ip[UDPerror].dport, 3002)
 
         dms = self.vapi.snat_det_map_dump()
 
