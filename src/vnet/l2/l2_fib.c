@@ -54,7 +54,6 @@ typedef struct
 
 l2fib_main_t l2fib_main;
 
-
 /** Format sw_if_index. If the value is ~0, use the text "N/A" */
 u8 *
 format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
@@ -198,7 +197,7 @@ show_l2fib (vlib_main_t * vm,
 				   key.fields.bd_index,
 				   result.fields.sw_if_index == ~0
 				   ? -1 : result.fields.sw_if_index,
-				   result.fields.bd_sn, result.fields.int_sn,
+				   result.fields.sn.bd, result.fields.sn.swif,
 				   s, result.fields.static_mac ? "*" : "-",
 				   result.fields.filter ? "*" : "-",
 				   result.fields.bvi ? "*" : "-",
@@ -257,22 +256,14 @@ VLIB_CLI_COMMAND (show_l2fib_cli, static) = {
 
 /* Remove all entries from the l2fib */
 void
-l2fib_clear_table (uint keep_static)
+l2fib_clear_table (void)
 {
   l2fib_main_t *mp = &l2fib_main;
 
-  if (keep_static)
-    {
-      /* TODO: remove only non-static entries */
-    }
-  else
-    {
-      /* Remove all entries */
-      BV (clib_bihash_free) (&mp->mac_table);
-      BV (clib_bihash_init) (&mp->mac_table, "l2fib mac table",
-			     L2FIB_NUM_BUCKETS, L2FIB_MEMORY_SIZE);
-    }
-
+  /* Remove all entries */
+  BV (clib_bihash_free) (&mp->mac_table);
+  BV (clib_bihash_init) (&mp->mac_table, "l2fib mac table",
+			 L2FIB_NUM_BUCKETS, L2FIB_MEMORY_SIZE);
   l2learn_main.global_learn_count = 0;
 }
 
@@ -283,7 +274,7 @@ static clib_error_t *
 clear_l2fib (vlib_main_t * vm,
 	     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  l2fib_clear_table (0);
+  l2fib_clear_table ();
   return 0;
 }
 
@@ -306,6 +297,15 @@ VLIB_CLI_COMMAND (clear_l2fib_cli, static) = {
 };
 /* *INDENT-ON* */
 
+static l2fib_seq_num_t
+l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
+{
+  l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
+  l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
+  return (l2fib_seq_num_t)
+  {
+  .swif = int_config->seq_num,.bd = bd_config->seq_num,};
+}
 
 /**
  * Add an entry to the l2fib.
@@ -332,14 +332,7 @@ l2fib_add_entry (u64 mac,
   result.fields.filter = filter_mac;
   result.fields.bvi = bvi_mac;
   if (!static_mac)
-    {
-      l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
-      l2_bridge_domain_t *bd_config =
-	vec_elt_at_index (l2input_main.bd_configs,
-			  bd_index);
-      result.fields.int_sn = int_config->seq_num;
-      result.fields.bd_sn = bd_config->seq_num;
-    }
+    result.fields.sn = l2fib_cur_seq_num (bd_index, sw_if_index);
 
   kv.key = key.raw;
   kv.value = result.raw;
@@ -347,10 +340,7 @@ l2fib_add_entry (u64 mac,
   BV (clib_bihash_add_del) (&mp->mac_table, &kv, 1 /* is_add */ );
 
   /* increment counter if dynamically learned mac */
-  if (result.fields.static_mac)
-    {
-      l2learn_main.global_learn_count++;
-    }
+  l2learn_main.global_learn_count += result.fields.static_mac;
 }
 
 /**
@@ -733,28 +723,41 @@ l2fib_start_ager_scan (vlib_main_t * vm)
 }
 
 /**
-    Flush all learned MACs from an interface
+    Flush all non static MACs from an interface
 */
 void
 l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index)
 {
-  l2_input_config_t *int_config;
-  int_config = l2input_intf_config (sw_if_index);
+  l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
   int_config->seq_num += 1;
   l2fib_start_ager_scan (vm);
 }
 
 /**
-    Flush all learned MACs in a bridge domain
+    Flush all non static MACs in a bridge domain
 */
 void
 l2fib_flush_bd_mac (vlib_main_t * vm, u32 bd_index)
 {
-  l2_bridge_domain_t *bd_config;
-  bd_config = l2input_bd_config (bd_index);
+  l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
   bd_config->seq_num += 1;
   l2fib_start_ager_scan (vm);
 }
+
+/**
+    Flush all non static MACs - flushes all valid BDs
+*/
+void
+l2fib_flush_all_mac (vlib_main_t * vm)
+{
+  l2_bridge_domain_t *bd_config;
+  vec_foreach (bd_config, l2input_main.bd_configs)
+    if (bd_is_valid (bd_config))
+    bd_config->seq_num += 1;
+
+  l2fib_start_ager_scan (vm);
+}
+
 
 /**
     Flush MACs, except static ones, associated with an interface
@@ -781,6 +784,35 @@ l2fib_flush_mac_int (vlib_main_t * vm,
 done:
   return error;
 }
+
+/**
+    Flush all MACs, except static ones
+    The CLI format is:
+    l2fib flush-mac all
+*/
+static clib_error_t *
+l2fib_flush_mac_all (vlib_main_t * vm,
+		     unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  l2fib_flush_all_mac (vm);
+  return 0;
+}
+
+/*?
+ * This command kick off ager to delete all existing MAC Address entries,
+ * except static ones, associated with an interface from the L2 FIB table.
+ *
+ * @cliexpar
+ * Example of how to flush MAC Address entries learned on an interface from the L2 FIB table:
+ * @cliexcmd{l2fib flush-mac interface GigabitEthernet2/1/0}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (l2fib_flush_mac_all_cli, static) = {
+  .path = "l2fib flush-mac all",
+  .short_help = "l2fib flush-mac all",
+  .function = l2fib_flush_mac_all,
+};
+/* *INDENT-ON* */
 
 /*?
  * This command kick off ager to delete all existing MAC Address entries,
@@ -870,8 +902,6 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 {
   uword event_type, *event_data = 0;
   l2fib_main_t *msm = &l2fib_main;
-  l2_input_config_t *int_config;
-  l2_bridge_domain_t *bd_config;
   BVT (clib_bihash) * h = &msm->mac_table;
   clib_bihash_bucket_t *b;
   BVT (clib_bihash_value) * v;
@@ -948,19 +978,18 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		  if (result.fields.static_mac)
 		    continue;
 
-		  int_config =
-		    l2input_intf_config (result.fields.sw_if_index);
-		  bd_config =
-		    vec_elt_at_index (l2input_main.bd_configs,
-				      key.fields.bd_index);
-
-		  if ((result.fields.int_sn != int_config->seq_num) ||
-		      (result.fields.bd_sn != bd_config->seq_num))
+		  l2fib_seq_num_t sn = l2fib_cur_seq_num (key.fields.bd_index,
+							  result.fields.
+							  sw_if_index);
+		  if (result.fields.sn.as_u16 != sn.as_u16)
 		    {
 		      void *p = &key.fields.mac;
 		      l2fib_del_entry (*(u64 *) p, key.fields.bd_index);
 		      continue;
 		    }
+		  l2_bridge_domain_t *bd_config =
+		    vec_elt_at_index (l2input_main.bd_configs,
+				      key.fields.bd_index);
 
 		  if (bd_config->mac_age == 0)
 		    continue;

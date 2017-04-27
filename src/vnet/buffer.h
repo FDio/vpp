@@ -176,8 +176,7 @@ typedef struct
       u16 bd_index;		/* bridge-domain index */
       u8 l2_len;		/* ethernet header length */
       u8 shg;			/* split-horizon group */
-      u8 bd_sn;			/* bridge domain seq# */
-      u8 int_sn;		/* interface seq# */
+      u16 l2fib_sn;		/* l2fib bd/int seq_num */
     } l2;
 
     /* l2tpv3 softwire encap, only valid there */
