@@ -1028,8 +1028,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "num-mbufs %d", &conf->num_mbufs))
 	;
-      else if (unformat (input, "kni %d", &conf->num_kni))
-	;
       else if (unformat (input, "uio-driver %s", &conf->uio_driver_name))
 	;
       else if (unformat (input, "socket-mem %s", &socket_mem))
@@ -1679,11 +1677,6 @@ dpdk_init (vlib_main_t * vm)
   dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
   vec_add1 (dm->conf->eal_init_args, (u8 *) "vnet");
 
-  dm->dpdk_device_by_kni_port_id = hash_create (0, sizeof (uword));
-  dm->vu_sw_if_index_by_listener_fd = hash_create (0, sizeof (uword));
-  dm->vu_sw_if_index_by_sock_fd = hash_create (0, sizeof (uword));
-
-  /* $$$ use n_thread_stacks since it's known-good at this point */
   vec_validate (dm->recycle, tm->n_thread_stacks - 1);
 
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */

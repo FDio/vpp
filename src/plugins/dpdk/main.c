@@ -24,7 +24,7 @@
  * Return 1 if to skip the delay loop because we are suspending
  * the calling vlib process instead.
  */
-int
+static int
 rte_delay_us_override (unsigned us)
 {
   vlib_main_t *vm;
