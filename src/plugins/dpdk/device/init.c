@@ -55,80 +55,6 @@ static struct rte_eth_conf port_conf_template = {
 	     },
 };
 
-clib_error_t *
-dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd)
-{
-  int rv;
-  int j;
-
-  ASSERT (vlib_get_thread_index () == 0);
-
-  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-    {
-      vnet_hw_interface_set_flags (dm->vnet_main, xd->hw_if_index, 0);
-      rte_eth_dev_stop (xd->device_index);
-    }
-
-  rv = rte_eth_dev_configure (xd->device_index, xd->rx_q_used,
-			      xd->tx_q_used, &xd->port_conf);
-
-  if (rv < 0)
-    return clib_error_return (0, "rte_eth_dev_configure[%d]: err %d",
-			      xd->device_index, rv);
-
-  /* Set up one TX-queue per worker thread */
-  for (j = 0; j < xd->tx_q_used; j++)
-    {
-      rv = rte_eth_tx_queue_setup (xd->device_index, j, xd->nb_tx_desc,
-				   xd->cpu_socket, &xd->tx_conf);
-
-      /* retry with any other CPU socket */
-      if (rv < 0)
-	rv = rte_eth_tx_queue_setup (xd->device_index, j, xd->nb_tx_desc,
-				     SOCKET_ID_ANY, &xd->tx_conf);
-      if (rv < 0)
-	break;
-    }
-
-  if (rv < 0)
-    return clib_error_return (0, "rte_eth_tx_queue_setup[%d]: err %d",
-			      xd->device_index, rv);
-
-  for (j = 0; j < xd->rx_q_used; j++)
-    {
-      uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
-						       xd->hw_if_index, j);
-      unsigned lcore = vlib_worker_threads[tidx].lcore_id;
-      u16 socket_id = rte_lcore_to_socket_id (lcore);
-
-      rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
-				   xd->cpu_socket, 0,
-				   dm->pktmbuf_pools[socket_id]);
-
-      /* retry with any other CPU socket */
-      if (rv < 0)
-	rv = rte_eth_rx_queue_setup (xd->device_index, j, xd->nb_rx_desc,
-				     SOCKET_ID_ANY, 0,
-				     dm->pktmbuf_pools[socket_id]);
-      if (rv < 0)
-	return clib_error_return (0, "rte_eth_rx_queue_setup[%d]: err %d",
-				  xd->device_index, rv);
-    }
-
-  if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-    {
-      int rv;
-      rv = rte_eth_dev_start (xd->device_index);
-      if (!rv && xd->default_mac_address)
-	rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
-					       (struct ether_addr *)
-					       xd->default_mac_address);
-      if (rv < 0)
-	clib_warning ("rte_eth_dev_start %d returned %d",
-		      xd->device_index, rv);
-    }
-  return 0;
-}
 
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
@@ -161,7 +87,7 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
 
       if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	rte_eth_dev_stop (xd->device_index);
+	dpdk_device_stop (xd);
 
       rv = rte_eth_dev_configure
 	(xd->device_index, xd->rx_q_used, xd->tx_q_used, &xd->port_conf);
@@ -175,14 +101,9 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 
       if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
 	{
-	  int rv = rte_eth_dev_start (xd->device_index);
-	  if (!rv && xd->default_mac_address)
-	    rv = rte_eth_dev_default_mac_addr_set (xd->device_index,
-						   (struct ether_addr *)
-						   xd->default_mac_address);
-	  if (rv < 0)
-	    clib_warning ("rte_eth_dev_start %d returned %d",
-			  xd->device_index, rv);
+	  clib_error_t *error;
+	  error = dpdk_device_start (xd);
+	  clib_error_report (error);
 	}
 
     }
@@ -716,7 +637,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
 
-      rv = dpdk_port_setup (dm, xd);
+      rv = dpdk_device_setup (xd);
 
       if (rv)
 	return rv;
@@ -1505,7 +1426,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
     /*
      * Extra set up for bond interfaces:
      *  1. Setup MACs for bond interfaces and their slave links which was set
-     *     in dpdk_port_setup() but needs to be done again here to take effect.
+     *     in dpdk_device_setup() but needs to be done again here to take effect.
      *  2. Set up info for bond interface related CLI support.
      */
     int nports = rte_eth_dev_count ();
