@@ -192,6 +192,7 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
 {
   unix_shared_memory_queue_t *q;
   vl_api_dhcp_compl_event_t *mp;
+  u32 len;
 
   q = vl_api_client_index_to_input_queue (client_index);
   if (!q)
@@ -201,8 +202,9 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
   mp->client_index = client_index;
   mp->pid = pid;
   mp->is_ipv6 = is_ipv6;
-  clib_memcpy (&mp->hostname, hostname, vec_len (hostname));
-  mp->hostname[vec_len (hostname) + 1] = '\n';
+  len = (vec_len (hostname) < 63) ? vec_len (hostname) : 63;
+  clib_memcpy (&mp->hostname, hostname, len);
+  mp->hostname[len] = 0;
   clib_memcpy (&mp->host_address[0], host_address, 16);
   clib_memcpy (&mp->router_address[0], router_address, 16);
 
