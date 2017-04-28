@@ -92,15 +92,21 @@ bd_add_bd_index (bd_main_t * bdm, u32 bd_id)
 static int
 bd_delete (bd_main_t * bdm, u32 bd_index)
 {
-  u32 bd_id = l2input_main.bd_configs[bd_index].bd_id;
+  l2_bridge_domain_t *bd = &l2input_main.bd_configs[bd_index];
+  u32 bd_id = bd->bd_id;
   hash_unset (bdm->bd_index_by_bd_id, bd_id);
 
   /* mark this index clear */
   bdm->bd_index_bitmap = clib_bitmap_set (bdm->bd_index_bitmap, bd_index, 0);
 
-  l2input_main.bd_configs[bd_index].bd_id = ~0;
-  l2input_main.bd_configs[bd_index].feature_bitmap = 0;
+  /* clear BD config for reuse: bd_id to -1 and clear feature_bitmap */
+  bd->bd_id = ~0;
+  bd->feature_bitmap = 0;
 
+  /* free memory used by BD and flush non-static MACs in BD */
+  vec_free (bd->members);
+  hash_free (bd->mac_by_ip4);
+  hash_free (bd->mac_by_ip6);
   l2fib_flush_bd_mac (vlib_get_main (), bd_index);
 
   return 0;
