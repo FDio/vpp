@@ -195,6 +195,7 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   u8 hw_addr[6];
   clib_error_t *error;
   vnet_sw_interface_t *sw;
+  vnet_hw_interface_t *hw;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_main_t *vnm = vnet_get_main ();
   uword *p;
@@ -294,16 +295,20 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
     }
 
   sw = vnet_get_hw_sw_interface (vnm, apif->hw_if_index);
+  hw = vnet_get_hw_interface (vnm, apif->hw_if_index);
   apif->sw_if_index = sw->sw_if_index;
-  vnet_set_device_input_node (vnm, apif->hw_if_index,
-			      af_packet_input_node.index);
-  vnet_device_input_assign_thread (vnm, apif->hw_if_index, 0,	/* queue */
-				   ~0 /* any cpu */ );
-  vnet_device_input_set_mode (vnm, apif->hw_if_index, 0,
-			      VNET_DEVICE_INPUT_MODE_INTERRUPT);
+  vnet_hw_interface_set_input_node (vnm, apif->hw_if_index,
+				    af_packet_input_node.index);
 
+  vnet_hw_interface_assign_rx_thread (vnm, apif->hw_if_index, 0,	/* queue */
+				      ~0 /* any cpu */ );
+
+  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
+
+  vnet_hw_interface_set_rx_mode (vnm, apif->hw_if_index, 0,
+				 VNET_HW_INTERFACE_RX_MODE_INTERRUPT);
 
   mhash_set_mem (&apm->if_index_by_host_if_name, host_if_name_dup, &if_index,
 		 0);
@@ -340,6 +345,7 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index, 0);
+  vnet_hw_interface_unassign_rx_thread (vnm, apif->hw_if_index, 0);
 
   /* clean up */
   if (apif->unix_file_index != ~0)

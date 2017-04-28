@@ -405,6 +405,9 @@ typedef struct vnet_hw_interface_t
 #define VNET_HW_INTERFACE_FLAG_L2OUTPUT_SHIFT	9
 #define VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED	(1 << 9)
 
+  /* rx mode flags */
+#define VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE (1 << 10)
+
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
   u8 *hw_address;
@@ -470,6 +473,9 @@ typedef struct vnet_hw_interface_t
   /* input node cpu index by queue */
   u32 *input_node_thread_index_by_queue;
 
+  /* vnet_hw_interface_rx_mode by queue */
+  u8 *rx_mode_by_queue;
+
   /* device input device_and_queue runtime index */
   uword *dq_runtime_index_by_queue;
 
@@ -485,6 +491,15 @@ typedef enum
   /* A sub-interface. */
   VNET_SW_INTERFACE_TYPE_SUB,
 } vnet_sw_interface_type_t;
+
+typedef enum
+{
+  VNET_HW_INTERFACE_RX_MODE_UNKNOWN,
+  VNET_HW_INTERFACE_RX_MODE_POLLING,
+  VNET_HW_INTERFACE_RX_MODE_INTERRUPT,
+  VNET_HW_INTERFACE_RX_MODE_ADAPTIVE,
+  VNET_HW_INTERFACE_NUM_RX_MODES,
+} vnet_hw_interface_rx_mode;
 
 typedef struct
 {

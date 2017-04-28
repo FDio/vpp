@@ -109,7 +109,8 @@ _(ENTRY_ALREADY_EXISTS, -116, "Entry already exists")			\
 _(SVM_SEGMENT_CREATE_FAIL, -117, "svm segment create fail")		\
 _(APPLICATION_NOT_ATTACHED, -118, "application not attached")           \
 _(BD_ALREADY_EXISTS, -119, "Bridge domain already exists")              \
-_(BD_IN_USE, -120, "Bridge domain has member interfaces")
+_(BD_IN_USE, -120, "Bridge domain has member interfaces")		\
+_(UNSUPPORTED, -121, "Unsupported")
 
 typedef enum
 {

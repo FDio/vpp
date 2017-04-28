@@ -277,6 +277,7 @@ clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
 
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
+format_function_t format_vnet_hw_interface_rx_mode;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
 format_function_t format_vnet_sw_interface_name_override;
