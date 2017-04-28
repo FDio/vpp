@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_386cd407",
+        "filename": "src/vnet/dhcp/dhcp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 205,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-04-28T16:36:49Z",
+      "side": 1,
+      "message": "how about ARRAY_LEN(mp-\u003ehostname)-1 rather than 63.",
+      "revId": "69186d930ff43b127269abc568bdc656b1e635ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
