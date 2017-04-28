@@ -1175,7 +1175,245 @@ VLIB_CLI_COMMAND (clear_tag_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
+		       vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw;
+  u32 hw_if_index = (u32) ~ 0;
+  u32 queue_id = (u32) ~ 0;
+  vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+  int i, rv = 0;
 
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "polling"))
+	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+      else if (unformat (line_input, "interrupt"))
+	mode = VNET_HW_INTERFACE_RX_MODE_INTERRUPT;
+      else if (unformat (line_input, "adaptive"))
+	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "please specify valid interface name");
+
+  if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
+    return clib_error_return (0, "please specify valid rx-mode");
+
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (queue_id == ~0)
+    for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+      {
+	rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, i, mode);
+	if (rv)
+	  goto error;
+      }
+  else
+    rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+
+  if (rv)
+    goto error;
+
+  return 0;
+
+error:
+  if (rv == VNET_API_ERROR_UNSUPPORTED)
+    return clib_error_return (0, "unsupported");
+
+  if (rv == VNET_API_ERROR_INVALID_INTERFACE)
+    return clib_error_return (0, "invalid interfaace");
+
+  return clib_error_return (0, "unknown error");
+}
+
+/*?
+ * This command is used to assign a given interface, and optionally a
+ * given queue, to a different thread. If the '<em>queue</em>' is not provided,
+ * it defaults to 0.
+ *
+ * @cliexpar
+ * Example of how to display the interface placement:
+ * @cliexstart{show interface rx-placement}
+ * Thread 1 (vpp_wk_0):
+ *   GigabitEthernet0/8/0 queue 0
+ *   GigabitEthernet0/9/0 queue 0
+ * Thread 2 (vpp_wk_1):
+ *   GigabitEthernet0/8/0 queue 1
+ *   GigabitEthernet0/9/0 queue 1
+ * @cliexend
+ * Example of how to assign a interface and queue to a thread:
+ * @cliexcmd{set interface placement GigabitEthernet0/8/0 queue 1 thread 1}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_set_if_rx_mode,static) = {
+    .path = "set interface rx-mode",
+    .short_help = "set interface rx-mode <interface> [queue <n>] [polling | interrupt | adaptive]",
+    .function = set_interface_rx_mode,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  u8 *s = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_input_runtime_t *rt;
+  vnet_device_and_queue_t *dq;
+  vlib_node_t *pn = vlib_get_node_by_name (vm, (u8 *) "device-input");
+  uword si;
+  int index = 0;
+
+  /* *INDENT-OFF* */
+  foreach_vlib_main (({
+    clib_bitmap_foreach (si, pn->sibling_bitmap,
+      ({
+        rt = vlib_node_get_runtime_data (this_vlib_main, si);
+
+        if (vec_len (rt->devices_and_queues))
+          s = format (s, "  node %U:\n", format_vlib_node_name, vm, si);
+
+        vec_foreach (dq, rt->devices_and_queues)
+	  {
+	    s = format (s, "    %U queue %u (%U)\n",
+			format_vnet_sw_if_index_name, vnm, dq->hw_if_index,
+			dq->queue_id,
+			format_vnet_hw_interface_rx_mode, dq->mode);
+	  }
+      }));
+    if (vec_len (s) > 0)
+      {
+        vlib_cli_output(vm, "Thread %u (%v):\n%v", index,
+			vlib_worker_threads[index].name, s);
+        vec_reset_length (s);
+      }
+    index++;
+  }));
+  /* *INDENT-ON* */
+
+  vec_free (s);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_interface_rx_placement, static) = {
+  .path = "show interface rx-placement",
+  .short_help = "show interface rx-placement",
+  .function = show_interface_rx_placement_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_main_t *vdm = &vnet_device_main;
+  vnet_hw_interface_rx_mode mode;
+  u32 hw_if_index = (u32) ~ 0;
+  u32 queue_id = (u32) 0;
+  u32 thread_index = (u32) ~ 0;
+  int rv;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "main", &thread_index))
+	thread_index = 0;
+      else if (unformat (line_input, "worker %d", &thread_index))
+	thread_index += vdm->first_worker_thread_index;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "please specify valid interface name");
+
+  if (thread_index > vdm->last_worker_thread_index)
+    return clib_error_return (0,
+			      "please specify valid worker thread or main");
+
+  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
+
+  if (rv)
+    return clib_error_return (0, "not found");
+
+  rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
+
+  if (rv)
+    return clib_error_return (0, "not found");
+
+  vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
+				      thread_index);
+  vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+
+  return 0;
+}
+
+/*?
+ * This command is used to assign a given interface, and optionally a
+ * given queue, to a different thread. If the '<em>queue</em>' is not provided,
+ * it defaults to 0.
+ *
+ * @cliexpar
+ * Example of how to display the interface placement:
+ * @cliexstart{show interface placement}
+ * Thread 1 (vpp_wk_0):
+ *   GigabitEthernet0/8/0 queue 0
+ *   GigabitEthernet0/9/0 queue 0
+ * Thread 2 (vpp_wk_1):
+ *   GigabitEthernet0/8/0 queue 1
+ *   GigabitEthernet0/9/0 queue 1
+ * @cliexend
+ * Example of how to assign a interface and queue to a thread:
+ * @cliexcmd{set interface placement GigabitEthernet0/8/0 queue 1 thread 1}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
+    .path = "set interface rx-placement",
+    .short_help = "set interface rx-placement <hw-interface> [queue <n>] [thread <n> | main]",
+    .function = set_interface_rx_placement,
+};
+
+/* *INDENT-ON* */
 /*
  * fd.io coding-style-patch-verification: ON
  *

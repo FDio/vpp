@@ -119,8 +119,8 @@ vnet_device_queue_update (vnet_main_t * vnm, vnet_device_input_runtime_t * rt)
 }
 
 void
-vnet_device_input_assign_thread (vnet_main_t * vnm, u32 hw_if_index,
-				 u16 queue_id, uword thread_index)
+vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
+				    u16 queue_id, uword thread_index)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
   vlib_main_t *vm;
@@ -149,16 +149,19 @@ vnet_device_input_assign_thread (vnet_main_t * vnm, u32 hw_if_index,
   dq->hw_if_index = hw_if_index;
   dq->dev_instance = hw->dev_instance;
   dq->queue_id = queue_id;
+  dq->mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
 
   vnet_device_queue_update (vnm, rt);
   vec_validate (hw->input_node_thread_index_by_queue, queue_id);
+  vec_validate (hw->rx_mode_by_queue, queue_id);
   hw->input_node_thread_index_by_queue[queue_id] = thread_index;
+  hw->rx_mode_by_queue[queue_id] = VNET_HW_INTERFACE_RX_MODE_POLLING;
   vlib_node_set_state (vm, hw->input_node_index, rt->enabled_node_state);
 }
 
 int
-vnet_device_input_unassign_thread (vnet_main_t * vnm, u32 hw_if_index,
-				   u16 queue_id, uword thread_index)
+vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
+				      u16 queue_id)
 {
   vlib_main_t *vm;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -190,6 +193,7 @@ vnet_device_input_unassign_thread (vnet_main_t * vnm, u32 hw_if_index,
 deleted:
 
   vnet_device_queue_update (vnm, rt);
+  hw->rx_mode_by_queue[queue_id] = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
 
   if (vec_len (rt->devices_and_queues) == 0)
     vlib_node_set_state (vm, hw->input_node_index, VLIB_NODE_STATE_DISABLED);
@@ -199,20 +203,27 @@ deleted:
 
 
 int
-vnet_device_input_set_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
-			    vnet_device_input_mode_t mode)
+vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
+			       u16 queue_id, vnet_hw_interface_rx_mode mode)
 {
   vlib_main_t *vm;
   uword thread_index;
   vnet_device_and_queue_t *dq;
   vlib_node_state_t enabled_node_state;
-  ASSERT (mode < VNET_DEVICE_INPUT_N_MODES);
+  ASSERT (mode < VNET_HW_INTERFACE_NUM_RX_MODES);
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_device_input_runtime_t *rt;
   int is_polling = 0;
 
-  if (hw->input_node_thread_index_by_queue == 0)
+  if (hw->input_node_thread_index_by_queue == 0 || hw->rx_mode_by_queue == 0)
     return VNET_API_ERROR_INVALID_INTERFACE;
+
+  if (hw->rx_mode_by_queue[queue_id] == mode)
+    return 0;
+
+  if (mode != VNET_HW_INTERFACE_RX_MODE_POLLING &&
+      (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE) == 0)
+    return VNET_API_ERROR_UNSUPPORTED;
 
   thread_index = hw->input_node_thread_index_by_queue[queue_id];
   vm = vlib_mains[thread_index];
@@ -223,7 +234,7 @@ vnet_device_input_set_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
   {
     if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
       dq->mode = mode;
-    if (dq->mode == VNET_DEVICE_INPUT_MODE_POLLING)
+    if (dq->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
       is_polling = 1;
   }
 
@@ -244,8 +255,8 @@ vnet_device_input_set_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
 }
 
 int
-vnet_device_input_get_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
-			    vnet_device_input_mode_t * mode)
+vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
+			       u16 queue_id, vnet_hw_interface_rx_mode * mode)
 {
   vlib_main_t *vm;
   uword thread_index;
@@ -271,146 +282,7 @@ vnet_device_input_get_mode (vnet_main_t * vnm, u32 hw_if_index, u16 queue_id,
   return VNET_API_ERROR_INVALID_INTERFACE;
 }
 
-static clib_error_t *
-show_device_placement_fn (vlib_main_t * vm, unformat_input_t * input,
-			  vlib_cli_command_t * cmd)
-{
-  u8 *s = 0;
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_input_runtime_t *rt;
-  vnet_device_and_queue_t *dq;
-  vlib_node_t *pn = vlib_get_node_by_name (vm, (u8 *) "device-input");
-  uword si;
-  int index = 0;
 
-  /* *INDENT-OFF* */
-  foreach_vlib_main (({
-    clib_bitmap_foreach (si, pn->sibling_bitmap,
-      ({
-        rt = vlib_node_get_runtime_data (this_vlib_main, si);
-
-        if (vec_len (rt->devices_and_queues))
-          s = format (s, "  node %U:\n", format_vlib_node_name, vm, si);
-
-        vec_foreach (dq, rt->devices_and_queues)
-	  {
-	    s = format (s, "    %U queue %u (%s)\n",
-			format_vnet_sw_if_index_name, vnm, dq->hw_if_index,
-			dq->queue_id,
-			dq->mode == VNET_DEVICE_INPUT_MODE_POLLING ?
-			"polling" : "interrupt");
-	  }
-      }));
-    if (vec_len (s) > 0)
-      {
-        vlib_cli_output(vm, "Thread %u (%v):\n%v", index,
-			vlib_worker_threads[index].name, s);
-        vec_reset_length (s);
-      }
-    index++;
-  }));
-  /* *INDENT-ON* */
-
-  vec_free (s);
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (memif_delete_command, static) = {
-  .path = "show interface placement",
-  .short_help = "show interface placement",
-  .function = show_device_placement_fn,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-set_device_placement (vlib_main_t * vm, unformat_input_t * input,
-		      vlib_cli_command_t * cmd)
-{
-  clib_error_t *error = 0;
-  unformat_input_t _line_input, *line_input = &_line_input;
-  vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_main_t *vdm = &vnet_device_main;
-  vnet_device_input_mode_t mode;
-  u32 hw_if_index = (u32) ~ 0;
-  u32 queue_id = (u32) 0;
-  u32 thread_index = (u32) ~ 0;
-  int rv;
-
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat
-	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
-	;
-      else if (unformat (line_input, "queue %d", &queue_id))
-	;
-      else if (unformat (line_input, "main", &thread_index))
-	thread_index = 0;
-      else if (unformat (line_input, "worker %d", &thread_index))
-	thread_index += vdm->first_worker_thread_index;
-      else
-	{
-	  error = clib_error_return (0, "parse error: '%U'",
-				     format_unformat_error, line_input);
-	  unformat_free (line_input);
-	  return error;
-	}
-    }
-
-  unformat_free (line_input);
-
-  if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
-
-  if (thread_index > vdm->last_worker_thread_index)
-    return clib_error_return (0,
-			      "please specify valid worker thread or main");
-
-  rv = vnet_device_input_get_mode (vnm, hw_if_index, queue_id, &mode);
-
-  if (rv)
-    return clib_error_return (0, "not found");
-
-  rv = vnet_device_input_unassign_thread (vnm, hw_if_index, queue_id,
-					  thread_index);
-
-  if (rv)
-    return clib_error_return (0, "not found");
-
-  vnet_device_input_assign_thread (vnm, hw_if_index, queue_id, thread_index);
-  vnet_device_input_set_mode (vnm, hw_if_index, queue_id, mode);
-
-  return 0;
-}
-
-/*?
- * This command is used to assign a given interface, and optionally a
- * given queue, to a different thread. If the '<em>queue</em>' is not provided,
- * it defaults to 0.
- *
- * @cliexpar
- * Example of how to display the interface placement:
- * @cliexstart{show interface placement}
- * Thread 1 (vpp_wk_0):
- *   GigabitEthernet0/8/0 queue 0
- *   GigabitEthernet0/9/0 queue 0
- * Thread 2 (vpp_wk_1):
- *   GigabitEthernet0/8/0 queue 1
- *   GigabitEthernet0/9/0 queue 1
- * @cliexend
- * Example of how to assign a interface and queue to a thread:
- * @cliexcmd{set interface placement GigabitEthernet0/8/0 queue 1 thread 1}
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_set_dpdk_if_placement,static) = {
-    .path = "set interface placement",
-    .short_help = "set interface placement <interface> [queue <n>] [thread <n> | main]",
-    .function = set_device_placement,
-};
-/* *INDENT-ON* */
 
 static clib_error_t *
 vnet_device_init (vlib_main_t * vm)
