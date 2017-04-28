@@ -46,8 +46,6 @@
 
 #include <dpdk/device/dpdk_priv.h>
 
-dpdk_main_t dpdk_main;
-
 /***
  *
  * HQoS default configuration values
