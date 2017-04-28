@@ -418,7 +418,9 @@ typedef struct
   u8 data[256];			/* First 256 data bytes, used for hexdump */
 } dpdk_rx_dma_trace_t;
 
-clib_error_t *dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd);
+clib_error_t *dpdk_device_setup (dpdk_device_t * xd);
+clib_error_t *dpdk_device_start (dpdk_device_t * xd);
+clib_error_t *dpdk_device_stop (dpdk_device_t * xd);
 
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\
