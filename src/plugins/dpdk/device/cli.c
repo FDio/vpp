@@ -537,7 +537,7 @@ set_dpdk_if_desc (vlib_main_t * vm, unformat_input_t * input,
   if (nb_tx_desc != (u32) ~ 0)
     xd->nb_tx_desc = nb_tx_desc;
 
-  error = dpdk_port_setup (dm, xd);
+  error = dpdk_device_setup (xd);
 
 done:
   unformat_free (line_input);

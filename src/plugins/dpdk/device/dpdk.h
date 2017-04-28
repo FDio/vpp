@@ -331,7 +331,6 @@ typedef struct
   u32 coremask;
   u32 nchannels;
   u32 num_mbufs;
-  u8 num_kni;			/* while kni_init allows u32, port_id in callback fn is only u8 */
 
   /*
    * format interface names ala xxxEthernet%d/%d/%d instead of
@@ -376,12 +375,6 @@ typedef struct
   u8 *pcap_filename;
   u32 pcap_sw_if_index;
   u32 pcap_pkts_to_capture;
-
-  /* hashes */
-  uword *dpdk_device_by_kni_port_id;
-  uword *vu_sw_if_index_by_listener_fd;
-  uword *vu_sw_if_index_by_sock_fd;
-  u32 *vu_inactive_interfaces_device_index;
 
   /*
    * flag indicating that a posted admin up/down
@@ -436,18 +429,9 @@ typedef struct
   u8 data[256];			/* First 256 data bytes, used for hexdump */
 } dpdk_rx_dma_trace_t;
 
-void vnet_buffer_needs_dpdk_mb (vlib_buffer_t * b);
-
-clib_error_t *dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address);
-
-clib_error_t *dpdk_set_mc_filter (vnet_hw_interface_t * hi,
-				  struct ether_addr mc_addr_vec[], int naddr);
-
-void dpdk_thread_input (dpdk_main_t * dm, dpdk_device_t * xd);
-
-clib_error_t *dpdk_port_setup (dpdk_main_t * dm, dpdk_device_t * xd);
-
-u32 dpdk_interface_tx_vector (vlib_main_t * vm, u32 dev_instance);
+clib_error_t *dpdk_device_setup (dpdk_device_t * xd);
+clib_error_t *dpdk_device_start (dpdk_device_t * xd);
+clib_error_t *dpdk_device_stop (dpdk_device_t * xd);
 
 struct rte_mbuf *dpdk_replicate_packet_mb (vlib_buffer_t * b);
 struct rte_mbuf *dpdk_zerocopy_replicate_packet_mb (vlib_buffer_t * b);

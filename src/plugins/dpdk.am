@@ -30,6 +30,7 @@ dpdk_plugin_la_SOURCES =					\
   dpdk/thread.c							\
   dpdk/api/dpdk_api.c						\
   dpdk/device/cli.c						\
+  dpdk/device/common.c						\
   dpdk/device/dpdk_priv.h					\
   dpdk/device/device.c						\
   dpdk/device/format.c						\
