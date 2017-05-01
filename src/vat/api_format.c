@@ -403,46 +403,6 @@ api_unformat_sw_if_index (unformat_input_t * input, va_list * args)
 }
 #endif /* VPP_API_TEST_BUILTIN */
 
-#define VHOST_USER_POLLING_MODE   0
-#define VHOST_USER_INTERRUPT_MODE 1
-#define VHOST_USER_ADAPTIVE_MODE  2
-
-static u8 *
-api_format_vhost_user_operation_mode (u8 * s, va_list * va)
-{
-  int operation_mode = va_arg (*va, int);
-
-  switch (operation_mode)
-    {
-    case VHOST_USER_POLLING_MODE:
-      s = format (s, "%-9s", "polling");
-      break;
-    case VHOST_USER_INTERRUPT_MODE:
-      s = format (s, "%-9s", "interrupt");
-      break;
-    default:
-      s = format (s, "%-9s", "invalid");
-    }
-  return s;
-}
-
-static uword
-api_unformat_vhost_user_operation_mode (unformat_input_t * input,
-					va_list * args)
-{
-  u8 *operation_mode = va_arg (*args, u8 *);
-  uword rc = 1;
-
-  if (unformat (input, "interrupt"))
-    *operation_mode = VHOST_USER_INTERRUPT_MODE;
-  else if (unformat (input, "polling"))
-    *operation_mode = VHOST_USER_POLLING_MODE;
-  else
-    rc = 0;
-
-  return rc;
-}
-
 static uword
 unformat_policer_rate_type (unformat_input_t * input, va_list * args)
 {
@@ -11481,7 +11441,6 @@ api_create_vhost_user_if (vat_main_t * vam)
   u8 use_custom_mac = 0;
   u8 *tag = 0;
   int ret;
-  u8 operation_mode = VHOST_USER_POLLING_MODE;
 
   /* Shut up coverity */
   memset (hwaddr, 0, sizeof (hwaddr));
@@ -11499,10 +11458,6 @@ api_create_vhost_user_if (vat_main_t * vam)
       else if (unformat (i, "server"))
 	is_server = 1;
       else if (unformat (i, "tag %s", &tag))
-	;
-      else if (unformat (i, "mode %U",
-			 api_unformat_vhost_user_operation_mode,
-			 &operation_mode))
 	;
       else
 	break;
@@ -11523,7 +11478,6 @@ api_create_vhost_user_if (vat_main_t * vam)
 
   M (CREATE_VHOST_USER_IF, mp);
 
-  mp->operation_mode = operation_mode;
   mp->is_server = is_server;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
   vec_free (file_name);
@@ -11555,7 +11509,6 @@ api_modify_vhost_user_if (vat_main_t * vam)
   u8 sw_if_index_set = 0;
   u32 sw_if_index = (u32) ~ 0;
   int ret;
-  u8 operation_mode = VHOST_USER_POLLING_MODE;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -11571,10 +11524,6 @@ api_modify_vhost_user_if (vat_main_t * vam)
 	;
       else if (unformat (i, "server"))
 	is_server = 1;
-      else if (unformat (i, "mode %U",
-			 api_unformat_vhost_user_operation_mode,
-			 &operation_mode))
-	;
       else
 	break;
     }
@@ -11600,7 +11549,6 @@ api_modify_vhost_user_if (vat_main_t * vam)
 
   M (MODIFY_VHOST_USER_IF, mp);
 
-  mp->operation_mode = operation_mode;
   mp->sw_if_index = ntohl (sw_if_index);
   mp->is_server = is_server;
   clib_memcpy (mp->sock_filename, file_name, vec_len (file_name));
@@ -11656,12 +11604,11 @@ static void vl_api_sw_interface_vhost_user_details_t_handler
 {
   vat_main_t *vam = &vat_main;
 
-  print (vam->ofp, "%-25s %3" PRIu32 " %6" PRIu32 " %8x %6d %7d %U %s",
+  print (vam->ofp, "%-25s %3" PRIu32 " %6" PRIu32 " %8x %6d %7d %s",
 	 (char *) mp->interface_name,
 	 ntohl (mp->sw_if_index), ntohl (mp->virtio_net_hdr_sz),
 	 clib_net_to_host_u64 (mp->features), mp->is_server,
-	 ntohl (mp->num_regions), api_format_vhost_user_operation_mode,
-	 mp->operation_mode, (char *) mp->sock_filename);
+	 ntohl (mp->num_regions), (char *) mp->sock_filename);
   print (vam->ofp, "    Status: '%s'", strerror (ntohl (mp->sock_errno)));
 }
 
@@ -11690,7 +11637,6 @@ static void vl_api_sw_interface_vhost_user_details_t_handler_json
   vat_json_object_add_string_copy (node, "sock_filename", mp->sock_filename);
   vat_json_object_add_uint (node, "num_regions", ntohl (mp->num_regions));
   vat_json_object_add_uint (node, "sock_errno", ntohl (mp->sock_errno));
-  vat_json_object_add_uint (node, "mode", mp->operation_mode);
 }
 
 static int
@@ -11700,8 +11646,7 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
   vl_api_control_ping_t *mp_ping;
   int ret;
   print (vam->ofp,
-	 "Interface name            idx hdr_sz features server regions mode"
-	 "      filename");
+	 "Interface name            idx hdr_sz features server regions filename");
 
   /* Get list of vhost-user interfaces */
   M (SW_INTERFACE_VHOST_USER_DUMP, mp);
@@ -19001,12 +18946,10 @@ _(l2_interface_vlan_tag_rewrite,                                        \
   "[translate-2-[1|2]] [push_dot1q 0] tag1 <nn> tag2 <nn>")             \
 _(create_vhost_user_if,                                                 \
         "socket <filename> [server] [renumber <dev_instance>] "         \
-        "[mac <mac_address>] "                                          \
-        "[mode <interrupt | polling>]")                                 \
+        "[mac <mac_address>]")                                          \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
-        "[server] [renumber <dev_instance>] "                           \
-        "[mode <interrupt | polling>]")                                 \
+        "[server] [renumber <dev_instance>]")                           \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \

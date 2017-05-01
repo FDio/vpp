@@ -66,13 +66,11 @@ typedef enum
 int vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 * sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr,
-			  u8 operation_mode);
+			  u8 renumber, u32 custom_dev_instance, u8 * hwaddr);
 int vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  const char *sock_filename, u8 is_server,
 			  u32 sw_if_index, u64 feature_mask,
-			  u8 renumber, u32 custom_dev_instance,
-			  u8 operation_mode);
+			  u8 renumber, u32 custom_dev_instance);
 int vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm,
 			  u32 sw_if_index);
 
@@ -210,14 +208,13 @@ typedef struct
   u32 callfd_idx;
   u32 kickfd_idx;
   u64 log_guest_addr;
-  u32 interrupt_thread_index;
+
+  /* The rx queue policy (interrupt/adaptive/polling) for this queue */
+  u32 mode;
 } vhost_user_vring_t;
 
-#define VHOST_USER_POLLING_MODE   0
-#define VHOST_USER_INTERRUPT_MODE 1
-#define VHOST_USER_ADAPTIVE_MODE  2
-
 #define VHOST_USER_EVENT_START_TIMER 1
+#define VHOST_USER_EVENT_STOP_TIMER  2
 
 typedef struct
 {
@@ -258,17 +255,9 @@ typedef struct
   u8 use_tx_spinlock;
   u16 *per_cpu_tx_qid;
 
-  /* Vector of workers for this interface */
-  u32 *workers;
-
-  u8 operation_mode;
+  /* Vector of active rx queues for this interface */
+  u16 *rx_queues;
 } vhost_user_intf_t;
-
-typedef struct
-{
-  u16 vhost_iface_index;
-  u16 qid;
-} vhost_iface_and_queue_t;
 
 typedef struct
 {
@@ -292,7 +281,6 @@ typedef struct
 
 typedef struct
 {
-  vhost_iface_and_queue_t *rx_queues;
   u32 rx_buffers_len;
   u32 rx_buffers[VHOST_USER_RX_BUFFERS_N];
 
@@ -302,12 +290,6 @@ typedef struct
   /* This is here so it doesn't end-up
    * using stack or registers. */
   vhost_trace_t *current_trace;
-
-  /* bitmap of pending rx interfaces */
-  uword *pending_input_bitmap;
-
-  /* The operation mode computed per cpu based on interface setting */
-  u8 operation_mode;
 } vhost_cpu_t;
 
 typedef struct
@@ -320,20 +302,14 @@ typedef struct
   f64 coalesce_time;
   int dont_dump_vhost_user_memory;
 
-  /** first cpu index */
-  u32 input_cpu_first_index;
-
-  /** total cpu count */
-  u32 input_cpu_count;
-
   /** Per-CPU data for vhost-user */
   vhost_cpu_t *cpus;
 
   /** Pseudo random iterator */
   u32 random;
 
-  /* Node is in interrupt mode */
-  u8 interrupt_mode;
+  /* The number of rx interface/queue pairs in interrupt mode */
+  u32 ifq_count;
 } vhost_user_main_t;
 
 typedef struct
@@ -346,7 +322,6 @@ typedef struct
   u8 sock_filename[256];
   u32 num_regions;
   int sock_errno;
-  u8 operation_mode;
 } vhost_user_intf_details_t;
 
 int vhost_user_dump_ifs (vnet_main_t * vnm, vlib_main_t * vm,

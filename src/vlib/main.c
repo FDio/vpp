@@ -1473,20 +1473,11 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   if (!nm->interrupt_threshold_vector_length)
     nm->interrupt_threshold_vector_length = 5;
 
-  if (is_main)
-    {
-      if (!nm->polling_threshold_vector_length)
-	nm->polling_threshold_vector_length = 10;
-      if (!nm->interrupt_threshold_vector_length)
-	nm->interrupt_threshold_vector_length = 5;
-
-      nm->current_process_index = ~0;
-    }
-
   /* Start all processes. */
   if (is_main)
     {
       uword i;
+      nm->current_process_index = ~0;
       for (i = 0; i < vec_len (nm->processes); i++)
 	cpu_time_now = dispatch_process (vm, nm->processes[i], /* frame */ 0,
 					 cpu_time_now);

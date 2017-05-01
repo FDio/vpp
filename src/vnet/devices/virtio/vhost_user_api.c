@@ -81,8 +81,7 @@ vl_api_create_vhost_user_if_t_handler (vl_api_create_vhost_user_if_t * mp)
   rv = vhost_user_create_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, &sw_if_index, (u64) ~ 0,
 			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     (mp->use_custom_mac) ? mp->mac_address : NULL,
-			     mp->operation_mode);
+			     (mp->use_custom_mac) ? mp->mac_address : NULL);
 
   /* Remember an interface tag for the new interface */
   if (rv == 0)
@@ -117,8 +116,7 @@ vl_api_modify_vhost_user_if_t_handler (vl_api_modify_vhost_user_if_t * mp)
 
   rv = vhost_user_modify_if (vnm, vm, (char *) mp->sock_filename,
 			     mp->is_server, sw_if_index, (u64) ~ 0,
-			     mp->renumber, ntohl (mp->custom_dev_instance),
-			     mp->operation_mode);
+			     mp->renumber, ntohl (mp->custom_dev_instance));
 
   REPLY_MACRO (VL_API_MODIFY_VHOST_USER_IF_REPLY);
 }
@@ -164,7 +162,6 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
   mp->virtio_net_hdr_sz = ntohl (vui->virtio_net_hdr_sz);
   mp->features = clib_net_to_host_u64 (vui->features);
   mp->is_server = vui->is_server;
-  mp->operation_mode = vui->operation_mode;
   mp->num_regions = ntohl (vui->num_regions);
   mp->sock_errno = ntohl (vui->sock_errno);
   mp->context = context;

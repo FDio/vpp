@@ -150,6 +150,7 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   dq->dev_instance = hw->dev_instance;
   dq->queue_id = queue_id;
   dq->mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+  rt->enabled_node_state = VLIB_NODE_STATE_POLLING;
 
   vnet_device_queue_update (vnm, rt);
   vec_validate (hw->input_node_thread_index_by_queue, queue_id);
@@ -168,6 +169,7 @@ vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   vnet_device_input_runtime_t *rt;
   vnet_device_and_queue_t *dq;
   uword old_thread_index;
+  vnet_hw_interface_rx_mode mode;
 
   if (hw->input_node_thread_index_by_queue == 0)
     return VNET_API_ERROR_INVALID_INTERFACE;
@@ -184,6 +186,7 @@ vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   vec_foreach (dq, rt->devices_and_queues)
     if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
     {
+      mode = dq->mode;
       vec_del1 (rt->devices_and_queues, dq - rt->devices_and_queues);
       goto deleted;
     }
@@ -197,6 +200,23 @@ deleted:
 
   if (vec_len (rt->devices_and_queues) == 0)
     vlib_node_set_state (vm, hw->input_node_index, VLIB_NODE_STATE_DISABLED);
+  else if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+    {
+      /*
+       * if the deleted interface is polling, we may need to set the node state
+       * to interrupt if there is no more polling interface for this device's
+       * corresponding thread. This is because mixed interfaces
+       * (polling and interrupt), assigned to the same thread, set the
+       * thread to polling prior to the deletion.
+       */
+      vec_foreach (dq, rt->devices_and_queues)
+      {
+	if (dq->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+	  return 0;
+      }
+      rt->enabled_node_state = VLIB_NODE_STATE_INTERRUPT;
+      vlib_node_set_state (vm, hw->input_node_index, rt->enabled_node_state);
+    }
 
   return 0;
 }
