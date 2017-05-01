@@ -420,6 +420,9 @@ api_format_vhost_user_operation_mode (u8 * s, va_list * va)
     case VHOST_USER_INTERRUPT_MODE:
       s = format (s, "%-9s", "interrupt");
       break;
+    case VHOST_USER_ADAPTIVE_MODE:
+      s = format (s, "%-9s", "adaptive");
+      break;
     default:
       s = format (s, "%-9s", "invalid");
     }
@@ -437,6 +440,8 @@ api_unformat_vhost_user_operation_mode (unformat_input_t * input,
     *operation_mode = VHOST_USER_INTERRUPT_MODE;
   else if (unformat (input, "polling"))
     *operation_mode = VHOST_USER_POLLING_MODE;
+  else if (unformat (input, "adaptive"))
+    *operation_mode = VHOST_USER_ADAPTIVE_MODE;
   else
     rc = 0;
 
@@ -18780,11 +18785,11 @@ _(l2_interface_vlan_tag_rewrite,                                        \
 _(create_vhost_user_if,                                                 \
         "socket <filename> [server] [renumber <dev_instance>] "         \
         "[mac <mac_address>] "                                          \
-        "[mode <interrupt | polling>]")                                 \
+        "[mode <interrupt | polling | adaptive>]")                      \
 _(modify_vhost_user_if,                                                 \
         "<intfc> | sw_if_index <nn> socket <filename>\n"                \
         "[server] [renumber <dev_instance>] "                           \
-        "[mode <interrupt | polling>]")                                 \
+        "[mode <interrupt | polling | adaptive>]")                      \
 _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \

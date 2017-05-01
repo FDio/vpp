@@ -362,140 +362,73 @@ vhost_user_tx_thread_placement (vhost_user_intf_t * vui)
     }
 }
 
+/**
+ * @brief Unassign existing interface/queue to thread mappings and re-assign
+ * new interface/queue to thread mappings
+ */
 static void
 vhost_user_rx_thread_placement ()
 {
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui;
-  vhost_cpu_t *vhc;
-  u32 *workers = 0;
-  u32 thread_index;
-  vlib_main_t *vm;
+  vhost_user_vring_t *txvq;
+  u8 mode;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 qid;
+  int rv;
+  u16 *queue;
 
-  //Let's list all workers cpu indexes
-  u32 i;
-  for (i = vum->input_cpu_first_index;
-       i < vum->input_cpu_first_index + vum->input_cpu_count; i++)
-    {
-      vlib_node_set_state (vlib_mains[i], vhost_user_input_node.index,
-			   VLIB_NODE_STATE_DISABLED);
-      vec_add1 (workers, i);
-    }
-
-  vec_foreach (vhc, vum->cpus)
-  {
-    vec_reset_length (vhc->rx_queues);
-  }
-
-  i = 0;
-  vhost_iface_and_queue_t iaq;
+  // Scrap all existing mappings for all interfaces/queues
   /* *INDENT-OFF* */
   pool_foreach (vui, vum->vhost_user_interfaces, {
-      u32 *vui_workers = vec_len (vui->workers) ? vui->workers : workers;
-      u32 qid;
+      vec_foreach (queue, vui->rx_queues)
+	{
+	  rv = vnet_hw_interface_unassign_rx_thread (vnm, vui->hw_if_index,
+						     *queue);
+	  if (rv)
+	    clib_warning ("Warning: unable to unassign interface %d, "
+			  "queue %d: rc=%d", vui->hw_if_index, *queue, rv);
+	}
+      vec_reset_length (vui->rx_queues);
+  });
+  /* *INDENT-ON* */
+
+  // Create the rx_queues for all interfaces
+  /* *INDENT-OFF* */
+  pool_foreach (vui, vum->vhost_user_interfaces, {
       for (qid = 0; qid < VHOST_VRING_MAX_N / 2; qid++)
 	{
-	  vhost_user_vring_t *txvq =
-	      &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-	  if (!txvq->started)
-	    continue;
-
-	  i %= vec_len (vui_workers);
-	  thread_index = vui_workers[i];
-	  i++;
-	  vhc = &vum->cpus[thread_index];
-	  txvq->interrupt_thread_index = thread_index;
-
-	  iaq.qid = qid;
-	  iaq.vhost_iface_index = vui - vum->vhost_user_interfaces;
-	  vec_add1 (vhc->rx_queues, iaq);
+	  txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
+	  if (txvq->started)
+	    vec_add1 (vui->rx_queues, qid);
 	}
   });
   /* *INDENT-ON* */
 
-  vec_foreach (vhc, vum->cpus)
-  {
-    vhost_iface_and_queue_t *vhiq;
-    u8 mode = VHOST_USER_INTERRUPT_MODE;
-
-    vec_foreach (vhiq, vhc->rx_queues)
-    {
-      vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
+  // Assign new mappings for all interfaces/queues
+  /* *INDENT-OFF* */
+  pool_foreach (vui, vum->vhost_user_interfaces, {
       if (vui->operation_mode == VHOST_USER_POLLING_MODE)
+	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+      else if (vui->operation_mode == VHOST_USER_ADAPTIVE_MODE)
+	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
+      else
+	mode = VNET_HW_INTERFACE_RX_MODE_INTERRUPT;
+
+      vec_foreach (queue, vui->rx_queues)
 	{
-	  /* At least one interface is polling, cpu is set to polling */
-	  mode = VHOST_USER_POLLING_MODE;
-	  break;
+	  vnet_hw_interface_set_input_node (vnm, vui->hw_if_index,
+					    vhost_user_input_node.index);
+	  vnet_hw_interface_assign_rx_thread (vnm, vui->hw_if_index, *queue,
+					      ~0);
+	  rv = vnet_hw_interface_set_rx_mode (vnm, vui->hw_if_index, *queue,
+					      mode);
+	  if (rv)
+	    clib_warning ("Warning: unable to set rx mode for interface %d, "
+			  "queue %d: rc=%d", vui->hw_if_index, *queue, rv);
 	}
-    }
-    vhc->operation_mode = mode;
-  }
-
-  for (thread_index = vum->input_cpu_first_index;
-       thread_index < vum->input_cpu_first_index + vum->input_cpu_count;
-       thread_index++)
-    {
-      vlib_node_state_t state = VLIB_NODE_STATE_POLLING;
-
-      vhc = &vum->cpus[thread_index];
-      vm = vlib_mains ? vlib_mains[thread_index] : &vlib_global_main;
-      switch (vhc->operation_mode)
-	{
-	case VHOST_USER_INTERRUPT_MODE:
-	  state = VLIB_NODE_STATE_INTERRUPT;
-	  break;
-	case VHOST_USER_POLLING_MODE:
-	  state = VLIB_NODE_STATE_POLLING;
-	  break;
-	default:
-	  clib_warning ("BUG: bad operation mode %d", vhc->operation_mode);
-	  break;
-	}
-      vlib_node_set_state (vm, vhost_user_input_node.index, state);
-    }
-
-  vec_free (workers);
-}
-
-static int
-vhost_user_thread_placement (u32 sw_if_index, u32 worker_thread_index, u8 del)
-{
-  vhost_user_main_t *vum = &vhost_user_main;
-  vhost_user_intf_t *vui;
-  vnet_hw_interface_t *hw;
-
-  if (worker_thread_index < vum->input_cpu_first_index ||
-      worker_thread_index >=
-      vum->input_cpu_first_index + vum->input_cpu_count)
-    return -1;
-
-  if (!(hw = vnet_get_sup_hw_interface (vnet_get_main (), sw_if_index)))
-    return -2;
-
-  vui = pool_elt_at_index (vum->vhost_user_interfaces, hw->dev_instance);
-  u32 found = ~0, *w;
-  vec_foreach (w, vui->workers)
-  {
-    if (*w == worker_thread_index)
-      {
-	found = w - vui->workers;
-	break;
-      }
-  }
-
-  if (del)
-    {
-      if (found == ~0)
-	return -3;
-      vec_del1 (vui->workers, found);
-    }
-  else if (found == ~0)
-    {
-      vec_add1 (vui->workers, worker_thread_index);
-    }
-
-  vhost_user_rx_thread_placement ();
-  return 0;
+  });
+  /* *INDENT-ON* */
 }
 
 /** @brief Returns whether at least one TX and one RX vring are enabled */
@@ -532,37 +465,17 @@ vhost_user_update_iface_state (vhost_user_intf_t * vui)
 static void
 vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 {
-  vhost_user_main_t *vum = &vhost_user_main;
-  vhost_cpu_t *vhc;
-  u32 thread_index;
-  vlib_main_t *vm;
-  u32 ifq2, qid;
-  vhost_user_vring_t *txvq;
+  u32 qid;
+  vnet_main_t *vnm = vnet_get_main ();
 
   qid = ifq & 0xff;
-  if ((qid % 2) == 0)
-    /* Only care about the odd number virtqueue which is TX */
+  if ((qid & 1) == 0)
+    /* Only care about the odd number, or TX, virtqueue */
     return;
 
   if (vhost_user_intf_ready (vui))
-    {
-      txvq = &vui->vrings[qid];
-      thread_index = txvq->interrupt_thread_index;
-      vhc = &vum->cpus[thread_index];
-      if (vhc->operation_mode == VHOST_USER_INTERRUPT_MODE)
-	{
-	  vm = vlib_mains ? vlib_mains[thread_index] : &vlib_global_main;
-	  /*
-	   * Convert virtqueue number in the lower byte to vring
-	   * queue index for the input node process. Top bytes contain
-	   * the interface, lower byte contains the queue index.
-	   */
-	  ifq2 = ((ifq >> 8) << 8) | qid / 2;
-	  vhc->pending_input_bitmap =
-	    clib_bitmap_set (vhc->pending_input_bitmap, ifq2, 1);
-	  vlib_node_set_interrupt_pending (vm, vhost_user_input_node.index);
-	}
-    }
+    // qid >> 1 is to convert virtqueue number to vring queue index
+    vnet_device_input_set_interrupt_pending (vnm, vui->hw_if_index, qid >> 1);
 }
 
 static clib_error_t *
@@ -570,14 +483,10 @@ vhost_user_callfd_read_ready (unix_file_t * uf)
 {
   __attribute__ ((unused)) int n;
   u8 buff[8];
-  vhost_user_intf_t *vui =
-    pool_elt_at_index (vhost_user_main.vhost_user_interfaces,
-		       uf->private_data >> 8);
 
   n = read (uf->file_descriptor, ((char *) &buff), 8);
   DBG_SOCK ("if %d CALL queue %d", uf->private_data >> 8,
 	    uf->private_data & 0xff);
-  vhost_user_set_interrupt_pending (vui, uf->private_data);
 
   return 0;
 }
@@ -1315,8 +1224,6 @@ vhost_user_init (vlib_main_t * vm)
   clib_error_t *error;
   vhost_user_main_t *vum = &vhost_user_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
-  vlib_thread_registration_t *tr;
-  uword *p;
 
   error = vlib_call_init_function (vm, ip4_init);
   if (error)
@@ -1334,18 +1241,6 @@ vhost_user_init (vlib_main_t * vm)
      * Just keeping the loop here for later because I am lazy. */
     cpu->rx_buffers_len = 0;
   }
-
-  /* find out which cpus will be used for input */
-  vum->input_cpu_first_index = 0;
-  vum->input_cpu_count = 1;
-  p = hash_get_mem (tm->thread_registrations_by_name, "workers");
-  tr = p ? (vlib_thread_registration_t *) p[0] : 0;
-
-  if (tr && tr->count > 0)
-    {
-      vum->input_cpu_first_index = tr->first_index;
-      vum->input_cpu_count = tr->count;
-    }
 
   vum->random = random_default_seed ();
 
@@ -1588,6 +1483,26 @@ vhost_user_if_input (vlib_main_t * vm,
     if ((rxvq->n_since_last_int) && (rxvq->int_deadline < now))
       vhost_user_send_call (vm, rxvq);
   }
+
+  /*
+   * For adaptive mode, it is optimized to reduce interrupts.
+   * If the scheduler switches the input node to polling due
+   * to burst of traffic, we tell the driver no interrupt.
+   * When the traffic subsides, the scheduler switches the node back to
+   * interrupt mode. We must tell the driver we want interrupt.
+   */
+  if (PREDICT_FALSE (vui->operation_mode == VHOST_USER_ADAPTIVE_MODE))
+    {
+      if ((node->flags &
+	   VLIB_NODE_FLAG_SWITCH_FROM_POLLING_TO_INTERRUPT_MODE) ||
+	  !(node->flags &
+	    VLIB_NODE_FLAG_SWITCH_FROM_INTERRUPT_TO_POLLING_MODE))
+	/* Tell driver we want notification */
+	txvq->used->flags = 0;
+      else
+	/* Tell driver we don't want notification */
+	txvq->used->flags = VRING_USED_F_NO_NOTIFY;
+    }
 
   if (PREDICT_FALSE (txvq->avail->flags & 0xFFFE))
     return 0;
@@ -1930,34 +1845,22 @@ vhost_user_input (vlib_main_t * vm,
 {
   vhost_user_main_t *vum = &vhost_user_main;
   uword n_rx_packets = 0;
-  u32 thread_index = vlib_get_thread_index ();
-  vhost_iface_and_queue_t *vhiq;
   vhost_user_intf_t *vui;
-  vhost_cpu_t *vhc;
+  vnet_device_input_runtime_t *rt =
+    (vnet_device_input_runtime_t *) node->runtime_data;
+  vnet_device_and_queue_t *dq;
 
-  vhc = &vum->cpus[thread_index];
-  if (PREDICT_TRUE (vhc->operation_mode == VHOST_USER_POLLING_MODE))
-    {
-      vec_foreach (vhiq, vum->cpus[thread_index].rx_queues)
+  vec_foreach (dq, rt->devices_and_queues)
+  {
+    if (clib_smp_swap (&dq->interrupt_pending, 0) ||
+	(node->state == VLIB_NODE_STATE_POLLING))
       {
-	vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
-	n_rx_packets += vhost_user_if_input (vm, vum, vui, vhiq->qid, node);
+	vui =
+	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
+	n_rx_packets = vhost_user_if_input (vm, vum, vui, dq->queue_id, node);
       }
-    }
-  else
-    {
-      int i;
+  }
 
-      /* *INDENT-OFF* */
-      clib_bitmap_foreach (i, vhc->pending_input_bitmap, ({
-	int qid = i & 0xff;
-
-	clib_bitmap_set (vhc->pending_input_bitmap, i, 0);
-	vui = pool_elt_at_index (vum->vhost_user_interfaces, i >> 8);
-	n_rx_packets += vhost_user_if_input (vm, vum, vui, qid, node);
-      }));
-      /* *INDENT-ON* */
-    }
   return n_rx_packets;
 }
 
@@ -2529,8 +2432,6 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   int q;
   vhost_user_main_t *vum = &vhost_user_main;
 
-  // Delete configured thread pinning
-  vec_reset_length (vui->workers);
   // disconnect interface sockets
   vhost_user_if_disconnect (vui);
   vhost_user_update_iface_state (vui);
@@ -2553,6 +2454,99 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   mhash_unset (&vum->if_index_by_sock_name, vui->sock_filename,
 	       &vui->if_index);
 }
+
+static uword
+vhost_user_send_interrupt_process (vlib_main_t * vm,
+				   vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  vhost_user_intf_t *vui;
+  f64 timeout = 3153600000.0 /* 100 years */ ;
+  uword event_type, *event_data = 0;
+  vhost_user_main_t *vum = &vhost_user_main;
+  u16 *queue;
+  f64 now, poll_time_remaining;
+  f64 next_timeout;
+
+  while (1)
+    {
+      poll_time_remaining =
+	vlib_process_wait_for_event_or_clock (vm, timeout);
+      event_type = vlib_process_get_events (vm, &event_data);
+      vec_reset_length (event_data);
+
+      /*
+       * Use the remaining timeout if it is less than coalesce time to avoid
+       * resetting the existing timer in the middle of expiration
+       */
+      timeout = poll_time_remaining;
+      if (vlib_process_suspend_time_is_zero (timeout) ||
+	  (timeout > vum->coalesce_time))
+	timeout = vum->coalesce_time;
+
+      now = vlib_time_now (vm);
+      switch (event_type)
+	{
+	case VHOST_USER_EVENT_STOP_TIMER:
+	  timeout = 3153600000.0;
+	  break;
+
+	case VHOST_USER_EVENT_START_TIMER:
+	  if (!vlib_process_suspend_time_is_zero (poll_time_remaining))
+	    break;
+	  /* fall through */
+
+	case ~0:
+	  /* *INDENT-OFF* */
+	  pool_foreach (vui, vum->vhost_user_interfaces, {
+	      next_timeout = timeout;
+	      vec_foreach (queue, vui->rx_queues)
+		{
+		  vhost_user_vring_t *rxvq =
+		    &vui->vrings[VHOST_VRING_IDX_RX (*queue)];
+		  vhost_user_vring_t *txvq =
+		    &vui->vrings[VHOST_VRING_IDX_TX (*queue)];
+
+		  if (txvq->n_since_last_int)
+		    {
+		      if (now >= txvq->int_deadline)
+			vhost_user_send_call (vm, txvq);
+		      else
+			next_timeout = txvq->int_deadline - now;
+		    }
+
+		  if (rxvq->n_since_last_int)
+		    {
+		      if (now >= rxvq->int_deadline)
+			vhost_user_send_call (vm, rxvq);
+		      else
+			next_timeout = rxvq->int_deadline - now;
+		    }
+
+		  if ((next_timeout < timeout) && (next_timeout > 0.0))
+		    timeout = next_timeout;
+		}
+	  });
+          /* *INDENT-ON* */
+	  break;
+
+	default:
+	  clib_warning ("BUG: unhandled event type %d", event_type);
+	  break;
+	}
+      /* No less than 1 millisecond */
+      if (timeout < 1e-3)
+	timeout = 1e-3;
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (vhost_user_send_interrupt_node,static) = {
+    .function = vhost_user_send_interrupt_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "vhost-user-send-interrupt-process",
+};
+/* *INDENT-ON* */
 
 int
 vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
@@ -2581,6 +2575,20 @@ vhost_user_delete_if (vnet_main_t * vnm, vlib_main_t * vm, u32 sw_if_index)
 
   // Delete ethernet interface
   ethernet_delete_interface (vnm, vui->hw_if_index);
+
+  if ((vui->operation_mode != VHOST_USER_POLLING_MODE) &&
+      (vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
+    {
+      if (vum->interrupt_if_count)
+	{
+	  vum->interrupt_if_count--;
+	  // Stop the timer if there is no more interrupt interface
+	  if (vum->interrupt_if_count == 0)
+	    vlib_process_signal_event (vm,
+				       vhost_user_send_interrupt_node.index,
+				       VHOST_USER_EVENT_STOP_TIMER, 0);
+	}
+    }
 
   // Back to pool
   pool_put (vum->vhost_user_interfaces, vui);
@@ -2699,7 +2707,9 @@ vhost_user_vui_init (vnet_main_t * vnm,
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   int q;
   vhost_user_main_t *vum = &vhost_user_main;
+  vnet_hw_interface_t *hw;
 
+  hw = vnet_get_hw_interface (vnm, vui->hw_if_index);
   if (server_sock_fd != -1)
     {
       unix_file_t template = { 0 };
@@ -2729,6 +2739,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
   for (q = 0; q < VHOST_VRING_MAX_N; q++)
     vhost_user_vring_init (vui, q);
 
+  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
 
   if (sw_if_index)
@@ -2745,98 +2756,6 @@ vhost_user_vui_init (vnet_main_t * vnm,
 		vlib_get_thread_main ()->n_vlib_mains - 1);
   vhost_user_tx_thread_placement (vui);
 }
-
-static uword
-vhost_user_send_interrupt_process (vlib_main_t * vm,
-				   vlib_node_runtime_t * rt, vlib_frame_t * f)
-{
-  vhost_user_intf_t *vui;
-  f64 timeout = 3153600000.0 /* 100 years */ ;
-  uword event_type, *event_data = 0;
-  vhost_user_main_t *vum = &vhost_user_main;
-  vhost_iface_and_queue_t *vhiq;
-  vhost_cpu_t *vhc;
-  f64 now, poll_time_remaining;
-
-  while (1)
-    {
-      poll_time_remaining =
-	vlib_process_wait_for_event_or_clock (vm, timeout);
-      event_type = vlib_process_get_events (vm, &event_data);
-      vec_reset_length (event_data);
-
-      /*
-       * Use the remaining timeout if it is less than coalesce time to avoid
-       * resetting the existing timer in the middle of expiration
-       */
-      timeout = poll_time_remaining;
-      if (vlib_process_suspend_time_is_zero (timeout) ||
-	  (timeout > vum->coalesce_time))
-	timeout = vum->coalesce_time;
-
-      now = vlib_time_now (vm);
-      switch (event_type)
-	{
-	case VHOST_USER_EVENT_START_TIMER:
-	  if (!vlib_process_suspend_time_is_zero (poll_time_remaining))
-	    break;
-	  /* fall through */
-
-	case ~0:
-	  vec_foreach (vhc, vum->cpus)
-	  {
-	    u32 thread_index = vhc - vum->cpus;
-	    f64 next_timeout;
-
-	    next_timeout = timeout;
-	    vec_foreach (vhiq, vum->cpus[thread_index].rx_queues)
-	    {
-	      vui = &vum->vhost_user_interfaces[vhiq->vhost_iface_index];
-	      vhost_user_vring_t *rxvq =
-		&vui->vrings[VHOST_VRING_IDX_RX (vhiq->qid)];
-	      vhost_user_vring_t *txvq =
-		&vui->vrings[VHOST_VRING_IDX_TX (vhiq->qid)];
-
-	      if (txvq->n_since_last_int)
-		{
-		  if (now >= txvq->int_deadline)
-		    vhost_user_send_call (vm, txvq);
-		  else
-		    next_timeout = txvq->int_deadline - now;
-		}
-
-	      if (rxvq->n_since_last_int)
-		{
-		  if (now >= rxvq->int_deadline)
-		    vhost_user_send_call (vm, rxvq);
-		  else
-		    next_timeout = rxvq->int_deadline - now;
-		}
-
-	      if ((next_timeout < timeout) && (next_timeout > 0.0))
-		timeout = next_timeout;
-	    }
-	  }
-	  break;
-
-	default:
-	  clib_warning ("BUG: unhandled event type %d", event_type);
-	  break;
-	}
-      /* No less than 1 millisecond */
-      if (timeout < 1e-3)
-	timeout = 1e-3;
-    }
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (vhost_user_send_interrupt_node,static) = {
-    .function = vhost_user_send_interrupt_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "vhost-user-send-interrupt-process",
-};
-/* *INDENT-ON* */
 
 int
 vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
@@ -2855,8 +2774,9 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   uword *if_index;
 
   if ((operation_mode != VHOST_USER_POLLING_MODE) &&
-      (operation_mode != VHOST_USER_INTERRUPT_MODE))
-    return VNET_API_ERROR_UNIMPLEMENTED;
+      (operation_mode != VHOST_USER_INTERRUPT_MODE) &&
+      (operation_mode != VHOST_USER_ADAPTIVE_MODE))
+    return VNET_API_ERROR_INVALID_ARGUMENT;
 
   if (sock_filename == NULL || !(strlen (sock_filename) > 0))
     {
@@ -2898,14 +2818,16 @@ vhost_user_create_if (vnet_main_t * vnm, vlib_main_t * vm,
   // Process node must connect
   vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
 
-  if ((operation_mode == VHOST_USER_INTERRUPT_MODE) &&
-      !vum->interrupt_mode && (vum->coalesce_time > 0.0) &&
-      (vum->coalesce_frames > 0))
+  if ((vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0) &&
+      (operation_mode != VHOST_USER_POLLING_MODE))
     {
-      vum->interrupt_mode = 1;
-      vlib_process_signal_event (vm, vhost_user_send_interrupt_node.index,
-				 VHOST_USER_EVENT_START_TIMER, 0);
+      vum->interrupt_if_count++;
+      // Start the timer if this is the first interrupt interface
+      if (vum->interrupt_if_count == 1)
+	vlib_process_signal_event (vm, vhost_user_send_interrupt_node.index,
+				   VHOST_USER_EVENT_START_TIMER, 0);
     }
+
   return rv;
 }
 
@@ -2926,8 +2848,10 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   uword *if_index;
 
   if ((operation_mode != VHOST_USER_POLLING_MODE) &&
-      (operation_mode != VHOST_USER_INTERRUPT_MODE))
-    return VNET_API_ERROR_UNIMPLEMENTED;
+      (operation_mode != VHOST_USER_INTERRUPT_MODE) &&
+      (operation_mode != VHOST_USER_ADAPTIVE_MODE))
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
   if (!(hwif = vnet_get_sup_hw_interface (vnm, sw_if_index)) ||
       hwif->dev_class_index != vhost_user_dev_class.index)
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
@@ -2951,6 +2875,16 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
 					   &server_sock_fd)) != 0)
       return rv;
 
+  u8 new_is_interrupt = 0;
+  u8 old_is_interrupt = 0;
+  if ((vum->coalesce_time > 0.0) && (vum->coalesce_frames > 0))
+    {
+      if (operation_mode != VHOST_USER_POLLING_MODE)
+	new_is_interrupt = 1;
+      if (vui->operation_mode != VHOST_USER_POLLING_MODE)
+	old_is_interrupt = 1;
+    }
+
   vhost_user_term_if (vui);
   vhost_user_vui_init (vnm, vui, server_sock_fd,
 		       sock_filename, feature_mask, &sw_if_idx,
@@ -2962,14 +2896,31 @@ vhost_user_modify_if (vnet_main_t * vnm, vlib_main_t * vm,
   // Process node must connect
   vlib_process_signal_event (vm, vhost_user_process_node.index, 0, 0);
 
-  if ((operation_mode == VHOST_USER_INTERRUPT_MODE) &&
-      !vum->interrupt_mode && (vum->coalesce_time > 0.0) &&
-      (vum->coalesce_frames > 0))
+  // Only interested in modifying an interface from interrupt to polling
+  // or from polling to interrupt
+  if (old_is_interrupt != new_is_interrupt)
     {
-      vum->interrupt_mode = 1;
-      vlib_process_signal_event (vm, vhost_user_send_interrupt_node.index,
-				 VHOST_USER_EVENT_START_TIMER, 0);
+      if (old_is_interrupt)	/* old is interrupt, new is polling */
+	{
+	  if (vum->interrupt_if_count)
+	    {
+	      vum->interrupt_if_count--;
+	      if (vum->interrupt_if_count == 0)
+		vlib_process_signal_event (vm,
+					   vhost_user_send_interrupt_node.index,
+					   VHOST_USER_EVENT_STOP_TIMER, 0);
+	    }
+	}
+      else			/* old is polling, new is interrupt */
+	{
+	  vum->interrupt_if_count++;
+	  if (vum->interrupt_if_count == 1)
+	    vlib_process_signal_event (vm,
+				       vhost_user_send_interrupt_node.index,
+				       VHOST_USER_EVENT_START_TIMER, 0);
+	}
     }
+
   return rv;
 }
 
@@ -2983,6 +2934,8 @@ unformat_vhost_user_operation_mode (unformat_input_t * input, va_list * args)
     *operation_mode = VHOST_USER_INTERRUPT_MODE;
   else if (unformat (input, "polling"))
     *operation_mode = VHOST_USER_POLLING_MODE;
+  else if (unformat (input, "adaptive"))
+    *operation_mode = VHOST_USER_ADAPTIVE_MODE;
   else
     rc = 0;
 
@@ -3171,8 +3124,12 @@ format_vhost_user_operation_mode (u8 * s, va_list * va)
     case VHOST_USER_INTERRUPT_MODE:
       s = format (s, "%s", "interrupt");
       break;
+    case VHOST_USER_ADAPTIVE_MODE:
+      s = format (s, "%s", "adaptive");
+      break;
     default:
       s = format (s, "%s", "invalid");
+      break;
     }
   return s;
 }
@@ -3188,10 +3145,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
   vhost_user_intf_t *vui;
   u32 hw_if_index, *hw_if_indices = 0;
   vnet_hw_interface_t *hi;
-  vhost_cpu_t *vhc;
-  vhost_iface_and_queue_t *vhiq;
+  u16 *queue;
   u32 ci;
-
   int i, j, q;
   int show_descr = 0;
   struct feat_struct
@@ -3288,20 +3243,17 @@ show_vhost_user_command_fn (vlib_main_t * vm,
       vlib_cli_output (vm, " configured mode: %U\n",
 		       format_vhost_user_operation_mode, vui->operation_mode);
       vlib_cli_output (vm, " rx placement: ");
-      vec_foreach (vhc, vum->cpus)
+
+      vec_foreach (queue, vui->rx_queues)
       {
-	vec_foreach (vhiq, vhc->rx_queues)
-	{
-	  if (vhiq->vhost_iface_index == vui - vum->vhost_user_interfaces)
-	    {
-	      vlib_cli_output (vm, "   thread %d on vring %d\n",
-			       vhc - vum->cpus,
-			       VHOST_VRING_IDX_TX (vhiq->qid));
-	      vlib_cli_output (vm, "   mode: %U\n",
-			       format_vhost_user_operation_mode,
-			       vhc->operation_mode);
-	    }
-	}
+	vnet_main_t *vnm = vnet_get_main ();
+	uword thread_index;
+
+	thread_index = vnet_get_device_input_thread_index (vnm,
+							   vui->hw_if_index,
+							   *queue);
+	vlib_cli_output (vm, "   thread %d on vring %d\n",
+			 thread_index, VHOST_VRING_IDX_TX (*queue));
       }
 
       vlib_cli_output (vm, " tx placement: %s\n",
@@ -3451,7 +3403,7 @@ VLIB_CLI_COMMAND (vhost_user_connect_command, static) = {
     .path = "create vhost-user",
     .short_help = "create vhost-user socket <socket-filename> [server] "
     "[feature-mask <hex>] [hwaddr <mac-addr>] [renumber <dev_instance>] "
-    "[mode {interrupt | polling}]",
+    "[mode {interrupt | polling | adaptive}]",
     .function = vhost_user_connect_command_fn,
 };
 /* *INDENT-ON* */
@@ -3653,69 +3605,6 @@ vhost_user_unmap_all (void)
 	);
     }
 }
-
-static clib_error_t *
-vhost_thread_command_fn (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  unformat_input_t _line_input, *line_input = &_line_input;
-  u32 worker_thread_index;
-  u32 sw_if_index;
-  u8 del = 0;
-  int rv;
-  clib_error_t *error = NULL;
-
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
-
-  if (!unformat
-      (line_input, "%U %d", unformat_vnet_sw_interface, vnet_get_main (),
-       &sw_if_index, &worker_thread_index))
-    {
-      error = clib_error_return (0, "unknown input `%U'",
-				 format_unformat_error, line_input);
-      goto done;
-    }
-
-  if (unformat (line_input, "del"))
-    del = 1;
-
-  if ((rv =
-       vhost_user_thread_placement (sw_if_index, worker_thread_index, del)))
-    {
-      error = clib_error_return (0, "vhost_user_thread_placement returned %d",
-				 rv);
-      goto done;
-    }
-
-done:
-  unformat_free (line_input);
-
-  return error;
-}
-
-
-/*?
- * This command is used to move the RX processing for the given
- * interfaces to the provided thread. If the '<em>del</em>' option is used,
- * the forced thread assignment is removed and the thread assigment is
- * reassigned automatically. Use '<em>show vhost-user <interface></em>'
- * to see the thread assignment.
- *
- * @cliexpar
- * Example of how to move the RX processing for a given interface to a given thread:
- * @cliexcmd{vhost thread VirtualEthernet0/0/0 1}
- * Example of how to remove the forced thread assignment for a given interface:
- * @cliexcmd{vhost thread VirtualEthernet0/0/0 1 del}
-?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (vhost_user_thread_command, static) = {
-    .path = "vhost thread",
-    .short_help = "vhost thread <iface> <worker-index> [del]",
-    .function = vhost_thread_command_fn,
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
