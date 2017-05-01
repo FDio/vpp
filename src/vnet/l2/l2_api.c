@@ -408,8 +408,7 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
   for (; bd_index < end; bd_index++)
     {
       bd_config = l2input_bd_config_from_index (l2im, bd_index);
-      /* skip dummy bd_id 0 */
-      if (bd_config && (bd_config->bd_id > 0))
+      if (bd_config && (bd_config->bd_id != ~0))
 	{
 	  u32 n_sw_ifs;
 	  l2_flood_member_t *m;
