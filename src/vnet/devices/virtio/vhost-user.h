@@ -210,7 +210,6 @@ typedef struct
   u32 callfd_idx;
   u32 kickfd_idx;
   u64 log_guest_addr;
-  u32 interrupt_thread_index;
 } vhost_user_vring_t;
 
 #define VHOST_USER_POLLING_MODE   0
@@ -218,6 +217,7 @@ typedef struct
 #define VHOST_USER_ADAPTIVE_MODE  2
 
 #define VHOST_USER_EVENT_START_TIMER 1
+#define VHOST_USER_EVENT_STOP_TIMER  2
 
 typedef struct
 {
@@ -258,17 +258,12 @@ typedef struct
   u8 use_tx_spinlock;
   u16 *per_cpu_tx_qid;
 
-  /* Vector of workers for this interface */
-  u32 *workers;
+  /* Vector of active rx queues for this interface */
+  u16 *rx_queues;
 
+  /* The rx queue policy (interrupt/adaptive/polling) for this interface */
   u8 operation_mode;
 } vhost_user_intf_t;
-
-typedef struct
-{
-  u16 vhost_iface_index;
-  u16 qid;
-} vhost_iface_and_queue_t;
 
 typedef struct
 {
@@ -292,7 +287,6 @@ typedef struct
 
 typedef struct
 {
-  vhost_iface_and_queue_t *rx_queues;
   u32 rx_buffers_len;
   u32 rx_buffers[VHOST_USER_RX_BUFFERS_N];
 
@@ -302,12 +296,6 @@ typedef struct
   /* This is here so it doesn't end-up
    * using stack or registers. */
   vhost_trace_t *current_trace;
-
-  /* bitmap of pending rx interfaces */
-  uword *pending_input_bitmap;
-
-  /* The operation mode computed per cpu based on interface setting */
-  u8 operation_mode;
 } vhost_cpu_t;
 
 typedef struct
@@ -320,20 +308,14 @@ typedef struct
   f64 coalesce_time;
   int dont_dump_vhost_user_memory;
 
-  /** first cpu index */
-  u32 input_cpu_first_index;
-
-  /** total cpu count */
-  u32 input_cpu_count;
-
   /** Per-CPU data for vhost-user */
   vhost_cpu_t *cpus;
 
   /** Pseudo random iterator */
   u32 random;
 
-  /* Node is in interrupt mode */
-  u8 interrupt_mode;
+  /* The number of interfaces is in interrupt mode */
+  u32 interrupt_if_count;
 } vhost_user_main_t;
 
 typedef struct
