@@ -15,6 +15,8 @@
 #include "map.h"
 
 #include "../ip/ip_frag.h"
+#include <vnet/ip/ip4_to_ip6.h>
+#include <vnet/ip/ip6_to_ip4.h>
 
 enum ip6_map_next_e
 {
@@ -125,7 +127,7 @@ ip6_map_security_check (map_domain_t * d, ip4_header_t * ip4,
 	{
 	  if (!ip4_is_fragment (ip4))
 	    {
-	      u16 port = ip4_map_get_port (ip4, MAP_SENDER);
+	      u16 port = ip4_get_port (ip4, 1);
 	      if (port)
 		{
 		  if (mm->sec_check)
@@ -243,8 +245,9 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      d0 =
 		ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & ip40->src_address.
-				    as_u32, &map_domain_index0, &error0);
+				    (ip4_address_t *) & ip40->
+				    src_address.as_u32, &map_domain_index0,
+				    &error0);
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip60->payload_length) >
@@ -270,8 +273,9 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      d1 =
 		ip6_map_get_domain (vnet_buffer (p1)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & ip41->src_address.
-				    as_u32, &map_domain_index1, &error1);
+				    (ip4_address_t *) & ip41->
+				    src_address.as_u32, &map_domain_index1,
+				    &error1);
 	    }
 	  else if (ip61->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip61->payload_length) >
@@ -454,8 +458,9 @@ ip6_map (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      d0 =
 		ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
-				    (ip4_address_t *) & ip40->src_address.
-				    as_u32, &map_domain_index0, &error0);
+				    (ip4_address_t *) & ip40->
+				    src_address.as_u32, &map_domain_index0,
+				    &error0);
 	    }
 	  else if (ip60->protocol == IP_PROTOCOL_ICMP6 &&
 		   clib_net_to_host_u16 (ip60->payload_length) >
@@ -891,9 +896,7 @@ ip6_map_ip4_reass (vlib_main_t * vm,
 		  cached = 1;
 		}
 	    }
-	  else
-	    if ((port0 =
-		 ip4_get_port (ip40, MAP_SENDER, p0->current_length)) < 0)
+	  else if ((port0 = ip4_get_port (ip40, 1)) == 0)
 	    {
 	      // Could not find port from first fragment. Stop reassembling.
 	      error0 = MAP_ERROR_BAD_PROTOCOL;

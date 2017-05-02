@@ -25,12 +25,6 @@
 
 #define MAP_SKIP_IP6_LOOKUP 1
 
-typedef enum
-{
-  MAP_SENDER,
-  MAP_RECEIVER
-} map_dir_e;
-
 int map_create_domain (ip4_address_t * ip4_prefix, u8 ip4_prefix_len,
 		       ip6_address_t * ip6_prefix, u8 ip6_prefix_len,
 		       ip6_address_t * ip6_src, u8 ip6_src_len,
@@ -40,9 +34,6 @@ int map_delete_domain (u32 map_domain_index);
 int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      u8 is_add);
 u8 *format_map_trace (u8 * s, va_list * args);
-i32 ip4_get_port (ip4_header_t * ip, map_dir_e dir, u16 buffer_len);
-i32 ip6_get_port (ip6_header_t * ip6, map_dir_e dir, u16 buffer_len);
-u16 ip4_map_get_port (ip4_header_t * ip, map_dir_e dir);
 
 typedef enum __attribute__ ((__packed__))
 {
@@ -518,29 +509,9 @@ int map_ip6_reass_conf_lifetime(u16 lifetime_ms);
 int map_ip6_reass_conf_buffers(u32 buffers);
 #define MAP_IP6_REASS_CONF_BUFFERS_MAX (0xffffffff)
 
-static_always_inline
-int ip6_parse(const ip6_header_t *ip6, u32 buff_len,
-              u8 *l4_protocol, u16 *l4_offset, u16 *frag_hdr_offset)
-{
-  if (ip6->protocol == IP_PROTOCOL_IPV6_FRAGMENTATION) {
-    *l4_protocol = ((ip6_frag_hdr_t *)(ip6 + 1))->next_hdr;
-    *frag_hdr_offset = sizeof(*ip6);
-    *l4_offset = sizeof(*ip6) + sizeof(ip6_frag_hdr_t);
-  } else {
-    *l4_protocol = ip6->protocol;
-    *frag_hdr_offset = 0;
-    *l4_offset = sizeof(*ip6);
-  }
-
-  return (buff_len < (*l4_offset + 4)) ||
-      (clib_net_to_host_u16(ip6->payload_length) < (*l4_offset + 4 - sizeof(*ip6)));
-}
-
 
 #define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
 #define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))
-
-#define frag_id_6to4(id) ((id) ^ ((id) >> 16))
 
 static_always_inline void
 ip4_map_t_embedded_address (map_domain_t *d,
