@@ -447,9 +447,24 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         else
         {
             flow_hash_config_t fhc;
+            fib_protocol_t fp;
 
-            fhc = fib_table_get_flow_hash_config(fib_entry->fe_fib_index,
-                                                 dpo_proto_to_fib(lb_proto));
+            /*
+             * if the protocol for the LB we are building does not match that
+             * of the fib_entry (i.e. we are build the [n]EOS LB for an IPv[46]
+             * then the fib_index is not an index that relates to the table
+             * type we need. So get the default flow-hash config instead.
+             */
+            fp = dpo_proto_to_fib(lb_proto);
+
+            if (fib_entry->fe_prefix.fp_proto != fp)
+            {
+                fhc = fib_table_get_default_flow_hash_config(fp);
+            }
+            else
+            {
+                fhc = fib_table_get_flow_hash_config(fib_entry->fe_fib_index, fp);
+            }
             dpo_set(dpo_lb,
                     DPO_LOAD_BALANCE,
                     lb_proto,
