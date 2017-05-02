@@ -19,6 +19,7 @@
 
 #include "map.h"
 #include "../ip/ip_frag.h"
+#include <vnet/ip/ip4_to_ip6.h>
 
 vlib_node_registration_t ip4_map_reass_node;
 
@@ -62,52 +63,6 @@ format_ip4_map_reass_trace (u8 * s, va_list * args)
 		 t->cached ? "cached" : "forwarded");
 }
 
-/*
- * ip4_map_get_port
- */
-u16
-ip4_map_get_port (ip4_header_t * ip, map_dir_e dir)
-{
-  /* Find port information */
-  if (PREDICT_TRUE ((ip->protocol == IP_PROTOCOL_TCP) ||
-		    (ip->protocol == IP_PROTOCOL_UDP)))
-    {
-      udp_header_t *udp = (void *) (ip + 1);
-      return (dir == MAP_SENDER ? udp->src_port : udp->dst_port);
-    }
-  else if (ip->protocol == IP_PROTOCOL_ICMP)
-    {
-      /*
-       * 1) ICMP Echo request or Echo reply
-       * 2) ICMP Error with inner packet being UDP or TCP
-       * 3) ICMP Error with inner packet being ICMP Echo request or Echo reply
-       */
-      icmp46_header_t *icmp = (void *) (ip + 1);
-      if (icmp->type == ICMP4_echo_request || icmp->type == ICMP4_echo_reply)
-	{
-	  return *((u16 *) (icmp + 1));
-	}
-      else if (clib_net_to_host_u16 (ip->length) >= 56)
-	{			// IP + ICMP + IP + L4 header
-	  ip4_header_t *icmp_ip = (ip4_header_t *) (icmp + 2);
-	  if (PREDICT_TRUE ((icmp_ip->protocol == IP_PROTOCOL_TCP) ||
-			    (icmp_ip->protocol == IP_PROTOCOL_UDP)))
-	    {
-	      udp_header_t *udp = (void *) (icmp_ip + 1);
-	      return (dir == MAP_SENDER ? udp->dst_port : udp->src_port);
-	    }
-	  else if (icmp_ip->protocol == IP_PROTOCOL_ICMP)
-	    {
-	      icmp46_header_t *inner_icmp = (void *) (icmp_ip + 1);
-	      if (inner_icmp->type == ICMP4_echo_request
-		  || inner_icmp->type == ICMP4_echo_reply)
-		return (*((u16 *) (inner_icmp + 1)));
-	    }
-	}
-    }
-  return (0);
-}
-
 static_always_inline u16
 ip4_map_port_and_security_check (map_domain_t * d, ip4_header_t * ip,
 				 u32 * next, u8 * error)
@@ -124,7 +79,7 @@ ip4_map_port_and_security_check (map_domain_t * d, ip4_header_t * ip,
 	    {
 	      return 0;
 	    }
-	  port = ip4_map_get_port (ip, MAP_RECEIVER);
+	  port = ip4_get_port (ip, 0);
 	  if (port)
 	    {
 	      /* Verify that port is not among the well-known ports */
@@ -626,9 +581,7 @@ ip4_map_reass (vlib_main_t * vm,
 		  cached = 1;
 		}
 	    }
-	  else
-	    if ((port0 =
-		 ip4_get_port (ip40, MAP_RECEIVER, p0->current_length)) < 0)
+	  else if ((port0 = ip4_get_port (ip40, 0)) == 0)
 	    {
 	      // Could not find port. We'll free the reassembly.
 	      error0 = MAP_ERROR_BAD_PROTOCOL;
