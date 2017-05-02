@@ -4199,6 +4199,7 @@ _(ipsec_interface_add_del_spd_reply)                    \
 _(ipsec_spd_add_del_entry_reply)                        \
 _(ipsec_sad_add_del_entry_reply)                        \
 _(ipsec_sa_set_key_reply)                               \
+_(ipsec_tunnel_if_add_del_reply)                        \
 _(ikev2_profile_add_del_reply)                          \
 _(ikev2_profile_set_auth_reply)                         \
 _(ikev2_profile_set_id_reply)                           \
@@ -4411,6 +4412,7 @@ _(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
 _(IPSEC_SPD_ADD_DEL_ENTRY_REPLY, ipsec_spd_add_del_entry_reply)         \
 _(IPSEC_SAD_ADD_DEL_ENTRY_REPLY, ipsec_sad_add_del_entry_reply)         \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
+_(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
 _(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
 _(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
 _(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
@@ -12668,6 +12670,134 @@ api_ipsec_sa_set_key (vat_main_t * vam)
 }
 
 static int
+api_ipsec_tunnel_if_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_add_del_t *mp;
+  u32 local_spi = 0, remote_spi = 0;
+  u32 crypto_alg = 0, integ_alg = 0;
+  u8 *lck = NULL, *rck = NULL;
+  u8 *lik = NULL, *rik = NULL;
+  ip4_address_t local_ip = { {0} };
+  ip4_address_t remote_ip = { {0} };
+  u8 is_add = 1;
+  u8 esn = 0;
+  u8 anti_replay = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "esn"))
+	esn = 1;
+      else if (unformat (i, "anti_replay"))
+	anti_replay = 1;
+      else if (unformat (i, "local_spi %d", &local_spi))
+	;
+      else if (unformat (i, "remote_spi %d", &remote_spi))
+	;
+      else if (unformat (i, "local_ip %U", unformat_ip4_address, &local_ip))
+	;
+      else if (unformat (i, "remote_ip %U", unformat_ip4_address, &remote_ip))
+	;
+      else if (unformat (i, "local_crypto_key %U", unformat_hex_string, &lck))
+	;
+      else
+	if (unformat (i, "remote_crypto_key %U", unformat_hex_string, &rck))
+	;
+      else if (unformat (i, "local_integ_key %U", unformat_hex_string, &lik))
+	;
+      else if (unformat (i, "remote_integ_key %U", unformat_hex_string, &rik))
+	;
+      else
+	if (unformat
+	    (i, "crypto_alg %U", unformat_ipsec_crypto_alg, &crypto_alg))
+	{
+	  if (crypto_alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+	      crypto_alg >= IPSEC_CRYPTO_N_ALG)
+	    {
+	      errmsg ("unsupported crypto-alg: '%U'\n",
+		      format_ipsec_crypto_alg, crypto_alg);
+	      return -99;
+	    }
+	}
+      else
+	if (unformat
+	    (i, "integ_alg %U", unformat_ipsec_integ_alg, &integ_alg))
+	{
+	  if (integ_alg < IPSEC_INTEG_ALG_SHA1_96 ||
+	      integ_alg >= IPSEC_INTEG_N_ALG)
+	    {
+	      errmsg ("unsupported integ-alg: '%U'\n",
+		      format_ipsec_integ_alg, integ_alg);
+	      return -99;
+	    }
+	}
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IPSEC_TUNNEL_IF_ADD_DEL, mp);
+
+  mp->is_add = is_add;
+  mp->esn = esn;
+  mp->anti_replay = anti_replay;
+
+  clib_memcpy (mp->local_ip, &local_ip, sizeof (ip4_address_t));
+  clib_memcpy (mp->remote_ip, &remote_ip, sizeof (ip4_address_t));
+
+  mp->local_spi = htonl (local_spi);
+  mp->remote_spi = htonl (remote_spi);
+  mp->crypto_alg = (u8) crypto_alg;
+
+  mp->local_crypto_key_len = 0;
+  if (lck)
+    {
+      mp->local_crypto_key_len = vec_len (lck);
+      if (mp->local_crypto_key_len > sizeof (mp->local_crypto_key))
+	mp->local_crypto_key_len = sizeof (mp->local_crypto_key);
+      clib_memcpy (mp->local_crypto_key, lck, mp->local_crypto_key_len);
+    }
+
+  mp->remote_crypto_key_len = 0;
+  if (rck)
+    {
+      mp->remote_crypto_key_len = vec_len (rck);
+      if (mp->remote_crypto_key_len > sizeof (mp->remote_crypto_key))
+	mp->remote_crypto_key_len = sizeof (mp->remote_crypto_key);
+      clib_memcpy (mp->remote_crypto_key, rck, mp->remote_crypto_key_len);
+    }
+
+  mp->integ_alg = (u8) integ_alg;
+
+  mp->local_integ_key_len = 0;
+  if (lik)
+    {
+      mp->local_integ_key_len = vec_len (lik);
+      if (mp->local_integ_key_len > sizeof (mp->local_integ_key))
+	mp->local_integ_key_len = sizeof (mp->local_integ_key);
+      clib_memcpy (mp->local_integ_key, lik, mp->local_integ_key_len);
+    }
+
+  mp->remote_integ_key_len = 0;
+  if (rik)
+    {
+      mp->remote_integ_key_len = vec_len (rik);
+      if (mp->remote_integ_key_len > sizeof (mp->remote_integ_key))
+	mp->remote_integ_key_len = sizeof (mp->remote_integ_key);
+      clib_memcpy (mp->remote_integ_key, rik, mp->remote_integ_key_len);
+    }
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -18814,6 +18944,10 @@ _(ipsec_spd_add_del_entry, "spd_id <n> priority <n> action <action>\n"  \
   "  laddr_stop <ip4|ip6> raddr_start <ip4|ip6> raddr_stop <ip4|ip6>\n" \
   "  [lport_start <n> lport_stop <n>] [rport_start <n> rport_stop <n>]" ) \
 _(ipsec_sa_set_key, "sa_id <n> crypto_key <hex> integ_key <hex>")       \
+_(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
+  "  crypto_alg <alg> local_crypto_key <hex> remote_crypto_key <hex>\n" \
+  "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
+  "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n")     \
 _(ikev2_profile_add_del, "name <profile_name> [del]")                   \
 _(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
   "(auth_data 0x<data> | auth_data <data>)")                            \

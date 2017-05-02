@@ -54,6 +54,7 @@ _(IPSEC_SPD_ADD_DEL_ENTRY, ipsec_spd_add_del_entry)                     \
 _(IPSEC_SAD_ADD_DEL_ENTRY, ipsec_sad_add_del_entry)                     \
 _(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
+_(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
 _(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
 _(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
 _(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
@@ -349,6 +350,49 @@ vl_api_ipsec_sa_set_key_t_handler (vl_api_ipsec_sa_set_key_t * mp)
 #endif
 
   REPLY_MACRO (VL_API_IPSEC_SA_SET_KEY_REPLY);
+}
+
+static void
+vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
+					  mp)
+{
+  vl_api_ipsec_tunnel_if_add_del_reply_t *rmp;
+  int rv;
+
+#if WITH_LIBSSL > 0
+  ipsec_add_del_tunnel_args_t tun;
+
+  memset (&tun, 0, sizeof (ipsec_add_del_tunnel_args_t));
+
+  tun.is_add = mp->is_add;
+  tun.esn = mp->esn;
+  tun.anti_replay = mp->anti_replay;
+  tun.local_spi = ntohl (mp->local_spi);
+  tun.remote_spi = ntohl (mp->remote_spi);
+  tun.crypto_alg = mp->crypto_alg;
+  tun.local_crypto_key_len = mp->local_crypto_key_len;
+  tun.remote_crypto_key_len = mp->remote_crypto_key_len;
+  tun.integ_alg = mp->integ_alg;
+  tun.local_integ_key_len = mp->local_integ_key_len;
+  tun.remote_integ_key_len = mp->remote_integ_key_len;
+  memcpy (&tun.local_ip, mp->local_ip, 4);
+  memcpy (&tun.remote_ip, mp->remote_ip, 4);
+  memcpy (&tun.local_crypto_key, &mp->local_crypto_key,
+	  mp->local_crypto_key_len);
+  memcpy (&tun.remote_crypto_key, &mp->remote_crypto_key,
+	  mp->remote_crypto_key_len);
+  memcpy (&tun.local_integ_key, &mp->local_integ_key,
+	  mp->local_integ_key_len);
+  memcpy (&tun.remote_integ_key, &mp->remote_integ_key,
+	  mp->remote_integ_key_len);
+
+  rv = ipsec_add_del_tunnel_if (&tun);
+
+#else
+  rv = VNET_API_ERROR_UNIMPLEMENTED;
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_ADD_DEL_REPLY);
 }
 
 static void
