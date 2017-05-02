@@ -573,7 +573,7 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
 u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
-  u32 snd_space;
+  u32 snd_space, chunk;
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
 
   /* If we haven't gotten dupacks or if we did and have gotten sacked bytes
@@ -582,14 +582,15 @@ tcp_session_send_space (transport_connection_t * trans_conn)
 		    && (tc->rcv_dupacks == 0
 			|| tc->sack_sb.last_sacked_bytes)))
     {
+      chunk = tc->snd_wnd > tc->snd_mss ? tc->snd_mss : tc->snd_wnd;
       snd_space = tcp_available_snd_space (tc);
 
       /* If we can't write at least a segment, don't try at all */
-      if (snd_space < tc->snd_mss)
+      if (chunk == 0 || snd_space < chunk)
 	return 0;
 
       /* round down to mss multiple */
-      return snd_space - (snd_space % tc->snd_mss);
+      return snd_space - (snd_space % chunk);
     }
 
   /* If in fast recovery, send 1 SMSS if wnd allows */
