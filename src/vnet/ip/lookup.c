@@ -840,7 +840,12 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	}
+      else if (unformat (line_input, "via local"))
+	{
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_weight = 1;
+	  rpath.frp_flags |= FIB_ROUTE_PATH_LOCAL;
 	}
       else if (unformat (line_input, "%U", unformat_mfib_itf_flags, &iflags))
 	;
