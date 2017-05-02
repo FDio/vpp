@@ -310,7 +310,15 @@ vl_api_bridge_domain_set_mac_age_t_handler (vl_api_bridge_domain_set_mac_age_t
   vl_api_bridge_domain_set_mac_age_reply_t *rmp;
   int rv = 0;
   u32 bd_id = ntohl (mp->bd_id);
-  uword *p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+  uword *p;
+
+  if (bd_id == 0)
+    {
+      rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
+      goto out;
+    }
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (p == 0)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
@@ -401,10 +409,13 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
     return;
 
   bd_id = ntohl (mp->bd_id);
+  if (bd_id == 0)
+    return;
 
   bd_index = (bd_id == ~0) ? 0 : bd_find_index (bdm, bd_id);
   ASSERT (bd_index != ~0);
   end = (bd_id == ~0) ? vec_len (l2im->bd_configs) : bd_index + 1;
+
   for (; bd_index < end; bd_index++)
     {
       bd_config = l2input_bd_config_from_index (l2im, bd_index);
@@ -436,6 +447,12 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
   u32 bd_index;
   u32 flags = ntohl (mp->feature_bitmap);
   uword *p;
+
+  if (bd_id == 0)
+    {
+      rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
+      goto out;
+    }
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (p == 0)
