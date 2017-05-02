@@ -52,6 +52,8 @@ nobase_include_HEADERS +=			\
   vnet/interface.h				\
   vnet/interface.api.h				\
   vnet/interface_funcs.h			\
+  vnet/ip/ip4_to_ip6.h   			\
+  vnet/ip/ip6_to_ip4.h   			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
   vnet/replication.h				\
