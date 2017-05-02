@@ -110,7 +110,8 @@ _(SVM_SEGMENT_CREATE_FAIL, -117, "svm segment create fail")		\
 _(APPLICATION_NOT_ATTACHED, -118, "application not attached")           \
 _(BD_ALREADY_EXISTS, -119, "Bridge domain already exists")              \
 _(BD_IN_USE, -120, "Bridge domain has member interfaces")		\
-_(UNSUPPORTED, -121, "Unsupported")
+_(BD_NOT_MODIFIABLE, -121, "Default bridge domain 0 can be neither deleted nor modified") \
+_(UNSUPPORTED, -122, "Unsupported")
 
 typedef enum
 {

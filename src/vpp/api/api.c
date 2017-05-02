@@ -446,6 +446,12 @@ vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
   u32 bd_index;
   uword *p;
 
+  if (bd_id == 0)
+    {
+      rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
+      goto out;
+    }
+
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (p == 0)
     {

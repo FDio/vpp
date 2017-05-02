@@ -304,6 +304,10 @@ bd_learn (vlib_main_t * vm,
       goto done;
     }
 
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
+
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
   if (p == 0)
@@ -368,6 +372,10 @@ bd_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 				 format_unformat_error, input);
       goto done;
     }
+
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -436,6 +444,10 @@ bd_flood (vlib_main_t * vm,
       goto done;
     }
 
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
+
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
   if (p == 0)
@@ -501,6 +513,10 @@ bd_uu_flood (vlib_main_t * vm,
 				 format_unformat_error, input);
       goto done;
     }
+
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -568,6 +584,10 @@ bd_arp_term (vlib_main_t * vm,
       goto done;
     }
 
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
+
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (p)
     bd_index = *p;
@@ -606,6 +626,10 @@ bd_mac_age (vlib_main_t * vm,
 				 format_unformat_error, input);
       goto done;
     }
+
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
 
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
@@ -780,6 +804,10 @@ bd_arp_entry (vlib_main_t * vm,
       goto done;
     }
 
+  if (bd_id == 0)
+    return clib_error_return (0,
+			      "No operations on the default bridge domain are supported");
+
   p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
   if (p)
@@ -900,7 +928,7 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
   u32 bd_id = ~0;
   uword *p;
 
-  start = 0;
+  start = 1;
   end = vec_len (l2input_main.bd_configs);
 
   if (unformat (input, "%d", &bd_id))
@@ -913,6 +941,10 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	intf = 1;
       if (unformat (input, "arp"))
 	arp = 1;
+
+      if (bd_id == 0)
+	return clib_error_return (0,
+				  "No operations on the default bridge domain are supported");
 
       p = hash_get (bdm->bd_index_by_bd_id, bd_id);
       if (p)
@@ -1125,6 +1157,8 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
     {
       if (bd_index == ~0)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
+      if (bd_index == 0)
+	return VNET_API_ERROR_BD_NOT_MODIFIABLE;
       if (vec_len (l2input_main.bd_configs[bd_index].members))
 	return VNET_API_ERROR_BD_IN_USE;
       rv = bd_delete (bdm, bd_index);
@@ -1188,6 +1222,12 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     }
 
+  if (bd_id == 0)
+    {
+      error = clib_error_return (0, "bridge domain 0 can not be modified");
+      goto done;
+    }
+
   if (mac_age > 255)
     {
       error = clib_error_return (0, "mac age must be less than 256");
@@ -1217,6 +1257,9 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
       error = clib_error_return (0, "bridge domain id does not exist");
+      goto done;
+    case VNET_API_ERROR_BD_NOT_MODIFIABLE:
+      error = clib_error_return (0, "bridge domain 0 can not be modified");
       goto done;
     default:
       error = clib_error_return (0, "bd_add_del returned %d", rv);
