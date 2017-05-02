@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_daddc0e1",
+        "filename": "src/vnet/devices/devices.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-02T15:15:37Z",
+      "side": 1,
+      "message": "Would it be worth refactoring this as well?",
+      "range": {
+        "startLine": 92,
+        "startChar": 9,
+        "endLine": 92,
+        "endChar": 21
+      },
+      "revId": "0778fd4b9432443005d0b9428c4cbce0f38a7862",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
