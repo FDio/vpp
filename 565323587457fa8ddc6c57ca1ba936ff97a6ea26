@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_dafa6074",
+        "filename": "src/vnet.am",
+        "patchSetId": 7
+      },
+      "lineNbr": 731,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "what\u0027s the connection to SSL?",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_baf7948a",
+        "filename": "src/vnet/srmpls/sr.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "use an enum if it represents a constrained value range.",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9af05892",
+        "filename": "src/vnet/srmpls/sr.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "can i suggest a consistent scheme for comments.\nI\u0027d go for the doxygen friendly;\n\n/** .    (note 2 stars)\n * my struct\n*/\ntypedef struct name_t_\n{\n   /** (2 stars)\n     * some member\n     */\n     u32 member;\n} name_t;",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7aedacb6",
+        "filename": "src/vnet/srmpls/sr.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 133,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "extern.\n\nthe function protoypes are external too ....",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_5a7c30ec",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 147,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "there fib table calls are common to both the replicate and load-balance case - it could be re-factored.",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_9a1e18ba",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 259,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "sr_policy-\u003efib_table  is a MPLS-FIB table ID not a fib index",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_1a0b487e",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 351,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "your key is only 20 bits long. So you can use the faster and more lightwieght hash table (and not the memory-hash or mhash table type)",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_ba25540a",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 358,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "it\u0027s OK if another source has added the route for the BSID. Just be sure that your FIB_SOURCE_SR is of a higher priority than those you wish to usurp.",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_7a1b6cca",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "LOOKUP_TABLE_FROM_CONFIG not LOOKUP_TABLE_FROM_INPUT_INTERFACE. i.e. you want the lookup to occur in the fib_index you are passing as the first parameter, and not the MPLS table to which the interface is bound.\nthey\u0027ll be the same value, but it\u0027s best to say what we mean.",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_3a33a464",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 788,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-02T15:11:07Z",
+      "side": 1,
+      "message": "vec_free (vec_policies);",
+      "revId": "565323587457fa8ddc6c57ca1ba936ff97a6ea26",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
