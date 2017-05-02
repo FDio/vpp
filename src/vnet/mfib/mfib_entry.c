@@ -199,14 +199,12 @@ format_mfib_entry (u8 * s, va_list * args)
             {
                 s = fib_path_list_format(msrc->mfes_pl, s);
             }
-            s = format (s, "    Extensions:\n",
-                        mfib_source_names[msrc->mfes_src]);
+            s = format (s, "    Extensions:\n");
             hash_foreach(path_index, mpi, msrc->mfes_exts,
             ({
                 s = format(s, "     %U\n", format_mfib_entry_path_ext, mpi);
             }));
-            s = format (s, "    Interface-Forwarding:\n",
-                        mfib_source_names[msrc->mfes_src]);
+            s = format (s, "    Interface-Forwarding:\n");
             hash_foreach(sw_if_index, mfi, msrc->mfes_itfs,
             ({
                 s = format(s, "    %U\n", format_mfib_itf, mfi);
