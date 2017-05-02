@@ -177,11 +177,11 @@ bfd_udp_get_echo_src_ip4 (ip4_address_t * addr)
         if (ia->address_length <= 31)
           {
             addr->as_u32 = clib_host_to_net_u32 (x->as_u32);
-	    /*
-	     * flip the last bit to get a different address, might be network,
-	     * we don't care ...
-	     */
-	    addr->as_u32 ^= 1;
+            /*
+             * flip the last bit to get a different address, might be network,
+             * we don't care ...
+             */
+            addr->as_u32 ^= 1;
             addr->as_u32 = clib_net_to_host_u32 (addr->as_u32);
             return 1;
           }
@@ -221,9 +221,9 @@ bfd_udp_get_echo_src_ip6 (ip6_address_t * addr)
 }
 
 void
-bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index, int *have_usable_ip4,
-			 ip4_address_t * ip4, int *have_usable_ip6,
-			 ip6_address_t * ip6)
+bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index,
+			 int *have_usable_ip4, ip4_address_t * ip4,
+			 int *have_usable_ip6, ip6_address_t * ip6)
 {
   if (bfd_udp_main.echo_source_is_set)
     {
@@ -239,8 +239,8 @@ bfd_udp_get_echo_source (int *is_set, u32 * sw_if_index, int *have_usable_ip4,
 }
 
 int
-bfd_add_udp4_transport (vlib_main_t * vm, u32 bi,
-			const bfd_session_t * bs, int is_echo)
+bfd_add_udp4_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
+			int is_echo)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
@@ -294,8 +294,8 @@ bfd_add_udp4_transport (vlib_main_t * vm, u32 bi,
 }
 
 int
-bfd_add_udp6_transport (vlib_main_t * vm, u32 bi,
-			const bfd_session_t * bs, int is_echo)
+bfd_add_udp6_transport (vlib_main_t * vm, u32 bi, const bfd_session_t * bs,
+			int is_echo)
 {
   const bfd_udp_session_t *bus = &bs->udp;
   const bfd_udp_key_t *key = &bus->key;
@@ -1200,8 +1200,8 @@ bfd_udp_input (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	      b0->current_data = 0;
 	      b0->current_length = 0;
 	      memset (vnet_buffer (b0), 0, sizeof (*vnet_buffer (b0)));
-	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main,
-					    bs, 0);
+	      bfd_init_final_control_frame (vm, b0, bfd_udp_main.bfd_main, bs,
+					    0);
 	      if (is_ipv6)
 		{
 		  vlib_node_increment_counter (vm, bfd_udp6_input_node.index,
@@ -1440,29 +1440,38 @@ VLIB_REGISTER_NODE (bfd_udp_echo6_input_node, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-bfd_sw_interface_up_down (vnet_main_t * vnm, u32 sw_if_index, u32 flags)
+bfd_udp_sw_if_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_create)
 {
-  // vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
-  if (!(flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+  bfd_session_t **to_be_freed = NULL;
+  BFD_DBG ("sw_if_add_del called, sw_if_index=%u, is_create=%u", sw_if_index,
+	   is_create);
+  if (!is_create)
     {
-      /* TODO */
+      bfd_session_t *bs;
+      pool_foreach (bs, bfd_udp_main.bfd_main->sessions,
+		    {
+		    if (bs->transport != BFD_TRANSPORT_UDP4 &&
+			bs->transport != BFD_TRANSPORT_UDP6)
+		    {
+		    continue;}
+		    if (bs->udp.key.sw_if_index != sw_if_index)
+		    {
+		    continue;}
+		    vec_add1 (to_be_freed, bs);}
+      );
     }
+  bfd_session_t **bs;
+  vec_foreach (bs, to_be_freed)
+  {
+    clib_warning ("removal of sw_if_index=%u forces removal of bfd session "
+		  "with bs_idx=%u", sw_if_index, (*bs)->bs_idx);
+    bfd_session_set_flags (*bs, 0);
+    bfd_udp_del_session_internal (*bs);
+  }
   return 0;
 }
 
-VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION (bfd_sw_interface_up_down);
-
-static clib_error_t *
-bfd_hw_interface_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
-{
-  if (flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
-    {
-      /* TODO */
-    }
-  return 0;
-}
-
-VNET_HW_INTERFACE_LINK_UP_DOWN_FUNCTION (bfd_hw_interface_up_down);
+VNET_SW_INTERFACE_ADD_DEL_FUNCTION (bfd_udp_sw_if_add_del);
 
 /*
  * setup function
