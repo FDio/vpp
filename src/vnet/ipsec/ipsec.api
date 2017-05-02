@@ -469,7 +469,6 @@ define ipsec_spd_dump {
     @param bytes - byte count of packets matching this policy
     @param packets - count of packets matching this policy
 */
-
 define ipsec_spd_details {
     u32 context;
     u32 spd_id;
@@ -489,6 +488,49 @@ define ipsec_spd_details {
     u32 sa_id;
     u64 bytes;
     u64 packets;
+};
+
+/** \brief Add or delete IPsec tunnel interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add IPsec tunnel interface if nonzero, else delete
+    @param esn - enable extended sequence numbers if nonzero, else disable
+    @param anti_replay - enable anti replay check if nonzero, else disable
+    @param local_ip - local IP address
+    @param remote_ip - IP address of remote IPsec peer
+    @param local_spi - SPI of outbound IPsec SA
+    @param remote_spi - SPI of inbound IPsec SA
+    @param crypto_alg - encryption algorithm ID
+    @param local_crypto_key_len - length of local crypto key in bytes
+    @param local_crypto_key - crypto key for outbound IPsec SA
+    @param remote_crypto_key_len - length of remote crypto key in bytes
+    @param remote_crypto_key - crypto key for inbound IPsec SA
+    @param integ_alg - integrity algorithm ID
+    @param local_integ_key_len - length of local integrity key in bytes
+    @param local_integ_key - integrity key for outbound IPsec SA
+    @param remote_integ_key_len - length of remote integrity key in bytes
+    @param remote_integ_key - integrity key for inbound IPsec SA
+*/
+autoreply define ipsec_tunnel_if_add_del {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 esn;
+  u8 anti_replay;
+  u8 local_ip[4];
+  u8 remote_ip[4];
+  u32 local_spi;
+  u32 remote_spi;
+  u8 crypto_alg;
+  u8 local_crypto_key_len;
+  u8 local_crypto_key[128];
+  u8 remote_crypto_key_len;
+  u8 remote_crypto_key[128];
+  u8 integ_alg;
+  u8 local_integ_key_len;
+  u8 local_integ_key[128];
+  u8 remote_integ_key_len;
+  u8 remote_integ_key[128];
 };
 
 /*
