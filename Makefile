@@ -51,12 +51,10 @@ RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
 RPM_DEPENDS += python-devel
-ifeq ($(OS_ID)),fedora)
-ifeq ($(OS_VERSION_ID),25)
+ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += python2-virtualenv
 else
 	RPM_DEPENDS += python-virtualenv
-endif
 endif
 RPM_DEPENDS += lcov chrpath libffi-devel
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
