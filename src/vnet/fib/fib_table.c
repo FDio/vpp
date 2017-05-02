@@ -951,6 +951,22 @@ fib_table_get_flow_hash_config (u32 fib_index,
 
     return (fib->ft_flow_hash_config);
 }
+flow_hash_config_t
+fib_table_get_default_flow_hash_config (fib_protocol_t proto)
+{
+    switch (proto)
+    {
+    case FIB_PROTOCOL_IP4:
+    case FIB_PROTOCOL_IP6:
+	return (IP_FLOW_HASH_DEFAULT);
+
+    case FIB_PROTOCOL_MPLS:
+	return (MPLS_FLOW_HASH_DEFAULT);
+    }
+
+    ASSERT(0);
+    return (IP_FLOW_HASH_DEFAULT);
+}
 
 /**
  * @brief Table set flow hash config context.
