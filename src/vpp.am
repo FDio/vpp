@@ -54,6 +54,10 @@ vpp/app/version.o:	vpp/app/version.h
 
 VPP_VERSION = $(shell $(srcdir)/scripts/version)
 
+VPP_BUILD_DATE ?= $$(date)
+VPP_BUILD_USER ?= $$(whoami)
+VPP_BUILD_HOST ?= $$(hostname)
+
 # update version.h only when version changes, to avoid
 # unnecessary re-linking of vpp binary
 
@@ -62,9 +66,9 @@ VPP_VERSION = $(shell $(srcdir)/scripts/version)
 	  f="vpp/app/version.h" 							;\
 	  echo "  VERSION  $$f ($(VPP_VERSION))"					;\
 	  echo $(VPP_VERSION) > .version						;\
-	  echo "#define VPP_BUILD_DATE \"$$(date)\"" > $$f 				;\
-	  echo "#define VPP_BUILD_USER \"$$(whoami)\"" >> $$f 				;\
-	  echo "#define VPP_BUILD_HOST \"$$(hostname)\"" >> $$f				;\
+          echo "#define VPP_BUILD_DATE \"$(VPP_BUILD_DATE)\"" > $$f                             ;\
+          echo "#define VPP_BUILD_USER \"$(VPP_BUILD_USER)\"" >> $$f                            ;\
+          echo "#define VPP_BUILD_HOST \"$(VPP_BUILD_HOST)\"" >> $$f                            ;\
 	  echo -n "#define VPP_BUILD_TOPDIR " >> $$f					;\
 	  echo "\"$$(cd $(srcdir) && git rev-parse --show-toplevel)\"" >> $$f 		;\
 	  echo "#define VPP_BUILD_VER \"$(VPP_VERSION)\"" >> $$f			;\
