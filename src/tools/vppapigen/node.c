@@ -1114,7 +1114,12 @@ char *fixup_input_filename(void)
 void generate_top_boilerplate(FILE *fp)
 
 {
-    char *datestring = ctime(&starttime);
+    time_t curtime;
+    char *datestring;
+    char *source_date_epoch;
+    if ((source_date_epoch = getenv("SOURCE_DATE_EPOCH")) == NULL || (curtime = (time_t)strtol(source_date_epoch, NULL, 10)) <= 0)
+        curtime = starttime;
+    datestring = asctime(gmtime(&curtime));
     fixed_name = fixup_input_filename();
 
     datestring[24] = 0;
