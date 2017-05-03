@@ -2454,7 +2454,7 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
   u64 nonce = 0;
   u32 next_index, *to_next;
   ip_address_t *ms = 0;
-  mapping_t *records, *r, *g;
+  mapping_t *records, *r, *group, *k;
 
   // TODO: support multiple map servers and do election
   if (0 == vec_len (lcm->map_servers))
@@ -2481,12 +2481,25 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
     if (!key)
       continue;			/* no secret key -> map-register cannot be sent */
 
-    g = 0;
-    // TODO: group mappings that share common key
-    vec_add1 (g, r[0]);
-    b = build_map_register (lcm, &sloc, ms, &nonce, want_map_notif, g,
+    group = 0;
+    vec_add1 (group, r[0]);
+
+    /* group mappings that share common key */
+    for (k = r + 1; k < vec_end (records); k++)
+      {
+	if (k->key_id != r->key_id)
+	  continue;
+
+	if (vec_is_equal (k->key, r->key))
+	  {
+	    vec_add1 (group, k[0]);
+	    k->key = 0;		/* don't process this mapping again */
+	  }
+      }
+
+    b = build_map_register (lcm, &sloc, ms, &nonce, want_map_notif, group,
 			    key_id, key, &bi);
-    vec_free (g);
+    vec_free (group);
     if (!b)
       continue;
 
