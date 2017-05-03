@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_26d02e1e",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 505,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-03T18:00:58Z",
+      "side": 1,
+      "message": "use hash_* not mhash_*. the key is small enough for the former.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_46b7baf5",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 509,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-03T18:00:58Z",
+      "side": 1,
+      "message": "this is now unused.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_06cd3285",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-03T18:00:58Z",
+      "side": 1,
+      "message": "I don\u0027t follow what purpose these MPLS tables serve. No input packets will be looked-up therein, nor do any other prefixes resolve through entries therein.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e6c5865c",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-03T18:00:58Z",
+      "side": 1,
+      "message": "i think you need to remove both /21, eos and neos. not the /20 cover.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
