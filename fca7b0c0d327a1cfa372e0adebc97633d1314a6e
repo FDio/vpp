@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_a6a3feb0",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-03T18:05:55Z",
+      "side": 1,
+      "message": "i take that back. I see now they are used for recursive resolution. but why resolve via these entries in a different FIB rather than the entries in the default FIB? Given the forwarding actions for the entries is the same.",
+      "parentUuid": "3a3291f1_06cd3285",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_e6c5865c",
         "filename": "src/vnet/srmpls/sr_mpls_policy.c",
         "patchSetId": 10
