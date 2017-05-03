@@ -1401,8 +1401,8 @@ ip4_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_drop_node, static) =
 {
-  .function = ip4_drop,.
-  name = "ip4-drop",
+  .function = ip4_drop,
+  .name = "ip4-drop",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
   .n_next_nodes = 1,
