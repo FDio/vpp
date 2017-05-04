@@ -56,9 +56,14 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 else
 	RPM_DEPENDS += python-virtualenv
 endif
-RPM_DEPENDS += lcov chrpath libffi-devel
+RPM_DEPENDS += chrpath libffi-devel
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 EPEL_DEPENDS = libconfuse-devel ganglia-devel epel-rpm-macros
+ifeq ($(OS_ID),centos)
+	EPEL_DEPENDS += lcov
+else
+	RPM_DEPENDS += lcov
+endif
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
