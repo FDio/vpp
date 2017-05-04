@@ -21,7 +21,6 @@
 #define included_unix_shared_memory_queue_h
 
 #include <pthread.h>
-#include <vppinfra/mem.h>
 
 typedef struct _unix_shared_memory_queue
 {
@@ -43,6 +42,8 @@ unix_shared_memory_queue_t *unix_shared_memory_queue_init (int nels,
 							   int
 							   signal_when_queue_non_empty);
 void unix_shared_memory_queue_free (unix_shared_memory_queue_t * q);
+int unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q,
+				   u8 * elem, uword size, int nowait);
 int unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
 				  u8 * elem, int nowait);
 int unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,

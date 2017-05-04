@@ -266,11 +266,11 @@ vl_msg_api_free_nolock (void *a)
 }
 
 void
-vl_set_memory_root_path (const char *name)
+vl_set_memory_root_path (char *name)
 {
   api_main_t *am = &api_main;
 
-  am->root_path = name;
+  am->root_path = (char *) name;
 }
 
 void
@@ -330,7 +330,7 @@ vl_set_api_pvt_heap_size (u64 size)
 }
 
 int
-vl_map_shmem (const char *region_name, int is_vlib)
+vl_map_shmem (char *region_name, int is_vlib)
 {
   svm_map_region_args_t _a, *a = &_a;
   svm_region_t *vlib_rp, *root_rp;

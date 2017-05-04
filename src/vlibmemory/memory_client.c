@@ -155,7 +155,7 @@ noop_handler (void *notused)
 }
 
 int
-vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
+vl_client_connect (char *name, int ctx_quota, int input_queue_size)
 {
   svm_region_t *svm;
   vl_api_memclnt_create_t *mp;
@@ -326,7 +326,7 @@ _(MEMCLNT_DELETE_REPLY, memclnt_delete_reply)
 
 
 int
-vl_client_api_map (const char *region_name)
+vl_client_api_map (char *region_name)
 {
   int rv;
 
@@ -354,8 +354,8 @@ vl_client_api_unmap (void)
 }
 
 static int
-connect_to_vlib_internal (const char *svm_name,
-			  const char *client_name,
+connect_to_vlib_internal (char *svm_name,
+			  char *client_name,
 			  int rx_queue_size, int want_pthread)
 {
   int rv = 0;
@@ -389,17 +389,16 @@ connect_to_vlib_internal (const char *svm_name,
 }
 
 int
-vl_client_connect_to_vlib (const char *svm_name,
-			   const char *client_name, int rx_queue_size)
+vl_client_connect_to_vlib (char *svm_name,
+			   char *client_name, int rx_queue_size)
 {
   return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
 				   1 /* want pthread */ );
 }
 
 int
-vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
-					 const char *client_name,
-					 int rx_queue_size)
+vl_client_connect_to_vlib_no_rx_pthread (char *svm_name,
+					 char *client_name, int rx_queue_size)
 {
   return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
 				   0 /* want pthread */ );
