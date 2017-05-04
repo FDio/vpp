@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_c9f61d5d",
+        "filename": "src/vnet/interface.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 477,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-05-04T20:09:09Z",
+      "side": 1,
+      "message": "I don\u0027t see how this field is being used. It is initialized to polling. But it does not change at all. In vnet_hw_interface_set_rx_mode(), this field is used to compare against the parameter mode. If they are the same, the function returns 0. So technically, I can\u0027t change the rx-mode from polling to interrupt or adaptive using the CLI set rx-mode although the CLI accepts the command without error. But I can freely change the rx-mode from adaptive/interrupt to polling using the CLI.",
+      "revId": "4de5b66ca98222c4fdd8b95eb75901863054efe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
