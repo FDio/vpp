@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_0940a532",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-05-04T09:15:44Z",
+      "side": 1,
+      "message": "Neale, notice that here I\u0027m only tracking the forwarding chain for MPLS NON EOS.\nIn case that I\u0027m applying a segment list with only one segment to an IP46, then I would need to track as well the fwd chain for MPLS EOS, no?",
+      "revId": "f3bbec954823ba066d17f28dbb208f562e8dc083",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_e948b95d",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 513,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-05-04T09:15:44Z",
+      "side": 1,
+      "message": "Neale,\nThe reason for this two FIBs is to have steering of IP46 prefixes through a BindingSID.\nThe BindingSID is attached to a load-balance dpo. \nThe LB for the BindingSID in both FIB tables will contain the same set MPLS label DPOs. However, the LB itself has to either LB IP4 or IP6, this is the reason why I keep two different FIBs, to be able to have an IP4_LB and an IP6_LB.",
+      "revId": "f3bbec954823ba066d17f28dbb208f562e8dc083",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
