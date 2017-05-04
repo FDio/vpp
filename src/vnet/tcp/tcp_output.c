@@ -370,7 +370,7 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
   return len;
 }
 
-always_inline int
+int
 tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 		  tcp_state_t state)
 {
@@ -886,20 +886,20 @@ tcp_make_state_flags (tcp_state_t next_state)
  */
 static void
 tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
-		tcp_state_t next_state)
+		tcp_state_t next_state, u8 compute_opts)
 {
   u32 advertise_wnd, data_len;
-  u8 tcp_opts_len, tcp_hdr_opts_len, opts_write_len, flags;
-  tcp_options_t _snd_opts, *snd_opts = &_snd_opts;
+  u8 tcp_hdr_opts_len, opts_write_len, flags;
   tcp_header_t *th;
 
   data_len = b->current_length;
   vnet_buffer (b)->tcp.flags = 0;
 
-  /* Make and write options */
-  memset (snd_opts, 0, sizeof (*snd_opts));
-  tcp_opts_len = tcp_make_options (tc, snd_opts, next_state);
-  tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
+  if (compute_opts)
+    tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
+
+  /* Write pre-computed options */
+  tcp_hdr_opts_len = tc->snd_opts_len + sizeof (tcp_header_t);
 
   /* Get rcv window to advertise */
   advertise_wnd = tcp_window_to_advertise (tc, next_state);
@@ -910,9 +910,9 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
 
-  opts_write_len = tcp_options_write ((u8 *) (th + 1), snd_opts);
+  opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
 
-  ASSERT (opts_write_len == tcp_opts_len);
+  ASSERT (opts_write_len == tc->snd_opts_len);
 
   /* Tag the buffer with the connection index  */
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
@@ -987,14 +987,17 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
 	goto done;
     }
 
+  tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
+
   ASSERT (max_bytes <= tc->snd_mss);
+  ASSERT (max_bytes > tc->snd_opts_len);
 
   n_bytes = stream_session_peek_bytes (&tc->connection,
 				       vlib_buffer_get_current (b), offset,
-				       max_bytes);
+				       max_bytes - tc->snd_opts_len);
   ASSERT (n_bytes != 0);
   b->current_length = n_bytes;
-  tcp_push_hdr_i (tc, b, tc->state);
+  tcp_push_hdr_i (tc, b, tc->state, 0);
   tc->rtx_bytes += n_bytes;
 
 done:
@@ -1107,7 +1110,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 
-      tcp_push_hdr_i (tc, b, tc->state);
+      tcp_push_hdr_i (tc, b, tc->state, 1);
 
       /* Account for the SYN */
       tc->snd_nxt += 1;
@@ -1178,10 +1181,11 @@ tcp_timer_persist_handler (u32 index)
   /* Try to force the first unsent segment  */
   tcp_get_free_buffer_index (tm, &bi);
   b = vlib_get_buffer (vm, bi);
+  tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
   n_bytes = stream_session_peek_bytes (&tc->connection,
 				       vlib_buffer_get_current (b),
 				       tc->snd_una_max - tc->snd_una,
-				       tc->snd_mss);
+				       tc->snd_mss - tc->snd_opts_len);
   /* Nothing to send */
   if (n_bytes == 0)
     {
@@ -1190,7 +1194,7 @@ tcp_timer_persist_handler (u32 index)
     }
 
   b->current_length = n_bytes;
-  tcp_push_hdr_i (tc, b, tc->state);
+  tcp_push_hdr_i (tc, b, tc->state, 0);
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
   /* Re-enable persist timer */
@@ -1517,7 +1521,7 @@ tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
   tcp_connection_t *tc;
 
   tc = (tcp_connection_t *) tconn;
-  tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED);
+  tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, 0);
   return 0;
 }
 

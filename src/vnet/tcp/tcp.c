@@ -560,11 +560,20 @@ tcp_half_open_session_get_transport (u32 conn_index)
   return &tc->connection;
 }
 
+/**
+ * Compute maximum segment size for session layer.
+ *
+ * Since the result needs to be the actual data length, it first computes
+ * the tcp options to be used in the next burst and subtracts their
+ * length from the connection's snd_mss.
+ */
 u16
 tcp_session_send_mss (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return tc->snd_mss;
+
+  tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
+  return tc->snd_mss - tc->snd_opts_len;
 }
 
 /**
