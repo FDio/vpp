@@ -95,8 +95,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   tc0 = transport_vft->get_connection (s0->connection_index, thread_index);
 
   /* Make sure we have space to send and there's something to dequeue */
-  snd_space0 = transport_vft->send_space (tc0);
   snd_mss0 = transport_vft->send_mss (tc0);
+  snd_space0 = transport_vft->send_space (tc0);
 
   /* Can't make any progress */
   if (snd_space0 == 0 || snd_mss0 == 0)

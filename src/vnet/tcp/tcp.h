@@ -211,7 +211,9 @@ typedef struct _tcp_connection
   u32 irs;		/**< initial remote sequence */
 
   /* Options */
-  tcp_options_t opt;	/**< TCP connection options parsed */
+  tcp_options_t opt;		/**< TCP connection options parsed */
+  tcp_options_t snd_opts;	/**< Tx options for connection */
+  u8 snd_opts_len;		/**< Tx options len */
   u8 rcv_wscale;	/**< Window scale to advertise to peer */
   u8 snd_wscale;	/**< Window scale to use when sending */
   u32 tsval_recent;	/**< Last timestamp received */
@@ -241,7 +243,8 @@ typedef struct _tcp_connection
   u32 rtt_ts;		/**< Timestamp for tracked ACK */
   u32 rtt_seq;		/**< Sequence number for tracked ACK */
 
-  u16 snd_mss;		/**< Send MSS */
+  u16 snd_mss;		/**< Effective send max seg (data) size */
+  u16 mss;		/**< Our max seg size that includes options */
 } tcp_connection_t;
 
 struct _tcp_cc_algorithm
@@ -405,7 +408,8 @@ void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
-void tcp_set_snd_mss (tcp_connection_t * tc);
+void tcp_init_mss (tcp_connection_t * tc);
+void tcp_update_snd_mss (tcp_connection_t * tc);
 
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
