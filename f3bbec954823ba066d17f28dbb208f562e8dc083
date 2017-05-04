@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_e95f990d",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-04T10:16:05Z",
+      "side": 1,
+      "message": "If you add the binding-SID entry as recursive via the last segment and the steered prefixes as recursive via the binding-SID, the n the FIB should build the correct forwarding DPOs for you. If not then I need to fix the FIB.\nso you shouldn\u0027t need those ancillary FIBs either.",
+      "parentUuid": "3a3291f1_0940a532",
+      "revId": "f3bbec954823ba066d17f28dbb208f562e8dc083",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_e948b95d",
         "filename": "src/vnet/srmpls/sr_mpls_policy.c",
         "patchSetId": 11
