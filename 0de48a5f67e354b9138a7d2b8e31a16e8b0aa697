@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_69a9698f",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-04T13:37:39Z",
+      "side": 1,
+      "message": "Can you update this comment to say clear all MACs including static ones, please?",
+      "range": {
+        "startLine": 110,
+        "startChar": 5,
+        "endLine": 110,
+        "endChar": 8
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c9a73da6",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-04T13:37:39Z",
+      "side": 1,
+      "message": "Should we make this \"static inline ....\"",
+      "range": {
+        "startLine": 300,
+        "startChar": 0,
+        "endLine": 300,
+        "endChar": 6
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_09942541",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-04T13:37:39Z",
+      "side": 1,
+      "message": "Can you format this to a new line? Or does indent check force you into this style?",
+      "range": {
+        "startLine": 307,
+        "startChar": 31,
+        "endLine": 307,
+        "endChar": 33
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_29a5a1a1",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-04T13:37:39Z",
+      "side": 1,
+      "message": "This logic is wrong from day-0. We should increment learn_count when static_mac is 0.  The same logic is also wrong inside the function l2_fib_del_entry(). Can you fix that as well, please? This means ager cleaning up MAC entries will not decrement learn_count which is a major bug! Would you agree? May be you should also update the patch message/title to include fixing learn_count as well.",
+      "range": {
+        "startLine": 343,
+        "startChar": 15,
+        "endLine": 343,
+        "endChar": 33
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_49b34de9",
+        "filename": "src/vnet/l2/l2_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-04T13:37:39Z",
+      "side": 1,
+      "message": "Can you fix the format here so each field is a new line?",
+      "range": {
+        "startLine": 206,
+        "startChar": 36,
+        "endLine": 206,
+        "endChar": 42
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
