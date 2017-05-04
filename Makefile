@@ -40,8 +40,8 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf nasm indent
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
+DEB_DEPENDS += lcov chrpath autoconf nasm indent python3
+DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -53,7 +53,7 @@ endif
 
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += python-devel
+RPM_DEPENDS += python-devel check
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
@@ -65,14 +65,14 @@ RPM_DEPENDS += chrpath libffi-devel rpm-build
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 EPEL_DEPENDS = libconfuse-devel ganglia-devel epel-rpm-macros
 ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
-	EPEL_DEPENDS += lcov
+	EPEL_DEPENDS += lcov python34
 else
-	RPM_DEPENDS += lcov
+	RPM_DEPENDS += lcov python3
 endif
 
 RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath distribution-release gcc6 glibc-devel-static
 RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel libopenssl-devel libtool lsb-release make openssl-devel
-RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow
+RPM_SUSE_DEPENDS += python3 python-devel python-pip python-rpm-macros shadow check
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
