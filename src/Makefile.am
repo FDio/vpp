@@ -95,6 +95,8 @@ api_DATA = \
 BUILT_SOURCES += \
 	$(patsubst %.api,%.api.h,$(API_FILES))
 
+include vapi.am
+
 endif # if ENABLE_VLIB
 endif # if ENABLE_SVM
 

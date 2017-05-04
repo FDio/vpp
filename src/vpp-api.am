@@ -30,8 +30,6 @@ libvppapiclient_la_DEPENDENCIES = libvppinfra.la libvlibmemoryclient.la libsvm.l
 
 libvppapiclient_la_CPPFLAGS =
 
-nobase_include_HEADERS += vpp-api/client/vppapiclient.h
-
 #
 # Test client
 #
