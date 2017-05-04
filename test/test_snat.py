@@ -313,7 +313,7 @@ class TestSNAT(MethodHolder):
             cls.icmp_id_out = 6305
             cls.snat_addr = '10.0.0.3'
 
-            cls.create_pg_interfaces(range(8))
+            cls.create_pg_interfaces(range(9))
             cls.interfaces = list(cls.pg_interfaces[0:4])
 
             for i in cls.interfaces:
@@ -344,6 +344,7 @@ class TestSNAT(MethodHolder):
                 i.resolve_arp()
 
             cls.pg7.admin_up()
+            cls.pg8.admin_up()
 
         except Exception:
             super(TestSNAT, cls).tearDownClass()
@@ -353,6 +354,26 @@ class TestSNAT(MethodHolder):
         """
         Clear SNAT configuration.
         """
+        # I found no elegant way to do this
+        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg7.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg7.sw_if_index,
+                                   is_add=0)
+        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg8.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg8.sw_if_index,
+                                   is_add=0)
+
+        for intf in [self.pg7, self.pg8]:
+            neighbors = self.vapi.ip_neighbor_dump(intf.sw_if_index)
+            for n in neighbors:
+                self.vapi.ip_neighbor_add_del(intf.sw_if_index,
+                                              n.mac_address,
+                                              n.ip_address,
+                                              is_add=0)
+
         if self.pg7.has_ip4_config:
             self.pg7.unconfig_ip4()
 
@@ -1310,6 +1331,145 @@ class TestSNAT(MethodHolder):
         self.pg_start()
         capture = self.pg2.get_capture(len(pkts))
         self.verify_capture_out(capture, nat_ip1)
+
+    def test_dynamic_ipless_interfaces(self):
+        """ SNAT interfaces without configured ip dynamic map """
+
+        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
+                                      self.pg7.remote_mac,
+                                      self.pg7.remote_ip4n,
+                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
+                                      self.pg8.remote_mac,
+                                      self.pg8.remote_ip4n,
+                                      is_static=1)
+
+        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg7.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg7.sw_if_index)
+        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg8.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg8.sw_if_index)
+
+        self.snat_add_address(self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg7.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg8.sw_if_index,
+                                                 is_inside=0)
+
+        # in2out
+        pkts = self.create_stream_in(self.pg7, self.pg8)
+        self.pg7.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg8.get_capture(len(pkts))
+        self.verify_capture_out(capture)
+
+        # out2in
+        pkts = self.create_stream_out(self.pg8, self.snat_addr)
+        self.pg8.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg7.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg7)
+
+    def test_static_ipless_interfaces(self):
+        """ SNAT 1:1 NAT interfaces without configured ip """
+
+        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
+                                      self.pg7.remote_mac,
+                                      self.pg7.remote_ip4n,
+                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
+                                      self.pg8.remote_mac,
+                                      self.pg8.remote_ip4n,
+                                      is_static=1)
+
+        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg7.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg7.sw_if_index)
+        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg8.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg8.sw_if_index)
+
+        self.snat_add_static_mapping(self.pg7.remote_ip4, self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg7.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg8.sw_if_index,
+                                                 is_inside=0)
+
+        # out2in
+        pkts = self.create_stream_out(self.pg8)
+        self.pg8.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg7.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg7)
+
+        # in2out
+        pkts = self.create_stream_in(self.pg7, self.pg8)
+        self.pg7.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg8.get_capture(len(pkts))
+        self.verify_capture_out(capture, self.snat_addr, True)
+
+    def test_static_with_port_ipless_interfaces(self):
+        """ SNAT 1:1 NAT with port interfaces without configured ip """
+
+        self.tcp_port_out = 30606
+        self.udp_port_out = 30607
+        self.icmp_id_out = 30608
+
+        self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
+                                      self.pg7.remote_mac,
+                                      self.pg7.remote_ip4n,
+                                      is_static=1)
+        self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
+                                      self.pg8.remote_mac,
+                                      self.pg8.remote_ip4n,
+                                      is_static=1)
+
+        self.vapi.ip_add_del_route(dst_address=self.pg7.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg7.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg7.sw_if_index)
+        self.vapi.ip_add_del_route(dst_address=self.pg8.remote_ip4n,
+                                   dst_address_length=32,
+                                   next_hop_address=self.pg8.remote_ip4n,
+                                   next_hop_sw_if_index=self.pg8.sw_if_index)
+
+        self.snat_add_address(self.snat_addr)
+        self.snat_add_static_mapping(self.pg7.remote_ip4, self.snat_addr,
+                                     self.tcp_port_in, self.tcp_port_out,
+                                     proto=IP_PROTOS.tcp)
+        self.snat_add_static_mapping(self.pg7.remote_ip4, self.snat_addr,
+                                     self.udp_port_in, self.udp_port_out,
+                                     proto=IP_PROTOS.udp)
+        self.snat_add_static_mapping(self.pg7.remote_ip4, self.snat_addr,
+                                     self.icmp_id_in, self.icmp_id_out,
+                                     proto=IP_PROTOS.icmp)
+        self.vapi.snat_interface_add_del_feature(self.pg7.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg8.sw_if_index,
+                                                 is_inside=0)
+
+        # out2in
+        pkts = self.create_stream_out(self.pg8)
+        self.pg8.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg7.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg7)
+
+        # in2out
+        pkts = self.create_stream_in(self.pg7, self.pg8)
+        self.pg7.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg8.get_capture(len(pkts))
+        self.verify_capture_out(capture)
 
     def tearDown(self):
         super(TestSNAT, self).tearDown()
