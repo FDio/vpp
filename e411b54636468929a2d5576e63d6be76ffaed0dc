@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a3291f1_49eb4d78",
+        "filename": "test/test_acl_plugin_conns.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-05-04T17:24:22Z",
+      "side": 1,
+      "message": "please don\u0027t write to stderr, we only log via logger, in this case testcase.logger",
+      "range": {
+        "startLine": 69,
+        "startChar": 12,
+        "endLine": 69,
+        "endChar": 24
+      },
+      "revId": "e411b54636468929a2d5576e63d6be76ffaed0dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
