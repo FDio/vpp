@@ -389,10 +389,14 @@ static int
 tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 {
   u32 mrtt = 0;
+  u8 rtx_acked;
+
+  /* Determine if only rtx bytes are acked. TODO fast retransmit */
+  rtx_acked = tc->rto_boff && (tc->bytes_acked <= tc->snd_mss);
 
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
-  if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq) && !tc->rto_boff)
+  if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq) && !rtx_acked)
     {
       mrtt = tcp_time_now () - tc->rtt_ts;
     }

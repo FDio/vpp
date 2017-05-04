@@ -331,7 +331,7 @@ void
 tcp_connection_init_vars (tcp_connection_t * tc)
 {
   tcp_connection_timers_init (tc);
-  tcp_set_snd_mss (tc);
+  tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
 }
@@ -560,10 +560,23 @@ tcp_half_open_session_get_transport (u32 conn_index)
   return &tc->connection;
 }
 
+/**
+ * Compute maximum segment size for session layer.
+ *
+ * Since the result needs to be the actual data length, it first computes
+ * the tcp options to be used in the next burst and subtracts their
+ * length from the connection's snd_mss.
+ */
 u16
 tcp_session_send_mss (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
+
+  /* Ensure snd_mss does accurately reflect the amount of data we can push
+   * in a segment. This also makes sure that options are updated according to
+   * the current state of the connection. */
+  tcp_update_snd_mss (tc);
+
   return tc->snd_mss;
 }
 
@@ -607,7 +620,7 @@ tcp_session_send_space (transport_connection_t * trans_conn)
       tc->snd_nxt = tc->snd_una_max;
       snd_space = tcp_available_wnd (tc) - tc->rtx_bytes
 	- (tc->snd_una_max - tc->snd_congestion);
-      if (snd_space <= 0)
+      if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
 	return 0;
       return tcp_round_snd_space (tc, snd_space);
     }
