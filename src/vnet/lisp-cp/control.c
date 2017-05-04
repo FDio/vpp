@@ -3245,6 +3245,8 @@ parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
   mapping_t m;
   locator_t *loc;
 
+  memset (&m, 0, sizeof (m));
+
   /* parse record eid */
   for (i = 0; i < count; i++)
     {
