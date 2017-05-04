@@ -128,7 +128,7 @@ typedef CLIB_PACKED (struct {
 	  u16 src_port;
 	  u16 dst_port;
 	  u32 proto;
-	  u8 unused_for_now[8];
+	  u64 unused;
 	};
       u64 as_u64[6];
     };
@@ -142,17 +142,14 @@ always_inline void
 make_v4_ss_kv (session_kv4_t * kv, ip4_address_t * lcl, ip4_address_t * rmt,
 	       u16 lcl_port, u16 rmt_port, u8 proto)
 {
-  v4_connection_key_t key;
-  memset (&key, 0, sizeof (v4_connection_key_t));
+  v4_connection_key_t *key = (v4_connection_key_t *) kv->key;
 
-  key.src.as_u32 = lcl->as_u32;
-  key.dst.as_u32 = rmt->as_u32;
-  key.src_port = lcl_port;
-  key.dst_port = rmt_port;
-  key.proto = proto;
+  key->src.as_u32 = lcl->as_u32;
+  key->dst.as_u32 = rmt->as_u32;
+  key->src_port = lcl_port;
+  key->dst_port = rmt_port;
+  key->proto = proto;
 
-  kv->key[0] = key.as_u64[0];
-  kv->key[1] = key.as_u64[1];
   kv->value = ~0ULL;
 }
 
@@ -160,17 +157,14 @@ always_inline void
 make_v4_listener_kv (session_kv4_t * kv, ip4_address_t * lcl, u16 lcl_port,
 		     u8 proto)
 {
-  v4_connection_key_t key;
-  memset (&key, 0, sizeof (v4_connection_key_t));
+  v4_connection_key_t *key = (v4_connection_key_t *) kv->key;
 
-  key.src.as_u32 = lcl->as_u32;
-  key.dst.as_u32 = 0;
-  key.src_port = lcl_port;
-  key.dst_port = 0;
-  key.proto = proto;
+  key->src.as_u32 = lcl->as_u32;
+  key->dst.as_u32 = 0;
+  key->src_port = lcl_port;
+  key->dst_port = 0;
+  key->proto = proto;
 
-  kv->key[0] = key.as_u64[0];
-  kv->key[1] = key.as_u64[1];
   kv->value = ~0ULL;
 }
 
@@ -185,23 +179,17 @@ always_inline void
 make_v6_ss_kv (session_kv6_t * kv, ip6_address_t * lcl, ip6_address_t * rmt,
 	       u16 lcl_port, u16 rmt_port, u8 proto)
 {
-  v6_connection_key_t key;
-  memset (&key, 0, sizeof (v6_connection_key_t));
+  v6_connection_key_t *key = (v6_connection_key_t *) kv->key;
 
-  key.src.as_u64[0] = lcl->as_u64[0];
-  key.src.as_u64[1] = lcl->as_u64[1];
-  key.dst.as_u64[0] = rmt->as_u64[0];
-  key.dst.as_u64[1] = rmt->as_u64[1];
-  key.src_port = lcl_port;
-  key.dst_port = rmt_port;
-  key.proto = proto;
+  key->src.as_u64[0] = lcl->as_u64[0];
+  key->src.as_u64[1] = lcl->as_u64[1];
+  key->dst.as_u64[0] = rmt->as_u64[0];
+  key->dst.as_u64[1] = rmt->as_u64[1];
+  key->src_port = lcl_port;
+  key->dst_port = rmt_port;
+  key->proto = proto;
+  key->unused = 0;
 
-  kv->key[0] = key.as_u64[0];
-  kv->key[1] = key.as_u64[1];
-  kv->key[2] = 0;
-  kv->key[3] = 0;
-  kv->key[4] = 0;
-  kv->key[5] = 0;
   kv->value = ~0ULL;
 }
 
@@ -209,23 +197,17 @@ always_inline void
 make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
 		     u8 proto)
 {
-  v6_connection_key_t key;
-  memset (&key, 0, sizeof (v6_connection_key_t));
+  v6_connection_key_t *key = (v6_connection_key_t *) kv->key;
 
-  key.src.as_u64[0] = lcl->as_u64[0];
-  key.src.as_u64[1] = lcl->as_u64[1];
-  key.dst.as_u64[0] = 0;
-  key.dst.as_u64[1] = 0;
-  key.src_port = lcl_port;
-  key.dst_port = 0;
-  key.proto = proto;
+  key->src.as_u64[0] = lcl->as_u64[0];
+  key->src.as_u64[1] = lcl->as_u64[1];
+  key->dst.as_u64[0] = 0;
+  key->dst.as_u64[1] = 0;
+  key->src_port = lcl_port;
+  key->dst_port = 0;
+  key->proto = proto;
+  key->unused = 0;
 
-  kv->key[0] = key.as_u64[0];
-  kv->key[1] = key.as_u64[1];
-  kv->key[2] = 0;
-  kv->key[3] = 0;
-  kv->key[4] = 0;
-  kv->key[5] = 0;
   kv->value = ~0ULL;
 }
 
