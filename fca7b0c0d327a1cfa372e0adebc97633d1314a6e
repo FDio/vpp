@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a3291f1_696cc9d0",
+        "filename": "src/vnet/srmpls/sr_mpls_policy.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 261,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-04T09:33:53Z",
+      "side": 1,
+      "message": "these entries should also be added as recursive-via-label (like the steered entries). then you don\u0027t need to manage all these DPOs yourself. And all the update logic is handled for you by the FIB.\n\nfor the SPRAY case set the FIB_ENTRY_FLAG_MULTICAST when adding the entry - that will build a replicate not a load-balance.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_26d02e1e",
         "filename": "src/vnet/srmpls/sr_mpls_policy.c",
         "patchSetId": 10
@@ -82,6 +99,57 @@
       "writtenOn": "2017-05-03T18:00:58Z",
       "side": 1,
       "message": "i think you need to remove both /21, eos and neos. not the /20 cover.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a9287186",
+        "filename": "src/vnet/srmpls/sr_mpls_steering.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 58,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-04T09:33:53Z",
+      "side": 1,
+      "message": "use an enum for the small range of traffic types. not a u8.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_a633fe12",
+        "filename": "src/vnet/srmpls/sr_mpls_steering.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-04T09:33:53Z",
+      "side": 1,
+      "message": "cache a copy of the resulting fib_index? and use for the result of this function.",
+      "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_c9173d44",
+        "filename": "src/vnet/srmpls/sr_mpls_steering.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 159,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-04T09:33:53Z",
+      "side": 1,
+      "message": "you don\u0027t need to delete the entry first.\nIf you want to replace the existing set of paths with the new set use;\n  fib_table_entry_path update\nif you want to add paths (in the ECMP sense) use\n  fib_table_entry_path_addXXX",
       "revId": "fca7b0c0d327a1cfa372e0adebc97633d1314a6e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
