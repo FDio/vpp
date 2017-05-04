@@ -3,14 +3,15 @@
 function usage() {
  echo "$0" 1>&2
  echo "" 1>&2
- echo "Usage: $0 [-p <pre-exec-cmd>] [-m <email>] -- <make test options>" 1>&2
+ echo "Usage: $0 [-p <pre-exec-cmd>] [-m <email>] -- <make test options|verify>" 1>&2
  echo "" 1>&2
  echo "Parameters:" 1>&2
  echo "    -p <pre-exec-cmd> - run a command before each test loop (e.g. 'git pull')" 1>&2
  echo "    -m <email>        - if set, email is sent to this address on failure" 1>&2
  echo "" 1>&2
- echo "Example:" 1>&2
- echo "    $0 -m <somebody@cisco.com> -- test-debug TEST=l2bd"
+ echo "Examples:" 1>&2
+ echo "    $0 -m <somebody@cisco.com> -- test-debug TEST=l2bd" 1>&2
+ echo "    $0 -m <somebody@cisco.com> -- verify" 1>&2
  exit 1;
 }
 
@@ -44,8 +45,11 @@ shift $((OPTIND-1))
 
 if ! echo $* | grep test >/dev/null
 then
-        echo "Error: command line doesn't look right - should contain \`test' token..." >&2
-	usage
+	if ! echo $* | grep verify >/dev/null
+	then
+		echo "Error: command line doesn't look right - should contain \`test' or \`verify' token..." >&2
+		usage
+	fi
 fi
 
 function finish {

@@ -107,7 +107,11 @@ sanity: verify-no-running-vpp
 	         echo \"*******************************************************************\" &&\
 		 false)"
 
-test: verify-python-path $(PAPI_INSTALL_DONE) sanity reset 
+.PHONY: ext
+ext:
+	make -C ext
+
+test: verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
 	$(call retest-func)
 
 retest: verify-python-path sanity reset
