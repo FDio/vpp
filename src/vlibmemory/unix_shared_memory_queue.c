@@ -177,14 +177,85 @@ unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t * q, u8 * elem)
   return 0;
 }
 
-
 /*
- * unix_shared_memory_queue_add
+ * unix_shared_memory_queue_add2
  */
 int
-unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
-			      u8 * elem, int nowait)
+unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q, u8 * elem,
+			       uword size, u8 * elem2, uword size2,
+			       int nowait)
 {
+  if (q->elsize > size || q->elsize > size2)
+    return (-3);
+
+  i8 *tailp;
+  int need_broadcast = 0;
+
+  if (nowait)
+    {
+      /* zero on success */
+      if (pthread_mutex_trylock (&q->mutex))
+	{
+	  return (-1);
+	}
+    }
+  else
+    pthread_mutex_lock (&q->mutex);
+
+  if (PREDICT_FALSE (q->cursize + 1 == q->maxsize))
+    {
+      if (nowait)
+	{
+	  pthread_mutex_unlock (&q->mutex);
+	  return (-2);
+	}
+      while (q->cursize + 1 == q->maxsize)
+	{
+	  (void) pthread_cond_wait (&q->condvar, &q->mutex);
+	}
+    }
+
+  tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
+  clib_memcpy (tailp, elem, size);
+
+  q->tail++;
+  q->cursize++;
+
+  if (q->tail == q->maxsize)
+    q->tail = 0;
+
+  need_broadcast = (q->cursize == 1);
+
+  tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
+  clib_memcpy (tailp, elem2, size2);
+
+  q->tail++;
+  q->cursize++;
+
+  if (q->tail == q->maxsize)
+    q->tail = 0;
+
+  if (need_broadcast)
+    {
+      (void) pthread_cond_broadcast (&q->condvar);
+      if (q->signal_when_queue_non_empty)
+	kill (q->consumer_pid, q->signal_when_queue_non_empty);
+    }
+  pthread_mutex_unlock (&q->mutex);
+
+  return 0;
+}
+
+/*
+ * unix_shared_memory_queue_add_custom
+ */
+int
+unix_shared_memory_queue_add_custom (unix_shared_memory_queue_t * q,
+				     u8 * elem, uword elem_size, int nowait)
+{
+  if (q->elsize > elem_size)
+    return (-3);
+
   i8 *tailp;
   int need_broadcast = 0;
 
@@ -213,7 +284,7 @@ unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
     }
 
   tailp = (i8 *) (&q->data[0] + q->elsize * q->tail);
-  clib_memcpy (tailp, elem, q->elsize);
+  clib_memcpy (tailp, elem, elem_size);
 
   q->tail++;
   q->cursize++;
@@ -232,6 +303,13 @@ unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
   pthread_mutex_unlock (&q->mutex);
 
   return 0;
+}
+
+int
+unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
+			      u8 * elem, int nowait)
+{
+  return unix_shared_memory_queue_add_custom (q, elem, q->elsize, nowait);
 }
 
 /*
