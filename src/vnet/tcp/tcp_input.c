@@ -392,11 +392,10 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
-  if (tc->rtt_seq && seq_gt (ack, tc->rtt_seq) && !tc->rto_boff)
+  if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq) && !tc->rto_boff)
     {
       mrtt = tcp_time_now () - tc->rtt_ts;
     }
-
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
    * seq_lt (tc->snd_una, ack). Note: last condition could be dropped, we don't
@@ -406,19 +405,22 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
       mrtt = tcp_time_now () - tc->opt.tsecr;
     }
 
+  /* Allow measuring of a new RTT */
+  tc->rtt_ts = 0;
+
+  /* If ACK moves left side of the wnd make sure boff is 0, even if mrtt is
+   * not valid */
+  if (tc->bytes_acked)
+    tc->rto_boff = 0;
+
   /* Ignore dubious measurements */
   if (mrtt == 0 || mrtt > TCP_RTT_MAX)
     return 0;
 
   tcp_estimate_rtt (tc, mrtt);
-
   tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
 
-  /* Allow measuring of RTT and make sure boff is 0 */
-  tc->rtt_seq = 0;
-  tc->rto_boff = 0;
-
-  return 1;
+  return 0;
 }
 
 /**
@@ -735,7 +737,7 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   u8 partial_ack;
 
-  if (tcp_in_cong_recovery (tc))
+  if (tcp_in_fastrecovery (tc))
     {
       partial_ack = seq_lt (tc->snd_una, tc->snd_congestion);
       if (!partial_ack)
@@ -749,6 +751,7 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 
 	  /* Clear retransmitted bytes. XXX should we clear all? */
 	  tc->rtx_bytes = 0;
+
 	  tc->cc_algo->rcv_cong_ack (tc, TCP_CC_PARTIALACK);
 
 	  /* In case snd_nxt is still in the past and output tries to
@@ -772,6 +775,13 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
       tc->cc_algo->rcv_ack (tc);
       tc->tsecr_last_ack = tc->opt.tsecr;
       tc->rcv_dupacks = 0;
+      if (tcp_in_recovery (tc))
+	{
+	  tc->rtx_bytes -= clib_min (tc->bytes_acked, tc->rtx_bytes);
+	  tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
+	  if (seq_geq (tc->snd_una, tc->snd_congestion))
+	    tcp_recovery_off (tc);
+	}
     }
 }
 
@@ -897,7 +907,7 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
       tcp_cc_rcv_ack (tc, b);
 
       /* If everything has been acked, stop retransmit timer
-       * otherwise update */
+       * otherwise update. */
       if (tc->snd_una == tc->snd_una_max)
 	tcp_retransmit_timer_reset (tc);
       else
@@ -1778,6 +1788,11 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  tcp_send_reset (b0, is_ip4);
 		  goto drop;
 		}
+
+	      /* Update rtt and rto */
+	      tc0->bytes_acked = 1;
+	      tcp_update_rtt (tc0, vnet_buffer (b0)->tcp.ack_number);
+
 	      /* Switch state to ESTABLISHED */
 	      tc0->state = TCP_STATE_ESTABLISHED;
 
