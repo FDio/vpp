@@ -38,7 +38,7 @@ newreno_rcv_ack (tcp_connection_t * tc)
   else
     {
       /* Round up to 1 if needed */
-      tc->cwnd += clib_max (tc->snd_mss * tc->snd_mss / tc->cwnd, 1);
+      tc->cwnd += clib_max ((tc->snd_mss * tc->snd_mss) / tc->cwnd, 1);
     }
 }
 

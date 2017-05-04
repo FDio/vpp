@@ -24,8 +24,8 @@
 #include <vnet/session/session.h>
 #include <vnet/tcp/tcp_debug.h>
 
-#define TCP_TICK 10e-3			/**< TCP tick period (s) */
-#define THZ 1/TCP_TICK			/**< TCP tick frequency */
+#define TCP_TICK 0.001			/**< TCP tick period (s) */
+#define THZ (u32) (1/TCP_TICK)		/**< TCP tick frequency */
 #define TCP_TSTAMP_RESOLUTION TCP_TICK	/**< Time stamp resolution */
 #define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
 #define TCP_MAX_OPTION_SPACE 40

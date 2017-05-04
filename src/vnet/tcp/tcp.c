@@ -567,30 +567,49 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
   return tc->snd_mss;
 }
 
+always_inline u32
+tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
+{
+  if (tc->snd_wnd < tc->snd_mss)
+    {
+      return tc->snd_wnd < snd_space ? tc->snd_wnd : 0;
+    }
+
+  /* If we can't write at least a segment, don't try at all */
+  if (snd_space < tc->snd_mss)
+    return 0;
+
+  /* round down to mss multiple */
+  return snd_space - (snd_space % tc->snd_mss);
+}
+
 /**
  * Compute tx window session is allowed to fill.
  */
 u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
-  u32 snd_space, chunk;
+  int snd_space;
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
 
   /* If we haven't gotten dupacks or if we did and have gotten sacked bytes
    * then we can still send */
-  if (PREDICT_TRUE (tcp_in_fastrecovery (tc) == 0
+  if (PREDICT_TRUE (tcp_in_cong_recovery (tc) == 0
 		    && (tc->rcv_dupacks == 0
 			|| tc->sack_sb.last_sacked_bytes)))
     {
-      chunk = tc->snd_wnd > tc->snd_mss ? tc->snd_mss : tc->snd_wnd;
       snd_space = tcp_available_snd_space (tc);
+      return tcp_round_snd_space (tc, snd_space);
+    }
 
-      /* If we can't write at least a segment, don't try at all */
-      if (chunk == 0 || snd_space < chunk)
+  if (tcp_in_recovery (tc))
+    {
+      tc->snd_nxt = tc->snd_una_max;
+      snd_space = tcp_available_wnd (tc) - tc->rtx_bytes
+	- (tc->snd_una_max - tc->snd_congestion);
+      if (snd_space <= 0)
 	return 0;
-
-      /* round down to mss multiple */
-      return snd_space - (snd_space % chunk);
+      return tcp_round_snd_space (tc, snd_space);
     }
 
   /* If in fast recovery, send 1 SMSS if wnd allows */
