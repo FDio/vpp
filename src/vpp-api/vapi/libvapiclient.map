@@ -1,0 +1,41 @@
+
+VAPICLIENT_17.07 {
+	global:
+	vapi_msg_alloc;
+	vapi_msg_free;
+	vapi_ctx_alloc;
+	vapi_ctx_free;
+	vapi_is_msg_available;
+	vapi_connect;
+	vapi_disconnect;
+	vapi_get_fd;
+	vapi_send;
+	vapi_send2;
+	vapi_recv;
+	vapi_wait;
+	vapi_dispatch_one;
+	vapi_dispatch;
+	vapi_set_event_cb;
+	vapi_clear_event_cb;
+	vapi_set_generic_event_cb;
+	vapi_clear_generic_event_cb;
+	vapi_get_client_index;
+	vapi_register_msg;
+	vapi_get_client_index;
+	vapi_is_nonblocking;
+	vapi_requests_full;
+	vapi_gen_req_context;
+	vapi_producer_lock;
+	vapi_send_with_control_ping;
+	vapi_store_request;
+	vapi_is_nonblocking;
+	vapi_producer_unlock;
+	vapi_lookup_vl_msg_id;
+	vapi_lookup_vapi_msg_id_t;
+	vapi_msg_is_with_context;
+	vapi_get_context_offset;
+	vapi_msg_id_control_ping;
+	vapi_msg_id_control_ping_reply;
+
+	local: *;
+};
