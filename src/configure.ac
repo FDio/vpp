@@ -188,6 +188,8 @@ AM_COND_IF([CROSSCOMPILE],
 ])
 AC_SUBST([VPPAPIGEN])
 
+VAPI_PARSE_JSON=\$\(top_srcdir\)/vpp-api/vapi/vapi_parse_json.py
+AC_SUBST([VAPI_PARSE_JSON])
 
 ###############################################################################
 # JAVA
