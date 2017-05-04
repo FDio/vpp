@@ -3,7 +3,7 @@ LT_INIT
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
-AC_CONFIG_FILES([Makefile plugins/Makefile vpp-api/python/Makefile vpp-api/java/Makefile])
+AC_CONFIG_FILES([Makefile plugins/Makefile vpp-api/python/Makefile vpp-api/java/Makefile vpp-api/vapi/Makefile])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_PROG_CC
@@ -188,6 +188,8 @@ AM_COND_IF([CROSSCOMPILE],
 ])
 AC_SUBST([VPPAPIGEN])
 
+VAPI_PARSE_JSON=\$\(top_srcdir\)/vpp-api/vapi/vapi_parse_json.py
+AC_SUBST([VAPI_PARSE_JSON])
 
 ###############################################################################
 # JAVA
