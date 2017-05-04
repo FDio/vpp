@@ -46,7 +46,7 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
-u16 dummy_mtu = 400;
+u16 dummy_mtu = 1400;
 
 u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
@@ -923,6 +923,12 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   /* TODO this is updated in output as well ... */
   if (tc->snd_nxt > tc->snd_una_max)
     tc->snd_una_max = tc->snd_nxt;
+
+  if (tc->rtt_ts == 0)
+    {
+      tc->rtt_ts = tcp_time_now ();
+      tc->rtt_seq = tc->snd_nxt;
+    }
   TCP_EVT_DBG (TCP_EVT_PKTIZE, tc);
 }
 
@@ -1032,7 +1038,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
-  u32 bi, snd_space, n_bytes;
+  u32 bi, n_bytes;
 
   if (is_syn)
     {
@@ -1065,34 +1071,35 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Exponential backoff */
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
-      /* Figure out what and how many bytes we can send */
-      snd_space = tcp_available_snd_space (tc);
-
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
 
-      if (snd_space == 0)
-	{
-	  clib_warning ("no wnd to retransmit");
-	  tcp_return_buffer (tm);
-
-	  /* Force one segment */
-	  tcp_retransmit_first_unacked (tc);
-
-	  /* Re-enable retransmit timer. Output may be unwilling
-	   * to do it for us */
-	  tcp_retransmit_timer_set (tc);
-
-	  return;
-	}
-      else
-	{
-	  /* No fancy recovery for now! */
-	  n_bytes = tcp_prepare_retransmit_segment (tc, b, 0, snd_space);
+//      if (snd_space == 0)
+//	{
+//	  clib_warning ("no wnd to retransmit");
+//	  tcp_return_buffer (tm);
+//
+//	  /* Force one segment */
+//	  tcp_retransmit_first_unacked (tc);
+//
+//	  /* Re-enable retransmit timer. Output may be unwilling
+//	   * to do it for us */
+//	  tcp_retransmit_timer_set (tc);
+//
+//	  return;
+//	}
+//      else
+//	{
+	  /* Send one segment. No fancy recovery for now! */
+	  n_bytes = tcp_prepare_retransmit_segment (tc, b, 0, tc->snd_mss);
 	  scoreboard_clear (&tc->sack_sb);
 
 	  if (n_bytes == 0)
-	    return;
-	}
+	    {
+	      clib_warning ("could not retransmit");
+	      return;
+	    }
+
+//	}
     }
   else
     {
@@ -1400,9 +1407,9 @@ tcp46_output_inline (vlib_main_t * vm,
 	    }
 
 	  /* If not retransmitting
-	   * 1) update snd_una_max (SYN, SYNACK, new data, FIN)
+	   * 1) update snd_una_max (SYN, SYNACK, FIN)
 	   * 2) If we're not tracking an ACK, start tracking */
-	  if (seq_lt (tc0->snd_una_max, tc0->snd_nxt))
+	  if (seq_lt(tc0->snd_una_max, tc0->snd_nxt))
 	    {
 	      tc0->snd_una_max = tc0->snd_nxt;
 	      if (tc0->rtt_ts == 0)
