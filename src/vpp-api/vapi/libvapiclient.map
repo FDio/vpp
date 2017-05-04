@@ -1,0 +1,4 @@
+VAPICLIENT_17.07 {
+	global: *;
+	local: *;
+};
