@@ -479,7 +479,7 @@ ip6_to_ip4_tcp_udp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
 {
   ip6_header_t *ip6;
   u16 *checksum;
-  ip_csum_t csum;
+  ip_csum_t csum = 0;
   ip4_header_t *ip4;
   u16 fragment_id;
   u16 flags;
