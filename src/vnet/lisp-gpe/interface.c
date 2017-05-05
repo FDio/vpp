@@ -705,6 +705,7 @@ void
 lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
 {
   tunnel_lookup_t *l2_ifaces = &lgm->l2_ifaces;
+  vnet_hw_interface_t *hi;
 
   u32 bd_index = bd_find_index (&bd_main, bd_id);
   ASSERT (bd_index != ~0);
@@ -716,6 +717,11 @@ lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
 		    bd_id);
       return;
     }
+
+  /* Remove interface from bridge .. by enabling L3 mode */
+  hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
+  set_int_l2_mode (lgm->vlib_main, lgm->vnet_main, MODE_L3, hi->sw_if_index,
+		   0, 0, 0, 0);
   lisp_gpe_remove_iface (lgm, hip[0], bd_index, &lgm->l2_ifaces);
 }
 
