@@ -94,6 +94,30 @@
     },
     {
       "key": {
+        "uuid": "3a3291f1_ef8d597d",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-05T16:56:29Z",
+      "side": 1,
+      "message": "I submitted a separate patch to fix the global_learn_count issue already: https://gerrit.fd.io/r/#/c/6612/",
+      "parentUuid": "3a3291f1_29a5a1a1",
+      "range": {
+        "startLine": 343,
+        "startChar": 15,
+        "endLine": 343,
+        "endChar": 33
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_49b34de9",
         "filename": "src/vnet/l2/l2_input.c",
         "patchSetId": 2
