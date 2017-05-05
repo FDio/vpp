@@ -693,6 +693,10 @@ end_srh_processing (vlib_node_runtime_t * node,
 		    ip6_sr_localsid_t * ls0, u32 * next0)
 {
   ip6_address_t *new_dst0;
+  ip6_sr_tlv_header_t *opt0 = NULL;
+  ip6_sr_tlv_header_t *limit0 = NULL;
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+  u8 type0 = 0;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
@@ -714,7 +718,45 @@ end_srh_processing (vlib_node_runtime_t * node,
 	{
 	  *next0 = SR_LOCALSID_NEXT_ERROR;
 	  b0->error = node->errors[SR_LOCALSID_ERROR_NO_MORE_SEGMENTS];
-	}
+        }
+        /* TBD- MUST FIX: How do we determine the presence of TLVs? */
+        /* Do TLV processing for SRH */
+        opt0 = (ip6_sr_tlv_header_t *)((u8 *) ip0 + sizeof (ip6_header_t) +\
+                 sizeof(ip6_address_t) + \
+                 sizeof(ip6_sr_header_t) +\
+                 (sr0->segments_left + 1 ) * sizeof(ip6_address_t));
+        //limit0 = (ip6_sr_tlv_header_t *)((u8 *)opt0 + opt0->length); // FIXME: This should
+        limit0 = (ip6_sr_tlv_header_t *)((u8 *)sr0 + (sr0->length << 3));
+
+        while (opt0 < limit0)
+          {
+            type0 = opt0->type;
+            switch (type0)
+              {
+              case 0:                /* Pad1 */
+                opt0 = (ip6_sr_tlv_header_t *) ((u8 *) opt0) + 1;
+                continue;
+              case 1:                /* PadN */
+                break;
+              default:
+                if (hm->options[type0])
+                  {
+                    if ((*hm->options[type0]) (b0, ip0, opt0) < 0)
+                      {
+                  b0->error = -1;
+                        return;
+                      }
+                  }
+                else
+                  {
+                    b0->error = -1;
+                    return;
+                  }
+              }
+            opt0 =
+              (ip6_sr_tlv_header_t *) (((u8 *) opt0) + opt0->length +
+                                           sizeof (ip6_sr_tlv_header_t));
+          }
     }
   else
     {
