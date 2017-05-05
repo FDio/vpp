@@ -428,27 +428,6 @@ class VppPapiProvider(object):
                          'filter_mac': filter_mac,
                          'bvi_mac': bvi_mac})
 
-    def l2fib_flush_int(self, sw_if_index):
-        """Flush L2 FIB entries for sw_if_index.
-
-        :param int sw_if_index: Software interface index of the interface.
-        """
-        return self.api(self.papi.l2fib_flush_int,
-                        {'sw_if_index': sw_if_index})
-
-    def l2fib_flush_bd(self, bd_id):
-        """Flush L2 FIB entries for bd_id.
-
-        :param int sw_if_index: Bridge Domain id.
-        """
-        return self.api(self.papi.l2fib_flush_bd,
-                        {'bd_id': bd_id})
-
-    def l2fib_flush_all(self):
-        """Flush all L2 FIB.
-        """
-        return self.api(self.papi.l2fib_flush_all, {})
-
     def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
                                    shg=0, bvi=0, enable=1):
         """Add/remove interface to/from bridge domain.
@@ -1797,34 +1776,69 @@ class VppPapiProvider(object):
                 'mtu': mtu
             })
 
-    def gtpu_add_del_tunnel(
+ 
+    def sr_policy_add(
             self,
-            src_addr,
-            dst_addr,
-            is_add=1,
-            is_ipv6=0,
-            mcast_sw_if_index=0xFFFFFFFF,
-            encap_vrf_id=0,
-            decap_next_index=0xFFFFFFFF,
-            teid=0):
-        """
+            bsid,
+            weight,
+            is_encap,
+            type,
+            fib_table,
+            n_segments,
+            segments):
+        return self.api(
+            self.papi.sr_policy_add,
+            {'bsid_addr': bsid,
+             'weight': weight,
+             'is_encap': is_encap,
+             'type': type,
+             'fib_table': fib_table,
+             'n_segments' : n_segments,
+             'segments' : segments
+            })
 
-        :param is_add:  (Default value = 1)
-        :param is_ipv6:  (Default value = 0)
-        :param src_addr:
-        :param dst_addr:
-        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
-        :param encap_vrf_id:  (Default value = 0)
-        :param decap_next_index:  (Default value = 0xFFFFFFFF)
-        :param teid:  (Default value = 0)
+    def sr_steering_add_del(
+            self,
+            is_del,
+            bsid,
+            sr_policy_index,
+            table_id,
+            prefix,
+            mask_width,
+            sw_if_index,
+            traffic_type):
+        return self.api(
+            self.papi.sr_steering_add_del,
+            {'is_del': is_del,
+             'bsid_addr': bsid,
+             'sr_policy_index': sr_policy_index,
+             'table_id': table_id,
+             'prefix_addr': prefix,
+             'mask_width': mask_width,
+             'sw_if_index' : sw_if_index,
+             'traffic_type' : traffic_type
+            })
 
-        """
-        return self.api(self.papi.gtpu_add_del_tunnel,
-                        {'is_add': is_add,
-                         'is_ipv6': is_ipv6,
-                         'src_address': src_addr,
-                         'dst_address': dst_addr,
-                         'mcast_sw_if_index': mcast_sw_if_index,
-                         'encap_vrf_id': encap_vrf_id,
-                         'decap_next_index': decap_next_index,
-                         'teid': teid})
+    def ioam_trace_profile_add(
+            self,
+            ioam_trace_type,
+            num_elts,
+            trace_tsp,
+            node_id,
+            app_data):
+        return self.api(
+            self.papi.trace_profile_add,
+            {'trace_type': ioam_trace_type,
+             'num_elts': num_elts,
+             'trace_tsp': trace_tsp,
+             'node_id': node_id,
+             'app_data' : app_data
+            })
+
+    def ioam_trace_profile_del(
+            self):
+        return self.api(
+            self.papi.trace_profile_del,
+            {
+            })
+
