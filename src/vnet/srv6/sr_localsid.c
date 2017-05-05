@@ -65,7 +65,8 @@ static dpo_type_t sr_localsid_d_dpo_type;
 int
 sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 		 char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index,
-		 u32 fib_table, ip46_address_t * nh_addr, void *ls_plugin_mem)
+		 u32 fib_table, ip46_address_t * nh_addr, void *ls_plugin_mem,
+		 char sid_local_arg_ioam)
 {
   ip6_sr_main_t *sm = &sr_main;
   uword *p;
@@ -150,6 +151,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 
   clib_memcpy (&ls->localsid, localsid_addr, sizeof (ip6_address_t));
   ls->end_psp = end_psp;
+  ls->sid_local_arg_ioam = sid_local_arg_ioam;
   ls->behavior = behavior;
   ls->nh_adj = (u32) ~ 0;
   ls->fib_table = fib_table;
@@ -268,6 +270,7 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 sw_if_index = (u32) ~ 0, vlan_index = (u32) ~ 0, fib_index = 0;
   int is_del = 0;
   int end_psp = 0;
+  int sid_local_arg_ioam = 0;
   ip6_address_t resulting_address;
   ip46_address_t next_hop;
   char address_set = 0;
@@ -352,6 +355,8 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else if (!end_psp && unformat (input, "psp"))
 	end_psp = 1;
+      else if (!sid_local_arg_ioam && unformat (input, "ioam-function"))
+	sid_local_arg_ioam = 1;
       else
 	break;
     }
@@ -372,9 +377,13 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0,
 			      "Error: SRv6 PSP only compatible with End and End.X");
 
+  if (end_psp && sid_local_arg_ioam)
+    return clib_error_return (0,
+			      "Error: SRV6 PSP not compatible with In-situ OAM");
+
   rv = sr_cli_localsid (is_del, &resulting_address, end_psp, behavior,
 			sw_if_index, vlan_index, fib_index, &next_hop,
-			ls_plugin_mem);
+			ls_plugin_mem, sid_local_arg_ioam);
 
   switch (rv)
     {
@@ -709,9 +718,14 @@ end_srh_processing (vlib_node_runtime_t * node,
 		    ip6_header_t * ip0,
 		    ip6_sr_header_t * sr0,
 		    ip6_sr_localsid_t * ls0,
-		    u32 * next0, u8 psp, ip6_ext_header_t * prev0)
+		    u32 * next0, u8 psp,
+		    ip6_ext_header_t * prev0, u8 sid_local_arg_ioam)
 {
   ip6_address_t *new_dst0;
+  ip6_sr_tlv_header_t *opt0 = NULL;
+  ip6_sr_tlv_header_t *limit0 = NULL;
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+  u8 type0 = 0;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
@@ -781,6 +795,51 @@ end_srh_processing (vlib_node_runtime_t * node,
 	  else if (ls0->behavior == SR_BEHAVIOR_T)
 	    {
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+	    }
+
+	  if (PREDICT_FALSE (sid_local_arg_ioam &&
+			     ((sr0->first_segment +
+			       1) * sizeof (ip6_address_t)) <
+			     ip6_ext_header_len (sr0)))
+	    {
+	      /* Do TLV processing for SRH */
+	      opt0 =
+		(ip6_sr_tlv_header_t *) ((u8 *) ip0 + sizeof (ip6_header_t) +
+					 sizeof (ip6_sr_header_t) +
+					 (sr0->first_segment +
+					  1) * sizeof (ip6_address_t));
+	      limit0 =
+		(ip6_sr_tlv_header_t *) ((u8 *) sr0 + (sr0->length << 3));
+
+	      while (opt0 < limit0)
+		{
+		  type0 = opt0->type;
+		  switch (type0)
+		    {
+		    case 0:	/* Pad1 */
+		      opt0 = (ip6_sr_tlv_header_t *) ((u8 *) opt0) + 1;
+		      continue;
+		    case 1:	/* PadN */
+		      break;
+		    default:
+		      if (hm->options[type0])
+			{
+			  if ((*hm->options[type0]) (b0, ip0, opt0) < 0)
+			    {
+			      b0->error = -1;
+			      return;
+			    }
+			}
+		      else
+			{
+			  b0->error = -1;
+			  return;
+			}
+		    }
+		  opt0 =
+		    (ip6_sr_tlv_header_t *) (((u8 *) opt0) + opt0->length +
+					     sizeof (ip6_sr_tlv_header_t));
+		}
 	    }
 	}
       else
@@ -1055,8 +1114,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1187,13 +1245,13 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
-			      prev0);
+			      prev0, ls0->sid_local_arg_ioam);
 	  end_srh_processing (node, b1, ip1, sr1, ls1, &next1, ls1->end_psp,
-			      prev1);
+			      prev1, ls1->sid_local_arg_ioam);
 	  end_srh_processing (node, b2, ip2, sr2, ls2, &next2, ls2->end_psp,
-			      prev2);
+			      prev2, ls2->sid_local_arg_ioam);
 	  end_srh_processing (node, b3, ip3, sr3, ls3, &next3, ls3->end_psp,
-			      prev3);
+			      prev3, ls3->sid_local_arg_ioam);
 
 	  //TODO: proper trace.
 
@@ -1255,7 +1313,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* SRH processing */
 	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
-			      prev0);
+			      prev0, ls0->sid_local_arg_ioam);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1274,8 +1332,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}

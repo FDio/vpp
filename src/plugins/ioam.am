@@ -67,6 +67,7 @@ vppapitestplugins_LTLIBRARIES += ioam_export_test_plugin.la
 IOAM_TRACE_SRC =				\
 	ioam/lib-trace/trace_util.c		\
 	ioam/encap/ip6_ioam_trace.c		\
+	ioam/srv6/sr_ioam_trace.c		\
 	ioam/lib-trace/trace_api.c
 
 IOAM_TRACE_NOINST_HDR =                 \
@@ -76,6 +77,7 @@ IOAM_TRACE_NOINST_HDR =                 \
   ioam/lib-trace/trace.api.h		\
   ioam/lib-trace/trace_util.h		\
   ioam/encap/ip6_ioam_trace.h		\
+  ioam/srv6/sr_ioam_trace.h		\
   ioam/lib-trace/trace_config.h
 
 IOAM_TRACE_API = ioam/lib-trace/trace.api

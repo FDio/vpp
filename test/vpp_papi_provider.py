@@ -1981,3 +1981,68 @@ class VppPapiProvider(object):
                          'decap_vrf_id': decap_vrf_id,
                          'protocol': protocol,
                          'vni': vni})
+ 
+    def sr_policy_add(
+            self,
+            bsid,
+            weight,
+            is_encap,
+            type,
+            fib_table,
+            n_segments,
+            segments):
+        return self.api(
+            self.papi.sr_policy_add,
+            {'bsid_addr': bsid,
+             'weight': weight,
+             'is_encap': is_encap,
+             'type': type,
+             'fib_table': fib_table,
+             'n_segments' : n_segments,
+             'segments' : segments
+            })
+
+    def sr_steering_add_del(
+            self,
+            is_del,
+            bsid,
+            sr_policy_index,
+            table_id,
+            prefix,
+            mask_width,
+            sw_if_index,
+            traffic_type):
+        return self.api(
+            self.papi.sr_steering_add_del,
+            {'is_del': is_del,
+             'bsid_addr': bsid,
+             'sr_policy_index': sr_policy_index,
+             'table_id': table_id,
+             'prefix_addr': prefix,
+             'mask_width': mask_width,
+             'sw_if_index' : sw_if_index,
+             'traffic_type' : traffic_type
+            })
+
+    def ioam_trace_profile_add(
+            self,
+            ioam_trace_type,
+            num_elts,
+            trace_tsp,
+            node_id,
+            app_data):
+        return self.api(
+            self.papi.trace_profile_add,
+            {'trace_type': ioam_trace_type,
+             'num_elts': num_elts,
+             'trace_tsp': trace_tsp,
+             'node_id': node_id,
+             'app_data' : app_data
+            })
+
+    def ioam_trace_profile_del(
+            self):
+        return self.api(
+            self.papi.trace_profile_del,
+            {
+            })

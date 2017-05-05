@@ -37,6 +37,7 @@ autoreply define sr_localsid_add_del
   u32 vlan_index;
   u32 fib_table;
   u8 nh_addr[16];
+  u8 sid_local_arg_ioam;
 };
 
 /** \brief IPv6 SR policy add
