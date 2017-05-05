@@ -215,7 +215,9 @@ show_l2fib (vlib_main_t * vm,
   if (total_entries == 0)
     vlib_cli_output (vm, "no l2fib entries");
   else
-    vlib_cli_output (vm, "%lld l2fib entries", total_entries);
+    vlib_cli_output (vm,
+		     "%lld l2fib entries with %d learned (or non-static) entries",
+		     total_entries, l2learn_main.global_learn_count);
 
   if (raw)
     vlib_cli_output (vm, "Raw Hash Table:\n%U\n",
@@ -347,7 +349,7 @@ l2fib_add_entry (u64 mac,
   BV (clib_bihash_add_del) (&mp->mac_table, &kv, 1 /* is_add */ );
 
   /* increment counter if dynamically learned mac */
-  if (result.fields.static_mac)
+  if (result.fields.static_mac == 0)
     {
       l2learn_main.global_learn_count++;
     }
@@ -635,7 +637,7 @@ l2fib_del_entry (u64 mac, u32 bd_index)
   result.raw = kv.value;
 
   /* decrement counter if dynamically learned mac */
-  if (result.fields.static_mac)
+  if (result.fields.static_mac == 0)
     {
       if (l2learn_main.global_learn_count > 0)
 	{

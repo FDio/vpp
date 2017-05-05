@@ -94,8 +94,11 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
 {
   l2_bridge_domain_t *bd = &l2input_main.bd_configs[bd_index];
   u32 bd_id = bd->bd_id;
-  l2fib_flush_bd_mac (vlib_get_main (), bd_index);
+  u64 mac_addr;
+  ip6_address_t *ip6_addr_key;
 
+  /* flush non-static MACs in BD and removed bd_id from hash table */
+  l2fib_flush_bd_mac (vlib_get_main (), bd_index);
   hash_unset (bdm->bd_index_by_bd_id, bd_id);
 
   /* mark this index clear */
@@ -105,9 +108,15 @@ bd_delete (bd_main_t * bdm, u32 bd_index)
   bd->bd_id = ~0;
   bd->feature_bitmap = 0;
 
-  /* free memory used by BD and flush non-static MACs in BD */
+  /* free memory used by BD */
   vec_free (bd->members);
   hash_free (bd->mac_by_ip4);
+  /* *INDENT-OFF* */
+  hash_foreach_mem (ip6_addr_key, mac_addr, bd->mac_by_ip6,
+  ({
+    clib_mem_free (ip6_addr_key); /* free memory used for ip6 addr key */
+  }));
+  /* *INDENT-ON* */
   hash_free (bd->mac_by_ip6);
 
   return 0;
