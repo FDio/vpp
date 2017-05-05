@@ -192,6 +192,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
   return rs;
 }
 
+ip6_sr_tlv_main_t ip6_sr_tlv_main;
 /**
  * @brief SR rewrite string computation for SRH insertion (inline)
  *
@@ -200,33 +201,72 @@ compute_rewrite_encaps (ip6_address_t * sl)
  * @return precomputed rewrite string for SRH insertion
  */
 static inline u8 *
-compute_rewrite_insert (ip6_address_t * sl)
+compute_rewrite_insert (ip6_address_t * sl, u8 tlv_type1, u8 tlv_type2)
 {
   ip6_sr_header_t *srh;
   ip6_address_t *addrp, *this_address;
   u32 header_length = 0;
   u8 *rs = NULL;
+  u8 *current;
+  u8 *trace_data_size = NULL;
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+  u32 size = 0;
+  u8 tlv_type = 0;
 
   header_length = 0;
   header_length += sizeof (ip6_sr_header_t);
   header_length += (vec_len (sl) + 1) * sizeof (ip6_address_t);
 
+  if (tlv_type1)
+  {
+     tlv_type = SRH_OPTION_TYPE_IOAM_TRACE_DATA_LIST;
+  }
+
+  if (hm->options_size[tlv_type] == 0)
+  {
+      hm->get_sizeof_options[tlv_type](&size);
+      hm->options_size[tlv_type] = size;
+  }
+
+  if (tlv_type1
+      && hm->options_size[tlv_type] != 0)
+  {
+      header_length += hm->options_size[tlv_type];
+  }
+
+  header_length = ((header_length + 7) >> 3) << 3;
   vec_validate (rs, header_length - 1);
 
   srh = (ip6_sr_header_t *) rs;
   srh->type = ROUTING_HEADER_TYPE_SR;
   srh->segments_left = vec_len (sl);
   srh->first_segment = vec_len (sl);
-  srh->length = ((sizeof (ip6_sr_header_t) +
-		  ((vec_len (sl) + 1) * sizeof (ip6_address_t))) / 8) - 1;
+  srh->length = header_length >> 3;
   srh->flags = 0x00;
   srh->reserved = 0x0000;
   addrp = srh->segments + vec_len (sl);
+  current = (u8 *)(addrp + 1);
   vec_foreach (this_address, sl)
   {
     clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
     addrp--;
   }
+
+
+  if (tlv_type1
+      && hm->add_options[tlv_type] != 0)
+    {
+      if (0 != (hm->options_size[tlv_type]))
+	{
+	  trace_data_size =
+	    &hm->options_size[tlv_type];
+	  if (0 ==
+	      hm->add_options[tlv_type] (current,
+								     trace_data_size))
+	    current += *trace_data_size;
+	}
+    }
+
   return rs;
 }
 
@@ -285,7 +325,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap)
+	   u8 is_encap, u8 tlv_type1, u8 tlv_type2)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -307,7 +347,7 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
     }
   else
     {
-      segment_list->rewrite = compute_rewrite_insert (sl);
+      segment_list->rewrite = compute_rewrite_insert (sl, tlv_type1, tlv_type2);
       segment_list->rewrite_bsid = compute_rewrite_bsid (sl);
     }
 
@@ -539,7 +579,8 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  */
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+               u8 tlv_type1, u8 tlv_type2)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -589,7 +630,7 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
 	     NULL);
 
   /* Create a segment list and add the index to the SR policy */
-  create_sl (sr_policy, segments, weight, is_encap);
+  create_sl (sr_policy, segments, weight, is_encap, tlv_type1, tlv_type2);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -740,7 +781,7 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
     {
       /* Create the new SL */
       segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap);
+	create_sl (sr_policy, segments, weight, sr_policy->is_encap, 0, 0); // FIXME: The last two args are hardcoded for now
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)
@@ -818,6 +859,9 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 operation = 0;
   char is_encap = 1;
   char is_spray = 0;
+  char is_tlv_present = 0;
+  char tlv_type1 = 0;  /* FIXME: Convert these to bitmaps */
+  char tlv_type2 = 0;    /* FIXME: Convert these to bitmaps */
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -855,6 +899,12 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_encap = 0;
       else if (unformat (input, "spray"))
 	is_spray = 1;
+      else if (unformat (input, "tlvs"))
+	is_tlv_present = 1;
+      else if (unformat (input, "ioam-trace"))
+	tlv_type1 = 1;
+      else if (unformat (input, "ioam-e2e"))
+	tlv_type2 = 1;
       else
 	break;
     }
@@ -865,13 +915,17 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!policy_set)
     return clib_error_return (0, "No SR policy BSID or index specified");
 
+  if (!is_tlv_present && (tlv_type1 || tlv_type2))
+    return clib_error_return (0, "Incorrect CLI");
+
   if (is_add)
     {
       if (vec_len (segments) == 0)
 	return clib_error_return (0, "No Segment List specified");
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
-			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap);
+			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap,
+                           tlv_type1, tlv_type2);  /* FIXME: Convert these to bitmaps */
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -1980,6 +2034,9 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   ip6_sr_main_t *sm = &sr_main;
   u32 n_left_from, next_index, *from, *to_next;
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+  ip6_sr_tlv_header_t *opt0 = NULL;
+  ip6_sr_tlv_header_t *limit0 = NULL;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -2286,6 +2343,8 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip6_sr_sl_t *sl0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 	  u16 new_l0 = 0;
+          u8 type0 = 0;
+          u32 error0 = 0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2344,7 +2403,39 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      sr0->protocol = ip_ext->next_hdr;
 	      ip_ext->next_hdr = IP_PROTOCOL_IPV6_ROUTE;
 	    }
+          opt0 = (ip6_sr_tlv_header_t *)((u8 *) ip0 + sizeof (ip6_header_t) +\
+                   sizeof(ip6_sr_header_t) +\
+                   (sr0->segments_left + 1 ) * sizeof(ip6_address_t));
+          limit0 = (ip6_sr_tlv_header_t *)((u8 *)opt0 + opt0->length);
 
+	  while (opt0 < limit0)
+	    {
+	      type0 = opt0->type;
+	      switch (type0)
+		{
+		case 0:		/* Pad1 */
+		  opt0 = (ip6_sr_tlv_header_t *) ((u8 *) opt0) + 1;
+		  continue;
+		case 1:		/* PadN */
+		  break;
+		default:
+		  if (hm->options[type0])
+		    {
+		      if ((*hm->options[type0]) (b0, ip0, opt0) < 0)
+			{
+			  error0 = -1; // FIXME
+			  return (error0);
+			}
+		    }
+		  else
+		    {
+		      return (error0);
+		    }
+		}
+	      opt0 =
+		(ip6_sr_tlv_header_t *) (((u8 *) opt0) + opt0->length +
+					     sizeof (ip6_sr_tlv_header_t));
+	    }
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -3086,6 +3177,60 @@ sr_policy_rewrite_b_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       bsid_pkts);
 
   return from_frame->n_vectors;
+}
+
+int
+sr_tlv_add_register_option (u8 option,
+			     u8 size,
+                               /* Array of function pointers to SRH TLV option handling routines */
+                             int rewrite_options (u8 * rewrite_string,
+                                                  u8 * rewrite_size),
+                             int pop_options (vlib_buffer_t * b,
+                                                     ip6_header_t * ip,
+                                                 ip6_sr_tlv_header_t * opt),
+                             int get_sizeof_options (u32 * rewrite_size),
+                             int options (vlib_buffer_t * b, ip6_header_t * ip,
+                                          ip6_sr_tlv_header_t * opt),
+                             u8 *
+                             sr_tlv_trace_data_list_trace_handler (u8 * s,
+					    ip6_hop_by_hop_option_t * opt)
+                             )
+
+{
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+
+  ASSERT (option < ARRAY_LEN (hm->add_options));
+
+  /* Already registered */
+  if (hm->add_options[option])
+    return (-1);
+
+  hm->add_options[option] = rewrite_options;
+  hm->pop_options[option] = pop_options;
+  hm->options[option] = options;
+  hm->get_sizeof_options[option] = get_sizeof_options;
+  hm->options_size[option] = size;
+
+  return (0);
+}
+
+int
+sr_tlv_add_unregister_option (u8 option)
+{
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+
+  ASSERT (option < ARRAY_LEN (hm->add_options));
+
+  /* Not registered */
+  if (!hm->add_options[option])
+    return (-1);
+
+  hm->add_options[option] = NULL;
+  hm->options_size[option] = 0;
+  hm->pop_options[option] = NULL;
+  hm->options[option] = NULL;
+  hm->get_sizeof_options[option] = NULL;
+  return (0);
 }
 
 /* *INDENT-OFF* */

@@ -693,6 +693,10 @@ end_srh_processing (vlib_node_runtime_t * node,
 		    ip6_sr_localsid_t * ls0, u32 * next0)
 {
   ip6_address_t *new_dst0;
+  ip6_sr_tlv_header_t *opt0 = NULL;
+  ip6_sr_tlv_header_t *limit0 = NULL;
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+  u8 type0 = 0;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
@@ -714,7 +718,46 @@ end_srh_processing (vlib_node_runtime_t * node,
 	{
 	  *next0 = SR_LOCALSID_NEXT_ERROR;
 	  b0->error = node->errors[SR_LOCALSID_ERROR_NO_MORE_SEGMENTS];
-	}
+        }
+
+        if (PREDICT_FALSE(((sr0->first_segment + 1) * sizeof(ip6_address_t)) < ip6_ext_header_len(sr0)))
+          {
+            /* Do TLV processing for SRH */
+            opt0 = (ip6_sr_tlv_header_t *)((u8 *) ip0 + sizeof (ip6_header_t) +\
+                     sizeof(ip6_sr_header_t) +\
+                     (sr0->first_segment + 1 ) * sizeof(ip6_address_t));
+            limit0 = (ip6_sr_tlv_header_t *)((u8 *)sr0 + (sr0->length << 3));
+
+            while (opt0 < limit0)
+              {
+                type0 = opt0->type;
+                switch (type0)
+                  {
+                  case 0:                /* Pad1 */
+                    opt0 = (ip6_sr_tlv_header_t *) ((u8 *) opt0) + 1;
+                    continue;
+                  case 1:                /* PadN */
+                    break;
+                  default:
+                    if (hm->options[type0])
+                      {
+                        if ((*hm->options[type0]) (b0, ip0, opt0) < 0)
+                          {
+                      b0->error = -1;
+                            return;
+                          }
+                      }
+                    else
+                      {
+                        b0->error = -1;
+                        return;
+                      }
+                  }
+                opt0 =
+                  (ip6_sr_tlv_header_t *) (((u8 *) opt0) + opt0->length +
+                                               sizeof (ip6_sr_tlv_header_t));
+              }
+          }
     }
   else
     {
@@ -824,6 +867,10 @@ end_psp_srh_processing (vlib_node_runtime_t * node,
   u64 *copy_dst0, *copy_src0;
   u32 copy_len_u64s0 = 0;
   int i;
+  ip6_sr_tlv_header_t *opt0 = NULL;
+  ip6_sr_tlv_header_t *limit0 = NULL;
+  ip6_sr_tlv_main_t *hm = &ip6_sr_tlv_main;
+  u8 type0 = 0;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
@@ -832,6 +879,45 @@ end_psp_srh_processing (vlib_node_runtime_t * node,
 	  ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
 	  ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
 
+          if (PREDICT_FALSE(((sr0->first_segment + 1) * sizeof(ip6_address_t)) < ip6_ext_header_len(sr0)))
+            {
+               /* The packet contains TLVs that need to be processed */
+               opt0 = (ip6_sr_tlv_header_t *)((u8 *) ip0 + sizeof (ip6_header_t) +\
+                        sizeof(ip6_sr_header_t) +\
+                        (sr0->first_segment + 1 ) * sizeof(ip6_address_t));
+               limit0 = (ip6_sr_tlv_header_t *)((u8 *)sr0 + (sr0->length << 3));
+
+               while (opt0 < limit0)
+                 {
+                   type0 = opt0->type;
+                   switch (type0)
+                     {
+                     case 0:                /* Pad1 */
+                       opt0 = (ip6_sr_tlv_header_t *) ((u8 *) opt0) + 1;
+                       continue;
+                     case 1:                /* PadN */
+                       break;
+                     default:
+                       if (hm->options[type0])
+                         {
+                           if ((*hm->options[type0]) (b0, ip0, opt0) < 0)
+                             {
+                         b0->error = -1;
+                               return;
+                             }
+                         }
+                       else
+                         {
+                           b0->error = -1;
+                           return;
+                         }
+                     }
+                   opt0 =
+                     (ip6_sr_tlv_header_t *) (((u8 *) opt0) + opt0->length +
+                                                  sizeof (ip6_sr_tlv_header_t));
+                 }
+
+            }
 	  /* Remove the SRH taking care of the rest of IPv6 ext header */
 	  if (prev0)
 	    prev0->next_hdr = sr0->protocol;
@@ -1049,8 +1135,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+                      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1281,8 +1366,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+                      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
