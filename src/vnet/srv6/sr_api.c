@@ -92,10 +92,7 @@ vl_api_sr_policy_add_t_handler (vl_api_sr_policy_add_t * mp)
  *                u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
  */
   int rv = 0;
-  rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr,
-		      segments,
-		      ntohl (mp->weight),
-		      mp->type, ntohl (mp->fib_table), mp->is_encap);
+  rv = sr_policy_add ((ip6_address_t *) & mp->bsid_addr, segments, ntohl (mp->weight), mp->type, ntohl (mp->fib_table), mp->is_encap, 0, 0);	// FIXME
 
   REPLY_MACRO (VL_API_SR_POLICY_ADD_REPLY);
 }
