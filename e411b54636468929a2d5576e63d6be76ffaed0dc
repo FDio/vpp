@@ -22,6 +22,30 @@
       "revId": "e411b54636468929a2d5576e63d6be76ffaed0dc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a3291f1_893815f0",
+        "filename": "test/test_acl_plugin_conns.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-05-05T05:22:42Z",
+      "side": 1,
+      "message": "This is merely a progress indicator for the operator, and - pay attention to the \"\\r\" - the idea is to overwrite the output on the same line. This output also gets erased by the \"Test foo [PASS]\" output. With this in mind - do you agree stderr is appropriate in this case rather than spamming into the log ?",
+      "parentUuid": "3a3291f1_49eb4d78",
+      "range": {
+        "startLine": 69,
+        "startChar": 12,
+        "endLine": 69,
+        "endChar": 24
+      },
+      "revId": "e411b54636468929a2d5576e63d6be76ffaed0dc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
