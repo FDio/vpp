@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "1a2f8d8d_2be779e6",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 302,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-07T22:16:00Z",
+      "side": 1,
+      "message": "Can you make this function static inline, please? Hoping this will help gcc to make bd_config access more optimized in the ager, when it read mac_age from bd_config.",
+      "revId": "5c4b0e96eda7507bd85ff88f737e49bc7997efce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a2f8d8d_cbe35504",
         "filename": "src/vnet/l2/l2_fib.c",
         "patchSetId": 6
