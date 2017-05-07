@@ -22,6 +22,30 @@
       "revId": "5c4b0e96eda7507bd85ff88f737e49bc7997efce",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_6bba21e3",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-05-07T12:31:54Z",
+      "side": 1,
+      "message": "the ager was extracting the Mac and bd_index from the key just to reconstruct it inside the function see line 1001",
+      "parentUuid": "1a2f8d8d_cbe35504",
+      "range": {
+        "startLine": 619,
+        "startChar": 0,
+        "endLine": 619,
+        "endChar": 22
+      },
+      "revId": "5c4b0e96eda7507bd85ff88f737e49bc7997efce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
