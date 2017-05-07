@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_cbe35504",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 619,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-05-07T12:11:17Z",
+      "side": 1,
+      "message": "What is the advantage of spiting l2_fib_del_entry() into a wrapper function calling and l2fib_del_entry_by_key()?",
+      "range": {
+        "startLine": 619,
+        "startChar": 0,
+        "endLine": 619,
+        "endChar": 22
+      },
+      "revId": "5c4b0e96eda7507bd85ff88f737e49bc7997efce",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
