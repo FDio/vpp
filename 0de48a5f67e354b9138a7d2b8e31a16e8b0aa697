@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "1a2f8d8d_eb4a9126",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-05-07T08:17:41Z",
+      "side": 1,
+      "message": "it\u0027s used only for control plane (ager, add_entry)...\nl2_input builds it\u0027s own l2fib_seq_num without this function (since it already hold the respective configs",
+      "parentUuid": "3a3291f1_c9a73da6",
+      "range": {
+        "startLine": 300,
+        "startChar": 0,
+        "endLine": 300,
+        "endChar": 6
+      },
+      "revId": "0de48a5f67e354b9138a7d2b8e31a16e8b0aa697",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_09942541",
         "filename": "src/vnet/l2/l2_fib.c",
         "patchSetId": 2
