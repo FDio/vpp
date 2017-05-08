@@ -109,9 +109,6 @@ typedef struct _stream_session_t
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
 
-  /** svm segment index where fifos were allocated */
-  u32 svm_segment_index;
-
   /** Type */
   u8 session_type;
 
@@ -125,6 +122,12 @@ typedef struct _stream_session_t
 
   /** To avoid n**2 "one event per frame" check */
   u8 enqueue_epoch;
+
+  /** Pad to a multiple of 8 octets */
+  u8 align_pad[2];
+
+  /** svm segment index where fifos were allocated */
+  u32 svm_segment_index;
 
   /** Session index in per_thread pool */
   u32 session_index;
@@ -140,6 +143,9 @@ typedef struct _stream_session_t
 
   /** Parent listener session if the result of an accept */
   u32 listener_index;
+
+  /** Opaque, pad to a 64-octet boundary */
+  u64 opaque[2];
 } stream_session_t;
 
 /* Forward definition */
@@ -418,7 +424,8 @@ always_inline stream_session_t *
 listen_session_new (session_type_t type)
 {
   stream_session_t *s;
-  pool_get (session_manager_main.listen_sessions[type], s);
+  pool_get_aligned (session_manager_main.listen_sessions[type], s,
+		    CLIB_CACHE_LINE_BYTES);
   memset (s, 0, sizeof (*s));
 
   s->session_type = type;
