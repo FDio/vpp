@@ -46,7 +46,7 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
-u16 dummy_mtu = 400;
+u16 dummy_mtu = 1460;
 
 u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
