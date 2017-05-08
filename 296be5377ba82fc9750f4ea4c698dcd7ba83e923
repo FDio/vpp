@@ -36,6 +36,24 @@
     },
     {
       "key": {
+        "uuid": "1a2f8d8d_2e20a79a",
+        "filename": "src/vppinfra/crc32.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-08T17:32:06Z",
+      "side": 1,
+      "message": "ack. new version uploaded.",
+      "parentUuid": "3a3291f1_9d5dfd49",
+      "revId": "296be5377ba82fc9750f4ea4c698dcd7ba83e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a3291f1_dd470576",
         "filename": "src/vppinfra/crc32.h",
         "patchSetId": 3
@@ -47,6 +65,24 @@
       "writtenOn": "2017-04-26T19:52:55Z",
       "side": 1,
       "message": "Might produce better code / fewer branches if manually unrolled: Might try 1 or more switch(len) w/ deliberate flow-through.",
+      "revId": "296be5377ba82fc9750f4ea4c698dcd7ba83e923",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_4e2bf382",
+        "filename": "src/vppinfra/crc32.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-08T17:32:06Z",
+      "side": 1,
+      "message": "i tried to disassemble both 32 and 64-bit versions with different gcc and clang versions. It always generate most optimal code.",
+      "parentUuid": "3a3291f1_dd470576",
       "revId": "296be5377ba82fc9750f4ea4c698dcd7ba83e923",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
