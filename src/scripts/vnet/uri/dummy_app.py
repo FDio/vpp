@@ -6,14 +6,28 @@ import time
 
 # action can be reflect or drop 
 action = "drop"
+test = 0
+
+def test_data (data, n_rcvd):
+    n_read = len (data);
+    for i in range(n_read):
+        expected = (n_rcvd + i) & 0xff
+        byte_got = ord (data[i])
+        if (byte_got != expected):
+            print("Difference at byte {}. Expected {} got {}"
+                  .format(n_rcvd + i, expected, byte_got))
+    return n_read
 
 def handle_connection (connection, client_address):
     print("Received connection from {}".format(repr(client_address)))
+    n_rcvd = 0
     try:
         while True:
             data = connection.recv(4096)
             if not data:
                 break;
+            if (test == 1):
+                n_rcvd += test_data (data, n_rcvd)
             if (action != "drop"):
                 connection.sendall(data)
     finally:
@@ -78,8 +92,9 @@ def run(mode, ip, port):
 
 if __name__ == "__main__":
     if (len(sys.argv)) < 4:
-        raise Exception("Usage: ./dummy_app <mode> <ip> <port> [<action>]")
-    if (len(sys.argv) == 5):
+        raise Exception("Usage: ./dummy_app <mode> <ip> <port> [<action> <test>]")
+    if (len(sys.argv) == 6):
         action = sys.argv[4]
+        test = int(sys.argv[5])
 
     run (sys.argv[1], sys.argv[2], int(sys.argv[3]))
