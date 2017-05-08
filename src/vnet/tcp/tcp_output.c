@@ -46,7 +46,7 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
-u16 dummy_mtu = 400;
+u16 dummy_mtu = 1460;
 
 u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
@@ -923,7 +923,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   u8 tcp_hdr_opts_len, opts_write_len, flags;
   tcp_header_t *th;
 
-  data_len = b->current_length;
+  data_len = b->current_length + b->total_length_not_including_first_buffer;
   vnet_buffer (b)->tcp.flags = 0;
 
   if (compute_opts)

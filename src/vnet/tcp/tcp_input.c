@@ -993,9 +993,8 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       return TCP_ERROR_PURE_ACK;
     }
 
-  written = stream_session_enqueue_data (&tc->connection,
-					 vlib_buffer_get_current (b),
-					 data_len, 1 /* queue event */ );
+  written = stream_session_enqueue_data (&tc->connection, b, 0,
+					 1 /* queue event */ , 1);
 
   TCP_EVT_DBG (TCP_EVT_INPUT, tc, 0, data_len, written);
 
@@ -1053,12 +1052,10 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       return TCP_ERROR_PURE_ACK;
     }
 
-  s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
-
   /* Enqueue out-of-order data with absolute offset */
-  rv = svm_fifo_enqueue_with_offset (s0->server_rx_fifo,
-				     vnet_buffer (b)->tcp.seq_number,
-				     data_len, vlib_buffer_get_current (b));
+  rv = stream_session_enqueue_data (&tc->connection, b,
+				    vnet_buffer (b)->tcp.seq_number,
+				    0 /* queue event */ , 0);
 
   /* Nothing written */
   if (rv)
@@ -1074,6 +1071,8 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     {
       ooo_segment_t *newest;
       u32 start, end;
+
+      s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
 
       /* Get the newest segment from the fifo */
       newest = svm_fifo_newest_ooo_segment (s0->server_rx_fifo);
@@ -2543,6 +2542,7 @@ do {                                                       	\
   _(FIN_WAIT_1, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   /* FIN confirming that the peer (app) has closed */
   _(FIN_WAIT_2, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(FIN_WAIT_2, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_2, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   _(LAST_ACK, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
