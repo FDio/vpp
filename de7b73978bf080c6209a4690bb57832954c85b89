@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_8be1cd9c",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-08T08:54:42Z",
+      "side": 1,
+      "message": "how are packets steer toward the encap VLIB node?\nthis tx_function is a dummy and you don\u0027t do the same trick as vxlan:\n   hi-\u003eoutput_node_index \u003d vxlan_gpe_encap_node.index;",
+      "revId": "de7b73978bf080c6209a4690bb57832954c85b89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_2bd1b9cd",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 216,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-08T08:54:42Z",
+      "side": 1,
+      "message": "Can you add some comments here about why the fib_index and the dst_address are validated separately, but that src_address is part of the key.",
+      "revId": "de7b73978bf080c6209a4690bb57832954c85b89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_ebda91e8",
+        "filename": "src/plugins/gtpu/gtpu_decap.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 311,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-08T08:54:42Z",
+      "side": 1,
+      "message": "can this pop be combined with the previous vlib_buffer_advance",
+      "revId": "de7b73978bf080c6209a4690bb57832954c85b89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_cbd7d5be",
+        "filename": "src/plugins/gtpu/gtpu_encap.c",
+        "patchSetId": 14
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-08T08:54:42Z",
+      "side": 1,
+      "message": "s/vxm/gtpm/g;",
+      "revId": "de7b73978bf080c6209a4690bb57832954c85b89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_abe489ac",
+        "filename": "src/vnet/fib/fib_node.h",
+        "patchSetId": 14
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-08T08:54:42Z",
+      "side": 1,
+      "message": "since GTP is now a plugin and therefore not always present in the runtime exe, please use the fib_node_register_new_type() to get an ID.",
+      "revId": "de7b73978bf080c6209a4690bb57832954c85b89",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
