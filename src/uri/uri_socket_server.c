@@ -77,27 +77,44 @@ main (int argc, char *argv[])
   struct hostent *server;
   u8 *rx_buffer = 0;
 
-  if (0 && argc < 3)
+  if (argc > 1 && argc < 3)
     {
-      fformat (stderr, "usage %s hostname port\n", argv[0]);
+      fformat (stderr, "usage %s host port\n", argv[0]);
       exit (0);
     }
 
+  if (argc >= 3)
+    {
+      portno = atoi (argv[2]);
+      server = gethostbyname (argv[1]);
+      if (server == NULL)
+	{
+	  clib_unix_warning("gethostbyname");
+	  exit (1);
+	}
+    }
+  else
+    {
+      /* Defaults */
+      portno = 1234;
+      server = gethostbyname ("6.0.1.1");
+      if (server == NULL)
+	{
+	  clib_unix_warning("gethostbyname");
+	  exit (1);
+	}
+    }
+
+
   setup_signal_handler ();
 
-  portno = 1234;		// atoi(argv[2]);
   sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     {
       clib_unix_error ("socket");
       exit (1);
     }
-  server = gethostbyname ("6.0.1.1");
-  if (server == NULL)
-    {
-      clib_unix_warning ("gethostbyname");
-      exit (1);
-    }
+
   bzero ((char *) &serv_addr, sizeof (serv_addr));
   serv_addr.sin_family = AF_INET;
   bcopy ((char *) server->h_addr,
