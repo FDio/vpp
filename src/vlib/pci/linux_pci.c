@@ -109,6 +109,11 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
     goto done;
   vec_reset_length (s);
 
+  s = format (s, "%v/iommu_group%c", dev_dir_name, 0);
+  if (access ((char *) s, F_OK) == 0)
+    goto done;
+  vec_reset_length (s);
+
   /* walk trough all linux interfaces and if interface belonging to
      this device is founf check if interface is admin up  */
   dir = opendir ("/sys/class/net");
