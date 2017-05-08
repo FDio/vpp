@@ -345,8 +345,8 @@ stream_session_fifo_size (transport_connection_t * tc)
 }
 
 int
-stream_session_enqueue_data (transport_connection_t * tc, u8 * data, u16 len,
-			     u8 queue_event);
+stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
+			     u32 offset, u8 queue_event, u8 is_in_order);
 u32
 stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes);
