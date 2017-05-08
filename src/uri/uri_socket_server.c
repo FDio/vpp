@@ -17,6 +17,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <vppinfra/format.h>
 #include <signal.h>
@@ -72,32 +73,59 @@ setup_signal_handler (void)
 int
 main (int argc, char *argv[])
 {
-  int sockfd, portno, n, sent, accfd;
+  int sockfd, portno, n, sent, accfd, reuse;
+  socklen_t client_addr_len;
   struct sockaddr_in serv_addr;
+  struct sockaddr_in client;
   struct hostent *server;
   u8 *rx_buffer = 0;
 
-  if (0 && argc < 3)
+  if (argc > 1 && argc < 3)
     {
-      fformat (stderr, "usage %s hostname port\n", argv[0]);
+      fformat (stderr, "usage %s host port\n", argv[0]);
       exit (0);
     }
 
+  if (argc >= 3)
+    {
+      portno = atoi (argv[2]);
+      server = gethostbyname (argv[1]);
+      if (server == NULL)
+	{
+	  clib_unix_warning ("gethostbyname");
+	  exit (1);
+	}
+    }
+  else
+    {
+      /* Defaults */
+      portno = 1234;
+      server = gethostbyname ("6.0.1.1");
+      if (server == NULL)
+	{
+	  clib_unix_warning ("gethostbyname");
+	  exit (1);
+	}
+    }
+
+
   setup_signal_handler ();
 
-  portno = 1234;		// atoi(argv[2]);
   sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     {
       clib_unix_error ("socket");
       exit (1);
     }
-  server = gethostbyname ("6.0.1.1");
-  if (server == NULL)
+
+  reuse = 1;
+  if (setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse,
+		  sizeof (reuse)) < 0)
     {
-      clib_unix_warning ("gethostbyname");
+      clib_unix_error ("setsockopt(SO_REUSEADDR) failed");
       exit (1);
     }
+
   bzero ((char *) &serv_addr, sizeof (serv_addr));
   serv_addr.sin_family = AF_INET;
   bcopy ((char *) server->h_addr,
@@ -123,12 +151,15 @@ main (int argc, char *argv[])
       if (signal_received)
 	break;
 
-      accfd = accept (sockfd, 0 /* don't care */ , 0);
+      client_addr_len = sizeof (struct sockaddr);
+      accfd = accept (sockfd, (struct sockaddr *) &client, &client_addr_len);
       if (accfd < 0)
 	{
 	  clib_unix_warning ("accept");
 	  continue;
 	}
+      fformat (stderr, "Accepted connection from: %s : %d\n",
+	       inet_ntoa (client.sin_addr), client.sin_port);
       while (1)
 	{
 	  n = recv (accfd, rx_buffer, vec_len (rx_buffer), 0 /* flags */ );
