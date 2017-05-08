@@ -396,7 +396,7 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
     return rv;
 
   /* Create the session */
-  pool_get (smm->sessions[thread_index], s);
+  pool_get_aligned (smm->sessions[thread_index], s, CLIB_CACHE_LINE_BYTES);
   memset (s, 0, sizeof (*s));
 
   /* Initialize backpointers */
