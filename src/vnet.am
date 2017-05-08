@@ -462,6 +462,7 @@ libvnet_la_SOURCES +=				\
  vnet/tcp/tcp_newreno.c				\
  vnet/tcp/builtin_client.c			\
  vnet/tcp/builtin_server.c			\
+ vnet/tcp/builtin_http_server.c			\
  vnet/tcp/tcp_test.c				\
  vnet/tcp/tcp.c
 
