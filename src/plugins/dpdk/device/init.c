@@ -444,25 +444,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
 
-	      switch (dev_info.pci_dev->id.device_id)
-		{
-		case I40E_DEV_ID_10G_BASE_T:
-		case I40E_DEV_ID_SFP_XL710:
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-		  break;
-		case I40E_DEV_ID_QSFP_A:
-		case I40E_DEV_ID_QSFP_B:
-		case I40E_DEV_ID_QSFP_C:
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-		  break;
-		case I40E_DEV_ID_VF:
-		  rte_eth_link_get_nowait (i, &l);
-		  xd->port_type = l.link_speed == 10000 ?
-		    VNET_DPDK_PORT_TYPE_ETH_10G : VNET_DPDK_PORT_TYPE_ETH_40G;
-		  break;
-		default:
-		  xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
-		}
+	      if (dev_info.speed_capa & ETH_LINK_SPEED_40G)
+		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
+	      else if (dev_info.speed_capa & ETH_LINK_SPEED_25G)
+		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_25G;
+	      else if (dev_info.speed_capa & ETH_LINK_SPEED_10G)
+		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
+	      else
+		xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	      break;
 
 	    case VNET_DPDK_PMD_CXGBE:
