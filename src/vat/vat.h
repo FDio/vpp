@@ -229,6 +229,8 @@ uword unformat_ethernet_type_host_byte_order (unformat_input_t * input,
 					      va_list * args);
 uword unformat_ip6_address (unformat_input_t * input, va_list * args);
 u8 *format_ip4_address (u8 * s, va_list * args);
+u8 *format_ip6_address (u8 * s, va_list * args);
+u8 *format_ip46_address (u8 * s, va_list * args);
 u8 *format_ethernet_address (u8 * s, va_list * args);
 
 #if VPP_API_TEST_BUILTIN
