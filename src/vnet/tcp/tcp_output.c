@@ -597,54 +597,41 @@ tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
 int
 tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
-			 tcp_state_t state, u32 my_thread_index, u8 is_ip4)
+			 tcp_state_t state, u8 thread_index, u8 is_ip4)
 {
-  u8 tcp_hdr_len = sizeof (tcp_header_t);
   ip4_header_t *ih4;
   ip6_header_t *ih6;
   tcp_header_t *th0;
-  ip4_address_t src_ip40;
-  ip6_address_t src_ip60;
-  u16 src_port0;
+  ip4_address_t src_ip40, dst_ip40;
+  ip6_address_t src_ip60, dst_ip60;
+  u16 src_port, dst_port;
   u32 tmp;
+  u32 seq, ack;
+  u8 flags;
 
   /* Find IP and TCP headers */
+  th0 = tcp_buffer_hdr (b0);
+
+  /* Save src and dst ip */
   if (is_ip4)
     {
       ih4 = vlib_buffer_get_current (b0);
-      th0 = ip4_next_header (ih4);
+      ASSERT ((ih4->ip_version_and_header_length & 0xF0) == 0x40);
+      src_ip40.as_u32 = ih4->src_address.as_u32;
+      dst_ip40.as_u32 = ih4->dst_address.as_u32;
     }
   else
     {
       ih6 = vlib_buffer_get_current (b0);
-      th0 = ip6_next_header (ih6);
-    }
-
-  /* Swap src and dst ip */
-  if (is_ip4)
-    {
-      ASSERT ((ih4->ip_version_and_header_length & 0xF0) == 0x40);
-      src_ip40.as_u32 = ih4->src_address.as_u32;
-      ih4->src_address.as_u32 = ih4->dst_address.as_u32;
-      ih4->dst_address.as_u32 = src_ip40.as_u32;
-
-      /* Chop the end of the pkt */
-      b0->current_length += ip4_header_bytes (ih4) + tcp_hdr_len;
-    }
-  else
-    {
       ASSERT ((ih6->ip_version_traffic_class_and_flow_label & 0xF0) == 0x60);
       clib_memcpy (&src_ip60, &ih6->src_address, sizeof (ip6_address_t));
-      clib_memcpy (&ih6->src_address, &ih6->dst_address,
-		   sizeof (ip6_address_t));
-      clib_memcpy (&ih6->dst_address, &src_ip60, sizeof (ip6_address_t));
-
-      /* Chop the end of the pkt */
-      b0->current_length += sizeof (ip6_header_t) + tcp_hdr_len;
+      clib_memcpy (&dst_ip60, &ih6->dst_address, sizeof (ip6_address_t));
     }
 
-  /* Try to determine what/why we're actually resetting and swap
-   * src and dst ports */
+  src_port = th0->src_port;
+  dst_port = th0->dst_port;
+
+  /* Try to determine what/why we're actually resetting */
   if (state == TCP_STATE_CLOSED)
     {
       if (!tcp_syn (th0))
@@ -653,33 +640,32 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
       tmp = clib_net_to_host_u32 (th0->seq_number);
 
       /* Got a SYN for no listener. */
-      th0->flags = TCP_FLAG_RST | TCP_FLAG_ACK;
-      th0->ack_number = clib_host_to_net_u32 (tmp + 1);
-      th0->seq_number = 0;
-
+      flags = TCP_FLAG_RST | TCP_FLAG_ACK;
+      ack = clib_host_to_net_u32 (tmp + 1);
+      seq = 0;
     }
-  else if (state >= TCP_STATE_SYN_SENT)
+  else
     {
-      th0->flags = TCP_FLAG_RST | TCP_FLAG_ACK;
-      th0->seq_number = th0->ack_number;
-      th0->ack_number = 0;
+      flags = TCP_FLAG_RST;
+      seq = th0->ack_number;
+      ack = 0;
     }
 
-  src_port0 = th0->src_port;
-  th0->src_port = th0->dst_port;
-  th0->dst_port = src_port0;
-  th0->window = 0;
-  th0->data_offset_and_reserved = (tcp_hdr_len >> 2) << 4;
-  th0->urgent_pointer = 0;
+  tcp_reuse_buffer (vm, b0);
+  th0 = vlib_buffer_push_tcp_net_order (b0, dst_port, src_port, seq, ack,
+					sizeof (tcp_header_t), flags, 0);
 
-  /* Compute checksum */
   if (is_ip4)
     {
+      ih4 = vlib_buffer_push_ip4 (vm, b0, &dst_ip40, &src_ip40,
+				  IP_PROTOCOL_TCP);
       th0->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ih4);
     }
   else
     {
       int bogus = ~0;
+      ih6 = vlib_buffer_push_ip6 (vm, b0, &dst_ip60, &src_ip60,
+				  IP_PROTOCOL_TCP);
       th0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ih6, &bogus);
       ASSERT (!bogus);
     }
