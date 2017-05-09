@@ -48,6 +48,15 @@ struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
 struct ip46_address_t;
 
+typedef enum
+{
+  VNET_HW_INTERFACE_RX_MODE_UNKNOWN,
+  VNET_HW_INTERFACE_RX_MODE_POLLING,
+  VNET_HW_INTERFACE_RX_MODE_INTERRUPT,
+  VNET_HW_INTERFACE_RX_MODE_ADAPTIVE,
+  VNET_HW_INTERFACE_NUM_RX_MODES,
+} vnet_hw_interface_rx_mode;
+
 /* Interface up/down callback. */
 typedef clib_error_t *(vnet_interface_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 flags);
@@ -60,6 +69,11 @@ typedef clib_error_t *(vnet_subif_add_del_function_t)
 /* Interface set mac address callback. */
 typedef clib_error_t *(vnet_interface_set_mac_address_function_t)
   (struct vnet_hw_interface_t * hi, char *address);
+
+/* Interface set rx mode callback. */
+typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)
+  (struct vnet_main_t * vnm, u32 if_index, u32 queue_id,
+   vnet_hw_interface_rx_mode mode);
 
 typedef enum vnet_interface_function_priority_t_
 {
@@ -133,6 +147,9 @@ typedef struct _vnet_device_class
 
   /* Function to call when sub-interface is added/deleted */
   vnet_subif_add_del_function_t *subif_add_del_function;
+
+  /* Function to call interface rx mode is changed */
+  vnet_interface_set_rx_mode_function_t *rx_mode_change_function;
 
   /* Redistribute flag changes/existence of this interface class. */
   u32 redistribute;
@@ -491,15 +508,6 @@ typedef enum
   /* A sub-interface. */
   VNET_SW_INTERFACE_TYPE_SUB,
 } vnet_sw_interface_type_t;
-
-typedef enum
-{
-  VNET_HW_INTERFACE_RX_MODE_UNKNOWN,
-  VNET_HW_INTERFACE_RX_MODE_POLLING,
-  VNET_HW_INTERFACE_RX_MODE_INTERRUPT,
-  VNET_HW_INTERFACE_RX_MODE_ADAPTIVE,
-  VNET_HW_INTERFACE_NUM_RX_MODES,
-} vnet_hw_interface_rx_mode;
 
 typedef struct
 {
