@@ -1176,6 +1176,54 @@ VLIB_CLI_COMMAND (clear_tag_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
+			  u32 queue_id, vnet_hw_interface_rx_mode mode)
+{
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  vnet_device_class_t *dev_class =
+    vnet_get_device_class (vnm, hw->dev_class_index);
+  clib_error_t *error;
+  vnet_hw_interface_rx_mode old_mode;
+  int rv;
+
+  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &old_mode);
+  switch (rv)
+    {
+    case 0:
+      if (old_mode == mode)
+	return 0;		/* same rx-mode, no change */
+      break;
+    case VNET_API_ERROR_INVALID_INTERFACE:
+      return clib_error_return (0, "invalid interface");
+    default:
+      return clib_error_return (0, "unknown error");
+    }
+
+  if (dev_class->rx_mode_change_function)
+    {
+      error = dev_class->rx_mode_change_function (vnm, hw_if_index, queue_id,
+						  mode);
+      if (error)
+	return (error);
+    }
+
+  rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+  switch (rv)
+    {
+    case 0:
+      break;
+    case VNET_API_ERROR_UNSUPPORTED:
+      return clib_error_return (0, "unsupported");
+    case VNET_API_ERROR_INVALID_INTERFACE:
+      return clib_error_return (0, "invalid interface");
+    default:
+      return clib_error_return (0, "unknown error");
+    }
+
+  return 0;
+}
+
+static clib_error_t *
 set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
 {
@@ -1186,7 +1234,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) ~ 0;
   vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
-  int i, rv = 0;
+  int i;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1226,26 +1274,14 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   if (queue_id == ~0)
     for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
       {
-	rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, i, mode);
-	if (rv)
-	  goto error;
+	error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
+	if (error)
+	  break;
       }
   else
-    rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+    error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
 
-  if (rv)
-    goto error;
-
-  return 0;
-
-error:
-  if (rv == VNET_API_ERROR_UNSUPPORTED)
-    return clib_error_return (0, "unsupported");
-
-  if (rv == VNET_API_ERROR_INVALID_INTERFACE)
-    return clib_error_return (0, "invalid interfaace");
-
-  return clib_error_return (0, "unknown error");
+  return (error);
 }
 
 /*?
