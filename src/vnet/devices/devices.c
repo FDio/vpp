@@ -225,6 +225,7 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE) == 0)
     return VNET_API_ERROR_UNSUPPORTED;
 
+  hw->rx_mode_by_queue[queue_id] = mode;
   thread_index = hw->input_node_thread_index_by_queue[queue_id];
   vm = vlib_mains[thread_index];
 
