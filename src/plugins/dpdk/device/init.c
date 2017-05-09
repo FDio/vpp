@@ -55,6 +55,24 @@ static struct rte_eth_conf port_conf_template = {
 	     },
 };
 
+static dpdk_port_type_t
+port_type_from_speed_capa (struct rte_eth_dev_info *dev_info)
+{
+
+  if (dev_info->speed_capa & ETH_LINK_SPEED_100G)
+    return VNET_DPDK_PORT_TYPE_ETH_100G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_40G)
+    return VNET_DPDK_PORT_TYPE_ETH_40G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_25G)
+    return VNET_DPDK_PORT_TYPE_ETH_25G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_10G)
+    return VNET_DPDK_PORT_TYPE_ETH_10G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_1G)
+    return VNET_DPDK_PORT_TYPE_ETH_1G;
+
+  return VNET_DPDK_PORT_TYPE_UNKNOWN;
+}
+
 
 static u32
 dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
@@ -332,19 +350,25 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	  switch (xd->pmd)
 	    {
-	      /* 1G adapters */
+	      /* Drivers with valid speed_capa set */
 	    case VNET_DPDK_PMD_E1000EM:
 	    case VNET_DPDK_PMD_IGB:
-	    case VNET_DPDK_PMD_IGBVF:
-	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_1G;
+	    case VNET_DPDK_PMD_IXGBE:
+	    case VNET_DPDK_PMD_I40E:
+	    case VNET_DPDK_PMD_CXGBE:
+	    case VNET_DPDK_PMD_MLX4:
+	    case VNET_DPDK_PMD_MLX5:
+	      xd->port_type = port_type_from_speed_capa (&dev_info);
 	      break;
 
-	      /* 10G adapters */
-	    case VNET_DPDK_PMD_IXGBE:
+	      /* SR-IOV VFs */
+	    case VNET_DPDK_PMD_IGBVF:
 	    case VNET_DPDK_PMD_IXGBEVF:
+	    case VNET_DPDK_PMD_I40EVF:
 	    case VNET_DPDK_PMD_THUNDERX:
-	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
 	      break;
+
 	    case VNET_DPDK_PMD_DPAA2:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
 	      break;
@@ -352,102 +376,12 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      /* Cisco VIC */
 	    case VNET_DPDK_PMD_ENIC:
 	      rte_eth_link_get_nowait (i, &l);
-	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      if (l.link_speed == 40000)
 		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
 	      else
 		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
 	      break;
 
-	      /* Intel Fortville */
-	    case VNET_DPDK_PMD_I40E:
-	    case VNET_DPDK_PMD_I40EVF:
-	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
-	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-
-	      if (dev_info.speed_capa & ETH_LINK_SPEED_40G)
-		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-	      else if (dev_info.speed_capa & ETH_LINK_SPEED_25G)
-		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_25G;
-	      else if (dev_info.speed_capa & ETH_LINK_SPEED_10G)
-		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-	      else
-		xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
-	      break;
-
-	    case VNET_DPDK_PMD_CXGBE:
-	      switch (dev_info.pci_dev->id.device_id)
-		{
-		case 0x540d:	/* T580-CR */
-		case 0x5410:	/* T580-LP-cr */
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-		  break;
-		case 0x5403:	/* T540-CR */
-		  xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-		  break;
-		default:
-		  xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
-		}
-	      break;
-
-	    case VNET_DPDK_PMD_MLX5:
-	      {
-		char *pn_100g[] = { "MCX415A-CCAT", "MCX416A-CCAT",
-		  "MCX556A-ECAT", "MCX556A-EDAT", "MCX555A-ECAT",
-		  "MCX515A-CCAT", "MCX516A-CCAT", "MCX516A-CDAT", 0
-		};
-		char *pn_40g[] = { "MCX413A-BCAT", "MCX414A-BCAT",
-		  "MCX415A-BCAT", "MCX416A-BCAT", "MCX4131A-BCAT", 0
-		};
-		char *pn_10g[] = { "MCX4111A-XCAT", "MCX4121A-XCAT", 0 };
-
-		vlib_pci_device_t *pd = vlib_get_pci_device (&pci_addr);
-		u8 *pn = 0;
-		char **c;
-		int found = 0;
-		pn = format (0, "%U%c",
-			     format_vlib_pci_vpd, pd->vpd_r, "PN", 0);
-
-		if (!pn)
-		  break;
-
-		c = pn_100g;
-		while (!found && c[0])
-		  {
-		    if (strncmp ((char *) pn, c[0], strlen (c[0])) == 0)
-		      {
-			xd->port_type = VNET_DPDK_PORT_TYPE_ETH_100G;
-			break;
-		      }
-		    c++;
-		  }
-
-		c = pn_40g;
-		while (!found && c[0])
-		  {
-		    if (strncmp ((char *) pn, c[0], strlen (c[0])) == 0)
-		      {
-			xd->port_type = VNET_DPDK_PORT_TYPE_ETH_40G;
-			break;
-		      }
-		    c++;
-		  }
-
-		c = pn_10g;
-		while (!found && c[0])
-		  {
-		    if (strncmp ((char *) pn, c[0], strlen (c[0])) == 0)
-		      {
-			xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
-			break;
-		      }
-		    c++;
-		  }
-
-		vec_free (pn);
-	      }
-
-	      break;
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
@@ -472,7 +406,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      break;
 
 	    case VNET_DPDK_PMD_BOND:
-	      xd->flags |= DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_BOND;
 	      xd->port_id = bond_ether_port_id++;
 	      break;
