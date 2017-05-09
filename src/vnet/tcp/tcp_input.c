@@ -2106,16 +2106,16 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Create child session. For syn-flood protection use filter */
 
-	  /* 1. first check for an RST */
-	  if (tcp_rst (th0))
-	    goto drop;
+	  /* 1. first check for an RST: handled in dispatch */
+	  /* if (tcp_rst (th0))
+	     goto drop; */
 
-	  /* 2. second check for an ACK */
-	  if (tcp_ack (th0))
-	    {
-	      tcp_send_reset (b0, is_ip4);
-	      goto drop;
-	    }
+	  /* 2. second check for an ACK: handled in dispatch */
+	  /* if (tcp_ack (th0))
+	     {
+	     tcp_send_reset (b0, is_ip4);
+	     goto drop;
+	     } */
 
 	  /* 3. check for a SYN (did that already) */
 
@@ -2401,14 +2401,17 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      next0 = tm->dispatch_table[tc0->state][flags0].next;
 	      error0 = tm->dispatch_table[tc0->state][flags0].error;
 
-	      if (PREDICT_FALSE (error0 == TCP_ERROR_DISPATCH))
+	      if (PREDICT_FALSE (error0 == TCP_ERROR_DISPATCH
+				 || next0 == TCP_INPUT_NEXT_RESET))
 		{
-		  tcp_state_t state0 = tc0->state;
 		  /* Overload tcp flags to store state */
+		  tcp_state_t state0 = tc0->state;
 		  vnet_buffer (b0)->tcp.flags = tc0->state;
-		  clib_warning ("disp error state %U flags %U",
-				format_tcp_state, &state0,
-				format_tcp_flags, (int) flags0);
+
+		  if (error0 == TCP_ERROR_DISPATCH)
+		    clib_warning ("disp error state %U flags %U",
+				  format_tcp_state, &state0, format_tcp_flags,
+				  (int) flags0);
 		}
 	    }
 	  else
@@ -2517,6 +2520,8 @@ do {                                                       	\
 
   /* SYNs for new connections -> tcp-listen. */
   _(LISTEN, TCP_FLAG_SYN, TCP_INPUT_NEXT_LISTEN, TCP_ERROR_NONE);
+  _(LISTEN, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
+  _(LISTEN, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_NONE);
   /* ACK for for a SYN-ACK -> tcp-rcv-process. */
   _(SYN_RCVD, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(SYN_RCVD, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
@@ -2534,6 +2539,8 @@ do {                                                       	\
   _(ESTABLISHED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED,
     TCP_ERROR_NONE);
   _(ESTABLISHED, TCP_FLAG_RST, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
+  _(ESTABLISHED, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED,
+    TCP_ERROR_NONE);
   /* ACK or FIN-ACK to our FIN */
   _(FIN_WAIT_1, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_1, TCP_FLAG_ACK | TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS,
@@ -2546,7 +2553,8 @@ do {                                                       	\
   _(FIN_WAIT_2, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   _(LAST_ACK, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
-  _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
+  _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
+  _(CLOSED, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
 #undef _
 }
 
