@@ -187,6 +187,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "EthernetSwitch";
       break;
 
+    case VNET_DPDK_PORT_TYPE_ETH_VF:
+      device_name = "VirtualFunctionEthernet";
+      break;
+
     case VNET_DPDK_PORT_TYPE_AF_PACKET:
       rte_eth_dev_info_get (i, &dev_info);
       return format (s, "af_packet%d", dm->devices[i].port_id);
@@ -262,6 +266,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_CXGBE:
       dev_type = "Chelsio T4/T5";
+      break;
+
+    case VNET_DPDK_PMD_MLX4:
+      dev_type = "Mellanox ConnectX-3 Family";
       break;
 
     case VNET_DPDK_PMD_MLX5:

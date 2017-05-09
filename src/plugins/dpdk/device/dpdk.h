@@ -72,6 +72,7 @@ extern vlib_node_registration_t dpdk_input_node;
   _ ("net_bonding", BOND)         \
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
+  _ ("net_mlx4", MLX4)            \
   _ ("net_mlx5", MLX5)            \
   _ ("net_dpaa2", DPAA2)
 #else
@@ -91,6 +92,7 @@ extern vlib_node_registration_t dpdk_input_node;
   _ ("rte_bond_pmd", BOND)        \
   _ ("net_fm10k", FM10K)          \
   _ ("net_cxgbe", CXGBE)          \
+  _ ("net_mlx4", MLX4)            \
   _ ("net_mlx5", MLX5)            \
   _ ("net_dpaa2", DPAA2)
 #endif
@@ -114,6 +116,7 @@ typedef enum
   VNET_DPDK_PORT_TYPE_ETH_BOND,
   VNET_DPDK_PORT_TYPE_ETH_SWITCH,
   VNET_DPDK_PORT_TYPE_AF_PACKET,
+  VNET_DPDK_PORT_TYPE_ETH_VF,
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
@@ -185,7 +188,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_ADMIN_UP           (1 << 0)
 #define DPDK_DEVICE_FLAG_PROMISC            (1 << 1)
 #define DPDK_DEVICE_FLAG_PMD                (1 << 2)
-#define DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE (1 << 3)
+
 #define DPDK_DEVICE_FLAG_MAYBE_MULTISEG     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF         (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS               (1 << 6)
