@@ -257,15 +257,18 @@ rebuild-release: wipe-release build-release
 
 export VPP_PYTHON_PREFIX=$(BR)/python
 
+libexpand = $(subst $(subst ,, ),:,$(foreach lib,$(1),$(BR)/install-$(2)-native/vpp/$(lib)/$(3)))
+
 define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
+	$(eval libs:=lib lib64)
 	make -C test \
 	  TEST_DIR=$(WS_ROOT)/test \
 	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
-	  VPP_TEST_PLUGIN_PATH=$(wildcard $(BR)/install-$(2)-native/vpp/lib*/vpp_plugins) \
+	  VPP_TEST_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_plugins) \
 	  VPP_TEST_INSTALL_PATH=$(BR)/install-$(2)-native/ \
-	  LD_LIBRARY_PATH=$(subst $(subst ,, ),:,$(wildcard $(BR)/install-$(2)-native/vpp/lib*/)) \
+	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
 	  $(3)
