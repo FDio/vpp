@@ -154,6 +154,10 @@ tcp_connection_reset (tcp_connection_t * tc)
     return;
 
   tc->state = TCP_STATE_CLOSED;
+
+  /* Make sure all timers are cleared */
+  tcp_connection_timers_reset (tc);
+
   stream_session_reset_notify (&tc->connection);
 }
 
@@ -585,7 +589,7 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 {
   if (tc->snd_wnd < tc->snd_mss)
     {
-      return tc->snd_wnd < snd_space ? tc->snd_wnd : 0;
+      return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
     }
 
   /* If we can't write at least a segment, don't try at all */
