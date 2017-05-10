@@ -53,7 +53,7 @@ allocate_per_cpu_mheap (uword cpu)
   void *heap;
   uword vm_size, stack_size, mheap_flags;
 
-  ASSERT (os_get_cpu_number () == cpu);
+  ASSERT (os_get_thread_index () == cpu);
 
   vm_size = (uword) 1 << m->log2_n_per_cpu_vm_bytes;
   stack_size = (uword) 1 << m->log2_n_per_cpu_stack_bytes;

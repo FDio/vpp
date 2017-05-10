@@ -1168,7 +1168,7 @@ snat_det_out2in_node_fn (vlib_main_t * vm,
   snat_out2in_next_t next_index;
   u32 pkts_processed = 0;
   snat_main_t * sm = &snat_main;
-  u32 thread_index = os_get_cpu_number ();
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;

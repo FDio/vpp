@@ -45,6 +45,8 @@
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
 
+__thread uword __os_thread_index = 0;
+
 clib_error_t *
 unix_file_n_bytes (char *file, uword * result)
 {
@@ -188,14 +190,14 @@ void os_puts (u8 * string, uword string_length, uword is_error)
 void
 os_puts (u8 * string, uword string_length, uword is_error)
 {
-  int cpu = os_get_cpu_number ();
-  int ncpus = os_get_ncpus ();
+  int cpu = os_get_thread_index ();
+  int nthreads = os_get_nthreads ();
   char buf[64];
   int fd = is_error ? 2 : 1;
   struct iovec iovs[2];
   int n_iovs = 0;
 
-  if (ncpus > 1)
+  if (nthreads > 1)
     {
       snprintf (buf, sizeof (buf), "%d: ", cpu);
 
@@ -219,16 +221,9 @@ os_out_of_memory (void)
   os_panic ();
 }
 
-uword os_get_cpu_number (void) __attribute__ ((weak));
+uword os_get_nthreads (void) __attribute__ ((weak));
 uword
-os_get_cpu_number (void)
-{
-  return 0;
-}
-
-uword os_get_ncpus (void) __attribute__ ((weak));
-uword
-os_get_ncpus (void)
+os_get_nthreads (void)
 {
   return 1;
 }

@@ -302,7 +302,7 @@ lisp_gpe_increment_stats_counters (lisp_cp_main_t * lcm, ip_adjacency_t * adj,
 
   /* compute payload length starting after GPE */
   u32 bytes = b->current_length - (lisp_data - b->data - b->current_data);
-  vlib_increment_combined_counter (&lgm->counters, os_get_cpu_number (),
+  vlib_increment_combined_counter (&lgm->counters, vlib_get_thread_index (),
 				   p[0], 1, bytes);
 }
 
