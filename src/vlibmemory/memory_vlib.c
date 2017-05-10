@@ -1333,7 +1333,7 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
   unix_shared_memory_queue_t *q;
 
   /* Main thread: call the function directly */
-  if (os_get_cpu_number () == 0)
+  if (vlib_get_thread_index () == 0)
     {
       vlib_main_t *vm = vlib_get_main ();
       void (*call_fp) (void *);

@@ -96,12 +96,12 @@ BV (make_working_copy) (BVT (clib_bihash) * h, clib_bihash_bucket_t * b)
   clib_bihash_bucket_t working_bucket __attribute__ ((aligned (8)));
   void *oldheap;
   BVT (clib_bihash_value) * working_copy;
-  u32 cpu_number = os_get_cpu_number ();
+  u32 thread_index = os_get_thread_index ();
 
-  if (cpu_number >= vec_len (h->working_copies))
+  if (thread_index >= vec_len (h->working_copies))
     {
       oldheap = clib_mem_set_heap (h->mheap);
-      vec_validate (h->working_copies, cpu_number);
+      vec_validate (h->working_copies, thread_index);
       clib_mem_set_heap (oldheap);
     }
 
@@ -110,7 +110,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, clib_bihash_bucket_t * b)
    * updates from multiple threads will not result in sporadic, spurious
    * lookup failures.
    */
-  working_copy = h->working_copies[cpu_number];
+  working_copy = h->working_copies[thread_index];
 
   h->saved_bucket.as_u64 = b->as_u64;
   oldheap = clib_mem_set_heap (h->mheap);
@@ -119,7 +119,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, clib_bihash_bucket_t * b)
     {
       vec_validate_aligned (working_copy, (1 << b->log2_pages) - 1,
 			    sizeof (u64));
-      h->working_copies[cpu_number] = working_copy;
+      h->working_copies[thread_index] = working_copy;
     }
 
   _vec_len (working_copy) = 1 << b->log2_pages;
@@ -132,7 +132,7 @@ BV (make_working_copy) (BVT (clib_bihash) * h, clib_bihash_bucket_t * b)
   working_bucket.offset = BV (clib_bihash_get_offset) (h, working_copy);
   CLIB_MEMORY_BARRIER ();
   b->as_u64 = working_bucket.as_u64;
-  h->working_copies[cpu_number] = working_copy;
+  h->working_copies[thread_index] = working_copy;
 }
 
 static
@@ -233,7 +233,7 @@ int BV (clib_bihash_add_del)
   int i, limit;
   u64 hash, new_hash;
   u32 new_log2_pages;
-  u32 cpu_number = os_get_cpu_number ();
+  u32 thread_index = os_get_thread_index ();
   int mark_bucket_linear;
   int resplit_once;
 
@@ -323,7 +323,7 @@ int BV (clib_bihash_add_del)
   new_log2_pages = h->saved_bucket.log2_pages + 1;
   mark_bucket_linear = 0;
 
-  working_copy = h->working_copies[cpu_number];
+  working_copy = h->working_copies[thread_index];
   resplit_once = 0;
 
   new_v = BV (split_and_rehash) (h, working_copy, new_log2_pages);

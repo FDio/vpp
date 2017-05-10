@@ -54,14 +54,14 @@ extern void *clib_per_cpu_mheaps[CLIB_MAX_MHEAPS];
 always_inline void *
 clib_mem_get_per_cpu_heap (void)
 {
-  int cpu = os_get_cpu_number ();
+  int cpu = os_get_thread_index ();
   return clib_per_cpu_mheaps[cpu];
 }
 
 always_inline void *
 clib_mem_set_per_cpu_heap (u8 * new_heap)
 {
-  int cpu = os_get_cpu_number ();
+  int cpu = os_get_thread_index ();
   void *old = clib_per_cpu_mheaps[cpu];
   clib_per_cpu_mheaps[cpu] = new_heap;
   return old;
@@ -83,7 +83,7 @@ clib_mem_alloc_aligned_at_offset (uword size, uword align, uword align_offset,
 	align_offset = align;
     }
 
-  cpu = os_get_cpu_number ();
+  cpu = os_get_thread_index ();
   heap = clib_per_cpu_mheaps[cpu];
   heap = mheap_get_aligned (heap, size, align, align_offset, &offset);
   clib_per_cpu_mheaps[cpu] = heap;

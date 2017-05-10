@@ -56,7 +56,7 @@ mheap_maybe_lock (void *v)
   mheap_t *h = mheap_header (v);
   if (v && (h->flags & MHEAP_FLAG_THREAD_SAFE))
     {
-      u32 my_cpu = os_get_cpu_number ();
+      u32 my_cpu = os_get_thread_index ();
       if (h->owner_cpu == my_cpu)
 	{
 	  h->recursion_count++;
@@ -77,7 +77,7 @@ mheap_maybe_unlock (void *v)
   mheap_t *h = mheap_header (v);
   if (v && h->flags & MHEAP_FLAG_THREAD_SAFE)
     {
-      ASSERT (os_get_cpu_number () == h->owner_cpu);
+      ASSERT (os_get_thread_index () == h->owner_cpu);
       if (--h->recursion_count == 0)
 	{
 	  h->owner_cpu = ~0;

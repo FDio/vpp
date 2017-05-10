@@ -231,7 +231,7 @@ interface_dpo_inline (vlib_main_t * vm,
                       vlib_frame_t * from_frame)
 {
     u32 n_left_from, next_index, * from, * to_next;
-    u32 cpu_index = os_get_cpu_number();
+    u32 thread_index = vlib_get_thread_index ();
     vnet_interface_main_t *im;
 
     im = &vnet_get_main ()->interface_main;
@@ -274,13 +274,13 @@ interface_dpo_inline (vlib_main_t * vm,
 
             vlib_increment_combined_counter (im->combined_sw_if_counters
                                              + VNET_INTERFACE_COUNTER_RX,
-                                             cpu_index,
+                                             thread_index,
                                              ido0->ido_sw_if_index,
                                              1,
                                              vlib_buffer_length_in_chain (vm, b0));
             vlib_increment_combined_counter (im->combined_sw_if_counters
                                              + VNET_INTERFACE_COUNTER_RX,
-                                             cpu_index,
+                                             thread_index,
                                              ido1->ido_sw_if_index,
                                              1,
                                              vlib_buffer_length_in_chain (vm, b1));
@@ -331,7 +331,7 @@ interface_dpo_inline (vlib_main_t * vm,
             /* Bump the interface's RX coutners */
             vlib_increment_combined_counter (im->combined_sw_if_counters
                                              + VNET_INTERFACE_COUNTER_RX,
-                                             cpu_index,
+                                             thread_index,
                                              ido0->ido_sw_if_index,
                                              1,
                                              vlib_buffer_length_in_chain (vm, b0));

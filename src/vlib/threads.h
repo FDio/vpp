@@ -181,11 +181,10 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 void vlib_worker_thread_barrier_sync (vlib_main_t * vm);
 void vlib_worker_thread_barrier_release (vlib_main_t * vm);
 
-extern __thread uword vlib_thread_index;
 static_always_inline uword
 vlib_get_thread_index (void)
 {
-  return vlib_thread_index;
+  return __os_thread_index;
 }
 
 always_inline void

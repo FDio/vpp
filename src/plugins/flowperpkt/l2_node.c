@@ -102,7 +102,7 @@ add_to_flow_record_l2 (vlib_main_t * vm,
 		       u8 * src_mac, u8 * dst_mac,
 		       u16 ethertype, u64 timestamp, u16 length, int do_flush)
 {
-  u32 my_cpu_number = vm->thread_index;
+  u32 my_thread_index = vm->thread_index;
   flow_report_main_t *frm = &flow_report_main;
   ip4_header_t *ip;
   udp_header_t *udp;
@@ -116,7 +116,7 @@ add_to_flow_record_l2 (vlib_main_t * vm,
   vlib_buffer_free_list_t *fl;
 
   /* Find or allocate a buffer */
-  b0 = fm->l2_buffers_per_worker[my_cpu_number];
+  b0 = fm->l2_buffers_per_worker[my_thread_index];
 
   /* Need to allocate a buffer? */
   if (PREDICT_FALSE (b0 == 0))
@@ -130,7 +130,7 @@ add_to_flow_record_l2 (vlib_main_t * vm,
 	return;
 
       /* Initialize the buffer */
-      b0 = fm->l2_buffers_per_worker[my_cpu_number] =
+      b0 = fm->l2_buffers_per_worker[my_thread_index] =
 	vlib_get_buffer (vm, bi0);
       fl =
 	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
@@ -142,16 +142,16 @@ add_to_flow_record_l2 (vlib_main_t * vm,
     {
       /* use the current buffer */
       bi0 = vlib_get_buffer_index (vm, b0);
-      offset = fm->l2_next_record_offset_per_worker[my_cpu_number];
+      offset = fm->l2_next_record_offset_per_worker[my_thread_index];
     }
 
   /* Find or allocate a frame */
-  f = fm->l2_frames_per_worker[my_cpu_number];
+  f = fm->l2_frames_per_worker[my_thread_index];
   if (PREDICT_FALSE (f == 0))
     {
       u32 *to_next;
       f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
-      fm->l2_frames_per_worker[my_cpu_number] = f;
+      fm->l2_frames_per_worker[my_thread_index] = f;
 
       /* Enqueue the buffer */
       to_next = vlib_frame_vector_args (f);
@@ -299,13 +299,13 @@ add_to_flow_record_l2 (vlib_main_t * vm,
 	}
 
       vlib_put_frame_to_node (vm, ip4_lookup_node.index,
-			      fm->l2_frames_per_worker[my_cpu_number]);
-      fm->l2_frames_per_worker[my_cpu_number] = 0;
-      fm->l2_buffers_per_worker[my_cpu_number] = 0;
+			      fm->l2_frames_per_worker[my_thread_index]);
+      fm->l2_frames_per_worker[my_thread_index] = 0;
+      fm->l2_buffers_per_worker[my_thread_index] = 0;
       offset = 0;
     }
 
-  fm->l2_next_record_offset_per_worker[my_cpu_number] = offset;
+  fm->l2_next_record_offset_per_worker[my_thread_index] = offset;
 }
 
 void
