@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_c51fbeb6",
+        "filename": "src/vnet/tcp/builtin_http_server.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-10T18:00:55Z",
+      "side": 1,
+      "message": "vlib_get_thread_index to make Damjan happy :-)\n\nIt can definitely be fixed at a later date if by surprise the patch passes!",
+      "range": {
+        "startLine": 425,
+        "startChar": 6,
+        "endLine": 425,
+        "endChar": 23
+      },
+      "revId": "52b8e5b95f4fdd445377a53ffe807f6dddbef9c4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
