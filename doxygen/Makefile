@@ -54,6 +54,7 @@ DOXY_SRC_DIRECTORIES = \
 	$(DOXY_SRC)/vnet \
 	$(DOXY_SRC)/vpp \
 	$(DOXY_SRC)/vpp-api \
+	$(DOXY_SRC)/uri \
 	$(DOXY_SRC)/examples
 
 # Input directories and files
@@ -72,7 +73,7 @@ DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 # there's a DPDK equivalent that conflicts.
 # These must be left-anchored paths for the regexp below to work.
 DOXY_EXCLUDE ?= \
-	$(DOXY_SRC)/vlib/vlib/buffer.c \
+	$(DOXY_SRC)/vlib/buffer.c \
 	$(DOXY_SRC)/vpp-api/lua \
 	$(DOXY_SRC)/examples/sample-plugin
 
@@ -204,6 +205,7 @@ $(SIPHON_FILES): $(BR)/.doxygen-bootstrap.ok \
 		cd "$(WS_ROOT)"; \
 		find "$$input" -type f \
 			\( -name '*.[ch]' -or -name '*.dox' \) -print \
+			| grep -v -E '^src/examples/' \
 			| grep -v -E '^$(DOXY_EXCLUDE_REGEXP)' \
 			>> $(SIPHON_INPUT)/files; \
 	done
