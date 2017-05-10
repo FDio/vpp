@@ -45,7 +45,9 @@ format_vnet_sw_interface_flags (u8 * s, va_list * args)
 {
   u32 flags = va_arg (*args, u32);
 
-  if (flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
+  if (flags & VNET_SW_INTERFACE_FLAG_ERROR)
+    s = format (s, "error");
+  else if (flags & VNET_SW_INTERFACE_FLAG_BOND_SLAVE)
     s = format (s, "bond-slave");
   else
     {

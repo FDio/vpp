@@ -573,6 +573,9 @@ typedef struct
 /* Interface does not appear in CLI/API */
 #define VNET_SW_INTERFACE_FLAG_HIDDEN (1 << 5)
 
+/* Interface in ERROR state */
+#define VNET_SW_INTERFACE_FLAG_ERROR (1 << 6)
+
   /* Index for this interface. */
   u32 sw_if_index;
 
