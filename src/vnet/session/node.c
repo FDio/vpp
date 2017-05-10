@@ -401,6 +401,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 my_thread_index = vm->thread_index;
   int i, rv;
   f64 now = vlib_time_now (vm);
+  void (*fp) (void *);
 
   SESSION_EVT_DBG (SESSION_EVT_POLL_GAP_TRACK, smm, my_thread_index);
 
@@ -496,6 +497,11 @@ skip_dequeue:
 	  app = application_get (s0->app_index);
 	  app->cb_fns.builtin_server_rx_callback (s0);
 	  break;
+	case FIFO_EVENT_RPC:
+	  fp = e0->rpc_args.fp;
+	  (*fp) (e0->rpc_args.arg);
+	  break;
+
 	default:
 	  clib_warning ("unhandled event type %d", e0->event_type);
 	}
