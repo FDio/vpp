@@ -112,7 +112,14 @@ tcp_segment_in_rcv_wnd (tcp_connection_t * tc, u32 seq, u32 end_seq)
 	  && seq_leq (seq, tc->rcv_nxt + tc->rcv_wnd));
 }
 
-void
+/**
+ * Parse TCP header options.
+ *
+ * @param th TCP header
+ * @param to TCP options data structure to be populated
+ * @return -1 if parsing failed
+ */
+int
 tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 {
   const u8 *data;
@@ -134,17 +141,20 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
       if (kind == TCP_OPTION_EOL)
 	break;
       else if (kind == TCP_OPTION_NOOP)
-	opt_len = 1;
+	{
+	  opt_len = 1;
+	  continue;
+	}
       else
 	{
 	  /* broken options */
 	  if (opts_len < 2)
-	    break;
+	    return -1;
 	  opt_len = data[1];
 
 	  /* weird option length */
 	  if (opt_len < 2 || opt_len > opts_len)
-	    break;
+	    return -1;
 	}
 
       /* Parse options */
@@ -206,6 +216,7 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 	  continue;
 	}
     }
+  return 0;
 }
 
 /**
@@ -261,7 +272,10 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
   if (PREDICT_FALSE (!tcp_ack (th0) && !tcp_rst (th0) && !tcp_syn (th0)))
     return -1;
 
-  tcp_options_parse (th0, &tc0->opt);
+  if (PREDICT_FALSE (tcp_options_parse (th0, &tc0->opt)))
+    {
+      return -1;
+    }
 
   if (tcp_segment_check_paws (tc0))
     {
@@ -1109,19 +1123,24 @@ static int
 tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
 		 u16 n_data_bytes, u32 * next0)
 {
-  u32 error = 0;
+  u32 error = 0, n_bytes_to_drop;
 
   /* Handle out-of-order data */
   if (PREDICT_FALSE (vnet_buffer (b)->tcp.seq_number != tc->rcv_nxt))
     {
       /* Old sequence numbers allowed through because they overlapped
        * the rx window */
-
       if (seq_lt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt))
 	{
 	  error = TCP_ERROR_SEGMENT_OLD;
 	  *next0 = TCP_NEXT_DROP;
-	  goto done;
+
+	  /* Chop off the bytes in the past */
+	  n_bytes_to_drop = tc->rcv_nxt - vnet_buffer (b)->tcp.seq_number;
+	  n_data_bytes -= n_bytes_to_drop;
+	  vlib_buffer_advance (b, n_bytes_to_drop);
+
+	  goto in_order;
 	}
 
       error = tcp_session_enqueue_ooo (tc, b, n_data_bytes);
@@ -1144,6 +1163,8 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
       TCP_EVT_DBG (TCP_EVT_DUPACK_SENT, tc);
       goto done;
     }
+
+in_order:
 
   /* In order data, enqueue. Fifo figures out by itself if any out-of-order
    * segments can be enqueued after fifo tail offset changes. */
@@ -1540,7 +1561,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  new_tc0->irs = seq0;
 
 	  /* Parse options */
-	  tcp_options_parse (tcp0, &new_tc0->opt);
+	  if (tcp_options_parse (tcp0, &new_tc0->opt))
+	    goto drop;
 
 	  if (tcp_opts_tstamp (&new_tc0->opt))
 	    {
@@ -1943,6 +1965,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_FIN_WAIT_2:
 	      /* Got FIN, send ACK! */
 	      tc0->state = TCP_STATE_TIME_WAIT;
+	      tcp_connection_timers_reset (tc0);
 	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	      tcp_make_ack (tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
@@ -2149,7 +2172,10 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto drop;
 	    }
 
-	  tcp_options_parse (th0, &child0->opt);
+	  if (tcp_options_parse (th0, &child0->opt))
+	    {
+	      goto drop;
+	    }
 
 	  child0->irs = vnet_buffer (b0)->tcp.seq_number;
 	  child0->rcv_nxt = vnet_buffer (b0)->tcp.seq_number + 1;
@@ -2553,6 +2579,7 @@ do {                                                       	\
   _(FIN_WAIT_2, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   _(LAST_ACK, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(LAST_ACK, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
 #undef _

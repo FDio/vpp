@@ -396,20 +396,24 @@ tcp_update_snd_mss (tcp_connection_t * tc)
 
   /* XXX check if MTU has been updated */
   tc->snd_mss = clib_min (tc->mss, tc->opt.mss) - tc->snd_opts_len;
+  ASSERT (tc->snd_mss > 0);
 }
 
 void
 tcp_init_mss (tcp_connection_t * tc)
 {
+  u16 default_min_mss = 536;
   tcp_update_rcv_mss (tc);
 
   /* TODO cache mss and consider PMTU discovery */
   tc->snd_mss = clib_min (tc->opt.mss, tc->mss);
 
-  if (tc->snd_mss == 0)
+  if (tc->snd_mss < 45)
     {
       clib_warning ("snd mss is 0");
-      tc->snd_mss = tc->mss;
+      /* Assume that at least the min default mss works */
+      tc->snd_mss = default_min_mss;
+      tc->opt.mss = default_min_mss;
     }
 
   /* We should have enough space for 40 bytes of options */
@@ -1171,13 +1175,17 @@ tcp_timer_persist_handler (u32 index)
   vlib_buffer_t *b;
   u32 bi, n_bytes;
 
-  tc = tcp_connection_get (index, thread_index);
+  tc = tcp_connection_get_if_valid (index, thread_index);
+
+  if (!tc)
+    return;
 
   /* Make sure timer handle is set to invalid */
   tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
 
   /* Problem already solved or worse */
-  if (tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
+  if (tc->state == TCP_STATE_CLOSED
+      || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
     return;
 
   /* Increment RTO backoff */
