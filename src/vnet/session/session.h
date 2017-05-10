@@ -32,7 +32,8 @@ typedef enum
   FIFO_EVENT_APP_TX,
   FIFO_EVENT_TIMEOUT,
   FIFO_EVENT_DISCONNECT,
-  FIFO_EVENT_BUILTIN_RX
+  FIFO_EVENT_BUILTIN_RX,
+  FIFO_EVENT_RPC,
 } fifo_event_type_t;
 
 #define foreach_session_input_error                                    	\
@@ -91,12 +92,19 @@ typedef enum
   SESSION_STATE_N_STATES,
 } stream_session_state_t;
 
+typedef struct
+{
+  void *fp;
+  void *arg;
+} rpc_args_t;
+
 /* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   union
     {
       svm_fifo_t * fifo;
       u64 session_handle;
+      rpc_args_t rpc_args;
     };
   u8 event_type;
   u16 event_id;

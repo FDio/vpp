@@ -385,6 +385,13 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
   return -1;
 }
 
+static void
+alloc_http_process_callback (void *s_arg)
+{
+  stream_session_t *s = (stream_session_t *) s_arg;
+  alloc_http_process (s);
+}
+
 static int
 http_server_rx_callback (stream_session_t * s)
 {
@@ -414,7 +421,19 @@ http_server_rx_callback (stream_session_t * s)
   /* send the command to a new/recycled vlib process */
   s->opaque[1] = (u64) vec_dup (hsm->rx_buf);
 
-  alloc_http_process (s);
+  /* Send an RPC request via the thread-0 input node */
+  if (vlib_get_thread_index () != 0)
+    {
+      session_fifo_event_t evt;
+      evt.rpc_args.fp = alloc_http_process_callback;
+      evt.rpc_args.arg = s;
+      evt.event_type = FIFO_EVENT_RPC;
+      unix_shared_memory_queue_add
+	(session_manager_get_vpp_event_queue (0 /* main thread */ ),
+	 (u8 *) & evt, 0 /* do wait for mutex */ );
+    }
+  else
+    alloc_http_process (s);
   return 0;
 }
 
