@@ -482,6 +482,13 @@ vnet_sw_interface_set_flags_helper (vnet_main_t * vnm, u32 sw_if_index,
 	  vnet_device_class_t *dev_class =
 	    vnet_get_device_class (vnm, hi->dev_class_index);
 
+	  if ((flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) &&
+	      (si->flags & VNET_SW_INTERFACE_FLAG_ERROR))
+	    {
+	      error = clib_error_return (0, "Interface in the error state");
+	      goto done;
+	    }
+
 	  /* save the si admin up flag */
 	  old_flags = si->flags;
 
