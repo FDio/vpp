@@ -12,10 +12,8 @@ from util import mactobinary
 def find_nbr(test, sw_if_index, ip_addr, is_static=0, inet=AF_INET):
     nbrs = test.vapi.ip_neighbor_dump(sw_if_index,
                                       is_ipv6=1 if AF_INET6 == inet else 0)
-    if inet == AF_INET:
-        s = 4
-    else:
-        s = 16
+    s = 4 if inet == AF_INET else 16
+
     nbr_addr = inet_pton(inet, ip_addr)
 
     for n in nbrs:
