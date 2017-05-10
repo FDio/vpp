@@ -93,7 +93,7 @@ mhash_key_to_mem (mhash_t * h, uword key)
     {
       u8 *key_tmp;
 
-      int my_cpu = os_get_cpu_number ();
+      int my_cpu = os_get_thread_index ();
       vec_validate (h->key_tmps, my_cpu);
       key_tmp = h->key_tmps[my_cpu];
       return key_tmp;

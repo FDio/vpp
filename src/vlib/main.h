@@ -320,7 +320,7 @@ always_inline void vlib_set_queue_signal_callback
 /* Main routine. */
 int vlib_main (vlib_main_t * vm, unformat_input_t * input);
 
-/* Thread stacks, for os_get_cpu_number */
+/* Thread stacks, for os_get_thread_index */
 extern u8 **vlib_thread_stacks;
 
 /* Number of thread stacks that the application needs */

@@ -24,7 +24,7 @@ typedef struct
   u32 lock;
 #if CLIB_DEBUG > 0
   pid_t pid;
-  uword cpu_index;
+  uword thread_index;
   void *frame_address;
 #endif
 } *clib_spinlock_t;
@@ -57,7 +57,7 @@ clib_spinlock_lock (clib_spinlock_t * p)
 #if CLIB_DEBUG > 0
   (*p)->frame_address = __builtin_frame_address (0);
   (*p)->pid = getpid ();
-  (*p)->cpu_index = os_get_cpu_number ();
+  (*p)->thread_index = os_get_thread_index ();
 #endif
 }
 
@@ -75,7 +75,7 @@ clib_spinlock_unlock (clib_spinlock_t * p)
 #if CLIB_DEBUG > 0
   (*p)->frame_address = 0;
   (*p)->pid = 0;
-  (*p)->cpu_index = 0;
+  (*p)->thread_index = 0;
 #endif
 }
 
