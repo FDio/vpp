@@ -688,6 +688,11 @@ VNET_FEATURE_INIT (ip6_interface_output, static) = {
 clib_error_t *
 ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
+  ip6_main_t *im = &ip6_main;
+
+  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
+  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
+
   vnet_feature_enable_disable ("ip6-unicast", "ip6-drop", sw_if_index,
 			       is_add, 0, 0);
 
