@@ -435,7 +435,16 @@ u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e);
-
+void increment_v4_address(ip4_address_t * a);
+void snat_add_address(snat_main_t *sm, ip4_address_t *addr, u32 vrf_id);
+int snat_del_address(snat_main_t *sm, ip4_address_t addr, u8 delete_sm);
+int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
+                            u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
+                            u32 sw_if_index, snat_protocol_t proto, int is_add);
+clib_error_t * snat_api_init(vlib_main_t * vm, snat_main_t * sm);
+int snat_set_workers (uword * bitmap);
+int snat_interface_add_del(u32 sw_if_index, u8 is_inside, int is_del);
+int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del);
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)
 {

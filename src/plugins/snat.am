@@ -16,6 +16,7 @@ vppapitestplugins_LTLIBRARIES += snat_test_plugin.la
 vppplugins_LTLIBRARIES += snat_plugin.la
 
 snat_plugin_la_SOURCES = snat/snat.c		\
+        snat/snat_api.c				\
         snat/in2out.c				\
         snat/out2in.c				\
 	snat/snat_plugin.api.h			\
