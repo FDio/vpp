@@ -150,15 +150,30 @@ tcp_connection_del (tcp_connection_t * tc)
 void
 tcp_connection_reset (tcp_connection_t * tc)
 {
-  if (tc->state == TCP_STATE_CLOSED)
-    return;
+  switch (tc->state)
+    {
+    case TCP_STATE_SYN_RCVD:
+      /* Cleanup everything. App wasn't notified yet */
+      stream_session_delete_notify (&tc->connection);
+      tcp_connection_cleanup (tc);
+      break;
+    case TCP_STATE_SYN_SENT:
+    case TCP_STATE_ESTABLISHED:
+    case TCP_STATE_CLOSE_WAIT:
+    case TCP_STATE_FIN_WAIT_1:
+    case TCP_STATE_FIN_WAIT_2:
+    case TCP_STATE_CLOSING:
+      tc->state = TCP_STATE_CLOSED;
 
-  tc->state = TCP_STATE_CLOSED;
+      /* Make sure all timers are cleared */
+      tcp_connection_timers_reset (tc);
 
-  /* Make sure all timers are cleared */
-  tcp_connection_timers_reset (tc);
+      stream_session_reset_notify (&tc->connection);
+      break;
+    case TCP_STATE_CLOSED:
+      return;
+    }
 
-  stream_session_reset_notify (&tc->connection);
 }
 
 /**
