@@ -73,7 +73,6 @@ from framework import VppTestCase, VppTestRunner
 from util import Host, ppp
 
 
-@unittest.skip("Crashes VPP")
 class TestL2bdMultiInst(VppTestCase):
     """ L2BD Multi-instance Test Case """
 
@@ -88,25 +87,26 @@ class TestL2bdMultiInst(VppTestCase):
 
         try:
             # Create pg interfaces
-            cls.create_pg_interfaces(range(15))
+            n_bd = 5
+            cls.ifs_per_bd = ifs_per_bd = 3
+            n_ifs = n_bd * ifs_per_bd
+            cls.create_pg_interfaces(range(n_ifs))
 
             # Packet flows mapping pg0 -> pg1, pg2 etc.
             cls.flows = dict()
-            for i in range(0, len(cls.pg_interfaces), 3):
-                cls.flows[cls.pg_interfaces[i]] = [cls.pg_interfaces[i + 1],
-                                                   cls.pg_interfaces[i + 2]]
-                cls.flows[cls.pg_interfaces[i + 1]] = \
-                    [cls.pg_interfaces[i], cls.pg_interfaces[i + 2]]
-                cls.flows[cls.pg_interfaces[i + 2]] = \
-                    [cls.pg_interfaces[i], cls.pg_interfaces[i + 1]]
+            for b in range(n_bd):
+                bd_ifs = cls.bd_if_range(b + 1)
+                for j in bd_ifs:
+                    cls.flows[cls.pg_interfaces[j]] = [
+                        cls.pg_interfaces[x] for x in bd_ifs if x != j]
+                    assert(
+                        len(cls.flows[cls.pg_interfaces[j]]) == ifs_per_bd - 1)
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts_by_pg_idx = dict()
-            for pg_if in cls.pg_interfaces:
-                cls.hosts_by_pg_idx[pg_if.sw_if_index] = []
 
             # Create test host entries
-            cls.create_hosts(75)
+            cls.create_hosts(5)
 
             # Packet sizes - jumbo packet (9018 bytes) skipped
             cls.pg_if_packet_sizes = [64, 512, 1518]
@@ -124,11 +124,6 @@ class TestL2bdMultiInst(VppTestCase):
             # Create list of pg_interfaces in BDs
             cls.pg_in_bd = list()
 
-            # Create list of pg_interfaces not in BDs
-            cls.pg_not_in_bd = list()
-            for pg_if in cls.pg_interfaces:
-                cls.pg_not_in_bd.append(pg_if)
-
         except Exception:
             super(TestL2bdMultiInst, cls).tearDownClass()
             raise
@@ -137,6 +132,7 @@ class TestL2bdMultiInst(VppTestCase):
         """
         Clear trace and packet infos before running each test.
         """
+        self.reset_packet_infos()
         super(TestL2bdMultiInst, self).setUp()
 
     def tearDown(self):
@@ -149,26 +145,28 @@ class TestL2bdMultiInst(VppTestCase):
             self.logger.info(self.vapi.ppcli("show bridge-domain"))
 
     @classmethod
-    def create_hosts(cls, count):
+    def create_hosts(cls, hosts_per_if):
         """
-        Create required number of host MAC addresses and distribute them among
-        interfaces. Create host IPv4 address for every host MAC address.
+        Create required number of host MAC addresses and distribute them
+        among interfaces. Create host IPv4 address for every host MAC
+        address.
 
-        :param int count: Number of hosts to create MAC/IPv4 addresses for.
+        :param int hosts_per_if: Number of hosts per if to create MAC/IPv4
+                                 addresses for.
         """
-        n_int = len(cls.pg_interfaces)
-        macs_per_if = count / n_int
-        i = -1
-        for pg_if in cls.pg_interfaces:
-            i += 1
-            start_nr = macs_per_if * i
-            end_nr = count if i == (n_int - 1) else macs_per_if * (i + 1)
-            hosts = cls.hosts_by_pg_idx[pg_if.sw_if_index]
-            for j in range(start_nr, end_nr):
-                host = Host(
-                    "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
-                    "172.17.1%02u.%u" % (pg_if.sw_if_index, j))
-                hosts.append(host)
+        c = hosts_per_if
+        assert(not cls.hosts_by_pg_idx)
+        for i in range(len(cls.pg_interfaces)):
+            pg_idx = cls.pg_interfaces[i].sw_if_index
+            cls.hosts_by_pg_idx[pg_idx] = [Host(
+                "00:00:00:ff:%02x:%02x" % (pg_idx, j + 1),
+                "172.17.1%02u.%u" % (pg_idx, j + 1)) for j in range(c)]
+
+    @classmethod
+    def bd_if_range(cls, b):
+        n = cls.ifs_per_bd
+        start = (b - 1) * n
+        return range(start, start + n)
 
     def create_bd_and_mac_learn(self, count, start=1):
         """
@@ -180,26 +178,23 @@ class TestL2bdMultiInst(VppTestCase):
         :param int start: Starting number of the bridge domain ID.
             (Default value = 1)
         """
-        for i in range(count):
-            bd_id = i + start
-            self.vapi.bridge_domain_add_del(bd_id=bd_id)
-            self.logger.info("Bridge domain ID %d created" % bd_id)
-            if self.bd_list.count(bd_id) == 0:
-                self.bd_list.append(bd_id)
-            if self.bd_deleted_list.count(bd_id) == 1:
-                self.bd_deleted_list.remove(bd_id)
-            for j in range(3):
-                pg_if = self.pg_interfaces[(i + start - 1) * 3 + j]
+        for b in range(start, start + count):
+            self.vapi.bridge_domain_add_del(bd_id=b)
+            self.logger.info("Bridge domain ID %d created" % b)
+            if self.bd_list.count(b) == 0:
+                self.bd_list.append(b)
+            if self.bd_deleted_list.count(b) == 1:
+                self.bd_deleted_list.remove(b)
+            for j in self.bd_if_range(b):
+                pg_if = self.pg_interfaces[j]
                 self.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
-                                                     bd_id=bd_id)
+                                                     bd_id=b)
                 self.logger.info("pg-interface %s added to bridge domain ID %d"
-                                 % (pg_if.name, bd_id))
+                                 % (pg_if.name, b))
                 self.pg_in_bd.append(pg_if)
-                self.pg_not_in_bd.remove(pg_if)
-                packets = []
-                for host in self.hosts_by_pg_idx[pg_if.sw_if_index]:
-                    packet = (Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac))
-                    packets.append(packet)
+                hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
+                packets = [Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac)
+                           for host in hosts]
                 pg_if.add_stream(packets)
         self.logger.info("Sending broadcast eth frames for MAC learning")
         self.pg_start()
@@ -214,20 +209,18 @@ class TestL2bdMultiInst(VppTestCase):
         :param int start: Starting number of the bridge domain ID.
             (Default value = 1)
         """
-        for i in range(count):
-            bd_id = i + start
-            self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=0)
-            if self.bd_list.count(bd_id) == 1:
-                self.bd_list.remove(bd_id)
-            if self.bd_deleted_list.count(bd_id) == 0:
-                self.bd_deleted_list.append(bd_id)
-            for j in range(3):
-                pg_if = self.pg_interfaces[(i + start - 1) * 3 + j]
+        for b in range(start, start + count):
+            for j in self.bd_if_range(b):
+                pg_if = self.pg_interfaces[j]
+                self.vapi.sw_interface_set_l2_bridge(pg_if.sw_if_index,
+                                                     bd_id=b, enable=0)
                 self.pg_in_bd.remove(pg_if)
-                self.pg_not_in_bd.append(pg_if)
-            self.logger.info("Bridge domain ID %d deleted" % bd_id)
+            self.vapi.bridge_domain_add_del(bd_id=b, is_add=0)
+            self.bd_list.remove(b)
+            self.bd_deleted_list.append(b)
+            self.logger.info("Bridge domain ID %d deleted" % b)
 
-    def create_stream(self, src_if, packet_sizes):
+    def create_stream(self, src_if):
         """
         Create input packet stream for defined interface using hosts list.
 
@@ -235,16 +228,15 @@ class TestL2bdMultiInst(VppTestCase):
         :param list packet_sizes: List of required packet sizes.
         :return: Stream of packets.
         """
+        packet_sizes = self.pg_if_packet_sizes
         pkts = []
         src_hosts = self.hosts_by_pg_idx[src_if.sw_if_index]
         for dst_if in self.flows[src_if]:
             dst_hosts = self.hosts_by_pg_idx[dst_if.sw_if_index]
-            n_int = len(dst_hosts)
-            for i in range(0, n_int):
-                dst_host = dst_hosts[i]
-                src_host = random.choice(src_hosts)
+            for dst_host in dst_hosts:
                 pkt_info = self.create_packet_info(src_if, dst_if)
                 payload = self.info_to_payload(pkt_info)
+                src_host = random.choice(src_hosts)
                 p = (Ether(dst=dst_host.mac, src=src_host.mac) /
                      IP(src=src_host.ip4, dst=dst_host.ip4) /
                      UDP(sport=1234, dport=1234) /
@@ -257,48 +249,48 @@ class TestL2bdMultiInst(VppTestCase):
                           % (src_if.name, len(pkts)))
         return pkts
 
-    def verify_capture(self, pg_if, capture):
+    def verify_capture(self, dst_if):
         """
         Verify captured input packet stream for defined interface.
 
-        :param object pg_if: Interface to verify captured packet stream for.
-        :param list capture: Captured packet stream.
+        :param object dst_if: Interface to verify captured packet stream for.
         """
         last_info = dict()
-        for i in self.pg_interfaces:
+        for i in self.flows[dst_if]:
             last_info[i.sw_if_index] = None
-        dst_sw_if_index = pg_if.sw_if_index
-        for packet in capture:
-            payload_info = self.payload_to_info(str(packet[Raw]))
+        dst = dst_if.sw_if_index
+        for packet in dst_if.get_capture():
             try:
                 ip = packet[IP]
                 udp = packet[UDP]
-                packet_index = payload_info.index
-                self.assertEqual(payload_info.dst, dst_sw_if_index)
+                info = self.payload_to_info(str(packet[Raw]))
+                self.assertEqual(info.dst, dst)
                 self.logger.debug("Got packet on port %s: src=%u (id=%u)" %
-                                  (pg_if.name, payload_info.src, packet_index))
-                next_info = self.get_next_packet_info_for_interface2(
-                    payload_info.src, dst_sw_if_index,
-                    last_info[payload_info.src])
-                last_info[payload_info.src] = next_info
-                self.assertTrue(next_info is not None)
-                self.assertEqual(packet_index, next_info.index)
-                saved_packet = next_info.data
-                # Check standard fields
-                self.assertEqual(ip.src, saved_packet[IP].src)
-                self.assertEqual(ip.dst, saved_packet[IP].dst)
-                self.assertEqual(udp.sport, saved_packet[UDP].sport)
-                self.assertEqual(udp.dport, saved_packet[UDP].dport)
+                                  (dst_if.name, info.src, info.index))
+                last_info[info.src] = self.get_next_packet_info_for_interface2(
+                    info.src, dst, last_info[info.src])
+                pkt_info = last_info[info.src]
+                self.assertTrue(pkt_info is not None)
+                self.assertEqual(info.index, pkt_info.index)
+                # Check standard fields against saved data in pkt
+                saved = pkt_info.data
+                self.assertEqual(ip.src, saved[IP].src)
+                self.assertEqual(ip.dst, saved[IP].dst)
+                self.assertEqual(udp.sport, saved[UDP].sport)
+                self.assertEqual(udp.dport, saved[UDP].dport)
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
-        for i in self.pg_interfaces:
+        s = ""
+        remaining = 0
+        for src in self.flows[dst_if]:
             remaining_packet = self.get_next_packet_info_for_interface2(
-                i, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(
-                remaining_packet is None,
-                "Port %u: Packet expected from source %u didn't arrive" %
-                (dst_sw_if_index, i.sw_if_index))
+                src.sw_if_index, dst, last_info[src.sw_if_index])
+            if remaining_packet is None:
+                s += "Port %u: Packet expected from source %u didn't arrive\n"\
+                     % (dst, src.sw_if_index)
+                remaining += 1
+            self.assertNotEqual(0, remaining, s)
 
     def set_bd_flags(self, bd_id, **args):
         """
@@ -379,22 +371,20 @@ class TestL2bdMultiInst(VppTestCase):
         """
         # Test
         # Create incoming packet streams for packet-generator interfaces
-        for pg_if in self.pg_interfaces:
-            pkts = self.create_stream(pg_if, self.pg_if_packet_sizes)
+        # for pg_if in self.pg_interfaces:
+        assert(len(self._packet_count_for_dst_if_idx) == 0)
+        for pg_if in self.pg_in_bd:
+            pkts = self.create_stream(pg_if)
             pg_if.add_stream(pkts)
 
         # Enable packet capture and start packet sending
-        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_enable_capture(self.pg_in_bd)
         self.pg_start()
 
         # Verify
         # Verify outgoing packet streams per packet-generator interface
-        for pg_if in self.pg_interfaces:
-            capture = pg_if.get_capture()
-            if pg_if in self.pg_in_bd:
-                self.verify_capture(pg_if, capture)
-            elif pg_if not in self.pg_not_in_bd:
-                self.logger.error("Unknown interface: %s" % pg_if.name)
+        for pg_if in self.pg_in_bd:
+            self.verify_capture(pg_if)
 
     def test_l2bd_inst_01(self):
         """ L2BD Multi-instance test 1 - create 5 BDs
