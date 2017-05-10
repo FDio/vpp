@@ -328,6 +328,10 @@ u32 vlib_app_num_thread_stacks_needed (void) __attribute__ ((weak));
 
 extern void vlib_node_sync_stats (vlib_main_t * vm, vlib_node_t * n);
 
+
+/* deprecated */
+uword os_get_cpu_number (void) __attribute__ ((deprecated));
+
 #endif /* included_vlib_main_h */
 
 /*

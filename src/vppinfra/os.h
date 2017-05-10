@@ -56,7 +56,14 @@ void os_out_of_memory (void);
 /* Estimate, measure or divine CPU timestamp clock frequency. */
 f64 os_cpu_clock_frequency (void);
 
-uword os_get_cpu_number (void);
+extern __thread uword __os_cpu_number;
+
+static_always_inline uword
+os_get_cpu_number (void)
+{
+  return __os_cpu_number;
+}
+
 uword os_get_ncpus (void);
 
 #include <vppinfra/smp.h>

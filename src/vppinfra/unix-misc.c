@@ -45,6 +45,8 @@
 #include <fcntl.h>
 #include <stdio.h>		/* for sprintf */
 
+__thread uword __os_cpu_number = 0;
+
 clib_error_t *
 unix_file_n_bytes (char *file, uword * result)
 {
@@ -217,13 +219,6 @@ void
 os_out_of_memory (void)
 {
   os_panic ();
-}
-
-uword os_get_cpu_number (void) __attribute__ ((weak));
-uword
-os_get_cpu_number (void)
-{
-  return 0;
 }
 
 uword os_get_ncpus (void) __attribute__ ((weak));

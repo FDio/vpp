@@ -15,6 +15,10 @@
 
 /** @cond DOCUMENTATION_IS_IN_BIHASH_DOC_H */
 
+/* for os_get_cpu_number */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
 {
@@ -518,6 +522,8 @@ void BV (clib_bihash_foreach_key_value_pair)
 	}
     }
 }
+
+#pragma GCC diagnostic pop
 
 /** @endcond */
 
