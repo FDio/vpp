@@ -20,17 +20,18 @@ DPDK_PKTMBUF_HEADROOM ?= 128
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_DEBUG            ?= n
 DPDK_CRYPTO_SW_PMD    ?= n
+DPDK_MLX4_PMD         ?= n
 DPDK_MLX5_PMD         ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
-DPDK_VERSION ?= 17.02
-PKG_SUFFIX ?= vpp3
+DPDK_VERSION ?= 17.05
+PKG_SUFFIX ?= vpp1
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_16.11_TARBALL_MD5_CKSUM := 06c1c577795360719d0b4fafaeee21e9
 DPDK_17.02_TARBALL_MD5_CKSUM := 6b9f7387c35641f4e8dbba3e528f2376
+DPDK_17.05_TARBALL_MD5_CKSUM := 0a68c31cd6a6cabeed0a4331073e4c05
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 
 ifeq ($(DPDK_CRYPTO_SW_PMD),y)
@@ -139,6 +140,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
 	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(DPDK_CRYPTO_SW_PMD))
 	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(DPDK_CRYPTO_SW_PMD))
+	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	@# not needed
 	$(call set,RTE_LIBRTE_TIMER,n)
@@ -147,7 +149,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_ACL,n)
 	$(call set,RTE_LIBRTE_POWER,n)
 	$(call set,RTE_LIBRTE_DISTRIBUTOR,n)
-	$(call set,RTE_LIBRTE_REORDER,n)
 	$(call set,RTE_LIBRTE_PORT,n)
 	$(call set,RTE_LIBRTE_TABLE,n)
 	$(call set,RTE_LIBRTE_PIPELINE,n)
