@@ -1174,7 +1174,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   log_level = (CLIB_DEBUG > 0) ? RTE_LOG_DEBUG : RTE_LOG_NOTICE;
 
-  rte_set_log_level (log_level);
+  rte_log_set_global_level (log_level);
 
   vm = vlib_get_main ();
 

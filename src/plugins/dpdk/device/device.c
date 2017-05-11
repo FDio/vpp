@@ -254,7 +254,11 @@ static_always_inline
 				  &tx_vector[tx_tail], tx_head - tx_tail);
 	  rv = rte_ring_sp_enqueue_burst (hqos->swq,
 					  (void **) &tx_vector[tx_tail],
+#if RTE_VERSION >= RTE_VERSION_NUM(17, 5, 0, 0)
+					  (uint16_t) (tx_head - tx_tail), 0);
+#else
 					  (uint16_t) (tx_head - tx_tail));
+#endif
 	}
       else if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
 	{
