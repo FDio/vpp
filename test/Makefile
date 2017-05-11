@@ -111,6 +111,7 @@ shell: verify-python-path $(PAPI_INSTALL_DONE)
 		echo VPP_TEST_INSTALL_PATH=$(VPP_TEST_INSTALL_PATH);\
 		echo EXTERN_TESTS=$(EXTERN_TESTS);\
 		echo EXTERN_PLUGINS=$(EXTERN_PLUGINS);\
+                echo EXTERN_COV_DIR=$(EXTERN_COV_DIR);\
 		echo LD_LIBRARY_PATH=$(LD_LIBRARY_PATH);\
 		echo '***';\
 		exec </dev/tty" | bash -i
@@ -137,12 +138,16 @@ wipe-doc:
 
 cov: wipe-cov reset verify-python-path $(PAPI_INSTALL_DONE)
 	@lcov --zerocounters --directory $(VPP_TEST_BUILD_DIR)
+	@test -z "$(EXTERN_COV_DIR)" || lcov --zerocounters --directory $(EXTERN_COV_DIR)
 	$(call retest-func)
 	@mkdir $(BUILD_COV_DIR)
 	@lcov --capture --directory $(VPP_TEST_BUILD_DIR) --output-file $(BUILD_COV_DIR)/coverage.info
+	@test -z "$(EXTERN_COV_DIR)" || lcov --capture --directory $(EXTERN_COV_DIR) --output-file $(BUILD_COV_DIR)/extern-coverage.info
 	@genhtml $(BUILD_COV_DIR)/coverage.info --output-directory $(BUILD_COV_DIR)/html
+	@test -z "$(EXTERN_COV_DIR)" || genhtml $(BUILD_COV_DIR)/extern-coverage.info --output-directory $(BUILD_COV_DIR)/extern-html
 	@echo
 	@echo "Build finished. Code coverage report is in $(BUILD_COV_DIR)/html/index.html"
+	@test -z "$(EXTERN_COV_DIR)" || echo "Code coverage report for out-of-tree objects is in $(BUILD_COV_DIR)/extern-html/index.html"
 
 .PHONY: wipe-cov
 
@@ -203,6 +208,7 @@ help:
 	@echo "                             COREDUMP_SIZE=unlimited"
 	@echo " EXTERN_TESTS=<path>  - path to out-of-tree test_<name>.py files containing test cases"
 	@echo " EXTERN_PLUGINS=<path>- path to out-of-tree plugins to be loaded by vpp under test"
+	@echo " EXTERN_COV_DIR=<path>- path to out-of-tree prefix, where source, object and .gcda files can be found for coverage report"
 	@echo ""
 	@echo "Creating test documentation"
 	@echo " test-doc            - generate documentation for test framework"
