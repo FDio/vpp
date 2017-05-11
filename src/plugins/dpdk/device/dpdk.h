@@ -166,7 +166,7 @@ typedef struct
 #define DPDK_DEVICE_FLAG_ADMIN_UP           (1 << 0)
 #define DPDK_DEVICE_FLAG_PROMISC            (1 << 1)
 #define DPDK_DEVICE_FLAG_PMD                (1 << 2)
-
+#define DPDK_DEVICE_FLAG_PMD_INIT_FAIL      (1 << 3)
 #define DPDK_DEVICE_FLAG_MAYBE_MULTISEG     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF         (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS               (1 << 6)
@@ -207,6 +207,9 @@ typedef struct
 
   /* mac address */
   u8 *default_mac_address;
+
+  /* error string */
+  clib_error_t *errors;
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)
@@ -399,9 +402,9 @@ typedef struct
   u8 data[256];			/* First 256 data bytes, used for hexdump */
 } dpdk_rx_dma_trace_t;
 
-clib_error_t *dpdk_device_setup (dpdk_device_t * xd);
-clib_error_t *dpdk_device_start (dpdk_device_t * xd);
-clib_error_t *dpdk_device_stop (dpdk_device_t * xd);
+void dpdk_device_setup (dpdk_device_t * xd);
+void dpdk_device_start (dpdk_device_t * xd);
+void dpdk_device_stop (dpdk_device_t * xd);
 
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\
@@ -424,6 +427,7 @@ void dpdk_update_link_state (dpdk_device_t * xd, f64 now);
 
 format_function_t format_dpdk_device_name;
 format_function_t format_dpdk_device;
+format_function_t format_dpdk_device_errors;
 format_function_t format_dpdk_tx_dma_trace;
 format_function_t format_dpdk_rx_dma_trace;
 format_function_t format_dpdk_rte_mbuf;
