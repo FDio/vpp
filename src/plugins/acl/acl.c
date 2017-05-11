@@ -1624,6 +1624,10 @@ acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   if (0 == is_add) {
     vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
                                ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX, sw_if_index);
+    /* also unapply any ACLs in case the users did not do so. */
+    macip_acl_interface_del_acl(am, sw_if_index);
+    acl_interface_reset_inout_acls (sw_if_index, 0);
+    acl_interface_reset_inout_acls (sw_if_index, 1);
   }
   return 0;
 }
