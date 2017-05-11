@@ -24,23 +24,27 @@
 #include <dpdk/device/dpdk_priv.h>
 #include <vppinfra/error.h>
 
-clib_error_t *
-dpdk_error_return (clib_error_t * error, char *str, dpdk_device_t * xd,
-		   int rv)
+void
+dpdk_device_error (dpdk_device_t * xd, char *str, int rv)
 {
-  return clib_error_return (error, "%s[%d]: %s(%d)", str, xd->device_index,
-			    rte_strerror (rv), rv);
+  xd->errors = clib_error_return (xd->errors, "%s[port:%d, errno:%d]: %s",
+				  str, xd->device_index, rv,
+				  rte_strerror (rv));
 }
 
-clib_error_t *
+void
 dpdk_device_setup (dpdk_device_t * xd)
 {
   dpdk_main_t *dm = &dpdk_main;
-  clib_error_t *err = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
   int rv;
   int j;
 
   ASSERT (vlib_get_thread_index () == 0);
+
+  clib_error_free (xd->errors);
+  sw->flags &= ~VNET_SW_INTERFACE_FLAG_ERROR;
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
     {
@@ -52,7 +56,10 @@ dpdk_device_setup (dpdk_device_t * xd)
 			      xd->tx_q_used, &xd->port_conf);
 
   if (rv < 0)
-    return dpdk_error_return (err, "rte_eth_dev_configure", xd, rv);
+    {
+      dpdk_device_error (xd, "rte_eth_dev_configure", rv);
+      goto error;
+    }
 
   /* Set up one TX-queue per worker thread */
   for (j = 0; j < xd->tx_q_used; j++)
@@ -65,7 +72,7 @@ dpdk_device_setup (dpdk_device_t * xd)
 	rv = rte_eth_tx_queue_setup (xd->device_index, j, xd->nb_tx_desc,
 				     SOCKET_ID_ANY, &xd->tx_conf);
       if (rv < 0)
-	err = dpdk_error_return (err, "rte_eth_tx_queue_setup", xd, rv);
+	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
     }
 
   for (j = 0; j < xd->rx_q_used; j++)
@@ -86,28 +93,40 @@ dpdk_device_setup (dpdk_device_t * xd)
 				     dm->pktmbuf_pools[socket_id]);
 
       if (rv < 0)
-	err = dpdk_error_return (err, "rte_eth_rx_queue_setup", xd, rv);
+	dpdk_device_error (xd, "rte_eth_rx_queue_setup", rv);
     }
 
-  if (err)
-    return err;
+  if (vec_len (xd->errors))
+    goto error;
 
   if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-    err = dpdk_device_start (xd);
+    dpdk_device_start (xd);
 
-  return err;
+  if (vec_len (xd->errors))
+    goto error;
+
+  return;
+
+error:
+  xd->flags |= DPDK_DEVICE_FLAG_PMD_INIT_FAIL;
+  sw->flags |= VNET_SW_INTERFACE_FLAG_ERROR;
 }
 
-clib_error_t *
+void
 dpdk_device_start (dpdk_device_t * xd)
 {
   int rv;
-  clib_error_t *err = 0;
+
+  if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
+    return;
 
   rv = rte_eth_dev_start (xd->device_index);
 
   if (rv)
-    return dpdk_error_return (err, "rte_eth_dev_start", xd, rv);
+    {
+      dpdk_device_error (xd, "rte_eth_dev_start", rv);
+      return;
+    }
 
   if (xd->default_mac_address)
     rv =
@@ -116,7 +135,7 @@ dpdk_device_start (dpdk_device_t * xd)
 					xd->default_mac_address);
 
   if (rv)
-    err = dpdk_error_return (err, "rte_eth_dev_default_mac_addr_set", xd, rv);
+    dpdk_device_error (xd, "rte_eth_dev_default_mac_addr_set", rv);
 
   if (xd->flags & DPDK_DEVICE_FLAG_PROMISC)
     rte_eth_promiscuous_enable (xd->device_index);
@@ -135,16 +154,28 @@ dpdk_device_start (dpdk_device_t * xd)
 	  rte_eth_allmulticast_enable (dpdk_port);
 	}
     }
-
-  return err;
 }
 
-clib_error_t *
+void
 dpdk_device_stop (dpdk_device_t * xd)
 {
+  if (xd->flags & DPDK_DEVICE_FLAG_PMD_INIT_FAIL)
+    return;
+
+  rte_eth_allmulticast_disable (xd->device_index);
   rte_eth_dev_stop (xd->device_index);
 
-  return 0;
+  /* For bonded interface, stop slave links */
+  if (xd->pmd == VNET_DPDK_PMD_BOND)
+    {
+      u8 slink[16];
+      int nlink = rte_eth_bond_slaves_get (xd->device_index, slink, 16);
+      while (nlink >= 1)
+	{
+	  u8 dpdk_port = slink[--nlink];
+	  rte_eth_dev_stop (dpdk_port);
+	}
+    }
 }
 
 /*
