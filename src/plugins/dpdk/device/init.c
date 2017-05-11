@@ -118,11 +118,7 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
       rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
 
       if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	{
-	  clib_error_t *error;
-	  error = dpdk_device_start (xd);
-	  clib_error_report (error);
-	}
+	dpdk_device_start (xd);
 
     }
   return old;
@@ -223,7 +219,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       u8 vlan_strip = 0;
       int j;
       struct rte_eth_dev_info dev_info;
-      clib_error_t *rv;
       struct rte_eth_link l;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
@@ -570,13 +565,16 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
 
-      rv = dpdk_device_setup (xd);
+      dpdk_device_setup (xd);
 
-      if (rv)
-	return rv;
+      if (vec_len (xd->errors))
+	clib_warning ("setup failed for device %U. Errors:\n  %U",
+		      format_dpdk_device_name, i,
+		      format_dpdk_device_errors, xd);
 
       if (devconf->hqos_enabled)
 	{
+	  clib_error_t *rv;
 	  rv = dpdk_port_setup_hqos (xd, &devconf->hqos);
 	  if (rv)
 	    return rv;

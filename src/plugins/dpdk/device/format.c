@@ -377,6 +377,20 @@ format_dpdk_tx_offload_caps (u8 * s, va_list * args)
 #undef _
 
 u8 *
+format_dpdk_device_errors (u8 * s, va_list * args)
+{
+  dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
+  clib_error_t *e;
+  uword indent = format_get_indent (s);
+
+  vec_foreach (e, xd->errors)
+  {
+    s = format (s, "%U%v\n", format_white_space, indent, e->what);
+  }
+  return s;
+}
+
+u8 *
 format_dpdk_device (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
@@ -509,6 +523,12 @@ format_dpdk_device (u8 * s, va_list * args)
       s = format (s, "\n%Uextended stats:%v",
 		  format_white_space, indent + 2, xs);
       vec_free (xs);
+    }
+
+  if (vec_len (xd->errors))
+    {
+      s = format (s, "%UErrors:\n  %U", format_white_space, indent,
+		  format_dpdk_device_errors, xd);
     }
 
   return s;
