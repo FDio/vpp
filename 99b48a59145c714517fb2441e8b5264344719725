@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_2049d08b",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 280,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-11T08:48:09Z",
+      "side": 1,
+      "message": "merge error?",
+      "revId": "99b48a59145c714517fb2441e8b5264344719725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_005ed445",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 16
+      },
+      "lineNbr": 1248,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-11T08:48:09Z",
+      "side": 1,
+      "message": "merge/rebase error?",
+      "revId": "99b48a59145c714517fb2441e8b5264344719725",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
