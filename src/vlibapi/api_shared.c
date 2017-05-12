@@ -494,14 +494,22 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
     {
       handler = (void *) am->msg_handlers[id];
 
-      if (am->rx_trace && am->rx_trace->enabled)
-	vl_msg_api_trace (am, am->rx_trace, the_msg);
+      if (PREDICT_TRUE (vl_msg_api_validate_msg_inline (the_msg)))
+	{
+	  if (am->rx_trace && am->rx_trace->enabled)
+	    vl_msg_api_trace (am, am->rx_trace, the_msg);
 
-      if (!am->is_mp_safe[id])
-	vl_msg_api_barrier_sync ();
-      (*handler) (the_msg, vm, node);
-      if (!am->is_mp_safe[id])
-	vl_msg_api_barrier_release ();
+	  if (!am->is_mp_safe[id])
+	    vl_msg_api_barrier_sync ();
+	  (*handler) (the_msg, vm, node);
+	  if (!am->is_mp_safe[id])
+	    vl_msg_api_barrier_release ();
+	}
+      else
+	{
+	  clib_warning ("invalid msg: id %d, length %u",
+			id, vl_msg_api_get_msg_length (the_msg));
+	}
     }
   else
     {
@@ -623,6 +631,19 @@ vl_msg_api_replay_handler (void *the_msg)
     (*am->msg_handlers[id]) (the_msg);
   /* do NOT free the message buffer... */
 }
+
+u32
+vl_msg_api_get_msg_length (void *msg_arg)
+{
+  return vl_msg_api_get_msg_length_inline (msg_arg);
+}
+
+int
+vl_msg_api_validate_msg (void *msg_arg)
+{
+  return vl_msg_api_validate_msg_inline (msg_arg);
+}
+
 
 /*
  * vl_msg_api_socket_handler
