@@ -135,25 +135,6 @@ autoreply define reset_vrf
   u32 vrf_id;
 };
 
-/** \brief Is Address Reachable request - DISABLED
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param next_hop_sw_if_index - index of interface used to get to next hop
-    @param is_ipv6 - 1 for IPv6, 0 for IPv4
-    @param is_error - address not found or does not match intf
-    @param address[] - Address in question 
-*/
-define is_address_reachable
-{
-  u32 client_index;		/* (api_main_t *) am->my_client_index */
-  u32 context;
-  u32 next_hop_sw_if_index;
-  u8 is_known;			/* on reply, this is the answer */
-  u8 is_ipv6;
-  u8 is_error;			/* address not found or does not match intf */
-  u8 address[16];
-};
-
 /** \brief Want Stats, register for stats updates
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -256,7 +237,7 @@ define vnet_get_summary_stats
     @param total_bytes -
     @param vector_rate - 
 */
-define vnet_summary_stats_reply
+define vnet_get_summary_stats_reply
 {
   u32 context;
   i32 retval;
@@ -414,7 +395,7 @@ define control_ping_reply
     @param context - sender context, to match reply w/ request
     @param cmd_in_shmem - pointer to cli command string
 */
-define cli_request
+define cli
 {
   u32 client_index;
   u32 context;

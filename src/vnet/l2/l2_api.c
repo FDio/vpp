@@ -36,6 +36,9 @@
 #include <vnet/vnet_all_api_h.h>
 #undef vl_endianfun
 
+#define vl_api_bridge_domain_details_t_endian vl_noop_handler
+#define vl_api_bridge_domain_details_t_print vl_noop_handler
+
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
@@ -119,11 +122,11 @@ send_l2fib_table_entry (vpe_api_main_t * am,
 			l2fib_entry_key_t * l2fe_key,
 			l2fib_entry_result_t * l2fe_res, u32 context)
 {
-  vl_api_l2_fib_table_entry_t *mp;
+  vl_api_l2_fib_table_details_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_L2_FIB_TABLE_ENTRY);
+  mp->_vl_msg_id = ntohs (VL_API_L2_FIB_TABLE_DETAILS);
 
   mp->bd_id =
     ntohl (l2input_main.bd_configs[l2fe_key->fields.bd_index].bd_id);
@@ -358,13 +361,18 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
 }
 
 static void
-send_bridge_domain_details (unix_shared_memory_queue_t * q,
+send_bridge_domain_details (l2input_main_t * l2im,
+			    unix_shared_memory_queue_t * q,
 			    l2_bridge_domain_t * bd_config,
 			    u32 n_sw_ifs, u32 context)
 {
   vl_api_bridge_domain_details_t *mp;
+  l2_flood_member_t *m;
+  vl_api_bridge_domain_sw_if_t *sw_ifs;
+  l2_input_config_t *input_cfg;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc (sizeof (*mp) +
+			 (n_sw_ifs * sizeof (vl_api_bridge_domain_sw_if_t)));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_BRIDGE_DOMAIN_DETAILS);
   mp->bd_id = ntohl (bd_config->bd_id);
@@ -375,28 +383,18 @@ send_bridge_domain_details (unix_shared_memory_queue_t * q,
   mp->arp_term = bd_feature_arp_term (bd_config);
   mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
   mp->mac_age = bd_config->mac_age;
-  mp->n_sw_ifs = ntohl (n_sw_ifs);
   mp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
-}
-
-static void
-send_bd_sw_if_details (l2input_main_t * l2im,
-		       unix_shared_memory_queue_t * q,
-		       l2_flood_member_t * member, u32 bd_id, u32 context)
-{
-  vl_api_bridge_domain_sw_if_details_t *mp;
-  l2_input_config_t *input_cfg;
-
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_BRIDGE_DOMAIN_SW_IF_DETAILS);
-  mp->bd_id = ntohl (bd_id);
-  mp->sw_if_index = ntohl (member->sw_if_index);
-  input_cfg = vec_elt_at_index (l2im->configs, member->sw_if_index);
-  mp->shg = input_cfg->shg;
-  mp->context = context;
+  sw_ifs = (vl_api_bridge_domain_sw_if_t *) mp->sw_if_details;
+  vec_foreach (m, bd_config->members)
+  {
+    sw_ifs->sw_if_index = ntohl (m->sw_if_index);
+    input_cfg = vec_elt_at_index (l2im->configs, m->sw_if_index);
+    sw_ifs->shg = input_cfg->shg;
+    sw_ifs++;
+    mp->n_sw_ifs++;
+  }
+  mp->n_sw_ifs = htonl (mp->n_sw_ifs);
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
@@ -434,18 +432,9 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
 	l2input_bd_config_from_index (l2im, bd_index);
       /* skip dummy bd_id 0 */
       if (bd_config && (bd_config->bd_id > 0))
-	{
-	  u32 n_sw_ifs;
-	  l2_flood_member_t *m;
-
-	  n_sw_ifs = vec_len (bd_config->members);
-	  send_bridge_domain_details (q, bd_config, n_sw_ifs, mp->context);
-
-	  vec_foreach (m, bd_config->members)
-	  {
-	    send_bd_sw_if_details (l2im, q, m, bd_config->bd_id, mp->context);
-	  }
-	}
+	send_bridge_domain_details (l2im, q, bd_config,
+				    vec_len (bd_config->members),
+				    mp->context);
     }
 }
 
