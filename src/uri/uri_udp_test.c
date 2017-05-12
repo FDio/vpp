@@ -281,6 +281,14 @@ wait_for_state_change (uri_udp_test_main_t * utm, connection_state_t state)
 
 u64 server_bytes_received, server_bytes_sent;
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if 0
 static void *
 cut_through_thread_fn (void *arg)
 {
@@ -335,6 +343,105 @@ cut_through_thread_fn (void *arg)
 
   pthread_exit (0);
 }
+#endif
+
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if 1
+static void *
+cut_through_thread_fn_unidirection (void *arg)
+{
+  session_t *s;
+  svm_fifo_t *tx_fifo;
+  u8 *my_copy_buffer = 0;
+  uri_udp_test_main_t *utm = &uri_udp_test_main;
+  i32 actual_transfer;
+  static i8 flow_started = 0, flow_ended = 0;
+  f64 flow_start_time, flow_end_time, now, delta, bytes_per_second;
+
+
+  while (utm->cut_through_session_index == ~0)
+    ;
+
+  s = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
+
+  tx_fifo = s->server_tx_fifo;
+
+  vec_validate (my_copy_buffer, 64 * 1024 - 1);
+
+  while (true)
+  {
+	  /* reset state variables */
+	  flow_started = 0;
+	  flow_ended = 0;
+	  server_bytes_received = 0;
+	  flow_start_time = flow_end_time = 0.0;
+
+	  /* flow processing */
+	  do
+	  {
+		  /* packet processing */
+		  /* We read from the tx fifo */
+		  actual_transfer = 0;
+		  do
+		  {
+			  actual_transfer = svm_fifo_dequeue_nowait (tx_fifo,
+						     vec_len (my_copy_buffer),
+						     my_copy_buffer);
+			  /* mark the start of flow */
+			  if ( !flow_started && (actual_transfer > 0) ) {
+				  flow_started = 1;
+				  server_bytes_received = 0;
+				  now = flow_start_time = flow_end_time = clib_time_now (&utm->clib_time);
+			  }
+			  else {
+			  now = clib_time_now (&utm->clib_time);
+			  }
+			  /* mark the end of flow */
+			  if ( flow_started && (now - flow_end_time) > 1.0 ) {
+				  flow_ended = 1;
+				  /* break from flow processing */
+				  break;
+			  }
+		  }
+		  while (actual_transfer <= 0);
+		  /*update flow_end_time & server_bytes_received when the flow is active */
+		  if (!flow_ended) {
+			  flow_end_time = now;
+			  server_bytes_received += actual_transfer;
+		  }
+
+	  }
+	  while(!flow_ended);
+
+	  /* we get here only when the flow ends */
+	  /* statistics */
+
+	  /* calculate flow duration */
+	  delta = flow_end_time - flow_start_time;
+	  bytes_per_second = 0.0;
+
+	  if (delta > 0.0)
+	    bytes_per_second = (f64) server_bytes_received / delta;
+
+	  /* display stats */
+	  fformat (stdout,
+			  "Done: %lld recv bytes in %.2f seconds, %.2f bytes/sec...\n\n",
+			  server_bytes_received, delta, bytes_per_second);
+
+	  if (PREDICT_FALSE (utm->time_to_stop))
+		  break;
+  }
+
+  pthread_exit (0);
+}
+#endif
+
 
 static void
 udp_client_connect (uri_udp_test_main_t * utm)
@@ -350,6 +457,14 @@ udp_client_connect (uri_udp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & cmp);
 }
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if 0
 static void
 client_send (uri_udp_test_main_t * utm, session_t * session)
 {
@@ -452,6 +567,71 @@ client_send (uri_udp_test_main_t * utm, session_t * session)
 	   "client -> server -> client round trip: %.2f Gbit/sec \n\n",
 	   (bytes_per_second * 8.0) / 1e9);
 }
+#endif
+
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if 1
+static void
+client_send_unidirection (uri_udp_test_main_t * utm, session_t * session)
+{
+  int i;
+  u8 *test_data = 0;
+  u64 bytes_sent = 0;
+  int rv;
+  f64 before, after, delta, bytes_per_second;
+  svm_fifo_t *tx_fifo;
+  int buffer_offset, bytes_to_send = 0;
+
+  /*
+   * Prepare test data
+   */
+  vec_validate (test_data, 64 * 1024 - 1);
+  for (i = 0; i < vec_len (test_data); i++)
+    test_data[i] = i & 0xff;
+
+  tx_fifo = session->server_tx_fifo;
+
+  before = clib_time_now (&utm->clib_time);
+
+  vec_validate (utm->rx_buf, vec_len (test_data) - 1);
+
+  for (i = 0; i < NITER; i++)
+    {
+      bytes_to_send = vec_len (test_data);
+      buffer_offset = 0;
+      while (bytes_to_send > 0)
+	{
+	  rv = svm_fifo_enqueue_nowait (tx_fifo, bytes_to_send,
+					test_data + buffer_offset);
+
+	  if (rv > 0)
+	    {
+	      bytes_to_send -= rv;
+	      buffer_offset += rv;
+	      bytes_sent += rv;
+	    }
+	}
+
+    }
+
+  after = clib_time_now (&utm->clib_time);
+  delta = after - before;
+  bytes_per_second = 0.0;
+
+  if (delta > 0.0)
+    bytes_per_second = (f64) bytes_sent / delta;
+
+  fformat (stdout,
+	   "Done: %lld sent bytes in %.2f seconds, %.2f bytes/sec...\n\n",
+	   bytes_sent, delta, bytes_per_second);
+}
+#endif
 
 static void
 uri_udp_client_test (uri_udp_test_main_t * utm)
@@ -470,7 +650,19 @@ uri_udp_client_test (uri_udp_test_main_t * utm)
   /* Only works with cut through sessions */
   session = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
 
+  /*
+   *
+   * GS: when command line argument unidirectional-flow is implemented,
+   * remove conditional #if and matching #endif
+   *
+   * */
+
+#if 0
   client_send (utm, session);
+#endif
+#if 1
+  client_send_unidirection (utm, session);
+#endif
   application_detach (utm);
 }
 
@@ -562,8 +754,16 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   session->server_tx_fifo->master_session_index = session - utm->sessions;
   utm->cut_through_session_index = session - utm->sessions;
 
+/* GS: revert back after testing */
+#if 0
   rv = pthread_create (&utm->cut_through_thread_handle,
 		       NULL /*attr */ , cut_through_thread_fn, 0);
+#endif
+#if 1
+  rv = pthread_create (&utm->cut_through_thread_handle,
+		       NULL /*attr */ , cut_through_thread_fn_unidirection, 0);
+#endif
+
   if (rv)
     {
       clib_warning ("pthread_create returned %d", rv);
@@ -790,6 +990,14 @@ init_error_string_table (uri_udp_test_main_t * utm)
   hash_set (utm->error_string_by_error_number, 99, "Misc");
 }
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if 1
 void
 server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
 			     session_fifo_event_t * e)
@@ -828,6 +1036,58 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
 				    0 /* do wait for mutex */ );
     }
 }
+#endif
+
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if 0
+void
+server_handle_fifo_event_rx_unidirection (uri_udp_test_main_t * utm,
+			     session_fifo_event_t * e)
+{
+	svm_fifo_t *rx_fifo;
+	u64 bytes_received = 0;
+	int nbytes;
+	static i8 flow_started = 0;
+
+	f64 before, after, delta, bytes_per_second;
+
+	rx_fifo = e->fifo;
+
+	do
+	{
+		nbytes = svm_fifo_dequeue_nowait (rx_fifo, vec_len (utm->rx_buf),
+				utm->rx_buf);
+		if (nbytes) {
+			/* mark the start of flow */
+			if(!flow_started) {
+				flow_started = 1;
+				before = clib_time_now (&utm->clib_time);
+			}
+			bytes_received += nbytes;
+		}
+	}
+	while (nbytes <= 0);
+
+	/* mark the end of flow */
+	after = clib_time_now (&utm->clib_time);
+	delta = after - before;
+	bytes_per_second = 0.0;
+
+	if (delta > 0.0)
+		bytes_per_second = (f64) bytes_received / delta;
+
+	/* display stats */
+	fformat (stdout,
+		"Done: %lld recv bytes in %.2f seconds, %.2f bytes/sec...\n\n",
+		bytes_received, delta, bytes_per_second);
+}
+#endif
 
 void
 server_handle_event_queue (uri_udp_test_main_t * utm)
@@ -841,7 +1101,20 @@ server_handle_event_queue (uri_udp_test_main_t * utm)
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
-	  server_handle_fifo_event_rx (utm, e);
+		/*
+		 *
+		 * GS: when command line argument unidirectional-flow is implemented,
+		 * remove conditional #if and matching #endif
+		 *
+		 * */
+
+#if 1
+		server_handle_fifo_event_rx (utm, e);
+#endif
+
+#if 0
+	  server_handle_fifo_event_rx_unidirectional (utm, e);
+#endif
 	  break;
 
 	case FIFO_EVENT_DISCONNECT:
