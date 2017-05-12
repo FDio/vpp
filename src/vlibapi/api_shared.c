@@ -624,6 +624,12 @@ vl_msg_api_replay_handler (void *the_msg)
   /* do NOT free the message buffer... */
 }
 
+u32
+vl_msg_api_get_msg_length (void *msg_arg)
+{
+  return vl_msg_api_get_msg_length_inline (msg_arg);
+}
+
 /*
  * vl_msg_api_socket_handler
  */
