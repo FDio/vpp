@@ -64,12 +64,12 @@ public class FutureApiTest {
 
         if (reply == null || reply.bridgeDomainDetails == null) {
             LOG.severe("Received null response for empty dump: " + reply);
-        } else {
+        }/* $$$$ else {
             LOG.info(
                 String.format(
                     "Received empty bridge-domain dump reply with list of bridge-domains: %s, %s",
                     reply.bridgeDomainDetails, reply.bridgeDomainSwIfDetails));
-        }
+		    }*/
     }
 
     private static void testGetNodeIndex(final FutureJVppCoreFacade jvpp) {
