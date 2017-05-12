@@ -156,13 +156,6 @@ jni_field_accessors =  {'u8': 'ByteField',
 # vpe.api calls that do not follow naming conventions and have to be handled exceptionally when finding reply -> request mapping
 # FIXME in vpe.api
 unconventional_naming_rep_req = {
-                                 'cli_reply': 'cli_request',
-                                 'vnet_summary_stats_reply': 'vnet_get_summary_stats',
-                                 # This below is actually a sub-details callback. We cannot derive the mapping of dump request
-                                 # belonging to this sub-details from naming conventions. We need special mapping
-                                 'bridge_domain_sw_if_details': 'bridge_domain',
-                                 # This is standard dump call + details reply. However it's not called details but entry
-                                 'l2_fib_table_entry': 'l2_fib_table'
                                  }
 
 #
@@ -172,7 +165,7 @@ notification_messages_reused = ["sw_interface_set_flags"]
 
 # messages that must be ignored. These messages are INSUFFICIENTLY marked as disabled in vpe.api
 # FIXME
-ignored_messages = ["is_address_reachable"]
+ignored_messages = []
 
 
 def is_notification(name):
