@@ -421,7 +421,10 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
     return;
 
   bd_index = (bd_id == ~0) ? 0 : bd_find_index (bdm, bd_id);
-  ASSERT (bd_index != ~0);
+
+  if (bd_index == ~0)
+    return;
+
   end = (bd_id == ~0) ? vec_len (l2im->bd_configs) : bd_index + 1;
 
   for (; bd_index < end; bd_index++)
