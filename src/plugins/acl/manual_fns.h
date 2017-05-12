@@ -18,6 +18,7 @@
 
 #include <vnet/ip/format.h>
 #include <vnet/ethernet/ethernet.h>
+#include <stddef.h>
 
 /* Macro to finish up custom dump fns */
 #define PRINT_S \
@@ -145,6 +146,21 @@ vl_api_macip_acl_rule_t_print (vl_api_macip_acl_rule_t * a, void *handle)
   return handle;
 }
 
+static int verify_add_replace_message_len_for_print(vl_api_acl_add_replace_t * mp)
+{
+  msgbuf_t *mbuf;
+  mbuf = (msgbuf_t *) (((u8 *) mp) - offsetof (msgbuf_t, data));
+  u32 acl_count = ntohl (mp->count);
+  u32 actual_len = ntohl(mbuf->data_len);
+  u32 expected_len = sizeof(*mp) + acl_count*sizeof(mp->r[0]);
+  if (expected_len > actual_len) {
+     clib_warning("Message too short: expected len: %ld, actual: %ld", expected_len, actual_len);
+     return 0;
+  } else {
+     return 1;
+  }
+}
+
 static inline void *
 vl_api_acl_add_replace_t_print (vl_api_acl_add_replace_t * a, void *handle)
 {
@@ -167,8 +183,12 @@ vl_api_acl_add_replace_t_print (vl_api_acl_add_replace_t * a, void *handle)
   s = format(s, "\\\n");
   PRINT_S;
 
-  for (i = 0; i < count; i++)
-    vl_api_acl_rule_t_print (&a->r[i], handle);
+  if (verify_add_replace_message_len_for_print(a)) {
+    for (i = 0; i < count; i++)
+      vl_api_acl_rule_t_print (&a->r[i], handle);
+  } else {
+    s = format(s, "ERROR: MESSAGE TOO SHORT, not printing rules\n");
+  }
 
   s = format(s, "\n");
   PRINT_S;
