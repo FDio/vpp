@@ -25,6 +25,7 @@
 #include <vlib/vlib.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 #include <vlib/unix/unix.h>
+#include <stddef.h>
 
 typedef enum
 {
@@ -280,6 +281,8 @@ u16 vl_msg_api_get_msg_ids (const char *name, int n);
 void vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string,
 				  u32 id);
 u32 vl_api_get_msg_index (u8 * name_and_crc);
+u32 vl_msg_api_get_msg_length (void *msg_arg);
+int vl_msg_api_validate_msg (void *msg_arg);
 
 /* node_serialize.c prototypes */
 u8 *vlib_node_serialize (vlib_node_main_t * nm, u8 * vector,
@@ -335,6 +338,40 @@ static void __vl_msg_api_add_##tag##_function_##x (void)                \
     clib_error_t * _error = 0;                                          \
     _error = _f (ci);                                                   \
   })
+
+static inline u32
+vl_msg_api_get_msg_length_inline (void *msg_arg)
+{
+  u8 *msg = (u8 *) msg_arg;
+
+  msgbuf_t *header = (msgbuf_t *) (msg - offsetof (msgbuf_t, data));
+
+  return clib_net_to_host_u32 (header->data_len);
+}
+
+static inline int
+vl_msg_api_validate_msg_inline (void *msg_arg)
+{
+  trace_cfg_t *cfgp;
+  u8 *msg = (u8 *) msg_arg;
+  u16 msg_id = ntohs (*((u16 *) msg));
+  msgbuf_t *header = (msgbuf_t *) (msg - offsetof (msgbuf_t, data));
+  api_main_t *am = &api_main;
+  u32 msg_length;
+
+  /* Message ID screwed up?  */
+  if (msg_id >= vec_len (am->api_trace_cfg))
+    return 0;
+
+  /* Simple length check */
+  msg_length = clib_net_to_host_u32 (header->data_len);
+  cfgp = am->api_trace_cfg + msg_id;
+
+  if (msg_length < cfgp->size)
+    return 0;
+
+  return 1;
+}
 
 #endif /* included_api_h */
 
