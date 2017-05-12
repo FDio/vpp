@@ -108,12 +108,14 @@ def generate_struct_initialization(type_def, c_name_prefix, object_name, indent)
     for t in zip(type_def['types'], type_def['args'], type_def['lengths']):
         field_reference_name = "${c_name}" + util.underscore_to_camelcase_upper(t[1])
         field_name = util.underscore_to_camelcase(t[1])
+        struct_initialization += jni_gen.jni_request_identifiers_for_type(field_type=t[0],
+                                                                          field_reference_name=field_reference_name,
+                                                                          field_name=field_name,
+                                                                          object_name=object_name)
         struct_initialization += jni_gen.jni_request_binding_for_type(field_type=t[0], c_name=c_name_prefix + t[1],
-                                                                     field_reference_name=field_reference_name,
-                                                                     field_name=field_name,
-                                                                     field_length=t[2][0],
-                                                                     is_variable_len_array=t[2][1],
-                                                                     object_name=object_name)
+                                                                      field_reference_name=field_reference_name,
+                                                                      field_length=t[2][0],
+                                                                      is_variable_len_array=t[2][1])
     return indent + struct_initialization.replace('\n', '\n' + indent)
 
 

@@ -96,14 +96,16 @@ def is_response_field(field_name):
 
 
 def get_args(t, filter):
-    arg_list = []
+    arg_names = []
+    arg_types = []
     for i in t:
         if is_crc(i):
             continue
         if not filter(i[1]):
             continue
-        arg_list.append(i[1])
-    return arg_list
+        arg_types.append(i[0])
+        arg_names.append(i[1])
+    return arg_types, arg_names
 
 
 def get_types(t, filter):
@@ -143,16 +145,18 @@ def get_definitions(defs):
         # For replies include all the arguments except message_id
         if util.is_reply(java_name):
             types, lengths, crc = get_types(a[1:], is_response_field)
+            args = get_args(a[1:], is_response_field)
             func_name[a[0]] = dict(
                 [('name', a[0]), ('java_name', java_name),
-                 ('args', get_args(a[1:], is_response_field)), ('full_args', get_args(a[1:], lambda x: True)),
+                 ('args', args[1]), ('arg_types', args[0]),
                  ('types', types), ('lengths', lengths), crc])
         # For requests skip message_id, client_id and context
         else:
             types, lengths, crc = get_types(a[1:], is_request_field)
+            args = get_args(a[1:], is_request_field)
             func_name[a[0]] = dict(
                 [('name', a[0]), ('java_name', java_name),
-                 ('args', get_args(a[1:], is_request_field)), ('full_args', get_args(a[1:], lambda x: True)),
+                 ('args', args[1]), ('arg_types', args[0]),
                  ('types', types), ('lengths', lengths), crc])
 
         # Indexed by name
