@@ -47,6 +47,10 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
+#define CLIENT_FLOW_TYPE_UNIDIRECTIONAL 1
+#define CLIENT_FLOW_TYPE_BIIDIRECTIONAL 2
+
+#define CLIENT_FLOW_TYPE	CLIENT_FLOW_TYPE_UNIDIRECTIONAL
 /* Satisfy external references when not linking with -lvlib */
 vlib_main_t vlib_global_main;
 vlib_main_t **vlib_mains;
@@ -281,6 +285,14 @@ wait_for_state_change (uri_udp_test_main_t * utm, connection_state_t state)
 
 u64 server_bytes_received, server_bytes_sent;
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_BIDIRECTIONAL)
 static void *
 cut_through_thread_fn (void *arg)
 {
@@ -336,6 +348,110 @@ cut_through_thread_fn (void *arg)
   pthread_exit (0);
 }
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#elif (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_UNIDIRECTIONAL)
+static void *
+cut_through_thread_fn_unidirection (void *arg)
+{
+  session_t *s;
+  svm_fifo_t *tx_fifo;
+  u8 *my_copy_buffer = 0;
+  uri_udp_test_main_t *utm = &uri_udp_test_main;
+  i32 actual_transfer;
+  static i8 flow_started = 0, flow_ended = 0;
+  f64 flow_start_time, flow_end_time, now, delta, bytes_per_second;
+
+
+  while (utm->cut_through_session_index == ~0)
+    ;
+
+  s = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
+
+  tx_fifo = s->server_tx_fifo;
+
+  vec_validate (my_copy_buffer, 64 * 1024 - 1);
+
+  while (true)
+    {
+      /* reset state variables */
+      flow_started = 0;
+      flow_ended = 0;
+      server_bytes_received = 0;
+      flow_start_time = flow_end_time = 0.0;
+
+      /* flow processing */
+      do
+	{
+	  /* packet processing */
+	  /* We read from the tx fifo */
+	  actual_transfer = 0;
+	  do
+	    {
+	      actual_transfer = svm_fifo_dequeue_nowait (tx_fifo,
+							 vec_len
+							 (my_copy_buffer),
+							 my_copy_buffer);
+	      /* mark the start of flow */
+	      if (!flow_started && (actual_transfer > 0))
+		{
+		  flow_started = 1;
+		  server_bytes_received = 0;
+		  now = flow_start_time = flow_end_time =
+		    clib_time_now (&utm->clib_time);
+		}
+	      else
+		{
+		  now = clib_time_now (&utm->clib_time);
+		}
+	      /* mark the end of flow */
+	      if (flow_started && (now - flow_end_time) > 1.0)
+		{
+		  flow_ended = 1;
+		  /* break from flow processing */
+		  break;
+		}
+	    }
+	  while (actual_transfer <= 0);
+	  /*update flow_end_time & server_bytes_received when the flow is active */
+	  if (!flow_ended)
+	    {
+	      flow_end_time = now;
+	      server_bytes_received += actual_transfer;
+	    }
+
+	}
+      while (!flow_ended);
+
+      /* we get here only when the flow ends */
+      /* statistics */
+
+      /* calculate flow duration */
+      delta = flow_end_time - flow_start_time;
+      bytes_per_second = 0.0;
+
+      if (delta > 0.0)
+	bytes_per_second = (f64) server_bytes_received / delta;
+
+      /* display stats */
+      fformat (stdout,
+	       "Done: %lld recv bytes in %.2f seconds, %.2f bytes/sec...\n\n",
+	       server_bytes_received, delta, bytes_per_second);
+
+      if (PREDICT_FALSE (utm->time_to_stop))
+	break;
+    }
+
+  pthread_exit (0);
+}
+#endif
+
+
 static void
 udp_client_connect (uri_udp_test_main_t * utm)
 {
@@ -350,6 +466,14 @@ udp_client_connect (uri_udp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & cmp);
 }
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#if (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_BIDIRECTIONAL)
 static void
 client_send (uri_udp_test_main_t * utm, session_t * session)
 {
@@ -453,6 +577,70 @@ client_send (uri_udp_test_main_t * utm, session_t * session)
 	   (bytes_per_second * 8.0) / 1e9);
 }
 
+/*
+ *
+ * GS: when command line argument unidirectional-flow is implemented,
+ * remove conditional #if and matching #endif
+ *
+ * */
+
+#elif (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_UNIDIRECTIONAL)
+static void
+client_send_unidirection (uri_udp_test_main_t * utm, session_t * session)
+{
+  int i;
+  u8 *test_data = 0;
+  u64 bytes_sent = 0;
+  int rv;
+  f64 before, after, delta, bytes_per_second;
+  svm_fifo_t *tx_fifo;
+  int buffer_offset, bytes_to_send = 0;
+
+  /*
+   * Prepare test data
+   */
+  vec_validate (test_data, 64 * 1024 - 1);
+  for (i = 0; i < vec_len (test_data); i++)
+    test_data[i] = i & 0xff;
+
+  tx_fifo = session->server_tx_fifo;
+
+  before = clib_time_now (&utm->clib_time);
+
+  vec_validate (utm->rx_buf, vec_len (test_data) - 1);
+
+  for (i = 0; i < NITER; i++)
+    {
+      bytes_to_send = vec_len (test_data);
+      buffer_offset = 0;
+      while (bytes_to_send > 0)
+	{
+	  rv = svm_fifo_enqueue_nowait (tx_fifo, bytes_to_send,
+					test_data + buffer_offset);
+
+	  if (rv > 0)
+	    {
+	      bytes_to_send -= rv;
+	      buffer_offset += rv;
+	      bytes_sent += rv;
+	    }
+	}
+
+    }
+
+  after = clib_time_now (&utm->clib_time);
+  delta = after - before;
+  bytes_per_second = 0.0;
+
+  if (delta > 0.0)
+    bytes_per_second = (f64) bytes_sent / delta;
+
+  fformat (stdout,
+	   "Done: %lld sent bytes in %.2f seconds, %.2f bytes/sec...\n\n",
+	   bytes_sent, delta, bytes_per_second);
+}
+#endif
+
 static void
 uri_udp_client_test (uri_udp_test_main_t * utm)
 {
@@ -470,7 +658,18 @@ uri_udp_client_test (uri_udp_test_main_t * utm)
   /* Only works with cut through sessions */
   session = pool_elt_at_index (utm->sessions, utm->cut_through_session_index);
 
+  /*
+   *
+   * GS: when command line argument unidirectional-flow is implemented,
+   * remove conditional #if and matching #endif
+   *
+   * */
+
+#if (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_BIDIRECTIONAL)
   client_send (utm, session);
+#elif (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_UNIDIRECTIONAL)
+  client_send_unidirection (utm, session);
+#endif
   application_detach (utm);
 }
 
@@ -562,8 +761,23 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   session->server_tx_fifo->master_session_index = session - utm->sessions;
   utm->cut_through_session_index = session - utm->sessions;
 
+  /*
+   *
+   * GS: when command line argument unidirectional-flow is implemented,
+   * remove conditional #if and matching #endif
+   *
+   * */
+
+#if (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_BIDIRECTIONAL)
+
   rv = pthread_create (&utm->cut_through_thread_handle,
 		       NULL /*attr */ , cut_through_thread_fn, 0);
+#elif (CLIENT_FLOW_TYPE == CLIENT_FLOW_TYPE_UNIDIRECTIONAL)
+  rv = pthread_create (&utm->cut_through_thread_handle,
+		       NULL /*attr */ , cut_through_thread_fn_unidirection,
+		       0);
+#endif
+
   if (rv)
     {
       clib_warning ("pthread_create returned %d", rv);
