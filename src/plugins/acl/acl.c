@@ -1341,6 +1341,22 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
   return rv;
 }
 
+
+static int verify_add_replace_message_len(vl_api_acl_add_replace_t * mp)
+{
+  msgbuf_t *mbuf;
+  mbuf = (msgbuf_t *) (((u8 *) mp) - offsetof (msgbuf_t, data));
+  u32 acl_count = ntohl (mp->count);
+  u32 actual_len = ntohl(mbuf->data_len);
+  u32 expected_len = sizeof(*mp) + acl_count*sizeof(mp->r[0]);
+  if (expected_len > actual_len) {
+     clib_warning("Message too short: expected len: %ld, actual: %ld", expected_len, actual_len);
+     return 0;
+  } else {
+     return 1;
+  }
+}
+
 /* API message handler */
 static void
 vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
@@ -1349,8 +1365,11 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
   acl_main_t *am = &acl_main;
   int rv;
   u32 acl_list_index = ntohl (mp->acl_index);
-
-  rv = acl_add_list (ntohl (mp->count), mp->r, &acl_list_index, mp->tag);
+  if (verify_add_replace_message_len(mp)) {
+      rv = acl_add_list (ntohl (mp->count), mp->r, &acl_list_index, mp->tag);
+  } else {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+  }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_ACL_ADD_REPLACE_REPLY,
