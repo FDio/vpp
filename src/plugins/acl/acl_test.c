@@ -144,7 +144,7 @@ static void vl_api_acl_interface_list_details_t_handler
 	out = format(out, "sw_if_index: %d, count: %d, n_input: %d\n", mp->sw_if_index, mp->count, mp->n_input);
         out = format(out, "   input ");
 	for(i=0; i<mp->count; i++) {
-          out = format(out, "%d ", mp->acls[i]);
+	  out = format(out, "%d ", ntohl (mp->acls[i]));
           if (i == mp->n_input-1)
             out = format(out, "\n  output ");
 	}
