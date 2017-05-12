@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_0daf28e5",
+        "filename": "src/vlibapi/api.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 342,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-05-12T16:52:46Z",
+      "side": 1,
+      "message": "Super, if I will be able to call this from API handlers, this is going to do the trick in itself. Thank you!",
+      "revId": "8febd45812750800982e465ff4b5454d6e6a243c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_8d9b18c9",
+        "filename": "src/vlibapi/api.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 368,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-05-12T16:52:46Z",
+      "side": 1,
+      "message": "For the my case this validation I think this check may still pass even in the current \"wrong\" case, since the problematic length is an array sized according to another part of the message - https://gerrit.fd.io/r/gitweb?p\u003dvpp.git;a\u003dblob;f\u003dsrc/plugins/acl/acl.api;h\u003d3b334113f1d93db3d18d3a88886ad4c514698b67;hb\u003d8febd45812750800982e465ff4b5454d6e6a243c#l142 - so each message can be different. But probably dynamically generating the code for checking that is not so easy...",
+      "revId": "8febd45812750800982e465ff4b5454d6e6a243c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
