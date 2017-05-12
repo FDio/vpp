@@ -104,7 +104,6 @@
 #define foreach_vpe_api_msg                                             \
 _(WANT_OAM_EVENTS, want_oam_events)                                     \
 _(OAM_ADD_DEL, oam_add_del)                                             \
-_(IS_ADDRESS_REACHABLE, is_address_reachable)                           \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)           \
@@ -118,7 +117,7 @@ _(RESET_FIB, reset_fib)							\
 _(CREATE_LOOPBACK, create_loopback)					\
 _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)			\
 _(CONTROL_PING, control_ping)                                           \
-_(CLI_REQUEST, cli_request)                                             \
+_(CLI, cli)                                                             \
 _(CLI_INBAND, cli_inband)						\
 _(SET_ARP_NEIGHBOR_LIMIT, set_arp_neighbor_limit)			\
 _(L2_PATCH_ADD_DEL, l2_patch_add_del)					\
@@ -694,82 +693,6 @@ out:
 }
 
 static void
-vl_api_is_address_reachable_t_handler (vl_api_is_address_reachable_t * mp)
-{
-#if 0
-  vpe_main_t *rm = &vpe_main;
-  ip4_main_t *im4 = &ip4_main;
-  ip6_main_t *im6 = &ip6_main;
-  ip_lookup_main_t *lm;
-  union
-  {
-    ip4_address_t ip4;
-    ip6_address_t ip6;
-  } addr;
-  u32 adj_index, sw_if_index;
-  vl_api_is_address_reachable_t *rmp;
-  ip_adjacency_t *adj;
-  unix_shared_memory_queue_t *q;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    {
-      increment_missing_api_client_counter (rm->vlib_main);
-      return;
-    }
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  clib_memcpy (rmp, mp, sizeof (*rmp));
-
-  sw_if_index = mp->next_hop_sw_if_index;
-  clib_memcpy (&addr, mp->address, sizeof (addr));
-  if (mp->is_ipv6)
-    {
-      lm = &im6->lookup_main;
-      adj_index = ip6_fib_lookup (im6, sw_if_index, &addr.ip6);
-    }
-  else
-    {
-      lm = &im4->lookup_main;
-      // FIXME NOT an ADJ
-      adj_index = ip4_fib_lookup (im4, sw_if_index, &addr.ip4);
-    }
-  if (adj_index == ~0)
-    {
-      rmp->is_error = 1;
-      goto send;
-    }
-  adj = ip_get_adjacency (lm, adj_index);
-
-  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE
-      && adj->rewrite_header.sw_if_index == sw_if_index)
-    {
-      rmp->is_known = 1;
-    }
-  else
-    {
-      if (adj->lookup_next_index == IP_LOOKUP_NEXT_ARP
-	  && adj->rewrite_header.sw_if_index == sw_if_index)
-	{
-	  if (mp->is_ipv6)
-	    ip6_probe_neighbor (rm->vlib_main, &addr.ip6, sw_if_index);
-	  else
-	    ip4_probe_neighbor (rm->vlib_main, &addr.ip4, sw_if_index);
-	}
-      else if (adj->lookup_next_index == IP_LOOKUP_NEXT_DROP)
-	{
-	  rmp->is_known = 1;
-	  goto send;
-	}
-      rmp->is_known = 0;
-    }
-
-send:
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-#endif
-}
-
-static void
   vl_api_sw_interface_set_mpls_enable_t_handler
   (vl_api_sw_interface_set_mpls_enable_t * mp)
 {
@@ -828,7 +751,7 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
 {
   stats_main_t *sm = &stats_main;
   vnet_interface_main_t *im = sm->interface_main;
-  vl_api_vnet_summary_stats_reply_t *rmp;
+  vl_api_vnet_get_summary_stats_reply_t *rmp;
   vlib_combined_counter_main_t *cm;
   vlib_counter_t v;
   int i, which;
@@ -842,7 +765,7 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_VNET_SUMMARY_STATS_REPLY);
+  rmp->_vl_msg_id = ntohs (VL_API_VNET_GET_SUMMARY_STATS_REPLY);
   rmp->context = mp->context;
   rmp->retval = 0;
 
@@ -1115,7 +1038,7 @@ shmem_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 
 
 static void
-vl_api_cli_request_t_handler (vl_api_cli_request_t * mp)
+vl_api_cli_t_handler (vl_api_cli_t * mp)
 {
   vl_api_cli_reply_t *rp;
   unix_shared_memory_queue_t *q;

@@ -1323,6 +1323,9 @@ vl_api_ip6_nd_event_t_handler_json (vl_api_ip6_nd_event_t * mp)
   /* JSON output not supported */
 }
 
+#define vl_api_bridge_domain_details_t_endian vl_noop_handler
+#define vl_api_bridge_domain_details_t_print vl_noop_handler
+
 /*
  * Special-case: build the bridge domain table, maintain
  * the next bd id vbl.
@@ -1332,6 +1335,7 @@ static void vl_api_bridge_domain_details_t_handler
 {
   vat_main_t *vam = &vat_main;
   u32 n_sw_ifs = ntohl (mp->n_sw_ifs);
+  int i;
 
   print (vam->ofp, "\n%-3s %-3s %-3s %-3s %-3s %-3s",
 	 " ID", "LRN", "FWD", "FLD", "BVI", "#IF");
@@ -1341,7 +1345,37 @@ static void vl_api_bridge_domain_details_t_handler
 	 mp->flood, ntohl (mp->bvi_sw_if_index), n_sw_ifs);
 
   if (n_sw_ifs)
-    print (vam->ofp, "\n\n%s %s  %s", "sw_if_index", "SHG", "Interface Name");
+    {
+      vl_api_bridge_domain_sw_if_t *sw_ifs;
+      print (vam->ofp, "\n\n%s %s  %s", "sw_if_index", "SHG",
+	     "Interface Name");
+
+      sw_ifs = mp->sw_if_details;
+      for (i = 0; i < n_sw_ifs; i++)
+	{
+	  u8 *sw_if_name = 0;
+	  u32 sw_if_index;
+	  hash_pair_t *p;
+
+	  sw_if_index = ntohl (sw_ifs->sw_if_index);
+
+	  /* *INDENT-OFF* */
+	  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
+			     ({
+			       if ((u32) p->value[0] == sw_if_index)
+				 {
+				   sw_if_name = (u8 *)(p->key);
+				   break;
+				 }
+			     }));
+	  /* *INDENT-ON* */
+	  print (vam->ofp, "%7d     %3d  %s", sw_if_index,
+		 sw_ifs->shg, sw_if_name ? (char *) sw_if_name :
+		 "sw_if_index not found!");
+
+	  sw_ifs++;
+	}
+    }
 }
 
 static void vl_api_bridge_domain_details_t_handler_json
@@ -1349,6 +1383,7 @@ static void vl_api_bridge_domain_details_t_handler_json
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node, *array = NULL;
+  u32 n_sw_ifs = ntohl (mp->n_sw_ifs);
 
   if (VAT_JSON_ARRAY != vam->json_tree.type)
     {
@@ -1364,58 +1399,28 @@ static void vl_api_bridge_domain_details_t_handler_json
   vat_json_object_add_uint (node, "learn", mp->learn);
   vat_json_object_add_uint (node, "bvi_sw_if_index",
 			    ntohl (mp->bvi_sw_if_index));
-  vat_json_object_add_uint (node, "n_sw_ifs", ntohl (mp->n_sw_ifs));
+  vat_json_object_add_uint (node, "n_sw_ifs", n_sw_ifs);
   array = vat_json_object_add (node, "sw_if");
   vat_json_init_array (array);
-}
 
-/*
- * Special-case: build the bridge domain sw if table.
- */
-static void vl_api_bridge_domain_sw_if_details_t_handler
-  (vl_api_bridge_domain_sw_if_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  hash_pair_t *p;
-  u8 *sw_if_name = 0;
-  u32 sw_if_index;
 
-  sw_if_index = ntohl (mp->sw_if_index);
-  /* *INDENT-OFF* */
-  hash_foreach_pair (p, vam->sw_if_index_by_interface_name,
-  ({
-    if ((u32) p->value[0] == sw_if_index)
-      {
-        sw_if_name = (u8 *)(p->key);
-        break;
-      }
-  }));
-  /* *INDENT-ON* */
 
-  print (vam->ofp, "%7d     %3d  %s", sw_if_index,
-	 mp->shg, sw_if_name ? (char *) sw_if_name :
-	 "sw_if_index not found!");
-}
+  if (n_sw_ifs)
+    {
+      vl_api_bridge_domain_sw_if_t *sw_ifs;
+      int i;
 
-static void vl_api_bridge_domain_sw_if_details_t_handler_json
-  (vl_api_bridge_domain_sw_if_details_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t *node = NULL;
-  uword last_index = 0;
-
-  ASSERT (VAT_JSON_ARRAY == vam->json_tree.type);
-  ASSERT (vec_len (vam->json_tree.array) >= 1);
-  last_index = vec_len (vam->json_tree.array) - 1;
-  node = &vam->json_tree.array[last_index];
-  node = vat_json_object_get_element (node, "sw_if");
-  ASSERT (NULL != node);
-  node = vat_json_array_add (node);
-
-  vat_json_init_object (node);
-  vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
-  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
-  vat_json_object_add_uint (node, "shg", mp->shg);
+      sw_ifs = mp->sw_if_details;
+      for (i = 0; i < n_sw_ifs; i++)
+	{
+	  node = vat_json_array_add (array);
+	  vat_json_init_object (node);
+	  vat_json_object_add_uint (node, "sw_if_index",
+				    ntohl (sw_ifs->sw_if_index));
+	  vat_json_object_add_uint (node, "shg", sw_ifs->shg);
+	  sw_ifs++;
+	}
+    }
 }
 
 static void vl_api_control_ping_reply_t_handler
@@ -4334,7 +4339,6 @@ _(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
   sw_interface_set_l2_bridge_reply)                                     \
 _(BRIDGE_DOMAIN_ADD_DEL_REPLY, bridge_domain_add_del_reply)             \
 _(BRIDGE_DOMAIN_DETAILS, bridge_domain_details)                         \
-_(BRIDGE_DOMAIN_SW_IF_DETAILS, bridge_domain_sw_if_details)             \
 _(BRIDGE_DOMAIN_SET_MAC_AGE_REPLY, bridge_domain_set_mac_age_reply)     \
 _(L2FIB_ADD_DEL_REPLY, l2fib_add_del_reply)                             \
 _(L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                         \
@@ -4409,7 +4413,7 @@ _(CREATE_VHOST_USER_IF_REPLY, create_vhost_user_if_reply)               \
 _(MODIFY_VHOST_USER_IF_REPLY, modify_vhost_user_if_reply)               \
 _(DELETE_VHOST_USER_IF_REPLY, delete_vhost_user_if_reply)               \
 _(SHOW_VERSION_REPLY, show_version_reply)                               \
-_(L2_FIB_TABLE_ENTRY, l2_fib_table_entry)				\
+_(L2_FIB_TABLE_DETAILS, l2_fib_table_details)				\
 _(VXLAN_GPE_ADD_DEL_TUNNEL_REPLY, vxlan_gpe_add_del_tunnel_reply)	    \
 _(VXLAN_GPE_TUNNEL_DETAILS, vxlan_gpe_tunnel_details)                   \
 _(INTERFACE_NAME_RENUMBER_REPLY, interface_name_renumber_reply)		\
@@ -4935,7 +4939,7 @@ int
 exec (vat_main_t * vam)
 {
   api_main_t *am = &api_main;
-  vl_api_cli_request_t *mp;
+  vl_api_cli_t *mp;
   f64 timeout;
   void *oldheap;
   u8 *cmd = 0;
@@ -4956,7 +4960,7 @@ exec (vat_main_t * vam)
     }
 
 
-  M (CLI_REQUEST, mp);
+  M (CLI, mp);
 
   /*
    * Copy cmd into shared memory.
@@ -11896,8 +11900,8 @@ format_l2_fib_mac_address (u8 * s, va_list * args)
 		 a[2], a[3], a[4], a[5], a[6], a[7]);
 }
 
-static void vl_api_l2_fib_table_entry_t_handler
-  (vl_api_l2_fib_table_entry_t * mp)
+static void vl_api_l2_fib_table_details_t_handler
+  (vl_api_l2_fib_table_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
 
@@ -11908,8 +11912,8 @@ static void vl_api_l2_fib_table_entry_t_handler
 	 mp->bvi_mac);
 }
 
-static void vl_api_l2_fib_table_entry_t_handler_json
-  (vl_api_l2_fib_table_entry_t * mp)
+static void vl_api_l2_fib_table_details_t_handler_json
+  (vl_api_l2_fib_table_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t *node = NULL;

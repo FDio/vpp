@@ -36,7 +36,7 @@ define l2_xconnect_dump
   u32 context;
 };
 
-/** \brief l2 fib table entry structure
+/** \brief l2 fib table details structure
     @param bd_id - the l2 fib / bridge domain table id
     @param mac - the entry's mac address
     @param sw_if_index - index of the interface
@@ -44,7 +44,7 @@ define l2_xconnect_dump
     @param filter_mac - the entry is a mac filter entry.
     @param bvi_mac - the mac address is a bridge virtual interface
 */
-define l2_fib_table_entry
+define l2_fib_table_details
 {
   u32 context;
   u32 bd_id;
@@ -212,6 +212,18 @@ define bridge_domain_dump
   u32 bd_id;
 };
 
+/** \brief L2 bridge domain sw interface operational state response
+    @param bd_id - the bridge domain id
+    @param sw_if_index - sw_if_index in the domain
+    @param shg - split horizon group for the interface
+*/
+typeonly manual_print manual_endian define bridge_domain_sw_if
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 shg;
+};
+
 /** \brief L2 bridge domain operational state response
     @param bd_id - the bridge domain id
     @param flood - bcast/mcast flooding state on all interfaces in the bd
@@ -222,7 +234,7 @@ define bridge_domain_dump
     @param mac_age - mac aging time in min, 0 for disabled
     @param n_sw_ifs - number of sw_if_index's in the domain
 */
-define bridge_domain_details
+manual_print manual_endian define bridge_domain_details
 {
   u32 context;
   u32 bd_id;
@@ -234,19 +246,7 @@ define bridge_domain_details
   u8 mac_age;
   u32 bvi_sw_if_index;
   u32 n_sw_ifs;
-};
-
-/** \brief L2 bridge domain sw interface operational state response
-    @param bd_id - the bridge domain id
-    @param sw_if_index - sw_if_index in the domain
-    @param shg - split horizon group for the interface
-*/
-define bridge_domain_sw_if_details
-{
-  u32 context;
-  u32 bd_id;
-  u32 sw_if_index;
-  u8 shg;
+  vl_api_bridge_domain_sw_if_t sw_if_details[n_sw_ifs];
 };
 
 /** \brief Set bridge flags (such as L2_LEARN, L2_FWD, L2_FLOOD, 
