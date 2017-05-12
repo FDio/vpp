@@ -113,6 +113,7 @@ request_field_identifier_template = Template("""
     ${jni_type} ${field_reference_name} = (*env)->Get${jni_getter}(env, ${object_name}, ${field_reference_name}FieldId);
     """)
 
+jni_msg_size_template = Template(""" + ${array_length}*sizeof(${element_type})""")
 
 jni_impl_template = Template("""
 /**
@@ -127,9 +128,11 @@ JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_${plugin_name}_JVpp${java_plugin_name
     u32 my_context_id = vppjni_get_context_id (&jvpp_main);
     $request_class
 
+    $jni_identifiers
+
     // create message:
-    mp = vl_msg_api_alloc(sizeof(*mp));
-    memset (mp, 0, sizeof (*mp));
+    mp = vl_msg_api_alloc(${msg_size});
+    memset (mp, 0, ${msg_size});
     mp->_vl_msg_id = ntohs (get_message_id(env, "${c_name}_${crc}"));
     mp->client_index = plugin_main->my_client_index;
     mp->context = clib_host_to_net_u32 (my_context_id);
@@ -155,8 +158,10 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
 
         arguments = ''
         request_class = ''
+        jni_identifiers = ''
         msg_initialization = ''
         f_name_uppercase = f_name.upper()
+        msg_size = 'sizeof(*mp)'
 
         if f['args']:
             arguments = ', jobject request'
@@ -166,13 +171,19 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                     java_name_upper=camel_case_function_name_upper,
                     plugin_name=plugin_name)
 
-            for t in zip(f['types'], f['args'], f['lengths']):
+            for t in zip(f['types'], f['args'], f['lengths'], f['arg_types']):
                 field_name = util.underscore_to_camelcase(t[1])
+                is_variable_len_array = t[2][1]
+                if is_variable_len_array:
+                    msg_size += jni_msg_size_template.substitute(array_length=util.underscore_to_camelcase(t[2][0]),
+                                                                 element_type=t[3])
+                jni_identifiers += jni_gen.jni_request_identifiers_for_type(field_type=t[0],
+                                                                            field_reference_name=field_name,
+                                                                            field_name=field_name)
                 msg_initialization += jni_gen.jni_request_binding_for_type(field_type=t[0], c_name=t[1],
                                                                            field_reference_name=field_name,
-                                                                           field_name=field_name,
                                                                            field_length=t[2][0],
-                                                                           is_variable_len_array=t[2][1])
+                                                                           is_variable_len_array=is_variable_len_array)
 
         jni_impl.append(jni_impl_template.substitute(
                 inputfile=inputfile,
@@ -185,6 +196,8 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                 plugin_name=plugin_name,
                 java_plugin_name=plugin_name.title(),
                 request_class=request_class,
+                jni_identifiers=jni_identifiers,
+                msg_size=msg_size,
                 msg_initialization=msg_initialization,
                 args=arguments))
 

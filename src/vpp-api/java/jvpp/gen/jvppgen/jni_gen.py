@@ -248,16 +248,13 @@ struct_setter_templates = {'u8': u8_struct_setter_template,
                            }
 
 
-def jni_request_binding_for_type(field_type, c_name, field_reference_name, field_name, field_length,
-                                 is_variable_len_array, object_name="request"):
+def jni_request_identifiers_for_type(field_type, field_reference_name, field_name, object_name="request"):
     """
-    Generates jni code that initializes C structure that corresponds to a field of java object
+    Generates jni code that defines C variable corresponding to field of java object
     (dto or custom type). To be used in request message handlers.
     :param field_type: type of the field to be initialized (as defined in vpe.api)
-    :param c_name: name of the message struct member to be initialized
     :param field_reference_name: name of the field reference in generated code
     :param field_name: name of the field (camelcase)
-    :param field_length: integer or name of variable that stores field length
     :param object_name: name of the object to be initialized
     """
     # field identifiers
@@ -266,13 +263,24 @@ def jni_request_binding_for_type(field_type, c_name, field_reference_name, field
     jni_getter = util.jni_field_accessors[field_type]
 
     # field identifier
-    msg_initialization = request_field_identifier_template.substitute(
+    return request_field_identifier_template.substitute(
             jni_type=jni_type,
             field_reference_name=field_reference_name,
             field_name=field_name,
             jni_signature=jni_signature,
             jni_getter=jni_getter,
             object_name=object_name)
+
+
+def jni_request_binding_for_type(field_type, c_name, field_reference_name, field_length, is_variable_len_array):
+    """
+    Generates jni code that initializes C structure that corresponds to a field of java object
+    (dto or custom type). To be used in request message handlers.
+    :param field_type: type of the field to be initialized (as defined in vpe.api)
+    :param c_name: name of the message struct member to be initialized
+    :param field_reference_name: name of the field reference in generated code
+    :param field_length: integer or name of variable that stores field length
+    """
 
     # field setter
     field_length_check = ""
@@ -287,7 +295,7 @@ def jni_request_binding_for_type(field_type, c_name, field_reference_name, field
 
     struct_setter_template = struct_setter_templates[field_type]
 
-    msg_initialization += struct_setter_template.substitute(
+    msg_initialization = struct_setter_template.substitute(
             c_name=c_name,
             field_reference_name=field_reference_name,
             field_length_check=field_length_check)
