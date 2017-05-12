@@ -67,8 +67,8 @@ public class FutureApiTest {
         } else {
             LOG.info(
                 String.format(
-                    "Received empty bridge-domain dump reply with list of bridge-domains: %s, %s",
-                    reply.bridgeDomainDetails, reply.bridgeDomainSwIfDetails));
+                    "Received bridge-domain dump reply with list of bridge-domains: %s",
+                    reply.bridgeDomainDetails));
         }
     }
 

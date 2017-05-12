@@ -101,8 +101,8 @@ vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 
 
 static void
-vl_api_vnet_summary_stats_reply_t_handler (vl_api_vnet_summary_stats_reply_t *
-					   mp)
+  vl_api_vnet_get_summary_stats_reply_t_handler
+  (vl_api_vnet_get_summary_stats_reply_t * mp)
 {
   test_main_t *tm = &test_main;
   static u8 *sb;
@@ -134,7 +134,7 @@ vl_api_vnet_summary_stats_reply_t_handler (vl_api_vnet_summary_stats_reply_t *
 }
 
 #define foreach_api_msg                                                 \
-_(VNET_SUMMARY_STATS_REPLY, vnet_summary_stats_reply)
+_(VNET_GET_SUMMARY_STATS_REPLY, vnet_get_summary_stats_reply)
 
 int
 connect_to_vpe (char *name)
