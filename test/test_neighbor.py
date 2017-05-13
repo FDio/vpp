@@ -113,6 +113,7 @@ class ARPTestCase(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         for i in self.pg_interfaces:
+            i.get_capture(0)
             i.assert_nothing_captured(remark=remark)
 
     def test_arp(self):
@@ -438,7 +439,9 @@ class ARPTestCase(VppTestCase):
         # ERROR Cases
         #  1 - don't respond to ARP request for address not within the
         #      interface's sub-net
-        #  1a - nor within the unnumbered subnet
+        #  1b - nor within the unnumbered subnet
+        #  1c - nor within the subnet of a different interface
+        #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
              ARP(op="who-has",
                  hwsrc=self.pg0.remote_mac,
@@ -446,6 +449,10 @@ class ARPTestCase(VppTestCase):
                  psrc=self.pg0.remote_ip4))
         self.send_and_assert_no_replies(self.pg0, p,
                                         "ARP req for non-local destination")
+        self.assertFalse(find_nbr(self,
+                                  self.pg0.sw_if_index,
+                                  "10.10.10.3"))
+
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
              ARP(op="who-has",
                  hwsrc=self.pg2.remote_mac,
@@ -454,6 +461,17 @@ class ARPTestCase(VppTestCase):
         self.send_and_assert_no_replies(
             self.pg0, p,
             "ARP req for non-local destination - unnum")
+
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
+             ARP(op="who-has",
+                 hwsrc=self.pg0.remote_mac,
+                 pdst=self.pg1.local_ip4,
+                 psrc=self.pg1.remote_ip4))
+        self.send_and_assert_no_replies(self.pg0, p,
+                                        "ARP req diff sub-net")
+        self.assertFalse(find_nbr(self,
+                                  self.pg0.sw_if_index,
+                                  self.pg1.remote_ip4))
 
         #
         #  2 - don't respond to ARP request from an address not within the
@@ -499,6 +517,19 @@ class ARPTestCase(VppTestCase):
                  pdst=self.pg0.local_ip4))
         self.send_and_assert_no_replies(self.pg0, p,
                                         "ARP req for non-local source")
+
+        #
+        #  5 - Create an ARP entry for an address that does not belong
+        #      in the interface's sub-net
+        #
+        arp_wrong_int = VppNeighbor(self,
+                                    self.pg0.sw_if_index,
+                                    self.pg1.remote_hosts[5].mac,
+                                    self.pg1.remote_hosts[5].ip4)
+        arp_wrong_int.add_vpp_config()
+        self.assertFalse(find_nbr(self,
+                                  self.pg0.sw_if_index,
+                                  self.pg1.remote_hosts[5].ip4))
 
         #
         # cleanup

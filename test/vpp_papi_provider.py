@@ -664,6 +664,7 @@ class VppPapiProvider(object):
                             is_ipv6=0,
                             is_static=0,
                             is_no_adj_fib=0,
+                            expected_retval=0,
                             ):
         """ Add neighbor MAC to IPv4 or IPv6 address.
 
@@ -685,8 +686,8 @@ class VppPapiProvider(object):
              'is_no_adj_fib': is_no_adj_fib,
              'mac_address': mac_address,
              'dst_address': dst_address
-             }
-        )
+             },
+            expected_retval=expected_retval)
 
     def ip_neighbor_dump(self,
                          sw_if_index,
