@@ -2977,6 +2977,36 @@ fib_test_v4 (void)
     	     fib_entry_pool_size());
 
     /*
+     * Make the default route recursive via a unknown next-hop. Thus the
+     * next hop's cover would be the default route
+     */
+    fei = fib_table_entry_path_add(fib_index,
+				   &pfx_0_0_0_0_s_0,
+				   FIB_SOURCE_API,
+				   FIB_ENTRY_FLAG_NONE,
+				   FIB_PROTOCOL_IP4,
+				   &pfx_23_23_23_23_s_32.fp_addr,
+				   ~0, // recursive
+				   fib_index,
+				   1,
+				   NULL,
+				   FIB_ROUTE_PATH_FLAG_NONE);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(load_balance_is_drop(dpo),
+	     "0.0.0.0.0/0 via is DROP");
+    FIB_TEST((fib_entry_get_resolving_interface(fei) == ~0),
+             "no resolving interface for looped 0.0.0.0/0");
+
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_23_23_23_23_s_32);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(load_balance_is_drop(dpo),
+	     "23.23.23.23/32 via is DROP");
+    FIB_TEST((fib_entry_get_resolving_interface(fei) == ~0),
+             "no resolving interface for looped 23.23.23.23/32");
+
+    fib_table_entry_delete(fib_index, &pfx_0_0_0_0_s_0, FIB_SOURCE_API);
+
+    /*
      * A recursive route with recursion constraints.
      *  200.200.200.200/32 via 1.1.1.1 is recurse via host constrained
      */

@@ -69,6 +69,47 @@ fib_entry_src_rr_init (fib_entry_src_t *src)
     src->rr.fesr_sibling = FIB_NODE_INDEX_INVALID;
 }
 
+
+/*
+ * use the path-list of the cover, unless it would form a loop.
+ * that is unless the cover is via this entry.
+ * If a loop were to form it would be a 1 level loop (i.e. X via X),
+ * and there would be 2 locks on the path-list; one since its used
+ * by the cover, and 1 from here. The first lock will go when the
+ * cover is removed, the second, and last, when the covered walk
+ * occurs during the cover's removel - this is not a place where
+ * we can handle last lock gone.
+ * In short, don't let the loop form. The usual rules of 'we must
+ * let it form so we know when it breaks' don't apply here, since
+ * the loop will break when the cover changes, and this function
+ * will be called again when that happens.
+ */
+static void
+fib_entry_src_rr_use_covers_pl (fib_entry_src_t *src,
+                                const fib_entry_t *fib_entry,
+                                const fib_entry_t *cover)
+{
+    fib_node_index_t *entries = NULL;
+    fib_protocol_t proto;
+
+    proto = fib_entry->fe_prefix.fp_proto;
+    vec_add1(entries, fib_entry_get_index(fib_entry));
+
+    if (fib_path_list_recursive_loop_detect(cover->fe_parent,
+                                            &entries))
+    {
+        src->fes_pl = fib_path_list_create_special(
+            proto,
+            FIB_PATH_LIST_FLAG_DROP,
+            drop_dpo_get(fib_proto_to_dpo(proto)));
+    }
+    else
+    {
+        src->fes_pl = cover->fe_parent;
+    }
+    vec_free(entries);
+}
+
 /*
  * Source activation. Called when the source is the new best source on the entry
  */
@@ -112,40 +153,7 @@ fib_entry_src_rr_activate (fib_entry_src_t *src,
     }
     else
     {
-        /*
-         * use the path-list of the cover, unless it would form a loop.
-         * that is unless the cover is via this entry.
-         * If a loop were to form it would be a 1 level loop (i.e. X via X),
-         * and there would be 2 locks on the path-list; one since its used
-         * by the cover, and 1 from here. The first lock will go when the
-         * cover is removed, the second, and last, when the covered walk
-         * occurs during the cover's removel - this is not a place where
-         * we can handle last lock gone.
-         * In short, don't let the loop form. The usual rules of 'we must
-         * let it form so we know when it breaks' don't apply here, since
-         * the loop will break when the cover changes, and this function
-         * will be called again when that happens.
-         */
-        fib_node_index_t *entries = NULL;
-        fib_protocol_t proto;
-
-        proto = fib_entry->fe_prefix.fp_proto;
-        vec_add1(entries, fib_entry_get_index(fib_entry));
-
-        if (fib_path_list_recursive_loop_detect(cover->fe_parent,
-                                                &entries))
-        {
-            src->fes_pl = fib_path_list_create_special(
-                              proto,
-                              FIB_PATH_LIST_FLAG_DROP,
-                              drop_dpo_get(fib_proto_to_dpo(proto)));
-        }
-        else
-        {
-            src->fes_pl = cover->fe_parent;
-        }
-        vec_free(entries);
-
+        fib_entry_src_rr_use_covers_pl(src, fib_entry, cover);
     }
     fib_path_list_lock(src->fes_pl);
 
@@ -256,7 +264,7 @@ fib_entry_src_rr_cover_update (fib_entry_src_t *src,
     }
     else
     {
-	src->fes_pl = cover->fe_parent;
+        fib_entry_src_rr_use_covers_pl(src, fib_entry, cover);
     }
     fib_path_list_lock(src->fes_pl);
     fib_path_list_unlock(old_path_list);
