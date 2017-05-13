@@ -590,6 +590,23 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
       return 0;
     }
 
+  /* reject ND entries that don't refine one of the interfaces
+   * sub-net prefixes */
+  if (NULL == ip6_interface_address_matching_destination (&ip6_main,
+							  a,
+							  sw_if_index, NULL))
+    {
+      /* the address is not within one of the links sub-nets.
+         Allow the ND entry if it's an address we are proxying */
+      fib_node_index_t fei;
+
+      fei = ip6_fib_table_lookup
+	(ip6_fib_table_get_index_for_sw_if_index (sw_if_index), a, 128);
+
+      if (!fib_entry_is_sourced (fei, FIB_SOURCE_IP6_ND_PROXY))
+	return -2;
+    }
+
   k.sw_if_index = sw_if_index;
   k.ip6_address = a[0];
   k.pad = 0;
