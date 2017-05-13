@@ -376,6 +376,20 @@ class TestIPv6(TestIPv6ND):
                                     128,
                                     inet=AF_INET6))
 
+        #
+        # A neighbor whose address does not match the interface's sub-net
+        #
+        self.vapi.ip_neighbor_add_del(self.pg1.sw_if_index,
+                                      self.pg0.remote_hosts[2].mac,
+                                      self.pg0.remote_hosts[2].ip6,
+                                      is_ipv6=1,
+                                      expected_retval=-2)
+        self.assertFalse(find_nbr(self,
+                                 self.pg1.sw_if_index,
+                                 self.pg0._remote_hosts[2].ip6,
+                                 inet=AF_INET6))
+
+
     def validate_ra(self, intf, rx, dst_ip=None, mtu=9000, pi_opt=None):
         if not dst_ip:
             dst_ip = intf.remote_ip6
