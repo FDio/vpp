@@ -406,27 +406,32 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
 {
   bd_main_t *bdm = &bd_main;
   l2input_main_t *l2im = &l2input_main;
-  unix_shared_memory_queue_t *q;
-  l2_bridge_domain_t *bd_config;
-  u32 bd_id, bd_index;
-  u32 end;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-
+  unix_shared_memory_queue_t *q =
+    vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
 
-  bd_id = ntohl (mp->bd_id);
+  u32 bd_id = ntohl (mp->bd_id);
   if (bd_id == 0)
     return;
 
-  bd_index = (bd_id == ~0) ? 0 : bd_find_index (bdm, bd_id);
-  ASSERT (bd_index != ~0);
-  end = (bd_id == ~0) ? vec_len (l2im->bd_configs) : bd_index + 1;
+  u32 bd_index, end;
+  if (bd_id == ~0)
+    bd_index = 0, end = vec_len (l2im->bd_configs);
+  else
+    {
+      bd_index = bd_find_index (bdm, bd_id);
+      if (bd_index == ~0)
+	return;
+
+      end = bd_index + 1;
+    }
 
   for (; bd_index < end; bd_index++)
     {
-      bd_config = l2input_bd_config_from_index (l2im, bd_index);
+      l2_bridge_domain_t *bd_config =
+	l2input_bd_config_from_index (l2im, bd_index);
       /* skip dummy bd_id 0 */
       if (bd_config && (bd_config->bd_id > 0))
 	{
@@ -451,25 +456,21 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
   bd_main_t *bdm = &bd_main;
   vl_api_bridge_flags_reply_t *rmp;
   int rv = 0;
-  u32 bd_id = ntohl (mp->bd_id);
-  u32 bd_index;
-  u32 flags = ntohl (mp->feature_bitmap);
-  uword *p;
 
+  u32 flags = ntohl (mp->feature_bitmap);
+  u32 bd_id = ntohl (mp->bd_id);
   if (bd_id == 0)
     {
       rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
       goto out;
     }
 
-  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
-  if (p == 0)
+  u32 bd_index = bd_find_index (bdm, bd_id);
+  if (bd_index == ~0)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto out;
     }
-
-  bd_index = p[0];
 
   bd_set_flags (vm, bd_index, flags, mp->is_set);
 
