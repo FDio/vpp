@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_dd4ae9ab",
+        "filename": "src/plugins/dpdk.am",
+        "patchSetId": 6
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-15T17:22:28Z",
+      "side": 1,
+      "message": "This doesn\u0027t make lot of sense...",
+      "range": {
+        "startLine": 18,
+        "startChar": 39,
+        "endLine": 18,
+        "endChar": 77
+      },
+      "revId": "1a4bd8a772061bc38b10f72e038119a10537fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_bdc71d12",
+        "filename": "src/plugins/dpdk.am",
+        "patchSetId": 6
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-15T17:22:28Z",
+      "side": 1,
+      "message": "I think you miss \"-ldpdk\" here",
+      "range": {
+        "startLine": 18,
+        "startChar": 37,
+        "endLine": 18,
+        "endChar": 38
+      },
+      "revId": "1a4bd8a772061bc38b10f72e038119a10537fb73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
