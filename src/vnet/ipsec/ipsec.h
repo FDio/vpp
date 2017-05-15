@@ -308,7 +308,9 @@ uword unformat_ipsec_policy_action (unformat_input_t * input, va_list * args);
 uword unformat_ipsec_crypto_alg (unformat_input_t * input, va_list * args);
 uword unformat_ipsec_integ_alg (unformat_input_t * input, va_list * args);
 
-/*u32 ipsec_add_del_tunnel_if (vnet_main_t * vnm, ipsec_add_del_tunnel_args_t * args); */
+int ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
+				      ipsec_add_del_tunnel_args_t * args,
+				      u32 * sw_if_index);
 int ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args);
 int ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 				    ipsec_add_del_ipsec_gre_tunnel_args_t *
