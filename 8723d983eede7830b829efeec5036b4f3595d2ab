@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_0386d9b9",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-15T11:06:31Z",
+      "side": 1,
+      "message": "Maybe you can use vlib_sysfs_read(...) / vlib_sysfs_write(...) here...",
+      "range": {
+        "startLine": 77,
+        "startChar": 5,
+        "endLine": 90,
+        "endChar": 17
+      },
+      "revId": "8723d983eede7830b829efeec5036b4f3595d2ab",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
