@@ -44,7 +44,7 @@
 #undef vl_printfun
 
 #define TCP_BUILTIN_CLIENT_DBG (1)
-#define TCP_BUILTIN_CLIENT_VPP_THREAD (0)
+#define TCP_BUILTIN_CLIENT_VPP_THREAD (1)
 #define TCP_BUILTIN_CLIENT_PTHREAD (!TCP_BUILTIN_CLIENT_VPP_THREAD)
 
 static void
@@ -71,26 +71,28 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
   /* If we managed to enqueue data... */
   if (rv > 0)
     {
+      /* Account for it... */
+      s->bytes_to_send -= rv;
+      s->bytes_sent += rv;
+
       if (TCP_BUILTIN_CLIENT_DBG)
 	{
           /* *INDENT-OFF* */
           ELOG_TYPE_DECLARE (e) =
             {
-              .format = "tx-enq: %d bytes",
-              .format_args = "i4",
+              .format = "tx-enq: xfer %d bytes, sent %u remain %u",
+              .format_args = "i4i4i4",
             };
           /* *INDENT-ON* */
 	  struct
 	  {
-	    u32 data[1];
+	    u32 data[3];
 	  } *ed;
 	  ed = ELOG_DATA (&vlib_global_main.elog_main, e);
 	  ed->data[0] = rv;
+	  ed->data[1] = s->bytes_sent;
+	  ed->data[2] = s->bytes_to_send;
 	}
-
-      /* Account for it... */
-      s->bytes_to_send -= rv;
-      s->bytes_sent += rv;
 
       /* Poke the TCP state machine */
       if (svm_fifo_set_event (s->server_tx_fifo))
@@ -155,10 +157,12 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
 }
 
 #if TCP_BUILTIN_CLIENT_VPP_THREAD
-static void
+#define THREAD_PROTOTYPE static void
 #else
-static void *
+#define THREAD_PROTOTYPE static void *
 #endif
+
+THREAD_PROTOTYPE
 tclient_thread_fn (void *arg)
 {
   tclient_main_t *tm = &tclient_main;
@@ -168,6 +172,11 @@ tclient_thread_fn (void *arg)
   int i;
   int try_tx, try_rx;
   u32 *session_indices = 0;
+  clib_time_t ttime;
+  f64 before, after;
+  u64 rx_total;
+
+  clib_time_init (&ttime);
 
   /* stats thread wants no signals. */
   {
@@ -190,8 +199,11 @@ tclient_thread_fn (void *arg)
 	    ts = tsrem;
 	}
       tm->run_test = 0;
+      rx_total = 0;
 
       clib_warning ("Run %d iterations", tm->n_iterations);
+
+      before = clib_time_now (&ttime);
 
       for (i = 0; i < tm->n_iterations; i++)
 	{
@@ -202,14 +214,16 @@ tclient_thread_fn (void *arg)
 	      try_tx = try_rx = 0;
 
 	      /* *INDENT-OFF* */
-	      pool_foreach (sp, tm->sessions, ({
+	      pool_foreach (sp, tm->sessions,
+              ({
                 if (sp->bytes_to_send > 0)
                   {
                     send_test_chunk (tm, sp);
                     try_tx = 1;
                   }
 	      }));
-	      pool_foreach (sp, tm->sessions, ({
+	      pool_foreach (sp, tm->sessions,
+              ({
 		if (sp->bytes_to_receive > 0)
                   {
                     receive_test_chunk (tm, sp);
@@ -217,17 +231,36 @@ tclient_thread_fn (void *arg)
                   }
               }));
 	      /* *INDENT-ON* */
-
 	    }
 	  while (try_tx || try_rx);
+
+          /* *INDENT-OFF* */
+          pool_foreach (sp, tm->sessions,
+          ({
+            rx_total += sp->bytes_received;
+            sp->bytes_received = 0;
+            sp->bytes_to_send = tm->bytes_to_send;
+          }));
+          /* *INDENT-ON* */
 	}
-      clib_warning ("Done %d iterations", tm->n_iterations);
+      after = clib_time_now (&ttime);
+
+      clib_warning ("Done %d iterations, %lld bytes in %.2f secs",
+		    tm->n_iterations, rx_total, (after - before));
+      if ((after - before) != 0.0)
+	{
+	  clib_warning ("%.2f bytes/second full-duplex",
+			((f64) rx_total) / (after - before));
+	  clib_warning ("%.4f gbit/second full-duplex",
+			(((f64) rx_total * 8.0) / (after - before)) / 1e9);
+	}
 
       /* Disconnect sessions... */
       vec_reset_length (session_indices);
 
       /* *INDENT-OFF* */
-      pool_foreach (sp, tm->sessions, ({
+      pool_foreach (sp, tm->sessions,
+      ({
 	vec_add1 (session_indices, sp - tm->sessions);
       }));
       /* *INDENT-ON* */
@@ -257,7 +290,8 @@ vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   tclient_main_t *tm = &tclient_main;
   tm->my_client_index = mp->index;
-  vlib_process_signal_event (vm, tm->node_index, 1 /* evt */ , 0 /* data */ );
+  vlib_process_signal_event (vm, tm->node_index, 1 /* evt */ ,
+			     0 /* data */ );
 }
 
 static void
@@ -408,13 +442,6 @@ builtin_session_reset_callback (stream_session_t * s)
 }
 
 static int
-builtin_session_connected_callback (u32 app_index, u32 api_context,
-				    stream_session_t * s, u8 code)
-{
-  return 0;
-}
-
-static int
 builtin_session_create_callback (stream_session_t * s)
 {
   return 0;
@@ -433,18 +460,20 @@ builtin_server_rx_callback (stream_session_t * s)
 }
 
 /* *INDENT-OFF* */
-static session_cb_vft_t builtin_clients = {
+static session_cb_vft_t builtin_clients =
+  {
     .session_reset_callback = builtin_session_reset_callback,
-    .session_connected_callback = builtin_session_connected_callback,
+    .session_connected_callback = send_session_connected_callback,
     .session_accept_callback = builtin_session_create_callback,
     .session_disconnect_callback = builtin_session_disconnect_callback,
     .builtin_server_rx_callback = builtin_server_rx_callback
-};
+  };
 /* *INDENT-ON* */
 
 static int
 attach_builtin_test_clients ()
 {
+  tclient_main_t *tm = &tclient_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u8 segment_name[128];
   u32 segment_name_length;
@@ -455,7 +484,7 @@ attach_builtin_test_clients ()
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
-  a->api_client_index = ~0;
+  a->api_client_index = tm->my_client_index;
   a->segment_name = segment_name;
   a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_clients;
@@ -479,6 +508,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   u8 *uri;
   u32 n_clients = 1;
   int i;
+  u64 tmp;
 
   tm->bytes_to_send = 8192;
   tm->n_iterations = 1;
@@ -490,6 +520,10 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "iterations %d", &tm->n_iterations))
 	;
+      else if (unformat (input, "mbytes %lld", &tmp))
+	tm->bytes_to_send = tmp << 20;
+      else if (unformat (input, "gbytes %lld", &tmp))
+	tm->bytes_to_send = tmp << 30;
       else if (unformat (input, "bytes %lld", &tm->bytes_to_send))
 	;
       else if (unformat (input, "uri %s", &tm->connect_uri))
@@ -548,23 +582,25 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   return 0;
 }
 
-#if TCP_BUILTIN_CLIENT_VPP_THREAD
 /* *INDENT-OFF* */
-VLIB_REGISTER_THREAD (builtin_client_reg, static) = {
+#if TCP_BUILTIN_CLIENT_VPP_THREAD
+VLIB_REGISTER_THREAD (builtin_client_reg, static) =
+{
   .name = "tcp-builtin-client",
   .function = tclient_thread_fn,
   .fixed_count = 1,
   .count = 1,
   .no_data_structure_clone = 1,
 };
-/* *INDENT-ON* */
 #endif
+/* *INDENT-ON* */
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_clients_command, static) =
 {
   .path = "test tcp clients",
-  .short_help = "test tcp clients [nclients %d] [iterations %d] [bytes %d] [uri tcp://1.2.3.4/1234]",
+  .short_help = "test tcp clients [nclients %d]"
+  "[iterations %d] [bytes %d] [uri tcp://6.0.1.1/1234]",
   .function = test_tcp_clients_command_fn,
 };
 /* *INDENT-ON* */
