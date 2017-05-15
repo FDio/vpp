@@ -890,6 +890,7 @@ VLIB_CLI_COMMAND (ping_command, static) =
   " [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>]"
   " [size <pktsize>] [interval <sec>] [repeat <cnt>] [table-id <id>]"
   " [verbose]",
+  .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
