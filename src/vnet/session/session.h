@@ -390,6 +390,10 @@ void session_send_session_evt_to_thread (u64 session_handle,
 					 fifo_event_type_t evt_type,
 					 u32 thread_index);
 u8 *format_stream_session (u8 * s, va_list * args);
+int
+send_session_connected_callback (u32 app_index, u32 api_context,
+				 stream_session_t * s, u8 is_fail);
+
 
 void session_register_transport (u8 type, const transport_proto_vft_t * vft);
 transport_proto_vft_t *session_get_transport_vft (u8 type);
