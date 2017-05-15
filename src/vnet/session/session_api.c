@@ -151,7 +151,7 @@ send_session_reset_callback (stream_session_t * s)
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
-static int
+int
 send_session_connected_callback (u32 app_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail)
 {
