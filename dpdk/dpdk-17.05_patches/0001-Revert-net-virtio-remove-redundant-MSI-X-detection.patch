@@ -1,0 +1,58 @@
+From 3a1470e031ff33ac99da33b41dae0e9082d4da78 Mon Sep 17 00:00:00 2001
+From: Damjan Marion <damarion@cisco.com>
+Date: Mon, 15 May 2017 12:27:37 +0200
+Subject: [PATCH] Revert "net/virtio: remove redundant MSI-X detection"
+
+This reverts commit ee1843bd89076c59e50cadbef5c935613f543765.
+---
+ drivers/net/virtio/virtio_pci.c | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/drivers/net/virtio/virtio_pci.c b/drivers/net/virtio/virtio_pci.c
+index b7b3d6157..127f25791 100644
+--- a/drivers/net/virtio/virtio_pci.c
++++ b/drivers/net/virtio/virtio_pci.c
+@@ -274,6 +274,32 @@ legacy_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
+ 		VIRTIO_PCI_QUEUE_NOTIFY);
+ }
+ 
++#ifdef RTE_EXEC_ENV_LINUXAPP
++static int
++legacy_virtio_has_msix(const struct rte_pci_addr *loc)
++{
++	DIR *d;
++	char dirname[PATH_MAX];
++
++	snprintf(dirname, sizeof(dirname),
++		     "%s/" PCI_PRI_FMT "/msi_irqs", pci_get_sysfs_path(),
++		     loc->domain, loc->bus, loc->devid, loc->function);
++
++	d = opendir(dirname);
++	if (d)
++		closedir(d);
++
++	return d != NULL;
++}
++#else
++static int
++legacy_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
++{
++	/* nic_uio does not enable interrupts, return 0 (false). */
++	return 0;
++}
++#endif
++
+ const struct virtio_pci_ops legacy_ops = {
+ 	.read_dev_cfg	= legacy_read_dev_config,
+ 	.write_dev_cfg	= legacy_write_dev_config,
+@@ -694,6 +720,7 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
+ 	}
+ 
+ 	virtio_hw_internal[hw->port_id].vtpci_ops = &legacy_ops;
++	hw->use_msix = legacy_virtio_has_msix(&dev->addr);
+ 	hw->modern   = 0;
+ 
+ 	return 0;
+-- 
+2.11.0
+
