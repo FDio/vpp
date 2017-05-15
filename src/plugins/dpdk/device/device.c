@@ -618,22 +618,21 @@ dpdk_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 
   if (is_up)
     {
-      f64 now = vlib_time_now (dm->vlib_main);
-
+      vnet_hw_interface_set_flags (vnm, xd->hw_if_index,
+				   VNET_HW_INTERFACE_FLAG_LINK_UP);
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
 	dpdk_device_start (xd);
-
       xd->flags |= DPDK_DEVICE_FLAG_ADMIN_UP;
+      f64 now = vlib_time_now (dm->vlib_main);
       dpdk_update_counters (xd, now);
       dpdk_update_link_state (xd, now);
     }
   else
     {
-      xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
       vnet_hw_interface_set_flags (vnm, xd->hw_if_index, 0);
-
       if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) != 0)
 	dpdk_device_stop (xd);
+      xd->flags &= ~DPDK_DEVICE_FLAG_ADMIN_UP;
     }
 
   return /* no error */ 0;
