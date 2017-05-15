@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_f4d709be",
+        "filename": "src/plugins/dpdk.am",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-15T17:22:28Z",
+      "side": 1,
+      "message": "This doesn\u0027t make lot of sense, it can be removed....",
+      "range": {
+        "startLine": 18,
+        "startChar": 39,
+        "endLine": 18,
+        "endChar": 77
+      },
+      "revId": "50d9b886b79874a5634e3c0e0b12c50d5fa80e50",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
