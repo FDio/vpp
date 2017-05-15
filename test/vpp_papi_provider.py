@@ -428,6 +428,27 @@ class VppPapiProvider(object):
                          'filter_mac': filter_mac,
                          'bvi_mac': bvi_mac})
 
+    def l2fib_flush_int(self, sw_if_index):
+        """Flush L2 FIB entries for sw_if_index.
+
+        :param int sw_if_index: Software interface index of the interface.
+        """
+        return self.api(self.papi.l2fib_flush_int,
+                        {'sw_if_index': sw_if_index})
+
+    def l2fib_flush_bd(self, bd_id):
+        """Flush L2 FIB entries for bd_id.
+
+        :param int sw_if_index: Bridge Domain id.
+        """
+        return self.api(self.papi.l2fib_flush_bd,
+                        {'bd_id': bd_id})
+
+    def l2fib_flush_all(self):
+        """Flush all L2 FIB.
+        """
+        return self.api(self.papi.l2fib_flush_all, {})
+
     def sw_interface_set_l2_bridge(self, sw_if_index, bd_id,
                                    shg=0, bvi=0, enable=1):
         """Add/remove interface to/from bridge domain.
