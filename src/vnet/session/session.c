@@ -732,6 +732,10 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 
   /* Cleanup session lookup */
   stream_session_half_open_table_del (smm, sst, tc);
+
+  /* Add to established lookup table */
+  handle = (((u64) tc->thread_index) << 32) | (u64) new_s->session_index;
+  stream_session_table_add_for_tc (tc, handle);
 }
 
 void
@@ -1104,7 +1108,7 @@ session_manager_main_enable (vlib_main_t * vm)
   for (i = 0; i < 200000; i++)
     {
       stream_session_t *ss;
-      pool_get (smm->sessions[0], ss);
+      pool_get_aligned (smm->sessions[0], ss, CLIB_CACHE_LINE_BYTES);
       memset (ss, 0, sizeof (*ss));
     }
 

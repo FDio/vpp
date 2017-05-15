@@ -1553,6 +1553,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  clib_memcpy (new_tc0, tc0, sizeof (*new_tc0));
 
 	  new_tc0->c_thread_index = my_thread_index;
+          new_tc0->c_c_index = new_tc0 - tm->connections[my_thread_index];
 
 	  /* Cleanup half-open connection XXX lock */
 	  pool_put (tm->half_open_connections, tc0);
