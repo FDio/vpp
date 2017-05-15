@@ -20,6 +20,9 @@
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -61,7 +64,26 @@ static u32
 af_packet_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			   u32 flags)
 {
-  /* nothing for now */
+  clib_error_t *error;
+  u8 *s;
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif =
+    pool_elt_at_index (apm->interfaces, hi->dev_instance);
+
+  if (ETHERNET_INTERFACE_FLAG_MTU == (flags & ETHERNET_INTERFACE_FLAG_MTU))
+    {
+      s = format (0, "/sys/class/net/%s/mtu%c", apif->host_if_name, 0);
+
+      error = vlib_sysfs_write ((char *) s, "%d", hi->max_packet_bytes);
+      vec_free (s);
+
+      if (error)
+	{
+	  clib_error_report (error);
+	  return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
+    }
+
   return 0;
 }
 
