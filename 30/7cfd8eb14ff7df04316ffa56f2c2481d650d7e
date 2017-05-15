@@ -1,0 +1,9 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Juraj Linkeš <jlinkes@cisco.com>
+Code-Review+1: Samuel Eliáš <samelias@cisco.com>
+Code-Review+2: Damjan Marion <dmarion.lists@gmail.com>
+Submitted-by: Damjan Marion <dmarion.lists@gmail.com>
+Submitted-at: Mon, 15 May 2017 14:41:09 +0000
+Reviewed-on: https://gerrit.fd.io/r/6669
+Project: vpp
+Branch: refs/heads/stable/1704
