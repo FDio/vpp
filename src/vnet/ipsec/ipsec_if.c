@@ -92,16 +92,12 @@ VNET_HW_INTERFACE_CLASS (ipsec_hw_class) =
 /* *INDENT-ON* */
 
 static int
-ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
-				  ipsec_add_del_tunnel_args_t * args);
-
-static int
 ipsec_add_del_tunnel_if_rpc_callback (ipsec_add_del_tunnel_args_t * a)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ASSERT (vlib_get_thread_index () == 0);
 
-  return ipsec_add_del_tunnel_if_internal (vnm, a);
+  return ipsec_add_del_tunnel_if_internal (vnm, a, NULL);
 }
 
 int
@@ -114,11 +110,12 @@ ipsec_add_del_tunnel_if (ipsec_add_del_tunnel_args_t * args)
 
 int
 ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
-				  ipsec_add_del_tunnel_args_t * args)
+				  ipsec_add_del_tunnel_args_t * args,
+				  u32 * sw_if_index)
 {
   ipsec_tunnel_if_t *t;
   ipsec_main_t *im = &ipsec_main;
-  vnet_hw_interface_t *hi;
+  vnet_hw_interface_t *hi = NULL;
   u32 hw_if_index = ~0;
   uword *p;
   ipsec_sa_t *sa;
@@ -209,10 +206,10 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 				     t - im->tunnel_interfaces,
 				     ipsec_hw_class.index,
 				     t - im->tunnel_interfaces);
-
-	  hi = vnet_get_hw_interface (vnm, hw_if_index);
-	  hi->output_node_index = ipsec_if_output_node.index;
 	}
+
+      hi = vnet_get_hw_interface (vnm, hw_if_index);
+      hi->output_node_index = ipsec_if_output_node.index;
       t->hw_if_index = hw_if_index;
 
       /*1st interface, register protocol */
@@ -220,7 +217,6 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
 	ip4_register_protocol (IP_PROTOCOL_IPSEC_ESP,
 			       ipsec_if_input_node.index);
 
-      return hw_if_index;
     }
   else
     {
@@ -253,6 +249,10 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       hash_unset (im->ipsec_if_pool_index_by_key, key);
       pool_put (im->tunnel_interfaces, t);
     }
+
+  if (sw_if_index)
+    *sw_if_index = hi->sw_if_index;
+
   return 0;
 }
 

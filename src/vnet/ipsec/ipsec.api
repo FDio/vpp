@@ -511,7 +511,7 @@ define ipsec_spd_details {
     @param remote_integ_key_len - length of remote integrity key in bytes
     @param remote_integ_key - integrity key for inbound IPsec SA
 */
-autoreply define ipsec_tunnel_if_add_del {
+define ipsec_tunnel_if_add_del {
   u32 client_index;
   u32 context;
   u8 is_add;
@@ -531,6 +531,17 @@ autoreply define ipsec_tunnel_if_add_del {
   u8 local_integ_key[128];
   u8 remote_integ_key_len;
   u8 remote_integ_key[128];
+};
+
+/** \brief Add/delete IPsec tunnel interface response
+    @param context - sender context, to match reply w/ request
+    @param retval - return status
+    @param sw_if_index - sw_if_index of new interface (for successful add)
+*/
+define ipsec_tunnel_if_add_del_reply {
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
 };
 
 /*

@@ -357,6 +357,9 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 					  mp)
 {
   vl_api_ipsec_tunnel_if_add_del_reply_t *rmp;
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  u32 sw_if_index = ~0;
   int rv;
 
 #if WITH_LIBSSL > 0
@@ -386,14 +389,19 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
   memcpy (&tun.remote_integ_key, &mp->remote_integ_key,
 	  mp->remote_integ_key_len);
 
-  rv = ipsec_add_del_tunnel_if (&tun);
+  rv = ipsec_add_del_tunnel_if_internal (vnm, &tun, &sw_if_index);
 
 #else
   rv = VNET_API_ERROR_UNIMPLEMENTED;
 #endif
 
-  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_ADD_DEL_REPLY);
+  REPLY_MACRO2 (VL_API_IPSEC_TUNNEL_IF_ADD_DEL_REPLY, (
+							{
+							rmp->sw_if_index =
+							htonl (sw_if_index);
+							}));
 }
+
 
 static void
 vl_api_ikev2_profile_add_del_t_handler (vl_api_ikev2_profile_add_del_t * mp)
