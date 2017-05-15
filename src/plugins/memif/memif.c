@@ -406,7 +406,7 @@ static clib_error_t *
 memif_int_fd_read_ready (unix_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
-  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
   memif_if_t *mif = vec_elt_at_index (mm->interfaces, uf->private_data);
   u8 b;
   ssize_t size;
@@ -420,7 +420,7 @@ memif_int_fd_read_ready (unix_file_t * uf)
       mif->interrupt_line.index = ~0;
       mif->interrupt_line.fd = -1;
     }
-  vlib_node_set_interrupt_pending (vm, memif_input_node.index);
+  vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, 0);
   return 0;
 }
 
@@ -789,6 +789,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   clib_error_t *error = 0;
   int ret = 0;
   uword *p;
+  vnet_hw_interface_t *hw;
 
   p = mhash_get (&mm->if_index_by_key, &args->key);
   if (p)
@@ -937,6 +938,17 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       mif->flags |= MEMIF_IF_FLAG_IS_SLAVE;
     }
 
+  hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
+  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  vnet_hw_interface_set_input_node (vnm, mif->hw_if_index,
+				    memif_input_node.index);
+  vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, 0, ~0);
+  ret = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, 0,
+				       VNET_HW_INTERFACE_RX_MODE_INTERRUPT);
+  if (ret)
+    clib_warning ("Warning: unable to set rx mode for interface %d: "
+		  "rc=%d", mif->hw_if_index, ret);
+
 #if 0
   /* use configured or generate random MAC address */
   if (!args->hw_addr_set &&
@@ -969,6 +981,7 @@ memif_delete_if (vlib_main_t * vm, u64 key)
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
   uword *p;
+  int ret;
 
   p = mhash_get (&mm->if_index_by_key, &key);
   if (p == NULL)
@@ -979,6 +992,11 @@ memif_delete_if (vlib_main_t * vm, u64 key)
     }
   mif = pool_elt_at_index (mm->interfaces, p[0]);
   mif->flags |= MEMIF_IF_FLAG_DELETING;
+
+  ret = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, 0);
+  if (ret)
+    clib_warning ("Warning: unable to unassign interface %d: rc=%d",
+		  mif->hw_if_index, ret);
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, mif->hw_if_index, 0);
