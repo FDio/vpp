@@ -31,10 +31,10 @@
 
 typedef struct
 {
-  u32 bytes_to_send;
-  u32 bytes_sent;
-  u32 bytes_to_receive;
-  u32 bytes_received;
+  u64 bytes_to_send;
+  u64 bytes_sent;
+  u64 bytes_to_receive;
+  u64 bytes_received;
 
   svm_fifo_t *server_rx_fifo;
   svm_fifo_t *server_tx_fifo;
@@ -97,7 +97,7 @@ typedef struct
   int n_iterations;
 
   /* Bytes to send */
-  u32 bytes_to_send;
+  u64 bytes_to_send;
 
   u32 configured_segment_size;
 
@@ -106,7 +106,7 @@ typedef struct
 
   u8 *connect_test_data;
   pthread_t client_thread_handle;
-  u32 client_bytes_received;
+  u64 client_bytes_received;
   u8 test_return_packets;
 
   u8 is_init;
