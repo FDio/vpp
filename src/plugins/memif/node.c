@@ -331,26 +331,26 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 thread_index = vlib_get_thread_index ();
   memif_main_t *nm = &memif_main;
   memif_if_t *mif;
+  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
+  vnet_device_and_queue_t *dq;
+  memif_ring_type_t type;
 
-  /* *INDENT-OFF* */
-  pool_foreach (mif, nm->interfaces,
-    ({
-      if (mif->flags & MEMIF_IF_FLAG_ADMIN_UP &&
-	  mif->flags & MEMIF_IF_FLAG_CONNECTED &&
-	  (mif->if_index % nm->input_cpu_count) ==
-	  (thread_index - nm->input_cpu_first_index))
-	{
-	  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-	    n_rx_packets +=
-	      memif_device_input_inline (vm, node, frame, mif,
-					 MEMIF_RING_M2S);
-	  else
-	    n_rx_packets +=
-	      memif_device_input_inline (vm, node, frame, mif,
-					 MEMIF_RING_S2M);
-	}
-    }));
-  /* *INDENT-ON* */
+  foreach_device_and_queue (dq, rt->devices_and_queues)
+  {
+    mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
+    if (mif->flags & MEMIF_IF_FLAG_ADMIN_UP &&
+	mif->flags & MEMIF_IF_FLAG_CONNECTED &&
+	(mif->if_index % nm->input_cpu_count) ==
+	(thread_index - nm->input_cpu_first_index))
+      {
+	if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
+	  type = MEMIF_RING_M2S;
+	else
+	  type = MEMIF_RING_S2M;
+	n_rx_packets +=
+	  memif_device_input_inline (vm, node, frame, mif, type);
+      }
+  }
 
   return n_rx_packets;
 }
