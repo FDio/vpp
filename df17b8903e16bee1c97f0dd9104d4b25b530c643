@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_4c73e9b1",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-16T17:51:37Z",
+      "side": 1,
+      "message": "sizeof() is compile time evaluated, so you don\u0027t need these stack variables.\nsummation of constants is also compile time evaluated, so i\u0027d suggest;\n#define IPSEC_HDRS_SIZE (sizeof(x) + sizeof(y) + .. + 16)\nand use that in the later arthimetic statements.",
+      "revId": "df17b8903e16bee1c97f0dd9104d4b25b530c643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_ec8f3574",
+        "filename": "src/vnet/ipsec/ipsec_if_in.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-05-16T17:51:37Z",
+      "side": 1,
+      "message": "if (last_t)\n  around the counter increment. since if !last_t means n_bytes \u003d\u003d n_packets \u003d\u003d 0",
+      "revId": "df17b8903e16bee1c97f0dd9104d4b25b530c643",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
