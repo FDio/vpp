@@ -273,7 +273,8 @@ ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
 	{
 	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
 	  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
-	  fib_table_entry_delete_index (n->fib_entry_index, FIB_SOURCE_ADJ);
+	  if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
+	    fib_table_entry_delete_index (n->fib_entry_index, FIB_SOURCE_ADJ);
 	  pool_put (nm->neighbor_pool, n);
 	}
 
@@ -610,6 +611,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
       mhash_set (&nm->neighbor_index_by_key, &k, n - nm->neighbor_pool,
 		 /* old value */ 0);
       n->key = k;
+      n->fib_entry_index = FIB_NODE_INDEX_INVALID;
 
       clib_memcpy (n->link_layer_address,
 		   link_layer_address, n_bytes_link_layer_address);
@@ -750,7 +752,9 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
   adj_nbr_walk_nh6 (sw_if_index,
 		    &n->key.ip6_address, ip6_nd_mk_incomplete_walk, NULL);
 
-  fib_table_entry_delete_index (n->fib_entry_index, FIB_SOURCE_ADJ);
+
+  if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
+    fib_table_entry_delete_index (n->fib_entry_index, FIB_SOURCE_ADJ);
   pool_put (nm->neighbor_pool, n);
 
 out:
