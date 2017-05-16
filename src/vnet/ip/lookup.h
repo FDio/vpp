@@ -181,7 +181,7 @@ ip_interface_address_get_address (ip_lookup_main_t * lm,
 /* *INDENT-OFF* */
 #define foreach_ip_interface_address(lm,a,sw_if_index,loop,body)        \
 do {                                                                    \
-    vnet_main_t *_vnm = vnet_get_main();                                     \
+    vnet_main_t *_vnm = vnet_get_main();                                \
     u32 _sw_if_index = sw_if_index;                                     \
     vnet_sw_interface_t *_swif;                                         \
     _swif = vnet_get_sw_interface (_vnm, _sw_if_index);                 \
@@ -189,13 +189,20 @@ do {                                                                    \
     /*                                                                  \
      * Loop => honor unnumbered interface addressing.                   \
      */                                                                 \
-    if (loop && _swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)       \
-      _sw_if_index = _swif->unnumbered_sw_if_index;                     \
-    u32 _ia =                                                           \
-      (vec_len((lm)->if_address_pool_index_by_sw_if_index)              \
-       > (_sw_if_index))                                                \
-        ? vec_elt ((lm)->if_address_pool_index_by_sw_if_index,          \
-                   (_sw_if_index)) : (u32)~0;                           \
+    if (_swif->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)               \
+      {                                                                 \
+        if (loop)                                                       \
+          _sw_if_index = _swif->unnumbered_sw_if_index;                 \
+        else                                                            \
+          /* the interface is unnumbered, by the caller does not want   \
+           * unnumbered interfaces considered/honoured */               \
+          break;                                                        \
+      }                                                                 \
+    u32 _ia = ((vec_len((lm)->if_address_pool_index_by_sw_if_index)     \
+                > (_sw_if_index)) ?                                     \
+               vec_elt ((lm)->if_address_pool_index_by_sw_if_index,     \
+                        (_sw_if_index)) :                               \
+               (u32)~0);                                                \
     ip_interface_address_t * _a;                                        \
     while (_ia != ~0)                                                   \
     {                                                                   \

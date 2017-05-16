@@ -112,8 +112,11 @@ class ARPTestCase(VppTestCase):
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
+        timeout = 1
         for i in self.pg_interfaces:
+            i.get_capture(0, timeout=timeout)
             i.assert_nothing_captured(remark=remark)
+            timeout = 0.1
 
     def test_arp(self):
         """ ARP """
@@ -438,7 +441,9 @@ class ARPTestCase(VppTestCase):
         # ERROR Cases
         #  1 - don't respond to ARP request for address not within the
         #      interface's sub-net
-        #  1a - nor within the unnumbered subnet
+        #  1b - nor within the unnumbered subnet
+        #  1c - nor within the subnet of a different interface
+        #
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
              ARP(op="who-has",
                  hwsrc=self.pg0.remote_mac,
@@ -446,6 +451,10 @@ class ARPTestCase(VppTestCase):
                  psrc=self.pg0.remote_ip4))
         self.send_and_assert_no_replies(self.pg0, p,
                                         "ARP req for non-local destination")
+        self.assertFalse(find_nbr(self,
+                                  self.pg0.sw_if_index,
+                                  "10.10.10.3"))
+
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
              ARP(op="who-has",
                  hwsrc=self.pg2.remote_mac,
@@ -454,6 +463,17 @@ class ARPTestCase(VppTestCase):
         self.send_and_assert_no_replies(
             self.pg0, p,
             "ARP req for non-local destination - unnum")
+
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
+             ARP(op="who-has",
+                 hwsrc=self.pg0.remote_mac,
+                 pdst=self.pg1.local_ip4,
+                 psrc=self.pg1.remote_ip4))
+        self.send_and_assert_no_replies(self.pg0, p,
+                                        "ARP req diff sub-net")
+        self.assertFalse(find_nbr(self,
+                                  self.pg0.sw_if_index,
+                                  self.pg1.remote_ip4))
 
         #
         #  2 - don't respond to ARP request from an address not within the
@@ -514,15 +534,11 @@ class ARPTestCase(VppTestCase):
     def test_proxy_arp(self):
         """ Proxy ARP """
 
+        self.pg1.generate_remote_hosts(2)
+
         #
         # Proxy ARP rewquest packets for each interface
         #
-        arp_req_pg2 = (Ether(src=self.pg2.remote_mac,
-                             dst="ff:ff:ff:ff:ff:ff") /
-                       ARP(op="who-has",
-                           hwsrc=self.pg2.remote_mac,
-                           pdst="10.10.10.3",
-                           psrc=self.pg1.remote_ip4))
         arp_req_pg0 = (Ether(src=self.pg0.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
                        ARP(op="who-has",
@@ -535,6 +551,12 @@ class ARPTestCase(VppTestCase):
                            hwsrc=self.pg1.remote_mac,
                            pdst="10.10.10.3",
                            psrc=self.pg1.remote_ip4))
+        arp_req_pg2 = (Ether(src=self.pg2.remote_mac,
+                             dst="ff:ff:ff:ff:ff:ff") /
+                       ARP(op="who-has",
+                           hwsrc=self.pg2.remote_mac,
+                           pdst="10.10.10.3",
+                           psrc=self.pg1.remote_hosts[1].ip4))
         arp_req_pg3 = (Ether(src=self.pg3.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
                        ARP(op="who-has",
@@ -607,7 +629,7 @@ class ARPTestCase(VppTestCase):
                              self.pg2.local_mac,
                              self.pg2.remote_mac,
                              "10.10.10.3",
-                             self.pg1.remote_ip4)
+                             self.pg1.remote_hosts[1].ip4)
 
         #
         # A request for an address out of the configured range
