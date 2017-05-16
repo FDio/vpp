@@ -63,8 +63,11 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
+  vnet_interface_main_t *vim = &vnm->interface_main;
   u32 *from, *to_next = 0, next_index;
-  u32 n_left_from, sw_if_index0;
+  u32 n_left_from, sw_if_index0, last_sw_if_index = ~0;
+  u32 thread_index = vlib_get_thread_index ();
+  u32 n_bytes = 0, n_packets = 0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -78,7 +81,7 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, next0;
+	  u32 bi0, next0, len0;
 	  vlib_buffer_t *b0;
 	  ipsec_tunnel_if_t *t0;
 	  vnet_hw_interface_t *hi0;
@@ -95,6 +98,24 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vnet_buffer (b0)->ipsec.sad_index = t0->output_sa_index;
 	  next0 = im->esp_encrypt_next_index;
 
+	  len0 = vlib_buffer_length_in_chain (vm, b0);
+
+	  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
+	    {
+	      n_packets++;
+	      n_bytes += len0;
+	    }
+	  else
+	    {
+	      vlib_increment_combined_counter (vim->combined_sw_if_counters +
+					       VNET_INTERFACE_COUNTER_TX,
+					       thread_index, sw_if_index0,
+					       n_packets, n_bytes);
+	      last_sw_if_index = sw_if_index0;
+	      n_packets = 1;
+	      n_bytes = len0;
+	    }
+
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      ipsec_if_output_trace_t *tr =
@@ -109,6 +130,14 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 					   n_left_to_next, bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  if (last_sw_if_index != ~0)
+    {
+      vlib_increment_combined_counter (vim->combined_sw_if_counters +
+				       VNET_INTERFACE_COUNTER_TX,
+				       thread_index,
+				       last_sw_if_index, n_packets, n_bytes);
     }
 
   vlib_node_increment_counter (vm, ipsec_if_output_node.index,
