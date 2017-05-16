@@ -564,6 +564,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
       e->sw_if_index = sw_if_index;
       e->ip4_address = a->ip4;
+      e->fib_entry_index = FIB_NODE_INDEX_INVALID;
       clib_memcpy (e->ethernet_address,
 		   a->ethernet, sizeof (e->ethernet_address));
 
@@ -827,65 +828,38 @@ unset_random_arp_entry (void)
 
 static int
 arp_unnumbered (vlib_buffer_t * p0,
-		u32 pi0, ethernet_header_t * eth0, u32 sw_if_index)
+		u32 pi0,
+		ethernet_header_t * eth0,
+		u32 input_sw_if_index, u32 conn_sw_if_index)
 {
   vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *vim = &vnm->interface_main;
   vnet_sw_interface_t *si;
   vnet_hw_interface_t *hi;
-  u32 unnum_src_sw_if_index;
-  u32 *broadcast_swifs = 0;
   u32 *buffers = 0;
-  u32 n_alloc = 0;
   vlib_buffer_t *b0;
   int i;
   u8 dst_mac_address[6];
   i16 header_size;
   ethernet_arp_header_t *arp0;
 
+  /* verify that the input interface is unnumbered to the connected.
+   * the connected interface is the interface on which the subnet is
+   * configured */
+  si = &vim->sw_interfaces[input_sw_if_index];
+
+  if (!(si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED &&
+	(si->unnumbered_sw_if_index == conn_sw_if_index)))
+    {
+      /* the input interface is not unnumbered to the interface on which
+       * the sub-net is configured that covers the ARP request.
+       * So this is not the case for unnumbered.. */
+      return 0;
+    }
+
   /* Save the dst mac address */
   clib_memcpy (dst_mac_address, eth0->dst_address, sizeof (dst_mac_address));
-
-  /* Figure out which sw_if_index supplied the address */
-  unnum_src_sw_if_index = sw_if_index;
-
-  /* Track down all users of the unnumbered source */
-  /* *INDENT-OFF* */
-  pool_foreach (si, vim->sw_interfaces,
-  ({
-    if (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED &&
-	(si->unnumbered_sw_if_index == unnum_src_sw_if_index))
-      {
-	vec_add1 (broadcast_swifs, si->sw_if_index);
-      }
-  }));
-  /* *INDENT-ON* */
-
-  /* If there are no interfaces un-unmbered to this interface,
-     we are done  here. */
-  if (0 == vec_len (broadcast_swifs))
-    return 0;
-
-  /* Allocate buffering if we need it */
-  if (vec_len (broadcast_swifs) > 1)
-    {
-      vec_validate (buffers, vec_len (broadcast_swifs) - 2);
-      n_alloc = vlib_buffer_alloc (vm, buffers, vec_len (buffers));
-      _vec_len (buffers) = n_alloc;
-      for (i = 0; i < n_alloc; i++)
-	{
-	  b0 = vlib_get_buffer (vm, buffers[i]);
-
-	  /* xerox (partially built) ARP pkt */
-	  clib_memcpy (b0->data, p0->data,
-		       p0->current_length + p0->current_data);
-	  b0->current_data = p0->current_data;
-	  b0->current_length = p0->current_length;
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
-	    vnet_buffer (p0)->sw_if_index[VLIB_RX];
-	}
-    }
 
   vec_insert (buffers, 1, 0);
   buffers[0] = pi0;
@@ -895,8 +869,8 @@ arp_unnumbered (vlib_buffer_t * p0,
       b0 = vlib_get_buffer (vm, buffers[i]);
       arp0 = vlib_buffer_get_current (b0);
 
-      hi = vnet_get_sup_hw_interface (vnm, broadcast_swifs[i]);
-      si = vnet_get_sw_interface (vnm, broadcast_swifs[i]);
+      hi = vnet_get_sup_hw_interface (vnm, input_sw_if_index);
+      si = vnet_get_sw_interface (vnm, input_sw_if_index);
 
       /* For decoration, most likely */
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = hi->sw_if_index;
@@ -966,12 +940,23 @@ arp_unnumbered (vlib_buffer_t * p0,
     }
 
   /* The regular path outputs the original pkt.. */
-  vnet_buffer (p0)->sw_if_index[VLIB_TX] = broadcast_swifs[0];
+  vnet_buffer (p0)->sw_if_index[VLIB_TX] = input_sw_if_index;
 
-  vec_free (broadcast_swifs);
   vec_free (buffers);
 
   return !0;
+}
+
+static u32
+arp_learn (vnet_main_t * vnm,
+	   ethernet_arp_main_t * am, u32 sw_if_index, void *addr)
+{
+  if (am->limit_arp_cache_size &&
+      pool_elts (am->ip4_entry_pool) >= am->limit_arp_cache_size)
+    unset_random_arp_entry ();
+
+  vnet_arp_set_ip4_over_ethernet (vnm, sw_if_index, addr, 0, 0);
+  return (ETHERNET_ARP_ERROR_l3_src_address_learned);
 }
 
 static uword
@@ -1121,28 +1106,14 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto drop2;
 	    }
 
-	  /* Learn or update sender's mapping only for requests or unicasts
-	     that don't match local interface address. */
-	  if (ethernet_address_cast (eth0->dst_address) ==
-	      ETHERNET_ADDRESS_UNICAST || is_request0)
+	  /* Learn or update sender's mapping only for replies to addresses
+	   * that are local to the subnet */
+	  if (arp0->opcode ==
+	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply) &&
+	      dst_is_local0)
 	    {
-	      if (am->limit_arp_cache_size &&
-		  pool_elts (am->ip4_entry_pool) >= am->limit_arp_cache_size)
-		unset_random_arp_entry ();
-
-	      vnet_arp_set_ip4_over_ethernet (vnm, sw_if_index0,
-					      &arp0->ip4_over_ethernet[0],
-					      0 /* is_static */ , 0);
-	      error0 = ETHERNET_ARP_ERROR_l3_src_address_learned;
-	    }
-
-	  /* Only send a reply for requests sent which match a local interface. */
-	  if (!(is_request0 && dst_is_local0))
-	    {
-	      error0 =
-		(arp0->opcode ==
-		 clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply) ?
-		 ETHERNET_ARP_ERROR_replies_received : error0);
+	      error0 = arp_learn (vnm, am, sw_if_index0,
+				  &arp0->ip4_over_ethernet[0]);
 	      goto drop1;
 	    }
 
@@ -1176,7 +1147,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    {
 	      if (is_unnum0)
 		{
-		  if (!arp_unnumbered (p0, pi0, eth0, conn_sw_if_index0))
+		  if (!arp_unnumbered (p0, pi0, eth0,
+				       sw_if_index0, conn_sw_if_index0))
 		    goto drop2;
 		}
 	      else
@@ -1229,6 +1201,10 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		    }
 		}
 	    }
+
+	  /* We are going to reply to this request, so learn the sender */
+	  error0 = arp_learn (vnm, am, sw_if_index0,
+			      &arp0->ip4_over_ethernet[1]);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
@@ -1685,9 +1661,8 @@ arp_entry_free (ethernet_arp_interface_t * eai, ethernet_arp_ip4_entry_t * e)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
-  /* it's safe to delete the ADJ source on the FIB entry, even if it
-   * was added */
-  fib_table_entry_delete_index (e->fib_entry_index, FIB_SOURCE_ADJ);
+  if (FIB_NODE_INDEX_INVALID != e->fib_entry_index)
+    fib_table_entry_delete_index (e->fib_entry_index, FIB_SOURCE_ADJ);
   hash_unset (eai->arp_entries, e->ip4_address.as_u32);
   pool_put (am->ip4_entry_pool, e);
 }
