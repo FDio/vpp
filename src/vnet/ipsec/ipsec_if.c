@@ -220,6 +220,8 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
     }
   else
     {
+      vnet_interface_main_t *vim = &vnm->interface_main;
+
       /* check if exists */
       if (!p)
 	return VNET_API_ERROR_INVALID_VALUE;
@@ -228,6 +230,13 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       hi = vnet_get_hw_interface (vnm, t->hw_if_index);
       vnet_sw_interface_set_flags (vnm, hi->sw_if_index, 0);	/* admin down */
       vec_add1 (im->free_tunnel_if_indices, t->hw_if_index);
+
+      vnet_interface_counter_lock (vim);
+      vlib_zero_combined_counter (vim->combined_sw_if_counters +
+				  VNET_INTERFACE_COUNTER_TX, hi->sw_if_index);
+      vlib_zero_combined_counter (vim->combined_sw_if_counters +
+				  VNET_INTERFACE_COUNTER_RX, hi->sw_if_index);
+      vnet_interface_counter_unlock (vim);
 
       /* delete input and output SA */
       sa = pool_elt_at_index (im->sad, t->input_sa_index);

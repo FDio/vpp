@@ -63,8 +63,16 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			vlib_frame_t * from_frame)
 {
   ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_interface_main_t *vim = &vnm->interface_main;
+  esp_main_t *em = &esp_main;
   u32 *from, *to_next = 0, next_index;
-  u32 n_left_from;
+  u32 n_left_from, last_sw_if_index = ~0;
+  u32 thread_index = vlib_get_thread_index ();
+  u64 n_bytes = 0, n_packets = 0;
+  u8 icv_len;
+  ipsec_tunnel_if_t *last_t = NULL;
+  ipsec_sa_t *sa0;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -78,7 +86,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, next0;
+	  u32 bi0, next0, sw_if_index0;
 	  vlib_buffer_t *b0;
 	  ip4_header_t *ip0;
 	  esp_header_t *esp0;
@@ -105,8 +113,49 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      ipsec_tunnel_if_t *t;
 	      t = pool_elt_at_index (im->tunnel_interfaces, p[0]);
 	      vnet_buffer (b0)->ipsec.sad_index = t->input_sa_index;
-	      vnet_buffer (b0)->ipsec.flags =
-		t->hw_if_index == ~0 ? IPSEC_FLAG_IPSEC_GRE_TUNNEL : 0;
+	      if (t->hw_if_index != ~0)
+		{
+		  vnet_hw_interface_t *hi;
+
+		  vnet_buffer (b0)->ipsec.flags = 0;
+		  hi = vnet_get_hw_interface (vnm, t->hw_if_index);
+		  sw_if_index0 = hi->sw_if_index;
+
+		  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
+		    {
+		      n_packets++;
+		      n_bytes += vlib_buffer_length_in_chain (vm, b0);
+		    }
+		  else
+		    {
+		      sa0 = pool_elt_at_index (im->sad, t->input_sa_index);
+		      icv_len = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+
+		      /* length = packet length - ESP/tunnel overhead */
+		      n_bytes -= n_packets * (sizeof (ip4_header_t) +
+					      sizeof (esp_header_t) +
+					      sizeof (esp_footer_t) +
+					      16 /* aes-cbc IV */  + icv_len);
+
+		      if (last_t)
+			{
+			  vlib_increment_combined_counter
+			    (vim->combined_sw_if_counters
+			     + VNET_INTERFACE_COUNTER_RX,
+			     thread_index, sw_if_index0, n_packets, n_bytes);
+			}
+
+		      last_sw_if_index = sw_if_index0;
+		      last_t = t;
+		      n_packets = 1;
+		      n_bytes = vlib_buffer_length_in_chain (vm, b0);
+		    }
+		}
+	      else
+		{
+		  vnet_buffer (b0)->ipsec.flags = IPSEC_FLAG_IPSEC_GRE_TUNNEL;
+		}
+
 	      vlib_buffer_advance (b0, ip4_header_bytes (ip0));
 	      next0 = im->esp_decrypt_next_index;
 	    }
@@ -123,6 +172,20 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 					   n_left_to_next, bi0, next0);
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  if (last_t)
+    {
+      sa0 = pool_elt_at_index (im->sad, last_t->input_sa_index);
+      icv_len = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+
+      n_bytes -= n_packets * (sizeof (ip4_header_t) + sizeof (esp_header_t) +
+			      sizeof (esp_footer_t) + 16 /* aes-cbc IV */  +
+			      icv_len);
+      vlib_increment_combined_counter (vim->combined_sw_if_counters
+				       + VNET_INTERFACE_COUNTER_RX,
+				       thread_index,
+				       last_sw_if_index, n_packets, n_bytes);
     }
 
   vlib_node_increment_counter (vm, ipsec_if_input_node.index,
