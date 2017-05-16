@@ -147,6 +147,7 @@ _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
   ip_source_and_port_range_check_interface_add_del)                     \
 _(DELETE_SUBIF, delete_subif)                                           \
 _(PUNT, punt)                                                           \
+_(PUNT_SOCKET, punt_socket)                                             \
 _(FEATURE_ENABLE_DISABLE, feature_enable_disable)
 
 #define QUOTE_(x) #x
@@ -2011,6 +2012,38 @@ vl_api_punt_t_handler (vl_api_punt_t * mp)
     }
 
   REPLY_MACRO (VL_API_PUNT_REPLY);
+}
+
+static void
+vl_api_punt_socket_t_handler (vl_api_punt_socket_t * mp)
+{
+  vl_api_punt_socket_reply_t *rmp;
+  vlib_main_t *vm = vlib_get_main ();
+  int rv = 0;
+  clib_error_t *error;
+  unix_shared_memory_queue_t *q;
+
+  error = vnet_punt_socket_add_del (vm, mp->ipv, mp->l4_protocol,
+				    ntohs (mp->l4_port), mp->is_add,
+				    mp->pathname);
+  if (error)
+    {
+      rv = -1;
+      clib_error_report (error);
+    }
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = htons (VL_API_PUNT_SOCKET_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = htonl (rv);
+  char *p = vnet_punt_get_server_pathname();
+  /* Abstract pathnames start with \0 */
+  memcpy ((char *) rmp->pathname, p, sizeof(rmp->pathname));
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
 static void
