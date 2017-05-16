@@ -732,10 +732,6 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 
   /* Cleanup session lookup */
   stream_session_half_open_table_del (smm, sst, tc);
-
-  /* Add to established lookup table */
-  handle = (((u64) tc->thread_index) << 32) | (u64) new_s->session_index;
-  stream_session_table_add_for_tc (tc, handle);
 }
 
 void
@@ -1091,10 +1087,18 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->sessions, num_threads - 1);
   vec_validate (smm->session_indices_to_enqueue_by_thread, num_threads - 1);
   vec_validate (smm->tx_buffers, num_threads - 1);
-  vec_validate (smm->fifo_events, num_threads - 1);
-  vec_validate (smm->evts_partially_read, num_threads - 1);
+  vec_validate (smm->pending_event_vector, num_threads - 1);
+  vec_validate (smm->free_event_vector, num_threads - 1);
   vec_validate (smm->current_enqueue_epoch, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
+
+  for (i = 0; i < num_threads; i++)
+    {
+      vec_validate (smm->free_event_vector[i], 0);
+      _vec_len (smm->free_event_vector[i]) = 0;
+      vec_validate (smm->pending_event_vector[i], 0);
+      _vec_len (smm->pending_event_vector[i]) = 0;
+    }
 
 #if SESSION_DBG
   vec_validate (smm->last_event_poll_by_thread, num_threads - 1);

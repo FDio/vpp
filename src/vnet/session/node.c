@@ -154,7 +154,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Can't make any progress */
   if (snd_space0 == 0 || snd_mss0 == 0)
     {
-      vec_add1 (smm->evts_partially_read[thread_index], *e0);
+      vec_add1 (smm->pending_event_vector[thread_index], *e0);
       return 0;
     }
 
@@ -216,7 +216,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      if (svm_fifo_set_event (s0->server_tx_fifo))
 		{
-		  vec_add1 (smm->evts_partially_read[thread_index], *e0);
+		  vec_add1 (smm->pending_event_vector[thread_index], *e0);
 		}
 	      return -1;
 	    }
@@ -324,7 +324,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       /* If we don't already have new event */
       if (svm_fifo_set_event (s0->server_tx_fifo))
 	{
-	  vec_add1 (smm->evts_partially_read[thread_index], *e0);
+	  vec_add1 (smm->pending_event_vector[thread_index], *e0);
 	}
     }
   return 0;
@@ -338,7 +338,7 @@ dequeue_fail:
 
   if (svm_fifo_set_event (s0->server_tx_fifo))
     {
-      vec_add1 (smm->evts_partially_read[thread_index], *e0);
+      vec_add1 (smm->pending_event_vector[thread_index], *e0);
     }
   vlib_put_next_frame (vm, node, next_index, n_left_to_next + 1);
   _vec_len (smm->tx_buffers[thread_index]) += 1;
@@ -388,12 +388,70 @@ session_event_get_session (session_fifo_event_t * e0, u8 thread_index)
   return s0;
 }
 
+void
+dump_thread_0_event_queue (void)
+{
+  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  vlib_main_t *vm = &vlib_global_main;
+  u32 my_thread_index = vm->thread_index;
+  session_fifo_event_t _e, *e = &_e;
+  stream_session_t *s0;
+  int i, index;
+  i8 *headp;
+
+  unix_shared_memory_queue_t *q;
+  q = smm->vpp_event_queues[my_thread_index];
+
+  index = q->head;
+
+  for (i = 0; i < q->cursize; i++)
+    {
+      headp = (i8 *) (&q->data[0] + q->elsize * index);
+      clib_memcpy (e, headp, q->elsize);
+
+      switch (e->event_type)
+	{
+	case FIFO_EVENT_APP_TX:
+	  s0 = session_event_get_session (e, my_thread_index);
+	  fformat (stdout, "[%04d] TX session %d\n", i, s0->session_index);
+	  break;
+
+	case FIFO_EVENT_DISCONNECT:
+	  s0 = stream_session_get_from_handle (e->session_handle);
+	  fformat (stdout, "[%04d] disconnect session %d\n", i,
+		   s0->session_index);
+	  break;
+
+	case FIFO_EVENT_BUILTIN_RX:
+	  s0 = session_event_get_session (e, my_thread_index);
+	  fformat (stdout, "[%04d] builtin_rx %d\n", i, s0->session_index);
+	  break;
+
+	case FIFO_EVENT_RPC:
+	  fformat (stdout, "[%04d] RPC call %llx with %llx\n",
+		   i, (u64) (e->rpc_args.fp), (u64) (e->rpc_args.arg));
+	  break;
+
+	default:
+	  fformat (stdout, "[%04d] unhandled event type %d\n",
+		   i, e->event_type);
+	  break;
+	}
+
+      index++;
+
+      if (index == q->maxsize)
+	index = 0;
+    }
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
-  session_fifo_event_t *my_fifo_events, *e;
+  session_fifo_event_t *my_pending_event_vector, *e;
+  session_fifo_event_t *my_fifo_events;
   u32 n_to_dequeue, n_events;
   unix_shared_memory_queue_t *q;
   application_t *app;
@@ -417,11 +475,13 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (PREDICT_FALSE (q == 0))
     return 0;
 
+  my_fifo_events = smm->free_event_vector[my_thread_index];
+
   /* min number of events we can dequeue without blocking */
   n_to_dequeue = q->cursize;
-  my_fifo_events = smm->fifo_events[my_thread_index];
+  my_pending_event_vector = smm->pending_event_vector[my_thread_index];
 
-  if (n_to_dequeue == 0 && vec_len (my_fifo_events) == 0)
+  if (n_to_dequeue == 0 && vec_len (my_pending_event_vector) == 0)
     return 0;
 
   SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 0);
@@ -431,7 +491,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
    * over them again without dequeuing new ones.
    */
   /* XXX: Block senders to sessions that can't keep up */
-  if (vec_len (my_fifo_events) >= 100)
+  if (0 && vec_len (my_pending_event_vector) >= 100)
     {
       clib_warning ("too many fifo events unsolved");
       goto skip_dequeue;
@@ -452,7 +512,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
     (void) pthread_cond_broadcast (&q->condvar);
   pthread_mutex_unlock (&q->mutex);
 
-  smm->fifo_events[my_thread_index] = my_fifo_events;
+  vec_append (my_fifo_events, my_pending_event_vector);
+
+  _vec_len (my_pending_event_vector) = 0;
+  smm->pending_event_vector[my_thread_index] = my_pending_event_vector;
 
 skip_dequeue:
   n_events = vec_len (my_fifo_events);
@@ -483,8 +546,10 @@ skip_dequeue:
 							&n_tx_packets);
 	  /* Out of buffers */
 	  if (rv < 0)
-	    goto done;
-
+	    {
+	      vec_add1 (smm->pending_event_vector[my_thread_index], *e0);
+	      continue;
+	    }
 	  break;
 	case FIFO_EVENT_DISCONNECT:
 	  s0 = stream_session_get_from_handle (e0->session_handle);
@@ -507,25 +572,8 @@ skip_dequeue:
 	}
     }
 
-done:
-
-  /* Couldn't process all events. Probably out of buffers */
-  if (PREDICT_FALSE (i < n_events))
-    {
-      session_fifo_event_t *partially_read =
-	smm->evts_partially_read[my_thread_index];
-      vec_add (partially_read, &my_fifo_events[i], n_events - i);
-      vec_free (my_fifo_events);
-      smm->fifo_events[my_thread_index] = partially_read;
-      smm->evts_partially_read[my_thread_index] = 0;
-    }
-  else
-    {
-      vec_free (smm->fifo_events[my_thread_index]);
-      smm->fifo_events[my_thread_index] =
-	smm->evts_partially_read[my_thread_index];
-      smm->evts_partially_read[my_thread_index] = 0;
-    }
+  _vec_len (my_fifo_events) = 0;
+  smm->free_event_vector[my_thread_index] = my_fifo_events;
 
   vlib_node_increment_counter (vm, session_queue_node.index,
 			       SESSION_QUEUE_ERROR_TX, n_tx_packets);

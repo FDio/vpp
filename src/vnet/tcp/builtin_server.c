@@ -141,16 +141,14 @@ builtin_server_rx_callback (stream_session_t * s)
   session_fifo_event_t evt;
   static int serial_number = 0;
 
+  tx_fifo = s->server_tx_fifo;
+  rx_fifo = s->server_rx_fifo;
+
   max_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
   max_enqueue = svm_fifo_max_enqueue (s->server_tx_fifo);
 
   if (PREDICT_FALSE (max_dequeue == 0))
-    {
-      return 0;
-    }
-
-  tx_fifo = s->server_tx_fifo;
-  rx_fifo = s->server_rx_fifo;
+    return 0;
 
   /* Number of bytes we're going to copy */
   max_transfer = (max_dequeue < max_enqueue) ? max_dequeue : max_enqueue;
@@ -174,8 +172,6 @@ builtin_server_rx_callback (stream_session_t * s)
 
       return 0;
     }
-
-  svm_fifo_unset_event (rx_fifo);
 
   vec_validate (bsm->rx_buf, max_transfer - 1);
   _vec_len (bsm->rx_buf) = max_transfer;
