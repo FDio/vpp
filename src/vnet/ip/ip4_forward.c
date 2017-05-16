@@ -344,7 +344,6 @@ ip4_lookup_inline (vlib_main_t * vm,
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  ip0 = vlib_buffer_get_current (p0);
-
 	  dst_addr0 = &ip0->dst_address;
 
 	  fib_index0 =
@@ -2608,6 +2607,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  /* Guess we are only writing on simple Ethernet header. */
 	  vnet_rewrite_one_header (adj0[0], ip0, sizeof (ethernet_header_t));
+
 	  if (is_mcast)
 	    {
 	      /*
