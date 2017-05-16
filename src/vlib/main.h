@@ -177,6 +177,10 @@ typedef struct vlib_main_t
 
   /* debugging */
   volatile int parked_at_barrier;
+
+  /* Attempt to do a post-mortem elog dump */
+  int elog_post_mortem_dump;
+
 } vlib_main_t;
 
 /* Global main structure. */

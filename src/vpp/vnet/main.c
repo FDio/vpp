@@ -253,11 +253,13 @@ plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
 VLIB_CONFIG_FUNCTION (plugin_path_config, "plugin_path");
 
 void vl_msg_api_post_mortem_dump (void);
+void elog_post_mortem_dump (void);
 
 void
 os_panic (void)
 {
   vl_msg_api_post_mortem_dump ();
+  elog_post_mortem_dump ();
   abort ();
 }
 
@@ -280,6 +282,7 @@ os_exit (int code)
       recursion_block = 1;
 
       vl_msg_api_post_mortem_dump ();
+      elog_post_mortem_dump ();
       vhost_user_unmap_all ();
       abort ();
     }
@@ -319,6 +322,12 @@ test_crash_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   u64 *p = (u64 *) 0xdefec8ed;
+
+  ELOG_TYPE_DECLARE (e) =
+  {
+  .format = "deliberate crash: touching %x",.format_args = "i4",};
+
+  elog (&vm->elog_main, &e, 0xdefec8ed);
 
   *p = 0xdeadbeef;
 

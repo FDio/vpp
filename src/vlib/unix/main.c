@@ -409,12 +409,12 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 				  format_unformat_error, input);
     }
 
+  error = setup_signal_handlers (um);
+  if (error)
+    return error;
+
   if (!(um->flags & UNIX_FLAG_INTERACTIVE))
     {
-      error = setup_signal_handlers (um);
-      if (error)
-	return error;
-
       openlog (vm->name, LOG_CONS | LOG_PERROR | LOG_PID, LOG_DAEMON);
       clib_error_register_handler (unix_error_handler, um);
 
