@@ -197,10 +197,10 @@ struct _session_manager_main
   u32 **tx_buffers;
 
   /** Per worker-thread vector of partially read events */
-  session_fifo_event_t **evts_partially_read;
+  session_fifo_event_t **free_event_vector;
 
   /** per-worker active event vectors */
-  session_fifo_event_t **fifo_events;
+  session_fifo_event_t **pending_event_vector;
 
   /** vpp fifo event queue */
   unix_shared_memory_queue_t **vpp_event_queues;

@@ -44,7 +44,7 @@ typedef struct
   u32 nitems;
     CLIB_CACHE_LINE_ALIGN_MARK (end_cursize);
 
-  volatile u8 has_event;	/**< non-zero if deq event exists */
+  volatile u32 has_event;	/**< non-zero if deq event exists */
 
   /* Backpointers */
   u32 master_session_index;
@@ -103,7 +103,7 @@ always_inline void
 svm_fifo_unset_event (svm_fifo_t * f)
 {
   /* Probably doesn't need to be atomic. Still, better avoid surprises */
-  __sync_lock_test_and_set (&f->has_event, 0);
+  __sync_lock_release (&f->has_event);
 }
 
 svm_fifo_t *svm_fifo_create (u32 data_size_in_bytes);

@@ -20,7 +20,7 @@
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
-
+#include <vnet/vnet.h>
 
 
 /**
@@ -163,6 +163,16 @@ VLIB_CLI_COMMAND (show_gdb_funcs_command, static) = {
   .short_help = "Describe functions which can be called from gdb",
   .function = show_gdb_command_fn,
 };
+
+vnet_buffer_opaque_t *vb (void *vb_arg)
+{
+    vlib_buffer_t *b = (vlib_buffer_t *)vb_arg;
+    vnet_buffer_opaque_t *rv;
+    
+    rv = vnet_buffer (b);
+
+    return rv;
+}
 
 /* Cafeteria plan, maybe you don't want these functions */
 clib_error_t * 
