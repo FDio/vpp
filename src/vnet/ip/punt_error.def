@@ -17,3 +17,8 @@
 
 punt_error (NONE, "no error")
 punt_error (UDP_PORT, "udp port punt")
+punt_error (SOCKET_RX, "Socket RX")
+punt_error (SOCKET_TX, "Socket TX")
+punt_error (SOCKET_RX_ERROR, "Socket RX error")
+punt_error (SOCKET_TX_ERROR, "Socket TX error")
+
