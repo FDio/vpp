@@ -138,9 +138,7 @@ typedef struct {
   /* bitmap, when set the hash is initialized */
   uword *fa_sessions_on_sw_if_index;
   clib_bihash_40_8_t *fa_sessions_by_sw_if_index;
-  /* pool for FA session data. See fa_node.h */
-  fa_session_t *fa_sessions_pool;
-  /* The process node which is responsible to deleting the sessions */
+  /* The process node which orcherstrates the cleanup */
   u32 fa_cleaner_node_index;
   /* FA session timeouts, in seconds */
   u32 session_timeout_sec[ACL_N_TIMEOUTS];
@@ -192,8 +190,9 @@ typedef struct {
   f64 fa_cleaner_wait_time_increment;
 
   u64 fa_current_cleaner_timer_wait_interval;
-  u32 fa_conn_list_head[ACL_N_TIMEOUTS];
-  u32 fa_conn_list_tail[ACL_N_TIMEOUTS];
+
+  /* per-worker data related t conn management */
+  acl_fa_per_worker_data_t *per_worker_data;
 
   /* Configured session timeout */
   u64 session_timeout[ACL_N_TIMEOUTS];
