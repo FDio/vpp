@@ -410,6 +410,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_id = bond_ether_port_id++;
 	      break;
 
+	    case VNET_DPDK_PMD_VIRTIO_USER:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_VIRTIO_USER;
+	      break;
+
 	    default:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	    }

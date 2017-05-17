@@ -73,7 +73,9 @@ extern vlib_node_registration_t dpdk_input_node;
   _ ("net_cxgbe", CXGBE)          \
   _ ("net_mlx4", MLX4)            \
   _ ("net_mlx5", MLX5)            \
-  _ ("net_dpaa2", DPAA2)
+  _ ("net_dpaa2", DPAA2)          \
+  _ ("net_virtio_user", VIRTIO_USER)
+
 
 typedef enum
 {
@@ -95,6 +97,7 @@ typedef enum
   VNET_DPDK_PORT_TYPE_ETH_SWITCH,
   VNET_DPDK_PORT_TYPE_AF_PACKET,
   VNET_DPDK_PORT_TYPE_ETH_VF,
+  VNET_DPDK_PORT_TYPE_VIRTIO_USER,
   VNET_DPDK_PORT_TYPE_UNKNOWN,
 } dpdk_port_type_t;
 
