@@ -1828,14 +1828,24 @@ acl_init (vlib_main_t * vm)
   am->fa_conn_table_hash_num_buckets = ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS;
   am->fa_conn_table_hash_memory_size = ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
-
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  // vec_validate(am->per_worker_data, os_get_nthreads()-1);
+  vec_validate(am->per_worker_data, tm->n_vlib_mains-1);
+  clib_warning("ACL_FA_INIT: per-worker len: %d", vec_len(am->per_worker_data));
   {
+    u16 wk;
     u8 tt;
-    for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
-       am->fa_conn_list_head[tt] = ~0;
-       am->fa_conn_list_tail[tt] = ~0;
+    for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
+      acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+      vec_validate(pw->fa_conn_list_head, ACL_N_TIMEOUTS);
+      vec_validate(pw->fa_conn_list_tail, ACL_N_TIMEOUTS);
+      for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
+        pw->fa_conn_list_head[tt] = ~0;
+        pw->fa_conn_list_tail[tt] = ~0;
+      }
     }
   }
+  clib_warning("ACL_FA_INIT-DONE: per-worker len: %d", vec_len(am->per_worker_data));
 
   am->fa_min_deleted_sessions_per_interval = ACL_FA_DEFAULT_MIN_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_max_deleted_sessions_per_interval = ACL_FA_DEFAULT_MAX_DELETED_SESSIONS_PER_INTERVAL;
