@@ -47,19 +47,20 @@ else
 	DEB_DEPENDS += default-jdk-headless
 endif
 
-RPM_DEPENDS_GROUPS = 'Development Tools'
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
 RPM_DEPENDS += python-devel
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += python2-virtualenv
+	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
 	RPM_DEPENDS += python-virtualenv
+	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
-RPM_DEPENDS += chrpath libffi-devel
+RPM_DEPENDS += chrpath libffi-devel rpm-build
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 EPEL_DEPENDS = libconfuse-devel ganglia-devel epel-rpm-macros
-ifeq ($(OS_ID),centos)
+ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 	EPEL_DEPENDS += lcov
 else
 	RPM_DEPENDS += lcov
@@ -201,7 +202,7 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E yum install $(CONFIRM) --enablerepo=epel $(EPEL_DEPENDS)
-	@sudo -E debuginfo-install $(CONFIRM) glibc-2.17-106.el7_2.4.x86_64 openssl-libs-1.0.1e-51.el7_2.4.x86_64 zlib-1.2.7-15.el7.x86_64
+	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 else
 	$(error "This option currently works only on Ubuntu or Centos systems")
 endif
