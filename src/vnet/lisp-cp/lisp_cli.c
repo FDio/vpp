@@ -877,6 +877,107 @@ VLIB_CLI_COMMAND (lisp_cp_show_eid_table_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_add_del_l2_arp_entry_command_fn (vlib_main_t * vm,
+                                         unformat_input_t * input,
+				         vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  int rc = 0;
+  u8 hw_addr[6], bd = 0;
+  ip4_address_t ip4;
+  u32 hw_addr_set = 0, ip_set = 0, is_add = 1;
+  gid_address_t _arp, *arp = &_arp;
+
+  memset (&ip4, 0, sizeof (ip4));
+  memset (hw_addr, 0, sizeof (hw_addr));
+  memset (arp, 0, sizeof (*arp));
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "mac %U", unformat_mac_address, hw_addr))
+	hw_addr_set = 1;
+      else if (unformat (line_input, "ip %U", unformat_ip4_address, &ip4))
+	ip_set = 1;
+      else if (unformat (line_input, "del"))
+        is_add = 0;
+      else if (unformat (line_input, "bd %d", &bd))
+        ;
+      else
+	{
+	  error = clib_error_return (0, "parse error");
+	  goto done;
+	}
+    }
+
+  if (!ip_set || !hw_addr_set)
+    {
+      vlib_cli_output (vm, "expected IP and MAC addresses!");
+      return 0;
+    }
+
+  /* build GID address */
+  gid_address_arp_ip4 (arp) = ip4;
+  gid_address_arp_bd (arp) = bd;
+  gid_address_type (arp) = GID_ADDR_ARP;
+  rc = vnet_lisp_add_del_l2_arp_entry (arp, hw_addr, is_add);
+  if (rc)
+    clib_warning ("Failed to %s l2 arp entry!", is_add ? "add" : "delete");
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_add_del_l2_arp_entry_command) = {
+    .path = "one l2 arp entry",
+    .short_help = "one l2 arp entry [del] bd <bd> mac <mac> ip <ipv4>",
+    .function = lisp_add_del_l2_arp_entry_command_fn,
+};
+/* *INDENT-ON* */
+
+static void
+format_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  vlib_main_t *vm = arg;
+
+  u8 * mac[8] = {0, };
+  u32 bd = (u32) kvp->key[0];
+  ip4_address_t _ip, *ip = &_ip;
+  memset (ip, 0, sizeof (*ip));
+
+  *((u64 *)mac) = kvp->value;
+  ip->as_u32 = kvp->key[1];
+
+  vlib_cli_output (vm, "[%d, %U] -> %U", bd, format_ip4_address, ip,
+                   format_mac_address, mac);
+}
+
+static clib_error_t *
+lisp_show_l2_arp_entries_command_fn (vlib_main_t * vm,
+                                         unformat_input_t * input,
+				         vlib_cli_command_t * cmd)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  gid_l2_arp_table_t *arp_table = &lcm->l2_addr_by_gid->arp_table;
+
+  BV (clib_bihash_foreach_key_value_pair) (&arp_table->arp_lookup_table,
+					   format_arp_entry, vm);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_show_l2_arp_entries_command) = {
+    .path = "show one l2 arp entries",
+    .short_help = "Show ONE L2 ARP entries",
+    .function = lisp_show_l2_arp_entries_command_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
