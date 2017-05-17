@@ -26,7 +26,7 @@ DPDK_MLX5_PMD         ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 17.05
-PKG_SUFFIX ?= vpp2
+PKG_SUFFIX ?= vpp3
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -125,7 +125,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_PKTMBUF_HEADROOM,$(DPDK_PKTMBUF_HEADROOM))
 	$(call set,RTE_LIBEAL_USE_HPET,y)
 	$(call set,RTE_BUILD_COMBINE_LIBS,y)
-	$(call set,RTE_LIBRTE_I40E_16BYTE_RX_DESC,y)
 	$(call set,RTE_PCI_CONFIG,y)
 	$(call set,RTE_PCI_EXTENDED_TAG,"on")
 	$(call set,RTE_PCI_MAX_READ_REQUEST_SIZE,4096)
