@@ -565,6 +565,48 @@ format_tcp_half_open_session (u8 * s, va_list * args)
   return format (s, "%U", format_tcp_connection, tc);
 }
 
+u8 *
+format_tcp_sacks (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  sack_block_t *sacks = tc->snd_sacks;
+  sack_block_t *block;
+  vec_foreach (block, sacks)
+  {
+    s = format (s, " start %u end %u\n", block->start - tc->irs,
+		block->end - tc->irs);
+  }
+  return s;
+}
+
+u8 *
+format_tcp_sack_hole (u8 * s, va_list * args)
+{
+  sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
+  s = format (s, "[%u, %u]", hole->start, hole->end);
+  return s;
+}
+
+u8 *
+format_tcp_scoreboard (u8 * s, va_list * args)
+{
+  sack_scoreboard_t *sb = va_arg (*args, sack_scoreboard_t *);
+  sack_scoreboard_hole_t *hole;
+  s = format (s, "head %u tail %u snd_una_adv %u\n", sb->head, sb->tail,
+	      sb->snd_una_adv);
+  s = format (s, "sacked_bytes %u last_sacked_bytes %u", sb->sacked_bytes,
+	      sb->last_sacked_bytes);
+  s = format (s, " max_byte_sacked %u\n", sb->max_byte_sacked);
+  s = format (s, "holes:\n");
+  hole = scoreboard_first_hole (sb);
+  while (hole)
+    {
+      s = format (s, "%U", format_tcp_sack_hole, hole);
+      hole = scoreboard_next_hole (sb, hole);
+    }
+  return s;
+}
+
 transport_connection_t *
 tcp_session_get_transport (u32 conn_index, u32 thread_index)
 {
