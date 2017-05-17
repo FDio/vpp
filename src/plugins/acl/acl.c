@@ -1785,6 +1785,7 @@ done:
   return error;
 }
 
+
 static clib_error_t *
 acl_show_aclplugin_fn (vlib_main_t * vm,
                               unformat_input_t * input,
@@ -1799,6 +1800,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
   if (unformat (input, "sessions"))
     {
       u8 * out0 = 0;
+      u16 wk;
       pool_foreach (swif, im->sw_interfaces,
       ({
         u32 sw_if_index =  swif->sw_if_index;
@@ -1806,6 +1808,24 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
         u64 n_dels = sw_if_index < vec_len(am->fa_session_dels_by_sw_if_index) ? am->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
         out0 = format(out0, "sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
       }));
+      out0 = format(out0, "\n\nPer-worker data:\n");
+      for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
+        acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+	out0 = format(out0, "Worker #%d:\n", wk);
+	out0 = format(out0, "  Next expiry time: %lu\n", pw->next_expiry_time);
+	out0 = format(out0, "  Requeue until time: %lu\n", pw->requeue_until_time);
+	out0 = format(out0, "  Current time wait interval: %lu\n", pw->current_time_wait_interval);
+	out0 = format(out0, "  Count of deleted sessions: %lu\n", pw->cnt_deleted_sessions);
+	out0 = format(out0, "  Delete already deleted: %lu\n", pw->cnt_already_deleted_sessions);
+	out0 = format(out0, "  Session timers restarted: %lu\n", pw->cnt_session_timer_restarted);
+	out0 = format(out0, "  Swipe until this time: %lu\n", pw->swipe_end_time);
+	out0 = format(out0, "  sw_if_index serviced bitmap: %U\n", format_bitmap_hex, pw->serviced_sw_if_index_bitmap);
+	out0 = format(out0, "  pending clear intfc bitmap : %U\n", format_bitmap_hex, pw->pending_clear_sw_if_index_bitmap);
+	out0 = format(out0, "  clear in progress: %u\n", pw->clear_in_process);
+	out0 = format(out0, "  interrupt is pending: %d\n", pw->interrupt_is_pending);
+	out0 = format(out0, "  interrupt is needed: %d\n", pw->interrupt_is_needed);
+	out0 = format(out0, "  interrupt is unwanted: %d\n", pw->interrupt_is_unwanted);
+      }
       out0 = format(out0, "\n\nConn cleaner thread counters:\n");
 #define _(cnt, desc) out0 = format(out0, "             %20lu: %s\n", am->cnt, desc);
       foreach_fa_cleaner_counter;
@@ -1867,14 +1887,24 @@ acl_init (vlib_main_t * vm)
   am->fa_conn_table_hash_num_buckets = ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS;
   am->fa_conn_table_hash_memory_size = ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
-
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  // vec_validate(am->per_worker_data, os_get_nthreads()-1);
+  vec_validate(am->per_worker_data, tm->n_vlib_mains-1);
+  clib_warning("ACL_FA_INIT: per-worker len: %d", vec_len(am->per_worker_data));
   {
+    u16 wk;
     u8 tt;
-    for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
-       am->fa_conn_list_head[tt] = ~0;
-       am->fa_conn_list_tail[tt] = ~0;
+    for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
+      acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+      vec_validate(pw->fa_conn_list_head, ACL_N_TIMEOUTS-1);
+      vec_validate(pw->fa_conn_list_tail, ACL_N_TIMEOUTS-1);
+      for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
+        pw->fa_conn_list_head[tt] = ~0;
+        pw->fa_conn_list_tail[tt] = ~0;
+      }
     }
   }
+  clib_warning("ACL_FA_INIT-DONE: per-worker len: %d", vec_len(am->per_worker_data));
 
   am->fa_min_deleted_sessions_per_interval = ACL_FA_DEFAULT_MIN_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_max_deleted_sessions_per_interval = ACL_FA_DEFAULT_MAX_DELETED_SESSIONS_PER_INTERVAL;
@@ -1883,7 +1913,6 @@ acl_init (vlib_main_t * vm)
   am->fa_cleaner_cnt_delete_by_sw_index = 0;
   am->fa_cleaner_cnt_delete_by_sw_index_ok = 0;
   am->fa_cleaner_cnt_unknown_event = 0;
-  am->fa_cleaner_cnt_deleted_sessions = 0;
   am->fa_cleaner_cnt_timer_restarted = 0;
   am->fa_cleaner_cnt_wait_with_timeout = 0;
 
