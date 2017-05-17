@@ -87,6 +87,24 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(arp.psrc, sip)
         self.assertEqual(arp.pdst, dip)
 
+    def verify_arp_vrrp_resp(self, rx, smac, dmac, sip, dip):
+        ether = rx[Ether]
+        self.assertEqual(ether.dst, dmac)
+        self.assertEqual(ether.src, smac)
+
+        arp = rx[ARP]
+        self.assertEqual(arp.hwtype, 1)
+        self.assertEqual(arp.ptype, 0x800)
+        self.assertEqual(arp.hwlen, 6)
+        self.assertEqual(arp.plen, 4)
+        self.assertEqual(arp.op, arp_opts["is-at"])
+        self.assertNotEqual(arp.hwsrc, smac)
+        self.assertTrue("00:00:5e:00:01" in arp.hwsrc or
+                        "00:00:5E:00:01" in arp.hwsrc)
+        self.assertEqual(arp.hwdst, dmac)
+        self.assertEqual(arp.psrc, sip)
+        self.assertEqual(arp.pdst, dip)
+
     def verify_ip(self, rx, smac, dmac, sip, dip):
         ether = rx[Ether]
         self.assertEqual(ether.dst, dmac)
@@ -736,6 +754,63 @@ class ARPTestCase(VppTestCase):
                               self.pg0.remote_ip4,
                               "10.0.0.1")
         self.pg2.unconfig_ip4()
+
+    def test_arp_vrrp(self):
+        """ ARP reply with VRRP virtual src hw addr """
+
+        #
+        # IP packet destined for pg1 remote host arrives on pg0 resulting
+        # in an ARP request for the address of the remote host on pg1
+        #
+        p0 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+              UDP(sport=1234, dport=1234) /
+              Raw())
+
+        self.pg0.add_stream(p0)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_arp_req(rx1[0],
+                            self.pg1.local_mac,
+                            self.pg1.local_ip4,
+                            self.pg1.remote_ip4)
+
+        #
+        # ARP reply for address of pg1 remote host arrives on pg1 with
+        # the hw src addr set to a value in the VRRP IPv4 range of
+        # MAC addresses
+        #
+        p1 = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+              ARP(op="is-at", hwdst=self.pg1.local_mac,
+                  hwsrc="00:00:5e:00:01:09", pdst=self.pg1.local_ip4,
+                  psrc=self.pg1.remote_ip4))
+
+        self.pg1.add_stream(p1)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        #
+        # IP packet destined for pg1 remote host arrives on pg0 again.
+        # VPP should have an ARP entry for that address now and the packet
+        # should be sent out pg1.
+        #
+        self.pg0.add_stream(p0)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_ip(rx1[0],
+                       self.pg1.local_mac,
+                       "00:00:5e:00:01:09",
+                       self.pg0.remote_ip4,
+                       self.pg1.remote_ip4)
+
+        self.pg1.admin_down()
+        self.pg1.admin_up()
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

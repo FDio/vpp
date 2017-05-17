@@ -107,6 +107,8 @@ typedef struct
 #define ETHERNET_ARP_ARGS_POPULATE  (1<<2)
 } vnet_arp_set_ip4_over_ethernet_rpc_args_t;
 
+static const u8 vrrp_prefix[] = { 0x00, 0x00, 0x5E, 0x00, 0x01 };
+
 static void
 set_ip4_over_ethernet_rpc_callback (vnet_arp_set_ip4_over_ethernet_rpc_args_t
 				    * a);
@@ -991,7 +993,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ethernet_header_t *eth0;
 	  ip4_address_t *if_addr0, proxy_src;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
-	  u8 is_request0, dst_is_local0, is_unnum0;
+	  u8 is_request0, dst_is_local0, is_unnum0, is_vrrp_reply0;
 	  ethernet_proxy_arp_t *pa;
 	  fib_node_index_t dst_fei, src_fei;
 	  fib_prefix_t pfx0;
@@ -1097,10 +1099,19 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Fill in ethernet header. */
 	  eth0 = ethernet_buffer_get_header (p0);
 
+	  is_vrrp_reply0 =
+	    ((arp0->opcode ==
+	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
+	     &&
+	     (!memcmp
+	      (arp0->ip4_over_ethernet[0].ethernet, vrrp_prefix,
+	       sizeof (vrrp_prefix))));
+
 	  /* Trash ARP packets whose ARP-level source addresses do not
-	     match their L2-frame-level source addresses */
+	     match their L2-frame-level source addresses, unless it's
+	     a reply from a VRRP virtual router */
 	  if (memcmp (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
-		      sizeof (eth0->src_address)))
+		      sizeof (eth0->src_address)) && !is_vrrp_reply0)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 	      goto drop2;
@@ -2170,6 +2181,7 @@ arp_term_l2bd (vlib_main_t * vm,
 	  u16 bd_index0;
 	  u32 ip0;
 	  u8 *macp0;
+	  u8 is_vrrp_reply0;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -2218,12 +2230,20 @@ arp_term_l2bd (vlib_main_t * vm,
 	  if (error0)
 	    goto drop;
 
+	  is_vrrp_reply0 =
+	    ((arp0->opcode ==
+	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
+	     &&
+	     (!memcmp
+	      (arp0->ip4_over_ethernet[0].ethernet, vrrp_prefix,
+	       sizeof (vrrp_prefix))));
+
 	  /* Trash ARP packets whose ARP-level source addresses do not
-	     match their L2-frame-level source addresses  */
+	     match their L2-frame-level source addresses, unless it's
+	     a reply from a VRRP virtual router */
 	  if (PREDICT_FALSE
-	      (memcmp
-	       (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
-		sizeof (eth0->src_address))))
+	      (memcmp (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
+		       sizeof (eth0->src_address)) && !is_vrrp_reply0))
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 	      goto drop;
