@@ -1813,7 +1813,8 @@ vhost_user_if_input (vlib_main_t * vm,
 		desc_table[desc_current].len - desc_data_offset;
 	      cpy->len = VLIB_BUFFER_DATA_SIZE - b_current->current_length;
 	      cpy->len = (cpy->len > desc_data_l) ? desc_data_l : cpy->len;
-	      cpy->dst = (uword) vlib_buffer_get_current (b_current);
+	      cpy->dst = (uword) (vlib_buffer_get_current (b_current) +
+				  b_current->current_length);
 	      cpy->src = desc_table[desc_current].addr + desc_data_offset;
 
 	      desc_data_offset += cpy->len;
