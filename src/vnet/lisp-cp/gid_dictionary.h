@@ -22,6 +22,7 @@
 #include <vppinfra/bihash_template.h>
 
 #define GID_LOOKUP_MISS ((u32)~0)
+#define GID_LOOKUP_MISS_L2 ((u64)~0)
 
 /* Default size of the ip4 hash table */
 #define IP4_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
@@ -34,6 +35,10 @@
 /* Default size of the MAC hash table */
 #define MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
+/* Default size of the ARP hash table */
+#define ARP_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define ARP_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
 typedef void (*foreach_subprefix_match_cb_t) (u32, void *);
 
@@ -81,6 +86,17 @@ typedef struct gid_mac_table
 
 typedef struct
 {
+  BVT (clib_bihash) arp_lookup_table;
+  u32 arp_lookup_table_nbuckets;
+  uword arp_lookup_table_size;
+  u64 count;
+} gid_l2_arp_table_t;
+
+typedef struct
+{
+  /** L2 ARP table */
+  gid_l2_arp_table_t arp_table;
+
   /** destination IP LPM ip4 lookup table */
   gid_ip4_table_t dst_ip4_table;
 
@@ -99,10 +115,10 @@ typedef struct
 } gid_dictionary_t;
 
 u32
-gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u32 value,
+gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
 			u8 is_add);
 
-u32 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key);
+u64 gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key);
 u32 gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
 			      gid_address_t * src);
 
@@ -111,6 +127,11 @@ void gid_dictionary_init (gid_dictionary_t * db);
 void
 gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
 			    foreach_subprefix_match_cb_t cb, void *arg);
+
+void
+gid_dict_foreach_l2_arp_entry (gid_dictionary_t * db, void (*cb)
+			       (BVT (clib_bihash_kv) * kvp, void *arg),
+			       void *ht);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
 
