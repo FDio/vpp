@@ -59,14 +59,28 @@ typedef struct {
     u8 as_u8[2];
     u16 as_u16;
   } tcp_flags_seen; ;     /* +2 bytes = 62 */
-  u8 link_list_id;           /* +1 bytes = 63 */
-  u8 reserved1;           /* +1 bytes = 64 */
-  u32 link_prev_idx;
-  u32 link_next_idx;
-  u64 link_enqueue_time;
-  u64 reserved2[6];
+  u16 thread_index;          /* +2 bytes = 64 */
+  u64 link_enqueue_time;  /* 8 byte = 8 */
+  u32 link_prev_idx;      /* +4 bytes = 12 */
+  u32 link_next_idx;      /* +4 bytes = 16 */
+  u8 link_list_id;        /* +1 bytes = 17 */
+  u8 reserved1[7];        /* +7 bytes = 24 */
+  u64 reserved2[5];       /* +5*8 bytes = 64 */
 } fa_session_t;
 
+
+/* This structure is used to fill in the u64 value
+   in the per-sw-if-index hash table */
+typedef struct {
+  union {
+    u64 as_u64;
+    struct {
+      u32 session_index;
+      u16 thread_index;
+      u16 reserved0;
+    };
+  };
+} fa_full_session_id_t;
 
 /*
  * A few compile-time constraints on the size and the layout of the union, to ensure
@@ -79,9 +93,55 @@ CT_ASSERT_EQUAL(fa_l4_key_t_is_8, sizeof(fa_session_l4_key_t), sizeof(u64));
 CT_ASSERT_EQUAL(fa_packet_info_t_is_8, sizeof(fa_packet_info_t), sizeof(u64));
 CT_ASSERT_EQUAL(fa_l3_kv_size_is_48, sizeof(fa_5tuple_t), sizeof(clib_bihash_kv_40_8_t));
 
-/* Let's try to fit within the cacheline */
-CT_ASSERT_EQUAL(fa_session_t_size_is_64, sizeof(fa_session_t), 128);
+/* Let's try to fit within two cachelines */
+CT_ASSERT_EQUAL(fa_session_t_size_is_128, sizeof(fa_session_t), 128);
+
+/* Session ID MUST be the same as u64 */
+CT_ASSERT_EQUAL(fa_full_session_id_size_is_64, sizeof(fa_full_session_id_t), sizeof(u64));
 #undef CT_ASSERT_EQUAL
+
+typedef struct {
+  /* The pool of sessions managed by this worker */
+  fa_session_t *fa_sessions_pool;
+  /* per-worker ACL_N_TIMEOUTS of conn lists */
+  u32 *fa_conn_list_head;
+  u32 *fa_conn_list_tail;
+  /* Vector of expired connections retrieved from lists */
+  u32 *expired;
+  /* the earliest next expiry time */
+  u64 next_expiry_time;
+  /* if not zero, look at all the elements until their enqueue timestamp is after below one */
+  u64 requeue_until_time;
+  /* Current time between the checks */
+  u64 current_time_wait_interval;
+  /* Counter of how many sessions we did delete */
+  u64 cnt_deleted_sessions;
+  /* Counter of already deleted sessions being deleted - should not increment unless a bug */
+  u64 cnt_already_deleted_sessions;
+  /* Number of times we requeued a session to a head of the list */
+  u64 cnt_session_timer_restarted;
+  /* swipe up to this enqueue time, rather than following the timeouts */
+  u64 swipe_end_time;
+  /* bitmap of sw_if_index serviced by this worker */
+  uword *serviced_sw_if_index_bitmap;
+  /* bitmap of sw_if_indices to clear. set by main thread, cleared by worker */
+  uword *pending_clear_sw_if_index_bitmap;
+  /* atomic, indicates that the swipe-deletion of connections is in progress */
+  u32 clear_in_process;
+  /* Interrupt is pending from main thread */
+  int interrupt_is_pending;
+  /*
+   * Interrupt node on the worker thread sets this if it knows there is
+   * more work to do, but it has to finish to avoid hogging the
+   * core for too long.
+   */
+  int interrupt_is_needed;
+  /*
+   * Set to indicate that the interrupt node wants to get less interrupts
+   * because there is not enough work for the current rate.
+   */
+  int interrupt_is_unwanted;
+} acl_fa_per_worker_data_t;
 
 
 typedef enum {
