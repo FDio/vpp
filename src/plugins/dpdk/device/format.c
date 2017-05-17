@@ -205,6 +205,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
       rte_eth_dev_info_get (i, &dev_info);
       return format (s, "af_packet%d", dm->devices[i].port_id);
 
+    case VNET_DPDK_PORT_TYPE_VIRTIO_USER:
+      device_name = "VirtioUser";
+      break;
+
     default:
     case VNET_DPDK_PORT_TYPE_UNKNOWN:
       device_name = "UnknownEthernet";
@@ -300,6 +304,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_DPAA2:
       dev_type = "NXP DPAA2 Mac";
+      break;
+
+    case VNET_DPDK_PMD_VIRTIO_USER:
+      dev_type = "Virtio User";
       break;
 
     default:
