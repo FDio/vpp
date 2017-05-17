@@ -1079,6 +1079,34 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
   return rv;
 }
 
+/*
+ * If the client does not allocate enough memory for a variable-length
+ * message, and then proceed to use it as if the full memory allocated,
+ * absent the check we happily consume that on the VPP side, and go
+ * along as if nothing happened. However, the resulting
+ * effects range from just garbage in the API decode
+ * (because the decoder snoops too far), to potential memory
+ * corruptions.
+ *
+ * This verifies that the actual length of the message is
+ * at least expected_len, and complains loudly if it is not.
+ *
+ * A failing check here is 100% a software bug on the API user side,
+ * so we might as well yell.
+ *
+ */
+static int verify_message_len(void *mp, u32 expected_len, char *where)
+{
+  u32 supplied_len = vl_msg_api_get_msg_length (mp);
+  if (supplied_len < expected_len) {
+      clib_warning("%s: Supplied message length %d is less than expected %d",
+                   where, supplied_len, expected_len);
+      return 0;
+  } else {
+      return 1;
+  }
+}
+
 /* API message handler */
 static void
 vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
@@ -1087,8 +1115,14 @@ vl_api_acl_add_replace_t_handler (vl_api_acl_add_replace_t * mp)
   acl_main_t *am = &acl_main;
   int rv;
   u32 acl_list_index = ntohl (mp->acl_index);
+  u32 acl_count = ntohl (mp->count);
+  u32 expected_len = sizeof(*mp) + acl_count*sizeof(mp->r[0]);
 
-  rv = acl_add_list (ntohl (mp->count), mp->r, &acl_list_index, mp->tag);
+  if (verify_message_len(mp, expected_len, "acl_add_replace")) {
+      rv = acl_add_list (acl_count, mp->r, &acl_list_index, mp->tag);
+  } else {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+  }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_ACL_ADD_REPLACE_REPLY,
@@ -1344,9 +1378,14 @@ vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
   acl_main_t *am = &acl_main;
   int rv;
   u32 acl_list_index = ~0;
+  u32 acl_count = ntohl (mp->count);
+  u32 expected_len = sizeof(*mp) + acl_count*sizeof(mp->r[0]);
 
-  rv =
-    macip_acl_add_list (ntohl (mp->count), mp->r, &acl_list_index, mp->tag);
+  if (verify_message_len(mp, expected_len, "macip_acl_add")) {
+      rv = macip_acl_add_list (acl_count, mp->r, &acl_list_index, mp->tag);
+  } else {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+  }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_MACIP_ACL_ADD_REPLY,
