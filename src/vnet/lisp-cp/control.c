@@ -22,6 +22,8 @@
 #include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/ethernet/arp_packet.h>
+#include <vnet/ethernet/packet.h>
 
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -821,6 +823,99 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
   return vnet_lisp_map_cache_add_del (a, map_index_result);
 }
 
+static void
+add_l2_arp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  u32 **ht = arg;
+  u32 bd = (u32) kvp->key[0];
+  hash_set (ht[0], bd, 0);
+}
+
+u32 *
+vnet_lisp_l2_arp_bds_get (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u32 *bds = 0;
+
+  gid_dict_foreach_l2_arp_entry (&lcm->mapping_index_by_gid,
+				 add_l2_arp_bd, &bds);
+  return bds;
+}
+
+typedef struct
+{
+  void *vector;
+  u32 bd;
+} lisp_add_l2_arp_args_t;
+
+static void
+add_l2_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  lisp_add_l2_arp_args_t *a = arg;
+  lisp_api_l2_arp_entry_t **vector = a->vector, e;
+
+  if ((u32) kvp->key[0] == a->bd)
+    {
+      mac_copy (e.mac, (void *) &kvp->value);
+      e.ip4 = (u32) kvp->key[1];
+      vec_add1 (vector[0], e);
+    }
+}
+
+lisp_api_l2_arp_entry_t *
+vnet_lisp_l2_arp_entries_get_by_bd (u32 bd)
+{
+  lisp_api_l2_arp_entry_t *entries = 0;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_add_l2_arp_args_t a;
+
+  a.vector = &entries;
+  a.bd = bd;
+
+  gid_dict_foreach_l2_arp_entry (&lcm->mapping_index_by_gid,
+				 add_l2_arp_entry, &a);
+  return entries;
+}
+
+int
+vnet_lisp_add_del_l2_arp_entry (gid_address_t * key, u8 * mac, u8 is_add)
+{
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  int rc = 0;
+
+  u64 res = gid_dictionary_lookup (&lcm->mapping_index_by_gid, key);
+  if (is_add)
+    {
+      if (res != GID_LOOKUP_MISS_L2)
+	{
+	  clib_warning ("Entry %U exists in DB!", format_gid_address, key);
+	  return VNET_API_ERROR_ENTRY_ALREADY_EXISTS;
+	}
+      u64 val = mac_to_u64 (mac);
+      gid_dictionary_add_del (&lcm->mapping_index_by_gid, key, val,
+			      1 /* is_add */ );
+    }
+  else
+    {
+      if (res == GID_LOOKUP_MISS_L2)
+	{
+	  clib_warning ("ONE ARP entry %U not found - cannot delete!",
+			format_gid_address, key);
+	  return -1;
+	}
+      gid_dictionary_add_del (&lcm->mapping_index_by_gid, key, 0,
+			      0 /* is_add */ );
+    }
+
+  return rc;
+}
+
 int
 vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
 {
@@ -830,7 +925,7 @@ vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
   if (vnet_lisp_enable_disable_status () == 0)
     {
       clib_warning ("LISP is disabled!");
-      return -1;
+      return VNET_API_ERROR_LISP_DISABLED;
     }
 
   dp_table_by_vni = is_l2 ? &lcm->bd_id_by_vni : &lcm->table_id_by_vni;
@@ -1931,7 +2026,8 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
 /* Statistics (not really errors) */
 #define foreach_lisp_cp_lookup_error           \
 _(DROP, "drop")                                \
-_(MAP_REQUESTS_SENT, "map-request sent")
+_(MAP_REQUESTS_SENT, "map-request sent")       \
+_(ARP_REPLY_TX, "ARP replies sent")
 
 static char *lisp_cp_lookup_error_strings[] = {
 #define _(sym,string) string,
@@ -1950,6 +2046,7 @@ typedef enum
 typedef enum
 {
   LISP_CP_LOOKUP_NEXT_DROP,
+  LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX,
   LISP_CP_LOOKUP_N_NEXT,
 } lisp_cp_lookup_next_t;
 
@@ -2710,10 +2807,8 @@ lisp_get_vni_from_buffer_ip (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 }
 
 always_inline u32
-lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
+lisp_get_bd_from_buffer_eth (vlib_buffer_t * b)
 {
-  uword *vnip;
-  u32 vni = ~0;
   u32 sw_if_index0;
 
   l2input_main_t *l2im = &l2input_main;
@@ -2724,12 +2819,21 @@ lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
   config = vec_elt_at_index (l2im->configs, sw_if_index0);
   bd_config = vec_elt_at_index (l2im->bd_configs, config->bd_index);
 
-  vnip = hash_get (lcm->vni_by_bd_id, bd_config->bd_id);
+  return bd_config->bd_id;
+}
+
+always_inline u32
+lisp_get_vni_from_buffer_eth (lisp_cp_main_t * lcm, vlib_buffer_t * b)
+{
+  uword *vnip;
+  u32 vni = ~0;
+  u32 bd = lisp_get_bd_from_buffer_eth (b);
+
+  vnip = hash_get (lcm->vni_by_bd_id, bd);
   if (vnip)
     vni = vnip[0];
   else
-    clib_warning ("bridge domain %d is not mapped to any vni!",
-		  config->bd_index);
+    clib_warning ("bridge domain %d is not mapped to any vni!", bd);
 
   return vni;
 }
@@ -2743,6 +2847,9 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 
   memset (src, 0, sizeof (*src));
   memset (dst, 0, sizeof (*dst));
+
+  gid_address_type (dst) = GID_ADDR_NO_ADDRESS;
+  gid_address_type (src) = GID_ADDR_NO_ADDRESS;
 
   if (LISP_AFI_IP == type || LISP_AFI_IP6 == type)
     {
@@ -2767,19 +2874,35 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
   else if (LISP_AFI_MAC == type)
     {
       ethernet_header_t *eh;
+      ethernet_arp_header_t *ah;
 
       eh = vlib_buffer_get_current (b);
 
-      gid_address_type (src) = GID_ADDR_MAC;
-      gid_address_type (dst) = GID_ADDR_MAC;
-      mac_copy (&gid_address_mac (src), eh->src_address);
-      mac_copy (&gid_address_mac (dst), eh->dst_address);
+      if (clib_net_to_host_u16 (eh->type) == ETHERNET_TYPE_ARP)
+	{
+	  ah = (ethernet_arp_header_t *) (((u8 *) eh) + sizeof (*eh));
+	  if (clib_net_to_host_u16 (ah->opcode)
+	      != ETHERNET_ARP_OPCODE_request)
+	    return;
 
-      /* get vni */
-      vni = lisp_get_vni_from_buffer_eth (lcm, b);
+	  gid_address_type (dst) = GID_ADDR_ARP;
+	  gid_address_arp_bd (dst) = lisp_get_bd_from_buffer_eth (b);
+	  clib_memcpy (&gid_address_arp_ip4 (dst),
+		       &ah->ip4_over_ethernet[1].ip4, 4);
+	}
+      else
+	{
+	  gid_address_type (src) = GID_ADDR_MAC;
+	  gid_address_type (dst) = GID_ADDR_MAC;
+	  mac_copy (&gid_address_mac (src), eh->src_address);
+	  mac_copy (&gid_address_mac (dst), eh->dst_address);
 
-      gid_address_vni (dst) = vni;
-      gid_address_vni (src) = vni;
+	  /* get vni */
+	  vni = lisp_get_vni_from_buffer_eth (lcm, b);
+
+	  gid_address_vni (dst) = vni;
+	  gid_address_vni (src) = vni;
+	}
     }
   else if (LISP_AFI_LCAF == type)
     {
@@ -2793,37 +2916,80 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, int overlay)
 {
-  u32 *from, *to_next_drop, di, si;
+  u32 *from, *to_next, di, si;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  u32 pkts_mapped = 0;
-  uword n_left_from, n_left_to_next_drop;
+  u32 pkts_mapped = 0, next_index;
+  uword n_left_from, n_left_to_next;
+  vnet_main_t *vnm = vnet_get_main ();
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
+  next_index = node->cached_next_index;
 
   while (n_left_from > 0)
     {
-      vlib_get_next_frame (vm, node, LISP_CP_LOOKUP_NEXT_DROP,
-			   to_next_drop, n_left_to_next_drop);
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (n_left_from > 0 && n_left_to_next_drop > 0)
+      while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 pi0;
+	  u32 pi0, sw_if_index0, next0;
+	  u64 mac0;
 	  vlib_buffer_t *b0;
 	  gid_address_t src, dst;
+	  ethernet_arp_header_t *arp0;
+	  ethernet_header_t *eth0;
+	  vnet_hw_interface_t *hw_if0;
 
 	  pi0 = from[0];
 	  from += 1;
 	  n_left_from -= 1;
-	  to_next_drop[0] = pi0;
-	  to_next_drop += 1;
-	  n_left_to_next_drop -= 1;
+	  to_next[0] = pi0;
+	  to_next += 1;
+	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, pi0);
-	  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
 
 	  /* src/dst eid pair */
 	  get_src_and_dst_eids_from_buffer (lcm, b0, &src, &dst, overlay);
+
+	  if (gid_address_type (&dst) == GID_ADDR_ARP)
+	    {
+	      mac0 = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
+	      if (GID_LOOKUP_MISS_L2 != mac0)
+		{
+		  /* send ARP reply */
+
+		  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
+
+		  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+
+		  eth0 = vlib_buffer_get_current (b0);
+		  arp0 = (ethernet_arp_header_t *) (((u8 *) eth0)
+						    + sizeof (*eth0));
+		  arp0->opcode =
+		    clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
+		  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
+		  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
+			       (u8 *) & mac0, 6);
+		  clib_memcpy (&arp0->ip4_over_ethernet[0].ip4,
+			       &gid_address_arp_ip4 (&dst), 4);
+
+		  /* Hardware must be ethernet-like. */
+		  ASSERT (vec_len (hw_if0->hw_address) == 6);
+
+		  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+		  clib_memcpy (eth0->src_address, hw_if0->hw_address, 6);
+
+		  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_ARP_REPLY_TX];
+		  next0 = LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX;
+		  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+						   to_next,
+						   n_left_to_next, pi0,
+						   next0);
+		}
+	      continue;
+	    }
 
 	  /* if we have remote mapping for destination already in map-chache
 	     add forwarding tunnel directly. If not send a map-request */
@@ -2859,6 +3025,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      pkts_mapped++;
 	    }
 
+	  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, b0,
@@ -2871,10 +3038,13 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	    }
 	  gid_address_free (&dst);
 	  gid_address_free (&src);
+	  next0 = LISP_CP_LOOKUP_NEXT_DROP;
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next,
+					   n_left_to_next, pi0, next0);
 	}
 
-      vlib_put_next_frame (vm, node, LISP_CP_LOOKUP_NEXT_DROP,
-			   n_left_to_next_drop);
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vlib_node_increment_counter (vm, node->node_index,
 			       LISP_CP_LOOKUP_ERROR_MAP_REQUESTS_SENT,
@@ -2926,6 +3096,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
+      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
@@ -2945,6 +3116,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
+      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
@@ -2964,6 +3136,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
+      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
@@ -2983,6 +3156,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_nsh_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
+      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
