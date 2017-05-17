@@ -584,6 +584,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
       last_hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX,
 					  tc->snd_una, tc->snd_una_max);
       sb->tail = scoreboard_hole_index (sb, last_hole);
+      tmp = tc->opt.sacks[vec_len (tc->opt.sacks) - 1];
+      sb->max_byte_sacked = tmp.end;
     }
   else
     {
@@ -623,28 +625,34 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		  sb->sacked_bytes += scoreboard_hole_bytes (hole);
 		}
 
-	      /* snd_una needs to be advanced */
-	      if (seq_geq (ack, hole->end))
-		{
-		  if (next_hole && seq_lt (ack, next_hole->start))
-		    sb->snd_una_adv = next_hole->start - ack;
-		  else
-		    sb->snd_una_adv = sb->max_byte_sacked - ack;
-
-		  /* all these can be delivered */
-		  sb->sacked_bytes -= sb->snd_una_adv;
-		}
-
 	      /* About to remove last hole */
 	      if (hole == last_hole)
 		{
 		  sb->tail = hole->prev;
 		  last_hole = scoreboard_last_hole (sb);
-		  /* keep track of max byte sacked in case the last hole
+		  /* keep track of max byte sacked for when the last hole
 		   * is acked */
 		  if (seq_gt (hole->end, sb->max_byte_sacked))
-		    sb->max_byte_sacked = hole->end;
+                    sb->max_byte_sacked = hole->end;
 		}
+
+	      /* snd_una needs to be advanced */
+	      if (blk->end == ack && seq_geq (ack, hole->end))
+                {
+                  if (next_hole && seq_lt (ack, next_hole->start))
+                    {
+                        sb->snd_una_adv = next_hole->start - ack;
+
+                        /* all these can be delivered */
+                        sb->sacked_bytes -= sb->snd_una_adv;
+                    }
+                  else if (!next_hole)
+                    {
+                      sb->snd_una_adv = sb->max_byte_sacked - ack;
+                      sb->sacked_bytes -= sb->snd_una_adv;
+                    }
+                }
+
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
