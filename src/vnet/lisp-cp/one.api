@@ -348,6 +348,79 @@ autoreply manual_print manual_endian define one_add_del_remote_mapping
   vl_api_one_remote_locator_t rlocs[rloc_num];
 };
 
+/** \brief Add/delete L2 ARP entries
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add if non-zero; delete otherwise
+    @param bd - bridge domain
+    @param mac - MAC address
+    @param ip4 - IPv4 address
+*/
+autoreply define one_add_del_l2_arp_entry
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 mac[6];
+  u32 bd;
+  u32 ip4;
+};
+
+/** \brief Request for L2 ARP entries from specified bridge domain
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd - bridge domain
+*/
+define one_l2_arp_entries_get
+{
+  u32 client_index;
+  u32 context;
+  u32 bd;
+};
+
+typeonly manual_print manual_endian define one_l2_arp_entry
+{
+  u8 mac[6];
+  u32 ip4;
+};
+
+/** \brief Reply with L2 ARP entries from specified bridge domain
+    @param context - sender context, to match reply w/ request
+    @param retval - error code
+    @param count - number of elements in the list
+    @param vl_api_one_arp_entry_t - list of entries
+*/
+manual_print manual_endian define one_l2_arp_entries_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_one_l2_arp_entry_t entries[count];
+};
+
+/** \brief Request for list of bridge domains used by L2 ARP table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define one_l2_arp_bd_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply with list of bridge domains used by L2 ARP table
+    @param context - sender context, to match reply w/ request
+    @param count - number of elements in the list
+    @param bridge_domains - list of BDs
+*/
+manual_print manual_endian define one_l2_arp_bd_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 bridge_domains[count];
+};
+
 /** \brief add or delete ONE adjacency adjacency
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

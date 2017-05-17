@@ -256,6 +256,9 @@ format_gid_address (u8 * s, va_list * args)
 		     &gid_address_mac (a));
     case GID_ADDR_NSH:
       return format (s, "%U", format_nsh_address, &gid_address_nsh (a));
+    case GID_ADDR_ARP:
+      return format (s, "[%d, %U]", gid_address_arp_bd (a),
+		     format_ip4_address, &gid_address_arp_ip4 (a));
     default:
       clib_warning ("Can't format gid type %d", type);
       return 0;
