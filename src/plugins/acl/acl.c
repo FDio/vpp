@@ -1828,12 +1828,18 @@ acl_init (vlib_main_t * vm)
   am->fa_conn_table_hash_num_buckets = ACL_FA_CONN_TABLE_DEFAULT_HASH_NUM_BUCKETS;
   am->fa_conn_table_hash_memory_size = ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
-
+  vec_validate(am->per_worker_data, vec_len (vlib_mains));
   {
+    u16 wk;
     u8 tt;
-    for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
-       am->fa_conn_list_head[tt] = ~0;
-       am->fa_conn_list_tail[tt] = ~0;
+    for (wk = 0; wk < vec_len (vlib_mains); wk++) {
+      acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+      vec_validate(pw->fa_conn_list_head, ACL_N_TIMEOUTS);
+      vec_validate(pw->fa_conn_list_tail, ACL_N_TIMEOUTS);
+      for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
+        pw->fa_conn_list_head[tt] = ~0;
+        pw->fa_conn_list_tail[tt] = ~0;
+      }
     }
   }
 
