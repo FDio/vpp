@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_4674e5ce",
+        "filename": "src/uri/uri_udp_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-17T18:55:01Z",
+      "side": 1,
+      "message": "Could you make this configurable via a macro at the top of the file. It\u0027s easier to switch then than to start searching for the #ifs",
+      "range": {
+        "startLine": 291,
+        "startChar": 4,
+        "endLine": 291,
+        "endChar": 5
+      },
+      "revId": "7cd5c78924a108edbd899a348e57fa4bff842b43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_c64fb591",
+        "filename": "src/uri/uri_udp_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 355,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-17T18:55:01Z",
+      "side": 1,
+      "message": "Could you try to minimize the amount of code duplication? The *_unidirection functions have a lot in common with their full-duplex counterparts.",
+      "range": {
+        "startLine": 355,
+        "startChar": 4,
+        "endLine": 355,
+        "endChar": 5
+      },
+      "revId": "7cd5c78924a108edbd899a348e57fa4bff842b43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_2681d98f",
+        "filename": "src/uri/uri_udp_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1063,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-17T18:55:01Z",
+      "side": 1,
+      "message": "\"make fixstyle\" under vpp/",
+      "range": {
+        "startLine": 1063,
+        "startChar": 1,
+        "endLine": 1063,
+        "endChar": 2
+      },
+      "revId": "7cd5c78924a108edbd899a348e57fa4bff842b43",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
