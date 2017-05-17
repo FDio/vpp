@@ -533,12 +533,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, tmp;
   sack_scoreboard_hole_t *hole, *next_hole, *last_hole, *new_hole;
-  u32 blk_index = 0, old_sacked_bytes, hole_index;
+  u32 blk_index = 0, old_sacked_bytes, delivered_bytes, hole_index;
   int i, j;
 
   sb->last_sacked_bytes = 0;
   sb->snd_una_adv = 0;
   old_sacked_bytes = sb->sacked_bytes;
+  delivered_bytes = 0;
 
   if (!tcp_opts_sack (&tc->opt) && sb->head == TCP_INVALID_SACK_HOLE_INDEX)
     return;
@@ -584,6 +585,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
       last_hole = scoreboard_insert_hole (sb, TCP_INVALID_SACK_HOLE_INDEX,
 					  tc->snd_una, tc->snd_una_max);
       sb->tail = scoreboard_hole_index (sb, last_hole);
+      tmp = tc->opt.sacks[vec_len (tc->opt.sacks) - 1];
+      sb->max_byte_sacked = tmp.end;
     }
   else
     {
@@ -614,25 +617,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		{
 		  /* Bytes lost because snd_wnd left edge advances */
 		  if (next_hole && seq_leq (next_hole->start, ack))
-		    sb->sacked_bytes -= next_hole->start - hole->end;
+		    delivered_bytes += next_hole->start - hole->end;
 		  else
-		    sb->sacked_bytes -= ack - hole->end;
+		    delivered_bytes += ack - hole->end;
 		}
 	      else
 		{
 		  sb->sacked_bytes += scoreboard_hole_bytes (hole);
-		}
-
-	      /* snd_una needs to be advanced */
-	      if (seq_geq (ack, hole->end))
-		{
-		  if (next_hole && seq_lt (ack, next_hole->start))
-		    sb->snd_una_adv = next_hole->start - ack;
-		  else
-		    sb->snd_una_adv = sb->max_byte_sacked - ack;
-
-		  /* all these can be delivered */
-		  sb->sacked_bytes -= sb->snd_una_adv;
 		}
 
 	      /* About to remove last hole */
@@ -640,11 +631,29 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		{
 		  sb->tail = hole->prev;
 		  last_hole = scoreboard_last_hole (sb);
-		  /* keep track of max byte sacked in case the last hole
+		  /* keep track of max byte sacked for when the last hole
 		   * is acked */
 		  if (seq_gt (hole->end, sb->max_byte_sacked))
 		    sb->max_byte_sacked = hole->end;
 		}
+
+	      /* snd_una needs to be advanced */
+	      if (blk->end == ack && seq_geq (ack, hole->end))
+		{
+		  if (next_hole && seq_lt (ack, next_hole->start))
+		    {
+		      sb->snd_una_adv = next_hole->start - ack;
+
+		      /* all these can be delivered */
+		      delivered_bytes += sb->snd_una_adv;
+		    }
+		  else if (!next_hole)
+		    {
+		      sb->snd_una_adv = sb->max_byte_sacked - ack;
+		      delivered_bytes += sb->snd_una_adv;
+		    }
+		}
+
 	      scoreboard_remove_hole (sb, hole);
 	      hole = next_hole;
 	    }
@@ -693,8 +702,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	}
     }
 
-  sb->last_sacked_bytes = sb->sacked_bytes + sb->snd_una_adv
-    - old_sacked_bytes;
+  sb->last_sacked_bytes = sb->sacked_bytes - old_sacked_bytes;
+  sb->sacked_bytes -= delivered_bytes;
 }
 
 /** Update snd_wnd
