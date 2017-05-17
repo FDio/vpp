@@ -35,13 +35,19 @@
 }
 
 static int
-tcp_test_sack_rx ()
+tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_connection_t _tc, *tc = &_tc;
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *sacks = 0, block;
   sack_scoreboard_hole_t *hole;
-  int i;
+  int i, verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+    }
 
   memset (tc, 0, sizeof (*tc));
 
@@ -69,6 +75,10 @@ tcp_test_sack_rx ()
   tc->opt.n_sack_blocks = vec_len (tc->opt.sacks);
   tcp_rcv_sacks (tc, 0);
 
+  if (verbose)
+    vlib_cli_output (vm, "sb after even blocks:\n%U", format_tcp_scoreboard,
+		     sb);
+
   TCP_TEST ((pool_elts (sb->holes) == 5),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
 
@@ -83,7 +93,8 @@ tcp_test_sack_rx ()
   TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
   TCP_TEST ((sb->last_sacked_bytes == 400),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
-
+  TCP_TEST ((sb->max_byte_sacked == 900),
+	    "max byte sacked %u", sb->max_byte_sacked);
   /*
    * Inject odd blocks
    */
@@ -95,6 +106,10 @@ tcp_test_sack_rx ()
     }
   tc->opt.n_sack_blocks = vec_len (tc->opt.sacks);
   tcp_rcv_sacks (tc, 0);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb after odd blocks:\n%U", format_tcp_scoreboard,
+		     sb);
 
   hole = scoreboard_first_hole (sb);
   TCP_TEST ((pool_elts (sb->holes) == 1),
@@ -112,6 +127,9 @@ tcp_test_sack_rx ()
    *  Ack until byte 100, all bytes are now acked + sacked
    */
   tcp_rcv_sacks (tc, 100);
+  if (verbose)
+    vlib_cli_output (vm, "ack until byte 100:\n%U", format_tcp_scoreboard,
+		     sb);
 
   TCP_TEST ((pool_elts (sb->holes) == 0),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
@@ -133,10 +151,16 @@ tcp_test_sack_rx ()
   block.end = 1300;
   vec_add1 (tc->opt.sacks, block);
 
+  if (verbose)
+    vlib_cli_output (vm, "add [1200, 1300]:\n%U", format_tcp_scoreboard, sb);
   tc->snd_una_max = 1500;
   tc->snd_una = 1000;
   tc->snd_nxt = 1500;
   tcp_rcv_sacks (tc, 1000);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb snd_una_max 1500, snd_una 1000:\n%U",
+		     format_tcp_scoreboard, sb);
 
   TCP_TEST ((sb->snd_una_adv == 0),
 	    "snd_una_adv after ack %u", sb->snd_una_adv);
@@ -145,6 +169,10 @@ tcp_test_sack_rx ()
   hole = scoreboard_first_hole (sb);
   TCP_TEST ((hole->start == 1000 && hole->end == 1200),
 	    "first hole start %u end %u", hole->start, hole->end);
+  TCP_TEST ((sb->snd_una_adv == 0),
+	    "snd_una_adv after ack %u", sb->snd_una_adv);
+  TCP_TEST ((sb->max_byte_sacked == 1300),
+	    "max sacked byte %u", sb->max_byte_sacked);
   hole = scoreboard_last_hole (sb);
   TCP_TEST ((hole->start == 1300 && hole->end == 1500),
 	    "last hole start %u end %u", hole->start, hole->end);
@@ -157,6 +185,10 @@ tcp_test_sack_rx ()
   vec_reset_length (tc->opt.sacks);
   tcp_rcv_sacks (tc, 1200);
 
+  if (verbose)
+    vlib_cli_output (vm, "sb ack up to byte 1200:\n%U", format_tcp_scoreboard,
+		     sb);
+
   TCP_TEST ((sb->snd_una_adv == 100),
 	    "snd_una_adv after ack %u", sb->snd_una_adv);
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
@@ -168,8 +200,41 @@ tcp_test_sack_rx ()
    */
 
   scoreboard_clear (sb);
+  if (verbose)
+    vlib_cli_output (vm, "sb cleared all:\n%U", format_tcp_scoreboard, sb);
+
   TCP_TEST ((pool_elts (sb->holes) == 0),
 	    "number of holes %d", pool_elts (sb->holes));
+  /*
+   * Re-inject odd blocks and ack them all
+   */
+
+  tc->snd_una = 0;
+  tc->snd_una_max = 1000;
+  tc->snd_nxt = 1000;
+  for (i = 0; i < 5; i++)
+    {
+      vec_add1 (tc->opt.sacks, sacks[i * 2 + 1]);
+    }
+  tc->opt.n_sack_blocks = vec_len (tc->opt.sacks);
+  tcp_rcv_sacks (tc, 0);
+  if (verbose)
+    vlib_cli_output (vm, "sb added odd blocks and ack [0, 950]:\n%U",
+		     format_tcp_scoreboard, sb);
+
+  tcp_rcv_sacks (tc, 950);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb added odd blocks and ack [0, 950]:\n%U",
+		     format_tcp_scoreboard, sb);
+
+  TCP_TEST ((pool_elts (sb->holes) == 0),
+	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((sb->snd_una_adv == 50), "snd_una_adv %u", sb->snd_una_adv);
+  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0),
+	    "last sacked bytes %d", sb->last_sacked_bytes);
+
   return 0;
 }
 
@@ -290,7 +355,7 @@ tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 	  return -1;
 	}
 
-      if (tcp_test_sack_rx ())
+      if (tcp_test_sack_rx (vm, input))
 	{
 	  return -1;
 	}
@@ -303,7 +368,7 @@ tcp_test_sack (vlib_main_t * vm, unformat_input_t * input)
 	}
       else if (unformat (input, "rx"))
 	{
-	  res = tcp_test_sack_rx ();
+	  res = tcp_test_sack_rx (vm, input);
 	}
     }
 
