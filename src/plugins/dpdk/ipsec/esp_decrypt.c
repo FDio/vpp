@@ -96,15 +96,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
 
-  if (PREDICT_FALSE(!dcm->workers_main))
-    {
-      vlib_node_increment_counter (vm, dpdk_esp_decrypt_node.index,
-	      ESP_DECRYPT_ERROR_NO_CRYPTODEV, n_left_from);
-      vlib_buffer_free(vm, from, n_left_from);
-      return n_left_from;
-    }
-
-  crypto_worker_main_t *cwm = vec_elt_at_index(dcm->workers_main, thread_index);
+  crypto_worker_main_t *cwm =
+    vec_elt_at_index(dcm->workers_main, thread_index);
   u32 n_qps = vec_len(cwm->qp_data);
   struct rte_crypto_op ** cops_to_enq[n_qps];
   u32 n_cop_qp[n_qps], * bi_to_enq[n_qps];
@@ -366,6 +359,7 @@ trace:
   return from_frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp_decrypt_node) = {
   .function = dpdk_esp_decrypt_node_fn,
   .name = "dpdk-esp-decrypt",
@@ -383,6 +377,7 @@ VLIB_REGISTER_NODE (dpdk_esp_decrypt_node) = {
 #undef _
   },
 };
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp_decrypt_node, dpdk_esp_decrypt_node_fn)
 
@@ -478,7 +473,7 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 	  vlib_buffer_advance (b0, sizeof (esp_header_t) + iv_size);
 
 	  b0->current_length -= (icv_size + 2);
-	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	  f0 = (esp_footer_t *) ((u8 *) vlib_buffer_get_current (b0) +
 				 b0->current_length);
 	  b0->current_length -= f0->pad_length;
@@ -573,6 +568,7 @@ trace:
   return from_frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dpdk_esp_decrypt_post_node) = {
   .function = dpdk_esp_decrypt_post_node_fn,
   .name = "dpdk-esp-decrypt-post",
@@ -590,5 +586,6 @@ VLIB_REGISTER_NODE (dpdk_esp_decrypt_post_node) = {
 #undef _
   },
 };
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (dpdk_esp_decrypt_post_node, dpdk_esp_decrypt_post_node_fn)
