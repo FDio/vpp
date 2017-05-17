@@ -94,11 +94,9 @@ session_manager_add_segment (segment_manager_t * sm)
 int
 session_manager_add_first_segment (segment_manager_t * sm, u32 segment_size)
 {
-  svm_fifo_segment_create_args_t _ca, *ca = &_ca;
   u8 *segment_name;
   int rv;
 
-  memset (ca, 0, sizeof (*ca));
   segment_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);
   rv = session_manager_add_segment_i (sm, segment_size, segment_name);
   vec_free (segment_name);
