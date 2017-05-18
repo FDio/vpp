@@ -166,37 +166,21 @@ static vnet_classify_entry_t *
 vnet_classify_entry_alloc (vnet_classify_table_t * t, u32 log2_pages)
 {
   vnet_classify_entry_t * rv = 0;
-#define _(size)                                 \
-  vnet_classify_entry_##size##_t * rv##size = 0;
-  foreach_size_in_u32x4;
-#undef _
-  
+  u32 required_length;
   void * oldheap;
 
   ASSERT (t->writer_lock[0]);
+  required_length = 
+    (sizeof(vnet_classify_entry_t) + (t->match_n_vectors*sizeof(u32x4)))
+    * t->entries_per_page * (1<<log2_pages);
+
   if (log2_pages >= vec_len (t->freelists) || t->freelists [log2_pages] == 0)
     {
       oldheap = clib_mem_set_heap (t->mheap);
       
       vec_validate (t->freelists, log2_pages);
 
-      switch(t->match_n_vectors)
-        {
-          /* Euchre the vector allocator into allocating the right sizes */
-#define _(size)                                                         \
-        case size:                                                      \
-          vec_validate_aligned                                          \
-            (rv##size, ((1<<log2_pages)*t->entries_per_page) - 1,       \
-          CLIB_CACHE_LINE_BYTES);                                       \
-          rv = (vnet_classify_entry_t *) rv##size;                      \
-          break;
-          foreach_size_in_u32x4;
-#undef _
-
-        default:
-          abort();
-        }
-      
+      rv = clib_mem_alloc_aligned (required_length, CLIB_CACHE_LINE_BYTES);
       clib_mem_set_heap (oldheap);
       goto initialize;
     }
@@ -205,39 +189,21 @@ vnet_classify_entry_alloc (vnet_classify_table_t * t, u32 log2_pages)
   
 initialize:
   ASSERT(rv);
-  ASSERT (vec_len(rv) == (1<<log2_pages)*t->entries_per_page);
 
-  switch (t->match_n_vectors)
-    {
-#define _(size)                                                         \
-    case size:                                                          \
-      if(vec_len(rv)) 							\
-        memset (rv, 0xff, sizeof (*rv##size) * vec_len(rv));            \
-      break;
-      foreach_size_in_u32x4;
-#undef _
-      
-    default:
-      abort();
-    }
-  
+  memset (rv, 0xff, required_length);
   return rv;
 }
 
 static void
 vnet_classify_entry_free (vnet_classify_table_t * t,
-                          vnet_classify_entry_t * v)
+                          vnet_classify_entry_t * v, u32 log2_pages)
 {
-    u32 free_list_index;
-
     ASSERT (t->writer_lock[0]);
 
-    free_list_index = min_log2(vec_len(v)/t->entries_per_page);
+    ASSERT(vec_len (t->freelists) > log2_pages);
 
-    ASSERT(vec_len (t->freelists) > free_list_index);
-
-    v->next_free = t->freelists[free_list_index];
-    t->freelists[free_list_index] = v;
+    v->next_free = t->freelists[log2_pages];
+    t->freelists[log2_pages] = v;
 }
 
 static inline void make_working_copy
@@ -247,16 +213,15 @@ static inline void make_working_copy
   vnet_classify_bucket_t working_bucket __attribute__((aligned (8)));
   void * oldheap;
   vnet_classify_entry_t * working_copy;
-#define _(size)                                 \
-  vnet_classify_entry_##size##_t * working_copy##size = 0;
-  foreach_size_in_u32x4;
-#undef _
   u32 thread_index = vlib_get_thread_index();
+  int working_copy_length, required_length;
 
   if (thread_index >= vec_len (t->working_copies))
     {
       oldheap = clib_mem_set_heap (t->mheap);
       vec_validate (t->working_copies, thread_index);
+      vec_validate (t->working_copy_lengths, thread_index);
+      t->working_copy_lengths[thread_index] = -1;
       clib_mem_set_heap (oldheap);
     }
 
@@ -266,53 +231,28 @@ static inline void make_working_copy
    * lookup failures. 
    */
   working_copy = t->working_copies[thread_index];
+  working_copy_length = t->working_copy_lengths[thread_index];
+  required_length = 
+    (sizeof(vnet_classify_entry_t) + (t->match_n_vectors*sizeof(u32x4)))
+    * t->entries_per_page * (1<<b->log2_pages);
 
   t->saved_bucket.as_u64 = b->as_u64;
   oldheap = clib_mem_set_heap (t->mheap);
 
-  if ((1<<b->log2_pages)*t->entries_per_page > vec_len (working_copy))
+  if (required_length > working_copy_length)
     {
-      switch(t->match_n_vectors)
-        {
-          /* Euchre the vector allocator into allocating the right sizes */
-#define _(size)                                                         \
-        case size:                                                      \
-          working_copy##size = (void *) working_copy;                   \
-          vec_validate_aligned                                          \
-            (working_copy##size, 					\
-             ((1<<b->log2_pages)*t->entries_per_page) - 1,              \
-             CLIB_CACHE_LINE_BYTES);                                    \
-          working_copy = (void *) working_copy##size;                   \
-            break;
-        foreach_size_in_u32x4;
-#undef _
-
-        default:
-          abort();
-        }
+      if (working_copy)
+        clib_mem_free (working_copy);
+      working_copy =
+        clib_mem_alloc_aligned (required_length, CLIB_CACHE_LINE_BYTES);
       t->working_copies[thread_index] = working_copy;
     }
 
-  _vec_len(working_copy) = (1<<b->log2_pages)*t->entries_per_page;
   clib_mem_set_heap (oldheap);
 
   v = vnet_classify_get_entry (t, b->offset);
   
-  switch(t->match_n_vectors)
-    {
-#define _(size)                                         \
-    case size:                                          \
-      clib_memcpy (working_copy, v,                          \
-              sizeof (vnet_classify_entry_##size##_t)   \
-              * (1<<b->log2_pages)                      \
-              * (t->entries_per_page));                 \
-      break;
-      foreach_size_in_u32x4 ;
-#undef _
-
-    default: 
-      abort();
-    }
+  clib_memcpy (working_copy, v, required_length);
   
   working_bucket.as_u64 = b->as_u64;
   working_bucket.offset = vnet_classify_get_offset (t, working_copy);
@@ -323,55 +263,102 @@ static inline void make_working_copy
 
 static vnet_classify_entry_t *
 split_and_rehash (vnet_classify_table_t * t,
-                  vnet_classify_entry_t * old_values,
+                  vnet_classify_entry_t * old_values, u32 old_log2_pages,
                   u32 new_log2_pages)
 {
   vnet_classify_entry_t * new_values, * v, * new_v;
-  int i, j, k;
+  int i, j, length_in_entries;
   
   new_values = vnet_classify_entry_alloc (t, new_log2_pages);
+  length_in_entries = (1<<old_log2_pages) * t->entries_per_page;
   
-  for (i = 0; i < (vec_len (old_values)/t->entries_per_page); i++)
+  for (i = 0; i < length_in_entries; i++)
     {
       u64 new_hash;
       
-      for (j = 0; j < t->entries_per_page; j++)
-        {
-          v = vnet_classify_entry_at_index 
-            (t, old_values, i * t->entries_per_page + j);
+      v = vnet_classify_entry_at_index (t, old_values, i);
           
-          if (vnet_classify_entry_is_busy (v))
+      if (vnet_classify_entry_is_busy (v))
+        {
+          /* Hack so we can use the packet hash routine */
+          u8 * key_minus_skip;
+          key_minus_skip = (u8 *) v->key;
+          key_minus_skip -= t->skip_n_vectors * sizeof (u32x4);
+          
+          new_hash = vnet_classify_hash_packet (t, key_minus_skip);
+          new_hash >>= t->log2_nbuckets;
+          new_hash &= (1<<new_log2_pages) - 1;
+          
+          for (j = 0; j < t->entries_per_page; j++)
             {
-              /* Hack so we can use the packet hash routine */
-              u8 * key_minus_skip;
-              key_minus_skip = (u8 *) v->key;
-              key_minus_skip -= t->skip_n_vectors * sizeof (u32x4);
-
-              new_hash = vnet_classify_hash_packet (t, key_minus_skip);
-              new_hash >>= t->log2_nbuckets;
-              new_hash &= (1<<new_log2_pages) - 1;
-              
-              for (k = 0; k < t->entries_per_page; k++)
-                {
-                  new_v = vnet_classify_entry_at_index (t, new_values, 
-                                                        new_hash + k);
+              new_v = vnet_classify_entry_at_index (t, new_values, 
+                                                    new_hash + j);
                   
-                  if (vnet_classify_entry_is_free (new_v))
-                    {
-                      clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t) 
-                              + (t->match_n_vectors * sizeof (u32x4)));
-                      new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
-                      goto doublebreak;
-                    }
+              if (vnet_classify_entry_is_free (new_v))
+                {
+                  clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t) 
+                               + (t->match_n_vectors * sizeof (u32x4)));
+                  new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+                  goto doublebreak;
                 }
-              /* Crap. Tell caller to try again */
-              vnet_classify_entry_free (t, new_values);
-              return 0;
             }
+          /* Crap. Tell caller to try again */
+          vnet_classify_entry_free (t, new_values, new_log2_pages);
+          return 0;
         doublebreak:
           ;
         }
     }
+  return new_values;
+}
+
+static vnet_classify_entry_t *
+split_and_rehash_linear (vnet_classify_table_t * t,
+                         vnet_classify_entry_t * old_values, 
+                         u32 old_log2_pages,
+                         u32 new_log2_pages)
+{
+  vnet_classify_entry_t * new_values, * v, * new_v;
+  int i, j, new_length_in_entries, old_length_in_entries;
+  
+  new_values = vnet_classify_entry_alloc (t, new_log2_pages);
+  new_length_in_entries = (1<<new_log2_pages) * t->entries_per_page;
+  old_length_in_entries = (1<<old_log2_pages) * t->entries_per_page;
+  
+  j = 0;
+  for (i = 0; i < old_length_in_entries; i++)
+    {
+      v = vnet_classify_entry_at_index (t, old_values, i);
+          
+      if (vnet_classify_entry_is_busy (v))
+        {
+          for (; j < new_length_in_entries; j++)
+            {
+              new_v = vnet_classify_entry_at_index (t, new_values, j);
+              
+              if (vnet_classify_entry_is_busy (new_v))
+                {
+                  clib_warning ("BUG: linear rehash new entry not free!");
+                  continue;
+                }
+              clib_memcpy (new_v, v, sizeof (vnet_classify_entry_t) 
+                           + (t->match_n_vectors * sizeof (u32x4)));
+              new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+              j++;
+              goto doublebreak;
+            }
+          /* 
+           * Crap. Tell caller to try again.
+           * This should never happen... 
+           */
+          clib_warning ("BUG: linear rehash failed!");
+          vnet_classify_entry_free (t, new_values, new_log2_pages);
+          return 0;
+        }
+    doublebreak:
+      ;
+    }
+
   return new_values;
 }
 
@@ -386,9 +373,12 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
   int rv = 0;
   int i;
   u64 hash, new_hash;
-  u32 new_log2_pages;
+  u32 limit;
+  u32 old_log2_pages, new_log2_pages;
   u32 thread_index = vlib_get_thread_index();
   u8 * key_minus_skip;
+  int resplit_once;
+  int mark_bucket_linear;
 
   ASSERT ((add_v->flags & VNET_CLASSIFY_ENTRY_FREE) == 0);
 
@@ -432,6 +422,12 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
   
   save_v = vnet_classify_get_entry (t, t->saved_bucket.offset);
   value_index = hash & ((1<<t->saved_bucket.log2_pages)-1);
+  limit = t->entries_per_page;
+  if (PREDICT_FALSE (b->linear_search))
+    {
+      value_index = 0;
+      limit *= (1<<b->log2_pages);
+    }
   
   if (is_add)
     {
@@ -440,7 +436,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
        * replace an existing key, then look for an empty slot.
        */
 
-      for (i = 0; i < t->entries_per_page; i++)
+      for (i = 0; i < limit; i++)
         {
           v = vnet_classify_entry_at_index (t, save_v, value_index + i);
 
@@ -456,7 +452,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
               goto unlock;
             }
         }
-      for (i = 0; i < t->entries_per_page; i++)
+      for (i = 0; i < limit; i++)
         {
           v = vnet_classify_entry_at_index (t, save_v, value_index + i);
 
@@ -475,7 +471,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
     }
   else
     {
-      for (i = 0; i < t->entries_per_page; i++)
+      for (i = 0; i < limit; i++)
         {
           v = vnet_classify_entry_at_index (t, save_v, value_index + i);
 
@@ -495,16 +491,39 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
       goto unlock;
     }
 
-  new_log2_pages = t->saved_bucket.log2_pages + 1;
-
- expand_again:
+  old_log2_pages = t->saved_bucket.log2_pages;
+  new_log2_pages = old_log2_pages + 1;
   working_copy = t->working_copies[thread_index];
-  new_v = split_and_rehash (t, working_copy, new_log2_pages);
+
+  if (t->saved_bucket.linear_search)
+    goto linear_resplit;
+
+  mark_bucket_linear = 0;
+
+  new_v = split_and_rehash (t, working_copy, old_log2_pages, new_log2_pages);
 
   if (new_v == 0)
     {
+    try_resplit:
+      resplit_once = 1;
       new_log2_pages++;
-      goto expand_again;
+
+      new_v = split_and_rehash (t, working_copy, old_log2_pages, 
+                                new_log2_pages);
+      if (new_v == 0)
+        {
+        mark_linear:
+          new_log2_pages--;
+
+        linear_resplit:
+	  /* pinned collisions, use linear search */
+          new_v = split_and_rehash_linear (t, working_copy, old_log2_pages,
+                                           new_log2_pages);
+          /* A new linear-search bucket? */
+          if (!t->saved_bucket.linear_search)
+            t->linear_buckets ++;
+          mark_bucket_linear = 1;
+        }
     }
 
   /* Try to add the new entry */
@@ -515,9 +534,16 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
   new_hash = vnet_classify_hash_packet_inline (t, key_minus_skip);
   new_hash >>= t->log2_nbuckets;
-  new_hash &= (1<<min_log2((vec_len(new_v)/t->entries_per_page))) - 1;
+  new_hash &= (1<<new_log2_pages) - 1;
+
+  limit = t->entries_per_page;
+  if (mark_bucket_linear)
+    {
+      limit *= (1<<new_log2_pages);
+      new_hash = 0;
+    }
   
-  for (i = 0; i < t->entries_per_page; i++)
+  for (i = 0; i < limit; i++)
     {
       new_v = vnet_classify_entry_at_index (t, save_new_v, new_hash + i);
 
@@ -530,23 +556,28 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
         }
     }
   /* Crap. Try again */
+  vnet_classify_entry_free (t, save_new_v, new_log2_pages);
   new_log2_pages++;
-  vnet_classify_entry_free (t, save_new_v);
-  goto expand_again;
+
+  if (resplit_once)
+    goto mark_linear;
+  else 
+    goto try_resplit;
 
  expand_ok:
-  tmp_b.log2_pages = min_log2 (vec_len (save_new_v)/t->entries_per_page);
+  tmp_b.log2_pages = new_log2_pages;
   tmp_b.offset = vnet_classify_get_offset (t, save_new_v);
+  tmp_b.linear_search = mark_bucket_linear;
+
   CLIB_MEMORY_BARRIER();
   b->as_u64 = tmp_b.as_u64;
   t->active_elements ++;
   v = vnet_classify_get_entry (t, t->saved_bucket.offset);
-  vnet_classify_entry_free (t, v);
+  vnet_classify_entry_free (t, v, old_log2_pages);
 
  unlock:
   CLIB_MEMORY_BARRIER();
   t->writer_lock[0] = 0;
-
   return rv;
 }
 
@@ -610,8 +641,9 @@ u8 * format_classify_table (u8 * s, va_list * args)
 
       if (verbose)
         {
-          s = format (s, "[%d]: heap offset %d, len %d\n", i, 
-                      b->offset, (1<<b->log2_pages));
+          s = format (s, "[%d]: heap offset %d, elts %d, %s\n", i, 
+                      b->offset, (1<<b->log2_pages)*t->entries_per_page,
+                      b->linear_search ? "LINEAR" : "normal");
         }
 
       save_v = vnet_classify_get_entry (t, b->offset);
@@ -643,6 +675,7 @@ u8 * format_classify_table (u8 * s, va_list * args)
 
   s = format (s, "    %lld active elements\n", active_elements);
   s = format (s, "    %d free lists\n", vec_len (t->freelists));
+  s = format (s, "    %d linear-search buckets\n", t->linear_buckets);
   return s;
 }
 
@@ -1506,6 +1539,7 @@ static u8 * format_vnet_classify_table (u8 * s, va_list * args)
               t->current_data_flag, t->current_data_offset);
   s = format (s, "\n  mask %U", format_hex_bytes, t->mask, 
               t->match_n_vectors * sizeof (u32x4));
+  s = format (s, "\n  linear-search buckets %d\n", t->linear_buckets);
 
   if (verbose == 0)
     return s;
@@ -2029,6 +2063,8 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
     e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, metadata);
   else if (e->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
     e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, metadata);
+  else
+    e->metadata = 0;
 
   /* Copy key data, honoring skip_n_vectors */
   clib_memcpy (&e->key, match + t->skip_n_vectors * sizeof (u32x4),
@@ -2281,48 +2317,51 @@ VLIB_INIT_FUNCTION (vnet_classify_init);
 #define TEST_CODE 1
 
 #if TEST_CODE > 0
-static clib_error_t *
-test_classify_command_fn (vlib_main_t * vm,
-		 unformat_input_t * input,
-		 vlib_cli_command_t * cmd)
+
+typedef struct 
 {
-  u32 buckets = 2;
-  u32 sessions = 10;
-  int i, rv;
-  vnet_classify_table_t * t = 0;
+  ip4_address_t addr;
+  int in_table;
+} test_entry_t;
+
+typedef struct
+{
+  test_entry_t *entries;
+
+  /* test parameters */
+  u32 buckets;
+  u32 sessions;
+  u32 iterations;
+  u32 memory_size;
+  ip4_address_t src;
+  vnet_classify_table_t *table;
+  u32 table_index;
+  int verbose;
+
+  /* Random seed */
+  u32 seed;
+
+  /* Test data */
   classify_data_or_mask_t * mask;
   classify_data_or_mask_t * data;
+
+  /* convenience */
+  vnet_classify_main_t *classify_main;
+  vlib_main_t *vlib_main;
+
+} test_classify_main_t;
+
+static test_classify_main_t test_classify_main;
+
+static clib_error_t *
+test_classify_churn (test_classify_main_t *tm)
+{
+  classify_data_or_mask_t *mask, *data;
+  vlib_main_t *vm = tm->vlib_main;
+  test_entry_t *ep;
   u8 *mp = 0, *dp = 0;
-  vnet_classify_main_t * cm = &vnet_classify_main;
-  vnet_classify_entry_t * e;
-  int is_add = 1;
   u32 tmp;
-  u32 table_index = ~0;
-  ip4_address_t src;
-  u32 deleted = 0;
-  u32 memory_size = 64<<20;
-
-  /* Default starting address 1.0.0.10 */
-  src.as_u32 = clib_net_to_host_u32 (0x0100000A);
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
-    if (unformat (input, "sessions %d", &sessions))
-      ;
-    else if (unformat (input, "src %U", unformat_ip4_address, &src))
-      ;
-    else if (unformat (input, "buckets %d", &buckets))
-      ;
-    else if (unformat (input, "memory-size %uM", &tmp))
-      memory_size = tmp<<20;
-    else if (unformat (input, "memory-size %uG", &tmp))
-      memory_size = tmp<<30;
-    else if (unformat (input, "del"))
-      is_add = 0;
-    else if (unformat (input, "table %d", &table_index))
-      ;
-    else
-      break;
-    }
+  int i, rv;
 
   vec_validate_aligned (mp, 3 * sizeof(u32x4), sizeof(u32x4));
   vec_validate_aligned (dp, 3 * sizeof(u32x4), sizeof(u32x4));
@@ -2330,105 +2369,231 @@ test_classify_command_fn (vlib_main_t * vm,
   mask = (classify_data_or_mask_t *) mp;
   data = (classify_data_or_mask_t *) dp;
 
-  data->ip.src_address.as_u32 = src.as_u32;
-
   /* Mask on src address */
   memset (&mask->ip.src_address, 0xff, 4);
 
-  buckets = 1<<max_log2(buckets);
+  tmp = clib_host_to_net_u32 (tm->src.as_u32);
 
-  if (table_index != ~0)
+  for (i = 0; i < tm->sessions; i++)
     {
-      if (pool_is_free_index (cm->tables, table_index))
-        {
-          vlib_cli_output (vm, "No such table %d", table_index);
-          goto out;
-        }
-      t = pool_elt_at_index (cm->tables, table_index);
+      vec_add2 (tm->entries, ep, 1);
+      ep->addr.as_u32 = clib_host_to_net_u32 (tmp);
+      ep->in_table = 0;
+      tmp++;
     }
 
-  if (is_add)
-    {
-      if (t == 0)
-        {
-          t = vnet_classify_new_table (cm, (u8 *)mask, buckets, 
-                                       memory_size,
+  tm->table = vnet_classify_new_table (tm->classify_main, 
+                                       (u8 *)mask, 
+                                       tm->buckets, 
+                                       tm->memory_size,
                                        0 /* skip */,
                                        3 /* vectors to match */);
-          t->miss_next_index = IP_LOOKUP_NEXT_DROP;
-          vlib_cli_output (vm, "Create table %d", t - cm->tables);
-        }
-      
-      vlib_cli_output (vm, "Add %d sessions to %d buckets...", 
-                       sessions, buckets);
-      
-      for (i = 0; i < sessions; i++)
-        {
-          rv = vnet_classify_add_del_session (cm, t - cm->tables, (u8 *) data,
-                                              IP_LOOKUP_NEXT_DROP,
-                                              i+100 /* opaque_index */, 
-                                              0 /* advance */, 0, 0,
-                                              1 /* is_add */);
+  tm->table->miss_next_index = IP_LOOKUP_NEXT_DROP;
+  tm->table_index = tm->table - tm->classify_main->tables;
+  vlib_cli_output (vm, "Created table %d, buckets %d", 
+                   tm->table_index, tm->buckets);
 
-          if (rv != 0)
-            clib_warning ("add: returned %d", rv);
-          
-          tmp = clib_net_to_host_u32 (data->ip.src_address.as_u32) + 1;
-          data->ip.src_address.as_u32 = clib_net_to_host_u32 (tmp);
-        }
-      goto out;
-    }
-
-  if (t == 0)
+  vlib_cli_output (vm, "Initialize: add %d (approx. half of %d sessions)...", 
+                   tm->sessions/2, tm->sessions);
+      
+  for (i = 0; i < tm->sessions/2; i++)
     {
-      vlib_cli_output (vm, "Must specify table index to delete sessions");
-      goto out;
+      ep = vec_elt_at_index (tm->entries, i);
+
+      data->ip.src_address.as_u32 = ep->addr.as_u32;
+      ep->in_table = 1;
+
+      rv = vnet_classify_add_del_session (tm->classify_main, 
+                                          tm->table_index, 
+                                          (u8 *) data,
+                                          IP_LOOKUP_NEXT_DROP,
+                                          i /* opaque_index */, 
+                                          0 /* advance */, 
+                                          0 /* action*/, 
+                                          0 /* metadata */,
+                                          1 /* is_add */);
+      
+      if (rv != 0)
+        clib_warning ("add: returned %d", rv);
+
+      if (tm->verbose)
+        vlib_cli_output (vm, "add: %U", format_ip4_address, 
+                         &ep->addr.as_u32);
     }
 
-  vlib_cli_output (vm, "Try to delete %d sessions...", sessions);
+  vlib_cli_output (vm, "Execute %d random add/delete operations",
+                   tm->iterations);
 
-  for (i = 0; i < sessions; i++)
+  for (i = 0; i < tm->iterations; i++)
+    {
+      int index, is_add;
+
+      /* Pick a random entry */
+      index = random_u32 (&tm->seed) % tm->sessions;
+      
+      ep = vec_elt_at_index (tm->entries, index);
+
+      data->ip.src_address.as_u32 = ep->addr.as_u32;
+
+      /* If it's in the table, remove it. Else, add it */
+      is_add = !ep->in_table;
+
+      if (tm->verbose)
+        vlib_cli_output (vm, "%s: %U", 
+                         is_add ? "add" : "del",
+                         format_ip4_address,
+                         &ep->addr.as_u32);
+
+      rv = vnet_classify_add_del_session (tm->classify_main, 
+                                          tm->table_index, 
+                                          (u8 *) data,
+                                          IP_LOOKUP_NEXT_DROP,
+                                          i /* opaque_index */, 
+                                          0 /* advance */, 
+                                          0 /* action*/, 
+                                          0 /* metadata */,
+                                          is_add);
+      if (rv != 0)
+        vlib_cli_output (vm, 
+                         "%s[%d]: %U returned %d", is_add ? "add" : "del", 
+                         index,
+                         format_ip4_address, 
+                         &ep->addr.as_u32, rv);
+      else
+        ep->in_table = is_add;
+    }
+
+  vlib_cli_output (vm, "Remove remaining %d entries from the table",
+                   tm->table->active_elements);
+
+  for (i = 0; i < tm->sessions; i++)
     {
       u8 * key_minus_skip;
       u64 hash;
-
-      hash = vnet_classify_hash_packet (t, (u8 *) data);
-
-      e = vnet_classify_find_entry (t, (u8 *) data, hash, 0 /* time_now */);
-      /* Previous delete, perhaps... */
-      if (e == 0)
+      vnet_classify_entry_t * e;
+      
+      ep = tm->entries + i;
+      if (ep->in_table == 0)
         continue;
-      ASSERT (e->opaque_index == (i+100));
+
+      data->ip.src_address.as_u32 = ep->addr.as_u32;
+
+      hash = vnet_classify_hash_packet (tm->table, (u8 *) data);
+
+      e = vnet_classify_find_entry (tm->table, 
+                                    (u8 *) data, hash, 0 /* time_now */);
+      if (e == 0)
+        {
+          clib_warning ("Couldn't find %U index %d which should be present",
+                        format_ip4_address, ep->addr, i);
+          continue;
+        }
 
       key_minus_skip = (u8 *)e->key;
-      key_minus_skip -= t->skip_n_vectors * sizeof (u32x4);
+      key_minus_skip -= tm->table->skip_n_vectors * sizeof (u32x4);
 
-      rv = vnet_classify_add_del_session (cm, t - cm->tables, key_minus_skip,
-                                          IP_LOOKUP_NEXT_DROP,
-                                          i+100 /* opaque_index */, 
-                                          0 /* advance */, 0, 0,
-                                          0 /* is_add */);
+      rv = vnet_classify_add_del_session 
+        (tm->classify_main, 
+         tm->table_index, 
+         key_minus_skip,
+         IP_LOOKUP_NEXT_DROP,
+         i /* opaque_index */, 
+         0 /* advance */, 0, 0,
+         0 /* is_add */);
+
       if (rv != 0)
         clib_warning ("del: returned %d", rv);
-      
-      tmp = clib_net_to_host_u32 (data->ip.src_address.as_u32) + 1;
-      data->ip.src_address.as_u32 = clib_net_to_host_u32 (tmp);
-      deleted++;
+
+      if (tm->verbose)
+        vlib_cli_output (vm, "del: %U", format_ip4_address,
+                         &ep->addr.as_u32);
     }
 
-  vlib_cli_output (vm, "Deleted %d sessions...", deleted);
+  vlib_cli_output (vm, "%d entries remain, MUST be zero",
+                   tm->table->active_elements);
 
- out:
+  vlib_cli_output (vm, "Table after cleanup: \n%U\n",
+                   format_classify_table, tm->table, 0 /* verbose */);
+
   vec_free (mp);
   vec_free (dp);
 
+  vnet_classify_delete_table_index (tm->classify_main,
+                                    tm->table_index, 1 /* del_chain */);
+  tm->table = 0;
+  tm->table_index = ~0;
+  vec_free(tm->entries);
+
   return 0;
+}
+
+static clib_error_t *
+test_classify_command_fn (vlib_main_t * vm,
+		 unformat_input_t * input,
+		 vlib_cli_command_t * cmd)
+{
+  test_classify_main_t *tm = &test_classify_main;
+  vnet_classify_main_t * cm = &vnet_classify_main;
+  u32 tmp;
+  int which = 0;
+  clib_error_t * error = 0;
+  
+  tm->buckets = 1024;
+  tm->sessions = 8192;
+  tm->iterations = 8192;
+  tm->memory_size = 64<<20;
+  tm->src.as_u32 = clib_net_to_host_u32 (0x0100000A);
+  tm->table = 0;
+  tm->seed = 0xDEADDABE;
+  tm->classify_main = cm;
+  tm->vlib_main = vm;
+  tm->verbose = 0;
+
+  /* Default starting address 1.0.0.10 */
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
+    if (unformat (input, "sessions %d", &tmp))
+      tm->sessions = tmp;
+    else if (unformat (input, "src %U", unformat_ip4_address, &tm->src.as_u32))
+      ;
+    else if (unformat (input, "buckets %d", &tm->buckets))
+      ;
+    else if (unformat (input, "memory-size %uM", &tmp))
+      tm->memory_size = tmp<<20;
+    else if (unformat (input, "memory-size %uG", &tmp))
+      tm->memory_size = tmp<<30;
+    else if (unformat (input, "seed %d", &tm->seed))
+      ;
+    else if (unformat (input, "verbose"))
+      tm->verbose = 1;
+
+    else if (unformat (input, "iterations %d", &tm->iterations))
+      ;
+    else if (unformat (input, "churn-test"))
+      which = 0;
+    else
+      break;
+    }
+
+  switch (which)
+    {
+    case 0:
+      error = test_classify_churn (tm);
+      break;
+    default:
+      error = clib_error_return (0, "No such test");
+      break;
+    }
+
+  return error;
 }
 
 VLIB_CLI_COMMAND (test_classify_command, static) = {
     .path = "test classify",
     .short_help = 
-    "test classify [src <ip>] [sessions <nn>] [buckets <nn>] [table <nn>] [del]",
+    "test classify [src <ip>] [sessions <nn>] [buckets <nn>] [seed <nnn>]\n"
+    "              [memory-size <nn>[M|G]]\n"
+    "              [churn-test]",
     .function = test_classify_command_fn,
 };
 #endif /* TEST_CODE */
