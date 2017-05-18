@@ -82,7 +82,7 @@ typedef struct mpls_tunnel_t_
     /**
      * A vector of path extensions o hold the label stack for each path
      */
-    fib_path_ext_t *mt_path_exts;
+    fib_path_ext_list_t mt_path_exts;
 
     /**
      * @brief Flag to indicate the tunnel is only for L2 traffic, that is

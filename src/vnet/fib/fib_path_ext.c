@@ -24,6 +24,8 @@
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_internal.h>
 
+const char *fib_path_ext_adj_flags_names[] = FIB_PATH_EXT_ADJ_ATTR_NAMES;
+
 u8 *
 format_fib_path_ext (u8 * s, va_list * args)
 {
@@ -32,13 +34,37 @@ format_fib_path_ext (u8 * s, va_list * args)
 
     path_ext = va_arg (*args, fib_path_ext_t *);
 
-    s = format(s, "path:%d labels:",
-	       path_ext->fpe_path_index);
-    for (ii = 0; ii < vec_len(path_ext->fpe_path.frp_label_stack); ii++)
+    s = format(s, "path:%d ", path_ext->fpe_path_index);
+
+    switch (path_ext->fpe_type)
     {
-	s = format(s, "%U ",
-		   format_mpls_unicast_label,
-		   path_ext->fpe_path.frp_label_stack[ii]);
+    case FIB_PATH_EXT_MPLS:
+        s = format(s, "labels:",
+                   path_ext->fpe_path_index);
+        for (ii = 0; ii < vec_len(path_ext->fpe_path.frp_label_stack); ii++)
+        {
+            s = format(s, "%U ",
+                       format_mpls_unicast_label,
+                       path_ext->fpe_path.frp_label_stack[ii]);
+        }
+        break;
+    case FIB_PATH_EXT_ADJ: {
+        fib_path_ext_adj_attr_t attr;
+
+        s = format(s, "adj-flags:");
+        if (path_ext->fpe_adj_flags)
+        {
+            FOR_EACH_PATH_EXT_ADJ_ATTR(attr)
+            {
+                s = format(s, "%s", fib_path_ext_adj_flags_names[attr]);
+            }
+        }
+        else
+        {
+            s = format(s, "None");
+        }
+        break;
+    }
     }
     return (s);
 }
@@ -50,7 +76,7 @@ fib_path_ext_cmp (fib_path_ext_t *path_ext,
     return (fib_route_path_cmp(&path_ext->fpe_path, rpath));
 }
 
-static int
+static fib_path_list_walk_rc_t
 fib_path_ext_match (fib_node_index_t pl_index,
 		    fib_node_index_t path_index,
 		    void *ctx)
@@ -61,10 +87,9 @@ fib_path_ext_match (fib_node_index_t pl_index,
 				   &path_ext->fpe_path))
     {
 	path_ext->fpe_path_index = path_index;
-	return (0);
+	return (FIB_PATH_LIST_WALK_STOP);
     }
-    // keep going
-    return (1);
+    return (FIB_PATH_LIST_WALK_CONTINUE);
 }
 
 void
@@ -83,10 +108,13 @@ fib_path_ext_resolve (fib_path_ext_t *path_ext,
 void
 fib_path_ext_init (fib_path_ext_t *path_ext,
 		   fib_node_index_t path_list_index,
+                   fib_path_ext_type_t ext_type,
 		   const fib_route_path_t *rpath)
 {
     path_ext->fpe_path = *rpath;
     path_ext->fpe_path_index = FIB_NODE_INDEX_INVALID;
+    path_ext->fpe_adj_flags = FIB_PATH_EXT_ADJ_FLAG_NONE;
+    path_ext->fpe_type = ext_type;
 
     fib_path_ext_resolve(path_ext, path_list_index);
 }
@@ -228,4 +256,169 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
     dpo_reset(&via_dpo);
 
     return (nhs);
+}
+
+fib_path_ext_t *
+fib_path_ext_list_find (const fib_path_ext_list_t *list,
+                        fib_path_ext_type_t ext_type,
+                        const fib_route_path_t *rpath)
+{
+    fib_path_ext_t *path_ext;
+
+    vec_foreach(path_ext, list->fpel_exts)
+    {
+        if ((path_ext->fpe_type == ext_type) &&
+            !fib_path_ext_cmp(path_ext, rpath) )
+        {
+            return (path_ext);
+        }
+    }
+    return (NULL);
+}
+
+fib_path_ext_t *
+fib_path_ext_list_find_by_path_index (const fib_path_ext_list_t *list,
+                                      fib_node_index_t path_index)
+{
+    fib_path_ext_t *path_ext;
+
+    vec_foreach(path_ext, list->fpel_exts)
+    {
+        if (path_ext->fpe_path_index == path_index)
+        {
+            return (path_ext);
+        }
+    }
+    return (NULL);
+}
+
+
+fib_path_ext_t *
+fib_path_ext_list_push_back (fib_path_ext_list_t *list,
+                             fib_node_index_t path_list_index,
+                             fib_path_ext_type_t ext_type,
+                             const fib_route_path_t *rpath)
+{
+    fib_path_ext_t *path_ext;
+
+    path_ext = fib_path_ext_list_find(list, ext_type, rpath);
+
+    if (NULL == path_ext)
+    {
+        vec_add2(list->fpel_exts, path_ext, 1);
+        fib_path_ext_init(path_ext, path_list_index, ext_type, rpath);
+    }
+
+    return (path_ext);
+}
+
+/*
+ * insert, sorted, a path extension to the entry's list.
+ * It's not strictly necessary to sort the path extensions, since each
+ * extension has the path index to which it resolves. However, by being
+ * sorted the load-balance produced has a deterministic order, not an order
+ * based on the sequence of extension additions. this is a considerable benefit.
+ */
+fib_path_ext_t *
+fib_path_ext_list_insert (fib_path_ext_list_t *list,
+                          fib_node_index_t path_list_index,
+                          fib_path_ext_type_t ext_type,
+                          const fib_route_path_t *rpath)
+{
+    fib_path_ext_t new_path_ext, *path_ext;
+    int i = 0;
+
+    if (0 == fib_path_ext_list_length(list))
+    {
+        return (fib_path_ext_list_push_back(list, path_list_index,
+                                            ext_type, rpath));
+    }
+
+    fib_path_ext_init(&new_path_ext, path_list_index, ext_type, rpath);
+
+    vec_foreach(path_ext, list->fpel_exts)
+    {
+        if (fib_path_ext_cmp(path_ext, rpath) < 0)
+        {
+            i++;
+        }
+        else
+        {
+            break;
+        }
+    }
+    vec_insert_elts(list->fpel_exts, &new_path_ext, 1, i);
+
+    return (&(list->fpel_exts[i]));
+}
+
+void
+fib_path_ext_list_resolve (fib_path_ext_list_t *list,
+                           fib_node_index_t path_list_index)
+{
+    fib_path_ext_t *path_ext;
+
+    vec_foreach(path_ext, list->fpel_exts)
+    {
+        fib_path_ext_resolve(path_ext, path_list_index);
+    };
+}
+
+void
+fib_path_ext_list_remove (fib_path_ext_list_t *list,
+                          fib_path_ext_type_t ext_type,
+                          const fib_route_path_t *rpath)
+{
+    fib_path_ext_t *path_ext;
+
+    path_ext = fib_path_ext_list_find(list, ext_type, rpath);
+
+    if (NULL != path_ext)
+    {
+        /*
+         * delete the element moving the remaining elements down 1 position.
+         * this preserves the sorted order.
+         */
+        vec_free(path_ext->fpe_label_stack);
+        vec_delete(list->fpel_exts, 1, (path_ext - list->fpel_exts));
+    }
+}
+
+void
+fib_path_ext_list_flush (fib_path_ext_list_t *list)
+{
+    fib_path_ext_t *path_ext;
+
+    vec_foreach(path_ext, list->fpel_exts)
+    {
+        vec_free(path_ext->fpe_label_stack);
+    };
+    vec_free(list->fpel_exts);
+    list->fpel_exts = NULL;
+}
+
+u8*
+format_fib_path_ext_list (u8 * s, va_list * args)
+{
+    fib_path_ext_list_t *list;
+    fib_path_ext_t *path_ext;
+
+    list = va_arg (*args, fib_path_ext_list_t *);
+
+    if (fib_path_ext_list_length(list))
+    {
+        s = format(s, "    Extensions:");
+        vec_foreach(path_ext, list->fpel_exts)
+        {
+            s = format(s, "\n     %U", format_fib_path_ext, path_ext);
+        };
+    }
+
+    return (s);
+}
+
+int
+fib_path_ext_list_length (const fib_path_ext_list_t *list)
+{
+    return (vec_len(list->fpel_exts));
 }
