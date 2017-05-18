@@ -2956,6 +2956,7 @@ api_gpe_fwd_entry_net_to_host (vl_api_gpe_fwd_entry_t * e)
 {
   e->dp_table = clib_net_to_host_u32 (e->dp_table);
   e->fwd_entry_index = clib_net_to_host_u32 (e->fwd_entry_index);
+  e->vni = clib_net_to_host_u32 (e->vni);
 }
 
 static void
@@ -3131,6 +3132,8 @@ static void
       vat_json_init_object (e);
       vat_json_object_add_int (e, "fwd_entry_index", fwd->fwd_entry_index);
       vat_json_object_add_int (e, "dp_table", fwd->dp_table);
+      vat_json_object_add_int (e, "vni", fwd->vni);
+      vat_json_object_add_int (e, "action", fwd->action);
 
       s = format (0, "%U", format_lisp_flat_eid, fwd->eid_type, fwd->leid,
 		  fwd->leid_prefix_len);
@@ -3144,6 +3147,53 @@ static void
       vat_json_object_add_string_copy (e, "reid", s);
       vec_free (s);
     }
+
+  vat_json_print (vam->ofp, &root);
+  vat_json_free (&root);
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_gpe_fwd_entry_vnis_get_reply_t_handler
+  (vl_api_gpe_fwd_entry_vnis_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+
+  for (i = 0; i < n; i++)
+    print (vam->ofp, "%d", clib_net_to_host_u32 (mp->vnis[i]));
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_gpe_fwd_entry_vnis_get_reply_t_handler_json
+  (vl_api_gpe_fwd_entry_vnis_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t root;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+  vat_json_init_array (&root);
+
+  for (i = 0; i < n; i++)
+    vat_json_array_add_uint (&root, clib_net_to_host_u32 (mp->vnis[i]));
 
   vat_json_print (vam->ofp, &root);
   vat_json_free (&root);
@@ -4494,6 +4544,7 @@ _(GPE_GET_ENCAP_MODE_REPLY, gpe_get_encap_mode_reply)                   \
 _(GPE_ADD_DEL_IFACE_REPLY, gpe_add_del_iface_reply)                     \
 _(GPE_ENABLE_DISABLE_REPLY, gpe_enable_disable_reply)                   \
 _(GPE_ADD_DEL_FWD_ENTRY_REPLY, gpe_add_del_fwd_entry_reply)             \
+_(GPE_FWD_ENTRY_VNIS_GET_REPLY, gpe_fwd_entry_vnis_get_reply)           \
 _(GPE_FWD_ENTRIES_GET_REPLY, gpe_fwd_entries_get_reply)                 \
 _(GPE_FWD_ENTRY_PATH_DETAILS,                                           \
   gpe_fwd_entry_path_details)                                           \
@@ -15900,6 +15951,8 @@ api_lisp_gpe_fwd_entries_get (vat_main_t * vam)
   return ret;
 }
 
+#define vl_api_gpe_fwd_entry_vnis_get_reply_t_endian vl_noop_handler
+#define vl_api_gpe_fwd_entry_vnis_get_reply_t_print vl_noop_handler
 #define vl_api_gpe_fwd_entries_get_reply_t_endian vl_noop_handler
 #define vl_api_gpe_fwd_entries_get_reply_t_print vl_noop_handler
 #define vl_api_gpe_fwd_entry_path_details_t_endian vl_noop_handler
@@ -15950,6 +16003,27 @@ api_one_adjacencies_get (vat_main_t * vam)
 }
 
 #define api_lisp_adjacencies_get api_one_adjacencies_get
+
+static int
+api_gpe_fwd_entry_vnis_get (vat_main_t * vam)
+{
+  vl_api_gpe_fwd_entry_vnis_get_t *mp;
+  int ret;
+
+  if (!vam->json_output)
+    {
+      print (vam->ofp, "VNIs");
+    }
+
+  M (GPE_FWD_ENTRY_VNIS_GET, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
 
 static int
 api_one_map_server_dump (vat_main_t * vam)
@@ -19087,6 +19161,7 @@ _(lisp_eid_table_map_dump, "l2|l3")                                     \
 _(lisp_map_resolver_dump, "")                                           \
 _(lisp_map_server_dump, "")                                             \
 _(lisp_adjacencies_get, "vni <vni>")                                    \
+_(gpe_fwd_entry_vnis_get, "")                                           \
 _(lisp_gpe_fwd_entries_get, "vni <vni>")                                \
 _(lisp_gpe_fwd_entry_path_dump, "index <fwd_entry_index>")              \
 _(gpe_set_encap_mode, "lisp|vxlan")                                     \
