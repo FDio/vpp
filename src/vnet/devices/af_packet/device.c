@@ -18,8 +18,10 @@
  */
 
 #include <linux/if_packet.h>
+#include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <net/if_arp.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -212,7 +214,7 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
   /* if interface is a bridge ignore */
   if (apif->host_if_index < 0)
-    return 0;			/* no error */
+    goto error;			/* no error */
 
   /* use host_if_index in case host name has changed */
   ifr.ifr_ifindex = apif->host_if_index;
@@ -220,6 +222,7 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
     {
       clib_unix_warning ("af_packet_%s ioctl could not retrieve eth name",
 			 apif->host_if_name);
+      goto error;
     }
 
   apif->is_admin_up = (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) != 0;
@@ -228,6 +231,7 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
     {
       clib_unix_warning ("af_packet_%s error: %d",
 			 apif->is_admin_up ? "up" : "down", rv);
+      goto error;
     }
 
   if (apif->is_admin_up)
@@ -245,10 +249,12 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
     {
       clib_unix_warning ("af_packet_%s error: %d",
 			 apif->is_admin_up ? "up" : "down", rv);
+      goto error;
     }
 
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
+error:
   close (fd);
 
   return 0;			/* no error */
@@ -261,6 +267,45 @@ af_packet_subif_add_del_function (vnet_main_t * vnm,
 {
   /* Nothing for now */
   return 0;
+}
+
+static clib_error_t *af_packet_set_mac_address_function
+  (struct vnet_hw_interface_t *hi, char *address)
+{
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif =
+    pool_elt_at_index (apm->interfaces, hi->dev_instance);
+  int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
+  struct ifreq ifr;
+
+  /* if interface is a bridge ignore */
+  if (apif->host_if_index < 0)
+    goto error;			/* no error */
+
+  /* use host_if_index in case host name has changed */
+  ifr.ifr_ifindex = apif->host_if_index;
+  if ((rv = ioctl (fd, SIOCGIFNAME, &ifr)) < 0)
+    {
+      clib_unix_warning
+	("af_packet_%s ioctl could not retrieve eth name, error: %d",
+	 apif->host_if_name, rv);
+      goto error;
+    }
+
+  clib_memcpy (ifr.ifr_hwaddr.sa_data, address, 6);
+  ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+
+  if ((rv = ioctl (fd, SIOCSIFHWADDR, &ifr)) < 0)
+    {
+      clib_unix_warning ("af_packet_%s ioctl could not set mac, error: %d",
+			 apif->host_if_name, rv);
+      goto error;
+    }
+
+error:
+  close (fd);
+
+  return 0;			/* no error */
 }
 
 /* *INDENT-OFF* */
@@ -276,6 +321,7 @@ VNET_DEVICE_CLASS (af_packet_device_class) = {
   .clear_counters = af_packet_clear_hw_interface_counters,
   .admin_up_down_function = af_packet_interface_admin_up_down,
   .subif_add_del_function = af_packet_subif_add_del_function,
+  .mac_addr_change_function = af_packet_set_mac_address_function,
 };
 
 VLIB_DEVICE_TX_FUNCTION_MULTIARCH (af_packet_device_class,
