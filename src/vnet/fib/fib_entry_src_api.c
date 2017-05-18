@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-#include "fib_entry.h"
-#include "fib_entry_src.h"
-#include "fib_path_list.h"
+#include <vnet/fib/fib_entry.h>
+#include <vnet/fib/fib_entry_src.h>
+#include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_path_ext.h>
 
 /**
  * Source initialisation Function 
@@ -35,45 +36,94 @@ fib_entry_src_api_deinit (fib_entry_src_t *src)
 
 static void
 fib_entry_src_api_path_swap (fib_entry_src_t *src,
-			     const fib_entry_t *entry,
+                             const fib_entry_t *entry,
 			     fib_path_list_flags_t pl_flags,
-			     const fib_route_path_t *paths)
+			     const fib_route_path_t *rpaths)
 {
+    const fib_route_path_t *rpath;
+
+    fib_path_ext_list_flush(&src->fes_path_exts);
+
     src->fes_pl = fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED | pl_flags),
-				       paths);
+				       rpaths);
+
+    vec_foreach(rpath, rpaths)
+    {
+        if (NULL != rpath->frp_label_stack)
+        {
+            fib_path_ext_list_push_back(&src->fes_path_exts,
+                                        src->fes_pl,
+                                        FIB_PATH_EXT_MPLS,
+                                        rpath);
+        }
+    }
 }
 
 static void
 fib_entry_src_api_path_add (fib_entry_src_t *src,
 			    const fib_entry_t *entry,
 			    fib_path_list_flags_t pl_flags,
-			    const fib_route_path_t *paths)
+			    const fib_route_path_t *rpaths)
 {
+    const fib_route_path_t *rpath;
+
     if (FIB_NODE_INDEX_INVALID == src->fes_pl)
     {	
 	src->fes_pl =
-	    fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED | pl_flags), paths);
+	    fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED | pl_flags), rpaths);
     }
     else
     {
 	src->fes_pl =
 	    fib_path_list_copy_and_path_add(src->fes_pl,
 					    (FIB_PATH_LIST_FLAG_SHARED | pl_flags),
-					    paths);
+					    rpaths);
+    }
+
+    /*
+     * re-resolve all the path-extensions with the new path-list
+     */
+    fib_path_ext_list_resolve(&src->fes_path_exts, src->fes_pl);
+
+    /*
+     * if the path has a label we need to add a path extension
+     */
+    vec_foreach(rpath, rpaths)
+    {
+        if (NULL != rpath->frp_label_stack)
+        {
+            fib_path_ext_list_insert(&src->fes_path_exts,
+                                     src->fes_pl,
+                                     FIB_PATH_EXT_MPLS,
+                                     rpath);
+        }
     }
 }
 
 static void
 fib_entry_src_api_path_remove (fib_entry_src_t *src,
 			       fib_path_list_flags_t pl_flags,
-			       const fib_route_path_t *paths)
+			       const fib_route_path_t *rpaths)
 {
+    const fib_route_path_t *rpath;
+
     if (FIB_NODE_INDEX_INVALID != src->fes_pl)
     {
 	src->fes_pl =
 	    fib_path_list_copy_and_path_remove(src->fes_pl,
 					       (FIB_PATH_LIST_FLAG_SHARED | pl_flags),
-					       paths);
+					       rpaths);
+        /*
+         * remove the path-extension for the path
+         */
+        vec_foreach(rpath, rpaths)
+        {
+            fib_path_ext_list_remove(&src->fes_path_exts, FIB_PATH_EXT_MPLS, rpath);
+        };
+        /*
+         * resolve the remaining extensions
+         */
+        fib_path_ext_list_resolve(&src->fes_path_exts, src->fes_pl);
     }
 }
 
