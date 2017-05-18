@@ -99,14 +99,13 @@ typedef struct mpls_tunnel_collect_forwarding_ctx_t_
     fib_forward_chain_type_t fct;
 } mpls_tunnel_collect_forwarding_ctx_t;
 
-static int
+static fib_path_list_walk_rc_t
 mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
                                 fib_node_index_t path_index,
                                 void *arg)
 {
     mpls_tunnel_collect_forwarding_ctx_t *ctx;
     fib_path_ext_t *path_ext;
-    int have_path_ext;
 
     ctx = arg;
 
@@ -115,23 +114,16 @@ mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
      */
     if (!fib_path_is_resolved(path_index))
     {
-        return (!0);
+        return (FIB_PATH_LIST_WALK_CONTINUE);
     }
 
     /*
      * get the matching path-extension for the path being visited.
      */
-    have_path_ext = 0;
-    vec_foreach(path_ext, ctx->mt->mt_path_exts)
-    {
-        if (path_ext->fpe_path_index == path_index)
-        {
-            have_path_ext = 1;
-            break;
-        }
-    }
+    path_ext = fib_path_ext_list_find_by_path_index(&ctx->mt->mt_path_exts,
+                                                    path_index);
 
-    if (have_path_ext)
+    if (NULL != path_ext)
     {
         /*
          * found a matching extension. stack it to obtain the forwarding
@@ -149,7 +141,7 @@ mpls_tunnel_collect_forwarding (fib_node_index_t pl_index,
      *   There should be a path-extenios associated with each path
      */
 
-    return (!0);
+    return (FIB_PATH_LIST_WALK_CONTINUE);
 }
 
 static void
@@ -648,58 +640,6 @@ vnet_mpls_tunnel_create (u8 l2_only,
     return (mt->mt_sw_if_index);
 }
 
-/*
- * mpls_tunnel_path_ext_add
- *
- * append a path extension to the entry's list
- */
-static void
-mpls_tunnel_path_ext_append (mpls_tunnel_t *mt,
-                             const fib_route_path_t *rpath)
-{
-    if (NULL != rpath->frp_label_stack)
-    {
-        fib_path_ext_t *path_ext;
-
-        vec_add2(mt->mt_path_exts, path_ext, 1);
-
-        fib_path_ext_init(path_ext, mt->mt_path_list, rpath);
-    }
-}
-
-/*
- * mpls_tunnel_path_ext_insert
- *
- * insert, sorted, a path extension to the entry's list.
- * It's not strictly necessary in sort the path extensions, since each
- * extension has the path index to which it resolves. However, by being
- * sorted the load-balance produced has a deterministic order, not an order
- * based on the sequence of extension additions. this is a considerable benefit.
- */
-static void
-mpls_tunnel_path_ext_insert (mpls_tunnel_t *mt,
-                             const fib_route_path_t *rpath)
-{
-    if (0 == vec_len(mt->mt_path_exts))
-        return (mpls_tunnel_path_ext_append(mt, rpath));
-
-    if (NULL != rpath->frp_label_stack)
-    {
-        fib_path_ext_t path_ext;
-        int i = 0;
-
-        fib_path_ext_init(&path_ext, mt->mt_path_list, rpath);
-
-        while (i < vec_len(mt->mt_path_exts) &&
-               (fib_path_ext_cmp(&mt->mt_path_exts[i], rpath) < 0))
-        {
-            i++;
-        }
-
-        vec_insert_elts(mt->mt_path_exts, &path_ext, 1, i);
-    }
-}
-
 void
 vnet_mpls_tunnel_path_add (u32 sw_if_index,
                            fib_route_path_t *rpaths)
@@ -727,7 +667,6 @@ vnet_mpls_tunnel_path_add (u32 sw_if_index,
     else
     {
         fib_node_index_t old_pl_index;
-        fib_path_ext_t *path_ext;
 
         old_pl_index = mt->mt_path_list;
 
@@ -744,12 +683,12 @@ vnet_mpls_tunnel_path_add (u32 sw_if_index,
         /*
          * re-resolve all the path-extensions with the new path-list
          */
-        vec_foreach(path_ext, mt->mt_path_exts)
-        {
-            fib_path_ext_resolve(path_ext, mt->mt_path_list);
-        }
+        fib_path_ext_list_resolve(&mt->mt_path_exts, mt->mt_path_list);
     }
-    mpls_tunnel_path_ext_insert(mt, rpaths);
+    fib_path_ext_list_insert(&mt->mt_path_exts,
+                             mt->mt_path_list,
+                             FIB_PATH_EXT_MPLS,
+                             rpaths);
     mpls_tunnel_restack(mt);
 }
 
@@ -778,7 +717,6 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
     else
     {
         fib_node_index_t old_pl_index;
-        fib_path_ext_t *path_ext;
 
         old_pl_index = mt->mt_path_list;
 
@@ -805,27 +743,15 @@ vnet_mpls_tunnel_path_remove (u32 sw_if_index,
         /*
          * find the matching path extension and remove it
          */
-        vec_foreach(path_ext, mt->mt_path_exts)
-        {
-            if (!fib_path_ext_cmp(path_ext, rpaths))
-            {
-                /*
-                 * delete the element moving the remaining elements down 1 position.
-                 * this preserves the sorted order.
-                 */
-                vec_free(path_ext->fpe_label_stack);
-                vec_delete(mt->mt_path_exts, 1,
-                           (path_ext - mt->mt_path_exts));
-                break;
-            }
-        }
-       /*
+        fib_path_ext_list_remove(&mt->mt_path_exts,
+                                  FIB_PATH_EXT_MPLS,
+                                  rpaths);
+
+        /*
          * re-resolve all the path-extensions with the new path-list
          */
-        vec_foreach(path_ext, mt->mt_path_exts)
-        {
-            fib_path_ext_resolve(path_ext, mt->mt_path_list);
-        }
+        fib_path_ext_list_resolve(&mt->mt_path_exts,
+                                  mt->mt_path_list);
 
         mpls_tunnel_restack(mt);
    }
@@ -960,7 +886,6 @@ format_mpls_tunnel (u8 * s, va_list * args)
 {
     mpls_tunnel_t *mt = va_arg (*args, mpls_tunnel_t *);
     mpls_tunnel_attribute_t attr;
-    fib_path_ext_t *path_ext;
 
     s = format(s, "mpls_tunnel%d: sw_if_index:%d hw_if_index:%d",
                mt - mpls_tunnel_pool,
@@ -976,11 +901,7 @@ format_mpls_tunnel (u8 * s, va_list * args)
     }
     s = format(s, "\n via:\n");
     s = fib_path_list_format(mt->mt_path_list, s);
-    s = format(s, "    Extensions:");
-    vec_foreach(path_ext, mt->mt_path_exts)
-    {
-        s = format(s, "\n     %U", format_fib_path_ext, path_ext);
-    }
+    s = format(s, "%U", format_fib_path_ext_list, &mt->mt_path_exts);
     s = format(s, "\n");
 
     return (s);

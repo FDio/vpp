@@ -88,7 +88,6 @@ format_fib_entry (u8 * s, va_list * args)
 {
     fib_forward_chain_type_t fct;
     fib_entry_attribute_t attr;
-    fib_path_ext_t *path_ext;
     fib_entry_t *fib_entry;
     fib_entry_src_t *src;
     fib_node_index_t fei;
@@ -126,14 +125,7 @@ format_fib_entry (u8 * s, va_list * args)
 	    {
 		s = fib_path_list_format(src->fes_pl, s);
 	    }
-	    if (NULL != src->fes_path_exts)
-	    {
-		s = format(s, "    Extensions:");
-		vec_foreach(path_ext, src->fes_path_exts)
-		{
-		    s = format(s, "\n     %U", format_fib_path_ext, path_ext);
-		}
-	    }
+            s = format(s, "%U", format_fib_path_ext_list, &src->fes_path_exts);
 	}));
     
 	s = format (s, "\n forwarding: ");
@@ -328,7 +320,7 @@ fib_entry_show_memory (void)
 	n_srcs += vec_len(entry->fe_srcs);
 	vec_foreach(esrc, entry->fe_srcs)
 	{
-	    n_exts += vec_len(esrc->fes_path_exts);
+	    n_exts += fib_path_ext_list_length(&esrc->fes_path_exts);
 	}
     }));
 
