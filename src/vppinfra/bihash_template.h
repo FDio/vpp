@@ -77,6 +77,7 @@ typedef struct
   volatile u32 *writer_lock;
 
     BVT (clib_bihash_value) ** working_copies;
+  int *working_copy_lengths;
   clib_bihash_bucket_t saved_bucket;
 
   u32 nbuckets;

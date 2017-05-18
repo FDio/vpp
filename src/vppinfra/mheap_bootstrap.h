@@ -160,11 +160,23 @@ typedef struct
   uword *trace_index_by_offset;
 } mheap_trace_main_t;
 
+/* Without vector instructions don't bother with small object cache. */
+#ifdef CLIB_HAVE_VEC128
+#define MHEAP_HAVE_SMALL_OBJECT_CACHE 1
+#else
+#define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
+#endif
+
   /* Small object bin i is for objects with
      user_size >  sizeof (mheap_elt_t) + sizeof (mheap_elt_t) * (i - 1)
      user_size <= sizeof (mheap_elt_t) + sizeof (mheap_size_t) * i. */
+#if MHEAP_HAVE_SMALL_OBJECT_CACHE > 0
 #define MHEAP_LOG2_N_SMALL_OBJECT_BINS 8
 #define MHEAP_N_SMALL_OBJECT_BINS (1 << MHEAP_LOG2_N_SMALL_OBJECT_BINS)
+#else
+#define MHEAP_LOG2_N_SMALL_OBJECT_BINS 0
+#define MHEAP_N_SMALL_OBJECT_BINS 0
+#endif
 
 #define MHEAP_N_BINS							\
   (MHEAP_N_SMALL_OBJECT_BINS						\
@@ -187,18 +199,6 @@ typedef struct
   u64 n_gets, n_puts;
   u64 n_clocks_get, n_clocks_put;
 } mheap_stats_t;
-
-/* Without vector instructions don't bother with small object cache. */
-#ifdef CLIB_HAVE_VEC128
-#define MHEAP_HAVE_SMALL_OBJECT_CACHE 1
-#else
-#define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
-#endif
-
-#if CLIB_VEC64 > 0
-#undef MHEAP_HAVE_SMALL_OBJECT_CACHE
-#define MHEAP_HAVE_SMALL_OBJECT_CACHE 0
-#endif
 
 /* For objects with align == 4 and align_offset == 0 (e.g. vector strings). */
 typedef struct

@@ -549,23 +549,17 @@ mheap_get_search_free_list (void *v,
 	non_empty_bin_mask &= ~pow2_mask (bin % BITS (uword));
 
       /* Search each occupied free bin which is large enough. */
-      foreach_set_bit (bi, non_empty_bin_mask, (
-						 {
-						 uword r =
-						 mheap_get_search_free_bin (v,
-									    bi
-									    +
-									    i
-									    *
-									    BITS
-									    (uword),
-									    n_user_bytes_arg,
-									    align,
-									    align_offset);
-						 if (r !=
-						     MHEAP_GROUNDED) return
-						 r;}
-		       ));
+      /* *INDENT-OFF* */
+      foreach_set_bit (bi, non_empty_bin_mask,
+      ({
+        uword r =
+          mheap_get_search_free_bin (v, bi + i * BITS (uword),
+                                     n_user_bytes_arg,
+                                     align,
+                                     align_offset);
+        if (r != MHEAP_GROUNDED) return r;
+      }));
+      /* *INDENT-ON* */
     }
 
   return MHEAP_GROUNDED;
