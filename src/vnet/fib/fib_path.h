@@ -170,8 +170,8 @@ extern u32 fib_path_get_resolving_interface(fib_node_index_t fib_entry_index);
 extern int fib_path_get_weight(fib_node_index_t path_index);
 
 extern void fib_path_module_init(void);
-extern int fib_path_encode(fib_node_index_t path_list_index,
-                           fib_node_index_t path_index,
-			   void *ctx);
+extern fib_path_list_walk_rc_t fib_path_encode(fib_node_index_t path_list_index,
+                                               fib_node_index_t path_index,
+                                               void *ctx);
 
 #endif

@@ -19,8 +19,8 @@
 #include <vlib/vlib.h>
 #include <vnet/adj/adj.h>
 
-#include "fib_node.h"
-#include "fib_path.h"
+#include <vnet/fib/fib_node.h>
+#include <vnet/fib/fib_path.h>
 
 /**
  * Enumeration of path-list flags.
@@ -161,9 +161,10 @@ extern u32 fib_path_list_find_rpath (fib_node_index_t path_list_index,
 /**
  * A callback function type for walking a path-list's paths
  */
-typedef int (*fib_path_list_walk_fn_t)(fib_node_index_t pl_index,
-				       fib_node_index_t path_index,
-				       void *ctx);
+typedef fib_path_list_walk_rc_t (*fib_path_list_walk_fn_t)(
+    fib_node_index_t pl_index,
+    fib_node_index_t path_index,
+    void *ctx);
 
 extern void fib_path_list_walk(fib_node_index_t pl_index,
 			       fib_path_list_walk_fn_t func,

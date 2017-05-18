@@ -582,11 +582,11 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	  fib_index =
 	    ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index);
 	  e->fib_entry_index =
-	    fib_table_entry_update_one_path (fib_index, &pfx, FIB_SOURCE_ADJ,
-					     FIB_ENTRY_FLAG_ATTACHED,
-					     FIB_PROTOCOL_IP4, &pfx.fp_addr,
-					     e->sw_if_index, ~0, 1, NULL,
-					     FIB_ROUTE_PATH_FLAG_NONE);
+	    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
+				      FIB_ENTRY_FLAG_ATTACHED,
+				      FIB_PROTOCOL_IP4, &pfx.fp_addr,
+				      e->sw_if_index, ~0, 1, NULL,
+				      FIB_ROUTE_PATH_FLAG_NONE);
 	}
       else
 	{

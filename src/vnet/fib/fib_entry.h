@@ -290,7 +290,7 @@ typedef struct fib_entry_src_t_ {
     /**
      * A vector of path extensions
      */
-    struct fib_path_ext_t_ *fes_path_exts;
+    fib_path_ext_list_t fes_path_exts;
 
     /**
      * The path-list created by the source

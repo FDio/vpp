@@ -146,7 +146,7 @@ fib_entry_src_action_deinit (fib_entry_t *fib_entry,
 	fib_entry_src_vft[source].fesv_deinit(esrc);
     }
 
-    vec_free(esrc->fes_path_exts);
+    fib_path_ext_list_flush(&esrc->fes_path_exts);
     vec_del1(fib_entry->fe_srcs, index);
 }
 
@@ -188,7 +188,7 @@ fib_entry_src_action_cover_update (fib_entry_t *fib_entry,
 
 typedef struct fib_entry_src_collect_forwarding_ctx_t_
 {
-    load_balance_path_t * next_hops;
+    load_balance_path_t *next_hops;
     const fib_entry_t *fib_entry;
     const fib_entry_src_t *esrc;
     fib_forward_chain_type_t fct;
@@ -264,95 +264,46 @@ fib_entry_chain_type_fixup (const fib_entry_t *entry,
     return (dfct);
 }
 
-static int
-fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
-                                  fib_node_index_t path_index,
-                                  void *arg)
+static void
+fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
+                                   fib_entry_src_collect_forwarding_ctx_t *ctx)
 {
-    fib_entry_src_collect_forwarding_ctx_t *ctx;
-    fib_path_ext_t *path_ext;
-    int have_path_ext;
-
-    ctx = arg;
+    load_balance_path_t *nh;
 
     /*
-     * if the path is not resolved, don't include it.
+     * no extension => no out-going label for this path. that's OK
+     * in the case of an IP or EOS chain, but not for non-EOS
      */
-    if (!fib_path_is_resolved(path_index))
+    switch (ctx->fct)
     {
-        return (!0);
-    }
-
-    if (fib_path_is_recursive_constrained(path_index))
-    {
-        ctx->n_recursive_constrained += 1;
-    }
-
-    /*
-     * get the matching path-extension for the path being visited.
-     */
-    have_path_ext = 0;
-    vec_foreach(path_ext, ctx->esrc->fes_path_exts)
-    {
-        if (path_ext->fpe_path_index == path_index)
-        {
-            have_path_ext = 1;
-            break;
-        }
-    }
-    
-    if (have_path_ext &&
-        fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0]))
-    {
+    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
         /*
-         * found a matching extension. stack it to obtain the forwarding
-         * info for this path.
+         * EOS traffic with no label to stack, we need the IP Adj
          */
-        ctx->next_hops =
-            fib_path_ext_stack(path_ext,
-                               ctx->fct,
-                               fib_entry_chain_type_fixup(ctx->fib_entry,
-                                                          ctx->fct),
-                               ctx->next_hops);
-    }
-    else
-    {
-        load_balance_path_t *nh;
+        vec_add2(ctx->next_hops, nh, 1);
 
-        /*
-         * no extension => no out-going label for this path. that's OK
-         * in the case of an IP or EOS chain, but not for non-EOS
-         */
-        switch (ctx->fct)
+        nh->path_index = path_index;
+        nh->path_weight = fib_path_get_weight(path_index);
+        fib_path_contribute_forwarding(path_index, ctx->fct, &nh->path_dpo);
+
+        break;
+    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
+        if (fib_path_is_exclusive(path_index) ||
+            fib_path_is_deag(path_index))
         {
-        case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
-        case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
-        case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
-        case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
-            /*
-             * EOS traffic with no label to stack, we need the IP Adj
-             */
             vec_add2(ctx->next_hops, nh, 1);
 
             nh->path_index = path_index;
             nh->path_weight = fib_path_get_weight(path_index);
-            fib_path_contribute_forwarding(path_index, ctx->fct, &nh->path_dpo);
-
-            break;
-        case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
-	    if (fib_path_is_exclusive(path_index) ||
-		fib_path_is_deag(path_index))
-	    {
-		vec_add2(ctx->next_hops, nh, 1);
-
-		nh->path_index = path_index;
-		nh->path_weight = fib_path_get_weight(path_index);
-		fib_path_contribute_forwarding(path_index,
-					       FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-					       &nh->path_dpo);
-	    }
-            break;
-        case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+            fib_path_contribute_forwarding(path_index,
+                                           FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
+                                           &nh->path_dpo);
+        }
+        break;
+    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
         {
             /*
              * no label. we need a chain based on the payload. fixup.
@@ -371,14 +322,85 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 
             break;
         }
-        case FIB_FORW_CHAIN_TYPE_ETHERNET:
-        case FIB_FORW_CHAIN_TYPE_NSH:
-	    ASSERT(0);
-	    break;
-        }
+    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+    case FIB_FORW_CHAIN_TYPE_NSH:
+        ASSERT(0);
+        break;
+    }
+}
+
+static fib_path_list_walk_rc_t
+fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
+                                  fib_node_index_t path_index,
+                                  void *arg)
+{
+    fib_entry_src_collect_forwarding_ctx_t *ctx;
+    fib_path_ext_t *path_ext;
+
+    ctx = arg;
+
+    /*
+     * if the path is not resolved, don't include it.
+     */
+    if (!fib_path_is_resolved(path_index))
+    {
+        return (FIB_PATH_LIST_WALK_CONTINUE);
     }
 
-    return (!0);
+    if (fib_path_is_recursive_constrained(path_index))
+    {
+        ctx->n_recursive_constrained += 1;
+    }
+
+    /*
+     * get the matching path-extension for the path being visited.
+     */
+    path_ext = fib_path_ext_list_find_by_path_index(&ctx->esrc->fes_path_exts,
+                                                    path_index);
+
+    if (NULL != path_ext)
+    {
+        switch (path_ext->fpe_type)
+        {
+        case FIB_PATH_EXT_MPLS:
+            if (fib_entry_src_valid_out_label(path_ext->fpe_label_stack[0]))
+            {
+                /*
+                 * found a matching extension. stack it to obtain the forwarding
+                 * info for this path.
+                 */
+                ctx->next_hops =
+                    fib_path_ext_stack(path_ext,
+                                       ctx->fct,
+                                       fib_entry_chain_type_fixup(ctx->fib_entry,
+                                                                  ctx->fct),
+                                       ctx->next_hops);
+            }
+            else
+            {
+                fib_entry_src_get_path_forwarding(path_index, ctx);
+            }
+            break;
+        case FIB_PATH_EXT_ADJ:
+            if (FIB_PATH_EXT_ADJ_FLAG_REFINES_COVER & path_ext->fpe_adj_flags)
+            {
+                fib_entry_src_get_path_forwarding(path_index, ctx);
+            }
+            /*
+             * else
+             *  the path does not refine the cover, meaning that
+             *  the adjacency doesdoes not match the sub-net on the link.
+             *  So this path does not contribute forwarding.
+             */
+            break;
+        }
+    }
+    else
+    {
+        fib_entry_src_get_path_forwarding(path_index, ctx);
+    }
+
+    return (FIB_PATH_LIST_WALK_CONTINUE);
 }
 
 void
@@ -1036,58 +1058,6 @@ fib_entry_flags_update (const fib_entry_t *fib_entry,
 }
 
 /*
- * fib_entry_src_path_ext_add
- *
- * append a path extension to the entry's list
- */
-static void
-fib_entry_src_path_ext_append (fib_entry_src_t *esrc,
-			       const fib_route_path_t *rpath)
-{
-    if (NULL != rpath->frp_label_stack)
-    {
-	fib_path_ext_t *path_ext;
-
-	vec_add2(esrc->fes_path_exts, path_ext, 1);
-
-	fib_path_ext_init(path_ext, esrc->fes_pl, rpath);
-    }
-}
-
-/*
- * fib_entry_src_path_ext_insert
- *
- * insert, sorted, a path extension to the entry's list.
- * It's not strictly necessary in sort the path extensions, since each
- * extension has the path index to which it resolves. However, by being
- * sorted the load-balance produced has a deterministic order, not an order
- * based on the sequence of extension additions. this is a considerable benefit.
- */
-static void
-fib_entry_src_path_ext_insert (fib_entry_src_t *esrc,
-			       const fib_route_path_t *rpath)
-{
-    if (0 == vec_len(esrc->fes_path_exts))
-	return (fib_entry_src_path_ext_append(esrc, rpath));
-
-    if (NULL != rpath->frp_label_stack)
-    {
-	fib_path_ext_t path_ext;
-	int i = 0;
-
-	fib_path_ext_init(&path_ext, esrc->fes_pl, rpath);
-
-	while (i < vec_len(esrc->fes_path_exts) &&
-	       (fib_path_ext_cmp(&esrc->fes_path_exts[i], rpath) < 0))
-	{
-	    i++;
-	}
-
-	vec_insert_elts(esrc->fes_path_exts, &path_ext, 1, i);
-    }
-}
-
-/*
  * fib_entry_src_action_add
  *
  * Adding a source can result in a new fib_entry being created, which
@@ -1103,7 +1073,6 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
 {
     fib_node_index_t old_path_list, fib_entry_index;
     fib_path_list_flags_t pl_flags;
-    fib_path_ext_t *path_ext;
     fib_entry_src_t *esrc;
 
     /*
@@ -1140,18 +1109,6 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
     fib_entry_src_vft[source].fesv_path_add(esrc, fib_entry, pl_flags, rpath);
     fib_entry = fib_entry_get(fib_entry_index);
 
-    /*
-     * re-resolve all the path-extensions with the new path-list
-     */
-    vec_foreach(path_ext, esrc->fes_path_exts)
-    {
-	fib_path_ext_resolve(path_ext, esrc->fes_pl);
-    }
-    /*
-     * if the path has a label we need to add a path extension
-     */
-    fib_entry_src_path_ext_insert(esrc, rpath);
-
     fib_path_list_lock(esrc->fes_pl);
     fib_path_list_unlock(old_path_list);
 
@@ -1176,7 +1133,6 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
     fib_node_index_t old_path_list, fib_entry_index;
     fib_path_list_flags_t pl_flags;
     const fib_route_path_t *rpath;
-    fib_path_ext_t *path_ext;
     fib_entry_src_t *esrc;
 
     esrc = fib_entry_src_find(fib_entry, source, NULL);
@@ -1218,17 +1174,6 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 					     pl_flags,
 					     rpaths);
 
-    vec_foreach(path_ext, esrc->fes_path_exts)
-    {
-	vec_free(path_ext->fpe_label_stack);
-    }
-    vec_free(esrc->fes_path_exts);
-
-    vec_foreach(rpath, rpaths)
-    {
-	fib_entry_src_path_ext_append(esrc, rpath);
-    }
-
     fib_entry = fib_entry_get(fib_entry_index);
 
     fib_path_list_lock(esrc->fes_pl);
@@ -1244,7 +1189,6 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
 {
     fib_path_list_flags_t pl_flags;
     fib_node_index_t old_path_list;
-    fib_path_ext_t *path_ext;
     fib_entry_src_t *esrc;
 
     esrc = fib_entry_src_find(fib_entry, source, NULL);
@@ -1266,29 +1210,6 @@ fib_entry_src_action_path_remove (fib_entry_t *fib_entry,
     fib_entry_flags_update(fib_entry, rpath, &pl_flags, esrc);
 
     fib_entry_src_vft[source].fesv_path_remove(esrc, pl_flags, rpath);
-    /*
-     * find the matching path extension and remove it
-     */
-    vec_foreach(path_ext, esrc->fes_path_exts)
-    {
-	if (!fib_path_ext_cmp(path_ext, rpath))
-	{
-	    /*
-	     * delete the element moving the remaining elements down 1 position.
-	     * this preserves the sorted order.
-	     */
-	    vec_free(path_ext->fpe_label_stack);
-	    vec_delete(esrc->fes_path_exts, 1, (path_ext - esrc->fes_path_exts));
-	    break;
-	}
-    }
-    /*
-     * re-resolve all the path-extensions with the new path-list
-     */
-    vec_foreach(path_ext, esrc->fes_path_exts)
-    {
-	fib_path_ext_resolve(path_ext, esrc->fes_pl);
-    }
 
     /*
      * lock the new path-list, unlock the old if it had one
