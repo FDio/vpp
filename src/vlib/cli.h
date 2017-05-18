@@ -181,6 +181,10 @@ clib_error_t *vlib_cli_register_parse_rule (struct vlib_main_t *vm,
 
 uword unformat_vlib_cli_sub_input (unformat_input_t * i, va_list * args);
 
+/* Return an vector of strings consisting of possible auto-completions
+ * for a given input string */
+u8 **vlib_cli_get_possible_completions (u8 * input_str);
+
 #endif /* included_vlib_cli_h */
 
 /*
