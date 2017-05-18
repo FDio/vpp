@@ -271,6 +271,7 @@ typedef struct
   u32 fwd_entry_index;
   u32 dp_table;
   u32 vni;
+  u8 action;
   dp_address_t leid;
   dp_address_t reid;
 } lisp_api_gpe_fwd_entry_t;

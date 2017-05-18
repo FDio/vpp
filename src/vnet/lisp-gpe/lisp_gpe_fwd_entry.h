@@ -217,6 +217,8 @@ vnet_lisp_gpe_del_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 extern void
 vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 				u32 fwd_entry_index);
+extern u32 *vnet_lisp_gpe_get_fwd_entry_vnis (void);
+
 #endif
 
 /*
