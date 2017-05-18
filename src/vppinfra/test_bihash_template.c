@@ -48,6 +48,43 @@ vl (void *v)
 }
 
 static clib_error_t *
+test_bihash_vec64 (test_main_t * tm)
+{
+  u32 user_buckets = 1228800;
+  u32 user_memory_size = 209715200;
+  BVT (clib_bihash_kv) kv;
+  int i, j;
+  f64 before;
+  f64 *cum_times = 0;
+  BVT (clib_bihash) * h;
+
+  h = &tm->hash;
+
+  BV (clib_bihash_init) (h, "test", user_buckets, user_memory_size);
+
+  before = clib_time_now (&tm->clib_time);
+
+  for (j = 0; j < 10; j++)
+    {
+      for (i = 1; i <= j * 1000 + 1; i++)
+	{
+	  kv.key = i;
+	  kv.value = 1;
+
+	  BV (clib_bihash_add_del) (h, &kv, 1 /* is_add */ );
+	}
+
+      vec_add1 (cum_times, clib_time_now (&tm->clib_time) - before);
+    }
+
+  for (j = 0; j < vec_len (cum_times); j++)
+    fformat (stdout, "Cum time for %d: %.4f (us)\n", (j + 1) * 1000,
+	     cum_times[j] * 1e6);
+
+  return 0;
+}
+
+static clib_error_t *
 test_bihash (test_main_t * tm)
 {
   int i, j;
@@ -204,6 +241,7 @@ test_bihash_main (test_main_t * tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;
+  int test_vec64 = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -222,6 +260,8 @@ test_bihash_main (test_main_t * tm)
 	;
       else if (unformat (i, "search %d", &tm->search_iter))
 	;
+      else if (unformat (i, "vec64"))
+	test_vec64 = 1;
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
       else
@@ -229,7 +269,10 @@ test_bihash_main (test_main_t * tm)
 				  format_unformat_error, i);
     }
 
-  error = test_bihash (tm);
+  if (test_vec64)
+    error = test_bihash_vec64 (tm);
+  else
+    error = test_bihash (tm);
 
   return error;
 }
