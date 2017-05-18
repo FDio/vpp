@@ -914,21 +914,32 @@ fib_path_list_copy_and_path_add (fib_node_index_t orig_path_list_index,
      * If we find one then we can return the existing one and destroy the
      * new one just created.
      */
-    exist_path_list_index = fib_path_list_db_find(path_list);
-    if (FIB_NODE_INDEX_INVALID != exist_path_list_index)
+    if (path_list->fpl_flags & FIB_PATH_LIST_FLAG_SHARED)
     {
-        fib_path_list_destroy(path_list);
+        exist_path_list_index = fib_path_list_db_find(path_list);
+        if (FIB_NODE_INDEX_INVALID != exist_path_list_index)
+        {
+            fib_path_list_destroy(path_list);
 	
-        path_list_index = exist_path_list_index;
+            path_list_index = exist_path_list_index;
+        }
+        else
+        {
+            /*
+             * if there was not a matching path-list, then this
+             * new one will need inserting into the DB and resolving.
+             */
+            fib_path_list_db_insert(path_list_index);
+
+            path_list = fib_path_list_resolve(path_list);
+        }
     }
     else
     {
         /*
-         * if there was not a matching path-list, then this
-         * new one will need inserting into the DB and resolving.
+         * no shared path list requested. resolve and use the one
+         * just created.
          */
-        fib_path_list_db_insert(path_list_index);
-
         path_list = fib_path_list_resolve(path_list);
     }
 
@@ -1289,7 +1300,9 @@ fib_path_list_walk (fib_node_index_t path_list_index,
 
     vec_foreach(path_index, path_list->fpl_paths)
     {
-	if (!func(path_list_index, *path_index, ctx))
+	if (FIB_PATH_LIST_WALK_STOP == func(path_list_index,
+                                            *path_index,
+                                            ctx))
 	    break;
     }
 }
