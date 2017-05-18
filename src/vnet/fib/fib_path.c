@@ -2084,7 +2084,7 @@ fib_path_is_looped (fib_node_index_t path_index)
     return (path->fp_oper_flags & FIB_PATH_OPER_FLAG_RECURSIVE_LOOP);
 }
 
-int
+fib_path_list_walk_rc_t
 fib_path_encode (fib_node_index_t path_list_index,
 		 fib_node_index_t path_index,
                  void *ctx)
@@ -2095,7 +2095,7 @@ fib_path_encode (fib_node_index_t path_list_index,
 
     path = fib_path_get(path_index);
     if (!path)
-      return (0);
+      return (FIB_PATH_LIST_WALK_CONTINUE);
     vec_add2(*api_rpaths, api_rpath, 1);
     api_rpath->rpath.frp_weight = path->fp_weight;
     api_rpath->rpath.frp_proto = path->fp_nh_proto;
@@ -2124,7 +2124,7 @@ fib_path_encode (fib_node_index_t path_list_index,
       default:
         break;
       }
-    return (1);
+    return (FIB_PATH_LIST_WALK_CONTINUE);
 }
 
 fib_protocol_t
