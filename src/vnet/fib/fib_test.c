@@ -846,7 +846,8 @@ fib_test_v4 (void)
 	     "Flags set on attached interface");
 
     ai = fib_entry_get_adj(fei);
-    FIB_TEST((FIB_NODE_INDEX_INVALID != ai), "attached interface route adj present");
+    FIB_TEST((FIB_NODE_INDEX_INVALID != ai),
+             "attached interface route adj present %d", ai);
     adj = adj_get(ai);
     FIB_TEST((IP_LOOKUP_NEXT_GLEAN == adj->lookup_next_index),
 	     "attached interface adj is glean");
@@ -1089,21 +1090,21 @@ fib_test_v4 (void)
     /*
      * add the adj fib
      */
-    fei = fib_table_entry_update_one_path(fib_index,
-                                          &pfx_10_10_10_1_s_32,
-                                          FIB_SOURCE_ADJ,
-                                          FIB_ENTRY_FLAG_ATTACHED,
-					  FIB_PROTOCOL_IP4,
-                                          &pfx_10_10_10_1_s_32.fp_addr,
-                                          tm->hw[0]->sw_if_index,
-                                          ~0, // invalid fib index
-                                          1,
-                                          NULL,
-                                          FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_10_10_10_1_s_32,
+                                   FIB_SOURCE_ADJ,
+                                   FIB_ENTRY_FLAG_ATTACHED,
+                                   FIB_PROTOCOL_IP4,
+                                   &pfx_10_10_10_1_s_32.fp_addr,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0, // invalid fib index
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
     FIB_TEST((FIB_ENTRY_FLAG_ATTACHED  == fib_entry_get_flags(fei)),
 	     "Flags set on adj-fib");
     ai = fib_entry_get_adj(fei);
-    FIB_TEST((ai_01 == ai), "ADJ-FIB resolves via adj");
+    FIB_TEST((ai_01 == ai), "ADJ-FIB resolves via adj, %d", ai);
 
     fib_table_entry_path_remove(fib_index,
                                 &pfx_11_11_11_11_s_32,
@@ -1138,17 +1139,17 @@ fib_test_v4 (void)
 	      "adj nbr next-hop ok");
     FIB_TEST((ai_01 != ai_02), "ADJs are different");
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_10_10_10_2_s_32,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP4,
-				    &pfx_10_10_10_2_s_32.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0, // invalid fib index
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_10_10_10_2_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &pfx_10_10_10_2_s_32.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_10_10_10_2_s_32);
     ai = fib_entry_get_adj(fei);
@@ -1644,13 +1645,13 @@ fib_test_v4 (void)
 	    .ip4.as_u32 = clib_host_to_net_u32(0x06060606),
 	},
     };
-    fib_test_lb_bucket_t ip_6_6_6_6_o_10_10_10_1 = {
+    fib_test_lb_bucket_t ip_o_10_10_10_1 = {
 	.type = FT_LB_ADJ,
 	.adj = {
 	    .adj = ai_01,
 	},
     };
-    fib_test_lb_bucket_t ip_6_6_6_6_o_10_10_10_2 = {
+    fib_test_lb_bucket_t ip_o_10_10_10_2 = {
         .type = FT_LB_ADJ,
         .adj = {
             .adj = ai_02,
@@ -1678,7 +1679,7 @@ fib_test_v4 (void)
     FIB_TEST(fib_test_validate_entry(fei,
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     1,
-				     &ip_6_6_6_6_o_10_10_10_1),
+				     &ip_o_10_10_10_1),
 	     "6.6.6.6/32 via 10.10.10.1");
 
     fib_table_entry_path_add(fib_index,
@@ -1697,70 +1698,70 @@ fib_test_v4 (void)
     FIB_TEST(fib_test_validate_entry(fei,
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     64,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_1),
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_1),
 	     "6.6.6.6/32 via 10.10.10.1 and 10.10.10.2 in 63:1 ratio");
 
     fib_table_entry_path_add(fib_index,
@@ -1779,71 +1780,71 @@ fib_test_v4 (void)
     FIB_TEST(fib_test_validate_entry(fei,
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     128,
-				     &ip_6_6_6_6_o_10_10_10_1,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
+				     &ip_o_10_10_10_1,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
 				     &ip_6_6_6_6_o_12_12_12_12,
 				     &ip_6_6_6_6_o_12_12_12_12,
 				     &ip_6_6_6_6_o_12_12_12_12,
@@ -1923,70 +1924,70 @@ fib_test_v4 (void)
     FIB_TEST(fib_test_validate_entry(fei,
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     64,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_2,
-				     &ip_6_6_6_6_o_10_10_10_1),
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_2,
+				     &ip_o_10_10_10_1),
 	     "6.6.6.6/32 via 10.10.10.1 and 10.10.10.2 in 63:1 ratio");
 
     fib_table_entry_path_remove(fib_index,
@@ -2003,7 +2004,7 @@ fib_test_v4 (void)
     FIB_TEST(fib_test_validate_entry(fei,
 				     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
 				     1,
-				     &ip_6_6_6_6_o_10_10_10_1),
+				     &ip_o_10_10_10_1),
 	     "6.6.6.6/32 via 10.10.10.1");
 
     fib_table_entry_delete(fib_index, &pfx_6_6_6_6_s_32, FIB_SOURCE_API);
@@ -3808,17 +3809,17 @@ fib_test_v4 (void)
 	},
     };
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_12_10_10_2_s_32,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP4,
-				    &pfx_12_10_10_2_s_32.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0, // invalid fib index
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_12_10_10_2_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &pfx_12_10_10_2_s_32.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_12_10_10_2_s_32);
     dpo = fib_entry_contribute_ip_forwarding(fei);
@@ -3842,17 +3843,17 @@ fib_test_v4 (void)
 	},
     };
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_10_10_10_127_s_32,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP4,
-				    &pfx_10_10_10_127_s_32.fp_addr,
-				    tm->hw[1]->sw_if_index,
-				    ~0, // invalid fib index
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_10_10_10_127_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &pfx_10_10_10_127_s_32.fp_addr,
+                             tm->hw[1]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_127_s_32);
     dpo = fib_entry_contribute_ip_forwarding(fei);
@@ -3862,6 +3863,134 @@ fib_test_v4 (void)
     fib_table_entry_delete(fib_index,
 			   &pfx_10_10_10_127_s_32,
 			   FIB_SOURCE_ADJ);
+
+    /*
+     * add a second path to an adj-fib
+     * this is a sumiluation of another ARP entry created
+     * on an interface on which the connected prefi does not exist.
+     * The second path fails refinement. Expect to forward through the
+     * first.
+     */
+    fib_prefix_t pfx_10_10_10_3_s_32 = {
+        .fp_len = 32,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            /* 10.10.10.3 */
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a03),
+        },
+    };
+
+    ai_03 = adj_nbr_add_or_lock(FIB_PROTOCOL_IP4,
+                                VNET_LINK_IP4,
+                                &nh_10_10_10_3,
+                                tm->hw[0]->sw_if_index);
+
+    fib_test_lb_bucket_t ip_o_10_10_10_3 = {
+        .type = FT_LB_ADJ,
+        .adj = {
+            .adj = ai_03,
+        },
+    };
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_10_10_10_3_s_32,
+                                   FIB_SOURCE_ADJ,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   FIB_PROTOCOL_IP4,
+                                   &nh_10_10_10_3,
+                                   tm->hw[0]->sw_if_index,
+                                   fib_index,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_10_10_10_3_s_32,
+                                   FIB_SOURCE_ADJ,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   FIB_PROTOCOL_IP4,
+                                   &nh_12_12_12_12,
+                                   tm->hw[1]->sw_if_index,
+                                   fib_index,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(fib_test_validate_entry(fei,
+                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                     1,
+                                     &ip_o_10_10_10_3),
+             "10.10.10.3 via 10.10.10.3/Eth0 only");
+
+    /*
+     * remove the path that refines the cover, should go unresolved
+     */
+    fib_table_entry_path_remove(fib_index,
+                                &pfx_10_10_10_3_s_32,
+                                FIB_SOURCE_ADJ,
+                                FIB_PROTOCOL_IP4,
+                                &nh_10_10_10_3,
+                                tm->hw[0]->sw_if_index,
+                                fib_index,
+                                1,
+                                FIB_ROUTE_PATH_FLAG_NONE);
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    FIB_TEST(!dpo_id_is_valid(dpo),
+             "wrong interface adj-fib fails refinement");
+
+    /*
+     * add back the path that refines the cover
+     */
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_10_10_10_3_s_32,
+                                   FIB_SOURCE_ADJ,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   FIB_PROTOCOL_IP4,
+                                   &nh_10_10_10_3,
+                                   tm->hw[0]->sw_if_index,
+                                   fib_index,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(fib_test_validate_entry(fei,
+                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                     1,
+                                     &ip_o_10_10_10_3),
+             "10.10.10.3 via 10.10.10.3/Eth0 only");
+
+    /*
+     * remove the path that does not refine the cover
+     */
+    fib_table_entry_path_remove(fib_index,
+                                &pfx_10_10_10_3_s_32,
+                                FIB_SOURCE_ADJ,
+                                FIB_PROTOCOL_IP4,
+                                &nh_12_12_12_12,
+                                tm->hw[1]->sw_if_index,
+                                fib_index,
+                                1,
+                                FIB_ROUTE_PATH_FLAG_NONE);
+    FIB_TEST(fib_test_validate_entry(fei,
+                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                     1,
+                                     &ip_o_10_10_10_3),
+             "10.10.10.3 via 10.10.10.3/Eth0 only");
+
+    /*
+     * remove the path that does refine, it's the last path, so
+     * the entry should be gone
+     */
+    fib_table_entry_path_remove(fib_index,
+                                &pfx_10_10_10_3_s_32,
+                                FIB_SOURCE_ADJ,
+                                FIB_PROTOCOL_IP4,
+                                &nh_10_10_10_3,
+                                tm->hw[0]->sw_if_index,
+                                fib_index,
+                                1,
+                                FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_3_s_32);
+    FIB_TEST((fei == FIB_NODE_INDEX_INVALID), "10.10.10.3 gone");
+
+    adj_unlock(ai_03);
+
     /*
      * change the table's flow-hash config - expect the update to propagete to
      * the entries' load-balance objects
@@ -4283,17 +4412,17 @@ fib_test_v6 (void)
 				    &adj->sub_type.nbr.next_hop)),
 	      "adj nbr next-hop ok");
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_2001_1_2_s_128,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP6,
-				    &pfx_2001_1_2_s_128.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0,
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_2001_1_2_s_128,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP6,
+                             &pfx_2001_1_2_s_128.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0,
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_2001_1_2_s_128);
     ai = fib_entry_get_adj(fei);
@@ -4322,17 +4451,17 @@ fib_test_v6 (void)
 	      "adj nbr next-hop ok");
     FIB_TEST((ai_01 != ai_02), "ADJs are different");
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_2001_1_3_s_128,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP6,
-				    &pfx_2001_1_3_s_128.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0,
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_2001_1_3_s_128,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP6,
+                             &pfx_2001_1_3_s_128.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0,
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_2001_1_3_s_128);
     ai = fib_entry_get_adj(fei);
@@ -4957,17 +5086,17 @@ fib_test_ae (void)
     };
     fib_node_index_t ai;
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_10_10_10_1_s_32,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP4,
-				    &pfx_10_10_10_1_s_32.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0, // invalid fib index
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_10_10_10_1_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &pfx_10_10_10_1_s_32.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     fei = fib_table_lookup(fib_index, &pfx_10_10_10_1_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib1 created");
@@ -5026,17 +5155,17 @@ fib_test_ae (void)
     	},
     };
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_10_10_10_2_s_32,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP4,
-				    &pfx_10_10_10_2_s_32.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0, // invalid fib index
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_10_10_10_2_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &pfx_10_10_10_2_s_32.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_2_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib2 present");
     ai = fib_entry_get_adj(fei);
@@ -5097,17 +5226,17 @@ fib_test_ae (void)
     	},
     };
 
-    fib_table_entry_update_one_path(fib_index,
-				    &pfx_10_10_10_3_s_32,
-				    FIB_SOURCE_ADJ,
-				    FIB_ENTRY_FLAG_ATTACHED,
-				    FIB_PROTOCOL_IP4,
-				    &pfx_10_10_10_3_s_32.fp_addr,
-				    tm->hw[0]->sw_if_index,
-				    ~0, // invalid fib index
-				    1,
-				    NULL,
-				    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(fib_index,
+                             &pfx_10_10_10_3_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &pfx_10_10_10_3_s_32.fp_addr,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
     fei = fib_table_lookup_exact_match(fib_index, &pfx_10_10_10_3_s_32);
     FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "ADJ-fib3 present");
     ai = fib_entry_get_adj(fei);
@@ -7144,17 +7273,17 @@ fib_test_bfd (void)
     /*
      * source the entry via the ADJ fib
      */
-    fei = fib_table_entry_update_one_path(0,
-                                          &pfx_10_10_10_1_s_32,
-                                          FIB_SOURCE_ADJ,
-                                          FIB_ENTRY_FLAG_ATTACHED,
-                                          FIB_PROTOCOL_IP4,
-                                          &nh_10_10_10_1,
-                                          tm->hw[0]->sw_if_index,
-                                          ~0, // invalid fib index
-                                          1,
-                                          NULL,
-                                          FIB_ROUTE_PATH_FLAG_NONE);
+    fei = fib_table_entry_path_add(0,
+                                   &pfx_10_10_10_1_s_32,
+                                   FIB_SOURCE_ADJ,
+                                   FIB_ENTRY_FLAG_ATTACHED,
+                                   FIB_PROTOCOL_IP4,
+                                   &nh_10_10_10_1,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0, // invalid fib index
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
 
     /*
      * Delete the BFD session. Expect the fib_entry to remain
@@ -7183,17 +7312,17 @@ fib_test_bfd (void)
         .fp_len = 32,
         .fp_proto = FIB_PROTOCOL_IP4,
     };
-    fib_table_entry_update_one_path(0,
-                                    &pfx_10_10_10_2_s_32,
-                                    FIB_SOURCE_ADJ,
-                                    FIB_ENTRY_FLAG_ATTACHED,
-                                    FIB_PROTOCOL_IP4,
-                                    &nh_10_10_10_2,
-                                    tm->hw[0]->sw_if_index,
-                                    ~0, // invalid fib index
-                                    1,
-                                    NULL,
-                                    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(0,
+                             &pfx_10_10_10_2_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &nh_10_10_10_2,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
     /*
      * A BFD session for the new ADJ FIB
      */
@@ -7215,17 +7344,17 @@ fib_test_bfd (void)
      * then add it back
      */
     fib_table_entry_delete(0, &pfx_10_10_10_2_s_32, FIB_SOURCE_ADJ);
-    fib_table_entry_update_one_path(0,
-                                    &pfx_10_10_10_2_s_32,
-                                    FIB_SOURCE_ADJ,
-                                    FIB_ENTRY_FLAG_ATTACHED,
-                                    FIB_PROTOCOL_IP4,
-                                    &nh_10_10_10_2,
-                                    tm->hw[0]->sw_if_index,
-                                    ~0, // invalid fib index
-                                    1,
-                                    NULL,
-                                    FIB_ROUTE_PATH_FLAG_NONE);
+    fib_table_entry_path_add(0,
+                             &pfx_10_10_10_2_s_32,
+                             FIB_SOURCE_ADJ,
+                             FIB_ENTRY_FLAG_ATTACHED,
+                             FIB_PROTOCOL_IP4,
+                             &nh_10_10_10_2,
+                             tm->hw[0]->sw_if_index,
+                             ~0, // invalid fib index
+                             1,
+                             NULL,
+                             FIB_ROUTE_PATH_FLAG_NONE);
 
     /*
      * Before adding a recursive via the BFD tracked ADJ-FIBs,

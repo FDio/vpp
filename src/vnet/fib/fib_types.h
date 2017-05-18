@@ -400,4 +400,21 @@ typedef struct fib_route_path_encode_t_ {
     dpo_id_t dpo;
 } fib_route_path_encode_t;
 
+/**
+ * return code to control pat-hlist walk
+ */
+typedef enum fib_path_list_walk_rc_t_
+{
+    FIB_PATH_LIST_WALK_STOP,
+    FIB_PATH_LIST_WALK_CONTINUE,
+} fib_path_list_walk_rc_t;
+
+/**
+ * A list of path-extensions
+ */
+typedef struct fib_path_ext_list_t_
+{
+    struct fib_path_ext_t_ *fpel_exts;
+} fib_path_ext_list_t;
+
 #endif
