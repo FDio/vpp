@@ -1230,6 +1230,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 			   u8 input, unix_cli_parse_action_t action)
 {
   u8 *prev;
+  u8 *save = 0;
+  u8 **possible_commands;
   int j, delta;
 
   switch (action)
@@ -1553,6 +1555,157 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
       break;
 
     case UNIX_CLI_PARSE_ACTION_TAB:
+      if (cf->cursor < vec_len (cf->current_command))
+	{
+	  /* if we are in the middle of a line, complete only if
+	   * the cursor points to whitespace */
+	  if (isspace (cf->current_command[cf->cursor]))
+	    {
+	      /* save and clear any input that is after the cursor */
+	      vec_resize (save, vec_len (cf->current_command) - cf->cursor);
+	      clib_memcpy (save, cf->current_command + cf->cursor,
+			   vec_len (cf->current_command) - cf->cursor);
+	      _vec_len (cf->current_command) = cf->cursor;
+	    }
+	  else
+	    {
+	      unix_vlib_cli_output_raw (cf, uf, (u8 *) "\a", 1);
+	      break;
+	    }
+	}
+      possible_commands =
+	vlib_cli_get_possible_completions (cf->current_command);
+      if (vec_len (possible_commands) == 1)
+	{
+	  u32 j = cf->cursor;
+	  u8 *completed = possible_commands[0];
+
+	  /* find the last word of current_command */
+	  while (j >= 1 && !isspace (cf->current_command[j - 1]))
+	    {
+	      j--;
+	      unix_vlib_cli_output_raw (cf, uf, (u8 *) "\b", 1);
+	    }
+	  _vec_len (cf->current_command) = j;
+
+	  /* replace it with the newly expanded command */
+	  vec_append (cf->current_command, completed);
+
+	  /* echo to the terminal */
+	  unix_vlib_cli_output_raw (cf, uf, completed, vec_len (completed));
+
+	  /* add one trailing space if needed */
+	  if (vec_len (save) == 0)
+	    {
+	      vec_add1 (cf->current_command, ' ');
+	      unix_vlib_cli_output_raw (cf, uf, (u8 *) " ", 1);
+	    }
+
+	  cf->cursor = vec_len (cf->current_command);
+
+	}
+      else if (vec_len (possible_commands) >= 2)
+	{
+	  u8 **possible_command;
+	  uword max_command_len = 0, min_command_len = ~0;
+	  u32 i, j;
+
+	  vec_foreach (possible_command, possible_commands)
+	  {
+	    if (vec_len (*possible_command) > max_command_len)
+	      {
+		max_command_len = vec_len (*possible_command);
+	      }
+	    if (vec_len (*possible_command) < min_command_len)
+	      {
+		min_command_len = vec_len (*possible_command);
+	      }
+	  }
+
+	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
+
+	  i = 0;
+	  vec_foreach (possible_command, possible_commands)
+	  {
+	    if (i + max_command_len >= cf->width)
+	      {
+		unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
+		i = 0;
+	      }
+	    unix_vlib_cli_output_raw (cf, uf, *possible_command,
+				      vec_len (*possible_command));
+	    for (j = vec_len (*possible_command); j < max_command_len + 2;
+		 j++)
+	      {
+		unix_vlib_cli_output_raw (cf, uf, (u8 *) " ", 1);
+	      }
+	    i += max_command_len + 2;
+	  }
+
+	  unix_vlib_cli_output_cooked (cf, uf, (u8 *) "\n", 1);
+
+	  /* rewrite prompt */
+	  unix_cli_cli_prompt (cf, uf);
+	  unix_vlib_cli_output_raw (cf, uf, cf->current_command,
+				    vec_len (cf->current_command));
+
+	  /* count length of last word */
+	  j = cf->cursor;
+	  i = 0;
+	  while (j >= 1 && !isspace (cf->current_command[j - 1]))
+	    {
+	      j--;
+	      i++;
+	    }
+
+	  /* determine smallest common command */
+	  for (; i < min_command_len; i++)
+	    {
+	      u8 common = '\0';
+	      int stop = 0;
+	      vec_foreach (possible_command, possible_commands)
+	      {
+		if (common == '\0')
+		  {
+		    common = (*possible_command)[i];
+		  }
+		else if (common != (*possible_command)[i])
+		  {
+		    stop = 1;
+		    break;
+		  }
+	      }
+	      if (!stop)
+		{
+		  vec_add1 (cf->current_command, common);
+		  cf->cursor++;
+		  unix_vlib_cli_output_raw (cf, uf, (u8 *) & common, 1);
+		}
+	      else
+		{
+		  break;
+		}
+	    }
+	}
+      else
+	{
+	  unix_vlib_cli_output_raw (cf, uf, (u8 *) "\a", 1);
+	}
+
+      if (vec_len (save) > 0)
+	{
+	  /* restore remaining input if tab was hit in the middle of a line */
+	  unix_vlib_cli_output_raw (cf, uf, save, vec_len (save));
+	  for (j = 0; j < vec_len (save); j++)
+	    {
+	      unix_vlib_cli_output_raw (cf, uf, (u8 *) "\b", 1);
+	    }
+	  vec_append (cf->current_command, save);
+	  vec_free (save);
+	}
+      vec_free (possible_commands);
+
+      break;
     case UNIX_CLI_PARSE_ACTION_YANK:
       /* TODO */
       break;
