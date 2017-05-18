@@ -57,6 +57,7 @@ _(GPE_FWD_ENTRIES_GET, gpe_fwd_entries_get)                   \
 _(GPE_FWD_ENTRY_PATH_DUMP, gpe_fwd_entry_path_dump)           \
 _(GPE_ENABLE_DISABLE, gpe_enable_disable)                     \
 _(GPE_ADD_DEL_IFACE, gpe_add_del_iface)                       \
+_(GPE_FWD_ENTRY_VNIS_GET, gpe_fwd_entry_vnis_get)             \
 _(GPE_SET_ENCAP_MODE, gpe_set_encap_mode)                     \
 _(GPE_GET_ENCAP_MODE, gpe_get_encap_mode)
 
@@ -200,6 +201,8 @@ gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t * dst,
     memset (dst, 0, sizeof (*dst));
     dst[i].dp_table = src->dp_table;
     dst[i].fwd_entry_index = src->fwd_entry_index;
+    dst[i].vni = src->vni;
+    dst[i].action = src->action;
     switch (fid_addr_type (&e->leid))
       {
       case FID_ADDR_IP_PREF:
@@ -242,6 +245,7 @@ gpe_entry_t_host_to_net (vl_api_gpe_fwd_entry_t * e)
 {
   e->fwd_entry_index = clib_host_to_net_u32 (e->fwd_entry_index);
   e->dp_table = clib_host_to_net_u32 (e->dp_table);
+  e->vni = clib_host_to_net_u32 (e->vni);
 }
 
 static void
@@ -257,6 +261,31 @@ static void
       gpe_entry_t_host_to_net (e);
     }
   mp->count = clib_host_to_net_u32 (mp->count);
+}
+
+static void
+vl_api_gpe_fwd_entry_vnis_get_t_handler (vl_api_gpe_fwd_entry_vnis_get_t * mp)
+{
+  vl_api_gpe_fwd_entry_vnis_get_reply_t *rmp = 0;
+  hash_pair_t *p;
+  u32 i = 0;
+  int rv = 0;
+
+  u32 *vnis = vnet_lisp_gpe_get_fwd_entry_vnis ();
+  u32 size = hash_elts (vnis) * sizeof (u32);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO4 (VL_API_GPE_FWD_ENTRY_VNIS_GET_REPLY, size,
+  {
+    rmp->count = clib_host_to_net_u32 (hash_elts (vnis));
+    hash_foreach_pair (p, vnis,
+    ({
+      rmp->vnis[i++] = clib_host_to_net_u32 (p->key);
+    }));
+  });
+  /* *INDENT-ON* */
+
+  hash_free (vnis);
 }
 
 static void
@@ -315,7 +344,7 @@ vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
     }
   pairs = unformat_gpe_loc_pairs (mp->locs, mp->loc_num / 2);
 
-  if (rv || 0 == pairs)
+  if (rv)
     goto send_reply;
 
   a->is_add = mp->is_add;
@@ -323,6 +352,8 @@ vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
   a->dp_table = mp->dp_table;
   a->vni = mp->vni;
   a->action = mp->action;
+  if (mp->loc_num == 0)
+    a->is_negative = 1;
 
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   vec_free (pairs);
