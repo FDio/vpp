@@ -87,6 +87,20 @@ autoreply define gpe_add_del_iface
   u32 vni;
 };
 
+define gpe_fwd_entry_vnis_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+manual_print manual_endian define gpe_fwd_entry_vnis_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 vnis[count];
+};
+
 define gpe_fwd_entries_get
 {
   u32 client_index;
@@ -103,6 +117,8 @@ typeonly manual_print manual_endian define gpe_fwd_entry
   u8 reid_prefix_len;
   u8 leid[16];
   u8 reid[16];
+  u32 vni;
+  u8 action;
 };
 
 manual_print manual_endian define gpe_fwd_entries_get_reply
