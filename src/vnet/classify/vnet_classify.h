@@ -132,7 +132,8 @@ typedef struct {
   union {
     struct {
       u32 offset;
-      u8 pad[3];
+      u8 linear_search;
+      u8 pad[2];
       u8 log2_pages;
     };
     u64 as_u64;
@@ -151,6 +152,7 @@ typedef struct {
   u32 skip_n_vectors;
   u32 nbuckets;
   u32 log2_nbuckets;
+  u32 linear_buckets;
   int entries_per_page;
   u32 active_elements;
   u32 current_data_flag;
@@ -164,6 +166,7 @@ typedef struct {
   
   /* Per-bucket working copies, one per thread */
   vnet_classify_entry_t ** working_copies;
+  int *working_copy_lengths;
   vnet_classify_bucket_t saved_bucket;
   
   /* Free entry freelists */
@@ -354,7 +357,7 @@ vnet_classify_find_entry (vnet_classify_table_t * t,
 static inline vnet_classify_entry_t *
 vnet_classify_find_entry_inline (vnet_classify_table_t * t,
                                  u8 * h, u64 hash, f64 now)
-  {
+{
   vnet_classify_entry_t * v;
   u32x4 *mask, *key;
   union {
@@ -364,6 +367,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
   vnet_classify_bucket_t * b;
   u32 value_index;
   u32 bucket_index;
+  u32 limit;
   int i;
 
   bucket_index = hash & (t->nbuckets-1);
@@ -377,16 +381,23 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
 
   v = vnet_classify_get_entry (t, b->offset);
   value_index = hash & ((1<<b->log2_pages)-1);
+  limit = t->entries_per_page;
+  if (PREDICT_FALSE (b->linear_search))
+    {
+      value_index = 0;
+      limit *= (1<<b->log2_pages);
+    }
+
   v = vnet_classify_entry_at_index (t, v, value_index);
 
 #ifdef CLASSIFY_USE_SSE
   if (U32X4_ALIGNED(h)) {
     u32x4 *data = (u32x4 *) h;
-    for (i = 0; i < t->entries_per_page; i++) {
+    for (i = 0; i < limit; i++) {
       key = v->key;
       result.as_u32x4 = (data[0 + t->skip_n_vectors] & mask[0]) ^ key[0];
       switch (t->match_n_vectors)
-      {
+        {
         case 5:
           result.as_u32x4 |= (data[4 + t->skip_n_vectors] & mask[4]) ^ key[4];
           /* FALLTHROUGH */
@@ -403,7 +414,7 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
           break;
         default:
           abort();
-      }
+        }
 
       if (u32x4_zero_byte_mask (result.as_u32x4) == 0xffff) {
         if (PREDICT_TRUE(now)) {
@@ -416,51 +427,51 @@ vnet_classify_find_entry_inline (vnet_classify_table_t * t,
     }
   } else
 #endif /* CLASSIFY_USE_SSE */
-  {
-    u32 skip_u64 = t->skip_n_vectors * 2;
-    u64 *data64 = (u64 *)h;
-    for (i = 0; i < t->entries_per_page; i++) {
-      key = v->key;
+    {
+      u32 skip_u64 = t->skip_n_vectors * 2;
+      u64 *data64 = (u64 *)h;
+      for (i = 0; i < limit; i++) {
+        key = v->key;
 
-      result.as_u64[0] = (data64[0 + skip_u64] & ((u64 *)mask)[0]) ^ ((u64 *)key)[0];
-      result.as_u64[1] = (data64[1 + skip_u64] & ((u64 *)mask)[1]) ^ ((u64 *)key)[1];
-      switch (t->match_n_vectors)
-      {
-        case 5:
-          result.as_u64[0] |= (data64[8 + skip_u64] & ((u64 *)mask)[8]) ^ ((u64 *)key)[8];
-          result.as_u64[1] |= (data64[9 + skip_u64] & ((u64 *)mask)[9]) ^ ((u64 *)key)[9];
-          /* FALLTHROUGH */
-        case 4:
-          result.as_u64[0] |= (data64[6 + skip_u64] & ((u64 *)mask)[6]) ^ ((u64 *)key)[6];
-          result.as_u64[1] |= (data64[7 + skip_u64] & ((u64 *)mask)[7]) ^ ((u64 *)key)[7];
-          /* FALLTHROUGH */
-        case 3:
-          result.as_u64[0] |= (data64[4 + skip_u64] & ((u64 *)mask)[4]) ^ ((u64 *)key)[4];
-          result.as_u64[1] |= (data64[5 + skip_u64] & ((u64 *)mask)[5]) ^ ((u64 *)key)[5];
-          /* FALLTHROUGH */
-        case 2:
-          result.as_u64[0] |= (data64[2 + skip_u64] & ((u64 *)mask)[2]) ^ ((u64 *)key)[2];
-          result.as_u64[1] |= (data64[3 + skip_u64] & ((u64 *)mask)[3]) ^ ((u64 *)key)[3];
-          /* FALLTHROUGH */
-        case 1:
-          break;
-        default:
-          abort();
-      }
+        result.as_u64[0] = (data64[0 + skip_u64] & ((u64 *)mask)[0]) ^ ((u64 *)key)[0];
+        result.as_u64[1] = (data64[1 + skip_u64] & ((u64 *)mask)[1]) ^ ((u64 *)key)[1];
+        switch (t->match_n_vectors)
+          {
+          case 5:
+            result.as_u64[0] |= (data64[8 + skip_u64] & ((u64 *)mask)[8]) ^ ((u64 *)key)[8];
+            result.as_u64[1] |= (data64[9 + skip_u64] & ((u64 *)mask)[9]) ^ ((u64 *)key)[9];
+            /* FALLTHROUGH */
+          case 4:
+            result.as_u64[0] |= (data64[6 + skip_u64] & ((u64 *)mask)[6]) ^ ((u64 *)key)[6];
+            result.as_u64[1] |= (data64[7 + skip_u64] & ((u64 *)mask)[7]) ^ ((u64 *)key)[7];
+            /* FALLTHROUGH */
+          case 3:
+            result.as_u64[0] |= (data64[4 + skip_u64] & ((u64 *)mask)[4]) ^ ((u64 *)key)[4];
+            result.as_u64[1] |= (data64[5 + skip_u64] & ((u64 *)mask)[5]) ^ ((u64 *)key)[5];
+            /* FALLTHROUGH */
+          case 2:
+            result.as_u64[0] |= (data64[2 + skip_u64] & ((u64 *)mask)[2]) ^ ((u64 *)key)[2];
+            result.as_u64[1] |= (data64[3 + skip_u64] & ((u64 *)mask)[3]) ^ ((u64 *)key)[3];
+            /* FALLTHROUGH */
+          case 1:
+            break;
+          default:
+            abort();
+          }
 
-      if (result.as_u64[0] == 0 && result.as_u64[1] == 0) {
-        if (PREDICT_TRUE(now)) {
-          v->hits++;
-          v->last_heard = now;
+        if (result.as_u64[0] == 0 && result.as_u64[1] == 0) {
+          if (PREDICT_TRUE(now)) {
+            v->hits++;
+            v->last_heard = now;
+          }
+          return (v);
         }
-        return (v);
-      }
 
-      v = vnet_classify_entry_at_index (t, v, 1);
+        v = vnet_classify_entry_at_index (t, v, 1);
+      }
     }
-  }
   return 0;
-  }
+}
 
 vnet_classify_table_t * 
 vnet_classify_new_table (vnet_classify_main_t *cm,
