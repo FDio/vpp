@@ -495,6 +495,10 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
     {
       lisp_gpe_fwd_entry_mk_paths (lfe, a);
     }
+  else
+    {
+      lfe->action = a->action;
+    }
 
   create_fib_entries (lfe);
   return (0);
@@ -1438,6 +1442,23 @@ lisp_gpe_fwd_entry_init (vlib_main_t * vm)
   return (error);
 }
 
+u32 *
+vnet_lisp_gpe_get_fwd_entry_vnis (void)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_gpe_fwd_entry_t *lfe;
+  u32 *vnis = 0;
+
+  /* *INDENT-OFF* */
+  pool_foreach (lfe, lgm->lisp_fwd_entry_pool,
+  ({
+    hash_set (vnis, lfe->key->vni, 0);
+  }));
+  /* *INDENT-ON* */
+
+  return vnis;
+}
+
 lisp_api_gpe_fwd_entry_t *
 vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
 {
@@ -1453,6 +1474,8 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
         memset (&e, 0, sizeof (e));
         e.dp_table = lfe->eid_table_id;
         e.vni = lfe->key->vni;
+        if (lfe->type == LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE)
+          e.action = lfe->action;
         e.fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
         memcpy (&e.reid, &lfe->key->rmt, sizeof (e.reid));
         memcpy (&e.leid, &lfe->key->lcl, sizeof (e.leid));
