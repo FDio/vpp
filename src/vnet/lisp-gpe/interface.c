@@ -653,6 +653,12 @@ lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
   uword *hip, *si;
   u16 bd_index;
 
+  if (bd_id > L2_BD_ID_MAX)
+    {
+      clib_warning ("bridge domain ID %d exceed 16M limit", bd_id);
+      return ~0;
+    }
+
   bd_index = bd_find_or_add_bd_index (&bd_main, bd_id);
   hip = hash_get (l2_ifaces->hw_if_index_by_dp_table, bd_index);
 

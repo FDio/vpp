@@ -49,7 +49,6 @@ typedef struct
   u16 spare;
 } l2_flood_member_t;
 
-
 /* Per-bridge domain configuration */
 
 typedef struct
@@ -90,6 +89,9 @@ typedef struct
   u8 seq_num;
 
 } l2_bridge_domain_t;
+
+/* Limit Bridge Domain ID to 24 bits to match 24-bit VNI range */
+#define L2_BD_ID_MAX ((1<<24)-1)
 
 typedef struct
 {

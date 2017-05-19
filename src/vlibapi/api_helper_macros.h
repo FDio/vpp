@@ -155,6 +155,20 @@ bad_tx_sw_if_index:				\
     ;                                           \
 } while (0);
 
+#define VALIDATE_BD_ID(mp)			\
+ do { u32 __rx_bd_id = ntohl(mp->bd_id);	\
+    if (__rx_bd_id > L2_BD_ID_MAX) {     	\
+        rv = VNET_API_ERROR_BD_ID_EXCEED_MAX;	\
+        goto bad_bd_id;				\
+    }						\
+} while(0);
+
+#define BAD_BD_ID_LABEL				\
+do {                                            \
+bad_bd_id:					\
+    ;                                           \
+} while (0);
+
 #define pub_sub_handler(lca,UCA)                                        \
 static void vl_api_want_##lca##_t_handler (                             \
     vl_api_want_##lca##_t *mp)                                          \
