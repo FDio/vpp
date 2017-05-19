@@ -3,7 +3,11 @@
 %define _topdir          %(pwd)
 %define _builddir        %{_topdir}
 %define _mu_build_dir    %{_topdir}/%{name}-%{_version}/build-root
-%define _vpp_install_dir install-vpp-native
+%define _vpp_tag	 %{getenv:TAG}
+%if "%{_vpp_tag}" == ""
+%define _vpp_tag	 vpp
+%endif
+%define _vpp_install_dir install-%{_vpp_tag}-native
 
 # Failsafe backport of Python2-macros for RHEL <= 6
 %{!?python_sitelib: %global python_sitelib      %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
@@ -102,7 +106,7 @@ groupadd -f -r vpp
 
 %build
 make bootstrap
-make -C build-root PLATFORM=vpp TAG=vpp install-packages
+make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
 
 %install
