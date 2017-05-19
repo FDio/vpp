@@ -1575,6 +1575,7 @@ vhost_user_input_rewind_buffers (vlib_main_t * vm,
       b_current->current_length = 0;
       b_current->flags = 0;
     }
+  cpu->rx_buffers_len++;
 }
 
 static u32
@@ -1752,7 +1753,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	      desc_current = 0;
 	      if (PREDICT_FALSE (desc_table == 0))
 		{
-		  //FIXME: Handle error by shutdown the queue
+		  vlib_error_count (vm, node->node_index,
+				    VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
 		  goto out;
 		}
 	    }
@@ -1884,13 +1886,8 @@ vhost_user_if_input (vlib_main_t * vm,
 		  (vhost_user_input_copy (vui, vum->cpus[cpu_index].copy,
 					  copy_len, &map_hint)))
 		{
-		  clib_warning
-		    ("Memory mapping error on interface hw_if_index=%d "
-		     "(Shutting down - Switch interface down and up to restart)",
-		     vui->hw_if_index);
-		  vui->admin_up = 0;
-		  copy_len = 0;
-		  break;
+		  vlib_error_count (vm, node->node_index,
+				    VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
 		}
 	      copy_len = 0;
 
@@ -1909,10 +1906,8 @@ vhost_user_if_input (vlib_main_t * vm,
       (vhost_user_input_copy (vui, vum->cpus[cpu_index].copy,
 			      copy_len, &map_hint)))
     {
-      clib_warning ("Memory mapping error on interface hw_if_index=%d "
-		    "(Shutting down - Switch interface down and up to restart)",
-		    vui->hw_if_index);
-      vui->admin_up = 0;
+      vlib_error_count (vm, node->node_index,
+			VHOST_USER_INPUT_FUNC_ERROR_MMAP_FAIL, 1);
     }
 
   /* give buffers back to driver */
@@ -2340,10 +2335,8 @@ done:
       (vhost_user_tx_copy (vui, vum->cpus[cpu_index].copy,
 			   copy_len, &map_hint)))
     {
-      clib_warning ("Memory mapping error on interface hw_if_index=%d "
-		    "(Shutting down - Switch interface down and up to restart)",
-		    vui->hw_if_index);
-      vui->admin_up = 0;
+      vlib_error_count (vm, node->node_index,
+			VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL, 1);
     }
 
   CLIB_MEMORY_BARRIER ();
