@@ -1103,7 +1103,9 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       if (n_bytes == 0)
 	{
-	  clib_warning ("could not retransmit");
+	  clib_warning ("could not retransmit anything");
+	  /* Try again eventually */
+	  tcp_retransmit_timer_set (tc);
 	  return;
 	}
     }
@@ -1203,6 +1205,7 @@ tcp_timer_persist_handler (u32 index)
   /* Nothing to send */
   if (n_bytes == 0)
     {
+      clib_warning ("persist found nothing to send");
       tcp_return_buffer (tm);
       return;
     }

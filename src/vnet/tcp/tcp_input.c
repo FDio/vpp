@@ -722,9 +722,11 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
 
       /* Set probe timer if we just got 0 wnd */
-      if (tc->snd_wnd < tc->snd_mss
-	  && !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
-	tcp_persist_timer_set (tc);
+      if (tc->snd_wnd < tc->snd_mss)
+	{
+	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	    tcp_persist_timer_set (tc);
+	}
       else
 	tcp_persist_timer_reset (tc);
     }

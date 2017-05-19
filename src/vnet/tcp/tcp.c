@@ -467,7 +467,6 @@ format_tcp_state (u8 * s, va_list * args)
     s = format (s, "%s", tcp_fsm_states[*state]);
   else
     s = format (s, "UNKNOWN (%d (0x%x))", *state, *state);
-
   return s;
 }
 
@@ -503,7 +502,34 @@ format_tcp_timers (u8 * s, va_list * args)
 }
 
 u8 *
-format_tcp_connection (u8 * s, va_list * args)
+format_tcp_vars (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  s = format (s, "snd_una %u snd_nxt %u snd_una_max %u\n",
+	      tc->snd_una - tc->iss, tc->snd_nxt - tc->iss,
+	      tc->snd_una_max - tc->iss);
+  s = format (s, "rcv_nxt %u rcv_las %u\n", tc->rcv_nxt - tc->irs,
+	      tc->rcv_las - tc->irs);
+  s = format (s, "snd_wnd %u rcv_wnd %u snd_wl1 %u snd_wl2 %u\n", tc->snd_wnd,
+	      tc->rcv_wnd, tc->snd_wl1 - tc->irs, tc->snd_wl2 - tc->iss);
+  s = format (s, "cwnd %u ssthresh %u rtx_byte %u bytes_acked %u \n",
+	      tc->cwnd, tc->ssthresh, tc->rtx_bytes, tc->bytes_acked);
+  s = format (s, "prev_ssthresh %u snd_congestion %u\n", tc->prev_ssthresh,
+	      tc->snd_congestion - tc->iss);
+  s =
+    format (s, "rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u rtt_seq %u\n",
+	    tc->rto, tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts,
+	    tc->rtt_seq);
+  if (scoreboard_first_hole (&tc->sack_sb))
+    s = format (s, "scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb);
+  if (vec_len (tc->snd_sacks))
+    s = format (s, "sacks tx: %U\n", format_tcp_sacks, tc);
+
+  return s;
+}
+
+u8 *
+format_tcp_connection_simple (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   if (!tc)
@@ -530,8 +556,9 @@ u8 *
 format_tcp_connection_verbose (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  s = format (s, "%U %U %U", format_tcp_connection, tc, format_tcp_state,
-	      &tc->state, format_tcp_timers, tc);
+  s = format (s, "%U %U %U\n%U", format_tcp_connection_simple, tc,
+	      format_tcp_state, &tc->state, format_tcp_timers, tc,
+	      format_tcp_vars, tc);
   return s;
 }
 
@@ -540,7 +567,12 @@ format_tcp_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   u32 thread_index = va_arg (*args, u32);
+  u32 verbose = va_arg (*args, u32);
   tcp_connection_t *tc;
+  u8 *(*format_tcp_connection) (u8 * s, va_list * args);
+
+  format_tcp_connection =
+    verbose ? format_tcp_connection_verbose : format_tcp_connection_simple;
 
   tc = tcp_connection_get (tci, thread_index);
   if (tc)
@@ -554,7 +586,7 @@ format_tcp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   tcp_connection_t *tc = tcp_listener_get (tci);
-  return format (s, "%U", format_tcp_connection, tc);
+  return format (s, "%U", format_tcp_connection_simple, tc);
 }
 
 u8 *
@@ -562,7 +594,7 @@ format_tcp_half_open_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
   tcp_connection_t *tc = tcp_half_open_connection_get (tci);
-  return format (s, "%U", format_tcp_connection, tc);
+  return format (s, "%U", format_tcp_connection_simple, tc);
 }
 
 u8 *
