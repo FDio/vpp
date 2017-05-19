@@ -813,12 +813,14 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 			 unformat_ip4_address,
 			 &pfx.fp_grp_addr.ip4, &pfx.fp_len))
 	{
+	  memset (&pfx.fp_src_addr.ip4, 0, sizeof (pfx.fp_src_addr.ip4));
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	}
       else if (unformat (line_input, "%U/%d",
 			 unformat_ip6_address,
 			 &pfx.fp_grp_addr.ip6, &pfx.fp_len))
 	{
+	  memset (&pfx.fp_src_addr.ip6, 0, sizeof (pfx.fp_src_addr.ip6));
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	}
       else if (unformat (line_input, "%U",

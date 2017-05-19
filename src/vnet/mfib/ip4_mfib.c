@@ -382,14 +382,17 @@ ip4_show_mfib (vlib_main_t * vm,
             matching = 1;
             mask = 64;
         }
+        else if (unformat (input, "%U/%d", unformat_ip4_address, &grp, &mask))
+        {
+            memset(&src, 0, sizeof(src));
+            matching = 1;
+        }
         else if (unformat (input, "%U", unformat_ip4_address, &grp))
         {
+            memset(&src, 0, sizeof(src));
             matching = 1;
             mask = 32;
         }
-        else if (unformat (input, "%U/%d",
-                           unformat_ip4_address, &grp, &mask))
-            matching = 1;
         else if (unformat (input, "table %d", &table_id))
             ;
         else if (unformat (input, "index %d", &fib_index))
