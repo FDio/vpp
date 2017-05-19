@@ -387,8 +387,8 @@ void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
 void tcp_connection_reset (tcp_connection_t * tc);
 
+u8 *format_tcp_connection_id (u8 * s, va_list * args);
 u8 *format_tcp_connection (u8 * s, va_list * args);
-u8 *format_tcp_connection_verbose (u8 * s, va_list * args);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
 
 always_inline tcp_connection_t *

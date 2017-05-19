@@ -722,9 +722,11 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
 
       /* Set probe timer if we just got 0 wnd */
-      if (tc->snd_wnd < tc->snd_mss
-	  && !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
-	tcp_persist_timer_set (tc);
+      if (tc->snd_wnd < tc->snd_mss)
+	{
+	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	    tcp_persist_timer_set (tc);
+	}
       else
 	tcp_persist_timer_reset (tc);
     }
@@ -1221,7 +1223,7 @@ format_tcp_rx_trace (u8 * s, va_list * args)
   s = format (s, "%U\n%U%U",
 	      format_tcp_header, &t->tcp_header, 128,
 	      format_white_space, indent,
-	      format_tcp_connection_verbose, &t->tcp_connection);
+	      format_tcp_connection, &t->tcp_connection, 1);
 
   return s;
 }

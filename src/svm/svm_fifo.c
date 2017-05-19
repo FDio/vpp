@@ -54,19 +54,20 @@ format_svm_fifo (u8 * s, va_list * args)
 
   s = format (s, "cursize %u nitems %u has_event %d\n",
 	      f->cursize, f->nitems, f->has_event);
-  s = format (s, "head %d tail %d\n", f->head, f->tail);
+  s = format (s, " head %d tail %d\n", f->head, f->tail);
 
   if (verbose > 1)
     s = format
-      (s, "server session %d thread %d client session %d thread %d\n",
+      (s, " server session %d thread %d client session %d thread %d\n",
        f->master_session_index, f->master_thread_index,
        f->client_session_index, f->client_thread_index);
 
   if (verbose)
     {
-      s = format (s, "ooo pool %d active elts\n",
+      s = format (s, " ooo pool %d active elts\n",
 		  pool_elts (f->ooo_segments));
-      s = format (s, "%U", format_ooo_list, f);
+      if (svm_fifo_has_ooo_data (f))
+	s = format (s, " %U", format_ooo_list, f);
     }
   return s;
 }
