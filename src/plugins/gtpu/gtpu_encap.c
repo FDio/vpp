@@ -145,25 +145,19 @@ gtpu_encap_inline (vlib_main_t * vm,
           flow_hash1 = vnet_l2_compute_flow_hash (b1);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
-	    {
-	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
-	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
-	      t0 = &gtm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may be set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	    }
+	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	  t0 = &gtm->tunnels[hi0->dev_instance];
+	  /* Note: change to always set next0 if it may be set to drop */
+	  next0 = t0->next_dpo.dpoi_next_node;
           vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index1 != vnet_buffer(b1)->sw_if_index[VLIB_TX])
-	    {
-	      sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_TX];
-	      hi1 = vnet_get_sup_hw_interface (vnm, sw_if_index1);
-	      t1 = &gtm->tunnels[hi1->dev_instance];
-	      /* Note: change to always set next1 if it may be set to drop */
-	      next1 = t1->next_dpo.dpoi_next_node;
-	    }
+	  sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_TX];
+	  hi1 = vnet_get_sup_hw_interface (vnm, sw_if_index1);
+	  t1 = &gtm->tunnels[hi1->dev_instance];
+	  /* Note: change to always set next1 if it may be set to drop */
+	  next1 = t1->next_dpo.dpoi_next_node;
           vnet_buffer(b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
@@ -376,14 +370,11 @@ gtpu_encap_inline (vlib_main_t * vm,
           flow_hash0 = vnet_l2_compute_flow_hash(b0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
-	    {
-	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
-	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
-	      t0 = &gtm->tunnels[hi0->dev_instance];
-	      /* Note: change to always set next0 if it may be set to drop */
-	      next0 = t0->next_dpo.dpoi_next_node;
-	    }
+	  sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	  hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	  t0 = &gtm->tunnels[hi0->dev_instance];
+	  /* Note: change to always set next0 if it may be set to drop */
+	  next0 = t0->next_dpo.dpoi_next_node;
 	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
