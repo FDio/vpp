@@ -585,16 +585,19 @@ ip6_show_mfib (vlib_main_t * vm,
                            unformat_ip6_address, &grp))
         {
             matching = 1;
-            mask = 64;
+            mask = 256;
+        }
+        else if (unformat (input, "%U/%d", unformat_ip6_address, &grp, &mask))
+        {
+            memset(&src, 0, sizeof(src));
+            matching = 1;
         }
         else if (unformat (input, "%U", unformat_ip6_address, &grp))
         {
+            memset(&src, 0, sizeof(src));
             matching = 1;
-            mask = 32;
+            mask = 128;
         }
-        else if (unformat (input, "%U/%d",
-                           unformat_ip6_address, &grp, &mask))
-            matching = 1;
         else if (unformat (input, "table %d", &table_id))
             ;
         else if (unformat (input, "index %d", &fib_index))
