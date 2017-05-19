@@ -419,6 +419,7 @@ static void
 
   if (mp->enable)
     {
+      VALIDATE_BD_ID (mp);
       u32 bd_id = ntohl (mp->bd_id);
       u32 bd_index = bd_find_or_add_bd_index (bdm, bd_id);
       u32 bvi = mp->bvi;
@@ -432,6 +433,7 @@ static void
     }
 
   BAD_RX_SW_IF_INDEX_LABEL;
+  BAD_BD_ID_LABEL;
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_L2_BRIDGE_REPLY);
 }

@@ -984,10 +984,10 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	    {
 	      printed = 1;
 	      vlib_cli_output (vm,
-			       "%=5s %=7s %=4s %=9s %=9s %=9s %=9s %=9s %=9s %=9s",
-			       "ID", "Index", "BSN", "Age(min)", "Learning",
-			       "U-Forwrd", "UU-Flood", "Flooding", "ARP-Term",
-			       "BVI-Intf");
+			       "%=8s %=7s %=4s %=9s %=9s %=9s %=9s %=9s %=9s %=9s",
+			       "BD-ID", "Index", "BSN", "Age(min)",
+			       "Learning", "U-Forwrd", "UU-Flood", "Flooding",
+			       "ARP-Term", "BVI-Intf");
 	    }
 
 	  if (bd_config->mac_age)
@@ -995,7 +995,7 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	  else
 	    as = format (as, "off");
 	  vlib_cli_output (vm,
-			   "%=5d %=7d %=4d %=9v %=9s %=9s %=9s %=9s %=9s %=9U",
+			   "%=8d %=7d %=4d %=9v %=9s %=9s %=9s %=9s %=9s %=9U",
 			   bd_config->bd_id, bd_index, bd_config->seq_num, as,
 			   bd_config->feature_bitmap & L2INPUT_FEAT_LEARN ?
 			   "on" : "off",
@@ -1123,6 +1123,8 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
     {
       if (bd_index != ~0)
 	return VNET_API_ERROR_BD_ALREADY_EXISTS;
+      if (a->bd_id > L2_BD_ID_MAX)
+	return VNET_API_ERROR_BD_ID_EXCEED_MAX;
       bd_index = bd_add_bd_index (bdm, a->bd_id);
 
       u32 enable_flags = 0, disable_flags = 0;
@@ -1262,10 +1264,13 @@ bd_add_del_command_fn (vlib_main_t * vm, unformat_input_t * input,
       error = clib_error_return (0, "bridge domain in use - remove members");
       goto done;
     case VNET_API_ERROR_NO_SUCH_ENTRY:
-      error = clib_error_return (0, "bridge domain id does not exist");
+      error = clib_error_return (0, "bridge domain ID does not exist");
       goto done;
     case VNET_API_ERROR_BD_NOT_MODIFIABLE:
       error = clib_error_return (0, "bridge domain 0 can not be modified");
+      goto done;
+    case VNET_API_ERROR_BD_ID_EXCEED_MAX:
+      error = clib_error_return (0, "bridge domain ID exceed 16M limit");
       goto done;
     default:
       error = clib_error_return (0, "bd_add_del returned %d", rv);

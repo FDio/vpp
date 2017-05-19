@@ -791,6 +791,12 @@ int_l2_bridge (vlib_main_t * vm,
       goto done;
     }
 
+  if (bd_id > L2_BD_ID_MAX)
+    {
+      error = clib_error_return (0, "bridge domain ID exceed 16M limit",
+				 format_unformat_error, input);
+      goto done;
+    }
   bd_index = bd_find_or_add_bd_index (&bd_main, bd_id);
 
   /* optional bvi  */
