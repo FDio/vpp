@@ -93,9 +93,6 @@ typedef struct
   /* Signal variables */
   volatile int run_test;
 
-  /* Number of iterations */
-  int n_iterations;
-
   /* Bytes to send */
   u64 bytes_to_send;
 

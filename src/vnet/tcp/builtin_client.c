@@ -187,6 +187,9 @@ tclient_thread_fn (void *arg)
 
   clib_per_cpu_mheaps[vlib_get_thread_index ()] = clib_per_cpu_mheaps[0];
 
+  vec_validate (session_indices, 0);
+  vec_reset_length (session_indices);
+
   while (1)
     {
       /* Wait until we're told to get busy */
@@ -201,14 +204,12 @@ tclient_thread_fn (void *arg)
       tm->run_test = 0;
       rx_total = 0;
 
-      clib_warning ("Run %d iterations", tm->n_iterations);
+      clib_warning ("Start test...");
 
       before = clib_time_now (&ttime);
 
-      for (i = 0; i < tm->n_iterations; i++)
+      do
 	{
-	  session_t *sp;
-
 	  do
 	    {
 	      try_tx = try_rx = 0;
@@ -229,24 +230,38 @@ tclient_thread_fn (void *arg)
                     receive_test_chunk (tm, sp);
                     try_rx = 1;
                   }
+                else
+                  {
+                    /* Session is complete */
+                    vec_add1 (session_indices, sp - tm->sessions);
+                  }
               }));
+              /* Terminate any completed sessions */
+              if (PREDICT_FALSE (_vec_len(session_indices) != 0))
+                {
+                  for (i = 0; i < _vec_len (session_indices); i++)
+                    {
+                      sp = pool_elt_at_index (tm->sessions, session_indices[i]);
+                      rx_total += sp->bytes_received;
+                      dmp = vl_msg_api_alloc_as_if_client (sizeof (*dmp));
+                      memset (dmp, 0, sizeof (*dmp));
+                      dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
+                      dmp->client_index = tm->my_client_index;
+                      dmp->handle = sp->vpp_session_handle;
+                      vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & dmp);
+                      pool_put (tm->sessions, sp);
+                    }
+                  _vec_len(session_indices) = 0;
+                }
 	      /* *INDENT-ON* */
 	    }
 	  while (try_tx || try_rx);
-
-          /* *INDENT-OFF* */
-          pool_foreach (sp, tm->sessions,
-          ({
-            rx_total += sp->bytes_received;
-            sp->bytes_received = 0;
-            sp->bytes_to_send = tm->bytes_to_send;
-          }));
-          /* *INDENT-ON* */
 	}
+      while (0);
       after = clib_time_now (&ttime);
 
-      clib_warning ("Done %d iterations, %lld bytes in %.2f secs",
-		    tm->n_iterations, rx_total, (after - before));
+      clib_warning ("Test complete %lld bytes in %.2f secs",
+		    rx_total, (after - before));
       if ((after - before) != 0.0)
 	{
 	  clib_warning ("%.2f bytes/second full-duplex",
@@ -255,28 +270,11 @@ tclient_thread_fn (void *arg)
 			(((f64) rx_total * 8.0) / (after - before)) / 1e9);
 	}
 
-      /* Disconnect sessions... */
-      vec_reset_length (session_indices);
-
-      /* *INDENT-OFF* */
-      pool_foreach (sp, tm->sessions,
-      ({
-	vec_add1 (session_indices, sp - tm->sessions);
-      }));
-      /* *INDENT-ON* */
-
-      for (i = 0; i < vec_len (session_indices); i++)
-	{
-	  sp = pool_elt_at_index (tm->sessions, session_indices[i]);
-	  dmp = vl_msg_api_alloc_as_if_client (sizeof (*dmp));
-	  memset (dmp, 0, sizeof (*dmp));
-	  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-	  dmp->client_index = tm->my_client_index;
-	  dmp->handle = sp->vpp_session_handle;
-	  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & dmp);
-	  pool_put (tm->sessions, sp);
-	}
+      if (pool_elts (tm->sessions))
+	clib_warning ("BUG: %d active sessions remain...",
+		      pool_elts (tm->sessions));
     }
+  while (0);
   /* NOTREACHED */
 #if TCP_BUILTIN_CLIENT_PTHREAD
   return 0;
@@ -511,14 +509,11 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   u64 tmp;
 
   tm->bytes_to_send = 8192;
-  tm->n_iterations = 1;
   vec_free (tm->connect_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "nclients %d", &n_clients))
-	;
-      else if (unformat (input, "iterations %d", &tm->n_iterations))
 	;
       else if (unformat (input, "mbytes %lld", &tmp))
 	tm->bytes_to_send = tmp << 20;

@@ -59,7 +59,7 @@ format_tcp_tx_trace (u8 * s, va_list * args)
   s = format (s, "%U\n%U%U",
 	      format_tcp_header, &t->tcp_header, 128,
 	      format_white_space, indent,
-	      format_tcp_connection_verbose, &t->tcp_connection);
+	      format_tcp_connection, &t->tcp_connection, 1);
 
   return s;
 }
@@ -1024,6 +1024,11 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
   ASSERT (n_bytes != 0);
   b->current_length = n_bytes;
   tcp_push_hdr_i (tc, b, tc->state, 0);
+
+  /* Don't count multiple retransmits of the same segment */
+  if (tc->rto_boff > 1)
+    goto done;
+
   tc->rtx_bytes += n_bytes;
 
 done:
@@ -1103,7 +1108,9 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       if (n_bytes == 0)
 	{
-	  clib_warning ("could not retransmit");
+	  clib_warning ("could not retransmit anything");
+	  /* Try again eventually */
+	  tcp_retransmit_timer_set (tc);
 	  return;
 	}
     }
@@ -1203,6 +1210,7 @@ tcp_timer_persist_handler (u32 index)
   /* Nothing to send */
   if (n_bytes == 0)
     {
+      clib_warning ("persist found nothing to send");
       tcp_return_buffer (tm);
       return;
     }

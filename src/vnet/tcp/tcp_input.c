@@ -722,9 +722,11 @@ tcp_update_snd_wnd (tcp_connection_t * tc, u32 seq, u32 ack, u32 snd_wnd)
       TCP_EVT_DBG (TCP_EVT_SND_WND, tc);
 
       /* Set probe timer if we just got 0 wnd */
-      if (tc->snd_wnd < tc->snd_mss
-	  && !tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
-	tcp_persist_timer_set (tc);
+      if (tc->snd_wnd < tc->snd_mss)
+	{
+	  if (!tcp_timer_is_active (tc, TCP_TIMER_PERSIST))
+	    tcp_persist_timer_set (tc);
+	}
       else
 	tcp_persist_timer_reset (tc);
     }
@@ -763,6 +765,7 @@ static void
 tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 {
   u8 partial_ack;
+  u32 bytes_advanced;
 
   if (tcp_in_fastrecovery (tc))
     {
@@ -804,10 +807,14 @@ tcp_cc_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b)
       tc->rcv_dupacks = 0;
       if (tcp_in_recovery (tc))
 	{
-	  tc->rtx_bytes -= clib_min (tc->bytes_acked, tc->rtx_bytes);
+	  bytes_advanced = tc->bytes_acked + tc->sack_sb.snd_una_adv;
+	  tc->rtx_bytes -= clib_min (bytes_advanced, tc->rtx_bytes);
 	  tc->rto = clib_min (tc->srtt + (tc->rttvar << 2), TCP_RTO_MAX);
 	  if (seq_geq (tc->snd_una, tc->snd_congestion))
-	    tcp_recovery_off (tc);
+	    {
+	      tc->rtx_bytes = 0;
+	      tcp_recovery_off (tc);
+	    }
 	}
     }
 }
@@ -1221,7 +1228,7 @@ format_tcp_rx_trace (u8 * s, va_list * args)
   s = format (s, "%U\n%U%U",
 	      format_tcp_header, &t->tcp_header, 128,
 	      format_white_space, indent,
-	      format_tcp_connection_verbose, &t->tcp_connection);
+	      format_tcp_connection, &t->tcp_connection, 1);
 
   return s;
 }
@@ -1236,7 +1243,7 @@ format_tcp_rx_trace_short (u8 * s, va_list * args)
   s = format (s, "%d -> %d (%U)",
 	      clib_net_to_host_u16 (t->tcp_header.src_port),
 	      clib_net_to_host_u16 (t->tcp_header.dst_port), format_tcp_state,
-	      &t->tcp_connection.state);
+	      t->tcp_connection.state);
 
   return s;
 }
@@ -2165,6 +2172,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  child0->c_rmt_port = th0->src_port;
 	  child0->c_is_ip4 = is_ip4;
 	  child0->c_thread_index = my_thread_index;
+	  child0->state = TCP_STATE_SYN_RCVD;
 
 	  if (is_ip4)
 	    {
@@ -2194,7 +2202,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  child0->irs = vnet_buffer (b0)->tcp.seq_number;
 	  child0->rcv_nxt = vnet_buffer (b0)->tcp.seq_number + 1;
 	  child0->rcv_las = child0->rcv_nxt;
-	  child0->state = TCP_STATE_SYN_RCVD;
 
 	  /* RFC1323: TSval timestamps sent on {SYN} and {SYN,ACK}
 	   * segments are used to initialize PAWS. */
@@ -2450,7 +2457,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 		  if (error0 == TCP_ERROR_DISPATCH)
 		    clib_warning ("disp error state %U flags %U",
-				  format_tcp_state, &state0, format_tcp_flags,
+				  format_tcp_state, state0, format_tcp_flags,
 				  (int) flags0);
 		}
 	    }
