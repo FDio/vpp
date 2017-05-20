@@ -212,6 +212,13 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
   struct ifreq ifr;
 
+  if (0 > fd)
+    {
+      clib_unix_warning ("af_packet_%s could not open socket",
+			 apif->host_if_name);
+      return 0;
+    }
+
   /* if interface is a bridge ignore */
   if (apif->host_if_index < 0)
     goto error;			/* no error */
@@ -255,7 +262,8 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
 error:
-  close (fd);
+  if (0 <= fd)
+    close (fd);
 
   return 0;			/* no error */
 }
@@ -277,6 +285,13 @@ static clib_error_t *af_packet_set_mac_address_function
     pool_elt_at_index (apm->interfaces, hi->dev_instance);
   int rv, fd = socket (AF_UNIX, SOCK_DGRAM, 0);
   struct ifreq ifr;
+
+  if (0 > fd)
+    {
+      clib_unix_warning ("af_packet_%s could not open socket",
+			 apif->host_if_name);
+      return 0;
+    }
 
   /* if interface is a bridge ignore */
   if (apif->host_if_index < 0)
@@ -303,7 +318,9 @@ static clib_error_t *af_packet_set_mac_address_function
     }
 
 error:
-  close (fd);
+
+  if (0 <= fd)
+    close (fd);
 
   return 0;			/* no error */
 }
