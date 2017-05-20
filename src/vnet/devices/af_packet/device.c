@@ -255,7 +255,8 @@ af_packet_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_set_flags (vnm, hw_if_index, hw_flags);
 
 error:
-  close (fd);
+  if (0 <= fd)
+    close (fd);
 
   return 0;			/* no error */
 }
@@ -303,7 +304,9 @@ static clib_error_t *af_packet_set_mac_address_function
     }
 
 error:
-  close (fd);
+
+  if (0 <= fd)
+    close (fd);
 
   return 0;			/* no error */
 }
