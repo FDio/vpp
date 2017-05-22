@@ -22,6 +22,30 @@
       "revId": "836c33b5d2ce881da69ea8d53a3c256d4617e7e6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a2f8d8d_552000f7",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1559,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-05-22T15:19:21Z",
+      "side": 1,
+      "message": "I\u0027m inclined to say that we should ignore tab in the middle of a line. My experience of what Bash does in this case never aligns with what I want it to do, for example. :)\n\nThat said, if the cursor is at the end of a word, under whitespace, then the behavior should be straightforward - do completion as usual, with the catch that you need to preserve the rest of the line, and your relative cursor position in it.",
+      "parentUuid": "1a2f8d8d_f517eca1",
+      "range": {
+        "startLine": 1558,
+        "startChar": 0,
+        "endLine": 1559,
+        "endChar": 39
+      },
+      "revId": "836c33b5d2ce881da69ea8d53a3c256d4617e7e6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
