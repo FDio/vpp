@@ -143,6 +143,16 @@
   foreach_dpdk_pkt_rx_offload_flag              \
   foreach_dpdk_pkt_tx_offload_flag
 
+#define foreach_dpdk_log_level	\
+  _ (EMERG, "emergency")	\
+  _ (ALERT, "alert")		\
+  _ (CRIT, "critical")		\
+  _ (ERR, "error")		\
+  _ (WARNING, "warning")	\
+  _ (NOTICE, "notice")		\
+  _ (INFO, "info")		\
+  _ (DEBUG, "debug")
+
 u8 *
 format_dpdk_device_name (u8 * s, va_list * args)
 {
@@ -704,36 +714,6 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
   return s;
 }
 
-/* FIXME is this function used? */
-#if 0
-uword
-unformat_socket_mem (unformat_input_t * input, va_list * va)
-{
-  uword **r = va_arg (*va, uword **);
-  int i = 0;
-  u32 mem;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, ","))
-	hash_set (*r, i, 1024);
-      else if (unformat (input, "%u,", &mem))
-	hash_set (*r, i, mem);
-      else if (unformat (input, "%u", &mem))
-	hash_set (*r, i, mem);
-      else
-	{
-	  unformat_put_input (input);
-	  goto done;
-	}
-      i++;
-    }
-
-done:
-  return 1;
-}
-#endif
-
 clib_error_t *
 unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
 {
@@ -755,6 +735,20 @@ unformat_rss_fn (unformat_input_t * input, uword * rss_fn)
 	}
     }
   return 0;
+}
+
+uword
+unformat_dpdk_log_level (unformat_input_t * input, va_list * args)
+{
+  u32 *r = va_arg (*args, u32 *);
+
+  if (0);
+#define _(v,s) else if (unformat (input, s)) *r = RTE_LOG_##v;
+  foreach_dpdk_log_level
+#undef _
+    else
+    return 0;
+  return 1;
 }
 
 clib_error_t *
