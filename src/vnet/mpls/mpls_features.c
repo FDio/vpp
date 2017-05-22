@@ -145,8 +145,6 @@ mpls_sw_interface_add_del (vnet_main_t * vnm,
 
   vnet_feature_enable_disable ("mpls-input", "mpls-not-enabled", sw_if_index,
 			       is_add, 0, 0);
-  vnet_feature_enable_disable ("mpls-output", "interface-output", sw_if_index,
-			       is_add, 0, 0);
 
   return /* no error */ 0;
 }
