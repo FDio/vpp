@@ -490,9 +490,9 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "encap-vrf-id %d", &tmp))
       {
         if (ipv6_set)
-          encap_fib_index = ip6_fib_index_from_table_id (tmp);
+          encap_fib_index = fib_table_find (FIB_PROTOCOL_IP6, tmp);
         else
-          encap_fib_index =  ip4_fib_index_from_table_id (tmp);
+          encap_fib_index = fib_table_find (FIB_PROTOCOL_IP4, tmp);
 
         if (encap_fib_index == ~0)
           {
@@ -503,9 +503,9 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
     else if (unformat (line_input, "decap-vrf-id %d", &tmp))
       {
         if (ipv6_set)
-          decap_fib_index = ip6_fib_index_from_table_id (tmp);
+          decap_fib_index = fib_table_find (FIB_PROTOCOL_IP6, tmp);
         else
-          decap_fib_index = ip4_fib_index_from_table_id (tmp);
+          decap_fib_index = fib_table_find (FIB_PROTOCOL_IP4, tmp);
 
         if (decap_fib_index == ~0)
           {

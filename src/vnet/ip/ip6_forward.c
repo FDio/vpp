@@ -444,12 +444,11 @@ ip6_sw_interface_enable_disable (u32 sw_if_index, u32 is_enable)
 	return;
     }
 
-  vnet_feature_enable_disable ("ip6-unicast", "ip6-lookup", sw_if_index,
-			       is_enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "ip6-drop", sw_if_index,
+			       !is_enable, 0, 0);
 
-  vnet_feature_enable_disable ("ip6-multicast", "ip6-mfib-forward-lookup",
-			       sw_if_index, is_enable, 0, 0);
-
+  vnet_feature_enable_disable ("ip6-multicast", "ip6-drop", sw_if_index,
+			       !is_enable, 0, 0);
 }
 
 /* get first interface address */
@@ -624,17 +623,17 @@ VNET_FEATURE_INIT (ip6_vxlan_bypass, static) =
   .runs_before = VNET_FEATURES ("ip6-lookup"),
 };
 
-VNET_FEATURE_INIT (ip6_lookup, static) =
-{
-  .arc_name = "ip6-unicast",
-  .node_name = "ip6-lookup",
-  .runs_before = VNET_FEATURES ("ip6-drop"),
-};
-
 VNET_FEATURE_INIT (ip6_drop, static) =
 {
   .arc_name = "ip6-unicast",
   .node_name = "ip6-drop",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+};
+
+VNET_FEATURE_INIT (ip6_lookup, static) =
+{
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-lookup",
   .runs_before = 0,  /*last feature*/
 };
 
@@ -652,15 +651,15 @@ VNET_FEATURE_INIT (ip6_vpath_mc, static) = {
   .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
 };
 
-VNET_FEATURE_INIT (ip6_mc_lookup, static) = {
-  .arc_name = "ip6-multicast",
-  .node_name = "ip6-mfib-forward-lookup",
-  .runs_before = VNET_FEATURES ("ip6-drop"),
-};
-
 VNET_FEATURE_INIT (ip6_drop_mc, static) = {
   .arc_name = "ip6-multicast",
   .node_name = "ip6-drop",
+  .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
+};
+
+VNET_FEATURE_INIT (ip6_mc_lookup, static) = {
+  .arc_name = "ip6-multicast",
+  .node_name = "ip6-mfib-forward-lookup",
   .runs_before = 0, /* last feature */
 };
 
@@ -697,9 +696,6 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 			       is_add, 0, 0);
 
   vnet_feature_enable_disable ("ip6-multicast", "ip6-drop", sw_if_index,
-			       is_add, 0, 0);
-
-  vnet_feature_enable_disable ("ip6-output", "interface-output", sw_if_index,
 			       is_add, 0, 0);
 
   return /* no error */ 0;

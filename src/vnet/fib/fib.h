@@ -646,7 +646,5 @@
 
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_entry.h>
-#include <vnet/fib/ip4_fib.h>
-#include <vnet/fib/ip6_fib.h>
 
 #endif

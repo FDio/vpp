@@ -341,45 +341,6 @@ ip6_fib_table_entry_insert (u32 fib_index,
     compute_prefix_lengths_in_search_order (table);
 }
 
-u32 
-ip6_fib_table_fwding_lookup (ip6_main_t * im,
-                             u32 fib_index,
-                             const ip6_address_t * dst)
-{
-    const ip6_fib_table_instance_t *table;
-    int i, len;
-    int rv;
-    BVT(clib_bihash_kv) kv, value;
-    u64 fib;
-
-    table = &ip6_main.ip6_table[IP6_FIB_TABLE_FWDING];
-    len = vec_len (table->prefix_lengths_in_search_order);
-
-    kv.key[0] = dst->as_u64[0];
-    kv.key[1] = dst->as_u64[1];
-    fib = ((u64)((fib_index))<<32);
-
-    for (i = 0; i < len; i++)
-    {
-	int dst_address_length = table->prefix_lengths_in_search_order[i];
-	ip6_address_t * mask = &ip6_main.fib_masks[dst_address_length];
-      
-	ASSERT(dst_address_length >= 0 && dst_address_length <= 128);
-	//As lengths are decreasing, masks are increasingly specific.
-	kv.key[0] &= mask->as_u64[0];
-	kv.key[1] &= mask->as_u64[1];
-	kv.key[2] = fib | dst_address_length;
-      
-	rv = BV(clib_bihash_search_inline_2)(&table->ip6_hash, &kv, &value);
-	if (rv == 0)
-	    return value.value;
-    }
-
-    /* default route is always present */
-    ASSERT(0);
-    return 0;
-}
-
 u32 ip6_fib_table_fwding_lookup_with_if_index (ip6_main_t * im,
 					       u32 sw_if_index,
 					       const ip6_address_t * dst)

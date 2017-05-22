@@ -22,7 +22,6 @@
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_packet.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam_util.h>
-#include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
 
