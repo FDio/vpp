@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_12196e88",
+        "filename": "src/plugins/memif/memif_lib.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-22T11:19:52Z",
+      "side": 1,
+      "message": "Library external header file should not include VPP internal headers... We don\u0027t want 3rd party apps to include vpp header files and link again VPP shared libraries.",
+      "range": {
+        "startLine": 18,
+        "startChar": 0,
+        "endLine": 19,
+        "endChar": 22
+      },
+      "revId": "bac1cfa421ce2c08a8bb55a011a684007a814c70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
