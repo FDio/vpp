@@ -434,6 +434,8 @@ endif
 	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
+ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	@make test
+endif
 
 
