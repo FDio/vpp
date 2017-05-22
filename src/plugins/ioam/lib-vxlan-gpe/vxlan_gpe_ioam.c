@@ -16,7 +16,7 @@
 #include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/format.h>
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
-#include <vnet/fib/ip6_fib.h>
+#include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
 

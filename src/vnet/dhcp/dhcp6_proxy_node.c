@@ -19,9 +19,9 @@
 #include <vnet/pg/pg.h>
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/dhcp/dhcp6_packet.h>
-#include <vnet/fib/ip6_fib.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/mfib/ip6_mfib.h>
+#include <vnet/fib/fib.h>
 
 static char * dhcpv6_proxy_error_strings[] = {
 #define dhcpv6_proxy_error(n,s) s,
@@ -966,7 +966,7 @@ static u8 *
 format_dhcp6_proxy_server (u8 * s, va_list * args)
 {
   dhcp_proxy_t * proxy = va_arg (*args, dhcp_proxy_t *);
-  ip6_fib_t *server_fib;
+  fib_table_t *server_fib;
   dhcp_server_t *server;
   ip6_mfib_t *rx_fib;
 
@@ -985,9 +985,10 @@ format_dhcp6_proxy_server (u8 * s, va_list * args)
 
   vec_foreach(server, proxy->dhcp_servers)
   {
-      server_fib = ip6_fib_get(server->server_fib_index);
+      server_fib = fib_table_get(server->server_fib_index,
+                                 FIB_PROTOCOL_IP6);
       s = format (s, "%u,%U  ",
-                  server_fib->table_id,
+                  server_fib->ft_table_id,
                   format_ip46_address, &server->dhcp_server, IP46_TYPE_ANY);
   }
 

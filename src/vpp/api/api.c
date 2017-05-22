@@ -81,8 +81,6 @@
 #include <vnet/l2/l2_bd.h>
 #include <vpp/api/vpe_msg_enum.h>
 #include <vnet/span/span.h>
-#include <vnet/fib/ip6_fib.h>
-#include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_api.h>
 #include <vnet/dpo/drop_dpo.h>
 #include <vnet/dpo/receive_dpo.h>
