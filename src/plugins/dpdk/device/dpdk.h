@@ -432,7 +432,7 @@ format_function_t format_dpdk_tx_dma_trace;
 format_function_t format_dpdk_rx_dma_trace;
 format_function_t format_dpdk_rte_mbuf;
 format_function_t format_dpdk_rx_rte_mbuf;
-unformat_function_t unformat_socket_mem;
+unformat_function_t unformat_dpdk_log_level;
 clib_error_t *unformat_rss_fn (unformat_input_t * input, uword * rss_fn);
 clib_error_t *unformat_hqos (unformat_input_t * input,
 			     dpdk_device_config_hqos_t * hqos);
