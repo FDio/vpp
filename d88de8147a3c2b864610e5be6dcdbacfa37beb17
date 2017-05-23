@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a2f8d8d_58583556",
+        "filename": "src/plugins/flowprobe/flowprobe.h",
+        "patchSetId": 35
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-05-23T11:08:39Z",
+      "side": 1,
+      "message": "This skeleton seems to have more flesh than usual... (;-)...",
+      "revId": "d88de8147a3c2b864610e5be6dcdbacfa37beb17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
