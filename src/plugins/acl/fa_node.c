@@ -202,6 +202,7 @@ acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
 	      *r_acl_match_p = acl_index;
             if (r_rule_match_p)
 	      *r_rule_match_p = i;
+            clib_smp_atomic_add(&r->hitcount, 1);
             return 1;
           }
 
@@ -253,8 +254,10 @@ acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
 	*r_acl_match_p = acl_index;
       if (r_rule_match_p)
 	*r_rule_match_p = i;
+      clib_smp_atomic_add(&r->hitcount, 1);
       return 1;
     }
+  clib_smp_atomic_add(&a->nomatch_hitcount, 1);
   return 0;
 }
 

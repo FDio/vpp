@@ -36,6 +36,20 @@ vl_api_acl_details_t_endian (vl_api_acl_details_t * a)
   vl_api_acl_rule_t_endian (a->r);
 }
 
+static inline void vl_api_acl_hitcount_details_t_endian (vl_api_acl_hitcount_details_t *a)
+{
+    u32 i;
+    a->_vl_msg_id = clib_net_to_host_u16(a->_vl_msg_id);
+    a->context = clib_net_to_host_u32(a->context);
+    a->acl_index = clib_net_to_host_u32(a->acl_index);
+    /* a->tag[0..63] = a->tag[0..63] (no-op) */
+    a->nomatch_hitcount = clib_net_to_host_u64(a->nomatch_hitcount);
+    a->count = clib_net_to_host_u32(a->count);
+    for (i=0; i <= a->count; i++) {
+      a->hitcount[i] = clib_net_to_host_u64(a->hitcount[i]);
+    }
+}
+
 static inline void
 vl_api_macip_acl_details_t_endian (vl_api_macip_acl_details_t * a)
 {
@@ -215,6 +229,36 @@ vl_api_acl_details_t_print (vl_api_acl_details_t * a, void *handle)
 
   return handle;
 }
+
+static inline void *
+vl_api_acl_hitcount_details_t_print (vl_api_acl_hitcount_details_t * a, void *handle)
+{
+  u8 *s = 0;
+  int i;
+  u32 acl_index = clib_net_to_host_u32 (a->acl_index);
+  u32 count = clib_net_to_host_u32 (a->count);
+  u64 nomatch_hitcount = clib_net_to_host_u64(a->nomatch_hitcount);
+  if (count > 0x100000)
+    {
+      s = format (s, "WARN: acl_hitcount_details count endianness wrong? Fixup to avoid long loop.\n");
+      count = a->count;
+    }
+
+  s = format (s, "acl_hitcount_details index %d count %d nomatch_hitcount %llu",
+	      acl_index, count, nomatch_hitcount);
+
+  if (a->tag[0])
+    s = format (s, "tag %s ", a->tag);
+
+  s = format(s, "\n");
+  for (i = 0; i < count; i++) {
+    s = format(s, " %d: %llu", i, clib_net_to_host_u64(a->hitcount[i]));
+  }
+  PRINT_S;
+
+  return handle;
+}
+
 
 static inline void *
 vl_api_macip_acl_details_t_print (vl_api_macip_acl_details_t * a,

@@ -62,11 +62,13 @@ acl_main_t acl_main;
 
 #define foreach_acl_plugin_api_msg		\
 _(ACL_PLUGIN_GET_VERSION, acl_plugin_get_version) \
+_(ACL_PLUGIN_CONTROL_PING, acl_plugin_control_ping) \
 _(ACL_ADD_REPLACE, acl_add_replace)				\
 _(ACL_DEL, acl_del)				\
 _(ACL_INTERFACE_ADD_DEL, acl_interface_add_del)	\
 _(ACL_INTERFACE_SET_ACL_LIST, acl_interface_set_acl_list)	\
 _(ACL_DUMP, acl_dump)  \
+_(ACL_HITCOUNT_DUMP, acl_hitcount_dump)  \
 _(ACL_INTERFACE_LIST_DUMP, acl_interface_list_dump) \
 _(MACIP_ACL_ADD, macip_acl_add) \
 _(MACIP_ACL_DEL, macip_acl_del) \
@@ -106,6 +108,20 @@ vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
+static void
+vl_api_acl_plugin_control_ping_t_handler (vl_api_acl_plugin_control_ping_t * mp)
+{
+  vl_api_acl_plugin_control_ping_reply_t *rmp;
+  acl_main_t *am = &acl_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_ACL_PLUGIN_CONTROL_PING_REPLY,
+  ({
+    rmp->vpe_pid = ntohl (getpid ());
+  }));
+  /* *INDENT-ON* */
+}
 
 static int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],
@@ -160,6 +176,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       r->dst_port_or_code_last = ntohs ( rules[i].dstport_or_icmpcode_last );
       r->tcp_flags_value = rules[i].tcp_flags_value;
       r->tcp_flags_mask = rules[i].tcp_flags_mask;
+      r->hitcount = 0;
     }
 
   if (~0 == *acl_list_index)
@@ -1291,6 +1308,76 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
 }
 
 static void
+send_acl_hitcount_details (acl_main_t * am, unix_shared_memory_queue_t * q,
+		  acl_list_t * acl, u32 context)
+{
+  vl_api_acl_hitcount_details_t *mp;
+  int i;
+  int msg_size = sizeof (*mp) + sizeof (mp->hitcount[0]) * acl->count;
+
+  mp = vl_msg_api_alloc (msg_size);
+  memset (mp, 0, msg_size);
+  mp->_vl_msg_id = ntohs (VL_API_ACL_HITCOUNT_DETAILS + am->msg_id_base);
+
+  /* fill in the message */
+  mp->context = context;
+  mp->count = htonl (acl->count);
+  mp->acl_index = htonl (acl - am->acls);
+  memcpy (mp->tag, acl->tag, sizeof (mp->tag));
+  for (i = 0; i < acl->count; i++)
+    {
+      mp->hitcount[i] = acl->rules[i].hitcount;
+    }
+  mp->nomatch_hitcount = acl->nomatch_hitcount;
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+
+static void
+vl_api_acl_hitcount_dump_t_handler (vl_api_acl_dump_t * mp)
+{
+  acl_main_t *am = &acl_main;
+  u32 acl_index;
+  acl_list_t *acl;
+
+  int rv = -1;
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  if (mp->acl_index == ~0)
+    {
+    /* *INDENT-OFF* */
+    /* Just dump all ACLs */
+    pool_foreach (acl, am->acls,
+    ({
+      send_acl_hitcount_details(am, q, acl, mp->context);
+    }));
+    /* *INDENT-ON* */
+    }
+  else
+    {
+      acl_index = ntohl (mp->acl_index);
+      if (!pool_is_free_index (am->acls, acl_index))
+	{
+	  acl = &am->acls[acl_index];
+	  send_acl_hitcount_details (am, q, acl, mp->context);
+	}
+    }
+
+  if (rv == -1)
+    {
+      /* FIXME API: should we signal an error here at all ? */
+      return;
+    }
+}
+
+
+static void
 send_acl_interface_list_details (acl_main_t * am,
 				 unix_shared_memory_queue_t * q,
 				 u32 sw_if_index, u32 context)
@@ -1334,6 +1421,7 @@ send_acl_interface_list_details (acl_main_t * am,
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
+
 
 static void
 vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *

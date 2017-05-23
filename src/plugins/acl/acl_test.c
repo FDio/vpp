@@ -195,6 +195,24 @@ static void vl_api_acl_details_t_handler
         vam->result_ready = 1;
     }
 
+static void vl_api_acl_hitcount_details_t_handler
+    (vl_api_acl_hitcount_details_t * mp)
+    {
+        int i;
+        vat_main_t * vam = acl_test_main.vat_main;
+        vl_api_acl_hitcount_details_t_endian(mp);
+        u8 *out = 0;
+        out = format(0, "acl_index: %d, count: %d  nomatch_hitcount: %llu\n   tag {%s}\n",
+                     mp->acl_index, mp->count, mp->nomatch_hitcount, mp->tag);
+	for(i=0; i<mp->count; i++) {
+          out = format(out, "   rule %d: %llu", i, mp->hitcount[i]);
+          out = format(out, "%s\n", i<mp->count-1 ? "," : "");
+	}
+        clib_warning("%s", out);
+        vec_free(out);
+        vam->result_ready = 1;
+    }
+
 static inline u8 *
 vl_api_macip_acl_rule_t_pretty_format (u8 *out, vl_api_macip_acl_rule_t * a)
 {
@@ -243,6 +261,22 @@ static void vl_api_macip_acl_interface_get_reply_t_handler
         vam->result_ready = 1;
     }
 
+static void vl_api_acl_plugin_control_ping_reply_t_handler
+  (vl_api_acl_plugin_control_ping_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
 
 /*
  * Table of message reply handlers, must include boilerplate handlers
@@ -255,11 +289,13 @@ _(ACL_INTERFACE_ADD_DEL_REPLY, acl_interface_add_del_reply)  \
 _(ACL_INTERFACE_SET_ACL_LIST_REPLY, acl_interface_set_acl_list_reply) \
 _(ACL_INTERFACE_LIST_DETAILS, acl_interface_list_details)  \
 _(ACL_DETAILS, acl_details)  \
+_(ACL_HITCOUNT_DETAILS, acl_hitcount_details)  \
 _(MACIP_ACL_ADD_REPLY, macip_acl_add_reply) \
 _(MACIP_ACL_DEL_REPLY, macip_acl_del_reply) \
 _(MACIP_ACL_DETAILS, macip_acl_details)  \
 _(MACIP_ACL_INTERFACE_ADD_DEL_REPLY, macip_acl_interface_add_del_reply)  \
 _(MACIP_ACL_INTERFACE_GET_REPLY, macip_acl_interface_get_reply)  \
+_(ACL_PLUGIN_CONTROL_PING_REPLY, acl_plugin_control_ping_reply) \
 _(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)
 
 static int api_acl_plugin_get_version (vat_main_t * vam)
@@ -728,6 +764,15 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
     return ret;
 }
 
+static void
+api_acl_send_control_ping(vat_main_t *vam)
+{
+  vl_api_acl_plugin_control_ping_t *mp_ping;
+
+  M(ACL_PLUGIN_CONTROL_PING, mp_ping);
+  S(mp_ping);
+}
+
 
 static int api_acl_interface_list_dump (vat_main_t * vam)
 {
@@ -752,6 +797,9 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
 
     /* send it... */
     S(mp);
+
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
 
     /* Wait for a reply... */
     W (ret);
@@ -780,6 +828,39 @@ static int api_acl_dump (vat_main_t * vam)
     /* send it... */
     S(mp);
 
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
+
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
+}
+
+static int api_acl_hitcount_dump (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    u32 acl_index = ~0;
+    vl_api_acl_hitcount_dump_t * mp;
+    int ret;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "%d", &acl_index))
+            ;
+        else
+            break;
+    }
+
+    /* Construct the API message */
+    M(ACL_HITCOUNT_DUMP, mp);
+    mp->acl_index = ntohl (acl_index);
+
+    /* send it... */
+    S(mp);
+
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
+
     /* Wait for a reply... */
     W (ret);
     return ret;
@@ -806,6 +887,9 @@ static int api_macip_acl_dump (vat_main_t * vam)
 
     /* send it... */
     S(mp);
+
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
 
     /* Wait for a reply... */
     W (ret);
@@ -966,6 +1050,7 @@ _(acl_plugin_get_version, "") \
 _(acl_add_replace, "<acl-idx> [<ipv4|ipv6> <permit|permit+reflect|deny|action N> [src IP/plen] [dst IP/plen] [sport X-Y] [dport X-Y] [proto P] [tcpflags FL MASK], ... , ...") \
 _(acl_del, "<acl-idx>") \
 _(acl_dump, "[<acl-idx>]") \
+_(acl_hitcount_dump, "[<acl-idx>]") \
 _(acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] [input|output] acl <acl-idx>") \
 _(acl_interface_set_acl_list, "<intfc> | sw_if_index <if-idx> input [acl-idx list] output [acl-idx list]") \
 _(acl_interface_list_dump, "[<intfc> | sw_if_index <if-idx>]") \

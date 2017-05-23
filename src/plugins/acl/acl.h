@@ -28,7 +28,7 @@
 #include "fa_node.h"
 
 #define  ACL_PLUGIN_VERSION_MAJOR 1
-#define  ACL_PLUGIN_VERSION_MINOR 2
+#define  ACL_PLUGIN_VERSION_MINOR 3
 
 #define UDP_SESSION_IDLE_TIMEOUT_SEC 600
 #define TCP_SESSION_IDLE_TIMEOUT_SEC (3600*24)
@@ -76,6 +76,7 @@ typedef struct
   u16 dst_port_or_code_last;
   u8 tcp_flags_value;
   u8 tcp_flags_mask;
+  u64 hitcount;
 } acl_rule_t;
 
 typedef struct
@@ -96,6 +97,7 @@ typedef struct
   u8 tag[64];
   u32 count;
   acl_rule_t *rules;
+  u64 nomatch_hitcount;
 } acl_list_t;
 
 typedef struct

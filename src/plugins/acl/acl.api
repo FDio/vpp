@@ -44,6 +44,30 @@ define acl_plugin_get_version_reply
   u32 minor;
 };
 
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define acl_plugin_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define acl_plugin_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
 /** \brief Access List Rule entry
     @param is_permit - deny (0), permit (1), or permit+reflect(2) action on this rule.
     @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
@@ -245,6 +269,31 @@ manual_endian manual_print define acl_details
   u8 tag[64]; /* Same blob that was supplied to us when creating the ACL, one hopes. */
   u32 count;
   vl_api_acl_rule_t r[count];
+};
+
+define acl_hitcount_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 for all ACLs */
+};
+
+/** \brief Details about hitcounts on a single ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - ACL index whose hitcounts are being sent in this message
+    @param nomatch_hitcount - how many packets did not match this ACL on lookup
+    @param count - Number of hitcount values - one per rule in this ACL
+    @param hitcount - Array of hitcounts
+*/
+
+manual_endian manual_print define acl_hitcount_details
+{
+  u32 context;
+  u32 acl_index;
+  u8 tag[64]; /* Same blob that was supplied to us when creating the ACL, one hopes. */
+  u64 nomatch_hitcount; /* Number of times the ACL was looked up and nothing matched */
+  u32 count;
+  u64 hitcount[count];
 };
 
 /** \brief Dump the list(s) of ACL applied to specific or all interfaces
