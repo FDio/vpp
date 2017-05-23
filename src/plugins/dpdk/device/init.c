@@ -346,10 +346,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  switch (xd->pmd)
 	    {
 	      /* Drivers with valid speed_capa set */
-	    case VNET_DPDK_PMD_E1000EM:
-	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
+	      xd->flags = DPDK_DEVICE_FLAG_PMD_SUPPORTS_PTYPE;
+	    case VNET_DPDK_PMD_E1000EM:
+	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
 	    case VNET_DPDK_PMD_MLX5:

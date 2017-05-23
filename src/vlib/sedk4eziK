@@ -1,0 +1,385 @@
+/*
+ * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#define _GNU_SOURCE
+
+#include <signal.h>
+#include <math.h>
+#include <vppinfra/format.h>
+#include <vlib/vlib.h>
+
+#include <vlib/threads.h>
+#include <vlib/unix/cj.h>
+
+DECLARE_CJ_GLOBAL_LOG;
+
+#define FRAME_QUEUE_NELTS 32
+
+u32
+vl (void *p)
+{
+  return vec_len (p);
+}
+
+vlib_worker_thread_t *vlib_worker_threads;
+vlib_thread_main_t vlib_thread_main;
+
+uword
+os_get_nthreads (void)
+{
+  u32 len;
+
+  len = vec_len (vlib_thread_stacks);
+  if (len == 0)
+    return 1;
+  else
+    return len;
+}
+
+void
+vlib_set_thread_name (char *name)
+{
+  int pthread_setname_np (pthread_t __target_thread, const char *__name);
+  int rv;
+  pthread_t thread = pthread_self ();
+
+  if (thread)
+    {
+      rv = pthread_setname_np (thread, name);
+      if (rv)
+	clib_warning ("pthread_setname_np returned %d", rv);
+    }
+}
+
+static int
+sort_registrations_by_no_clone (void *a0, void *a1)
+{
+  vlib_thread_registration_t **tr0 = a0;
+  vlib_thread_registration_t **tr1 = a1;
+
+  return ((i32) ((*tr0)->no_data_structure_clone)
+	  - ((i32) ((*tr1)->no_data_structure_clone)));
+}
+
+static uword *
+vlib_sysfs_list_to_bitmap (char *filename)
+{
+  FILE *fp;
+  uword *r = 0;
+
+  fp = fopen (filename, "r");
+
+  if (fp != NULL)
+    {
+      u8 *buffer = 0;
+      vec_validate (buffer, 256 - 1);
+      if (fgets ((char *) buffer, 256, fp))
+	{
+	  unformat_input_t in;
+	  unformat_init_string (&in, (char *) buffer,
+				strlen ((char *) buffer));
+	  if (unformat (&in, "%U", unformat_bitmap_list, &r) != 1)
+	    clib_warning ("unformat_bitmap_list failed");
+	  unformat_free (&in);
+	}
+      vec_free (buffer);
+      fclose (fp);
+    }
+  return r;
+}
+
+
+/* Called early in the init sequence */
+
+clib_error_t *
+vlib_thread_init (vlib_main_t * vm)
+{
+  vlib_thread_main_t *tm = &vlib_thread_main;
+  vlib_worker_thread_t *w;
+  vlib_thread_registration_t *tr;
+  u32 n_vlib_mains = 1;
+  u32 first_index = 1;
+  u32 i;
+  uword *avail_cpu;
+
+  /* get bitmaps of active cpu cores and sockets */
+  tm->cpu_core_bitmap =
+    vlib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
+  tm->cpu_socket_bitmap =
+    vlib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+
+  avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
+
+  /* skip cores */
+  for (i = 0; i < tm->skip_cores; i++)
+    {
+      uword c = clib_bitmap_first_set (avail_cpu);
+      if (c == ~0)
+	return clib_error_return (0, "no available cpus to skip");
+
+      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+    }
+
+  /* grab cpu for main thread */
+  if (!tm->main_lcore)
+    {
+      tm->main_lcore = clib_bitmap_first_set (avail_cpu);
+      if (tm->main_lcore == (u8) ~ 0)
+	return clib_error_return (0, "no available cpus to be used for the"
+				  " main thread");
+    }
+  else
+    {
+      if (clib_bitmap_get (avail_cpu, tm->main_lcore) == 0)
+	return clib_error_return (0, "cpu %u is not available to be used"
+				  " for the main thread", tm->main_lcore);
+    }
+  avail_cpu = clib_bitmap_set (avail_cpu, tm->main_lcore, 0);
+
+  /* assume that there is socket 0 only if there is no data from sysfs */
+  if (!tm->cpu_socket_bitmap)
+    tm->cpu_socket_bitmap = clib_bitmap_set (0, 0, 1);
+
+  /* pin main thread to main_lcore  */
+  if (tm->cb.vlib_thread_set_lcore_cb)
+    {
+      tm->cb.vlib_thread_set_lcore_cb (0, tm->main_lcore);
+    }
+  else
+    {
+      cpu_set_t cpuset;
+      CPU_ZERO (&cpuset);
+      CPU_SET (tm->main_lcore, &cpuset);
+      pthread_setaffinity_np (pthread_self (), sizeof (cpu_set_t), &cpuset);
+    }
+
+  /* as many threads as stacks... */
+  vec_validate_aligned (vlib_worker_threads, vec_len (vlib_thread_stacks) - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  /* Preallocate thread 0 */
+  _vec_len (vlib_worker_threads) = 1;
+  w = vlib_worker_threads;
+  w->thread_mheap = clib_mem_get_heap ();
+  w->thread_stack = vlib_thread_stacks[0];
+  w->lcore_id = tm->main_lcore;
+  w->lwp = syscall (SYS_gettid);
+  w->thread_id = pthread_self ();
+  tm->n_vlib_mains = 1;
+
+  if (tm->sched_policy != ~0)
+    {
+      struct sched_param sched_param;
+      if (!sched_getparam (w->lwp, &sched_param))
+	{
+	  if (tm->sched_priority != ~0)
+	    sched_param.sched_priority = tm->sched_priority;
+	  sched_setscheduler (w->lwp, tm->sched_policy, &sched_param);
+	}
+    }
+
+  /* assign threads to cores and set n_vlib_mains */
+  tr = tm->next;
+
+  while (tr)
+    {
+      vec_add1 (tm->registrations, tr);
+      tr = tr->next;
+    }
+
+  vec_sort_with_function (tm->registrations, sort_registrations_by_no_clone);
+
+  for (i = 0; i < vec_len (tm->registrations); i++)
+    {
+      int j;
+      tr = tm->registrations[i];
+      tr->first_index = first_index;
+      first_index += tr->count;
+      n_vlib_mains += (tr->no_data_structure_clone == 0) ? tr->count : 0;
+
+      /* construct coremask */
+      if (tr->use_pthreads || !tr->count)
+	continue;
+
+      if (tr->coremask)
+	{
+	  uword c;
+          /* *INDENT-OFF* */
+          clib_bitmap_foreach (c, tr->coremask, ({
+            if (clib_bitmap_get(avail_cpu, c) == 0)
+              return clib_error_return (0, "cpu %u is not available to be used"
+                                        " for the '%s' thread",c, tr->name);
+
+            avail_cpu = clib_bitmap_set(avail_cpu, c, 0);
+          }));
+/* *INDENT-ON* */
+
+	}
+      else
+	{
+	  for (j = 0; j < tr->count; j++)
+	    {
+	      uword c = clib_bitmap_first_set (avail_cpu);
+	      if (c == ~0)
+		return clib_error_return (0,
+					  "no available cpus to be used for"
+					  " the '%s' thread", tr->name);
+
+	      avail_cpu = clib_bitmap_set (avail_cpu, c, 0);
+	      tr->coremask = clib_bitmap_set (tr->coremask, c, 1);
+	    }
+	}
+    }
+
+  clib_bitmap_free (avail_cpu);
+
+  tm->n_vlib_mains = n_vlib_mains;
+
+  vec_validate_aligned (vlib_worker_threads, first_index - 1,
+			CLIB_CACHE_LINE_BYTES);
+
+  return 0;
+}
+
+vlib_frame_queue_t *
+vlib_frame_queue_alloc (int nelts)
+{
+  vlib_frame_queue_t *fq;
+
+  fq = clib_mem_alloc_aligned (sizeof (*fq), CLIB_CACHE_LINE_BYTES);
+  memset (fq, 0, sizeof (*fq));
+  fq->nelts = nelts;
+  fq->vector_threshold = 128;	// packets
+  vec_validate_aligned (fq->elts, nelts - 1, CLIB_CACHE_LINE_BYTES);
+
+  if (1)
+    {
+      if (((uword) & fq->tail) & (CLIB_CACHE_LINE_BYTES - 1))
+	fformat (stderr, "WARNING: fq->tail unaligned\n");
+      if (((uword) & fq->head) & (CLIB_CACHE_LINE_BYTES - 1))
+	fformat (stderr, "WARNING: fq->head unaligned\n");
+      if (((uword) fq->elts) & (CLIB_CACHE_LINE_BYTES - 1))
+	fformat (stderr, "WARNING: fq->elts unaligned\n");
+
+      if (sizeof (fq->elts[0]) % CLIB_CACHE_LINE_BYTES)
+	fformat (stderr, "WARNING: fq->elts[0] size %d\n",
+		 sizeof (fq->elts[0]));
+      if (nelts & (nelts - 1))
+	{
+	  fformat (stderr, "FATAL: nelts MUST be a power of 2\n");
+	  abort ();
+	}
+    }
+
+  return (fq);
+}
+
+void vl_msg_api_handler_no_free (void *) __attribute__ ((weak));
+void
+vl_msg_api_handler_no_free (void *v)
+{
+}
+
+/* Turned off, save as reference material... */
+#if 0
+static inline int
+vlib_frame_queue_dequeue_internal (int thread_id,
+				   vlib_main_t * vm, vlib_node_main_t * nm)
+{
+  vlib_frame_queue_t *fq = vlib_frame_queues[thread_id];
+  vlib_frame_queue_elt_t *elt;
+  vlib_frame_t *f;
+  vlib_pending_frame_t *p;
+  vlib_node_runtime_t *r;
+  u32 node_runtime_index;
+  int msg_type;
+  u64 before;
+  int processed = 0;
+
+  ASSERT (vm == vlib_mains[thread_id]);
+
+  while (1)
+    {
+      if (fq->head == fq->tail)
+	return processed;
+
+      elt = fq->elts + ((fq->head + 1) & (fq->nelts - 1));
+
+      if (!elt->valid)
+	return processed;
+
+      before = clib_cpu_time_now ();
+
+      f = elt->frame;
+      node_runtime_index = elt->node_runtime_index;
+      msg_type = elt->msg_type;
+
+      switch (msg_type)
+	{
+	case VLIB_FRAME_QUEUE_ELT_FREE_BUFFERS:
+	  vlib_buffer_free (vm, vlib_frame_vector_args (f), f->n_vectors);
+	  /* note fallthrough... */
+	case VLIB_FRAME_QUEUE_ELT_FREE_FRAME:
+	  r = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
+				node_runtime_index);
+	  vlib_frame_free (vm, r, f);
+	  break;
+	case VLIB_FRAME_QUEUE_ELT_DISPATCH_FRAME:
+	  vec_add2 (vm->node_main.pending_frames, p, 1);
+	  f->flags |= (VLIB_FRAME_PENDING | VLIB_FRAME_FREE_AFTER_DISPATCH);
+	  p->node_runtime_index = elt->node_runtime_index;
+	  p->frame_index = vlib_frame_index (vm, f);
+	  p->next_frame_index = VLIB_PENDING_FRAME_NO_NEXT_FRAME;
+	  fq->dequeue_vectors += (u64) f->n_vectors;
+	  break;
+	case VLIB_FRAME_QUEUE_ELT_API_MSG:
+	  vl_msg_api_handler_no_free (f);
+	  break;
+	default:
+	  clib_warning ("bogus frame queue message, type %d", msg_type);
+	  break;
+	}
+      elt->valid = 0;
+      fq->dequeues++;
+      fq->dequeue_ticks += clib_cpu_time_now () - before;
+      CLIB_MEMORY_BARRIER ();
+      fq->head++;
+      processed++;
+    }
+  ASSERT (0);
+  return processed;
+}
+
+int
+vlib_frame_queue_dequeue (int thread_id,
+			  vlib_main_t * vm, vlib_node_main_t * nm)
+{
+  return vlib_frame_queue_dequeue_internal (thread_id, vm, nm);
+}
+
+int
+vlib_frame_queue_enqueue (vlib_main_t * vm, u32 node_runtime_index,
+			  u32 frame_queue_index, vlib_frame_t * frame,
+			  vlib_frame_queue_msg_type_t type)
+{
+  vlib_frame_queue_t *fq = vlib_frame_queues[frame_queue_index];
+  vlib_frame_queue_elt_t *elt;
+  u32 save_count;
+  u64 new_tail;
+  u64 before = clib_cpu_time_now ();
+
+  ASSERT (fq);
+
+  new_tail = __sync_add_and_fetch (&fq->tail, 1);
+
